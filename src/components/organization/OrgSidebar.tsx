@@ -206,34 +206,28 @@ export function OrgSidebar() {
                 const locked = item.category ? isLocked(item.category) : false;
 
                 return (
-                  <Tooltip key={item.id}>
+                  <Tooltip key={item.id} delayDuration={100}>
                     <TooltipTrigger asChild>
                       <button
                         data-onboarding={item.id === "courses" ? "courses" : item.id === "students" ? "students" : item.id === "settings" ? "settings" : undefined}
                         onClick={() => handleTabClick(item.id)}
                         className={cn(
-                          "relative flex min-h-[56px] w-[56px] flex-col items-center justify-center gap-0.5 rounded-2xl px-1 py-2 transition-all duration-200",
+                          "relative flex h-11 w-11 items-center justify-center rounded-xl transition-all duration-200",
                           locked && "opacity-50",
                           isActive
                             ? "text-primary-foreground shadow-md"
-                            : "text-foreground/80 hover:text-foreground hover:scale-110 hover:brightness-110"
+                            : "text-foreground/70 hover:text-foreground hover:scale-110"
                         )}
                         style={{
                           backgroundColor: isActive
                             ? `hsl(${brandHsl})`
-                            : `hsl(${brandHsl} / 0.18)`,
+                            : `hsl(${brandHsl} / 0.12)`,
                           ...(isActive ? { boxShadow: `0 4px 14px hsl(${brandHsl} / 0.4)` } : {}),
                         }}
                         aria-current={isActive ? "page" : undefined}
                       >
-                        <item.icon className="h-5 w-5 shrink-0" />
-                        <span className={cn(
-                          "text-[9px] font-medium leading-tight text-center",
-                          isActive ? "text-primary-foreground" : "text-foreground/80"
-                        )}>
-                          {item.label}
-                        </span>
-                        {locked && <Lock className="absolute top-1 right-1 w-2.5 h-2.5 text-muted-foreground/60" />}
+                        <item.icon className="h-[18px] w-[18px] shrink-0" />
+                        {locked && <Lock className="absolute top-0.5 right-0.5 w-2.5 h-2.5 text-muted-foreground/60" />}
                         {(item.badge ?? 0) > 0 && (
                           <span className="absolute -top-1 -right-1 bg-destructive text-destructive-foreground text-[9px] font-bold rounded-full min-w-[16px] h-4 flex items-center justify-center px-1">
                             {item.badge! > 99 ? "99+" : item.badge}
@@ -241,7 +235,18 @@ export function OrgSidebar() {
                         )}
                       </button>
                     </TooltipTrigger>
-                    <TooltipContent side="right">{item.label}</TooltipContent>
+                    <TooltipContent
+                      side="right"
+                      sideOffset={12}
+                      className="rounded-xl px-4 py-2 text-sm font-medium shadow-lg border-border/60 backdrop-blur-sm"
+                      style={{
+                        backgroundColor: `hsl(${brandHsl})`,
+                        color: 'white',
+                        boxShadow: `0 4px 20px hsl(${brandHsl} / 0.3)`,
+                      }}
+                    >
+                      {item.label}
+                    </TooltipContent>
                   </Tooltip>
                 );
               })}
