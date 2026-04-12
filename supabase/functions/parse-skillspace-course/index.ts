@@ -647,6 +647,49 @@ Deno.serve(async (req) => {
             }
           }
 
+          // Fallback: fetch pages separately when inline content is empty
+          if (jsonBlocks.length === 0) {
+            const pagePaths = [
+              `/api/rest/school/lesson/${lesson.uuid}/page/list`,
+              `/api/rest/school/lesson/${lesson.uuid}/page`,
+              `/api/rest/school/step/${lesson.uuid}/page/list`,
+              `/api/rest/school/step/${lesson.id}/page/list`,
+              `/api/rest/school/step/${lesson.id}/page`,
+            ];
+            for (const pagePath of pagePaths) {
+              const pageRes = await apiFetch(pagePath);
+              if (pageRes.ok && pageRes.data) {
+                const pagesArray = Array.isArray(pageRes.data) ? pageRes.data : 
+                                   pageRes.data.pages || pageRes.data.list || pageRes.data.items || [pageRes.data];
+                for (const page of pagesArray) {
+                  if (page.title) {
+                    jsonBlocks.push({ id: makeId(), type: "heading2", content: cleanHtml(page.title) });
+                  }
+                  const blocks = page.content?.blocks || page.blocks || [];
+                  if (blocks.length > 0) {
+                    jsonBlocks.push(...editorBlocksToJsonBlocks(blocks));
+                  }
+                }
+                if (jsonBlocks.length > 0) {
+                  log(`Fallback page fetch success via ${pagePath}: ${jsonBlocks.length} blocks`);
+                  break;
+                }
+              }
+            }
+          }
+
+          // Log raw data when still empty for debugging
+          if (jsonBlocks.length === 0) {
+            const rawKeys = Object.keys(lessonData).join(", ");
+            log(`Empty lesson "${lessonTitle}" keys: ${rawKeys}`);
+            if (lessonData.pagesPublished) {
+              log(`pagesPublished: ${JSON.stringify(lessonData.pagesPublished).substring(0, 300)}`);
+            }
+            if (lessonData.pages) {
+              log(`pages: ${JSON.stringify(lessonData.pages).substring(0, 300)}`);
+            }
+          }
+
           if (jsonBlocks.length > 0) lessonsWithBlocks++;
 
           lessonContents.push({
