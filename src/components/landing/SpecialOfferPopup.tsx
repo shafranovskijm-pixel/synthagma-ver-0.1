@@ -153,7 +153,15 @@ export function SpecialOfferPopup() {
                   </form>
 
                   <p className="text-[10px] text-muted-foreground/60 mt-3 text-center">
-                    Нажимая кнопку, вы соглашаетесь на обработку персональных данных
+                    Нажимая кнопку, вы соглашаетесь на{" "}
+                    <a
+                      href="/privacy"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="underline hover:text-foreground/70 transition-colors"
+                    >
+                      обработку персональных данных
+                    </a>
                   </p>
                 </div>
               </div>
