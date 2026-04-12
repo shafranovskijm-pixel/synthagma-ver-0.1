@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 
 import { SUBSCRIPTION_PLANS, type SubscriptionPlan, type PlanInfo, formatStorageSize, YEARLY_DISCOUNT } from "@/constants/subscriptionPlans";
@@ -17,7 +17,7 @@ import {
   Crown, BookOpen, Users, HardDrive, Sparkles, Check, X,
   Palette, Video, FileCheck, Brain, FileSpreadsheet, ClipboardList,
   HardHat, Infinity, ArrowRight, Calendar, AlertTriangle,
-  ExternalLink, Building2, ShoppingCart
+  ExternalLink, Building2, ShoppingCart, CreditCard
 } from "lucide-react";
 import { differenceInDays, format } from "date-fns";
 import { ru } from "date-fns/locale";
@@ -108,6 +108,8 @@ export function SubscriptionTab() {
   const [submitting, setSubmitting] = useState(false);
   const [pendingRequest, setPendingRequest] = useState<{ requested_plan: string; created_at: string } | null>(null);
   const [orgContact, setOrgContact] = useState<{ email?: string; phone?: string; contact_name?: string }>({});
+  const [generatingInvoice, setGeneratingInvoice] = useState(false);
+  const nav = useNavigate();
 
   const currentPlan = subscriptionLimits.plan;
   const currentPlanInfo = SUBSCRIPTION_PLANS[currentPlan];
@@ -187,6 +189,40 @@ export function SubscriptionTab() {
     setSubmitting(false);
   };
 
+  const handleGenerateInvoice = async () => {
+    if (!organizationId) return;
+    setGeneratingInvoice(true);
+    try {
+      const year = new Date().getFullYear();
+      const { count } = await supabase
+        .from("subscription_invoices")
+        .select("*", { count: "exact", head: true })
+        .eq("organization_id", organizationId);
+
+      const invoiceNum = `СЧ-${year}/${String((count || 0) + 1).padStart(4, "0")}`;
+      const amount = currentPlanInfo.price || 1990;
+
+      const { data: invoice, error: err } = await supabase
+        .from("subscription_invoices")
+        .insert({
+          organization_id: organizationId,
+          invoice_number: invoiceNum,
+          plan: currentPlan,
+          amount,
+          period_months: 1,
+        } as any)
+        .select("id")
+        .single();
+
+      if (err) throw err;
+      nav(`/invoice/${(invoice as any).id}`);
+    } catch (e: any) {
+      toast({ title: "Ошибка", description: e.message, variant: "destructive" });
+    } finally {
+      setGeneratingInvoice(false);
+    }
+  };
+
   const coursesPercent = currentPlanInfo.limits.maxCourses === -1 ? 0 :
     Math.round((subscriptionLimits.usage.coursesCount / currentPlanInfo.limits.maxCourses) * 100);
   const studentsPercent = currentPlanInfo.limits.maxStudents === -1 ? 0 :
@@ -249,6 +285,26 @@ export function SubscriptionTab() {
                   </div>
                 </CardContent>
               </Card>
+
+              {/* Generate Invoice Button */}
+              {currentPlan !== 'free' && daysRemaining !== null && daysRemaining <= 30 && (
+                <Card className="border-primary/20 bg-primary/5">
+                  <CardContent className="p-4 flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <CreditCard className="w-5 h-5 text-primary" />
+                      <div>
+                        <p className="font-medium text-sm">Продлите тариф</p>
+                        <p className="text-xs text-muted-foreground">
+                          {daysRemaining <= 0 ? "Тариф истёк" : `До окончания ${daysRemaining} дн.`} — выставите счёт на продление
+                        </p>
+                      </div>
+                    </div>
+                    <Button size="sm" onClick={handleGenerateInvoice} disabled={generatingInvoice}>
+                      {generatingInvoice ? "Создание..." : "Выставить счёт"}
+                    </Button>
+                  </CardContent>
+                </Card>
+              )}
 
               {/* Pending Request */}
               {pendingRequest && (

@@ -4560,6 +4560,50 @@ export type Database = {
           },
         ]
       }
+      subscription_invoices: {
+        Row: {
+          amount: number
+          created_at: string | null
+          id: string
+          invoice_date: string
+          invoice_number: string
+          organization_id: string
+          period_months: number
+          plan: string
+          status: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string | null
+          id?: string
+          invoice_date?: string
+          invoice_number: string
+          organization_id: string
+          period_months?: number
+          plan: string
+          status?: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string | null
+          id?: string
+          invoice_date?: string
+          invoice_number?: string
+          organization_id?: string
+          period_months?: number
+          plan?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "subscription_invoices_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       subscription_requests: {
         Row: {
           created_at: string

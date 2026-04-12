@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
+import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { supabase } from "@/integrations/supabase/client";
@@ -37,7 +38,7 @@ interface OrgNotificationsProps {
 type TabKey = "all" | "tasks" | "payments";
 
 const TASK_TYPES = ["video_identification", "consent_signed", "document_issued", "assignment", "task"];
-const PAYMENT_TYPES = ["payment", "course_payment", "subscription", "order"];
+const PAYMENT_TYPES = ["payment", "course_payment", "subscription", "subscription_expiry", "order"];
 
 function getFilteredNotifications(notifications: Notification[], tab: TabKey) {
   if (tab === "all") return notifications;
@@ -67,6 +68,7 @@ function getAvatarColor(id: string) {
 }
 
 export function OrgNotifications({ organizationId }: OrgNotificationsProps) {
+  const navigate = useNavigate();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isOpen, setIsOpen] = useState(false);
@@ -246,7 +248,13 @@ export function OrgNotifications({ organizationId }: OrgNotificationsProps) {
                 <div
                   key={n.id}
                   className={`px-5 py-3.5 hover:bg-muted/50 transition-colors cursor-pointer ${!n.is_read ? "bg-primary/5" : ""}`}
-                  onClick={() => markAsRead(n.id)}
+                  onClick={() => {
+                    markAsRead(n.id);
+                    if (n.type === "subscription_expiry" && n.related_id) {
+                      setIsOpen(false);
+                      navigate(`/invoice/${n.related_id}`);
+                    }
+                  }}
                 >
                   <div className="flex items-start gap-3">
                     <div className={`w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 text-xs font-bold ${getAvatarColor(n.id)}`}>
