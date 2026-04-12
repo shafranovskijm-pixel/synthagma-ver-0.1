@@ -1,9 +1,11 @@
-import { BookOpen, FileSpreadsheet, CheckCircle } from "lucide-react";
+import { BookOpen, FileSpreadsheet, CheckCircle, CalendarIcon, Save } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { getStatusBadge } from "./StatusBadge";
 import { supabase } from "@/integrations/supabase/client";
 import { useState } from "react";
 import { toast } from "sonner";
+import { format } from "date-fns";
 
 interface CoursesTabProps {
   enrollments: {
@@ -21,6 +23,9 @@ interface CoursesTabProps {
 
 export function CoursesTab({ enrollments, h }: CoursesTabProps) {
   const [completingId, setCompletingId] = useState<string | null>(null);
+  const [editingDateId, setEditingDateId] = useState<string | null>(null);
+  const [editDate, setEditDate] = useState("");
+  const [savingDateId, setSavingDateId] = useState<string | null>(null);
 
   const handleManualComplete = async (enrollmentId: string) => {
     setCompletingId(enrollmentId);
@@ -36,6 +41,31 @@ export function CoursesTab({ enrollments, h }: CoursesTabProps) {
       toast.error("Ошибка: " + e.message);
     } finally {
       setCompletingId(null);
+    }
+  };
+
+  const handleStartEditDate = (enrollment: CoursesTabProps["enrollments"][0]) => {
+    setEditingDateId(enrollment.id);
+    const date = enrollment.completed_at ? new Date(enrollment.completed_at) : new Date();
+    setEditDate(format(date, "yyyy-MM-dd'T'HH:mm"));
+  };
+
+  const handleSaveDate = async (enrollmentId: string) => {
+    setSavingDateId(enrollmentId);
+    try {
+      const newDate = new Date(editDate).toISOString();
+      const { error } = await supabase
+        .from("enrollments")
+        .update({ completed_at: newDate })
+        .eq("id", enrollmentId);
+      if (error) throw error;
+      toast.success("Дата завершения обновлена для ФРДО");
+      setEditingDateId(null);
+      h.onStudentUpdated?.();
+    } catch (e: any) {
+      toast.error("Ошибка: " + e.message);
+    } finally {
+      setSavingDateId(null);
     }
   };
 
@@ -55,8 +85,48 @@ export function CoursesTab({ enrollments, h }: CoursesTabProps) {
               <div className="flex items-center gap-4 text-sm text-muted-foreground">
                 <span>Прогресс: {e.progress}%</span>
                 <span>Время: {h.formatDuration(e.time_spent)}</span>
-                {e.completed_at && <span>Завершён: {h.formatDate(e.completed_at)}</span>}
+                {e.completed_at && editingDateId !== e.id && (
+                  <button
+                    className="inline-flex items-center gap-1 hover:text-foreground transition-colors cursor-pointer underline decoration-dotted underline-offset-2"
+                    onClick={() => handleStartEditDate(e)}
+                    title="Нажмите, чтобы изменить дату для ФРДО"
+                  >
+                    <CalendarIcon className="w-3.5 h-3.5" />
+                    Завершён: {h.formatDate(e.completed_at)}
+                  </button>
+                )}
               </div>
+
+              {/* Inline date editor for FRDO */}
+              {editingDateId === e.id && (
+                <div className="mt-2 flex items-center gap-2 p-2 rounded-lg bg-accent/5 border border-accent/20">
+                  <Input
+                    type="datetime-local"
+                    value={editDate}
+                    onChange={(ev) => setEditDate(ev.target.value)}
+                    className="h-8 text-sm rounded-lg w-auto"
+                  />
+                  <Button
+                    size="sm"
+                    variant="default"
+                    className="h-8 rounded-lg gap-1.5 text-xs"
+                    onClick={() => handleSaveDate(e.id)}
+                    disabled={savingDateId === e.id}
+                  >
+                    <Save className="w-3.5 h-3.5" />
+                    {savingDateId === e.id ? "..." : "Сохранить для ФРДО"}
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="h-8 rounded-lg text-xs"
+                    onClick={() => setEditingDateId(null)}
+                  >
+                    Отмена
+                  </Button>
+                </div>
+              )}
+
               <div className="w-full bg-muted rounded-full h-2 mt-2">
                 <div className="bg-primary rounded-full h-2 transition-all" style={{ width: `${Math.min(e.progress, 100)}%` }} />
               </div>
