@@ -220,6 +220,9 @@ export function SubscriptionTab() {
                       <p className="text-muted-foreground">
                         {currentPlanInfo.price === 0 ? "Бесплатный тариф" : `${currentPlanInfo.price.toLocaleString()} ₽/мес`}
                       </p>
+                      {tariffCustomLabel && (
+                        <p className="text-sm font-medium text-primary mt-1">{tariffCustomLabel}</p>
+                      )}
                     </div>
                     <div className="flex flex-col items-end gap-1">
                       {paidUntil && currentPlan !== 'free' ? (
