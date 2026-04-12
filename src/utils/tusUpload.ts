@@ -11,8 +11,8 @@
  */
 
 const CHUNK_SIZE = 50 * 1024 * 1024; // 50 MB
-const STALL_TIMEOUT_MS = 60_000; // 60 seconds
-const MAX_RETRIES = 3;
+const STALL_TIMEOUT_MS = 90_000; // 90 seconds (increased for slow connections)
+const MAX_RETRIES = 5;
 
 export interface TusUploadOptions {
   file: File | Blob;
