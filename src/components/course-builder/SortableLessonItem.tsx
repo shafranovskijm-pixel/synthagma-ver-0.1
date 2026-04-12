@@ -243,10 +243,10 @@ export function SortableLessonItem({
                   <>
                     <Video className="w-10 h-10 mx-auto mb-3 text-sigma-purple" />
                     <p className="text-sm font-medium mb-1">Загрузить видео на сервер</p>
-                    <p className="text-xs text-muted-foreground mb-4">MP4, WebM, MOV — до 2 ГБ</p>
+                    <p className="text-xs text-muted-foreground mb-4">Любые видеоформаты — без ограничений по размеру</p>
                     <label className="inline-flex items-center gap-2 px-4 py-2 bg-sigma-purple text-white rounded-lg cursor-pointer hover:bg-sigma-purple/90 transition-colors">
                       <Upload className="w-4 h-4" /><span className="text-sm font-medium">Выбрать файл</span>
-                      <input ref={media.videoInputRef} type="file" accept="video/mp4,video/webm,video/quicktime,video/*" className="hidden" onChange={(e) => { const file = e.target.files?.[0]; if (file) media.handleVideoUpload(file, skipCompression); }} />
+                      <input ref={media.videoInputRef} type="file" accept="video/*" className="hidden" onChange={(e) => { const file = e.target.files?.[0]; if (file) media.handleVideoUpload(file, skipCompression); }} />
                     </label>
                     <label className="inline-flex items-center gap-2 text-xs text-muted-foreground cursor-pointer select-none mt-1">
                       <input type="checkbox" checked={skipCompression} onChange={(e) => setSkipCompression(e.target.checked)} className="rounded border-border" />
