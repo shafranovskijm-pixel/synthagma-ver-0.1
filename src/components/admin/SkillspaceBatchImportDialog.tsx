@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, CheckCircle2, AlertTriangle, Download, XCircle, Clock } from "lucide-react";
+import { Loader2, CheckCircle2, AlertTriangle, Download, XCircle, Clock, RefreshCw } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
 interface SkillspaceBatchImportDialogProps {
@@ -22,6 +22,7 @@ interface ImportJob {
   status: string;
   result: any;
   error_message: string | null;
+  organization_id?: string;
 }
 
 export function SkillspaceBatchImportDialog({
@@ -37,6 +38,7 @@ export function SkillspaceBatchImportDialog({
   const [error, setError] = useState<string | null>(null);
   const [batchId, setBatchId] = useState<string | null>(null);
   const [jobs, setJobs] = useState<ImportJob[]>([]);
+  const [reparsingJobId, setReparsingJobId] = useState<string | null>(null);
   const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // Poll jobs when batchId is set
@@ -148,7 +150,54 @@ export function SkillspaceBatchImportDialog({
     setError(null);
     setBatchId(null);
     setJobs([]);
+    setReparsingJobId(null);
     onOpenChange(false);
+  };
+
+  const handleReparseContent = async (job: ImportJob) => {
+    if (!job.result?.courseId || !job.url) return;
+    setReparsingJobId(job.id);
+    try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const accessToken = sessionData?.session?.access_token;
+      if (!accessToken) return;
+
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+
+      const response = await fetch(
+        `${supabaseUrl}/functions/v1/parse-skillspace-course`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${accessToken}`,
+            apikey: supabaseKey,
+          },
+          body: JSON.stringify({
+            url: job.url,
+            login,
+            password,
+            organizationId,
+            existingCourseId: job.result.courseId,
+          }),
+        }
+      );
+
+      const data = await response.json();
+      if (data.success) {
+        // Update the job result in state
+        setJobs(prev => prev.map(j => 
+          j.id === job.id 
+            ? { ...j, result: { ...j.result, lessonsUpdated: data.lessonsUpdated, lessonsWithContent: data.lessonsWithContent, reparseSuccess: true } }
+            : j
+        ));
+      }
+    } catch (err) {
+      console.error("Reparse error:", err);
+    } finally {
+      setReparsingJobId(null);
+    }
   };
 
   const doneCount = jobs.filter((j) => j.status === "done").length;
@@ -259,9 +308,28 @@ export function SkillspaceBatchImportDialog({
                   <div className="min-w-0 flex-1">
                     <p className="truncate font-mono text-xs">{job.url}</p>
                     {job.status === "done" && job.result?.courseTitle && (
-                      <p className="text-xs text-green-600 mt-0.5">
-                        {job.result.courseTitle} — {job.result.lessonsCreated} уроков
-                      </p>
+                      <div className="flex items-center gap-1 mt-0.5">
+                        <p className="text-xs text-green-600">
+                          {job.result.courseTitle} — {job.result.lessonsCreated} уроков
+                          {job.result.reparseSuccess && ` (обновлено: ${job.result.lessonsUpdated})`}
+                        </p>
+                        {job.result?.courseId && login && password && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-5 px-1 text-xs"
+                            disabled={reparsingJobId === job.id}
+                            onClick={() => handleReparseContent(job)}
+                            title="Перепарсить контент уроков"
+                          >
+                            {reparsingJobId === job.id ? (
+                              <Loader2 className="w-3 h-3 animate-spin" />
+                            ) : (
+                              <RefreshCw className="w-3 h-3" />
+                            )}
+                          </Button>
+                        )}
+                      </div>
                     )}
                     {job.status === "error" && job.error_message && (
                       <p className="text-xs text-destructive mt-0.5">{job.error_message}</p>
