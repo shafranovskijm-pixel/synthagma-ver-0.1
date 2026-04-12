@@ -77,7 +77,6 @@ function CatalogContent({ catalogCourses, categories, profile, branding, handleC
       ) : (
         <StudentWebinarsList />
       )}
-      )}
     </div>
   );
 }
