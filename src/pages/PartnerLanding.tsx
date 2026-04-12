@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { SigmaLogo } from "@/components/ui/SigmaLogo";
-import { ArrowRight, Gift, TrendingUp, Users, Clock, DollarSign, CheckCircle2, Copy, ExternalLink, Zap, Shield, BarChart3, MessageCircle, Mail, FileText, Building2, GraduationCap, Briefcase, Star, Sparkles } from "lucide-react";
+import { ArrowRight, Gift, TrendingUp, Users, Clock, DollarSign, CheckCircle2, Copy, ExternalLink, Zap, Shield, BarChart3, MessageCircle, Mail, FileText, Building2, GraduationCap, Briefcase, Star, Sparkles, Download, HelpCircle } from "lucide-react";
 import { motion } from "framer-motion";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
@@ -12,6 +12,8 @@ import { useToast } from "@/hooks/use-toast";
 import { Footer } from "@/components/landing/Footer";
 import { Helmet } from "react-helmet-async";
 import { getBaseUrl } from "@/utils/getBaseUrl";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 
 const PartnerLanding = () => {
   const { user } = useAuth();
@@ -20,6 +22,7 @@ const PartnerLanding = () => {
   const [isPartner, setIsPartner] = useState(false);
   const [partnerCode, setPartnerCode] = useState<string | null>(null);
   const [isBecoming, setIsBecoming] = useState(false);
+  const [agreedToTerms, setAgreedToTerms] = useState(false);
 
   useEffect(() => {
     if (user) {
@@ -213,11 +216,27 @@ const PartnerLanding = () => {
                     </Button>
                   </div>
                 ) : (
-                  <Button size="lg" onClick={handleBecomePartner} disabled={isBecoming}
-                    className="text-lg px-10 py-7 rounded-xl bg-teal-500 hover:bg-teal-600 text-white shadow-[0_0_40px_rgba(20,184,166,0.3)] hover:shadow-[0_0_60px_rgba(20,184,166,0.4)] transition-all duration-300">
-                    <Sparkles className="w-5 h-5 mr-2" />
-                    Стать партнёром <ArrowRight className="w-5 h-5 ml-2" />
-                  </Button>
+                  <div className="flex flex-col items-center gap-4">
+                    <div className="flex items-center gap-2">
+                      <Checkbox
+                        id="hero-agree"
+                        checked={agreedToTerms}
+                        onCheckedChange={(v) => setAgreedToTerms(v === true)}
+                        className="border-teal-500/40 data-[state=checked]:bg-teal-500 data-[state=checked]:border-teal-500"
+                      />
+                      <label htmlFor="hero-agree" className="text-sm text-muted-foreground cursor-pointer">
+                        Я согласен с{" "}
+                        <Link to="/partner/offer" className="text-teal-600 underline underline-offset-2 hover:text-teal-700">
+                          условиями партнёрской программы
+                        </Link>
+                      </label>
+                    </div>
+                    <Button size="lg" onClick={handleBecomePartner} disabled={isBecoming || !agreedToTerms}
+                      className="text-lg px-10 py-7 rounded-xl bg-teal-500 hover:bg-teal-600 text-white shadow-[0_0_40px_rgba(20,184,166,0.3)] hover:shadow-[0_0_60px_rgba(20,184,166,0.4)] transition-all duration-300 disabled:opacity-50">
+                      <Sparkles className="w-5 h-5 mr-2" />
+                      Стать партнёром <ArrowRight className="w-5 h-5 ml-2" />
+                    </Button>
+                  </div>
                 )}
               </motion.div>
             </div>
@@ -456,6 +475,34 @@ const PartnerLanding = () => {
               </motion.div>
             </div>
 
+            {/* Downloadable promo materials */}
+            <motion.div
+              className="mt-12 max-w-5xl mx-auto"
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ delay: 0.2 }}
+            >
+              <h3 className="font-display text-lg font-semibold mb-4 text-center">Дополнительные материалы для скачивания</h3>
+              <div className="grid sm:grid-cols-3 gap-4">
+                {[
+                  { name: "Возможности и тарифы СИНТАГМА (для организаций).pdf", type: "PDF", color: "bg-red-500/10 text-red-600" },
+                  { name: "Возможности и тарифы СИНТАГМА (для онлайн-школ).pdf", type: "PDF", color: "bg-red-500/10 text-red-600" },
+                  { name: "Рекламные баннеры СИНТАГМА.zip", type: "ZIP", color: "bg-amber-500/10 text-amber-600" },
+                ].map((file, i) => (
+                  <a
+                    key={i}
+                    href="#"
+                    className="flex items-center gap-3 p-4 rounded-xl border border-teal-500/10 bg-card hover:bg-teal-500/5 transition-colors group"
+                  >
+                    <Badge className={`${file.color} border-0 text-xs font-bold px-2 py-0.5`}>{file.type}</Badge>
+                    <span className="text-sm flex-1 leading-tight">{file.name}</span>
+                    <Download className="w-4 h-4 text-muted-foreground group-hover:text-teal-600 transition-colors shrink-0" />
+                  </a>
+                ))}
+              </div>
+            </motion.div>
+
             {/* Who to recommend */}
             <motion.div
               className="mt-20 max-w-4xl mx-auto"
@@ -488,6 +535,51 @@ const PartnerLanding = () => {
                   </motion.div>
                 ))}
               </div>
+            </motion.div>
+          </div>
+        </section>
+
+        {/* FAQ */}
+        <section className="py-24">
+          <div className="container mx-auto px-6">
+            <motion.div
+              className="text-center mb-14"
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+            >
+              <Badge className="mb-4 px-3 py-1 bg-teal-500/10 text-teal-600 border-teal-500/20">
+                <HelpCircle className="w-3.5 h-3.5 mr-1" /> FAQ
+              </Badge>
+              <h2 className="font-display text-3xl lg:text-4xl font-bold">Частые вопросы</h2>
+            </motion.div>
+
+            <motion.div
+              className="max-w-3xl mx-auto"
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ delay: 0.1 }}
+            >
+              <Accordion type="single" collapsible className="space-y-3">
+                {[
+                  { q: "Как подключиться к партнёрской программе и начать зарабатывать?", a: "Зарегистрируйтесь на платформе СИНТАГМА и нажмите кнопку «Стать партнёром». Вы получите персональную реферальную ссылку — делитесь ею с потенциальными клиентами. Когда организация зарегистрируется по вашей ссылке и начнёт оплачивать тарифы, вам автоматически начисляется комиссия." },
+                  { q: "Кто может участвовать в партнёрской программе?", a: "Любой пользователь платформы: частное лицо, ИП, организация. Программа подходит для бизнес-тренеров, консультантов, HR-специалистов, блогеров и всех, кто может рекомендовать обучающую платформу своей аудитории." },
+                  { q: "Как отслеживаются регистрации и оплаты рефералов?", a: "Все переходы по вашей ссылке, регистрации и оплаты автоматически фиксируются в системе. В личном кабинете партнёра вы видите полную статистику: клики, регистрации, конверсию и начисленные комиссии." },
+                  { q: "Каким образом происходят выплаты комиссии?", a: "Комиссия начисляется автоматически при каждой оплате привлечённого клиента. Выплаты производятся по запросу на банковский счёт или по реквизитам, указанным в кабинете партнёра." },
+                  { q: "Можно ли заключить договор?", a: "Да, для юридических лиц и ИП мы заключаем партнёрский договор. Свяжитесь с нами через форму обратной связи или напишите на email для оформления документов." },
+                  { q: "Как организована отчётность по выплатам?", a: "В кабинете партнёра доступна полная история начислений и выплат. Вы можете выгрузить отчёт за любой период. Для юридических лиц формируются акты выполненных работ." },
+                ].map((item, i) => (
+                  <AccordionItem key={i} value={`faq-${i}`} className="border border-teal-500/10 rounded-xl px-5 data-[state=open]:bg-teal-500/3">
+                    <AccordionTrigger className="text-left text-sm font-medium hover:no-underline py-4">
+                      {item.q}
+                    </AccordionTrigger>
+                    <AccordionContent className="text-sm text-muted-foreground leading-relaxed pb-4">
+                      {item.a}
+                    </AccordionContent>
+                  </AccordionItem>
+                ))}
+              </Accordion>
             </motion.div>
           </div>
         </section>
@@ -526,10 +618,26 @@ const PartnerLanding = () => {
                     Кабинет партнёра <ArrowRight className="w-5 h-5 ml-2" />
                   </Button>
                 ) : (
-                  <Button size="lg" onClick={handleBecomePartner} disabled={isBecoming}
-                    className="text-lg px-8 py-6 bg-teal-500 hover:bg-teal-600 text-white shadow-[0_0_30px_rgba(20,184,166,0.3)]">
-                    Стать партнёром <ArrowRight className="w-5 h-5 ml-2" />
-                  </Button>
+                  <div className="flex flex-col items-center gap-3">
+                    <div className="flex items-center gap-2">
+                      <Checkbox
+                        id="cta-agree"
+                        checked={agreedToTerms}
+                        onCheckedChange={(v) => setAgreedToTerms(v === true)}
+                        className="border-teal-500/40 data-[state=checked]:bg-teal-500 data-[state=checked]:border-teal-500"
+                      />
+                      <label htmlFor="cta-agree" className="text-sm text-muted-foreground cursor-pointer">
+                        Я согласен с{" "}
+                        <Link to="/partner/offer" className="text-teal-600 underline underline-offset-2 hover:text-teal-700">
+                          условиями партнёрской программы
+                        </Link>
+                      </label>
+                    </div>
+                    <Button size="lg" onClick={handleBecomePartner} disabled={isBecoming || !agreedToTerms}
+                      className="text-lg px-8 py-6 bg-teal-500 hover:bg-teal-600 text-white shadow-[0_0_30px_rgba(20,184,166,0.3)] disabled:opacity-50">
+                      Стать партнёром <ArrowRight className="w-5 h-5 ml-2" />
+                    </Button>
+                  </div>
                 )}
                 <Button size="lg" variant="outline" asChild className="text-lg px-8 py-6 border-teal-500/20 text-teal-600 hover:bg-teal-500/10">
                   <Link to="/partner/offer">Условия программы</Link>
