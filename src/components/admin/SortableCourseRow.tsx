@@ -29,8 +29,10 @@ export function SortableCourseRow({ course, migratingCourseId, migrationResult, 
     opacity: isDragging ? 0.5 : 1,
   };
 
+  const needsReview = course.lessons_count === 0;
+
   return (
-    <TableRow ref={setNodeRef} style={style} className="hover:bg-muted/40">
+    <TableRow ref={setNodeRef} style={style} className={`hover:bg-muted/40 ${needsReview ? 'bg-amber-50/50 dark:bg-amber-950/10' : ''}`}>
       <TableCell className="w-10 px-2">
         <button {...attributes} {...listeners} className="cursor-grab active:cursor-grabbing p-1 text-muted-foreground hover:text-foreground">
           <GripVertical className="w-4 h-4" />
