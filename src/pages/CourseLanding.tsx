@@ -275,6 +275,22 @@ export default function CourseLanding() {
         ) : null;
       case "benefits":
         return benefits.length > 0 ? <LandingBenefitsSection key={sectionId} benefits={benefits} /> : null;
+      case "teachers":
+        return teachers.items?.length > 0 ? (
+          <LandingTeachersSection key={sectionId} title={teachers.title} description={teachers.description} teachers={teachers.items} />
+        ) : null;
+      case "reviews":
+        return reviews.items?.length > 0 ? (
+          <LandingReviewsSection key={sectionId} title={reviews.title} reviews={reviews.items} />
+        ) : null;
+      case "pricing":
+        return pricing.tiers?.length > 0 ? (
+          <LandingPricingSection key={sectionId} title={pricing.title} tiers={pricing.tiers} />
+        ) : null;
+      case "faq":
+        return faq.items?.length > 0 ? (
+          <LandingFaqSection key={sectionId} title={faq.title} items={faq.items} />
+        ) : null;
       case "cta":
         return (
           <LandingCtaSection
