@@ -253,7 +253,7 @@ export function CompaniesManager({ organizationId }: CompaniesManagerProps) {
                       <td className="p-4 text-muted-foreground hidden lg:table-cell line-clamp-1">{company.director || '—'}</td>
                       <td className="p-4">
                         <div className="flex items-center gap-1">
-                          <Button variant="ghost" size="icon" className="h-7 w-7 rounded-lg" title="Войти как компания" onClick={(e) => handleViewAsCompany(e, company.id)}>
+                          <Button variant="ghost" size="icon" className="h-7 w-7 rounded-lg" title="Войти как компания" onClick={(e) => handleViewAsCompany(e, company)}>
                             <ExternalLink className="w-3.5 h-3.5 text-muted-foreground hover:text-primary" />
                           </Button>
                           <ChevronRight className="w-4 h-4 text-muted-foreground" />
