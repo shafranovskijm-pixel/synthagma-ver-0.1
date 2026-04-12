@@ -1,9 +1,14 @@
+import { useRef, useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Plus, FileSpreadsheet, Menu, CreditCard, Bell, HelpCircle, User, LogOut, Handshake } from "lucide-react";
+import { Plus, FileSpreadsheet, Menu, CreditCard, HelpCircle, User, LogOut, Handshake, Sparkles, ImagePlus } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { showLimitToast } from "@/utils/limitToast";
 import { useOrgDashboard } from "@/contexts/OrgDashboardContext";
 import { SigmaLogo } from "@/components/ui/SigmaLogo";
+import { OrgNotifications } from "./OrgNotifications";
+import { supabase } from "@/integrations/supabase/client";
+import { differenceInDays } from "date-fns";
+import defaultCoverImg from "@/assets/default-org-cover.jpg";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -11,27 +16,51 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { useState } from "react";
+
+function getUserInitials(email?: string | null, name?: string | null): string {
+  if (name) {
+    const parts = name.trim().split(/\s+/);
+    if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
+    return parts[0][0]?.toUpperCase() || "?";
+  }
+  if (email) return email[0]?.toUpperCase() || "?";
+  return "?";
+}
 
 export function OrgDashboardHeader() {
   const navigate = useNavigate();
   const d = useOrgDashboard();
-  
+  const coverInputRef = useRef<HTMLInputElement>(null);
+
   const activeTab = d.tabNavigation.activeTab;
   const organizationName = d.organizationName;
+  const organizationId = d.organizationId;
   const customName = d.branding.brandingSettings.customName;
+  const customSubtitle = d.branding.brandingSettings.customSubtitle;
   const logoUrl = d.branding.brandingSettings.logoUrl;
   const coverUrl = d.branding.brandingSettings.coverUrl;
   const coverPosition = d.branding.brandingSettings.coverPosition;
 
-  const [showNotifications, setShowNotifications] = useState(false);
+  // Tariff info
+  const [paidUntil, setPaidUntil] = useState<string | null>(null);
+  const planName = d.subscriptionLimits?.plan;
+
+  useEffect(() => {
+    if (!organizationId) return;
+    supabase.from("organizations").select("paid_until").eq("id", organizationId).single()
+      .then(({ data }) => { if (data?.paid_until) setPaidUntil(data.paid_until); });
+  }, [organizationId]);
+
+  const daysRemaining = paidUntil ? Math.max(0, differenceInDays(new Date(paidUntil), new Date())) : null;
+
+  const planLabel = planName === 'free' ? 'Бесплатный' : planName === 'start' ? 'Старт' : planName === 'standard' ? 'Стандарт' : planName === 'professional' ? 'Профессиональный' : planName === 'maximum' ? 'Максимальный' : 'Тариф';
+
+  const userEmail = d.user?.email;
+  const initials = getUserInitials(userEmail);
 
   const handleStudentAction = (action: () => void) => {
     const result = d.checkLimit('student');
-    if (!result.allowed) {
-      showLimitToast(result.message);
-      return;
-    }
+    if (!result.allowed) { showLimitToast(result.message); return; }
     action();
   };
 
@@ -56,91 +85,83 @@ export function OrgDashboardHeader() {
     }
   };
 
+  const displayCover = coverUrl || defaultCoverImg;
+
   return (
     <header className="sticky top-0 z-30 bg-card border-b border-border">
       {/* Top bar */}
       <div className="flex items-center justify-between px-4 lg:px-6 h-14">
         {/* Left: Mobile menu + Logo + Org name */}
         <div className="flex items-center gap-3">
-          <button 
-            onClick={() => d.setIsMobileSidebarOpen(true)} 
+          <button
+            onClick={() => d.setIsMobileSidebarOpen(true)}
             className="lg:hidden p-2 rounded-lg hover:bg-secondary"
           >
             <Menu className="w-5 h-5" />
           </button>
-          
+
           <div className="flex items-center gap-2.5">
             {logoUrl ? (
-              <img src={logoUrl} alt="Logo" className="w-7 h-7 object-contain rounded-lg" />
+              <img src={logoUrl} alt="Logo" className="w-8 h-8 object-contain rounded-lg" />
             ) : (
               <SigmaLogo size="sm" showText={false} />
             )}
-            <span className="font-display font-bold text-sm">{customName || organizationName || "СИНТАГМА"}</span>
+            <span className="font-display font-bold text-sm hidden sm:inline">{customName || organizationName || "СИНТАГМА"}</span>
           </div>
         </div>
 
         {/* Right: Tariff + Partner + Notifications + Profile */}
-        <div className="flex items-center gap-2">
-          {/* Tariff badge */}
+        <div className="flex items-center gap-1.5 sm:gap-2.5">
+          {/* Tariff badge with days */}
           <button
             onClick={() => d.tabNavigation.setActiveTab("subscription" as any)}
-            className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 bg-primary/10 rounded-full border border-primary/20 hover:bg-primary/15 transition-colors"
+            className="hidden sm:flex items-center gap-2 px-3.5 py-2 bg-primary/10 rounded-full border border-primary/20 hover:bg-primary/15 transition-colors"
           >
-            <CreditCard className="w-3.5 h-3.5 text-primary" />
+            <CreditCard className="w-4 h-4 text-primary" />
             <span className="text-xs font-semibold text-primary">
-              {d.subscriptionLimits?.plan === 'free' ? 'Бесплатный' : d.subscriptionLimits?.plan === 'start' ? 'Старт' : d.subscriptionLimits?.plan === 'standard' ? 'Стандарт' : 'Тариф'}
+              {planLabel}
+              {daysRemaining !== null && planName !== 'free' && (
+                <span className="ml-1 text-primary/70">— {daysRemaining} дн.</span>
+              )}
             </span>
           </button>
 
           {/* Partner program */}
-          <Button 
-            variant="ghost" 
-            size="sm" 
-            className="hidden lg:flex rounded-full gap-1.5 text-xs text-muted-foreground hover:text-foreground h-8 px-3"
+          <Button
+            variant="ghost"
+            size="sm"
+            className="hidden lg:flex rounded-full gap-1.5 text-xs text-muted-foreground hover:text-foreground h-9 px-3"
             onClick={() => navigate("/partner")}
           >
-            <Handshake className="w-4 h-4" />
+            <Handshake className="w-4.5 h-4.5" />
             Партнёрам
           </Button>
 
           {/* Notifications */}
-          <div className="relative">
-            <Button
-              variant="ghost"
-              size="icon"
-              className="rounded-full h-8 w-8"
-              onClick={() => setShowNotifications(!showNotifications)}
-            >
-              <Bell className="w-4 h-4" />
-            </Button>
-            {showNotifications && (
-              <div className="absolute right-0 top-full mt-2 w-80 bg-card border border-border rounded-xl shadow-lg z-50">
-                <div className="p-4">
-                  <h3 className="font-semibold text-sm mb-2">Уведомления</h3>
-                  <p className="text-xs text-muted-foreground">Нет новых уведомлений</p>
-                </div>
-              </div>
-            )}
-          </div>
+          {organizationId && <OrgNotifications organizationId={organizationId} />}
 
-          {/* Profile dropdown */}
+          {/* Profile avatar */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <button className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-primary hover:bg-primary/20 transition-colors">
-                <User className="w-4 h-4" />
+              <button className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/15 text-primary hover:bg-primary/25 transition-colors font-bold text-sm">
+                {initials}
               </button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-48 rounded-xl">
-              <DropdownMenuItem onClick={() => d.tabNavigation.setActiveTab("settings" as any)} className="rounded-lg gap-2">
+            <DropdownMenuContent align="end" className="w-52 rounded-xl">
+              <DropdownMenuItem onClick={() => d.tabNavigation.setActiveTab("settings" as any)} className="rounded-lg gap-2.5 py-2.5">
                 <User className="w-4 h-4" />
                 Профиль
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => window.open("https://t.me/sintagma_support", "_blank")} className="rounded-lg gap-2">
+              <DropdownMenuItem className="rounded-lg gap-2.5 py-2.5">
+                <Sparkles className="w-4 h-4" />
+                Что нового?
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => window.open("https://t.me/sintagma_support", "_blank")} className="rounded-lg gap-2.5 py-2.5">
                 <HelpCircle className="w-4 h-4" />
                 Помощь
               </DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={d.handleLogout} className="rounded-lg gap-2 text-destructive">
+              <DropdownMenuItem onClick={d.handleLogout} className="rounded-lg gap-2.5 py-2.5 text-destructive">
                 <LogOut className="w-4 h-4" />
                 Выйти
               </DropdownMenuItem>
@@ -149,29 +170,54 @@ export function OrgDashboardHeader() {
         </div>
       </div>
 
-      {/* Hero banner with cover image */}
-      {coverUrl && (
-        <div className="relative w-full h-36 lg:h-52 overflow-hidden">
-          <img 
-            src={coverUrl} 
-            alt="Обложка организации" 
-            className="w-full h-full"
-            style={{
-              objectFit: coverPosition === 'contain' ? 'contain' : 'cover',
-              objectPosition: 
-                coverPosition === 'top' ? 'center top' 
-                : coverPosition === 'bottom' ? 'center bottom' 
-                : 'center center',
-              backgroundColor: 'hsl(var(--muted))'
-            }}
-          />
-          {/* Gradient overlay with org info */}
-          <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent" />
-          <div className="absolute bottom-4 left-6 text-white">
-            <h2 className="text-xl lg:text-2xl font-bold drop-shadow-md">{customName || organizationName}</h2>
+      {/* Hero banner — always visible */}
+      <div className="relative w-full h-36 lg:h-48 overflow-hidden">
+        <img
+          src={displayCover}
+          alt="Обложка организации"
+          className="w-full h-full"
+          width={1920}
+          height={512}
+          style={{
+            objectFit: coverUrl ? (coverPosition === 'contain' ? 'contain' : 'cover') : 'cover',
+            objectPosition:
+              coverPosition === 'top' ? 'center top'
+              : coverPosition === 'bottom' ? 'center bottom'
+              : 'center center',
+            backgroundColor: 'hsl(var(--muted))'
+          }}
+        />
+        {/* Gradient overlay */}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent" />
+
+        {/* Org info overlay */}
+        <div className="absolute bottom-4 left-6 flex items-end gap-3">
+          {logoUrl && (
+            <img src={logoUrl} alt="" className="w-12 h-12 rounded-xl object-contain bg-white/90 p-1 shadow-md" />
+          )}
+          <div className="text-white">
+            {!coverUrl && <span className="text-xs font-medium opacity-70 block mb-0.5">Онлайн-обучение</span>}
+            <h2 className="text-lg lg:text-2xl font-bold drop-shadow-md leading-tight">{customName || organizationName}</h2>
+            {customSubtitle && <p className="text-xs lg:text-sm opacity-80 mt-0.5">{customSubtitle}</p>}
           </div>
         </div>
-      )}
+
+        {/* Edit cover button */}
+        <button
+          onClick={() => coverInputRef.current?.click()}
+          className="absolute top-3 right-3 flex items-center gap-1.5 px-3 py-1.5 bg-black/40 hover:bg-black/60 backdrop-blur-sm text-white text-xs font-medium rounded-lg transition-colors"
+        >
+          <ImagePlus className="w-3.5 h-3.5" />
+          Изменить обложку
+        </button>
+        <input
+          ref={coverInputRef}
+          type="file"
+          accept="image/*"
+          className="hidden"
+          onChange={d.branding.handleCoverUpload}
+        />
+      </div>
 
       {/* Sub-header: page title + action buttons */}
       <div className="flex items-center justify-between px-4 lg:px-6 h-12 border-t border-border/50 bg-card/95 backdrop-blur-sm">
