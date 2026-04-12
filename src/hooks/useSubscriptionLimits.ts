@@ -31,6 +31,13 @@ export function useSubscriptionLimits(organizationId: string | null): Subscripti
   const [studentsCount, setStudentsCount] = useState(0);
   const [trainedThisMonth, setTrainedThisMonth] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [customOverrides, setCustomOverrides] = useState<{
+    maxCourses: number | null;
+    maxStudents: number | null;
+    maxTrainedPerMonth: number | null;
+    aiGenerationsLimit: number | null;
+    storageLimitBytes: number | null;
+  }>({ maxCourses: null, maxStudents: null, maxTrainedPerMonth: null, aiGenerationsLimit: null, storageLimitBytes: null });
 
   const fetchData = useCallback(async () => {
     if (!organizationId) {
@@ -42,7 +49,7 @@ export function useSubscriptionLimits(organizationId: string | null): Subscripti
       const [orgResult, coursesResult, studentsResult, trainedResult] = await Promise.all([
         supabase
           .from("organizations")
-          .select("subscription_plan")
+          .select("subscription_plan, custom_max_courses, custom_max_students, custom_max_trained_per_month, custom_ai_generations_limit, custom_storage_limit_bytes")
           .eq("id", organizationId)
           .single(),
         supabase
@@ -55,6 +62,16 @@ export function useSubscriptionLimits(organizationId: string | null): Subscripti
 
       if (orgResult.data?.subscription_plan) {
         setPlan(orgResult.data.subscription_plan as SubscriptionPlan);
+      }
+      const d = orgResult.data as any;
+      if (d) {
+        setCustomOverrides({
+          maxCourses: d.custom_max_courses ?? null,
+          maxStudents: d.custom_max_students ?? null,
+          maxTrainedPerMonth: d.custom_max_trained_per_month ?? null,
+          aiGenerationsLimit: d.custom_ai_generations_limit ?? null,
+          storageLimitBytes: d.custom_storage_limit_bytes ?? null,
+        });
       }
       setCoursesCount(coursesResult.count || 0);
       setStudentsCount(Number(studentsResult.data) || 0);
@@ -97,7 +114,17 @@ export function useSubscriptionLimits(organizationId: string | null): Subscripti
   }, [organizationId]);
 
   const planInfo = useMemo(() => getPlanInfo(plan), [plan]);
-  const limits = planInfo.limits;
+  
+  // Merge custom overrides with plan defaults
+  const limits: PlanLimits = useMemo(() => ({
+    ...planInfo.limits,
+    maxCourses: customOverrides.maxCourses ?? planInfo.limits.maxCourses,
+    maxStudents: customOverrides.maxStudents ?? planInfo.limits.maxStudents,
+    maxTrainedPerMonth: customOverrides.maxTrainedPerMonth ?? planInfo.limits.maxTrainedPerMonth,
+    storageBytes: customOverrides.storageLimitBytes != null
+      ? (customOverrides.storageLimitBytes === -1 ? -1 : customOverrides.storageLimitBytes)
+      : planInfo.limits.storageBytes,
+  }), [planInfo, customOverrides]);
 
   const canCreateCourse = limits.maxCourses === -1 || coursesCount < limits.maxCourses;
   const canAddStudent = limits.maxStudents === -1 || studentsCount < limits.maxStudents;
