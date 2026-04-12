@@ -18,6 +18,7 @@ interface LandingHeroProps {
   onSubtitleChange?: (v: string) => void;
   onBackgroundChange?: () => void;
   enrollButton?: React.ReactNode;
+  onShowPriceChange?: (v: boolean) => void;
 }
 
 export function LandingHeroSection({
