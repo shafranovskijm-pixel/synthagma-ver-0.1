@@ -274,7 +274,8 @@ Deno.serve(async (req) => {
         }
       }
     } else if (!authRes.ok) {
-      log(`Auth failed: ${authRes.status}`);
+      const authBody = await authRes.text();
+      log(`Auth failed: ${authRes.status}, body: ${authBody.substring(0, 500)}`);
       return new Response(
         JSON.stringify({ error: "Не удалось авторизоваться. Проверьте логин и пароль.", debug: debugLog }),
         { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
