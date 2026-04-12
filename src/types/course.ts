@@ -15,6 +15,7 @@ export interface Course {
   training_form?: string | null;
   notify_on_completion?: boolean;
   completion_notify_emails?: string | null;
+  cover_image_url?: string | null;
   // Computed fields
   lessonsCount?: number;
   studentsCount?: number;
