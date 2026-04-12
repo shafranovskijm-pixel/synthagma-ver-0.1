@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 
 import { SUBSCRIPTION_PLANS, type SubscriptionPlan, type PlanInfo, formatStorageSize, YEARLY_DISCOUNT } from "@/constants/subscriptionPlans";
