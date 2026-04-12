@@ -1,10 +1,11 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { useTheme } from "next-themes";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, User, Video, FileCheck, FileText, Trophy, Palette, Users, LogOut, Sun, Moon, Monitor, Loader2, Bell, Eye, EyeOff, Camera } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -299,15 +300,53 @@ export default function StudentProfile() {
     </div>
   );
 
+  // Badge counts for consent and documents
+  const { data: consentCount } = useQuery({
+    queryKey: ["consent-badge", user?.id, profile?.organization_id],
+    queryFn: async () => {
+      if (!user?.id) return 0;
+      const query = supabase
+        .from("student_consents")
+        .select("id", { count: "exact", head: true })
+        .eq("user_id", user.id)
+        .eq("status", "signed");
+      if (profile?.organization_id) {
+        query.eq("organization_id", profile.organization_id);
+      }
+      const { count } = await query;
+      return (count ?? 0) > 0 ? 0 : 1; // 1 = needs consent
+    },
+    enabled: !!user?.id,
+  });
+
+  const REQUIRED_DOC_TYPES = ["passport", "snils", "education_document"];
+  const { data: docsNeeded } = useQuery({
+    queryKey: ["docs-badge", user?.id, profile?.organization_id],
+    queryFn: async () => {
+      if (!user?.id) return REQUIRED_DOC_TYPES.length;
+      const query = supabase
+        .from("student_identity_documents")
+        .select("type")
+        .eq("user_id", user.id);
+      if (profile?.organization_id) {
+        query.eq("organization_id", profile.organization_id);
+      }
+      const { data } = await query;
+      const uploadedTypes = new Set(data?.map(d => d.type) || []);
+      return REQUIRED_DOC_TYPES.filter(t => !uploadedTypes.has(t)).length;
+    },
+    enabled: !!user?.id,
+  });
+
   const tabs = [
-    { id: "profile", label: "Профиль", icon: User },
-    { id: "notifications", label: "Уведомления", icon: Bell },
-    { id: "identification", label: "Идентификация", icon: Video },
-    { id: "consent", label: "Согласие на ПД", icon: FileCheck },
-    { id: "documents", label: "Документы", icon: FileText },
-    ...(orgSettings?.showAchievements ? [{ id: "achievements", label: "Достижения", icon: Trophy }] : []),
-    { id: "theme", label: "Тема", icon: Palette },
-    { id: "partner", label: "Партнёрская программа", icon: Users },
+    { id: "profile", label: "Профиль", icon: User, badge: 0 },
+    { id: "notifications", label: "Уведомления", icon: Bell, badge: 0 },
+    { id: "identification", label: "Идентификация", icon: Video, badge: 0 },
+    { id: "consent", label: "Согласие на ПД", icon: FileCheck, badge: consentCount ?? 0 },
+    { id: "documents", label: "Документы", icon: FileText, badge: docsNeeded ?? 0 },
+    ...(orgSettings?.showAchievements ? [{ id: "achievements", label: "Достижения", icon: Trophy, badge: 0 }] : []),
+    { id: "theme", label: "Тема", icon: Palette, badge: 0 },
+    { id: "partner", label: "Партнёрская программа", icon: Users, badge: 0 },
   ];
 
   return (
@@ -357,9 +396,14 @@ export default function StudentProfile() {
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
           <TabsList className="flex flex-wrap h-auto gap-1 bg-muted/50 p-1">
             {tabs.map(tab => (
-              <TabsTrigger key={tab.id} value={tab.id} className="gap-2 text-xs sm:text-sm">
+              <TabsTrigger key={tab.id} value={tab.id} className="gap-2 text-xs sm:text-sm relative">
                 <tab.icon className="w-4 h-4" />
                 <span className="hidden sm:inline">{tab.label}</span>
+                {tab.badge > 0 && (
+                  <Badge variant="destructive" className="ml-1 px-1.5 py-0 text-[10px] min-w-[18px] h-[18px] flex items-center justify-center">
+                    {tab.badge}
+                  </Badge>
+                )}
               </TabsTrigger>
             ))}
           </TabsList>
@@ -565,15 +609,13 @@ export default function StudentProfile() {
           <TabsContent value="consent">
             <Card>
               <CardContent className="pt-6">
-                {user && profile?.organization_id ? (
+                {user && (
                   <StudentConsentForm
                     userId={user.id}
                     userName={profile?.full_name || "Ученик"}
-                    organizationId={profile.organization_id}
+                    organizationId={profile?.organization_id || ""}
                     embedded={true}
                   />
-                ) : (
-                  noOrgFallback
                 )}
               </CardContent>
             </Card>
@@ -583,16 +625,14 @@ export default function StudentProfile() {
           <TabsContent value="documents">
             <Card>
               <CardContent className="pt-6">
-                {user && profile?.organization_id ? (
+                {user && (
                   <StudentDocumentsUpload
                     userId={user.id}
-                    organizationId={profile.organization_id}
+                    organizationId={profile?.organization_id || ""}
                     isOpen={false}
                     onOpenChange={() => {}}
                     embedded={true}
                   />
-                ) : (
-                  noOrgFallback
                 )}
               </CardContent>
             </Card>
