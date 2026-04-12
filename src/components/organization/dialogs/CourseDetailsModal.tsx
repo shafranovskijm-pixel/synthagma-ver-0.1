@@ -901,27 +901,6 @@ export function CourseDetailsModal({
 
             <TabsContent value="settings" className="mt-0 h-full">
               <div className="space-y-6">
-                <div 
-                  className="bg-gradient-to-r from-primary/10 to-accent/10 rounded-xl p-4 border border-primary/20 cursor-pointer hover:shadow-md transition-all"
-                  onClick={() => navigate(`/course/${course.id}/landing-editor`)}
-                >
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="p-2 rounded-lg bg-primary/20">
-                        <Globe className="w-5 h-5 text-primary" />
-                      </div>
-                      <div>
-                        <h4 className="font-semibold text-sm">Страница курса</h4>
-                        <p className="text-xs text-muted-foreground">Настройте продающую страницу курса с визуальным редактором</p>
-                      </div>
-                    </div>
-                    <Button variant="outline" size="sm" className="rounded-lg gap-2">
-                      <ExternalLink className="w-4 h-4" />
-                      Открыть редактор
-                    </Button>
-                  </div>
-                </div>
-
                 <h3 className="font-semibold">Настройки курса</h3>
                 
                 <div className="bg-secondary/30 rounded-xl p-4 space-y-6">
