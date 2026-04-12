@@ -4,11 +4,14 @@ import { useAuth } from "@/hooks/useAuth";
 import { useTheme } from "next-themes";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowLeft, User, Video, FileCheck, FileText, Trophy, Palette, Users, LogOut, Sun, Moon, Monitor, Loader2 } from "lucide-react";
+import { ArrowLeft, User, Video, FileCheck, FileText, Trophy, Palette, Users, LogOut, Sun, Moon, Monitor, Loader2, Bell } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Switch } from "@/components/ui/switch";
+import { HelpCircle } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
 import { VideoIdentification } from "@/components/student/VideoIdentification";
 import { StudentConsentForm } from "@/components/student/StudentConsentForm";
 import { StudentDocumentsUpload } from "@/components/student/StudentDocumentsUpload";
@@ -20,6 +23,41 @@ export default function StudentProfile() {
   const navigate = useNavigate();
   const { theme, setTheme } = useTheme();
   const [activeTab, setActiveTab] = useState("profile");
+
+  const NOTIFICATION_TYPES = [
+    { key: "course_updates", label: "Обновление курса и доступов", hint: "Уведомления об изменениях в курсах и доступах" },
+    { key: "webinar_reminder", label: "Напоминание о предстоящем вебинаре", hint: "Напоминание за день и за час до вебинара" },
+    { key: "homework", label: "Уведомления по домашним заданиям", hint: "Оценки и комментарии к домашним заданиям" },
+    { key: "deadline_reminder", label: "Напоминание о сроках дедлайнов", hint: "Предупреждение о приближающихся сроках" },
+    { key: "partner_changes", label: "Изменения и транзакции партнёра", hint: "Начисления и изменения в партнёрской программе" },
+  ];
+
+  const CHANNELS = [
+    { key: "platform", label: "Платформа", hint: "Уведомления внутри платформы" },
+    { key: "browser", label: "Браузер", hint: "Push-уведомления в браузере" },
+    { key: "email", label: "Email", hint: "Уведомления на email" },
+    { key: "telegram", label: "Телеграм", hint: "Уведомления в Telegram" },
+    { key: "app", label: "Приложение", hint: "Push в мобильном приложении" },
+  ];
+
+  const [notifSettings, setNotifSettings] = useState<Record<string, Record<string, boolean>>>(() => {
+    const defaults: Record<string, Record<string, boolean>> = {};
+    NOTIFICATION_TYPES.forEach(t => {
+      defaults[t.key] = {};
+      CHANNELS.forEach(c => {
+        defaults[t.key][c.key] = c.key === "platform";
+      });
+    });
+    defaults["webinar_reminder"]["email"] = true;
+    return defaults;
+  });
+
+  const toggleNotif = (type: string, channel: string) => {
+    setNotifSettings(prev => ({
+      ...prev,
+      [type]: { ...prev[type], [channel]: !prev[type][channel] },
+    }));
+  };
 
   const { data: profile, isLoading } = useQuery({
     queryKey: ["student-profile-page", user?.id],
@@ -94,6 +132,7 @@ export default function StudentProfile() {
 
   const tabs = [
     { id: "profile", label: "Профиль", icon: User },
+    { id: "notifications", label: "Уведомления", icon: Bell },
     { id: "identification", label: "Идентификация", icon: Video },
     { id: "consent", label: "Согласие на ПД", icon: FileCheck },
     { id: "documents", label: "Документы", icon: FileText },
@@ -151,6 +190,62 @@ export default function StudentProfile() {
                     Выйти из аккаунта
                   </Button>
                 </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Notifications tab */}
+          <TabsContent value="notifications">
+            <Card>
+              <CardHeader>
+                <CardTitle>Настройки уведомлений</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <TooltipProvider>
+                  <div className="overflow-x-auto">
+                    <table className="w-full">
+                      <thead>
+                        <tr className="border-b border-border">
+                          <th className="text-left py-3 pr-4 text-sm font-medium text-muted-foreground">Тип уведомления</th>
+                          {CHANNELS.map(ch => (
+                            <th key={ch.key} className="text-center py-3 px-3 text-sm font-medium text-muted-foreground whitespace-nowrap">
+                              <Tooltip>
+                                <TooltipTrigger className="inline-flex items-center gap-1">
+                                  {ch.label}
+                                  <HelpCircle className="w-3.5 h-3.5" />
+                                </TooltipTrigger>
+                                <TooltipContent>{ch.hint}</TooltipContent>
+                              </Tooltip>
+                            </th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {NOTIFICATION_TYPES.map(nt => (
+                          <tr key={nt.key} className="border-b border-border last:border-0">
+                            <td className="py-5 pr-4">
+                              <Tooltip>
+                                <TooltipTrigger className="inline-flex items-center gap-1 text-sm">
+                                  {nt.label}
+                                  <HelpCircle className="w-3.5 h-3.5 text-muted-foreground" />
+                                </TooltipTrigger>
+                                <TooltipContent>{nt.hint}</TooltipContent>
+                              </Tooltip>
+                            </td>
+                            {CHANNELS.map(ch => (
+                              <td key={ch.key} className="text-center py-5 px-3">
+                                <Switch
+                                  checked={notifSettings[nt.key]?.[ch.key] ?? false}
+                                  onCheckedChange={() => toggleNotif(nt.key, ch.key)}
+                                />
+                              </td>
+                            ))}
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </TooltipProvider>
               </CardContent>
             </Card>
           </TabsContent>

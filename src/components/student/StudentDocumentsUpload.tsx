@@ -387,28 +387,27 @@ export function StudentDocumentsUpload({
         <div className="flex items-start gap-2 p-3 rounded-xl bg-amber-500/10 border border-amber-500/20">
           <AlertCircle className="w-5 h-5 text-amber-500 flex-shrink-0 mt-0.5" />
           <div className="text-sm text-muted-foreground">
-            <strong className="text-foreground">Важно:</strong> Загружайте
-            качественные сканы или фотографии документов. Принимаются форматы:
-            PDF, JPG, PNG. Максимальный размер файла: 10 МБ.
+            <strong className="text-foreground">{"Важно:"}</strong>{" Загружайте качественные сканы или фотографии документов. Принимаются форматы: PDF, JPG, PNG. Максимальный размер файла: 10 МБ."}
           </div>
         </div>
       </div>
-    </div>
   );
 
-  if (embedded) return mainContent;
+  if (embedded) {
+    return mainContent;
+  }
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent 
+      <DialogContent
         className="max-w-2xl rounded-2xl overflow-hidden"
-        style={{ 
+        style={{
           transform: swipeOffset > 0 ? `translateY(${swipeOffset}px)` : undefined,
           opacity: swipeOffset > 0 ? 1 - (swipeOffset / 300) : 1,
-          transition: swipeOffset === 0 ? 'transform 0.2s ease-out, opacity 0.2s ease-out' : 'none'
+          transition: swipeOffset === 0 ? "transform 0.2s ease-out, opacity 0.2s ease-out" : "none"
         }}
       >
-        <div 
+        <div
           ref={swipeRef}
           onTouchStart={handleTouchStart}
           onTouchMove={handleTouchMove}
