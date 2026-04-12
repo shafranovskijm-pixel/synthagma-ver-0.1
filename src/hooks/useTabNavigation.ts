@@ -7,6 +7,7 @@ interface MenuSettings {
   showLinks: boolean;
   showDocuments: boolean;
   showServices: boolean;
+  showLaborSafety: boolean;
   showCourses?: boolean;
   showCompanies?: boolean;
   showStudents?: boolean;
@@ -47,7 +48,7 @@ export function useTabNavigation({
     if (menuSettings.showLibrary && isEnabled("library")) baseTabs.push("library");
     if (menuSettings.showStats) baseTabs.push("stats");
     if (menuSettings.showLinks && isEnabled("links")) baseTabs.push("links");
-    if (isEnabled("labor_safety")) baseTabs.push("labor-safety");
+    if (menuSettings.showLaborSafety !== false && isEnabled("labor_safety")) baseTabs.push("labor-safety");
     
     baseTabs.push("payments");
     if (menuSettings.showSubscription !== false) baseTabs.push("subscription");
