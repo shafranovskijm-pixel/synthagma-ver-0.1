@@ -1574,6 +1574,116 @@ export function OrganizationDetailsView({ organization, onBack }: OrganizationDe
             Сохранить все настройки
           </Button>
         </TabsContent>
+
+        {/* Tariff Tab */}
+        <TabsContent value="tariff" className="space-y-6">
+          <Card className={cardClass}>
+            <CardHeader>
+              <CardTitle className="text-lg flex items-center gap-2">
+                <CreditCard className="w-5 h-5 text-primary" />
+                Управление тарифом
+              </CardTitle>
+              <CardDescription>Настройте тарифный план и условия для этой организации</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {/* Current Plan */}
+              <div className="space-y-2">
+                <Label>Текущий тариф</Label>
+                <div className="flex items-center gap-3">
+                  <Badge className={`text-sm font-medium border ${PLAN_BADGE_COLORS[planKey] || PLAN_BADGE_COLORS.free}`}>
+                    {planInfo.name}
+                  </Badge>
+                  <Select
+                    value={planKey}
+                    onValueChange={async (val) => {
+                      const { error } = await supabase
+                        .from("organizations")
+                        .update({ subscription_plan: val } as any)
+                        .eq("id", organization.id);
+                      if (error) {
+                        toast.error("Ошибка смены тарифа");
+                      } else {
+                        toast.success(`Тариф изменён на ${getPlanInfo(val as SubscriptionPlan).name}`);
+                      }
+                    }}
+                  >
+                    <SelectTrigger className="w-[200px]">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="free">Бесплатный</SelectItem>
+                      <SelectItem value="start">Старт</SelectItem>
+                      <SelectItem value="standard">Стандарт</SelectItem>
+                      <SelectItem value="professional">Профессиональный</SelectItem>
+                      <SelectItem value="maximum">Максимальный</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              {/* Custom Label */}
+              <div className="space-y-2">
+                <Label>Примечание к тарифу</Label>
+                <p className="text-sm text-muted-foreground">Это примечание увидит организация на своей странице тарифа (например: «Стандарт + особые условия»)</p>
+                <Input
+                  value={tariffCustomLabel}
+                  onChange={(e) => setTariffCustomLabel(e.target.value)}
+                  placeholder="Например: Стандарт плюс особые условия"
+                />
+              </div>
+
+              {/* Paid Until */}
+              <div className="space-y-2">
+                <Label>Оплачен до</Label>
+                <Input
+                  type="date"
+                  value={tariffPaidUntil ? tariffPaidUntil.split("T")[0] : ""}
+                  onChange={(e) => setTariffPaidUntil(e.target.value ? new Date(e.target.value).toISOString() : "")}
+                />
+              </div>
+
+              {/* Usage */}
+              <div className="space-y-3">
+                <Label>Использование ресурсов</Label>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="flex items-center gap-1.5"><BookOpen className="w-3.5 h-3.5" /> Курсы</span>
+                      <span className="text-muted-foreground">{stats.totalCourses} / {planInfo.limits.maxCourses === -1 ? "∞" : planInfo.limits.maxCourses}</span>
+                    </div>
+                    <Progress value={planInfo.limits.maxCourses === -1 ? 0 : Math.min(100, (stats.totalCourses / planInfo.limits.maxCourses) * 100)} className="h-2" />
+                  </div>
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="flex items-center gap-1.5"><Users className="w-3.5 h-3.5" /> Ученики</span>
+                      <span className="text-muted-foreground">{stats.totalStudents} / {planInfo.limits.maxStudents === -1 ? "∞" : planInfo.limits.maxStudents}</span>
+                    </div>
+                    <Progress value={planInfo.limits.maxStudents === -1 ? 0 : Math.min(100, (stats.totalStudents / planInfo.limits.maxStudents) * 100)} className="h-2" />
+                  </div>
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="flex items-center gap-1.5"><HardDrive className="w-3.5 h-3.5" /> Хранилище</span>
+                      <span className="text-muted-foreground">{formatBytes(usage.storage_bytes)} / {formatBytes(settings.storage_limit_bytes)}</span>
+                    </div>
+                    <Progress value={Math.min(100, storageLimitPercent)} className="h-2" />
+                  </div>
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="flex items-center gap-1.5"><Sparkles className="w-3.5 h-3.5" /> ИИ-генерации</span>
+                      <span className="text-muted-foreground">{usage.ai_generations_count} / {aiGenerationsLimit === Infinity ? "∞" : aiGenerationsLimit}</span>
+                    </div>
+                    <Progress value={aiGenerationsLimit === Infinity ? 0 : Math.min(100, aiGenerationsPercent)} className="h-2" />
+                  </div>
+                </div>
+              </div>
+
+              <Button onClick={saveTariffSettings} disabled={isSavingTariff} className="gap-2">
+                {isSavingTariff ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                Сохранить тарифные настройки
+              </Button>
+            </CardContent>
+          </Card>
+        </TabsContent>
       </Tabs>
     </div>
 
