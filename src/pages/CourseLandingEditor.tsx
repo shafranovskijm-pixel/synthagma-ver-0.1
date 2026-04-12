@@ -110,6 +110,8 @@ export function CourseLandingEditorContent({ courseId, embedded = false }: Cours
   const [orgName, setOrgName] = useState("");
   const [landing, setLanding] = useState<LandingData>(defaultLanding);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [aiDialogOpen, setAiDialogOpen] = useState(false);
+  const [aiDialogSection, setAiDialogSection] = useState<string | null>(null);
 
   useEffect(() => {
     if (courseId) loadData();
