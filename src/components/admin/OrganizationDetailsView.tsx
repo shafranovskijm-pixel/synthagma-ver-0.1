@@ -225,6 +225,29 @@ export function OrganizationDetailsView({ organization, onBack }: OrganizationDe
     averageProgress: 0,
   });
 
+  const dndSensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+  );
+
+  const handleCourseDragEnd = useCallback(async (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+
+    const oldIndex = courses.findIndex(c => c.id === active.id);
+    const newIndex = courses.findIndex(c => c.id === over.id);
+    if (oldIndex === -1 || newIndex === -1) return;
+
+    const reordered = arrayMove(courses, oldIndex, newIndex);
+    setCourses(reordered);
+
+    // Save new order to DB
+    const updates = reordered.map((c, i) => 
+      supabase.from("courses").update({ catalog_order: i } as any).eq("id", c.id)
+    );
+    await Promise.all(updates);
+  }, [courses]);
+
   useEffect(() => {
     fetchAllData();
   }, [organization.id]);
