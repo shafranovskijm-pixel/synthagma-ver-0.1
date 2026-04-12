@@ -11,6 +11,8 @@ import { LandingAudienceSection } from "@/components/course-landing/LandingAudie
 import { LandingProgramSection } from "@/components/course-landing/LandingProgramSection";
 import { LandingBenefitsSection } from "@/components/course-landing/LandingBenefitsSection";
 import { LandingCtaSection } from "@/components/course-landing/LandingCtaSection";
+import { LandingLearnSection } from "@/components/course-landing/LandingLearnSection";
+import { LandingProcessSection } from "@/components/course-landing/LandingProcessSection";
 
 interface CourseData {
   id: string;
@@ -196,84 +198,95 @@ export default function CourseLanding() {
 
   // Landing content with defaults
   const hero = landingContent?.hero || {};
-  const audience = landingContent?.audience || {
-    title: "Кому подойдёт этот курс?",
-    description: "",
-    items: [],
-  };
+  const audience = landingContent?.audience || { title: "Кому подойдёт этот курс?", description: "", items: [] };
+  const learn = landingContent?.learn || { title: "", description: "", items: [] };
+  const process = landingContent?.process || { title: "", content: "" };
   const benefits = landingContent?.benefits || [];
-  const cta = landingContent?.cta || {
-    title: "Начните обучение сегодня",
-    subtitle: "Заполните форму и мы свяжемся с вами",
+  const cta = landingContent?.cta || { title: "Начните обучение сегодня", subtitle: "Заполните форму и мы свяжемся с вами" };
+  const sectionsOrder: string[] = landingContent?.sections_order || ["hero", "audience", "learn", "program", "process", "benefits", "cta"];
+  const sectionsHidden: string[] = landingContent?.sections_hidden || [];
+
+  // Migrate old string[] audience items
+  const audienceItems = audience.items?.length > 0 && typeof audience.items[0] === "string"
+    ? audience.items.map((s: string) => ({ icon: "check-circle", title: s, description: "" }))
+    : audience.items || [];
+
+  const enrollBtn = isEnrolled ? (
+    <Button size="lg" className="gap-2" onClick={() => navigate(`/course/${course.id}/learn`)}>
+      <Play className="w-5 h-5" />Продолжить обучение
+    </Button>
+  ) : (
+    <div className="flex items-center gap-2">
+      {course.price > 0 && (
+        <>
+          <Input value={promoCode} onChange={(e) => setPromoCode(e.target.value)} placeholder="Промокод" className="bg-white/10 border-white/20 text-white placeholder:text-white/50 w-32" />
+          <Button variant="secondary" size="sm" onClick={checkPromoCode} disabled={promoChecking}>
+            {promoChecking ? <Loader2 className="w-4 h-4 animate-spin" /> : "OK"}
+          </Button>
+        </>
+      )}
+      <Button size="lg" onClick={() => handleEnroll()} className="bg-white text-black hover:bg-white/90">
+        {finalPrice > 0 ? "Купить курс" : "Записаться бесплатно"}
+      </Button>
+    </div>
+  );
+
+  const renderPublicSection = (sectionId: string) => {
+    if (sectionsHidden.includes(sectionId)) return null;
+    switch (sectionId) {
+      case "hero":
+        return (
+          <LandingHeroSection
+            key={sectionId}
+            title={course.title}
+            subtitle={hero.subtitle || course.description || ""}
+            orgName={orgName}
+            backgroundUrl={hero.background_url}
+            coverImageUrl={course.cover_image_url}
+            accentColor={course.accent_color}
+            price={finalPrice}
+            showPrice={hero.show_price !== false}
+            lessonsCount={lessons.length}
+            duration={course.duration}
+            enrollButton={enrollBtn}
+          />
+        );
+      case "audience":
+        return audienceItems.length > 0 ? (
+          <LandingAudienceSection key={sectionId} title={audience.title} description={audience.description} items={audienceItems} />
+        ) : null;
+      case "learn":
+        return learn.items?.length > 0 ? (
+          <LandingLearnSection key={sectionId} title={learn.title} description={learn.description} items={learn.items} />
+        ) : null;
+      case "program":
+        return <LandingProgramSection key={sectionId} lessons={lessons} accentColor={course.accent_color} />;
+      case "process":
+        return process.content ? (
+          <LandingProcessSection key={sectionId} title={process.title} content={process.content} />
+        ) : null;
+      case "benefits":
+        return benefits.length > 0 ? <LandingBenefitsSection key={sectionId} benefits={benefits} /> : null;
+      case "cta":
+        return (
+          <LandingCtaSection
+            key={sectionId}
+            title={cta.title}
+            subtitle={cta.subtitle}
+            accentColor={course.accent_color}
+            onSubmit={handleEnroll}
+            isEnrolled={isEnrolled}
+            price={finalPrice}
+          />
+        );
+      default:
+        return null;
+    }
   };
 
   return (
     <div className="min-h-screen bg-background">
-      <LandingHeroSection
-        title={course.title}
-        subtitle={hero.subtitle || course.description || ""}
-        orgName={orgName}
-        backgroundUrl={hero.background_url}
-        coverImageUrl={course.cover_image_url}
-        accentColor={course.accent_color}
-        price={finalPrice}
-        showPrice={hero.show_price !== false}
-        lessonsCount={lessons.length}
-        duration={course.duration}
-        enrollButton={
-          isEnrolled ? (
-            <Button size="lg" className="gap-2" onClick={() => navigate(`/course/${course.id}/learn`)}>
-              <Play className="w-5 h-5" />Продолжить обучение
-            </Button>
-          ) : (
-            <div className="flex items-center gap-2">
-              {course.price > 0 && (
-                <>
-                  <Input
-                    value={promoCode}
-                    onChange={(e) => setPromoCode(e.target.value)}
-                    placeholder="Промокод"
-                    className="bg-white/10 border-white/20 text-white placeholder:text-white/50 w-32"
-                  />
-                  <Button variant="secondary" size="sm" onClick={checkPromoCode} disabled={promoChecking}>
-                    {promoChecking ? <Loader2 className="w-4 h-4 animate-spin" /> : "OK"}
-                  </Button>
-                </>
-              )}
-              <Button
-                size="lg"
-                onClick={() => handleEnroll()}
-                className="bg-white text-black hover:bg-white/90"
-              >
-                {finalPrice > 0 ? "Купить курс" : "Записаться бесплатно"}
-              </Button>
-            </div>
-          )
-        }
-      />
-
-      {audience.items.length > 0 && (
-        <LandingAudienceSection
-          title={audience.title}
-          description={audience.description}
-          items={audience.items}
-        />
-      )}
-
-      <LandingProgramSection lessons={lessons} accentColor={course.accent_color} />
-
-      {benefits.length > 0 && (
-        <LandingBenefitsSection benefits={benefits} />
-      )}
-
-      <LandingCtaSection
-        title={cta.title}
-        subtitle={cta.subtitle}
-        accentColor={course.accent_color}
-        onSubmit={handleEnroll}
-        isEnrolled={isEnrolled}
-        price={finalPrice}
-      />
+      {sectionsOrder.map((sectionId) => renderPublicSection(sectionId))}
     </div>
   );
 }
