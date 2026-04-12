@@ -75,8 +75,29 @@ export default function OrganizationProfile() {
   const [organizationId, setOrganizationId] = useState<string | null>(null);
   const iconInputRef = useRef<HTMLInputElement>(null);
 
+  const [orgIdLoading, setOrgIdLoading] = useState(true);
+
+  // Load organizationId reliably on mount
   useEffect(() => {
-    if (!user) return;
+    if (!user) { setOrgIdLoading(false); return; }
+    const loadOrganizationId = async () => {
+      try {
+        // Try profile first
+        const { data: prof } = await supabase
+          .from("profiles")
+          .select("organization_id")
+          .eq("user_id", user.id)
+          .single();
+        if (prof?.organization_id) {
+          setOrganizationId(prof.organization_id);
+        }
+      } catch (e) {
+        console.error("Failed to load organization ID:", e);
+      } finally {
+        setOrgIdLoading(false);
+      }
+    };
+    loadOrganizationId();
     loadProfile();
     loadNotificationPrefs();
     loadOrgIcon();
@@ -437,8 +458,16 @@ export default function OrganizationProfile() {
 
           {/* Tab 2: Settings */}
           <TabsContent value="settings">
-            {organizationId && user?.id && (
+            {orgIdLoading ? (
+              <div className="flex items-center justify-center py-16">
+                <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+              </div>
+            ) : organizationId && user?.id ? (
               <OrgProfileSettings organizationId={organizationId} userId={user.id} />
+            ) : (
+              <div className="text-center py-16 text-muted-foreground">
+                Организация не найдена
+              </div>
             )}
           </TabsContent>
 
