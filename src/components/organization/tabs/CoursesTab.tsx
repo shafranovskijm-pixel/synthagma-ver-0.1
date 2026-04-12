@@ -17,7 +17,7 @@ import {
   BookOpen, Users, Edit, Eye, Trash2, FolderOpen, Folder,
   ChevronDown, ChevronRight, MoreVertical, FolderPlus, 
   MoveRight, Pencil, Video, VideoOff, Lock, Unlock, FastForward,
-  Sparkles, ShoppingCart, GripVertical, CheckCircle, Palette, Play, Copy
+  Sparkles, ShoppingCart, GripVertical, CheckCircle, Palette, Play, Copy, ImagePlus
 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { useCourses } from "@/hooks/useCourses";
@@ -274,6 +274,24 @@ export const CoursesTab = React.memo(function CoursesTab({ organizationId, onCou
     await reorderCourses(active.id as string, over.id as string);
   }, [reorderCourses]);
   const [isDuplicating, setIsDuplicating] = useState(false);
+  const coverInputRef = React.useRef<HTMLInputElement>(null);
+  const [coverUploadCourseId, setCoverUploadCourseId] = useState<string | null>(null);
+
+  const handleCoverUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    const courseId = coverUploadCourseId;
+    if (!file || !courseId) return;
+    const ext = file.name.split(".").pop();
+    const path = `${courseId}/cover.${ext}`;
+    const { error } = await supabase.storage.from("course-files").upload(path, file, { upsert: true });
+    if (error) { toast.error("Ошибка загрузки обложки"); return; }
+    const { data: urlData } = supabase.storage.from("course-files").getPublicUrl(path);
+    const { error: updateError } = await supabase.from("courses").update({ cover_image_url: urlData.publicUrl }).eq("id", courseId);
+    if (updateError) { toast.error("Ошибка сохранения"); return; }
+    toast.success("Обложка обновлена");
+    refresh();
+    e.target.value = "";
+  };
 
   const handleDuplicate = async (courseId: string) => {
     if (isDuplicating) return;
@@ -1047,6 +1065,10 @@ export const CoursesTab = React.memo(function CoursesTab({ organizationId, onCou
                 <Edit className="w-4 h-4 mr-2" />
                 Настроить
               </DropdownMenuItem>
+              <DropdownMenuItem onClick={e => { e.stopPropagation(); setCoverUploadCourseId(course.id); setTimeout(() => coverInputRef.current?.click(), 100); }}>
+                <ImagePlus className="w-4 h-4 mr-2" />
+                Изменить обложку
+              </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
@@ -1107,6 +1129,7 @@ export const CoursesTab = React.memo(function CoursesTab({ organizationId, onCou
 
   return (
     <div className="space-y-4 lg:space-y-6">
+      <input ref={coverInputRef} type="file" accept="image/*" className="hidden" onChange={handleCoverUpload} />
       {/* Filters */}
       <div className="bg-card rounded-xl lg:rounded-2xl border border-border p-3 lg:p-4">
         <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3 lg:gap-4">
