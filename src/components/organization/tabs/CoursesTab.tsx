@@ -274,6 +274,24 @@ export const CoursesTab = React.memo(function CoursesTab({ organizationId, onCou
     await reorderCourses(active.id as string, over.id as string);
   }, [reorderCourses]);
   const [isDuplicating, setIsDuplicating] = useState(false);
+  const coverInputRef = React.useRef<HTMLInputElement>(null);
+  const [coverUploadCourseId, setCoverUploadCourseId] = useState<string | null>(null);
+
+  const handleCoverUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    const courseId = coverUploadCourseId;
+    if (!file || !courseId) return;
+    const ext = file.name.split(".").pop();
+    const path = `${courseId}/cover.${ext}`;
+    const { error } = await supabase.storage.from("course-files").upload(path, file, { upsert: true });
+    if (error) { toast.error("Ошибка загрузки обложки"); return; }
+    const { data: urlData } = supabase.storage.from("course-files").getPublicUrl(path);
+    const { error: updateError } = await supabase.from("courses").update({ cover_image_url: urlData.publicUrl }).eq("id", courseId);
+    if (updateError) { toast.error("Ошибка сохранения"); return; }
+    toast.success("Обложка обновлена");
+    refresh();
+    e.target.value = "";
+  };
 
   const handleDuplicate = async (courseId: string) => {
     if (isDuplicating) return;
