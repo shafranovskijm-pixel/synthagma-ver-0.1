@@ -989,6 +989,18 @@ export function OrganizationsManager() {
                         >
                           <RefreshCw className="w-3 h-3 text-orange-500" />
                         </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-5 w-5 flex-shrink-0"
+                          title="Скопировать всё"
+                          onClick={() => {
+                            const text = `Логин: ${org.credentials!.login_email}\nПароль: ${org.credentials!.login_password}`;
+                            copyToClipboard(text, `all-${org.id}`);
+                          }}
+                        >
+                          {copiedField === `all-${org.id}` ? <Check className="w-3 h-3 text-green-500" /> : <Copy className="w-3 h-3 text-primary" />}
+                        </Button>
                       </div>
                     </div>
                   ) : (

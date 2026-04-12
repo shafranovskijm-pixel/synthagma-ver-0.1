@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { KeyRound, Eye, EyeOff, Save, Loader2 } from "lucide-react";
+import { KeyRound, Eye, EyeOff, Save, Loader2, Copy } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -160,9 +160,22 @@ export function OrgCredentialsSettings({ organizationId }: OrgCredentialsSetting
                 {showCurrentPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
               </Button>
             </div>
+           </div>
           </div>
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-1.5 mt-2"
+            onClick={() => {
+              const text = `Логин: ${currentEmail}\nПароль: ${currentPassword}`;
+              navigator.clipboard.writeText(text);
+              toast.success("Логин и пароль скопированы");
+            }}
+          >
+            <Copy className="w-3.5 h-3.5" />
+            Скопировать всё
+          </Button>
         </div>
-      </div>
 
       <div className="space-y-4">
         <h4 className="font-medium text-sm">Изменить данные</h4>
