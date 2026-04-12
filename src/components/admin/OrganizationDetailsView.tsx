@@ -737,10 +737,6 @@ export function OrganizationDetailsView({ organization, onBack }: OrganizationDe
               <Settings className="w-4 h-4" />
               <span className="hidden sm:inline">Настройки</span>
             </TabsTrigger>
-            <TabsTrigger value="tariff" className="flex items-center gap-1.5 shrink-0">
-              <CreditCard className="w-4 h-4" />
-              <span className="hidden sm:inline">Тарифы</span>
-            </TabsTrigger>
           </TabsList>
           <ScrollBar orientation="horizontal" />
         </ScrollArea>
