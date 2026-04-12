@@ -5,8 +5,10 @@ import { Card, CardContent } from "@/components/ui/card";
 import {
   Building2, Plus, Search, Users, FileText, Loader2,
   ChevronRight, CheckCircle2, Clock, LayoutGrid, List,
-  CreditCard, Upload, RefreshCw, ExternalLink,
+  CreditCard, Upload, RefreshCw, ExternalLink, EyeOff,
 } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
 import { useCompaniesManager } from "@/hooks/useCompaniesManager";
 import { useCompanyDetailManager } from "@/hooks/useCompanyDetailManager";
@@ -55,10 +57,38 @@ export function CompaniesManager({ organizationId }: CompaniesManagerProps) {
   const sm = useCompanyStudentsManager(organizationId);
   const lg = useCompanyLinksAndGenerators(organizationId);
 
-  const handleViewAsCompany = (e: React.MouseEvent, companyId: string) => {
+  const handleViewAsCompany = (e: React.MouseEvent, company: any) => {
     e.stopPropagation();
-    localStorage.setItem('orgViewAsCompany', companyId);
+    localStorage.setItem('orgViewAsCompany', JSON.stringify({
+      companyId: company.id,
+      companyName: company.name,
+      userId: company.user_id,
+    }));
     navigate('/company');
+  };
+
+  const handleHideSection = async () => {
+    try {
+      const { data: org } = await supabase
+        .from("organizations")
+        .select("menu_settings")
+        .eq("id", organizationId)
+        .single();
+      
+      const currentSettings = (org?.menu_settings as Record<string, any>) || {};
+      const updatedSettings = { ...currentSettings, showCompanies: false };
+      
+      await supabase
+        .from("organizations")
+        .update({ menu_settings: updatedSettings })
+        .eq("id", organizationId);
+      
+      toast.success("Раздел «Компании» скрыт. Включить обратно можно в настройках.");
+      navigate('/organization');
+    } catch (error) {
+      console.error("Error hiding section:", error);
+      toast.error("Ошибка при скрытии раздела");
+    }
   };
 
   const handleDocumentCreated = () => {
@@ -92,9 +122,14 @@ export function CompaniesManager({ organizationId }: CompaniesManagerProps) {
           </h2>
           <p className="text-sm text-muted-foreground mt-1">Управление организациями-заказчиками</p>
         </div>
-        <Button className="btn-gradient rounded-xl gap-2" onClick={() => cm.setShowCreateDialog(true)}>
-          <Plus className="w-4 h-4" />Добавить компанию
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" className="rounded-xl gap-2 text-muted-foreground" onClick={handleHideSection}>
+            <EyeOff className="w-4 h-4" />Скрыть раздел
+          </Button>
+          <Button className="btn-gradient rounded-xl gap-2" onClick={() => cm.setShowCreateDialog(true)}>
+            <Plus className="w-4 h-4" />Добавить компанию
+          </Button>
+        </div>
       </div>
 
       {/* Search and View Toggle */}
@@ -176,7 +211,7 @@ export function CompaniesManager({ organizationId }: CompaniesManagerProps) {
                   <div className="flex items-start justify-between mb-3">
                     <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center"><Building2 className="w-6 h-6 text-primary" /></div>
                     <div className="flex items-center gap-1">
-                      <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity" title="Войти как компания" onClick={(e) => handleViewAsCompany(e, company.id)}>
+                      <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity" title="Войти как компания" onClick={(e) => handleViewAsCompany(e, company)}>
                         <ExternalLink className="w-4 h-4 text-muted-foreground hover:text-primary" />
                       </Button>
                       <ChevronRight className="w-5 h-5 text-muted-foreground group-hover:text-primary transition-colors" />
@@ -218,7 +253,7 @@ export function CompaniesManager({ organizationId }: CompaniesManagerProps) {
                       <td className="p-4 text-muted-foreground hidden lg:table-cell line-clamp-1">{company.director || '—'}</td>
                       <td className="p-4">
                         <div className="flex items-center gap-1">
-                          <Button variant="ghost" size="icon" className="h-7 w-7 rounded-lg" title="Войти как компания" onClick={(e) => handleViewAsCompany(e, company.id)}>
+                          <Button variant="ghost" size="icon" className="h-7 w-7 rounded-lg" title="Войти как компания" onClick={(e) => handleViewAsCompany(e, company)}>
                             <ExternalLink className="w-3.5 h-3.5 text-muted-foreground hover:text-primary" />
                           </Button>
                           <ChevronRight className="w-4 h-4 text-muted-foreground" />
