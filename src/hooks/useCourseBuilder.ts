@@ -308,6 +308,48 @@ export function useCourseBuilder() {
     fetchData();
   }, [user, courseId, isDataLoaded]);
 
+  // --- Restore local draft if server data is empty/stale ---
+  useEffect(() => {
+    if (!isDataLoaded) return;
+    const draft = loadDraftFromLocal(courseId);
+    if (!draft) return;
+    const currentHasContent = courseTitle.trim() || lessons.length > 0;
+    if (!currentHasContent && (draft.title.trim() || draft.lessons.length > 0)) {
+      setCourseTitle(draft.title);
+      setCourseDescription(draft.description);
+      setLessons(draft.lessons);
+      toast.info("Восстановлен черновик из предыдущего сеанса", { duration: 4000 });
+    }
+  }, [isDataLoaded]);
+
+  // --- Debounced autosave: save to server 3s after last change ---
+  useEffect(() => {
+    if (!hasUnsavedChanges || !isDataLoaded) return;
+    saveDraftToLocal(courseId, courseTitle, courseDescription, lessons);
+    if (draftTimerRef.current) clearTimeout(draftTimerRef.current);
+    draftTimerRef.current = setTimeout(() => { saveCourse(true); }, 3000);
+    return () => { if (draftTimerRef.current) clearTimeout(draftTimerRef.current); };
+  }, [hasUnsavedChanges, courseTitle, courseDescription, lessons]);
+
+  // --- Save draft on page unload / visibility change ---
+  useEffect(() => {
+    const saveDraft = () => {
+      const s = latestStateRef.current;
+      saveDraftToLocal(courseId, s.courseTitle, s.courseDescription, s.lessons);
+    };
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      saveDraft();
+      if (hasUnsavedChanges) { e.preventDefault(); }
+    };
+    const handleVisibility = () => { if (document.visibilityState === 'hidden') saveDraft(); };
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    document.addEventListener('visibilitychange', handleVisibility);
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+      document.removeEventListener('visibilitychange', handleVisibility);
+    };
+  }, [courseId, hasUnsavedChanges]);
+
   const addLesson = (type: LessonType) => {
     const typeNames: Record<LessonType, string> = { text: "урок", video: "видеоурок", image: "материал", test: "тест", audio: "аудиолекция", lesson: "урок", slider: "презентация", practice: "ситуационное задание", feedback: "обратная связь", homework: "задание" };
     const newLesson: Lesson = { id: crypto.randomUUID(), type, title: `Новый ${typeNames[type]}`, content: "", expanded: true, blocks: (type === "text" || type === "practice") ? [] : undefined };
