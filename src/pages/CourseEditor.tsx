@@ -40,6 +40,7 @@ import {
 import { LessonItem } from "@/components/course-editor/LessonItem";
 import { LessonEditor } from "@/components/course-editor/LessonEditor";
 import { GitHubImportDialog } from "@/components/course-editor/GitHubImportDialog";
+import { CoursePageSettingsDialog } from "@/components/course-editor/CoursePageSettingsDialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -116,6 +117,9 @@ const CourseEditor = () => {
 
   // Delete confirmation
   const [deletingLessonId, setDeletingLessonId] = useState<string | null>(null);
+
+  // Page settings
+  const [isPageSettingsOpen, setIsPageSettingsOpen] = useState(false);
 
   // GitHub import
   const [isGitHubImportOpen, setIsGitHubImportOpen] = useState(false);
@@ -465,6 +469,14 @@ const CourseEditor = () => {
           </div>
 
           <div className="flex items-center gap-3">
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={() => setIsPageSettingsOpen(true)}
+              title="Настройки страницы курса"
+            >
+              <Eye className="w-4 h-4" />
+            </Button>
             <Button
               variant="outline"
               onClick={handleTogglePublish}
