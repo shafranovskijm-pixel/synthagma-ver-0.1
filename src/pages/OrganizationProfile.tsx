@@ -8,9 +8,10 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Checkbox } from "@/components/ui/checkbox";
-import { ArrowLeft, User, Bell, Handshake, Save, Eye, EyeOff } from "lucide-react";
+import { ArrowLeft, User, Bell, Handshake, Save, Eye, EyeOff, Settings } from "lucide-react";
 import { toast } from "sonner";
 import { PartnerCabinet } from "@/components/organization/PartnerCabinet";
+
 
 interface ProfileData {
   full_name: string;
@@ -47,6 +48,13 @@ export default function OrganizationProfile() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState("profile");
+  const handleTabChange = (tab: string) => {
+    if (tab === "settings") {
+      navigate("/organization?tab=settings");
+      return;
+    }
+    setActiveTab(tab);
+  };
   const [saving, setSaving] = useState(false);
 
   // Profile state
@@ -191,10 +199,13 @@ export default function OrganizationProfile() {
       </div>
 
       <div className="max-w-5xl mx-auto px-4 py-6">
-        <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="mb-6 bg-muted/50 p-1 rounded-xl">
+        <Tabs value={activeTab} onValueChange={handleTabChange}>
+          <TabsList className="mb-6 bg-muted/50 p-1 rounded-xl flex-wrap">
             <TabsTrigger value="profile" className="rounded-lg gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm px-4 py-2">
               <User className="w-4 h-4" /> Мой профиль
+            </TabsTrigger>
+            <TabsTrigger value="settings" className="rounded-lg gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm px-4 py-2">
+              <Settings className="w-4 h-4" /> Настройки
             </TabsTrigger>
             <TabsTrigger value="notifications" className="rounded-lg gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm px-4 py-2">
               <Bell className="w-4 h-4" /> Настройки уведомлений
@@ -292,7 +303,7 @@ export default function OrganizationProfile() {
             </div>
           </TabsContent>
 
-          {/* Tab 2: Notifications */}
+          {/* Tab 3: Notifications */}
           <TabsContent value="notifications">
             <Card className="rounded-2xl">
               <CardHeader>

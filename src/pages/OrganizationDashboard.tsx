@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { AnimatedTabContent } from "@/components/ui/AnimatedTabContent";
 import { OrgSidebar } from "@/components/organization/OrgSidebar";
 import { TabContentRenderer } from "@/components/organization/tabs/TabContentRenderer";
@@ -16,7 +16,17 @@ import { PlatformAnnouncementsBanner } from "@/components/organization/PlatformA
 
 function OrganizationDashboardContent() {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const d = useOrgDashboard();
+
+  // Handle ?tab= query parameter
+  useEffect(() => {
+    const tab = searchParams.get('tab');
+    if (tab) {
+      d.tabNavigation.setActiveTab(tab as any);
+      setSearchParams({}, { replace: true });
+    }
+  }, [searchParams]);
 
   const exitAdminView = () => { localStorage.removeItem("adminViewAsOrg"); navigate("/admin"); };
 

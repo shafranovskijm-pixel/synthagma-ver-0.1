@@ -15,7 +15,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { SystemFeaturesReport } from "@/components/organization/SystemFeaturesReport";
+
 
 import { LoginBrandingSettings } from "@/components/organization/LoginBrandingSettings";
 import { OrgCredentialsSettings } from "@/components/organization/OrgCredentialsSettings";
@@ -761,22 +761,6 @@ export function SettingsTab() {
         </div>
       </details>
 
-      {/* System Info */}
-      <div className="bg-card rounded-xl lg:rounded-2xl border border-border p-4 lg:p-6">
-        <h3 className="font-display font-semibold text-base lg:text-lg flex items-center gap-2 mb-4">
-          <FileText className="w-4 h-4 lg:w-5 lg:h-5" />
-          О системе
-        </h3>
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div>
-            <p className="font-medium text-sm lg:text-base">Синтагма</p>
-            <p className="text-xs lg:text-sm text-muted-foreground">
-              Платформа дополнительного профессионального образования
-            </p>
-          </div>
-          <SystemFeaturesReport />
-        </div>
-      </div>
     </div>
   );
 }
