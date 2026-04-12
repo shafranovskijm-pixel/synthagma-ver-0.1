@@ -196,7 +196,17 @@ const CourseLearning = () => {
 
         {isOfflineMode && <OfflineBanner cachedAt={offlineCachedAt} />}
         <ScrollArea className="flex-1" ref={contentRef}>
-          <div ref={swipeRef} className={cn("max-w-4xl mx-auto transition-all duration-300 min-h-full", isMobile ? "p-4" : "p-8", isTransitioning ? "opacity-0 translate-y-4" : "opacity-100 translate-y-0")}>
+          <div 
+            ref={swipeRef} 
+            className={cn(
+              "max-w-4xl mx-auto transition-all duration-300 min-h-full", 
+              isMobile ? "p-4" : "p-8", 
+              isTransitioning ? "opacity-0 translate-y-4" : "opacity-100 translate-y-0",
+              (course as any)?.landing_content?.copy_protection && "select-none"
+            )}
+            onContextMenu={(course as any)?.landing_content?.copy_protection ? (e: React.MouseEvent) => e.preventDefault() : undefined}
+            onCopy={(course as any)?.landing_content?.copy_protection ? (e: React.ClipboardEvent) => e.preventDefault() : undefined}
+          >
             {currentLesson?.type === 'text' && (
               <div className="space-y-4 md:space-y-6 animate-fade-in">
                 <div className="flex items-center gap-3 pb-3 md:pb-4 border-b border-border">
@@ -213,10 +223,17 @@ const CourseLearning = () => {
                   <div className={cn("rounded-xl bg-red-500/10 flex items-center justify-center shrink-0", isMobile ? "w-8 h-8" : "w-10 h-10")}><Video className={cn(isMobile ? "w-4 h-4" : "w-5 h-5", "text-red-500")} /></div>
                   <div className="min-w-0"><h1 className={cn("font-bold line-clamp-2", isMobile ? "text-lg" : "text-2xl")}>{currentLesson.title}</h1><p className="text-xs md:text-sm text-muted-foreground">Видеоурок {currentLessonIndex + 1}</p></div>
                 </div>
-                <div className="aspect-video bg-muted rounded-2xl flex items-center justify-center overflow-hidden shadow-lg">
+                <div className="aspect-video bg-muted rounded-2xl flex items-center justify-center overflow-hidden shadow-lg relative">
                   {isVideoProgressLoading ? <div className="flex items-center justify-center"><Loader2 className="w-8 h-8 animate-spin text-muted-foreground" /></div> : currentLesson.content ? (
                     <VideoPlayerInline key={`${currentLesson.id}-${course?.allow_video_seek !== false ? "seek" : "no-seek"}`} content={currentLesson.content} allowSeek={course?.allow_video_seek !== false} userId={user?.id} lessonId={currentLesson.id} savedPosition={savedPosition} onSavePosition={saveVideoPosition} onProgressChange={setVideoWatchProgress} onFinishLesson={() => markLessonComplete()} onVideoComplete={async () => { if (!isLessonCompleted(currentLesson.id)) markLessonComplete(); }} />
                   ) : <div className="text-center text-muted-foreground"><Video className="w-16 h-16 mx-auto mb-4" /><p>Видео не загружено</p></div>}
+                  {(course as any)?.landing_content?.video_watermark && user?.email && (
+                    <div className="absolute inset-0 pointer-events-none flex items-center justify-center z-10">
+                      <span className="text-white/20 text-lg md:text-2xl font-bold rotate-[-30deg] select-none whitespace-nowrap">
+                        {user.email}
+                      </span>
+                    </div>
+                  )}
                 </div>
               </div>
             )}
