@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -57,8 +57,12 @@ import {
   CreditCard,
   Image,
   Upload,
+  GripVertical,
 } from "lucide-react";
 import { safeInvoke } from "@/utils/safeInvoke";
+import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent } from "@dnd-kit/core";
+import { SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy, useSortable, arrayMove } from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line } from "recharts";
@@ -73,6 +77,7 @@ import { getPlanInfo, type SubscriptionPlan } from "@/constants/subscriptionPlan
 import { SkillspaceImportDialog } from "./SkillspaceImportDialog";
 import { SkillspaceBatchImportDialog } from "./SkillspaceBatchImportDialog";
 import { StudentBulkImportDialog } from "./StudentBulkImportDialog";
+import { SortableCourseRow } from "./SortableCourseRow";
 
 interface Organization {
   id: string;
@@ -113,6 +118,7 @@ interface Course {
   is_published: boolean;
   students_count: number;
   lessons_count: number;
+  catalog_order: number;
 }
 
 interface OrgDocument {
@@ -220,6 +226,29 @@ export function OrganizationDetailsView({ organization, onBack }: OrganizationDe
     averageProgress: 0,
   });
 
+  const dndSensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+  );
+
+  const handleCourseDragEnd = useCallback(async (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+
+    const oldIndex = courses.findIndex(c => c.id === active.id);
+    const newIndex = courses.findIndex(c => c.id === over.id);
+    if (oldIndex === -1 || newIndex === -1) return;
+
+    const reordered = arrayMove(courses, oldIndex, newIndex);
+    setCourses(reordered);
+
+    // Save new order to DB
+    const updates = reordered.map((c, i) => 
+      supabase.from("courses").update({ catalog_order: i } as any).eq("id", c.id)
+    );
+    await Promise.all(updates);
+  }, [courses]);
+
   useEffect(() => {
     fetchAllData();
   }, [organization.id]);
@@ -318,8 +347,9 @@ export function OrganizationDetailsView({ organization, onBack }: OrganizationDe
   const fetchCourses = async () => {
     const { data: coursesData, error } = await supabase
       .from("courses")
-      .select("id, title, is_published")
-      .eq("organization_id", organization.id);
+      .select("id, title, is_published, catalog_order")
+      .eq("organization_id", organization.id)
+      .order("catalog_order", { ascending: true });
 
     if (error) {
       console.error("Error fetching courses:", error);
@@ -1114,56 +1144,27 @@ export function OrganizationDetailsView({ organization, onBack }: OrganizationDe
           </div>
           <Card className={cardClass}>
             <CardContent className="p-0">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Курс</TableHead>
-                    <TableHead className="text-center">Уроков</TableHead>
-                    <TableHead className="text-center">Учеников</TableHead>
-                    <TableHead>Статус</TableHead>
-                    <TableHead className="w-10"></TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {courses.map((course) => (
-                    <TableRow key={course.id} className="hover:bg-muted/40">
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          <BookOpen className="w-4 h-4 text-primary" />
-                          <button
-                            onClick={() => window.open(`/course/${course.id}/edit`, '_blank')}
-                            className="font-medium text-primary hover:underline cursor-pointer flex items-center gap-1"
-                          >
-                            {course.title}
-                            <ExternalLink className="w-3 h-3" />
-                          </button>
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-center">
-                        <Badge variant="secondary">{course.lessons_count}</Badge>
-                      </TableCell>
-                      <TableCell className="text-center">
-                        <Badge variant="secondary">{course.students_count}</Badge>
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant={course.is_published ? "default" : "outline"}>
-                          {course.is_published ? "Опубликован" : "Черновик"}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="flex gap-1">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className={`h-8 w-8 ${
-                            migrationResult[course.id]?.status === 'success'
-                              ? 'text-emerald-500'
-                              : migrationResult[course.id]?.status === 'error'
-                              ? 'text-destructive'
-                              : 'text-muted-foreground hover:text-primary'
-                          }`}
-                          title={migrationResult[course.id]?.message || "Скачать медиа в хранилище"}
-                          disabled={migratingCourseId === course.id}
-                          onClick={async () => {
+              <DndContext sensors={dndSensors} collisionDetection={closestCenter} onDragEnd={handleCourseDragEnd}>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="w-10"></TableHead>
+                      <TableHead>Курс</TableHead>
+                      <TableHead className="text-center">Уроков</TableHead>
+                      <TableHead className="text-center">Учеников</TableHead>
+                      <TableHead>Статус</TableHead>
+                      <TableHead className="w-10"></TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    <SortableContext items={courses.map(c => c.id)} strategy={verticalListSortingStrategy}>
+                      {courses.map((course) => (
+                        <SortableCourseRow
+                          key={course.id}
+                          course={course}
+                          migratingCourseId={migratingCourseId}
+                          migrationResult={migrationResult}
+                          onMigrate={async () => {
                             setMigratingCourseId(course.id);
                             setMigrationResult(prev => { const next = { ...prev }; delete next[course.id]; return next; });
                             try {
@@ -1195,7 +1196,7 @@ export function OrganizationDetailsView({ organization, onBack }: OrganizationDe
                             } catch (e: any) {
                               const isTimeout = e.name === "TimeoutError" || e.name === "AbortError";
                               const msg = isTimeout
-                                ? "Миграция заняла слишком много времени. Попробуйте ещё раз — уже перенесённые файлы не будут скачаны повторно"
+                                ? "Миграция заняла слишком много времени"
                                 : "Ошибка: " + e.message;
                               setMigrationResult(prev => ({ ...prev, [course.id]: { status: 'error', message: msg } }));
                               toast.error(msg, { duration: 15000 });
@@ -1206,31 +1207,8 @@ export function OrganizationDetailsView({ organization, onBack }: OrganizationDe
                               }, 10000);
                             }
                           }}
-                        >
-                          {migratingCourseId === course.id ? (
-                            <Loader2 className="w-4 h-4 animate-spin" />
-                          ) : migrationResult[course.id]?.status === 'success' ? (
-                            <CheckCircle2 className="w-4 h-4" />
-                          ) : migrationResult[course.id]?.status === 'error' ? (
-                            <XCircle className="w-4 h-4" />
-                          ) : (
-                            <HardDrive className="w-4 h-4" />
-                          )}
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8 text-muted-foreground hover:text-primary"
-                          title="Обновить из SkillSpace (тесты + очистка контента)"
-                          onClick={() => setSkillspaceUpdateCourse({ id: course.id, title: course.title })}
-                        >
-                          <RefreshCw className="w-4 h-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8 text-muted-foreground hover:text-destructive"
-                          onClick={async () => {
+                          onUpdate={() => setSkillspaceUpdateCourse({ id: course.id, title: course.title })}
+                          onDelete={async () => {
                             if (!confirm(`Удалить курс «${course.title}»? Это действие нельзя отменить.`)) return;
                             const { error } = await supabase.from("courses").delete().eq("id", course.id);
                             if (error) {
@@ -1240,21 +1218,19 @@ export function OrganizationDetailsView({ organization, onBack }: OrganizationDe
                               fetchCourses();
                             }
                           }}
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                  {courses.length === 0 && (
-                    <TableRow>
-                      <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
-                        Нет курсов
-                      </TableCell>
-                    </TableRow>
-                  )}
-                </TableBody>
-              </Table>
+                        />
+                      ))}
+                    </SortableContext>
+                    {courses.length === 0 && (
+                      <TableRow>
+                        <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                          Нет курсов
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </TableBody>
+                </Table>
+              </DndContext>
             </CardContent>
           </Card>
         </TabsContent>
@@ -1642,17 +1618,18 @@ export function OrganizationDetailsView({ organization, onBack }: OrganizationDe
         // Refresh courses
         supabase
           .from("courses")
-          .select("id, title, is_published, lessons(id), enrollments(id)")
+          .select("id, title, is_published, catalog_order, lessons(id), enrollments(id)")
           .eq("organization_id", organization.id)
           .then(({ data }) => {
             if (data) {
-              setCourses(data.map((c: any) => ({
-                id: c.id,
-                title: c.title,
-                is_published: c.is_published,
-                lessons_count: c.lessons?.length || 0,
-                students_count: c.enrollments?.length || 0,
-              })));
+               setCourses(data.map((c: any) => ({
+                 id: c.id,
+                 title: c.title,
+                 is_published: c.is_published,
+                 lessons_count: c.lessons?.length || 0,
+                 students_count: c.enrollments?.length || 0,
+                 catalog_order: c.catalog_order || 0,
+               })));
             }
           });
       }}
