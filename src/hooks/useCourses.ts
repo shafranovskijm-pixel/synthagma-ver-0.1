@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
+import { supabase } from "@/integrations/supabase/client";
 import type { Course, CourseCategory, CourseFilter, CourseViewMode } from "@/types";
 import { 
   fetchCourses,
@@ -40,6 +41,7 @@ interface UseCoursesReturn {
   removeCat: (categoryId: string) => Promise<boolean>;
   refresh: () => void;
   updateCourseLocally: (courseId: string, updates: Partial<Course>) => void;
+  reorderCourses: (activeId: string, overId: string) => Promise<void>;
 }
 
 export function useCourses(organizationId: string | null): UseCoursesReturn {
@@ -217,6 +219,23 @@ export function useCourses(organizationId: string | null): UseCoursesReturn {
     ));
   }, []);
 
+  const reorderCourses = useCallback(async (activeId: string, overId: string) => {
+    const oldIndex = courses.findIndex(c => c.id === activeId);
+    const newIndex = courses.findIndex(c => c.id === overId);
+    if (oldIndex === -1 || newIndex === -1) return;
+
+    const reordered = [...courses];
+    const [moved] = reordered.splice(oldIndex, 1);
+    reordered.splice(newIndex, 0, moved);
+    setCourses(reordered);
+
+    // Save to DB
+    const updates = reordered.map((c, i) =>
+      supabase.from("courses").update({ catalog_order: i } as any).eq("id", c.id)
+    );
+    await Promise.all(updates);
+  }, [courses]);
+
   return {
     courses,
     categories,
@@ -239,6 +258,7 @@ export function useCourses(organizationId: string | null): UseCoursesReturn {
     updateCat,
     removeCat,
     refresh,
-    updateCourseLocally
+    updateCourseLocally,
+    reorderCourses,
   };
 }
