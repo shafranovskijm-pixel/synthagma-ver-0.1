@@ -1,76 +1,34 @@
 
 
-## Plan: SkillSpace-Style Organization Dashboard Redesign
-
-### Problem
-The current org dashboard uses a traditional wide sidebar (264px) with text labels. The user wants it to match the SkillSpace aesthetic (and the student dashboard style already implemented): narrow icon sidebar, top header bar with profile/notifications/tariff, course catalog with visual cards, footer, and support chat button.
-
-### Scope
-This is a large UI restructuring. Nothing gets deleted — Documents, Journals, and FRDO move into Settings as sub-sections. All functionality preserved.
+## Plan: Header Restructure + Remove Floating Chat + Remove Stats from Courses
 
 ### Changes
 
-**1. New Icon Sidebar (`OrgSidebar.tsx`) — SkillSpace-style**
-- Narrow 88px sidebar matching `StudentSidebar.tsx` pattern
-- Brand-tinted background with centered nav pill
-- Icon buttons (64×64px) with 10px labels underneath
-- Tabs kept in sidebar: Курсы, Компании, Ученики, Охрана труда, Финансы, Настройки, Чаты
-- Tabs REMOVED from sidebar: Документы, Журналы, ФИС ФРДО (moved to Settings)
-- Optional tabs (Хранилище, Статистика, Ссылки, Магазин курсов, Тариф) stay toggleable via Settings
-- Logo at top, same as student sidebar
+**1. Remove floating support chat button**
+- Remove `<OrgSupportChat />` from `OrganizationDashboard.tsx`
+- Support link stays in profile dropdown (already there)
 
-**2. New Top Header Bar (`OrgDashboardHeader.tsx`) — SkillSpace-style**
-- Left: Logo + org name (like SkillSpace header)
-- Right: Tariff badge with days remaining, Partner program link, Notifications bell (with `OrgNotifications` dropdown), Profile avatar dropdown (Profile, Help, What's New, Logout)
-- Tab-specific action buttons (Create Course, Add Student, etc.) remain in header
-- Remove the hamburger menu button (mobile will use slide-out overlay)
+**2. Restructure header to match SkillSpace layout (`OrgDashboardHeader.tsx`)**
 
-**3. Course Catalog Visual Mode (CoursesTab.tsx enhancement)**
-- Add a new "catalog" view mode alongside existing folder/grid/list views
-- Catalog mode: SkillSpace-style cards with course cover images, status badges, descriptions
-- Courses grouped by category with colored dot indicators
-- Toggle to switch back to current folder/list view (user explicitly asked for this)
-- "Настроить каталог" button option
+Current: single bar with logo+title on left, all buttons on right
 
-**4. Footer Component (`OrgDashboardFooter.tsx`) — new**
-- Reuse `StudentFooter.tsx` pattern
-- Shows org logo, name, platform links, document links, partner program CTA
-- Rendered below all tab content on every page
+New layout (top-to-bottom):
+- **Top bar**: Logo/org name on left. On right: Tariff badge (with days remaining), "Партнёрская программа" link, Notifications bell, Profile avatar — exactly like SkillSpace screenshot
+- **Hero banner**: The cover image moves INTO the header area (below the top bar), with org name/description overlay — like SkillSpace's school banner
+- **Action bar**: Below hero — tab-specific buttons ("Создать курс", search, filters, view toggles). These currently live inside CoursesTab and other tabs, so they stay there. The header just handles the top bar + hero.
 
-**5. Support Chat Button (bottom-right floating)**
-- Floating green chat button in bottom-right corner (matching SkillSpace's chat bubble)
-- Opens Telegram link (to your support bot/channel)
-- Also includes "Помощь" link
+The cover image rendering moves from `OrganizationDashboard.tsx` into `OrgDashboardHeader.tsx` so it's part of the header block.
 
-**6. Move Documents/Journals/FRDO into Settings (`SettingsTab.tsx`)**
-- Add 3 new collapsible sections in Settings:
-  - "Документооборот" — renders `DocumentsTab` content
-  - "Журналы" — renders `JournalsManager` content
-  - "ФИС ФРДО" — renders `FRDOManager` content
-- These remain fully functional, just accessible from Settings instead of sidebar
-- Keep the menu toggles in Settings for when user wants to re-enable them in sidebar later
-
-**7. Layout Update (`OrganizationDashboard.tsx`)**
-- Change `lg:ml-64` to `ml-[88px]` to match narrower sidebar
-- Add footer below main content
-- Add floating support chat button
-- Keep admin view banner, mobile overlay, dialogs
-
-**8. Tab Navigation Update (`useTabNavigation.ts`)**
-- Remove `documents`, `journals`, `frdo` from default visible tabs
-- Keep them accessible programmatically (for internal navigation from Settings)
+**3. Remove StatsCards from courses tab (`TabContentRenderer.tsx`)**
+- Add `activeTab !== "courses"` to the `shouldShowStatsCards` condition (or just remove StatsCards entirely from courses view)
+- Stats remain visible on other tabs like links, stats tab etc.
 
 ### Files modified
 | File | What |
 |------|------|
-| `src/components/organization/OrgSidebar.tsx` | Complete rewrite to 88px icon sidebar |
-| `src/components/organization/OrgDashboardHeader.tsx` | SkillSpace-style header with profile, notifications, tariff |
-| `src/pages/OrganizationDashboard.tsx` | Layout adjustments, add footer + support chat |
-| `src/components/organization/OrgDashboardFooter.tsx` | New footer component |
-| `src/components/organization/OrgSupportChat.tsx` | New floating chat button |
-| `src/components/organization/tabs/SettingsTab.tsx` | Add Documents/Journals/FRDO sections |
-| `src/components/organization/tabs/TabContentRenderer.tsx` | Keep documents/journals/frdo rendering for programmatic access |
-| `src/hooks/useTabNavigation.ts` | Update default visible tabs |
+| `src/components/organization/OrgDashboardHeader.tsx` | Restructure: top bar (tariff/partner/bell/profile) + hero banner with org info |
+| `src/pages/OrganizationDashboard.tsx` | Remove `OrgSupportChat`, move cover image rendering to header |
+| `src/components/organization/tabs/TabContentRenderer.tsx` | Hide StatsCards on courses tab |
 
 ### No database changes needed
 
