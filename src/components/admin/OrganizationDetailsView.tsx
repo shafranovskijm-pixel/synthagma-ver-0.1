@@ -470,8 +470,43 @@ export function OrganizationDetailsView({ organization, onBack }: OrganizationDe
 
     setUsageHistory(months);
   };
+  const fetchBranding = async () => {
+    const { data } = await supabase
+      .from("organizations")
+      .select("branding")
+      .eq("id", organization.id)
+      .single();
+    if (data?.branding) {
+      const b = data.branding as any;
+      setOrgBranding({
+        coverUrl: b.coverUrl || b.cover_url,
+        primaryColor: b.primaryColor || b.primary_color,
+        logoUrl: b.logoUrl || b.logo_url,
+      });
+    }
+  };
 
-  const saveSettings = async () => {
+  const saveTariffSettings = async () => {
+    setIsSavingTariff(true);
+    try {
+      const { error } = await supabase
+        .from("organizations")
+        .update({
+          tariff_custom_label: tariffCustomLabel || null,
+          paid_until: tariffPaidUntil || null,
+        } as any)
+        .eq("id", organization.id);
+      if (error) throw error;
+      toast.success("Тарифные настройки сохранены");
+    } catch (err) {
+      console.error(err);
+      toast.error("Ошибка сохранения тарифных настроек");
+    } finally {
+      setIsSavingTariff(false);
+    }
+  };
+
+
     setIsSaving(true);
     try {
       const aiEnabled = shouldBlockAI ? false : settings.ai_enabled;
