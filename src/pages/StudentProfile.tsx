@@ -207,10 +207,10 @@ export default function StudentProfile() {
     if (!user?.id) return;
     setProfileSaving(true);
     try {
-      const { error } = await supabase
+      const { error } = await (supabase
         .from("profiles")
-        .update({ full_name: fullName, phone, city, bio })
-        .eq("user_id", user.id);
+        .update({ full_name: fullName, phone, city, bio } as any)
+        .eq("user_id", user.id) as any);
       if (error) throw error;
       queryClient.invalidateQueries({ queryKey: ["student-profile-page"] });
       toast({ title: "Профиль сохранён" });
