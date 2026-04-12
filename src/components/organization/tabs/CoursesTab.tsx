@@ -237,17 +237,16 @@ export const CoursesTab = React.memo(function CoursesTab({ organizationId, onCou
 
   // Combined handler for view mode buttons that change both at once
   const setViewAndFolder = React.useCallback((vm: CourseViewMode, fm: "folders" | "flat") => {
-    originalSetViewMode(vm);
+    setViewMode(vm);
     setFolderViewModeLocal(fm);
     saveViewPrefs(vm, fm);
-  }, [originalSetViewMode, saveViewPrefs]);
+  }, [setViewMode, saveViewPrefs]);
 
-  // Wrap setViewMode to also persist
-  const originalSetViewModeRef = setViewMode;
+  // Wrap setViewMode to also persist (for folder-mode button only)
   const persistedSetViewMode = React.useCallback((mode: CourseViewMode) => {
-    originalSetViewModeRef(mode);
+    setViewMode(mode);
     saveViewPrefs(mode, folderViewMode);
-  }, [originalSetViewModeRef, folderViewMode, saveViewPrefs]);
+  }, [setViewMode, folderViewMode, saveViewPrefs]);
 
   // Group courses by category
   const coursesByCategory = useMemo(() => {
