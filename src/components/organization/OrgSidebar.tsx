@@ -1,13 +1,13 @@
-import { useState, useCallback, useMemo } from "react";
+import { useState, useCallback } from "react";
 import { 
-  BookOpen, Users, BarChart3, Settings, LogOut, 
-  Link, FileText, FileSpreadsheet, ShoppingBag, 
-  Building2, ClipboardList, HardHat, HardDrive, CreditCard, Lock, MessageCircle, Wallet
+  BookOpen, Users, Settings, LogOut, 
+  Building2, HardHat, HardDrive, CreditCard, Lock, MessageCircle, Wallet,
+  BarChart3, Link, ShoppingBag, FileText, ClipboardList, FileSpreadsheet
 } from "lucide-react";
 import { SigmaLogo } from "@/components/ui/SigmaLogo";
-import { HelpButton } from "@/components/onboarding/HelpButton";
-import { organizationHelpTips } from "@/constants/onboardingSteps";
 import { useOrgDashboard } from "@/contexts/OrgDashboardContext";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { cn } from "@/lib/utils";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -41,7 +41,6 @@ export type TabType =
   | "settings" 
   | "frdo";
 
-// Map sidebar tabs to their feature category keys
 const tabCategoryMap: Record<string, string> = {
   courses: "courses",
   organizations: "companies",
@@ -56,32 +55,70 @@ const tabCategoryMap: Record<string, string> = {
   settings: "settings",
 };
 
+function hexToHsl(hex: string): string | null {
+  const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+  if (!result) return null;
+  let r = parseInt(result[1], 16) / 255;
+  let g = parseInt(result[2], 16) / 255;
+  let b = parseInt(result[3], 16) / 255;
+  const max = Math.max(r, g, b);
+  const min = Math.min(r, g, b);
+  let h = 0, s = 0;
+  const l = (max + min) / 2;
+  if (max !== min) {
+    const d = max - min;
+    s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+    switch (max) {
+      case r: h = ((g - b) / d + (g < b ? 6 : 0)) / 6; break;
+      case g: h = ((b - r) / d + 2) / 6; break;
+      case b: h = ((r - g) / d + 4) / 6; break;
+    }
+  }
+  return `${Math.round(h * 360)} ${Math.round(s * 100)}% ${Math.round(l * 100)}%`;
+}
+
+function normalizeBrandColor(color?: string): string {
+  if (!color) return "174 72% 46%";
+  const trimmed = color.trim();
+  if (trimmed.startsWith("#")) return hexToHsl(trimmed) ?? "174 72% 46%";
+  if (trimmed.startsWith("hsl(")) return trimmed.replace(/^hsl\((.*)\)$/i, "$1");
+  return trimmed;
+}
+
+interface NavItem {
+  id: TabType;
+  icon: typeof BookOpen;
+  label: string;
+  category?: string;
+  badge?: number;
+}
+
 export function OrgSidebar() {
   const d = useOrgDashboard();
   const activeTab = d.tabNavigation.activeTab;
   const setActiveTab = d.tabNavigation.setActiveTab;
-  const organizationName = d.organizationName;
-  const customName = d.branding.brandingSettings.customName;
-  const customSubtitle = d.branding.brandingSettings.customSubtitle;
   const logoUrl = d.branding.brandingSettings.logoUrl;
-  const isFrdoEnabled = d.isFrdoEnabled;
-  const menuSettings = d.dashboardSettings.menuSettings;
+  const primaryColor = d.branding.brandingSettings.primaryColor;
   const isEnabled = d.isEnabled;
+  const menuSettings = d.dashboardSettings.menuSettings;
   const isMobileSidebarOpen = d.isMobileSidebarOpen;
   const setIsMobileSidebarOpen = d.setIsMobileSidebarOpen;
   const onLogout = d.handleLogout;
 
   const [upgradeDialogOpen, setUpgradeDialogOpen] = useState(false);
+  const brandHsl = normalizeBrandColor(primaryColor);
 
-  const handleTabClick = (tab: TabType) => {
+  const isLocked = (category: string) => !isEnabled(category as any);
+
+  const handleTabClick = useCallback((tab: TabType) => {
     const category = tabCategoryMap[tab];
-    if (category && !isEnabled(category as any)) {
+    if (category && isLocked(category)) {
       setUpgradeDialogOpen(true);
       return;
     }
     setActiveTab(tab);
     setIsMobileSidebarOpen(false);
-  };
+  }, [isEnabled, setActiveTab, setIsMobileSidebarOpen]);
 
   const handleGoToSubscription = () => {
     setUpgradeDialogOpen(false);
@@ -89,182 +126,120 @@ export function OrgSidebar() {
     setIsMobileSidebarOpen(false);
   };
 
-  const tabButtonClass = (tab: TabType | TabType[], locked?: boolean) => {
-    const isActive = Array.isArray(tab) 
-      ? tab.includes(activeTab) 
-      : activeTab === tab;
-    return `w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-colors ${
-      locked 
-        ? "text-muted-foreground/50 hover:bg-secondary/50" 
-        : isActive 
-          ? "bg-primary/10 text-primary" 
-          : "text-muted-foreground hover:bg-secondary"
-    }`;
-  };
-
-  const isLocked = (category: string) => !isEnabled(category as any);
+  // Build nav items dynamically based on menu settings
+  const navItems: NavItem[] = [];
+  
+  if (menuSettings.showCourses !== false) navItems.push({ id: "courses", icon: BookOpen, label: "Курсы", category: "courses" });
+  if (menuSettings.showCompanies !== false) navItems.push({ id: "organizations", icon: Building2, label: "Компании", category: "companies" });
+  if (menuSettings.showStudents !== false) navItems.push({ id: "students", icon: Users, label: "Ученики", category: "students" });
+  if (menuSettings.showLibrary) navItems.push({ id: "library", icon: HardDrive, label: "Хранилище", category: "library" });
+  if (menuSettings.showStats) navItems.push({ id: "stats", icon: BarChart3, label: "Статистика" });
+  if (menuSettings.showLinks) navItems.push({ id: "links", icon: Link, label: "Ссылки", category: "links" });
+  
+  navItems.push({ id: "labor-safety", icon: HardHat, label: "Охрана труда", category: "labor_safety" });
+  navItems.push({ id: "payments", icon: Wallet, label: "Финансы" });
+  
+  if (menuSettings.showSubscription !== false) navItems.push({ id: "subscription", icon: CreditCard, label: "Тариф" });
+  if (menuSettings.showServices) navItems.push({ id: "services", icon: ShoppingBag, label: "Магазин" });
+  
+  navItems.push({ id: "chats", icon: MessageCircle, label: "Чаты", badge: d.unreadChatsCount });
+  navItems.push({ id: "settings", icon: Settings, label: "Настройки", category: "settings" });
 
   return (
     <>
+      {/* Mobile overlay */}
+      {isMobileSidebarOpen && (
+        <div className="fixed inset-0 bg-black/50 z-40 lg:hidden" onClick={() => setIsMobileSidebarOpen(false)} />
+      )}
+
       <aside
         role="navigation"
         aria-label="Основная навигация"
-        className={`
-        fixed inset-y-0 left-0 z-50 w-64 bg-card border-r border-border 
-        flex flex-col transition-transform duration-300
-        ${isMobileSidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
-      `}>
+        className={cn(
+          "fixed inset-y-0 left-0 z-50 w-[88px] border-r border-border/60 flex flex-col transition-transform duration-300",
+          isMobileSidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
+        )}
+        style={{ backgroundColor: `hsl(${brandHsl} / 0.07)` }}
+      >
         {/* Logo */}
-        <div className="p-6 border-b border-border flex-shrink-0">
-          <div className="flex items-center gap-3">
+        <div className="flex justify-center py-4">
+          <div className="flex h-12 w-12 items-center justify-center overflow-hidden rounded-xl border border-border/60 bg-card/80 shadow-sm">
             {logoUrl ? (
-              <img src={logoUrl} alt="Logo" className="w-10 h-10 object-contain rounded-lg" />
+              <img src={logoUrl} alt="Логотип" className="h-10 w-10 object-contain" />
             ) : (
-              <SigmaLogo size="lg" showText={false} />
+              <SigmaLogo size="sm" />
             )}
-            <div className="min-w-0">
-              <span className="font-display font-bold text-lg block truncate">{customName || 'СИНТАГМА'}</span>
-              <div className="text-xs text-muted-foreground truncate">{customSubtitle || organizationName}</div>
-            </div>
           </div>
         </div>
-        
-        {/* Navigation */}
-        <nav className="flex-1 p-4 overflow-y-auto scrollbar-hide">
-          <div className="space-y-2">
-            {menuSettings.showCourses !== false && (
-              <button data-onboarding="courses" onClick={() => handleTabClick("courses")} className={tabButtonClass("courses", isLocked("courses"))} aria-label="Курсы" aria-current={activeTab === "courses" ? "page" : undefined}>
-                <BookOpen className="w-5 h-5" aria-hidden="true" />
-                Курсы
-                {isLocked("courses") && <Lock className="w-3.5 h-3.5 ml-auto text-muted-foreground/40" />}
-              </button>
-            )}
-            
-            {menuSettings.showCompanies !== false && (
-              <button onClick={() => handleTabClick("organizations")} className={tabButtonClass("organizations", isLocked("companies"))} aria-label="Компании" aria-current={activeTab === "organizations" ? "page" : undefined}>
-                <Building2 className="w-5 h-5" aria-hidden="true" />
-                Компании
-                {isLocked("companies") && <Lock className="w-3.5 h-3.5 ml-auto text-muted-foreground/40" />}
-              </button>
-            )}
-            
-            {menuSettings.showStudents !== false && (
-              <button data-onboarding="students" onClick={() => handleTabClick("students")} className={tabButtonClass("students", isLocked("students"))} aria-label="Ученики" aria-current={activeTab === "students" ? "page" : undefined}>
-                <Users className="w-5 h-5" aria-hidden="true" />
-                Ученики
-                {isLocked("students") && <Lock className="w-3.5 h-3.5 ml-auto text-muted-foreground/40" />}
-              </button>
-            )}
-            
-            
-            {menuSettings.showLibrary && (
-              <button onClick={() => handleTabClick("library")} className={tabButtonClass("library", isLocked("library"))}>
-                <HardDrive className="w-5 h-5" />
-                Хранилище
-                {isLocked("library") && <Lock className="w-3.5 h-3.5 ml-auto text-muted-foreground/40" />}
-              </button>
-            )}
-            
-            {menuSettings.showStats && (
-              <button onClick={() => handleTabClick("stats")} className={tabButtonClass("stats")}>
-                <BarChart3 className="w-5 h-5" />
-                Статистика
-              </button>
-            )}
-            
-            {menuSettings.showLinks && (
-              <button onClick={() => handleTabClick("links")} className={tabButtonClass("links", isLocked("links"))}>
-                <Link className="w-5 h-5" />
-                Ссылки регистрации
-                {isLocked("links") && <Lock className="w-3.5 h-3.5 ml-auto text-muted-foreground/40" />}
-              </button>
-            )}
-            
-            {menuSettings.showDocuments && (
-              <button data-onboarding="documents" onClick={() => handleTabClick("documents")} className={tabButtonClass("documents", isLocked("documents"))}>
-                <FileText className="w-5 h-5" />
-                Документы
-                {isLocked("documents") && <Lock className="w-3.5 h-3.5 ml-auto text-muted-foreground/40" />}
-              </button>
-            )}
-            
-            {menuSettings.showJournals !== false && (
-              <button onClick={() => handleTabClick("journals")} className={tabButtonClass("journals", isLocked("journals"))}>
-                <ClipboardList className="w-5 h-5" />
-                Журналы
-                {isLocked("journals") && <Lock className="w-3.5 h-3.5 ml-auto text-muted-foreground/40" />}
-              </button>
-            )}
-            
-            <button onClick={() => handleTabClick("labor-safety")} className={tabButtonClass("labor-safety", isLocked("labor_safety"))}>
-              <HardHat className="w-5 h-5" />
-              Охрана труда
-              {isLocked("labor_safety") && <Lock className="w-3.5 h-3.5 ml-auto text-muted-foreground/40" />}
-            </button>
 
-            
-            {menuSettings.showFrdo !== false && (
-              <button onClick={() => handleTabClick("frdo")} className={tabButtonClass("frdo", isLocked("frdo"))}>
-                <FileSpreadsheet className="w-5 h-5" />
-                ФИС ФРДО
-                {isLocked("frdo") && <Lock className="w-3.5 h-3.5 ml-auto text-muted-foreground/40" />}
-              </button>
-            )}
-
-            <button onClick={() => handleTabClick("payments")} className={tabButtonClass("payments")} aria-label="Финансы">
-              <Wallet className="w-5 h-5" aria-hidden="true" />
-              Финансы
-            </button>
-
-            {menuSettings.showSubscription !== false && (
-              <button onClick={() => handleTabClick("subscription")} className={tabButtonClass("subscription")} aria-label="Тариф">
-                <CreditCard className="w-5 h-5" aria-hidden="true" />
-                Тариф
-              </button>
-            )}
-            
-            {(
-              <button data-onboarding="settings" onClick={() => handleTabClick("settings")} className={tabButtonClass("settings", isLocked("settings"))}>
-                <Settings className="w-5 h-5" />
-                Настройки
-                {isLocked("settings") && <Lock className="w-3.5 h-3.5 ml-auto text-muted-foreground/40" />}
-              </button>
-            )}
-
-            <button onClick={() => handleTabClick("chats")} className={tabButtonClass("chats")} aria-label="Чаты" aria-current={activeTab === "chats" ? "page" : undefined}>
-              <MessageCircle className="w-5 h-5" aria-hidden="true" />
-              Чаты
-              {d.unreadChatsCount > 0 && (
-                <span className="ml-auto bg-destructive text-destructive-foreground text-xs font-bold rounded-full min-w-[20px] h-5 flex items-center justify-center px-1.5">
-                  {d.unreadChatsCount > 99 ? "99+" : d.unreadChatsCount}
-                </span>
-              )}
-            </button>
-          </div>
-        </nav>
-
-        {/* Footer */}
-        <div className="p-4 border-t border-border flex-shrink-0 bg-card space-y-1">
-          {menuSettings.showServices && (
-            <button 
-              onClick={() => handleTabClick("services")} 
-              className={`w-full flex items-center gap-3 px-4 py-2 rounded-xl text-sm transition-colors ${
-                activeTab === "services" ? "bg-primary/10 text-primary" : "text-muted-foreground/70 hover:bg-secondary/50 hover:text-muted-foreground"
-              }`}
-            >
-              <ShoppingBag className="w-4 h-4" />
-              Магазин курсов
-            </button>
-          )}
-          <HelpButton tips={organizationHelpTips[activeTab] || organizationHelpTips.default} />
-          <button 
-            onClick={onLogout} 
-            className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-destructive hover:bg-destructive/10 transition-colors"
-            aria-label="Выйти из аккаунта"
+        {/* Navigation pill */}
+        <div className="flex-1 flex items-center justify-center overflow-y-auto scrollbar-hide px-2">
+          <div
+            className="rounded-[28px] border border-border/60 p-2 shadow-sm backdrop-blur-sm"
+            style={{ backgroundColor: `hsl(${brandHsl} / 0.14)` }}
           >
-            <LogOut className="w-5 h-5" aria-hidden="true" />
-            Выйти
-          </button>
+            <nav className="flex flex-col items-center gap-1.5">
+              {navItems.map((item) => {
+                const isActive = activeTab === item.id;
+                const locked = item.category ? isLocked(item.category) : false;
+
+                return (
+                  <Tooltip key={item.id}>
+                    <TooltipTrigger asChild>
+                      <button
+                        data-onboarding={item.id === "courses" ? "courses" : item.id === "students" ? "students" : item.id === "settings" ? "settings" : undefined}
+                        onClick={() => handleTabClick(item.id)}
+                        className={cn(
+                          "relative flex min-h-[56px] w-[56px] flex-col items-center justify-center gap-0.5 rounded-2xl px-1 py-2 transition-all duration-200",
+                          locked && "opacity-50",
+                          isActive
+                            ? "text-primary-foreground shadow-md"
+                            : "text-foreground/80 hover:text-foreground"
+                        )}
+                        style={{
+                          backgroundColor: isActive
+                            ? `hsl(${brandHsl})`
+                            : `hsl(${brandHsl} / 0.18)`,
+                        }}
+                        aria-current={isActive ? "page" : undefined}
+                      >
+                        <item.icon className="h-5 w-5 shrink-0" />
+                        <span className={cn(
+                          "text-[9px] font-medium leading-tight text-center",
+                          isActive ? "text-primary-foreground" : "text-foreground/80"
+                        )}>
+                          {item.label}
+                        </span>
+                        {locked && <Lock className="absolute top-1 right-1 w-2.5 h-2.5 text-muted-foreground/60" />}
+                        {(item.badge ?? 0) > 0 && (
+                          <span className="absolute -top-1 -right-1 bg-destructive text-destructive-foreground text-[9px] font-bold rounded-full min-w-[16px] h-4 flex items-center justify-center px-1">
+                            {item.badge! > 99 ? "99+" : item.badge}
+                          </span>
+                        )}
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent side="right">{item.label}</TooltipContent>
+                  </Tooltip>
+                );
+              })}
+            </nav>
+          </div>
+        </div>
+
+        {/* Logout */}
+        <div className="flex justify-center py-4">
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                onClick={onLogout}
+                className="flex h-10 w-10 items-center justify-center rounded-xl text-destructive hover:bg-destructive/10 transition-colors"
+                aria-label="Выйти"
+              >
+                <LogOut className="h-5 w-5" />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="right">Выйти</TooltipContent>
+          </Tooltip>
         </div>
       </aside>
 
