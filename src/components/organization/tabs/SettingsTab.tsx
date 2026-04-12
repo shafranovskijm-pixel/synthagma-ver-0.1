@@ -233,26 +233,6 @@ export function SettingsTab() {
                 <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${menuSettings.showDocuments ? 'translate-x-6' : 'translate-x-1'}`} />
               </button>
             </div>
-            
-
-            {/* Services */}
-            <div className="flex items-center justify-between py-2 lg:py-3">
-              <div className="flex items-center gap-2 lg:gap-3">
-                <div className="w-8 h-8 lg:w-10 lg:h-10 rounded-lg lg:rounded-xl bg-sigma-cyan/10 flex items-center justify-center">
-                  <ShoppingBag className="w-4 h-4 lg:w-5 lg:h-5 text-sigma-cyan" />
-                </div>
-                <div>
-                  <p className="font-medium text-sm lg:text-base">Магазин курсов</p>
-                  <p className="text-xs lg:text-sm text-muted-foreground hidden sm:block">Покупка и продажа курсов</p>
-                </div>
-              </div>
-              <button
-                onClick={() => setMenuSettings(prev => ({ ...prev, showServices: !prev.showServices }))}
-                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors shrink-0 ${menuSettings.showServices ? 'bg-primary' : 'bg-muted'}`}
-              >
-                <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${menuSettings.showServices ? 'translate-x-6' : 'translate-x-1'}`} />
-              </button>
-            </div>
           </div>
           <div className="mt-4 lg:mt-6 pt-3 lg:pt-4 border-t border-border flex flex-wrap gap-2">
             <Button className="btn-gradient rounded-xl gap-2 text-sm" onClick={handleSaveMenuSettings}>

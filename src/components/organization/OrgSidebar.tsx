@@ -140,10 +140,8 @@ export function OrgSidebar() {
   
   if (menuSettings.showLaborSafety !== false) navItems.push({ id: "labor-safety", icon: HardHat, label: "Охрана труда", category: "labor_safety" });
   navItems.push({ id: "payments", icon: Wallet, label: "Финансы" });
-  
-  
-  if (menuSettings.showServices) navItems.push({ id: "services", icon: ShoppingBag, label: "Магазин" });
-  
+   
+
   navItems.push({ id: "chats", icon: MessageCircle, label: "Чаты", badge: d.unreadChatsCount });
   navItems.push({ id: "settings", icon: Settings, label: "Настройки", category: "settings" });
 
