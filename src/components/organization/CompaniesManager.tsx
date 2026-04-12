@@ -26,6 +26,27 @@ interface CompaniesManagerProps {
   organizationId: string;
 }
 
+const StatsGrid = ({ cm }: { cm: any }) => (
+  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+    <div className="bg-card rounded-xl p-4 border border-border">
+      <div className="flex items-center gap-2 text-muted-foreground text-sm mb-2"><Building2 className="w-4 h-4" />Компании</div>
+      <div className="text-2xl font-bold">{cm.companies.length}</div>
+    </div>
+    <div className="bg-card rounded-xl p-4 border border-border">
+      <div className="flex items-center gap-2 text-muted-foreground text-sm mb-2"><FileText className="w-4 h-4" />Договоры</div>
+      <div className="text-2xl font-bold">{cm.globalDocStats.contracts}</div>
+    </div>
+    <div className="bg-card rounded-xl p-4 border border-border">
+      <div className="flex items-center gap-2 text-green-500 text-sm mb-2"><CheckCircle2 className="w-4 h-4" />Оплачено</div>
+      <div className="text-2xl font-bold text-green-500">{new Intl.NumberFormat('ru-RU').format(cm.globalDocStats.paidAmount)} ₽</div>
+    </div>
+    <div className="bg-card rounded-xl p-4 border border-border">
+      <div className="flex items-center gap-2 text-amber-500 text-sm mb-2"><Clock className="w-4 h-4" />Не оплачено</div>
+      <div className="text-2xl font-bold text-amber-500">{new Intl.NumberFormat('ru-RU').format(cm.globalDocStats.unpaidAmount)} ₽</div>
+    </div>
+  </div>
+);
+
 export function CompaniesManager({ organizationId }: CompaniesManagerProps) {
   const cm = useCompaniesManager(organizationId);
   const dm = useCompanyDetailManager(organizationId);
@@ -68,26 +89,6 @@ export function CompaniesManager({ organizationId }: CompaniesManagerProps) {
         </Button>
       </div>
 
-      {/* Global Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <div className="bg-card rounded-xl p-4 border border-border">
-          <div className="flex items-center gap-2 text-muted-foreground text-sm mb-2"><Building2 className="w-4 h-4" />Компании</div>
-          <div className="text-2xl font-bold">{cm.companies.length}</div>
-        </div>
-        <div className="bg-card rounded-xl p-4 border border-border">
-          <div className="flex items-center gap-2 text-muted-foreground text-sm mb-2"><FileText className="w-4 h-4" />Договоры</div>
-          <div className="text-2xl font-bold">{cm.globalDocStats.contracts}</div>
-        </div>
-        <div className="bg-card rounded-xl p-4 border border-border">
-          <div className="flex items-center gap-2 text-green-500 text-sm mb-2"><CheckCircle2 className="w-4 h-4" />Оплачено</div>
-          <div className="text-2xl font-bold text-green-500">{new Intl.NumberFormat('ru-RU').format(cm.globalDocStats.paidAmount)} ₽</div>
-        </div>
-        <div className="bg-card rounded-xl p-4 border border-border">
-          <div className="flex items-center gap-2 text-amber-500 text-sm mb-2"><Clock className="w-4 h-4" />Не оплачено</div>
-          <div className="text-2xl font-bold text-amber-500">{new Intl.NumberFormat('ru-RU').format(cm.globalDocStats.unpaidAmount)} ₽</div>
-        </div>
-      </div>
-
       {/* Search and View Toggle */}
       <div className="flex gap-3">
         <div className="relative flex-1">
@@ -109,94 +110,107 @@ export function CompaniesManager({ organizationId }: CompaniesManagerProps) {
             <p className="text-sm mt-2">Попробуйте изменить поисковый запрос</p>
           </div>
         ) : (
-          <Card className="overflow-hidden border-0 shadow-lg">
-            <div className="bg-gradient-to-br from-primary/10 via-primary/5 to-transparent p-8">
-              <div className="flex items-center gap-3 mb-2">
-                <div className="w-12 h-12 rounded-xl bg-primary/15 flex items-center justify-center">
-                  <Building2 className="w-6 h-6 text-primary" />
-                </div>
-                <div>
-                  <h2 className="text-2xl font-bold">Начните работу с корпоративными клиентами</h2>
-                  <p className="text-muted-foreground">Управляйте компаниями-заказчиками в одном месте</p>
-                </div>
-              </div>
-            </div>
-            <CardContent className="p-8 pt-6">
-              <div className="grid sm:grid-cols-2 gap-4 mb-8">
-                {[
-                  { icon: FileText, title: "База заказчиков", desc: "Ведите реестр компаний с реквизитами, ИНН, КПП и адресами — данные подтягиваются автоматически" },
-                  { icon: FileText, title: "Договоры, счета и акты", desc: "Автоматическое формирование документов по шаблонам с реквизитами компании" },
-                  { icon: CreditCard, title: "Контроль оплат", desc: "Отслеживание оплат и задолженностей в реальном времени с наглядной аналитикой" },
-                  { icon: Users, title: "Личный кабинет компании", desc: "Каждая компания получает свой кабинет с доступом к обучению сотрудников" },
-                  { icon: Upload, title: "Массовое зачисление", desc: "Загружайте списки сотрудников из Excel и зачисляйте на курсы в один клик" },
-                  { icon: RefreshCw, title: "Контроль переобучения", desc: "Планы обучения и автоматические напоминания о сроках переаттестации" },
-                ].map((feature, i) => (
-                  <div key={i} className="flex gap-3 p-3 rounded-lg hover:bg-muted/50 transition-colors">
-                    <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
-                      <feature.icon className="w-4 h-4 text-primary" />
-                    </div>
-                    <div>
-                      <p className="font-medium text-sm">{feature.title}</p>
-                      <p className="text-xs text-muted-foreground mt-0.5">{feature.desc}</p>
-                    </div>
+          <>
+            {/* Onboarding card first */}
+            <Card className="overflow-hidden border-0 shadow-lg">
+              <div className="bg-gradient-to-br from-primary/10 via-primary/5 to-transparent p-8">
+                <div className="flex items-center gap-3 mb-2">
+                  <div className="w-12 h-12 rounded-xl bg-primary/15 flex items-center justify-center">
+                    <Building2 className="w-6 h-6 text-primary" />
                   </div>
-                ))}
+                  <div>
+                    <h2 className="text-2xl font-bold">Начните работу с корпоративными клиентами</h2>
+                    <p className="text-muted-foreground">Управляйте компаниями-заказчиками в одном месте</p>
+                  </div>
+                </div>
               </div>
-              <Button size="lg" className="w-full sm:w-auto" onClick={() => cm.setShowCreateDialog(true)}>
-                <Plus className="w-4 h-4 mr-2" />
-                Добавить первую компанию
-              </Button>
-            </CardContent>
-          </Card>
-        )
-      ) : lg.viewMode === 'grid' ? (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {cm.filteredCompanies.map((company) => (
-            <button key={company.id} className="bg-card rounded-xl p-5 border border-border hover:border-primary/50 transition-all text-left group" onClick={() => dm.openCompanyDetail(company)}>
-              <div className="flex items-start justify-between mb-3">
-                <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center"><Building2 className="w-6 h-6 text-primary" /></div>
-                <ChevronRight className="w-5 h-5 text-muted-foreground group-hover:text-primary transition-colors" />
-              </div>
-              <h3 className="font-semibold text-lg line-clamp-1">{company.name}</h3>
-              <div className="text-sm text-muted-foreground mt-1 space-y-1">
-                {company.inn && <div>ИНН: {company.inn}</div>}
-                <div className="flex items-center gap-1"><Users className="w-3 h-3" />{company.studentsCount} учеников</div>
-              </div>
-            </button>
-          ))}
-        </div>
-      ) : (
-        <div className="bg-card rounded-xl border border-border overflow-hidden">
-          <table className="w-full">
-            <thead>
-              <tr className="border-b border-border bg-secondary/30">
-                <th className="text-left p-4 font-medium text-sm">Название</th>
-                <th className="text-left p-4 font-medium text-sm hidden md:table-cell">ИНН</th>
-                <th className="text-left p-4 font-medium text-sm hidden sm:table-cell">КПП</th>
-                <th className="text-left p-4 font-medium text-sm">Учеников</th>
-                <th className="text-left p-4 font-medium text-sm hidden lg:table-cell">Директор</th>
-                <th className="w-10"></th>
-              </tr>
-            </thead>
-            <tbody>
-              {cm.filteredCompanies.map((company) => (
-                <tr key={company.id} className="border-b border-border last:border-0 hover:bg-secondary/30 cursor-pointer transition-colors" onClick={() => dm.openCompanyDetail(company)}>
-                  <td className="p-4">
-                    <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0"><Building2 className="w-4 h-4 text-primary" /></div>
-                      <span className="font-medium line-clamp-1">{company.name}</span>
+              <CardContent className="p-8 pt-6">
+                <div className="grid sm:grid-cols-2 gap-4 mb-8">
+                  {[
+                    { icon: FileText, title: "База заказчиков", desc: "Ведите реестр компаний с реквизитами, ИНН, КПП и адресами — данные подтягиваются автоматически" },
+                    { icon: FileText, title: "Договоры, счета и акты", desc: "Автоматическое формирование документов по шаблонам с реквизитами компании" },
+                    { icon: CreditCard, title: "Контроль оплат", desc: "Отслеживание оплат и задолженностей в реальном времени с наглядной аналитикой" },
+                    { icon: Users, title: "Личный кабинет компании", desc: "Каждая компания получает свой кабинет с доступом к обучению сотрудников" },
+                    { icon: Upload, title: "Массовое зачисление", desc: "Загружайте списки сотрудников из Excel и зачисляйте на курсы в один клик" },
+                    { icon: RefreshCw, title: "Контроль переобучения", desc: "Планы обучения и автоматические напоминания о сроках переаттестации" },
+                  ].map((feature, i) => (
+                    <div key={i} className="flex gap-3 p-3 rounded-lg hover:bg-muted/50 transition-colors">
+                      <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                        <feature.icon className="w-4 h-4 text-primary" />
+                      </div>
+                      <div>
+                        <p className="font-medium text-sm">{feature.title}</p>
+                        <p className="text-xs text-muted-foreground mt-0.5">{feature.desc}</p>
+                      </div>
                     </div>
-                  </td>
-                  <td className="p-4 text-muted-foreground hidden md:table-cell">{company.inn || '—'}</td>
-                  <td className="p-4 text-muted-foreground hidden sm:table-cell">{company.kpp || '—'}</td>
-                  <td className="p-4"><div className="flex items-center gap-1 text-muted-foreground"><Users className="w-3 h-3" />{company.studentsCount}</div></td>
-                  <td className="p-4 text-muted-foreground hidden lg:table-cell line-clamp-1">{company.director || '—'}</td>
-                  <td className="p-4"><ChevronRight className="w-4 h-4 text-muted-foreground" /></td>
-                </tr>
+                  ))}
+                </div>
+                <Button size="lg" className="w-full sm:w-auto" onClick={() => cm.setShowCreateDialog(true)}>
+                  <Plus className="w-4 h-4 mr-2" />
+                  Добавить первую компанию
+                </Button>
+              </CardContent>
+            </Card>
+
+            {/* Stats below onboarding */}
+            <StatsGrid cm={cm} />
+          </>
+        )
+      ) : (
+        <>
+          {/* Stats above company list */}
+          <StatsGrid cm={cm} />
+
+          {lg.viewMode === 'grid' ? (
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+              {cm.filteredCompanies.map((company) => (
+                <button key={company.id} className="bg-card rounded-xl p-5 border border-border hover:border-primary/50 transition-all text-left group" onClick={() => dm.openCompanyDetail(company)}>
+                  <div className="flex items-start justify-between mb-3">
+                    <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center"><Building2 className="w-6 h-6 text-primary" /></div>
+                    <ChevronRight className="w-5 h-5 text-muted-foreground group-hover:text-primary transition-colors" />
+                  </div>
+                  <h3 className="font-semibold text-lg line-clamp-1">{company.name}</h3>
+                  <div className="text-sm text-muted-foreground mt-1 space-y-1">
+                    {company.inn && <div>ИНН: {company.inn}</div>}
+                    <div className="flex items-center gap-1"><Users className="w-3 h-3" />{company.studentsCount} учеников</div>
+                  </div>
+                </button>
               ))}
-            </tbody>
-          </table>
-        </div>
+            </div>
+          ) : (
+            <div className="bg-card rounded-xl border border-border overflow-hidden">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-border bg-secondary/30">
+                    <th className="text-left p-4 font-medium text-sm">Название</th>
+                    <th className="text-left p-4 font-medium text-sm hidden md:table-cell">ИНН</th>
+                    <th className="text-left p-4 font-medium text-sm hidden sm:table-cell">КПП</th>
+                    <th className="text-left p-4 font-medium text-sm">Учеников</th>
+                    <th className="text-left p-4 font-medium text-sm hidden lg:table-cell">Директор</th>
+                    <th className="w-10"></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {cm.filteredCompanies.map((company) => (
+                    <tr key={company.id} className="border-b border-border last:border-0 hover:bg-secondary/30 cursor-pointer transition-colors" onClick={() => dm.openCompanyDetail(company)}>
+                      <td className="p-4">
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0"><Building2 className="w-4 h-4 text-primary" /></div>
+                          <span className="font-medium line-clamp-1">{company.name}</span>
+                        </div>
+                      </td>
+                      <td className="p-4 text-muted-foreground hidden md:table-cell">{company.inn || '—'}</td>
+                      <td className="p-4 text-muted-foreground hidden sm:table-cell">{company.kpp || '—'}</td>
+                      <td className="p-4"><div className="flex items-center gap-1 text-muted-foreground"><Users className="w-3 h-3" />{company.studentsCount}</div></td>
+                      <td className="p-4 text-muted-foreground hidden lg:table-cell line-clamp-1">{company.director || '—'}</td>
+                      <td className="p-4"><ChevronRight className="w-4 h-4 text-muted-foreground" /></td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </>
       )}
 
       {/* Dialogs */}
