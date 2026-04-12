@@ -1151,6 +1151,7 @@ export type Database = {
         Row: {
           accent_color: string | null
           allow_video_seek: boolean
+          catalog_order: number
           category_id: string | null
           completion_notify_emails: string | null
           cover_image_url: string | null
@@ -1187,6 +1188,7 @@ export type Database = {
         Insert: {
           accent_color?: string | null
           allow_video_seek?: boolean
+          catalog_order?: number
           category_id?: string | null
           completion_notify_emails?: string | null
           cover_image_url?: string | null
@@ -1223,6 +1225,7 @@ export type Database = {
         Update: {
           accent_color?: string | null
           allow_video_seek?: boolean
+          catalog_order?: number
           category_id?: string | null
           completion_notify_emails?: string | null
           cover_image_url?: string | null
