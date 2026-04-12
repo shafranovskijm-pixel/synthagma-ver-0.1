@@ -11,7 +11,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { ArrowLeft, User, Bell, Handshake, Save, Eye, EyeOff, Settings } from "lucide-react";
 import { toast } from "sonner";
 import { PartnerCabinet } from "@/components/organization/PartnerCabinet";
-import { SettingsTab } from "@/components/organization/tabs/SettingsTab";
+
 
 interface ProfileData {
   full_name: string;
