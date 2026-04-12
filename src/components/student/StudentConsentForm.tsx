@@ -97,8 +97,8 @@ export function StudentConsentForm({
   const [showHistory, setShowHistory] = useState(false);
 
   useEffect(() => {
-    if ((isOpen || embedded) && organizationId) {
-      loadOrganization();
+    if ((isOpen || embedded)) {
+      if (organizationId) loadOrganization();
       loadConsentHistory();
     }
   }, [isOpen, embedded, organizationId, userId]);
@@ -122,12 +122,17 @@ export function StudentConsentForm({
   const loadConsentHistory = async () => {
     setIsLoadingHistory(true);
     try {
-      const { data, error } = await supabase
+      const query = supabase
         .from("student_consents")
         .select("*")
         .eq("user_id", userId)
-        .eq("organization_id", organizationId)
         .order("created_at", { ascending: false });
+      
+      if (organizationId) {
+        query.eq("organization_id", organizationId);
+      }
+
+      const { data, error } = await query;
 
       if (error) throw error;
 
@@ -158,7 +163,7 @@ export function StudentConsentForm({
         .from("student_consents")
         .insert({
           user_id: userId,
-          organization_id: organizationId,
+          organization_id: organizationId || null,
           enrollment_id: enrollmentId || null,
           consent_type: "individual",
           status: "signed",

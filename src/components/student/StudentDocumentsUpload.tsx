@@ -142,12 +142,17 @@ export function StudentDocumentsUpload({
   const loadDocuments = async () => {
     setIsLoading(true);
     try {
-      const { data, error } = await supabase
+      const query = supabase
         .from("student_identity_documents")
         .select("*")
         .eq("user_id", userId)
-        .eq("organization_id", organizationId)
         .order("created_at", { ascending: false });
+      
+      if (organizationId) {
+        query.eq("organization_id", organizationId);
+      }
+
+      const { data, error } = await query;
 
       if (error) throw error;
       setDocuments(data || []);
@@ -191,7 +196,7 @@ export function StudentDocumentsUpload({
         .from("student_identity_documents")
         .insert({
           user_id: userId,
-          organization_id: organizationId,
+          organization_id: organizationId || null,
           type: selectedDocType,
           name: docInfo?.label || file.name,
           file_url: fileName,
