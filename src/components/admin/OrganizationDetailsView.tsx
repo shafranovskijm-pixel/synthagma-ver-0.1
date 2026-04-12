@@ -1704,7 +1704,6 @@ export function OrganizationDetailsView({ organization, onBack }: OrganizationDe
                   })}
                 </div>
               </div>
-              </div>
 
               <Button onClick={saveTariffSettings} disabled={isSavingTariff} className="gap-2">
                 {isSavingTariff ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
