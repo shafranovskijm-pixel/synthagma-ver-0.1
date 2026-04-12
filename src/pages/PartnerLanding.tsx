@@ -457,7 +457,8 @@ const PartnerLanding = () => {
                 ].map((file, i) => (
                   <a
                     key={i}
-                    href="#"
+                    href={file.href}
+                    download
                     className="flex items-center gap-3 p-4 rounded-xl border border-white/[0.06] bg-white/[0.03] hover:bg-white/[0.06] hover:border-teal-500/20 transition-all group"
                   >
                     <Badge className={`${file.color} border-0 text-xs font-bold px-2 py-0.5`}>{file.type}</Badge>
