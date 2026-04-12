@@ -49,7 +49,6 @@ export function WebinarsManager({ organizationId }: Props) {
   const [deleteTarget, setDeleteTarget] = useState<Webinar | null>(null);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [embedWebinar, setEmbedWebinar] = useState<Webinar | null>(null);
-  const [playerSettingsWebinar, setPlayerSettingsWebinar] = useState<Webinar | null>(null);
   const [statusFilter, setStatusFilter] = useState("all");
   const [search, setSearch] = useState("");
 
