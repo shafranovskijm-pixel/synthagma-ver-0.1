@@ -150,7 +150,54 @@ export function SkillspaceBatchImportDialog({
     setError(null);
     setBatchId(null);
     setJobs([]);
+    setReparsingJobId(null);
     onOpenChange(false);
+  };
+
+  const handleReparseContent = async (job: ImportJob) => {
+    if (!job.result?.courseId || !job.url) return;
+    setReparsingJobId(job.id);
+    try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const accessToken = sessionData?.session?.access_token;
+      if (!accessToken) return;
+
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+
+      const response = await fetch(
+        `${supabaseUrl}/functions/v1/parse-skillspace-course`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${accessToken}`,
+            apikey: supabaseKey,
+          },
+          body: JSON.stringify({
+            url: job.url,
+            login,
+            password,
+            organizationId,
+            existingCourseId: job.result.courseId,
+          }),
+        }
+      );
+
+      const data = await response.json();
+      if (data.success) {
+        // Update the job result in state
+        setJobs(prev => prev.map(j => 
+          j.id === job.id 
+            ? { ...j, result: { ...j.result, lessonsUpdated: data.lessonsUpdated, lessonsWithContent: data.lessonsWithContent, reparseSuccess: true } }
+            : j
+        ));
+      }
+    } catch (err) {
+      console.error("Reparse error:", err);
+    } finally {
+      setReparsingJobId(null);
+    }
   };
 
   const doneCount = jobs.filter((j) => j.status === "done").length;
