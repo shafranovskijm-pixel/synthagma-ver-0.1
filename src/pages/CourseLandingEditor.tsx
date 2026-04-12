@@ -39,6 +39,10 @@ interface LandingData {
   learn: { title: string; description: string; items: LearnItem[] };
   process: { title: string; content: string };
   benefits: BenefitItem[];
+  teachers: { title: string; description: string; items: TeacherItem[] };
+  reviews: { title: string; items: ReviewItem[] };
+  pricing: { title: string; tiers: PricingTier[] };
+  faq: { title: string; items: FaqItem[] };
   cta: { title: string; subtitle: string };
   sections_order: string[];
   sections_hidden: string[];
