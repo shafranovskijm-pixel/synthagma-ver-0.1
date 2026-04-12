@@ -223,7 +223,10 @@ function DirectVideoBlock({ url }: { url: string }) {
   if (!activated) {
     return (
       <LazyMediaPreview type="video">
-        <DirectVideoBlock url={url} />
+        {/* This dummy div triggers activation via LazyMediaPreview */}
+        <div className="aspect-video not-prose">
+          <video src={url} controls preload="none" className="w-full h-full rounded-lg bg-black" controlsList="nodownload" />
+        </div>
       </LazyMediaPreview>
     );
   }
