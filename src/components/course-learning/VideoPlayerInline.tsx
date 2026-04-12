@@ -154,6 +154,22 @@ export const VideoPlayerInline = ({
 
   if (!content) return null;
 
+  // Kinescope video
+  const kinescopeMatch = content.match(/^kinescope:(.+)/) || content.match(/kinescope\.io\/embed\/([a-zA-Z0-9-]+)/);
+  if (kinescopeMatch) {
+    const videoId = kinescopeMatch[1];
+    return (
+      <div className="aspect-video w-full rounded-2xl overflow-hidden bg-black">
+        <iframe
+          src={`https://kinescope.io/embed/${videoId}`}
+          className="w-full h-full"
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
+          allowFullScreen
+        />
+      </div>
+    );
+  }
+
   // If it's a full iframe embed code
   if (isIframeEmbed(content)) {
     const iframeSrc = content.match(/<iframe[^>]*src=["']([^"']+)["']/i)?.[1];
