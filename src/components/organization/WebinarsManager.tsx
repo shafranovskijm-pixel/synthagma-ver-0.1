@@ -1,11 +1,14 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
-import { Plus, Radio, Video, Calendar, Users, Copy, ExternalLink, Square, Loader2, Trash2, RefreshCw } from "lucide-react";
+import { Plus, Radio, Video, Calendar, Users, Copy, ExternalLink, Square, Loader2, Trash2, RefreshCw, Pencil, CopyPlus, Link, Search, Clock } from "lucide-react";
 import { CreateWebinarDialog } from "./CreateWebinarDialog";
 import { WebinarParticipantsDialog } from "./WebinarParticipantsDialog";
 import { format } from "date-fns";
@@ -27,6 +30,7 @@ interface Webinar {
   rtmp_url: string | null;
   rtmp_key: string | null;
   cover_url: string | null;
+  course_id: string | null;
   created_at: string;
 }
 
@@ -39,9 +43,13 @@ export function WebinarsManager({ organizationId }: Props) {
   const [webinars, setWebinars] = useState<Webinar[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreate, setShowCreate] = useState(false);
+  const [editWebinar, setEditWebinar] = useState<Webinar | null>(null);
   const [participantsWebinar, setParticipantsWebinar] = useState<Webinar | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Webinar | null>(null);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [embedWebinar, setEmbedWebinar] = useState<Webinar | null>(null);
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [search, setSearch] = useState("");
 
   const fetchWebinars = useCallback(async () => {
     const { data } = await supabase
@@ -55,16 +63,32 @@ export function WebinarsManager({ organizationId }: Props) {
 
   useEffect(() => { fetchWebinars(); }, [fetchWebinars]);
 
+  const filteredWebinars = useMemo(() => {
+    let result = webinars;
+    if (statusFilter !== "all") {
+      result = result.filter((w) => w.status === statusFilter);
+    }
+    if (search.trim()) {
+      const q = search.toLowerCase();
+      result = result.filter((w) => w.title.toLowerCase().includes(q));
+    }
+    return result;
+  }, [webinars, statusFilter, search]);
+
+  const isSoon = (w: Webinar) => {
+    if (!w.scheduled_at || w.status !== "planned") return false;
+    const diff = new Date(w.scheduled_at).getTime() - Date.now();
+    return diff > 0 && diff < 24 * 60 * 60 * 1000;
+  };
+
   const handleStopLive = async (w: Webinar) => {
     if (!w.kinescope_live_id) return;
     setActionLoading(w.id);
     try {
-      const { data } = await supabase.functions.invoke("kinescope-proxy", {
+      await supabase.functions.invoke("kinescope-proxy", {
         body: { action: "stop_live", live_id: w.kinescope_live_id },
       });
       await supabase.from("webinars").update({ status: "ended" } as any).eq("id", w.id);
-      
-      // Try to get recording
       const { data: liveData } = await supabase.functions.invoke("kinescope-proxy", {
         body: { action: "get_live", live_id: w.kinescope_live_id },
       });
@@ -120,17 +144,63 @@ export function WebinarsManager({ organizationId }: Props) {
     }
   };
 
+  const handleDuplicate = async (w: Webinar) => {
+    setActionLoading(w.id);
+    try {
+      const newData: Record<string, unknown> = {
+        organization_id: organizationId,
+        title: `${w.title} (копия)`,
+        description: w.description,
+        duration_minutes: w.duration_minutes,
+        source_type: w.source_type,
+        status: "planned",
+        created_by: user?.id,
+        cover_url: w.cover_url,
+        course_id: w.course_id,
+        external_url: w.external_url,
+        embed_url: w.source_type === "external" ? w.external_url : null,
+      };
+      const { error } = await supabase.from("webinars").insert(newData as any);
+      if (error) throw error;
+      toast.success("Вебинар дублирован");
+      fetchWebinars();
+    } catch (e: any) {
+      toast.error(e.message || "Ошибка дублирования");
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const copyWebinarLink = (w: Webinar) => {
+    const link = w.embed_url || w.external_url;
+    if (link) {
+      navigator.clipboard.writeText(link);
+      toast.success("Ссылка скопирована");
+    } else {
+      toast.info("Ссылка не задана");
+    }
+  };
+
   const copyToClipboard = (text: string, label: string) => {
     navigator.clipboard.writeText(text);
     toast.success(`${label} скопирован`);
   };
 
-  const statusBadge = (status: string) => {
-    switch (status) {
+  const statusBadge = (w: Webinar) => {
+    if (isSoon(w)) {
+      return <Badge className="bg-amber-500 text-white"><Clock className="w-3 h-3 mr-1" />Скоро</Badge>;
+    }
+    switch (w.status) {
       case "live": return <Badge className="bg-destructive text-destructive-foreground animate-pulse"><Radio className="w-3 h-3 mr-1" />В эфире</Badge>;
       case "ended": return <Badge variant="secondary">Завершён</Badge>;
       default: return <Badge variant="outline"><Calendar className="w-3 h-3 mr-1" />Запланирован</Badge>;
     }
+  };
+
+  const getEmbedUrl = (w: Webinar) => {
+    if (w.kinescope_video_id) return `https://kinescope.io/embed/${w.kinescope_video_id}`;
+    if (w.embed_url) return w.embed_url;
+    return null;
   };
 
   if (loading) {
@@ -141,30 +211,54 @@ export function WebinarsManager({ organizationId }: Props) {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h3 className="text-lg font-semibold">Вебинары</h3>
-        <Button onClick={() => setShowCreate(true)} size="sm">
+        <Button onClick={() => { setEditWebinar(null); setShowCreate(true); }} size="sm">
           <Plus className="w-4 h-4 mr-2" />Создать вебинар
         </Button>
       </div>
 
-      {webinars.length === 0 ? (
+      {webinars.length > 0 && (
+        <div className="flex flex-col sm:flex-row gap-3">
+          <Tabs value={statusFilter} onValueChange={setStatusFilter}>
+            <TabsList>
+              <TabsTrigger value="all">Все ({webinars.length})</TabsTrigger>
+              <TabsTrigger value="planned">Запланированные</TabsTrigger>
+              <TabsTrigger value="live">В эфире</TabsTrigger>
+              <TabsTrigger value="ended">Завершённые</TabsTrigger>
+            </TabsList>
+          </Tabs>
+          <div className="relative flex-1 max-w-xs">
+            <Search className="absolute left-2.5 top-2.5 w-4 h-4 text-muted-foreground" />
+            <Input placeholder="Поиск по названию..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9" />
+          </div>
+        </div>
+      )}
+
+      {filteredWebinars.length === 0 ? (
         <div className="text-center py-16 text-muted-foreground">
           <Video className="w-12 h-12 mx-auto mb-4 opacity-40" />
-          <p className="text-lg font-medium">Нет вебинаров</p>
-          <p className="text-sm mb-4">Создайте первый вебинар через Kinescope или добавьте внешнюю ссылку</p>
-          <Button onClick={() => setShowCreate(true)} variant="outline">
-            <Plus className="w-4 h-4 mr-2" />Создать вебинар
-          </Button>
+          <p className="text-lg font-medium">{webinars.length === 0 ? "Нет вебинаров" : "Ничего не найдено"}</p>
+          {webinars.length === 0 && (
+            <>
+              <p className="text-sm mb-4">Создайте первый вебинар через Kinescope или добавьте внешнюю ссылку</p>
+              <Button onClick={() => setShowCreate(true)} variant="outline">
+                <Plus className="w-4 h-4 mr-2" />Создать вебинар
+              </Button>
+            </>
+          )}
         </div>
       ) : (
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-          {webinars.map((w) => (
-            <Card key={w.id} className="p-4 space-y-3">
+          {filteredWebinars.map((w) => (
+            <Card key={w.id} className={`p-4 space-y-3 ${isSoon(w) ? "ring-2 ring-amber-400/50" : ""}`}>
+              {w.cover_url && (
+                <img src={w.cover_url} alt={w.title} className="w-full h-32 object-cover rounded-md" />
+              )}
               <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0">
                   <h4 className="font-medium truncate">{w.title}</h4>
                   {w.description && <p className="text-sm text-muted-foreground line-clamp-2">{w.description}</p>}
                 </div>
-                {statusBadge(w.status)}
+                {statusBadge(w)}
               </div>
 
               <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
@@ -180,7 +274,6 @@ export function WebinarsManager({ organizationId }: Props) {
                 </Badge>
               </div>
 
-              {/* Kinescope RTMP info */}
               {w.source_type === "kinescope" && w.rtmp_url && w.status === "planned" && (
                 <div className="bg-muted/50 rounded-lg p-3 space-y-2 text-xs">
                   <div className="flex items-center justify-between">
@@ -204,7 +297,6 @@ export function WebinarsManager({ organizationId }: Props) {
                 </div>
               )}
 
-              {/* Recording link */}
               {w.kinescope_video_id && (
                 <div className="flex items-center gap-2 text-xs">
                   <Video className="w-3 h-3 text-primary" />
@@ -212,8 +304,7 @@ export function WebinarsManager({ organizationId }: Props) {
                 </div>
               )}
 
-              {/* Actions */}
-              <div className="flex flex-wrap gap-2 pt-1">
+              <div className="flex flex-wrap gap-1.5 pt-1">
                 {w.status === "planned" && w.source_type === "kinescope" && (
                   <Button size="sm" variant="default" onClick={() => handleGoLive(w)} disabled={actionLoading === w.id}>
                     {actionLoading === w.id ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : <Radio className="w-3 h-3 mr-1" />}
@@ -223,30 +314,30 @@ export function WebinarsManager({ organizationId }: Props) {
                 {w.status === "live" && w.source_type === "kinescope" && (
                   <Button size="sm" variant="destructive" onClick={() => handleStopLive(w)} disabled={actionLoading === w.id}>
                     {actionLoading === w.id ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : <Square className="w-3 h-3 mr-1" />}
-                    Остановить
+                    Стоп
                   </Button>
                 )}
                 {w.status === "ended" && w.source_type === "kinescope" && !w.kinescope_video_id && (
                   <Button size="sm" variant="outline" onClick={() => handleRefreshRecording(w)} disabled={actionLoading === w.id}>
-                    <RefreshCw className="w-3 h-3 mr-1" />Проверить запись
+                    <RefreshCw className="w-3 h-3 mr-1" />Запись
                   </Button>
                 )}
-                {w.embed_url && (
-                  <Button size="sm" variant="outline" asChild>
-                    <a href={w.embed_url} target="_blank" rel="noreferrer">
-                      <ExternalLink className="w-3 h-3 mr-1" />Смотреть
-                    </a>
-                  </Button>
-                )}
-                {w.external_url && (
-                  <Button size="sm" variant="outline" asChild>
-                    <a href={w.external_url} target="_blank" rel="noreferrer">
-                      <ExternalLink className="w-3 h-3 mr-1" />Открыть
-                    </a>
+                {getEmbedUrl(w) && (
+                  <Button size="sm" variant="outline" onClick={() => setEmbedWebinar(w)}>
+                    <Video className="w-3 h-3 mr-1" />Смотреть
                   </Button>
                 )}
                 <Button size="sm" variant="outline" onClick={() => setParticipantsWebinar(w)}>
-                  <Users className="w-3 h-3 mr-1" />Участники
+                  <Users className="w-3 h-3 mr-1" />Уч-ки
+                </Button>
+                <Button size="sm" variant="ghost" onClick={() => { setEditWebinar(w); setShowCreate(true); }} title="Редактировать">
+                  <Pencil className="w-3 h-3" />
+                </Button>
+                <Button size="sm" variant="ghost" onClick={() => handleDuplicate(w)} disabled={actionLoading === w.id} title="Дублировать">
+                  <CopyPlus className="w-3 h-3" />
+                </Button>
+                <Button size="sm" variant="ghost" onClick={() => copyWebinarLink(w)} title="Скопировать ссылку">
+                  <Link className="w-3 h-3" />
                 </Button>
                 <Button size="sm" variant="ghost" className="text-destructive" onClick={() => setDeleteTarget(w)}>
                   <Trash2 className="w-3 h-3" />
@@ -259,10 +350,11 @@ export function WebinarsManager({ organizationId }: Props) {
 
       <CreateWebinarDialog
         open={showCreate}
-        onOpenChange={setShowCreate}
+        onOpenChange={(o) => { setShowCreate(o); if (!o) setEditWebinar(null); }}
         organizationId={organizationId}
         userId={user?.id}
         onCreated={fetchWebinars}
+        editWebinar={editWebinar}
       />
 
       {participantsWebinar && (
@@ -273,6 +365,25 @@ export function WebinarsManager({ organizationId }: Props) {
           organizationId={organizationId}
         />
       )}
+
+      {/* Embed player dialog */}
+      <Dialog open={!!embedWebinar} onOpenChange={(o) => !o && setEmbedWebinar(null)}>
+        <DialogContent className="max-w-3xl">
+          <DialogHeader>
+            <DialogTitle>{embedWebinar?.title}</DialogTitle>
+          </DialogHeader>
+          {embedWebinar && getEmbedUrl(embedWebinar) && (
+            <div className="aspect-video w-full">
+              <iframe
+                src={getEmbedUrl(embedWebinar)!}
+                className="w-full h-full rounded-md"
+                allow="autoplay; fullscreen; picture-in-picture; encrypted-media"
+                allowFullScreen
+              />
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
 
       <AlertDialog open={!!deleteTarget} onOpenChange={(o) => !o && setDeleteTarget(null)}>
         <AlertDialogContent>
