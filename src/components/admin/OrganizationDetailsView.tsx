@@ -182,6 +182,13 @@ export function OrganizationDetailsView({ organization, onBack }: OrganizationDe
   const [tariffCustomLabel, setTariffCustomLabel] = useState(organization.tariff_custom_label || "");
   const [tariffPaidUntil, setTariffPaidUntil] = useState(organization.paid_until || "");
   const [isSavingTariff, setIsSavingTariff] = useState(false);
+  const [customLimits, setCustomLimits] = useState({
+    maxCourses: (organization as any).custom_max_courses as number | null,
+    maxStudents: (organization as any).custom_max_students as number | null,
+    maxTrainedPerMonth: (organization as any).custom_max_trained_per_month as number | null,
+    aiGenerationsLimit: (organization as any).custom_ai_generations_limit as number | null,
+    storageLimitBytes: (organization as any).custom_storage_limit_bytes as number | null,
+  });
 
   const planKey = (organization.subscription_plan as SubscriptionPlan) || 'free';
   const planInfo = getPlanInfo(planKey);
