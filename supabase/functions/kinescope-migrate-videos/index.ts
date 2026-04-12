@@ -20,10 +20,16 @@ const isExternalVideoUrl = (content: string): boolean => {
   if (!content) return false;
   if (content.startsWith("kinescope:")) return false;
   if (content.includes("kinescope.io")) return false;
+  // Explicitly exclude ktalk.ru and vkvideo.ru — leave as-is
+  if (content.includes("ktalk.ru")) return false;
+  if (content.includes("vkvideo.ru")) return false;
+  if (content.includes("vk.com/video")) return false;
   // Direct video file or CDN
   if (/\.(mp4|webm|ogg|mov|mkv|m4v)(\?.*)?$/i.test(content)) return true;
   if (content.includes("selcdn.ru")) return true;
   if (content.includes("selstorage.ru")) return true;
+  // Supabase Storage public URLs
+  if (content.includes("supabase.co/storage")) return true;
   return false;
 };
 
