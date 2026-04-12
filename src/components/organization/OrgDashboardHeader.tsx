@@ -34,6 +34,15 @@ export function OrgDashboardHeader() {
   const coverInputRef = useRef<HTMLInputElement>(null);
   const [isGeneratingCover, setIsGeneratingCover] = useState(false);
 
+  const activeTab = d.tabNavigation.activeTab;
+  const organizationName = d.organizationName;
+  const organizationId = d.organizationId;
+  const customName = d.branding.brandingSettings.customName;
+  const customSubtitle = d.branding.brandingSettings.customSubtitle;
+  const logoUrl = d.branding.brandingSettings.logoUrl;
+  const coverUrl = d.branding.brandingSettings.coverUrl;
+  const coverPosition = d.branding.brandingSettings.coverPosition;
+
   const handleGenerateAICover = useCallback(async () => {
     if (!organizationId || isGeneratingCover) return;
     setIsGeneratingCover(true);
@@ -45,7 +54,6 @@ export function OrgDashboardHeader() {
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
       toast.success("Обложка сгенерирована!");
-      // Reload branding
       window.location.reload();
     } catch (e: any) {
       console.error("AI cover generation error:", e);
@@ -54,15 +62,6 @@ export function OrgDashboardHeader() {
       setIsGeneratingCover(false);
     }
   }, [organizationId, isGeneratingCover]);
-
-  const activeTab = d.tabNavigation.activeTab;
-  const organizationName = d.organizationName;
-  const organizationId = d.organizationId;
-  const customName = d.branding.brandingSettings.customName;
-  const customSubtitle = d.branding.brandingSettings.customSubtitle;
-  const logoUrl = d.branding.brandingSettings.logoUrl;
-  const coverUrl = d.branding.brandingSettings.coverUrl;
-  const coverPosition = d.branding.brandingSettings.coverPosition;
 
   // Tariff info
   const [paidUntil, setPaidUntil] = useState<string | null>(null);
