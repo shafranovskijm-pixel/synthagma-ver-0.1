@@ -1,83 +1,90 @@
 
 
-# Fix: SkillSpace parser not importing lesson content for some courses
+# Продающая страница курса с визуальным редактором
 
-## Problem
+## Что будет сделано
 
-The "Школа Целительства" course imported 37 lessons but ALL have empty content ("Пустой урок"). The lesson API returns only ~487 bytes per lesson, while working courses return 15-55KB. This means `pagesPublished` and `pages` are empty in the response.
+Создать полноценный визуальный редактор продающей страницы курса с inline-редактированием и красивый публичный шаблон, доступный по ссылке `/c/:slug` или `/course/:courseId/landing`.
 
-Different SkillSpace schools/courses store content differently. Some embed pages directly in the lesson object, others store them separately and require an additional API call to fetch page content.
+## Структура страницы (шаблон)
 
-## Root Cause
+Фиксированный шаблон из 5 секций, все тексты и изображения редактируемые:
 
-The parser fetches `/api/rest/school/lesson/{uuid}` and expects `pagesPublished` or `pages` to contain content blocks inline. For this course, those fields are empty arrays. The content needs to be fetched from a separate pages endpoint.
+```text
+┌─────────────────────────────────────────┐
+│  HERO: фон-изображение, логотип орг,   │
+│  заголовок, описание, цена, кнопка      │
+│  «Записаться сейчас»                    │
+├─────────────────────────────────────────┤
+│  КОМУ ПОДОЙДЁТ: текст + список          │
+│  целевой аудитории (3-4 пункта)         │
+├─────────────────────────────────────────┤
+│  ПРОГРАММА КУРСА: список уроков         │
+│  (автоматически из lessons)             │
+├─────────────────────────────────────────┤
+│  ПРЕИМУЩЕСТВА: 3-4 карточки с иконками, │
+│  заголовками и описаниями               │
+├─────────────────────────────────────────┤
+│  CTA: финальный блок с кнопкой записи   │
+│  и формой (имя, email, телефон)         │
+└─────────────────────────────────────────┘
+```
 
-## Plan
+## Редактор (новая страница)
 
-### 1. Add fallback page fetching in `parse-skillspace-course/index.ts`
+**Маршрут**: `/course/:courseId/landing-editor`
 
-When `pagesPublished` and `pages` are empty (no blocks found), try these additional endpoints to fetch page content:
+- Визуальный WYSIWYG-просмотр страницы с панелью инструментов сверху
+- Кнопки: «← Редактор курса», название курса, «Опубликовать изменения»
+- Все тексты кликабельны и редактируемы inline (`contentEditable`)
+- Кнопка «Изменить фон секции» для hero — загрузка изображения в Storage
+- Данные сохраняются в `landing_content` JSON поле курса
+- Доступ из CourseEditor через кнопку «Просмотр» или настройки страницы
 
-- `/api/rest/school/lesson/{uuid}/page/list`
-- `/api/rest/school/lesson/{uuid}/page`  
-- `/api/rest/school/step/{id}/page/list`
-- `/api/rest/school/step/{id}/page`
+## Публичная страница
 
-Also log the raw lesson keys and first 500 chars when content is empty for better debugging.
+Переработать `CourseLanding.tsx` — использовать тот же шаблон, но без inline-редактирования. Данные берутся из `landing_content`. Кнопка «Записаться» создаёт enrollment (бесплатный курс) или показывает форму заявки (платный).
 
-### 2. Add raw response logging for empty lessons
+## Технические детали
 
-When a lesson returns ~487 bytes and no blocks are found, log the actual response body (truncated) so we can see the exact data structure SkillSpace returns. This helps diagnose future content extraction issues.
+### Новые файлы
+- `src/pages/CourseLandingEditor.tsx` — страница редактора
+- `src/components/course-landing/LandingHeroSection.tsx` — hero-секция
+- `src/components/course-landing/LandingAudienceSection.tsx` — «Кому подойдёт»
+- `src/components/course-landing/LandingBenefitsSection.tsx` — преимущества
+- `src/components/course-landing/LandingCtaSection.tsx` — CTA с формой
 
-### 3. Try `version: "published"` query parameter
+### Изменяемые файлы
+- `src/pages/CourseLanding.tsx` — полная переработка с красивым шаблоном
+- `src/pages/CourseEditor.tsx` — добавить кнопку перехода в редактор лендинга
+- `src/App.tsx` — добавить маршрут `/course/:courseId/landing-editor`
 
-Some SkillSpace APIs require `?version=published` to return the published content. Add this parameter to the lesson fetch.
-
-### Technical Details
-
-**File**: `supabase/functions/parse-skillspace-course/index.ts`
-
-In the lesson content extraction section (around line 615-655), after failing to find blocks in `pagesPublished`/`pages`/`blocks`, add:
-
-```typescript
-// Fallback: fetch pages separately
-if (jsonBlocks.length === 0) {
-  const pagePaths = [
-    `/api/rest/school/lesson/${lesson.uuid}/page/list`,
-    `/api/rest/school/lesson/${lesson.uuid}/page`,
-    `/api/rest/school/step/${lesson.uuid}/page/list`,
-    `/api/rest/school/step/${lesson.id}/page/list`,
-  ];
-  for (const pagePath of pagePaths) {
-    const pageRes = await apiFetch(pagePath);
-    if (pageRes.ok && pageRes.data) {
-      // Extract blocks from pages response
-      const pagesArray = Array.isArray(pageRes.data) ? pageRes.data : 
-                         pageRes.data.pages || pageRes.data.list || [pageRes.data];
-      for (const page of pagesArray) {
-        const blocks = page.content?.blocks || page.blocks || [];
-        if (blocks.length > 0) {
-          jsonBlocks.push(...editorBlocksToJsonBlocks(blocks));
-        }
-      }
-      if (jsonBlocks.length > 0) {
-        log(`Fallback page fetch success via ${pagePath}: ${jsonBlocks.length} blocks`);
-        break;
-      }
-    }
-  }
-}
-
-// Log raw data when still empty for debugging
-if (jsonBlocks.length === 0) {
-  const rawKeys = Object.keys(lessonData).join(", ");
-  log(`Empty lesson "${lessonTitle}" keys: ${rawKeys}`);
-  // Log pagesPublished structure
-  if (lessonData.pagesPublished) {
-    log(`pagesPublished: ${JSON.stringify(lessonData.pagesPublished).substring(0, 300)}`);
-  }
+### Структура `landing_content` JSON
+```json
+{
+  "hero": {
+    "background_url": "...",
+    "subtitle": "...",
+    "show_price": true
+  },
+  "audience": {
+    "title": "Кому подойдёт этот курс?",
+    "description": "...",
+    "items": ["Руководителям...", "Специалистам..."]
+  },
+  "benefits": [
+    { "icon": "shield", "title": "...", "description": "..." }
+  ],
+  "cta": {
+    "title": "Начните обучение сегодня",
+    "subtitle": "..."
+  },
+  "enrollment_form": { ... },
+  "analytics": { ... },
+  "external_url": "..."
 }
 ```
 
-Also modify `apiFetch` to preserve raw text for small responses (under 2KB) so we can debug the actual response structure when lessons are empty.
+### Хранение изображений
+Фон hero загружается в Supabase Storage bucket `course-assets` (создать если нет).
 
