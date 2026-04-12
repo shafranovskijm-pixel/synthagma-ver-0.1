@@ -42,6 +42,7 @@ export interface CatalogCourse {
   progress?: number;
   completed_lessons?: number;
   status?: "in_progress" | "completed" | "not_enrolled";
+  external_card_url?: string | null;
 }
 
 interface Profile {

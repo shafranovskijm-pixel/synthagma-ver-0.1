@@ -19,6 +19,7 @@ interface CatalogCourse {
   progress?: number;
   completed_lessons?: number;
   status?: "in_progress" | "completed" | "not_enrolled";
+  external_card_url?: string | null;
 }
 
 interface CourseCatalogProps {
@@ -136,7 +137,13 @@ export function CourseCatalog({ courses, categories, onCourseClick }: CourseCata
                     totalLessons={course.total_lessons}
                     completedLessons={course.completed_lessons}
                     status={course.status || "not_enrolled"}
-                    onClick={() => onCourseClick(course.id, !!course.is_enrolled)}
+                    onClick={() => {
+                      if (course.external_card_url && !course.is_enrolled) {
+                        window.open(course.external_card_url, "_blank");
+                      } else {
+                        onCourseClick(course.id, !!course.is_enrolled);
+                      }
+                    }}
                   />
                 ))}
               </div>
