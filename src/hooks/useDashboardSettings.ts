@@ -13,6 +13,7 @@ interface MenuSettings {
   showDocuments: boolean;
   showLibrary: boolean;
   showServices: boolean;
+  showLaborSafety: boolean;
   showCourses?: boolean;
   showCompanies?: boolean;
   showStudents?: boolean;
@@ -29,6 +30,7 @@ const defaultMenuSettings: MenuSettings = {
   showDocuments: false,
   showLibrary: true,
   showServices: true,
+  showLaborSafety: false,
   showCourses: true,
   showCompanies: true,
   showStudents: true,
@@ -48,6 +50,7 @@ function normalizeMenuSettings(raw: Record<string, unknown> | null | undefined):
     showDocuments: raw.showDocuments === true,
     showLibrary: raw.showLibrary !== false,
     showServices: raw.showServices !== false,
+    showLaborSafety: raw.showLaborSafety !== false,
     // Critical items — always true unless explicitly set to false
     showCourses: raw.showCourses !== false,
     showCompanies: raw.showCompanies !== false,
