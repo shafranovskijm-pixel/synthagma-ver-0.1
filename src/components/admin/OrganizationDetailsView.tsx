@@ -220,6 +220,7 @@ export function OrganizationDetailsView({ organization, onBack }: OrganizationDe
         fetchUsage(),
         fetchUsageHistory(),
         fetchCredentials(),
+        fetchBranding(),
       ]);
     } finally {
       setLoading(false);
