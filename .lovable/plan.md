@@ -1,75 +1,45 @@
 
 
-# Интеграция Kinescope: загрузка и воспроизведение видео
+# Исправление скачивания видео вместо воспроизведения
 
-## Что даёт интеграция
+## Причина проблемы
 
-- Загрузка видео любого размера (без лимита 2 ГБ) через Kinescope
-- Профессиональный плеер с DRM-защитой и адаптивным стримингом
-- Видео хранится и раздаётся с CDN Kinescope, не нагружая наше хранилище
+После импорта курсов из SkillSpace видео хранятся как внешние ссылки на CDN (`640800.selcdn.ru`). Обнаружены две проблемы:
+
+1. **MKV-файлы** — браузеры не поддерживают формат MKV нативно. Когда `<video>` тег не может воспроизвести файл, браузер начинает его скачивать. В курсе "Регрессология с детьми" есть несколько `.mkv` файлов.
+
+2. **Опечатка в коде** — в `BlockEditor.tsx` стоит проверка `vid.includes("selstorage.ru")`, но реальный домен CDN — `selcdn.ru`. Из-за этого специальная обработка не срабатывает.
+
+3. **MP4-файлы** с `selcdn.ru` могут отдаваться с заголовком `Content-Disposition: attachment`, что тоже вызывает скачивание.
 
 ## Что будет сделано
 
-### 1. Сохранить API-токен Kinescope
-Добавить секрет `KINESCOPE_API_TOKEN` со значением `eac50162-73a8-4b21-917a-9566b0331c6c`.
+### 1. Исправить BlockEditor.tsx (рендеринг видео-блоков в текстовых уроках)
+- Исправить `selstorage.ru` → `selcdn.ru`
+- Добавить `.mkv`, `.m4v` в regex для распознавания видео-файлов
+- Для MKV-файлов: показывать плеер, но при ошибке воспроизведения — fallback-кнопку "Открыть видео" вместо скачивания
+- Добавить обработку ошибок (`onError`) для `<video>` тега с fallback UI
 
-### 2. Создать Edge-функцию `kinescope-proxy`
-Файл: `supabase/functions/kinescope-proxy/index.ts`
+### 2. Исправить VideoPlayerInline.tsx (плеер видео-уроков)
+- Аналогичное исправление `isDirectVideoFileUrl` — добавить `.mkv`, `.m4v`
+- Добавить `selcdn.ru` в список распознаваемых CDN
 
-Единая серверная функция для работы с Kinescope API (`api.kinescope.io/v1`):
-- **`upload_init`** — инициализирует загрузку через TUS, возвращает `upload_url` для прямой загрузки с клиента
-- **`list_projects`** — получить список проектов Kinescope (для выбора папки)
-- **`get_video`** — получить данные видео (embed-ссылку, статус обработки)
-- **`list_videos`** — список видео в проекте (для медиатеки)
+### 3. Исправить VideoPreviewInline.tsx (превью в конструкторе)
+- Аналогичные изменения для согласованности
 
-API-токен берётся из серверного секрета — клиент его не видит.
-
-### 3. Добавить загрузку через Kinescope в конструкторе курса
-Файл: `src/hooks/useLessonMedia.ts`
-
-Новый метод `handleKinescopeUpload(file)`:
-1. Вызывает `kinescope-proxy` → `upload_init` — получает TUS upload URL
-2. Загружает файл напрямую в Kinescope через TUS с клиента (прогресс-бар работает как обычно)
-3. После завершения сохраняет в `lesson.content` JSON: `{ "type": "kinescope", "videoId": "...", "embedUrl": "..." }`
-
-### 4. Обновить UI видео-урока — выбор способа загрузки
-Файл: `src/components/course-builder/SortableLessonItem.tsx`
-
-В секции видео добавить два варианта:
-- **Kinescope** (рекомендуется) — без ограничений по размеру, профессиональный плеер
-- **На сервер** — текущая загрузка до 2 ГБ (остаётся как запасной вариант)
-
-Выбор через простые табы или кнопки.
-
-### 5. Поддержка Kinescope-плеера при воспроизведении
-Файлы:
-- `src/utils/courseBuilderHelpers.ts` — добавить распознавание Kinescope URL/embed в `getVideoEmbedUrl`
-- `src/components/course-builder/VideoPreviewInline.tsx` — рендерить Kinescope iframe для превью
-- `src/components/course-learning/VideoPlayerInline.tsx` — рендерить Kinescope iframe в обучении
-- `src/pages/CoursePreview.tsx` — аналогичная поддержка
-
-Kinescope embed: `https://kinescope.io/embed/{videoId}` — стандартный iframe.
-
-### 6. Добавить Kinescope в медиатеку
-При открытии MediaLibraryDialog добавить вкладку «Kinescope» — список ранее загруженных видео через `kinescope-proxy` → `list_videos`.
+### 4. Исправить courseBuilderHelpers.ts
+- Обновить `isDirectVideoFileUrl` и `getVideoEmbedUrl` с учётом MKV и selcdn.ru
 
 ## Технические детали
 
-- Загрузка идёт напрямую с браузера пользователя на `uploader.kinescope.io` через TUS — Edge-функция только инициирует сессию
-- Kinescope видео сохраняется как `kinescope:{videoId}` в поле `content` урока
-- Все существующие видео (загруженные на сервер или по ссылке) продолжают работать без изменений
-- Формат хранения обратно совместим — старые уроки не затрагиваются
+- MKV в браузерах: Chromium иногда поддерживает MKV с кодеками VP8/VP9, но не с H.264 внутри MKV-контейнера. Надёжного решения на клиенте нет — нужен серверный перекод или fallback.
+- Для MKV-файлов будет показываться `<video>` с обработкой `onError`: если браузер не может воспроизвести, покажем кнопку "Открыть видео в новой вкладке" — это лучше, чем автоматическое скачивание.
+- Для MP4 с внешних CDN добавим `crossOrigin` атрибут при необходимости.
 
 ## Файлы
 
-- Секрет: `KINESCOPE_API_TOKEN`
-- Новый: `supabase/functions/kinescope-proxy/index.ts`
-- Редактировать: `src/hooks/useLessonMedia.ts`
-- Редактировать: `src/components/course-builder/SortableLessonItem.tsx`
-- Редактировать: `src/utils/courseBuilderHelpers.ts`
-- Редактировать: `src/components/course-builder/VideoPreviewInline.tsx`
-- Редактировать: `src/components/course-learning/VideoPlayerInline.tsx`
-- Редактировать: `src/pages/CoursePreview.tsx`
-
-Без миграций БД.
+- `src/components/course-builder/BlockEditor.tsx` — исправить regex и домен, добавить error fallback
+- `src/components/course-learning/VideoPlayerInline.tsx` — добавить поддержку MKV/selcdn
+- `src/components/course-builder/VideoPreviewInline.tsx` — аналогично
+- `src/utils/courseBuilderHelpers.ts` — обновить хелперы
 
