@@ -2,6 +2,7 @@ import { useState, useCallback, useEffect, useRef } from "react";
 import DOMPurify from "dompurify";
 import { checkAiLimitGlobal, incrementAiLimitGlobal } from "@/hooks/useAiGenerationLimit";
 import { safeInvoke } from "@/utils/safeInvoke";
+import { LazyMediaPreview } from "@/components/course-builder/LazyMediaPreview";
 import {
   Plus,
   GripVertical,
@@ -216,7 +217,7 @@ const createBlock = (type: BlockType): ContentBlock => ({
   ...(type === "document" && { documentUrl: "", documentName: "" }),
 });
 
-function DirectVideoBlock({ url }: { url: string }) {
+function DirectVideoBlockInner({ url }: { url: string }) {
   const [error, setError] = useState(false);
   if (error) {
     return (
@@ -232,9 +233,17 @@ function DirectVideoBlock({ url }: { url: string }) {
   }
   return (
     <div className="aspect-video not-prose">
-      <video src={url} controls className="w-full h-full rounded-lg bg-black" controlsList="nodownload"
+      <video src={url} controls preload="none" className="w-full h-full rounded-lg bg-black" controlsList="nodownload"
         onError={() => setError(true)} />
     </div>
+  );
+}
+
+function DirectVideoBlock({ url }: { url: string }) {
+  return (
+    <LazyMediaPreview type="video">
+      <DirectVideoBlockInner url={url} />
+    </LazyMediaPreview>
   );
 }
 
@@ -1401,32 +1410,34 @@ function VideoBlock({ block, onUpdate }: { block: ContentBlock; onUpdate: (updat
     <div className="py-2">
       {hasValidEmbed ? (
         <div className="space-y-2">
-          <div className="relative group/video aspect-video bg-black rounded-lg overflow-hidden">
-            {embedResult.type === 'iframe' ? (
-              <div 
-                className="w-full h-full [&>iframe]:w-full [&>iframe]:h-full [&>iframe]:border-0"
-                dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(embedResult.value || '', {
-                  ALLOWED_TAGS: ['iframe'],
-                  ALLOWED_ATTR: ['src', 'width', 'height', 'frameborder', 'allow', 'allowfullscreen', 'title', 'referrerpolicy'],
-                }) }}
-              />
-            ) : (
-              <iframe 
-                src={embedResult.value || ''} 
-                className="w-full h-full border-0" 
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" 
-                allowFullScreen 
-              />
-            )}
-            <Button 
-              variant="secondary" 
-              size="sm" 
-              className="absolute top-2 right-2 opacity-0 group-hover/video:opacity-100" 
-              onClick={() => onUpdate({ videoUrl: "" })}
-            >
-              Удалить
-            </Button>
-          </div>
+          <LazyMediaPreview type="iframe">
+            <div className="relative group/video aspect-video bg-black rounded-lg overflow-hidden">
+              {embedResult.type === 'iframe' ? (
+                <div 
+                  className="w-full h-full [&>iframe]:w-full [&>iframe]:h-full [&>iframe]:border-0"
+                  dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(embedResult.value || '', {
+                    ALLOWED_TAGS: ['iframe'],
+                    ALLOWED_ATTR: ['src', 'width', 'height', 'frameborder', 'allow', 'allowfullscreen', 'title', 'referrerpolicy'],
+                  }) }}
+                />
+              ) : (
+                <iframe 
+                  src={embedResult.value || ''} 
+                  className="w-full h-full border-0" 
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" 
+                  allowFullScreen 
+                />
+              )}
+              <Button 
+                variant="secondary" 
+                size="sm" 
+                className="absolute top-2 right-2 opacity-0 group-hover/video:opacity-100" 
+                onClick={() => onUpdate({ videoUrl: "" })}
+              >
+                Удалить
+              </Button>
+            </div>
+          </LazyMediaPreview>
         </div>
       ) : (
         <div className="bg-muted rounded-xl p-6 space-y-4">
@@ -1512,7 +1523,9 @@ function AudioBlock({ block, onUpdate }: { block: ContentBlock; onUpdate: (updat
     <div className="py-2">
       {audioUrl ? (
         <div className="space-y-2">
-          <audio controls preload="none" src={audioUrl} className="w-full rounded-lg" />
+          <LazyMediaPreview type="audio">
+            <audio controls preload="none" src={audioUrl} className="w-full rounded-lg" />
+          </LazyMediaPreview>
           <div className="flex gap-2">
             <Input value={audioUrl} onChange={(e) => onUpdate({ audioUrl: e.target.value })} className="text-xs flex-1" />
             <Button variant="ghost" size="sm" onClick={() => onUpdate({ audioUrl: "" })}>
@@ -1601,15 +1614,17 @@ function DocumentBlock({ block, onUpdate }: { block: ContentBlock; onUpdate: (up
               </Button>
             </div>
           </div>
-          <div className="aspect-[4/3]">
-            <iframe
-              src={isPdf
-                ? `https://docs.google.com/gview?url=${encodeURIComponent(documentUrl)}&embedded=true`
-                : `https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(documentUrl)}`
-              }
-              className="w-full h-full border-0"
-            />
-          </div>
+          <LazyMediaPreview type="document" className="aspect-[4/3]">
+            <div className="aspect-[4/3]">
+              <iframe
+                src={isPdf
+                  ? `https://docs.google.com/gview?url=${encodeURIComponent(documentUrl)}&embedded=true`
+                  : `https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(documentUrl)}`
+                }
+                className="w-full h-full border-0"
+              />
+            </div>
+          </LazyMediaPreview>
         </div>
       ) : (
         <div className="bg-muted rounded-xl p-6 space-y-4">
@@ -2380,9 +2395,11 @@ function RenderBlock({ block, quizAnswer, quizSubmitted, onQuizAnswer, onQuizSub
             <span className="font-medium text-sm truncate flex-1">{block.documentName || 'Документ'}</span>
             <a href={block.documentUrl} target="_blank" rel="noopener noreferrer" className="text-xs text-indigo-500 hover:underline">Скачать</a>
           </div>
-          <div className="aspect-[4/3]">
-            <iframe src={previewUrl} className="w-full h-full border-0" />
-          </div>
+          <LazyMediaPreview type="document" className="aspect-[4/3]">
+            <div className="aspect-[4/3]">
+              <iframe src={previewUrl} className="w-full h-full border-0" />
+            </div>
+          </LazyMediaPreview>
         </div>
       );
     case "quiz":
@@ -2417,16 +2434,16 @@ function RenderBlock({ block, quizAnswer, quizSubmitted, onQuizAnswer, onQuizSub
       }
       // YouTube
       const ytId = vid.match(/(?:youtube\.com\/(?:watch\?v=|embed\/)|youtu\.be\/)([a-zA-Z0-9_-]+)/)?.[1];
-      if (ytId) return <div className="aspect-video not-prose"><iframe src={`https://www.youtube.com/embed/${ytId}`} className="w-full h-full rounded-lg" allowFullScreen /></div>;
+      if (ytId) return <LazyMediaPreview type="iframe"><div className="aspect-video not-prose"><iframe src={`https://www.youtube.com/embed/${ytId}`} className="w-full h-full rounded-lg" allowFullScreen /></div></LazyMediaPreview>;
       // Vimeo
       const vimeoId = vid.match(/vimeo\.com\/(\d+)/)?.[1];
-      if (vimeoId) return <div className="aspect-video not-prose"><iframe src={`https://player.vimeo.com/video/${vimeoId}`} className="w-full h-full rounded-lg" allowFullScreen /></div>;
+      if (vimeoId) return <LazyMediaPreview type="iframe"><div className="aspect-video not-prose"><iframe src={`https://player.vimeo.com/video/${vimeoId}`} className="w-full h-full rounded-lg" allowFullScreen /></div></LazyMediaPreview>;
       // Rutube
       const rutubeId = vid.match(/rutube\.ru\/video\/([a-zA-Z0-9]+)/)?.[1];
-      if (rutubeId) return <div className="aspect-video not-prose"><iframe src={`https://rutube.ru/play/embed/${rutubeId}`} className="w-full h-full rounded-lg" allowFullScreen /></div>;
+      if (rutubeId) return <LazyMediaPreview type="iframe"><div className="aspect-video not-prose"><iframe src={`https://rutube.ru/play/embed/${rutubeId}`} className="w-full h-full rounded-lg" allowFullScreen /></div></LazyMediaPreview>;
       // Iframe embed
       if (vid.includes("<iframe")) {
-        return <div className="aspect-video not-prose [&>iframe]:w-full [&>iframe]:h-full [&>iframe]:border-0" dangerouslySetInnerHTML={{ __html: vid }} />;
+        return <LazyMediaPreview type="iframe"><div className="aspect-video not-prose [&>iframe]:w-full [&>iframe]:h-full [&>iframe]:border-0" dangerouslySetInnerHTML={{ __html: vid }} /></LazyMediaPreview>;
       }
       // Fallback: try as direct video
       if (vid.startsWith("http")) {

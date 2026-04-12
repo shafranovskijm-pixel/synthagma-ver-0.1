@@ -28,6 +28,7 @@ import {
   lessonIcons, lessonColors,
 } from "@/components/course-builder/LessonTypeConfig";
 import { VideoPreviewInline } from "@/components/course-builder/VideoPreviewInline";
+import { LazyMediaPreview } from "@/components/course-builder/LazyMediaPreview";
 import { SliderLessonEditor } from "@/components/course-builder/SliderLessonEditor";
 import { LessonAttachments } from "@/components/course-builder/LessonAttachments";
 import { TestAnswersDialog } from "@/components/course-builder/TestAnswersDialog";
@@ -312,7 +313,9 @@ export function SortableLessonItem({
                     </div>
                   ) : lesson.content.includes('supabase') || lesson.content.includes('.mp4') || lesson.content.includes('.webm') || lesson.content.includes('.mov') ? (
                     <div className="relative">
-                      <video controls preload="none" className="w-full rounded-xl border border-border" src={lesson.content}>Ваш браузер не поддерживает видео.</video>
+                      <LazyMediaPreview type="video">
+                        <video controls preload="none" className="w-full rounded-xl border border-border" src={lesson.content}>Ваш браузер не поддерживает видео.</video>
+                      </LazyMediaPreview>
                       <Button variant="ghost" size="sm" className="absolute top-2 right-2 h-8 text-destructive hover:text-destructive bg-background/80 backdrop-blur-sm" onClick={() => onUpdate({ content: '' })}><Trash2 className="w-4 h-4" /></Button>
                     </div>
                   ) : <VideoPreviewInline content={lesson.content} />}
@@ -344,7 +347,9 @@ export function SortableLessonItem({
                 }} />
               </div>
               {lesson.content && lesson.content.startsWith('http') && (
-                <audio controls preload="none" className="w-full mt-2"><source src={lesson.content} type="audio/mpeg" /><source src={lesson.content} type="audio/wav" /><source src={lesson.content} type="audio/ogg" /></audio>
+                <LazyMediaPreview type="audio">
+                  <audio controls preload="none" className="w-full mt-2"><source src={lesson.content} type="audio/mpeg" /><source src={lesson.content} type="audio/wav" /><source src={lesson.content} type="audio/ogg" /></audio>
+                </LazyMediaPreview>
               )}
             </div>
           )}
