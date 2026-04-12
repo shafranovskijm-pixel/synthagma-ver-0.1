@@ -27,6 +27,7 @@ import { CourseCatalog } from "@/components/student/CourseCatalog";
 import { StudentLibrary } from "@/components/student/StudentLibrary";
 import { cn } from "@/lib/utils";
 import { Video } from "lucide-react";
+import { StudentWebinarsList } from "@/components/student/StudentWebinarsList";
 
 function CatalogContent({ catalogCourses, categories, profile, branding, handleCourseClick }: any) {
   const [contentTab, setContentTab] = useState<"courses" | "webinars">("courses");
