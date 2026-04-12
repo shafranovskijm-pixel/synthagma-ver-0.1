@@ -1,38 +1,28 @@
 
 
-## Plan: Fix Admin Custom Limits Not Saving
+## Plan: Companies Page Layout + Button Styling
 
-### Problem
-Two issues prevent setting unlimited (-1) values for students/storage from the admin panel:
+### Changes
 
-1. **`type="number"` input quirk**: Typing `-1` in number inputs is unreliable across browsers — the minus key behavior varies. The value shows as `-1` text rather than `∞`.
-2. **Values not persisting**: The database shows all custom override columns as `null` even after saving. The `as any` cast hides potential update errors.
+**1. Move stats widgets below the onboarding card (`CompaniesManager.tsx`)**
+- Currently the order is: Header → Stats Grid → Search → Companies/Onboarding card
+- New order: Header → Search → Onboarding card (when no companies) → Stats Grid → Companies list
+- When there ARE companies: Header → Search → Stats Grid → Companies list
+- This way stats appear after the onboarding banner but search stays at the top
 
-### Solution
+**2. Button color: use accent/primary instead of foreground (`index.css`)**
+- Change `.btn-gradient` from `bg-foreground text-background` to `bg-primary text-primary-foreground`
+- This makes buttons use the cyan accent color by default
+- Since ThemePersonalization already lets users change `--accent`, and primary maps to the theme color, buttons will follow the configured color
 
-**File: `src/components/admin/OrganizationDetailsView.tsx`**
-
-1. **Replace number inputs with text inputs + toggle buttons**: For each limit field, add a toggle button "∞" (unlimited). Clicking it sets the value to `-1`. The input itself becomes `type="text"` with validation to accept only numbers or empty string.
-
-2. **Display `-1` as "∞"**: When the stored value is `-1`, show the infinity symbol in the input and highlight the unlimited toggle.
-
-3. **Fix the save function**: Remove `as any` cast, ensure the update payload matches the actual column names. Add proper error logging to catch save failures.
-
-4. **Add proper initialization**: When the component loads with existing `-1` values from the database, display them correctly as `∞`.
-
-### Specific changes
-
-- Change all 5 limit inputs from `type="number"` to `type="text"` with numeric validation
-- Add an "∞" toggle button next to each input — clicking sets value to `-1` (unlimited), clicking again clears it
-- When value is `-1`, show "∞" in the input field and disable manual editing
-- Fix `saveTariffSettings` to properly handle the update without `as any`
-- In `useSubscriptionLimits.ts` — verify the fetch query includes all custom columns (already done from previous edit)
+**3. Add button animations (`index.css` + `button.tsx`)**
+- Add hover scale + shadow transition to `.btn-gradient`: `transition-all duration-200 hover:scale-[1.02] hover:shadow-lg`
+- Add subtle press effect: `active:scale-[0.98]`
+- Add a shimmer/shine effect on hover using a CSS pseudo-element gradient sweep
 
 ### Files modified
 | File | What |
 |------|------|
-| `src/components/admin/OrganizationDetailsView.tsx` | Fix inputs to support -1/unlimited, fix save logic |
-
-### No database changes needed
-The columns already exist in the `organizations` table.
+| `src/components/organization/CompaniesManager.tsx` | Reorder: search first, then onboarding/stats |
+| `src/index.css` | Update `.btn-gradient` color to primary + add animations |
 
