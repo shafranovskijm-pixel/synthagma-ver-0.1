@@ -127,6 +127,7 @@ function CoursesEmptyState({ onCreateCourse }: { onCreateCourse: () => void }) {
 
 export const CoursesTab = React.memo(function CoursesTab({ organizationId, onCourseClick, onOpenCourseDetails, onCoursesDeleted }: CoursesTabProps) {
   const navigate = useNavigate();
+  const dashboard = useOrgDashboard();
   const { checkLimit, hasCourseSettings, refetch: refetchLimits } = useSubscriptionLimits(organizationId);
   
   const {
