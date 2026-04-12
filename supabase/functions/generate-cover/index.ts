@@ -23,7 +23,6 @@ serve(async (req) => {
     let context = "";
 
     if (type === "org" && organizationId) {
-      // Fetch org name + all course titles
       const { data: org } = await supabase
         .from("organizations")
         .select("name")
@@ -102,49 +101,80 @@ serve(async (req) => {
 
     if (!imagePrompt) throw new Error("AI returned empty prompt");
 
-    // Step 2: Generate image using Lovable AI image model
-    const imageResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "google/gemini-3.1-flash-image-preview",
-        messages: [
-          {
-            role: "user",
-            content: imagePrompt,
-          },
-        ],
-        modalities: ["image", "text"],
-      }),
-    });
+    // Step 2: Try Lovable AI image generation first, then fallback to GigaChat
+    let base64Url: string | null = null;
 
-    if (!imageResponse.ok) {
+    // --- Attempt 1: Lovable AI ---
+    try {
+      console.log("[generate-cover] Trying Lovable AI image generation...");
+      const imageResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${LOVABLE_API_KEY}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: "google/gemini-3.1-flash-image-preview",
+          messages: [{ role: "user", content: imagePrompt }],
+          modalities: ["image", "text"],
+        }),
+      });
+
       if (imageResponse.status === 429) {
-        return new Response(JSON.stringify({ error: "Превышен лимит запросов, попробуйте позже" }), {
-          status: 429,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
+        console.warn("[generate-cover] Lovable AI rate limited, will try GigaChat...");
+      } else if (imageResponse.status === 402) {
+        console.warn("[generate-cover] Lovable AI payment required, will try GigaChat...");
+      } else if (imageResponse.ok) {
+        const imageData = await imageResponse.json();
+        base64Url = imageData.choices?.[0]?.message?.images?.[0]?.image_url?.url || null;
+        if (base64Url) {
+          console.log("[generate-cover] Lovable AI image generated successfully");
+        }
+      } else {
+        console.warn("[generate-cover] Lovable AI image error:", imageResponse.status);
       }
-      if (imageResponse.status === 402) {
-        return new Response(JSON.stringify({ error: "Недостаточно средств для генерации" }), {
-          status: 402,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-      const text = await imageResponse.text();
-      console.error("Image generation error:", imageResponse.status, text);
-      throw new Error("Image generation failed");
+    } catch (e) {
+      console.warn("[generate-cover] Lovable AI image error:", e);
     }
 
-    const imageData = await imageResponse.json();
-    const base64Url = imageData.choices?.[0]?.message?.images?.[0]?.image_url?.url;
+    // --- Attempt 2: GigaChat fallback ---
+    if (!base64Url) {
+      console.log("[generate-cover] Falling back to GigaChat...");
+      try {
+        const gigachatResponse = await fetch(`${supabaseUrl}/functions/v1/generate-image`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${supabaseKey}`,
+          },
+          body: JSON.stringify({ prompt: imagePrompt, provider: "gigachat" }),
+        });
+
+        if (gigachatResponse.ok) {
+          const gigachatData = await gigachatResponse.json();
+          if (gigachatData.url) {
+            // GigaChat returns a URL, not base64 — download it
+            console.log("[generate-cover] GigaChat returned URL, downloading...");
+            const imgDl = await fetch(gigachatData.url);
+            if (imgDl.ok) {
+              const imgBlob = await imgDl.arrayBuffer();
+              const imgBytes = new Uint8Array(imgBlob);
+              let binary = "";
+              for (let i = 0; i < imgBytes.length; i++) binary += String.fromCharCode(imgBytes[i]);
+              base64Url = `data:image/jpeg;base64,${btoa(binary)}`;
+              console.log("[generate-cover] GigaChat image downloaded successfully");
+            }
+          }
+        } else {
+          console.error("[generate-cover] GigaChat fallback error:", gigachatResponse.status);
+        }
+      } catch (e) {
+        console.error("[generate-cover] GigaChat fallback error:", e);
+      }
+    }
 
     if (!base64Url) {
-      console.error("No image in response:", JSON.stringify(imageData).slice(0, 500));
-      throw new Error("No image generated");
+      throw new Error("Не удалось сгенерировать изображение ни одним провайдером");
     }
 
     // Step 3: Upload to storage
