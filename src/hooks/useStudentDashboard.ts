@@ -206,7 +206,7 @@ export function useStudentDashboard() {
         { id: "cat-2", name: "Медицина", color: "#ef4444" },
         { id: "cat-3", name: "Электробезопасность", color: "#3b82f6" },
       ]);
-      setBranding({ coverUrl: demoOrgBanner, primaryColor: "#0d9488", secondaryColor: "#115e59", logoUrl: "" });
+      setBranding({ coverUrl: demoOrgBanner, primaryColor: "#0d9488", secondaryColor: "#115e59", logoUrl: "", showOrgName: true });
       setTotalTimeSpent(2450);
       setTotalCompletedLessons(18);
       setProfile({ full_name: "Иванов Иван Иванович", organization_name: "Демо-организация", organization_id: null, org_description: "Учебный центр профессионального развития и повышения квалификации" });
