@@ -1,29 +1,67 @@
 
-## Plan: Fix Sidebar Brand Color + Button Animations
 
-### Issues identified
+# Plan: Course Landing Page System with Settings
 
-1. **Purple icons**: The default `primaryColor` across all hooks (`useOrganization.ts`, `useBrandingSettings.ts`, `useStudentDashboard.ts`) is `#6366f1` (purple). The platform brand is Teal/Cyan. Changing the default to `#0d9488` (teal) will fix this for orgs that haven't set a custom color.
+## Summary
+Create a full course landing page system similar to SkillSpace, where each course gets its own public page with a unique slug URL. Add a settings dialog in the CourseEditor with 4 tabs: Page Settings, Enrollment Form, Promo Codes, and Analytics.
 
-2. **btn-gradient uses wrong color**: `.btn-gradient` uses `bg-primary` which is charcoal (`0 0% 12%`), not the accent/brand color. Need to change to `bg-[hsl(var(--accent))]` so it follows the cyan theme and respects settings.
+## Database Changes
 
-3. **No hover animation on sidebar buttons**: The sidebar buttons have `transition-all duration-200` but no visible hover effect (no scale, no brightness change). Need to add hover scale and background opacity shift.
+1. **Add columns to `courses` table:**
+   - `slug` (text, unique, nullable) — human-readable URL identifier
+   - `accent_color` (text, nullable) — accent color for the landing page
 
-4. **Tooltip shift without content**: The tooltip appears to cause a layout shift on hover but content isn't visible — likely a styling/z-index or timing issue with Tooltip.
+2. **Create `course_promo_codes` table** (per-course promo codes, separate from global `promo_codes`):
+   - `id` (uuid, PK)
+   - `course_id` (uuid, FK -> courses)
+   - `code` (text)
+   - `discount_value` (integer) — discount amount
+   - `discount_type` (text, default 'percent') — 'percent' or 'fixed'
+   - `is_active` (boolean, default true)
+   - `max_uses` (integer, nullable)
+   - `used_count` (integer, default 0)
+   - `valid_until` (timestamptz, nullable)
+   - `created_at` (timestamptz)
+   - RLS: organization members can manage their course promo codes
 
-### Changes
+3. **Use existing `landing_content` JSONB** on courses to store:
+   - `enrollment_form` — form fields config, subtitle text
+   - `analytics` — yandex_metrika_id, yandex_goal_id, ga_tracking_id, ga_event_name, meta_pixel_id
+   - `blocks` — custom content blocks (already supported)
+   - `external_url` — redirect URL (already supported)
 
-| File | What |
-|------|------|
-| `src/hooks/useOrganization.ts` | Change default `primaryColor` from `#6366f1` to `#0d9488` (teal) |
-| `src/hooks/useBrandingSettings.ts` | Same default change |
-| `src/hooks/useStudentDashboard.ts` | Same default change |
-| `src/components/organization/OrgSidebar.tsx` | Add hover animation (scale + brightness) to nav buttons |
-| `src/index.css` | Update `.btn-gradient` to use `--accent` color instead of `--primary`; ensure shimmer animation works |
-| `src/components/organization/tabs/SettingsTab.tsx` | Update placeholder from `#6366f1` to `#0d9488` |
-| `src/components/organization/LoginBrandingSettings.tsx` | Update default colors to teal |
+## New Components
 
-### Sidebar hover animation detail
-- Inactive buttons: `hover:scale-105 hover:brightness-110` transition
-- Active button: subtle glow/shadow pulse
-- Tooltip: verify it renders correctly on right side
+1. **`CoursePageSettingsDialog`** — Modal with 4 tabs (accessed from CourseEditor toolbar via gear icon):
+   - **Tab "Страница курса"**: slug editor with copy-link button, accent color picker
+   - **Tab "Форма записи"**: enrollment form preview/config (subtitle, custom fields)
+   - **Tab "Промокоды"**: CRUD for course-specific promo codes with table
+   - **Tab "Аналитика"**: Yandex Metrika, Google Analytics, Meta Pixel fields
+
+2. **Enhanced `CourseLanding.tsx`**: 
+   - Support slug-based routing (`/c/:slug`)
+   - Apply accent color from course settings
+   - Render enrollment form with custom fields
+   - Inject analytics scripts (Yandex Metrika, GA, Meta Pixel) dynamically
+   - Support promo code input on enrollment form
+
+## Routing
+
+- Add route `/c/:slug` that resolves slug -> courseId and renders CourseLanding
+- Keep existing `/course/:courseId/landing` route as fallback
+
+## Files to Create/Edit
+
+- **Create**: `src/components/course-editor/CoursePageSettingsDialog.tsx`
+- **Edit**: `src/pages/CourseEditor.tsx` — add settings gear icon button to open dialog
+- **Edit**: `src/pages/CourseLanding.tsx` — support slug routing, accent color, analytics, enrollment form, promo codes
+- **Edit**: `src/App.tsx` — add `/c/:slug` route
+- **Migration**: add `slug`, `accent_color` columns; create `course_promo_codes` table with RLS
+
+## Technical Details
+
+- Slug auto-generated from course title (transliterated) but editable
+- Accent color applied via CSS custom properties on the landing page
+- Analytics scripts injected via `useEffect` with `document.head.appendChild`
+- Promo code validation checks `course_promo_codes` table at enrollment time and adjusts displayed price
+
