@@ -89,15 +89,10 @@ export default function OrganizationProfile() {
         setOrganizationId(prof.organization_id);
         return;
       }
-      // Fallback: check if user is owner of an organization
-      const orgRes: any = await supabase
-        .from("organizations")
-        .select("id")
-        .eq("owner_id", user.id)
-        .limit(1)
-        .maybeSingle();
-      if (orgRes.data?.id) {
-        setOrganizationId(orgRes.data.id);
+      // Fallback: check if user is owner of an organization via RPC
+      const { data: orgs } = await supabase.rpc("get_user_organization_id", { p_user_id: user.id }).maybeSingle() as any;
+      if (orgs?.id) {
+        setOrganizationId(orgs.id);
       }
     };
     loadOrganizationId();
