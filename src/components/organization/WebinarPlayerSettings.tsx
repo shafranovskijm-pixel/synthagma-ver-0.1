@@ -1,12 +1,11 @@
-import { useState } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { useState, useEffect } from "react";
 import { Switch } from "@/components/ui/switch";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Loader2 } from "lucide-react";
+import { Loader2, ChevronDown, ChevronUp, Settings } from "lucide-react";
 
 export interface PlayerSettings {
   autoplay: boolean;
@@ -58,22 +57,28 @@ export function buildKinescopeEmbedUrl(videoId: string, settings?: Partial<Playe
 }
 
 interface Props {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
   webinarId: string;
   initialSettings: Partial<PlayerSettings>;
   onSaved: () => void;
 }
 
-export function WebinarPlayerSettings({ open, onOpenChange, webinarId, initialSettings, onSaved }: Props) {
+export function InlinePlayerSettings({ webinarId, initialSettings, onSaved }: Props) {
+  const [expanded, setExpanded] = useState(false);
   const [settings, setSettings] = useState<PlayerSettings>({
     ...defaultPlayerSettings,
     ...initialSettings,
   });
   const [saving, setSaving] = useState(false);
+  const [dirty, setDirty] = useState(false);
+
+  useEffect(() => {
+    setSettings({ ...defaultPlayerSettings, ...initialSettings });
+    setDirty(false);
+  }, [webinarId]);
 
   const toggle = (key: keyof PlayerSettings) => {
     setSettings((s) => ({ ...s, [key]: !s[key] }));
+    setDirty(true);
   };
 
   const handleSave = async () => {
@@ -87,69 +92,73 @@ export function WebinarPlayerSettings({ open, onOpenChange, webinarId, initialSe
       toast.error("Ошибка сохранения настроек");
     } else {
       toast.success("Настройки плеера сохранены");
+      setDirty(false);
       onSaved();
-      onOpenChange(false);
     }
   };
 
-  const Section = ({ title, children }: { title: string; children: React.ReactNode }) => (
-    <div className="space-y-3">
-      <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">{title}</h4>
-      <div className="space-y-2">{children}</div>
-    </div>
-  );
-
   const Row = ({ label, checked, onToggle }: { label: string; checked: boolean; onToggle: () => void }) => (
-    <div className="flex items-center justify-between py-1.5">
-      <Label className="text-sm font-normal cursor-pointer" onClick={onToggle}>{label}</Label>
-      <Switch checked={checked} onCheckedChange={onToggle} />
+    <div className="flex items-center justify-between py-0.5">
+      <Label className="text-xs font-normal cursor-pointer" onClick={onToggle}>{label}</Label>
+      <Switch checked={checked} onCheckedChange={onToggle} className="scale-75" />
     </div>
   );
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md">
-        <DialogHeader>
-          <DialogTitle>Настройки плеера</DialogTitle>
-        </DialogHeader>
+    <div className="border border-border rounded-lg overflow-hidden">
+      <button
+        onClick={() => setExpanded(!expanded)}
+        className="w-full flex items-center justify-between px-3 py-2 text-xs font-medium text-muted-foreground hover:bg-muted/50 transition-colors"
+      >
+        <span className="flex items-center gap-1.5">
+          <Settings className="w-3 h-3" />
+          Настройки плеера
+        </span>
+        {expanded ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+      </button>
 
-        <div className="space-y-6 max-h-[60vh] overflow-y-auto pr-1">
-          <Section title="Поведение">
+      {expanded && (
+        <div className="px-3 pb-3 space-y-3 border-t border-border pt-2">
+          <div>
+            <p className="text-[10px] uppercase tracking-wide text-muted-foreground font-semibold mb-1">Поведение</p>
             <Row label="Автозапуск" checked={settings.autoplay} onToggle={() => toggle("autoplay")} />
-            <Row label="Автопауза (при переключении вкладки)" checked={settings.autopause} onToggle={() => toggle("autopause")} />
+            <Row label="Автопауза" checked={settings.autopause} onToggle={() => toggle("autopause")} />
             <Row label="Зацикливание" checked={settings.loop} onToggle={() => toggle("loop")} />
-            <Row label="Запуск без звука" checked={settings.muted} onToggle={() => toggle("muted")} />
-          </Section>
+            <Row label="Без звука" checked={settings.muted} onToggle={() => toggle("muted")} />
+          </div>
 
-          <Section title="Трансляция на устройства">
+          <div>
+            <p className="text-[10px] uppercase tracking-wide text-muted-foreground font-semibold mb-1">Устройства</p>
             <Row label="Chromecast" checked={settings.chromecast} onToggle={() => toggle("chromecast")} />
             <Row label="AirPlay" checked={settings.airplay} onToggle={() => toggle("airplay")} />
-          </Section>
+          </div>
 
-          <Section title="Элементы управления">
-            <Row label="Скорость воспроизведения" checked={settings.playbackRate} onToggle={() => toggle("playbackRate")} />
+          <div>
+            <p className="text-[10px] uppercase tracking-wide text-muted-foreground font-semibold mb-1">Управление</p>
+            <Row label="Скорость" checked={settings.playbackRate} onToggle={() => toggle("playbackRate")} />
             <Row label="Субтитры" checked={settings.subtitles} onToggle={() => toggle("subtitles")} />
             <Row label="Полный экран" checked={settings.fullscreen} onToggle={() => toggle("fullscreen")} />
             <Row label="Картинка в картинке" checked={settings.pip} onToggle={() => toggle("pip")} />
-          </Section>
+          </div>
 
-          <Section title="Водяной знак">
+          <div>
+            <p className="text-[10px] uppercase tracking-wide text-muted-foreground font-semibold mb-1">Водяной знак</p>
             <Input
               placeholder="Текст водяного знака"
               value={settings.watermarkText}
-              onChange={(e) => setSettings((s) => ({ ...s, watermarkText: e.target.value }))}
+              onChange={(e) => { setSettings((s) => ({ ...s, watermarkText: e.target.value })); setDirty(true); }}
+              className="h-7 text-xs"
             />
-          </Section>
-        </div>
+          </div>
 
-        <div className="flex justify-end gap-2 pt-2">
-          <Button variant="outline" onClick={() => onOpenChange(false)}>Отмена</Button>
-          <Button onClick={handleSave} disabled={saving}>
-            {saving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-            Сохранить
-          </Button>
+          {dirty && (
+            <Button size="sm" className="w-full h-7 text-xs" onClick={handleSave} disabled={saving}>
+              {saving && <Loader2 className="w-3 h-3 mr-1 animate-spin" />}
+              Сохранить
+            </Button>
+          )}
         </div>
-      </DialogContent>
-    </Dialog>
+      )}
+    </div>
   );
 }
