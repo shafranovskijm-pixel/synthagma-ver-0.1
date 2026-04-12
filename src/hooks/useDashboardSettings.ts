@@ -19,6 +19,8 @@ interface MenuSettings {
   showJournals?: boolean;
   showFrdo?: boolean;
   showSubscription?: boolean;
+  courseViewMode?: 'grid' | 'list';
+  courseFolderMode?: 'folders' | 'flat';
 }
 
 const defaultMenuSettings: MenuSettings = {
@@ -33,6 +35,8 @@ const defaultMenuSettings: MenuSettings = {
   showJournals: true,
   showFrdo: true,
   showSubscription: true,
+  courseViewMode: 'grid',
+  courseFolderMode: 'folders',
 };
 
 /** Ensures critical menu items are never accidentally hidden */
@@ -51,6 +55,8 @@ function normalizeMenuSettings(raw: Record<string, unknown> | null | undefined):
     showJournals: raw.showJournals !== false,
     showFrdo: raw.showFrdo !== false,
     showSubscription: raw.showSubscription !== false,
+    courseViewMode: (raw.courseViewMode === 'list' ? 'list' : 'grid') as 'grid' | 'list',
+    courseFolderMode: (raw.courseFolderMode === 'flat' ? 'flat' : 'folders') as 'folders' | 'flat',
   };
 }
 
