@@ -1,5 +1,5 @@
-import { useState, useEffect } from "react";
-import { MessageCircle, Search, ArrowLeft, Loader2, Bell, Paperclip, Clock, Shield } from "lucide-react";
+import { useState, useEffect, useMemo } from "react";
+import { MessageCircle, Search, ArrowLeft, Loader2, Bell, Paperclip, Clock, Shield, Plus, UserPlus, X } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -11,32 +11,25 @@ import { supabase } from "@/integrations/supabase/client";
 import { format, isToday, isYesterday } from "date-fns";
 import { ru } from "date-fns/locale";
 import { useIsMobile } from "@/hooks/use-mobile";
-
-const chatFeatures = [
-  {
-    icon: Bell,
-    title: "Мгновенные уведомления",
-    description: "Realtime-обновления и счётчик непрочитанных сообщений — вы не пропустите ни одного обращения",
-  },
-  {
-    icon: Paperclip,
-    title: "Обмен файлами",
-    description: "Отправляйте и получайте вложения: документы, изображения, справки и любые файлы",
-  },
-  {
-    icon: Clock,
-    title: "История переписки",
-    description: "Полный архив всех диалогов с поиском — найдите нужное сообщение за секунды",
-  },
-];
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 export function OrgChatsTab() {
   const d = useOrgDashboard();
   const isMobile = useIsMobile();
   const [selectedStudentId, setSelectedStudentId] = useState<string | null>(null);
+  const [selectedStudentName, setSelectedStudentName] = useState<string>("");
   const [selectedAdminChat, setSelectedAdminChat] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [adminUnreadCount, setAdminUnreadCount] = useState(0);
+  const [showNewChatDialog, setShowNewChatDialog] = useState(false);
+  const [newChatSearch, setNewChatSearch] = useState("");
+  const [orgStudents, setOrgStudents] = useState<{ user_id: string; full_name: string }[]>([]);
+  const [loadingStudents, setLoadingStudents] = useState(false);
 
   const { conversations, isLoading } = d.orgChats;
   const organizationId = d.organizationId;
@@ -69,6 +62,39 @@ export function OrgChatsTab() {
     return () => { supabase.removeChannel(channel); };
   }, [organizationId]);
 
+  // Load org students for new chat dialog
+  const loadOrgStudents = async () => {
+    if (!organizationId) return;
+    setLoadingStudents(true);
+    try {
+      const { data } = await supabase
+        .from("profiles")
+        .select("user_id, full_name")
+        .eq("organization_id", organizationId)
+        .not("full_name", "is", null)
+        .order("full_name");
+      setOrgStudents(data || []);
+    } catch (err) {
+      console.error("Failed to load students:", err);
+    } finally {
+      setLoadingStudents(false);
+    }
+  };
+
+  // Students not already in conversations
+  const existingStudentIds = useMemo(
+    () => new Set(conversations.map(c => c.studentUserId)),
+    [conversations]
+  );
+
+  const filteredNewStudents = useMemo(() => {
+    const available = orgStudents.filter(s => s.user_id !== currentUserId);
+    if (!newChatSearch) return available;
+    return available.filter(s =>
+      s.full_name?.toLowerCase().includes(newChatSearch.toLowerCase())
+    );
+  }, [orgStudents, newChatSearch, currentUserId]);
+
   const filtered = searchQuery
     ? conversations.filter((c) =>
         c.studentName.toLowerCase().includes(searchQuery.toLowerCase())
@@ -84,15 +110,27 @@ export function OrgChatsTab() {
     return format(date, "dd.MM.yy", { locale: ru });
   };
 
-  const handleSelectStudent = (studentId: string) => {
+  const handleSelectStudent = (studentId: string, name?: string) => {
     setSelectedAdminChat(false);
     setSelectedStudentId(studentId);
+    if (name) setSelectedStudentName(name);
     setTimeout(() => d.orgChats.refresh(), 1500);
   };
 
   const handleSelectAdminChat = () => {
     setSelectedStudentId(null);
     setSelectedAdminChat(true);
+  };
+
+  const handleNewChatWithStudent = (studentId: string, name: string) => {
+    setShowNewChatDialog(false);
+    setNewChatSearch("");
+    handleSelectStudent(studentId, name);
+  };
+
+  const handleOpenNewChat = () => {
+    setShowNewChatDialog(true);
+    loadOrgStudents();
   };
 
   if (isLoading) {
@@ -103,7 +141,7 @@ export function OrgChatsTab() {
     );
   }
 
-  // No longer early-return on empty — admin chat is always available
+  const hasActiveChat = selectedStudentId || selectedAdminChat;
 
   // Mobile: show admin chat if selected
   if (isMobile && selectedAdminChat && organizationId && currentUserId) {
@@ -133,144 +171,196 @@ export function OrgChatsTab() {
           <ArrowLeft className="w-4 h-4" />
           Назад к чатам
         </Button>
-        <h3 className="font-semibold text-lg px-1">{selectedConvo?.studentName}</h3>
+        <h3 className="font-semibold text-lg px-1">{selectedConvo?.studentName || selectedStudentName}</h3>
         <ChatTab
           studentUserId={selectedStudentId}
           organizationId={organizationId}
           currentUserId={currentUserId}
-          studentName={selectedConvo?.studentName || ""}
+          studentName={selectedConvo?.studentName || selectedStudentName}
         />
       </div>
     );
   }
 
   return (
-    <div className="flex gap-4 h-[calc(100vh-220px)] min-h-[400px]">
-      {/* Conversations list */}
-      <div className={`flex flex-col ${(selectedStudentId || selectedAdminChat) && !isMobile ? "w-80 shrink-0" : "flex-1"} border border-border rounded-xl bg-card overflow-hidden`}>
-        <div className="p-3 border-b border-border">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-            <Input
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Поиск по имени..."
-              className="pl-9"
-            />
+    <>
+      <div className={`flex gap-4 ${hasActiveChat ? "h-[calc(100vh-220px)] min-h-[400px]" : ""}`}>
+        {/* Conversations list */}
+        <div className={`flex flex-col ${hasActiveChat && !isMobile ? "w-80 shrink-0" : "flex-1 max-w-md"} border border-border rounded-xl bg-card overflow-hidden`}>
+          <div className="p-3 border-b border-border flex gap-2">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <Input
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Поиск по имени..."
+                className="pl-9"
+              />
+            </div>
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={handleOpenNewChat}
+              title="Новый чат"
+            >
+              <Plus className="w-4 h-4" />
+            </Button>
+          </div>
+
+          <div className="flex-1 overflow-y-auto">
+            {/* Admin platform chat — always first */}
+            <button
+              onClick={handleSelectAdminChat}
+              className={`w-full text-left px-4 py-3 border-b border-border/50 hover:bg-secondary/50 transition-colors ${
+                selectedAdminChat ? "bg-primary/5" : ""
+              }`}
+            >
+              <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2">
+                    <Shield className="w-4 h-4 text-primary shrink-0" />
+                    <span className={`font-medium text-sm truncate ${adminUnreadCount > 0 ? "text-foreground" : "text-muted-foreground"}`}>
+                      Администрация платформы
+                    </span>
+                  </div>
+                  <p className="text-xs truncate mt-0.5 text-muted-foreground">
+                    Чат с поддержкой платформы
+                  </p>
+                </div>
+                <div className="flex flex-col items-end gap-1 shrink-0">
+                  {adminUnreadCount > 0 && (
+                    <Badge variant="destructive" className="text-[10px] px-1.5 py-0 h-4 min-w-[16px] flex items-center justify-center">
+                      {adminUnreadCount}
+                    </Badge>
+                  )}
+                </div>
+              </div>
+            </button>
+
+            {filtered.length === 0 && searchQuery ? (
+              <div className="text-center py-8 text-muted-foreground">
+                <p className="text-sm">Ничего не найдено</p>
+              </div>
+            ) : (
+              filtered.map((convo) => (
+                <button
+                  key={convo.studentUserId}
+                  onClick={() => handleSelectStudent(convo.studentUserId, convo.studentName)}
+                  className={`w-full text-left px-4 py-3 border-b border-border/50 hover:bg-secondary/50 transition-colors ${
+                    selectedStudentId === convo.studentUserId ? "bg-primary/5" : ""
+                  }`}
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2">
+                        <span className={`font-medium text-sm truncate ${convo.unreadCount > 0 ? "text-foreground" : "text-muted-foreground"}`}>
+                          {convo.studentName}
+                        </span>
+                      </div>
+                      <p className={`text-xs truncate mt-0.5 ${convo.unreadCount > 0 ? "text-foreground font-medium" : "text-muted-foreground"}`}>
+                        {convo.lastSenderIsOrg && <span className="text-muted-foreground">Вы: </span>}
+                        {convo.lastMessage || "Вложение"}
+                      </p>
+                    </div>
+                    <div className="flex flex-col items-end gap-1 shrink-0">
+                      <span className="text-[10px] text-muted-foreground">{formatTime(convo.lastMessageAt)}</span>
+                      {convo.unreadCount > 0 && (
+                        <Badge variant="destructive" className="text-[10px] px-1.5 py-0 h-4 min-w-[16px] flex items-center justify-center">
+                          {convo.unreadCount}
+                        </Badge>
+                      )}
+                    </div>
+                  </div>
+                </button>
+              ))
+            )}
           </div>
         </div>
 
-        <div className="flex-1 overflow-y-auto">
-          {/* Admin platform chat — always first */}
-          <button
-            onClick={handleSelectAdminChat}
-            className={`w-full text-left px-4 py-3 border-b border-border/50 hover:bg-secondary/50 transition-colors ${
-              selectedAdminChat ? "bg-primary/5" : ""
-            }`}
-          >
-            <div className="flex items-start justify-between gap-2">
-              <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-2">
-                  <Shield className="w-4 h-4 text-primary shrink-0" />
-                  <span className={`font-medium text-sm truncate ${adminUnreadCount > 0 ? "text-foreground" : "text-muted-foreground"}`}>
-                    Администрация платформы
-                  </span>
+        {/* Chat detail - desktop only */}
+        {!isMobile && hasActiveChat && (
+          <div className="flex-1 border border-border rounded-xl bg-card overflow-hidden flex flex-col">
+            {selectedAdminChat && organizationId && currentUserId ? (
+              <div className="flex flex-col h-full">
+                <div className="px-4 py-3 border-b border-border flex items-center gap-2">
+                  <Shield className="w-5 h-5 text-primary" />
+                  <h3 className="font-semibold">Администрация платформы</h3>
                 </div>
-                <p className="text-xs truncate mt-0.5 text-muted-foreground">
-                  Чат с поддержкой платформы
-                </p>
-              </div>
-              <div className="flex flex-col items-end gap-1 shrink-0">
-                {adminUnreadCount > 0 && (
-                  <Badge variant="destructive" className="text-[10px] px-1.5 py-0 h-4 min-w-[16px] flex items-center justify-center">
-                    {adminUnreadCount}
-                  </Badge>
-                )}
-              </div>
-            </div>
-          </button>
-
-          {filtered.length === 0 && searchQuery ? (
-            <div className="text-center py-12 text-muted-foreground">
-              <MessageCircle className="w-10 h-10 mx-auto mb-3 opacity-50" />
-              <p className="text-sm">Ничего не найдено</p>
-            </div>
-          ) : (
-            filtered.map((convo) => (
-              <button
-                key={convo.studentUserId}
-                onClick={() => handleSelectStudent(convo.studentUserId)}
-                className={`w-full text-left px-4 py-3 border-b border-border/50 hover:bg-secondary/50 transition-colors ${
-                  selectedStudentId === convo.studentUserId ? "bg-primary/5" : ""
-                }`}
-              >
-                <div className="flex items-start justify-between gap-2">
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2">
-                      <span className={`font-medium text-sm truncate ${convo.unreadCount > 0 ? "text-foreground" : "text-muted-foreground"}`}>
-                        {convo.studentName}
-                      </span>
-                    </div>
-                    <p className={`text-xs truncate mt-0.5 ${convo.unreadCount > 0 ? "text-foreground font-medium" : "text-muted-foreground"}`}>
-                      {convo.lastSenderIsOrg && <span className="text-muted-foreground">Вы: </span>}
-                      {convo.lastMessage || "Вложение"}
-                    </p>
-                  </div>
-                  <div className="flex flex-col items-end gap-1 shrink-0">
-                    <span className="text-[10px] text-muted-foreground">{formatTime(convo.lastMessageAt)}</span>
-                    {convo.unreadCount > 0 && (
-                      <Badge variant="destructive" className="text-[10px] px-1.5 py-0 h-4 min-w-[16px] flex items-center justify-center">
-                        {convo.unreadCount}
-                      </Badge>
-                    )}
-                  </div>
+                <div className="flex-1 p-4 overflow-hidden">
+                  <AdminChatDialog organizationId={organizationId} currentUserId={currentUserId} />
                 </div>
-              </button>
-            ))
-          )}
-        </div>
+              </div>
+            ) : selectedStudentId && organizationId && currentUserId ? (
+              <div className="flex flex-col h-full">
+                <div className="px-4 py-3 border-b border-border">
+                  <h3 className="font-semibold">{selectedConvo?.studentName || selectedStudentName}</h3>
+                </div>
+                <div className="flex-1 p-4 overflow-hidden">
+                  <ChatTab
+                    studentUserId={selectedStudentId}
+                    organizationId={organizationId}
+                    currentUserId={currentUserId}
+                    studentName={selectedConvo?.studentName || selectedStudentName}
+                  />
+                </div>
+              </div>
+            ) : null}
+          </div>
+        )}
       </div>
 
-      {/* Chat detail - desktop only */}
-      {!isMobile && (
-        <div className="flex-1 border border-border rounded-xl bg-card overflow-hidden flex flex-col">
-          {selectedAdminChat && organizationId && currentUserId ? (
-            <div className="flex flex-col h-full">
-              <div className="px-4 py-3 border-b border-border flex items-center gap-2">
-                <Shield className="w-5 h-5 text-primary" />
-                <h3 className="font-semibold">Администрация платформы</h3>
-              </div>
-              <div className="flex-1 p-4 overflow-hidden">
-                <AdminChatDialog organizationId={organizationId} currentUserId={currentUserId} />
-              </div>
+      {/* New chat dialog */}
+      <Dialog open={showNewChatDialog} onOpenChange={setShowNewChatDialog}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <UserPlus className="w-5 h-5" />
+              Написать ученику
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <Input
+                value={newChatSearch}
+                onChange={(e) => setNewChatSearch(e.target.value)}
+                placeholder="Поиск ученика..."
+                className="pl-9"
+                autoFocus
+              />
             </div>
-          ) : selectedStudentId && organizationId && currentUserId ? (
-            <div className="flex flex-col h-full">
-              <div className="px-4 py-3 border-b border-border">
-                <h3 className="font-semibold">{selectedConvo?.studentName}</h3>
-              </div>
-              <div className="flex-1 p-4 overflow-hidden">
-                <ChatTab
-                  studentUserId={selectedStudentId}
-                  organizationId={organizationId}
-                  currentUserId={currentUserId}
-                  studentName={selectedConvo?.studentName || ""}
-                />
-              </div>
-            </div>
-          ) : (
-            <div className="flex-1 flex items-center justify-center text-muted-foreground">
-              <div className="text-center">
-                <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-muted/50 mb-4">
-                  <MessageCircle className="w-7 h-7 opacity-40" />
+            <div className="max-h-72 overflow-y-auto border border-border rounded-lg">
+              {loadingStudents ? (
+                <div className="flex justify-center py-8">
+                  <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
                 </div>
-                <p className="text-sm font-medium mb-1">Выберите чат</p>
-                <p className="text-xs text-muted-foreground/70">Нажмите на диалог слева, чтобы открыть переписку</p>
-              </div>
+              ) : filteredNewStudents.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground text-sm">
+                  {newChatSearch ? "Ученик не найден" : "Нет учеников в организации"}
+                </div>
+              ) : (
+                filteredNewStudents.map((student) => {
+                  const hasExisting = existingStudentIds.has(student.user_id);
+                  return (
+                    <button
+                      key={student.user_id}
+                      onClick={() => handleNewChatWithStudent(student.user_id, student.full_name || "Без имени")}
+                      className="w-full text-left px-4 py-2.5 hover:bg-secondary/50 transition-colors border-b border-border/30 last:border-0 flex items-center justify-between"
+                    >
+                      <span className="text-sm font-medium">{student.full_name || "Без имени"}</span>
+                      {hasExisting && (
+                        <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
+                          есть переписка
+                        </Badge>
+                      )}
+                    </button>
+                  );
+                })
+              )}
             </div>
-          )}
-        </div>
-      )}
-    </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
