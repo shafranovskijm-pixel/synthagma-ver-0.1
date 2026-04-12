@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { Button } from "@/components/ui/button";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
@@ -54,6 +55,7 @@ export function SortableLessonItem({
   const [isPreviewMode, setIsPreviewMode] = useState(false);
   const [showMediaLibrary, setShowMediaLibrary] = useState(false);
   const [skipCompression, setSkipCompression] = useState(false);
+  const [videoUploadTab, setVideoUploadTab] = useState<string>("kinescope");
   const media = useLessonMedia(lesson.id, courseId, onUpdate);
 
   // SaluteSpeech TTS for course builder preview
