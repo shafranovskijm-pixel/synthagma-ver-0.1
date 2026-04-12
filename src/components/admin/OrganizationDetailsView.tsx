@@ -1096,15 +1096,21 @@ export function OrganizationDetailsView({ organization, onBack }: OrganizationDe
 
         {/* Courses Tab */}
         <TabsContent value="courses" className="space-y-4">
-          <div className="flex justify-end gap-2">
-            <Button variant="outline" size="sm" onClick={() => setShowSkillspaceBatchImport(true)}>
-              <Download className="w-4 h-4 mr-2" />
-              Пакетный импорт
-            </Button>
-            <Button variant="outline" size="sm" onClick={() => setShowSkillspaceImport(true)}>
-              <Download className="w-4 h-4 mr-2" />
-              Импорт со SkillSpace
-            </Button>
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2 px-3 py-1.5 rounded-md bg-muted text-sm text-muted-foreground">
+              <BookOpen className="w-4 h-4" />
+              <span>Всего курсов: <span className="font-semibold text-foreground">{courses.length}</span></span>
+            </div>
+            <div className="flex gap-2">
+              <Button variant="outline" size="sm" onClick={() => setShowSkillspaceBatchImport(true)}>
+                <Download className="w-4 h-4 mr-2" />
+                Пакетный импорт
+              </Button>
+              <Button variant="outline" size="sm" onClick={() => setShowSkillspaceImport(true)}>
+                <Download className="w-4 h-4 mr-2" />
+                Импорт со SkillSpace
+              </Button>
+            </div>
           </div>
           <Card className={cardClass}>
             <CardContent className="p-0">
