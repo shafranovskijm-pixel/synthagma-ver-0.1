@@ -168,10 +168,7 @@ export default function StudentProfile() {
       setBio(profile.bio || "");
       setAvatarUrl(profile.avatar_url || null);
     }
-    if (user?.email) {
-      setNewEmail(user.email);
-    }
-  }, [profile, user?.email]);
+  }, [profile]);
 
   const { data: branding } = useQuery({
     queryKey: ["student-profile-branding", profile?.organization_id],
