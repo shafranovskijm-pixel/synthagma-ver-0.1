@@ -72,10 +72,17 @@ export default function OrganizationProfile() {
   const [notifs, setNotifs] = useState<NotifRow[]>(DEFAULT_NOTIFS);
   const [soundEnabled, setSoundEnabled] = useState(false);
 
+  // Org icon state
+  const [orgLogoUrl, setOrgLogoUrl] = useState<string>("");
+  const [isUploadingIcon, setIsUploadingIcon] = useState(false);
+  const [organizationId, setOrganizationId] = useState<string | null>(null);
+  const iconInputRef = useRef<HTMLInputElement>(null);
+
   useEffect(() => {
     if (!user) return;
     loadProfile();
     loadNotificationPrefs();
+    loadOrgIcon();
   }, [user]);
 
   const loadProfile = async () => {
