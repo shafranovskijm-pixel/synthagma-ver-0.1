@@ -1,6 +1,5 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { supabase } from "@/integrations/supabase/client";
 import {
@@ -9,8 +8,9 @@ import {
   Shield,
   FileText,
   CheckCircle2,
-  X,
   Loader2,
+  CreditCard,
+  ClipboardList,
 } from "lucide-react";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
@@ -34,35 +34,57 @@ interface OrgNotificationsProps {
   organizationId: string;
 }
 
+type TabKey = "all" | "tasks" | "payments";
+
+const TASK_TYPES = ["video_identification", "consent_signed", "document_issued", "assignment", "task"];
+const PAYMENT_TYPES = ["payment", "course_payment", "subscription", "order"];
+
+function getFilteredNotifications(notifications: Notification[], tab: TabKey) {
+  if (tab === "all") return notifications;
+  if (tab === "tasks") return notifications.filter(n => TASK_TYPES.some(t => n.type.includes(t)));
+  return notifications.filter(n => PAYMENT_TYPES.some(t => n.type.includes(t)));
+}
+
+function getInitials(title: string) {
+  const words = title.split(" ").filter(Boolean);
+  if (words.length >= 2) return (words[0][0] + words[1][0]).toUpperCase();
+  return (words[0]?.[0] || "?").toUpperCase();
+}
+
+const AVATAR_COLORS = [
+  "bg-primary/20 text-primary",
+  "bg-blue-500/20 text-blue-600",
+  "bg-orange-500/20 text-orange-600",
+  "bg-green-500/20 text-green-600",
+  "bg-purple-500/20 text-purple-600",
+  "bg-rose-500/20 text-rose-600",
+];
+
+function getAvatarColor(id: string) {
+  let hash = 0;
+  for (let i = 0; i < id.length; i++) hash = id.charCodeAt(i) + ((hash << 5) - hash);
+  return AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length];
+}
+
 export function OrgNotifications({ organizationId }: OrgNotificationsProps) {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isOpen, setIsOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState<TabKey>("all");
 
   useEffect(() => {
     if (organizationId) {
       loadNotifications();
-      
-      // Subscribe to realtime updates
       const channel = supabase
         .channel('org_notifications')
-        .on(
-          'postgres_changes',
-          {
-            event: 'INSERT',
-            schema: 'public',
-            table: 'org_notifications',
-            filter: `organization_id=eq.${organizationId}`,
-          },
-          (payload) => {
-            setNotifications(prev => [payload.new as Notification, ...prev]);
-          }
-        )
+        .on('postgres_changes', {
+          event: 'INSERT', schema: 'public', table: 'org_notifications',
+          filter: `organization_id=eq.${organizationId}`,
+        }, (payload) => {
+          setNotifications(prev => [payload.new as Notification, ...prev]);
+        })
         .subscribe();
-
-      return () => {
-        supabase.removeChannel(channel);
-      };
+      return () => { supabase.removeChannel(channel); };
     }
   }, [organizationId]);
 
@@ -75,7 +97,6 @@ export function OrgNotifications({ organizationId }: OrgNotificationsProps) {
         .eq("organization_id", organizationId)
         .order("created_at", { ascending: false })
         .limit(50);
-
       if (error) throw error;
       setNotifications(data || []);
     } catch (error) {
@@ -87,128 +108,119 @@ export function OrgNotifications({ organizationId }: OrgNotificationsProps) {
 
   const markAsRead = async (id: string) => {
     try {
-      await supabase
-        .from("org_notifications")
-        .update({ is_read: true })
-        .eq("id", id);
-
-      setNotifications(prev =>
-        prev.map(n => (n.id === id ? { ...n, is_read: true } : n))
-      );
+      await supabase.from("org_notifications").update({ is_read: true }).eq("id", id);
+      setNotifications(prev => prev.map(n => (n.id === id ? { ...n, is_read: true } : n)));
     } catch (error) {
       console.error("Error marking as read:", error);
     }
   };
 
   const markAllAsRead = async () => {
+    const unreadIds = notifications.filter(n => !n.is_read).map(n => n.id);
+    if (unreadIds.length === 0) return;
     try {
-      const unreadIds = notifications.filter(n => !n.is_read).map(n => n.id);
-      if (unreadIds.length === 0) return;
-
-      await supabase
-        .from("org_notifications")
-        .update({ is_read: true })
-        .in("id", unreadIds);
-
-      setNotifications(prev =>
-        prev.map(n => ({ ...n, is_read: true }))
-      );
+      await supabase.from("org_notifications").update({ is_read: true }).in("id", unreadIds);
+      setNotifications(prev => prev.map(n => ({ ...n, is_read: true })));
     } catch (error) {
       console.error("Error marking all as read:", error);
     }
   };
 
-  const getIcon = (type: string) => {
-    switch (type) {
-      case "video_identification":
-        return <Video className="w-4 h-4" />;
-      case "consent_signed":
-        return <Shield className="w-4 h-4" />;
-      case "document_issued":
-        return <FileText className="w-4 h-4" />;
-      default:
-        return <Bell className="w-4 h-4" />;
-    }
-  };
-
-  const getIconColor = (type: string) => {
-    switch (type) {
-      case "video_identification":
-        return "bg-blue-500/10 text-blue-500";
-      case "consent_signed":
-        return "bg-green-500/10 text-green-500";
-      case "document_issued":
-        return "bg-orange-500/10 text-orange-500";
-      default:
-        return "bg-primary/10 text-primary";
-    }
-  };
-
   const unreadCount = notifications.filter(n => !n.is_read).length;
+
+  const filtered = useMemo(() => getFilteredNotifications(notifications, activeTab), [notifications, activeTab]);
+
+  const tabCounts = useMemo(() => ({
+    all: notifications.filter(n => !n.is_read).length,
+    tasks: getFilteredNotifications(notifications, "tasks").filter(n => !n.is_read).length,
+    payments: getFilteredNotifications(notifications, "payments").filter(n => !n.is_read).length,
+  }), [notifications]);
+
+  const tabs: { key: TabKey; label: string; icon: React.ReactNode }[] = [
+    { key: "all", label: "Все", icon: <Bell className="w-3.5 h-3.5" /> },
+    { key: "tasks", label: "Задания", icon: <ClipboardList className="w-3.5 h-3.5" /> },
+    { key: "payments", label: "Оплаты", icon: <CreditCard className="w-3.5 h-3.5" /> },
+  ];
 
   return (
     <Popover open={isOpen} onOpenChange={setIsOpen}>
       <PopoverTrigger asChild>
-        <Button variant="ghost" size="icon" className="relative rounded-xl">
+        <Button variant="ghost" size="icon" className="relative rounded-full h-10 w-10">
           <Bell className="w-5 h-5" />
           {unreadCount > 0 && (
-            <span className="absolute -top-1 -right-1 w-5 h-5 bg-destructive text-destructive-foreground text-xs font-bold rounded-full flex items-center justify-center">
+            <span className="absolute -top-0.5 -right-0.5 w-5 h-5 bg-destructive text-destructive-foreground text-[10px] font-bold rounded-full flex items-center justify-center">
               {unreadCount > 9 ? "9+" : unreadCount}
             </span>
           )}
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-96 p-0 rounded-2xl" align="end">
-        <div className="flex items-center justify-between p-4 border-b border-border">
-          <h3 className="font-semibold">Уведомления</h3>
-          {unreadCount > 0 && (
-            <Button
-              variant="ghost"
-              size="sm"
-              className="text-xs rounded-lg"
-              onClick={markAllAsRead}
-            >
-              <CheckCircle2 className="w-3 h-3 mr-1" />
-              Прочитать все
-            </Button>
-          )}
+      <PopoverContent className="w-[420px] p-0 rounded-2xl" align="end" sideOffset={8}>
+        {/* Header */}
+        <div className="px-5 pt-5 pb-3">
+          <h3 className="font-bold text-lg">Уведомления</h3>
         </div>
 
+        {/* Tabs */}
+        <div className="flex gap-1.5 px-5 pb-3">
+          {tabs.map(tab => {
+            const count = tabCounts[tab.key];
+            const isActive = activeTab === tab.key;
+            return (
+              <button
+                key={tab.key}
+                onClick={() => setActiveTab(tab.key)}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
+                  isActive
+                    ? "bg-primary text-primary-foreground"
+                    : "bg-muted text-muted-foreground hover:bg-muted/80"
+                }`}
+              >
+                {tab.icon}
+                {tab.label}
+                {count > 0 && (
+                  <span className={`ml-0.5 min-w-[18px] h-[18px] rounded-full text-[10px] font-bold flex items-center justify-center ${
+                    isActive ? "bg-primary-foreground/20 text-primary-foreground" : "bg-primary/15 text-primary"
+                  }`}>
+                    {count}
+                  </span>
+                )}
+              </button>
+            );
+          })}
+        </div>
+
+        <div className="border-t border-border" />
+
+        {/* Content */}
         {isLoading ? (
           <div className="flex items-center justify-center py-12">
             <Loader2 className="w-6 h-6 animate-spin text-primary" />
           </div>
-        ) : notifications.length === 0 ? (
+        ) : filtered.length === 0 ? (
           <div className="text-center py-12 text-muted-foreground">
-            <Bell className="w-12 h-12 mx-auto mb-3 opacity-50" />
-            <p>Нет уведомлений</p>
+            <Bell className="w-10 h-10 mx-auto mb-3 opacity-30" />
+            <p className="text-sm">Нет уведомлений</p>
           </div>
         ) : (
           <ScrollArea className="h-80">
             <div className="divide-y divide-border">
-              {notifications.map((n) => (
+              {filtered.map((n) => (
                 <div
                   key={n.id}
-                  className={`p-4 hover:bg-muted/50 transition-colors cursor-pointer ${
-                    !n.is_read ? "bg-primary/5" : ""
-                  }`}
+                  className={`px-5 py-3.5 hover:bg-muted/50 transition-colors cursor-pointer ${!n.is_read ? "bg-primary/5" : ""}`}
                   onClick={() => markAsRead(n.id)}
                 >
                   <div className="flex items-start gap-3">
-                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${getIconColor(n.type)}`}>
-                      {getIcon(n.type)}
+                    <div className={`w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 text-xs font-bold ${getAvatarColor(n.id)}`}>
+                      {getInitials(n.title)}
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
-                        <span className="font-medium text-sm">{n.title}</span>
-                        {!n.is_read && (
-                          <span className="w-2 h-2 rounded-full bg-primary" />
-                        )}
+                        <span className="font-semibold text-sm">{n.title}</span>
+                        {!n.is_read && <span className="w-2 h-2 rounded-full bg-primary flex-shrink-0" />}
                       </div>
-                      <p className="text-sm text-muted-foreground line-clamp-2 mt-0.5">
-                        {n.message}
-                      </p>
-                      <p className="text-xs text-muted-foreground mt-1">
+                      <p className="text-sm text-muted-foreground line-clamp-2 mt-0.5">{n.message}</p>
+                      <p className="text-xs text-muted-foreground/70 mt-1">
                         {format(new Date(n.created_at), "d MMM, HH:mm", { locale: ru })}
                       </p>
                     </div>
@@ -217,6 +229,22 @@ export function OrgNotifications({ organizationId }: OrgNotificationsProps) {
               ))}
             </div>
           </ScrollArea>
+        )}
+
+        {/* Footer */}
+        {unreadCount > 0 && (
+          <>
+            <div className="border-t border-border" />
+            <div className="px-5 py-3 flex justify-center">
+              <button
+                onClick={markAllAsRead}
+                className="text-xs text-primary hover:text-primary/80 font-medium flex items-center gap-1.5 transition-colors"
+              >
+                <CheckCircle2 className="w-3.5 h-3.5" />
+                Отметить все как прочитанные
+              </button>
+            </div>
+          </>
         )}
       </PopoverContent>
     </Popover>
