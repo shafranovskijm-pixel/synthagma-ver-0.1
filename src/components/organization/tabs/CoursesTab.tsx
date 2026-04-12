@@ -154,8 +154,18 @@ export const CoursesTab = React.memo(function CoursesTab({ organizationId, onCou
     removeCat,
     refresh,
     updateCourseLocally,
+    reorderCourses,
   } = useCourses(organizationId);
 
+  const dndSensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
+  );
+
+  const handleDragEnd = useCallback(async (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    await reorderCourses(active.id as string, over.id as string);
+  }, [reorderCourses]);
   const [isDuplicating, setIsDuplicating] = useState(false);
 
   const handleDuplicate = async (courseId: string) => {
