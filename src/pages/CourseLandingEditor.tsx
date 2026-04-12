@@ -356,6 +356,47 @@ export function CourseLandingEditorContent({ courseId, embedded = false }: Cours
     setLanding((l) => ({ ...l, faq: { ...l.faq, items: l.faq.items.filter((_, i) => i !== index) } }));
   };
 
+  // AI generation handlers
+  const openAIDialog = (sectionId: string | null) => {
+    setAiDialogSection(sectionId);
+    setAiDialogOpen(true);
+  };
+
+  const handleAITextGenerated = (sectionId: string, data: any) => {
+    setLanding((l) => {
+      switch (sectionId) {
+        case "hero":
+          return { ...l, hero: { ...l.hero, subtitle: typeof data === "string" ? data : l.hero.subtitle } };
+        case "audience":
+          return Array.isArray(data)
+            ? { ...l, audience: { ...l.audience, items: data } }
+            : l;
+        case "learn":
+          return Array.isArray(data)
+            ? { ...l, learn: { ...l.learn, items: data } }
+            : l;
+        case "benefits":
+          return Array.isArray(data) ? { ...l, benefits: data } : l;
+        case "faq":
+          return Array.isArray(data) ? { ...l, faq: { ...l.faq, items: data } } : l;
+        case "cta":
+          return typeof data === "object" && data.title
+            ? { ...l, cta: { title: data.title, subtitle: data.subtitle || l.cta.subtitle } }
+            : l;
+        case "process":
+          return typeof data === "string"
+            ? { ...l, process: { ...l.process, content: data } }
+            : l;
+        default:
+          return l;
+      }
+    });
+  };
+
+  const handleAIImageGenerated = (url: string) => {
+    setLanding((l) => ({ ...l, hero: { ...l.hero, background_url: url } }));
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
