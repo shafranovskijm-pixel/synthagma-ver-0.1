@@ -2,6 +2,7 @@ import { useState } from "react";
 import DOMPurify from "dompurify";
 import { Video, Play } from "lucide-react";
 import { getVideoEmbedUrl, isIframeEmbed, getKinescopeVideoId, getKinescopeEmbedUrl } from "@/utils/courseBuilderHelpers";
+import { LazyMediaPreview } from "@/components/course-builder/LazyMediaPreview";
 
 interface VideoPreviewInlineProps {
   content: string;
@@ -33,7 +34,7 @@ function DirectVideoPreview({ url }: { url: string }) {
   }
   return (
     <div className="aspect-video w-full rounded-xl overflow-hidden bg-muted">
-      <video src={url} controls className="w-full h-full bg-black" controlsList="nodownload"
+      <video src={url} controls preload="none" className="w-full h-full bg-black" controlsList="nodownload"
         onError={() => setError(true)} />
     </div>
   );
@@ -46,20 +47,26 @@ export function VideoPreviewInline({ content }: VideoPreviewInlineProps) {
   const kinescopeId = getKinescopeVideoId(content);
   if (kinescopeId) {
     return (
-      <div className="aspect-video w-full rounded-xl overflow-hidden bg-muted">
-        <iframe
-          src={getKinescopeEmbedUrl(kinescopeId)}
-          className="w-full h-full"
-          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
-          allowFullScreen
-        />
-      </div>
+      <LazyMediaPreview type="video">
+        <div className="aspect-video w-full rounded-xl overflow-hidden bg-muted">
+          <iframe
+            src={getKinescopeEmbedUrl(kinescopeId)}
+            className="w-full h-full"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
+            allowFullScreen
+          />
+        </div>
+      </LazyMediaPreview>
     );
   }
 
   // Direct video file → native player with error fallback
   if (isDirectVideoFileUrl(content)) {
-    return <DirectVideoPreview url={content} />;
+    return (
+      <LazyMediaPreview type="video">
+        <DirectVideoPreview url={content} />
+      </LazyMediaPreview>
+    );
   }
 
   if (isIframeEmbed(content)) {
@@ -68,10 +75,12 @@ export function VideoPreviewInline({ content }: VideoPreviewInlineProps) {
       ADD_ATTR: ['allow', 'allowfullscreen', 'frameborder', 'src', 'width', 'height', 'title', 'referrerpolicy']
     });
     return (
-      <div
-        className="aspect-video w-full rounded-xl overflow-hidden bg-muted"
-        dangerouslySetInnerHTML={{ __html: sanitized }}
-      />
+      <LazyMediaPreview type="iframe">
+        <div
+          className="aspect-video w-full rounded-xl overflow-hidden bg-muted"
+          dangerouslySetInnerHTML={{ __html: sanitized }}
+        />
+      </LazyMediaPreview>
     );
   }
 
@@ -80,7 +89,11 @@ export function VideoPreviewInline({ content }: VideoPreviewInlineProps) {
   if (embedResult) {
     // Check if embed URL is a direct video file
     if (isDirectVideoFileUrl(embedResult.url)) {
-      return <DirectVideoPreview url={embedResult.url} />;
+      return (
+        <LazyMediaPreview type="video">
+          <DirectVideoPreview url={embedResult.url} />
+        </LazyMediaPreview>
+      );
     }
     if (!embedResult.canEmbed) {
       return (
@@ -99,11 +112,13 @@ export function VideoPreviewInline({ content }: VideoPreviewInlineProps) {
       );
     }
     return (
-      <div className="aspect-video w-full rounded-xl overflow-hidden bg-muted">
-        <iframe src={embedResult.url} className="w-full h-full"
-          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-          allowFullScreen />
-      </div>
+      <LazyMediaPreview type="video">
+        <div className="aspect-video w-full rounded-xl overflow-hidden bg-muted">
+          <iframe src={embedResult.url} className="w-full h-full"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+            allowFullScreen />
+        </div>
+      </LazyMediaPreview>
     );
   }
 
