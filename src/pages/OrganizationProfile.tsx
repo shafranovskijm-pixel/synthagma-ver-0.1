@@ -10,6 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ArrowLeft, User, Bell, Handshake, Save, Eye, EyeOff } from "lucide-react";
 import { toast } from "sonner";
+import { PartnerCabinet } from "@/components/organization/PartnerCabinet";
 
 interface ProfileData {
   full_name: string;
