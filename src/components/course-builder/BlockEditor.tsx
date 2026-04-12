@@ -239,7 +239,8 @@ function DirectVideoBlockInner({ url }: { url: string }) {
   );
 }
 
-function DirectVideoBlock({ url }: { url: string }) {
+function DirectVideoBlock({ url, lazy = true }: { url: string; lazy?: boolean }) {
+  if (!lazy) return <DirectVideoBlockInner url={url} />;
   return (
     <LazyMediaPreview type="video">
       <DirectVideoBlockInner url={url} />
@@ -2395,11 +2396,9 @@ function RenderBlock({ block, quizAnswer, quizSubmitted, onQuizAnswer, onQuizSub
             <span className="font-medium text-sm truncate flex-1">{block.documentName || 'Документ'}</span>
             <a href={block.documentUrl} target="_blank" rel="noopener noreferrer" className="text-xs text-indigo-500 hover:underline">Скачать</a>
           </div>
-          <LazyMediaPreview type="document" className="aspect-[4/3]">
-            <div className="aspect-[4/3]">
-              <iframe src={previewUrl} className="w-full h-full border-0" />
-            </div>
-          </LazyMediaPreview>
+          <div className="aspect-[4/3]">
+            <iframe src={previewUrl} className="w-full h-full border-0" />
+          </div>
         </div>
       );
     case "quiz":
@@ -2429,26 +2428,26 @@ function RenderBlock({ block, quizAnswer, quizSubmitted, onQuizAnswer, onQuizSub
       // Direct video file URLs → HTML5 video player
       if (vid.match(/\.(mp4|webm|ogg|mov|mkv|m4v)(\?.*)?$/i) || vid.includes("selcdn.ru")) {
         return (
-          <DirectVideoBlock url={vid} />
+          <DirectVideoBlock url={vid} lazy={false} />
         );
       }
       // YouTube
       const ytId = vid.match(/(?:youtube\.com\/(?:watch\?v=|embed\/)|youtu\.be\/)([a-zA-Z0-9_-]+)/)?.[1];
-      if (ytId) return <LazyMediaPreview type="iframe"><div className="aspect-video not-prose"><iframe src={`https://www.youtube.com/embed/${ytId}`} className="w-full h-full rounded-lg" allowFullScreen /></div></LazyMediaPreview>;
+      if (ytId) return <div className="aspect-video not-prose"><iframe src={`https://www.youtube.com/embed/${ytId}`} className="w-full h-full rounded-lg" allowFullScreen /></div>;
       // Vimeo
       const vimeoId = vid.match(/vimeo\.com\/(\d+)/)?.[1];
-      if (vimeoId) return <LazyMediaPreview type="iframe"><div className="aspect-video not-prose"><iframe src={`https://player.vimeo.com/video/${vimeoId}`} className="w-full h-full rounded-lg" allowFullScreen /></div></LazyMediaPreview>;
+      if (vimeoId) return <div className="aspect-video not-prose"><iframe src={`https://player.vimeo.com/video/${vimeoId}`} className="w-full h-full rounded-lg" allowFullScreen /></div>;
       // Rutube
       const rutubeId = vid.match(/rutube\.ru\/video\/([a-zA-Z0-9]+)/)?.[1];
-      if (rutubeId) return <LazyMediaPreview type="iframe"><div className="aspect-video not-prose"><iframe src={`https://rutube.ru/play/embed/${rutubeId}`} className="w-full h-full rounded-lg" allowFullScreen /></div></LazyMediaPreview>;
+      if (rutubeId) return <div className="aspect-video not-prose"><iframe src={`https://rutube.ru/play/embed/${rutubeId}`} className="w-full h-full rounded-lg" allowFullScreen /></div>;
       // Iframe embed
       if (vid.includes("<iframe")) {
-        return <LazyMediaPreview type="iframe"><div className="aspect-video not-prose [&>iframe]:w-full [&>iframe]:h-full [&>iframe]:border-0" dangerouslySetInnerHTML={{ __html: vid }} /></LazyMediaPreview>;
+        return <div className="aspect-video not-prose [&>iframe]:w-full [&>iframe]:h-full [&>iframe]:border-0" dangerouslySetInnerHTML={{ __html: vid }} />;
       }
       // Fallback: try as direct video
       if (vid.startsWith("http")) {
         return (
-          <DirectVideoBlock url={vid} />
+          <DirectVideoBlock url={vid} lazy={false} />
         );
       }
       return null;
