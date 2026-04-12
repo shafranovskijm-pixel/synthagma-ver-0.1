@@ -381,7 +381,21 @@ export function CourseLandingEditorContent({ courseId, embedded = false }: Cours
       />
     );
 
-    const wrapperClass = `relative group/section ${isHidden ? "opacity-40" : ""}`;
+    // When section is hidden, show collapsed placeholder instead of full content
+    if (isHidden) {
+      return (
+        <div key={sectionId} className="relative group/section opacity-50">
+          {toolbar}
+          <div className="py-6 px-6 bg-muted/20 border border-dashed border-border rounded-lg mx-4">
+            <p className="text-center text-sm text-muted-foreground">
+              Секция «{SECTION_LABELS[sectionId] || sectionId}» скрыта на странице курса
+            </p>
+          </div>
+        </div>
+      );
+    }
+
+    const wrapperClass = "relative group/section";
 
     switch (sectionId) {
       case "hero":
