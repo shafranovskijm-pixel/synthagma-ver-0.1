@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { useTheme } from "next-themes";
@@ -10,18 +10,20 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Switch } from "@/components/ui/switch";
-import { HelpCircle } from "lucide-react";
+import { HelpCircle, AlertCircle } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
 import { VideoIdentification } from "@/components/student/VideoIdentification";
 import { StudentConsentForm } from "@/components/student/StudentConsentForm";
 import { StudentDocumentsUpload } from "@/components/student/StudentDocumentsUpload";
 import { AchievementsPanel } from "@/components/student/AchievementsPanel";
 import { cn } from "@/lib/utils";
+import { useToast } from "@/hooks/use-toast";
 
 export default function StudentProfile() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const { theme, setTheme } = useTheme();
+  const { toast } = useToast();
   const [activeTab, setActiveTab] = useState("profile");
 
   const NOTIFICATION_TYPES = [
@@ -36,8 +38,6 @@ export default function StudentProfile() {
     { key: "platform", label: "Платформа", hint: "Уведомления внутри платформы" },
     { key: "browser", label: "Браузер", hint: "Push-уведомления в браузере" },
     { key: "email", label: "Email", hint: "Уведомления на email" },
-    { key: "telegram", label: "Телеграм", hint: "Уведомления в Telegram" },
-    { key: "app", label: "Приложение", hint: "Push в мобильном приложении" },
   ];
 
   const [notifSettings, setNotifSettings] = useState<Record<string, Record<string, boolean>>>(() => {
@@ -52,12 +52,58 @@ export default function StudentProfile() {
     return defaults;
   });
 
-  const toggleNotif = (type: string, channel: string) => {
+  const [notifLoaded, setNotifLoaded] = useState(false);
+
+  // Load notification preferences from DB
+  useEffect(() => {
+    if (!user?.id) return;
+    const load = async () => {
+      const { data } = await supabase
+        .from("notification_preferences")
+        .select("notification_type, channel, enabled")
+        .eq("user_id", user.id);
+      if (data && data.length > 0) {
+        setNotifSettings(prev => {
+          const next = { ...prev };
+          for (const row of data) {
+            if (next[row.notification_type]) {
+              next[row.notification_type] = { ...next[row.notification_type], [row.channel]: row.enabled };
+            }
+          }
+          return next;
+        });
+      }
+      setNotifLoaded(true);
+    };
+    load();
+  }, [user?.id]);
+
+  const toggleNotif = useCallback(async (type: string, channel: string) => {
+    if (!user?.id) return;
+    const newValue = !(notifSettings[type]?.[channel] ?? false);
     setNotifSettings(prev => ({
       ...prev,
-      [type]: { ...prev[type], [channel]: !prev[type][channel] },
+      [type]: { ...prev[type], [channel]: newValue },
     }));
-  };
+
+    const { error } = await supabase
+      .from("notification_preferences")
+      .upsert({
+        user_id: user.id,
+        notification_type: type,
+        channel: channel,
+        enabled: newValue,
+      }, { onConflict: "user_id,notification_type,channel" });
+
+    if (error) {
+      // revert
+      setNotifSettings(prev => ({
+        ...prev,
+        [type]: { ...prev[type], [channel]: !newValue },
+      }));
+      toast({ title: "Ошибка", description: "Не удалось сохранить настройку", variant: "destructive" });
+    }
+  }, [user?.id, notifSettings, toast]);
 
   const { data: profile, isLoading } = useQuery({
     queryKey: ["student-profile-page", user?.id],
@@ -129,6 +175,14 @@ export default function StudentProfile() {
   const initials = profile?.full_name
     ? profile.full_name.split(" ").slice(0, 2).map((n: string) => n[0]).join("").toUpperCase()
     : "У";
+
+  const noOrgFallback = (
+    <div className="flex flex-col items-center justify-center py-12 text-center space-y-3">
+      <AlertCircle className="w-10 h-10 text-muted-foreground" />
+      <p className="text-muted-foreground">Вы пока не привязаны к организации.</p>
+      <p className="text-sm text-muted-foreground">Обратитесь к администратору для подключения.</p>
+    </div>
+  );
 
   const tabs = [
     { id: "profile", label: "Профиль", icon: User },
@@ -270,13 +324,15 @@ export default function StudentProfile() {
           <TabsContent value="consent">
             <Card>
               <CardContent className="pt-6">
-                {user && profile?.organization_id && (
+                {user && profile?.organization_id ? (
                   <StudentConsentForm
                     userId={user.id}
                     userName={profile?.full_name || "Ученик"}
                     organizationId={profile.organization_id}
                     embedded={true}
                   />
+                ) : (
+                  noOrgFallback
                 )}
               </CardContent>
             </Card>
@@ -286,7 +342,7 @@ export default function StudentProfile() {
           <TabsContent value="documents">
             <Card>
               <CardContent className="pt-6">
-                {user && profile?.organization_id && (
+                {user && profile?.organization_id ? (
                   <StudentDocumentsUpload
                     userId={user.id}
                     organizationId={profile.organization_id}
@@ -294,6 +350,8 @@ export default function StudentProfile() {
                     onOpenChange={() => {}}
                     embedded={true}
                   />
+                ) : (
+                  noOrgFallback
                 )}
               </CardContent>
             </Card>
