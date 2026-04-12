@@ -254,7 +254,101 @@ export default function CourseLandingEditor() {
     setLanding((l) => ({ ...l, benefits: l.benefits.filter((_, i) => i !== index) }));
   };
 
-  if (loading) {
+  // Teachers handlers
+  const updateTeacher = (index: number, field: keyof TeacherItem, value: string) => {
+    setLanding((l) => {
+      const items = [...l.teachers.items];
+      items[index] = { ...items[index], [field]: value };
+      return { ...l, teachers: { ...l.teachers, items } };
+    });
+  };
+  const addTeacher = () => {
+    setLanding((l) => ({
+      ...l,
+      teachers: { ...l.teachers, items: [...l.teachers.items, { name: "Имя преподавателя", role: "Должность", description: "Описание", photo_url: null }] },
+    }));
+  };
+  const removeTeacher = (index: number) => {
+    setLanding((l) => ({ ...l, teachers: { ...l.teachers, items: l.teachers.items.filter((_, i) => i !== index) } }));
+  };
+
+  // Reviews handlers
+  const updateReview = (index: number, field: keyof ReviewItem, value: string | number) => {
+    setLanding((l) => {
+      const items = [...l.reviews.items];
+      items[index] = { ...items[index], [field]: value };
+      return { ...l, reviews: { ...l.reviews, items } };
+    });
+  };
+  const addReview = () => {
+    setLanding((l) => ({
+      ...l,
+      reviews: { ...l.reviews, items: [...l.reviews.items, { name: "Имя", text: "Текст отзыва", rating: 5 }] },
+    }));
+  };
+  const removeReview = (index: number) => {
+    setLanding((l) => ({ ...l, reviews: { ...l.reviews, items: l.reviews.items.filter((_, i) => i !== index) } }));
+  };
+
+  // Pricing handlers
+  const updateTier = (index: number, field: keyof PricingTier, value: any) => {
+    setLanding((l) => {
+      const tiers = [...l.pricing.tiers];
+      tiers[index] = { ...tiers[index], [field]: value };
+      return { ...l, pricing: { ...l.pricing, tiers } };
+    });
+  };
+  const updateTierFeature = (tierIndex: number, featureIndex: number, value: string) => {
+    setLanding((l) => {
+      const tiers = [...l.pricing.tiers];
+      const features = [...tiers[tierIndex].features];
+      features[featureIndex] = value;
+      tiers[tierIndex] = { ...tiers[tierIndex], features };
+      return { ...l, pricing: { ...l.pricing, tiers } };
+    });
+  };
+  const addTierFeature = (tierIndex: number) => {
+    setLanding((l) => {
+      const tiers = [...l.pricing.tiers];
+      tiers[tierIndex] = { ...tiers[tierIndex], features: [...tiers[tierIndex].features, "Новый пункт"] };
+      return { ...l, pricing: { ...l.pricing, tiers } };
+    });
+  };
+  const removeTierFeature = (tierIndex: number, featureIndex: number) => {
+    setLanding((l) => {
+      const tiers = [...l.pricing.tiers];
+      tiers[tierIndex] = { ...tiers[tierIndex], features: tiers[tierIndex].features.filter((_, i) => i !== featureIndex) };
+      return { ...l, pricing: { ...l.pricing, tiers } };
+    });
+  };
+  const addTier = () => {
+    setLanding((l) => ({
+      ...l,
+      pricing: { ...l.pricing, tiers: [...l.pricing.tiers, { name: "Тариф", price: 0, features: ["Доступ к курсу"], is_popular: false }] },
+    }));
+  };
+  const removeTier = (index: number) => {
+    setLanding((l) => ({ ...l, pricing: { ...l.pricing, tiers: l.pricing.tiers.filter((_, i) => i !== index) } }));
+  };
+
+  // FAQ handlers
+  const updateFaqItem = (index: number, field: keyof FaqItem, value: string) => {
+    setLanding((l) => {
+      const items = [...l.faq.items];
+      items[index] = { ...items[index], [field]: value };
+      return { ...l, faq: { ...l.faq, items } };
+    });
+  };
+  const addFaqItem = () => {
+    setLanding((l) => ({
+      ...l,
+      faq: { ...l.faq, items: [...l.faq.items, { question: "Вопрос?", answer: "Ответ" }] },
+    }));
+  };
+  const removeFaqItem = (index: number) => {
+    setLanding((l) => ({ ...l, faq: { ...l.faq, items: l.faq.items.filter((_, i) => i !== index) } }));
+  };
+
     return (
       <div className="min-h-screen flex items-center justify-center">
         <Loader2 className="w-8 h-8 animate-spin text-primary" />
