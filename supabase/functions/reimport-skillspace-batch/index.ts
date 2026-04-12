@@ -39,14 +39,34 @@ Deno.serve(async (req) => {
       });
     }
 
-    const { data: decryptedPassword } = await supabase.rpc("decrypt_password", {
+    const { data: decryptedPassword, error: decryptErr } = await supabase.rpc("decrypt_password", {
       p_text: creds.login_password,
     });
 
-    const login = creds.login_email;
-    const password = decryptedPassword;
+    console.log(`[reimport] Decrypt result: err=${decryptErr?.message}, pwd_length=${decryptedPassword?.length}, pwd_prefix=${decryptedPassword?.substring(0, 3)}`);
 
-    console.log(`[reimport] Starting ${urls.length} courses for org ${organizationId}, login: ${login}`);
+    if (!decryptedPassword) {
+      // Fallback: try using get_decrypted_org_credentials
+      const { data: decCreds, error: decErr } = await supabase.rpc("get_decrypted_org_credentials", {
+        p_organization_id: organizationId,
+      });
+      console.log(`[reimport] Fallback decrypt: err=${decErr?.message}, data=${JSON.stringify(decCreds)?.substring(0, 100)}`);
+      
+      if (!decCreds || decCreds.length === 0) {
+        return new Response(JSON.stringify({ error: "Could not decrypt credentials" }), {
+          status: 500,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      
+      var login = decCreds[0].login_email;
+      var password = decCreds[0].login_password;
+    } else {
+      var login = creds.login_email;
+      var password = decryptedPassword;
+    }
+
+    console.log(`[reimport] Starting ${urls.length} courses for org ${organizationId}, login: ${login}, pwd_len: ${password?.length}`);
 
     const results: any[] = [];
 
