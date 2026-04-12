@@ -218,6 +218,14 @@ const createBlock = (type: BlockType): ContentBlock => ({
 
 function DirectVideoBlock({ url }: { url: string }) {
   const [error, setError] = useState(false);
+  const [activated, setActivated] = useState(false);
+  if (!activated) {
+    return (
+      <LazyMediaPreview type="video">
+        <DirectVideoBlock url={url} />
+      </LazyMediaPreview>
+    );
+  }
   if (error) {
     return (
       <div className="aspect-video not-prose rounded-lg bg-muted flex flex-col items-center justify-center gap-3">
@@ -232,7 +240,7 @@ function DirectVideoBlock({ url }: { url: string }) {
   }
   return (
     <div className="aspect-video not-prose">
-      <video src={url} controls className="w-full h-full rounded-lg bg-black" controlsList="nodownload"
+      <video src={url} controls preload="none" className="w-full h-full rounded-lg bg-black" controlsList="nodownload"
         onError={() => setError(true)} />
     </div>
   );
@@ -1401,32 +1409,34 @@ function VideoBlock({ block, onUpdate }: { block: ContentBlock; onUpdate: (updat
     <div className="py-2">
       {hasValidEmbed ? (
         <div className="space-y-2">
-          <div className="relative group/video aspect-video bg-black rounded-lg overflow-hidden">
-            {embedResult.type === 'iframe' ? (
-              <div 
-                className="w-full h-full [&>iframe]:w-full [&>iframe]:h-full [&>iframe]:border-0"
-                dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(embedResult.value || '', {
-                  ALLOWED_TAGS: ['iframe'],
-                  ALLOWED_ATTR: ['src', 'width', 'height', 'frameborder', 'allow', 'allowfullscreen', 'title', 'referrerpolicy'],
-                }) }}
-              />
-            ) : (
-              <iframe 
-                src={embedResult.value || ''} 
-                className="w-full h-full border-0" 
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" 
-                allowFullScreen 
-              />
-            )}
-            <Button 
-              variant="secondary" 
-              size="sm" 
-              className="absolute top-2 right-2 opacity-0 group-hover/video:opacity-100" 
-              onClick={() => onUpdate({ videoUrl: "" })}
-            >
-              Удалить
-            </Button>
-          </div>
+          <LazyMediaPreview type="iframe">
+            <div className="relative group/video aspect-video bg-black rounded-lg overflow-hidden">
+              {embedResult.type === 'iframe' ? (
+                <div 
+                  className="w-full h-full [&>iframe]:w-full [&>iframe]:h-full [&>iframe]:border-0"
+                  dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(embedResult.value || '', {
+                    ALLOWED_TAGS: ['iframe'],
+                    ALLOWED_ATTR: ['src', 'width', 'height', 'frameborder', 'allow', 'allowfullscreen', 'title', 'referrerpolicy'],
+                  }) }}
+                />
+              ) : (
+                <iframe 
+                  src={embedResult.value || ''} 
+                  className="w-full h-full border-0" 
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" 
+                  allowFullScreen 
+                />
+              )}
+              <Button 
+                variant="secondary" 
+                size="sm" 
+                className="absolute top-2 right-2 opacity-0 group-hover/video:opacity-100" 
+                onClick={() => onUpdate({ videoUrl: "" })}
+              >
+                Удалить
+              </Button>
+            </div>
+          </LazyMediaPreview>
         </div>
       ) : (
         <div className="bg-muted rounded-xl p-6 space-y-4">
@@ -1512,7 +1522,9 @@ function AudioBlock({ block, onUpdate }: { block: ContentBlock; onUpdate: (updat
     <div className="py-2">
       {audioUrl ? (
         <div className="space-y-2">
-          <audio controls preload="none" src={audioUrl} className="w-full rounded-lg" />
+          <LazyMediaPreview type="audio">
+            <audio controls preload="none" src={audioUrl} className="w-full rounded-lg" />
+          </LazyMediaPreview>
           <div className="flex gap-2">
             <Input value={audioUrl} onChange={(e) => onUpdate({ audioUrl: e.target.value })} className="text-xs flex-1" />
             <Button variant="ghost" size="sm" onClick={() => onUpdate({ audioUrl: "" })}>
@@ -1601,15 +1613,17 @@ function DocumentBlock({ block, onUpdate }: { block: ContentBlock; onUpdate: (up
               </Button>
             </div>
           </div>
-          <div className="aspect-[4/3]">
-            <iframe
-              src={isPdf
-                ? `https://docs.google.com/gview?url=${encodeURIComponent(documentUrl)}&embedded=true`
-                : `https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(documentUrl)}`
-              }
-              className="w-full h-full border-0"
-            />
-          </div>
+          <LazyMediaPreview type="document" className="aspect-[4/3]">
+            <div className="aspect-[4/3]">
+              <iframe
+                src={isPdf
+                  ? `https://docs.google.com/gview?url=${encodeURIComponent(documentUrl)}&embedded=true`
+                  : `https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(documentUrl)}`
+                }
+                className="w-full h-full border-0"
+              />
+            </div>
+          </LazyMediaPreview>
         </div>
       ) : (
         <div className="bg-muted rounded-xl p-6 space-y-4">
@@ -2380,9 +2394,11 @@ function RenderBlock({ block, quizAnswer, quizSubmitted, onQuizAnswer, onQuizSub
             <span className="font-medium text-sm truncate flex-1">{block.documentName || 'Документ'}</span>
             <a href={block.documentUrl} target="_blank" rel="noopener noreferrer" className="text-xs text-indigo-500 hover:underline">Скачать</a>
           </div>
-          <div className="aspect-[4/3]">
-            <iframe src={previewUrl} className="w-full h-full border-0" />
-          </div>
+          <LazyMediaPreview type="document" className="aspect-[4/3]">
+            <div className="aspect-[4/3]">
+              <iframe src={previewUrl} className="w-full h-full border-0" />
+            </div>
+          </LazyMediaPreview>
         </div>
       );
     case "quiz":

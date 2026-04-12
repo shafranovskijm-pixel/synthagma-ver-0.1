@@ -435,14 +435,15 @@ export function SliderLessonEditor({ lesson, courseId, onUpdate }: SliderLessonE
         </div>
         
         {pptxFileUrl ? (
-          <div className="relative bg-white">
-            <iframe
-              src={getViewerUrl(pptxFileUrl)}
-              className="w-full border-0"
-              style={{ height: '450px' }}
-              title="Предпросмотр презентации"
-              sandbox="allow-scripts allow-same-origin allow-popups"
-            />
+          <LazyMediaPreview type="slider" className="aspect-auto min-h-[200px]">
+            <div className="relative bg-white">
+              <iframe
+                src={getViewerUrl(pptxFileUrl)}
+                className="w-full border-0"
+                style={{ height: '450px' }}
+                title="Предпросмотр презентации"
+                sandbox="allow-scripts allow-same-origin allow-popups"
+              />
             <div className="flex items-center justify-between p-3 border-t border-amber-500/20 bg-amber-500/5">
               <p className="text-xs text-muted-foreground">Используйте стрелки ← → или прокрутку для навигации</p>
               <a href={getViewerUrl(pptxFileUrl)} target="_blank" rel="noopener noreferrer"
