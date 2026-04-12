@@ -153,7 +153,12 @@ export function AdminSidebar({
             )}
           </div>
 
-          {/* Platform group: Контент, ИИ-провайдеры, Dev Tools */}
+          <button onClick={() => handleTabClick("referrals")} className={tabButtonClass("referrals")}>
+            <Gift className="w-5 h-5" />
+            Партнёры
+          </button>
+
+          {/* Platform group */}
           <div>
             <button
               onClick={() => setPlatformOpen(prev => !prev)}
@@ -178,6 +183,10 @@ export function AdminSidebar({
                   <Bot className="w-4 h-4" />
                   ИИ-провайдеры
                 </button>
+                <button onClick={() => handleTabClick("updates")} className={subTabButtonClass("updates")}>
+                  <Sparkles className="w-4 h-4" />
+                  Обновления
+                </button>
                 <button onClick={() => handleTabClick("devtools")} className={subTabButtonClass("devtools")}>
                   <Terminal className="w-4 h-4" />
                   Dev Tools
@@ -185,11 +194,6 @@ export function AdminSidebar({
               </div>
             )}
           </div>
-
-          <button onClick={() => handleTabClick("updates")} className={tabButtonClass("updates")}>
-            <Sparkles className="w-5 h-5" />
-            Обновления
-          </button>
           
           <button onClick={() => handleTabClick("settings")} className={tabButtonClass("settings")}>
             <Settings className="w-5 h-5" />
