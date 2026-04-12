@@ -491,26 +491,70 @@ Deno.serve(async (req) => {
       const lesson = allLessons[i];
       let lessonData: any = null;
 
-      // Try school API first (uuid), then student API. Add ?version=published variant.
-      const paths = [
+      // Try school API first (uuid), then step API, then student API
+      const lessonPaths = [
         `/api/rest/school/lesson/${lesson.uuid}?version=published`,
         `/api/rest/school/lesson/${lesson.uuid}`,
       ];
       if (String(lesson.id) !== lesson.uuid) {
-        paths.push(`/api/rest/school/lesson/${lesson.id}?version=published`);
-        paths.push(`/api/rest/school/lesson/${lesson.id}`);
+        lessonPaths.push(`/api/rest/school/lesson/${lesson.id}?version=published`);
+        lessonPaths.push(`/api/rest/school/lesson/${lesson.id}`);
+      }
+      // Step API fallbacks (some courses use step instead of lesson)
+      lessonPaths.push(`/api/rest/school/step/${lesson.uuid}?version=published`);
+      lessonPaths.push(`/api/rest/school/step/${lesson.uuid}`);
+      if (String(lesson.id) !== lesson.uuid) {
+        lessonPaths.push(`/api/rest/school/step/${lesson.id}?version=published`);
+        lessonPaths.push(`/api/rest/school/step/${lesson.id}`);
       }
       // Student fallback paths
-      paths.push(`/api/rest/student/lesson/${lesson.uuid}`);
+      lessonPaths.push(`/api/rest/student/lesson/${lesson.uuid}`);
+      lessonPaths.push(`/api/rest/student/step/${lesson.uuid}`);
       if (String(lesson.id) !== lesson.uuid) {
-        paths.push(`/api/rest/student/lesson/${lesson.id}`);
+        lessonPaths.push(`/api/rest/student/lesson/${lesson.id}`);
+        lessonPaths.push(`/api/rest/student/step/${lesson.id}`);
       }
 
-      for (const path of paths) {
-        if (lessonData) break;
+      // Try each path, but also check if the response has actual content
+      let bestLessonData: any = null;
+      let bestRawSize = 0;
+
+      for (const path of lessonPaths) {
         const res = await apiFetch(path);
         if (res.ok && res.data) {
-          lessonData = res.data.lesson || res.data;
+          const candidate = res.data.lesson || res.data.step || res.data;
+          const rawSize = res.raw ? res.raw.length : JSON.stringify(candidate).length;
+          
+          // If we don't have any data yet, take this one
+          if (!bestLessonData) {
+            bestLessonData = candidate;
+            bestRawSize = rawSize;
+          }
+          
+          // If this response is significantly larger, prefer it (has more content)
+          if (rawSize > bestRawSize + 200) {
+            bestLessonData = candidate;
+            bestRawSize = rawSize;
+            log(`Better response from ${path}: ${rawSize}b vs ${bestRawSize}b`);
+          }
+
+          // If we have a good-sized response (>600b), stop searching
+          if (rawSize > 600) {
+            lessonData = candidate;
+            break;
+          }
+        }
+      }
+
+      // Use best found if we didn't find a large one
+      if (!lessonData && bestLessonData) {
+        lessonData = bestLessonData;
+        // Log full response for small responses to help debug
+        if (bestRawSize <= 600) {
+          log(`⚠ Small response (${bestRawSize}b) for lesson "${lesson.title}" (uuid=${lesson.uuid}, id=${lesson.id}). Keys: ${Object.keys(lessonData).join(", ")}`);
+          // Log a snippet of the data
+          const snippet = JSON.stringify(lessonData).substring(0, 500);
+          log(`  Data snippet: ${snippet}`);
         }
       }
 
