@@ -65,6 +65,7 @@ export async function fetchCourses(organizationId: string): Promise<Course[]> {
       notify_on_completion: course.notify_on_completion ?? false,
       completion_notify_emails: course.completion_notify_emails ?? null,
       cover_image_url: course.cover_image_url ?? null,
+      catalog_order: course.catalog_order ?? 0,
     };
   });
 }
