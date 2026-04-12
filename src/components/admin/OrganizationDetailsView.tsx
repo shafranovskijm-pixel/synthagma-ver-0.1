@@ -647,87 +647,37 @@ export function OrganizationDetailsView({ organization, onBack }: OrganizationDe
         </Alert>
       )}
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
-        <Card className={cardClass}>
-          <CardHeader className="pb-2">
-            <CardDescription className="flex items-center gap-1.5">
-              <div className="p-1 rounded-md bg-blue-500/10">
-                <Users className="w-3 h-3 text-blue-500" />
+      {/* Organization Cover / Branding Preview */}
+      <Card className={cardClass}>
+        <CardContent className="p-0 overflow-hidden rounded-lg">
+          {orgBranding.coverUrl ? (
+            <div className="relative h-40 w-full">
+              <img src={orgBranding.coverUrl} alt="Обложка организации" className="w-full h-full object-cover" />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
+              <div className="absolute bottom-3 left-4 flex items-center gap-3">
+                {orgBranding.logoUrl && (
+                  <img src={orgBranding.logoUrl} alt="Логотип" className="w-10 h-10 rounded-lg border border-white/30 bg-white/90 object-contain" />
+                )}
+                <div>
+                  <p className="text-white font-semibold text-lg drop-shadow">{organization.name}</p>
+                  <p className="text-white/80 text-sm drop-shadow">{organization.email}</p>
+                </div>
               </div>
-              Учеников
-            </CardDescription>
-            <CardTitle className="text-2xl">{stats.totalStudents}</CardTitle>
-          </CardHeader>
-        </Card>
-        <Card className={cardClass}>
-          <CardHeader className="pb-2">
-            <CardDescription className="flex items-center gap-1.5">
-              <div className="p-1 rounded-md bg-violet-500/10">
-                <BookOpen className="w-3 h-3 text-violet-500" />
-              </div>
-              Курсов
-            </CardDescription>
-            <CardTitle className="text-2xl">{stats.totalCourses}</CardTitle>
-          </CardHeader>
-        </Card>
-        <Card className={cardClass}>
-          <CardHeader className="pb-2">
-            <CardDescription className="flex items-center gap-1.5">
-              <div className="p-1 rounded-md bg-emerald-500/10">
-                <CheckCircle2 className="w-3 h-3 text-emerald-500" />
-              </div>
-              Завершено
-            </CardDescription>
-            <CardTitle className="text-2xl">{stats.completedEnrollments}</CardTitle>
-          </CardHeader>
-        </Card>
-        <Card className={cardClass}>
-          <CardHeader className="pb-2">
-            <CardDescription className="flex items-center gap-1.5">
-              <div className="p-1 rounded-md bg-orange-500/10">
-                <TrendingUp className="w-3 h-3 text-orange-500" />
-              </div>
-              Средний прогресс
-            </CardDescription>
-            <CardTitle className="text-2xl">{stats.averageProgress}%</CardTitle>
-          </CardHeader>
-        </Card>
-        <Card className={`${cardClass} ${isStorageExceeded ? "border-destructive" : isStorageWarning ? "border-yellow-500" : ""}`}>
-          <CardHeader className="pb-2">
-            <CardDescription className="flex items-center gap-1.5">
-              <div className={`p-1 rounded-md ${isStorageExceeded ? "bg-destructive/10" : isStorageWarning ? "bg-yellow-500/10" : "bg-cyan-500/10"}`}>
-                <HardDrive className={`w-3 h-3 ${isStorageExceeded ? "text-destructive" : isStorageWarning ? "text-yellow-500" : "text-cyan-500"}`} />
-              </div>
-              Хранилище
-              {isStorageExceeded && <AlertTriangle className="w-3 h-3 text-destructive" />}
-            </CardDescription>
-            <CardTitle className={`text-2xl ${isStorageExceeded ? "text-destructive" : isStorageWarning ? "text-yellow-600" : ""}`}>
-              {formatBytes(usage.storage_bytes)}
-            </CardTitle>
-            <p className="text-xs text-muted-foreground">
-              из {formatBytes(settings.storage_limit_bytes)}
-            </p>
-          </CardHeader>
-        </Card>
-        <Card className={`${cardClass} ${isAiGenExceeded ? "border-destructive" : isAiGenWarning ? "border-yellow-500" : ""}`}>
-          <CardHeader className="pb-2">
-            <CardDescription className="flex items-center gap-1.5">
-              <div className={`p-1 rounded-md ${isAiGenExceeded ? "bg-destructive/10" : isAiGenWarning ? "bg-yellow-500/10" : "bg-purple-500/10"}`}>
-                <Sparkles className={`w-3 h-3 ${isAiGenExceeded ? "text-destructive" : isAiGenWarning ? "text-yellow-500" : "text-purple-500"}`} />
-              </div>
-              ИИ-генерации
-              {isAiGenExceeded && <AlertTriangle className="w-3 h-3 text-destructive" />}
-            </CardDescription>
-            <CardTitle className={`text-2xl ${isAiGenExceeded ? "text-destructive" : isAiGenWarning ? "text-yellow-600" : ""}`}>
-              {usage.ai_generations_count}
-            </CardTitle>
-            <p className="text-xs text-muted-foreground">
-              {aiGenerationsLimit === Infinity ? "безлимит" : `из ${aiGenerationsLimit}`}
-            </p>
-          </CardHeader>
-        </Card>
-      </div>
+              {orgBranding.primaryColor && (
+                <div className="absolute top-3 right-3 flex items-center gap-2 bg-black/30 rounded-full px-3 py-1">
+                  <div className="w-4 h-4 rounded-full border border-white/40" style={{ backgroundColor: orgBranding.primaryColor }} />
+                  <span className="text-white text-xs">{orgBranding.primaryColor}</span>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="h-32 w-full bg-gradient-to-r from-primary/10 to-primary/5 flex items-center justify-center gap-3">
+              <Image className="w-8 h-8 text-muted-foreground/40" />
+              <span className="text-muted-foreground text-sm">Организация не установила обложку</span>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
