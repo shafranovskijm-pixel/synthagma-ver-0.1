@@ -12,7 +12,7 @@ import {
   Volume2, Square, MessageCircle, X, Send, List, Presentation, 
   Lock, RotateCcw, Settings2, Headphones, Download, FileText as FileTextIcon,
   FileSpreadsheet, Presentation as PresentationIcon, File, Eye, ChevronDown,
-  MessageSquare
+  MessageSquare, BookCheck
 } from "lucide-react";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
@@ -33,6 +33,7 @@ import { OfflineBanner } from "@/components/student/OfflineBanner";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useState as useReactState } from "react";
 import { FilePreviewDialog } from "@/components/course-learning/FilePreviewDialog";
+import { HomeworkSubmission } from "@/components/course-learning/HomeworkSubmission";
 
 const CourseLearning = () => {
   const { courseId } = useParams();
