@@ -12,7 +12,7 @@ import { SupportRequestsManager } from "@/components/admin/SupportRequestsManage
 
 import { AdminSettings } from "@/components/admin/AdminSettings";
 import { BlogManager } from "@/components/admin/BlogManager";
-import { TariffsManager } from "@/components/admin/TariffsManager";
+
 import { DevToolsPanel } from "@/components/admin/DevToolsPanel";
 import { SalesManager } from "@/components/admin/SalesManager";
 import { AISettingsManager } from "@/components/admin/AISettingsManager";
@@ -37,7 +37,6 @@ const AdminDashboard = () => {
     switch (activeTab) {
       case "analytics": return "Аналитика";
       case "organizations": return "Организации";
-      case "tariffs": return "Тарифы";
       case "marketplace": return "Маркетплейс";
       case "sales": return "Продажи";
       case "ai": return "ИИ-провайдеры";
@@ -101,7 +100,7 @@ const AdminDashboard = () => {
           {/* Tab Content */}
           {activeTab === "analytics" && <AdminAnalytics />}
           {activeTab === "organizations" && <OrganizationsManager />}
-          {activeTab === "tariffs" && <TariffsManager />}
+          
           {activeTab === "marketplace" && <AdminMarketplaceManager />}
           {activeTab === "sales" && <SalesManager />}
           {activeTab === "ai" && <AISettingsManager />}

@@ -67,6 +67,7 @@ import { OrgRemindersTab } from "./OrgRemindersTab";
 import { OrgFeaturesTab } from "./OrgFeaturesTab";
 import { OrgAuditLogsTab } from "./OrgAuditLogsTab";
 import { OrgBalanceManager } from "./OrgBalanceManager";
+import { OrgBillingDocsTab } from "./OrgBillingDocsTab";
 import { getPlanInfo, type SubscriptionPlan } from "@/constants/subscriptionPlans";
 import { SkillspaceImportDialog } from "./SkillspaceImportDialog";
 
@@ -733,6 +734,10 @@ export function OrganizationDetailsView({ organization, onBack }: OrganizationDe
               <Bell className="w-4 h-4" />
               <span className="hidden sm:inline">Напоминания</span>
             </TabsTrigger>
+            <TabsTrigger value="billing-docs" className="flex items-center gap-1.5 shrink-0">
+              <CreditCard className="w-4 h-4" />
+              <span className="hidden sm:inline">Закрывающие</span>
+            </TabsTrigger>
             <TabsTrigger value="settings" className="flex items-center gap-1.5 shrink-0">
               <Settings className="w-4 h-4" />
               <span className="hidden sm:inline">Настройки</span>
@@ -1252,6 +1257,11 @@ export function OrganizationDetailsView({ organization, onBack }: OrganizationDe
         {/* Reminders Tab */}
         <TabsContent value="reminders" className="space-y-4">
           <OrgRemindersTab organizationId={organization.id} />
+        </TabsContent>
+
+        {/* Billing Documents Tab */}
+        <TabsContent value="billing-docs">
+          <OrgBillingDocsTab organizationId={organization.id} />
         </TabsContent>
 
         {/* Settings Tab */}
