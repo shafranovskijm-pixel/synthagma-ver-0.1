@@ -233,7 +233,7 @@ export default function StudentProfile() {
     }
     const { data: urlData } = supabase.storage.from("student-documents").getPublicUrl(path);
     const url = urlData.publicUrl;
-    await supabase.from("profiles").update({ avatar_url: url }).eq("user_id", user.id);
+    await (supabase.from("profiles").update({ avatar_url: url } as any).eq("user_id", user.id) as any);
     setAvatarUrl(url);
     queryClient.invalidateQueries({ queryKey: ["student-profile-page"] });
     toast({ title: "Аватар обновлён" });
