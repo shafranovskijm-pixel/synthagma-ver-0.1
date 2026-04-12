@@ -17,7 +17,7 @@ import {
   Crown, BookOpen, Users, HardDrive, Sparkles, Check, X,
   Palette, Video, FileCheck, Brain, FileSpreadsheet, ClipboardList,
   HardHat, Infinity, ArrowRight, Calendar, AlertTriangle,
-  ExternalLink, Building2, ShoppingCart
+  ExternalLink, Building2, ShoppingCart, CreditCard
 } from "lucide-react";
 import { differenceInDays, format } from "date-fns";
 import { ru } from "date-fns/locale";
@@ -108,6 +108,8 @@ export function SubscriptionTab() {
   const [submitting, setSubmitting] = useState(false);
   const [pendingRequest, setPendingRequest] = useState<{ requested_plan: string; created_at: string } | null>(null);
   const [orgContact, setOrgContact] = useState<{ email?: string; phone?: string; contact_name?: string }>({});
+  const [generatingInvoice, setGeneratingInvoice] = useState(false);
+  const nav = useNavigate();
 
   const currentPlan = subscriptionLimits.plan;
   const currentPlanInfo = SUBSCRIPTION_PLANS[currentPlan];
