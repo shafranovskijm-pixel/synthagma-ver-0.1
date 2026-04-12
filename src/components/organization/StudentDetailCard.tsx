@@ -105,7 +105,7 @@ export function StudentDetailCard({
                     <IdentificationTab h={h} />
                   </TabsContent>
                   <TabsContent value="courses" className="m-0">
-                    <CoursesTab enrollments={enrollments} h={h} />
+                    <CoursesTab enrollments={enrollments} h={h} organizationId={organizationId} studentUserId={student.user_id} />
                   </TabsContent>
                   <TabsContent value="documents" className="m-0">
                     <DocumentsTab h={h} />
