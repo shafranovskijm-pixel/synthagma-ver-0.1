@@ -1,4 +1,4 @@
-import { BookOpen, FileSpreadsheet, CheckCircle, CalendarIcon, Save, Users } from "lucide-react";
+import { BookOpen, FileSpreadsheet, CheckCircle, CalendarIcon, Save, Users, Clock, Timer } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -7,7 +7,7 @@ import { getStatusBadge } from "./StatusBadge";
 import { supabase } from "@/integrations/supabase/client";
 import { useState, useEffect } from "react";
 import { toast } from "sonner";
-import { format } from "date-fns";
+import { format, differenceInDays, isPast } from "date-fns";
 
 interface CoursesTabProps {
   enrollments: {
@@ -19,6 +19,8 @@ interface CoursesTabProps {
     started_at: string;
     completed_at?: string | null;
     time_spent: number;
+    access_days?: number | null;
+    expires_at?: string | null;
   }[];
   h: any;
   organizationId: string;
@@ -36,6 +38,9 @@ export function CoursesTab({ enrollments, h, organizationId, studentUserId }: Co
   const [editingDateId, setEditingDateId] = useState<string | null>(null);
   const [editDate, setEditDate] = useState("");
   const [savingDateId, setSavingDateId] = useState<string | null>(null);
+  const [editingAccessId, setEditingAccessId] = useState<string | null>(null);
+  const [accessDaysValue, setAccessDaysValue] = useState("");
+  const [savingAccessId, setSavingAccessId] = useState<string | null>(null);
 
   const [groups, setGroups] = useState<StudentGroup[]>([]);
   const [currentGroupId, setCurrentGroupId] = useState<string | null>(null);
@@ -115,6 +120,43 @@ export function CoursesTab({ enrollments, h, organizationId, studentUserId }: Co
     }
   };
 
+  const handleStartEditAccess = (enrollment: CoursesTabProps["enrollments"][0]) => {
+    setEditingAccessId(enrollment.id);
+    setAccessDaysValue(enrollment.access_days?.toString() || "");
+  };
+
+  const handleSaveAccessDays = async (enrollmentId: string) => {
+    setSavingAccessId(enrollmentId);
+    try {
+      const days = accessDaysValue.trim() === "" ? null : parseInt(accessDaysValue, 10);
+      if (days !== null && (isNaN(days) || days < 1)) {
+        toast.error("Укажите корректное количество дней (или оставьте пустым для безлимитного доступа)");
+        setSavingAccessId(null);
+        return;
+      }
+      const { error } = await supabase
+        .from("enrollments")
+        .update({ access_days: days } as any)
+        .eq("id", enrollmentId);
+      if (error) throw error;
+      toast.success(days ? `Доступ ограничен: ${days} дней` : "Ограничение снято, доступ безлимитный");
+      setEditingAccessId(null);
+      h.onStudentUpdated?.();
+    } catch (e: any) {
+      toast.error("Ошибка: " + e.message);
+    } finally {
+      setSavingAccessId(null);
+    }
+  };
+
+  const getAccessInfo = (e: CoursesTabProps["enrollments"][0]) => {
+    if (!e.access_days || !e.expires_at) return null;
+    const expiresAt = new Date(e.expires_at);
+    const isExpired = isPast(expiresAt);
+    const daysLeft = differenceInDays(expiresAt, new Date());
+    return { isExpired, daysLeft, expiresAt };
+  };
+
   const currentGroup = groups.find(g => g.id === currentGroupId);
 
   return (
@@ -163,61 +205,100 @@ export function CoursesTab({ enrollments, h, organizationId, studentUserId }: Co
           <div className="text-center py-8 text-muted-foreground"><BookOpen className="w-12 h-12 mx-auto mb-3 opacity-50" /><p>Ученик не зачислен на курсы</p></div>
         ) : (
           <div className="space-y-3">
-            {enrollments.map((e) => (
-              <div key={e.id} className="p-4 rounded-xl bg-muted/50">
-                <div className="flex items-center justify-between mb-2">
-                  <h4 className="font-medium">{e.course_title}</h4>
-                  {getStatusBadge(e.status)}
-                </div>
-                <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                  <span>Прогресс: {e.progress}%</span>
-                  <span>Время: {h.formatDuration(e.time_spent)}</span>
-                  {e.completed_at && editingDateId !== e.id && (
-                    <button
-                      className="inline-flex items-center gap-1 hover:text-foreground transition-colors cursor-pointer underline decoration-dotted underline-offset-2"
-                      onClick={() => handleStartEditDate(e)}
-                      title="Нажмите, чтобы изменить дату для ФРДО"
-                    >
-                      <CalendarIcon className="w-3.5 h-3.5" />
-                      Завершён: {h.formatDate(e.completed_at)}
-                    </button>
-                  )}
-                </div>
-
-                {editingDateId === e.id && (
-                  <div className="mt-2 flex items-center gap-2 p-2 rounded-lg bg-accent/5 border border-accent/20">
-                    <Input
-                      type="datetime-local"
-                      value={editDate}
-                      onChange={(ev) => setEditDate(ev.target.value)}
-                      className="h-8 text-sm rounded-lg w-auto"
-                    />
-                    <Button size="sm" variant="default" className="h-8 rounded-lg gap-1.5 text-xs" onClick={() => handleSaveDate(e.id)} disabled={savingDateId === e.id}>
-                      <Save className="w-3.5 h-3.5" />
-                      {savingDateId === e.id ? "..." : "Сохранить для ФРДО"}
-                    </Button>
-                    <Button size="sm" variant="ghost" className="h-8 rounded-lg text-xs" onClick={() => setEditingDateId(null)}>Отмена</Button>
+            {enrollments.map((e) => {
+              const accessInfo = getAccessInfo(e);
+              return (
+                <div key={e.id} className="p-4 rounded-xl bg-muted/50">
+                  <div className="flex items-center justify-between mb-2">
+                    <h4 className="font-medium">{e.course_title}</h4>
+                    <div className="flex items-center gap-2">
+                      {accessInfo && (
+                        <Badge variant={accessInfo.isExpired ? "destructive" : "outline"} className="text-xs">
+                          <Timer className="w-3 h-3 mr-1" />
+                          {accessInfo.isExpired ? "Доступ истёк" : `${accessInfo.daysLeft} дн. осталось`}
+                        </Badge>
+                      )}
+                      {getStatusBadge(e.status)}
+                    </div>
                   </div>
-                )}
+                  <div className="flex items-center gap-4 text-sm text-muted-foreground flex-wrap">
+                    <span>Прогресс: {e.progress}%</span>
+                    <span>Время: {h.formatDuration(e.time_spent)}</span>
+                    {e.completed_at && editingDateId !== e.id && (
+                      <button
+                        className="inline-flex items-center gap-1 hover:text-foreground transition-colors cursor-pointer underline decoration-dotted underline-offset-2"
+                        onClick={() => handleStartEditDate(e)}
+                        title="Нажмите, чтобы изменить дату для ФРДО"
+                      >
+                        <CalendarIcon className="w-3.5 h-3.5" />
+                        Завершён: {h.formatDate(e.completed_at)}
+                      </button>
+                    )}
+                    {editingAccessId !== e.id && (
+                      <button
+                        className="inline-flex items-center gap-1 hover:text-foreground transition-colors cursor-pointer underline decoration-dotted underline-offset-2"
+                        onClick={() => handleStartEditAccess(e)}
+                        title="Ограничить доступ по дням"
+                      >
+                        <Clock className="w-3.5 h-3.5" />
+                        {e.access_days ? `Доступ: ${e.access_days} дн.` : "Доступ: безлимитный"}
+                      </button>
+                    )}
+                  </div>
 
-                <div className="w-full bg-muted rounded-full h-2 mt-2">
-                  <div className="bg-primary rounded-full h-2 transition-all" style={{ width: `${Math.min(e.progress, 100)}%` }} />
-                </div>
-                <div className="flex gap-2 mt-3">
-                  {e.status !== "completed" && (
-                    <Button size="sm" variant="outline" className="rounded-lg gap-2" onClick={() => handleManualComplete(e.id)} disabled={completingId === e.id}>
-                      <CheckCircle className="w-4 h-4" />
-                      {completingId === e.id ? "Завершение..." : "Завершить курс"}
-                    </Button>
+                  {editingDateId === e.id && (
+                    <div className="mt-2 flex items-center gap-2 p-2 rounded-lg bg-accent/5 border border-accent/20">
+                      <Input
+                        type="datetime-local"
+                        value={editDate}
+                        onChange={(ev) => setEditDate(ev.target.value)}
+                        className="h-8 text-sm rounded-lg w-auto"
+                      />
+                      <Button size="sm" variant="default" className="h-8 rounded-lg gap-1.5 text-xs" onClick={() => handleSaveDate(e.id)} disabled={savingDateId === e.id}>
+                        <Save className="w-3.5 h-3.5" />
+                        {savingDateId === e.id ? "..." : "Сохранить для ФРДО"}
+                      </Button>
+                      <Button size="sm" variant="ghost" className="h-8 rounded-lg text-xs" onClick={() => setEditingDateId(null)}>Отмена</Button>
+                    </div>
                   )}
-                  {e.status === "completed" && (
-                    <Button size="sm" variant="outline" className="rounded-lg gap-2" onClick={() => { h.setSelectedEnrollmentForFRDO(e); h.setIsFRDODialogOpen(true); }}>
-                      <FileSpreadsheet className="w-4 h-4" />Экспорт ФРДО
-                    </Button>
+
+                  {editingAccessId === e.id && (
+                    <div className="mt-2 flex items-center gap-2 p-2 rounded-lg bg-primary/5 border border-primary/20">
+                      <Input
+                        type="number"
+                        min={1}
+                        placeholder="Кол-во дней (пусто = безлимит)"
+                        value={accessDaysValue}
+                        onChange={(ev) => setAccessDaysValue(ev.target.value)}
+                        className="h-8 text-sm rounded-lg w-[240px]"
+                      />
+                      <Button size="sm" variant="default" className="h-8 rounded-lg gap-1.5 text-xs" onClick={() => handleSaveAccessDays(e.id)} disabled={savingAccessId === e.id}>
+                        <Save className="w-3.5 h-3.5" />
+                        {savingAccessId === e.id ? "..." : "Сохранить"}
+                      </Button>
+                      <Button size="sm" variant="ghost" className="h-8 rounded-lg text-xs" onClick={() => setEditingAccessId(null)}>Отмена</Button>
+                    </div>
                   )}
+
+                  <div className="w-full bg-muted rounded-full h-2 mt-2">
+                    <div className="bg-primary rounded-full h-2 transition-all" style={{ width: `${Math.min(e.progress, 100)}%` }} />
+                  </div>
+                  <div className="flex gap-2 mt-3">
+                    {e.status !== "completed" && (
+                      <Button size="sm" variant="outline" className="rounded-lg gap-2" onClick={() => handleManualComplete(e.id)} disabled={completingId === e.id}>
+                        <CheckCircle className="w-4 h-4" />
+                        {completingId === e.id ? "Завершение..." : "Завершить курс"}
+                      </Button>
+                    )}
+                    {e.status === "completed" && (
+                      <Button size="sm" variant="outline" className="rounded-lg gap-2" onClick={() => { h.setSelectedEnrollmentForFRDO(e); h.setIsFRDODialogOpen(true); }}>
+                        <FileSpreadsheet className="w-4 h-4" />Экспорт ФРДО
+                      </Button>
+                    )}
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>
