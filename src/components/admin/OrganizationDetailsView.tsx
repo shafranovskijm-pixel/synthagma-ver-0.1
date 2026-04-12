@@ -54,6 +54,8 @@ import {
   Download,
   Trash2,
   RefreshCw,
+  CreditCard,
+  Image,
 } from "lucide-react";
 import { safeInvoke } from "@/utils/safeInvoke";
 import { format } from "date-fns";
