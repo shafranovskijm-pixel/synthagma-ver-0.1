@@ -14,7 +14,7 @@ import { WebinarParticipantsDialog } from "./WebinarParticipantsDialog";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-import { WebinarPlayerSettings, buildKinescopeEmbedUrl } from "./WebinarPlayerSettings";
+import { InlinePlayerSettings, buildKinescopeEmbedUrl } from "./WebinarPlayerSettings";
 
 interface Webinar {
   id: string;
