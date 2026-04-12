@@ -62,7 +62,7 @@ import {
 } from "@/constants/frdo";
 import { CourseRemindersTab } from "@/components/organization/CourseRemindersTab";
 import { CourseGroupsTab } from "@/components/organization/CourseGroupsTab";
-import { CourseLandingEditorContent } from "@/pages/CourseLandingEditor";
+import { CoursePageSettingsContent } from "@/components/course-editor/CoursePageSettingsContent";
 
 interface Course {
   id: string;
