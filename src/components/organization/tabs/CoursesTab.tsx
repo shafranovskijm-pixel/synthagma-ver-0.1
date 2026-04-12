@@ -1098,6 +1098,13 @@ export const CoursesTab = React.memo(function CoursesTab({ organizationId, onCou
                 <ImagePlus className="w-4 h-4 mr-2" />
                 Изменить обложку
               </DropdownMenuItem>
+              <DropdownMenuItem 
+                disabled={generatingCoverForCourse === course.id}
+                onClick={e => { e.stopPropagation(); handleGenerateCourseCover(course.id); }}
+              >
+                {generatingCoverForCourse === course.id ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Wand2 className="w-4 h-4 mr-2" />}
+                {generatingCoverForCourse === course.id ? "Генерация..." : "Сгенерировать с ИИ"}
+              </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
