@@ -206,6 +206,11 @@ export default function CourseBuilder() {
                   <span className="text-[10px] sm:text-xs font-semibold">Обратная связь</span>
                   <span className="text-[9px] sm:text-[10px] text-muted-foreground leading-tight text-center hidden sm:block">Вопрос → чат</span>
                 </Button>
+                <Button variant="outline" className="h-auto py-3 sm:py-4 flex flex-col gap-1 sm:gap-2 rounded-xl hover:shadow-md hover:-translate-y-0.5 transition-all hover:border-indigo-400/30" onClick={() => addLesson('homework')}>
+                  <div className="p-1.5 sm:p-2 rounded-full bg-indigo-500/10"><BookCheck className="w-4 h-4 sm:w-5 sm:h-5 text-indigo-500" /></div>
+                  <span className="text-[10px] sm:text-xs font-semibold">Задание</span>
+                  <span className="text-[9px] sm:text-[10px] text-muted-foreground leading-tight text-center hidden sm:block">Домашняя работа</span>
+                </Button>
               </div>
             </div>
           </div>
