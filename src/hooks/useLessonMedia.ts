@@ -410,6 +410,8 @@ export function useLessonMedia(
     isSpeaking, isSpeechPaused, handlePlayAudio, handleStopSpeech,
     // Video
     videoUploadProgress, compressionProgress, videoInputRef, handleVideoUpload, cancelVideoUpload,
+    // Kinescope
+    kinescopeUploadProgress, kinescopeInputRef, handleKinescopeUpload,
     // AI
     isGeneratingContent, handleGenerateContent,
   };
