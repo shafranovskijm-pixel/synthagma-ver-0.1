@@ -872,6 +872,10 @@ export function CourseDetailsModal({
               />
             </TabsContent>
 
+            <TabsContent value="landing" className="mt-0 h-full">
+              <CourseLandingEditorContent courseId={course.id} embedded />
+            </TabsContent>
+
             <TabsContent value="settings" className="mt-0 h-full">
               <div className="space-y-6">
                 {/* Landing page banner */}
