@@ -326,6 +326,128 @@ const PartnerLanding = () => {
           </div>
         </section>
 
+        {/* Promo materials */}
+        <section className="py-24">
+          <div className="container mx-auto px-6">
+            <motion.h2
+              className="font-display text-3xl lg:text-4xl font-bold text-center mb-4"
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+            >
+              Рекламные материалы
+            </motion.h2>
+            <motion.p
+              className="text-muted-foreground text-center mb-14 max-w-lg mx-auto"
+              initial={{ opacity: 0 }}
+              whileInView={{ opacity: 1 }}
+              viewport={{ once: true }}
+              transition={{ delay: 0.2 }}
+            >
+              Готовые тексты — просто скопируйте и отправьте
+            </motion.p>
+
+            <div className="grid md:grid-cols-2 gap-8 max-w-4xl mx-auto">
+              {/* Messenger text */}
+              <motion.div
+                initial={{ opacity: 0, y: 30 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+              >
+                <Card className="h-full border-0 shadow-md">
+                  <CardContent className="pt-6 space-y-4">
+                    <div className="flex items-center gap-3 mb-2">
+                      <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+                        <MessageCircle className="w-5 h-5 text-primary" />
+                      </div>
+                      <h3 className="font-semibold text-lg">Для мессенджеров</h3>
+                    </div>
+                    <div className="bg-muted rounded-xl p-4">
+                      <p className="text-sm leading-relaxed whitespace-pre-line">
+{`🎓 Я использую платформу СИНТАГМА для дистанционного обучения — современная LMS с документооборотом, ФРДО, видеоидентификацией и ИИ.
+
+Попробуйте бесплатно: ${getBaseUrl()}`}
+                      </p>
+                    </div>
+                    <Button size="sm" variant="outline" className="gap-1.5" onClick={() => {
+                      navigator.clipboard.writeText(`🎓 Я использую платформу СИНТАГМА для дистанционного обучения — современная LMS с документооборотом, ФРДО, видеоидентификацией и ИИ.\n\nПопробуйте бесплатно: ${getBaseUrl()}`);
+                      toast({ title: "Текст скопирован!" });
+                    }}>
+                      <Copy className="w-3.5 h-3.5" /> Копировать текст
+                    </Button>
+                  </CardContent>
+                </Card>
+              </motion.div>
+
+              {/* Social post */}
+              <motion.div
+                initial={{ opacity: 0, y: 30 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: 0.15 }}
+              >
+                <Card className="h-full border-0 shadow-md">
+                  <CardContent className="pt-6 space-y-4">
+                    <div className="flex items-center gap-3 mb-2">
+                      <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+                        <FileText className="w-5 h-5 text-primary" />
+                      </div>
+                      <h3 className="font-semibold text-lg">Для соцсетей / email</h3>
+                    </div>
+                    <div className="bg-muted rounded-xl p-4">
+                      <p className="text-sm leading-relaxed whitespace-pre-line">
+{`Для обучения сотрудников использую СИНТАГМА — платформу с полным функционалом:
+
+1. Бесплатный тариф для старта
+2. Безлимит учеников на всех тарифах
+3. ИИ-генерация курсов за минуты
+4. Встроенный документооборот и ФРДО
+5. Видеоидентификация и прокторинг
+6. Онлайн-касса и приём платежей
+7. Охрана труда и журналы
+
+Попробуйте: ${getBaseUrl()}`}
+                      </p>
+                    </div>
+                    <Button size="sm" variant="outline" className="gap-1.5" onClick={() => {
+                      navigator.clipboard.writeText(`Для обучения сотрудников использую СИНТАГМА — платформу с полным функционалом:\n\n1. Бесплатный тариф для старта\n2. Безлимит учеников на всех тарифах\n3. ИИ-генерация курсов за минуты\n4. Встроенный документооборот и ФРДО\n5. Видеоидентификация и прокторинг\n6. Онлайн-касса и приём платежей\n7. Охрана труда и журналы\n\nПопробуйте: ${getBaseUrl()}`);
+                      toast({ title: "Текст скопирован!" });
+                    }}>
+                      <Copy className="w-3.5 h-3.5" /> Копировать текст
+                    </Button>
+                  </CardContent>
+                </Card>
+              </motion.div>
+            </div>
+
+            {/* Who to recommend */}
+            <motion.div
+              className="mt-16 max-w-4xl mx-auto"
+              initial={{ opacity: 0 }}
+              whileInView={{ opacity: 1 }}
+              viewport={{ once: true }}
+              transition={{ delay: 0.3 }}
+            >
+              <h3 className="font-display text-2xl font-bold text-center mb-8">Кому рекомендовать</h3>
+              <div className="grid sm:grid-cols-3 gap-4">
+                {[
+                  { icon: "🏫", title: "Учебные центры", desc: "Центры ДПО, повышения квалификации, переподготовки" },
+                  { icon: "🏢", title: "Компании", desc: "Обучение персонала, охрана труда, аттестация" },
+                  { icon: "🎓", title: "Образовательные организации", desc: "Школы, колледжи, университеты — дистанционное обучение" },
+                ].map((item, i) => (
+                  <Card key={i} className="border-0 shadow-md text-center">
+                    <CardContent className="pt-6 pb-4">
+                      <div className="text-3xl mb-3">{item.icon}</div>
+                      <h4 className="font-semibold mb-1">{item.title}</h4>
+                      <p className="text-sm text-muted-foreground">{item.desc}</p>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            </motion.div>
+          </div>
+        </section>
+
         {/* CTA */}
         <section className="py-24 relative overflow-hidden">
           <div className="absolute inset-0 bg-gradient-to-r from-primary/5 via-primary/10 to-primary/5" />
