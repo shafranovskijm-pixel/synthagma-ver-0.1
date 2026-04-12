@@ -59,6 +59,7 @@ import {
   Image,
   Upload,
   GripVertical,
+  Crown,
 } from "lucide-react";
 import { safeInvoke } from "@/utils/safeInvoke";
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent } from "@dnd-kit/core";
@@ -757,6 +758,10 @@ export function OrganizationDetailsView({ organization, onBack }: OrganizationDe
               <Wallet className="w-4 h-4" />
               <span className="hidden sm:inline">Баланс</span>
             </TabsTrigger>
+            <TabsTrigger value="tariffs" className="flex items-center gap-1.5 shrink-0">
+              <Crown className="w-4 h-4" />
+              <span className="hidden sm:inline">Тарифы</span>
+            </TabsTrigger>
             <TabsTrigger value="documents" className="flex items-center gap-1.5 shrink-0">
               <FileText className="w-4 h-4" />
               <span className="hidden sm:inline">Документы</span>
@@ -1259,6 +1264,141 @@ export function OrganizationDetailsView({ organization, onBack }: OrganizationDe
         {/* Balance Tab */}
         <TabsContent value="balance" className="space-y-4">
           <OrgBalanceManager organizationId={organization.id} />
+        </TabsContent>
+
+        {/* Tariffs Tab */}
+        <TabsContent value="tariffs" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Crown className="w-5 h-5" />
+                Тарифный план
+              </CardTitle>
+              <CardDescription>Управление тарифом и индивидуальными лимитами</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {/* Current plan */}
+              <div className="space-y-3">
+                <Label>Текущий тариф</Label>
+                <Select
+                  value={organization.subscription_plan || 'free'}
+                  onValueChange={async (val) => {
+                    const { error } = await supabase
+                      .from("organizations")
+                      .update({ subscription_plan: val } as any)
+                      .eq("id", organization.id);
+                    if (error) {
+                      toast.error("Ошибка смены тарифа");
+                    } else {
+                      toast.success(`Тариф изменён на "${getPlanInfo(val as SubscriptionPlan).name}"`);
+                    }
+                  }}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="free">Бесплатный</SelectItem>
+                    <SelectItem value="start">Старт — 3 490 ₽/мес</SelectItem>
+                    <SelectItem value="standard">Стандарт — 6 990 ₽/мес</SelectItem>
+                    <SelectItem value="professional">Профессиональный — 16 990 ₽/мес</SelectItem>
+                    <SelectItem value="maximum">Максимальный — 24 990 ₽/мес</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Custom label */}
+              <div className="space-y-2">
+                <Label>Кастомная метка тарифа</Label>
+                <Input
+                  value={tariffCustomLabel}
+                  onChange={(e) => setTariffCustomLabel(e.target.value)}
+                  placeholder="Например: VIP, Партнёр, Тестовый"
+                />
+              </div>
+
+              {/* Paid until */}
+              <div className="space-y-2">
+                <Label>Оплачен до</Label>
+                <Input
+                  type="date"
+                  value={tariffPaidUntil}
+                  onChange={(e) => setTariffPaidUntil(e.target.value)}
+                />
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Индивидуальные лимиты</CardTitle>
+              <CardDescription>Переопределяют стандартные лимиты тарифа. Оставьте пустым для использования значений тарифа.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {[
+                { key: 'maxCourses' as const, label: 'Макс. курсов' },
+                { key: 'maxStudents' as const, label: 'Макс. учеников' },
+                { key: 'maxTrainedPerMonth' as const, label: 'Обученных в месяц' },
+                { key: 'aiGenerationsLimit' as const, label: 'ИИ-генераций' },
+              ].map(({ key, label }) => (
+                <div key={key} className="flex items-center gap-4">
+                  <Label className="w-44 shrink-0">{label}</Label>
+                  <Input
+                    type="number"
+                    className="w-32"
+                    value={customLimits[key] === -1 ? '' : (customLimits[key] ?? '')}
+                    disabled={customLimits[key] === -1}
+                    onChange={(e) => setCustomLimits(prev => ({
+                      ...prev,
+                      [key]: e.target.value ? Number(e.target.value) : null,
+                    }))}
+                    placeholder="По тарифу"
+                  />
+                  <div className="flex items-center gap-2">
+                    <Switch
+                      checked={customLimits[key] === -1}
+                      onCheckedChange={(checked) => setCustomLimits(prev => ({
+                        ...prev,
+                        [key]: checked ? -1 : null,
+                      }))}
+                    />
+                    <span className="text-sm text-muted-foreground">Безлимит</span>
+                  </div>
+                </div>
+              ))}
+
+              {/* Storage separately — in GB */}
+              <div className="flex items-center gap-4">
+                <Label className="w-44 shrink-0">Хранилище (ГБ)</Label>
+                <Input
+                  type="number"
+                  className="w-32"
+                  value={customLimits.storageLimitBytes === -1 ? '' : (customLimits.storageLimitBytes != null ? Math.round(customLimits.storageLimitBytes / 1073741824) : '')}
+                  disabled={customLimits.storageLimitBytes === -1}
+                  onChange={(e) => setCustomLimits(prev => ({
+                    ...prev,
+                    storageLimitBytes: e.target.value ? Number(e.target.value) * 1073741824 : null,
+                  }))}
+                  placeholder="По тарифу"
+                />
+                <div className="flex items-center gap-2">
+                  <Switch
+                    checked={customLimits.storageLimitBytes === -1}
+                    onCheckedChange={(checked) => setCustomLimits(prev => ({
+                      ...prev,
+                      storageLimitBytes: checked ? -1 : null,
+                    }))}
+                  />
+                  <span className="text-sm text-muted-foreground">Безлимит</span>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Button onClick={saveTariffSettings} disabled={isSavingTariff}>
+            {isSavingTariff ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
+            Сохранить тарифные настройки
+          </Button>
         </TabsContent>
 
         {/* Documents Tab */}
