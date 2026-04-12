@@ -96,19 +96,14 @@ export default function OrganizationProfile() {
       .eq("user_id", user!.id);
     if (data && data.length > 0) {
       setNotifs(prev => prev.map(n => {
-        const saved = data.find((d: any) => d.notification_type === n.key);
-        if (saved) {
-          return {
-            ...n,
-            platform: saved.platform_enabled ?? n.platform,
-            browser: saved.browser_enabled ?? n.browser,
-            email: saved.email_enabled ?? n.email,
-          };
-        }
-        return n;
+        const getEnabled = (channel: string) => {
+          const row = data.find((d: any) => d.notification_type === n.key && d.channel === channel);
+          return row ? row.enabled : (channel === "platform" ? n.platform : channel === "browser" ? n.browser : n.email);
+        };
+        return { ...n, platform: getEnabled("platform"), browser: getEnabled("browser"), email: getEnabled("email") };
       }));
-      const soundPref = data.find((d: any) => d.notification_type === "sound");
-      if (soundPref) setSoundEnabled(soundPref.platform_enabled ?? false);
+      const soundRow = data.find((d: any) => d.notification_type === "sound" && d.channel === "platform");
+      if (soundRow) setSoundEnabled(soundRow.enabled ?? false);
     }
   };
 
@@ -165,23 +160,15 @@ export default function OrganizationProfile() {
   const handleSaveNotifs = async () => {
     setSaving(true);
     try {
+      const rows: { user_id: string; notification_type: string; channel: string; enabled: boolean }[] = [];
       for (const n of notifs) {
-        await supabase.from("notification_preferences").upsert({
-          user_id: user!.id,
-          notification_type: n.key,
-          platform_enabled: n.platform,
-          browser_enabled: n.browser,
-          email_enabled: n.email,
-        }, { onConflict: "user_id,notification_type" });
+        rows.push({ user_id: user!.id, notification_type: n.key, channel: "platform", enabled: n.platform });
+        rows.push({ user_id: user!.id, notification_type: n.key, channel: "browser", enabled: n.browser });
+        rows.push({ user_id: user!.id, notification_type: n.key, channel: "email", enabled: n.email });
       }
-      // Save sound pref
-      await supabase.from("notification_preferences").upsert({
-        user_id: user!.id,
-        notification_type: "sound",
-        platform_enabled: soundEnabled,
-        browser_enabled: false,
-        email_enabled: false,
-      }, { onConflict: "user_id,notification_type" });
+      rows.push({ user_id: user!.id, notification_type: "sound", channel: "platform", enabled: soundEnabled });
+      
+      await supabase.from("notification_preferences").upsert(rows, { onConflict: "user_id,notification_type,channel" });
       toast.success("Настройки уведомлений сохранены");
     } catch (e: any) {
       toast.error(e.message);

@@ -130,6 +130,11 @@ const App = () => (
                         <OrganizationDashboard />
                       </ProtectedRoute>
                     } />
+                    <Route path="/organization/profile" element={
+                      <ProtectedRoute requiredRole="organization">
+                        <OrganizationProfile />
+                      </ProtectedRoute>
+                    } />
                     <Route path="/course/:courseId/edit" element={
                       <ProtectedRoute requiredRole="organization">
                         <CourseEditor />
