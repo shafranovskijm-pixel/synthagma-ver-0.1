@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useCallback } from "react";
+import { WebinarsManager } from "@/components/organization/WebinarsManager";
 import { useOrgDashboard } from "@/contexts/OrgDashboardContext";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
