@@ -341,11 +341,6 @@ export function WebinarsManager({ organizationId }: Props) {
                 <Button size="sm" variant="ghost" onClick={() => copyWebinarLink(w)} title="Скопировать ссылку">
                   <Link className="w-3 h-3" />
                 </Button>
-                {w.kinescope_video_id && (
-                  <Button size="sm" variant="ghost" onClick={() => setPlayerSettingsWebinar(w)} title="Настройки плеера">
-                    <Settings className="w-3 h-3" />
-                  </Button>
-                )}
                 <Button size="sm" variant="ghost" className="text-destructive" onClick={() => setDeleteTarget(w)}>
                   <Trash2 className="w-3 h-3" />
                 </Button>
@@ -392,15 +387,6 @@ export function WebinarsManager({ organizationId }: Props) {
         </DialogContent>
       </Dialog>
 
-      {playerSettingsWebinar && (
-        <WebinarPlayerSettings
-          open={!!playerSettingsWebinar}
-          onOpenChange={(o) => !o && setPlayerSettingsWebinar(null)}
-          webinarId={playerSettingsWebinar.id}
-          initialSettings={(playerSettingsWebinar as any).player_settings || {}}
-          onSaved={fetchWebinars}
-        />
-      )}
 
       <AlertDialog open={!!deleteTarget} onOpenChange={(o) => !o && setDeleteTarget(null)}>
         <AlertDialogContent>
