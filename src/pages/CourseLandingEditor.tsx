@@ -534,6 +534,7 @@ export default function CourseLandingEditor() {
               onRemoveItem={removeFaqItem}
             />
           </div>
+        );
       case "cta":
         return (
           <div key={sectionId} className={wrapperClass}>
