@@ -40,6 +40,7 @@ interface UseCoursesReturn {
   removeCat: (categoryId: string) => Promise<boolean>;
   refresh: () => void;
   updateCourseLocally: (courseId: string, updates: Partial<Course>) => void;
+  reorderCourses: (activeId: string, overId: string) => Promise<void>;
 }
 
 export function useCourses(organizationId: string | null): UseCoursesReturn {
