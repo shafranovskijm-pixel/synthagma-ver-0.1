@@ -1,25 +1,59 @@
 
 
-# Plan: Reorganize Admin Panel — Remove Tariffs Tab, Move Documents
+# Пакетный импорт курсов SkillSpace в фоне
 
-## What changes
+## Что будет сделано
 
-### 1. Remove "Тарифы" from admin sidebar and dashboard
-- **`src/components/admin/AdminSidebar.tsx`**: Remove the "Тарифы" button (lines 96-99), remove `"tariffs"` from `AdminTabType`
-- **`src/pages/AdminDashboard.tsx`**: Remove the `TariffsManager` import and its rendering (`activeTab === "tariffs"`), remove from `getTabTitle()`
-- Tariff info for each organization is already available in the organization detail view
+Вместо импорта по одному курсу — вставляете несколько ссылок, указываете логин/пароль один раз, нажимаете «Импортировать». Курсы парсятся на сервере поочерёдно. Можно закрыть браузер — процесс продолжится.
 
-### 2. Move "Документы для организаций" to per-organization settings
-- **`src/components/admin/OrganizationDetailsView.tsx`**: Add a new tab or section for billing documents (invoice/receipt/act uploads) scoped to that specific organization
-- **`src/components/admin/TariffsManager.tsx`**: Extract the billing documents section (lines ~480-685) into a reusable component, then remove it from TariffsManager (which will be deleted entirely)
+## Архитектура
 
-### 3. Clean up
-- Delete or empty `src/components/admin/TariffsManager.tsx` since nothing remains
-- Remove unused imports (`Crown` icon if no longer used)
+```text
+┌─────────────────┐      ┌──────────────────────┐      ┌────────────────────────┐
+│  UI: диалог с   │─────▶│  Edge Function        │─────▶│  parse-skillspace-     │
+│  textarea для   │      │  batch-skillspace-    │      │  course (существующая) │
+│  ссылок + логин │      │  import               │      │  — вызывается для     │
+│  + пароль       │      │  • берёт задачи из БД │      │  каждого URL           │
+└─────────────────┘      │  • обновляет статус   │      └────────────────────────┘
+                         └──────────────────────┘
+```
 
-## Files affected
-- `src/components/admin/AdminSidebar.tsx` — remove tariffs tab
-- `src/pages/AdminDashboard.tsx` — remove tariffs rendering
-- `src/components/admin/OrganizationDetailsView.tsx` — add billing documents section
-- `src/components/admin/TariffsManager.tsx` — extract documents component, then delete
+## Шаги реализации
+
+### 1. Создать таблицу `skillspace_import_jobs`
+Хранит очередь и статус каждого импорта:
+- `id`, `organization_id`, `url`, `login` (encrypted), `password` (encrypted)
+- `status`: pending / processing / done / error
+- `result` (jsonb) — итоги импорта или текст ошибки
+- `created_at`, `updated_at`
+- `batch_id` (uuid) — группирует ссылки из одного запуска
+
+RLS: только authenticated пользователи видят записи своей организации.
+
+### 2. Создать Edge Function `batch-skillspace-import`
+- Принимает `{ urls: string[], login, password, organizationId }`
+- Создаёт записи в `skillspace_import_jobs` со статусом `pending`
+- Поочерёдно вызывает существующую `parse-skillspace-course` для каждого URL
+- Обновляет статус каждой записи (processing → done/error)
+- Работает серверно — не зависит от клиента
+
+### 3. Обновить UI — `SkillspaceBatchImportDialog`
+- Textarea для вставки нескольких URL (по одному на строку)
+- Поля логин/пароль (один раз)
+- Кнопка «Импортировать все»
+- После запуска — показ прогресса через polling таблицы `skillspace_import_jobs` по `batch_id`
+- Статус каждого курса: ожидание / импорт / готово / ошибка
+- Можно закрыть диалог и вернуться — прогресс сохраняется в БД
+
+### 4. Добавить индикатор активных импортов
+В карточке организации (вкладка «Курсы») — если есть незавершённые задачи, показывать бейдж с прогрессом.
+
+## Файлы
+
+| Действие | Файл |
+|----------|------|
+| Создать | `supabase/functions/batch-skillspace-import/index.ts` |
+| Создать | `src/components/admin/SkillspaceBatchImportDialog.tsx` |
+| Изменить | `src/components/admin/OrganizationDetailsView.tsx` — заменить кнопку импорта на пакетный вариант |
+| Миграция | Таблица `skillspace_import_jobs` + RLS |
 
