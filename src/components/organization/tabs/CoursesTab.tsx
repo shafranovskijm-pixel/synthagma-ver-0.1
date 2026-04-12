@@ -1278,17 +1278,9 @@ export const CoursesTab = React.memo(function CoursesTab({ organizationId, onCou
         </button>
       </div>
 
-      {/* Webinars stub */}
+      {/* Webinars */}
       {contentTab === "webinars" && (
-        <div className="flex flex-col items-center justify-center py-20 text-center">
-          <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center mb-4">
-            <Radio className="w-8 h-8 text-primary" />
-          </div>
-          <h3 className="text-xl font-semibold text-foreground mb-2">Вебинары</h3>
-          <p className="text-muted-foreground max-w-md">
-            Раздел вебинаров скоро будет доступен. Вы сможете проводить онлайн-трансляции, записывать вебинары и делиться ими с учениками.
-          </p>
-        </div>
+        <WebinarsManager organizationId={organizationId} />
       )}
 
       {/* 3D trainers stub */}
