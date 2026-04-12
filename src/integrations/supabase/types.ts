@@ -2863,6 +2863,7 @@ export type Database = {
           storage_limit_bytes: number
           student_dashboard_settings: Json | null
           subscription_plan: string
+          tariff_custom_label: string | null
           tariff_type: string | null
           telegram_chat_id: string | null
           updated_at: string
@@ -2909,6 +2910,7 @@ export type Database = {
           storage_limit_bytes?: number
           student_dashboard_settings?: Json | null
           subscription_plan?: string
+          tariff_custom_label?: string | null
           tariff_type?: string | null
           telegram_chat_id?: string | null
           updated_at?: string
@@ -2955,6 +2957,7 @@ export type Database = {
           storage_limit_bytes?: number
           student_dashboard_settings?: Json | null
           subscription_plan?: string
+          tariff_custom_label?: string | null
           tariff_type?: string | null
           telegram_chat_id?: string | null
           updated_at?: string
