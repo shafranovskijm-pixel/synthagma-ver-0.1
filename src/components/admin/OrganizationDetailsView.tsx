@@ -57,6 +57,7 @@ import {
   CreditCard,
   Image,
   Upload,
+  GripVertical,
 } from "lucide-react";
 import { safeInvoke } from "@/utils/safeInvoke";
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent } from "@dnd-kit/core";
@@ -1647,7 +1648,7 @@ export function OrganizationDetailsView({ organization, onBack }: OrganizationDe
         // Refresh courses
         supabase
           .from("courses")
-          .select("id, title, is_published, lessons(id), enrollments(id)")
+          .select("id, title, is_published, catalog_order, lessons(id), enrollments(id)")
           .eq("organization_id", organization.id)
           .then(({ data }) => {
             if (data) {
