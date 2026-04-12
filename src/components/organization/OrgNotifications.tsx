@@ -68,6 +68,7 @@ function getAvatarColor(id: string) {
 }
 
 export function OrgNotifications({ organizationId }: OrgNotificationsProps) {
+  const navigate = useNavigate();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isOpen, setIsOpen] = useState(false);
