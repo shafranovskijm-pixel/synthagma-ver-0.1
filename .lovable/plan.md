@@ -1,27 +1,85 @@
 
 
-# Повторный импорт курсов + миграция видео в Kinescope
+# Реализация раздела «Вебинары»
 
 ## Что делаем
 
-1. **Повторный парсинг 6 неудавшихся курсов** — сбросить статус jobs с `error` на `pending`, увеличить таймаут fetch до 120с в `batch-skillspace-import`, перезапустить обработку.
+Заменяем заглушку на полноценный раздел вебинаров с двумя режимами:
+1. **Kinescope Live** — создание трансляции через Kinescope API (получаем RTMP-ключ, embed-ссылку, после завершения запись сохраняется автоматически)
+2. **Внешние трансляции** — вставка ссылки на Zoom, VK Video, Rutube, YouTube Live и др.
 
-2. **Массовая миграция видео в Kinescope** — все видео с `selcdn.ru` и из Supabase Storage переносятся в Kinescope через API "import by URL". Видео с `ktalk.ru` и `vkvideo.ru` **остаются как есть**.
+Ученики видят список вебинаров, могут смотреть трансляцию или запись прямо на платформе.
 
-3. **Кнопка в UI** — "Перенести все видео в Kinescope" на уровне организации в `CoursesTab.tsx`.
+## Структура данных
 
-## Изменения по файлам
+### Новая таблица `webinars`
 
-### `supabase/functions/batch-skillspace-import/index.ts`
-- Добавить `signal: AbortSignal.timeout(120000)` к fetch-вызову `parse-skillspace-course`
+| Поле | Тип | Описание |
+|------|-----|----------|
+| id | uuid PK | |
+| organization_id | uuid FK | Организация |
+| title | text | Название |
+| description | text | Описание |
+| scheduled_at | timestamptz | Дата/время начала |
+| duration_minutes | int | Длительность |
+| status | text | `planned` / `live` / `ended` |
+| source_type | text | `kinescope` / `external` |
+| kinescope_live_id | text | ID трансляции Kinescope |
+| kinescope_video_id | text | ID записи (после завершения) |
+| external_url | text | Ссылка на Zoom/VK/Rutube |
+| embed_url | text | Ссылка для embed |
+| rtmp_url | text | RTMP endpoint (Kinescope) |
+| rtmp_key | text | Stream key (Kinescope) |
+| cover_url | text | Обложка |
+| created_by | uuid | Кто создал |
+| created_at | timestamptz | |
 
-### `supabase/functions/kinescope-migrate-videos/index.ts`
-- Обновить `isExternalVideoUrl`: добавить Supabase Storage URLs (`supabase.co/storage`)
-- Явно исключить `ktalk.ru` и `vkvideo.ru` из миграции
+### Новая таблица `webinar_participants`
 
-### `src/components/organization/tabs/CoursesTab.tsx`
-- Добавить кнопку "Перенести все видео в Kinescope" (вызов с `organization_id` без `course_id`)
+| Поле | Тип | Описание |
+|------|-----|----------|
+| id | uuid PK | |
+| webinar_id | uuid FK | |
+| user_id | uuid | Ученик |
+| enrolled_at | timestamptz | |
 
-### SQL (миграция)
-- Сбросить 6 failed jobs: `UPDATE skillspace_import_jobs SET status = 'pending', error_message = NULL WHERE batch_id = '...' AND status = 'error'`
+RLS: организация видит свои вебинары; ученики видят вебинары, на которые назначены.
+
+## Kinescope Live API
+
+Добавляем в `kinescope-proxy` новые actions:
+- `create_live` — `POST /v1/live/streams` (создаёт трансляцию, возвращает RTMP URL/key + embed URL)
+- `stop_live` — `POST /v1/live/streams/{id}/stop`
+- `get_live` — `GET /v1/live/streams/{id}` (статус, запись)
+- `list_live` — `GET /v1/live/streams`
+
+## Компоненты UI
+
+### Организация (CoursesTab → вкладка «Вебинары»)
+- **Список вебинаров** — карточки с названием, датой, статусом (запланирован / в эфире / завершён)
+- **Кнопка «Создать вебинар»** — диалог с полями:
+  - Название, описание, дата/время
+  - Источник: Kinescope (создаём трансляцию автоматически) или Внешний (вставить ссылку Zoom/VK/Rutube)
+- **Управление**: старт/стоп трансляции, копирование RTMP-ключа, назначение учеников
+- **Запись**: после завершения Kinescope-трансляции — автоматически подтягивается запись (`kinescope_video_id`)
+
+### Ученик (StudentDashboard → вкладка «Вебинары»)
+- Список назначенных вебинаров с датами
+- Кнопка «Смотреть» — открывает embed (Kinescope) или переход по внешней ссылке
+- Если есть запись — можно посмотреть позже
+
+## Файлы
+
+### Новые файлы:
+- `src/components/organization/WebinarsManager.tsx` — основной компонент управления вебинарами
+- `src/components/organization/CreateWebinarDialog.tsx` — диалог создания
+- `src/components/organization/WebinarParticipantsDialog.tsx` — назначение учеников
+
+### Изменяемые файлы:
+- `supabase/functions/kinescope-proxy/index.ts` — добавить actions для Live API
+- `src/components/organization/tabs/CoursesTab.tsx` — заменить заглушку на `<WebinarsManager />`
+- `src/pages/StudentDashboard.tsx` — заменить заглушку на список вебинаров ученика
+
+### Миграция:
+- Создание таблиц `webinars` и `webinar_participants` с RLS-политиками
 
