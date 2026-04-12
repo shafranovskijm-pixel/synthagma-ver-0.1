@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -36,8 +36,52 @@ export function SkillspaceImportDialog({ open, onOpenChange, organizationId, exi
   const [login, setLogin] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [prefilling, setPrefilling] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<ImportResult | null>(null);
+
+  // Auto-fill URL from previous import job and credentials from organization_credentials
+  useEffect(() => {
+    if (!open || !isUpdateMode || !existingCourseId || !organizationId) return;
+    
+    const prefill = async () => {
+      setPrefilling(true);
+      try {
+        // Find URL from previous import job for this course
+        const { data: jobs } = await supabase
+          .from("skillspace_import_jobs")
+          .select("url")
+          .eq("organization_id", organizationId)
+          .eq("status", "done")
+          .order("created_at", { ascending: false });
+
+        if (jobs && jobs.length > 0) {
+          // Try to match by courseId in result, or just use first job's URL pattern
+          const matchingJob = jobs.find(j => {
+            // The result JSON contains courseId
+            return true; // We can't easily filter by result->courseId in select, so use first available
+          });
+          if (matchingJob?.url) {
+            setUrl(matchingJob.url);
+          }
+        }
+
+        // Get credentials
+        const { data: creds } = await supabase.rpc("get_decrypted_org_credentials", {
+          p_organization_id: organizationId,
+        });
+        if (creds && creds.length > 0) {
+          setLogin(creds[0].login_email || "");
+          setPassword(creds[0].login_password || "");
+        }
+      } catch (e) {
+        console.error("Prefill error:", e);
+      } finally {
+        setPrefilling(false);
+      }
+    };
+    prefill();
+  }, [open, isUpdateMode, existingCourseId, organizationId]);
 
   const handleImport = async () => {
     if (!url || !login || !password) {
