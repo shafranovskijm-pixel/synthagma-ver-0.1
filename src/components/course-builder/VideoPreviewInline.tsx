@@ -1,9 +1,42 @@
+import { useState } from "react";
 import DOMPurify from "dompurify";
 import { Video, Play } from "lucide-react";
-import { getVideoEmbedUrl, isIframeEmbed, isKinescopeVideo, getKinescopeVideoId, getKinescopeEmbedUrl } from "@/utils/courseBuilderHelpers";
+import { getVideoEmbedUrl, isIframeEmbed, getKinescopeVideoId, getKinescopeEmbedUrl } from "@/utils/courseBuilderHelpers";
 
 interface VideoPreviewInlineProps {
   content: string;
+}
+
+const isDirectVideoFileUrl = (url: string): boolean => {
+  try {
+    const u = new URL(url);
+    const path = u.pathname.toLowerCase();
+    if (/(\.mp4|\.webm|\.ogg|\.ogv|\.mov|\.m4v|\.mkv)(\?|$)/.test(path)) return true;
+    if (u.hostname.includes("selcdn.ru")) return true;
+    return false;
+  } catch { return false; }
+};
+
+function DirectVideoPreview({ url }: { url: string }) {
+  const [error, setError] = useState(false);
+  if (error) {
+    return (
+      <div className="aspect-video w-full rounded-xl overflow-hidden bg-muted flex flex-col items-center justify-center gap-3">
+        <Video className="w-12 h-12 text-muted-foreground" />
+        <p className="text-sm text-muted-foreground">Браузер не может воспроизвести это видео</p>
+        <a href={url} target="_blank" rel="noopener noreferrer"
+          className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary/90 transition-colors">
+          <Play className="w-4 h-4" /> Открыть видео
+        </a>
+      </div>
+    );
+  }
+  return (
+    <div className="aspect-video w-full rounded-xl overflow-hidden bg-muted">
+      <video src={url} controls className="w-full h-full bg-black" controlsList="nodownload"
+        onError={() => setError(true)} />
+    </div>
+  );
 }
 
 export function VideoPreviewInline({ content }: VideoPreviewInlineProps) {
@@ -24,6 +57,11 @@ export function VideoPreviewInline({ content }: VideoPreviewInlineProps) {
     );
   }
 
+  // Direct video file → native player with error fallback
+  if (isDirectVideoFileUrl(content)) {
+    return <DirectVideoPreview url={content} />;
+  }
+
   if (isIframeEmbed(content)) {
     const sanitized = DOMPurify.sanitize(content, {
       ADD_TAGS: ['iframe'],
@@ -40,6 +78,10 @@ export function VideoPreviewInline({ content }: VideoPreviewInlineProps) {
   const embedResult = getVideoEmbedUrl(content);
 
   if (embedResult) {
+    // Check if embed URL is a direct video file
+    if (isDirectVideoFileUrl(embedResult.url)) {
+      return <DirectVideoPreview url={embedResult.url} />;
+    }
     if (!embedResult.canEmbed) {
       return (
         <div className="aspect-video w-full rounded-xl overflow-hidden bg-gradient-to-br from-primary/10 to-primary/5 border border-primary/20 flex flex-col items-center justify-center gap-4">
