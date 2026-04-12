@@ -2444,6 +2444,7 @@ function RenderBlock({ block, quizAnswer, quizSubmitted, onQuizAnswer, onQuizSub
       // Iframe embed
       if (vid.includes("<iframe")) {
         return <LazyMediaPreview type="iframe"><div className="aspect-video not-prose [&>iframe]:w-full [&>iframe]:h-full [&>iframe]:border-0" dangerouslySetInnerHTML={{ __html: vid }} /></LazyMediaPreview>;
+      }
       // Fallback: try as direct video
       if (vid.startsWith("http")) {
         return (
