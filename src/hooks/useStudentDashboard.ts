@@ -319,7 +319,7 @@ export function useStudentDashboard() {
       // Load catalog: all published courses for this org + categories
       if (effectiveOrgId) {
         const [coursesRes, catsRes] = await Promise.all([
-          supabase.from("courses").select("id, title, description, duration, price, category_id, cover_image_url, is_published").eq("organization_id", effectiveOrgId).eq("is_published", true),
+          supabase.from("courses").select("id, title, description, duration, price, category_id, cover_image_url, is_published, landing_content").eq("organization_id", effectiveOrgId).eq("is_published", true),
           supabase.from("course_categories").select("id, name, color").eq("organization_id", effectiveOrgId),
         ]);
         const allOrgCourses = coursesRes.data || [];
@@ -351,6 +351,7 @@ export function useStudentDashboard() {
             progress: enrolled?.progress,
             completed_lessons: enrolled?.completedLessons,
             status: enrolled ? (enrolled.status === "completed" ? "completed" : "in_progress") : "not_enrolled",
+            external_card_url: (c as any).landing_content?.external_card_url || null,
           };
         });
         setCatalogCourses(catalogData);
