@@ -83,16 +83,19 @@ export default function OrganizationProfile() {
     const loadOrganizationId = async () => {
       try {
         // Try profile first
-        const { data: prof } = await supabase
+        const { data: prof, error: profErr } = await supabase
           .from("profiles")
           .select("organization_id")
           .eq("user_id", user.id)
           .single();
+        console.log("[OrgProfile] loadOrganizationId result:", { prof, profErr, userId: user.id });
         if (prof?.organization_id) {
           setOrganizationId(prof.organization_id);
+        } else {
+          console.warn("[OrgProfile] No organization_id found in profile for user:", user.id);
         }
       } catch (e) {
-        console.error("Failed to load organization ID:", e);
+        console.error("[OrgProfile] Failed to load organization ID:", e);
       } finally {
         setOrgIdLoading(false);
       }
