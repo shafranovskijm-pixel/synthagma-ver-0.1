@@ -71,6 +71,43 @@ export function OrgNotifications({ organizationId }: OrgNotificationsProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [isOpen, setIsOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<TabKey>("all");
+  const [soundEnabled, setSoundEnabled] = useState(false);
+
+  // Load sound preference
+  useEffect(() => {
+    const loadSoundPref = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const { data } = await supabase
+        .from("notification_preferences")
+        .select("enabled")
+        .eq("user_id", user.id)
+        .eq("notification_type", "sound")
+        .eq("channel", "platform")
+        .maybeSingle();
+      if (data) setSoundEnabled(data.enabled ?? false);
+    };
+    loadSoundPref();
+  }, []);
+
+  const playNotificationSound = () => {
+    if (!soundEnabled) return;
+    try {
+      const ctx = new AudioContext();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.frequency.setValueAtTime(800, ctx.currentTime);
+      osc.frequency.setValueAtTime(600, ctx.currentTime + 0.1);
+      gain.gain.setValueAtTime(0.3, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.3);
+      osc.start(ctx.currentTime);
+      osc.stop(ctx.currentTime + 0.3);
+    } catch {
+      // AudioContext may be blocked
+    }
+  };
 
   useEffect(() => {
     if (organizationId) {
@@ -82,11 +119,12 @@ export function OrgNotifications({ organizationId }: OrgNotificationsProps) {
           filter: `organization_id=eq.${organizationId}`,
         }, (payload) => {
           setNotifications(prev => [payload.new as Notification, ...prev]);
+          playNotificationSound();
         })
         .subscribe();
       return () => { supabase.removeChannel(channel); };
     }
-  }, [organizationId]);
+  }, [organizationId, soundEnabled]);
 
   const loadNotifications = async () => {
     setIsLoading(true);
