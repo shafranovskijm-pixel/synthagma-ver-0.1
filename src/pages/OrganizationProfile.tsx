@@ -199,7 +199,7 @@ export default function OrganizationProfile() {
       </div>
 
       <div className="max-w-5xl mx-auto px-4 py-6">
-        <Tabs value={activeTab} onValueChange={setActiveTab}>
+        <Tabs value={activeTab} onValueChange={handleTabChange}>
           <TabsList className="mb-6 bg-muted/50 p-1 rounded-xl flex-wrap">
             <TabsTrigger value="profile" className="rounded-lg gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm px-4 py-2">
               <User className="w-4 h-4" /> Мой профиль
@@ -301,11 +301,6 @@ export default function OrganizationProfile() {
                 </Card>
               </div>
             </div>
-          </TabsContent>
-
-          {/* Tab 2: Settings */}
-          <TabsContent value="settings">
-            <SettingsTab />
           </TabsContent>
 
           {/* Tab 3: Notifications */}
