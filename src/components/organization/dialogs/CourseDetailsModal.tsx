@@ -62,6 +62,7 @@ import {
 } from "@/constants/frdo";
 import { CourseRemindersTab } from "@/components/organization/CourseRemindersTab";
 import { CourseGroupsTab } from "@/components/organization/CourseGroupsTab";
+import { CourseLandingEditorContent } from "@/pages/CourseLandingEditor";
 
 interface Course {
   id: string;
@@ -114,8 +115,8 @@ interface CourseDetailsModalProps {
   course: Course | null;
   courseStudents: Student[];
   organizationId: string | null;
-  activeTab: "students" | "materials" | "history" | "tests" | "settings" | "reminders" | "groups";
-  onTabChange: (tab: "students" | "materials" | "history" | "tests" | "settings" | "reminders" | "groups") => void;
+  activeTab: "students" | "materials" | "history" | "tests" | "landing" | "settings" | "reminders" | "groups";
+  onTabChange: (tab: "students" | "materials" | "history" | "tests" | "landing" | "settings" | "reminders" | "groups") => void;
   onEnrollStudent: () => void;
   onCourseDeleted?: () => void;
   onCourseUpdated?: () => void;
@@ -700,6 +701,10 @@ export function CourseDetailsModal({
                 <CheckSquare className="w-4 h-4" />
                 Тесты
               </TabsTrigger>
+              <TabsTrigger value="landing" className="rounded-lg gap-2">
+                <Globe className="w-4 h-4" />
+                Страница курса
+              </TabsTrigger>
               <TabsTrigger value="settings" className="rounded-lg gap-2">
                 <Settings className="w-4 h-4" />
                 Настройки
@@ -865,6 +870,10 @@ export function CourseDetailsModal({
                 courseName={course.title} 
                 organizationId={organizationId || ""} 
               />
+            </TabsContent>
+
+            <TabsContent value="landing" className="mt-0 h-full">
+              <CourseLandingEditorContent courseId={course.id} embedded />
             </TabsContent>
 
             <TabsContent value="settings" className="mt-0 h-full">

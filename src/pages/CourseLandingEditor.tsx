@@ -95,8 +95,12 @@ function migrateAudienceItems(items: any[]): AudienceItem[] {
   return items as AudienceItem[];
 }
 
-export default function CourseLandingEditor() {
-  const { courseId } = useParams<{ courseId: string }>();
+interface CourseLandingEditorContentProps {
+  courseId: string;
+  embedded?: boolean;
+}
+
+export function CourseLandingEditorContent({ courseId, embedded = false }: CourseLandingEditorContentProps) {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -554,6 +558,30 @@ export default function CourseLandingEditor() {
     }
   };
 
+  if (embedded) {
+    return (
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <h3 className="font-semibold">Редактор страницы курса</h3>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" onClick={() => window.open(publicUrl, "_blank")} className="gap-1.5">
+              <ExternalLink className="w-4 h-4" />
+              Просмотр
+            </Button>
+            <Button size="sm" onClick={handleSave} disabled={saving} className="gap-1.5">
+              {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+              Сохранить
+            </Button>
+          </div>
+        </div>
+
+        <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleBackgroundUpload} />
+
+        {landing.sections_order.map((sectionId, index) => renderSection(sectionId, index))}
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-background">
       {/* Toolbar */}
@@ -585,4 +613,10 @@ export default function CourseLandingEditor() {
       {landing.sections_order.map((sectionId, index) => renderSection(sectionId, index))}
     </div>
   );
+}
+
+export default function CourseLandingEditor() {
+  const { courseId } = useParams<{ courseId: string }>();
+  if (!courseId) return null;
+  return <CourseLandingEditorContent courseId={courseId} />;
 }
