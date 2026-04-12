@@ -131,11 +131,11 @@ export default function StudentProfile() {
     queryKey: ["student-profile-page", user?.id],
     queryFn: async () => {
       if (!user?.id) return null;
-      const { data: p } = await supabase
+      const { data: p } = await (supabase
         .from("profiles")
-        .select("full_name, organization_id")
+        .select("full_name, organization_id, phone, city, bio, avatar_url")
         .eq("user_id", user.id)
-        .maybeSingle() as any;
+        .maybeSingle() as any);
       if (!p) return null;
       let orgName: string | null = null;
       if (p.organization_id) {
