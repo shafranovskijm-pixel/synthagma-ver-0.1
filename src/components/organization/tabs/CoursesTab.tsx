@@ -1129,6 +1129,7 @@ export const CoursesTab = React.memo(function CoursesTab({ organizationId, onCou
 
   return (
     <div className="space-y-4 lg:space-y-6">
+      <input ref={coverInputRef} type="file" accept="image/*" className="hidden" onChange={handleCoverUpload} />
       {/* Filters */}
       <div className="bg-card rounded-xl lg:rounded-2xl border border-border p-3 lg:p-4">
         <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3 lg:gap-4">
