@@ -56,6 +56,7 @@ import {
   RefreshCw,
   CreditCard,
   Image,
+  Upload,
 } from "lucide-react";
 import { safeInvoke } from "@/utils/safeInvoke";
 import { format } from "date-fns";
@@ -71,6 +72,7 @@ import { OrgBillingDocsTab } from "./OrgBillingDocsTab";
 import { getPlanInfo, type SubscriptionPlan } from "@/constants/subscriptionPlans";
 import { SkillspaceImportDialog } from "./SkillspaceImportDialog";
 import { SkillspaceBatchImportDialog } from "./SkillspaceBatchImportDialog";
+import { StudentBulkImportDialog } from "./StudentBulkImportDialog";
 
 interface Organization {
   id: string;
@@ -153,6 +155,8 @@ export function OrganizationDetailsView({ organization, onBack }: OrganizationDe
   const [activeTab, setActiveTab] = useState("overview");
   const [showSkillspaceImport, setShowSkillspaceImport] = useState(false);
   const [showSkillspaceBatchImport, setShowSkillspaceBatchImport] = useState(false);
+  const [showStudentBulkImport, setShowStudentBulkImport] = useState(false);
+  const [pendingEnrollmentsCount, setPendingEnrollmentsCount] = useState(0);
   const [skillspaceUpdateCourse, setSkillspaceUpdateCourse] = useState<{ id: string; title: string } | null>(null);
   const [loading, setLoading] = useState(true);
   const [students, setStudents] = useState<Student[]>([]);
@@ -231,6 +235,7 @@ export function OrganizationDetailsView({ organization, onBack }: OrganizationDe
         fetchUsageHistory(),
         fetchCredentials(),
         fetchBranding(),
+        fetchPendingEnrollmentsCount(),
       ]);
     } finally {
       setLoading(false);
@@ -566,6 +571,15 @@ export function OrganizationDetailsView({ organization, onBack }: OrganizationDe
     const sizes = ["Б", "КБ", "МБ", "ГБ"];
     const i = Math.floor(Math.log(bytes) / Math.log(k));
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i];
+  };
+
+  const fetchPendingEnrollmentsCount = async () => {
+    const { count } = await supabase
+      .from("pending_enrollments")
+      .select("id", { count: "exact", head: true })
+      .eq("organization_id", organization.id)
+      .eq("status", "pending");
+    setPendingEnrollmentsCount(count || 0);
   };
 
 
@@ -939,6 +953,21 @@ export function OrganizationDetailsView({ organization, onBack }: OrganizationDe
             <Badge variant="outline" className="text-sm">
               Всего: {students.length}
             </Badge>
+            {pendingEnrollmentsCount > 0 && (
+              <Badge variant="secondary" className="text-sm gap-1">
+                <Clock className="w-3 h-3" />
+                Ожидают зачисления: {pendingEnrollmentsCount}
+              </Badge>
+            )}
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-2"
+              onClick={() => setShowStudentBulkImport(true)}
+            >
+              <Upload className="w-4 h-4" />
+              Импорт из Excel
+            </Button>
             <Button
               variant="outline"
               size="sm"
@@ -1641,6 +1670,12 @@ export function OrganizationDetailsView({ organization, onBack }: OrganizationDe
       onOpenChange={setShowSkillspaceBatchImport}
       organizationId={organization.id}
       onSuccess={() => fetchCourses()}
+    />
+    <StudentBulkImportDialog
+      open={showStudentBulkImport}
+      onOpenChange={setShowStudentBulkImport}
+      organizationId={organization.id}
+      onImportComplete={() => { fetchStudents(); fetchPendingEnrollmentsCount(); }}
     />
     </>
   );
