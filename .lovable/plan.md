@@ -1,45 +1,27 @@
 
 
-# Исправление скачивания видео вместо воспроизведения
+# Повторный импорт курсов + миграция видео в Kinescope
 
-## Причина проблемы
+## Что делаем
 
-После импорта курсов из SkillSpace видео хранятся как внешние ссылки на CDN (`640800.selcdn.ru`). Обнаружены две проблемы:
+1. **Повторный парсинг 6 неудавшихся курсов** — сбросить статус jobs с `error` на `pending`, увеличить таймаут fetch до 120с в `batch-skillspace-import`, перезапустить обработку.
 
-1. **MKV-файлы** — браузеры не поддерживают формат MKV нативно. Когда `<video>` тег не может воспроизвести файл, браузер начинает его скачивать. В курсе "Регрессология с детьми" есть несколько `.mkv` файлов.
+2. **Массовая миграция видео в Kinescope** — все видео с `selcdn.ru` и из Supabase Storage переносятся в Kinescope через API "import by URL". Видео с `ktalk.ru` и `vkvideo.ru` **остаются как есть**.
 
-2. **Опечатка в коде** — в `BlockEditor.tsx` стоит проверка `vid.includes("selstorage.ru")`, но реальный домен CDN — `selcdn.ru`. Из-за этого специальная обработка не срабатывает.
+3. **Кнопка в UI** — "Перенести все видео в Kinescope" на уровне организации в `CoursesTab.tsx`.
 
-3. **MP4-файлы** с `selcdn.ru` могут отдаваться с заголовком `Content-Disposition: attachment`, что тоже вызывает скачивание.
+## Изменения по файлам
 
-## Что будет сделано
+### `supabase/functions/batch-skillspace-import/index.ts`
+- Добавить `signal: AbortSignal.timeout(120000)` к fetch-вызову `parse-skillspace-course`
 
-### 1. Исправить BlockEditor.tsx (рендеринг видео-блоков в текстовых уроках)
-- Исправить `selstorage.ru` → `selcdn.ru`
-- Добавить `.mkv`, `.m4v` в regex для распознавания видео-файлов
-- Для MKV-файлов: показывать плеер, но при ошибке воспроизведения — fallback-кнопку "Открыть видео" вместо скачивания
-- Добавить обработку ошибок (`onError`) для `<video>` тега с fallback UI
+### `supabase/functions/kinescope-migrate-videos/index.ts`
+- Обновить `isExternalVideoUrl`: добавить Supabase Storage URLs (`supabase.co/storage`)
+- Явно исключить `ktalk.ru` и `vkvideo.ru` из миграции
 
-### 2. Исправить VideoPlayerInline.tsx (плеер видео-уроков)
-- Аналогичное исправление `isDirectVideoFileUrl` — добавить `.mkv`, `.m4v`
-- Добавить `selcdn.ru` в список распознаваемых CDN
+### `src/components/organization/tabs/CoursesTab.tsx`
+- Добавить кнопку "Перенести все видео в Kinescope" (вызов с `organization_id` без `course_id`)
 
-### 3. Исправить VideoPreviewInline.tsx (превью в конструкторе)
-- Аналогичные изменения для согласованности
-
-### 4. Исправить courseBuilderHelpers.ts
-- Обновить `isDirectVideoFileUrl` и `getVideoEmbedUrl` с учётом MKV и selcdn.ru
-
-## Технические детали
-
-- MKV в браузерах: Chromium иногда поддерживает MKV с кодеками VP8/VP9, но не с H.264 внутри MKV-контейнера. Надёжного решения на клиенте нет — нужен серверный перекод или fallback.
-- Для MKV-файлов будет показываться `<video>` с обработкой `onError`: если браузер не может воспроизвести, покажем кнопку "Открыть видео в новой вкладке" — это лучше, чем автоматическое скачивание.
-- Для MP4 с внешних CDN добавим `crossOrigin` атрибут при необходимости.
-
-## Файлы
-
-- `src/components/course-builder/BlockEditor.tsx` — исправить regex и домен, добавить error fallback
-- `src/components/course-learning/VideoPlayerInline.tsx` — добавить поддержку MKV/selcdn
-- `src/components/course-builder/VideoPreviewInline.tsx` — аналогично
-- `src/utils/courseBuilderHelpers.ts` — обновить хелперы
+### SQL (миграция)
+- Сбросить 6 failed jobs: `UPDATE skillspace_import_jobs SET status = 'pending', error_message = NULL WHERE batch_id = '...' AND status = 'error'`
 
