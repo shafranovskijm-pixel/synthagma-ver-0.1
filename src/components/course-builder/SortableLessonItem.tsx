@@ -217,8 +217,27 @@ export function SortableLessonItem({
                   <p className="text-xs text-muted-foreground mt-3">💡 Для создания видео используйте: Runway ML, Pika Labs, или загрузите готовое видео</p>
                 </div>
               )}
+              <Tabs value={videoUploadTab} onValueChange={setVideoUploadTab} className="w-full">
+                <TabsList className="w-full mb-4">
+                  <TabsTrigger value="kinescope" className="flex-1 text-xs">Kinescope (рекомендуется)</TabsTrigger>
+                  <TabsTrigger value="server" className="flex-1 text-xs">На сервер (до 2 ГБ)</TabsTrigger>
+                </TabsList>
+              </Tabs>
               <div className="border-2 border-dashed border-border rounded-xl p-6 text-center hover:border-sigma-purple/50 transition-colors">
-                {media.compressionProgress !== null ? (
+                {/* Kinescope upload progress */}
+                {videoUploadTab === "kinescope" && media.kinescopeUploadProgress !== null ? (
+                  <div className="space-y-4">
+                    <Video className="w-10 h-10 mx-auto text-sigma-purple animate-pulse" />
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-center gap-2"><Loader2 className="w-4 h-4 animate-spin text-sigma-purple" /><span className="text-sm font-medium">Загрузка в Kinescope...</span></div>
+                      <div className="w-full max-w-xs mx-auto">
+                        <div className="h-2 bg-secondary rounded-full overflow-hidden"><div className="h-full bg-sigma-purple transition-all duration-300 ease-out" style={{ width: `${media.kinescopeUploadProgress}%` }} /></div>
+                        <p className="text-sm text-muted-foreground mt-1">{media.kinescopeUploadProgress}%</p>
+                      </div>
+                      <Button variant="outline" size="sm" className="mt-2 gap-1 text-destructive hover:text-destructive border-destructive/50 hover:bg-destructive/10" onClick={media.cancelVideoUpload}><Trash2 className="w-3 h-3" />Отменить</Button>
+                    </div>
+                  </div>
+                ) : media.compressionProgress !== null ? (
                   <div className="space-y-4">
                     <Video className="w-10 h-10 mx-auto text-sigma-purple animate-pulse" />
                     <div className="space-y-2">
@@ -241,6 +260,16 @@ export function SortableLessonItem({
                       <Button variant="outline" size="sm" className="mt-2 gap-1 text-destructive hover:text-destructive border-destructive/50 hover:bg-destructive/10" onClick={media.cancelVideoUpload}><Trash2 className="w-3 h-3" />Отменить</Button>
                     </div>
                   </div>
+                ) : videoUploadTab === "kinescope" ? (
+                  <>
+                    <Video className="w-10 h-10 mx-auto mb-3 text-sigma-purple" />
+                    <p className="text-sm font-medium mb-1">Загрузить через Kinescope</p>
+                    <p className="text-xs text-muted-foreground mb-4">Любой размер файла • CDN • Профессиональный плеер</p>
+                    <label className="inline-flex items-center gap-2 px-4 py-2 bg-sigma-purple text-white rounded-lg cursor-pointer hover:bg-sigma-purple/90 transition-colors">
+                      <Upload className="w-4 h-4" /><span className="text-sm font-medium">Выбрать файл</span>
+                      <input ref={media.kinescopeInputRef} type="file" accept="video/*" className="hidden" onChange={(e) => { const file = e.target.files?.[0]; if (file) media.handleKinescopeUpload(file); }} />
+                    </label>
+                  </>
                 ) : (
                   <>
                     <Video className="w-10 h-10 mx-auto mb-3 text-sigma-purple" />
