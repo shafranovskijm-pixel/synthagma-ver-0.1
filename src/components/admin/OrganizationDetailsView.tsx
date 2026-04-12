@@ -70,6 +70,7 @@ import { OrgBalanceManager } from "./OrgBalanceManager";
 import { OrgBillingDocsTab } from "./OrgBillingDocsTab";
 import { getPlanInfo, type SubscriptionPlan } from "@/constants/subscriptionPlans";
 import { SkillspaceImportDialog } from "./SkillspaceImportDialog";
+import { SkillspaceBatchImportDialog } from "./SkillspaceBatchImportDialog";
 
 interface Organization {
   id: string;
@@ -151,6 +152,7 @@ export function OrganizationDetailsView({ organization, onBack }: OrganizationDe
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("overview");
   const [showSkillspaceImport, setShowSkillspaceImport] = useState(false);
+  const [showSkillspaceBatchImport, setShowSkillspaceBatchImport] = useState(false);
   const [skillspaceUpdateCourse, setSkillspaceUpdateCourse] = useState<{ id: string; title: string } | null>(null);
   const [loading, setLoading] = useState(true);
   const [students, setStudents] = useState<Student[]>([]);
@@ -1069,7 +1071,11 @@ export function OrganizationDetailsView({ organization, onBack }: OrganizationDe
 
         {/* Courses Tab */}
         <TabsContent value="courses" className="space-y-4">
-          <div className="flex justify-end">
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" size="sm" onClick={() => setShowSkillspaceBatchImport(true)}>
+              <Download className="w-4 h-4 mr-2" />
+              Пакетный импорт
+            </Button>
             <Button variant="outline" size="sm" onClick={() => setShowSkillspaceImport(true)}>
               <Download className="w-4 h-4 mr-2" />
               Импорт со SkillSpace
@@ -1630,6 +1636,12 @@ export function OrganizationDetailsView({ organization, onBack }: OrganizationDe
         onSuccess={() => fetchCourses()}
       />
     )}
+    <SkillspaceBatchImportDialog
+      open={showSkillspaceBatchImport}
+      onOpenChange={setShowSkillspaceBatchImport}
+      organizationId={organization.id}
+      onSuccess={() => fetchCourses()}
+    />
     </>
   );
 }
