@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { SigmaLogo } from "@/components/ui/SigmaLogo";
-import { ArrowRight, Gift, TrendingUp, Users, Clock, DollarSign, CheckCircle2, Copy, ExternalLink, Zap, Shield, BarChart3 } from "lucide-react";
+import { ArrowRight, Gift, TrendingUp, Users, Clock, DollarSign, CheckCircle2, Copy, ExternalLink, Zap, Shield, BarChart3, MessageCircle, Mail, FileText } from "lucide-react";
 import { motion } from "framer-motion";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
@@ -11,6 +11,7 @@ import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { Footer } from "@/components/landing/Footer";
 import { Helmet } from "react-helmet-async";
+import { getBaseUrl } from "@/utils/getBaseUrl";
 
 const PartnerLanding = () => {
   const { user } = useAuth();
@@ -177,9 +178,9 @@ const PartnerLanding = () => {
                   <div className="flex flex-col items-center gap-4">
                     <p className="text-sm text-muted-foreground">Ваша реферальная ссылка:</p>
                     <div className="flex items-center gap-2 bg-muted rounded-xl px-5 py-3 border border-border">
-                      <code className="text-sm font-mono">{`${window.location.origin}/register?ref=${partnerCode}`}</code>
+                      <code className="text-sm font-mono">{`${getBaseUrl()}/register?ref=${partnerCode}`}</code>
                       <Button size="icon" variant="ghost" onClick={() => {
-                        navigator.clipboard.writeText(`${window.location.origin}/register?ref=${partnerCode}`);
+                        navigator.clipboard.writeText(`${getBaseUrl()}/register?ref=${partnerCode}`);
                         toast({ title: "Ссылка скопирована!" });
                       }}>
                         <Copy className="w-4 h-4" />
