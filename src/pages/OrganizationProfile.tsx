@@ -50,10 +50,6 @@ export default function OrganizationProfile() {
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState("profile");
   const handleTabChange = (tab: string) => {
-    if (tab === "settings") {
-      navigate("/organization?tab=settings");
-      return;
-    }
     setActiveTab(tab);
   };
   const [saving, setSaving] = useState(false);
