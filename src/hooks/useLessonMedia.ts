@@ -3,7 +3,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { safeInvoke, safeFetch } from "@/utils/safeInvoke";
 import { toast } from "sonner";
 import { ContentBlock, blocksToJson as blocksToJsonFn } from "@/components/course-builder/BlockEditor";
-import { initExternalSupabase, getExternalSupabase } from "@/integrations/external-supabase/client";
 
 const SIZE_100MB = 100 * 1024 * 1024;
 const SIZE_500MB = 500 * 1024 * 1024;
@@ -62,21 +61,11 @@ export function useLessonMedia(
   const tusAbortRef = useRef<AbortController | null>(null);
 
   const getStorageConfig = useCallback(async () => {
-    let externalConfig: { configured: boolean; url: string | null; key: string | null } | null = null;
-    try { const { data } = await safeInvoke<any>('get-external-storage-config'); externalConfig = data; } catch {}
-
-    const useExternal = externalConfig?.configured && externalConfig?.url && externalConfig?.key;
-    const baseUrl = useExternal ? externalConfig!.url! : import.meta.env.VITE_SUPABASE_URL;
-    const apiKey = useExternal ? externalConfig!.key! : import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
-    const bucketName = useExternal ? 'course-videos' : 'course-files';
-
-    let authToken = apiKey;
-    if (!useExternal) {
-      const { data: session } = await supabase.auth.getSession();
-      authToken = session?.session?.access_token || apiKey;
-    }
-
-    return { baseUrl, apiKey, authToken, bucketName, useExternal: !!useExternal };
+    const baseUrl = import.meta.env.VITE_SUPABASE_URL;
+    const apiKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+    const { data: session } = await supabase.auth.getSession();
+    const authToken = session?.session?.access_token || apiKey;
+    return { baseUrl, apiKey, authToken, bucketName: 'course-files', useExternal: false };
   }, []);
 
   const handleVideoUpload = useCallback(async (file: File, skipCompression = false) => {
@@ -152,7 +141,7 @@ export function useLessonMedia(
 
     tusAbortRef.current = null;
     onUpdate({ content: result.url });
-    toast.success(config.useExternal ? "Видео загружено во внешнее хранилище!" : "Видео загружено!");
+    toast.success("Видео загружено!");
     setVideoUploadProgress(null);
     if (videoInputRef.current) videoInputRef.current.value = '';
   }, [onUpdate]);
@@ -175,7 +164,7 @@ export function useLessonMedia(
         if (xhr.status >= 200 && xhr.status < 300) {
           const publicUrl = `${config.baseUrl}/storage/v1/object/public/${config.bucketName}/${filePath}`;
           onUpdate({ content: publicUrl });
-          toast.success(config.useExternal ? "Видео загружено во внешнее хранилище!" : "Видео загружено!");
+          toast.success("Видео загружено!");
           resolve();
         } else {
           reject(new Error(`Ошибка загрузки: ${xhr.statusText || 'Неизвестная ошибка'}`));
@@ -290,8 +279,7 @@ export function useLessonMedia(
               );
               if (response.ok) {
                 const audioBlob = await response.blob();
-                await initExternalSupabase();
-                const storageClient = getExternalSupabase() || supabase;
+                const storageClient = supabase;
                 const fileName = `tts_${crypto.randomUUID()}.ogg`;
                 const { error: uploadError } = await storageClient.storage
                   .from("course-files")
