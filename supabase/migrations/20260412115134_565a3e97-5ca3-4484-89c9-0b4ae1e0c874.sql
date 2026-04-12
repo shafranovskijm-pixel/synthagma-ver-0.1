@@ -1,0 +1,1 @@
+ALTER TABLE public.webinars ADD COLUMN IF NOT EXISTS player_settings JSONB DEFAULT '{}';
