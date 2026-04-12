@@ -345,6 +345,15 @@ export function WebinarsManager({ organizationId }: Props) {
                   <Trash2 className="w-3 h-3" />
                 </Button>
               </div>
+
+              {/* Inline player settings - always visible */}
+              {w.source_type === "kinescope" && (
+                <InlinePlayerSettings
+                  webinarId={w.id}
+                  initialSettings={(w as any).player_settings || {}}
+                  onSaved={fetchWebinars}
+                />
+              )}
             </Card>
           ))}
         </div>
