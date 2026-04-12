@@ -17,6 +17,7 @@ import { SubscriptionTab } from "@/components/organization/SubscriptionTab";
 import { PaymentsTab } from "@/components/organization/PaymentsTab";
 import { HomeworkReviewTab } from "@/components/organization/HomeworkReviewTab";
 import { StaffManager } from "@/components/organization/StaffManager";
+import { WebinarsManager } from "@/components/organization/WebinarsManager";
 
 import { useOrgDashboard } from "@/contexts/OrgDashboardContext";
 
@@ -39,6 +40,7 @@ export function TabContentRenderer() {
     activeTab !== "courses" &&
     activeTab !== "homework-review" &&
     activeTab !== "staff" &&
+    activeTab !== "webinars" &&
     !activeTab.startsWith("documents");
 
   return (
@@ -160,6 +162,11 @@ export function TabContentRenderer() {
 
       {/* Homework Review Tab */}
       {activeTab === "homework-review" && <HomeworkReviewTab />}
+
+      {/* Webinars Tab */}
+      {activeTab === "webinars" && organizationId && (
+        <WebinarsManager organizationId={organizationId} />
+      )}
 
       {/* Staff Tab */}
       {activeTab === ("staff" as any) && organizationId && (

@@ -2,7 +2,7 @@ import { useState, useCallback, useRef } from "react";
 import { 
   BookOpen, Users, Settings, LogOut, Upload,
   Building2, HardHat, HardDrive, CreditCard, Lock, MessageCircle, Wallet,
-  BarChart3, Link, ShoppingBag, FileText, ClipboardList, FileSpreadsheet, BookCheck
+  BarChart3, Link, ShoppingBag, FileText, ClipboardList, FileSpreadsheet, BookCheck, Radio
 } from "lucide-react";
 import { SigmaLogo } from "@/components/ui/SigmaLogo";
 import { useOrgDashboard } from "@/contexts/OrgDashboardContext";
@@ -41,6 +41,7 @@ export type TabType =
   | "services" 
   | "settings" 
   | "staff"
+  | "webinars"
   | "frdo";
 
 const tabCategoryMap: Record<string, string> = {
@@ -144,6 +145,7 @@ export function OrgSidebar() {
   navItems.push({ id: "payments", icon: Wallet, label: "Финансы" });
 
   navItems.push({ id: "homework-review", icon: BookCheck, label: "Задания" });
+  navItems.push({ id: "webinars", icon: Radio, label: "Вебинары", category: "webinars" });
   navItems.push({ id: "chats", icon: MessageCircle, label: "Чаты", badge: d.unreadChatsCount });
   navItems.push({ id: "settings", icon: Settings, label: "Настройки", category: "settings" });
 

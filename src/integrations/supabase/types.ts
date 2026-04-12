@@ -5179,18 +5179,27 @@ export type Database = {
           access_type: string
           company_id: string | null
           course_id: string | null
+          cover_url: string | null
           created_at: string
+          created_by: string | null
           description: string | null
           duration_minutes: number
+          embed_url: string | null
+          external_url: string | null
           host_user_id: string
           id: string
+          kinescope_live_id: string | null
+          kinescope_video_id: string | null
           max_participants: number | null
           organization_id: string
           recording_size_bytes: number | null
           recording_url: string | null
           room_name: string | null
           room_url: string | null
+          rtmp_key: string | null
+          rtmp_url: string | null
           scheduled_at: string
+          source_type: string
           status: string
           stream_platform: string | null
           stream_url: string | null
@@ -5201,18 +5210,27 @@ export type Database = {
           access_type?: string
           company_id?: string | null
           course_id?: string | null
+          cover_url?: string | null
           created_at?: string
+          created_by?: string | null
           description?: string | null
           duration_minutes?: number
+          embed_url?: string | null
+          external_url?: string | null
           host_user_id: string
           id?: string
+          kinescope_live_id?: string | null
+          kinescope_video_id?: string | null
           max_participants?: number | null
           organization_id: string
           recording_size_bytes?: number | null
           recording_url?: string | null
           room_name?: string | null
           room_url?: string | null
+          rtmp_key?: string | null
+          rtmp_url?: string | null
           scheduled_at: string
+          source_type?: string
           status?: string
           stream_platform?: string | null
           stream_url?: string | null
@@ -5223,18 +5241,27 @@ export type Database = {
           access_type?: string
           company_id?: string | null
           course_id?: string | null
+          cover_url?: string | null
           created_at?: string
+          created_by?: string | null
           description?: string | null
           duration_minutes?: number
+          embed_url?: string | null
+          external_url?: string | null
           host_user_id?: string
           id?: string
+          kinescope_live_id?: string | null
+          kinescope_video_id?: string | null
           max_participants?: number | null
           organization_id?: string
           recording_size_bytes?: number | null
           recording_url?: string | null
           room_name?: string | null
           room_url?: string | null
+          rtmp_key?: string | null
+          rtmp_url?: string | null
           scheduled_at?: string
+          source_type?: string
           status?: string
           stream_platform?: string | null
           stream_url?: string | null
