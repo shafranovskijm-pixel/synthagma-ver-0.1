@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
+import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { supabase } from "@/integrations/supabase/client";
@@ -37,7 +38,7 @@ interface OrgNotificationsProps {
 type TabKey = "all" | "tasks" | "payments";
 
 const TASK_TYPES = ["video_identification", "consent_signed", "document_issued", "assignment", "task"];
-const PAYMENT_TYPES = ["payment", "course_payment", "subscription", "order"];
+const PAYMENT_TYPES = ["payment", "course_payment", "subscription", "subscription_expiry", "order"];
 
 function getFilteredNotifications(notifications: Notification[], tab: TabKey) {
   if (tab === "all") return notifications;

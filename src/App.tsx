@@ -72,6 +72,7 @@ const PlatformPresentation = lazyWithRetry(() => import("./pages/PlatformPresent
 const EmailResponse = lazyWithRetry(() => import("./pages/EmailResponse"));
 const PaymentResult = lazyWithRetry(() => import("./pages/PaymentResult"));
 const WhatsNew = lazyWithRetry(() => import("./pages/WhatsNew"));
+const InvoiceView = lazyWithRetry(() => import("./pages/InvoiceView"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -222,6 +223,11 @@ const App = () => (
                     <Route path="/partner/dashboard" element={<PartnerDashboard />} />
                     <Route path="/partner/offer" element={<PartnerOffer />} />
                     <Route path="/whats-new" element={<WhatsNew />} />
+                    <Route path="/invoice/:id" element={
+                      <ProtectedRoute>
+                        <InvoiceView />
+                      </ProtectedRoute>
+                    } />
                     {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                     <Route path="*" element={<NotFound />} />
                   </Routes>
