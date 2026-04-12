@@ -217,19 +217,8 @@ const createBlock = (type: BlockType): ContentBlock => ({
   ...(type === "document" && { documentUrl: "", documentName: "" }),
 });
 
-function DirectVideoBlock({ url }: { url: string }) {
+function DirectVideoBlockInner({ url }: { url: string }) {
   const [error, setError] = useState(false);
-  const [activated, setActivated] = useState(false);
-  if (!activated) {
-    return (
-      <LazyMediaPreview type="video">
-        {/* This dummy div triggers activation via LazyMediaPreview */}
-        <div className="aspect-video not-prose">
-          <video src={url} controls preload="none" className="w-full h-full rounded-lg bg-black" controlsList="nodownload" />
-        </div>
-      </LazyMediaPreview>
-    );
-  }
   if (error) {
     return (
       <div className="aspect-video not-prose rounded-lg bg-muted flex flex-col items-center justify-center gap-3">
@@ -247,6 +236,14 @@ function DirectVideoBlock({ url }: { url: string }) {
       <video src={url} controls preload="none" className="w-full h-full rounded-lg bg-black" controlsList="nodownload"
         onError={() => setError(true)} />
     </div>
+  );
+}
+
+function DirectVideoBlock({ url }: { url: string }) {
+  return (
+    <LazyMediaPreview type="video">
+      <DirectVideoBlockInner url={url} />
+    </LazyMediaPreview>
   );
 }
 
