@@ -300,12 +300,17 @@ export function SortableLessonItem({
               <div className="space-y-2">
                 <Label>Ссылка на видео или код для встраивания</Label>
                 <Textarea value={lesson.content || ''} onChange={(e) => onUpdate({ content: e.target.value })} placeholder="Вставьте ссылку (YouTube, Vimeo, Rutube, VK Video, Дзен и др.) или код iframe для встраивания" className="rounded-xl min-h-[100px] font-mono text-sm" />
-                <p className="text-xs text-muted-foreground">Поддерживаются: YouTube, Vimeo, Rutube, VK Video, Одноклассники, Mail.ru, Дзен, Яндекс Видео</p>
+                <p className="text-xs text-muted-foreground">Поддерживаются: YouTube, Vimeo, Rutube, VK Video, Kinescope, Одноклассники, Mail.ru, Дзен, Яндекс Видео</p>
               </div>
               {lesson.content && (
                 <div className="space-y-2">
                   <Label className="text-sm">Предпросмотр</Label>
-                  {lesson.content.includes('supabase') || lesson.content.includes('.mp4') || lesson.content.includes('.webm') || lesson.content.includes('.mov') ? (
+                  {lesson.content.startsWith('kinescope:') ? (
+                    <div className="relative">
+                      <VideoPreviewInline content={lesson.content} />
+                      <Button variant="ghost" size="sm" className="absolute top-2 right-2 h-8 text-destructive hover:text-destructive bg-background/80 backdrop-blur-sm" onClick={() => onUpdate({ content: '' })}><Trash2 className="w-4 h-4" /></Button>
+                    </div>
+                  ) : lesson.content.includes('supabase') || lesson.content.includes('.mp4') || lesson.content.includes('.webm') || lesson.content.includes('.mov') ? (
                     <div className="relative">
                       <video controls className="w-full rounded-xl border border-border" src={lesson.content}>Ваш браузер не поддерживает видео.</video>
                       <Button variant="ghost" size="sm" className="absolute top-2 right-2 h-8 text-destructive hover:text-destructive bg-background/80 backdrop-blur-sm" onClick={() => onUpdate({ content: '' })}><Trash2 className="w-4 h-4" /></Button>
