@@ -958,6 +958,53 @@ export type Database = {
           },
         ]
       }
+      course_promo_codes: {
+        Row: {
+          code: string
+          course_id: string
+          created_at: string
+          discount_type: string
+          discount_value: number
+          id: string
+          is_active: boolean
+          max_uses: number | null
+          used_count: number
+          valid_until: string | null
+        }
+        Insert: {
+          code: string
+          course_id: string
+          created_at?: string
+          discount_type?: string
+          discount_value?: number
+          id?: string
+          is_active?: boolean
+          max_uses?: number | null
+          used_count?: number
+          valid_until?: string | null
+        }
+        Update: {
+          code?: string
+          course_id?: string
+          created_at?: string
+          discount_type?: string
+          discount_value?: number
+          id?: string
+          is_active?: boolean
+          max_uses?: number | null
+          used_count?: number
+          valid_until?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "course_promo_codes_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "courses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       course_reminders: {
         Row: {
           company_id: string | null
@@ -1102,6 +1149,7 @@ export type Database = {
       }
       courses: {
         Row: {
+          accent_color: string | null
           allow_video_seek: boolean
           category_id: string | null
           completion_notify_emails: string | null
@@ -1129,6 +1177,7 @@ export type Database = {
           retraining_period_months: number | null
           sequential_lessons: boolean
           skip_video_identification: boolean | null
+          slug: string | null
           source_course_id: string | null
           source_order_id: string | null
           title: string
@@ -1136,6 +1185,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          accent_color?: string | null
           allow_video_seek?: boolean
           category_id?: string | null
           completion_notify_emails?: string | null
@@ -1163,6 +1213,7 @@ export type Database = {
           retraining_period_months?: number | null
           sequential_lessons?: boolean
           skip_video_identification?: boolean | null
+          slug?: string | null
           source_course_id?: string | null
           source_order_id?: string | null
           title: string
@@ -1170,6 +1221,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          accent_color?: string | null
           allow_video_seek?: boolean
           category_id?: string | null
           completion_notify_emails?: string | null
@@ -1197,6 +1249,7 @@ export type Database = {
           retraining_period_months?: number | null
           sequential_lessons?: boolean
           skip_video_identification?: boolean | null
+          slug?: string | null
           source_course_id?: string | null
           source_order_id?: string | null
           title?: string
