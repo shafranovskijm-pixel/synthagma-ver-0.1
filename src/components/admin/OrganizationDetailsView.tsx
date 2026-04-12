@@ -83,6 +83,8 @@ interface Organization {
   notify_on_limit_80?: boolean;
   notify_on_limit_exceeded?: boolean;
   subscription_plan?: string;
+  tariff_custom_label?: string;
+  paid_until?: string;
 }
 
 interface Student {
