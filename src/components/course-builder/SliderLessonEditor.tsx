@@ -444,15 +444,16 @@ export function SliderLessonEditor({ lesson, courseId, onUpdate }: SliderLessonE
                 title="Предпросмотр презентации"
                 sandbox="allow-scripts allow-same-origin allow-popups"
               />
-            <div className="flex items-center justify-between p-3 border-t border-amber-500/20 bg-amber-500/5">
-              <p className="text-xs text-muted-foreground">Используйте стрелки ← → или прокрутку для навигации</p>
-              <a href={getViewerUrl(pptxFileUrl)} target="_blank" rel="noopener noreferrer"
-                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-amber-500/10 text-amber-600 rounded-lg hover:bg-amber-500/20 transition-colors">
-                <Eye className="w-3.5 h-3.5" />
-                На весь экран
-              </a>
+              <div className="flex items-center justify-between p-3 border-t border-amber-500/20 bg-amber-500/5">
+                <p className="text-xs text-muted-foreground">Используйте стрелки ← → или прокрутку для навигации</p>
+                <a href={getViewerUrl(pptxFileUrl)} target="_blank" rel="noopener noreferrer"
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-amber-500/10 text-amber-600 rounded-lg hover:bg-amber-500/20 transition-colors">
+                  <Eye className="w-3.5 h-3.5" />
+                  На весь экран
+                </a>
+              </div>
             </div>
-          </div>
+          </LazyMediaPreview>
         ) : (
           <div className="p-6 min-h-[250px]">
             {currentSlide && (
