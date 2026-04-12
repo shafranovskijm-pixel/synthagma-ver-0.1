@@ -194,6 +194,62 @@ export default function StudentProfile() {
             </Card>
           </TabsContent>
 
+          {/* Notifications tab */}
+          <TabsContent value="notifications">
+            <Card>
+              <CardHeader>
+                <CardTitle>Настройки уведомлений</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <TooltipProvider>
+                  <div className="overflow-x-auto">
+                    <table className="w-full">
+                      <thead>
+                        <tr className="border-b border-border">
+                          <th className="text-left py-3 pr-4 text-sm font-medium text-muted-foreground">Тип уведомления</th>
+                          {CHANNELS.map(ch => (
+                            <th key={ch.key} className="text-center py-3 px-3 text-sm font-medium text-muted-foreground whitespace-nowrap">
+                              <Tooltip>
+                                <TooltipTrigger className="inline-flex items-center gap-1">
+                                  {ch.label}
+                                  <HelpCircle className="w-3.5 h-3.5" />
+                                </TooltipTrigger>
+                                <TooltipContent>{ch.hint}</TooltipContent>
+                              </Tooltip>
+                            </th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {NOTIFICATION_TYPES.map(nt => (
+                          <tr key={nt.key} className="border-b border-border last:border-0">
+                            <td className="py-5 pr-4">
+                              <Tooltip>
+                                <TooltipTrigger className="inline-flex items-center gap-1 text-sm">
+                                  {nt.label}
+                                  <HelpCircle className="w-3.5 h-3.5 text-muted-foreground" />
+                                </TooltipTrigger>
+                                <TooltipContent>{nt.hint}</TooltipContent>
+                              </Tooltip>
+                            </td>
+                            {CHANNELS.map(ch => (
+                              <td key={ch.key} className="text-center py-5 px-3">
+                                <Switch
+                                  checked={notifSettings[nt.key]?.[ch.key] ?? false}
+                                  onCheckedChange={() => toggleNotif(nt.key, ch.key)}
+                                />
+                              </td>
+                            ))}
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </TooltipProvider>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
           {/* Identification tab */}
           <TabsContent value="identification">
             <Card>
