@@ -501,6 +501,11 @@ export function OrganizationDetailsView({ organization, onBack }: OrganizationDe
         .update({
           tariff_custom_label: tariffCustomLabel || null,
           paid_until: tariffPaidUntil || null,
+          custom_max_courses: customLimits.maxCourses,
+          custom_max_students: customLimits.maxStudents,
+          custom_max_trained_per_month: customLimits.maxTrainedPerMonth,
+          custom_ai_generations_limit: customLimits.aiGenerationsLimit,
+          custom_storage_limit_bytes: customLimits.storageLimitBytes,
         } as any)
         .eq("id", organization.id);
       if (error) throw error;
