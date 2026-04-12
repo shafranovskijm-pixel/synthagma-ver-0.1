@@ -234,6 +234,7 @@ export function OrganizationDetailsView({ organization, onBack }: OrganizationDe
         fetchUsageHistory(),
         fetchCredentials(),
         fetchBranding(),
+        fetchPendingEnrollmentsCount(),
       ]);
     } finally {
       setLoading(false);
