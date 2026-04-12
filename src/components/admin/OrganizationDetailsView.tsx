@@ -152,6 +152,7 @@ export function OrganizationDetailsView({ organization, onBack }: OrganizationDe
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("overview");
   const [showSkillspaceImport, setShowSkillspaceImport] = useState(false);
+  const [showSkillspaceBatchImport, setShowSkillspaceBatchImport] = useState(false);
   const [skillspaceUpdateCourse, setSkillspaceUpdateCourse] = useState<{ id: string; title: string } | null>(null);
   const [loading, setLoading] = useState(true);
   const [students, setStudents] = useState<Student[]>([]);
