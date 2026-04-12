@@ -714,10 +714,6 @@ export function OrganizationDetailsView({ organization, onBack }: OrganizationDe
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <ScrollArea className="w-full">
           <TabsList className="inline-flex w-auto min-w-full gap-1 p-1">
-            <TabsTrigger value="overview" className="flex items-center gap-1.5 shrink-0">
-              <BarChart3 className="w-4 h-4" />
-              <span className="hidden sm:inline">Обзор</span>
-            </TabsTrigger>
             <TabsTrigger value="students" className="flex items-center gap-1.5 shrink-0">
               <Users className="w-4 h-4" />
               <span className="hidden sm:inline">Ученики</span>
