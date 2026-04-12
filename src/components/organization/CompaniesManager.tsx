@@ -5,8 +5,10 @@ import { Card, CardContent } from "@/components/ui/card";
 import {
   Building2, Plus, Search, Users, FileText, Loader2,
   ChevronRight, CheckCircle2, Clock, LayoutGrid, List,
-  CreditCard, Upload, RefreshCw, ExternalLink,
+  CreditCard, Upload, RefreshCw, ExternalLink, EyeOff,
 } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
 import { useCompaniesManager } from "@/hooks/useCompaniesManager";
 import { useCompanyDetailManager } from "@/hooks/useCompanyDetailManager";
