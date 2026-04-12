@@ -144,6 +144,8 @@ interface EnrollmentInfo {
   started_at: string;
   completed_at?: string | null;
   time_spent: number;
+  access_days?: number | null;
+  expires_at?: string | null;
 }
 
 export type { EnrollmentInfo };
