@@ -392,7 +392,53 @@ export function CourseDetailsModal({
     }
   };
 
-  const handleUpdateFrdoSettings = async (field: keyof CourseFRDOSettings, value: string | number | null) => {
+  const handleUpdateLandingContentField = async (key: string, value: any) => {
+    if (!course) return;
+    setIsSavingSettings(true);
+    try {
+      // Fetch current landing_content
+      const { data: current } = await supabase
+        .from("courses")
+        .select("landing_content")
+        .eq("id", course.id)
+        .single();
+      
+      const currentContent = (current?.landing_content as any) || {};
+      const updatedContent = { ...currentContent, [key]: value };
+      
+      const { error } = await supabase
+        .from("courses")
+        .update({ landing_content: updatedContent } as any)
+        .eq("id", course.id);
+      
+      if (error) throw error;
+      onCourseUpdated?.();
+    } catch (error) {
+      console.error("Error updating landing content:", error);
+      toast.error("Ошибка сохранения настроек");
+    } finally {
+      setIsSavingSettings(false);
+    }
+  };
+
+  const handleToggleCopyProtection = async (value: boolean) => {
+    setCopyProtection(value);
+    await handleUpdateLandingContentField("copy_protection", value);
+    toast.success(value ? "Защита от копирования включена" : "Защита от копирования отключена");
+  };
+
+  const handleToggleVideoWatermark = async (value: boolean) => {
+    setVideoWatermark(value);
+    await handleUpdateLandingContentField("video_watermark", value);
+    toast.success(value ? "Водяные знаки на видео включены" : "Водяные знаки на видео отключены");
+  };
+
+  const handleUpdateExternalCardUrl = async (value: string) => {
+    setExternalCardUrl(value);
+    await handleUpdateLandingContentField("external_card_url", value || null);
+  };
+
+
     if (!course) return;
     
     // Update local state immediately
