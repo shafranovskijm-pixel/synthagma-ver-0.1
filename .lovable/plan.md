@@ -1,102 +1,87 @@
 
 
-# Встроенный плеер Kinescope с настройками для каждого вебинара
+# Уведомление об окончании тарифа + Генерация счёта на оплату
 
 ## Что делаем
 
-Добавляем настраиваемый встроенный Kinescope-плеер в интерфейс вебинаров. Каждый вебинар получит индивидуальные настройки плеера, аналогичные тем, что доступны в панели Kinescope (как на скриншоте).
+1. **Автоматическое уведомление** — когда до окончания тарифа остаётся 7 дней, организация получает уведомление в колокольчик с предложением оплатить и ссылкой на счёт.
 
-Kinescope embed поддерживает query-параметры для кастомизации: `autoplay`, `playsinline`, `muted`, `loop`, `autopause`, `preload`, `watermark`, а также параметры UI: `controls`, `playback-rate`, `chromecast`, `airplay`, `pip`, `fullscreen`, `cc`, `chapters`.
+2. **Страница счёта на оплату** — генерируется HTML-документ (по аналогии с договорами в `SalesContracts`) с реквизитами ИП Шафрановского, подписью и печатью. Счёт можно скачать в PDF.
 
-## Настройки плеера (для каждого вебинара)
+3. **Таблица счетов** — хранение сгенерированных счетов в БД для истории.
 
-**Поведение:**
-- Автозапуск (autoplay)
-- Автопауза при переключении вкладки (autopause)  
-- Зацикливание (loop)
-- Запуск без звука (muted)
+## Реквизиты исполнителя (зашиты в шаблон)
 
-**Элементы управления:**
-- Скорость воспроизведения (playback-rate)
-- Субтитры (cc)
-- Полный экран (fullscreen)
-- Картинка в картинке (pip)
-- Chromecast / Airplay
-
-**Водяной знак:**
-- Текст водяного знака (watermark[text])
+- **ИП Шафрановский Максим Михайлович**, ИНН 253615392404, ОГРНИП 324253600042754
+- Счёт: 40914810200040551529
+- Банк: ООО «Озон Банк», БИК 044525068
+- Корр. счёт: 30101810645374525068
+- ИНН банка: 9703077050, КПП банка: 770301001
 
 ## Технические детали
 
-### Шаг 1: Миграция — добавить колонку `player_settings` (JSONB)
+### Шаг 1: Миграция — таблица `subscription_invoices`
 
 ```sql
-ALTER TABLE public.webinars 
-  ADD COLUMN IF NOT EXISTS player_settings JSONB DEFAULT '{}';
+CREATE TABLE public.subscription_invoices (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  organization_id UUID REFERENCES organizations(id) ON DELETE CASCADE NOT NULL,
+  invoice_number TEXT NOT NULL,
+  invoice_date DATE NOT NULL DEFAULT CURRENT_DATE,
+  plan TEXT NOT NULL,
+  amount NUMERIC(12,2) NOT NULL,
+  period_months INT NOT NULL DEFAULT 1,
+  status TEXT NOT NULL DEFAULT 'pending',
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+ALTER TABLE public.subscription_invoices ENABLE ROW LEVEL SECURITY;
+-- RLS: организация видит свои счета
+CREATE POLICY "Org can view own invoices" ON public.subscription_invoices
+  FOR SELECT TO authenticated
+  USING (organization_id = current_organization_id());
 ```
 
-Формат JSON:
-```json
-{
-  "autoplay": false,
-  "autopause": true,
-  "loop": false,
-  "muted": false,
-  "playbackRate": true,
-  "subtitles": true,
-  "fullscreen": true,
-  "pip": true,
-  "chromecast": true,
-  "airplay": true,
-  "watermarkText": ""
-}
-```
+### Шаг 2: Edge Function `check-subscription-expiry`
 
-### Шаг 2: Компонент `WebinarPlayerSettings.tsx`
+Cron-задача (ежедневно), которая:
+1. Ищет организации с `paid_until` через 7 дней (±1 день)
+2. Проверяет, что уведомление ещё не отправлялось (нет записи в `org_notifications` с `type = 'subscription_expiry'` за последние 7 дней)
+3. Генерирует счёт в `subscription_invoices`
+4. Создаёт уведомление в `org_notifications` с `type = 'subscription_expiry'`, `related_id = invoice.id`
 
-Новый компонент — диалог с переключателями (Switch) для каждой настройки плеера. Визуально похож на скриншот Kinescope: секции «Поведение», «Трансляция на устройства», «Элементы управления» с toggle-переключателями.
+### Шаг 3: Шаблон счёта — `src/constants/invoiceTemplate.ts`
 
-Открывается по кнопке ⚙️ «Настройки плеера» на карточке вебинара.
+HTML-шаблон счёта (аналогично `contractTemplates.ts`):
+- Шапка с реквизитами исполнителя (ИП Шафрановский)
+- Банковские реквизиты получателя
+- Таблица: наименование услуги (тарифный план), период, сумма
+- Подпись и печать (из `contractAssets.ts` — те же `CONTRACT_SIGNATURE_B64` и `CONTRACT_STAMP_B64`)
+- Итого с НДС (ИП на УСН — «НДС не облагается»)
 
-### Шаг 3: Обновить `WebinarsManager.tsx`
+### Шаг 4: Страница просмотра счёта — `src/pages/InvoiceView.tsx`
 
-- Добавить кнопку «Настройки плеера» (иконка Settings) на каждой карточке
-- При открытии embed-плеера — передавать query-параметры из `player_settings` в URL iframe
+Маршрут: `/invoice/:id`
+- Загружает данные счёта из `subscription_invoices` + данные организации
+- Рендерит HTML-шаблон с реквизитами обеих сторон
+- Кнопка «Скачать PDF» (через window.print())
 
-### Шаг 4: Обновить `StudentWebinarsList.tsx`
+### Шаг 5: Обновить `OrgNotifications.tsx`
 
-- При открытии embed-плеера студентом — применять `player_settings` вебинара к URL iframe (те же query-параметры)
+- При клике на уведомление с `type = 'subscription_expiry'` и `related_id` — навигация на `/invoice/{related_id}`
+- Добавить тип `subscription_expiry` в `PAYMENT_TYPES`
 
-### Шаг 5: Обновить `VideoPlayerInline.tsx` и `courseBuilderHelpers.ts`
+### Шаг 6: Добавить кнопку «Выставить счёт» в `SubscriptionTab.tsx`
 
-- Функция `getKinescopeEmbedUrl` получит опциональный параметр `playerSettings` для формирования URL с query-параметрами
-
-### Формирование URL с настройками
-
-```typescript
-function buildKinescopeUrl(videoId: string, settings: Record<string, any>) {
-  const params = new URLSearchParams();
-  if (settings.autoplay) params.set('autoplay', '1');
-  if (settings.muted) params.set('muted', '1');
-  if (settings.loop) params.set('loop', '1');
-  if (settings.autopause === false) params.set('autopause', '0');
-  if (!settings.playbackRate) params.set('playback-rate', '0');
-  if (!settings.fullscreen) params.set('fullscreen', '0');
-  if (!settings.pip) params.set('pip', '0');
-  if (!settings.subtitles) params.set('cc', '0');
-  if (settings.chromecast === false) params.set('chromecast', '0');
-  if (settings.airplay === false) params.set('airplay', '0');
-  if (settings.watermarkText) params.set('watermark[text]', settings.watermarkText);
-  const qs = params.toString();
-  return `https://kinescope.io/embed/${videoId}${qs ? '?' + qs : ''}`;
-}
-```
+- Когда тариф платный и `daysRemaining <= 30` — показать кнопку «Выставить счёт на продление»
+- При нажатии — создаёт запись в `subscription_invoices` и открывает страницу счёта
 
 ## Затрагиваемые файлы
 
-- **Новый:** `src/components/organization/WebinarPlayerSettings.tsx` — диалог настроек плеера
-- **Миграция SQL** — колонка `player_settings JSONB`
-- **Изменение:** `src/components/organization/WebinarsManager.tsx` — кнопка настроек + применение к embed
-- **Изменение:** `src/components/student/StudentWebinarsList.tsx` — применение настроек к embed
-- **Изменение:** `src/utils/courseBuilderHelpers.ts` — функция buildKinescopeUrl
+- **Миграция SQL** — таблица `subscription_invoices` + RLS
+- **Новый**: `supabase/functions/check-subscription-expiry/index.ts` — cron edge function
+- **Новый**: `src/constants/invoiceTemplate.ts` — HTML-шаблон счёта
+- **Новый**: `src/pages/InvoiceView.tsx` — страница просмотра/скачивания
+- **Изменение**: `src/components/organization/OrgNotifications.tsx` — навигация по клику
+- **Изменение**: `src/components/organization/SubscriptionTab.tsx` — кнопка «Выставить счёт»
+- **Изменение**: маршруты в App.tsx — добавить `/invoice/:id`
 
