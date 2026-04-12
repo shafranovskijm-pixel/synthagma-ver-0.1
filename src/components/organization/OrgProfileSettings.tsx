@@ -8,7 +8,7 @@ import {
   ChevronRight, Loader2, Upload,
   X, ExternalLink, Image, Eye, Lock, ArrowUpRight, LogIn, KeyRound,
   RefreshCw, RotateCcw, Trophy, MessageCircle,
-  BarChart3, Link, HardHat, FileText, ShoppingBag
+  BarChart3, Link, HardHat, FileText, ShoppingBag, Building2
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
