@@ -178,6 +178,10 @@ export function OrganizationDetailsView({ organization, onBack }: OrganizationDe
   const [resettingPassword, setResettingPassword] = useState(false);
   const [migratingCourseId, setMigratingCourseId] = useState<string | null>(null);
   const [migrationResult, setMigrationResult] = useState<Record<string, { status: 'success' | 'error'; message: string }>>({});
+  const [orgBranding, setOrgBranding] = useState<{ coverUrl?: string; primaryColor?: string; logoUrl?: string }>({});
+  const [tariffCustomLabel, setTariffCustomLabel] = useState(organization.tariff_custom_label || "");
+  const [tariffPaidUntil, setTariffPaidUntil] = useState(organization.paid_until || "");
+  const [isSavingTariff, setIsSavingTariff] = useState(false);
 
   const planKey = (organization.subscription_plan as SubscriptionPlan) || 'free';
   const planInfo = getPlanInfo(planKey);
