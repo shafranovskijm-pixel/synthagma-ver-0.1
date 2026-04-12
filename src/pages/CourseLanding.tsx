@@ -11,6 +11,8 @@ import { LandingAudienceSection } from "@/components/course-landing/LandingAudie
 import { LandingProgramSection } from "@/components/course-landing/LandingProgramSection";
 import { LandingBenefitsSection } from "@/components/course-landing/LandingBenefitsSection";
 import { LandingCtaSection } from "@/components/course-landing/LandingCtaSection";
+import { LandingLearnSection } from "@/components/course-landing/LandingLearnSection";
+import { LandingProcessSection } from "@/components/course-landing/LandingProcessSection";
 
 interface CourseData {
   id: string;
