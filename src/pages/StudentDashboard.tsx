@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Navigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import {
@@ -75,11 +75,8 @@ function CatalogContent({ catalogCourses, categories, profile, branding, handleC
           onCourseClick={(id: string, enrolled: boolean) => handleCourseClick(id, enrolled)}
         />
       ) : (
-        <div className="text-center py-16 text-muted-foreground">
-          <Video className="w-12 h-12 mx-auto mb-4 opacity-40" />
-          <p className="text-lg font-medium">Вебинары пока не запланированы</p>
-          <p className="text-sm">Здесь будут отображаться предстоящие вебинары организации</p>
-        </div>
+        <StudentWebinarsList />
+      )}
       )}
     </div>
   );
