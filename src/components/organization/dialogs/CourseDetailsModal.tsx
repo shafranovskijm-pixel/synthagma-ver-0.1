@@ -438,7 +438,7 @@ export function CourseDetailsModal({
     await handleUpdateLandingContentField("external_card_url", value || null);
   };
 
-
+  const handleUpdateFrdoSettings = async (field: string, value: string | number | null) => {
     if (!course) return;
     
     // Update local state immediately
