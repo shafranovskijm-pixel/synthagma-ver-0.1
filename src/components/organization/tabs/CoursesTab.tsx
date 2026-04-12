@@ -222,10 +222,13 @@ export const CoursesTab = React.memo(function CoursesTab({ organizationId, onCou
         .eq('id', organizationId)
         .single();
       const current = (data?.menu_settings as Record<string, unknown>) || {};
-      await supabase
+      const { error } = await supabase
         .from('organizations')
         .update({ menu_settings: { ...current, courseViewMode, courseFolderMode } as any })
         .eq('id', organizationId);
+      if (error) {
+        console.error('Error saving view prefs:', error);
+      }
     } catch (e) {
       console.error('Error saving view prefs:', e);
     }
