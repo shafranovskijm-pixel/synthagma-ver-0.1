@@ -162,6 +162,7 @@ const App = () => (
                     } />
                     <Route path="/join/:token" element={<JoinByLink />} />
                     <Route path="/course/:courseId/landing" element={<CourseLanding />} />
+                    <Route path="/c/:slug" element={<CourseLanding />} />
                     <Route path="/features" element={<Features />} />
                     <Route path="/about" element={<About />} />
                     <Route path="/blog" element={<Blog />} />
