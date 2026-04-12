@@ -18,7 +18,7 @@ import {
   ChevronDown, ChevronRight, MoreVertical, FolderPlus, 
   MoveRight, Pencil, Video, VideoOff, Lock, Unlock, FastForward,
   Sparkles, ShoppingCart, GripVertical, CheckCircle, Palette, Play, Copy, ImagePlus, Wand2,
-  Radio, Box
+  Radio, Box, Upload
 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { useCourses } from "@/hooks/useCourses";
@@ -278,6 +278,30 @@ export const CoursesTab = React.memo(function CoursesTab({ organizationId, onCou
   const coverInputRef = React.useRef<HTMLInputElement>(null);
   const [coverUploadCourseId, setCoverUploadCourseId] = useState<string | null>(null);
   const [generatingCoverForCourse, setGeneratingCoverForCourse] = useState<string | null>(null);
+  const [migratingVideosCourseId, setMigratingVideosCourseId] = useState<string | null>(null);
+
+  const handleMigrateVideosToKinescope = useCallback(async (courseId: string) => {
+    setMigratingVideosCourseId(courseId);
+    try {
+      const { data, error } = await supabase.functions.invoke("kinescope-migrate-videos", {
+        body: { course_id: courseId },
+      });
+      if (error) throw error;
+      if (data?.migrated > 0) {
+        toast.success(`Перенесено ${data.migrated} видео в Kinescope`);
+        if (data.failed > 0) toast.warning(`${data.failed} видео не удалось перенести`);
+        refresh();
+      } else if (data?.total === 0) {
+        toast.info("В этом курсе нет внешних видео для переноса");
+      } else if (data?.failed > 0) {
+        toast.error(`Не удалось перенести ${data.failed} видео`);
+      }
+    } catch (e) {
+      toast.error("Ошибка миграции видео: " + (e instanceof Error ? e.message : "неизвестная ошибка"));
+    } finally {
+      setMigratingVideosCourseId(null);
+    }
+  }, [refresh]);
 
   const handleGenerateCourseCover = useCallback(async (courseId: string) => {
     if (generatingCoverForCourse) return;
@@ -818,6 +842,13 @@ export const CoursesTab = React.memo(function CoursesTab({ organizationId, onCou
                         <MoveRight className="w-4 h-4 mr-2" />
                         Переместить в категорию
                       </DropdownMenuItem>
+                      <DropdownMenuItem 
+                        disabled={migratingVideosCourseId === course.id}
+                        onClick={e => { e.stopPropagation(); handleMigrateVideosToKinescope(course.id); }}
+                      >
+                        {migratingVideosCourseId === course.id ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Upload className="w-4 h-4 mr-2" />}
+                        Перенести видео в Kinescope
+                      </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
                 </div>
@@ -963,6 +994,13 @@ export const CoursesTab = React.memo(function CoursesTab({ organizationId, onCou
                   <MoveRight className="w-4 h-4 mr-2" />
                   Переместить в категорию
                 </DropdownMenuItem>
+                <DropdownMenuItem 
+                  disabled={migratingVideosCourseId === course.id}
+                  onClick={e => { e.stopPropagation(); handleMigrateVideosToKinescope(course.id); }}
+                >
+                  {migratingVideosCourseId === course.id ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Upload className="w-4 h-4 mr-2" />}
+                  Перенести видео в Kinescope
+                </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
@@ -1105,6 +1143,13 @@ export const CoursesTab = React.memo(function CoursesTab({ organizationId, onCou
               >
                 {generatingCoverForCourse === course.id ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Wand2 className="w-4 h-4 mr-2" />}
                 {generatingCoverForCourse === course.id ? "Генерация..." : "Сгенерировать с ИИ"}
+              </DropdownMenuItem>
+              <DropdownMenuItem 
+                disabled={migratingVideosCourseId === course.id}
+                onClick={e => { e.stopPropagation(); handleMigrateVideosToKinescope(course.id); }}
+              >
+                {migratingVideosCourseId === course.id ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Upload className="w-4 h-4 mr-2" />}
+                Перенести видео в Kinescope
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
