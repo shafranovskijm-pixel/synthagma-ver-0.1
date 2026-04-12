@@ -169,7 +169,7 @@ const DEFAULT_PAGES: PageSEO[] = [
      }
    }, []);
  
-   const siteUrl = "https://synthagma-bloom.lovable.app";
+   const siteUrl = "https://sintagma.com.ru";
  
    return (
      <div className="space-y-6">

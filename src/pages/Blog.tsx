@@ -192,11 +192,11 @@ const Blog = () => {
         <title>Блог СИНТАГМА — Новости и статьи об онлайн-образовании</title>
         <meta name="description" content="Актуальные статьи о дистанционном обучении, законодательстве в сфере ДПО, best practices для образовательных организаций." />
         <meta name="keywords" content="блог, образование, ДПО, онлайн обучение, статьи" />
-        <link rel="canonical" href="https://synthagma-bloom.lovable.app/blog" />
+        <link rel="canonical" href="https://sintagma.com.ru/blog" />
         <meta property="og:title" content="Блог СИНТАГМА — Новости и статьи об онлайн-образовании" />
         <meta property="og:description" content="Актуальные статьи о дистанционном обучении, законодательстве в сфере ДПО, best practices для образовательных организаций." />
-        <meta property="og:url" content="https://synthagma-bloom.lovable.app/blog" />
-        <meta property="og:image" content="https://synthagma-bloom.lovable.app/og-image.png" />
+        <meta property="og:url" content="https://sintagma.com.ru/blog" />
+        <meta property="og:image" content="https://sintagma.com.ru/og-image.png" />
       </Helmet>
 
       {/* Header */}
