@@ -2,6 +2,7 @@ import { useState, useCallback, useEffect, useRef } from "react";
 import DOMPurify from "dompurify";
 import { checkAiLimitGlobal, incrementAiLimitGlobal } from "@/hooks/useAiGenerationLimit";
 import { safeInvoke } from "@/utils/safeInvoke";
+import { LazyMediaPreview } from "@/components/course-builder/LazyMediaPreview";
 import {
   Plus,
   GripVertical,
