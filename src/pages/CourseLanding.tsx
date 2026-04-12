@@ -206,8 +206,12 @@ export default function CourseLanding() {
   const learn = landingContent?.learn || { title: "", description: "", items: [] };
   const process = landingContent?.process || { title: "", content: "" };
   const benefits = landingContent?.benefits || [];
+  const teachers = landingContent?.teachers || { title: "Преподаватели курса", description: "", items: [] };
+  const reviews = landingContent?.reviews || { title: "Отзывы о курсе", items: [] };
+  const pricing = landingContent?.pricing || { title: "Выберите подходящий тариф", tiers: [] };
+  const faq = landingContent?.faq || { title: "Часто задаваемые вопросы", items: [] };
   const cta = landingContent?.cta || { title: "Начните обучение сегодня", subtitle: "Заполните форму и мы свяжемся с вами" };
-  const sectionsOrder: string[] = landingContent?.sections_order || ["hero", "audience", "learn", "program", "process", "benefits", "cta"];
+  const sectionsOrder: string[] = landingContent?.sections_order || ["hero", "audience", "learn", "program", "process", "benefits", "teachers", "reviews", "pricing", "faq", "cta"];
   const sectionsHidden: string[] = landingContent?.sections_hidden || [];
 
   // Migrate old string[] audience items
