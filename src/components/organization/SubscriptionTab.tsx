@@ -189,6 +189,40 @@ export function SubscriptionTab() {
     setSubmitting(false);
   };
 
+  const handleGenerateInvoice = async () => {
+    if (!organizationId) return;
+    setGeneratingInvoice(true);
+    try {
+      const year = new Date().getFullYear();
+      const { count } = await supabase
+        .from("subscription_invoices")
+        .select("*", { count: "exact", head: true })
+        .eq("organization_id", organizationId);
+
+      const invoiceNum = `СЧ-${year}/${String((count || 0) + 1).padStart(4, "0")}`;
+      const amount = currentPlanInfo.price || 1990;
+
+      const { data: invoice, error: err } = await supabase
+        .from("subscription_invoices")
+        .insert({
+          organization_id: organizationId,
+          invoice_number: invoiceNum,
+          plan: currentPlan,
+          amount,
+          period_months: 1,
+        } as any)
+        .select("id")
+        .single();
+
+      if (err) throw err;
+      nav(`/invoice/${(invoice as any).id}`);
+    } catch (e: any) {
+      toast({ title: "Ошибка", description: e.message, variant: "destructive" });
+    } finally {
+      setGeneratingInvoice(false);
+    }
+  };
+
   const coursesPercent = currentPlanInfo.limits.maxCourses === -1 ? 0 :
     Math.round((subscriptionLimits.usage.coursesCount / currentPlanInfo.limits.maxCourses) * 100);
   const studentsPercent = currentPlanInfo.limits.maxStudents === -1 ? 0 :
