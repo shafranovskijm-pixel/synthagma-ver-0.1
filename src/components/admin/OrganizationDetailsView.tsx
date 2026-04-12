@@ -39,6 +39,7 @@ import {
   Save,
   TrendingUp,
   AlertTriangle,
+  AlertCircle,
   Bell,
   MessageSquare,
   ShieldOff,
