@@ -462,12 +462,6 @@ export const LessonEditor = ({
                       <p className="text-xs text-muted-foreground">YouTube, Vimeo, Rutube, VK, Дзен, OK.ru, Mail.ru или &lt;iframe&gt;</p>
                     </div>
                     <div className="flex items-center gap-2">
-                      {isExternalConfigured && (
-                        <Badge variant="outline" className="text-xs">
-                          <Cloud className="w-3 h-3 mr-1" />
-                          Внешнее хранилище
-                        </Badge>
-                      )}
                       <Button
                         type="button"
                         variant="outline"
