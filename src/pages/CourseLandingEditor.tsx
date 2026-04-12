@@ -11,9 +11,13 @@ import { LandingBenefitsSection, BenefitItem } from "@/components/course-landing
 import { LandingCtaSection } from "@/components/course-landing/LandingCtaSection";
 import { LandingLearnSection, LearnItem } from "@/components/course-landing/LandingLearnSection";
 import { LandingProcessSection } from "@/components/course-landing/LandingProcessSection";
+import { LandingTeachersSection, TeacherItem } from "@/components/course-landing/LandingTeachersSection";
+import { LandingReviewsSection, ReviewItem } from "@/components/course-landing/LandingReviewsSection";
+import { LandingPricingSection, PricingTier } from "@/components/course-landing/LandingPricingSection";
+import { LandingFaqSection, FaqItem } from "@/components/course-landing/LandingFaqSection";
 import { SectionToolbar } from "@/components/course-landing/SectionToolbar";
 
-const ALL_SECTIONS = ["hero", "audience", "learn", "program", "process", "benefits", "cta"];
+const ALL_SECTIONS = ["hero", "audience", "learn", "program", "process", "benefits", "teachers", "reviews", "pricing", "faq", "cta"];
 
 const SECTION_LABELS: Record<string, string> = {
   hero: "Шапка",
