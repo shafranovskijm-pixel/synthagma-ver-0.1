@@ -123,10 +123,38 @@ export function HomeworkReviewTab() {
       {loading ? (
         <div className="flex justify-center py-12"><Loader2 className="w-6 h-6 animate-spin text-muted-foreground" /></div>
       ) : submissions.length === 0 ? (
-        <div className="text-center py-16 text-muted-foreground">
-          <BookCheck className="w-16 h-16 mx-auto mb-4 opacity-20" />
-          <p className="font-medium text-lg">Нет заданий</p>
-          <p className="text-sm">Задания появятся, когда ученики отправят ответы</p>
+        <div className="text-center py-12 max-w-lg mx-auto">
+          <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-indigo-500/10 flex items-center justify-center">
+            <BookCheck className="w-8 h-8 text-indigo-500" />
+          </div>
+          <p className="font-semibold text-lg mb-2">Проверка домашних заданий</p>
+          <p className="text-sm text-muted-foreground mb-6">
+            Здесь вы будете проверять ответы учеников на практические задания. Назначайте оценки, оставляйте комментарии и отправляйте на доработку — всё в одном месте.
+          </p>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-left">
+            <div className="bg-muted/50 rounded-xl p-3 border border-border/50">
+              <div className="flex items-center gap-2 mb-1">
+                <Clock className="w-4 h-4 text-amber-500" />
+                <span className="text-xs font-medium">Ждёт проверки</span>
+              </div>
+              <p className="text-xs text-muted-foreground">Новые ответы учеников попадают сюда автоматически</p>
+            </div>
+            <div className="bg-muted/50 rounded-xl p-3 border border-border/50">
+              <div className="flex items-center gap-2 mb-1">
+                <CheckCircle2 className="w-4 h-4 text-green-500" />
+                <span className="text-xs font-medium">Оценка и отзыв</span>
+              </div>
+              <p className="text-xs text-muted-foreground">Ставьте баллы и пишите комментарии к работам</p>
+            </div>
+            <div className="bg-muted/50 rounded-xl p-3 border border-border/50">
+              <div className="flex items-center gap-2 mb-1">
+                <RotateCcw className="w-4 h-4 text-orange-500" />
+                <span className="text-xs font-medium">Доработка</span>
+              </div>
+              <p className="text-xs text-muted-foreground">Отправляйте работу на исправление с пояснениями</p>
+            </div>
+          </div>
+          <p className="text-xs text-muted-foreground mt-4">Чтобы получить задания, добавьте урок типа «Практическое задание» в конструкторе курса</p>
         </div>
       ) : (
         <div className="border border-border rounded-xl overflow-hidden">
