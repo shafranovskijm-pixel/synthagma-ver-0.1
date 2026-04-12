@@ -869,13 +869,6 @@ export const CoursesTab = React.memo(function CoursesTab({ organizationId, onCou
                         <MoveRight className="w-4 h-4 mr-2" />
                         Переместить в категорию
                       </DropdownMenuItem>
-                      <DropdownMenuItem 
-                        disabled={migratingVideosCourseId === course.id}
-                        onClick={e => { e.stopPropagation(); handleMigrateVideosToKinescope(course.id); }}
-                      >
-                        {migratingVideosCourseId === course.id ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Upload className="w-4 h-4 mr-2" />}
-                        Перенести видео в Kinescope
-                      </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
                 </div>
@@ -1021,13 +1014,6 @@ export const CoursesTab = React.memo(function CoursesTab({ organizationId, onCou
                   <MoveRight className="w-4 h-4 mr-2" />
                   Переместить в категорию
                 </DropdownMenuItem>
-                <DropdownMenuItem 
-                  disabled={migratingVideosCourseId === course.id}
-                  onClick={e => { e.stopPropagation(); handleMigrateVideosToKinescope(course.id); }}
-                >
-                  {migratingVideosCourseId === course.id ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Upload className="w-4 h-4 mr-2" />}
-                  Перенести видео в Kinescope
-                </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
@@ -1170,13 +1156,6 @@ export const CoursesTab = React.memo(function CoursesTab({ organizationId, onCou
               >
                 {generatingCoverForCourse === course.id ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Wand2 className="w-4 h-4 mr-2" />}
                 {generatingCoverForCourse === course.id ? "Генерация..." : "Сгенерировать с ИИ"}
-              </DropdownMenuItem>
-              <DropdownMenuItem 
-                disabled={migratingVideosCourseId === course.id}
-                onClick={e => { e.stopPropagation(); handleMigrateVideosToKinescope(course.id); }}
-              >
-                {migratingVideosCourseId === course.id ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Upload className="w-4 h-4 mr-2" />}
-                Перенести видео в Kinescope
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -1366,17 +1345,6 @@ export const CoursesTab = React.memo(function CoursesTab({ organizationId, onCou
             </div>
           </div>
           <div className="flex items-center gap-2 self-end lg:self-auto">
-            {/* Перенести все видео в Kinescope */}
-            <Button
-              variant="outline"
-              size="sm"
-              className="rounded-xl gap-1.5 text-xs hidden sm:flex"
-              disabled={migratingAllVideos}
-              onClick={handleMigrateAllVideosToKinescope}
-            >
-              {migratingAllVideos ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
-              Видео → Kinescope
-            </Button>
             {/* Настроить каталог */}
             <Button
               variant="outline"
