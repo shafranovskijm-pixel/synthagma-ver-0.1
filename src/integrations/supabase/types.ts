@@ -5198,6 +5198,7 @@ export type Database = {
           kinescope_video_id: string | null
           max_participants: number | null
           organization_id: string
+          player_settings: Json | null
           recording_size_bytes: number | null
           recording_url: string | null
           room_name: string | null
@@ -5229,6 +5230,7 @@ export type Database = {
           kinescope_video_id?: string | null
           max_participants?: number | null
           organization_id: string
+          player_settings?: Json | null
           recording_size_bytes?: number | null
           recording_url?: string | null
           room_name?: string | null
@@ -5260,6 +5262,7 @@ export type Database = {
           kinescope_video_id?: string | null
           max_participants?: number | null
           organization_id?: string
+          player_settings?: Json | null
           recording_size_bytes?: number | null
           recording_url?: string | null
           room_name?: string | null
