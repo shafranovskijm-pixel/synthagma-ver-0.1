@@ -139,7 +139,7 @@ export function OrgSidebar() {
   navItems.push({ id: "labor-safety", icon: HardHat, label: "Охрана труда", category: "labor_safety" });
   navItems.push({ id: "payments", icon: Wallet, label: "Финансы" });
   
-  if (menuSettings.showSubscription !== false) navItems.push({ id: "subscription", icon: CreditCard, label: "Тариф" });
+  
   if (menuSettings.showServices) navItems.push({ id: "services", icon: ShoppingBag, label: "Магазин" });
   
   navItems.push({ id: "chats", icon: MessageCircle, label: "Чаты", badge: d.unreadChatsCount });

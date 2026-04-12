@@ -54,6 +54,8 @@ import {
   Download,
   Trash2,
   RefreshCw,
+  CreditCard,
+  Image,
 } from "lucide-react";
 import { safeInvoke } from "@/utils/safeInvoke";
 import { format } from "date-fns";
@@ -83,6 +85,8 @@ interface Organization {
   notify_on_limit_80?: boolean;
   notify_on_limit_exceeded?: boolean;
   subscription_plan?: string;
+  tariff_custom_label?: string;
+  paid_until?: string;
 }
 
 interface Student {
@@ -174,6 +178,10 @@ export function OrganizationDetailsView({ organization, onBack }: OrganizationDe
   const [resettingPassword, setResettingPassword] = useState(false);
   const [migratingCourseId, setMigratingCourseId] = useState<string | null>(null);
   const [migrationResult, setMigrationResult] = useState<Record<string, { status: 'success' | 'error'; message: string }>>({});
+  const [orgBranding, setOrgBranding] = useState<{ coverUrl?: string; primaryColor?: string; logoUrl?: string }>({});
+  const [tariffCustomLabel, setTariffCustomLabel] = useState(organization.tariff_custom_label || "");
+  const [tariffPaidUntil, setTariffPaidUntil] = useState(organization.paid_until || "");
+  const [isSavingTariff, setIsSavingTariff] = useState(false);
 
   const planKey = (organization.subscription_plan as SubscriptionPlan) || 'free';
   const planInfo = getPlanInfo(planKey);
@@ -212,6 +220,7 @@ export function OrganizationDetailsView({ organization, onBack }: OrganizationDe
         fetchUsage(),
         fetchUsageHistory(),
         fetchCredentials(),
+        fetchBranding(),
       ]);
     } finally {
       setLoading(false);
@@ -461,6 +470,41 @@ export function OrganizationDetailsView({ organization, onBack }: OrganizationDe
 
     setUsageHistory(months);
   };
+  const fetchBranding = async () => {
+    const { data } = await supabase
+      .from("organizations")
+      .select("branding")
+      .eq("id", organization.id)
+      .single();
+    if (data?.branding) {
+      const b = data.branding as any;
+      setOrgBranding({
+        coverUrl: b.coverUrl || b.cover_url,
+        primaryColor: b.primaryColor || b.primary_color,
+        logoUrl: b.logoUrl || b.logo_url,
+      });
+    }
+  };
+
+  const saveTariffSettings = async () => {
+    setIsSavingTariff(true);
+    try {
+      const { error } = await supabase
+        .from("organizations")
+        .update({
+          tariff_custom_label: tariffCustomLabel || null,
+          paid_until: tariffPaidUntil || null,
+        } as any)
+        .eq("id", organization.id);
+      if (error) throw error;
+      toast.success("Тарифные настройки сохранены");
+    } catch (err) {
+      console.error(err);
+      toast.error("Ошибка сохранения тарифных настроек");
+    } finally {
+      setIsSavingTariff(false);
+    }
+  };
 
   const saveSettings = async () => {
     setIsSaving(true);
@@ -603,87 +647,37 @@ export function OrganizationDetailsView({ organization, onBack }: OrganizationDe
         </Alert>
       )}
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
-        <Card className={cardClass}>
-          <CardHeader className="pb-2">
-            <CardDescription className="flex items-center gap-1.5">
-              <div className="p-1 rounded-md bg-blue-500/10">
-                <Users className="w-3 h-3 text-blue-500" />
+      {/* Organization Cover / Branding Preview */}
+      <Card className={cardClass}>
+        <CardContent className="p-0 overflow-hidden rounded-lg">
+          {orgBranding.coverUrl ? (
+            <div className="relative h-40 w-full">
+              <img src={orgBranding.coverUrl} alt="Обложка организации" className="w-full h-full object-cover" />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
+              <div className="absolute bottom-3 left-4 flex items-center gap-3">
+                {orgBranding.logoUrl && (
+                  <img src={orgBranding.logoUrl} alt="Логотип" className="w-10 h-10 rounded-lg border border-white/30 bg-white/90 object-contain" />
+                )}
+                <div>
+                  <p className="text-white font-semibold text-lg drop-shadow">{organization.name}</p>
+                  <p className="text-white/80 text-sm drop-shadow">{organization.email}</p>
+                </div>
               </div>
-              Учеников
-            </CardDescription>
-            <CardTitle className="text-2xl">{stats.totalStudents}</CardTitle>
-          </CardHeader>
-        </Card>
-        <Card className={cardClass}>
-          <CardHeader className="pb-2">
-            <CardDescription className="flex items-center gap-1.5">
-              <div className="p-1 rounded-md bg-violet-500/10">
-                <BookOpen className="w-3 h-3 text-violet-500" />
-              </div>
-              Курсов
-            </CardDescription>
-            <CardTitle className="text-2xl">{stats.totalCourses}</CardTitle>
-          </CardHeader>
-        </Card>
-        <Card className={cardClass}>
-          <CardHeader className="pb-2">
-            <CardDescription className="flex items-center gap-1.5">
-              <div className="p-1 rounded-md bg-emerald-500/10">
-                <CheckCircle2 className="w-3 h-3 text-emerald-500" />
-              </div>
-              Завершено
-            </CardDescription>
-            <CardTitle className="text-2xl">{stats.completedEnrollments}</CardTitle>
-          </CardHeader>
-        </Card>
-        <Card className={cardClass}>
-          <CardHeader className="pb-2">
-            <CardDescription className="flex items-center gap-1.5">
-              <div className="p-1 rounded-md bg-orange-500/10">
-                <TrendingUp className="w-3 h-3 text-orange-500" />
-              </div>
-              Средний прогресс
-            </CardDescription>
-            <CardTitle className="text-2xl">{stats.averageProgress}%</CardTitle>
-          </CardHeader>
-        </Card>
-        <Card className={`${cardClass} ${isStorageExceeded ? "border-destructive" : isStorageWarning ? "border-yellow-500" : ""}`}>
-          <CardHeader className="pb-2">
-            <CardDescription className="flex items-center gap-1.5">
-              <div className={`p-1 rounded-md ${isStorageExceeded ? "bg-destructive/10" : isStorageWarning ? "bg-yellow-500/10" : "bg-cyan-500/10"}`}>
-                <HardDrive className={`w-3 h-3 ${isStorageExceeded ? "text-destructive" : isStorageWarning ? "text-yellow-500" : "text-cyan-500"}`} />
-              </div>
-              Хранилище
-              {isStorageExceeded && <AlertTriangle className="w-3 h-3 text-destructive" />}
-            </CardDescription>
-            <CardTitle className={`text-2xl ${isStorageExceeded ? "text-destructive" : isStorageWarning ? "text-yellow-600" : ""}`}>
-              {formatBytes(usage.storage_bytes)}
-            </CardTitle>
-            <p className="text-xs text-muted-foreground">
-              из {formatBytes(settings.storage_limit_bytes)}
-            </p>
-          </CardHeader>
-        </Card>
-        <Card className={`${cardClass} ${isAiGenExceeded ? "border-destructive" : isAiGenWarning ? "border-yellow-500" : ""}`}>
-          <CardHeader className="pb-2">
-            <CardDescription className="flex items-center gap-1.5">
-              <div className={`p-1 rounded-md ${isAiGenExceeded ? "bg-destructive/10" : isAiGenWarning ? "bg-yellow-500/10" : "bg-purple-500/10"}`}>
-                <Sparkles className={`w-3 h-3 ${isAiGenExceeded ? "text-destructive" : isAiGenWarning ? "text-yellow-500" : "text-purple-500"}`} />
-              </div>
-              ИИ-генерации
-              {isAiGenExceeded && <AlertTriangle className="w-3 h-3 text-destructive" />}
-            </CardDescription>
-            <CardTitle className={`text-2xl ${isAiGenExceeded ? "text-destructive" : isAiGenWarning ? "text-yellow-600" : ""}`}>
-              {usage.ai_generations_count}
-            </CardTitle>
-            <p className="text-xs text-muted-foreground">
-              {aiGenerationsLimit === Infinity ? "безлимит" : `из ${aiGenerationsLimit}`}
-            </p>
-          </CardHeader>
-        </Card>
-      </div>
+              {orgBranding.primaryColor && (
+                <div className="absolute top-3 right-3 flex items-center gap-2 bg-black/30 rounded-full px-3 py-1">
+                  <div className="w-4 h-4 rounded-full border border-white/40" style={{ backgroundColor: orgBranding.primaryColor }} />
+                  <span className="text-white text-xs">{orgBranding.primaryColor}</span>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="h-32 w-full bg-gradient-to-r from-primary/10 to-primary/5 flex items-center justify-center gap-3">
+              <Image className="w-8 h-8 text-muted-foreground/40" />
+              <span className="text-muted-foreground text-sm">Организация не установила обложку</span>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
@@ -728,6 +722,10 @@ export function OrganizationDetailsView({ organization, onBack }: OrganizationDe
             <TabsTrigger value="settings" className="flex items-center gap-1.5 shrink-0">
               <Settings className="w-4 h-4" />
               <span className="hidden sm:inline">Настройки</span>
+            </TabsTrigger>
+            <TabsTrigger value="tariff" className="flex items-center gap-1.5 shrink-0">
+              <CreditCard className="w-4 h-4" />
+              <span className="hidden sm:inline">Тарифы</span>
             </TabsTrigger>
           </TabsList>
           <ScrollBar orientation="horizontal" />
@@ -1575,6 +1573,116 @@ export function OrganizationDetailsView({ organization, onBack }: OrganizationDe
             {isSaving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Save className="w-4 h-4 mr-2" />}
             Сохранить все настройки
           </Button>
+        </TabsContent>
+
+        {/* Tariff Tab */}
+        <TabsContent value="tariff" className="space-y-6">
+          <Card className={cardClass}>
+            <CardHeader>
+              <CardTitle className="text-lg flex items-center gap-2">
+                <CreditCard className="w-5 h-5 text-primary" />
+                Управление тарифом
+              </CardTitle>
+              <CardDescription>Настройте тарифный план и условия для этой организации</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {/* Current Plan */}
+              <div className="space-y-2">
+                <Label>Текущий тариф</Label>
+                <div className="flex items-center gap-3">
+                  <Badge className={`text-sm font-medium border ${PLAN_BADGE_COLORS[planKey] || PLAN_BADGE_COLORS.free}`}>
+                    {planInfo.name}
+                  </Badge>
+                  <Select
+                    value={planKey}
+                    onValueChange={async (val) => {
+                      const { error } = await supabase
+                        .from("organizations")
+                        .update({ subscription_plan: val } as any)
+                        .eq("id", organization.id);
+                      if (error) {
+                        toast.error("Ошибка смены тарифа");
+                      } else {
+                        toast.success(`Тариф изменён на ${getPlanInfo(val as SubscriptionPlan).name}`);
+                      }
+                    }}
+                  >
+                    <SelectTrigger className="w-[200px]">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="free">Бесплатный</SelectItem>
+                      <SelectItem value="start">Старт</SelectItem>
+                      <SelectItem value="standard">Стандарт</SelectItem>
+                      <SelectItem value="professional">Профессиональный</SelectItem>
+                      <SelectItem value="maximum">Максимальный</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              {/* Custom Label */}
+              <div className="space-y-2">
+                <Label>Примечание к тарифу</Label>
+                <p className="text-sm text-muted-foreground">Это примечание увидит организация на своей странице тарифа (например: «Стандарт + особые условия»)</p>
+                <Input
+                  value={tariffCustomLabel}
+                  onChange={(e) => setTariffCustomLabel(e.target.value)}
+                  placeholder="Например: Стандарт плюс особые условия"
+                />
+              </div>
+
+              {/* Paid Until */}
+              <div className="space-y-2">
+                <Label>Оплачен до</Label>
+                <Input
+                  type="date"
+                  value={tariffPaidUntil ? tariffPaidUntil.split("T")[0] : ""}
+                  onChange={(e) => setTariffPaidUntil(e.target.value ? new Date(e.target.value).toISOString() : "")}
+                />
+              </div>
+
+              {/* Usage */}
+              <div className="space-y-3">
+                <Label>Использование ресурсов</Label>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="flex items-center gap-1.5"><BookOpen className="w-3.5 h-3.5" /> Курсы</span>
+                      <span className="text-muted-foreground">{stats.totalCourses} / {planInfo.limits.maxCourses === -1 ? "∞" : planInfo.limits.maxCourses}</span>
+                    </div>
+                    <Progress value={planInfo.limits.maxCourses === -1 ? 0 : Math.min(100, (stats.totalCourses / planInfo.limits.maxCourses) * 100)} className="h-2" />
+                  </div>
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="flex items-center gap-1.5"><Users className="w-3.5 h-3.5" /> Ученики</span>
+                      <span className="text-muted-foreground">{stats.totalStudents} / {planInfo.limits.maxStudents === -1 ? "∞" : planInfo.limits.maxStudents}</span>
+                    </div>
+                    <Progress value={planInfo.limits.maxStudents === -1 ? 0 : Math.min(100, (stats.totalStudents / planInfo.limits.maxStudents) * 100)} className="h-2" />
+                  </div>
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="flex items-center gap-1.5"><HardDrive className="w-3.5 h-3.5" /> Хранилище</span>
+                      <span className="text-muted-foreground">{formatBytes(usage.storage_bytes)} / {formatBytes(settings.storage_limit_bytes)}</span>
+                    </div>
+                    <Progress value={Math.min(100, storageLimitPercent)} className="h-2" />
+                  </div>
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="flex items-center gap-1.5"><Sparkles className="w-3.5 h-3.5" /> ИИ-генерации</span>
+                      <span className="text-muted-foreground">{usage.ai_generations_count} / {aiGenerationsLimit === Infinity ? "∞" : aiGenerationsLimit}</span>
+                    </div>
+                    <Progress value={aiGenerationsLimit === Infinity ? 0 : Math.min(100, aiGenerationsPercent)} className="h-2" />
+                  </div>
+                </div>
+              </div>
+
+              <Button onClick={saveTariffSettings} disabled={isSavingTariff} className="gap-2">
+                {isSavingTariff ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                Сохранить тарифные настройки
+              </Button>
+            </CardContent>
+          </Card>
         </TabsContent>
       </Tabs>
     </div>

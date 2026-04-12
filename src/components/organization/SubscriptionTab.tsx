@@ -101,6 +101,7 @@ export function SubscriptionTab() {
   const subscriptionLimits = d.subscriptionLimits;
   
   const [paidUntil, setPaidUntil] = useState<string | null>(null);
+  const [tariffCustomLabel, setTariffCustomLabel] = useState<string | null>(null);
   const [showUpgradeDialog, setShowUpgradeDialog] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState<SubscriptionPlan | null>(null);
   const [message, setMessage] = useState("");
@@ -117,11 +118,12 @@ export function SubscriptionTab() {
     
     const fetchOrgDetails = async () => {
       const [orgRes, reqRes] = await Promise.all([
-        supabase.from("organizations").select("paid_until, email, phone, contact_name").eq("id", organizationId).single(),
+        supabase.from("organizations").select("paid_until, tariff_custom_label, email, phone, contact_name").eq("id", organizationId).single(),
         supabase.from("subscription_requests" as any).select("requested_plan, created_at").eq("organization_id", organizationId).eq("status", "pending").order("created_at", { ascending: false }).limit(1),
       ]);
       
       if (orgRes.data?.paid_until) setPaidUntil(orgRes.data.paid_until);
+      if ((orgRes.data as any)?.tariff_custom_label) setTariffCustomLabel((orgRes.data as any).tariff_custom_label);
       setOrgContact({ email: orgRes.data?.email, phone: orgRes.data?.phone, contact_name: orgRes.data?.contact_name });
       if ((reqRes.data as any)?.[0]) setPendingRequest((reqRes.data as any)[0]);
     };
@@ -218,6 +220,9 @@ export function SubscriptionTab() {
                       <p className="text-muted-foreground">
                         {currentPlanInfo.price === 0 ? "Бесплатный тариф" : `${currentPlanInfo.price.toLocaleString()} ₽/мес`}
                       </p>
+                      {tariffCustomLabel && (
+                        <p className="text-sm font-medium text-primary mt-1">{tariffCustomLabel}</p>
+                      )}
                     </div>
                     <div className="flex flex-col items-end gap-1">
                       {paidUntil && currentPlan !== 'free' ? (
