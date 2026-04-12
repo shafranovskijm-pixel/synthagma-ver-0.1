@@ -194,12 +194,13 @@ export function OrgSidebar() {
                           locked && "opacity-50",
                           isActive
                             ? "text-primary-foreground shadow-md"
-                            : "text-foreground/80 hover:text-foreground"
+                            : "text-foreground/80 hover:text-foreground hover:scale-110 hover:brightness-110"
                         )}
                         style={{
                           backgroundColor: isActive
                             ? `hsl(${brandHsl})`
                             : `hsl(${brandHsl} / 0.18)`,
+                          ...(isActive ? { boxShadow: `0 4px 14px hsl(${brandHsl} / 0.4)` } : {}),
                         }}
                         aria-current={isActive ? "page" : undefined}
                       >

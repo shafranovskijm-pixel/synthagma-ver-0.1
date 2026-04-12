@@ -486,7 +486,7 @@ export function SettingsTab() {
                     value={brandingSettings.primaryColor}
                     onChange={e => setBrandingSettings(prev => ({ ...prev, primaryColor: e.target.value }))}
                     className="rounded-xl flex-1"
-                    placeholder="#6366f1"
+                    placeholder="#0d9488"
                   />
                 </div>
               </div>
