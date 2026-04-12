@@ -1286,6 +1286,14 @@ export function OrganizationDetailsView({ organization, onBack }: OrganizationDe
                         <Copy className="w-3.5 h-3.5" />
                       </Button>
                     </div>
+                    <Button variant="outline" size="sm" className="gap-1.5" onClick={() => {
+                      const text = `Логин: ${credentials.login_email}\nПароль: ${credentials.login_password}`;
+                      navigator.clipboard.writeText(text);
+                      toast.success("Логин и пароль скопированы");
+                    }}>
+                      <Copy className="w-3.5 h-3.5" />
+                      Скопировать всё
+                    </Button>
                   </div>
                   <Button
                     variant="outline"
