@@ -435,6 +435,13 @@ export default function OrganizationProfile() {
             </div>
           </TabsContent>
 
+          {/* Tab 2: Settings */}
+          <TabsContent value="settings">
+            {organizationId && user?.id && (
+              <OrgProfileSettings organizationId={organizationId} userId={user.id} />
+            )}
+          </TabsContent>
+
           {/* Tab 3: Notifications */}
           <TabsContent value="notifications">
             <Card className="rounded-2xl">
