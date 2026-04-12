@@ -11,6 +11,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { ArrowLeft, User, Bell, Handshake, Save, Eye, EyeOff, Settings, Upload, X, Loader2, Image as ImageIcon } from "lucide-react";
 import { toast } from "sonner";
 import { PartnerCabinet } from "@/components/organization/PartnerCabinet";
+import { OrgProfileSettings } from "@/components/organization/OrgProfileSettings";
 
 
 interface ProfileData {
@@ -49,10 +50,6 @@ export default function OrganizationProfile() {
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState("profile");
   const handleTabChange = (tab: string) => {
-    if (tab === "settings") {
-      navigate("/organization?tab=settings");
-      return;
-    }
     setActiveTab(tab);
   };
   const [saving, setSaving] = useState(false);
@@ -436,6 +433,13 @@ export default function OrganizationProfile() {
                 </Card>
               </div>
             </div>
+          </TabsContent>
+
+          {/* Tab 2: Settings */}
+          <TabsContent value="settings">
+            {organizationId && user?.id && (
+              <OrgProfileSettings organizationId={organizationId} userId={user.id} />
+            )}
           </TabsContent>
 
           {/* Tab 3: Notifications */}
