@@ -458,8 +458,16 @@ export default function OrganizationProfile() {
 
           {/* Tab 2: Settings */}
           <TabsContent value="settings">
-            {organizationId && user?.id && (
+            {orgIdLoading ? (
+              <div className="flex items-center justify-center py-16">
+                <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+              </div>
+            ) : organizationId && user?.id ? (
               <OrgProfileSettings organizationId={organizationId} userId={user.id} />
+            ) : (
+              <div className="text-center py-16 text-muted-foreground">
+                Организация не найдена
+              </div>
             )}
           </TabsContent>
 
