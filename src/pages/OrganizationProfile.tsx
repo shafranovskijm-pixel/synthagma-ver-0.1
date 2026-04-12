@@ -75,24 +75,26 @@ export default function OrganizationProfile() {
   const [organizationId, setOrganizationId] = useState<string | null>(null);
   const iconInputRef = useRef<HTMLInputElement>(null);
 
+  const [orgIdLoading, setOrgIdLoading] = useState(true);
+
   // Load organizationId reliably on mount
   useEffect(() => {
-    if (!user) return;
+    if (!user) { setOrgIdLoading(false); return; }
     const loadOrganizationId = async () => {
-      // Try profile first
-      const { data: prof } = await supabase
-        .from("profiles")
-        .select("organization_id")
-        .eq("user_id", user.id)
-        .single();
-      if (prof?.organization_id) {
-        setOrganizationId(prof.organization_id);
-        return;
-      }
-      // Fallback: check if user is owner of an organization via RPC
-      const { data: orgs } = await supabase.rpc("get_user_organization_id", { p_user_id: user.id }).maybeSingle() as any;
-      if (orgs?.id) {
-        setOrganizationId(orgs.id);
+      try {
+        // Try profile first
+        const { data: prof } = await supabase
+          .from("profiles")
+          .select("organization_id")
+          .eq("user_id", user.id)
+          .single();
+        if (prof?.organization_id) {
+          setOrganizationId(prof.organization_id);
+        }
+      } catch (e) {
+        console.error("Failed to load organization ID:", e);
+      } finally {
+        setOrgIdLoading(false);
       }
     };
     loadOrganizationId();
