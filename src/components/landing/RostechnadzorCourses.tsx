@@ -5,16 +5,16 @@ import { Button } from "@/components/ui/button";
 import { FloatingParticles } from "./FloatingParticles";
 
 const stats = [
-  { value: "200+", label: "готовых курсов" },
-  { value: "2026", label: "актуальные тесты" },
+  { value: "300+", label: "готовых курсов" },
+  { value: "14", label: "направлений обучения" },
   { value: "24/7", label: "доступ к обучению" },
 ];
 
 const highlights = [
-  "Программы по всем направлениям Ростехнадзора",
-  "Тесты с официального сайта, обновлённые на 2026 год",
-  "Промышленная безопасность, электробезопасность, энергетика",
-  "Готовые курсы — запустите обучение за 5 минут",
+  "Электробезопасность, энергетика, промышленная безопасность",
+  "Охрана труда, пожарная безопасность, медицина",
+  "Рабочие профессии, строительные специальности, экология",
+  "Готовые курсы — подключите к организации за 5 минут",
 ];
 
 export function RostechnadzorCourses() {
@@ -101,21 +101,21 @@ export function RostechnadzorCourses() {
           >
             <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-accent/30 bg-accent/5 mb-6">
               <Shield className="w-4 h-4 text-accent" />
-              <span className="text-sm text-foreground/80 font-medium">Ростехнадзор</span>
+              <span className="text-sm text-foreground/80 font-medium">Готовые курсы · 14 направлений</span>
             </div>
 
             <h2 className="font-display text-3xl md:text-4xl font-medium mb-4 tracking-tight">
-              200+ курсов по программам
+              300+ готовых курсов
               <br />
-              <span className="text-accent">Ростехнадзора</span>
+              <span className="text-accent">для обучения сотрудников</span>
             </h2>
 
             <div className="w-12 h-px bg-accent/60 mb-6" />
 
             <p className="text-lg text-muted-foreground mb-8 leading-relaxed">
-              Полная база актуальных курсов для аттестации специалистов. 
-              Тесты обновлены по материалам официального сайта Ростехнадзора на 2026 год. 
-              Подключите готовые курсы к своей организации — без разработки контента с нуля.
+              Полная библиотека курсов по 14 направлениям: от электробезопасности и охраны труда 
+              до медицины и рабочих профессий. Подключите готовые программы к своей организации — 
+              не нужно разрабатывать контент с нуля.
             </p>
 
             <div className="space-y-3 mb-8">
