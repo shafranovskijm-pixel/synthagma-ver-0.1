@@ -298,6 +298,25 @@ const CourseLearning = () => {
               </div>
             )}
 
+            {currentLesson?.type === 'homework' && (
+              <div className="space-y-4 md:space-y-6 animate-fade-in">
+                <div className="flex items-center gap-3 pb-3 md:pb-4 border-b border-border">
+                  <div className={cn("rounded-xl bg-indigo-500/10 flex items-center justify-center shrink-0", isMobile ? "w-8 h-8" : "w-10 h-10")}><BookCheck className={cn(isMobile ? "w-4 h-4" : "w-5 h-5", "text-indigo-500")} /></div>
+                  <div className="min-w-0"><h1 className={cn("font-bold line-clamp-2", isMobile ? "text-lg" : "text-2xl")}>{currentLesson.title}</h1><p className="text-xs md:text-sm text-muted-foreground">Задание • Урок {currentLessonIndex + 1}</p></div>
+                </div>
+                {user && courseId && (
+                  <HomeworkSubmission
+                    lessonId={currentLesson.id}
+                    courseId={courseId}
+                    userId={user.id}
+                    taskDescription={currentLesson.content}
+                    isMobile={!!isMobile}
+                    onComplete={() => markLessonComplete(false)}
+                  />
+                )}
+              </div>
+            )}
+
             {currentLesson?.type === 'test' && (
               <div className="space-y-4 md:space-y-6 animate-fade-in">
                 <div className="flex items-center gap-3 pb-3 md:pb-4 border-b border-border">
