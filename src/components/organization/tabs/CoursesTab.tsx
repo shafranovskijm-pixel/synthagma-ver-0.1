@@ -1065,6 +1065,10 @@ export const CoursesTab = React.memo(function CoursesTab({ organizationId, onCou
                 <Edit className="w-4 h-4 mr-2" />
                 Настроить
               </DropdownMenuItem>
+              <DropdownMenuItem onClick={e => { e.stopPropagation(); setCoverUploadCourseId(course.id); setTimeout(() => coverInputRef.current?.click(), 100); }}>
+                <ImagePlus className="w-4 h-4 mr-2" />
+                Изменить обложку
+              </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
