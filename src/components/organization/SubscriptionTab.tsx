@@ -250,6 +250,26 @@ export function SubscriptionTab() {
                 </CardContent>
               </Card>
 
+              {/* Generate Invoice Button */}
+              {currentPlan !== 'free' && daysRemaining !== null && daysRemaining <= 30 && (
+                <Card className="border-primary/20 bg-primary/5">
+                  <CardContent className="p-4 flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <CreditCard className="w-5 h-5 text-primary" />
+                      <div>
+                        <p className="font-medium text-sm">Продлите тариф</p>
+                        <p className="text-xs text-muted-foreground">
+                          {daysRemaining <= 0 ? "Тариф истёк" : `До окончания ${daysRemaining} дн.`} — выставите счёт на продление
+                        </p>
+                      </div>
+                    </div>
+                    <Button size="sm" onClick={handleGenerateInvoice} disabled={generatingInvoice}>
+                      {generatingInvoice ? "Создание..." : "Выставить счёт"}
+                    </Button>
+                  </CardContent>
+                </Card>
+              )}
+
               {/* Pending Request */}
               {pendingRequest && (
                 <Card className="border-amber-500/30 bg-amber-500/5">
