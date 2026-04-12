@@ -57,13 +57,14 @@ export interface VideoPlayerInlineProps {
   onFinishLesson?: () => void;
   userId?: string;
   lessonId?: string;
+  courseId?: string;
   savedPosition?: number;
   onSavePosition?: (position: number, duration: number) => void;
 }
 
 export const VideoPlayerInline = ({
   content, allowSeek = true, onVideoComplete, onProgressChange,
-  onFinishLesson, userId, lessonId, savedPosition = 0, onSavePosition
+  onFinishLesson, userId, lessonId, courseId, savedPosition = 0, onSavePosition
 }: VideoPlayerInlineProps) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [watchedProgress, setWatchedProgress] = useState(0);
