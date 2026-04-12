@@ -51,6 +51,7 @@ import {
   Undo2,
   Redo2,
   FolderOpen,
+  Play,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -214,6 +215,28 @@ const createBlock = (type: BlockType): ContentBlock => ({
   ...(type === "slider" && { sliderSlides: [], sliderCurrentIndex: 0 }),
   ...(type === "document" && { documentUrl: "", documentName: "" }),
 });
+
+function DirectVideoBlock({ url }: { url: string }) {
+  const [error, setError] = useState(false);
+  if (error) {
+    return (
+      <div className="aspect-video not-prose rounded-lg bg-muted flex flex-col items-center justify-center gap-3">
+        <Video className="w-12 h-12 text-muted-foreground" />
+        <p className="text-sm text-muted-foreground">Браузер не может воспроизвести это видео</p>
+        <a href={url} target="_blank" rel="noopener noreferrer"
+          className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary/90 transition-colors">
+          <Play className="w-4 h-4" /> Открыть видео
+        </a>
+      </div>
+    );
+  }
+  return (
+    <div className="aspect-video not-prose">
+      <video src={url} controls className="w-full h-full rounded-lg bg-black" controlsList="nodownload"
+        onError={() => setError(true)} />
+    </div>
+  );
+}
 
 export function BlockEditor({ blocks, onChange, readOnly = false, courseTitle, lessonTitle }: BlockEditorProps) {
   const [focusedBlockId, setFocusedBlockId] = useState<string | null>(null);
@@ -2387,11 +2410,9 @@ function RenderBlock({ block, quizAnswer, quizSubmitted, onQuizAnswer, onQuizSub
       if (!block.videoUrl) return null;
       const vid = block.videoUrl;
       // Direct video file URLs → HTML5 video player
-      if (vid.match(/\.(mp4|webm|ogg|mov)(\?.*)?$/i) || vid.includes("selstorage.ru")) {
+      if (vid.match(/\.(mp4|webm|ogg|mov|mkv|m4v)(\?.*)?$/i) || vid.includes("selcdn.ru")) {
         return (
-          <div className="aspect-video not-prose">
-            <video src={vid} controls className="w-full h-full rounded-lg bg-black" controlsList="nodownload" />
-          </div>
+          <DirectVideoBlock url={vid} />
         );
       }
       // YouTube
@@ -2410,9 +2431,7 @@ function RenderBlock({ block, quizAnswer, quizSubmitted, onQuizAnswer, onQuizSub
       // Fallback: try as direct video
       if (vid.startsWith("http")) {
         return (
-          <div className="aspect-video not-prose">
-            <video src={vid} controls className="w-full h-full rounded-lg bg-black" controlsList="nodownload" />
-          </div>
+          <DirectVideoBlock url={vid} />
         );
       }
       return null;

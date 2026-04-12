@@ -128,6 +128,11 @@ export const getVideoEmbedUrl = (content: string): { url: string; canEmbed: bool
   const yandexMatch = content.match(/yandex\.ru\/video\/preview\/(\d+)/);
   if (yandexMatch) return { url: `https://yandex.ru/video/preview/${yandexMatch[1]}`, canEmbed: true };
 
+  // Direct video file URLs (including selcdn.ru CDN)
+  if (content.match(/\.(mp4|webm|ogg|mov|mkv|m4v)(\?.*)?$/i) || content.includes("selcdn.ru")) {
+    return { url: content, canEmbed: true };
+  }
+
   if (content.match(/^https?:\/\/.+/i)) return { url: content, canEmbed: canEmbedInIframe(content) };
 
   return null;
