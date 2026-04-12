@@ -18,6 +18,30 @@ import {
 } from "@/components/course-builder/LessonTypeConfig";
 import { AIGenerateType } from "@/components/course-builder/AIGenerateDialog";
 
+// --- Local draft helpers ---
+const DRAFT_PREFIX = 'course_draft_';
+
+function saveDraftToLocal(courseId: string | undefined, title: string, description: string, lessons: Lesson[]) {
+  try {
+    const key = `${DRAFT_PREFIX}${courseId || 'new'}`;
+    const draft = { title, description, lessons, savedAt: Date.now() };
+    localStorage.setItem(key, JSON.stringify(draft));
+  } catch { /* quota exceeded — ignore */ }
+}
+
+function loadDraftFromLocal(courseId: string | undefined): { title: string; description: string; lessons: Lesson[]; savedAt: number } | null {
+  try {
+    const key = `${DRAFT_PREFIX}${courseId || 'new'}`;
+    const raw = localStorage.getItem(key);
+    if (!raw) return null;
+    return JSON.parse(raw);
+  } catch { return null; }
+}
+
+function clearDraftFromLocal(courseId: string | undefined) {
+  try { localStorage.removeItem(`${DRAFT_PREFIX}${courseId || 'new'}`); } catch {}
+}
+
 export function useCourseBuilder() {
   const navigate = useNavigate();
   const { courseId: paramCourseId } = useParams();
@@ -42,6 +66,13 @@ export function useCourseBuilder() {
 
   const [autoSaveStatus, setAutoSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
   const autoSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const draftTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const latestStateRef = useRef({ courseTitle: '', courseDescription: '', lessons: [] as Lesson[] });
+
+  // Keep ref in sync for beforeunload / visibilitychange
+  useEffect(() => {
+    latestStateRef.current = { courseTitle, courseDescription, lessons };
+  }, [courseTitle, courseDescription, lessons]);
 
   const markAsChanged = useCallback(() => { setHasUnsavedChanges(true); }, []);
 
@@ -277,10 +308,53 @@ export function useCourseBuilder() {
     fetchData();
   }, [user, courseId, isDataLoaded]);
 
+  // --- Restore local draft if server data is empty/stale ---
+  useEffect(() => {
+    if (!isDataLoaded) return;
+    const draft = loadDraftFromLocal(courseId);
+    if (!draft) return;
+    const currentHasContent = courseTitle.trim() || lessons.length > 0;
+    if (!currentHasContent && (draft.title.trim() || draft.lessons.length > 0)) {
+      setCourseTitle(draft.title);
+      setCourseDescription(draft.description);
+      setLessons(draft.lessons);
+      toast.info("Восстановлен черновик из предыдущего сеанса", { duration: 4000 });
+    }
+  }, [isDataLoaded]);
+
+  // --- Debounced autosave: save to server 3s after last change ---
+  useEffect(() => {
+    if (!hasUnsavedChanges || !isDataLoaded) return;
+    saveDraftToLocal(courseId, courseTitle, courseDescription, lessons);
+    if (draftTimerRef.current) clearTimeout(draftTimerRef.current);
+    draftTimerRef.current = setTimeout(() => { saveCourse(true); }, 3000);
+    return () => { if (draftTimerRef.current) clearTimeout(draftTimerRef.current); };
+  }, [hasUnsavedChanges, courseTitle, courseDescription, lessons]);
+
+  // --- Save draft on page unload / visibility change ---
+  useEffect(() => {
+    const saveDraft = () => {
+      const s = latestStateRef.current;
+      saveDraftToLocal(courseId, s.courseTitle, s.courseDescription, s.lessons);
+    };
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      saveDraft();
+      if (hasUnsavedChanges) { e.preventDefault(); }
+    };
+    const handleVisibility = () => { if (document.visibilityState === 'hidden') saveDraft(); };
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    document.addEventListener('visibilitychange', handleVisibility);
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+      document.removeEventListener('visibilitychange', handleVisibility);
+    };
+  }, [courseId, hasUnsavedChanges]);
+
   const addLesson = (type: LessonType) => {
     const typeNames: Record<LessonType, string> = { text: "урок", video: "видеоурок", image: "материал", test: "тест", audio: "аудиолекция", lesson: "урок", slider: "презентация", practice: "ситуационное задание", feedback: "обратная связь", homework: "задание" };
     const newLesson: Lesson = { id: crypto.randomUUID(), type, title: `Новый ${typeNames[type]}`, content: "", expanded: true, blocks: (type === "text" || type === "practice") ? [] : undefined };
-    updateLessons([...lessons, newLesson]);
+    setLessons(prev => [...prev, newLesson]);
+    markAsChanged();
   };
 
   const handleGenerateStructure = async () => {
@@ -391,7 +465,8 @@ export function useCourseBuilder() {
     }
 
     await aiLimit.increment();
-    updateLessons([...lessons, newLesson]);
+    setLessons(prev => [...prev, newLesson]);
+    markAsChanged();
     // Autosave after AI generation
     setTimeout(() => { saveCourse(true); }, 500);
   };
@@ -406,24 +481,33 @@ export function useCourseBuilder() {
     lesson.content = JSON.stringify(slides);
   };
 
-  const updateLesson = (id: string, updates: Partial<Lesson>) => { setLessons(lessons.map(l => l.id === id ? { ...l, ...updates } : l)); markAsChanged(); };
-  const deleteLesson = (id: string) => {
-    setLessons(lessons.filter(l => l.id !== id));
+  const updateLesson = useCallback((id: string, updates: Partial<Lesson>) => {
+    setLessons(prev => prev.map(l => l.id === id ? { ...l, ...updates } : l));
+    markAsChanged();
+  }, [markAsChanged]);
+
+  const deleteLesson = useCallback((id: string) => {
+    setLessons(prev => prev.filter(l => l.id !== id));
     markAsChanged();
     // Autosave after delete with debounce
     if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
     autoSaveTimerRef.current = setTimeout(() => { saveCourse(true); }, 500);
-  };
-  const toggleLesson = (id: string) => { setLessons(lessons.map(l => l.id === id ? { ...l, expanded: !l.expanded } : l)); };
+  }, [markAsChanged]);
+
+  const toggleLesson = useCallback((id: string) => {
+    setLessons(prev => prev.map(l => l.id === id ? { ...l, expanded: !l.expanded } : l));
+  }, []);
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }), useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }));
 
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
     if (over && active.id !== over.id) {
-      const oldIndex = lessons.findIndex(l => l.id === active.id);
-      const newIndex = lessons.findIndex(l => l.id === over.id);
-      setLessons(arrayMove(lessons, oldIndex, newIndex));
+      setLessons(prev => {
+        const oldIndex = prev.findIndex(l => l.id === active.id);
+        const newIndex = prev.findIndex(l => l.id === over.id);
+        return arrayMove(prev, oldIndex, newIndex);
+      });
       markAsChanged();
       // Autosave after reorder
       setTimeout(() => { saveCourse(true); }, 500);
@@ -511,6 +595,7 @@ export function useCourseBuilder() {
       }
       if (!silent) toast.success(courseId ? "Курс обновлён" : "Курс создан");
       setHasUnsavedChanges(false);
+      clearDraftFromLocal(courseId);
       setAutoSaveStatus('saved');
       if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
       autoSaveTimerRef.current = setTimeout(() => setAutoSaveStatus('idle'), 3000);
@@ -519,6 +604,7 @@ export function useCourseBuilder() {
       if (error?.name === 'AbortError' || error?.message?.includes('AbortError')) {
         if (!silent) toast.success(courseId ? "Курс обновлён" : "Курс создан");
         setHasUnsavedChanges(false);
+        clearDraftFromLocal(courseId);
         setAutoSaveStatus('saved');
         if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
         autoSaveTimerRef.current = setTimeout(() => setAutoSaveStatus('idle'), 3000);

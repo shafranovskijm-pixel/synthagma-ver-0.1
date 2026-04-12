@@ -70,10 +70,12 @@ export function useLessonMedia(
 
   const handleVideoUpload = useCallback(async (file: File, skipCompression = false) => {
     if (!courseId) { toast.error("Сначала сохраните курс"); return; }
+    if (file.size > SIZE_2GB) { toast.error("Файл слишком большой. Максимум — 2 ГБ."); return; }
 
     setVideoUploadProgress(0);
     try {
       let fileToUpload: File = file;
+      toast.info(`Загрузка: ${file.name} (${(file.size / 1024 / 1024).toFixed(0)} МБ)`, { duration: 3000 });
 
       // Optional compression for files 500MB–1GB
       if (!skipCompression && file.size > SIZE_500MB && file.size <= SIZE_1GB) {
@@ -91,7 +93,7 @@ export function useLessonMedia(
           fileToUpload = file;
         }
       } else if (file.size > SIZE_1GB) {
-        toast.info("Большой файл — загрузка может занять время...", { duration: 6000 });
+        toast.info("Большой файл — загрузка может занять несколько минут...", { duration: 6000 });
       }
 
       const fileExt = fileToUpload.name.split('.').pop()?.toLowerCase() || 'mp4';
