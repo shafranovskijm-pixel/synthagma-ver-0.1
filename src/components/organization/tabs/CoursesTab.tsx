@@ -127,6 +127,7 @@ function CoursesEmptyState({ onCreateCourse }: { onCreateCourse: () => void }) {
 
 export const CoursesTab = React.memo(function CoursesTab({ organizationId, onCourseClick, onOpenCourseDetails, onCoursesDeleted }: CoursesTabProps) {
   const navigate = useNavigate();
+  const dashboard = useOrgDashboard();
   const { checkLimit, hasCourseSettings, refetch: refetchLimits } = useSubscriptionLimits(organizationId);
   
   const {
@@ -194,7 +195,58 @@ export const CoursesTab = React.memo(function CoursesTab({ organizationId, onCou
 
   // Folder view state - expanded categories
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set(["uncategorized"]));
-  const [folderViewMode, setFolderViewMode] = useState<"folders" | "flat">("folders");
+  const menuSettings = dashboard?.dashboardSettings.menuSettings;
+
+  // Initialize view modes from persisted menu_settings
+  const initializedRef = React.useRef(false);
+  React.useEffect(() => {
+    if (menuSettings && !initializedRef.current) {
+      initializedRef.current = true;
+      if (menuSettings.courseViewMode) setViewMode(menuSettings.courseViewMode as CourseViewMode);
+      if (menuSettings.courseFolderMode) setFolderViewMode(menuSettings.courseFolderMode as "folders" | "flat");
+    }
+  }, [menuSettings]);
+
+  const [folderViewMode, setFolderViewModeLocal] = useState<"folders" | "flat">(
+    (menuSettings?.courseFolderMode as "folders" | "flat") || "folders"
+  );
+
+  // Save view mode to DB
+  const saveViewPrefs = React.useCallback(async (courseViewMode: string, courseFolderMode: string) => {
+    if (!organizationId) return;
+    try {
+      const { data } = await supabase
+        .from('organizations')
+        .select('menu_settings')
+        .eq('id', organizationId)
+        .single();
+      const current = (data?.menu_settings as Record<string, unknown>) || {};
+      await supabase
+        .from('organizations')
+        .update({ menu_settings: { ...current, courseViewMode, courseFolderMode } as any })
+        .eq('id', organizationId);
+    } catch (e) {
+      console.error('Error saving view prefs:', e);
+    }
+  }, [organizationId]);
+
+  const setFolderViewMode = React.useCallback((mode: "folders" | "flat") => {
+    setFolderViewModeLocal(mode);
+    saveViewPrefs(mode === "folders" ? viewMode : viewMode, mode);
+  }, [viewMode, saveViewPrefs]);
+
+  // Combined handler for view mode buttons that change both at once
+  const setViewAndFolder = React.useCallback((vm: CourseViewMode, fm: "folders" | "flat") => {
+    setViewMode(vm);
+    setFolderViewModeLocal(fm);
+    saveViewPrefs(vm, fm);
+  }, [setViewMode, saveViewPrefs]);
+
+  // Wrap setViewMode to also persist (for folder-mode button only)
+  const persistedSetViewMode = React.useCallback((mode: CourseViewMode) => {
+    setViewMode(mode);
+    saveViewPrefs(mode, folderViewMode);
+  }, [setViewMode, folderViewMode, saveViewPrefs]);
 
   // Group courses by category
   const coursesByCategory = useMemo(() => {
@@ -1016,7 +1068,7 @@ export const CoursesTab = React.memo(function CoursesTab({ organizationId, onCou
                     variant={folderViewMode === "folders" ? "secondary" : "ghost"} 
                     size="icon" 
                     className="h-8 w-8" 
-                    onClick={() => setFolderViewMode("folders")}
+                    onClick={() => setViewAndFolder(viewMode, "folders")}
                   >
                     <Folder className="w-4 h-4" />
                   </Button>
@@ -1029,7 +1081,7 @@ export const CoursesTab = React.memo(function CoursesTab({ organizationId, onCou
                     variant={folderViewMode === "flat" && viewMode === "grid" ? "secondary" : "ghost"} 
                     size="icon" 
                     className="h-8 w-8" 
-                    onClick={() => { setFolderViewMode("flat"); setViewMode("grid"); }}
+                    onClick={() => setViewAndFolder("grid", "flat")}
                   >
                     <LayoutGrid className="w-4 h-4" />
                   </Button>
@@ -1042,7 +1094,7 @@ export const CoursesTab = React.memo(function CoursesTab({ organizationId, onCou
                     variant={folderViewMode === "flat" && viewMode === "list" ? "secondary" : "ghost"} 
                     size="icon" 
                     className="h-8 w-8" 
-                    onClick={() => { setFolderViewMode("flat"); setViewMode("list"); }}
+                    onClick={() => setViewAndFolder("list", "flat")}
                   >
                     <List className="w-4 h-4" />
                   </Button>
