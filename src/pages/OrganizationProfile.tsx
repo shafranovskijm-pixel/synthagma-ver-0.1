@@ -337,8 +337,62 @@ export default function OrganizationProfile() {
                 </CardContent>
               </Card>
 
-              {/* Right: Email + Password */}
+              {/* Right: Icon + Email + Password */}
               <div className="space-y-6">
+                {/* Org Icon */}
+                <Card className="rounded-2xl">
+                  <CardHeader>
+                    <CardTitle className="text-base flex items-center gap-2">
+                      <ImageIcon className="w-4 h-4" />
+                      Значок организации
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    <p className="text-sm text-muted-foreground">
+                      Отображается в боковом меню вместо стандартного логотипа
+                    </p>
+                    <input
+                      ref={iconInputRef}
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={handleIconUpload}
+                    />
+                    <div className="flex items-center gap-4">
+                      <button
+                        onClick={() => iconInputRef.current?.click()}
+                        className="relative w-16 h-16 rounded-xl border-2 border-dashed border-border flex items-center justify-center overflow-hidden hover:border-primary/50 hover:bg-primary/5 transition-all group/icon"
+                      >
+                        {isUploadingIcon ? (
+                          <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+                        ) : orgLogoUrl ? (
+                          <>
+                            <img src={orgLogoUrl} alt="Значок" className="w-14 h-14 object-contain" />
+                            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover/icon:opacity-100 transition-opacity flex items-center justify-center rounded-xl">
+                              <Upload className="w-4 h-4 text-white" />
+                            </div>
+                          </>
+                        ) : (
+                          <div className="flex flex-col items-center gap-1">
+                            <Upload className="w-5 h-5 text-muted-foreground" />
+                            <span className="text-[10px] text-muted-foreground">Загрузить</span>
+                          </div>
+                        )}
+                      </button>
+                      {orgLogoUrl && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="text-destructive hover:text-destructive hover:bg-destructive/10 rounded-lg gap-1"
+                          onClick={handleRemoveIcon}
+                        >
+                          <X className="w-4 h-4" />
+                          Удалить
+                        </Button>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
                 <Card className="rounded-2xl">
                   <CardHeader>
                     <CardTitle className="text-base">Изменить email</CardTitle>
