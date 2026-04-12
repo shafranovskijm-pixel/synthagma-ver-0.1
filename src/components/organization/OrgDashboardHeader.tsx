@@ -152,7 +152,7 @@ export function OrgDashboardHeader() {
                 <User className="w-4 h-4" />
                 Профиль
               </DropdownMenuItem>
-              <DropdownMenuItem className="rounded-lg gap-2.5 py-2.5">
+              <DropdownMenuItem onClick={() => navigate("/whats-new")} className="rounded-lg gap-2.5 py-2.5">
                 <Sparkles className="w-4 h-4" />
                 Что нового?
               </DropdownMenuItem>
