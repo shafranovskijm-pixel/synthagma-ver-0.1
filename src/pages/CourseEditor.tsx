@@ -13,6 +13,7 @@ import {
   Save,
   Eye,
   EyeOff,
+  Globe,
   FileText,
   Video,
   HelpCircle,
@@ -469,6 +470,14 @@ const CourseEditor = () => {
           </div>
 
           <div className="flex items-center gap-3">
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={() => navigate(`/course/${courseId}/landing-editor`)}
+              title="Редактор страницы курса"
+            >
+              <Globe className="w-4 h-4" />
+            </Button>
             <Button
               variant="outline"
               size="icon"

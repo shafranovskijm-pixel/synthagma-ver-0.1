@@ -36,6 +36,7 @@ const CourseBuilder = lazyWithRetry(() => import("./pages/CourseBuilder"));
 const CourseLearning = lazyWithRetry(() => import("./pages/CourseLearning"));
 const CourseLanding = lazyWithRetry(() => import("./pages/CourseLanding"));
 const CoursePreview = lazyWithRetry(() => import("./pages/CoursePreview"));
+const CourseLandingEditor = lazyWithRetry(() => import("./pages/CourseLandingEditor"));
 const JoinByLink = lazyWithRetry(() => import("./pages/JoinByLink"));
 const AdminDashboard = lazyWithRetry(() => import("./pages/AdminDashboard"));
 const SalesDashboard = lazyWithRetry(() => import("./pages/SalesDashboard"));
@@ -153,6 +154,11 @@ const App = () => (
                     <Route path="/course-preview/:courseId" element={
                       <ProtectedRoute requiredRole="organization">
                         <CoursePreview />
+                      </ProtectedRoute>
+                    } />
+                    <Route path="/course/:courseId/landing-editor" element={
+                      <ProtectedRoute requiredRole="organization">
+                        <CourseLandingEditor />
                       </ProtectedRoute>
                     } />
                     <Route path="/course/:courseId/learn" element={

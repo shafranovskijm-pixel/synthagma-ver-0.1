@@ -3,10 +3,14 @@ import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { Loader2, BookOpen, Clock, ArrowLeft, Play, ShoppingCart } from "lucide-react";
+import { Loader2, Play, ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
+import { LandingHeroSection } from "@/components/course-landing/LandingHeroSection";
+import { LandingAudienceSection } from "@/components/course-landing/LandingAudienceSection";
+import { LandingProgramSection } from "@/components/course-landing/LandingProgramSection";
+import { LandingBenefitsSection } from "@/components/course-landing/LandingBenefitsSection";
+import { LandingCtaSection } from "@/components/course-landing/LandingCtaSection";
 
 interface CourseData {
   id: string;
@@ -17,16 +21,8 @@ interface CourseData {
   cover_image_url: string | null;
   landing_content: any;
   organization_id: string;
-  category_id: string | null;
   accent_color: string | null;
   slug: string | null;
-}
-
-interface LessonInfo {
-  id: string;
-  title: string;
-  type: string;
-  order_index: number;
 }
 
 // Analytics injection
@@ -34,16 +30,12 @@ function useAnalytics(analytics: any) {
   useEffect(() => {
     if (!analytics) return;
     const scripts: HTMLScriptElement[] = [];
-
-    // Yandex Metrika
     if (analytics.yandex_metrika_id) {
       const s = document.createElement("script");
       s.innerHTML = `(function(m,e,t,r,i,k,a){m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};m[i].l=1*new Date();for(var j=0;j<document.scripts.length;j++){if(document.scripts[j].src===r)return}k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)})(window,document,"script","https://mc.yandex.ru/metrika/tag.js","ym");ym(${analytics.yandex_metrika_id},"init",{clickmap:true,trackLinks:true,accurateTrackBounce:true,webvisor:true});`;
       document.head.appendChild(s);
       scripts.push(s);
     }
-
-    // Google Analytics
     if (analytics.ga_tracking_id) {
       const s1 = document.createElement("script");
       s1.async = true;
@@ -55,18 +47,13 @@ function useAnalytics(analytics: any) {
       document.head.appendChild(s2);
       scripts.push(s2);
     }
-
-    // Meta Pixel
     if (analytics.meta_pixel_id) {
       const s = document.createElement("script");
       s.innerHTML = `!function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';n.queue=[];t=b.createElement(e);t.async=!0;t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}(window,document,'script','https://connect.facebook.net/en_US/fbevents.js');fbq('init','${analytics.meta_pixel_id}');fbq('track','PageView');`;
       document.head.appendChild(s);
       scripts.push(s);
     }
-
-    return () => {
-      scripts.forEach((s) => s.remove());
-    };
+    return () => { scripts.forEach((s) => s.remove()); };
   }, [analytics]);
 }
 
@@ -75,11 +62,10 @@ export default function CourseLanding() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [course, setCourse] = useState<CourseData | null>(null);
-  const [lessons, setLessons] = useState<LessonInfo[]>([]);
+  const [lessons, setLessons] = useState<any[]>([]);
   const [orgName, setOrgName] = useState("");
   const [isEnrolled, setIsEnrolled] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [enrolling, setEnrolling] = useState(false);
   const [promoCode, setPromoCode] = useState("");
   const [promoDiscount, setPromoDiscount] = useState<{ value: number; type: string } | null>(null);
   const [promoChecking, setPromoChecking] = useState(false);
@@ -97,17 +83,13 @@ export default function CourseLanding() {
     try {
       let query = supabase
         .from("courses")
-        .select("id, title, description, duration, price, cover_image_url, landing_content, organization_id, category_id, accent_color, slug")
+        .select("id, title, description, duration, price, cover_image_url, landing_content, organization_id, accent_color, slug")
         .eq("is_published", true);
 
-      if (slug) {
-        query = query.eq("slug", slug);
-      } else if (courseId) {
-        query = query.eq("id", courseId);
-      }
+      if (slug) query = query.eq("slug", slug);
+      else if (courseId) query = query.eq("id", courseId);
 
       const { data: courseData } = await query.maybeSingle();
-
       if (!courseData) {
         toast.error("Курс не найден");
         navigate(-1);
@@ -123,12 +105,7 @@ export default function CourseLanding() {
       setOrgName(orgRes.data?.name || "");
 
       if (user) {
-        const { data: enrollment } = await supabase
-          .from("enrollments")
-          .select("id")
-          .eq("user_id", user.id)
-          .eq("course_id", courseData.id)
-          .maybeSingle();
+        const { data: enrollment } = await supabase.from("enrollments").select("id").eq("user_id", user.id).eq("course_id", courseData.id).maybeSingle();
         setIsEnrolled(!!enrollment);
       }
     } catch (e) {
@@ -161,13 +138,11 @@ export default function CourseLanding() {
 
   const getDiscountedPrice = () => {
     if (!course || !promoDiscount) return course?.price || 0;
-    if (promoDiscount.type === "percent") {
-      return Math.max(0, Math.round(course.price * (1 - promoDiscount.value / 100)));
-    }
+    if (promoDiscount.type === "percent") return Math.max(0, Math.round(course.price * (1 - promoDiscount.value / 100)));
     return Math.max(0, course.price - promoDiscount.value);
   };
 
-  const handleEnroll = async () => {
+  const handleEnroll = async (formData?: { name: string; email: string; phone: string }) => {
     if (!user) {
       navigate("/login");
       return;
@@ -176,28 +151,14 @@ export default function CourseLanding() {
 
     const finalPrice = promoDiscount ? getDiscountedPrice() : course.price;
     if (finalPrice > 0) {
-      toast.info("Платная запись", { description: "Свяжитесь с организацией для записи на курс" });
+      toast.info("Заявка отправлена", { description: "Организация свяжется с вами для оплаты" });
       return;
     }
 
-    setEnrolling(true);
     try {
-      const { error } = await supabase.from("enrollments").insert({
-        user_id: user.id,
-        course_id: course.id,
-      });
+      const { error } = await supabase.from("enrollments").insert({ user_id: user.id, course_id: course.id });
       if (error) throw error;
 
-      // Increment promo usage
-      if (promoDiscount && promoCode) {
-        await supabase
-          .from("course_promo_codes")
-          .update({ used_count: (await supabase.from("course_promo_codes").select("used_count").eq("course_id", course.id).eq("code", promoCode.toUpperCase()).single()).data?.used_count + 1 || 1 })
-          .eq("course_id", course.id)
-          .eq("code", promoCode.toUpperCase());
-      }
-
-      // Fire analytics events
       if (analytics?.yandex_goal_id && (window as any).ym) {
         (window as any).ym(analytics.yandex_metrika_id, "reachGoal", analytics.yandex_goal_id);
       }
@@ -212,8 +173,6 @@ export default function CourseLanding() {
       navigate(`/course/${course.id}/learn`);
     } catch (e: any) {
       toast.error("Ошибка записи", { description: e.message });
-    } finally {
-      setEnrolling(false);
     }
   };
 
@@ -233,142 +192,88 @@ export default function CourseLanding() {
     return null;
   }
 
-  const accent = course.accent_color || undefined;
-  const enrollmentForm = landingContent?.enrollment_form;
   const finalPrice = promoDiscount ? getDiscountedPrice() : course.price;
 
-  const lessonTypeIcon = (type: string) => {
-    switch (type) {
-      case "video": return "🎬";
-      case "test": return "📝";
-      case "practice": return "💻";
-      default: return "📖";
-    }
+  // Landing content with defaults
+  const hero = landingContent?.hero || {};
+  const audience = landingContent?.audience || {
+    title: "Кому подойдёт этот курс?",
+    description: "",
+    items: [],
+  };
+  const benefits = landingContent?.benefits || [];
+  const cta = landingContent?.cta || {
+    title: "Начните обучение сегодня",
+    subtitle: "Заполните форму и мы свяжемся с вами",
   };
 
   return (
-    <div className="min-h-screen bg-background" style={accent ? { "--landing-accent": accent } as any : undefined}>
-      {/* Hero */}
-      <div className="relative">
-        <div
-          className="h-64 md:h-80"
-          style={{
-            background: course.cover_image_url
-              ? `url(${course.cover_image_url}) center/cover`
-              : accent
-                ? `linear-gradient(135deg, ${accent}33, ${accent}11)`
-                : undefined,
-          }}
-        >
-          <div className="absolute inset-0 bg-gradient-to-t from-background via-background/60 to-transparent" />
-        </div>
-
-        <div className="absolute top-4 left-4">
-          <Button variant="ghost" size="sm" onClick={() => navigate(-1)} className="bg-background/80 backdrop-blur-sm gap-1">
-            <ArrowLeft className="w-4 h-4" />Назад
-          </Button>
-        </div>
-
-        <div className="relative max-w-4xl mx-auto px-6 -mt-20">
-          <div className="bg-card rounded-2xl border border-border p-8 shadow-lg">
-            <div className="flex flex-col md:flex-row gap-6 justify-between">
-              <div className="flex-1">
-                <p className="text-sm text-muted-foreground mb-2">{orgName}</p>
-                <h1 className="text-2xl md:text-3xl font-bold mb-3">{course.title}</h1>
-                {course.description && <p className="text-muted-foreground mb-4">{course.description}</p>}
-                <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
-                  {course.duration && <span className="flex items-center gap-1.5"><Clock className="w-4 h-4" />{course.duration}</span>}
-                  <span className="flex items-center gap-1.5"><BookOpen className="w-4 h-4" />{lessons.length} уроков</span>
-                </div>
-              </div>
-
-              <div className="flex flex-col items-end gap-3 shrink-0">
-                {course.price > 0 ? (
-                  <div className="text-right">
-                    {promoDiscount && (
-                      <div className="text-lg text-muted-foreground line-through">{course.price.toLocaleString("ru-RU")} ₽</div>
-                    )}
-                    <div className="text-3xl font-bold" style={accent ? { color: accent } : undefined}>
-                      {finalPrice.toLocaleString("ru-RU")} ₽
-                    </div>
-                  </div>
-                ) : (
-                  <Badge className="text-base px-4 py-1" variant="secondary">Бесплатно</Badge>
-                )}
-                {isEnrolled ? (
-                  <Button size="lg" className="gap-2" onClick={() => navigate(`/course/${course.id}/learn`)} style={accent ? { backgroundColor: accent } : undefined}>
-                    <Play className="w-5 h-5" />Продолжить обучение
+    <div className="min-h-screen bg-background">
+      <LandingHeroSection
+        title={course.title}
+        subtitle={hero.subtitle || course.description || ""}
+        orgName={orgName}
+        backgroundUrl={hero.background_url}
+        coverImageUrl={course.cover_image_url}
+        accentColor={course.accent_color}
+        price={finalPrice}
+        showPrice={hero.show_price !== false}
+        lessonsCount={lessons.length}
+        duration={course.duration}
+        enrollButton={
+          isEnrolled ? (
+            <Button size="lg" className="gap-2" onClick={() => navigate(`/course/${course.id}/learn`)}>
+              <Play className="w-5 h-5" />Продолжить обучение
+            </Button>
+          ) : (
+            <div className="flex items-center gap-2">
+              {course.price > 0 && (
+                <>
+                  <Input
+                    value={promoCode}
+                    onChange={(e) => setPromoCode(e.target.value)}
+                    placeholder="Промокод"
+                    className="bg-white/10 border-white/20 text-white placeholder:text-white/50 w-32"
+                  />
+                  <Button variant="secondary" size="sm" onClick={checkPromoCode} disabled={promoChecking}>
+                    {promoChecking ? <Loader2 className="w-4 h-4 animate-spin" /> : "OK"}
                   </Button>
-                ) : (
-                  <>
-                    {course.price > 0 && (
-                      <div className="flex gap-2 w-full">
-                        <Input
-                          value={promoCode}
-                          onChange={(e) => setPromoCode(e.target.value)}
-                          placeholder="Промокод"
-                          className="text-sm"
-                        />
-                        <Button variant="outline" size="sm" onClick={checkPromoCode} disabled={promoChecking}>
-                          {promoChecking ? <Loader2 className="w-4 h-4 animate-spin" /> : "OK"}
-                        </Button>
-                      </div>
-                    )}
-                    <Button
-                      size="lg"
-                      className="gap-2 w-full"
-                      onClick={handleEnroll}
-                      disabled={enrolling}
-                      style={accent ? { backgroundColor: accent } : undefined}
-                    >
-                      {enrolling ? <Loader2 className="w-5 h-5 animate-spin" /> : <ShoppingCart className="w-5 h-5" />}
-                      {enrollmentForm?.button_text || (finalPrice > 0 ? "Купить курс" : "Записаться бесплатно")}
-                    </Button>
-                  </>
-                )}
-              </div>
+                </>
+              )}
+              <Button
+                size="lg"
+                onClick={() => handleEnroll()}
+                className="bg-white text-black hover:bg-white/90"
+              >
+                {finalPrice > 0 ? "Купить курс" : "Записаться бесплатно"}
+              </Button>
             </div>
-            {enrollmentForm?.subtitle && (
-              <p className="text-sm text-muted-foreground mt-4 text-center">{enrollmentForm.subtitle}</p>
-            )}
-          </div>
-        </div>
-      </div>
+          )
+        }
+      />
 
-      {/* Program */}
-      <div className="max-w-4xl mx-auto px-6 py-12">
-        <h2 className="text-xl font-bold mb-6">Программа курса</h2>
-        {lessons.length === 0 ? (
-          <p className="text-muted-foreground">Программа будет доступна после записи</p>
-        ) : (
-          <div className="space-y-2">
-            {lessons.map((lesson, i) => (
-              <div key={lesson.id} className="flex items-center gap-4 p-4 rounded-xl bg-card border border-border">
-                <div
-                  className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium shrink-0"
-                  style={accent ? { backgroundColor: `${accent}22`, color: accent } : { backgroundColor: "hsl(var(--secondary))" }}
-                >
-                  {i + 1}
-                </div>
-                <span className="text-lg">{lessonTypeIcon(lesson.type)}</span>
-                <span className="font-medium text-sm">{lesson.title}</span>
-              </div>
-            ))}
-          </div>
-        )}
+      {audience.items.length > 0 && (
+        <LandingAudienceSection
+          title={audience.title}
+          description={audience.description}
+          items={audience.items}
+        />
+      )}
 
-        {/* Custom landing blocks */}
-        {landingContent?.blocks && Array.isArray(landingContent.blocks) && (
-          <div className="mt-12 space-y-8">
-            {landingContent.blocks.map((block: any, i: number) => (
-              <div key={i} className="prose prose-sm max-w-none">
-                {block.title && <h3>{block.title}</h3>}
-                {block.text && <p>{block.text}</p>}
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
+      <LandingProgramSection lessons={lessons} accentColor={course.accent_color} />
+
+      {benefits.length > 0 && (
+        <LandingBenefitsSection benefits={benefits} />
+      )}
+
+      <LandingCtaSection
+        title={cta.title}
+        subtitle={cta.subtitle}
+        accentColor={course.accent_color}
+        onSubmit={handleEnroll}
+        isEnrolled={isEnrolled}
+        price={finalPrice}
+      />
     </div>
   );
 }
