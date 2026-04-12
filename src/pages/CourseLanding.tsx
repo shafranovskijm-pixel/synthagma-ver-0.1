@@ -13,6 +13,10 @@ import { LandingBenefitsSection } from "@/components/course-landing/LandingBenef
 import { LandingCtaSection } from "@/components/course-landing/LandingCtaSection";
 import { LandingLearnSection } from "@/components/course-landing/LandingLearnSection";
 import { LandingProcessSection } from "@/components/course-landing/LandingProcessSection";
+import { LandingTeachersSection } from "@/components/course-landing/LandingTeachersSection";
+import { LandingReviewsSection } from "@/components/course-landing/LandingReviewsSection";
+import { LandingPricingSection } from "@/components/course-landing/LandingPricingSection";
+import { LandingFaqSection } from "@/components/course-landing/LandingFaqSection";
 
 interface CourseData {
   id: string;
