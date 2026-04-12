@@ -1,48 +1,58 @@
 
 
-## Plan: SkillSpace-Style Header Polish + Notifications Tabs + Default Cover Placeholder
+## Plan: Storage Rework, Tariff Relocation, Admin Org Card Overhaul
 
-### Problem
-1. Header doesn't match SkillSpace reference — needs bigger icons, tariff with days remaining, proper profile avatar with initials
-2. Notifications panel is flat — needs tabbed filtering (Все / Задания / Оплаты) like SkillSpace
-3. No default cover image — when org has no cover, should show a branded placeholder with "Изменить обложку" button
-4. Profile dropdown needs "Что нового?" item like SkillSpace
+### Summary
+Multiple changes to the org sidebar, admin org detail view, and storage concept. Key themes: (1) Storage becomes read-only view of course files, hidden by default; (2) Tariff moves from sidebar to header-only in org dashboard, and into admin org card; (3) Admin org card replaces stats widgets with org cover/branding preview and adds a "Тарифы" tab.
+
+---
 
 ### Changes
 
-**1. Header top bar (`OrgDashboardHeader.tsx`)**
-- Tariff badge: fetch `paid_until` from org data, calculate days remaining, show as "Тариф «Стандарт» — 195 дней" with green checkmark icon (like SkillSpace)
-- Partner program: show as styled link with icon, not ghost button
-- Notifications: replace inline dropdown with `<OrgNotifications>` component (already exists, uses Popover)
-- Profile avatar: larger (40px), show user initials in colored circle (not generic User icon), with notification count badge on bell
-- Profile dropdown: add "Что нового?" menu item with Sparkles icon
-- Increase icon sizes throughout (bell 5→5, avatar 8→10)
+**1. Remove "Тариф" from org sidebar (`OrgSidebar.tsx`)**
+- Remove the `subscription` nav item from `navItems` array (line 142)
+- Tariff info stays in the top header bar only (already shows "Стандарт — 195 дн.")
 
-**2. Notifications with tabs (`OrgNotifications.tsx`)**
-- Add tab bar at top: "Все" (with total count badge), "Задания" (filter by task-related types), "Оплаты" (filter by payment types)
-- Each tab shows a rounded badge with count
-- Teal active tab styling matching SkillSpace screenshot
-- Add "Отметить все как прочитанные" link at bottom
-- Show sender initials in colored circles (like SkillSpace's ЮФ, ТО, А circles)
+**2. Storage: hide by default, make read-only (`SettingsTab.tsx`)**
+- Change `showLibrary` default to `false` in menu settings initialization
+- In the library/storage tab content, remove upload functionality — only show files that were uploaded through courses (read-only file browser)
+- Update description text: "Файлы, загруженные через курсы" instead of "Управление файлами"
 
-**3. Default cover placeholder (in `OrgDashboardHeader.tsx`)**
-- When `coverUrl` is empty, show a teal gradient placeholder banner (same height as hero)
-- Overlay text: org logo + "Онлайн-обучение" label + org name + subtitle
-- "Изменить обложку" button in top-right corner of banner (both when cover exists and when placeholder)
-- Clicking triggers the existing cover upload from branding settings
-- Generate a default gradient background image via AI for the placeholder
+**3. Admin org detail — replace stats widgets with cover/branding preview (`OrganizationDetailsView.tsx`)**
+- Remove the 6-card stats grid (Учеников, Курсов, Завершено, Средний прогресс, Хранилище, ИИ-генерации) from the header area
+- Replace with: org cover image (fetched from org branding) + org brand colors preview
+- Show the cover image the org has set, with their primary color accents, so admin can see exactly what the org looks like
 
-**4. Profile initials**
-- Get user name/email from auth context
-- Extract initials (first letter of first + last name)
-- Display in a colored avatar circle matching SkillSpace style
+**4. Admin org detail — add "Тарифы" tab (`OrganizationDetailsView.tsx`)**
+- Add a new `TabsTrigger` for "Тарифы" (with CreditCard icon) after "Настройки"
+- Tab content: editable tariff card matching the SkillSpace reference screenshot:
+  - Current plan name (editable dropdown: Бесплатный/Старт/Стандарт/Профессиональный/Максимальный)
+  - Custom description field (e.g. "Стандарт плюс особые условия") — admin can write any text
+  - `paid_until` date picker — admin sets expiration date
+  - Usage bars: Курсы (used/limit), Ученики (used/limit), Обучено в этом месяце, Хранилище
+  - Section "Возможности, доступные на старших тарифах" showing locked features
+- This tariff info then displays in the org's own subscription page as configured by admin
+
+**5. Org SubscriptionTab reads admin-configured tariff data (`SubscriptionTab.tsx`)**
+- Display the custom description set by admin (if any) alongside the plan name
+- Show the `paid_until` date set by admin
+- Keep existing usage metrics and plan comparison
+
+**6. Database: add custom tariff fields to `organizations` table**
+- Migration: `ALTER TABLE organizations ADD COLUMN IF NOT EXISTS tariff_custom_label text, ADD COLUMN IF NOT EXISTS paid_until timestamptz;`
+- These fields let admin customize what the org sees on their tariff page
+
+---
 
 ### Files modified
 | File | What |
 |------|------|
-| `src/components/organization/OrgDashboardHeader.tsx` | Tariff with days, bigger icons, profile initials avatar, cover placeholder with upload button, "Что нового?" |
-| `src/components/organization/OrgNotifications.tsx` | Add tabbed filtering (Все/Задания/Оплаты), sender initials, bottom "mark all read" |
-| `src/assets/default-org-cover.jpg` | AI-generated teal gradient placeholder image |
+| `src/components/organization/OrgSidebar.tsx` | Remove subscription/tariff nav item |
+| `src/components/organization/tabs/SettingsTab.tsx` | Default `showLibrary` to false, update storage description |
+| `src/components/admin/OrganizationDetailsView.tsx` | Replace stats grid with cover preview; add "Тарифы" tab with editable tariff config |
+| `src/components/organization/SubscriptionTab.tsx` | Read and display `tariff_custom_label` and `paid_until` from org data |
+| Migration | Add `tariff_custom_label` and `paid_until` columns to `organizations` |
 
-### No database changes needed
+### Database changes
+- Add `tariff_custom_label text` and `paid_until timestamptz` to `organizations` table
 
