@@ -66,6 +66,13 @@ export function useCourseBuilder() {
 
   const [autoSaveStatus, setAutoSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
   const autoSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const draftTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const latestStateRef = useRef({ courseTitle: '', courseDescription: '', lessons: [] as Lesson[] });
+
+  // Keep ref in sync for beforeunload / visibilitychange
+  useEffect(() => {
+    latestStateRef.current = { courseTitle, courseDescription, lessons };
+  }, [courseTitle, courseDescription, lessons]);
 
   const markAsChanged = useCallback(() => { setHasUnsavedChanges(true); }, []);
 
