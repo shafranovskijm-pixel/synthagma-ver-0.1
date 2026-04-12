@@ -485,11 +485,13 @@ Deno.serve(async (req) => {
       const lesson = allLessons[i];
       let lessonData: any = null;
 
-      // Try school API first (uuid), then student API
+      // Try school API first (uuid), then student API. Add ?version=published variant.
       const paths = [
+        `/api/rest/school/lesson/${lesson.uuid}?version=published`,
         `/api/rest/school/lesson/${lesson.uuid}`,
       ];
       if (String(lesson.id) !== lesson.uuid) {
+        paths.push(`/api/rest/school/lesson/${lesson.id}?version=published`);
         paths.push(`/api/rest/school/lesson/${lesson.id}`);
       }
       // Student fallback paths
