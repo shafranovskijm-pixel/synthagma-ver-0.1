@@ -95,7 +95,7 @@ export default function OrganizationProfile() {
         .select("id")
         .eq("owner_id", user.id)
         .limit(1)
-        .maybeSingle();
+        .maybeSingle() as { data: { id: string } | null };
       if (org?.id) {
         setOrganizationId(org.id);
       }
