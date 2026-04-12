@@ -76,7 +76,7 @@ function VideoPreview({ videoUrl }: { videoUrl: string }) {
     if (yandexMatch) return { type: 'url', value: `https://yandex.ru/video/preview/${yandexMatch[1]}` };
     
     // Direct video file URLs
-    if (content.match(/\.(mp4|webm|ogg|mov)(\?.*)?$/i) || content.includes("selstorage.ru")) {
+    if (content.match(/\.(mp4|webm|ogg|mov|mkv|m4v)(\?.*)?$/i) || content.includes("selcdn.ru")) {
       return { type: 'direct' as any, value: content };
     }
 

@@ -2387,11 +2387,9 @@ function RenderBlock({ block, quizAnswer, quizSubmitted, onQuizAnswer, onQuizSub
       if (!block.videoUrl) return null;
       const vid = block.videoUrl;
       // Direct video file URLs → HTML5 video player
-      if (vid.match(/\.(mp4|webm|ogg|mov)(\?.*)?$/i) || vid.includes("selstorage.ru")) {
+      if (vid.match(/\.(mp4|webm|ogg|mov|mkv|m4v)(\?.*)?$/i) || vid.includes("selcdn.ru")) {
         return (
-          <div className="aspect-video not-prose">
-            <video src={vid} controls className="w-full h-full rounded-lg bg-black" controlsList="nodownload" />
-          </div>
+          <DirectVideoBlock url={vid} />
         );
       }
       // YouTube
@@ -2410,9 +2408,7 @@ function RenderBlock({ block, quizAnswer, quizSubmitted, onQuizAnswer, onQuizSub
       // Fallback: try as direct video
       if (vid.startsWith("http")) {
         return (
-          <div className="aspect-video not-prose">
-            <video src={vid} controls className="w-full h-full rounded-lg bg-black" controlsList="nodownload" />
-          </div>
+          <DirectVideoBlock url={vid} />
         );
       }
       return null;

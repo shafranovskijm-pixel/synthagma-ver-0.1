@@ -18,8 +18,11 @@ const canEmbedInIframe = (url: string): boolean => {
 
 const isDirectVideoFileUrl = (url: string): boolean => {
   try {
-    const path = new URL(url).pathname.toLowerCase();
-    return /(\.mp4|\.webm|\.ogg|\.ogv|\.mov|\.m4v)(\?|$)/.test(path);
+    const u = new URL(url);
+    const path = u.pathname.toLowerCase();
+    if (/(\.mp4|\.webm|\.ogg|\.ogv|\.mov|\.m4v|\.mkv)(\?|$)/.test(path)) return true;
+    if (u.hostname.includes("selcdn.ru")) return true;
+    return false;
   } catch { return false; }
 };
 
