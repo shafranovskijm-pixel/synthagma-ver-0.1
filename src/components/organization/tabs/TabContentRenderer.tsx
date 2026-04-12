@@ -34,6 +34,7 @@ export function TabContentRenderer() {
     activeTab !== "subscription" &&
     activeTab !== "payments" &&
     activeTab !== "chats" &&
+    activeTab !== "courses" &&
     !activeTab.startsWith("documents");
 
   return (
