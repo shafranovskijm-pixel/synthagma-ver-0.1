@@ -11,8 +11,7 @@ import { cn } from "@/lib/utils";
 export type AdminTabType = 
   | "analytics" 
   | "organizations" 
-  | "tariffs"
-  | "users" 
+  | "users"
   | "content"
   | "marketplace"
   | "sales"
@@ -93,10 +92,6 @@ export function AdminSidebar({
             Организации
           </button>
           
-          <button onClick={() => handleTabClick("tariffs")} className={tabButtonClass("tariffs")}>
-            <Crown className="w-5 h-5" />
-            Тарифы
-          </button>
           
           <button onClick={() => handleTabClick("users")} className={tabButtonClass("users")}>
             <Users className="w-5 h-5" />
