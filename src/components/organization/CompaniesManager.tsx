@@ -57,10 +57,38 @@ export function CompaniesManager({ organizationId }: CompaniesManagerProps) {
   const sm = useCompanyStudentsManager(organizationId);
   const lg = useCompanyLinksAndGenerators(organizationId);
 
-  const handleViewAsCompany = (e: React.MouseEvent, companyId: string) => {
+  const handleViewAsCompany = (e: React.MouseEvent, company: any) => {
     e.stopPropagation();
-    localStorage.setItem('orgViewAsCompany', companyId);
+    localStorage.setItem('orgViewAsCompany', JSON.stringify({
+      companyId: company.id,
+      companyName: company.name,
+      userId: company.user_id,
+    }));
     navigate('/company');
+  };
+
+  const handleHideSection = async () => {
+    try {
+      const { data: org } = await supabase
+        .from("organizations")
+        .select("menu_settings")
+        .eq("id", organizationId)
+        .single();
+      
+      const currentSettings = (org?.menu_settings as Record<string, any>) || {};
+      const updatedSettings = { ...currentSettings, showCompanies: false };
+      
+      await supabase
+        .from("organizations")
+        .update({ menu_settings: updatedSettings })
+        .eq("id", organizationId);
+      
+      toast.success("Раздел «Компании» скрыт. Включить обратно можно в настройках.");
+      navigate('/organization');
+    } catch (error) {
+      console.error("Error hiding section:", error);
+      toast.error("Ошибка при скрытии раздела");
+    }
   };
 
   const handleDocumentCreated = () => {
