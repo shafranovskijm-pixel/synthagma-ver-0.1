@@ -127,7 +127,7 @@ export function WebinarsManager({ organizationId }: Props) {
 
   const statusBadge = (status: string) => {
     switch (status) {
-      case "live": return <Badge className="bg-red-500 text-white animate-pulse"><Radio className="w-3 h-3 mr-1" />В эфире</Badge>;
+      case "live": return <Badge className="bg-destructive text-destructive-foreground animate-pulse"><Radio className="w-3 h-3 mr-1" />В эфире</Badge>;
       case "ended": return <Badge variant="secondary">Завершён</Badge>;
       default: return <Badge variant="outline"><Calendar className="w-3 h-3 mr-1" />Запланирован</Badge>;
     }
@@ -207,8 +207,8 @@ export function WebinarsManager({ organizationId }: Props) {
               {/* Recording link */}
               {w.kinescope_video_id && (
                 <div className="flex items-center gap-2 text-xs">
-                  <Video className="w-3 h-3 text-green-500" />
-                  <span className="text-green-600 font-medium">Запись доступна</span>
+                  <Video className="w-3 h-3 text-primary" />
+                  <span className="text-primary font-medium">Запись доступна</span>
                 </div>
               )}
 

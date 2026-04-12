@@ -31,10 +31,10 @@ export function WebinarParticipantsDialog({ open, onOpenChange, webinar, organiz
   const fetchParticipants = useCallback(async () => {
     const { data } = await supabase
       .from("webinar_participants")
-      .select("id, user_id, enrolled_at")
+      .select("id, user_id")
       .eq("webinar_id", webinar.id);
     
-    const items = (data || []) as Participant[];
+    const items = ((data || []) as unknown as Participant[]);
     
     // Fetch profiles for participants
     if (items.length > 0) {
