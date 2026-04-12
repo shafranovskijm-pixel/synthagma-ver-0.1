@@ -75,8 +75,32 @@ export default function OrganizationProfile() {
   const [organizationId, setOrganizationId] = useState<string | null>(null);
   const iconInputRef = useRef<HTMLInputElement>(null);
 
+  // Load organizationId reliably on mount
   useEffect(() => {
     if (!user) return;
+    const loadOrganizationId = async () => {
+      // Try profile first
+      const { data: prof } = await supabase
+        .from("profiles")
+        .select("organization_id")
+        .eq("user_id", user.id)
+        .single();
+      if (prof?.organization_id) {
+        setOrganizationId(prof.organization_id);
+        return;
+      }
+      // Fallback: check if user is owner of an organization
+      const { data: org } = await supabase
+        .from("organizations")
+        .select("id")
+        .eq("owner_id", user.id)
+        .limit(1)
+        .maybeSingle();
+      if (org?.id) {
+        setOrganizationId(org.id);
+      }
+    };
+    loadOrganizationId();
     loadProfile();
     loadNotificationPrefs();
     loadOrgIcon();
