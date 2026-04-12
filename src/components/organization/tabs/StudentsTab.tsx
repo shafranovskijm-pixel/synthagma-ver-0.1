@@ -1081,6 +1081,17 @@ export const StudentsTab = React.memo(function StudentsTab({
         </DialogContent>
       </Dialog>
 
+      {settingsGroupId && (
+        <GroupSettingsDialog
+          open={!!settingsGroupId}
+          onOpenChange={(v) => { if (!v) setSettingsGroupId(null); }}
+          groupId={settingsGroupId}
+          organizationId={organizationId}
+          onDeleted={() => { setSettingsGroupId(null); if (groupFilter === settingsGroupId) setGroupFilter("all"); refreshGroups(); }}
+          onUpdated={() => refreshGroups()}
+        />
+      )}
+
       <AlertDialog open={showSendConfirm} onOpenChange={setShowSendConfirm}>
         <AlertDialogContent>
           <AlertDialogHeader>
