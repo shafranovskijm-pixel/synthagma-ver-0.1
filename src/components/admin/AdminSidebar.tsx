@@ -24,7 +24,8 @@ export type AdminTabType =
   | "updates"
   | "settings";
 
-const PLATFORM_TABS: AdminTabType[] = ["content", "ai", "devtools"];
+const PLATFORM_TABS: AdminTabType[] = ["content", "ai", "devtools", "updates"];
+const CHATS_TABS: AdminTabType[] = ["chats", "support", "broadcast"];
 
 interface AdminSidebarProps {
   activeTab: AdminTabType;
@@ -46,6 +47,7 @@ export function AdminSidebar({
   
   const unreadChats = useAdminUnreadChats();
   const [platformOpen, setPlatformOpen] = useState(() => PLATFORM_TABS.includes(activeTab));
+  const [chatsOpen, setChatsOpen] = useState(() => CHATS_TABS.includes(activeTab));
 
   const handleTabClick = (tab: AdminTabType) => {
     setActiveTab(tab);
@@ -113,32 +115,50 @@ export function AdminSidebar({
             Аналитика
           </button>
 
-          <button onClick={() => handleTabClick("support")} className={tabButtonClass("support")}>
-            <HeadphonesIcon className="w-5 h-5" />
-            Поддержка
-          </button>
-
-          <button onClick={() => handleTabClick("broadcast")} className={tabButtonClass("broadcast")}>
-            <Megaphone className="w-5 h-5" />
-            Рассылка
-          </button>
+          {/* Chats group: Чаты, Поддержка, Рассылка */}
+          <div>
+            <button
+              onClick={() => setChatsOpen(prev => !prev)}
+              className={cn(
+                "w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-colors",
+                CHATS_TABS.includes(activeTab)
+                  ? "bg-primary/10 text-primary"
+                  : "text-muted-foreground hover:bg-secondary"
+              )}
+            >
+              <MessageSquare className="w-5 h-5" />
+              Чаты
+              {unreadChats > 0 && (
+                <span className="bg-destructive text-destructive-foreground text-xs font-bold rounded-full min-w-[20px] h-5 flex items-center justify-center px-1.5">
+                  {unreadChats > 99 ? "99+" : unreadChats}
+                </span>
+              )}
+              <ChevronDown className={cn("w-4 h-4 ml-auto transition-transform", chatsOpen && "rotate-180")} />
+            </button>
+            {chatsOpen && (
+              <div className="mt-1 space-y-1">
+                <button onClick={() => handleTabClick("chats")} className={subTabButtonClass("chats")}>
+                  <MessageSquare className="w-4 h-4" />
+                  Сообщения
+                </button>
+                <button onClick={() => handleTabClick("support")} className={subTabButtonClass("support")}>
+                  <HeadphonesIcon className="w-4 h-4" />
+                  Поддержка
+                </button>
+                <button onClick={() => handleTabClick("broadcast")} className={subTabButtonClass("broadcast")}>
+                  <Megaphone className="w-4 h-4" />
+                  Рассылка
+                </button>
+              </div>
+            )}
+          </div>
 
           <button onClick={() => handleTabClick("referrals")} className={tabButtonClass("referrals")}>
             <Gift className="w-5 h-5" />
             Партнёры
           </button>
 
-          <button onClick={() => handleTabClick("chats")} className={tabButtonClass("chats")}>
-            <MessageSquare className="w-5 h-5" />
-            Чаты
-            {unreadChats > 0 && (
-              <span className="ml-auto bg-destructive text-destructive-foreground text-xs font-bold rounded-full min-w-[20px] h-5 flex items-center justify-center px-1.5">
-                {unreadChats > 99 ? "99+" : unreadChats}
-              </span>
-            )}
-          </button>
-
-          {/* Platform group: Контент, ИИ-провайдеры, Dev Tools */}
+          {/* Platform group */}
           <div>
             <button
               onClick={() => setPlatformOpen(prev => !prev)}
@@ -163,6 +183,10 @@ export function AdminSidebar({
                   <Bot className="w-4 h-4" />
                   ИИ-провайдеры
                 </button>
+                <button onClick={() => handleTabClick("updates")} className={subTabButtonClass("updates")}>
+                  <Sparkles className="w-4 h-4" />
+                  Обновления
+                </button>
                 <button onClick={() => handleTabClick("devtools")} className={subTabButtonClass("devtools")}>
                   <Terminal className="w-4 h-4" />
                   Dev Tools
@@ -170,11 +194,6 @@ export function AdminSidebar({
               </div>
             )}
           </div>
-
-          <button onClick={() => handleTabClick("updates")} className={tabButtonClass("updates")}>
-            <Sparkles className="w-5 h-5" />
-            Обновления
-          </button>
           
           <button onClick={() => handleTabClick("settings")} className={tabButtonClass("settings")}>
             <Settings className="w-5 h-5" />
