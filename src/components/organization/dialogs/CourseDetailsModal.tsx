@@ -114,8 +114,8 @@ interface CourseDetailsModalProps {
   course: Course | null;
   courseStudents: Student[];
   organizationId: string | null;
-  activeTab: "students" | "materials" | "history" | "tests" | "settings" | "reminders" | "groups";
-  onTabChange: (tab: "students" | "materials" | "history" | "tests" | "settings" | "reminders" | "groups") => void;
+  activeTab: "students" | "materials" | "history" | "tests" | "landing" | "settings" | "reminders" | "groups";
+  onTabChange: (tab: "students" | "materials" | "history" | "tests" | "landing" | "settings" | "reminders" | "groups") => void;
   onEnrollStudent: () => void;
   onCourseDeleted?: () => void;
   onCourseUpdated?: () => void;
