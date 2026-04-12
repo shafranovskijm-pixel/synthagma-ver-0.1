@@ -1126,22 +1126,42 @@ export function OrganizationDetailsView({ organization, onBack }: OrganizationDe
 
         {/* Courses Tab */}
         <TabsContent value="courses" className="space-y-4">
-          <div className="flex items-center justify-between gap-2">
-            <div className="flex items-center gap-2 px-3 py-1.5 rounded-md bg-muted text-sm text-muted-foreground">
-              <BookOpen className="w-4 h-4" />
-              <span>Всего курсов: <span className="font-semibold text-foreground">{courses.length}</span></span>
-            </div>
-            <div className="flex gap-2">
-              <Button variant="outline" size="sm" onClick={() => setShowSkillspaceBatchImport(true)}>
-                <Download className="w-4 h-4 mr-2" />
-                Пакетный импорт
-              </Button>
-              <Button variant="outline" size="sm" onClick={() => setShowSkillspaceImport(true)}>
-                <Download className="w-4 h-4 mr-2" />
-                Импорт со SkillSpace
-              </Button>
-            </div>
-          </div>
+          {(() => {
+            const readyCourses = courses.filter(c => c.lessons_count > 0 && c.is_published);
+            const needsReview = courses.filter(c => c.lessons_count === 0);
+            return (
+              <div className="flex items-center justify-between gap-2 flex-wrap">
+                <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-2 px-3 py-1.5 rounded-md bg-muted text-sm text-muted-foreground">
+                    <BookOpen className="w-4 h-4" />
+                    <span>Всего курсов: <span className="font-semibold text-foreground">{courses.length}</span></span>
+                  </div>
+                  {readyCourses.length > 0 && (
+                    <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md bg-emerald-50 text-sm text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-400">
+                      <CheckCircle2 className="w-3.5 h-3.5" />
+                      <span>{readyCourses.length} готово</span>
+                    </div>
+                  )}
+                  {needsReview.length > 0 && (
+                    <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md bg-amber-50 text-sm text-amber-700 dark:bg-amber-950/30 dark:text-amber-400">
+                      <AlertCircle className="w-3.5 h-3.5" />
+                      <span>{needsReview.length} без уроков</span>
+                    </div>
+                  )}
+                </div>
+                <div className="flex gap-2">
+                  <Button variant="outline" size="sm" onClick={() => setShowSkillspaceBatchImport(true)}>
+                    <Download className="w-4 h-4 mr-2" />
+                    Пакетный импорт
+                  </Button>
+                  <Button variant="outline" size="sm" onClick={() => setShowSkillspaceImport(true)}>
+                    <Download className="w-4 h-4 mr-2" />
+                    Импорт со SkillSpace
+                  </Button>
+                </div>
+              </div>
+            );
+          })()}
           <Card className={cardClass}>
             <CardContent className="p-0">
               <DndContext sensors={dndSensors} collisionDetection={closestCenter} onDragEnd={handleCourseDragEnd}>
