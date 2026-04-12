@@ -506,7 +506,7 @@ export function OrganizationDetailsView({ organization, onBack }: OrganizationDe
     }
   };
 
-
+  const saveSettings = async () => {
     setIsSaving(true);
     try {
       const aiEnabled = shouldBlockAI ? false : settings.ai_enabled;
