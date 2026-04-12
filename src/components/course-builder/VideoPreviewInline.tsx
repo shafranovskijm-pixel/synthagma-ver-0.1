@@ -1,6 +1,6 @@
 import DOMPurify from "dompurify";
 import { Video, Play } from "lucide-react";
-import { getVideoEmbedUrl, isIframeEmbed } from "@/utils/courseBuilderHelpers";
+import { getVideoEmbedUrl, isIframeEmbed, isKinescopeVideo, getKinescopeVideoId, getKinescopeEmbedUrl } from "@/utils/courseBuilderHelpers";
 
 interface VideoPreviewInlineProps {
   content: string;
@@ -8,6 +8,21 @@ interface VideoPreviewInlineProps {
 
 export function VideoPreviewInline({ content }: VideoPreviewInlineProps) {
   if (!content) return null;
+
+  // Kinescope video
+  const kinescopeId = getKinescopeVideoId(content);
+  if (kinescopeId) {
+    return (
+      <div className="aspect-video w-full rounded-xl overflow-hidden bg-muted">
+        <iframe
+          src={getKinescopeEmbedUrl(kinescopeId)}
+          className="w-full h-full"
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
+          allowFullScreen
+        />
+      </div>
+    );
+  }
 
   if (isIframeEmbed(content)) {
     const sanitized = DOMPurify.sanitize(content, {
