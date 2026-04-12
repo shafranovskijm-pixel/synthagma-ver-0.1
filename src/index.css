@@ -213,11 +213,30 @@
 
   /* Elegant button gradient */
   .btn-gradient {
-    @apply font-medium relative overflow-hidden bg-foreground text-background;
+    @apply font-medium relative overflow-hidden bg-primary text-primary-foreground transition-all duration-200;
   }
 
   .btn-gradient:hover {
-    @apply bg-foreground/90;
+    @apply bg-primary/90 scale-[1.02] shadow-lg;
+  }
+
+  .btn-gradient:active {
+    @apply scale-[0.98];
+  }
+
+  .btn-gradient::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(105deg, transparent 40%, hsl(0 0% 100% / 0.15) 45%, hsl(0 0% 100% / 0.25) 50%, hsl(0 0% 100% / 0.15) 55%, transparent 60%);
+    background-size: 250% 100%;
+    background-position: 200% 0;
+    transition: background-position 0.6s ease;
+    pointer-events: none;
+  }
+
+  .btn-gradient:hover::after {
+    background-position: -100% 0;
   }
 
   /* Accent button */
