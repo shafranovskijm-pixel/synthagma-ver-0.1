@@ -145,7 +145,7 @@ export function OrgSidebar() {
   navItems.push({ id: "payments", icon: Wallet, label: "Финансы" });
 
   navItems.push({ id: "homework-review", icon: BookCheck, label: "Задания" });
-  navItems.push({ id: "webinars", icon: Radio, label: "Вебинары", category: "webinars" });
+  
   navItems.push({ id: "chats", icon: MessageCircle, label: "Чаты", badge: d.unreadChatsCount });
   navItems.push({ id: "settings", icon: Settings, label: "Настройки", category: "settings" });
 
