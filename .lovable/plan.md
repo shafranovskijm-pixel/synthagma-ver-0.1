@@ -1,30 +1,39 @@
 
 
-## Проблемы и план исправления
+## Plan: Fix consent/documents visibility, referral links, partner page improvements
 
-### Диагностика
+### Issues identified
 
-1. **Согласие и Документы пустые** — в `StudentProfile.tsx` обе вкладки обёрнуты условием `user && profile?.organization_id`. Если у студента нет `organization_id`, содержимое не рендерится. Нужно добавить fallback-сообщение для случая, когда организация не привязана. Также нужно убедиться, что компоненты корректно отображают свое содержимое в embedded-режиме (проверить, что `mainContent` определяется до return).
+1. **Consent & Documents show "no org" fallback** — The tabs require `organization_id` but the current user doesn't have one. Need to show content even without organization (consent form can work standalone, documents list can show required docs).
 
-2. **Уведомления: убрать Телеграм и Приложение** — в массиве `CHANNELS` удалить записи `telegram` и `app`, оставить `platform`, `browser`, `email`.
+2. **No badge notifications on tabs** — Need notification badges (counts) on Consent (1) and Documents (3) tabs showing pending items.
 
-3. **Уведомления: сохранять настройки в БД и реально отправлять email** — сейчас настройки хранятся только в `useState` и пропадают при перезагрузке. Нужно:
-   - Создать таблицу `notification_preferences` для хранения настроек уведомлений по пользователям.
-   - При переключении switch — сохранять в БД.
-   - При загрузке страницы — загружать из БД.
-   - Для реальной отправки email-уведомлений: использовать существующую SMTP-инфраструктуру (Edge-функция через smtp.timeweb.ru), которая уже настроена в проекте. При наступлении события (обновление курса, напоминание о вебинаре и т.д.) проверять preferences пользователя и отправлять email, если включено.
+3. **Referral link shows lovableproject.com** — `PartnerLanding.tsx` and `PartnerDashboard.tsx` use `window.location.origin` instead of `getBaseUrl()` which returns `sintagma.com.ru` in production.
 
-### Изменения
+4. **Partner landing needs promo materials section** — Add "Кому рекомендовать", "Как заработать максимум" sections with copyable text templates (for messenger + social posts), similar to SkillSpace reference screenshots.
 
-| Файл | Что делать |
-|------|-----------|
-| Миграция БД | Создать таблицу `notification_preferences` (user_id, notification_type, channel, enabled) с RLS |
-| `src/pages/StudentProfile.tsx` | Убрать `telegram` и `app` из CHANNELS. Добавить fallback для Согласия/Документов без организации. Загружать/сохранять настройки из БД вместо useState |
-| Edge-функция (существующая SMTP) | Добавить проверку `notification_preferences` перед отправкой уведомлений |
+5. **Partner program tied to user or organization** — Currently tied only to user. Need to also support organization-level partnership.
 
-### Ожидаемый результат
-- Вкладки Согласие и Документы показывают информативное сообщение, если организация не привязана
-- В уведомлениях только 3 канала: Платформа, Браузер, Email
-- Настройки уведомлений сохраняются в БД
-- При включении Email-канала уведомления будут реально приходить на почту
+### Changes
+
+| File | What |
+|------|------|
+| `src/pages/StudentProfile.tsx` | Remove org requirement for consent/documents tabs — pass `organizationId` as optional. Add badge counts on tab triggers (1 for consent if not submitted, count for documents needing upload). |
+| `src/components/student/StudentConsentForm.tsx` | Make `organizationId` optional — show standalone consent form even without org. |
+| `src/components/student/StudentDocumentsUpload.tsx` | Make `organizationId` optional — show required document checklist even without org. |
+| `src/pages/PartnerLanding.tsx` | Replace `window.location.origin` with `getBaseUrl()` for referral links. Add promo materials section: "Кому рекомендовать" cards, "Как заработать максимум" with copyable text templates for messengers and social posts (adapted from SkillSpace but with СИНТАГМА branding). |
+| `src/pages/PartnerDashboard.tsx` | Replace `window.location.origin` with `getBaseUrl()` for referral link. Add promo text templates adapted for СИНТАГМА (messenger text, social post text with copy buttons). |
+| `src/utils/getBaseUrl.ts` | Already correct, no changes needed. |
+
+### Promo materials content
+
+**Messenger text template:**
+> Я использую платформу СИНТАГМА для дистанционного обучения — современная LMS с документооборотом, ФРДО, видеоидентификацией и ИИ. Попробуйте бесплатно: [ссылка]
+
+**Social post template:**
+> Для обучения сотрудников использую СИНТАГМА — платформу с полным функционалом: курсы, тесты, документооборот, охрана труда, ФРДО. Преимущества: бесплатный старт, безлимит учеников, ИИ-генерация курсов, онлайн-касса. Попробуйте: [ссылка]
+
+### Badge logic
+- Consent tab: show badge "1" if user has no accepted consent record
+- Documents tab: show badge with count of required but not-yet-uploaded document types (e.g. passport, СНИЛС, diploma = 3 by default)
 
