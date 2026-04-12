@@ -12,6 +12,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Copy, TrendingUp, Users, DollarSign, Wallet, ArrowLeft, Download, ExternalLink } from "lucide-react";
+import { getBaseUrl } from "@/utils/getBaseUrl";
 
 const PartnerDashboard = () => {
   const { user } = useAuth();
@@ -60,7 +61,7 @@ const PartnerDashboard = () => {
 
   const handleCopyLink = () => {
     if (!partner) return;
-    navigator.clipboard.writeText(`${window.location.origin}/register?ref=${partner.code}`);
+    navigator.clipboard.writeText(`${getBaseUrl()}/register?ref=${partner.code}`);
     toast({ title: "Ссылка скопирована!" });
   };
 
@@ -123,7 +124,7 @@ const PartnerDashboard = () => {
     );
   }
 
-  const refLink = `${window.location.origin}/register?ref=${partner.code}`;
+  const refLink = `${getBaseUrl()}/register?ref=${partner.code}`;
 
   return (
     <div className="min-h-screen bg-background">
