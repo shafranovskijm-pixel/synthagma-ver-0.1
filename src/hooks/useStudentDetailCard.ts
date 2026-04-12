@@ -29,6 +29,8 @@ interface StudentCardEnrollment {
   started_at: string;
   completed_at?: string | null;
   time_spent: number;
+  access_days?: number | null;
+  expires_at?: string | null;
 }
 
 export function useStudentDetailCard() {
@@ -51,7 +53,7 @@ export function useStudentDetailCard() {
     // Load enrollments for this student
     const { data: enrollments } = await supabase
       .from("enrollments")
-      .select("id, course_id, progress, status, started_at, completed_at, time_spent, courses(title)")
+      .select("id, course_id, progress, status, started_at, completed_at, time_spent, access_days, expires_at, courses(title)")
       .eq("user_id", student.user_id);
 
     const mapped = (enrollments || []).map((e: any) => ({
@@ -63,6 +65,8 @@ export function useStudentDetailCard() {
       started_at: e.started_at,
       completed_at: e.completed_at,
       time_spent: e.time_spent || 0,
+      access_days: e.access_days,
+      expires_at: e.expires_at,
     }));
 
     setStudentDetailCardEnrollments(mapped);
