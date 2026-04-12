@@ -1,29 +1,45 @@
 
 
-# Компании: виджет «Войти как» + скрытие раздела
+# Исправления раздела «Компании»
+
+## Три проблемы
+
+1. **Кнопка «Войти как компания» не работает** — на карточках сохраняется просто `companyId` строкой, а `CompanyDashboard` ожидает JSON с `userId` и `companyName`. Нужно сохранять данные в том же формате, что и в `CompanyDetailDialog`.
+
+2. **Нет кнопки «Скрыть компании» на самой странице** — переключатель есть только в настройках профиля. Пользователь хочет кнопку прямо в шапке раздела «Компании».
+
+3. **Виджеты статистики (Компании / Договоры / Оплачено / Не оплачено) не скрываются** — при скрытии раздела «Компании» эти карточки должны тоже исчезать.
 
 ## Что будет сделано
 
-### 1. Кнопка «Войти как компания» на карточках компаний
-В `CompaniesManager.tsx` на каждую карточку компании добавить кнопку «Войти как» (иконка ExternalLink), которая:
-- Записывает `orgViewAsCompany` в localStorage (уже реализовано в `CompanyDetailDialog`)
-- Переходит на `/company` — там уже есть логика чтения `orgViewAsCompany` и отображения баннера «вы просматриваете как компания» с кнопкой выхода
+### Файл: `src/components/organization/CompaniesManager.tsx`
 
-Механизм уже работает из детального диалога компании — нужно просто вынести кнопку на карточку.
+1. **Исправить `handleViewAsCompany`** — вместо `localStorage.setItem('orgViewAsCompany', companyId)` сохранять JSON:
+```typescript
+localStorage.setItem('orgViewAsCompany', JSON.stringify({
+  companyId: company.id,
+  companyName: company.name,
+  userId: company.user_id,
+}));
+```
+Для этого функция будет принимать объект `company` целиком, а не только `companyId`.
 
-### 2. Скрытие раздела «Компании» через настройки меню
-В `OrgProfileSettings.tsx`:
-- Добавить `showCompanies: boolean` в интерфейс `MenuSettings` и `DEFAULT_MENU` (по умолчанию `true`)
-- Добавить тоггл «Компании» в секцию «Разделы меню» (по аналогии с существующими тогглами)
-- Обновить загрузку/сохранение чтобы включать `showCompanies`
+2. **Добавить кнопку «Скрыть раздел»** в шапку (рядом с «Добавить компанию»). По нажатию — обновляет `menu_settings.showCompanies = false` в таблице `organizations` и редиректит на главную вкладку организации. Для этого нужно:
+   - Принять `organizationId` (уже есть как проп)
+   - Добавить кнопку с иконкой `EyeOff` и текстом «Скрыть раздел»
+   - При клике: обновить `menu_settings` в БД и перенаправить
 
-В `OrgSidebar.tsx` — уже используется `menuSettings.showCompanies !== false`, так что там ничего менять не нужно.
+3. **Передать `company` объект** в `handleViewAsCompany` вместо `company.id` — обновить оба места вызова (grid и list).
 
-## Технические детали
+### Файл: `src/hooks/useCompaniesManager.ts` (или тип Company)
 
-**Файлы:**
-- `src/components/organization/CompaniesManager.tsx` — добавить кнопку «Войти как» на карточку компании (grid и list режимы)
-- `src/components/organization/OrgProfileSettings.tsx` — добавить `showCompanies` в MenuSettings, тоггл в UI, загрузку и сохранение
+Убедиться, что тип `Company` содержит `user_id` — нужно для передачи в localStorage. Проверю наличие поля.
 
-Никаких миграций БД не требуется — `menu_settings` уже JSONB и принимает произвольные ключи.
+### Виджеты статистики
+
+`StatsGrid` уже рендерится внутри `CompaniesManager`, который целиком скрывается при `showCompanies === false` через навигацию в `OrgSidebar`. Поэтому отдельно скрывать виджеты не нужно — они исчезнут вместе с разделом.
+
+## Без миграций БД
+
+Все изменения — чисто UI. Поле `menu_settings` уже JSONB и принимает `showCompanies`.
 
