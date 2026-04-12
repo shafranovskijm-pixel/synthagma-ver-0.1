@@ -8,6 +8,7 @@ export async function fetchCourses(organizationId: string): Promise<Course[]> {
     .from("courses")
     .select(`*, lessons(count)`)
     .eq("organization_id", organizationId)
+    .order("catalog_order", { ascending: true })
     .order("created_at", { ascending: false });
 
   if (error) {

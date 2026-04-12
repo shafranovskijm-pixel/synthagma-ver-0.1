@@ -19,6 +19,7 @@ export interface Course {
   // Computed fields
   lessonsCount?: number;
   studentsCount?: number;
+  catalog_order?: number;
 }
 
 export interface CourseCategory {
