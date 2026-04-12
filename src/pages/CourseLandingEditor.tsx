@@ -469,6 +469,71 @@ export default function CourseLandingEditor() {
             />
           </div>
         );
+      case "teachers":
+        return (
+          <div key={sectionId} className={wrapperClass}>
+            {toolbar}
+            <LandingTeachersSection
+              title={landing.teachers.title}
+              description={landing.teachers.description}
+              teachers={landing.teachers.items}
+              courseId={courseId}
+              isEditing
+              onTitleChange={(v) => setLanding((l) => ({ ...l, teachers: { ...l.teachers, title: v } }))}
+              onDescriptionChange={(v) => setLanding((l) => ({ ...l, teachers: { ...l.teachers, description: v } }))}
+              onTeacherChange={updateTeacher}
+              onAddTeacher={addTeacher}
+              onRemoveTeacher={removeTeacher}
+            />
+          </div>
+        );
+      case "reviews":
+        return (
+          <div key={sectionId} className={wrapperClass}>
+            {toolbar}
+            <LandingReviewsSection
+              title={landing.reviews.title}
+              reviews={landing.reviews.items}
+              isEditing
+              onTitleChange={(v) => setLanding((l) => ({ ...l, reviews: { ...l.reviews, title: v } }))}
+              onReviewChange={updateReview}
+              onAddReview={addReview}
+              onRemoveReview={removeReview}
+            />
+          </div>
+        );
+      case "pricing":
+        return (
+          <div key={sectionId} className={wrapperClass}>
+            {toolbar}
+            <LandingPricingSection
+              title={landing.pricing.title}
+              tiers={landing.pricing.tiers}
+              isEditing
+              onTitleChange={(v) => setLanding((l) => ({ ...l, pricing: { ...l.pricing, title: v } }))}
+              onTierChange={updateTier}
+              onTierFeatureChange={updateTierFeature}
+              onAddTierFeature={addTierFeature}
+              onRemoveTierFeature={removeTierFeature}
+              onAddTier={addTier}
+              onRemoveTier={removeTier}
+            />
+          </div>
+        );
+      case "faq":
+        return (
+          <div key={sectionId} className={wrapperClass}>
+            {toolbar}
+            <LandingFaqSection
+              title={landing.faq.title}
+              items={landing.faq.items}
+              isEditing
+              onTitleChange={(v) => setLanding((l) => ({ ...l, faq: { ...l.faq, title: v } }))}
+              onItemChange={updateFaqItem}
+              onAddItem={addFaqItem}
+              onRemoveItem={removeFaqItem}
+            />
+          </div>
       case "cta":
         return (
           <div key={sectionId} className={wrapperClass}>
