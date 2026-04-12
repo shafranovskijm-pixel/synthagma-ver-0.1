@@ -8,15 +8,13 @@ import {
   Library, BarChart3, Link, ShoppingBag, Save, Settings, HardDrive,
   Trophy, MessageCircle, ChevronRight, Loader2, Upload,
   X, ExternalLink, Image, Eye, AlertCircle, LogIn, KeyRound,
-  Lock, ArrowUpRight, RefreshCw, RotateCcw, ClipboardList, FileSpreadsheet
+  Lock, ArrowUpRight, RefreshCw, RotateCcw, ClipboardList, FileSpreadsheet, HardHat
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-
-
 import { LoginBrandingSettings } from "@/components/organization/LoginBrandingSettings";
 import { OrgCredentialsSettings } from "@/components/organization/OrgCredentialsSettings";
 import { RobokassaSettings } from "@/components/organization/RobokassaSettings";
@@ -197,7 +195,26 @@ export function SettingsTab() {
                 <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${menuSettings.showLinks ? 'translate-x-6' : 'translate-x-1'}`} />
               </button>
             </div>
-            
+
+            {/* Labor Safety */}
+            <div className="flex items-center justify-between py-2 lg:py-3 border-b border-border">
+              <div className="flex items-center gap-2 lg:gap-3">
+                <div className="w-8 h-8 lg:w-10 lg:h-10 rounded-lg lg:rounded-xl bg-accent/10 flex items-center justify-center">
+                  <HardHat className="w-4 h-4 lg:w-5 lg:h-5 text-accent" />
+                </div>
+                <div>
+                  <p className="font-medium text-sm lg:text-base">Охрана труда</p>
+                  <p className="text-xs lg:text-sm text-muted-foreground hidden sm:block">Модуль охраны труда</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setMenuSettings(prev => ({ ...prev, showLaborSafety: !prev.showLaborSafety }))}
+                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors shrink-0 ${menuSettings.showLaborSafety ? 'bg-primary' : 'bg-muted'}`}
+              >
+                <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${menuSettings.showLaborSafety ? 'translate-x-6' : 'translate-x-1'}`} />
+              </button>
+            </div>
+
             {/* Documents */}
             <div className="flex items-center justify-between py-2 lg:py-3 border-b border-border">
               <div className="flex items-center gap-2 lg:gap-3">

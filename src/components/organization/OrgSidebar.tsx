@@ -138,7 +138,7 @@ export function OrgSidebar() {
   if (menuSettings.showStats) navItems.push({ id: "stats", icon: BarChart3, label: "Статистика" });
   if (menuSettings.showLinks) navItems.push({ id: "links", icon: Link, label: "Ссылки", category: "links" });
   
-  navItems.push({ id: "labor-safety", icon: HardHat, label: "Охрана труда", category: "labor_safety" });
+  if (menuSettings.showLaborSafety !== false) navItems.push({ id: "labor-safety", icon: HardHat, label: "Охрана труда", category: "labor_safety" });
   navItems.push({ id: "payments", icon: Wallet, label: "Финансы" });
   
   
