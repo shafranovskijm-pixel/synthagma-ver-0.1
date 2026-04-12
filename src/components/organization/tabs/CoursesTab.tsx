@@ -279,6 +279,7 @@ export const CoursesTab = React.memo(function CoursesTab({ organizationId, onCou
   const [coverUploadCourseId, setCoverUploadCourseId] = useState<string | null>(null);
   const [generatingCoverForCourse, setGeneratingCoverForCourse] = useState<string | null>(null);
   const [migratingVideosCourseId, setMigratingVideosCourseId] = useState<string | null>(null);
+  const [migratingAllVideos, setMigratingAllVideos] = useState(false);
 
   const handleMigrateVideosToKinescope = useCallback(async (courseId: string) => {
     setMigratingVideosCourseId(courseId);
@@ -302,6 +303,31 @@ export const CoursesTab = React.memo(function CoursesTab({ organizationId, onCou
       setMigratingVideosCourseId(null);
     }
   }, [refresh]);
+
+  const handleMigrateAllVideosToKinescope = useCallback(async () => {
+    if (!organizationId) return;
+    setMigratingAllVideos(true);
+    toast.info("Запущена миграция всех видео организации в Kinescope...", { duration: 10000 });
+    try {
+      const { data, error } = await supabase.functions.invoke("kinescope-migrate-videos", {
+        body: { organization_id: organizationId },
+      });
+      if (error) throw error;
+      if (data?.migrated > 0) {
+        toast.success(`Перенесено ${data.migrated} из ${data.total} видео в Kinescope`);
+        if (data.failed > 0) toast.warning(`${data.failed} видео не удалось перенести`);
+        refresh();
+      } else if (data?.total === 0) {
+        toast.info("Нет внешних видео для переноса");
+      } else if (data?.failed > 0) {
+        toast.error(`Не удалось перенести ${data.failed} видео`);
+      }
+    } catch (e) {
+      toast.error("Ошибка миграции: " + (e instanceof Error ? e.message : "неизвестная ошибка"));
+    } finally {
+      setMigratingAllVideos(false);
+    }
+  }, [organizationId, refresh]);
 
   const handleGenerateCourseCover = useCallback(async (courseId: string) => {
     if (generatingCoverForCourse) return;
@@ -1347,6 +1373,17 @@ export const CoursesTab = React.memo(function CoursesTab({ organizationId, onCou
             </div>
           </div>
           <div className="flex items-center gap-2 self-end lg:self-auto">
+            {/* Перенести все видео в Kinescope */}
+            <Button
+              variant="outline"
+              size="sm"
+              className="rounded-xl gap-1.5 text-xs hidden sm:flex"
+              disabled={migratingAllVideos}
+              onClick={handleMigrateAllVideosToKinescope}
+            >
+              {migratingAllVideos ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
+              Видео → Kinescope
+            </Button>
             {/* Настроить каталог */}
             <Button
               variant="outline"

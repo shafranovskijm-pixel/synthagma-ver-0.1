@@ -63,7 +63,7 @@ Deno.serve(async (req) => {
           p_text: jobData?.password || "",
         });
 
-        // Call parse function
+        // Call parse function with extended timeout for heavy courses
         const parseResponse = await fetch(
           `${supabaseUrl}/functions/v1/parse-skillspace-course`,
           {
@@ -79,6 +79,7 @@ Deno.serve(async (req) => {
               password: decryptedPassword,
               organizationId: job.organization_id,
             }),
+            signal: AbortSignal.timeout(120000),
           }
         );
 
