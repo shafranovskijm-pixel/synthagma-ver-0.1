@@ -215,7 +215,29 @@ const createBlock = (type: BlockType): ContentBlock => ({
   ...(type === "document" && { documentUrl: "", documentName: "" }),
 });
 
-export function BlockEditor({ blocks, onChange, readOnly = false, courseTitle, lessonTitle }: BlockEditorProps) {
+function DirectVideoBlock({ url }: { url: string }) {
+  const [error, setError] = useState(false);
+  if (error) {
+    return (
+      <div className="aspect-video not-prose rounded-lg bg-muted flex flex-col items-center justify-center gap-3">
+        <Video className="w-12 h-12 text-muted-foreground" />
+        <p className="text-sm text-muted-foreground">Браузер не может воспроизвести это видео</p>
+        <a href={url} target="_blank" rel="noopener noreferrer"
+          className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary/90 transition-colors">
+          <Play className="w-4 h-4" /> Открыть видео
+        </a>
+      </div>
+    );
+  }
+  return (
+    <div className="aspect-video not-prose">
+      <video src={url} controls className="w-full h-full rounded-lg bg-black" controlsList="nodownload"
+        onError={() => setError(true)} />
+    </div>
+  );
+}
+
+
   const [focusedBlockId, setFocusedBlockId] = useState<string | null>(null);
   const [stylePresets, setStylePresets] = useState(() => loadPresets());
 
