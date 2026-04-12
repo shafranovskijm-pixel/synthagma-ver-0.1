@@ -321,7 +321,8 @@ Deno.serve(async (req) => {
           try { data = JSON.parse(text); } catch { /* not json */ }
           log(`${path} → ${res.status} (${text.length}b)`);
           mergeCookiesFromResponse(res, cookieMap);
-          return { ok: res.ok, status: res.status, data, raw: text };
+          // Don't store raw text in return to save memory
+          return { ok: res.ok, status: res.status, data, raw: "" };
         } catch (err) {
           const errStr = String(err);
           const isRetryable = errStr.includes("http2") || errStr.includes("connection error") || errStr.includes("SendRequest");
