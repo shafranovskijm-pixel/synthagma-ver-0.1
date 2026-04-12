@@ -122,9 +122,14 @@ export function CompaniesManager({ organizationId }: CompaniesManagerProps) {
           </h2>
           <p className="text-sm text-muted-foreground mt-1">Управление организациями-заказчиками</p>
         </div>
-        <Button className="btn-gradient rounded-xl gap-2" onClick={() => cm.setShowCreateDialog(true)}>
-          <Plus className="w-4 h-4" />Добавить компанию
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" className="rounded-xl gap-2 text-muted-foreground" onClick={handleHideSection}>
+            <EyeOff className="w-4 h-4" />Скрыть раздел
+          </Button>
+          <Button className="btn-gradient rounded-xl gap-2" onClick={() => cm.setShowCreateDialog(true)}>
+            <Plus className="w-4 h-4" />Добавить компанию
+          </Button>
+        </div>
       </div>
 
       {/* Search and View Toggle */}
