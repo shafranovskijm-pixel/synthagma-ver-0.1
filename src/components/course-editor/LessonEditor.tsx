@@ -494,14 +494,14 @@ export const LessonEditor = ({
                       <input
                         ref={videoInputRef}
                         type="file"
-                        accept="video/mp4,video/webm,video/ogg"
+                        accept="video/*"
                         className="hidden"
                         onChange={async (e) => {
                           const file = e.target.files?.[0];
                           if (!file) return;
                           
                           const fileName = `${courseId}/${Date.now()}-${file.name}`;
-                          const result = await uploadFile(file, 'course-videos', fileName);
+                          const result = await uploadFile(file, 'course-files', fileName);
                           
                           if (result) {
                             setVideoUrl(result.url);
