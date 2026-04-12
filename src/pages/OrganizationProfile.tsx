@@ -10,6 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ArrowLeft, User, Bell, Handshake, Save, Eye, EyeOff } from "lucide-react";
 import { toast } from "sonner";
+import { PartnerCabinet } from "@/components/organization/PartnerCabinet";
 
 interface ProfileData {
   full_name: string;
@@ -359,19 +360,7 @@ export default function OrganizationProfile() {
 
           {/* Tab 3: Partner */}
           <TabsContent value="partner">
-            <Card className="rounded-2xl">
-              <CardHeader>
-                <CardTitle className="text-lg">Партнёрская программа</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <p className="text-muted-foreground">
-                  Присоединяйтесь к нашей партнёрской программе и получайте вознаграждение за привлечение новых клиентов.
-                </p>
-                <Button className="btn-gradient rounded-xl gap-2" onClick={() => navigate("/partner")}>
-                  <Handshake className="w-4 h-4" /> Перейти в партнёрский кабинет
-                </Button>
-              </CardContent>
-            </Card>
+            <PartnerCabinet />
           </TabsContent>
         </Tabs>
       </div>
