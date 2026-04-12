@@ -57,13 +57,14 @@ export interface VideoPlayerInlineProps {
   onFinishLesson?: () => void;
   userId?: string;
   lessonId?: string;
+  courseId?: string;
   savedPosition?: number;
   onSavePosition?: (position: number, duration: number) => void;
 }
 
 export const VideoPlayerInline = ({
   content, allowSeek = true, onVideoComplete, onProgressChange,
-  onFinishLesson, userId, lessonId, savedPosition = 0, onSavePosition
+  onFinishLesson, userId, lessonId, courseId, savedPosition = 0, onSavePosition
 }: VideoPlayerInlineProps) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [watchedProgress, setWatchedProgress] = useState(0);
@@ -154,14 +155,21 @@ export const VideoPlayerInline = ({
 
   if (!content) return null;
 
-  // Kinescope video
+  // Kinescope video with DRM auth
   const kinescopeMatch = content.match(/^kinescope:(.+)/) || content.match(/kinescope\.io\/embed\/([a-zA-Z0-9-]+)/);
   if (kinescopeMatch) {
     const videoId = kinescopeMatch[1];
+    let embedSrc = `https://kinescope.io/embed/${videoId}`;
+    // Add DRM auth token if user and course context available
+    if (userId && courseId) {
+      const payload = { userId, courseId, exp: Date.now() + 4 * 60 * 60 * 1000 };
+      const token = btoa(JSON.stringify(payload));
+      embedSrc += `?drmauthtoken=${encodeURIComponent(token)}`;
+    }
     return (
       <div className="aspect-video w-full rounded-2xl overflow-hidden bg-black">
         <iframe
-          src={`https://kinescope.io/embed/${videoId}`}
+          src={embedSrc}
           className="w-full h-full"
           allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
           allowFullScreen

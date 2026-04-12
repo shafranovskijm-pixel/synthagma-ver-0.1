@@ -73,9 +73,21 @@ export const getKinescopeVideoId = (content: string): string | null => {
   return match ? match[1] : null;
 };
 
-// Get Kinescope embed URL
-export const getKinescopeEmbedUrl = (videoId: string): string => {
-  return `https://kinescope.io/embed/${videoId}`;
+// Get Kinescope embed URL (with optional DRM auth token)
+export const getKinescopeEmbedUrl = (videoId: string, drmToken?: string): string => {
+  const base = `https://kinescope.io/embed/${videoId}`;
+  if (drmToken) return `${base}?drmauthtoken=${encodeURIComponent(drmToken)}`;
+  return base;
+};
+
+// Generate a DRM auth token for Kinescope (valid 4 hours)
+export const generateKinescopeDrmToken = (userId: string, courseId: string): string => {
+  const payload = {
+    userId,
+    courseId,
+    exp: Date.now() + 4 * 60 * 60 * 1000, // 4 hours
+  };
+  return btoa(JSON.stringify(payload));
 };
 
 // Helper function to get embed URL from video content
