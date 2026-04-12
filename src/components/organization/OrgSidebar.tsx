@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef } from "react";
 import { 
   BookOpen, Users, Settings, LogOut, 
   Building2, HardHat, HardDrive, CreditCard, Lock, MessageCircle, Wallet,
@@ -104,6 +104,8 @@ export function OrgSidebar() {
   const isMobileSidebarOpen = d.isMobileSidebarOpen;
   const setIsMobileSidebarOpen = d.setIsMobileSidebarOpen;
   const onLogout = d.handleLogout;
+  const { handleLogoUpload, isUploadingLogo } = d.branding;
+  const logoInputRef = useRef<HTMLInputElement>(null);
 
   const [upgradeDialogOpen, setUpgradeDialogOpen] = useState(false);
   const brandHsl = normalizeBrandColor(primaryColor);
@@ -161,15 +163,35 @@ export function OrgSidebar() {
         )}
         style={{ backgroundColor: `hsl(${brandHsl} / 0.07)` }}
       >
-        {/* Logo */}
+        {/* Logo – click to change */}
         <div className="flex justify-center py-4">
-          <div className="flex h-12 w-12 items-center justify-center overflow-hidden rounded-xl border border-border/60 bg-card/80 shadow-sm">
-            {logoUrl ? (
-              <img src={logoUrl} alt="Логотип" className="h-10 w-10 object-contain" />
-            ) : (
-              <SigmaLogo size="sm" />
-            )}
-          </div>
+          <input
+            ref={logoInputRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={handleLogoUpload}
+          />
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                onClick={() => logoInputRef.current?.click()}
+                className="relative flex h-12 w-12 items-center justify-center overflow-hidden rounded-xl border border-border/60 bg-card/80 shadow-sm hover:ring-2 hover:ring-primary/40 transition-all group/logo"
+              >
+                {isUploadingLogo ? (
+                  <div className="animate-spin rounded-full h-5 w-5 border-2 border-primary border-t-transparent" />
+                ) : logoUrl ? (
+                  <img src={logoUrl} alt="Логотип" className="h-10 w-10 object-contain" />
+                ) : (
+                  <SigmaLogo size="sm" />
+                )}
+                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover/logo:opacity-100 transition-opacity flex items-center justify-center rounded-xl">
+                  <Upload className="w-4 h-4 text-white" />
+                </div>
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="right">Нажмите, чтобы изменить значок</TooltipContent>
+          </Tooltip>
         </div>
 
         {/* Navigation pill */}
