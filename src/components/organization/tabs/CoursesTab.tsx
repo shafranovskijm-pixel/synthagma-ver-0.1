@@ -195,7 +195,52 @@ export const CoursesTab = React.memo(function CoursesTab({ organizationId, onCou
 
   // Folder view state - expanded categories
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set(["uncategorized"]));
-  const [folderViewMode, setFolderViewMode] = useState<"folders" | "flat">("folders");
+  const menuSettings = dashboard?.dashboardSettings.menuSettings;
+
+  // Initialize view modes from persisted menu_settings
+  const initializedRef = React.useRef(false);
+  React.useEffect(() => {
+    if (menuSettings && !initializedRef.current) {
+      initializedRef.current = true;
+      if (menuSettings.courseViewMode) setViewMode(menuSettings.courseViewMode as CourseViewMode);
+      if (menuSettings.courseFolderMode) setFolderViewMode(menuSettings.courseFolderMode as "folders" | "flat");
+    }
+  }, [menuSettings]);
+
+  const [folderViewMode, setFolderViewModeLocal] = useState<"folders" | "flat">(
+    (menuSettings?.courseFolderMode as "folders" | "flat") || "folders"
+  );
+
+  // Save view mode to DB
+  const saveViewPrefs = React.useCallback(async (courseViewMode: string, courseFolderMode: string) => {
+    if (!organizationId) return;
+    try {
+      const { data } = await supabase
+        .from('organizations')
+        .select('menu_settings')
+        .eq('id', organizationId)
+        .single();
+      const current = (data?.menu_settings as Record<string, unknown>) || {};
+      await supabase
+        .from('organizations')
+        .update({ menu_settings: { ...current, courseViewMode, courseFolderMode } as any })
+        .eq('id', organizationId);
+    } catch (e) {
+      console.error('Error saving view prefs:', e);
+    }
+  }, [organizationId]);
+
+  const setFolderViewMode = React.useCallback((mode: "folders" | "flat") => {
+    setFolderViewModeLocal(mode);
+    saveViewPrefs(mode === "folders" ? viewMode : viewMode, mode);
+  }, [viewMode, saveViewPrefs]);
+
+  // Wrap setViewMode to also persist
+  const originalSetViewMode = setViewMode;
+  const persistedSetViewMode = React.useCallback((mode: CourseViewMode) => {
+    originalSetViewMode(mode);
+    saveViewPrefs(mode, folderViewMode);
+  }, [originalSetViewMode, folderViewMode, saveViewPrefs]);
 
   // Group courses by category
   const coursesByCategory = useMemo(() => {
