@@ -1,46 +1,53 @@
 
 
-# Исправление: обложка не отображается после генерации
+# Аналитика + SEO + ИИ-автозаполнение настроек курса
 
-## Причина
+## Ответы на вопросы
 
-В `useCourses.ts` строка 85: `if (hasPreloadedData) return;` — когда курсы приходят из dashboard (`initialCourses`), **любой вызов `refresh()` игнорируется**, потому что `hasPreloadedData` всегда `true`. После генерации обложки `refresh()` ничего не делает — новый `cover_image_url` не загружается из БД.
+**Яндекс.Метрика** — да, код внедрения уже работает корректно. При вводе реального ID счётчика (не заглушки "12345678") скрипт Метрики загрузится на странице курса, цели будут отправляться при записи. Заглушки в placeholder — это просто подсказки формата, они не сохраняются, пока пользователь не введёт данные и не нажмёт "Сохранить".
 
-## Решение
+**SEO** — сейчас на странице курса (`/c/slug`) **нет никаких мета-тегов**: ни `<title>`, ни `og:title`, ни `description`, ни canonical URL. Поисковики не смогут нормально проиндексировать страницу. Нужно добавить.
 
-Два изменения в `src/hooks/useCourses.ts`:
+## Что будет сделано
 
-1. **Разрешить fetch при явном refresh даже с preloaded data**: добавить флаг `manualRefresh` — когда `refreshKey > 0`, выполнять fetch независимо от `hasPreloadedData`.
+### 1. SEO мета-теги на странице курса (CourseLanding.tsx)
+Добавить `react-helmet-async` (уже установлен) с динамическими тегами:
+- `<title>` — название курса + организация
+- `<meta name="description">` — описание курса (первые 160 символов)
+- `<meta name="keywords">` — из SEO-настроек
+- `<link rel="canonical">` — канонический URL
+- Open Graph теги: `og:title`, `og:description`, `og:image` (обложка курса), `og:url`, `og:type`
+- JSON-LD структурированные данные (Course schema)
 
-2. **Оптимистичное обновление обложки**: в `handleGenerateCourseCover` в `CoursesTab.tsx` — после успешной генерации, сразу обновить локальное состояние через `updateCourseLocally(courseId, { cover_image_url: data.url })` вместо `refresh()`, чтобы обложка появилась мгновенно без повторного запроса к БД.
+### 2. SEO-настройки в панели управления курсом (CoursePageSettingsContent.tsx)
+Новая вкладка **"SEO"** (5-я вкладка) с полями:
+- **Meta Title** — заголовок для поисковиков (по умолчанию = название курса)
+- **Meta Description** — описание для поисковиков (до 160 символов, счётчик)
+- **Keywords** — ключевые слова через запятую
+- **OG Image URL** — изображение для соцсетей (по умолчанию = обложка курса)
+- **Canonical URL** — переопределение канонической ссылки (необязательно)
 
-### Конкретные правки
+Данные хранятся в `landing_content.seo` (JSON-поле, не требует миграции).
 
-**`src/hooks/useCourses.ts`** — строка 84-85:
-```typescript
-// Было:
-if (hasPreloadedData) return;
+### 3. Кнопка "Заполнить с ИИ" на каждой вкладке настроек
+На вкладках **SEO**, **Форма записи** и **Аналитика** — кнопка "✨ Заполнить с ИИ":
+- **SEO**: ИИ генерирует meta title, description и keywords на основе названия и описания курса
+- **Форма записи**: ИИ подбирает подзаголовок и текст кнопки
+- Используется Lovable AI (edge function), не требует API-ключа от пользователя
 
-// Станет:
-if (hasPreloadedData && refreshKey === 0) return;
-```
-Это позволит `refresh()` (который увеличивает `refreshKey`) работать даже с preloaded data.
-
-**`src/components/organization/tabs/CoursesTab.tsx`** — строка 299-300:
-```typescript
-// Было:
-toast.success("Обложка курса сгенерирована!");
-refresh();
-
-// Станет:
-toast.success("Обложка курса сгенерирована!");
-if (data?.url) {
-  updateCourseLocally(courseId, { cover_image_url: data.url });
-}
-```
-Обложка появится мгновенно без запроса к БД.
+### 4. Проверка индексируемости
+- Убедиться, что страницы `/c/slug` отдают корректный HTML с мета-тегами (SPA — нужен `react-helmet-async`)
+- Добавить `robots` meta tag (index, follow) на страницы курсов
 
 ## Файлы
-- `src/hooks/useCourses.ts` — разрешить refresh при preloaded data
-- `src/components/organization/tabs/CoursesTab.tsx` — оптимистичное обновление обложки
+
+| Файл | Изменение |
+|---|---|
+| `src/pages/CourseLanding.tsx` | Добавить `<Helmet>` с SEO-тегами + JSON-LD |
+| `src/components/course-editor/CoursePageSettingsContent.tsx` | Новая вкладка "SEO" + кнопки "Заполнить с ИИ" |
+| `supabase/functions/generate-seo/index.ts` | Edge function для генерации SEO через Lovable AI |
+
+## Ограничение SPA
+
+Поисковые роботы Google умеют рендерить JavaScript, поэтому `react-helmet-async` будет работать для Google. Для Яндекса и соцсетей (OG-превью в Telegram/VK) может потребоваться SSR или prerendering — это отдельная задача, но мета-теги через Helmet — необходимый первый шаг.
 
