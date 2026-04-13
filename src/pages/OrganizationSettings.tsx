@@ -1,8 +1,8 @@
-import { useState, useEffect, lazy, Suspense } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-import { ArrowLeft, Settings, LayoutGrid, Save, RefreshCw, RotateCcw, Users, FileText, ClipboardList, FileSpreadsheet, BarChart3, Link, HardHat, ShoppingBag, Building2, CreditCard, GraduationCap, Wallet } from "lucide-react";
+import { ArrowLeft, Settings, LayoutGrid, Save, RefreshCw, RotateCcw, Users, FileText, ClipboardList, FileSpreadsheet, BarChart3, Link, HardHat, ShoppingBag, Building2, GraduationCap, Wallet } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
@@ -140,9 +140,6 @@ export default function OrganizationSettings() {
             <TabsTrigger value="student" className="rounded-lg gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm px-4 py-2">
               <GraduationCap className="w-4 h-4" /> Настройки ЛК
             </TabsTrigger>
-            <TabsTrigger value="documents" className="rounded-lg gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm px-4 py-2">
-              <FileText className="w-4 h-4" /> Документы
-            </TabsTrigger>
             <TabsTrigger value="modules" className="rounded-lg gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm px-4 py-2">
               <Settings className="w-4 h-4" /> Управление
             </TabsTrigger>
@@ -210,16 +207,6 @@ export default function OrganizationSettings() {
             </div>
           </TabsContent>
 
-          {/* Tab: Documents */}
-          <TabsContent value="documents">
-            <div>
-              {organizationId && (
-                <OrgDashboardProvider>
-                  <DocumentsModuleWrapper organizationId={organizationId} />
-                </OrgDashboardProvider>
-              )}
-            </div>
-          </TabsContent>
 
           {/* Tab: Module Management — embedded components */}
           <TabsContent value="modules">
@@ -268,12 +255,3 @@ export default function OrganizationSettings() {
   );
 }
 
-const LazyDocumentsTab = lazy(() => import("@/components/organization/tabs/DocumentsTab").then(m => ({ default: m.DocumentsTab })));
-
-function DocumentsModuleWrapper({ organizationId }: { organizationId: string }) {
-  return (
-    <Suspense fallback={<div className="flex justify-center py-8"><div className="animate-spin w-6 h-6 border-2 border-primary border-t-transparent rounded-full" /></div>}>
-      <LazyDocumentsTab organizationId={organizationId} organizationName="" isOrdersEnabled={true} />
-    </Suspense>
-  );
-}
