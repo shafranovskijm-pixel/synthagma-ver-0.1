@@ -354,9 +354,21 @@ export function CourseTestReport({ courseId, courseName, organizationId }: Cours
 
   if (testData.length === 0) {
     return (
-      <div className="text-center py-8 text-muted-foreground">
-        <BarChart3 className="w-8 h-8 mx-auto mb-2 opacity-50" />
-        <p>Нет результатов тестирования</p>
+      <div className="flex flex-col items-center justify-center py-16 px-6">
+        <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-emerald-500/20 to-emerald-500/5 flex items-center justify-center mb-4">
+          <BarChart3 className="w-8 h-8 text-emerald-500" />
+        </div>
+        <h3 className="text-lg font-semibold mb-2">Результаты тестирования</h3>
+        <p className="text-sm text-muted-foreground text-center max-w-md mb-6">
+          Здесь появятся результаты после того, как ученики пройдут тесты. Добавьте тестовые уроки в конструкторе курса, чтобы отслеживать успеваемость.
+        </p>
+        <Button
+          variant="outline"
+          className="rounded-xl gap-2"
+          onClick={() => window.location.href = `/course-builder/${courseId}`}
+        >
+          Перейти в конструктор
+        </Button>
       </div>
     );
   }
