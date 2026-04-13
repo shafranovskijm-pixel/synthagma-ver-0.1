@@ -84,7 +84,7 @@ export function OrgProfileSettings({ organizationId, userId }: OrgProfileSetting
   const loadOrgData = async () => {
     const { data: org } = await supabase
       .from("organizations")
-      .select("name, branding, menu_settings, student_dashboard_settings")
+      .select("name, branding, student_dashboard_settings")
       .eq("id", organizationId)
       .single();
     if (!org) return;
