@@ -184,32 +184,7 @@ export function OrgProfileSettings({ organizationId, userId }: OrgProfileSetting
     window.open("/student", "_blank");
   };
 
-  const resetMenuSettings = async () => {
-    setMenuSettings(DEFAULT_MENU);
-    await supabase
-      .from('organizations')
-      .update({ menu_settings: DEFAULT_MENU as any })
-      .eq('id', organizationId);
-  };
 
-  const reloadMenuSettings = async () => {
-    const { data } = await supabase
-      .from("organizations")
-      .select("menu_settings")
-      .eq("id", organizationId)
-      .single();
-    if (data?.menu_settings) {
-      const m = data.menu_settings as any;
-      setMenuSettings({
-        showStats: m.showStats ?? true,
-        showLinks: m.showLinks ?? true,
-        showLaborSafety: m.showLaborSafety ?? true,
-        showDocuments: m.showDocuments ?? true,
-        showServices: m.showServices ?? true,
-        showCompanies: m.showCompanies ?? true,
-      });
-    }
-  };
 
   const LockedOverlay = ({ requiredPlan = "Старт", features = [] }: { requiredPlan?: string; features?: string[] }) => (
     <div className="absolute inset-0 z-10 bg-background/60 backdrop-blur-[2px] rounded-xl lg:rounded-2xl flex items-center justify-center">
