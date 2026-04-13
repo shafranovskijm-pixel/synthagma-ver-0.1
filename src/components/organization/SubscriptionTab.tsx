@@ -108,6 +108,7 @@ export function SubscriptionTab() {
   const [submitting, setSubmitting] = useState(false);
   const [pendingRequest, setPendingRequest] = useState<{ requested_plan: string; created_at: string } | null>(null);
   const [orgContact, setOrgContact] = useState<{ email?: string; phone?: string; contact_name?: string }>({});
+  const [customEnabledCategories, setCustomEnabledCategories] = useState<string[]>([]);
   const [generatingInvoice, setGeneratingInvoice] = useState(false);
   const nav = useNavigate();
 
