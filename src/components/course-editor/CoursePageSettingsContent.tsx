@@ -305,6 +305,14 @@ export function CoursePageSettingsContent({ courseId, courseTitle, courseDescrip
           <p className="text-xs text-muted-foreground">Если указано, посетители будут перенаправлены на эту ссылку</p>
         </div>
 
+        <div className="flex items-center justify-between rounded-lg border border-border p-4">
+          <div className="space-y-0.5">
+            <Label>Разрешить скачивание материалов</Label>
+            <p className="text-xs text-muted-foreground">Ученики смогут скачивать файлы из раздела «Материалы курса»</p>
+          </div>
+          <Switch checked={allowMaterialsDownload} onCheckedChange={setAllowMaterialsDownload} />
+        </div>
+
         <Button onClick={handleSave} disabled={saving} className="w-full gap-2">
           {saving && <Loader2 className="w-4 h-4 animate-spin" />}
           Сохранить настройки
