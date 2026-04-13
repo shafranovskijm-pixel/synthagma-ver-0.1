@@ -105,17 +105,8 @@ export function OrgProfileSettings({ organizationId, userId }: OrgProfileSetting
       });
     }
     
-    if (org.menu_settings) {
-      const m = org.menu_settings as any;
-      setMenuSettings({
-        showStats: m.showStats ?? true,
-        showLinks: m.showLinks ?? true,
-        showLaborSafety: m.showLaborSafety ?? true,
-        showDocuments: m.showDocuments ?? true,
-        showServices: m.showServices ?? true,
-        showCompanies: m.showCompanies ?? true,
-      });
-    }
+
+
     
     if (org.student_dashboard_settings) {
       const s = org.student_dashboard_settings as any;
