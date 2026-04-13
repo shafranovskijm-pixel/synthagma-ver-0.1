@@ -16,7 +16,7 @@ import {
 import { CourseDocumentsManager } from "@/components/organization/CourseDocumentsManager";
 import { StudentDocumentsManager } from "@/components/organization/StudentDocumentsManager";
 import { BulkDocumentUpload } from "@/components/organization/BulkDocumentUpload";
-import { StudentDetailCard } from "@/components/organization/StudentDetailCard";
+
 import { BulkFRDOExport } from "@/components/organization/BulkFRDOExport";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Loader2 } from "lucide-react";
@@ -229,16 +229,7 @@ export function DialogsContainer() {
         />
       )}
 
-      {/* Student Detail Card */}
-      {d.organizationId && (
-        <StudentDetailCard
-          isOpen={d.studentDetailCard.showStudentDetailCard}
-          onOpenChange={d.studentDetailCard.setShowStudentDetailCard}
-          student={d.studentDetailCard.studentDetailCardData}
-          organizationId={d.organizationId}
-          enrollments={d.studentDetailCard.studentDetailCardEnrollments}
-        />
-      )}
+      {/* Student Detail Card — now a full page at /organization/student/:studentId */}
       
       <BulkFRDOExport
         isOpen={d.enrollmentActions.showBulkFRDOExport}

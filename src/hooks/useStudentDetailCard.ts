@@ -39,38 +39,8 @@ export function useStudentDetailCard() {
   const [studentDetailCardEnrollments, setStudentDetailCardEnrollments] = useState<StudentCardEnrollment[]>([]);
 
   const viewStudent = useCallback(async (student: Student) => {
-    setStudentDetailCardData({
-      id: student.id,
-      user_id: student.user_id,
-      name: student.name,
-      email: student.email,
-      login: student.login,
-      company_name: student.company_name,
-      generated_password: student.generated_password,
-      last_visit_at: student.last_visit_at,
-    });
-
-    // Load enrollments for this student
-    const { data: enrollments } = await supabase
-      .from("enrollments")
-      .select("id, course_id, progress, status, started_at, completed_at, time_spent, access_days, expires_at, courses(title)")
-      .eq("user_id", student.user_id);
-
-    const mapped = (enrollments || []).map((e: any) => ({
-      id: e.id,
-      course_id: e.course_id,
-      course_title: e.courses?.title || "Без названия",
-      progress: e.progress || 0,
-      status: e.status || "active",
-      started_at: e.started_at,
-      completed_at: e.completed_at,
-      time_spent: e.time_spent || 0,
-      access_days: e.access_days,
-      expires_at: e.expires_at,
-    }));
-
-    setStudentDetailCardEnrollments(mapped);
-    setShowStudentDetailCard(true);
+    // Navigate to full-page student detail view
+    window.location.href = `/organization/student/${student.user_id}`;
   }, []);
 
   return {
