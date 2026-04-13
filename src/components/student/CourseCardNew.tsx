@@ -1,4 +1,4 @@
-import { BookOpen, Clock, Lock, CheckCircle2, ShoppingCart, Play } from "lucide-react";
+import { BookOpen, Clock, Lock, CheckCircle2, ShoppingCart, Play, ClipboardCheck } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -15,7 +15,7 @@ interface CourseCardNewProps {
   progress?: number;
   totalLessons?: number;
   completedLessons?: number;
-  status?: "in_progress" | "completed" | "not_enrolled" | "locked";
+  status?: "in_progress" | "completed" | "not_enrolled" | "locked" | "pending";
   needsVideoId?: boolean;
   onClick: () => void;
 }
@@ -98,7 +98,12 @@ export function CourseCardNew({
           </div>
 
           {/* Action button */}
-          {isEnrolled ? (
+          {status === "pending" ? (
+            <Button size="sm" className="w-full gap-1.5" variant="outline" disabled>
+              <ClipboardCheck className="w-3.5 h-3.5" />
+              Заявка отправлена
+            </Button>
+          ) : isEnrolled ? (
             <Button size="sm" className="w-full gap-1.5" variant={status === "completed" ? "outline" : "default"}>
               <Play className="w-3.5 h-3.5" />
               {status === "completed" ? "Пройти заново" : "Продолжить"}
