@@ -84,8 +84,21 @@ const SECTION_DESCRIPTIONS: Partial<Record<DocumentSubTab, string>> = {
   diplomas: "Журнал выданных дипломов о профессиональной переподготовке",
   testimonials: "Журнал выданных свидетельств о квалификации",
   programs: "Управление образовательными программами",
-  billing: "Счета, чеки и акты от платформы",
+  billing: "Договоры, счета и закрывающие документы",
 };
+
+type BillingSubTab = "contracts" | "invoices" | "closing";
+
+interface InvoiceRow {
+  id: string;
+  invoice_number: string;
+  amount: number;
+  status: string;
+  plan: string;
+  period_months: number;
+  invoice_date: string;
+  created_at: string | null;
+}
 
 export const DocumentsTab = React.memo(function DocumentsTab({ organizationId, organizationName, onShowBulkUploadDialog, isOrdersEnabled = true, onNavigateToSubscription }: DocumentsTabProps) {
   const navigate = useNavigate();
