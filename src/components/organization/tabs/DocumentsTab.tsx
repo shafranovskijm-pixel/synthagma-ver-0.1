@@ -5,8 +5,10 @@ import {
   FileText, Upload, BookOpen, Wrench, Building2, ScrollText,
   UserCheck, Stamp, ExternalLink, Lock, ArrowUpRight,
   FolderOpen, Download, Receipt, File, Calendar, Lightbulb, Trash2,
-  Info
+  Info, FileSpreadsheet, Database
 } from "lucide-react";
+import { JournalsManager } from "@/components/organization/JournalsManager";
+import { FRDOManager } from "@/components/organization/FRDOManager";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -39,7 +41,7 @@ import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 
-type DocumentSubTab = "constructor" | "programs" | "org" | "orders" | "protocols" | "certificates" | "diplomas" | "testimonials" | "billing" | "payers";
+type DocumentSubTab = "constructor" | "programs" | "org" | "orders" | "protocols" | "certificates" | "diplomas" | "testimonials" | "billing" | "payers" | "journals" | "frdo";
 
 interface DocumentsTabProps {
   organizationId: string | null;
@@ -74,6 +76,8 @@ const NAV_ITEMS: { value: DocumentSubTab; label: string; shortLabel?: string; ic
   { value: "diplomas", label: "Дипломы", icon: GraduationCap, iconColor: "text-blue-500", group: "docs" },
   { value: "testimonials", label: "Свидетельства", icon: FileCheck, iconColor: "text-rose-500", group: "docs" },
   { value: "programs", label: "Программы", icon: BookOpen, group: "tools" },
+  { value: "journals", label: "Журналы", icon: ClipboardList, iconColor: "text-amber-500", group: "tools" },
+  { value: "frdo", label: "ФИС ФРДО", icon: Database, iconColor: "text-violet-500", group: "tools" },
   { value: "constructor", label: "Конструктор", icon: Wrench, group: "tools" },
 ];
 
@@ -86,6 +90,8 @@ const SECTION_DESCRIPTIONS: Partial<Record<DocumentSubTab, string>> = {
   diplomas: "Журнал выданных дипломов о профессиональной переподготовке",
   testimonials: "Журнал выданных свидетельств о квалификации",
   programs: "Управление образовательными программами",
+  journals: "Журналы учёта обучения",
+  frdo: "Выгрузка данных в ФИС ФРДО",
   billing: "Договоры, счета и закрывающие документы с платформой",
   payers: "Взаиморасчёты с учениками и компаниями",
 };
@@ -594,6 +600,18 @@ export const DocumentsTab = React.memo(function DocumentsTab({ organizationId, o
 
             {activeTab === "programs" && (
               <CourseProgramsList organizationId={organizationId} />
+            )}
+
+            {activeTab === "journals" && (
+              <div className="bg-card rounded-xl lg:rounded-2xl border border-border p-4 lg:p-6">
+                <JournalsManager organizationId={organizationId!} />
+              </div>
+            )}
+
+            {activeTab === "frdo" && (
+              <div className="bg-card rounded-xl lg:rounded-2xl border border-border p-4 lg:p-6">
+                <FRDOManager organizationId={organizationId!} />
+              </div>
             )}
 
             {activeTab === "payers" && (
