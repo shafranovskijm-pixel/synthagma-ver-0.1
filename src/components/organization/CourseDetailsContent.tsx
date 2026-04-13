@@ -372,6 +372,18 @@ export function CourseDetailsContent({
     finally { setIsSavingSettings(false); }
   };
 
+  const handleToggleRequireEnrollmentApproval = async (value: boolean) => {
+    setIsSavingSettings(true);
+    try {
+      const { error } = await supabase.from("courses").update({ require_enrollment_approval: value } as any).eq("id", course.id);
+      if (error) throw error;
+      setRequireEnrollmentApproval(value);
+      toast.success(value ? "Запись по заявке включена" : "Запись по заявке отключена");
+      onCourseUpdated?.();
+    } catch (error) { console.error("Error updating require_enrollment_approval:", error); toast.error("Ошибка сохранения"); }
+    finally { setIsSavingSettings(false); }
+  };
+
   const handleUpdateFrdoSettings = async (field: string, value: string | number | null) => {
     if (!course) return;
     setFrdoSettings(prev => {
@@ -697,6 +709,8 @@ export function CourseDetailsContent({
               defaultAccessDays={defaultAccessDays}
               setDefaultAccessDays={setDefaultAccessDays}
               onUpdateDefaultAccessDays={handleUpdateDefaultAccessDays}
+              requireEnrollmentApproval={requireEnrollmentApproval}
+              onToggleRequireEnrollmentApproval={handleToggleRequireEnrollmentApproval}
               trainingForm={trainingForm}
               onUpdateTrainingForm={handleUpdateTrainingForm}
               frdoSettings={frdoSettings}
