@@ -1,61 +1,42 @@
 
 
-# Два исправления: цена курса + "Организация не найдена"
+# Почему курсы ВЦОТ не загружаются
 
-## Проблема 1: Нет цены на странице курса
+## Корневая причина
 
-В `CoursePageSettingsContent.tsx` нет поля для управления ценой. Таблица `courses` имеет столбец `price` (numeric), но он не используется в настройках страницы курса. Также есть `marketplace_courses` с `price_student` и `price_organization`, но это отдельная система маркетплейса.
+В логах базы данных — массовые **statement timeout** ошибки (код 57014). Причина: **отсутствуют индексы** на ключевых таблицах.
 
-### Решение
-Добавить в `CoursePageSettingsContent.tsx` на вкладку "Страница":
-- Поле "Цена курса (₽)" — числовое, читает/записывает `courses.price`
-- Загружать `price` вместе с `slug, accent_color, landing_content`
-- Сохранять `price` вместе с остальными настройками
-- Показать подсказку: "0 = бесплатный курс"
+Сейчас нет индексов на:
+- `courses.organization_id` — каждый запрос курсов делает seq scan по всей таблице (379 курсов)
+- `enrollments.course_id` — подсчёт студентов сканирует все 477 записей
+- `lessons.course_id` — подсчёт уроков (`lessons(count)`) тоже без индекса
 
-### Файл
-- `src/components/course-editor/CoursePageSettingsContent.tsx`
+При этом RLS-политика на `courses` вызывает `current_organization_id()` для **каждой строки**, что умножает нагрузку.
 
----
+## Что нужно сделать
 
-## Проблема 2: "Организация не найдена" в настройках профиля
-
-Консоль показывает: запрос профиля возвращает 0 строк (PGRST116). Это значит, что для текущего пользователя нет записи в `profiles`. В продакшне это может происходить, если профиль не был создан при регистрации.
-
-### Решение
-В `OrganizationProfile.tsx` сделать загрузку `organizationId` более устойчивой:
-- Если профиль не найден — попробовать загрузить `organization_id` через `organizations` напрямую (где `owner_id = user.id`)
-- Если и там нет — показать более информативное сообщение вместо просто "Организация не найдена"
-- Добавить кнопку "Повторить" для перезагрузки данных
-
-### Файл
-- `src/pages/OrganizationProfile.tsx`
-
----
-
-## Технические детали
-
-### CoursePageSettingsContent.tsx
+### 1. Добавить индексы (миграция)
+```sql
+CREATE INDEX idx_courses_organization_id ON public.courses (organization_id);
+CREATE INDEX idx_enrollments_course_id ON public.enrollments (course_id);
+CREATE INDEX idx_lessons_course_id ON public.lessons (course_id);
 ```
-// loadData: добавить price в select
-supabase.from("courses").select("slug, accent_color, landing_content, price")
+Это основное исправление — запросы перестанут таймаутиться.
 
-// handleSave: добавить price в update
-.update({ slug, accent_color, landing_content, price })
+### 2. Упростить запрос курсов
+В `fetchCourses()` заменить `select(*, lessons(count))` на выборку только нужных столбцов:
+```
+select("id, title, description, is_published, created_at, updated_at, organization_id, category_id, duration, skip_video_identification, sequential_lessons, allow_video_seek, training_form, notify_on_completion, completion_notify_emails, cover_image_url, catalog_order, lessons(count)")
+```
+Это уменьшит объём передаваемых данных.
 
-// UI: новое поле после "Акцентный цвет"
-<Label>Цена курса (₽)</Label>
-<Input type="number" value={price} ... />
-```
+### 3. Убрать подсчёт студентов из начальной загрузки
+Сейчас `fetchCourses` делает 3 запроса подряд (courses → enrollments → user_roles). Даже с try/catch, первый запрос enrollments с `.in("course_id", courseIds)` без индекса тоже может таймаутиться. Убрать подсчёт студентов из `fetchCourses` полностью — загружать его отдельно и лениво (или через отдельный вызов после рендера списка).
 
-### OrganizationProfile.tsx
-```
-// Fallback: если profile не нашёлся, искать через organizations
-const { data: org } = await supabase
-  .from("organizations")
-  .select("id")
-  .eq("owner_id", user.id)
-  .single();
-if (org) setOrganizationId(org.id);
-```
+## Файлы
+- Миграция: `supabase/migrations/` — новые индексы
+- `src/api/courses.ts` — упрощение запроса, вынос studentsCount
+
+## Ожидаемый результат
+Курсы ВЦОТ (и всех организаций) загружаются стабильно без таймаутов.
 
