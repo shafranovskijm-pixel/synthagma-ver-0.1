@@ -26,7 +26,9 @@ export type Database = {
           icon: string
           id: string
           is_secret: boolean | null
+          is_template: boolean
           name: string
+          organization_id: string | null
           rarity: string
         }
         Insert: {
@@ -40,7 +42,9 @@ export type Database = {
           icon: string
           id?: string
           is_secret?: boolean | null
+          is_template?: boolean
           name: string
+          organization_id?: string | null
           rarity?: string
         }
         Update: {
@@ -54,10 +58,20 @@ export type Database = {
           icon?: string
           id?: string
           is_secret?: boolean | null
+          is_template?: boolean
           name?: string
+          organization_id?: string | null
           rarity?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "achievements_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       admin_org_messages: {
         Row: {
