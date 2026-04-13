@@ -204,6 +204,9 @@ export function OrganizationDetailsView({ organization, onBack }: OrganizationDe
     aiGenerationsLimit: (organization as any).custom_ai_generations_limit as number | null,
     storageLimitBytes: (organization as any).custom_storage_limit_bytes as number | null,
   });
+  const [customCategories, setCustomCategories] = useState<string[]>(
+    (organization as any).custom_enabled_categories || []
+  );
 
   const planKey = (organization.subscription_plan as SubscriptionPlan) || 'free';
   const planInfo = getPlanInfo(planKey);
