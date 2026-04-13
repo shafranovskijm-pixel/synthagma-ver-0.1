@@ -2492,7 +2492,7 @@ export function BlockRenderer({ blocks }: { blocks: ContentBlock[] }) {
   const [sliderIndices, setSliderIndices] = useState<Record<string, number>>({});
 
   return (
-    <div className="prose prose-sm max-w-none dark:prose-invert space-y-4 [&_a]:text-primary [&_a]:underline [&_a]:cursor-pointer">
+    <div className="prose prose-sm max-w-none dark:prose-invert space-y-4 [&_a]:!text-primary [&_a]:!underline [&_a]:!underline-offset-2 [&_a]:cursor-pointer [&_a]:break-all [&_a]:transition-opacity hover:[&_a]:opacity-80">
       {blocks.map((block) => (
         <RenderBlock
           key={block.id}
