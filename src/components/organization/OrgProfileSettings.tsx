@@ -118,19 +118,7 @@ export function OrgProfileSettings({ organizationId, userId }: OrgProfileSetting
     }
   };
 
-  const handleSaveMenuSettings = async () => {
-    try {
-      const { error } = await supabase
-        .from('organizations')
-        .update({ menu_settings: menuSettings as any })
-        .eq('id', organizationId);
-      if (error) throw error;
-      toast.success('Настройки меню сохранены');
-    } catch (error) {
-      console.error('Error saving menu settings:', error);
-      toast.error('Ошибка сохранения настроек');
-    }
-  };
+
 
   const handleSaveStudentSettings = async () => {
     setIsSavingSettings(true);
