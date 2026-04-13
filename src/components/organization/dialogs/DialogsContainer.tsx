@@ -5,7 +5,6 @@ import {
   EnrollDialog,
   CategoryDialog,
   InviteEmailDialog,
-  CourseDetailsModal,
   StudentDetailsDialog,
   StudentCoursesDialog,
   OrgDetailsDialog,
