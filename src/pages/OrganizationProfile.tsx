@@ -101,7 +101,6 @@ export default function OrganizationProfile() {
             console.warn("[OrgProfile] No organization found for user:", user.id);
           }
         }
-        }
       } catch (e) {
         console.error("[OrgProfile] Failed to load organization ID:", e);
       } finally {
