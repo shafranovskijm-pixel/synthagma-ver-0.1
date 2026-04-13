@@ -192,7 +192,14 @@ async function seedCourseForOrg(supabase: any, organizationId: string, forceUpda
       };
 
       for (const lesson of existingLessons) {
-        if (lesson.type === "test") continue;
+        if (lesson.type === "test") {
+          // Delete old test questions and re-insert with humorous options
+          await supabase.from("test_questions").delete().eq("lesson_id", lesson.id);
+          const questions = buildTestQuestions(lesson.id);
+          const { error: qErr } = await supabase.from("test_questions").insert(questions);
+          if (qErr) console.error("Test questions update error:", qErr);
+          continue;
+        }
         const newContent = contentMap[lesson.order_index];
         if (newContent) {
           await supabase.from("lessons").update({ content: newContent }).eq("id", lesson.id);
