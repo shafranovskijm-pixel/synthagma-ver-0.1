@@ -366,6 +366,7 @@ export function CourseGroupsTab({ courseId, organizationId, onRefreshStudents }:
         {groups.map(group => {
           const total = groupStudentCounts[group.id] || 0;
           const enrolled = enrolledCounts[group.id] || 0;
+          const available = total - enrolled;
           const allEnrolled = total > 0 && enrolled >= total;
           const isEnrolling = enrollingGroupId === group.id;
           const hasLink = !!groupLinks[group.id];
@@ -378,6 +379,7 @@ export function CourseGroupsTab({ courseId, organizationId, onRefreshStudents }:
                   <div className="font-medium text-sm">{group.name}</div>
                   <div className="text-xs text-muted-foreground">
                     {total} уч. · {enrolled} зачислено
+                    {available > 0 && <span className="text-primary font-medium"> · {available} доступно</span>}
                   </div>
                 </div>
               </div>
