@@ -297,7 +297,9 @@ export const CoursesTab = React.memo(function CoursesTab({ organizationId, onCou
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
       toast.success("Обложка курса сгенерирована!");
-      refresh();
+      if (data?.url) {
+        updateCourseLocally(courseId, { cover_image_url: data.url });
+      }
     } catch (e: any) {
       console.error("AI course cover error:", e);
       toast.error(e?.message || "Ошибка генерации обложки");

@@ -82,7 +82,7 @@ export function useCourses(organizationId: string | null, options?: UseCoursesOp
 
   // Only fetch from DB if no preloaded data provided
   useEffect(() => {
-    if (hasPreloadedData) return; // Skip fetch — using preloaded data from dashboard
+    if (hasPreloadedData && refreshKey === 0) return; // Skip initial fetch — but allow manual refresh
 
     const load = async () => {
       if (!organizationId) {
