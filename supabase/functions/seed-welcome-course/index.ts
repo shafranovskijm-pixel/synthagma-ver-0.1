@@ -312,7 +312,9 @@ async function seedCourseForOrg(supabase: any, organizationId: string, forceUpda
   }
 
   // Generate cover image (async, don't block)
-  generateCoverImage(supabase, courseId, organizationId).catch(e => console.error("Cover bg error:", e));
+  if (!skipCover) {
+    generateCoverImage(supabase, courseId, organizationId).catch(e => console.error("Cover bg error:", e));
+  }
 
   return { created: true, courseId };
 }
