@@ -2619,6 +2619,53 @@ export type Database = {
           },
         ]
       }
+      org_payers: {
+        Row: {
+          created_at: string
+          email: string | null
+          id: string
+          inn: string | null
+          name: string
+          organization_id: string
+          payer_type: Database["public"]["Enums"]["payer_type"]
+          phone: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          email?: string | null
+          id?: string
+          inn?: string | null
+          name: string
+          organization_id: string
+          payer_type?: Database["public"]["Enums"]["payer_type"]
+          phone?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          email?: string | null
+          id?: string
+          inn?: string | null
+          name?: string
+          organization_id?: string
+          payer_type?: Database["public"]["Enums"]["payer_type"]
+          phone?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "org_payers_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       org_staff: {
         Row: {
           bio: string | null
@@ -5722,6 +5769,7 @@ export type Database = {
         | "student"
         | "sales_manager"
         | "company"
+      payer_type: "individual" | "legal_entity"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -5856,6 +5904,7 @@ export const Constants = {
         "sales_manager",
         "company",
       ],
+      payer_type: ["individual", "legal_entity"],
     },
   },
 } as const

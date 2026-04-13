@@ -34,11 +34,12 @@ import { useOrgDashboard } from "@/contexts/OrgDashboardContext";
 import { getSignedStorageUrl } from "@/utils/storageHelpers";
 import { generateAct } from "@/utils/generateAct";
 import { toast } from "@/hooks/use-toast";
+import { PayersSection } from "@/components/organization/PayersSection";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 
-type DocumentSubTab = "constructor" | "programs" | "org" | "orders" | "protocols" | "certificates" | "diplomas" | "testimonials" | "billing";
+type DocumentSubTab = "constructor" | "programs" | "org" | "orders" | "protocols" | "certificates" | "diplomas" | "testimonials" | "billing" | "payers";
 
 interface DocumentsTabProps {
   organizationId: string | null;
@@ -64,7 +65,8 @@ const docTypeLabels: Record<string, { label: string; icon: React.ReactNode }> = 
 };
 
 const NAV_ITEMS: { value: DocumentSubTab; label: string; shortLabel?: string; icon: React.ElementType; ordersOnly?: boolean }[] = [
-  { value: "billing", label: "Договоры", icon: FolderOpen },
+  { value: "billing", label: "Документы Синтагма", icon: FolderOpen },
+  { value: "payers", label: "Плательщики", icon: Users },
   { value: "org", label: "Документы орг.", icon: FileText },
   { value: "orders", label: "Приказы", icon: Users, ordersOnly: true },
   { value: "protocols", label: "Протоколы АК", icon: ClipboardList },
@@ -84,7 +86,8 @@ const SECTION_DESCRIPTIONS: Partial<Record<DocumentSubTab, string>> = {
   diplomas: "Журнал выданных дипломов о профессиональной переподготовке",
   testimonials: "Журнал выданных свидетельств о квалификации",
   programs: "Управление образовательными программами",
-  billing: "Договоры, счета и закрывающие документы",
+  billing: "Договоры, счета и закрывающие документы с платформой",
+  payers: "Взаиморасчёты с учениками и компаниями",
 };
 
 type BillingSubTab = "contracts" | "invoices" | "closing";
@@ -517,6 +520,10 @@ export const DocumentsTab = React.memo(function DocumentsTab({ organizationId, o
 
             {activeTab === "programs" && (
               <ProgramsManager organizationId={organizationId} />
+            )}
+
+            {activeTab === "payers" && (
+              <PayersSection organizationId={organizationId} />
             )}
 
             {activeTab === "billing" && (
