@@ -31,6 +31,7 @@ interface CourseData {
   organization_id: string;
   accent_color: string | null;
   slug: string | null;
+  require_enrollment_approval: boolean;
 }
 
 // Analytics injection
@@ -77,6 +78,7 @@ export default function CourseLanding() {
   const [promoCode, setPromoCode] = useState("");
   const [promoDiscount, setPromoDiscount] = useState<{ value: number; type: string } | null>(null);
   const [promoChecking, setPromoChecking] = useState(false);
+  const [hasPendingRequest, setHasPendingRequest] = useState(false);
 
   const landingContent = course?.landing_content as Record<string, any> | null;
   const analytics = landingContent?.analytics;
@@ -91,7 +93,7 @@ export default function CourseLanding() {
     try {
       let query = supabase
         .from("courses")
-        .select("id, title, description, duration, price, cover_image_url, landing_content, organization_id, accent_color, slug")
+        .select("id, title, description, duration, price, cover_image_url, landing_content, organization_id, accent_color, slug, require_enrollment_approval")
         .eq("is_published", true);
 
       if (slug) query = query.eq("slug", slug);
@@ -113,8 +115,12 @@ export default function CourseLanding() {
       setOrgName(orgRes.data?.name || "");
 
       if (user) {
-        const { data: enrollment } = await supabase.from("enrollments").select("id").eq("user_id", user.id).eq("course_id", courseData.id).maybeSingle();
-        setIsEnrolled(!!enrollment);
+        const [enrollmentRes, requestRes] = await Promise.all([
+          supabase.from("enrollments").select("id").eq("user_id", user.id).eq("course_id", courseData.id).maybeSingle(),
+          supabase.from("enrollment_requests").select("id").eq("user_id", user.id).eq("course_id", courseData.id).eq("status", "pending").maybeSingle(),
+        ]);
+        setIsEnrolled(!!enrollmentRes.data);
+        setHasPendingRequest(!!requestRes.data);
       }
     } catch (e) {
       console.error(e);
@@ -158,6 +164,31 @@ export default function CourseLanding() {
     if (!course) return;
 
     const finalPrice = promoDiscount ? getDiscountedPrice() : course.price;
+    
+    // If course requires approval, create a request instead of direct enrollment
+    if (course.require_enrollment_approval) {
+      try {
+        const { error } = await supabase.from("enrollment_requests").insert({ 
+          user_id: user.id, 
+          course_id: course.id,
+          status: "pending"
+        } as any);
+        if (error) {
+          if (error.code === "23505") {
+            toast.info("Вы уже отправляли заявку на этот курс");
+          } else {
+            throw error;
+          }
+          return;
+        }
+        setHasPendingRequest(true);
+        toast.success("Заявка отправлена!", { description: "Учебный центр рассмотрит вашу заявку" });
+      } catch (e: any) {
+        toast.error("Ошибка отправки заявки", { description: e.message });
+      }
+      return;
+    }
+
     if (finalPrice > 0) {
       toast.info("Заявка отправлена", { description: "Организация свяжется с вами для оплаты" });
       return;
@@ -225,9 +256,13 @@ export default function CourseLanding() {
     <Button size="lg" className="gap-2" onClick={() => navigate(`/course/${course.id}/learn`)}>
       <Play className="w-5 h-5" />Продолжить обучение
     </Button>
+  ) : hasPendingRequest ? (
+    <Button size="lg" disabled className="gap-2 opacity-80">
+      Заявка отправлена
+    </Button>
   ) : (
     <div className="flex items-center gap-2">
-      {course.price > 0 && (
+      {course.price > 0 && !course.require_enrollment_approval && (
         <>
           <Input value={promoCode} onChange={(e) => setPromoCode(e.target.value)} placeholder="Промокод" className="bg-white/10 border-white/20 text-white placeholder:text-white/50 w-32" />
           <Button variant="secondary" size="sm" onClick={checkPromoCode} disabled={promoChecking}>
@@ -236,7 +271,7 @@ export default function CourseLanding() {
         </>
       )}
       <Button size="lg" onClick={() => handleEnroll()} className="bg-white text-black hover:bg-white/90">
-        {finalPrice > 0 ? "Купить курс" : "Записаться бесплатно"}
+        {course.require_enrollment_approval ? "Оставить заявку" : (finalPrice > 0 ? "Купить курс" : "Записаться бесплатно")}
       </Button>
     </div>
   );

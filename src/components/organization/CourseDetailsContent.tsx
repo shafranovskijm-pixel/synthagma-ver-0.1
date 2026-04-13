@@ -42,6 +42,7 @@ import {
   FastForward,
   Search,
   UserPlus,
+  ClipboardCheck,
   FileSpreadsheet,
   Bell,
   Globe,
@@ -64,6 +65,7 @@ import { CourseRemindersTab } from "@/components/organization/CourseRemindersTab
 import { CourseGroupsTab } from "@/components/organization/CourseGroupsTab";
 import { CoursePageSettingsContent } from "@/components/course-editor/CoursePageSettingsContent";
 import { CourseSettingsTabbed } from "@/components/organization/CourseSettingsTabbed";
+import { EnrollmentRequestsTab } from "@/components/organization/EnrollmentRequestsTab";
 
 interface Course {
   id: string;
@@ -113,8 +115,8 @@ interface CourseDetailsContentProps {
   course: Course;
   courseStudents: Student[];
   organizationId: string | null;
-  activeTab: "students" | "materials" | "history" | "tests" | "landing" | "settings" | "reminders" | "groups";
-  onTabChange: (tab: "students" | "materials" | "history" | "tests" | "landing" | "settings" | "reminders" | "groups") => void;
+  activeTab: "students" | "materials" | "history" | "tests" | "landing" | "settings" | "reminders" | "groups" | "requests";
+  onTabChange: (tab: "students" | "materials" | "history" | "tests" | "landing" | "settings" | "reminders" | "groups" | "requests") => void;
   onEnrollStudent: () => void;
   onCourseDeleted?: () => void;
   onCourseUpdated?: () => void;
@@ -148,6 +150,7 @@ export function CourseDetailsContent({
   const [notifyOnCompletion, setNotifyOnCompletion] = useState<boolean>((course as any)?.notify_on_completion ?? false);
   const [completionNotifyEmails, setCompletionNotifyEmails] = useState<string | null>((course as any)?.completion_notify_emails ?? null);
   const [defaultAccessDays, setDefaultAccessDays] = useState<number | null>((course as any)?.default_access_days ?? null);
+  const [requireEnrollmentApproval, setRequireEnrollmentApproval] = useState<boolean>((course as any)?.require_enrollment_approval ?? false);
   const [isSavingSettings, setIsSavingSettings] = useState(false);
   
   const [copyProtection, setCopyProtection] = useState(false);
@@ -187,6 +190,7 @@ export function CourseDetailsContent({
       setNotifyOnCompletion((course as any).notify_on_completion ?? false);
       setCompletionNotifyEmails((course as any).completion_notify_emails ?? null);
       setDefaultAccessDays((course as any).default_access_days ?? null);
+      setRequireEnrollmentApproval((course as any).require_enrollment_approval ?? false);
       setFrdoSettings({
         frdo_program_type: course.frdo_program_type || null,
         frdo_document_type: course.frdo_document_type || null,
@@ -370,6 +374,18 @@ export function CourseDetailsContent({
     finally { setIsSavingSettings(false); }
   };
 
+  const handleToggleRequireEnrollmentApproval = async (value: boolean) => {
+    setIsSavingSettings(true);
+    try {
+      const { error } = await supabase.from("courses").update({ require_enrollment_approval: value } as any).eq("id", course.id);
+      if (error) throw error;
+      setRequireEnrollmentApproval(value);
+      toast.success(value ? "Запись по заявке включена" : "Запись по заявке отключена");
+      onCourseUpdated?.();
+    } catch (error) { console.error("Error updating require_enrollment_approval:", error); toast.error("Ошибка сохранения"); }
+    finally { setIsSavingSettings(false); }
+  };
+
   const handleUpdateFrdoSettings = async (field: string, value: string | number | null) => {
     if (!course) return;
     setFrdoSettings(prev => {
@@ -524,6 +540,7 @@ export function CourseDetailsContent({
             </div>
             {([
               { value: "students" as const, label: "Ученики", icon: Users, color: "text-primary" },
+              { value: "requests" as const, label: "Заявки", icon: ClipboardCheck, color: "text-orange-500" },
               { value: "materials" as const, label: "Материалы", icon: FileText, color: "text-amber-500" },
               { value: "history" as const, label: "История", icon: History, color: "text-violet-500" },
               { value: "tests" as const, label: "Тесты", icon: CheckSquare, color: "text-emerald-500" },
@@ -647,6 +664,14 @@ export function CourseDetailsContent({
             </div>
           )}
 
+          {activeTab === "requests" && (
+            <EnrollmentRequestsTab
+              courseId={course.id}
+              defaultAccessDays={defaultAccessDays}
+              onRefreshStudents={onRefreshStudents}
+            />
+          )}
+
           {activeTab === "materials" && (
             <CourseDocumentsManager courseId={course.id} courseName={course.title} embedded={true} />
           )}
@@ -695,6 +720,8 @@ export function CourseDetailsContent({
               defaultAccessDays={defaultAccessDays}
               setDefaultAccessDays={setDefaultAccessDays}
               onUpdateDefaultAccessDays={handleUpdateDefaultAccessDays}
+              requireEnrollmentApproval={requireEnrollmentApproval}
+              onToggleRequireEnrollmentApproval={handleToggleRequireEnrollmentApproval}
               trainingForm={trainingForm}
               onUpdateTrainingForm={handleUpdateTrainingForm}
               frdoSettings={frdoSettings}
