@@ -689,10 +689,14 @@ const CoursePreview = () => {
                     </span>
                   </div>
                   <div className="flex-1 min-w-0">
-                    <div className="text-sm font-medium line-clamp-2">{lesson.title}</div>
+                    <div className="flex items-center gap-1.5 text-sm font-medium line-clamp-2">
+                      {lesson.title}
+                      {lesson.is_locked && <Lock className="w-3.5 h-3.5 shrink-0 text-amber-500" />}
+                    </div>
                     <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1">
                       <Icon className="w-3 h-3" />
                       {getLessonTypeName(lesson.type)}
+                      {lesson.is_locked && <span className="ml-1 text-amber-500">• Заблокирован</span>}
                     </div>
                   </div>
                 </button>
