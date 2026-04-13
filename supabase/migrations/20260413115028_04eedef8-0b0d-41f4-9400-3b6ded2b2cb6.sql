@@ -1,0 +1,1 @@
+ALTER TABLE public.courses ADD COLUMN allow_materials_download boolean NOT NULL DEFAULT true;
