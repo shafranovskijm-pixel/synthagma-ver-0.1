@@ -129,10 +129,19 @@ export function RichTextEditor({ value, onChange, placeholder, className, minHei
       document.execCommand('unlink', false);
       handleInput();
       editorRef.current?.focus();
-      return;
     }
-    // Link creation is handled by BlockEditor's popover — do nothing here
+    // Link creation is handled by BlockEditor's popover
   };
+
+  // Make links clickable — open in new tab on click
+  const handleClick = useCallback((e: React.MouseEvent) => {
+    const target = e.target as HTMLElement;
+    const anchor = target.closest('a');
+    if (anchor && anchor.href) {
+      e.preventDefault();
+      window.open(anchor.href, '_blank', 'noopener,noreferrer');
+    }
+  }, []);
 
   const toolbarButtons = [
     { command: "bold", icon: Bold, title: "Жирный (Ctrl+B)" },
@@ -178,6 +187,7 @@ export function RichTextEditor({ value, onChange, placeholder, className, minHei
         onInput={handleInput}
         onPaste={handlePaste}
         onBlur={handleBlur}
+        onClick={handleClick}
         data-placeholder={placeholder}
         className={cn(
           "outline-none prose prose-sm dark:prose-invert max-w-none [&]:!font-[inherit] [&]:!tracking-[inherit]",

@@ -1029,37 +1029,44 @@ function SortableBlockItem({ block, isFocused, onFocus, onUpdate, onDelete, onAd
                   onClick={() => {
                     const url = linkUrl.trim();
                     if (!url) return;
-                    const sel = window.getSelection();
 
-                    if (linkHasSelection && savedLinkRange.current && sel) {
-                      // Restore selection and wrap in link
+                    // Find the contenteditable element for this block
+                    const blockEl = document.querySelector(`[data-block-id="${block.id}"] [contenteditable]`) as HTMLElement;
+                    if (!blockEl) return;
+
+                    // CRITICAL: focus the contenteditable FIRST, otherwise execCommand silently fails
+                    blockEl.focus();
+
+                    const sel = window.getSelection();
+                    if (!sel) return;
+
+                    if (linkHasSelection && savedLinkRange.current) {
+                      // Restore saved selection range, then wrap in link
                       sel.removeAllRanges();
                       sel.addRange(savedLinkRange.current);
                       document.execCommand("createLink", false, url);
                     } else {
-                      // Insert link as new element
+                      // No selection — insert new link at end of content
                       const text = linkText.trim() || url;
                       const html = `<a href="${url}" target="_blank" rel="noopener noreferrer">${text}</a>&nbsp;`;
-                      // Try to find the contenteditable and focus it
-                      const blockEl = document.querySelector(`[data-block-id="${block.id}"] [contenteditable]`) as HTMLElement;
-                      if (blockEl) {
-                        blockEl.focus();
-                        document.execCommand("insertHTML", false, html);
-                      }
+                      // Place cursor at end of contenteditable
+                      const range = document.createRange();
+                      range.selectNodeContents(blockEl);
+                      range.collapse(false);
+                      sel.removeAllRanges();
+                      sel.addRange(range);
+                      document.execCommand("insertHTML", false, html);
                     }
 
-                    // Set target="_blank" on all new links in the block
-                    const blockEl = document.querySelector(`[data-block-id="${block.id}"] [contenteditable]`) as HTMLElement;
-                    if (blockEl) {
-                      blockEl.querySelectorAll('a[href]').forEach((a) => {
-                        if (!a.getAttribute('target')) {
-                          a.setAttribute('target', '_blank');
-                          a.setAttribute('rel', 'noopener noreferrer');
-                        }
-                      });
-                      // Trigger input event so RichTextEditor picks up changes
-                      blockEl.dispatchEvent(new Event('input', { bubbles: true }));
-                    }
+                    // Set target="_blank" on all links in the block
+                    blockEl.querySelectorAll('a[href]').forEach((a) => {
+                      if (!a.getAttribute('target')) {
+                        a.setAttribute('target', '_blank');
+                        a.setAttribute('rel', 'noopener noreferrer');
+                      }
+                    });
+                    // Trigger input event so RichTextEditor picks up changes
+                    blockEl.dispatchEvent(new Event('input', { bubbles: true }));
 
                     setLinkPopoverOpen(false);
                     setLinkUrl("");
