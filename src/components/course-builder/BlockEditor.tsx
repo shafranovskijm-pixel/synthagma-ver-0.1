@@ -991,6 +991,9 @@ function SortableBlockItem({ block, isFocused, onFocus, onUpdate, onDelete, onAd
                   savedLinkRange.current = null;
                 }
               }}>
+              <PopoverTrigger asChild>
+                <span className="hidden" />
+              </PopoverTrigger>
               <PopoverContent align="center" className="w-72 p-3 space-y-2" onOpenAutoFocus={(e) => e.preventDefault()}>
                 <p className="text-xs font-medium text-foreground">
                   {linkHasSelection ? "Обернуть выделенный текст в ссылку" : "Вставить ссылку"}
