@@ -6,6 +6,7 @@ import { ArrowLeft, FileText, CreditCard, Handshake, HelpCircle, User, LogOut, S
 import { Button } from "@/components/ui/button";
 import { OrgDashboardProvider, useOrgDashboard } from "@/contexts/OrgDashboardContext";
 import { OrgDashboardFooter } from "@/components/organization/OrgDashboardFooter";
+import { OrgSidebar } from "@/components/organization/OrgSidebar";
 import { OrgNotifications } from "@/components/organization/OrgNotifications";
 import { SigmaLogo } from "@/components/ui/SigmaLogo";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -59,7 +60,9 @@ function DocumentsPageInner({ organizationId }: { organizationId: string }) {
   const initials = getUserInitials(userEmail);
 
   return (
-    <div className="min-h-screen bg-background flex flex-col">
+    <div className="min-h-screen bg-background flex">
+      <OrgSidebar />
+      <main className="flex-1 flex flex-col min-w-0 lg:ml-[88px]">
       {/* Sticky header */}
       <header className="sticky top-0 z-30 bg-card border-b border-border">
         {/* Top bar */}
@@ -206,6 +209,7 @@ function DocumentsPageInner({ organizationId }: { organizationId: string }) {
 
       {/* Footer */}
       <OrgDashboardFooter />
+      </main>
     </div>
   );
 }
