@@ -112,7 +112,7 @@ function StudentPageInner({ organizationId, studentId }: { organizationId: strin
       // studentId here is the profile/member id — try to find user
       const { data: profile } = await supabase
         .from("profiles")
-        .select("user_id, full_name, email, login, generated_password, last_visit_at, organization_id")
+        .select("user_id, full_name, email, login, generated_password, last_visit_at, organization_id, company_id, companies(name)")
         .eq("user_id", studentId)
         .maybeSingle();
 
@@ -121,16 +121,7 @@ function StudentPageInner({ organizationId, studentId }: { organizationId: strin
         return;
       }
 
-      // Get company name if attached
-      let companyName: string | null = null;
-      const { data: companyMember } = await supabase
-        .from("company_members")
-        .select("company_id, companies(name)")
-        .eq("user_id", profile.user_id)
-        .maybeSingle();
-      if (companyMember && (companyMember as any).companies) {
-        companyName = (companyMember as any).companies.name;
-      }
+      const companyName = (profile as any).companies?.name || null;
 
       setStudent({
         id: profile.user_id,
