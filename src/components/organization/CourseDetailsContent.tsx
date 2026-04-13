@@ -63,6 +63,7 @@ import {
 import { CourseRemindersTab } from "@/components/organization/CourseRemindersTab";
 import { CourseGroupsTab } from "@/components/organization/CourseGroupsTab";
 import { CoursePageSettingsContent } from "@/components/course-editor/CoursePageSettingsContent";
+import { CourseSettingsTabbed } from "@/components/organization/CourseSettingsTabbed";
 
 interface Course {
   id: string;
@@ -674,156 +675,33 @@ export function CourseDetailsContent({
           )}
 
           {activeTab === "settings" && (
-            <div className="space-y-6">
-              <h3 className="font-semibold">Настройки курса</h3>
-              <div className="bg-secondary/30 rounded-xl p-4 space-y-6">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-start gap-3">
-                    <div className="p-2 rounded-lg bg-primary/10 mt-0.5"><Video className="w-5 h-5 text-primary" /></div>
-                    <div><Label htmlFor="skip-video-id" className="text-sm font-medium">Отключить видеоидентификацию</Label><p className="text-xs text-muted-foreground mt-1">Если включено, слушатели этого курса смогут начать обучение без прохождения видеоидентификации</p></div>
-                  </div>
-                  <Switch id="skip-video-id" checked={skipVideoId} onCheckedChange={handleToggleSkipVideoId} disabled={isSavingSettings} />
-                </div>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-start gap-3">
-                    <div className="p-2 rounded-lg bg-amber-500/10 mt-0.5"><Lock className="w-5 h-5 text-amber-500" /></div>
-                    <div><Label htmlFor="sequential-lessons" className="text-sm font-medium">Последовательное прохождение уроков</Label><p className="text-xs text-muted-foreground mt-1">Если включено, ученики смогут открывать следующий урок только после завершения предыдущего</p></div>
-                  </div>
-                  <Switch id="sequential-lessons" checked={sequentialLessons} onCheckedChange={handleToggleSequentialLessons} disabled={isSavingSettings} />
-                </div>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-start gap-3">
-                    <div className="p-2 rounded-lg bg-destructive/10 mt-0.5"><FastForward className="w-5 h-5 text-destructive" /></div>
-                    <div><Label htmlFor="allow-video-seek" className="text-sm font-medium">Разрешить перемотку видео</Label><p className="text-xs text-muted-foreground mt-1">Если выключено, ученики не смогут перематывать видео вперёд (только назад)</p></div>
-                  </div>
-                  <Switch id="allow-video-seek" checked={allowVideoSeek} onCheckedChange={handleToggleAllowVideoSeek} disabled={isSavingSettings} />
-                </div>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-start gap-3">
-                    <div className="p-2 rounded-lg bg-emerald-500/10 mt-0.5"><ShieldCheck className="w-5 h-5 text-emerald-500" /></div>
-                    <div><Label htmlFor="copy-protection" className="text-sm font-medium">Включить защиту от копирования текста</Label><p className="text-xs text-muted-foreground mt-1">Запрет выделения и копирования текста уроков для учеников</p></div>
-                  </div>
-                  <Switch id="copy-protection" checked={copyProtection} onCheckedChange={handleToggleCopyProtection} disabled={isSavingSettings} />
-                </div>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-start gap-3">
-                    <div className="p-2 rounded-lg bg-blue-500/10 mt-0.5"><Droplets className="w-5 h-5 text-blue-500" /></div>
-                    <div><Label htmlFor="video-watermark" className="text-sm font-medium">Включить водяные знаки на видео</Label><p className="text-xs text-muted-foreground mt-1">Полупрозрачный водяной знак с email ученика поверх видео</p></div>
-                  </div>
-                  <Switch id="video-watermark" checked={videoWatermark} onCheckedChange={handleToggleVideoWatermark} disabled={isSavingSettings} />
-                </div>
-                <div className="space-y-3">
-                  <div className="flex items-start gap-3">
-                    <div className="p-2 rounded-lg bg-cyan-500/10 mt-0.5"><Clock className="w-5 h-5 text-cyan-500" /></div>
-                    <div className="flex-1">
-                      <Label className="text-sm font-medium">Срок доступа к курсу (дней)</Label>
-                      <p className="text-xs text-muted-foreground mt-1">Количество дней доступа после зачисления. Пустое значение — безлимитный доступ</p>
-                      <Input type="number" min={1} value={defaultAccessDays ?? ""} onChange={(e) => setDefaultAccessDays(e.target.value ? parseInt(e.target.value) : null)} onBlur={(e) => handleUpdateDefaultAccessDays(e.target.value)} placeholder="Безлимитный" className="mt-2 rounded-lg w-48" disabled={isSavingSettings} />
-                    </div>
-                  </div>
-                </div>
-                <div className="space-y-3">
-                  <div className="flex items-start gap-3">
-                    <div className="p-2 rounded-lg bg-purple-500/10 mt-0.5"><ExternalLink className="w-5 h-5 text-purple-500" /></div>
-                    <div className="flex-1">
-                      <Label className="text-sm font-medium">Переход по внешней ссылке при клике на карточку</Label>
-                      <p className="text-xs text-muted-foreground mt-1">Если указано, клик по карточке курса в каталоге откроет эту ссылку</p>
-                      <Input value={externalCardUrl} onChange={(e) => setExternalCardUrl(e.target.value)} onBlur={(e) => handleUpdateExternalCardUrl(e.target.value)} placeholder="https://example.com/course-page" className="mt-2 rounded-lg" disabled={isSavingSettings} />
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
+            <CourseSettingsTabbed
+              course={course}
+              isFrdoEnabled={isFrdoEnabled}
+              isSavingSettings={isSavingSettings}
+              skipVideoId={skipVideoId}
+              onToggleSkipVideoId={handleToggleSkipVideoId}
+              sequentialLessons={sequentialLessons}
+              onToggleSequentialLessons={handleToggleSequentialLessons}
+              allowVideoSeek={allowVideoSeek}
+              onToggleAllowVideoSeek={handleToggleAllowVideoSeek}
+              copyProtection={copyProtection}
+              onToggleCopyProtection={handleToggleCopyProtection}
+              videoWatermark={videoWatermark}
+              onToggleVideoWatermark={handleToggleVideoWatermark}
+              externalCardUrl={externalCardUrl}
+              setExternalCardUrl={setExternalCardUrl}
+              onUpdateExternalCardUrl={handleUpdateExternalCardUrl}
+              defaultAccessDays={defaultAccessDays}
+              setDefaultAccessDays={setDefaultAccessDays}
+              onUpdateDefaultAccessDays={handleUpdateDefaultAccessDays}
+              trainingForm={trainingForm}
+              onUpdateTrainingForm={handleUpdateTrainingForm}
+              frdoSettings={frdoSettings}
+              onUpdateFrdoSettings={handleUpdateFrdoSettings}
+            />
           )}
 
-          {activeTab === "settings" && isFrdoEnabled && (
-            <div className="space-y-4 mt-6">
-              <div className="flex items-center gap-2"><FileSpreadsheet className="w-5 h-5 text-primary" /><h3 className="font-semibold">Настройки ФИС ФРДО</h3></div>
-              <p className="text-sm text-muted-foreground">Эти настройки будут автоматически применяться при экспорте данных курса в ФИС ФРДО</p>
-              <div className="bg-secondary/30 rounded-xl p-4 space-y-4">
-                <div className="space-y-2">
-                  <Label>Форма обучения</Label>
-                  <Select value={trainingForm} onValueChange={handleUpdateTrainingForm} disabled={isSavingSettings}>
-                    <SelectTrigger className="rounded-xl"><SelectValue placeholder="Выберите форму обучения" /></SelectTrigger>
-                    <SelectContent>{FRDO_TRAINING_FORMS.map((form) => (<SelectItem key={form} value={form}>{form}</SelectItem>))}</SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label>Тип программы</Label>
-                  <Select value={frdoSettings.frdo_program_type || ""} onValueChange={(value) => handleUpdateFrdoSettings("frdo_program_type", value || null)} disabled={isSavingSettings}>
-                    <SelectTrigger className="rounded-xl"><SelectValue placeholder="Выберите тип программы" /></SelectTrigger>
-                    <SelectContent>{FRDO_PROGRAM_TYPES.map((type) => (<SelectItem key={type.value} value={type.value}>{type.label}</SelectItem>))}</SelectContent>
-                  </Select>
-                </div>
-                {frdoSettings.frdo_program_type && (
-                  <div className="space-y-2">
-                    <Label>Вид документа</Label>
-                    <Input value={frdoSettings.frdo_document_type || ""} className="rounded-xl bg-muted" disabled />
-                    <p className="text-xs text-muted-foreground">Определяется автоматически на основе типа программы</p>
-                  </div>
-                )}
-                {(frdoSettings.frdo_program_type === "qualification_upgrade" || frdoSettings.frdo_program_type === "professional_retraining") && (
-                  <>
-                    <div className="space-y-2">
-                      <Label>Область профессиональной деятельности</Label>
-                      <Select value={frdoSettings.frdo_professional_area || ""} onValueChange={(value) => handleUpdateFrdoSettings("frdo_professional_area", value || null)} disabled={isSavingSettings}>
-                        <SelectTrigger className="rounded-xl"><SelectValue placeholder="Выберите область деятельности" /></SelectTrigger>
-                        <SelectContent className="max-h-60">{FRDO_PROFESSIONAL_AREAS.map((area) => (<SelectItem key={area} value={area}>{area}</SelectItem>))}</SelectContent>
-                      </Select>
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Укрупненная группа специальностей</Label>
-                      <Select value={frdoSettings.frdo_specialty_group || ""} onValueChange={(value) => handleUpdateFrdoSettings("frdo_specialty_group", value || null)} disabled={isSavingSettings}>
-                        <SelectTrigger className="rounded-xl"><SelectValue placeholder="Выберите группу специальностей" /></SelectTrigger>
-                        <SelectContent className="max-h-60">{FRDO_SPECIALTY_GROUPS.map((group) => (<SelectItem key={group} value={group}>{group}</SelectItem>))}</SelectContent>
-                      </Select>
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Наименование квалификации/специальности</Label>
-                      <Input defaultValue={frdoSettings.frdo_qualification_name || ""} onBlur={(e) => handleUpdateFrdoSettings("frdo_qualification_name", e.target.value || null)} placeholder="Например: специалист по охране труда" className="rounded-xl" disabled={isSavingSettings} />
-                    </div>
-                  </>
-                )}
-                {frdoSettings.frdo_program_type === "professional_training" && (
-                  <>
-                    <div className="space-y-2">
-                      <Label>Наименование профессии</Label>
-                      <Input defaultValue={frdoSettings.frdo_profession_name || ""} onBlur={(e) => handleUpdateFrdoSettings("frdo_profession_name", e.target.value || null)} placeholder="Например: машинист крана" className="rounded-xl" disabled={isSavingSettings} />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Квалификационный разряд</Label>
-                      <Input defaultValue={frdoSettings.frdo_qualification_rank || ""} onBlur={(e) => handleUpdateFrdoSettings("frdo_qualification_rank", e.target.value || null)} placeholder="Например: 4 разряд" className="rounded-xl" disabled={isSavingSettings} />
-                    </div>
-                  </>
-                )}
-                {!frdoSettings.frdo_program_type && (<p className="text-sm text-muted-foreground italic">Выберите тип программы для отображения дополнительных полей</p>)}
-                <div className="space-y-2">
-                  <Label>Срок обучения, часов (для документа о квалификации)</Label>
-                  <Input type="number" defaultValue={frdoSettings.frdo_duration_hours ?? ""} onBlur={(e) => { const val = e.target.value ? parseInt(e.target.value) : null; handleUpdateFrdoSettings("frdo_duration_hours", val); }} placeholder="Например: 72" className="rounded-xl" disabled={isSavingSettings} />
-                </div>
-                <div className="space-y-2">
-                  <Label>Источник финансирования обучения</Label>
-                  <Select value={frdoSettings.frdo_financing_source || ""} onValueChange={(value) => handleUpdateFrdoSettings("frdo_financing_source", value || null)} disabled={isSavingSettings}>
-                    <SelectTrigger className="rounded-xl"><SelectValue placeholder="Выберите источник финансирования" /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Платное обучение">Платное обучение</SelectItem>
-                      <SelectItem value="Бюджетное обучение">Бюджетное обучение</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label>Форма получения образования на момент прекращения образовательных отношений</Label>
-                  <Select value={frdoSettings.frdo_education_form || ""} onValueChange={(value) => handleUpdateFrdoSettings("frdo_education_form", value || null)} disabled={isSavingSettings}>
-                    <SelectTrigger className="rounded-xl"><SelectValue placeholder="Выберите форму получения образования" /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="в образовательной организации">в образовательной организации</SelectItem>
-                      <SelectItem value="вне образовательной организации">вне образовательной организации</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-            </div>
-          )}
 
           {activeTab === "reminders" && (
             <CourseRemindersTab
