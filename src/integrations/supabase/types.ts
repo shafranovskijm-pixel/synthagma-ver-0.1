@@ -4027,6 +4027,7 @@ export type Database = {
           inn: string | null
           name: string | null
           organization_id: string
+          student_group_id: string | null
           token: string
           used_count: number
         }
@@ -4039,6 +4040,7 @@ export type Database = {
           inn?: string | null
           name?: string | null
           organization_id: string
+          student_group_id?: string | null
           token: string
           used_count?: number
         }
@@ -4051,6 +4053,7 @@ export type Database = {
           inn?: string | null
           name?: string | null
           organization_id?: string
+          student_group_id?: string | null
           token?: string
           used_count?: number
         }
@@ -4074,6 +4077,13 @@ export type Database = {
             columns: ["organization_id"]
             isOneToOne: false
             referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "registration_links_student_group_id_fkey"
+            columns: ["student_group_id"]
+            isOneToOne: false
+            referencedRelation: "student_groups"
             referencedColumns: ["id"]
           },
         ]
@@ -5825,6 +5835,7 @@ export type Database = {
           id: string
           name: string
           organization_id: string
+          student_group_id: string
           token: string
           used_count: number
         }[]

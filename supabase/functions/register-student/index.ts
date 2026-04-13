@@ -73,7 +73,7 @@ serve(async (req) => {
       );
     }
 
-    const { email, password, full_name, organization_id, course_id, company_id, custom_login, custom_password } = await req.json();
+    const { email, password, full_name, organization_id, course_id, company_id, custom_login, custom_password, student_group_id } = await req.json();
 
     console.log(`Registering student: ${full_name} (${email}) for org: ${organization_id}`);
 
@@ -252,7 +252,8 @@ serve(async (req) => {
           login: generatedLogin,
           generated_password: generatedPassword,
           organization_id: effectiveOrgId,
-          company_id: effectiveCompanyId || null
+          company_id: effectiveCompanyId || null,
+          student_group_id: student_group_id || null
         }, { onConflict: "user_id" });
 
       if (profileInsertError) {
