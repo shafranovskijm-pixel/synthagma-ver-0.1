@@ -201,9 +201,11 @@ async function seedCourseForOrg(supabase: any, organizationId: string, forceUpda
     }
 
     // Generate cover if missing
-    const { data: courseData } = await supabase.from("courses").select("cover_image_url").eq("id", existing.id).single();
-    if (!courseData?.cover_image_url) {
-      await generateCoverImage(supabase, existing.id, organizationId);
+    if (!skipCover) {
+      const { data: courseData } = await supabase.from("courses").select("cover_image_url").eq("id", existing.id).single();
+      if (!courseData?.cover_image_url) {
+        await generateCoverImage(supabase, existing.id, organizationId);
+      }
     }
 
     return { updated: true, courseId: existing.id };
@@ -337,7 +339,7 @@ Deno.serve(async (req) => {
       const results: any[] = [];
       for (const org of orgs || []) {
         try {
-          const res = await seedCourseForOrg(supabase, org.id, forceUpdate);
+          const res = await seedCourseForOrg(supabase, org.id, forceUpdate, true);
           results.push({ orgId: org.id, name: org.name, ...res });
         } catch (e) {
           results.push({ orgId: org.id, name: org.name, error: e.message });
