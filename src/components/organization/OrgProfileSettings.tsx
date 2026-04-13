@@ -54,14 +54,7 @@ const DEFAULT_BRANDING: BrandingSettings = {
   customSubtitle: '',
 };
 
-const DEFAULT_MENU: MenuSettings = {
-  showStats: true,
-  showLinks: true,
-  showLaborSafety: true,
-  showDocuments: true,
-  showServices: true,
-  showCompanies: true,
-};
+
 
 const DEFAULT_STUDENT: StudentDashboardSettings = {
   showAchievements: false,
