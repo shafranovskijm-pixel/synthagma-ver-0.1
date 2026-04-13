@@ -21,6 +21,7 @@ import {
   FileSpreadsheet,
   Settings,
   KeyRound,
+  ClipboardCheck,
 } from "lucide-react";
 import {
   FRDO_PROGRAM_TYPES,
@@ -53,6 +54,8 @@ interface CourseSettingsTabbedProps {
   defaultAccessDays: number | null;
   setDefaultAccessDays: (v: number | null) => void;
   onUpdateDefaultAccessDays: (v: string) => void;
+  requireEnrollmentApproval: boolean;
+  onToggleRequireEnrollmentApproval: (v: boolean) => void;
   trainingForm: string;
   onUpdateTrainingForm: (v: string) => void;
   frdoSettings: CourseFRDOSettings;
@@ -76,6 +79,7 @@ export function CourseSettingsTabbed(props: CourseSettingsTabbedProps) {
     videoWatermark, onToggleVideoWatermark,
     externalCardUrl, setExternalCardUrl, onUpdateExternalCardUrl,
     defaultAccessDays, setDefaultAccessDays, onUpdateDefaultAccessDays,
+    requireEnrollmentApproval, onToggleRequireEnrollmentApproval,
     trainingForm, onUpdateTrainingForm,
     frdoSettings, onUpdateFrdoSettings,
   } = props;
@@ -167,6 +171,9 @@ export function CourseSettingsTabbed(props: CourseSettingsTabbedProps) {
                 </div>
               </div>
             </div>
+            <SettingRow icon={ClipboardCheck} iconColor="bg-orange-500/10 text-orange-500" label="Запись по заявке" desc="Студенты отправляют заявку вместо автоматической записи. Вы получите уведомление для подтверждения">
+              <Switch checked={requireEnrollmentApproval} onCheckedChange={onToggleRequireEnrollmentApproval} disabled={isSavingSettings} />
+            </SettingRow>
           </div>
         </div>
       )}
