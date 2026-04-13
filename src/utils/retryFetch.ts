@@ -3,7 +3,7 @@
  * Designed for Supabase queries that may fail due to transient network/connection issues.
  */
 
-const RETRY_DELAYS = [0, 1000, 3000]; // immediate, 1s, 3s
+const RETRY_DELAYS = [0, 3000, 6000]; // immediate, 3s, 6s
 
 export async function withRetry<T>(
   fn: () => PromiseLike<T> | Promise<T>,
