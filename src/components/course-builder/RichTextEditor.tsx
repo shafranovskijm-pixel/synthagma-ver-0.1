@@ -187,6 +187,7 @@ export function RichTextEditor({ value, onChange, placeholder, className, minHei
         onInput={handleInput}
         onPaste={handlePaste}
         onBlur={handleBlur}
+        onClick={handleClick}
         data-placeholder={placeholder}
         className={cn(
           "outline-none prose prose-sm dark:prose-invert max-w-none [&]:!font-[inherit] [&]:!tracking-[inherit]",
