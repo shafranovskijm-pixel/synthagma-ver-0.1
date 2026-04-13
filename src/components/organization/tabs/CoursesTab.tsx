@@ -246,6 +246,7 @@ export const CoursesTab = React.memo(function CoursesTab({ organizationId, onCou
     courses,
     categories,
     isLoading,
+    error: loadError,
     filter,
     setFilter,
     categoryFilter,
@@ -1455,8 +1456,25 @@ export const CoursesTab = React.memo(function CoursesTab({ organizationId, onCou
         <div className="flex items-center justify-center py-12">
           <Loader2 className="w-8 h-8 animate-spin text-primary" />
         </div>
-      ) : filteredCourses.length === 0 ? (
+      ) : loadError ? (
+        <div className="py-12 text-center space-y-4">
+          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-destructive/10 mb-2">
+            <BookOpen className="w-8 h-8 text-destructive" />
+          </div>
+          <h3 className="text-lg font-semibold text-foreground">Не удалось загрузить курсы</h3>
+          <p className="text-sm text-muted-foreground max-w-md mx-auto">
+            Произошла ошибка при загрузке. Попробуйте обновить страницу.
+          </p>
+          <Button variant="outline" onClick={refresh} className="gap-2">
+            Попробовать снова
+          </Button>
+        </div>
+      ) : filteredCourses.length === 0 && courses.length === 0 ? (
         <CoursesEmptyState onCreateCourse={handleOpenCreateCourseDialog} />
+      ) : filteredCourses.length === 0 ? (
+        <div className="py-12 text-center">
+          <p className="text-muted-foreground">Нет курсов, соответствующих фильтрам</p>
+        </div>
       ) : folderViewMode === "folders" ? (
         <div className="space-y-3">
           {/* Render categories as folders */}

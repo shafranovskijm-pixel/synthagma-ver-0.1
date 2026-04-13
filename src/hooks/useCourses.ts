@@ -17,6 +17,7 @@ import { toast } from "sonner";
 
 interface UseCoursesReturn {
   courses: Course[];
+  error: string | null;
   categories: CourseCategory[];
   isLoading: boolean;
   // Filtering
@@ -48,6 +49,7 @@ export function useCourses(organizationId: string | null): UseCoursesReturn {
   const [courses, setCourses] = useState<Course[]>([]);
   const [categories, setCategories] = useState<CourseCategory[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
   
   // Filters
@@ -65,6 +67,7 @@ export function useCourses(organizationId: string | null): UseCoursesReturn {
       }
 
       setIsLoading(true);
+      setError(null);
       try {
         const [coursesData, categoriesData] = await Promise.all([
           fetchCourses(organizationId),
@@ -72,8 +75,9 @@ export function useCourses(organizationId: string | null): UseCoursesReturn {
         ]);
         setCourses(coursesData);
         setCategories(categoriesData);
-      } catch (error) {
-        console.error("Error loading courses:", error);
+      } catch (err: any) {
+        console.error("Error loading courses:", err);
+        setError(err?.message || "Не удалось загрузить курсы");
       } finally {
         setIsLoading(false);
       }
@@ -240,6 +244,7 @@ export function useCourses(organizationId: string | null): UseCoursesReturn {
     courses,
     categories,
     isLoading,
+    error,
     filter,
     setFilter,
     categoryFilter,

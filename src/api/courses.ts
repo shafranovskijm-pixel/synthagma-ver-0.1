@@ -4,6 +4,7 @@ import type { Course, CourseCategory, Enrollment } from "@/types";
 // ============= Courses API =============
 
 export async function fetchCourses(organizationId: string): Promise<Course[]> {
+  // Step 1: Load core course data — this must succeed
   const { data: coursesData, error } = await supabase
     .from("courses")
     .select(`*, lessons(count)`)
@@ -13,61 +14,71 @@ export async function fetchCourses(organizationId: string): Promise<Course[]> {
 
   if (error) {
     console.error("Error fetching courses:", error);
-    return [];
+    throw error; // Propagate so caller can distinguish error from empty
   }
 
-  // Get enrollments for all courses
-  const courseIds = (coursesData || []).map(c => c.id);
-  
-  let enrollments: Enrollment[] = [];
-  if (courseIds.length > 0) {
-    const { data } = await supabase
+  if (!coursesData || coursesData.length === 0) return [];
+
+  // Step 2: Try to load student counts — failures are non-fatal
+  let studentCountMap = new Map<string, number>();
+  try {
+    const courseIds = coursesData.map(c => c.id);
+    const { data: enrollments } = await supabase
       .from("enrollments")
-      .select("*")
+      .select("course_id, user_id")
       .in("course_id", courseIds);
-    enrollments = (data || []) as Enrollment[];
+
+    if (enrollments && enrollments.length > 0) {
+      // Exclude org/admin accounts
+      const enrollmentUserIds = Array.from(new Set(enrollments.map(e => e.user_id)));
+      let orgAdminUserIds = new Set<string>();
+      try {
+        const { data: rolesData } = await supabase
+          .from("user_roles")
+          .select("user_id, role")
+          .in("user_id", enrollmentUserIds)
+          .in("role", ["organization", "admin"]);
+        orgAdminUserIds = new Set((rolesData || []).map(r => r.user_id));
+      } catch (e) {
+        console.warn("Failed to fetch user roles for student count filtering:", e);
+      }
+
+      // Count unique students per course
+      for (const courseId of courseIds) {
+        const uniqueStudents = new Set(
+          enrollments
+            .filter(e => e.course_id === courseId && !orgAdminUserIds.has(e.user_id))
+            .map(e => e.user_id)
+        );
+        studentCountMap.set(courseId, uniqueStudents.size);
+      }
+    }
+  } catch (e) {
+    console.warn("Failed to load student counts (non-fatal):", e);
   }
 
-  // Exclude organization/admin accounts from student counters
-  const enrollmentUserIds = Array.from(new Set(enrollments.map(e => e.user_id)));
-  let orgAdminUserIds = new Set<string>();
-  if (enrollmentUserIds.length > 0) {
-    const { data: rolesData } = await supabase
-      .from("user_roles")
-      .select("user_id, role")
-      .in("user_id", enrollmentUserIds)
-      .in("role", ["organization", "admin"]);
-    orgAdminUserIds = new Set((rolesData || []).map(r => r.user_id));
-  }
-
-  // Build courses with stats
-  return (coursesData || []).map((course: any) => {
-    const courseEnrollments = enrollments
-      .filter(e => e.course_id === course.id)
-      .filter(e => !orgAdminUserIds.has(e.user_id));
-    const uniqueStudentIds = new Set(courseEnrollments.map(e => e.user_id));
-    return {
-      id: course.id,
-      title: course.title,
-      description: course.description,
-      is_published: course.is_published,
-      created_at: course.created_at,
-      updated_at: course.updated_at,
-      organization_id: course.organization_id,
-      category_id: course.category_id,
-      duration: course.duration,
-      lessonsCount: course.lessons?.[0]?.count || 0,
-      studentsCount: uniqueStudentIds.size,
-      skip_video_identification: course.skip_video_identification ?? false,
-      sequential_lessons: course.sequential_lessons ?? false,
-      allow_video_seek: course.allow_video_seek ?? true,
-      training_form: course.training_form ?? "Очная",
-      notify_on_completion: course.notify_on_completion ?? false,
-      completion_notify_emails: course.completion_notify_emails ?? null,
-      cover_image_url: course.cover_image_url ?? null,
-      catalog_order: course.catalog_order ?? 0,
-    };
-  });
+  // Step 3: Build result — always returns courses even without stats
+  return coursesData.map((course: any) => ({
+    id: course.id,
+    title: course.title,
+    description: course.description,
+    is_published: course.is_published,
+    created_at: course.created_at,
+    updated_at: course.updated_at,
+    organization_id: course.organization_id,
+    category_id: course.category_id,
+    duration: course.duration,
+    lessonsCount: course.lessons?.[0]?.count || 0,
+    studentsCount: studentCountMap.get(course.id) || 0,
+    skip_video_identification: course.skip_video_identification ?? false,
+    sequential_lessons: course.sequential_lessons ?? false,
+    allow_video_seek: course.allow_video_seek ?? true,
+    training_form: course.training_form ?? "Очная",
+    notify_on_completion: course.notify_on_completion ?? false,
+    completion_notify_emails: course.completion_notify_emails ?? null,
+    cover_image_url: course.cover_image_url ?? null,
+    catalog_order: course.catalog_order ?? 0,
+  }));
 }
 
 export async function fetchCourse(courseId: string): Promise<Course | null> {
