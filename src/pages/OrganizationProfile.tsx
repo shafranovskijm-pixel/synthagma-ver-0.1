@@ -83,16 +83,23 @@ export default function OrganizationProfile() {
     const loadOrganizationId = async () => {
       try {
         // Try profile first
-        const { data: prof, error: profErr } = await supabase
+        const { data: prof } = await supabase
           .from("profiles")
           .select("organization_id")
           .eq("user_id", user.id)
-          .single();
-        console.log("[OrgProfile] loadOrganizationId result:", { prof, profErr, userId: user.id });
+          .maybeSingle();
+        console.log("[OrgProfile] loadOrganizationId profile result:", { prof, userId: user.id });
         if (prof?.organization_id) {
           setOrganizationId(prof.organization_id);
         } else {
-          console.warn("[OrgProfile] No organization_id found in profile for user:", user.id);
+          // Fallback: use the current_organization_id() database function
+          console.warn("[OrgProfile] No organization_id in profile, trying RPC fallback");
+          const { data: orgId } = await supabase.rpc("current_organization_id");
+          if (orgId) {
+            setOrganizationId(orgId as string);
+          } else {
+            console.warn("[OrgProfile] No organization found for user:", user.id);
+          }
         }
       } catch (e) {
         console.error("[OrgProfile] Failed to load organization ID:", e);

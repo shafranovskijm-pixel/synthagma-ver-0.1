@@ -63,6 +63,7 @@ function transliterate(str: string): string {
 export function CoursePageSettingsContent({ courseId, courseTitle }: Props) {
   const [slug, setSlug] = useState("");
   const [accentColor, setAccentColor] = useState("#6366f1");
+  const [price, setPrice] = useState(0);
   const [landingContent, setLandingContent] = useState<LandingContent>({});
   const [promoCodes, setPromoCodes] = useState<PromoCode[]>([]);
   const [saving, setSaving] = useState(false);
@@ -79,13 +80,15 @@ export function CoursePageSettingsContent({ courseId, courseTitle }: Props) {
   const loadData = async () => {
     setLoading(true);
     const [courseRes, promoRes] = await Promise.all([
-      supabase.from("courses").select("slug, accent_color, landing_content").eq("id", courseId).single(),
+      supabase.from("courses").select("slug, accent_color, landing_content, price").eq("id", courseId).single(),
       supabase.from("course_promo_codes").select("*").eq("course_id", courseId).order("created_at", { ascending: false }),
     ]);
 
     if (courseRes.data) {
       setSlug(courseRes.data.slug || transliterate(courseTitle));
       setAccentColor(courseRes.data.accent_color || "#6366f1");
+      setPrice(courseRes.data.price || 0);
+      setLandingContent((courseRes.data.landing_content as LandingContent) || {});
       setLandingContent((courseRes.data.landing_content as LandingContent) || {});
     }
     setPromoCodes((promoRes.data as PromoCode[]) || []);
@@ -99,6 +102,7 @@ export function CoursePageSettingsContent({ courseId, courseTitle }: Props) {
       .update({
         slug: slug || null,
         accent_color: accentColor,
+        price: price,
         landing_content: landingContent as any,
       })
       .eq("id", courseId);
@@ -211,7 +215,19 @@ export function CoursePageSettingsContent({ courseId, courseTitle }: Props) {
             />
             <Input value={accentColor} onChange={(e) => setAccentColor(e.target.value)} className="w-32" />
             <div className="w-24 h-10 rounded-md" style={{ backgroundColor: accentColor }} />
-          </div>
+        </div>
+
+        <div className="space-y-2">
+          <Label>Цена курса (₽)</Label>
+          <Input
+            type="number"
+            min={0}
+            value={price}
+            onChange={(e) => setPrice(Number(e.target.value) || 0)}
+            placeholder="0"
+          />
+          <p className="text-xs text-muted-foreground">0 = бесплатный курс</p>
+        </div>
         </div>
 
         <div className="space-y-2">
