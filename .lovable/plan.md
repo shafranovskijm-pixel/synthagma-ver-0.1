@@ -1,69 +1,36 @@
 
 
-# Единый layout для всех страниц организации (Профиль, Настройки, Документы, Что нового, Помощь)
+# Два отдельных «мира» навигации: основной дашборд и страницы настроек
 
-## Суть
-Сейчас страницы «Профиль» и «Настройки» имеют собственный простой layout (стрелка назад + заголовок), а «Что нового» — вообще отдельная публичная страница. Нужно привести их все к единому виду главной страницы организации: `OrgSidebar` слева, шапка с обложкой/логотипом, подвал и dropdown-профиль.
+## Суть проблемы
+Сейчас кнопки «Профиль», «Настройки», «Документы» добавлены внизу основного сайдбара — получился один мир. Нужно разделить на два:
+
+1. **Основной дашборд** (`/organization`) — сайдбар с курсами, учениками, статистикой и т.д. Без утилитарных кнопок внизу.
+2. **Страницы настроек** (`/organization/profile`, `/organization/settings`, `/organization/documents`, `/organization/whats-new`, `/organization/help`) — свой отдельный сайдбар с этими 5 пунктами по центру (как студенческий сайдбар). Кнопка «Назад» в шапке ведёт обратно в основной дашборд.
 
 ## Что будет сделано
 
-### 1. Создать общий layout-компонент `OrgPageLayout`
-Новый компонент `src/components/organization/OrgPageLayout.tsx`, который оборачивает контент страницы в:
-- `OrgSidebar` слева (уже есть, переиспользуем)
-- Шапка с обложкой, логотипом, тарифом, уведомлениями, dropdown-профилем (как в `OrgDashboardHeader` и `OrganizationDocuments`)
-- Под-заголовок с иконкой и названием страницы
-- `OrgDashboardFooter` снизу
+### 1. Убрать утилитарные кнопки из `OrgSidebar.tsx`
+Удалить блок `utilityItems` и весь раздел «Utility navigation» внизу сайдбара (строки 158–296). Сайдбар основного дашборда остаётся только с основными пунктами навигации.
 
-Это устранит дублирование кода между `OrganizationDocuments`, `OrganizationProfile`, `OrganizationSettings`.
+### 2. Создать `OrgSettingsSidebar.tsx` — отдельный сайдбар для «мира настроек»
+Новый компонент с 5 пунктами навигации по центру (в таком же pill-контейнере как основной):
+- Профиль (`/organization/profile`, иконка User)
+- Настройки (`/organization/settings`, иконка Settings)
+- Документы (`/organization/documents`, иконка FileText)
+- Что нового (`/organization/whats-new`, иконка Sparkles)
+- Помощь (`/organization/help`, иконка HelpCircle)
 
-### 2. Переделать `OrganizationProfile.tsx`
-- Убрать собственный header (стрелка + «Профиль»)
-- Обернуть в `OrgDashboardProvider` + `OrgPageLayout`
-- Содержимое (табы: Мой профиль, Брендирование, Уведомления и т.д.) остается внутри
+Активный пункт подсвечивается по `location.pathname`. Логотип сверху, кнопка выхода снизу — как в основном сайдбаре.
 
-### 3. Переделать `OrganizationSettings.tsx`
-- Убрать собственный header
-- Обернуть в `OrgDashboardProvider` + `OrgPageLayout`
-- Содержимое (табы: Разделы меню, Касса, Настройки ЛК и т.д.) остается внутри
-
-### 4. Переделать `OrganizationDocuments.tsx`
-- Заменить вручную скопированный header на `OrgPageLayout`
-- Упростить код, убрать дублирование
-
-### 5. Создать страницу `WhatsNewOrg.tsx` (или встроить в роутинг)
-- Страница «Что нового» в контексте организации: `/organization/whats-new`
-- Тот же layout (`OrgPageLayout`), внутри — список обновлений платформы
-- Публичная `/whats-new` остается как есть
-
-### 6. Создать страницу «Помощь» `/organization/help`
-- Layout через `OrgPageLayout`
-- Контент: ссылки на поддержку (Telegram), FAQ, документация
-
-### 7. Добавить пункты в `OrgSidebar`
-Внизу сайдбара (или в секции утилит) добавить иконки-кнопки для:
-- Профиль → `/organization/profile`
-- Настройки → `/organization/settings`
-- Документы → `/organization/documents`
-- Что нового → `/organization/whats-new`
-- Помощь → `/organization/help`
-
-Эти пункты будут визуально отделены от основной навигации (курсы, ученики и т.д.).
-
-### 8. Обновить роутинг
-Добавить маршруты `/organization/whats-new` и `/organization/help` в `App.tsx`.
+### 3. Обновить `OrgPageLayout.tsx`
+Заменить `<OrgSidebar />` на `<OrgSettingsSidebar />`. Кнопка «Назад» в шапке ведёт на `/organization` (не `navigate(-1)`).
 
 ## Файлы
 
 | Файл | Изменение |
 |---|---|
-| `src/components/organization/OrgPageLayout.tsx` | **Новый** — общий layout с sidebar, header, footer |
-| `src/pages/OrganizationProfile.tsx` | Обернуть в `OrgPageLayout`, убрать свой header |
-| `src/pages/OrganizationSettings.tsx` | Обернуть в `OrgPageLayout`, убрать свой header |
-| `src/pages/OrganizationDocuments.tsx` | Упростить через `OrgPageLayout` |
-| `src/pages/OrganizationWhatsNew.tsx` | **Новый** — «Что нового» в layout организации |
-| `src/pages/OrganizationHelp.tsx` | **Новый** — страница помощи |
-| `src/components/organization/OrgSidebar.tsx` | Добавить иконки навигации (Профиль, Настройки, Документы, Что нового, Помощь) |
-| `src/App.tsx` | Новые маршруты |
-
-Миграций не требуется.
+| `src/components/organization/OrgSidebar.tsx` | Удалить utilityItems и блок «Utility navigation» |
+| `src/components/organization/OrgSettingsSidebar.tsx` | **Новый** — сайдбар для страниц настроек |
+| `src/components/organization/OrgPageLayout.tsx` | Использовать `OrgSettingsSidebar` вместо `OrgSidebar`, кнопка назад → `/organization` |
 
