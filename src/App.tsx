@@ -73,6 +73,7 @@ const EmailResponse = lazyWithRetry(() => import("./pages/EmailResponse"));
 const PaymentResult = lazyWithRetry(() => import("./pages/PaymentResult"));
 const WhatsNew = lazyWithRetry(() => import("./pages/WhatsNew"));
 const InvoiceView = lazyWithRetry(() => import("./pages/InvoiceView"));
+const OrganizationSettings = lazyWithRetry(() => import("./pages/OrganizationSettings"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -135,6 +136,11 @@ const App = () => (
                     <Route path="/organization/profile" element={
                       <ProtectedRoute requiredRole="organization">
                         <OrganizationProfile />
+                      </ProtectedRoute>
+                    } />
+                    <Route path="/organization/settings" element={
+                      <ProtectedRoute requiredRole="organization">
+                        <OrganizationSettings />
                       </ProtectedRoute>
                     } />
                     <Route path="/course/:courseId/edit" element={
