@@ -18,7 +18,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { OrgDocumentsManager } from "@/components/organization/OrgDocumentsManager";
 import { DocumentArchiveView } from "@/components/organization/DocumentArchiveView";
 import { EducationDocumentsJournal } from "@/components/organization/EducationDocumentsJournal";
-import { ProgramsManager } from "@/components/organization/ProgramsManager";
+import { CourseProgramsList } from "@/components/organization/CourseProgramsList";
 import { OrgRequisitesForm } from "@/components/organization/OrgRequisitesForm";
 import { ContractTemplateEditor } from "@/components/organization/ContractTemplateEditor";
 import { ConsentGenerator } from "@/components/organization/ConsentGenerator";
