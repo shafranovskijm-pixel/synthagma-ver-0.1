@@ -1040,38 +1040,46 @@ function SortableBlockItem({ block, isFocused, onFocus, onUpdate, onDelete, onAd
                     setLinkText("");
                     savedLinkRange.current = null;
 
-                    // Apply link AFTER dialog closes so focus can return to contenteditable
-                    requestAnimationFrame(() => {
+                    // Apply link AFTER dialog fully closes using setTimeout for reliable DOM access
+                    setTimeout(() => {
                       const blockEl = document.querySelector(`[data-block-id="${blockId}"] [contenteditable]`) as HTMLElement;
                       if (!blockEl) return;
 
                       blockEl.focus();
 
-                      const sel = window.getSelection();
-                      if (!sel) return;
-
                       if (hadSelection && rangeClone) {
-                        sel.removeAllRanges();
-                        sel.addRange(rangeClone);
-                        document.execCommand("createLink", false, url);
+                        // Wrap selected text in an anchor using direct DOM manipulation
+                        const anchor = document.createElement('a');
+                        anchor.href = url;
+                        anchor.target = '_blank';
+                        anchor.rel = 'noopener noreferrer';
+                        try {
+                          rangeClone.surroundContents(anchor);
+                        } catch {
+                          // surroundContents fails if range crosses element boundaries
+                          // fallback: extract, wrap, and re-insert
+                          const fragment = rangeClone.extractContents();
+                          anchor.appendChild(fragment);
+                          rangeClone.insertNode(anchor);
+                        }
                       } else {
-                        const html = `<a href="${url}" target="_blank" rel="noopener noreferrer">${text}</a>&nbsp;`;
+                        // Insert new link at the end of the block
+                        const anchor = document.createElement('a');
+                        anchor.href = url;
+                        anchor.target = '_blank';
+                        anchor.rel = 'noopener noreferrer';
+                        anchor.textContent = text;
                         const range = document.createRange();
                         range.selectNodeContents(blockEl);
                         range.collapse(false);
-                        sel.removeAllRanges();
-                        sel.addRange(range);
-                        document.execCommand("insertHTML", false, html);
+                        range.insertNode(anchor);
+                        // Add a space after the link so cursor can continue
+                        const space = document.createTextNode('\u00A0');
+                        anchor.after(space);
                       }
 
-                      blockEl.querySelectorAll('a[href]').forEach((a) => {
-                        if (!a.getAttribute('target')) {
-                          a.setAttribute('target', '_blank');
-                          a.setAttribute('rel', 'noopener noreferrer');
-                        }
-                      });
                       blockEl.dispatchEvent(new Event('input', { bubbles: true }));
-                    });
+                    }, 150);
                   }}
                 >
                   {linkHasSelection ? "Применить" : "Вставить ссылку"}
