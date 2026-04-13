@@ -223,12 +223,12 @@ export function SubscriptionTab() {
     }
   };
 
-  const coursesPercent = currentPlanInfo.limits.maxCourses === -1 ? 0 :
-    Math.round((subscriptionLimits.usage.coursesCount / currentPlanInfo.limits.maxCourses) * 100);
-  const studentsPercent = currentPlanInfo.limits.maxStudents === -1 ? 0 :
-    Math.round((subscriptionLimits.usage.studentsCount / currentPlanInfo.limits.maxStudents) * 100);
-  const trainedPercent = currentPlanInfo.limits.maxTrainedPerMonth === -1 ? 0 :
-    Math.round(((subscriptionLimits.usage.trainedThisMonth || 0) / currentPlanInfo.limits.maxTrainedPerMonth) * 100);
+  const coursesPercent = subscriptionLimits.limits.maxCourses === -1 ? 0 :
+    Math.round((subscriptionLimits.usage.coursesCount / subscriptionLimits.limits.maxCourses) * 100);
+  const studentsPercent = subscriptionLimits.limits.maxStudents === -1 ? 0 :
+    Math.round((subscriptionLimits.usage.studentsCount / subscriptionLimits.limits.maxStudents) * 100);
+  const trainedPercent = subscriptionLimits.limits.maxTrainedPerMonth === -1 ? 0 :
+    Math.round(((subscriptionLimits.usage.trainedThisMonth || 0) / subscriptionLimits.limits.maxTrainedPerMonth) * 100);
 
   return (
     <div className="space-y-6">
@@ -332,10 +332,10 @@ export function SubscriptionTab() {
                         Курсы
                       </div>
                       <span className="text-sm text-muted-foreground">
-                        {subscriptionLimits.usage.coursesCount} / {currentPlanInfo.limits.maxCourses === -1 ? "∞" : currentPlanInfo.limits.maxCourses}
+                        {subscriptionLimits.usage.coursesCount} / {subscriptionLimits.limits.maxCourses === -1 ? "∞" : subscriptionLimits.limits.maxCourses}
                       </span>
                     </div>
-                    <Progress value={currentPlanInfo.limits.maxCourses === -1 ? 0 : coursesPercent} className="h-2" />
+                    <Progress value={subscriptionLimits.limits.maxCourses === -1 ? 0 : coursesPercent} className="h-2" />
                   </CardContent>
                 </Card>
                 <Card>
@@ -346,10 +346,10 @@ export function SubscriptionTab() {
                         Ученики
                       </div>
                       <span className="text-sm text-muted-foreground">
-                        {subscriptionLimits.usage.studentsCount} / {currentPlanInfo.limits.maxStudents === -1 ? "∞" : currentPlanInfo.limits.maxStudents}
+                        {subscriptionLimits.usage.studentsCount} / {subscriptionLimits.limits.maxStudents === -1 ? "∞" : subscriptionLimits.limits.maxStudents}
                       </span>
                     </div>
-                    <Progress value={currentPlanInfo.limits.maxStudents === -1 ? 0 : studentsPercent} className="h-2" />
+                    <Progress value={subscriptionLimits.limits.maxStudents === -1 ? 0 : studentsPercent} className="h-2" />
                   </CardContent>
                 </Card>
                 <Card>
@@ -360,10 +360,10 @@ export function SubscriptionTab() {
                         Обучено в этом месяце
                       </div>
                       <span className="text-sm text-muted-foreground">
-                        {subscriptionLimits.usage.trainedThisMonth || 0} / {currentPlanInfo.limits.maxTrainedPerMonth === -1 ? "∞" : currentPlanInfo.limits.maxTrainedPerMonth}
+                        {subscriptionLimits.usage.trainedThisMonth || 0} / {subscriptionLimits.limits.maxTrainedPerMonth === -1 ? "∞" : subscriptionLimits.limits.maxTrainedPerMonth}
                       </span>
                     </div>
-                    <Progress value={currentPlanInfo.limits.maxTrainedPerMonth === -1 ? 0 : trainedPercent} className="h-2" />
+                    <Progress value={subscriptionLimits.limits.maxTrainedPerMonth === -1 ? 0 : trainedPercent} className="h-2" />
                   </CardContent>
                 </Card>
                 <Card>
@@ -374,7 +374,7 @@ export function SubscriptionTab() {
                         Хранилище
                       </div>
                       <span className="text-sm text-muted-foreground">
-                        {formatStorageSize(currentPlanInfo.limits.storageBytes)}
+                        {formatStorageSize(subscriptionLimits.limits.storageBytes)}
                       </span>
                     </div>
                     <Progress value={0} className="h-2" />
