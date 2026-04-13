@@ -37,7 +37,12 @@ export default function OrganizationSettings() {
     if (!user) return;
     const load = async () => {
       const { data: prof } = await supabase.from("profiles").select("organization_id").eq("user_id", user.id).maybeSingle();
-      const orgId = prof?.organization_id || (await supabase.rpc("current_organization_id")).data as string | null;
+      let orgId = prof?.organization_id || (await supabase.rpc("current_organization_id")).data as string | null;
+      if (!orgId) {
+        // Admin fallback: pick the first organization
+        const { data: firstOrg } = await supabase.from("organizations").select("id").limit(1).maybeSingle();
+        orgId = firstOrg?.id || null;
+      }
       if (orgId) {
         setOrganizationId(orgId);
         const { data: org } = await supabase.from("organizations").select("menu_settings").eq("id", orgId).single();
