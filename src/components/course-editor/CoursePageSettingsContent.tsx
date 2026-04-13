@@ -8,7 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Copy, Plus, Trash2, Loader2, ExternalLink, Sparkles } from "lucide-react";
+import { Copy, Plus, Trash2, Loader2, ExternalLink, Sparkles, Tag, ArrowUp, Globe, FileEdit, BarChart3 } from "lucide-react";
 
 interface Props {
   courseId: string;
@@ -240,6 +240,10 @@ export function CoursePageSettingsContent({ courseId, courseTitle, courseDescrip
       </TabsList>
 
       <TabsContent value="page" className="space-y-5 mt-4">
+        <div className="flex items-start gap-2 rounded-lg bg-muted/50 border border-border/50 p-3 mb-1">
+          <Globe className="w-4 h-4 text-primary mt-0.5 shrink-0" />
+          <p className="text-xs text-muted-foreground">Настройте URL, цвет и цену вашего курса. Эти параметры отображаются на публичной странице.</p>
+        </div>
         <div className="space-y-2">
           <Label>URL страницы курса</Label>
           <div className="flex gap-2">
@@ -305,6 +309,10 @@ export function CoursePageSettingsContent({ courseId, courseTitle, courseDescrip
       </TabsContent>
 
       <TabsContent value="seo" className="space-y-5 mt-4">
+        <div className="flex items-start gap-2 rounded-lg bg-muted/50 border border-border/50 p-3 mb-1">
+          <Globe className="w-4 h-4 text-primary mt-0.5 shrink-0" />
+          <p className="text-xs text-muted-foreground">Оптимизируйте курс для поисковых систем — заполните метатеги вручную или с помощью ИИ.</p>
+        </div>
         <div className="flex items-center justify-between">
           <h3 className="text-sm font-medium">SEO-настройки</h3>
           <Button
@@ -379,6 +387,10 @@ export function CoursePageSettingsContent({ courseId, courseTitle, courseDescrip
       </TabsContent>
 
       <TabsContent value="form" className="space-y-5 mt-4">
+        <div className="flex items-start gap-2 rounded-lg bg-muted/50 border border-border/50 p-3 mb-1">
+          <FileEdit className="w-4 h-4 text-primary mt-0.5 shrink-0" />
+          <p className="text-xs text-muted-foreground">Настройте внешний вид формы записи на курс — текст кнопки, подзаголовок и дополнительные поля.</p>
+        </div>
         <div className="flex items-center justify-between">
           <h3 className="text-sm font-medium">Форма записи</h3>
           <Button
@@ -491,11 +503,27 @@ export function CoursePageSettingsContent({ courseId, courseTitle, courseDescrip
             </TableBody>
           </Table>
         ) : (
-          <p className="text-sm text-muted-foreground text-center py-6">Промокоды не добавлены</p>
+          <div className="flex flex-col items-center text-center py-8 px-4">
+            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center mb-3">
+              <Tag className="w-6 h-6 text-primary" />
+            </div>
+            <h4 className="text-sm font-semibold mb-1.5">Промокоды для курса</h4>
+            <p className="text-xs text-muted-foreground max-w-sm mb-3">
+              Создавайте промокоды со скидками в процентах или фиксированной сумме. Делитесь кодами с партнёрами, в рассылках или соцсетях — отслеживайте количество использований каждого кода.
+            </p>
+            <div className="flex items-center gap-1 text-xs text-primary">
+              <ArrowUp className="w-3.5 h-3.5" />
+              <span>Добавьте первый промокод выше</span>
+            </div>
+          </div>
         )}
       </TabsContent>
 
       <TabsContent value="analytics" className="space-y-5 mt-4">
+        <div className="flex items-start gap-2 rounded-lg bg-muted/50 border border-border/50 p-3 mb-1">
+          <BarChart3 className="w-4 h-4 text-primary mt-0.5 shrink-0" />
+          <p className="text-xs text-muted-foreground">Подключите счётчики Яндекс.Метрики, Google Analytics и Meta Pixel для отслеживания конверсий на странице курса.</p>
+        </div>
         <div className="space-y-2">
           <Label>Яндекс.Метрика — ID счётчика</Label>
           <Input
