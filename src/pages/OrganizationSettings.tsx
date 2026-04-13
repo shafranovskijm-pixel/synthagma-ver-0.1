@@ -3,13 +3,13 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { Settings, LayoutGrid, Save, RefreshCw, RotateCcw, Users, FileText, BarChart3, Link, HardHat, ShoppingBag, Building2, GraduationCap, Wallet } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import { RobokassaSettings } from "@/components/organization/RobokassaSettings";
 import { SettingsStudentDashboardTab } from "@/components/organization/SettingsStudentDashboardTab";
 import { StaffManager } from "@/components/organization/StaffManager";
 import { OrgDashboardProvider } from "@/contexts/OrgDashboardContext";
 import OrgPageLayout from "@/components/organization/OrgPageLayout";
+import { cn } from "@/lib/utils";
 
 interface MenuSettings {
   showStats: boolean;
@@ -26,11 +26,19 @@ const DEFAULT_MENU: MenuSettings = {
   showDocuments: true, showServices: true, showCompanies: true,
 };
 
+const settingsTabs = [
+  { key: "menu", label: "Разделы меню", icon: LayoutGrid },
+  { key: "robokassa", label: "Касса", icon: Wallet },
+  { key: "student", label: "Настройки ЛК", icon: GraduationCap },
+  { key: "staff", label: "Сотрудники", icon: Users },
+];
+
 function SettingsContent() {
   const { user } = useAuth();
   const [organizationId, setOrganizationId] = useState<string | null>(null);
   const [menuSettings, setMenuSettings] = useState<MenuSettings>(DEFAULT_MENU);
   const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState("menu");
 
   useEffect(() => {
     if (!user) return;
@@ -98,79 +106,89 @@ function SettingsContent() {
   }
 
   return (
-    <Tabs defaultValue="menu">
-      <TabsList className="mb-6 bg-muted/50 p-1 rounded-xl flex-wrap">
-        <TabsTrigger value="menu" className="rounded-lg gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm px-4 py-2">
-          <LayoutGrid className="w-4 h-4" /> Разделы меню
-        </TabsTrigger>
-        <TabsTrigger value="robokassa" className="rounded-lg gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm px-4 py-2">
-          <Wallet className="w-4 h-4" /> Касса
-        </TabsTrigger>
-        <TabsTrigger value="student" className="rounded-lg gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm px-4 py-2">
-          <GraduationCap className="w-4 h-4" /> Настройки ЛК
-        </TabsTrigger>
-        <TabsTrigger value="staff" className="rounded-lg gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm px-4 py-2">
-          <Users className="w-4 h-4" /> Сотрудники
-        </TabsTrigger>
-      </TabsList>
+    <div className="flex flex-col lg:flex-row gap-6">
+      {/* Vertical sidebar nav — desktop; horizontal scroll — mobile */}
+      <nav className="shrink-0 lg:w-56">
+        <div className="flex lg:flex-col gap-1 overflow-x-auto lg:overflow-x-visible pb-2 lg:pb-0">
+          {settingsTabs.map((tab) => {
+            const Icon = tab.icon;
+            const isActive = activeTab === tab.key;
+            return (
+              <button
+                key={tab.key}
+                onClick={() => setActiveTab(tab.key)}
+                className={cn(
+                  "flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium whitespace-nowrap transition-all duration-200",
+                  isActive
+                    ? "bg-primary/15 text-primary border-r-2 border-primary"
+                    : "text-muted-foreground hover:text-primary hover:bg-primary/10"
+                )}
+              >
+                <Icon className="h-4 w-4 shrink-0" />
+                {tab.label}
+              </button>
+            );
+          })}
+        </div>
+      </nav>
 
-      <TabsContent value="menu">
-        <div className="max-w-2xl">
-          <div className="bg-card rounded-xl lg:rounded-2xl border border-border p-4 lg:p-6">
-            <p className="text-xs lg:text-sm text-muted-foreground mb-4 lg:mb-5">Включите или отключите разделы в боковом меню</p>
-            <div className="space-y-2">
-              {menuItems.map((item) => {
-                const Icon = item.icon;
-                const isOn = menuSettings[item.key];
-                return (
-                  <div key={item.key} className="flex items-center justify-between p-3 lg:p-4 rounded-xl border border-border/60 hover:border-primary/30 hover:bg-accent/5 transition-all group/row">
-                    <div className="flex items-center gap-3 lg:gap-4">
-                      <div className={`w-11 h-11 lg:w-12 lg:h-12 rounded-xl ${item.bg} flex items-center justify-center shadow-sm transition-transform group-hover/row:scale-105`}>
-                        <Icon className={`w-5 h-5 lg:w-[22px] lg:h-[22px] ${item.color}`} />
+      {/* Content */}
+      <div className="flex-1 min-w-0">
+        {activeTab === "menu" && (
+          <div className="max-w-2xl">
+            <div className="bg-card rounded-xl lg:rounded-2xl border border-border p-4 lg:p-6">
+              <p className="text-xs lg:text-sm text-muted-foreground mb-4 lg:mb-5">Включите или отключите разделы в боковом меню</p>
+              <div className="space-y-2">
+                {menuItems.map((item) => {
+                  const Icon = item.icon;
+                  const isOn = menuSettings[item.key];
+                  return (
+                    <div key={item.key} className="flex items-center justify-between p-3 lg:p-4 rounded-xl border border-border/60 hover:border-primary/30 hover:bg-accent/5 transition-all group/row">
+                      <div className="flex items-center gap-3 lg:gap-4">
+                        <div className={`w-11 h-11 lg:w-12 lg:h-12 rounded-xl ${item.bg} flex items-center justify-center shadow-sm transition-transform group-hover/row:scale-105`}>
+                          <Icon className={`w-5 h-5 lg:w-[22px] lg:h-[22px] ${item.color}`} />
+                        </div>
+                        <div>
+                          <p className="font-medium text-sm lg:text-base">{item.label}</p>
+                          <p className="text-xs lg:text-sm text-muted-foreground">{item.desc}</p>
+                        </div>
                       </div>
-                      <div>
-                        <p className="font-medium text-sm lg:text-base">{item.label}</p>
-                        <p className="text-xs lg:text-sm text-muted-foreground">{item.desc}</p>
-                      </div>
+                      <button
+                        onClick={() => setMenuSettings(prev => ({ ...prev, [item.key]: !prev[item.key] }))}
+                        className={`relative inline-flex h-7 w-12 items-center rounded-full transition-colors shrink-0 ${isOn ? 'bg-primary shadow-md' : 'bg-muted'}`}
+                      >
+                        <span className={`inline-block h-5 w-5 transform rounded-full bg-white shadow-sm transition-transform ${isOn ? 'translate-x-6' : 'translate-x-1'}`} />
+                      </button>
                     </div>
-                    <button
-                      onClick={() => setMenuSettings(prev => ({ ...prev, [item.key]: !prev[item.key] }))}
-                      className={`relative inline-flex h-7 w-12 items-center rounded-full transition-colors shrink-0 ${isOn ? 'bg-primary shadow-md' : 'bg-muted'}`}
-                    >
-                      <span className={`inline-block h-5 w-5 transform rounded-full bg-white shadow-sm transition-transform ${isOn ? 'translate-x-6' : 'translate-x-1'}`} />
-                    </button>
-                  </div>
-                );
-              })}
-            </div>
-            <div className="mt-5 lg:mt-6 pt-4 border-t border-border flex flex-wrap gap-2">
-              <Button className="btn-gradient rounded-xl gap-2 text-sm" onClick={handleSaveMenuSettings}><Save className="w-4 h-4" /> Сохранить</Button>
-              <Button variant="outline" className="rounded-xl gap-2 text-sm" onClick={reloadMenuSettings}><RefreshCw className="w-4 h-4" /> Обновить меню</Button>
-              <Button variant="ghost" className="rounded-xl gap-2 text-sm" onClick={resetMenuSettings}><RotateCcw className="w-4 h-4" /> По умолчанию</Button>
+                  );
+                })}
+              </div>
+              <div className="mt-5 lg:mt-6 pt-4 border-t border-border flex flex-wrap gap-2">
+                <Button className="btn-gradient rounded-xl gap-2 text-sm" onClick={handleSaveMenuSettings}><Save className="w-4 h-4" /> Сохранить</Button>
+                <Button variant="outline" className="rounded-xl gap-2 text-sm" onClick={reloadMenuSettings}><RefreshCw className="w-4 h-4" /> Обновить меню</Button>
+                <Button variant="ghost" className="rounded-xl gap-2 text-sm" onClick={resetMenuSettings}><RotateCcw className="w-4 h-4" /> По умолчанию</Button>
+              </div>
             </div>
           </div>
-        </div>
-      </TabsContent>
+        )}
 
-      <TabsContent value="robokassa">
-        <div className="max-w-2xl">{organizationId && <RobokassaSettings organizationId={organizationId} />}</div>
-      </TabsContent>
+        {activeTab === "robokassa" && (
+          <div className="max-w-2xl">{organizationId && <RobokassaSettings organizationId={organizationId} />}</div>
+        )}
 
-      <TabsContent value="student">
-        <div className="max-w-2xl">{organizationId && <SettingsStudentDashboardTab organizationId={organizationId} />}</div>
-      </TabsContent>
+        {activeTab === "student" && (
+          <div className="max-w-2xl">{organizationId && <SettingsStudentDashboardTab organizationId={organizationId} />}</div>
+        )}
 
-      <TabsContent value="staff">
-        {organizationId && (
+        {activeTab === "staff" && organizationId && (
           <OrgDashboardProvider>
             <div className="bg-card rounded-xl lg:rounded-2xl border border-border p-4 lg:p-6">
               <StaffManager organizationId={organizationId} />
             </div>
           </OrgDashboardProvider>
         )}
-      </TabsContent>
-
-    </Tabs>
+      </div>
+    </div>
   );
 }
 
