@@ -9,7 +9,9 @@ import {
   Trash2, 
   Edit,
   ChevronDown,
-  ChevronUp
+  ChevronUp,
+  Lock,
+  Unlock
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -19,6 +21,7 @@ interface Lesson {
   type: string;
   content: string | null;
   order_index: number;
+  is_locked?: boolean;
 }
 
 interface LessonItemProps {
@@ -27,6 +30,7 @@ interface LessonItemProps {
   onToggleExpand: () => void;
   onEdit: () => void;
   onDelete: () => void;
+  onToggleLock?: () => void;
 }
 
 const lessonTypeConfig = {
@@ -52,7 +56,8 @@ export const LessonItem = ({
   isExpanded, 
   onToggleExpand, 
   onEdit, 
-  onDelete 
+  onDelete,
+  onToggleLock
 }: LessonItemProps) => {
   const {
     attributes,
@@ -101,6 +106,15 @@ export const LessonItem = ({
         </div>
 
         <div className="flex items-center gap-1">
+          {onToggleLock && (
+            <Button variant="ghost" size="icon" onClick={onToggleLock} title={lesson.is_locked ? "Разблокировать урок" : "Заблокировать урок"}>
+              {lesson.is_locked ? (
+                <Lock className="w-4 h-4 text-amber-500" />
+              ) : (
+                <Unlock className="w-4 h-4 text-muted-foreground" />
+              )}
+            </Button>
+          )}
           <Button variant="ghost" size="icon" onClick={onToggleExpand}>
             {isExpanded ? (
               <ChevronUp className="w-4 h-4" />
