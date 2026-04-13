@@ -1215,16 +1215,16 @@ function BlockContent({ block, onUpdate, courseTitle, lessonTitle, existingConte
       );
 
     case "heading1":
-      return <Input value={block.content} onChange={(e) => onUpdate({ content: e.target.value })} placeholder="Заголовок 1" className={cn("text-2xl font-bold border-0 bg-transparent focus-visible:ring-0 px-0 h-auto py-2", editorStyleClasses)} />;
+      return <RichTextEditor value={block.content} onChange={(val) => onUpdate({ content: val })} placeholder="Заголовок 1" className={cn("text-2xl font-bold", editorStyleClasses)} minHeight="40px" />;
 
     case "heading2":
-      return <Input value={block.content} onChange={(e) => onUpdate({ content: e.target.value })} placeholder="Заголовок 2" className={cn("text-xl font-semibold border-0 bg-transparent focus-visible:ring-0 px-0 h-auto py-2", editorStyleClasses)} />;
+      return <RichTextEditor value={block.content} onChange={(val) => onUpdate({ content: val })} placeholder="Заголовок 2" className={cn("text-xl font-semibold", editorStyleClasses)} minHeight="36px" />;
 
     case "bulletList":
     case "numberedList":
       return (
         <div className={cn("space-y-1 py-2", editorStyleClasses)}>
-          <Textarea value={(block.content || "").replace(/<\/?li>/gi, "")} onChange={(e) => onUpdate({ content: e.target.value })} placeholder="Элемент списка (каждая строка — отдельный пункт)" className="min-h-[60px] border-0 bg-secondary/30 resize-none focus-visible:ring-1 rounded-lg text-sm" />
+          <RichTextEditor value={(block.content || "").replace(/<\/?li>/gi, "")} onChange={(val) => onUpdate({ content: val })} placeholder="Элемент списка (каждая строка — отдельный пункт)" className="text-sm" minHeight="60px" />
         </div>
       );
 
