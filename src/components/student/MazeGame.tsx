@@ -1,5 +1,5 @@
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
-import { useRef, useEffect, useMemo } from "react";
+import { useRef, useEffect, useMemo, useState } from "react";
 import * as THREE from "three";
 import { useTexture } from "@react-three/drei";
 
@@ -9,22 +9,27 @@ import monster3Url from "@/assets/monster3.png";
 import monster4Url from "@/assets/monster4.jpg";
 import monster5Url from "@/assets/monster5.jpg";
 
-import { playShoot, playHit, playDamage, playStep, playWin, playGameOver } from "./MazeSounds";
+import { playShoot, playHit, playDamage, playStep, playWin, playGameOver, playPickup } from "./MazeSounds";
 
-// 14x14 maze
+// Cell types: 0=empty, 1=wall, 2=player spawn, 3=exit, 4=door, 5=health pickup
+// Expanded map with open field at start that narrows into maze
 const MAZE_MAP = [
   [1,1,1,1,1,1,1,1,1,1,1,1,1,1],
-  [1,2,0,0,1,0,0,0,0,1,0,0,0,1],
+  [1,0,0,0,0,0,0,0,0,0,0,0,0,1],
+  [1,0,0,0,2,0,0,0,0,0,0,0,0,1],
+  [1,0,0,0,0,0,0,0,0,0,0,0,0,1],
+  [1,1,1,0,0,0,1,1,1,1,1,1,1,1],
+  [1,0,0,0,4,0,0,0,0,1,0,0,0,1],
   [1,0,1,0,1,0,1,1,0,1,0,1,0,1],
-  [1,0,1,0,0,0,0,1,0,0,0,1,0,1],
-  [1,0,0,0,1,1,0,0,0,1,0,0,0,1],
+  [1,0,1,5,0,0,0,1,0,0,0,1,0,1],
+  [1,0,0,0,1,1,0,4,0,1,0,0,0,1],
   [1,1,1,0,0,1,0,1,1,1,0,1,1,1],
   [1,0,0,0,1,0,0,0,0,0,0,0,0,1],
   [1,0,1,1,1,0,1,1,1,0,1,1,0,1],
-  [1,0,0,0,0,0,0,1,0,0,0,1,0,1],
-  [1,1,1,0,1,1,0,0,0,1,0,0,0,1],
+  [1,0,0,5,0,0,0,1,0,0,0,1,0,1],
+  [1,1,1,0,1,1,0,4,0,1,0,0,0,1],
   [1,0,0,0,0,1,0,1,0,1,0,1,0,1],
-  [1,0,1,1,0,0,0,1,0,0,0,1,0,1],
+  [1,0,1,1,0,0,0,1,5,0,0,1,0,1],
   [1,0,0,0,0,1,0,0,0,1,0,0,3,1],
   [1,1,1,1,1,1,1,1,1,1,1,1,1,1],
 ];
@@ -40,10 +45,11 @@ const MONSTER_SPEED = 0.015;
 const MONSTER_ATTACK_DIST = 0.8;
 const SHOOT_RANGE = 16;
 const BULLET_SPEED = 0.5;
-const BULLET_LIFE = 60; // frames
+const BULLET_LIFE = 60;
+const DOOR_OPEN_DIST = 2.5;
 
 const MONSTER_SPAWNS: [number, number][] = [
-  [6, 3], [2, 6], [10, 4], [8, 8], [4, 11],
+  [6, 6], [2, 10], [10, 8], [8, 12], [4, 15],
 ];
 const MONSTER_TEXTURES = [monster1Url, monster2Url, monster3Url, monster4Url, monster5Url];
 
@@ -54,6 +60,7 @@ interface Bullet {
   weapon: number;
 }
 
+// Find all cells of a given type
 function findCell(value: number): [number, number] {
   for (let z = 0; z < MAZE_MAP.length; z++)
     for (let x = 0; x < MAZE_MAP[z].length; x++)
@@ -61,11 +68,41 @@ function findCell(value: number): [number, number] {
   return [1, 1];
 }
 
+function findAllCells(value: number): [number, number][] {
+  const result: [number, number][] = [];
+  for (let z = 0; z < MAZE_MAP.length; z++)
+    for (let x = 0; x < MAZE_MAP[z].length; x++)
+      if (MAZE_MAP[z][x] === value) result.push([x, z]);
+  return result;
+}
+
+// Doors and health pickups are passable
 function isWall(x: number, z: number): boolean {
   const gz = Math.floor(z / CELL_SIZE);
   const gx = Math.floor(x / CELL_SIZE);
   if (gz < 0 || gz >= MAZE_MAP.length || gx < 0 || gx >= MAZE_MAP[0].length) return true;
-  return MAZE_MAP[gz][gx] === 1;
+  const cell = MAZE_MAP[gz][gx];
+  return cell === 1; // doors (4) are passable when opened
+}
+
+// Dynamic wall check that accounts for opened doors
+function isBlocked(x: number, z: number, openedDoors: Set<string>): boolean {
+  const gz = Math.floor(z / CELL_SIZE);
+  const gx = Math.floor(x / CELL_SIZE);
+  if (gz < 0 || gz >= MAZE_MAP.length || gx < 0 || gx >= MAZE_MAP[0].length) return true;
+  const cell = MAZE_MAP[gz][gx];
+  if (cell === 1) return true;
+  if (cell === 4 && !openedDoors.has(`${gx},${gz}`)) return true;
+  return false;
+}
+
+function canMoveDynamic(x: number, z: number, openedDoors: Set<string>): boolean {
+  return (
+    !isBlocked(x - PLAYER_RADIUS, z - PLAYER_RADIUS, openedDoors) &&
+    !isBlocked(x + PLAYER_RADIUS, z - PLAYER_RADIUS, openedDoors) &&
+    !isBlocked(x - PLAYER_RADIUS, z + PLAYER_RADIUS, openedDoors) &&
+    !isBlocked(x + PLAYER_RADIUS, z + PLAYER_RADIUS, openedDoors)
+  );
 }
 
 function canMove(x: number, z: number): boolean {
@@ -89,6 +126,8 @@ export const gameState = {
   won: false,
   shooting: false,
   weapon: 1,
+  openedDoors: new Set<string>(),
+  pickedUpHealth: new Set<string>(),
   monsters: MONSTER_SPAWNS.map((s, i) => ({
     x: s[0] * CELL_SIZE + CELL_SIZE / 2,
     z: s[1] * CELL_SIZE + CELL_SIZE / 2,
@@ -105,6 +144,8 @@ export function resetGameState() {
   gameState.won = false;
   gameState.shooting = false;
   gameState.weapon = 1;
+  gameState.openedDoors = new Set();
+  gameState.pickedUpHealth = new Set();
   gameState.monsters = MONSTER_SPAWNS.map((s, i) => ({
     x: s[0] * CELL_SIZE + CELL_SIZE / 2,
     z: s[1] * CELL_SIZE + CELL_SIZE / 2,
@@ -144,7 +185,8 @@ function Walls() {
 
 /* ─── Floor ─── */
 function Floor() {
-  const size = MAZE_MAP.length * CELL_SIZE;
+  const width = MAZE_MAP[0].length * CELL_SIZE;
+  const height = MAZE_MAP.length * CELL_SIZE;
   const tex = useMemo(() => {
     const canvas = document.createElement("canvas");
     canvas.width = MAZE_MAP[0].length * 2;
@@ -163,8 +205,8 @@ function Floor() {
   }, []);
 
   return (
-    <mesh rotation={[-Math.PI / 2, 0, 0]} position={[size / 2, 0, size / 2]}>
-      <planeGeometry args={[size, size]} />
+    <mesh rotation={[-Math.PI / 2, 0, 0]} position={[width / 2, 0, height / 2]}>
+      <planeGeometry args={[width, height]} />
       <meshStandardMaterial map={tex} />
     </mesh>
   );
@@ -184,6 +226,86 @@ function FinishMarker() {
     <mesh ref={ref} position={[fx * CELL_SIZE + CELL_SIZE / 2, 0.8, fz * CELL_SIZE + CELL_SIZE / 2]}>
       <octahedronGeometry args={[0.4]} />
       <meshStandardMaterial color="hsl(50, 100%, 60%)" emissive="hsl(50, 100%, 40%)" emissiveIntensity={3} />
+    </mesh>
+  );
+}
+
+/* ─── Door ─── */
+function Door({ x, z, playerRef }: { x: number; z: number; playerRef: React.MutableRefObject<{ x: number; z: number }> }) {
+  const key = `${x},${z}`;
+  const worldX = x * CELL_SIZE + CELL_SIZE / 2;
+  const worldZ = z * CELL_SIZE + CELL_SIZE / 2;
+  const meshRef = useRef<THREE.Mesh>(null);
+  const [opened, setOpened] = useState(false);
+  const openProgress = useRef(0);
+
+  useFrame(() => {
+    const px = playerRef.current.x;
+    const pz = playerRef.current.z;
+    const dist = Math.sqrt((px - worldX) ** 2 + (pz - worldZ) ** 2);
+    
+    if (dist < DOOR_OPEN_DIST && !opened) {
+      setOpened(true);
+      gameState.openedDoors.add(key);
+    }
+
+    if (opened && openProgress.current < 1) {
+      openProgress.current = Math.min(1, openProgress.current + 0.03);
+    }
+
+    if (meshRef.current) {
+      meshRef.current.position.y = WALL_HEIGHT / 2 + openProgress.current * WALL_HEIGHT;
+      meshRef.current.scale.y = 1 - openProgress.current * 0.9;
+    }
+  });
+
+  if (openProgress.current >= 1) return null;
+
+  return (
+    <mesh ref={meshRef} position={[worldX, WALL_HEIGHT / 2, worldZ]}>
+      <boxGeometry args={[CELL_SIZE * 0.9, WALL_HEIGHT, 0.2]} />
+      <meshStandardMaterial color="hsl(30, 60%, 35%)" roughness={0.6} />
+    </mesh>
+  );
+}
+
+/* ─── Health Pickup (heart) ─── */
+function HealthPickup({ x, z, playerRef, onPickup }: { 
+  x: number; z: number; 
+  playerRef: React.MutableRefObject<{ x: number; z: number }>; 
+  onPickup: () => void;
+}) {
+  const key = `${x},${z}`;
+  const worldX = x * CELL_SIZE + CELL_SIZE / 2;
+  const worldZ = z * CELL_SIZE + CELL_SIZE / 2;
+  const ref = useRef<THREE.Mesh>(null);
+  const [collected, setCollected] = useState(false);
+
+  useFrame(({ clock }) => {
+    if (collected || gameState.pickedUpHealth.has(key)) return;
+    if (ref.current) {
+      ref.current.position.y = 0.6 + Math.sin(clock.elapsedTime * 3) * 0.15;
+      ref.current.rotation.y = clock.elapsedTime * 2;
+    }
+
+    const px = playerRef.current.x;
+    const pz = playerRef.current.z;
+    const dist = Math.sqrt((px - worldX) ** 2 + (pz - worldZ) ** 2);
+    if (dist < 1.0 && gameState.health < 3) {
+      gameState.health = Math.min(3, gameState.health + 1);
+      gameState.pickedUpHealth.add(key);
+      setCollected(true);
+      playPickup();
+      onPickup();
+    }
+  });
+
+  if (collected || gameState.pickedUpHealth.has(key)) return null;
+
+  return (
+    <mesh ref={ref} position={[worldX, 0.6, worldZ]}>
+      <octahedronGeometry args={[0.25]} />
+      <meshStandardMaterial color="hsl(0, 80%, 55%)" emissive="hsl(0, 80%, 40%)" emissiveIntensity={2} />
     </mesh>
   );
 }
@@ -223,23 +345,19 @@ function MonsterSprite({ index, playerRef }: { index: number; playerRef: React.M
 /* ─── Bullets renderer ─── */
 function Bullets() {
   const groupRef = useRef<THREE.Group>(null);
-  const meshRefs = useRef<(THREE.Mesh | null)[]>([]);
 
   useFrame(() => {
-    // Update bullets
     for (let i = gameState.bullets.length - 1; i >= 0; i--) {
       const b = gameState.bullets[i];
       b.x += b.dx * BULLET_SPEED;
       b.z += b.dz * BULLET_SPEED;
       b.life--;
 
-      // Wall collision
       if (isWall(b.x, b.z)) {
         gameState.bullets.splice(i, 1);
         continue;
       }
 
-      // Monster collision
       let hit = false;
       for (const m of gameState.monsters) {
         if (!m.alive) continue;
@@ -257,12 +375,9 @@ function Bullets() {
       }
     }
 
-    // Update mesh positions
     if (groupRef.current) {
-      const children = groupRef.current.children;
-      // Remove excess
-      while (children.length > gameState.bullets.length) {
-        groupRef.current.remove(children[children.length - 1]);
+      while (groupRef.current.children.length > gameState.bullets.length) {
+        groupRef.current.remove(groupRef.current.children[groupRef.current.children.length - 1]);
       }
     }
   });
@@ -270,14 +385,29 @@ function Bullets() {
   return (
     <group ref={groupRef}>
       {gameState.bullets.map((b, i) => (
-        <mesh key={i} position={[b.x, b.y, b.z]}>
-          <sphereGeometry args={[b.weapon === 2 ? 0.15 : 0.06, 8, 8]} />
-          <meshStandardMaterial
-            color={b.weapon === 2 ? "#ff6600" : "#ffff00"}
-            emissive={b.weapon === 2 ? "#ff4400" : "#ffaa00"}
-            emissiveIntensity={3}
-          />
-        </mesh>
+        <group key={i}>
+          <mesh position={[b.x, b.y, b.z]}>
+            <sphereGeometry args={[b.weapon === 2 ? 0.15 : 0.06, 8, 8]} />
+            <meshStandardMaterial
+              color={b.weapon === 2 ? "#ff6600" : "#ffff00"}
+              emissive={b.weapon === 2 ? "#ff4400" : "#ffaa00"}
+              emissiveIntensity={3}
+            />
+          </mesh>
+          {/* Rocket trail */}
+          {b.weapon === 2 && (
+            <>
+              <mesh position={[b.x - b.dx * 0.3, b.y, b.z - b.dz * 0.3]}>
+                <sphereGeometry args={[0.1, 6, 6]} />
+                <meshStandardMaterial color="#ff4400" emissive="#ff2200" emissiveIntensity={2} transparent opacity={0.7} />
+              </mesh>
+              <mesh position={[b.x - b.dx * 0.6, b.y, b.z - b.dz * 0.6]}>
+                <sphereGeometry args={[0.07, 6, 6]} />
+                <meshStandardMaterial color="#ff6600" emissive="#ff4400" emissiveIntensity={1.5} transparent opacity={0.4} />
+              </mesh>
+            </>
+          )}
+        </group>
       ))}
     </group>
   );
@@ -390,11 +520,10 @@ function Player({ onWin, onDamage, onKill, onGameOver, onShootAnim, resetKey, pl
 
     const nx = pos.current.x + dx;
     const nz = pos.current.z + dz;
-    if (canMove(nx, nz)) { pos.current.x = nx; pos.current.z = nz; }
-    else if (canMove(nx, pos.current.z)) { pos.current.x = nx; }
-    else if (canMove(pos.current.x, nz)) { pos.current.z = nz; }
+    if (canMoveDynamic(nx, nz, gameState.openedDoors)) { pos.current.x = nx; pos.current.z = nz; }
+    else if (canMoveDynamic(nx, pos.current.z, gameState.openedDoors)) { pos.current.x = nx; }
+    else if (canMoveDynamic(pos.current.x, nz, gameState.openedDoors)) { pos.current.z = nz; }
 
-    // Sync ref for monsters
     playerPosRef.current = { x: pos.current.x, z: pos.current.z };
 
     if (moving) {
@@ -410,7 +539,6 @@ function Player({ onWin, onDamage, onKill, onGameOver, onShootAnim, resetKey, pl
     camera.position.set(pos.current.x, posY.current, pos.current.z);
     camera.rotation.set(0, yaw.current, 0);
 
-    // Shooting — spawn bullet
     shootCooldown.current = Math.max(0, shootCooldown.current - 1);
     if (inputState.shoot && shootCooldown.current === 0) {
       const w = gameState.weapon;
@@ -419,7 +547,6 @@ function Player({ onWin, onDamage, onKill, onGameOver, onShootAnim, resetKey, pl
       onShootAnim();
 
       if (w === 0) {
-        // Fist — melee: instant check close range
         const dir = new THREE.Vector3(-sin, 0, -cos).normalize();
         for (const m of gameState.monsters) {
           if (!m.alive) continue;
@@ -435,7 +562,6 @@ function Player({ onWin, onDamage, onKill, onGameOver, onShootAnim, resetKey, pl
           }
         }
       } else {
-        // Pistol/Rocket — spawn projectile
         gameState.bullets.push({
           x: pos.current.x - sin * 0.5,
           z: pos.current.z - cos * 0.5,
@@ -449,11 +575,8 @@ function Player({ onWin, onDamage, onKill, onGameOver, onShootAnim, resetKey, pl
       inputState.shoot = false;
     }
 
-    // Check bullet kills (handled in Bullets component, but sync onKill)
-    // We check kills delta
     const prevKills = gameState.kills;
 
-    // Monster collision / damage
     damageCooldown.current = Math.max(0, damageCooldown.current - 1);
     for (const m of gameState.monsters) {
       if (!m.alive) continue;
@@ -472,12 +595,10 @@ function Player({ onWin, onDamage, onKill, onGameOver, onShootAnim, resetKey, pl
       }
     }
 
-    // Sync kills from bullet hits
     if (gameState.kills > prevKills) {
       onKill();
     }
 
-    // Win check
     const finishX = fx * CELL_SIZE + CELL_SIZE / 2;
     const finishZ = fz * CELL_SIZE + CELL_SIZE / 2;
     if (Math.sqrt((pos.current.x - finishX) ** 2 + (pos.current.z - finishZ) ** 2) < 0.8) {
@@ -519,6 +640,13 @@ export default function MazeGame({
   const [sx, sz] = findCell(2);
   playerPos.current = { x: sx * CELL_SIZE + CELL_SIZE / 2, z: sz * CELL_SIZE + CELL_SIZE / 2 };
 
+  const doorCells = useMemo(() => findAllCells(4), []);
+  const healthCells = useMemo(() => findAllCells(5), []);
+
+  const handleHealthPickup = () => {
+    onDamage(); // reuse to sync health display
+  };
+
   useEffect(() => {
     onForward.current = () => { inputState.forward = true; };
     onBackward.current = () => { inputState.backward = true; };
@@ -548,6 +676,12 @@ export default function MazeGame({
       <Floor />
       <FinishMarker />
       <Bullets />
+      {doorCells.map(([x, z]) => (
+        <Door key={`door-${x}-${z}-${resetKey}`} x={x} z={z} playerRef={playerPos} />
+      ))}
+      {healthCells.map(([x, z]) => (
+        <HealthPickup key={`hp-${x}-${z}-${resetKey}`} x={x} z={z} playerRef={playerPos} onPickup={handleHealthPickup} />
+      ))}
       {gameState.monsters.map((_, i) => (
         <MonsterSprite key={`${resetKey}-${i}`} index={i} playerRef={playerPos} />
       ))}
