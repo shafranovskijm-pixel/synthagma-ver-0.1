@@ -695,6 +695,37 @@ const CoursePreview = () => {
                 </button>
               );
             })}
+
+            {/* Course Documents section in sidebar */}
+            {courseDocuments.length > 0 && (
+              <>
+                <div className="px-3 pt-4 pb-1">
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Материалы курса</p>
+                </div>
+                <button
+                  onClick={goToDocumentsView}
+                  className={cn(
+                    "w-full flex items-center gap-3 p-3 rounded-xl text-left transition-all duration-200",
+                    showDocumentsView
+                      ? "bg-primary/10 text-primary shadow-sm"
+                      : "hover:bg-muted"
+                  )}
+                >
+                  <div className={cn(
+                    "w-8 h-8 rounded-full flex items-center justify-center shrink-0",
+                    showDocumentsView ? "bg-primary/10" : "bg-muted"
+                  )}>
+                    <BookOpen className={cn("w-4 h-4", showDocumentsView ? "text-primary" : "text-muted-foreground")} />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="text-sm font-medium">Материалы</div>
+                    <div className="text-xs text-muted-foreground mt-0.5">
+                      {courseDocuments.length} {courseDocuments.length === 1 ? 'файл' : courseDocuments.length < 5 ? 'файла' : 'файлов'}
+                    </div>
+                  </div>
+                </button>
+              </>
+            )}
           </div>
         </ScrollArea>
 
