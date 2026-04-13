@@ -8,7 +8,6 @@ import {
   Info
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
@@ -64,81 +63,40 @@ const docTypeLabels: Record<string, { label: string; icon: React.ReactNode }> = 
   other: { label: "Другое", icon: <File className="w-4 h-4 text-muted-foreground" /> },
 };
 
-const HINT_CARDS: Record<DocumentSubTab, { icon: React.ReactNode; title: string; description: string } | null> = {
-  constructor: {
-    icon: <Wrench className="w-4 h-4 text-primary" />,
-    title: "Конструктор документов",
-    description: "Настройте шаблоны документов — реквизиты, печать и подпись будут автоматически подставляться во все генерируемые документы",
-  },
-  org: {
-    icon: <Building2 className="w-4 h-4 text-primary" />,
-    title: "Документы организации",
-    description: "Загрузите обязательные документы организации по 273-ФЗ. Система подскажет, каких документов не хватает",
-  },
-  orders: {
-    icon: <Users className="w-4 h-4 text-primary" />,
-    title: "Приказы",
-    description: "Здесь хранятся сгенерированные приказы о зачислении и отчислении учеников",
-  },
-  protocols: {
-    icon: <ClipboardList className="w-4 h-4 text-primary" />,
-    title: "Протоколы АК",
-    description: "Протоколы аттестационной комиссии, сформированные по результатам обучения",
-  },
-  certificates: {
-    icon: <Award className="w-4 h-4 text-primary" />,
-    title: "Удостоверения",
-    description: "Журнал выданных удостоверений о повышении квалификации с номерами и датами",
-  },
-  diplomas: {
-    icon: <GraduationCap className="w-4 h-4 text-primary" />,
-    title: "Дипломы",
-    description: "Журнал выданных дипломов о профессиональной переподготовке",
-  },
-  testimonials: {
-    icon: <FileCheck className="w-4 h-4 text-primary" />,
-    title: "Свидетельства",
-    description: "Журнал выданных свидетельств о квалификации",
-  },
-  programs: {
-    icon: <BookOpen className="w-4 h-4 text-primary" />,
-    title: "Программы",
-    description: "Управление образовательными программами организации",
-  },
-  billing: {
-    icon: <FolderOpen className="w-4 h-4 text-primary" />,
-    title: "Закрывающие документы",
-    description: "Счета, чеки и акты от платформы. Сформируйте акт выполненных работ для бухгалтерии",
-  },
-};
+const NAV_ITEMS: { value: DocumentSubTab; label: string; shortLabel?: string; icon: React.ElementType; ordersOnly?: boolean }[] = [
+  { value: "constructor", label: "Конструктор", icon: Wrench },
+  { value: "org", label: "Документы орг.", icon: FileText },
+  { value: "orders", label: "Приказы", icon: Users, ordersOnly: true },
+  { value: "protocols", label: "Протоколы АК", icon: ClipboardList },
+  { value: "certificates", label: "Удостоверения", icon: Award },
+  { value: "diplomas", label: "Дипломы", icon: GraduationCap },
+  { value: "testimonials", label: "Свидетельства", icon: FileCheck },
+  { value: "programs", label: "Программы", icon: BookOpen },
+  { value: "billing", label: "Закрывающие", icon: FolderOpen },
+];
 
-function HintCard({ tab }: { tab: DocumentSubTab }) {
-  const hint = HINT_CARDS[tab];
-  if (!hint) return null;
-  return (
-    <div className="flex items-start gap-3 bg-muted/50 border border-border rounded-xl p-4 mb-4">
-      <div className="mt-0.5 shrink-0 w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
-        {hint.icon}
-      </div>
-      <div>
-        <h4 className="text-sm font-medium">{hint.title}</h4>
-        <p className="text-xs text-muted-foreground mt-0.5">{hint.description}</p>
-      </div>
-    </div>
-  );
-}
+const SECTION_DESCRIPTIONS: Partial<Record<DocumentSubTab, string>> = {
+  constructor: "Настройте шаблоны документов — реквизиты, печать и подпись будут автоматически подставляться",
+  org: "Загрузите обязательные документы организации по 273-ФЗ",
+  orders: "Сгенерированные приказы о зачислении и отчислении",
+  protocols: "Протоколы аттестационной комиссии",
+  certificates: "Журнал выданных удостоверений о повышении квалификации",
+  diplomas: "Журнал выданных дипломов о профессиональной переподготовке",
+  testimonials: "Журнал выданных свидетельств о квалификации",
+  programs: "Управление образовательными программами",
+  billing: "Счета, чеки и акты от платформы",
+};
 
 export const DocumentsTab = React.memo(function DocumentsTab({ organizationId, organizationName, onShowBulkUploadDialog, isOrdersEnabled = true, onNavigateToSubscription }: DocumentsTabProps) {
   const navigate = useNavigate();
   const d = useOrgDashboard();
-  // activeDocTab removed — Tabs manages state internally
+  const [activeTab, setActiveTab] = useState<DocumentSubTab>("constructor");
   const [constructorTab, setConstructorTab] = useState("requisites");
   const [stampUrl, setStampUrl] = useState<string | null>(null);
   const [signatureUrl, setSignatureUrl] = useState<string | null>(null);
   const { plan } = useSubscriptionLimits(organizationId);
   const isFreePlan = plan === 'free';
 
-  // Billing docs state
   const [billingDocs, setBillingDocs] = useState<BillingDoc[]>([]);
   const [showActDialog, setShowActDialog] = useState(false);
   const [actDate, setActDate] = useState<Date>(new Date());
@@ -147,7 +105,6 @@ export const DocumentsTab = React.memo(function DocumentsTab({ organizationId, o
   const [actSubmitting, setActSubmitting] = useState(false);
   const [orgDetails, setOrgDetails] = useState<{ inn?: string; director_name?: string; director_position?: string }>({});
 
-  // Load stamp/signature + billing docs
   useEffect(() => {
     if (!organizationId) return;
     supabase
@@ -226,9 +183,7 @@ export const DocumentsTab = React.memo(function DocumentsTab({ organizationId, o
   const handleDeleteBillingDoc = async (doc: BillingDoc) => {
     if (!confirm("Удалить документ?")) return;
     try {
-      // Delete from storage
       await supabase.storage.from("billing-documents").remove([doc.file_url]);
-      // Delete from DB
       const { error } = await supabase.from("org_billing_documents").delete().eq("id", doc.id);
       if (error) throw error;
       setBillingDocs(prev => prev.filter(d => d.id !== doc.id));
@@ -305,271 +260,245 @@ export const DocumentsTab = React.memo(function DocumentsTab({ organizationId, o
     </div>
   );
 
+  const visibleItems = NAV_ITEMS.filter(item => !item.ordersOnly || isOrdersEnabled);
+  const activeItem = visibleItems.find(i => i.value === activeTab) || visibleItems[0];
+
   return (
-    <div className="space-y-4">
-      <Tabs defaultValue="constructor" className="w-full">
-        {/* Clean text-based tabs */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-          <TabsList className="justify-start bg-transparent h-auto p-0 flex flex-wrap gap-x-1 gap-y-1">
-            <TabsTrigger value="constructor" className="rounded-lg gap-1.5 text-sm px-3 py-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
-              <Wrench className="w-3.5 h-3.5" />
-              Конструктор
-            </TabsTrigger>
-            <TabsTrigger value="org" className="rounded-lg gap-1.5 text-sm px-3 py-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
-              <FileText className="w-3.5 h-3.5" />
-              <span className="hidden lg:inline">Документы орг.</span>
-              <span className="lg:hidden">Орг.</span>
-            </TabsTrigger>
-            {isOrdersEnabled && (
-              <TabsTrigger value="orders" className="rounded-lg gap-1.5 text-sm px-3 py-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
-                <Users className="w-3.5 h-3.5" />
-                Приказы
-              </TabsTrigger>
-            )}
-            <TabsTrigger value="protocols" className="rounded-lg gap-1.5 text-sm px-3 py-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
-              <ClipboardList className="w-3.5 h-3.5" />
-              <span className="hidden lg:inline">Протоколы АК</span>
-              <span className="lg:hidden">Протоколы</span>
-            </TabsTrigger>
-            <TabsTrigger value="certificates" className="rounded-lg gap-1.5 text-sm px-3 py-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
-              <Award className="w-3.5 h-3.5" />
-              <span className="hidden lg:inline">Удостоверения</span>
-              <span className="lg:hidden">Удост.</span>
-            </TabsTrigger>
-            <TabsTrigger value="diplomas" className="rounded-lg gap-1.5 text-sm px-3 py-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
-              <GraduationCap className="w-3.5 h-3.5" />
-              Дипломы
-            </TabsTrigger>
-            <TabsTrigger value="testimonials" className="rounded-lg gap-1.5 text-sm px-3 py-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
-              <FileCheck className="w-3.5 h-3.5" />
-              <span className="hidden lg:inline">Свидетельства</span>
-              <span className="lg:hidden">Свид.</span>
-            </TabsTrigger>
-            <TabsTrigger value="programs" className="rounded-lg gap-1.5 text-sm px-3 py-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
-              <BookOpen className="w-3.5 h-3.5" />
-              <span className="hidden lg:inline">Программы</span>
-              <span className="lg:hidden">Прогр.</span>
-            </TabsTrigger>
-            <TabsTrigger value="billing" className="rounded-lg gap-1.5 text-sm px-3 py-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
-              <FolderOpen className="w-3.5 h-3.5" />
-              <span className="hidden lg:inline">Закрывающие</span>
-              <span className="lg:hidden">Закр.</span>
-            </TabsTrigger>
-          </TabsList>
-
-          {onShowBulkUploadDialog && (
-            <Button 
-              variant="outline" 
-              size="sm"
-              className="rounded-xl gap-2 shrink-0" 
-              onClick={onShowBulkUploadDialog}
-            >
-              <Upload className="w-4 h-4" />
-              <span className="hidden sm:inline">Массовая загрузка</span>
-            </Button>
-          )}
-        </div>
-
-        {/* Constructor */}
-        <TabsContent value="constructor">
-          <div className="bg-card rounded-xl lg:rounded-2xl border border-border p-4 lg:p-6 relative">
-            <HintCard tab="constructor" />
-            <Tabs value={constructorTab} onValueChange={setConstructorTab}>
-              <TabsList className="flex flex-wrap h-auto gap-1 bg-muted/50 p-1 rounded-xl">
-                <TabsTrigger value="requisites" className="rounded-lg text-xs gap-1.5 px-2.5 py-1.5">
-                  <Building2 className="w-3.5 h-3.5" />
-                  <span className="hidden sm:inline">Реквизиты</span>
-                </TabsTrigger>
-                <TabsTrigger value="contract" className="rounded-lg text-xs gap-1.5 px-2.5 py-1.5">
-                  <FileText className="w-3.5 h-3.5" />
-                  <span className="hidden sm:inline">Договор</span>
-                </TabsTrigger>
-                <TabsTrigger value="protocol" className="rounded-lg text-xs gap-1.5 px-2.5 py-1.5">
-                  <ScrollText className="w-3.5 h-3.5" />
-                  <span className="hidden sm:inline">Протокол АК</span>
-                </TabsTrigger>
-                <TabsTrigger value="documents" className="rounded-lg text-xs gap-1.5 px-2.5 py-1.5">
-                  <Award className="w-3.5 h-3.5" />
-                  <span className="hidden sm:inline">Удост./Диплом</span>
-                </TabsTrigger>
-                <TabsTrigger value="consent" className="rounded-lg text-xs gap-1.5 px-2.5 py-1.5">
-                  <UserCheck className="w-3.5 h-3.5" />
-                  <span className="hidden sm:inline">Согласие ПД</span>
-                </TabsTrigger>
-                <TabsTrigger value="stamp" className="rounded-lg text-xs gap-1.5 px-2.5 py-1.5">
-                  <Stamp className="w-3.5 h-3.5" />
-                  <span className="hidden sm:inline">Печать</span>
-                </TabsTrigger>
-              </TabsList>
-
-              <TabsContent value="requisites" className="mt-4 space-y-4">
-                <div>
-                  <h4 className="font-medium mb-2 flex items-center gap-2 text-sm">
-                    <Building2 className="w-4 h-4" />
-                    Реквизиты организации
-                  </h4>
-                  <p className="text-xs text-muted-foreground mb-3">
-                    Введите ИНН для автозаполнения данных. Реквизиты используются во всех генерируемых документах.
-                  </p>
-                  <OrgRequisitesForm organizationId={organizationId} />
-                </div>
-              </TabsContent>
-
-              <TabsContent value="contract" className="mt-4">
-                <div className="flex flex-col items-center justify-center py-8 gap-4 text-center">
-                  <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center">
-                    <FileText className="w-7 h-7 text-primary" />
-                  </div>
-                  <div>
-                    <h4 className="font-semibold text-sm mb-1">Конструктор шаблона договора</h4>
-                    <p className="text-xs text-muted-foreground max-w-sm">
-                      Полноэкранный редактор с подсветкой переменных, панелью вставки и предпросмотром
-                    </p>
-                  </div>
-                  <Button className="rounded-xl gap-2" onClick={() => navigate("/contract-editor")}>
-                    <ExternalLink className="w-4 h-4" />
-                    Открыть конструктор
-                  </Button>
-                </div>
-              </TabsContent>
-
-              <TabsContent value="protocol" className="mt-4">
-                <p className="text-xs text-muted-foreground mb-3">
-                  Настройте шаблон протокола аттестационной комиссии и состав комиссии
-                </p>
-                <ProtocolTemplateEditor organizationId={organizationId} />
-              </TabsContent>
-
-              <TabsContent value="documents" className="mt-4">
-                <p className="text-xs text-muted-foreground mb-3">
-                  Настройте серии, нумерацию и формат регистрационных номеров документов об образовании
-                </p>
-                <CertificateTemplateEditor organizationId={organizationId} />
-              </TabsContent>
-
-              <TabsContent value="consent" className="mt-4">
-                <p className="text-xs text-muted-foreground mb-3">
-                  Генератор согласия на обработку персональных данных
-                </p>
-                <ConsentGenerator organizationId={organizationId} organizationName={organizationName || ""} />
-              </TabsContent>
-
-              <TabsContent value="stamp" className="mt-4">
-                <p className="text-xs text-muted-foreground mb-3">
-                  Загруженные печать и подпись используются во всех генерируемых документах (протоколы, договоры, приказы)
-                </p>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                  <StampSignatureUploader
-                    type="stamp"
-                    currentUrl={stampUrl}
-                    onUpload={handleStampUpload}
-                    onRemove={handleStampRemove}
-                    organizationId={organizationId}
-                  />
-                  <StampSignatureUploader
-                    type="signature"
-                    currentUrl={signatureUrl}
-                    onUpload={handleSignatureUpload}
-                    onRemove={handleSignatureRemove}
-                    organizationId={organizationId}
-                  />
-                </div>
-                <Accordion type="single" collapsible className="mt-6">
-                  <AccordionItem value="preview" className="border border-border rounded-xl px-4">
-                    <AccordionTrigger className="text-sm hover:no-underline">
-                      <span className="flex items-center gap-2">
-                        <Eye className="w-4 h-4" />
-                        Предпросмотр документа
-                      </span>
-                    </AccordionTrigger>
-                    <AccordionContent>
-                      <DocumentPreview type="certificate" data={{}} />
-                    </AccordionContent>
-                  </AccordionItem>
-                </Accordion>
-              </TabsContent>
-            </Tabs>
+    <div className="space-y-0">
+      <div className="flex flex-col lg:flex-row gap-0 min-h-[600px]">
+        {/* Left sidebar navigation */}
+        <nav className="lg:w-56 xl:w-64 shrink-0 border-b lg:border-b-0 lg:border-r border-border bg-card lg:rounded-l-2xl">
+          {/* Mobile: horizontal scroll */}
+          <div className="lg:hidden flex overflow-x-auto gap-1 p-2">
+            {visibleItems.map(item => {
+              const Icon = item.icon;
+              const isActive = activeTab === item.value;
+              return (
+                <button
+                  key={item.value}
+                  onClick={() => setActiveTab(item.value)}
+                  className={cn(
+                    "flex items-center gap-1.5 px-3 py-2 text-xs font-medium rounded-lg whitespace-nowrap transition-colors",
+                    isActive
+                      ? "bg-primary text-primary-foreground"
+                      : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
+                  )}
+                >
+                  <Icon className="w-3.5 h-3.5" />
+                  {item.label}
+                </button>
+              );
+            })}
           </div>
-        </TabsContent>
 
-        {/* Org Documents */}
-        <TabsContent value="org">
-          <OrgDocumentsManager organizationId={organizationId} />
-        </TabsContent>
+          {/* Desktop: vertical list */}
+          <div className="hidden lg:flex flex-col py-2">
+            {visibleItems.map(item => {
+              const Icon = item.icon;
+              const isActive = activeTab === item.value;
+              return (
+                <button
+                  key={item.value}
+                  onClick={() => setActiveTab(item.value)}
+                  className={cn(
+                    "flex items-center gap-2.5 px-4 py-2.5 text-sm font-medium transition-colors text-left",
+                    isActive
+                      ? "bg-primary/10 text-primary border-r-2 border-primary"
+                      : "text-muted-foreground hover:text-foreground hover:bg-muted/30"
+                  )}
+                >
+                  <Icon className="w-4 h-4 shrink-0" />
+                  {item.label}
+                </button>
+              );
+            })}
+          </div>
+        </nav>
 
-        {/* Orders */}
-        {isOrdersEnabled && (
-          <TabsContent value="orders">
-            <DocumentArchiveView
-              organizationId={organizationId}
-              categoryId="enrollment_orders"
-              title="Приказы о зачислении / отчислении"
-              docTypes={["enrollment_order", "expulsion_order"]}
-            />
-          </TabsContent>
-        )}
-
-        {/* Protocols */}
-        <TabsContent value="protocols">
-          <DocumentArchiveView
-            organizationId={organizationId}
-            categoryId="attestation_protocols"
-            title="Протоколы аттестационной комиссии"
-            docTypes={["attestation_protocol"]}
-          />
-        </TabsContent>
-
-        {/* Certificates */}
-        <TabsContent value="certificates">
-          <EducationDocumentsJournal
-            organizationId={organizationId}
-            onClose={() => {}}
-            documentTypeFilter="certificate"
-          />
-        </TabsContent>
-
-        {/* Diplomas */}
-        <TabsContent value="diplomas">
-          <EducationDocumentsJournal
-            organizationId={organizationId}
-            onClose={() => {}}
-            documentTypeFilter="diploma"
-          />
-        </TabsContent>
-
-        {/* Testimonials */}
-        <TabsContent value="testimonials">
-          <EducationDocumentsJournal
-            organizationId={organizationId}
-            onClose={() => {}}
-            documentTypeFilter="qualification"
-          />
-        </TabsContent>
-
-        {/* Programs */}
-        <TabsContent value="programs">
-          <ProgramsManager organizationId={organizationId} />
-        </TabsContent>
-
-        {/* Billing */}
-        <TabsContent value="billing">
-          <Card>
-              <CardHeader className="flex flex-row items-center justify-between">
-                <div>
-                  <CardTitle className="flex items-center gap-2 text-base">
-                    <FolderOpen className="w-5 h-5 text-primary" />
-                    Закрывающие документы
-                  </CardTitle>
-                  <CardDescription>Счета, чеки и акты от платформы</CardDescription>
-                </div>
-                <Button variant="outline" size="sm" onClick={() => setShowActDialog(true)}>
-                  <FileText className="w-4 h-4 mr-1" />
-                  Сформировать акт
+        {/* Right content panel */}
+        <div className="flex-1 min-w-0 bg-card lg:rounded-r-2xl border-l-0">
+          {/* Content header */}
+          <div className="flex items-center justify-between px-4 lg:px-6 py-4 border-b border-border">
+            <div>
+              <h2 className="text-base font-semibold flex items-center gap-2">
+                <activeItem.icon className="w-4 h-4 text-primary" />
+                {activeItem.label}
+              </h2>
+              {SECTION_DESCRIPTIONS[activeTab] && (
+                <p className="text-xs text-muted-foreground mt-0.5">{SECTION_DESCRIPTIONS[activeTab]}</p>
+              )}
+            </div>
+            <div className="flex items-center gap-2">
+              {activeTab === "billing" && (
+                <Button variant="outline" size="sm" className="rounded-xl gap-1.5" onClick={() => setShowActDialog(true)}>
+                  <FileText className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline">Сформировать акт</span>
                 </Button>
-              </CardHeader>
-              <CardContent>
+              )}
+              {onShowBulkUploadDialog && activeTab === "org" && (
+                <Button variant="outline" size="sm" className="rounded-xl gap-1.5" onClick={onShowBulkUploadDialog}>
+                  <Upload className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline">Массовая загрузка</span>
+                </Button>
+              )}
+            </div>
+          </div>
+
+          {/* Content body */}
+          <div className="p-4 lg:p-6">
+            {activeTab === "constructor" && (
+              <div className="relative">
+                <Tabs value={constructorTab} onValueChange={setConstructorTab}>
+                  <TabsList className="flex flex-wrap h-auto gap-1 bg-muted/50 p-1 rounded-xl mb-4">
+                    <TabsTrigger value="requisites" className="rounded-lg text-xs gap-1.5 px-2.5 py-1.5">
+                      <Building2 className="w-3.5 h-3.5" />
+                      <span className="hidden sm:inline">Реквизиты</span>
+                    </TabsTrigger>
+                    <TabsTrigger value="contract" className="rounded-lg text-xs gap-1.5 px-2.5 py-1.5">
+                      <FileText className="w-3.5 h-3.5" />
+                      <span className="hidden sm:inline">Договор</span>
+                    </TabsTrigger>
+                    <TabsTrigger value="protocol" className="rounded-lg text-xs gap-1.5 px-2.5 py-1.5">
+                      <ScrollText className="w-3.5 h-3.5" />
+                      <span className="hidden sm:inline">Протокол АК</span>
+                    </TabsTrigger>
+                    <TabsTrigger value="documents" className="rounded-lg text-xs gap-1.5 px-2.5 py-1.5">
+                      <Award className="w-3.5 h-3.5" />
+                      <span className="hidden sm:inline">Удост./Диплом</span>
+                    </TabsTrigger>
+                    <TabsTrigger value="consent" className="rounded-lg text-xs gap-1.5 px-2.5 py-1.5">
+                      <UserCheck className="w-3.5 h-3.5" />
+                      <span className="hidden sm:inline">Согласие ПД</span>
+                    </TabsTrigger>
+                    <TabsTrigger value="stamp" className="rounded-lg text-xs gap-1.5 px-2.5 py-1.5">
+                      <Stamp className="w-3.5 h-3.5" />
+                      <span className="hidden sm:inline">Печать</span>
+                    </TabsTrigger>
+                  </TabsList>
+
+                  <TabsContent value="requisites" className="mt-0 space-y-4">
+                    <OrgRequisitesForm organizationId={organizationId} />
+                  </TabsContent>
+
+                  <TabsContent value="contract" className="mt-0">
+                    <div className="flex flex-col items-center justify-center py-8 gap-4 text-center">
+                      <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center">
+                        <FileText className="w-7 h-7 text-primary" />
+                      </div>
+                      <div>
+                        <h4 className="font-semibold text-sm mb-1">Конструктор шаблона договора</h4>
+                        <p className="text-xs text-muted-foreground max-w-sm">
+                          Полноэкранный редактор с подсветкой переменных, панелью вставки и предпросмотром
+                        </p>
+                      </div>
+                      <Button className="rounded-xl gap-2" onClick={() => navigate("/contract-editor")}>
+                        <ExternalLink className="w-4 h-4" />
+                        Открыть конструктор
+                      </Button>
+                    </div>
+                  </TabsContent>
+
+                  <TabsContent value="protocol" className="mt-0">
+                    <ProtocolTemplateEditor organizationId={organizationId} />
+                  </TabsContent>
+
+                  <TabsContent value="documents" className="mt-0">
+                    <CertificateTemplateEditor organizationId={organizationId} />
+                  </TabsContent>
+
+                  <TabsContent value="consent" className="mt-0">
+                    <ConsentGenerator organizationId={organizationId} organizationName={organizationName || ""} />
+                  </TabsContent>
+
+                  <TabsContent value="stamp" className="mt-0">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                      <StampSignatureUploader
+                        type="stamp"
+                        currentUrl={stampUrl}
+                        onUpload={handleStampUpload}
+                        onRemove={handleStampRemove}
+                        organizationId={organizationId}
+                      />
+                      <StampSignatureUploader
+                        type="signature"
+                        currentUrl={signatureUrl}
+                        onUpload={handleSignatureUpload}
+                        onRemove={handleSignatureRemove}
+                        organizationId={organizationId}
+                      />
+                    </div>
+                    <Accordion type="single" collapsible className="mt-6">
+                      <AccordionItem value="preview" className="border border-border rounded-xl px-4">
+                        <AccordionTrigger className="text-sm hover:no-underline">
+                          <span className="flex items-center gap-2">
+                            <Eye className="w-4 h-4" />
+                            Предпросмотр документа
+                          </span>
+                        </AccordionTrigger>
+                        <AccordionContent>
+                          <DocumentPreview type="certificate" data={{}} />
+                        </AccordionContent>
+                      </AccordionItem>
+                    </Accordion>
+                  </TabsContent>
+                </Tabs>
+              </div>
+            )}
+
+            {activeTab === "org" && (
+              <OrgDocumentsManager organizationId={organizationId} />
+            )}
+
+            {activeTab === "orders" && isOrdersEnabled && (
+              <DocumentArchiveView
+                organizationId={organizationId}
+                categoryId="enrollment_orders"
+                title="Приказы о зачислении / отчислении"
+                docTypes={["enrollment_order", "expulsion_order"]}
+              />
+            )}
+
+            {activeTab === "protocols" && (
+              <DocumentArchiveView
+                organizationId={organizationId}
+                categoryId="attestation_protocols"
+                title="Протоколы аттестационной комиссии"
+                docTypes={["attestation_protocol"]}
+              />
+            )}
+
+            {activeTab === "certificates" && (
+              <EducationDocumentsJournal
+                organizationId={organizationId}
+                onClose={() => {}}
+                documentTypeFilter="certificate"
+              />
+            )}
+
+            {activeTab === "diplomas" && (
+              <EducationDocumentsJournal
+                organizationId={organizationId}
+                onClose={() => {}}
+                documentTypeFilter="diploma"
+              />
+            )}
+
+            {activeTab === "testimonials" && (
+              <EducationDocumentsJournal
+                organizationId={organizationId}
+                onClose={() => {}}
+                documentTypeFilter="qualification"
+              />
+            )}
+
+            {activeTab === "programs" && (
+              <ProgramsManager organizationId={organizationId} />
+            )}
+
+            {activeTab === "billing" && (
+              <div>
                 {billingDocs.length === 0 ? (
-                  <div className="text-center py-8 text-muted-foreground">
+                  <div className="text-center py-12 text-muted-foreground">
                     <FileText className="w-10 h-10 mx-auto mb-2 opacity-30" />
                     <p className="text-sm">Документов пока нет</p>
                   </div>
@@ -604,10 +533,11 @@ export const DocumentsTab = React.memo(function DocumentsTab({ organizationId, o
                     })}
                   </div>
                 )}
-              </CardContent>
-            </Card>
-        </TabsContent>
-      </Tabs>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
 
       {/* Act Generation Dialog */}
       <Dialog open={showActDialog} onOpenChange={setShowActDialog}>
