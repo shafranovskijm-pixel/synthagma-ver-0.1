@@ -64,17 +64,17 @@ const docTypeLabels: Record<string, { label: string; icon: React.ReactNode }> = 
   other: { label: "Другое", icon: <File className="w-4 h-4 text-muted-foreground" /> },
 };
 
-const NAV_ITEMS: { value: DocumentSubTab; label: string; shortLabel?: string; icon: React.ElementType; ordersOnly?: boolean }[] = [
-  { value: "billing", label: "Документы Синтагма", icon: FolderOpen },
-  { value: "payers", label: "Плательщики", icon: Users },
-  { value: "org", label: "Документы орг.", icon: FileText },
-  { value: "orders", label: "Приказы", icon: Users, ordersOnly: true },
-  { value: "protocols", label: "Протоколы АК", icon: ClipboardList },
-  { value: "certificates", label: "Удостоверения", icon: Award },
-  { value: "diplomas", label: "Дипломы", icon: GraduationCap },
-  { value: "testimonials", label: "Свидетельства", icon: FileCheck },
-  { value: "programs", label: "Программы", icon: BookOpen },
-  { value: "constructor", label: "Конструктор", icon: Wrench },
+const NAV_ITEMS: { value: DocumentSubTab; label: string; shortLabel?: string; icon: React.ElementType; ordersOnly?: boolean; iconColor?: string; group?: string }[] = [
+  { value: "billing", label: "Документы Синтагма", icon: FolderOpen, group: "platform" },
+  { value: "payers", label: "Плательщики", icon: Users, group: "platform" },
+  { value: "org", label: "Документы орг.", icon: FileText, iconColor: "text-primary/70", group: "docs" },
+  { value: "orders", label: "Приказы", icon: ScrollText, ordersOnly: true, iconColor: "text-amber-500", group: "docs" },
+  { value: "protocols", label: "Протоколы АК", icon: ClipboardList, iconColor: "text-violet-500", group: "docs" },
+  { value: "certificates", label: "Удостоверения", icon: Award, iconColor: "text-emerald-500", group: "docs" },
+  { value: "diplomas", label: "Дипломы", icon: GraduationCap, iconColor: "text-blue-500", group: "docs" },
+  { value: "testimonials", label: "Свидетельства", icon: FileCheck, iconColor: "text-rose-500", group: "docs" },
+  { value: "programs", label: "Программы", icon: BookOpen, group: "tools" },
+  { value: "constructor", label: "Конструктор", icon: Wrench, group: "tools" },
 ];
 
 const SECTION_DESCRIPTIONS: Partial<Record<DocumentSubTab, string>> = {
@@ -369,26 +369,44 @@ export const DocumentsTab = React.memo(function DocumentsTab({ organizationId, o
           </div>
 
           {/* Desktop: vertical list */}
-          <div className="hidden lg:flex flex-col py-2">
-            {visibleItems.map(item => {
-              const Icon = item.icon;
-              const isActive = activeTab === item.value;
-              return (
-                <button
-                  key={item.value}
-                  onClick={() => setActiveTab(item.value)}
-                  className={cn(
-                    "flex items-center gap-2.5 px-4 py-2.5 text-sm font-medium transition-colors text-left",
-                    isActive
-                      ? "bg-primary/10 text-primary border-r-2 border-primary"
-                      : "text-muted-foreground hover:text-foreground hover:bg-muted/30"
-                  )}
-                >
-                  <Icon className="w-4 h-4 shrink-0" />
-                  {item.label}
-                </button>
-              );
-            })}
+          <div className="hidden lg:flex flex-col py-3 bg-gradient-to-b from-card to-muted/20">
+            {(() => {
+              let lastGroup = "";
+              return visibleItems.map((item, idx) => {
+                const Icon = item.icon;
+                const isActive = activeTab === item.value;
+                const showDivider = item.group && item.group !== lastGroup && idx > 0;
+                const groupLabel = item.group === "docs" && lastGroup !== "docs" ? "Документооборот" : item.group === "tools" && lastGroup !== "tools" ? "Инструменты" : null;
+                lastGroup = item.group || "";
+                return (
+                  <React.Fragment key={item.value}>
+                    {showDivider && (
+                      <div className="px-4 pt-3 pb-1">
+                        <div className="h-px bg-border/60" />
+                        {groupLabel && (
+                          <span className="text-[10px] uppercase tracking-wider text-muted-foreground/60 font-semibold mt-2 block">{groupLabel}</span>
+                        )}
+                      </div>
+                    )}
+                    <button
+                      onClick={() => setActiveTab(item.value)}
+                      className={cn(
+                        "flex items-center gap-2.5 px-4 py-2.5 text-sm font-medium text-left transition-all duration-200 group",
+                        isActive
+                          ? "bg-primary/15 text-primary border-r-2 border-primary"
+                          : "text-muted-foreground hover:text-primary hover:bg-primary/10 hover:translate-x-0.5"
+                      )}
+                    >
+                      <Icon className={cn(
+                        "w-4 h-4 shrink-0 transition-colors duration-200",
+                        isActive ? "text-primary" : item.iconColor || "group-hover:text-primary"
+                      )} />
+                      {item.label}
+                    </button>
+                  </React.Fragment>
+                );
+              });
+            })()}
           </div>
         </nav>
 
