@@ -43,7 +43,7 @@ import {
   Bell,
   MessageSquare,
   ShieldOff,
-  Puzzle,
+  
   History,
   Wallet,
   Eye,
