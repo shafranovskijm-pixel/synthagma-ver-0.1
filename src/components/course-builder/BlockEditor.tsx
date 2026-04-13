@@ -956,19 +956,30 @@ function SortableBlockItem({ block, isFocused, onFocus, onUpdate, onDelete, onAd
             <button
               className="h-8 w-8 flex items-center justify-center hover:bg-white/20 rounded-full transition-colors"
               title="Вставить ссылку"
-              onClick={() => {
+              onMouseDown={(e) => {
+                e.preventDefault(); // preserve text selection
                 const sel = window.getSelection();
-                if (!sel || sel.isCollapsed) {
+                if (!sel || sel.isCollapsed || !sel.rangeCount) {
                   alert("Сначала выделите текст, чтобы сделать его ссылкой");
                   return;
                 }
+                const range = sel.getRangeAt(0);
                 const url = prompt("Введите URL ссылки:");
-                if (!url) return;
+                if (!url) {
+                  // restore selection after prompt
+                  sel.removeAllRanges();
+                  sel.addRange(range);
+                  return;
+                }
+                // restore selection and create link
+                sel.removeAllRanges();
+                sel.addRange(range);
                 document.execCommand("createLink", false, url);
                 // Set target="_blank" on new links
-                const editor = sel.anchorNode?.parentElement?.closest('[contenteditable]');
-                if (editor) {
-                  editor.querySelectorAll('a[href]').forEach((a) => {
+                const editor = range.commonAncestorContainer.parentElement?.closest?.('[contenteditable]') || range.commonAncestorContainer;
+                const root = editor instanceof HTMLElement ? editor : (editor as Node).parentElement;
+                if (root) {
+                  root.querySelectorAll('a[href]').forEach((a) => {
                     if (!a.getAttribute('target')) {
                       a.setAttribute('target', '_blank');
                       a.setAttribute('rel', 'noopener noreferrer');
