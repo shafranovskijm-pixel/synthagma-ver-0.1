@@ -7,8 +7,7 @@ import {
   Palette, LayoutGrid, Save, Settings,
   ChevronRight, Loader2, Upload,
   X, ExternalLink, Image, Eye, Lock, ArrowUpRight, LogIn, KeyRound,
-  RefreshCw, RotateCcw, Trophy, MessageCircle,
-  BarChart3, Link, HardHat, FileText, ShoppingBag, Building2, Users, ClipboardList, FileSpreadsheet
+  Trophy, MessageCircle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -17,7 +16,6 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { LoginBrandingSettings } from "@/components/organization/LoginBrandingSettings";
 import { OrgCredentialsSettings } from "@/components/organization/OrgCredentialsSettings";
-import { RobokassaSettings } from "@/components/organization/RobokassaSettings";
 import { ThemePersonalization } from "@/components/ui/ThemePersonalization";
 
 interface OrgProfileSettingsProps {
@@ -36,20 +34,13 @@ interface BrandingSettings {
   customSubtitle: string;
 }
 
-interface MenuSettings {
-  showStats: boolean;
-  showLinks: boolean;
-  showLaborSafety: boolean;
-  showDocuments: boolean;
-  showServices: boolean;
-  showCompanies: boolean;
-  [key: string]: boolean;
-}
+
 
 interface StudentDashboardSettings {
   showAchievements: boolean;
   showAiChat: boolean;
-  [key: string]: boolean;
+  catalogMode: "catalog" | "assigned";
+  [key: string]: boolean | string;
 }
 
 const DEFAULT_BRANDING: BrandingSettings = {
@@ -63,18 +54,12 @@ const DEFAULT_BRANDING: BrandingSettings = {
   customSubtitle: '',
 };
 
-const DEFAULT_MENU: MenuSettings = {
-  showStats: true,
-  showLinks: true,
-  showLaborSafety: true,
-  showDocuments: true,
-  showServices: true,
-  showCompanies: true,
-};
+
 
 const DEFAULT_STUDENT: StudentDashboardSettings = {
   showAchievements: false,
   showAiChat: false,
+  catalogMode: "catalog",
 };
 
 export function OrgProfileSettings({ organizationId, userId }: OrgProfileSettingsProps) {
@@ -85,7 +70,7 @@ export function OrgProfileSettings({ organizationId, userId }: OrgProfileSetting
   const [organizationName, setOrganizationName] = useState("");
   const [isDarkMode, setIsDarkMode] = useState(() => document.documentElement.classList.contains('dark'));
   const [brandingSettings, setBrandingSettings] = useState<BrandingSettings>(DEFAULT_BRANDING);
-  const [menuSettings, setMenuSettings] = useState<MenuSettings>(DEFAULT_MENU);
+  
   const [studentDashboardSettings, setStudentDashboardSettings] = useState<StudentDashboardSettings>(DEFAULT_STUDENT);
   const [isSavingBranding, setIsSavingBranding] = useState(false);
   const [isSavingSettings, setIsSavingSettings] = useState(false);
@@ -99,7 +84,7 @@ export function OrgProfileSettings({ organizationId, userId }: OrgProfileSetting
   const loadOrgData = async () => {
     const { data: org } = await supabase
       .from("organizations")
-      .select("name, branding, menu_settings, student_dashboard_settings")
+      .select("name, branding, student_dashboard_settings")
       .eq("id", organizationId)
       .single();
     if (!org) return;
@@ -120,40 +105,20 @@ export function OrgProfileSettings({ organizationId, userId }: OrgProfileSetting
       });
     }
     
-    if (org.menu_settings) {
-      const m = org.menu_settings as any;
-      setMenuSettings({
-        showStats: m.showStats ?? true,
-        showLinks: m.showLinks ?? true,
-        showLaborSafety: m.showLaborSafety ?? true,
-        showDocuments: m.showDocuments ?? true,
-        showServices: m.showServices ?? true,
-        showCompanies: m.showCompanies ?? true,
-      });
-    }
+
+
     
     if (org.student_dashboard_settings) {
       const s = org.student_dashboard_settings as any;
       setStudentDashboardSettings({
         showAchievements: s.showAchievements ?? false,
         showAiChat: s.showAiChat ?? false,
+        catalogMode: s.catalogMode || "catalog",
       });
     }
   };
 
-  const handleSaveMenuSettings = async () => {
-    try {
-      const { error } = await supabase
-        .from('organizations')
-        .update({ menu_settings: menuSettings as any })
-        .eq('id', organizationId);
-      if (error) throw error;
-      toast.success('Настройки меню сохранены');
-    } catch (error) {
-      console.error('Error saving menu settings:', error);
-      toast.error('Ошибка сохранения настроек');
-    }
-  };
+
 
   const handleSaveStudentSettings = async () => {
     setIsSavingSettings(true);
@@ -219,32 +184,7 @@ export function OrgProfileSettings({ organizationId, userId }: OrgProfileSetting
     window.open("/student", "_blank");
   };
 
-  const resetMenuSettings = async () => {
-    setMenuSettings(DEFAULT_MENU);
-    await supabase
-      .from('organizations')
-      .update({ menu_settings: DEFAULT_MENU as any })
-      .eq('id', organizationId);
-  };
 
-  const reloadMenuSettings = async () => {
-    const { data } = await supabase
-      .from("organizations")
-      .select("menu_settings")
-      .eq("id", organizationId)
-      .single();
-    if (data?.menu_settings) {
-      const m = data.menu_settings as any;
-      setMenuSettings({
-        showStats: m.showStats ?? true,
-        showLinks: m.showLinks ?? true,
-        showLaborSafety: m.showLaborSafety ?? true,
-        showDocuments: m.showDocuments ?? true,
-        showServices: m.showServices ?? true,
-        showCompanies: m.showCompanies ?? true,
-      });
-    }
-  };
 
   const LockedOverlay = ({ requiredPlan = "Старт", features = [] }: { requiredPlan?: string; features?: string[] }) => (
     <div className="absolute inset-0 z-10 bg-background/60 backdrop-blur-[2px] rounded-xl lg:rounded-2xl flex items-center justify-center">
@@ -304,150 +244,7 @@ export function OrgProfileSettings({ organizationId, userId }: OrgProfileSetting
         </div>
       </details>
 
-      {/* Menu Items Settings */}
-      <details className="bg-card rounded-xl lg:rounded-2xl border border-border group">
-        <summary className="p-4 lg:p-6 cursor-pointer list-none flex items-center justify-between">
-          <h3 className="font-display font-semibold text-base lg:text-lg flex items-center gap-2">
-            <LayoutGrid className="w-4 h-4 lg:w-5 lg:h-5" />
-            Разделы меню
-          </h3>
-          <ChevronRight className="w-5 h-5 text-muted-foreground transition-transform group-open:rotate-90" />
-        </summary>
-        <div className="px-4 lg:px-6 pb-4 lg:pb-6 relative">
-          <p className="text-xs lg:text-sm text-muted-foreground mb-3 lg:mb-4">
-            Включите или отключите разделы в боковом меню
-          </p>
-          <div className="space-y-3 lg:space-y-4">
-            {/* Stats */}
-            <div className="flex items-center justify-between py-2 lg:py-3 border-b border-border">
-              <div className="flex items-center gap-2 lg:gap-3">
-                <div className="w-8 h-8 lg:w-10 lg:h-10 rounded-lg lg:rounded-xl bg-accent/10 flex items-center justify-center">
-                  <BarChart3 className="w-4 h-4 lg:w-5 lg:h-5 text-accent" />
-                </div>
-                <div>
-                  <p className="font-medium text-sm lg:text-base">Статистика</p>
-                  <p className="text-xs lg:text-sm text-muted-foreground hidden sm:block">Аналитика и отчёты</p>
-                </div>
-              </div>
-              <button
-                onClick={() => setMenuSettings(prev => ({ ...prev, showStats: !prev.showStats }))}
-                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors shrink-0 ${menuSettings.showStats ? 'bg-primary' : 'bg-muted'}`}
-              >
-                <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${menuSettings.showStats ? 'translate-x-6' : 'translate-x-1'}`} />
-              </button>
-            </div>
 
-            {/* Links */}
-            <div className="flex items-center justify-between py-2 lg:py-3 border-b border-border">
-              <div className="flex items-center gap-2 lg:gap-3">
-                <div className="w-8 h-8 lg:w-10 lg:h-10 rounded-lg lg:rounded-xl bg-sigma-green/10 flex items-center justify-center">
-                  <Link className="w-4 h-4 lg:w-5 lg:h-5 text-sigma-green" />
-                </div>
-                <div>
-                  <p className="font-medium text-sm lg:text-base">Ссылки регистрации</p>
-                  <p className="text-xs lg:text-sm text-muted-foreground hidden sm:block">Самостоятельная регистрация</p>
-                </div>
-              </div>
-              <button
-                onClick={() => setMenuSettings(prev => ({ ...prev, showLinks: !prev.showLinks }))}
-                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors shrink-0 ${menuSettings.showLinks ? 'bg-primary' : 'bg-muted'}`}
-              >
-                <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${menuSettings.showLinks ? 'translate-x-6' : 'translate-x-1'}`} />
-              </button>
-            </div>
-
-            {/* Labor Safety */}
-            <div className="flex items-center justify-between py-2 lg:py-3 border-b border-border">
-              <div className="flex items-center gap-2 lg:gap-3">
-                <div className="w-8 h-8 lg:w-10 lg:h-10 rounded-lg lg:rounded-xl bg-accent/10 flex items-center justify-center">
-                  <HardHat className="w-4 h-4 lg:w-5 lg:h-5 text-accent" />
-                </div>
-                <div>
-                  <p className="font-medium text-sm lg:text-base">Охрана труда</p>
-                  <p className="text-xs lg:text-sm text-muted-foreground hidden sm:block">Модуль охраны труда</p>
-                </div>
-              </div>
-              <button
-                onClick={() => setMenuSettings(prev => ({ ...prev, showLaborSafety: !prev.showLaborSafety }))}
-                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors shrink-0 ${menuSettings.showLaborSafety ? 'bg-primary' : 'bg-muted'}`}
-              >
-                <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${menuSettings.showLaborSafety ? 'translate-x-6' : 'translate-x-1'}`} />
-              </button>
-            </div>
-
-            {/* Documents */}
-            <div className="flex items-center justify-between py-2 lg:py-3">
-              <div className="flex items-center gap-2 lg:gap-3">
-                <div className="w-8 h-8 lg:w-10 lg:h-10 rounded-lg lg:rounded-xl bg-sigma-orange/10 flex items-center justify-center">
-                  <FileText className="w-4 h-4 lg:w-5 lg:h-5 text-sigma-orange" />
-                </div>
-                <div>
-                  <p className="font-medium text-sm lg:text-base">Документы</p>
-                  <p className="text-xs lg:text-sm text-muted-foreground hidden sm:block">Документооборот</p>
-                </div>
-              </div>
-              <button
-                onClick={() => setMenuSettings(prev => ({ ...prev, showDocuments: !prev.showDocuments }))}
-                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors shrink-0 ${menuSettings.showDocuments ? 'bg-primary' : 'bg-muted'}`}
-              >
-                <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${menuSettings.showDocuments ? 'translate-x-6' : 'translate-x-1'}`} />
-              </button>
-            </div>
-
-            {/* Companies */}
-            <div className="flex items-center justify-between py-2 lg:py-3 border-b border-border">
-              <div className="flex items-center gap-2 lg:gap-3">
-                <div className="w-8 h-8 lg:w-10 lg:h-10 rounded-lg lg:rounded-xl bg-primary/10 flex items-center justify-center">
-                  <Building2 className="w-4 h-4 lg:w-5 lg:h-5 text-primary" />
-                </div>
-                <div>
-                  <p className="font-medium text-sm lg:text-base">Компании</p>
-                  <p className="text-xs lg:text-sm text-muted-foreground hidden sm:block">Управление корпоративными клиентами</p>
-                </div>
-              </div>
-              <button
-                onClick={() => setMenuSettings(prev => ({ ...prev, showCompanies: !prev.showCompanies }))}
-                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors shrink-0 ${menuSettings.showCompanies ? 'bg-primary' : 'bg-muted'}`}
-              >
-                <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${menuSettings.showCompanies ? 'translate-x-6' : 'translate-x-1'}`} />
-              </button>
-            </div>
-
-            {/* Services */}
-            <div className="flex items-center justify-between py-2 lg:py-3">
-              <div className="flex items-center gap-2 lg:gap-3">
-                <div className="w-8 h-8 lg:w-10 lg:h-10 rounded-lg lg:rounded-xl bg-primary/10 flex items-center justify-center">
-                  <ShoppingBag className="w-4 h-4 lg:w-5 lg:h-5 text-primary" />
-                </div>
-                <div>
-                  <p className="font-medium text-sm lg:text-base">Маркетплейс</p>
-                  <p className="text-xs lg:text-sm text-muted-foreground hidden sm:block">Магазин курсов</p>
-                </div>
-              </div>
-              <button
-                onClick={() => setMenuSettings(prev => ({ ...prev, showServices: !prev.showServices }))}
-                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors shrink-0 ${menuSettings.showServices ? 'bg-primary' : 'bg-muted'}`}
-              >
-                <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${menuSettings.showServices ? 'translate-x-6' : 'translate-x-1'}`} />
-              </button>
-            </div>
-          </div>
-          <div className="mt-4 lg:mt-6 pt-3 lg:pt-4 border-t border-border flex flex-wrap gap-2">
-            <Button className="btn-gradient rounded-xl gap-2 text-sm" onClick={handleSaveMenuSettings}>
-              <Save className="w-4 h-4" />
-              Сохранить
-            </Button>
-            <Button variant="outline" className="rounded-xl gap-2 text-sm" onClick={async () => { await reloadMenuSettings(); toast.success('Меню обновлено'); }}>
-              <RefreshCw className="w-4 h-4" />
-              Обновить меню
-            </Button>
-            <Button variant="ghost" className="rounded-xl gap-2 text-sm" onClick={async () => { await resetMenuSettings(); toast.success('Меню восстановлено по умолчанию'); }}>
-              <RotateCcw className="w-4 h-4" />
-              По умолчанию
-            </Button>
-          </div>
-        </div>
-      </details>
 
       {/* Branding Settings */}
       <details className="bg-card rounded-2xl border border-border group">
@@ -791,6 +588,33 @@ export function OrgProfileSettings({ organizationId, userId }: OrgProfileSetting
                 <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${studentDashboardSettings.showAiChat ? 'translate-x-6' : 'translate-x-1'}`} />
               </button>
             </div>
+
+            {/* Catalog Mode */}
+            <div className="flex items-center justify-between py-3 border-t border-border">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+                  <LayoutGrid className="w-5 h-5 text-primary" />
+                </div>
+                <div>
+                  <p className="font-medium">Начальный экран ученика</p>
+                  <p className="text-sm text-muted-foreground">Что показывать первым при входе</p>
+                </div>
+              </div>
+              <div className="flex gap-1 bg-muted rounded-lg p-0.5">
+                <button
+                  onClick={() => setStudentDashboardSettings(prev => ({ ...prev, catalogMode: "catalog" }))}
+                  className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all ${studentDashboardSettings.catalogMode === "catalog" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
+                >
+                  Каталог
+                </button>
+                <button
+                  onClick={() => setStudentDashboardSettings(prev => ({ ...prev, catalogMode: "assigned" }))}
+                  className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all ${studentDashboardSettings.catalogMode === "assigned" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
+                >
+                  Назначенные
+                </button>
+              </div>
+            </div>
           </div>
           <div className="mt-6 pt-4 border-t border-border">
             <Button className="btn-gradient rounded-xl gap-2" onClick={handleSaveStudentSettings} disabled={isSavingSettings}>
@@ -827,84 +651,8 @@ export function OrgProfileSettings({ organizationId, userId }: OrgProfileSetting
         </div>
       </details>
 
-      {/* Robokassa Payment Settings */}
-      <RobokassaSettings organizationId={organizationId} />
 
-      {/* Quick Navigation to Sections */}
-      <details className="bg-card rounded-xl lg:rounded-2xl border border-border group">
-        <summary className="p-4 lg:p-6 cursor-pointer list-none flex items-center justify-between">
-          <h3 className="font-display font-semibold text-base lg:text-lg flex items-center gap-2">
-            <Settings className="w-4 h-4 lg:w-5 lg:h-5" />
-            Управление разделами
-          </h3>
-          <ChevronRight className="w-5 h-5 text-muted-foreground transition-transform group-open:rotate-90" />
-        </summary>
-        <div className="px-4 lg:px-6 pb-4 lg:pb-6 space-y-3">
-          <p className="text-xs lg:text-sm text-muted-foreground mb-2">
-            Быстрый доступ к разделам управления организацией
-          </p>
-          
-          {/* Staff */}
-          <button
-            onClick={() => navigate("/organization", { state: { tab: "staff" } })}
-            className="w-full flex items-center gap-3 p-3 rounded-xl border border-border hover:bg-accent/5 hover:border-primary/30 transition-all text-left group/nav"
-          >
-            <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
-              <Users className="w-4 h-4 text-primary" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="font-medium text-sm">Сотрудники</p>
-              <p className="text-xs text-muted-foreground">Управление ролями и доступом</p>
-            </div>
-            <ChevronRight className="w-4 h-4 text-muted-foreground group-hover/nav:text-primary transition-colors" />
-          </button>
 
-          {/* Documents */}
-          <button
-            onClick={() => navigate("/organization", { state: { tab: "documents" } })}
-            className="w-full flex items-center gap-3 p-3 rounded-xl border border-border hover:bg-accent/5 hover:border-primary/30 transition-all text-left group/nav"
-          >
-            <div className="w-9 h-9 rounded-lg bg-sigma-orange/10 flex items-center justify-center shrink-0">
-              <FileText className="w-4 h-4 text-sigma-orange" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="font-medium text-sm">Документооборот</p>
-              <p className="text-xs text-muted-foreground">Приказы, протоколы, сертификаты</p>
-            </div>
-            <ChevronRight className="w-4 h-4 text-muted-foreground group-hover/nav:text-primary transition-colors" />
-          </button>
-
-          {/* Journals */}
-          <button
-            onClick={() => navigate("/organization", { state: { tab: "journals" } })}
-            className="w-full flex items-center gap-3 p-3 rounded-xl border border-border hover:bg-accent/5 hover:border-primary/30 transition-all text-left group/nav"
-          >
-            <div className="w-9 h-9 rounded-lg bg-accent/10 flex items-center justify-center shrink-0">
-              <ClipboardList className="w-4 h-4 text-accent" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="font-medium text-sm">Журналы учёта</p>
-              <p className="text-xs text-muted-foreground">Журналы учёта слушателей</p>
-            </div>
-            <ChevronRight className="w-4 h-4 text-muted-foreground group-hover/nav:text-primary transition-colors" />
-          </button>
-
-          {/* FRDO */}
-          <button
-            onClick={() => navigate("/organization", { state: { tab: "frdo" } })}
-            className="w-full flex items-center gap-3 p-3 rounded-xl border border-border hover:bg-accent/5 hover:border-primary/30 transition-all text-left group/nav"
-          >
-            <div className="w-9 h-9 rounded-lg bg-sigma-green/10 flex items-center justify-center shrink-0">
-              <FileSpreadsheet className="w-4 h-4 text-sigma-green" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="font-medium text-sm">ФИС ФРДО</p>
-              <p className="text-xs text-muted-foreground">Федеральный реестр документов</p>
-            </div>
-            <ChevronRight className="w-4 h-4 text-muted-foreground group-hover/nav:text-primary transition-colors" />
-          </button>
-        </div>
-      </details>
     </div>
   );
 }

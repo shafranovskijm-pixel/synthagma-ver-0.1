@@ -4,6 +4,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSepara
 import { SigmaLogo } from "@/components/ui/SigmaLogo";
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 interface StudentHeaderProps {
   fullName: string | null;
@@ -43,14 +44,24 @@ export function StudentHeader({
 
       <div className="flex items-center gap-3">
         {/* Help */}
-        <Button variant="ghost" size="icon" className="rounded-xl w-10 h-10" onClick={() => window.open('https://sintagma.com.ru/blog', '_blank')}>
-          <HelpCircle className="w-6 h-6 text-muted-foreground" />
-        </Button>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button variant="ghost" size="icon" className="rounded-xl w-10 h-10 hover:scale-105 transition-transform" onClick={() => window.open('https://sintagma.com.ru/blog', '_blank')}>
+              <HelpCircle className="w-6 h-6 text-muted-foreground" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>Помощь</TooltipContent>
+        </Tooltip>
 
         {/* Notifications bell */}
-        <Button variant="ghost" size="icon" className="rounded-xl w-10 h-10 relative">
-          <Bell className="w-6 h-6 text-muted-foreground" />
-        </Button>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button variant="ghost" size="icon" className="rounded-xl w-10 h-10 relative hover:scale-105 transition-transform">
+              <Bell className="w-6 h-6 text-muted-foreground" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>Уведомления</TooltipContent>
+        </Tooltip>
 
         {/* Profile dropdown */}
         <DropdownMenu>

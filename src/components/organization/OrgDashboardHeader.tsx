@@ -1,6 +1,7 @@
 import { useRef, useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
-import { Plus, FileSpreadsheet, Menu, CreditCard, HelpCircle, User, LogOut, Handshake, Sparkles, ImagePlus, ShoppingBag, Wand2, Loader2 } from "lucide-react";
+import { Plus, FileSpreadsheet, Menu, CreditCard, HelpCircle, User, LogOut, Handshake, Sparkles, ImagePlus, ShoppingBag, Wand2, Loader2, Settings } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useNavigate } from "react-router-dom";
 import { showLimitToast } from "@/utils/limitToast";
 import { useOrgDashboard } from "@/contexts/OrgDashboardContext";
@@ -160,19 +161,37 @@ export function OrgDashboardHeader() {
           </Button>
 
           {/* Notifications */}
-          {organizationId && <OrgNotifications organizationId={organizationId} />}
+          {organizationId && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <div className="hover:scale-105 transition-transform">
+                  <OrgNotifications organizationId={organizationId} />
+                </div>
+              </TooltipTrigger>
+              <TooltipContent>Уведомления</TooltipContent>
+            </Tooltip>
+          )}
 
           {/* Profile avatar */}
           <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <button className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/15 text-primary hover:bg-primary/25 transition-colors font-bold text-sm">
-                {initials}
-              </button>
-            </DropdownMenuTrigger>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <DropdownMenuTrigger asChild>
+                  <button className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/15 text-primary hover:bg-primary/25 hover:scale-105 transition-all font-bold text-sm">
+                    {initials}
+                  </button>
+                </DropdownMenuTrigger>
+              </TooltipTrigger>
+              <TooltipContent>Профиль</TooltipContent>
+            </Tooltip>
             <DropdownMenuContent align="end" className="w-52 rounded-xl">
               <DropdownMenuItem onClick={() => navigate("/organization/profile")} className="rounded-lg gap-2.5 py-2.5">
                 <User className="w-4 h-4" />
                 Профиль
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => navigate("/organization/settings")} className="rounded-lg gap-2.5 py-2.5">
+                <Settings className="w-4 h-4" />
+                Настройки
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => navigate("/whats-new")} className="rounded-lg gap-2.5 py-2.5">
                 <Sparkles className="w-4 h-4" />
