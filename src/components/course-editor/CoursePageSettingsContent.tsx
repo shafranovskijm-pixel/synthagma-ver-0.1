@@ -73,6 +73,7 @@ export function CoursePageSettingsContent({ courseId, courseTitle, courseDescrip
   const [slug, setSlug] = useState("");
   const [accentColor, setAccentColor] = useState("#6366f1");
   const [price, setPrice] = useState(0);
+  const [allowMaterialsDownload, setAllowMaterialsDownload] = useState(true);
   const [landingContent, setLandingContent] = useState<LandingContent>({});
   const [promoCodes, setPromoCodes] = useState<PromoCode[]>([]);
   const [saving, setSaving] = useState(false);
@@ -90,7 +91,7 @@ export function CoursePageSettingsContent({ courseId, courseTitle, courseDescrip
   const loadData = async () => {
     setLoading(true);
     const [courseRes, promoRes] = await Promise.all([
-      supabase.from("courses").select("slug, accent_color, landing_content, price").eq("id", courseId).single(),
+      supabase.from("courses").select("slug, accent_color, landing_content, price, allow_materials_download").eq("id", courseId).single(),
       supabase.from("course_promo_codes").select("*").eq("course_id", courseId).order("created_at", { ascending: false }),
     ]);
 
@@ -98,6 +99,7 @@ export function CoursePageSettingsContent({ courseId, courseTitle, courseDescrip
       setSlug(courseRes.data.slug || transliterate(courseTitle));
       setAccentColor(courseRes.data.accent_color || "#6366f1");
       setPrice(courseRes.data.price || 0);
+      setAllowMaterialsDownload(courseRes.data.allow_materials_download !== false);
       setLandingContent((courseRes.data.landing_content as LandingContent) || {});
     }
     setPromoCodes((promoRes.data as PromoCode[]) || []);
@@ -112,6 +114,7 @@ export function CoursePageSettingsContent({ courseId, courseTitle, courseDescrip
         slug: slug || null,
         accent_color: accentColor,
         price: price,
+        allow_materials_download: allowMaterialsDownload,
         landing_content: landingContent as any,
       })
       .eq("id", courseId);
