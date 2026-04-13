@@ -9,6 +9,7 @@ interface SubscriptionLimitsState {
     coursesCount: number;
     studentsCount: number;
     trainedThisMonth: number;
+    storageUsedBytes: number;
   };
   canCreateCourse: boolean;
   canAddStudent: boolean;
