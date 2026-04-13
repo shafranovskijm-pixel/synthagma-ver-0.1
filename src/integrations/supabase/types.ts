@@ -866,6 +866,42 @@ export type Database = {
           },
         ]
       }
+      course_achievements: {
+        Row: {
+          achievement_id: string
+          course_id: string
+          created_at: string | null
+          id: string
+        }
+        Insert: {
+          achievement_id: string
+          course_id: string
+          created_at?: string | null
+          id?: string
+        }
+        Update: {
+          achievement_id?: string
+          course_id?: string
+          created_at?: string | null
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "course_achievements_achievement_id_fkey"
+            columns: ["achievement_id"]
+            isOneToOne: false
+            referencedRelation: "achievements"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "course_achievements_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "courses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       course_categories: {
         Row: {
           color: string | null
