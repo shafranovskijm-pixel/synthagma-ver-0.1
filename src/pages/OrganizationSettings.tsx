@@ -1,15 +1,13 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-import { Settings, LayoutGrid, Save, RefreshCw, RotateCcw, Users, FileText, ClipboardList, FileSpreadsheet, BarChart3, Link, HardHat, ShoppingBag, Building2, GraduationCap, Wallet } from "lucide-react";
+import { Settings, LayoutGrid, Save, RefreshCw, RotateCcw, Users, FileText, BarChart3, Link, HardHat, ShoppingBag, Building2, GraduationCap, Wallet } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import { RobokassaSettings } from "@/components/organization/RobokassaSettings";
 import { SettingsStudentDashboardTab } from "@/components/organization/SettingsStudentDashboardTab";
 import { StaffManager } from "@/components/organization/StaffManager";
-import { JournalsManager } from "@/components/organization/JournalsManager";
-import { FRDOManager } from "@/components/organization/FRDOManager";
 import { OrgDashboardProvider } from "@/contexts/OrgDashboardContext";
 import OrgPageLayout from "@/components/organization/OrgPageLayout";
 
@@ -114,12 +112,6 @@ function SettingsContent() {
         <TabsTrigger value="staff" className="rounded-lg gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm px-4 py-2">
           <Users className="w-4 h-4" /> Сотрудники
         </TabsTrigger>
-        <TabsTrigger value="journals" className="rounded-lg gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm px-4 py-2">
-          <ClipboardList className="w-4 h-4" /> Журналы
-        </TabsTrigger>
-        <TabsTrigger value="frdo" className="rounded-lg gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm px-4 py-2">
-          <FileSpreadsheet className="w-4 h-4" /> ФИС ФРДО
-        </TabsTrigger>
       </TabsList>
 
       <TabsContent value="menu">
@@ -178,21 +170,6 @@ function SettingsContent() {
         )}
       </TabsContent>
 
-      <TabsContent value="journals">
-        {organizationId && (
-          <div className="bg-card rounded-xl lg:rounded-2xl border border-border p-4 lg:p-6">
-            <JournalsManager organizationId={organizationId} />
-          </div>
-        )}
-      </TabsContent>
-
-      <TabsContent value="frdo">
-        {organizationId && (
-          <div className="bg-card rounded-xl lg:rounded-2xl border border-border p-4 lg:p-6">
-            <FRDOManager organizationId={organizationId} />
-          </div>
-        )}
-      </TabsContent>
     </Tabs>
   );
 }

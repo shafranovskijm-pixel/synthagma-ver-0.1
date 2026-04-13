@@ -52,7 +52,7 @@ export function OrgSettingsSidebar() {
             <TooltipTrigger asChild>
               <button
                 onClick={() => navigate("/organization")}
-                className="flex h-10 w-10 items-center justify-center rounded-xl text-foreground/60 hover:text-foreground hover:bg-muted/50 hover:scale-110 transition-all duration-200"
+                className="flex h-10 w-10 items-center justify-center rounded-xl text-foreground/60 hover:text-primary hover:bg-primary/10 hover:scale-110 transition-all duration-200"
               >
                 <ArrowLeft className="h-[18px] w-[18px]" />
               </button>
@@ -76,7 +76,7 @@ export function OrgSettingsSidebar() {
                           "flex h-11 w-11 items-center justify-center rounded-xl transition-all duration-200",
                           isActive
                             ? "bg-primary text-primary-foreground shadow-md"
-                            : "text-foreground/70 hover:text-foreground hover:scale-110"
+                            : "text-foreground/70 hover:text-primary hover:bg-primary/10 hover:scale-110"
                         )}
                         style={isActive ? { boxShadow: "0 4px 14px hsl(var(--primary) / 0.4)" } : undefined}
                         aria-current={isActive ? "page" : undefined}
