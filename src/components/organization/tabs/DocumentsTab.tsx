@@ -521,6 +521,10 @@ export const DocumentsTab = React.memo(function DocumentsTab({ organizationId, o
               <ProgramsManager organizationId={organizationId} />
             )}
 
+            {activeTab === "payers" && (
+              <PayersSection organizationId={organizationId} />
+            )}
+
             {activeTab === "billing" && (
               <div>
                 <Tabs value={billingSubTab} onValueChange={(v) => setBillingSubTab(v as BillingSubTab)}>
