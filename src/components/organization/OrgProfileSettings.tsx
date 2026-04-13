@@ -34,15 +34,7 @@ interface BrandingSettings {
   customSubtitle: string;
 }
 
-interface MenuSettings {
-  showStats: boolean;
-  showLinks: boolean;
-  showLaborSafety: boolean;
-  showDocuments: boolean;
-  showServices: boolean;
-  showCompanies: boolean;
-  [key: string]: boolean;
-}
+
 
 interface StudentDashboardSettings {
   showAchievements: boolean;
