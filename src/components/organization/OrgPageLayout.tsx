@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { OrgDashboardProvider, useOrgDashboard } from "@/contexts/OrgDashboardContext";
 import { OrgDashboardFooter } from "@/components/organization/OrgDashboardFooter";
-import { OrgSidebar } from "@/components/organization/OrgSidebar";
+import { OrgSettingsSidebar } from "@/components/organization/OrgSettingsSidebar";
 import { OrgNotifications } from "@/components/organization/OrgNotifications";
 import { SigmaLogo } from "@/components/ui/SigmaLogo";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -69,14 +69,14 @@ function OrgPageLayoutInner({ organizationId, title, icon: Icon, children }: Org
 
   return (
     <div className="min-h-screen bg-background flex">
-      <OrgSidebar />
+      <OrgSettingsSidebar />
       <main className="flex-1 flex flex-col min-w-0 lg:ml-[88px]">
         {/* Sticky header */}
         <header className="sticky top-0 z-30 bg-card border-b border-border">
           {/* Top bar */}
           <div className="flex items-center justify-between px-4 lg:px-6 h-14">
             <div className="flex items-center gap-3">
-              <Button variant="ghost" size="icon" className="rounded-xl hover:bg-primary/10 hover:text-primary transition-all duration-200" onClick={() => navigate(-1)}>
+              <Button variant="ghost" size="icon" className="rounded-xl hover:bg-primary/10 hover:text-primary transition-all duration-200" onClick={() => navigate("/organization")}>
                 <ArrowLeft className="w-5 h-5" />
               </Button>
               <div className="flex items-center gap-2.5">
