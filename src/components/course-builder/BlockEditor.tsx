@@ -448,7 +448,8 @@ const blockCategories = {
   },
 };
 
-function BlockCategoryGrid({ items, onSelect }: { items: typeof blockCategories.text.items; onSelect: (type: BlockType) => void }) {
+function BlockCategoryGrid({ items, onSelect, calloutItems: cItems, calloutLabel }: { items: { type: BlockType; icon: any; label: string; color?: string }[]; onSelect: (type: BlockType) => void; calloutItems?: typeof calloutItems; calloutLabel?: string }) {
+  const [showCallouts, setShowCallouts] = useState(false);
   return (
     <div className="grid grid-cols-2 gap-1">
       {items.map((item) => (
@@ -461,6 +462,28 @@ function BlockCategoryGrid({ items, onSelect }: { items: typeof blockCategories.
           <span className="truncate">{item.label}</span>
         </button>
       ))}
+      {cItems && cItems.length > 0 && (
+        <>
+          <button
+            onClick={() => setShowCallouts(!showCallouts)}
+            className="flex items-center gap-2 px-2 py-1.5 rounded-md text-sm hover:bg-accent transition-colors text-left col-span-2"
+          >
+            <Highlighter className="w-4 h-4 shrink-0 text-yellow-500" />
+            <span className="truncate">{calloutLabel || "Выделение"}</span>
+            <ChevronRight className={cn("w-3 h-3 ml-auto transition-transform", showCallouts && "rotate-90")} />
+          </button>
+          {showCallouts && cItems.map((item) => (
+            <button
+              key={item.type}
+              onClick={() => onSelect(item.type)}
+              className="flex items-center gap-2 px-2 py-1.5 rounded-md text-sm hover:bg-accent transition-colors text-left pl-6"
+            >
+              <item.icon className={cn("w-4 h-4 shrink-0", item.color || "text-foreground")} />
+              <span className="truncate">{item.label}</span>
+            </button>
+          ))}
+        </>
+      )}
     </div>
   );
 }
