@@ -76,6 +76,7 @@ const DEFAULT_MENU: MenuSettings = {
 const DEFAULT_STUDENT: StudentDashboardSettings = {
   showAchievements: false,
   showAiChat: false,
+  catalogMode: "catalog",
 };
 
 export function OrgProfileSettings({ organizationId, userId }: OrgProfileSettingsProps) {
@@ -138,6 +139,7 @@ export function OrgProfileSettings({ organizationId, userId }: OrgProfileSetting
       setStudentDashboardSettings({
         showAchievements: s.showAchievements ?? false,
         showAiChat: s.showAiChat ?? false,
+        catalogMode: s.catalogMode || "catalog",
       });
     }
   };
