@@ -579,7 +579,7 @@ const textColorPresets = [
   { value: "white", label: "Белый", class: "text-white", dot: "bg-white border border-border" },
 ];
 
-const wrapTargets: { type: BlockType; icon: any; label: string; color: string }[] = [
+const wrapCalloutTargets: { type: BlockType; icon: any; label: string; color: string }[] = [
   { type: "callout-info", icon: Info, label: "Информация", color: "text-blue-500" },
   { type: "callout-warning", icon: AlertTriangle, label: "Предупреждение", color: "text-amber-500" },
   { type: "callout-tip", icon: Lightbulb, label: "Совет", color: "text-green-500" },
@@ -587,9 +587,12 @@ const wrapTargets: { type: BlockType; icon: any; label: string; color: string }[
   { type: "callout-danger", icon: XCircle, label: "Ошибка", color: "text-red-500" },
   { type: "highlight", icon: Highlighter, label: "Выделение", color: "text-yellow-500" },
   { type: "quote", icon: Quote, label: "Цитата", color: "text-muted-foreground" },
+];
+
+const wrapOtherTargets: { type: BlockType; icon: any; label: string; color: string }[] = [
+  { type: "paragraph", icon: Type, label: "Обычный текст", color: "text-foreground" },
   { type: "accordion", icon: ChevronDown, label: "Сворачиваемая секция", color: "text-purple-500" },
   { type: "audio", icon: Headphones, label: "Аудио (TTS)", color: "text-teal-500" },
-  { type: "paragraph", icon: Type, label: "Обычный текст", color: "text-foreground" },
 ];
 
 // Quick style templates
