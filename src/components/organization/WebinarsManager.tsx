@@ -241,7 +241,7 @@ export function WebinarsManager({ organizationId }: Props) {
           <p className="text-lg font-medium">{webinars.length === 0 ? "Нет вебинаров" : "Ничего не найдено"}</p>
           {webinars.length === 0 && (
             <>
-              <p className="text-sm mb-4">Создайте первый вебинар через Kinescope или добавьте внешнюю ссылку</p>
+              <p className="text-sm mb-4">Создайте первый вебинар — проводите онлайн-занятия и сохраняйте записи для студентов</p>
               <Button onClick={() => setShowCreate(true)} variant="outline">
                 <Plus className="w-4 h-4 mr-2" />Создать вебинар
               </Button>
