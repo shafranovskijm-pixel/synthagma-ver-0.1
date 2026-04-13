@@ -1,13 +1,15 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import { cn } from "@/lib/utils";
-import { CalendarIcon, Users, UserPlus, Loader2, Check } from "lucide-react";
+import { CalendarIcon, Users, UserPlus, Loader2, Check, Plus } from "lucide-react";
 
 interface StudentGroup {
   id: string;
@@ -25,12 +27,23 @@ interface CourseGroupsTabProps {
   onRefreshStudents?: () => void;
 }
 
+const GROUP_COLORS = [
+  "#6366f1", "#ec4899", "#f59e0b", "#10b981", "#3b82f6",
+  "#8b5cf6", "#ef4444", "#14b8a6", "#f97316", "#06b6d4",
+];
+
 export function CourseGroupsTab({ courseId, organizationId, onRefreshStudents }: CourseGroupsTabProps) {
   const [groups, setGroups] = useState<StudentGroup[]>([]);
   const [loading, setLoading] = useState(true);
   const [enrollingGroupId, setEnrollingGroupId] = useState<string | null>(null);
   const [groupStudentCounts, setGroupStudentCounts] = useState<Record<string, number>>({});
   const [enrolledCounts, setEnrolledCounts] = useState<Record<string, number>>({});
+
+  // Create group state
+  const [showCreateDialog, setShowCreateDialog] = useState(false);
+  const [newGroupName, setNewGroupName] = useState("");
+  const [newGroupColor, setNewGroupColor] = useState(GROUP_COLORS[0]);
+  const [isCreating, setIsCreating] = useState(false);
 
   const loadGroups = useCallback(async () => {
     setLoading(true);
@@ -45,7 +58,6 @@ export function CourseGroupsTab({ courseId, organizationId, onRefreshStudents }:
       setGroups(groupsList);
 
       if (groupsList.length > 0) {
-        // Count students per group
         const { data: profiles } = await supabase
           .from("profiles")
           .select("user_id, student_group_id")
@@ -62,7 +74,6 @@ export function CourseGroupsTab({ courseId, organizationId, onRefreshStudents }:
         }
         setGroupStudentCounts(counts);
 
-        // Count already enrolled students per group for this course
         const allUserIds = (profiles as any[] || []).map((p: any) => p.user_id);
         if (allUserIds.length > 0) {
           const { data: enrollments } = await supabase
@@ -90,10 +101,36 @@ export function CourseGroupsTab({ courseId, organizationId, onRefreshStudents }:
     loadGroups();
   }, [loadGroups]);
 
+  const handleCreateGroup = async () => {
+    if (!newGroupName.trim()) {
+      toast.error("Введите название группы");
+      return;
+    }
+    setIsCreating(true);
+    try {
+      const { error } = await supabase
+        .from("student_groups")
+        .insert({
+          name: newGroupName.trim(),
+          color: newGroupColor,
+          organization_id: organizationId,
+        } as any);
+      if (error) throw error;
+      toast.success("Группа создана");
+      setShowCreateDialog(false);
+      setNewGroupName("");
+      setNewGroupColor(GROUP_COLORS[0]);
+      loadGroups();
+    } catch (e) {
+      toast.error("Ошибка создания группы");
+    } finally {
+      setIsCreating(false);
+    }
+  };
+
   const handleEnrollGroup = async (groupId: string) => {
     setEnrollingGroupId(groupId);
     try {
-      // Get all students in the group
       const { data: profiles } = await supabase
         .from("profiles")
         .select("user_id")
@@ -106,7 +143,6 @@ export function CourseGroupsTab({ courseId, organizationId, onRefreshStudents }:
         return;
       }
 
-      // Check existing enrollments
       const { data: existing } = await supabase
         .from("enrollments")
         .select("user_id")
@@ -121,7 +157,6 @@ export function CourseGroupsTab({ courseId, organizationId, onRefreshStudents }:
         return;
       }
 
-      // Enroll new students
       const enrollments = toEnroll.map((uid: string) => ({
         user_id: uid,
         course_id: courseId,
@@ -158,27 +193,98 @@ export function CourseGroupsTab({ courseId, organizationId, onRefreshStudents }:
     }
   };
 
+  const createGroupDialog = (
+    <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
+      <DialogContent className="rounded-2xl">
+        <DialogHeader>
+          <DialogTitle>Создать группу</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-4 pt-2">
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Название группы</label>
+            <Input
+              placeholder="Например: Группа А-2026"
+              value={newGroupName}
+              onChange={(e) => setNewGroupName(e.target.value)}
+              className="rounded-xl"
+            />
+          </div>
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Цвет</label>
+            <div className="flex gap-2 flex-wrap">
+              {GROUP_COLORS.map((c) => (
+                <button
+                  key={c}
+                  className={cn(
+                    "w-8 h-8 rounded-full transition-all border-2",
+                    newGroupColor === c ? "border-foreground scale-110" : "border-transparent hover:scale-105"
+                  )}
+                  style={{ backgroundColor: c }}
+                  onClick={() => setNewGroupColor(c)}
+                />
+              ))}
+            </div>
+          </div>
+          <Button
+            className="w-full btn-gradient rounded-xl"
+            onClick={handleCreateGroup}
+            disabled={isCreating || !newGroupName.trim()}
+          >
+            {isCreating ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Plus className="w-4 h-4 mr-2" />}
+            Создать группу
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
         <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+        {createGroupDialog}
       </div>
     );
   }
 
   if (groups.length === 0) {
     return (
-      <div className="text-center py-12 text-muted-foreground">
-        <Users className="w-12 h-12 mx-auto mb-3 opacity-50" />
-        <p className="font-medium">Нет групп</p>
-        <p className="text-sm mt-1">Создайте группы в разделе «Ученики»</p>
-      </div>
+      <>
+        <div className="flex flex-col items-center justify-center py-16 px-6">
+          <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-500/20 to-blue-500/5 flex items-center justify-center mb-4">
+            <Users className="w-8 h-8 text-blue-500" />
+          </div>
+          <h3 className="text-lg font-semibold mb-2">Группы учеников</h3>
+          <p className="text-sm text-muted-foreground text-center max-w-md mb-6">
+            Группы позволяют массово зачислять учеников на курс и управлять расписанием обучения. Создайте группу и добавляйте в неё учеников.
+          </p>
+          <Button
+            className="btn-gradient rounded-xl gap-2"
+            onClick={() => setShowCreateDialog(true)}
+          >
+            <Plus className="w-4 h-4" />
+            Создать группу
+          </Button>
+        </div>
+        {createGroupDialog}
+      </>
     );
   }
 
   return (
     <div className="space-y-3">
-      <h3 className="font-semibold">Группы организации</h3>
+      <div className="flex items-center justify-between">
+        <h3 className="font-semibold">Группы организации</h3>
+        <Button
+          size="sm"
+          variant="outline"
+          className="rounded-xl gap-1.5"
+          onClick={() => setShowCreateDialog(true)}
+        >
+          <Plus className="w-4 h-4" />
+          Создать группу
+        </Button>
+      </div>
       <div className="space-y-2">
         {groups.map(group => {
           const total = groupStudentCounts[group.id] || 0;
@@ -199,14 +305,12 @@ export function CourseGroupsTab({ courseId, organizationId, onRefreshStudents }:
               </div>
 
               <div className="flex items-center gap-2 shrink-0">
-                {/* Start date */}
                 <DatePicker
                   date={group.start_date ? new Date(group.start_date) : undefined}
                   onChange={(d) => handleUpdateDate(group.id, "start_date", d)}
                   placeholder="Начало"
                 />
                 <span className="text-muted-foreground text-xs">—</span>
-                {/* End date */}
                 <DatePicker
                   date={group.end_date ? new Date(group.end_date) : undefined}
                   onChange={(d) => handleUpdateDate(group.id, "end_date", d)}
@@ -233,6 +337,7 @@ export function CourseGroupsTab({ courseId, organizationId, onRefreshStudents }:
           );
         })}
       </div>
+      {createGroupDialog}
     </div>
   );
 }
