@@ -1,5 +1,5 @@
 import { useRef, useEffect, useState, useCallback } from "react";
-import { Bold, Italic, Underline, Strikethrough } from "lucide-react";
+import { Bold, Italic, Underline, Strikethrough, Link2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import DOMPurify from "dompurify";
 
@@ -11,8 +11,8 @@ interface RichTextEditorProps {
   minHeight?: string;
 }
 
-const ALLOWED_TAGS = ['strong', 'b', 'em', 'i', 'u', 's', 'br', 'p', 'span', 'div'];
-const ALLOWED_ATTR = ['style'];
+const ALLOWED_TAGS = ['strong', 'b', 'em', 'i', 'u', 's', 'br', 'p', 'span', 'div', 'a'];
+const ALLOWED_ATTR = ['style', 'href', 'target', 'rel'];
 
 function sanitize(html: string): string {
   return DOMPurify.sanitize(html, { ALLOWED_TAGS, ALLOWED_ATTR, ALLOW_DATA_ATTR: false });
@@ -107,7 +107,52 @@ export function RichTextEditor({ value, onChange, placeholder, className, minHei
   const execFormat = (command: string) => {
     document.execCommand(command, false);
     handleInput();
-    // Keep focus on editor
+    editorRef.current?.focus();
+  };
+
+  const getParentAnchor = (): HTMLAnchorElement | null => {
+    const sel = window.getSelection();
+    if (!sel || !sel.rangeCount) return null;
+    let node: Node | null = sel.anchorNode;
+    while (node && node !== editorRef.current) {
+      if (node.nodeType === 1 && (node as Element).tagName === 'A') {
+        return node as HTMLAnchorElement;
+      }
+      node = node.parentNode;
+    }
+    return null;
+  };
+
+  const handleLink = () => {
+    const existingLink = getParentAnchor();
+    if (existingLink) {
+      document.execCommand('unlink', false);
+      handleInput();
+      editorRef.current?.focus();
+      return;
+    }
+
+    const sel = window.getSelection();
+    if (!sel || sel.isCollapsed) return;
+
+    const url = prompt('Введите URL ссылки:');
+    if (!url) return;
+
+    document.execCommand('createLink', false, url);
+
+    // Set target="_blank" and rel on newly created links
+    const editor = editorRef.current;
+    if (editor) {
+      const anchors = editor.querySelectorAll('a[href]');
+      anchors.forEach((a) => {
+        if (!a.getAttribute('target')) {
+          a.setAttribute('target', '_blank');
+          a.setAttribute('rel', 'noopener noreferrer');
+        }
+      });
+    }
+
+    handleInput();
     editorRef.current?.focus();
   };
 
@@ -137,6 +182,13 @@ export function RichTextEditor({ value, onChange, placeholder, className, minHei
               <Icon className="w-3.5 h-3.5" />
             </button>
           ))}
+          <button
+            onMouseDown={(e) => { e.preventDefault(); handleLink(); }}
+            className="h-7 w-7 flex items-center justify-center hover:bg-white/20 rounded transition-colors"
+            title="Ссылка"
+          >
+            <Link2 className="w-3.5 h-3.5" />
+          </button>
         </div>
       )}
 
@@ -151,6 +203,7 @@ export function RichTextEditor({ value, onChange, placeholder, className, minHei
         data-placeholder={placeholder}
         className={cn(
           "outline-none prose prose-sm dark:prose-invert max-w-none [&]:!font-[inherit] [&]:!tracking-[inherit]",
+          "[&_a]:text-primary [&_a]:underline [&_a]:cursor-pointer",
           "empty:before:content-[attr(data-placeholder)] empty:before:text-muted-foreground empty:before:pointer-events-none",
           className
         )}
