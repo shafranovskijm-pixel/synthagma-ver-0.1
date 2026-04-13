@@ -1454,6 +1454,11 @@ export function OrganizationDetailsView({ organization, onBack }: OrganizationDe
                   { key: 'frdo', label: 'ФИС ФРДО' },
                   { key: 'webinars', label: 'Вебинары' },
                   { key: '3d_trainers', label: '3D-тренажёры' },
+                  { key: 'branding', label: 'Брендирование' },
+                  { key: 'video_id', label: 'Видео-идентификация' },
+                  { key: 'document_checklist', label: 'Чек-лист документов' },
+                  { key: 'ai_generation', label: 'ИИ-генерация' },
+                  { key: 'unlimited', label: 'Без ограничений' },
                 ].map(({ key, label }) => (
                   <label key={key} className="flex items-center gap-2 p-2 rounded-lg border cursor-pointer hover:bg-muted/50 transition-colors">
                     <input
