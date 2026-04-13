@@ -111,6 +111,8 @@ export const DocumentsTab = React.memo(function DocumentsTab({ organizationId, o
   const isFreePlan = plan === 'free';
 
   const [billingDocs, setBillingDocs] = useState<BillingDoc[]>([]);
+  const [invoices, setInvoices] = useState<InvoiceRow[]>([]);
+  const [billingSubTab, setBillingSubTab] = useState<BillingSubTab>("contracts");
   const [showActDialog, setShowActDialog] = useState(false);
   const [actDate, setActDate] = useState<Date>(new Date());
   const [actBasis, setActBasis] = useState("");
