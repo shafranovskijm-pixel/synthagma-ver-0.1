@@ -41,6 +41,14 @@ export function CourseGroupsTab({ courseId, organizationId, onRefreshStudents }:
   const [enrolledCounts, setEnrolledCounts] = useState<Record<string, number>>({});
   const [groupLinks, setGroupLinks] = useState<Record<string, string>>({});
 
+  // Add students to group state
+  const [showAddStudentsDialog, setShowAddStudentsDialog] = useState(false);
+  const [selectedGroupForAdd, setSelectedGroupForAdd] = useState<StudentGroup | null>(null);
+  const [unassignedStudents, setUnassignedStudents] = useState<{ user_id: string; full_name: string | null; email: string | null }[]>([]);
+  const [selectedStudentIds, setSelectedStudentIds] = useState<Set<string>>(new Set());
+  const [loadingStudents, setLoadingStudents] = useState(false);
+  const [addingStudents, setAddingStudents] = useState(false);
+
   // Create group state
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [newGroupName, setNewGroupName] = useState("");
