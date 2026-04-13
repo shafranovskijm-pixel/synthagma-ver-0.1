@@ -47,7 +47,8 @@ import {
   Globe,
   ShieldCheck,
   Droplets,
-  ExternalLink
+  ExternalLink,
+  Clock
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useSubscriptionLimits } from "@/hooks/useSubscriptionLimits";
