@@ -97,6 +97,21 @@ import { Label } from "@/components/ui/label";
 import { SALUTE_VOICES } from "@/components/student/TTSSettingsDialog";
 import { Volume2 } from "lucide-react";
 
+// Convert plain-text URLs into <a> tags, skipping URLs already inside <a>
+function linkifyHtml(html: string): string {
+  const parts = html.split(/(<a\s[^>]*>.*?<\/a>)/gi);
+  return parts.map((part) => {
+    if (/^<a\s/i.test(part)) return part;
+    return part.replace(
+      /(?:https?:\/\/|www\.)[^\s<>"']+/gi,
+      (url) => {
+        const href = url.startsWith('www.') ? `https://${url}` : url;
+        return `<a href="${href}" target="_blank" rel="noopener noreferrer">${url}</a>`;
+      }
+    );
+  }).join('');
+}
+
 const sanitizeHtml = (html: string): string => {
   return DOMPurify.sanitize(html, {
     ALLOWED_TAGS: ['strong', 'b', 'em', 'i', 'u', 'br', 'p', 'span', 'h1', 'h2', 'h3', 'h4', 'ul', 'ol', 'li', 'table', 'thead', 'tbody', 'tr', 'td', 'th', 'a', 'img'],
@@ -104,6 +119,9 @@ const sanitizeHtml = (html: string): string => {
     ALLOW_DATA_ATTR: false,
   });
 };
+
+// Linkify then sanitize — use this for all rendering
+const renderHtml = (html: string): string => sanitizeHtml(linkifyHtml(html));
 
 export type BlockType =
   | "paragraph"
