@@ -1,65 +1,34 @@
 
 
-# Заявка на запись вместо прямой записи
-
-## Суть
-Добавить настройку курса «Запись по заявке» — студент нажимает «Записаться», но вместо прямого зачисления отправляется уведомление в учебный центр. Студент видит статус «Заявка отправлена».
+# Интерактивный 3D-лабиринт как заглушка для «3D-тренажёры»
 
 ## Что будет сделано
 
-### 1. Миграция: колонка `require_enrollment_approval` в `courses`
-```sql
-ALTER TABLE public.courses 
-  ADD COLUMN require_enrollment_approval boolean NOT NULL DEFAULT false;
-```
+Заменить текущую статичную заглушку `Student3DTrainers` на интерактивный мини-лабиринт с видом от первого лица, построенный на **React Three Fiber** (Three.js).
 
-### 2. Таблица `enrollment_requests` — заявки на запись
-```sql
-CREATE TABLE public.enrollment_requests (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  course_id uuid REFERENCES courses(id) ON DELETE CASCADE NOT NULL,
-  user_id uuid REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
-  status text NOT NULL DEFAULT 'pending', -- pending, approved, rejected
-  created_at timestamptz DEFAULT now(),
-  resolved_at timestamptz,
-  resolved_by uuid REFERENCES auth.users(id),
-  UNIQUE(course_id, user_id)
-);
-ALTER TABLE public.enrollment_requests ENABLE ROW LEVEL SECURITY;
-```
-RLS: студент видит свои заявки, организация — заявки по своим курсам.
+### Игровой процесс
+- Вид от первого лица внутри 3D-лабиринта с текстурированными стенами, полом и потолком
+- Управление: кнопки на экране (⬆️ вперёд, ⬅️ налево, ➡️ направо, 🔼 прыжок) + клавиатура (WASD / стрелки / пробел)
+- Вращение камеры мышкой (drag) или свайпом на мобильных
+- Простой лабиринт из сетки стен (захардкоженная карта ~10×10)
+- Цель: дойти до финишной точки (светящийся маркер), после чего — сообщение «Поздравляем!» и кнопка «Начать заново»
+- Подпись: «3D-тренажёры скоро — а пока попробуйте пройти лабиринт!»
 
-### 3. Логика записи (`CourseLanding.tsx`)
-- Если `require_enrollment_approval = true` и цена = 0:
-  - Вместо `INSERT INTO enrollments` → `INSERT INTO enrollment_requests`
-  - Вставка уведомления в `org_notifications` (тип `enrollment_request`)
-  - Toast: «Заявка отправлена! Учебный центр рассмотрит вашу заявку»
+### Технические детали
 
-### 4. Карточка курса (`CourseCardNew.tsx`)
-- Новый статус `pending` — если есть заявка со статусом `pending`
-- Показывать «Заявка отправлена» вместо «Записаться»
+**Новые зависимости:**
+- `three` (>=0.133)
+- `@react-three/fiber@^8.18`
+- `@react-three/drei@^9.122.0`
 
-### 5. Каталог студента (`useStudentDashboard.ts`)
-- Подгружать `enrollment_requests` для текущего пользователя
-- Передавать статус `pending` в карточки
-
-### 6. Управление заявками в панели организации (`CourseDetailsContent.tsx`)
-- Новая вкладка или секция «Заявки на запись»
-- Список заявок с кнопками «Одобрить» / «Отклонить»
-- Одобрение = создание записи в `enrollments` + обновление статуса заявки
-
-### 7. Настройка в `CourseSettingsTabbed.tsx`
-- Вкладка «Доступ» — переключатель «Запись по заявке»
-- Описание: «Студенты отправляют заявку, а не записываются автоматически. Вы получите уведомление для подтверждения»
-
-## Файлы
+**Файлы:**
 
 | Файл | Изменение |
 |---|---|
-| Миграция SQL | `require_enrollment_approval` + таблица `enrollment_requests` + RLS |
-| `CourseSettingsTabbed.tsx` | Переключатель «Запись по заявке» |
-| `CourseLanding.tsx` | Логика заявки вместо прямой записи |
-| `CourseCardNew.tsx` | Статус `pending` |
-| `useStudentDashboard.ts` | Загрузка заявок студента |
-| `CourseDetailsContent.tsx` | Управление заявками (одобрить/отклонить) |
+| `src/components/student/Student3DTrainers.tsx` | Полная замена — рендерит `<MazeGame />` + описание + экранные кнопки |
+| `src/components/student/MazeGame.tsx` | **Новый** — Canvas с лабиринтом, логика игрока, коллизии, камера |
+
+Лабиринт рисуется из массива карты (`0` = проход, `1` = стена). Каждая стена — `<Box>` с цветным material. Игрок двигается по сетке, коллизии проверяются перед перемещением. Камера привязана к позиции игрока (PointerLockControls или ручной drag).
+
+Миграций не требуется.
 
