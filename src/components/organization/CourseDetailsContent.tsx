@@ -145,6 +145,7 @@ export function CourseDetailsContent({
   const [reminderAdvanceDays, setReminderAdvanceDays] = useState<number>((course as any)?.reminder_advance_days ?? 30);
   const [notifyOnCompletion, setNotifyOnCompletion] = useState<boolean>((course as any)?.notify_on_completion ?? false);
   const [completionNotifyEmails, setCompletionNotifyEmails] = useState<string | null>((course as any)?.completion_notify_emails ?? null);
+  const [defaultAccessDays, setDefaultAccessDays] = useState<number | null>((course as any)?.default_access_days ?? null);
   const [isSavingSettings, setIsSavingSettings] = useState(false);
   
   const [copyProtection, setCopyProtection] = useState(false);
@@ -183,6 +184,7 @@ export function CourseDetailsContent({
       setReminderAdvanceDays((course as any).reminder_advance_days ?? 30);
       setNotifyOnCompletion((course as any).notify_on_completion ?? false);
       setCompletionNotifyEmails((course as any).completion_notify_emails ?? null);
+      setDefaultAccessDays((course as any).default_access_days ?? null);
       setFrdoSettings({
         frdo_program_type: course.frdo_program_type || null,
         frdo_document_type: course.frdo_document_type || null,
@@ -257,7 +259,7 @@ export function CourseDetailsContent({
         setSelectedToEnroll(new Set());
         return;
       }
-      const enrollmentsToInsert = newUserIds.map(userId => ({ user_id: userId, course_id: course.id, status: "active", progress: 0 }));
+      const enrollmentsToInsert = newUserIds.map(userId => ({ user_id: userId, course_id: course.id, status: "active", progress: 0, ...(defaultAccessDays ? { access_days: defaultAccessDays } : {}) }));
       const { error } = await supabase.from("enrollments").insert(enrollmentsToInsert);
       if (error) throw error;
       toast.success(`Зачислено ${newUserIds.length} ${newUserIds.length === 1 ? 'ученик' : newUserIds.length < 5 ? 'ученика' : 'учеников'}`);
