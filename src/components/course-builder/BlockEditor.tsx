@@ -765,11 +765,26 @@ function SortableBlockItem({ block, isFocused, onFocus, onUpdate, onDelete, onAd
                 </button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="center" className="w-52">
-                {wrapTargets.filter(t => t.type !== block.type).map((t) => (
+                {wrapOtherTargets.filter(t => t.type !== block.type).map((t) => (
                   <DropdownMenuItem key={t.type} onClick={() => handleConvert(t.type)}>
                     <t.icon className={cn("w-4 h-4 mr-2", t.color)} />{t.label}
                   </DropdownMenuItem>
                 ))}
+                <DropdownMenuSeparator />
+                <DropdownMenuSub>
+                  <DropdownMenuSubTrigger>
+                    <Highlighter className="w-4 h-4 mr-2 text-yellow-500" />Выделение
+                  </DropdownMenuSubTrigger>
+                  <DropdownMenuPortal>
+                    <DropdownMenuSubContent className="w-48">
+                      {wrapCalloutTargets.filter(t => t.type !== block.type).map((t) => (
+                        <DropdownMenuItem key={t.type} onClick={() => handleConvert(t.type)}>
+                          <t.icon className={cn("w-4 h-4 mr-2", t.color)} />{t.label}
+                        </DropdownMenuItem>
+                      ))}
+                    </DropdownMenuSubContent>
+                  </DropdownMenuPortal>
+                </DropdownMenuSub>
               </DropdownMenuContent>
             </DropdownMenu>
           )}
@@ -935,6 +950,34 @@ function SortableBlockItem({ block, isFocused, onFocus, onUpdate, onDelete, onAd
               onClick={() => onUpdate({ textAlign: undefined, bgColor: undefined, textColor: undefined, textSize: undefined, bold: undefined, italic: undefined, strikethrough: undefined, underline: undefined, uppercase: undefined, lineHeight: undefined, fontFamily: undefined, borderStyle: undefined, borderRadius: undefined })}
             >
               <Eraser className="w-4 h-4" />
+            </button>
+          )}
+          {canStyle && (
+            <button
+              className="h-8 w-8 flex items-center justify-center hover:bg-white/20 rounded-full transition-colors"
+              title="Вставить ссылку"
+              onClick={() => {
+                const sel = window.getSelection();
+                if (!sel || sel.isCollapsed) {
+                  alert("Сначала выделите текст, чтобы сделать его ссылкой");
+                  return;
+                }
+                const url = prompt("Введите URL ссылки:");
+                if (!url) return;
+                document.execCommand("createLink", false, url);
+                // Set target="_blank" on new links
+                const editor = sel.anchorNode?.parentElement?.closest('[contenteditable]');
+                if (editor) {
+                  editor.querySelectorAll('a[href]').forEach((a) => {
+                    if (!a.getAttribute('target')) {
+                      a.setAttribute('target', '_blank');
+                      a.setAttribute('rel', 'noopener noreferrer');
+                    }
+                  });
+                }
+              }}
+            >
+              <Link2 className="w-4 h-4" />
             </button>
           )}
           <Popover>
