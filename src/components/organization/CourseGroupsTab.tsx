@@ -9,7 +9,7 @@ import { toast } from "sonner";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import { cn } from "@/lib/utils";
-import { CalendarIcon, Users, UserPlus, Loader2, Check, Plus } from "lucide-react";
+import { CalendarIcon, Users, UserPlus, Loader2, Check, Plus, Link as LinkIcon, Copy } from "lucide-react";
 
 interface StudentGroup {
   id: string;
@@ -38,11 +38,14 @@ export function CourseGroupsTab({ courseId, organizationId, onRefreshStudents }:
   const [enrollingGroupId, setEnrollingGroupId] = useState<string | null>(null);
   const [groupStudentCounts, setGroupStudentCounts] = useState<Record<string, number>>({});
   const [enrolledCounts, setEnrolledCounts] = useState<Record<string, number>>({});
+  const [groupLinks, setGroupLinks] = useState<Record<string, string>>({});
 
   // Create group state
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [newGroupName, setNewGroupName] = useState("");
   const [newGroupColor, setNewGroupColor] = useState(GROUP_COLORS[0]);
+  const [newGroupStartDate, setNewGroupStartDate] = useState<Date | undefined>();
+  const [newGroupEndDate, setNewGroupEndDate] = useState<Date | undefined>();
   const [isCreating, setIsCreating] = useState(false);
 
   const loadGroups = useCallback(async () => {
@@ -58,6 +61,22 @@ export function CourseGroupsTab({ courseId, organizationId, onRefreshStudents }:
       setGroups(groupsList);
 
       if (groupsList.length > 0) {
+        const groupIds = groupsList.map(g => g.id);
+
+        // Load registration links for groups
+        const { data: links } = await supabase
+          .from("registration_links")
+          .select("token, student_group_id")
+          .in("student_group_id", groupIds);
+
+        const linksMap: Record<string, string> = {};
+        for (const l of (links as any[] || [])) {
+          if (l.student_group_id) {
+            linksMap[l.student_group_id] = `${window.location.origin}/join/${l.token}`;
+          }
+        }
+        setGroupLinks(linksMap);
+
         const { data: profiles } = await supabase
           .from("profiles")
           .select("user_id, student_group_id")
@@ -108,18 +127,44 @@ export function CourseGroupsTab({ courseId, organizationId, onRefreshStudents }:
     }
     setIsCreating(true);
     try {
-      const { error } = await supabase
+      const startDate = newGroupStartDate ? format(newGroupStartDate, "yyyy-MM-dd") : null;
+      const endDate = newGroupEndDate ? format(newGroupEndDate, "yyyy-MM-dd") : null;
+
+      const { data: groupData, error } = await supabase
         .from("student_groups")
         .insert({
           name: newGroupName.trim(),
           color: newGroupColor,
           organization_id: organizationId,
-        } as any);
+          start_date: startDate,
+          end_date: endDate,
+        } as any)
+        .select("id")
+        .single();
       if (error) throw error;
-      toast.success("Группа создана");
+
+      const groupId = (groupData as any).id;
+
+      // Auto-create registration link for this group
+      const token = Math.random().toString(36).substring(2) + Date.now().toString(36);
+      await supabase.from("registration_links").insert({
+        organization_id: organizationId,
+        course_id: courseId,
+        token,
+        name: `Группа: ${newGroupName.trim()}`,
+        student_group_id: groupId,
+        expires_at: endDate ? new Date(endDate + "T23:59:59").toISOString() : null,
+      } as any);
+
+      const link = `${window.location.origin}/join/${token}`;
+      await navigator.clipboard.writeText(link);
+      toast.success("Группа создана, ссылка скопирована");
+
       setShowCreateDialog(false);
       setNewGroupName("");
       setNewGroupColor(GROUP_COLORS[0]);
+      setNewGroupStartDate(undefined);
+      setNewGroupEndDate(undefined);
       loadGroups();
     } catch (e) {
       toast.error("Ошибка создания группы");
@@ -193,6 +238,14 @@ export function CourseGroupsTab({ courseId, organizationId, onRefreshStudents }:
     }
   };
 
+  const handleCopyLink = async (groupId: string) => {
+    const link = groupLinks[groupId];
+    if (link) {
+      await navigator.clipboard.writeText(link);
+      toast.success("Ссылка скопирована");
+    }
+  };
+
   const createGroupDialog = (
     <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
       <DialogContent className="rounded-2xl">
@@ -223,6 +276,30 @@ export function CourseGroupsTab({ courseId, organizationId, onRefreshStudents }:
                   onClick={() => setNewGroupColor(c)}
                 />
               ))}
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Дата начала набора</label>
+              <DatePicker
+                date={newGroupStartDate}
+                onChange={setNewGroupStartDate}
+                placeholder="Начало"
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Дата окончания набора</label>
+              <DatePicker
+                date={newGroupEndDate}
+                onChange={setNewGroupEndDate}
+                placeholder="Конец"
+              />
+            </div>
+          </div>
+          <div className="p-3 rounded-xl bg-muted/50 border border-border/50">
+            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+              <LinkIcon className="w-3.5 h-3.5" />
+              Ссылка для регистрации будет создана автоматически
             </div>
           </div>
           <Button
@@ -291,6 +368,7 @@ export function CourseGroupsTab({ courseId, organizationId, onRefreshStudents }:
           const enrolled = enrolledCounts[group.id] || 0;
           const allEnrolled = total > 0 && enrolled >= total;
           const isEnrolling = enrollingGroupId === group.id;
+          const hasLink = !!groupLinks[group.id];
 
           return (
             <div key={group.id} className="flex items-center justify-between p-4 bg-muted/50 rounded-xl border border-border/50">
@@ -317,9 +395,22 @@ export function CourseGroupsTab({ courseId, organizationId, onRefreshStudents }:
                   placeholder="Конец"
                 />
 
+                {hasLink && (
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="rounded-xl gap-1.5 text-xs"
+                    onClick={() => handleCopyLink(group.id)}
+                    title="Скопировать ссылку регистрации"
+                  >
+                    <Copy className="w-3.5 h-3.5" />
+                    Ссылка
+                  </Button>
+                )}
+
                 <Button
                   size="sm"
-                  className="rounded-xl gap-1.5 ml-2"
+                  className="rounded-xl gap-1.5 ml-1"
                   disabled={isEnrolling || allEnrolled || total === 0}
                   onClick={() => handleEnrollGroup(group.id)}
                 >

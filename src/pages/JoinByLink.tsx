@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
-import { ArrowLeft, Mail, Lock, User, Loader2, Building2, AlertTriangle, BookOpen } from "lucide-react";
+import { ArrowLeft, Mail, Lock, User, Loader2, Building2, AlertTriangle, BookOpen, Users } from "lucide-react";
 
 interface LinkData {
   id: string;
@@ -19,6 +19,7 @@ interface LinkData {
   name: string | null;
   expires_at: string | null;
   used_count: number;
+  student_group_id: string | null;
   organization?: {
     name: string;
   };
@@ -40,6 +41,7 @@ const JoinByLink = () => {
   const [organizationName, setOrganizationName] = useState<string>("");
   const [companyName, setCompanyName] = useState<string | null>(null);
   const [courseName, setCourseName] = useState<string | null>(null);
+  const [groupName, setGroupName] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -83,6 +85,7 @@ const JoinByLink = () => {
         name: string | null;
         expires_at: string | null;
         used_count: number;
+        student_group_id: string | null;
       };
 
       // Check expiration
@@ -121,10 +124,22 @@ const JoinByLink = () => {
         crsName = crs?.title || null;
       }
 
+      // Fetch group name if student_group_id exists
+      let grpName: string | null = null;
+      if (link.student_group_id) {
+        const { data: grp } = await supabase
+          .from('student_groups')
+          .select('name')
+          .eq('id', link.student_group_id)
+          .single();
+        grpName = (grp as any)?.name || null;
+      }
+
       setLinkData(link);
       setOrganizationName(org?.name || 'Организация');
       setCompanyName(compName);
       setCourseName(crsName);
+      setGroupName(grpName);
       setLoading(false);
     } catch (err) {
       setError('Произошла ошибка при проверке ссылки');
@@ -197,7 +212,8 @@ const JoinByLink = () => {
           full_name: fullName,
           organization_id: linkData.organization_id,
           company_id: linkData.company_id || null,
-          course_id: linkData.course_id || null
+          course_id: linkData.course_id || null,
+          student_group_id: linkData.student_group_id || null
         }
       });
 
@@ -324,6 +340,12 @@ const JoinByLink = () => {
               <p className="text-sm text-primary mt-1 flex items-center gap-1">
                 <BookOpen className="w-3 h-3" />
                 Курс: {courseName}
+              </p>
+            )}
+            {groupName && (
+              <p className="text-sm text-muted-foreground mt-1 flex items-center gap-1">
+                <Users className="w-3 h-3" />
+                Группа: {groupName}
               </p>
             )}
           </div>
