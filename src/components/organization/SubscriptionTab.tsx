@@ -390,10 +390,10 @@ export function SubscriptionTab() {
                         Хранилище
                       </div>
                       <span className="text-sm text-muted-foreground">
-                        {formatStorageSize(subscriptionLimits.limits.storageBytes)}
+                        {formatStorageSize(subscriptionLimits.usage.storageUsedBytes)} / {subscriptionLimits.limits.storageBytes === -1 ? "∞" : formatStorageSize(subscriptionLimits.limits.storageBytes)}
                       </span>
                     </div>
-                    <Progress value={0} className="h-2" />
+                    <Progress value={subscriptionLimits.limits.storageBytes === -1 ? 0 : Math.min(100, Math.round((subscriptionLimits.usage.storageUsedBytes / subscriptionLimits.limits.storageBytes) * 100))} className="h-2" />
                   </CardContent>
                 </Card>
               </div>
