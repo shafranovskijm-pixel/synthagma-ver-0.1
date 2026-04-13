@@ -1430,12 +1430,22 @@ function VideoBlock({ block, onUpdate }: { block: ContentBlock; onUpdate: (updat
   };
 
   // Extract src from iframe if it's embed code
-  const getEmbedFromContent = (content: string): { type: 'iframe' | 'url' | null; value: string | null } => {
+  const getEmbedFromContent = (content: string): { type: 'iframe' | 'url' | 'direct' | null; value: string | null } => {
     if (!content) return { type: null, value: null };
     
     // Check for iframe embed code
     if (isIframeEmbed(content)) {
       return { type: 'iframe', value: content };
+    }
+    
+    // Direct video file URLs (mp4, webm, ogg, mov, mkv, m4v) or known CDNs
+    if (content.match(/\.(mp4|webm|ogg|mov|mkv|m4v)(\?.*)?$/i) || content.includes("selcdn.ru") || content.includes("selstorage")) {
+      return { type: 'direct', value: content };
+    }
+
+    // Kinescope
+    if (content.startsWith("kinescope:")) {
+      return { type: 'direct', value: content };
     }
     
     // YouTube
@@ -1473,11 +1483,6 @@ function VideoBlock({ block, onUpdate }: { block: ContentBlock; onUpdate: (updat
     // Yandex Video (yandex.ru/video)
     const yandexMatch = content.match(/yandex\.ru\/video\/preview\/(\d+)/);
     if (yandexMatch) return { type: 'url', value: `https://yandex.ru/video/preview/${yandexMatch[1]}` };
-    
-    // Fallback: if URL looks like a direct video file, try embedding
-    if (content.match(/^https?:\/\/.+\.(mp4|webm|ogg)(\?.*)?$/i)) {
-      return { type: 'url', value: content };
-    }
     
     // Generic video URLs - try direct embed for recording services
     if (content.match(/^https?:\/\/.*\/recordings?\//i) || content.match(/^https?:\/\/.*\/video\//i)) {
