@@ -895,7 +895,7 @@ export function CourseDetailsModal({
                   </div>
                 </div>
 
-                <CoursePageSettingsContent courseId={course.id} courseTitle={course.title} />
+                <CoursePageSettingsContent courseId={course.id} courseTitle={course.title} courseDescription={course.description || undefined} />
               </div>
             </TabsContent>
 
