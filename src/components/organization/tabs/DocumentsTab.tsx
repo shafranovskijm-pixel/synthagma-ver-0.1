@@ -131,7 +131,7 @@ function HintCard({ tab }: { tab: DocumentSubTab }) {
 export const DocumentsTab = React.memo(function DocumentsTab({ organizationId, organizationName, onShowBulkUploadDialog, isOrdersEnabled = true, onNavigateToSubscription }: DocumentsTabProps) {
   const navigate = useNavigate();
   const d = useOrgDashboard();
-  const [activeDocTab, setActiveDocTab] = useState<DocumentSubTab>("constructor");
+  // activeDocTab removed — Tabs manages state internally
   const [constructorTab, setConstructorTab] = useState("requisites");
   const [stampUrl, setStampUrl] = useState<string | null>(null);
   const [signatureUrl, setSignatureUrl] = useState<string | null>(null);
@@ -305,66 +305,73 @@ export const DocumentsTab = React.memo(function DocumentsTab({ organizationId, o
     </div>
   );
 
-  const tabs: { id: DocumentSubTab; label: string; shortLabel: string; icon: React.ReactNode }[] = [
-    { id: "constructor", label: "Конструктор", shortLabel: "Констр.", icon: <Wrench className="w-4 h-4" /> },
-    { id: "org", label: "Документы орг.", shortLabel: "Орг.", icon: <FileText className="w-4 h-4" /> },
-    ...(isOrdersEnabled ? [{ id: "orders" as DocumentSubTab, label: "Приказы", shortLabel: "Приказы", icon: <Users className="w-4 h-4" /> }] : []),
-    { id: "protocols", label: "Протоколы АК", shortLabel: "Протоколы", icon: <ClipboardList className="w-4 h-4" /> },
-    { id: "certificates", label: "Удостоверения", shortLabel: "Удост.", icon: <Award className="w-4 h-4" /> },
-    { id: "diplomas", label: "Дипломы", shortLabel: "Дипломы", icon: <GraduationCap className="w-4 h-4" /> },
-    { id: "testimonials", label: "Свидетельства", shortLabel: "Свид.", icon: <FileCheck className="w-4 h-4" /> },
-    { id: "programs", label: "Программы", shortLabel: "Прогр.", icon: <BookOpen className="w-4 h-4" /> },
-    { id: "billing", label: "Закрывающие", shortLabel: "Закр.", icon: <FolderOpen className="w-4 h-4" /> },
-  ];
-
   return (
     <div className="space-y-4">
-      {/* Header with tabs and bulk upload button */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div className="flex flex-wrap gap-2">
-          {tabs.map((tab) => (
-            <Button
-              key={tab.id}
-              variant={activeDocTab === tab.id ? "default" : "outline"}
+      <Tabs defaultValue="constructor" className="w-full">
+        {/* Clean text-based tabs */}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <TabsList className="justify-start bg-transparent h-auto p-0 flex flex-wrap gap-x-1 gap-y-1">
+            <TabsTrigger value="constructor" className="rounded-lg gap-1.5 text-sm px-3 py-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+              <Wrench className="w-3.5 h-3.5" />
+              Конструктор
+            </TabsTrigger>
+            <TabsTrigger value="org" className="rounded-lg gap-1.5 text-sm px-3 py-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+              <FileText className="w-3.5 h-3.5" />
+              <span className="hidden lg:inline">Документы орг.</span>
+              <span className="lg:hidden">Орг.</span>
+            </TabsTrigger>
+            {isOrdersEnabled && (
+              <TabsTrigger value="orders" className="rounded-lg gap-1.5 text-sm px-3 py-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+                <Users className="w-3.5 h-3.5" />
+                Приказы
+              </TabsTrigger>
+            )}
+            <TabsTrigger value="protocols" className="rounded-lg gap-1.5 text-sm px-3 py-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+              <ClipboardList className="w-3.5 h-3.5" />
+              <span className="hidden lg:inline">Протоколы АК</span>
+              <span className="lg:hidden">Протоколы</span>
+            </TabsTrigger>
+            <TabsTrigger value="certificates" className="rounded-lg gap-1.5 text-sm px-3 py-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+              <Award className="w-3.5 h-3.5" />
+              <span className="hidden lg:inline">Удостоверения</span>
+              <span className="lg:hidden">Удост.</span>
+            </TabsTrigger>
+            <TabsTrigger value="diplomas" className="rounded-lg gap-1.5 text-sm px-3 py-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+              <GraduationCap className="w-3.5 h-3.5" />
+              Дипломы
+            </TabsTrigger>
+            <TabsTrigger value="testimonials" className="rounded-lg gap-1.5 text-sm px-3 py-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+              <FileCheck className="w-3.5 h-3.5" />
+              <span className="hidden lg:inline">Свидетельства</span>
+              <span className="lg:hidden">Свид.</span>
+            </TabsTrigger>
+            <TabsTrigger value="programs" className="rounded-lg gap-1.5 text-sm px-3 py-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+              <BookOpen className="w-3.5 h-3.5" />
+              <span className="hidden lg:inline">Программы</span>
+              <span className="lg:hidden">Прогр.</span>
+            </TabsTrigger>
+            <TabsTrigger value="billing" className="rounded-lg gap-1.5 text-sm px-3 py-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+              <FolderOpen className="w-3.5 h-3.5" />
+              <span className="hidden lg:inline">Закрывающие</span>
+              <span className="lg:hidden">Закр.</span>
+            </TabsTrigger>
+          </TabsList>
+
+          {onShowBulkUploadDialog && (
+            <Button 
+              variant="outline" 
               size="sm"
-              onClick={() => setActiveDocTab(tab.id)}
-              className={`rounded-xl gap-2 ${
-                activeDocTab === tab.id 
-                  ? "bg-primary text-primary-foreground" 
-                  : "hover:bg-secondary"
-              }`}
+              className="rounded-xl gap-2 shrink-0" 
+              onClick={onShowBulkUploadDialog}
             >
-              {tab.icon}
-              <span className="hidden lg:inline">{tab.label}</span>
-              <span className="lg:hidden">{tab.shortLabel}</span>
+              <Upload className="w-4 h-4" />
+              <span className="hidden sm:inline">Массовая загрузка</span>
             </Button>
-          ))}
+          )}
         </div>
 
-        {onShowBulkUploadDialog && (
-          <TooltipProvider delayDuration={300}>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button 
-                  variant="outline" 
-                  size="sm"
-                  className="rounded-xl gap-2" 
-                  onClick={onShowBulkUploadDialog}
-                >
-                  <Upload className="w-4 h-4" />
-                  <span className="hidden sm:inline">Массовая загрузка</span>
-                  <span className="sm:hidden">Загрузка</span>
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>Загрузить документы пакетно</TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-        )}
-      </div>
-
-      {/* Content */}
-      <div className="mt-4">
-        {activeDocTab === "constructor" && (
+        {/* Constructor */}
+        <TabsContent value="constructor">
           <div className="bg-card rounded-xl lg:rounded-2xl border border-border p-4 lg:p-6 relative">
             <HintCard tab="constructor" />
             <Tabs value={constructorTab} onValueChange={setConstructorTab}>
@@ -483,83 +490,70 @@ export const DocumentsTab = React.memo(function DocumentsTab({ organizationId, o
               </TabsContent>
             </Tabs>
           </div>
-        )}
+        </TabsContent>
 
-        {activeDocTab === "programs" && (
-          <>
-            <HintCard tab="programs" />
-            <ProgramsManager organizationId={organizationId} />
-          </>
-        )}
+        {/* Org Documents */}
+        <TabsContent value="org">
+          <OrgDocumentsManager organizationId={organizationId} />
+        </TabsContent>
 
-        {activeDocTab === "org" && (
-          <>
-            <HintCard tab="org" />
-            <OrgDocumentsManager organizationId={organizationId} />
-          </>
-        )}
-
-        {activeDocTab === "orders" && (
-          <>
-            <HintCard tab="orders" />
+        {/* Orders */}
+        {isOrdersEnabled && (
+          <TabsContent value="orders">
             <DocumentArchiveView
               organizationId={organizationId}
               categoryId="enrollment_orders"
               title="Приказы о зачислении / отчислении"
               docTypes={["enrollment_order", "expulsion_order"]}
             />
-          </>
+          </TabsContent>
         )}
 
-        {activeDocTab === "protocols" && (
-          <>
-            <HintCard tab="protocols" />
-            <DocumentArchiveView
-              organizationId={organizationId}
-              categoryId="attestation_protocols"
-              title="Протоколы аттестационной комиссии"
-              docTypes={["attestation_protocol"]}
-            />
-          </>
-        )}
+        {/* Protocols */}
+        <TabsContent value="protocols">
+          <DocumentArchiveView
+            organizationId={organizationId}
+            categoryId="attestation_protocols"
+            title="Протоколы аттестационной комиссии"
+            docTypes={["attestation_protocol"]}
+          />
+        </TabsContent>
 
-        {activeDocTab === "certificates" && (
-          <>
-            <HintCard tab="certificates" />
-            <EducationDocumentsJournal
-              organizationId={organizationId}
-              onClose={() => setActiveDocTab("org")}
-              documentTypeFilter="certificate"
-            />
-          </>
-        )}
+        {/* Certificates */}
+        <TabsContent value="certificates">
+          <EducationDocumentsJournal
+            organizationId={organizationId}
+            onClose={() => {}}
+            documentTypeFilter="certificate"
+          />
+        </TabsContent>
 
-        {activeDocTab === "diplomas" && (
-          <>
-            <HintCard tab="diplomas" />
-            <EducationDocumentsJournal
-              organizationId={organizationId}
-              onClose={() => setActiveDocTab("org")}
-              documentTypeFilter="diploma"
-            />
-          </>
-        )}
+        {/* Diplomas */}
+        <TabsContent value="diplomas">
+          <EducationDocumentsJournal
+            organizationId={organizationId}
+            onClose={() => {}}
+            documentTypeFilter="diploma"
+          />
+        </TabsContent>
 
-        {activeDocTab === "testimonials" && (
-          <>
-            <HintCard tab="testimonials" />
-            <EducationDocumentsJournal
-              organizationId={organizationId}
-              onClose={() => setActiveDocTab("org")}
-              documentTypeFilter="qualification"
-            />
-          </>
-        )}
+        {/* Testimonials */}
+        <TabsContent value="testimonials">
+          <EducationDocumentsJournal
+            organizationId={organizationId}
+            onClose={() => {}}
+            documentTypeFilter="qualification"
+          />
+        </TabsContent>
 
-        {activeDocTab === "billing" && (
-          <>
-            <HintCard tab="billing" />
-            <Card>
+        {/* Programs */}
+        <TabsContent value="programs">
+          <ProgramsManager organizationId={organizationId} />
+        </TabsContent>
+
+        {/* Billing */}
+        <TabsContent value="billing">
+          <Card>
               <CardHeader className="flex flex-row items-center justify-between">
                 <div>
                   <CardTitle className="flex items-center gap-2 text-base">
@@ -612,9 +606,8 @@ export const DocumentsTab = React.memo(function DocumentsTab({ organizationId, o
                 )}
               </CardContent>
             </Card>
-          </>
-        )}
-      </div>
+        </TabsContent>
+      </Tabs>
 
       {/* Act Generation Dialog */}
       <Dialog open={showActDialog} onOpenChange={setShowActDialog}>
