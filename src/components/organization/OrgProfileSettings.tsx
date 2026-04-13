@@ -7,8 +7,7 @@ import {
   Palette, LayoutGrid, Save, Settings,
   ChevronRight, Loader2, Upload,
   X, ExternalLink, Image, Eye, Lock, ArrowUpRight, LogIn, KeyRound,
-  RefreshCw, RotateCcw, Trophy, MessageCircle,
-  BarChart3, Link, HardHat, FileText, ShoppingBag, Building2, Users, ClipboardList, FileSpreadsheet
+  Trophy, MessageCircle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -17,7 +16,7 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { LoginBrandingSettings } from "@/components/organization/LoginBrandingSettings";
 import { OrgCredentialsSettings } from "@/components/organization/OrgCredentialsSettings";
-import { RobokassaSettings } from "@/components/organization/RobokassaSettings";
+import { ThemePersonalization } from "@/components/ui/ThemePersonalization";
 import { ThemePersonalization } from "@/components/ui/ThemePersonalization";
 
 interface OrgProfileSettingsProps {
