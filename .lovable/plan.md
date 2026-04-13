@@ -1,27 +1,67 @@
 
 
-# Исправить применение индивидуальных лимитов в SubscriptionTab
+# Кнопка «Выставить счёт» + кастомные возможности для индивидуальных тарифов
 
-## Проблема
+## 1. Кнопка «Выставить счёт» — всегда видна
 
-В `SubscriptionTab.tsx` для отображения лимитов используется `currentPlanInfo.limits.*` — это **статические значения** тарифного плана из константы `SUBSCRIPTION_PLANS`. Индивидуальные настройки (`custom_max_courses`, `custom_max_students` и т.д.), которые хранятся в БД и корректно загружаются хуком `useSubscriptionLimits`, **игнорируются** при отображении.
+Сейчас карточка с кнопкой «Выставить счёт» показывается только когда до конца тарифа ≤ 30 дней. Уберём это ограничение — кнопка будет доступна для всех платных тарифов всегда.
 
-Хук `useSubscriptionLimits` уже правильно мержит кастомные лимиты в `subscriptionLimits.limits`, но компонент берёт данные из другого источника.
+**Файл:** `src/components/organization/SubscriptionTab.tsx` (строка 290)
+- Убрать условие `daysRemaining !== null && daysRemaining <= 30`
+- Оставить только `currentPlan !== 'free'`
 
-## Решение
+---
 
-Заменить все обращения к `currentPlanInfo.limits.*` на `subscriptionLimits.limits.*` в местах отображения usage-метрик.
+## 2. Кастомные категории возможностей в админке
 
-## Изменения в `src/components/organization/SubscriptionTab.tsx`
+### Проблема
+Сейчас в `useOrgFeatures` подписочный план **жёстко перезаписывает** все org-specific настройки категорий (строки 280-291). Даже если в таблице `organization_feature_categories` прописано `webinars = true`, план всё равно перетрёт это значение.
 
-### 1. Пересчёт процентов (строки 226-231)
-Заменить `currentPlanInfo.limits.maxCourses` → `subscriptionLimits.limits.maxCourses`, аналогично для `maxStudents`, `maxTrainedPerMonth`.
+### Решение
 
-### 2. Отображение лимитов в карточках (строки 335, 349, 363, 377)
-Заменить `currentPlanInfo.limits.maxCourses` → `subscriptionLimits.limits.maxCourses` и аналогично для остальных полей. Для хранилища: `currentPlanInfo.limits.storageBytes` → `subscriptionLimits.limits.storageBytes`.
+#### A. Добавить колонку `custom_enabled_categories` в таблицу `organizations`
+JSON-массив строк (например `["webinars", "labor_safety"]`). Если непустой — эти категории будут **добавлены** к тем, что идут от плана.
 
-### 3. Progress bars (строки 338, 352, 366)
-Аналогично — использовать `subscriptionLimits.limits.*`.
+**Миграция:**
+```sql
+ALTER TABLE organizations ADD COLUMN custom_enabled_categories text[] DEFAULT '{}';
+```
 
-Итого ~12 замен `currentPlanInfo.limits.` → `subscriptionLimits.limits.` в секции usage meters.
+#### B. Обновить `useOrgFeatures.ts` (строки 280-291)
+После применения плановых категорий — дополнительно включить категории из `custom_enabled_categories`:
+```
+// После планового цикла:
+if (orgData.custom_enabled_categories) {
+  for (const cat of orgData.custom_enabled_categories) {
+    if (cat in newFeatures) newFeatures[cat] = true;
+  }
+}
+```
+
+#### C. Добавить UI в админке — `OrganizationDetailsView.tsx` (вкладка «Тарифы»)
+После секции «Индивидуальные лимиты» добавить новую карточку «Индивидуальные возможности» с чекбоксами:
+
+| Категория | Ключ |
+|---|---|
+| Журналы | `journals` |
+| Документооборот | `documents` |
+| Охрана труда | `labor_safety` |
+| Магазин курсов | `services` |
+| ФИС ФРДО | `frdo` |
+| ИИ-генерация | (отдельный флаг через `aiEnabled`) |
+| Вебинары | `webinars` |
+| 3D-тренажёры | новая категория `3d_trainers` |
+
+Каждый чекбокс сохраняется в `custom_enabled_categories`. Отмеченные категории будут доступны организации **независимо от тарифа**.
+
+#### D. Обновить SubscriptionTab — секция «Возможности на старших тарифах»
+Если категория включена через `custom_enabled_categories`, не показывать её в блоке «доступные на старших тарифах» (она уже разблокирована).
+
+---
+
+## Затрагиваемые файлы
+- Миграция: добавить `custom_enabled_categories` в `organizations`
+- `src/hooks/useOrgFeatures.ts` — учитывать кастомные категории
+- `src/components/admin/OrganizationDetailsView.tsx` — UI чекбоксов в «Тарифах»
+- `src/components/organization/SubscriptionTab.tsx` — убрать условие для кнопки счёта + фильтрация feature highlights
 
