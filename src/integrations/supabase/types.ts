@@ -2490,6 +2490,53 @@ export type Database = {
           },
         ]
       }
+      org_contracts: {
+        Row: {
+          contract_date: string | null
+          contract_number: string | null
+          created_at: string
+          file_path: string | null
+          file_url: string | null
+          id: string
+          name: string
+          organization_id: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          contract_date?: string | null
+          contract_number?: string | null
+          created_at?: string
+          file_path?: string | null
+          file_url?: string | null
+          id?: string
+          name?: string
+          organization_id: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          contract_date?: string | null
+          contract_number?: string | null
+          created_at?: string
+          file_path?: string | null
+          file_url?: string | null
+          id?: string
+          name?: string
+          organization_id?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "org_contracts_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       org_documents: {
         Row: {
           created_at: string
