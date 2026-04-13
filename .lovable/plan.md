@@ -1,33 +1,53 @@
 
 
-# Исправление вставки ссылок: позиционирование и работоспособность
+# Исправление оборачивания текста в ссылку
 
 ## Проблема
 
-1. Popover привязан к скрытому `<span className="hidden" />` — поэтому он появляется в левом верхнем углу вместо центра
-2. `createLink` / `insertHTML` не срабатывают, потому что фокус теряется при взаимодействии с Popover, и `savedLinkRange` может быть невалидным к моменту применения
+`requestAnimationFrame` недостаточно — Dialog ещё не полностью закрыт к этому моменту, и `execCommand("createLink")` молча не срабатывает, потому что фокус не успевает вернуться в `contenteditable`. Кроме того, сохранённый `Range` может стать невалидным после закрытия Dialog.
 
 ## Решение
 
-Заменить `Popover` на `Dialog` (модальное окно по центру экрана). Это решает обе проблемы:
-- Окно всегда по центру
-- Нет привязки к DOM-элементу
+Отказаться от ненадёжного `execCommand` и использовать прямую DOM-манипуляцию: `range.surroundContents()` для оборачивания выделенного текста, и `range.insertNode()` для вставки новой ссылки. Это не зависит от фокуса и работает надёжно.
 
-### Изменения в `BlockEditor.tsx`
+### Изменения в `BlockEditor.tsx` (строки 1043-1074)
 
-1. Заменить `Popover` + `PopoverTrigger` + `PopoverContent` на `Dialog` + `DialogContent`
-2. Кнопка Link2 остаётся как есть — при клике сохраняет range и открывает `setLinkDialogOpen(true)`
-3. В `DialogContent`:
-   - Те же поля (текст + URL)
-   - Кнопка «Применить» / «Вставить ссылку»
-4. При применении:
-   - Закрыть Dialog
-   - Использовать `requestAnimationFrame` чтобы дождаться закрытия модалки
-   - Затем `blockEl.focus()`, восстановить range, выполнить `createLink` или `insertHTML`
-   - Диспатчить `input` event
+1. **Заменить `requestAnimationFrame` на `setTimeout(..., 150)`** — даёт Dialog время полностью закрыться
+2. **Заменить `execCommand("createLink")` на прямую DOM-манипуляцию:**
+   - Для выделенного текста: создать `<a>` элемент, установить `href/target/rel`, использовать `rangeClone.surroundContents(anchor)` 
+   - Для вставки новой ссылки: создать `<a>` с текстом, использовать `range.insertNode(anchor)`
+3. **После вставки**: диспатчить `input` event для синхронизации состояния
 
-Ключевой момент: выполнять `execCommand` **после** закрытия Dialog через `requestAnimationFrame`, чтобы фокус гарантированно вернулся в `contenteditable`.
+### Ключевой код
+
+```typescript
+setTimeout(() => {
+  const blockEl = document.querySelector(`[data-block-id="${blockId}"] [contenteditable]`) as HTMLElement;
+  if (!blockEl) return;
+  blockEl.focus();
+
+  if (hadSelection && rangeClone) {
+    const anchor = document.createElement('a');
+    anchor.href = url;
+    anchor.target = '_blank';
+    anchor.rel = 'noopener noreferrer';
+    rangeClone.surroundContents(anchor);
+  } else {
+    const anchor = document.createElement('a');
+    anchor.href = url;
+    anchor.target = '_blank';
+    anchor.rel = 'noopener noreferrer';
+    anchor.textContent = text;
+    const range = document.createRange();
+    range.selectNodeContents(blockEl);
+    range.collapse(false);
+    range.insertNode(anchor);
+  }
+
+  blockEl.dispatchEvent(new Event('input', { bubbles: true }));
+}, 150);
+```
 
 ### Файлы
-- `src/components/course-builder/BlockEditor.tsx` — замена Popover на Dialog, исправление логики применения ссылки
+- `src/components/course-builder/BlockEditor.tsx` — замена execCommand на DOM-манипуляцию
 
