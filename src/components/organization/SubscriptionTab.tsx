@@ -56,15 +56,15 @@ interface FeatureHighlight {
   link?: string;
 }
 
-const FEATURE_HIGHLIGHTS: FeatureHighlight[] = [
+const FEATURE_HIGHLIGHTS: (FeatureHighlight & { categoryKey?: string })[] = [
   { icon: <Palette className="w-5 h-5" />, title: "Брендирование", description: "Ваш логотип и цвета в портале ученика", minPlan: "standard", link: "/feature/branding" },
   { icon: <Video className="w-5 h-5" />, title: "Видео-идентификация", description: "Автоматическая проверка личности ученика", minPlan: "standard", link: "/feature/video-id" },
   { icon: <FileCheck className="w-5 h-5" />, title: "Чек-лист документов", description: "100% контроль документов при зачислении", minPlan: "standard", link: "/feature/document-checklist" },
-  { icon: <ClipboardList className="w-5 h-5" />, title: "Журналы", description: "Автогенерация журналов посещаемости и оценок", minPlan: "professional" },
-  { icon: <FileSpreadsheet className="w-5 h-5" />, title: "Документооборот", description: "Полный цикл документов организации", minPlan: "professional", link: "/feature/documents" },
-  { icon: <HardHat className="w-5 h-5" />, title: "Охрана труда", description: "Полное управление обучением ОТ", minPlan: "professional", link: "/feature/labor-safety" },
-  { icon: <ShoppingCart className="w-5 h-5" />, title: "Магазин курсов", description: "Продавайте и покупайте курсы на маркетплейсе", minPlan: "professional", link: "/feature/course-store" },
-  { icon: <FileSpreadsheet className="w-5 h-5" />, title: "ФИС ФРДО", description: "Автоматическая отчётность в федеральный реестр", minPlan: "maximum", link: "/feature/frdo" },
+  { icon: <ClipboardList className="w-5 h-5" />, title: "Журналы", description: "Автогенерация журналов посещаемости и оценок", minPlan: "professional", categoryKey: "journals" },
+  { icon: <FileSpreadsheet className="w-5 h-5" />, title: "Документооборот", description: "Полный цикл документов организации", minPlan: "professional", link: "/feature/documents", categoryKey: "documents" },
+  { icon: <HardHat className="w-5 h-5" />, title: "Охрана труда", description: "Полное управление обучением ОТ", minPlan: "professional", link: "/feature/labor-safety", categoryKey: "labor_safety" },
+  { icon: <ShoppingCart className="w-5 h-5" />, title: "Магазин курсов", description: "Продавайте и покупайте курсы на маркетплейсе", minPlan: "professional", link: "/feature/course-store", categoryKey: "services" },
+  { icon: <FileSpreadsheet className="w-5 h-5" />, title: "ФИС ФРДО", description: "Автоматическая отчётность в федеральный реестр", minPlan: "maximum", link: "/feature/frdo", categoryKey: "frdo" },
   { icon: <Brain className="w-5 h-5" />, title: "ИИ-генерация", description: "Создание контента курсов за минуты с ИИ", minPlan: "maximum", link: "/feature/ai-courses" },
   { icon: <Infinity className="w-5 h-5" />, title: "Без ограничений", description: "Безлимитные курсы и ученики — масштабируйтесь свободно", minPlan: "maximum" },
 ];
@@ -287,7 +287,7 @@ export function SubscriptionTab() {
               </Card>
 
               {/* Generate Invoice Button */}
-              {currentPlan !== 'free' && daysRemaining !== null && daysRemaining <= 30 && (
+              {currentPlan !== 'free' && (
                 <Card className="border-primary/20 bg-primary/5">
                   <CardContent className="p-4 flex items-center justify-between">
                     <div className="flex items-center gap-3">
