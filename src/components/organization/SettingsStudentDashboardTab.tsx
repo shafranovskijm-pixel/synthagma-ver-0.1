@@ -8,8 +8,9 @@ import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import {
   Save, Settings, Loader2, ExternalLink, Lock, ArrowUpRight,
-  Trophy, MessageCircle, LayoutGrid,
+  Trophy, MessageCircle, LayoutGrid, Pencil,
 } from "lucide-react";
+import { AchievementsManager } from "./AchievementsManager";
 
 interface StudentDashboardSettings {
   showAchievements: boolean;
@@ -34,6 +35,7 @@ export function SettingsStudentDashboardTab({ organizationId }: Props) {
   const hasBranding = SUBSCRIPTION_PLANS[plan]?.limits?.branding ?? false;
   const [settings, setSettings] = useState<StudentDashboardSettings>(DEFAULT_STUDENT);
   const [isSaving, setIsSaving] = useState(false);
+  const [achievementsOpen, setAchievementsOpen] = useState(false);
 
   useEffect(() => {
     const load = async () => {
@@ -174,6 +176,7 @@ export function SettingsStudentDashboardTab({ organizationId }: Props) {
           {isSaving ? <><Loader2 className="w-4 h-4 animate-spin" /> Сохранение...</> : <><Save className="w-4 h-4" /> Сохранить настройки</>}
         </Button>
       </div>
+      <AchievementsManager organizationId={organizationId} isOpen={achievementsOpen} onOpenChange={setAchievementsOpen} />
     </div>
   );
 }
