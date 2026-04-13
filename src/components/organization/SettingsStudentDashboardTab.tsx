@@ -121,12 +121,17 @@ export function SettingsStudentDashboardTab({ organizationId }: Props) {
               <p className="text-sm text-muted-foreground">Раздел с наградами и достижениями</p>
             </div>
           </div>
-          <button
-            onClick={() => setSettings(prev => ({ ...prev, showAchievements: !prev.showAchievements }))}
-            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${settings.showAchievements ? 'bg-primary' : 'bg-muted'}`}
-          >
-            <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${settings.showAchievements ? 'translate-x-6' : 'translate-x-1'}`} />
-          </button>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" className="rounded-xl gap-1.5 text-xs" onClick={() => setAchievementsOpen(true)}>
+              <Pencil className="w-3.5 h-3.5" /> Настроить
+            </Button>
+            <button
+              onClick={() => setSettings(prev => ({ ...prev, showAchievements: !prev.showAchievements }))}
+              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${settings.showAchievements ? 'bg-primary' : 'bg-muted'}`}
+            >
+              <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${settings.showAchievements ? 'translate-x-6' : 'translate-x-1'}`} />
+            </button>
+          </div>
         </div>
         <div className="flex items-center justify-between py-3">
           <div className="flex items-center gap-3">
