@@ -37,6 +37,34 @@ const AdminDashboard = () => {
   const isMobile = useIsMobile();
   const [activeTab, setActiveTab] = useState<AdminTabType>("organizations");
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
+  const [notifications, setNotifications] = useState<any[]>([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  const fetchNotifications = useCallback(async () => {
+    const { data } = await supabase
+      .from("admin_notifications")
+      .select("*")
+      .order("created_at", { ascending: false })
+      .limit(20);
+    setNotifications(data || []);
+    setUnreadCount((data || []).filter((n: any) => !n.is_read).length);
+  }, []);
+
+  useEffect(() => {
+    fetchNotifications();
+    const channel = supabase
+      .channel("admin-notifications-bell")
+      .on("postgres_changes", { event: "*", schema: "public", table: "admin_notifications" }, () => fetchNotifications())
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [fetchNotifications]);
+
+  const markAllRead = async () => {
+    const unreadIds = notifications.filter(n => !n.is_read).map(n => n.id);
+    if (unreadIds.length === 0) return;
+    await supabase.from("admin_notifications").update({ is_read: true }).in("id", unreadIds);
+    fetchNotifications();
+  };
 
   const handleSignOut = async () => {
     await signOut();
