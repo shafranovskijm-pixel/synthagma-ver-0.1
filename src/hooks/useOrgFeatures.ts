@@ -236,7 +236,7 @@ export function useOrgFeatures(organizationId: string | null) {
         supabase.from("system_features").select("feature_id, is_enabled"),
         supabase.from("organization_feature_categories").select("category_id, is_enabled").eq("organization_id", organizationId),
         supabase.from("organization_features").select("feature_id, is_enabled").eq("organization_id", organizationId),
-        supabase.from("organizations").select("subscription_plan").eq("id", organizationId).single(),
+        supabase.from("organizations").select("subscription_plan, custom_enabled_categories").eq("id", organizationId).single(),
       ]);
 
       const newFeatures = { ...defaultFeatures };
@@ -279,6 +279,7 @@ export function useOrgFeatures(organizationId: string | null) {
 
       // Subscription plan is the FINAL authority on categories
       const subscriptionPlan = (orgPlanResult.data?.subscription_plan || 'free') as SubscriptionPlan;
+      const customEnabledCategories: string[] = (orgPlanResult.data as any)?.custom_enabled_categories || [];
       const planInfo = getPlanInfo(subscriptionPlan);
       const allCategories = ['courses', 'students', 'companies', 'documents', 'journals', 'frdo', 'links', 'library', 'services', 'settings', 'student_cabinet', 'labor_safety', 'webinars'];
       
@@ -287,6 +288,13 @@ export function useOrgFeatures(organizationId: string | null) {
           (newFeatures as any)[cat] = true;
         } else {
           (newFeatures as any)[cat] = false;
+        }
+      }
+
+      // Apply custom enabled categories (override plan restrictions)
+      for (const cat of customEnabledCategories) {
+        if (cat in newFeatures) {
+          (newFeatures as any)[cat] = true;
         }
       }
 

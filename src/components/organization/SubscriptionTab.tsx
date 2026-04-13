@@ -56,15 +56,15 @@ interface FeatureHighlight {
   link?: string;
 }
 
-const FEATURE_HIGHLIGHTS: FeatureHighlight[] = [
+const FEATURE_HIGHLIGHTS: (FeatureHighlight & { categoryKey?: string })[] = [
   { icon: <Palette className="w-5 h-5" />, title: "Брендирование", description: "Ваш логотип и цвета в портале ученика", minPlan: "standard", link: "/feature/branding" },
   { icon: <Video className="w-5 h-5" />, title: "Видео-идентификация", description: "Автоматическая проверка личности ученика", minPlan: "standard", link: "/feature/video-id" },
   { icon: <FileCheck className="w-5 h-5" />, title: "Чек-лист документов", description: "100% контроль документов при зачислении", minPlan: "standard", link: "/feature/document-checklist" },
-  { icon: <ClipboardList className="w-5 h-5" />, title: "Журналы", description: "Автогенерация журналов посещаемости и оценок", minPlan: "professional" },
-  { icon: <FileSpreadsheet className="w-5 h-5" />, title: "Документооборот", description: "Полный цикл документов организации", minPlan: "professional", link: "/feature/documents" },
-  { icon: <HardHat className="w-5 h-5" />, title: "Охрана труда", description: "Полное управление обучением ОТ", minPlan: "professional", link: "/feature/labor-safety" },
-  { icon: <ShoppingCart className="w-5 h-5" />, title: "Магазин курсов", description: "Продавайте и покупайте курсы на маркетплейсе", minPlan: "professional", link: "/feature/course-store" },
-  { icon: <FileSpreadsheet className="w-5 h-5" />, title: "ФИС ФРДО", description: "Автоматическая отчётность в федеральный реестр", minPlan: "maximum", link: "/feature/frdo" },
+  { icon: <ClipboardList className="w-5 h-5" />, title: "Журналы", description: "Автогенерация журналов посещаемости и оценок", minPlan: "professional", categoryKey: "journals" },
+  { icon: <FileSpreadsheet className="w-5 h-5" />, title: "Документооборот", description: "Полный цикл документов организации", minPlan: "professional", link: "/feature/documents", categoryKey: "documents" },
+  { icon: <HardHat className="w-5 h-5" />, title: "Охрана труда", description: "Полное управление обучением ОТ", minPlan: "professional", link: "/feature/labor-safety", categoryKey: "labor_safety" },
+  { icon: <ShoppingCart className="w-5 h-5" />, title: "Магазин курсов", description: "Продавайте и покупайте курсы на маркетплейсе", minPlan: "professional", link: "/feature/course-store", categoryKey: "services" },
+  { icon: <FileSpreadsheet className="w-5 h-5" />, title: "ФИС ФРДО", description: "Автоматическая отчётность в федеральный реестр", minPlan: "maximum", link: "/feature/frdo", categoryKey: "frdo" },
   { icon: <Brain className="w-5 h-5" />, title: "ИИ-генерация", description: "Создание контента курсов за минуты с ИИ", minPlan: "maximum", link: "/feature/ai-courses" },
   { icon: <Infinity className="w-5 h-5" />, title: "Без ограничений", description: "Безлимитные курсы и ученики — масштабируйтесь свободно", minPlan: "maximum" },
 ];
@@ -108,6 +108,7 @@ export function SubscriptionTab() {
   const [submitting, setSubmitting] = useState(false);
   const [pendingRequest, setPendingRequest] = useState<{ requested_plan: string; created_at: string } | null>(null);
   const [orgContact, setOrgContact] = useState<{ email?: string; phone?: string; contact_name?: string }>({});
+  const [customEnabledCategories, setCustomEnabledCategories] = useState<string[]>([]);
   const [generatingInvoice, setGeneratingInvoice] = useState(false);
   const nav = useNavigate();
 
@@ -120,13 +121,14 @@ export function SubscriptionTab() {
     
     const fetchOrgDetails = async () => {
       const [orgRes, reqRes] = await Promise.all([
-        supabase.from("organizations").select("paid_until, tariff_custom_label, email, phone, contact_name").eq("id", organizationId).single(),
+        supabase.from("organizations").select("paid_until, tariff_custom_label, email, phone, contact_name, custom_enabled_categories").eq("id", organizationId).single(),
         supabase.from("subscription_requests" as any).select("requested_plan, created_at").eq("organization_id", organizationId).eq("status", "pending").order("created_at", { ascending: false }).limit(1),
       ]);
       
       if (orgRes.data?.paid_until) setPaidUntil(orgRes.data.paid_until);
       if ((orgRes.data as any)?.tariff_custom_label) setTariffCustomLabel((orgRes.data as any).tariff_custom_label);
       setOrgContact({ email: orgRes.data?.email, phone: orgRes.data?.phone, contact_name: orgRes.data?.contact_name });
+      setCustomEnabledCategories((orgRes.data as any)?.custom_enabled_categories || []);
       if ((reqRes.data as any)?.[0]) setPendingRequest((reqRes.data as any)[0]);
     };
     fetchOrgDetails();
@@ -287,7 +289,7 @@ export function SubscriptionTab() {
               </Card>
 
               {/* Generate Invoice Button */}
-              {currentPlan !== 'free' && daysRemaining !== null && daysRemaining <= 30 && (
+              {currentPlan !== 'free' && (
                 <Card className="border-primary/20 bg-primary/5">
                   <CardContent className="p-4 flex items-center justify-between">
                     <div className="flex items-center gap-3">
@@ -394,7 +396,7 @@ export function SubscriptionTab() {
                   <CardContent>
                     <p className="text-sm text-muted-foreground mb-4">Перейдите на более высокий тариф, чтобы разблокировать</p>
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
-                      {FEATURE_HIGHLIGHTS.filter(f => PLAN_ORDER.indexOf(f.minPlan) > currentPlanIndex).map((feature, i) => (
+                      {FEATURE_HIGHLIGHTS.filter(f => PLAN_ORDER.indexOf(f.minPlan) > currentPlanIndex && !(f.categoryKey && customEnabledCategories.includes(f.categoryKey))).map((feature, i) => (
                         <div key={i} className="p-4 rounded-xl border border-border bg-muted/30 space-y-2 relative overflow-hidden">
                           <div className="absolute top-2 right-2">
                             <Badge variant="outline" className={planAccents[feature.minPlan]}>

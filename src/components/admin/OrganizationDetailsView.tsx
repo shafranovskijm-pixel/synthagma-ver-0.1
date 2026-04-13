@@ -204,6 +204,9 @@ export function OrganizationDetailsView({ organization, onBack }: OrganizationDe
     aiGenerationsLimit: (organization as any).custom_ai_generations_limit as number | null,
     storageLimitBytes: (organization as any).custom_storage_limit_bytes as number | null,
   });
+  const [customCategories, setCustomCategories] = useState<string[]>(
+    (organization as any).custom_enabled_categories || []
+  );
 
   const planKey = (organization.subscription_plan as SubscriptionPlan) || 'free';
   const planInfo = getPlanInfo(planKey);
@@ -544,6 +547,7 @@ export function OrganizationDetailsView({ organization, onBack }: OrganizationDe
         custom_max_trained_per_month: customLimits.maxTrainedPerMonth,
         custom_ai_generations_limit: customLimits.aiGenerationsLimit,
         custom_storage_limit_bytes: customLimits.storageLimitBytes,
+        custom_enabled_categories: customCategories,
       };
       console.log("Saving tariff settings:", updatePayload);
       const { error } = await supabase
@@ -1391,6 +1395,42 @@ export function OrganizationDetailsView({ organization, onBack }: OrganizationDe
                   />
                   <span className="text-sm text-muted-foreground">Безлимит</span>
                 </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Индивидуальные возможности</CardTitle>
+              <CardDescription>Включите категории, которые будут доступны организации независимо от тарифа.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                {[
+                  { key: 'journals', label: 'Журналы' },
+                  { key: 'documents', label: 'Документооборот' },
+                  { key: 'labor_safety', label: 'Охрана труда' },
+                  { key: 'services', label: 'Магазин курсов' },
+                  { key: 'frdo', label: 'ФИС ФРДО' },
+                  { key: 'webinars', label: 'Вебинары' },
+                  { key: '3d_trainers', label: '3D-тренажёры' },
+                ].map(({ key, label }) => (
+                  <label key={key} className="flex items-center gap-2 p-2 rounded-lg border cursor-pointer hover:bg-muted/50 transition-colors">
+                    <input
+                      type="checkbox"
+                      className="h-4 w-4 rounded border-primary accent-primary"
+                      checked={customCategories.includes(key)}
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          setCustomCategories(prev => [...prev, key]);
+                        } else {
+                          setCustomCategories(prev => prev.filter(c => c !== key));
+                        }
+                      }}
+                    />
+                    <span className="text-sm font-medium">{label}</span>
+                  </label>
+                ))}
               </div>
             </CardContent>
           </Card>

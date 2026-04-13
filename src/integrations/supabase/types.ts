@@ -3018,6 +3018,7 @@ export type Database = {
           contact_name: string | null
           created_at: string
           custom_ai_generations_limit: number | null
+          custom_enabled_categories: string[] | null
           custom_max_courses: number | null
           custom_max_students: number | null
           custom_max_trained_per_month: number | null
@@ -3070,6 +3071,7 @@ export type Database = {
           contact_name?: string | null
           created_at?: string
           custom_ai_generations_limit?: number | null
+          custom_enabled_categories?: string[] | null
           custom_max_courses?: number | null
           custom_max_students?: number | null
           custom_max_trained_per_month?: number | null
@@ -3122,6 +3124,7 @@ export type Database = {
           contact_name?: string | null
           created_at?: string
           custom_ai_generations_limit?: number | null
+          custom_enabled_categories?: string[] | null
           custom_max_courses?: number | null
           custom_max_students?: number | null
           custom_max_trained_per_month?: number | null

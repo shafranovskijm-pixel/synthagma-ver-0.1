@@ -1,0 +1,1 @@
+ALTER TABLE public.organizations ADD COLUMN custom_enabled_categories text[] DEFAULT '{}';
