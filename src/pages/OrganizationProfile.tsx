@@ -88,17 +88,23 @@ export default function OrganizationProfile() {
           .select("organization_id")
           .eq("user_id", user.id)
           .maybeSingle();
-        console.log("[OrgProfile] loadOrganizationId profile result:", { prof, userId: user.id });
         if (prof?.organization_id) {
           setOrganizationId(prof.organization_id);
         } else {
           // Fallback: use the current_organization_id() database function
-          console.warn("[OrgProfile] No organization_id in profile, trying RPC fallback");
           const { data: orgId } = await supabase.rpc("current_organization_id");
           if (orgId) {
             setOrganizationId(orgId as string);
           } else {
-            console.warn("[OrgProfile] No organization found for user:", user.id);
+            // Admin fallback: pick the first organization
+            const { data: firstOrg } = await supabase
+              .from("organizations")
+              .select("id")
+              .limit(1)
+              .maybeSingle();
+            if (firstOrg?.id) {
+              setOrganizationId(firstOrg.id);
+            }
           }
         }
       } catch (e) {
