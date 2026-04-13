@@ -256,9 +256,13 @@ export default function CourseLanding() {
     <Button size="lg" className="gap-2" onClick={() => navigate(`/course/${course.id}/learn`)}>
       <Play className="w-5 h-5" />Продолжить обучение
     </Button>
+  ) : hasPendingRequest ? (
+    <Button size="lg" disabled className="gap-2 opacity-80">
+      Заявка отправлена
+    </Button>
   ) : (
     <div className="flex items-center gap-2">
-      {course.price > 0 && (
+      {course.price > 0 && !course.require_enrollment_approval && (
         <>
           <Input value={promoCode} onChange={(e) => setPromoCode(e.target.value)} placeholder="Промокод" className="bg-white/10 border-white/20 text-white placeholder:text-white/50 w-32" />
           <Button variant="secondary" size="sm" onClick={checkPromoCode} disabled={promoChecking}>
@@ -267,7 +271,7 @@ export default function CourseLanding() {
         </>
       )}
       <Button size="lg" onClick={() => handleEnroll()} className="bg-white text-black hover:bg-white/90">
-        {finalPrice > 0 ? "Купить курс" : "Записаться бесплатно"}
+        {course.require_enrollment_approval ? "Оставить заявку" : (finalPrice > 0 ? "Купить курс" : "Записаться бесплатно")}
       </Button>
     </div>
   );
