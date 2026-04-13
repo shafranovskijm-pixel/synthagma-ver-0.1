@@ -523,6 +523,7 @@ export const DocumentsTab = React.memo(function DocumentsTab({ organizationId, o
         <TabsContent value="certificates">
           <EducationDocumentsJournal
             organizationId={organizationId}
+            onClose={() => {}}
             documentTypeFilter="certificate"
           />
         </TabsContent>
@@ -531,6 +532,7 @@ export const DocumentsTab = React.memo(function DocumentsTab({ organizationId, o
         <TabsContent value="diplomas">
           <EducationDocumentsJournal
             organizationId={organizationId}
+            onClose={() => {}}
             documentTypeFilter="diploma"
           />
         </TabsContent>
@@ -539,6 +541,7 @@ export const DocumentsTab = React.memo(function DocumentsTab({ organizationId, o
         <TabsContent value="testimonials">
           <EducationDocumentsJournal
             organizationId={organizationId}
+            onClose={() => {}}
             documentTypeFilter="qualification"
           />
         </TabsContent>
