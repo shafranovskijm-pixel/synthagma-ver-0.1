@@ -546,10 +546,21 @@ const CoursePreview = () => {
   };
 
   const goToLesson = (index: number) => {
-    if (index !== currentLessonIndex) {
+    if (index !== currentLessonIndex || showDocumentsView) {
+      setShowDocumentsView(false);
       setIsTransitioning(true);
       setTimeout(() => {
         setCurrentLessonIndex(index);
+        setIsTransitioning(false);
+      }, 300);
+    }
+  };
+
+  const goToDocumentsView = () => {
+    if (!showDocumentsView) {
+      setIsTransitioning(true);
+      setTimeout(() => {
+        setShowDocumentsView(true);
         setIsTransitioning(false);
       }, 300);
     }
