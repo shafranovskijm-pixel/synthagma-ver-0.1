@@ -1,19 +1,24 @@
 
 
-# Перенос функций в тарифы + скидка суммой
+# Видео без скачивания + ссылки в редакторе
 
-## Что делаем
+## 1. Видео в редакторе без скачивания
 
-### 1. Убрать вкладку «Функции» из карточки организации
-Удалить `TabsTrigger value="features"` (строка 777-780) и `TabsContent value="features"` (строки 1497-1503). Импорт `OrgFeaturesTab` и иконку `Puzzle` тоже убрать если больше нигде не используются.
+**Файл:** `src/components/course-builder/SortableLessonItem.tsx` (строка 317)
 
-### 2. Скидка суммой (₽) вместо только процентов
-В секции «Индивидуальная цена» (строки 1406-1444) заменить поле «Скидка (%)» на «Скидка (₽)» — фиксированная сумма скидки от базовой цены тарифа. Формула: итого = (custom_price ?? plan_price) - (custom_discount ?? 0). Поле `custom_discount` в БД уже numeric, просто меняем семантику с процентов на рубли. Обновить расчёт в `SubscriptionTab.tsx` (`handleGenerateInvoice`) аналогично.
+Добавить `controlsList="nodownload"` к тегу `<video>` — как уже сделано в BlockEditor и других компонентах. Видео будет проигрываться прямо в редакторе без предложения скачать.
 
-### 3. Показать базовую цену тарифа для справки
-Добавить под заголовком «Индивидуальная цена» строку: «Цена тарифа: X ₽/мес» чтобы было понятно от чего считается скидка.
+## 2. Кнопка «Ссылка» в RichTextEditor
+
+**Файл:** `src/components/course-builder/RichTextEditor.tsx`
+
+- Добавить `'a'` в `ALLOWED_TAGS`, добавить `'href', 'target', 'rel'` в `ALLOWED_ATTR`
+- Добавить кнопку «Ссылка» (иконка `Link2`) в floating toolbar
+- При нажатии: проверить, выделен ли текст. Если да — показать `prompt()` с полем для URL. При вводе URL — вызвать `document.execCommand('createLink', false, url)`, затем найти созданный `<a>` и установить `target="_blank"` и `rel="noopener noreferrer"`
+- Если текст уже обёрнут в ссылку — кнопка снимает ссылку (`document.execCommand('unlink')`)
+- Пользователь сам выделяет текст, нажимает кнопку, вводит URL — текст становится кликабельной ссылкой
 
 ## Затрагиваемые файлы
-- `src/components/admin/OrganizationDetailsView.tsx` — убрать вкладку «Функции», поменять скидку на рубли
-- `src/components/organization/SubscriptionTab.tsx` — обновить расчёт суммы счёта (вычитать скидку в рублях, а не в процентах)
+- `src/components/course-builder/SortableLessonItem.tsx` — одна правка (добавить `controlsList="nodownload"`)
+- `src/components/course-builder/RichTextEditor.tsx` — кнопка ссылки + разрешение тега `<a>` в санитайзере
 
