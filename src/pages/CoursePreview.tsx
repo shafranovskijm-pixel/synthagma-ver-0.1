@@ -492,6 +492,14 @@ const CoursePreview = () => {
           setLessonAttachments(map);
         }
       }
+
+      // Fetch course documents
+      const { data: docsData } = await supabase
+        .from('course_documents')
+        .select('*')
+        .eq('course_id', courseId!)
+        .order('created_at');
+      setCourseDocuments(docsData || []);
     } catch (error) {
       console.error('Error fetching course:', error);
       toast.error('Ошибка загрузки курса');
