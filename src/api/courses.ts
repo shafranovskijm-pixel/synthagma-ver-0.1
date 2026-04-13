@@ -198,6 +198,7 @@ export async function duplicateCourse(courseId: string): Promise<Course | null> 
       training_form: original.training_form,
       notify_on_completion: original.notify_on_completion,
       completion_notify_emails: original.completion_notify_emails,
+      default_access_days: original.default_access_days,
     })
     .select()
     .single();
@@ -227,6 +228,7 @@ export async function duplicateCourse(courseId: string): Promise<Course | null> 
           test_questions_count: lesson.test_questions_count,
           test_passing_score: lesson.test_passing_score,
           test_questions_to_show: lesson.test_questions_to_show,
+          is_locked: lesson.is_locked ?? false,
         })
         .select("id")
         .single();

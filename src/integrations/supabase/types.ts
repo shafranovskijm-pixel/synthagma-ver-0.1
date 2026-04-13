@@ -1204,6 +1204,7 @@ export type Database = {
           completion_notify_emails: string | null
           cover_image_url: string | null
           created_at: string
+          default_access_days: number | null
           description: string | null
           duration: string | null
           frdo_document_type: string | null
@@ -1242,6 +1243,7 @@ export type Database = {
           completion_notify_emails?: string | null
           cover_image_url?: string | null
           created_at?: string
+          default_access_days?: number | null
           description?: string | null
           duration?: string | null
           frdo_document_type?: string | null
@@ -1280,6 +1282,7 @@ export type Database = {
           completion_notify_emails?: string | null
           cover_image_url?: string | null
           created_at?: string
+          default_access_days?: number | null
           description?: string | null
           duration?: string | null
           frdo_document_type?: string | null
@@ -2115,6 +2118,7 @@ export type Database = {
           course_id: string
           created_at: string
           id: string
+          is_locked: boolean
           order_index: number
           test_passing_score: number
           test_questions_count: number | null
@@ -2128,6 +2132,7 @@ export type Database = {
           course_id: string
           created_at?: string
           id?: string
+          is_locked?: boolean
           order_index?: number
           test_passing_score?: number
           test_questions_count?: number | null
@@ -2141,6 +2146,7 @@ export type Database = {
           course_id?: string
           created_at?: string
           id?: string
+          is_locked?: boolean
           order_index?: number
           test_passing_score?: number
           test_questions_count?: number | null

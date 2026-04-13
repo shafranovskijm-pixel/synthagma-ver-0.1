@@ -47,7 +47,8 @@ import {
   Globe,
   ShieldCheck,
   Droplets,
-  ExternalLink
+  ExternalLink,
+  Clock
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useSubscriptionLimits } from "@/hooks/useSubscriptionLimits";
@@ -145,6 +146,7 @@ export function CourseDetailsContent({
   const [reminderAdvanceDays, setReminderAdvanceDays] = useState<number>((course as any)?.reminder_advance_days ?? 30);
   const [notifyOnCompletion, setNotifyOnCompletion] = useState<boolean>((course as any)?.notify_on_completion ?? false);
   const [completionNotifyEmails, setCompletionNotifyEmails] = useState<string | null>((course as any)?.completion_notify_emails ?? null);
+  const [defaultAccessDays, setDefaultAccessDays] = useState<number | null>((course as any)?.default_access_days ?? null);
   const [isSavingSettings, setIsSavingSettings] = useState(false);
   
   const [copyProtection, setCopyProtection] = useState(false);
@@ -183,6 +185,7 @@ export function CourseDetailsContent({
       setReminderAdvanceDays((course as any).reminder_advance_days ?? 30);
       setNotifyOnCompletion((course as any).notify_on_completion ?? false);
       setCompletionNotifyEmails((course as any).completion_notify_emails ?? null);
+      setDefaultAccessDays((course as any).default_access_days ?? null);
       setFrdoSettings({
         frdo_program_type: course.frdo_program_type || null,
         frdo_document_type: course.frdo_document_type || null,
@@ -257,7 +260,7 @@ export function CourseDetailsContent({
         setSelectedToEnroll(new Set());
         return;
       }
-      const enrollmentsToInsert = newUserIds.map(userId => ({ user_id: userId, course_id: course.id, status: "active", progress: 0 }));
+      const enrollmentsToInsert = newUserIds.map(userId => ({ user_id: userId, course_id: course.id, status: "active", progress: 0, ...(defaultAccessDays ? { access_days: defaultAccessDays } : {}) }));
       const { error } = await supabase.from("enrollments").insert(enrollmentsToInsert);
       if (error) throw error;
       toast.success(`Зачислено ${newUserIds.length} ${newUserIds.length === 1 ? 'ученик' : newUserIds.length < 5 ? 'ученика' : 'учеников'}`);
@@ -350,6 +353,20 @@ export function CourseDetailsContent({
   const handleUpdateExternalCardUrl = async (value: string) => {
     setExternalCardUrl(value);
     await handleUpdateLandingContentField("external_card_url", value || null);
+  };
+
+  const handleUpdateDefaultAccessDays = async (value: string) => {
+    const days = value ? parseInt(value) : null;
+    if (value && isNaN(days!)) return;
+    setDefaultAccessDays(days);
+    setIsSavingSettings(true);
+    try {
+      const { error } = await supabase.from("courses").update({ default_access_days: days } as any).eq("id", course.id);
+      if (error) throw error;
+      toast.success(days ? `Срок доступа: ${days} дней` : "Безлимитный доступ");
+      onCourseUpdated?.();
+    } catch (error) { console.error("Error updating default_access_days:", error); toast.error("Ошибка сохранения"); }
+    finally { setIsSavingSettings(false); }
   };
 
   const handleUpdateFrdoSettings = async (field: string, value: string | number | null) => {
@@ -694,6 +711,16 @@ export function CourseDetailsContent({
                     <div><Label htmlFor="video-watermark" className="text-sm font-medium">Включить водяные знаки на видео</Label><p className="text-xs text-muted-foreground mt-1">Полупрозрачный водяной знак с email ученика поверх видео</p></div>
                   </div>
                   <Switch id="video-watermark" checked={videoWatermark} onCheckedChange={handleToggleVideoWatermark} disabled={isSavingSettings} />
+                </div>
+                <div className="space-y-3">
+                  <div className="flex items-start gap-3">
+                    <div className="p-2 rounded-lg bg-cyan-500/10 mt-0.5"><Clock className="w-5 h-5 text-cyan-500" /></div>
+                    <div className="flex-1">
+                      <Label className="text-sm font-medium">Срок доступа к курсу (дней)</Label>
+                      <p className="text-xs text-muted-foreground mt-1">Количество дней доступа после зачисления. Пустое значение — безлимитный доступ</p>
+                      <Input type="number" min={1} value={defaultAccessDays ?? ""} onChange={(e) => setDefaultAccessDays(e.target.value ? parseInt(e.target.value) : null)} onBlur={(e) => handleUpdateDefaultAccessDays(e.target.value)} placeholder="Безлимитный" className="mt-2 rounded-lg w-48" disabled={isSavingSettings} />
+                    </div>
+                  </div>
                 </div>
                 <div className="space-y-3">
                   <div className="flex items-start gap-3">

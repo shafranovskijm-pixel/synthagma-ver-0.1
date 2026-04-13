@@ -21,6 +21,7 @@ import {
   Github,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { toast as sonnerToast } from "sonner";
 import { useToast } from "@/hooks/use-toast";
 import { getAdminAwareBackPath } from "@/lib/utils";
 import {
@@ -79,6 +80,7 @@ interface Lesson {
   order_index: number;
   course_id: string;
   test_questions_count?: number | null;
+  is_locked?: boolean;
 }
 
 interface TestQuestion {
@@ -720,6 +722,13 @@ const CourseEditor = () => {
                       }
                       onEdit={() => handleEditLesson(lesson)}
                       onDelete={() => setDeletingLessonId(lesson.id)}
+                      onToggleLock={async () => {
+                        const newVal = !lesson.is_locked;
+                        const { error } = await supabase.from("lessons").update({ is_locked: newVal }).eq("id", lesson.id);
+                        if (error) { sonnerToast.error("Ошибка сохранения"); return; }
+                        setLessons(prev => prev.map(l => l.id === lesson.id ? { ...l, is_locked: newVal } : l));
+                        sonnerToast.success(newVal ? "Урок заблокирован" : "Урок разблокирован");
+                      }}
                     />
                   ))}
                 </div>
