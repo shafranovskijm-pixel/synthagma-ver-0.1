@@ -1,24 +1,40 @@
 
 
-# Видео без скачивания + ссылки в редакторе
+# Управление плашкой «Возможности на старших тарифах»
 
-## 1. Видео в редакторе без скачивания
+## Проблема
 
-**Файл:** `src/components/course-builder/SortableLessonItem.tsx` (строка 317)
+Сейчас в секции «Возможности, доступные на старших тарифах» фильтрация работает по `categoryKey`, но:
+1. Некоторые фичи не имеют `categoryKey` (Брендирование, Видео-идентификация, Чек-лист документов, ИИ-генерация, Без ограничений) — их нельзя скрыть через админку
+2. Если в админке не проставлены чекбоксы — фичи продолжают показываться, даже если организация ими пользуется
 
-Добавить `controlsList="nodownload"` к тегу `<video>` — как уже сделано в BlockEditor и других компонентах. Видео будет проигрываться прямо в редакторе без предложения скачать.
+## Решение
 
-## 2. Кнопка «Ссылка» в RichTextEditor
+### 1. Добавить `categoryKey` всем FEATURE_HIGHLIGHTS
 
-**Файл:** `src/components/course-builder/RichTextEditor.tsx`
+**Файл:** `src/components/organization/SubscriptionTab.tsx`
 
-- Добавить `'a'` в `ALLOWED_TAGS`, добавить `'href', 'target', 'rel'` в `ALLOWED_ATTR`
-- Добавить кнопку «Ссылка» (иконка `Link2`) в floating toolbar
-- При нажатии: проверить, выделен ли текст. Если да — показать `prompt()` с полем для URL. При вводе URL — вызвать `document.execCommand('createLink', false, url)`, затем найти созданный `<a>` и установить `target="_blank"` и `rel="noopener noreferrer"`
-- Если текст уже обёрнут в ссылку — кнопка снимает ссылку (`document.execCommand('unlink')`)
-- Пользователь сам выделяет текст, нажимает кнопку, вводит URL — текст становится кликабельной ссылкой
+Присвоить ключи оставшимся элементам:
+- Брендирование → `branding`
+- Видео-идентификация → `video_id`
+- Чек-лист документов → `document_checklist`
+- ИИ-генерация → `ai_generation`
+- Без ограничений → `unlimited`
 
-## Затрагиваемые файлы
-- `src/components/course-builder/SortableLessonItem.tsx` — одна правка (добавить `controlsList="nodownload"`)
-- `src/components/course-builder/RichTextEditor.tsx` — кнопка ссылки + разрешение тега `<a>` в санитайзере
+### 2. Расширить список чекбоксов в админке
+
+**Файл:** `src/components/admin/OrganizationDetailsView.tsx`
+
+Добавить в массив чекбоксов «Индивидуальные возможности» новые пункты:
+- `branding` — Брендирование
+- `video_id` — Видео-идентификация
+- `document_checklist` — Чек-лист документов
+- `ai_generation` — ИИ-генерация
+- `unlimited` — Без ограничений
+
+Когда админ включает чекбокс → ключ добавляется в `custom_enabled_categories` → фича пропадает из плашки «доступные на старших тарифах» у организации.
+
+## Файлы
+- `src/components/organization/SubscriptionTab.tsx` — добавить `categoryKey` всем хайлайтам
+- `src/components/admin/OrganizationDetailsView.tsx` — расширить список чекбоксов
 
