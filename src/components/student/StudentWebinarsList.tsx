@@ -94,10 +94,60 @@ export function StudentWebinarsList() {
 
   if (webinars.length === 0) {
     return (
-      <div className="text-center py-16 text-muted-foreground">
-        <Video className="w-12 h-12 mx-auto mb-4 opacity-40" />
-        <p className="text-lg font-medium">Вебинары пока не запланированы</p>
-        <p className="text-sm">Здесь будут отображаться предстоящие вебинары</p>
+      <div className="relative overflow-hidden rounded-2xl border bg-gradient-to-br from-card via-card to-primary/5 p-8 md:p-12">
+        {/* Decorative elements */}
+        <div className="absolute top-6 right-6 w-32 h-32 rounded-full bg-primary/5 blur-2xl" />
+        <div className="absolute bottom-4 left-8 w-24 h-24 rounded-full bg-primary/10 blur-xl" />
+
+        <div className="relative flex flex-col md:flex-row items-center gap-8">
+          {/* Visual illustration */}
+          <div className="flex-shrink-0">
+            <div className="relative w-40 h-40">
+              {/* Screen frame */}
+              <div className="absolute inset-0 rounded-2xl border-2 border-primary/20 bg-gradient-to-br from-primary/10 to-transparent" />
+              {/* Play triangle */}
+              <div className="absolute inset-0 flex items-center justify-center">
+                <div className="w-14 h-14 rounded-full bg-primary/15 flex items-center justify-center backdrop-blur-sm">
+                  <Video className="w-7 h-7 text-primary" />
+                </div>
+              </div>
+              {/* Live dot */}
+              <div className="absolute top-3 right-3 flex items-center gap-1.5">
+                <span className="relative flex h-2.5 w-2.5">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-destructive opacity-75" />
+                  <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-destructive" />
+                </span>
+                <span className="text-[10px] font-semibold text-destructive uppercase tracking-wider">Live</span>
+              </div>
+              {/* Timeline bars */}
+              <div className="absolute -bottom-4 left-1/2 -translate-x-1/2 flex gap-1">
+                {[40, 60, 30, 80, 50, 70, 45].map((h, i) => (
+                  <div
+                    key={i}
+                    className="w-1.5 rounded-full bg-primary/20"
+                    style={{ height: `${h * 0.35}px`, animationDelay: `${i * 0.15}s` }}
+                  />
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Text */}
+          <div className="text-center md:text-left space-y-3 max-w-md">
+            <h3 className="text-xl font-semibold text-foreground">Вебинары скоро появятся</h3>
+            <p className="text-muted-foreground text-sm leading-relaxed">
+              Здесь будут доступны прямые трансляции, записи вебинаров и интерактивные сессии
+              с преподавателями. Следите за обновлениями!
+            </p>
+            <div className="flex flex-wrap gap-2 justify-center md:justify-start pt-1">
+              {["Прямые эфиры", "Записи", "Q&A сессии"].map((tag) => (
+                <span key={tag} className="px-3 py-1 rounded-full text-xs font-medium bg-primary/10 text-primary">
+                  {tag}
+                </span>
+              ))}
+            </div>
+          </div>
+        </div>
       </div>
     );
   }
