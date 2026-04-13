@@ -1,4 +1,5 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
+import { useLocation } from "react-router-dom";
 import { TabType } from "@/components/organization/OrgSidebar";
 
 interface MenuSettings {
@@ -29,8 +30,22 @@ export function useTabNavigation({
   isFrdoEnabled,
   isEnabled,
 }: UseTabNavigationProps) {
-  const [activeTab, setActiveTab] = useState<TabType>("courses");
+  const location = useLocation();
+  const [activeTab, setActiveTab] = useState<TabType>(() => {
+    const state = location.state as { tab?: TabType } | null;
+    return state?.tab || "courses";
+  });
   const [swipeDirection, setSwipeDirection] = useState(0);
+
+  // Handle navigation state changes (e.g. from Profile settings)
+  useEffect(() => {
+    const state = location.state as { tab?: TabType } | null;
+    if (state?.tab) {
+      setActiveTab(state.tab);
+      // Clear state to avoid re-applying on re-renders
+      window.history.replaceState({}, document.title);
+    }
+  }, [location.state]);
 
   // Haptic feedback helper
   const triggerHapticFeedback = useCallback(() => {

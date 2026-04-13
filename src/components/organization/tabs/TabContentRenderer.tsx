@@ -2,7 +2,7 @@ import { CoursesTab } from "./CoursesTab";
 import { StatsCards } from "./StatsCards";
 import { DocumentsStatsCards } from "./DocumentsStatsCards";
 import { StudentsTab } from "./StudentsTab";
-import { SettingsTab } from "./SettingsTab";
+
 import { LinksTab } from "./LinksTab";
 import { StatsTab } from "./StatsTab";
 import { DocumentsTab } from "./DocumentsTab";
