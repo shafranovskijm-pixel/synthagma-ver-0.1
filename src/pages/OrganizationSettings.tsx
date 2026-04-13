@@ -259,8 +259,14 @@ export default function OrganizationSettings() {
   );
 }
 
-// Lazy wrapper for DocumentsTab to avoid importing it at top level with all its deps
+// Lazy-loaded DocumentsTab wrapper
+import { lazy, Suspense } from "react";
+const LazyDocumentsTab = lazy(() => import("@/components/organization/tabs/DocumentsTab").then(m => ({ default: m.DocumentsTab })));
+
 function DocumentsModuleWrapper({ organizationId }: { organizationId: string }) {
-  const { DocumentsTab } = require("@/components/organization/tabs/DocumentsTab");
-  return <DocumentsTab organizationId={organizationId} organizationName="" isOrdersEnabled={true} />;
+  return (
+    <Suspense fallback={<div className="flex justify-center py-8"><div className="animate-spin w-6 h-6 border-2 border-primary border-t-transparent rounded-full" /></div>}>
+      <LazyDocumentsTab organizationId={organizationId} organizationName="" isOrdersEnabled={true} />
+    </Suspense>
+  );
 }
