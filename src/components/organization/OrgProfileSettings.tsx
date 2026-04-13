@@ -49,7 +49,8 @@ interface MenuSettings {
 interface StudentDashboardSettings {
   showAchievements: boolean;
   showAiChat: boolean;
-  [key: string]: boolean;
+  catalogMode: "catalog" | "assigned";
+  [key: string]: boolean | string;
 }
 
 const DEFAULT_BRANDING: BrandingSettings = {
