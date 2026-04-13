@@ -725,9 +725,9 @@ const CourseEditor = () => {
                       onToggleLock={async () => {
                         const newVal = !lesson.is_locked;
                         const { error } = await supabase.from("lessons").update({ is_locked: newVal }).eq("id", lesson.id);
-                        if (error) { toast.error("Ошибка сохранения"); return; }
+                        if (error) { sonnerToast.error("Ошибка сохранения"); return; }
                         setLessons(prev => prev.map(l => l.id === lesson.id ? { ...l, is_locked: newVal } : l));
-                        toast.success(newVal ? "Урок заблокирован" : "Урок разблокирован");
+                        sonnerToast.success(newVal ? "Урок заблокирован" : "Урок разблокирован");
                       }}
                     />
                   ))}
