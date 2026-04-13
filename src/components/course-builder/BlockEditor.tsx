@@ -1430,12 +1430,22 @@ function VideoBlock({ block, onUpdate }: { block: ContentBlock; onUpdate: (updat
   };
 
   // Extract src from iframe if it's embed code
-  const getEmbedFromContent = (content: string): { type: 'iframe' | 'url' | null; value: string | null } => {
+  const getEmbedFromContent = (content: string): { type: 'iframe' | 'url' | 'direct' | null; value: string | null } => {
     if (!content) return { type: null, value: null };
     
     // Check for iframe embed code
     if (isIframeEmbed(content)) {
       return { type: 'iframe', value: content };
+    }
+    
+    // Direct video file URLs (mp4, webm, ogg, mov, mkv, m4v) or known CDNs
+    if (content.match(/\.(mp4|webm|ogg|mov|mkv|m4v)(\?.*)?$/i) || content.includes("selcdn.ru") || content.includes("selstorage")) {
+      return { type: 'direct', value: content };
+    }
+
+    // Kinescope
+    if (content.startsWith("kinescope:")) {
+      return { type: 'direct', value: content };
     }
     
     // YouTube
@@ -1474,11 +1484,6 @@ function VideoBlock({ block, onUpdate }: { block: ContentBlock; onUpdate: (updat
     const yandexMatch = content.match(/yandex\.ru\/video\/preview\/(\d+)/);
     if (yandexMatch) return { type: 'url', value: `https://yandex.ru/video/preview/${yandexMatch[1]}` };
     
-    // Fallback: if URL looks like a direct video file, try embedding
-    if (content.match(/^https?:\/\/.+\.(mp4|webm|ogg)(\?.*)?$/i)) {
-      return { type: 'url', value: content };
-    }
-    
     // Generic video URLs - try direct embed for recording services
     if (content.match(/^https?:\/\/.*\/recordings?\//i) || content.match(/^https?:\/\/.*\/video\//i)) {
       return { type: 'url', value: content };
@@ -1494,34 +1499,48 @@ function VideoBlock({ block, onUpdate }: { block: ContentBlock; onUpdate: (updat
     <div className="py-2">
       {hasValidEmbed ? (
         <div className="space-y-2">
-          <LazyMediaPreview type="iframe">
-            <div className="relative group/video aspect-video bg-black rounded-lg overflow-hidden">
-              {embedResult.type === 'iframe' ? (
-                <div 
-                  className="w-full h-full [&>iframe]:w-full [&>iframe]:h-full [&>iframe]:border-0"
-                  dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(embedResult.value || '', {
-                    ALLOWED_TAGS: ['iframe'],
-                    ALLOWED_ATTR: ['src', 'width', 'height', 'frameborder', 'allow', 'allowfullscreen', 'title', 'referrerpolicy'],
-                  }) }}
-                />
-              ) : (
-                <iframe 
-                  src={embedResult.value || ''} 
-                  className="w-full h-full border-0" 
-                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" 
-                  allowFullScreen 
-                />
-              )}
+          {embedResult.type === 'direct' ? (
+            <div className="relative group/video">
+              <DirectVideoBlock url={embedResult.value || ''} />
               <Button 
                 variant="secondary" 
                 size="sm" 
-                className="absolute top-2 right-2 opacity-0 group-hover/video:opacity-100" 
+                className="absolute top-2 right-2 opacity-0 group-hover/video:opacity-100 z-10" 
                 onClick={() => onUpdate({ videoUrl: "" })}
               >
                 Удалить
               </Button>
             </div>
-          </LazyMediaPreview>
+          ) : (
+            <LazyMediaPreview type="iframe">
+              <div className="relative group/video aspect-video bg-black rounded-lg overflow-hidden">
+                {embedResult.type === 'iframe' ? (
+                  <div 
+                    className="w-full h-full [&>iframe]:w-full [&>iframe]:h-full [&>iframe]:border-0"
+                    dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(embedResult.value || '', {
+                      ALLOWED_TAGS: ['iframe'],
+                      ALLOWED_ATTR: ['src', 'width', 'height', 'frameborder', 'allow', 'allowfullscreen', 'title', 'referrerpolicy'],
+                    }) }}
+                  />
+                ) : (
+                  <iframe 
+                    src={embedResult.value || ''} 
+                    className="w-full h-full border-0" 
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" 
+                    allowFullScreen 
+                  />
+                )}
+                <Button 
+                  variant="secondary" 
+                  size="sm" 
+                  className="absolute top-2 right-2 opacity-0 group-hover/video:opacity-100" 
+                  onClick={() => onUpdate({ videoUrl: "" })}
+                >
+                  Удалить
+                </Button>
+              </div>
+            </LazyMediaPreview>
+          )}
         </div>
       ) : (
         <div className="bg-muted rounded-xl p-6 space-y-4">
