@@ -664,6 +664,14 @@ export function CourseDetailsContent({
             </div>
           )}
 
+          {activeTab === "requests" && (
+            <EnrollmentRequestsTab
+              courseId={course.id}
+              defaultAccessDays={defaultAccessDays}
+              onRefreshStudents={onRefreshStudents}
+            />
+          )}
+
           {activeTab === "materials" && (
             <CourseDocumentsManager courseId={course.id} courseName={course.title} embedded={true} />
           )}
