@@ -1,8 +1,8 @@
-// Programmatic sound effects using Web Audio API — no external files needed
+// Sound effects using uploaded MP3 files + Web Audio API fallbacks
 
-let audioCtx: AudioContext | null = null;
 let muted = false;
-let bgMusicNodes: { osc: OscillatorNode[]; gain: GainNode } | null = null;
+let bgMusicNodes: { osc: OscillatorNode[]; gain: GainNode; _kickInterval?: ReturnType<typeof setInterval> } | null = null;
+let audioCtx: AudioContext | null = null;
 
 function getCtx(): AudioContext {
   if (!audioCtx) audioCtx = new AudioContext();
@@ -32,13 +32,11 @@ export function playBGMusic() {
 
   const oscs: OscillatorNode[] = [];
 
-  // Bass line — E minor pentatonic riff, looping
   const bassOsc = ctx.createOscillator();
   bassOsc.type = "sawtooth";
   const bassGain = ctx.createGain();
   bassGain.gain.value = 0.5;
 
-  // LFO for wobble
   const lfo = ctx.createOscillator();
   lfo.type = "sine";
   lfo.frequency.value = 4;
@@ -47,12 +45,10 @@ export function playBGMusic() {
   lfo.connect(lfoGain);
   lfoGain.connect(bassOsc.frequency);
 
-  // Bass note pattern: E2, G2, A2, B2 repeating
   const bassNotes = [82.4, 98, 110, 123.5, 82.4, 98, 82.4, 73.4];
-  const beatDuration = 0.25; // 120 BPM = 0.5s per beat, 0.25 per eighth note
+  const beatDuration = 0.25;
   const patternDuration = bassNotes.length * beatDuration;
 
-  // Schedule bass pattern repeating
   function scheduleBass() {
     const now = ctx.currentTime;
     for (let rep = 0; rep < 200; rep++) {
@@ -70,7 +66,6 @@ export function playBGMusic() {
   lfo.start();
   oscs.push(bassOsc, lfo);
 
-  // Kick drum simulation — periodic noise bursts
   const kickInterval = setInterval(() => {
     if (muted || !bgMusicNodes) { clearInterval(kickInterval); return; }
     const kOsc = ctx.createOscillator();
@@ -85,9 +80,7 @@ export function playBGMusic() {
     kOsc.stop(ctx.currentTime + 0.15);
   }, 500);
 
-  bgMusicNodes = { osc: oscs, gain: masterGain };
-  // Store interval for cleanup
-  (bgMusicNodes as any)._kickInterval = kickInterval;
+  bgMusicNodes = { osc: oscs, gain: masterGain, _kickInterval: kickInterval };
 }
 
 export function stopBGMusic() {
@@ -95,18 +88,18 @@ export function stopBGMusic() {
   try {
     bgMusicNodes.osc.forEach(o => { try { o.stop(); } catch {} });
     bgMusicNodes.gain.disconnect();
-    if ((bgMusicNodes as any)._kickInterval) clearInterval((bgMusicNodes as any)._kickInterval);
+    if (bgMusicNodes._kickInterval) clearInterval(bgMusicNodes._kickInterval);
   } catch {}
   bgMusicNodes = null;
 }
 
-/* ─── Weapon-specific shoot sounds ─── */
+/* ─── MP3-based shoot sounds ─── */
 export function playShoot(weapon: number = 1) {
   if (muted) return;
-  const ctx = getCtx();
 
   if (weapon === 0) {
-    // Fist — low thud
+    // Fist — synth thud
+    const ctx = getCtx();
     const src = ctx.createBufferSource();
     src.buffer = noise(ctx, 0.08, 0.5);
     const g = ctx.createGain();
@@ -117,35 +110,23 @@ export function playShoot(weapon: number = 1) {
     filter.frequency.value = 300;
     src.connect(filter).connect(g).connect(ctx.destination);
     src.start();
-  } else if (weapon === 1) {
-    // Pistol — sharp noise burst
-    const src = ctx.createBufferSource();
-    src.buffer = noise(ctx, 0.12, 0.6);
-    const g = ctx.createGain();
-    g.gain.setValueAtTime(0.4, ctx.currentTime);
-    g.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.12);
-    src.connect(g).connect(ctx.destination);
-    src.start();
   } else {
-    // Rocket launcher — long explosion
-    const src = ctx.createBufferSource();
-    src.buffer = noise(ctx, 0.4, 0.7);
-    const g = ctx.createGain();
-    g.gain.setValueAtTime(0.5, ctx.currentTime);
-    g.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.4);
-    const osc = ctx.createOscillator();
-    osc.type = "sawtooth";
-    osc.frequency.setValueAtTime(100, ctx.currentTime);
-    osc.frequency.exponentialRampToValueAtTime(30, ctx.currentTime + 0.3);
-    const og = ctx.createGain();
-    og.gain.setValueAtTime(0.25, ctx.currentTime);
-    og.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.3);
-    src.connect(g).connect(ctx.destination);
-    osc.connect(og).connect(ctx.destination);
-    src.start();
-    osc.start();
-    osc.stop(ctx.currentTime + 0.4);
+    // Pistol & Rocket — use uploaded MP3
+    const audio = new Audio("/sounds/shoot.mp3");
+    audio.volume = weapon === 2 ? 0.7 : 0.5;
+    if (weapon === 2) {
+      audio.playbackRate = 0.6; // deeper for rocket
+    }
+    audio.play().catch(() => {});
   }
+}
+
+/* ─── Pickup sound ─── */
+export function playPickup() {
+  if (muted) return;
+  const audio = new Audio("/sounds/pickup.mp3");
+  audio.volume = 0.6;
+  audio.play().catch(() => {});
 }
 
 export function playHit() {
