@@ -103,7 +103,7 @@ interface InvoiceRow {
 export const DocumentsTab = React.memo(function DocumentsTab({ organizationId, organizationName, onShowBulkUploadDialog, isOrdersEnabled = true, onNavigateToSubscription }: DocumentsTabProps) {
   const navigate = useNavigate();
   const d = useOrgDashboard();
-  const [activeTab, setActiveTab] = useState<DocumentSubTab>("constructor");
+  const [activeTab, setActiveTab] = useState<DocumentSubTab>("billing");
   const [constructorTab, setConstructorTab] = useState("requisites");
   const [stampUrl, setStampUrl] = useState<string | null>(null);
   const [signatureUrl, setSignatureUrl] = useState<string | null>(null);
