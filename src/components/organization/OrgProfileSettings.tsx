@@ -70,7 +70,7 @@ export function OrgProfileSettings({ organizationId, userId }: OrgProfileSetting
   const [organizationName, setOrganizationName] = useState("");
   const [isDarkMode, setIsDarkMode] = useState(() => document.documentElement.classList.contains('dark'));
   const [brandingSettings, setBrandingSettings] = useState<BrandingSettings>(DEFAULT_BRANDING);
-  const [menuSettings, setMenuSettings] = useState<MenuSettings>(DEFAULT_MENU);
+  
   const [studentDashboardSettings, setStudentDashboardSettings] = useState<StudentDashboardSettings>(DEFAULT_STUDENT);
   const [isSavingBranding, setIsSavingBranding] = useState(false);
   const [isSavingSettings, setIsSavingSettings] = useState(false);
