@@ -121,20 +121,28 @@ export const DocumentsTab = React.memo(function DocumentsTab({ organizationId, o
   const [actBasis, setActBasis] = useState("");
   const [actAmount, setActAmount] = useState("");
   const [actSubmitting, setActSubmitting] = useState(false);
-  const [orgDetails, setOrgDetails] = useState<{ inn?: string; director_name?: string; director_position?: string }>({});
+  const [generatingInvoice, setGeneratingInvoice] = useState(false);
+  const [orgDetails, setOrgDetails] = useState<{ inn?: string; director_name?: string; director_position?: string; custom_price?: number; custom_discount?: number; subscription_plan?: string }>({});
 
   useEffect(() => {
     if (!organizationId) return;
     supabase
       .from('organizations')
-      .select('stamp_url, signature_url, inn, director_name, director_position')
+      .select('stamp_url, signature_url, inn, director_name, director_position, custom_price, custom_discount, subscription_plan')
       .eq('id', organizationId)
       .single()
       .then(({ data }) => {
         if (data) {
           setStampUrl(data.stamp_url);
           setSignatureUrl(data.signature_url);
-          setOrgDetails({ inn: data.inn, director_name: data.director_name, director_position: data.director_position });
+          setOrgDetails({
+            inn: data.inn,
+            director_name: data.director_name,
+            director_position: (data as any).director_position,
+            custom_price: (data as any).custom_price,
+            custom_discount: (data as any).custom_discount,
+            subscription_plan: data.subscription_plan,
+          });
         }
       });
 
@@ -356,6 +364,12 @@ export const DocumentsTab = React.memo(function DocumentsTab({ organizationId, o
               )}
             </div>
             <div className="flex items-center gap-2">
+              {activeTab === "billing" && billingSubTab === "invoices" && (
+                <Button variant="outline" size="sm" className="rounded-xl gap-1.5" onClick={handleGenerateInvoiceFromDocs} disabled={generatingInvoice}>
+                  <Receipt className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline">{generatingInvoice ? "Создание..." : "Сформировать счёт"}</span>
+                </Button>
+              )}
               {activeTab === "billing" && billingSubTab === "closing" && (
                 <Button variant="outline" size="sm" className="rounded-xl gap-1.5" onClick={() => setShowActDialog(true)}>
                   <FileText className="w-3.5 h-3.5" />
