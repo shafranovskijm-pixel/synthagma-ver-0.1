@@ -1,40 +1,35 @@
 
 
-# Карточка ученика → полноэкранная страница
+# Добавить кнопку «Войти как ученик» на страницу ученика
 
 ## Суть
-Превратить `StudentDetailCard` из модального окна (Dialog) в полноценную страницу `/organization/student/:studentId` — по аналогии с `OrganizationCourseDetails`: сайдбар слева, шапка с обложкой, вертикальное меню разделов, подвал.
+На странице `/organization/student/:studentId` добавить кнопку «Войти как ученик» (аналогично кнопке «Войти в организацию» у админа). При клике — сохраняем данные в `localStorage` под ключом `adminViewAsStudent` и перенаправляем на `/student`.
 
 ## Что будет сделано
 
-### 1. Новая страница `src/pages/OrganizationStudentDetails.tsx`
-- Скопировать структуру из `OrganizationCourseDetails.tsx`:
-  - `OrgSidebar` слева
-  - Шапка: top bar (логотип, тариф, профиль-меню), hero-баннер с обложкой, sub-header с именем ученика и статусом онлайн
-  - Двухколоночный layout: **вертикальное меню слева** (Личное дело, Идентификация, Курсы, Документы, Активность, Чат) с cyan hover (`hover:text-primary hover:bg-primary/10`)
-  - Контент справа — те же табы (`ProfileTab`, `IdentificationTab`, `CoursesTab`, `DocumentsTab`, `ActivityTab`, `ChatTab`)
-  - `OrgDashboardFooter` внизу
-- Загрузка данных ученика по `studentId` из URL (profiles + enrollments)
+### Изменить `src/pages/OrganizationStudentDetails.tsx`
+- В шапке (header), рядом с кнопкой «Назад» или в правой части sub-header, добавить кнопку **«Войти как ученик»** с иконкой `LogIn` или `ExternalLink`
+- Стилизация: outline/ghost с cyan hover (`hover:text-primary hover:bg-primary/10`), аналогично кнопке «Войти в организацию» у админа
+- При клике:
+  ```typescript
+  localStorage.setItem('adminViewAsStudent', JSON.stringify({
+    userId: student.user_id,
+    name: student.name,
+    orgReturn: '/organization'
+  }));
+  navigate('/student');
+  ```
+- Это использует уже существующий механизм «режима просмотра» в `StudentDashboard`, который проверяет `adminViewAsStudent` в localStorage и показывает баннер с кнопкой «Выйти»
 
-### 2. Добавить маршрут в `src/App.tsx`
-- `/organization/student/:studentId` → `OrganizationStudentDetails`
-
-### 3. Изменить навигацию: клик по ученику → navigate вместо Dialog
-- В `useStudentDetailCard.ts`: `viewStudent` вызывает `navigate(/organization/student/${student.id})` вместо открытия модалки
-- Или: в компонентах, где вызывается `handleViewStudent`, заменить на `navigate`
-- `DialogsContainer.tsx`: убрать `StudentDetailCard` из диалогов (оставить как fallback или удалить)
-
-### 4. Сохранить вложенные диалоги
-- Preview документа, согласие на ПД, FRDO export — оставить как Dialog внутри новой страницы
+### Опционально: обновить выход из режима просмотра
+- В `StudentDashboard.tsx` при выходе из режима просмотра — если есть `orgReturn` в данных localStorage, перенаправлять на `/organization` вместо `/admin`
 
 ## Файлы
 
 | Файл | Изменение |
 |---|---|
-| `src/pages/OrganizationStudentDetails.tsx` | **Новый** — полноэкранная страница ученика |
-| `src/App.tsx` | Добавить маршрут `/organization/student/:studentId` |
-| `src/hooks/useStudentDetailCard.ts` | `viewStudent` → navigate вместо setState |
-| `src/components/organization/dialogs/DialogsContainer.tsx` | Убрать `StudentDetailCard` dialog |
+| `src/pages/OrganizationStudentDetails.tsx` | Добавить кнопку «Войти как ученик» в header |
+| `src/pages/StudentDashboard.tsx` | Обновить редирект выхода из режима просмотра (orgReturn) |
 
 Миграций не требуется.
 
