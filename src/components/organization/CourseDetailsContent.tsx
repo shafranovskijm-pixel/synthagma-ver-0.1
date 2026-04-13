@@ -64,6 +64,7 @@ import { CourseRemindersTab } from "@/components/organization/CourseRemindersTab
 import { CourseGroupsTab } from "@/components/organization/CourseGroupsTab";
 import { CoursePageSettingsContent } from "@/components/course-editor/CoursePageSettingsContent";
 import { CourseSettingsTabbed } from "@/components/organization/CourseSettingsTabbed";
+import { EnrollmentRequestsTab } from "@/components/organization/EnrollmentRequestsTab";
 
 interface Course {
   id: string;
@@ -113,8 +114,8 @@ interface CourseDetailsContentProps {
   course: Course;
   courseStudents: Student[];
   organizationId: string | null;
-  activeTab: "students" | "materials" | "history" | "tests" | "landing" | "settings" | "reminders" | "groups";
-  onTabChange: (tab: "students" | "materials" | "history" | "tests" | "landing" | "settings" | "reminders" | "groups") => void;
+  activeTab: "students" | "materials" | "history" | "tests" | "landing" | "settings" | "reminders" | "groups" | "requests";
+  onTabChange: (tab: "students" | "materials" | "history" | "tests" | "landing" | "settings" | "reminders" | "groups" | "requests") => void;
   onEnrollStudent: () => void;
   onCourseDeleted?: () => void;
   onCourseUpdated?: () => void;
