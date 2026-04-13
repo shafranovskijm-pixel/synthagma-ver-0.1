@@ -93,6 +93,7 @@ const featureRows: FeatureRow[] = [
   { label: "ФИС ФРДО", getValue: (plan) => plan.enabledCategories.includes('frdo'), format: (v: boolean) => v, link: "/feature/frdo" },
   { label: "Магазин курсов", getValue: (plan) => plan.enabledCategories.includes('services'), format: (v: boolean) => v, link: "/feature/course-store" },
   { label: "Хранилище файлов", getValue: (plan) => plan.enabledCategories.includes('library'), format: (v: boolean) => v },
+  { label: "Вебинары", getValue: (plan) => plan.enabledCategories.includes('webinars'), format: (v: boolean) => v },
 ];
 
 export function SubscriptionTab() {
