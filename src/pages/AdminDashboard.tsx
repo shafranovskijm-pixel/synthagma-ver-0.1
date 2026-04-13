@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Menu, Bell, LogOut, User, ChevronDown } from "lucide-react";
+import { useState, useEffect, useCallback } from "react";
+import { Menu, Bell, LogOut, User, ChevronDown, Check } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useNavigate } from "react-router-dom";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -23,6 +23,13 @@ import { AdminChatsManager } from "@/components/admin/AdminChatsManager";
 import { ReferralsManager } from "@/components/admin/ReferralsManager";
 import { PlatformUpdatesManager } from "@/components/admin/PlatformUpdatesManager";
 import { AdminBillingOverview } from "@/components/admin/AdminBillingOverview";
+import { supabase } from "@/integrations/supabase/client";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { formatDistanceToNow } from "date-fns";
+import { ru } from "date-fns/locale";
 
 const AdminDashboard = () => {
   const { user, signOut } = useAuth();
