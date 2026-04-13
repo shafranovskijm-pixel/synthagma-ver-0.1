@@ -1,44 +1,33 @@
 
 
-# Исправление вставки и кликабельности ссылок в редакторе
+# Исправление вставки ссылок: позиционирование и работоспособность
 
-## Корневые причины
+## Проблема
 
-### 1. `createLink` не работает
-Когда пользователь нажимает кнопку Link2, range сохраняется. Но затем фокус уходит в поля ввода URL внутри Popover. При нажатии «Применить» вызывается `sel.addRange(savedLinkRange)` + `document.execCommand("createLink")`, однако **execCommand работает только если contenteditable элемент в фокусе**. Сейчас фокус на Input внутри Popover — команда молча не выполняется.
+1. Popover привязан к скрытому `<span className="hidden" />` — поэтому он появляется в левом верхнем углу вместо центра
+2. `createLink` / `insertHTML` не срабатывают, потому что фокус теряется при взаимодействии с Popover, и `savedLinkRange` может быть невалидным к моменту применения
 
-### 2. `insertHTML` не работает
-Та же проблема: `blockEl.focus()` вызывается, но курсор не устанавливается в нужное место — `insertHTML` вставляет в никуда.
+## Решение
 
-### 3. Ссылки не кликабельны
-В `contentEditable` клик по ссылке ставит курсор, а не открывает URL. Нужен обработчик кликов по `<a>` тегам.
+Заменить `Popover` на `Dialog` (модальное окно по центру экрана). Это решает обе проблемы:
+- Окно всегда по центру
+- Нет привязки к DOM-элементу
 
-### 4. Плавающий тулбар в RichTextEditor
-Кнопка Link2 в floating toolbar вызывает `handleLink()`, который только делает unlink. Создание ссылки не работает — нужно добавить полноценную логику.
+### Изменения в `BlockEditor.tsx`
 
-## План исправления
+1. Заменить `Popover` + `PopoverTrigger` + `PopoverContent` на `Dialog` + `DialogContent`
+2. Кнопка Link2 остаётся как есть — при клике сохраняет range и открывает `setLinkDialogOpen(true)`
+3. В `DialogContent`:
+   - Те же поля (текст + URL)
+   - Кнопка «Применить» / «Вставить ссылку»
+4. При применении:
+   - Закрыть Dialog
+   - Использовать `requestAnimationFrame` чтобы дождаться закрытия модалки
+   - Затем `blockEl.focus()`, восстановить range, выполнить `createLink` или `insertHTML`
+   - Диспатчить `input` event
 
-### Файл 1: `BlockEditor.tsx`
+Ключевой момент: выполнять `execCommand` **после** закрытия Dialog через `requestAnimationFrame`, чтобы фокус гарантированно вернулся в `contenteditable`.
 
-**A. Исправить применение ссылки (onClick кнопки «Применить»):**
-- Перед `createLink`: найти contenteditable через `querySelector`, вызвать `.focus()`, затем `sel.removeAllRanges()` + `sel.addRange(savedRange)`, и только потом `execCommand("createLink")`
-- Перед `insertHTML`: найти contenteditable, `.focus()`, поставить курсор в конец содержимого через `Range.selectNodeContents()` + `Range.collapse(false)`, затем `insertHTML`
-- После обоих: диспатчить `input` event
-
-**B. Сделать ссылки кликабельными:**
-- В RichTextEditor (или в обёртке блока) добавить обработчик `onClick` на `<a>` теги внутри contenteditable: `window.open(href, '_blank')`
-
-### Файл 2: `RichTextEditor.tsx`
-
-**A. Добавить обработчик клика по ссылкам:**
-- На `div[contentEditable]` добавить `onClick` handler, который проверяет `e.target` — если это `<a>` тег или его потомок, открыть ссылку в новой вкладке через `window.open`
-
-**B. Сделать кнопку Link2 во floating toolbar функциональной:**
-- При нажатии: если есть выделение, показать `prompt`-free inline форму (или использовать `insertHTML` напрямую через мини-попап)
-- Альтернативно: убрать кнопку Link2 из floating toolbar, оставив функционал только в нижней панели BlockEditor (чтобы не дублировать)
-
-## Ожидаемый результат
-- Выделенный текст оборачивается в кликабельную ссылку
-- Вставка новой ссылки (текст + URL) работает
-- Клик по ссылке в редакторе открывает её в новой вкладке
+### Файлы
+- `src/components/course-builder/BlockEditor.tsx` — замена Popover на Dialog, исправление логики применения ссылки
 
