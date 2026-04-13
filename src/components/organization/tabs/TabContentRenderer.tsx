@@ -28,7 +28,7 @@ export function TabContentRenderer() {
 
   const shouldShowStatsCards = activeTab !== "organizations" && 
     activeTab !== "services" && 
-    activeTab !== "settings" && 
+     
     activeTab !== "students" && 
     activeTab !== "frdo" && 
     activeTab !== "library" && 
