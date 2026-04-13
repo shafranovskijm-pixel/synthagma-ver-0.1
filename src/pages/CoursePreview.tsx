@@ -762,7 +762,7 @@ const CoursePreview = () => {
               <Eye className="w-3 h-3" />
               Режим предпросмотра
             </Badge>
-            <span className="font-medium truncate max-w-md">{currentLesson?.title}</span>
+            <span className="font-medium truncate max-w-md">{showDocumentsView ? 'Материалы курса' : currentLesson?.title}</span>
           </div>
           <div className="flex items-center gap-2">
             <Button 
