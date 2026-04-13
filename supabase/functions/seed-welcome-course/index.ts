@@ -160,7 +160,7 @@ async function generateCoverImage(supabase: any, courseId: string, organizationI
   }
 }
 
-async function seedCourseForOrg(supabase: any, organizationId: string, forceUpdate = false) {
+async function seedCourseForOrg(supabase: any, organizationId: string, forceUpdate = false, skipCover = false) {
   const content = lessonContent();
 
   // Check if welcome course already exists
