@@ -66,7 +66,7 @@ function DocumentsPageInner({ organizationId }: { organizationId: string }) {
         <div className="flex items-center justify-between px-4 lg:px-6 h-14">
           {/* Left: Back + Logo + Org name */}
           <div className="flex items-center gap-3">
-            <Button variant="ghost" size="icon" className="rounded-xl" onClick={() => navigate(-1)}>
+            <Button variant="ghost" size="icon" className="rounded-xl hover:bg-primary/10 hover:text-primary transition-all duration-200" onClick={() => navigate(-1)}>
               <ArrowLeft className="w-5 h-5" />
             </Button>
             <div className="flex items-center gap-2.5">
@@ -83,7 +83,7 @@ function DocumentsPageInner({ organizationId }: { organizationId: string }) {
           <div className="flex items-center gap-1.5 sm:gap-2.5">
             <button
               onClick={() => navigate("/organization")}
-              className="hidden sm:flex items-center gap-2 px-3.5 py-2 bg-primary/10 rounded-full border border-primary/20 hover:bg-primary/15 transition-colors"
+              className="hidden sm:flex items-center gap-2 px-3.5 py-2 bg-primary/10 rounded-full border border-primary/20 hover:bg-primary/20 hover:border-primary/40 hover:shadow-md hover:shadow-primary/10 transition-all duration-200"
             >
               <CreditCard className="w-4 h-4 text-primary" />
               <span className="text-xs font-semibold text-primary">
@@ -97,7 +97,7 @@ function DocumentsPageInner({ organizationId }: { organizationId: string }) {
             <Button
               variant="ghost"
               size="sm"
-              className="hidden lg:flex rounded-full gap-1.5 text-xs text-muted-foreground hover:text-foreground h-9 px-3"
+              className="hidden lg:flex rounded-full gap-1.5 text-xs text-muted-foreground hover:text-primary hover:bg-primary/10 h-9 px-3 transition-all duration-200"
               onClick={() => navigate("/partner")}
             >
               <Handshake className="w-4.5 h-4.5" />
@@ -119,7 +119,7 @@ function DocumentsPageInner({ organizationId }: { organizationId: string }) {
               <Tooltip>
                 <TooltipTrigger asChild>
                   <DropdownMenuTrigger asChild>
-                    <button className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/15 text-primary hover:bg-primary/25 hover:scale-105 transition-all font-bold text-sm">
+                    <button className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/15 text-primary hover:bg-primary/25 hover:shadow-md hover:shadow-primary/15 hover:scale-110 transition-all duration-200 font-bold text-sm">
                       {initials}
                     </button>
                   </DropdownMenuTrigger>
