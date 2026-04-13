@@ -92,20 +92,15 @@ export default function OrganizationProfile() {
         if (prof?.organization_id) {
           setOrganizationId(prof.organization_id);
         } else {
-          // Fallback: look up organizations where user might be owner
-          console.warn("[OrgProfile] No organization_id in profile, trying user_roles + organizations fallback");
-          const { data: orgData } = await supabase
-            .from("organizations")
-            .select("id")
-            .eq("owner_id", user.id)
-            .maybeSingle();
-          if (orgData?.id) {
-            setOrganizationId(orgData.id);
-            // Also patch the profile so next load is fast
-            await supabase.from("profiles").update({ organization_id: orgData.id }).eq("user_id", user.id);
+          // Fallback: use the current_organization_id() database function
+          console.warn("[OrgProfile] No organization_id in profile, trying RPC fallback");
+          const { data: orgId } = await supabase.rpc("current_organization_id");
+          if (orgId) {
+            setOrganizationId(orgId as string);
           } else {
             console.warn("[OrgProfile] No organization found for user:", user.id);
           }
+        }
         }
       } catch (e) {
         console.error("[OrgProfile] Failed to load organization ID:", e);
