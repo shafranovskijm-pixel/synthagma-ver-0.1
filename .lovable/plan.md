@@ -1,27 +1,69 @@
 
 
-# Добавить «Документы» в выпадающее меню профиля
+# Убрать «Управление» + Настраиваемые достижения
 
-## Что будет сделано
+## Часть 1: Реструктуризация вкладок
 
-### 1. Добавить пункт «Документы» в dropdown-меню
-В `OrgDashboardHeader.tsx` добавить новый `DropdownMenuItem` «Документы» с иконкой `FileText` между «Настройки» и «Что нового?», который ведёт на `/organization/documents`.
+Убираем обёртку «Управление» — вместо неё три отдельные top-level вкладки:
 
-### 2. Создать страницу `/organization/documents`
-Новая страница `OrganizationDocuments.tsx` — аналогичная по структуре странице Настроек/Профиля (шапка с кнопкой «назад», заголовок). Содержимое — `DocumentsModuleWrapper` с `OrgDashboardProvider`, который рендерит `DocumentsTab` с горизонтальными суб-вкладками на всю ширину.
+```text
+[Разделы меню] [Касса] [Настройки ЛК] [Сотрудники] [Журналы] [ФИС ФРДО]
+```
 
-### 3. Убрать вкладку «Документы» из Настроек
-Из `OrganizationSettings.tsx` удалить TabsTrigger и TabsContent для `documents`, а также `DocumentsModuleWrapper` и lazy import (они переедут в новую страницу).
+Каждая вкладка рендерит свой компонент напрямую (StaffManager, JournalsManager, FRDOManager) без вложенных суб-табов.
 
-### 4. Добавить маршрут
-В роутере добавить `/organization/documents` → `OrganizationDocuments`.
+**Файл:** `src/pages/OrganizationSettings.tsx`
+- Удалить TabsTrigger `modules` и весь TabsContent `modules`
+- Удалить `moduleSubTabs` массив и `activeModuleTab` стейт
+- Добавить три TabsTrigger: `staff`, `journals`, `frdo`
+- Добавить три TabsContent с соответствующими компонентами
+
+---
+
+## Часть 2: Настраиваемые достижения для организаций
+
+### Концепция
+Сейчас достижения глобальные. Добавляем возможность организациям создавать свои достижения + выбирать из шаблонов + генерировать с ИИ.
+
+### База данных (миграция)
+- Добавить колонку `organization_id UUID REFERENCES organizations(id)` в таблицу `achievements` (nullable — NULL = глобальные)
+- Добавить колонку `is_template BOOLEAN DEFAULT false` — для готовых шаблонов
+- Обновить RLS: организации видят глобальные + свои; могут INSERT/UPDATE/DELETE свои
+- Добавить индекс на `organization_id`
+
+### Шаблоны достижений
+Добавить ~15-20 тематических шаблонов в разных категориях:
+- **Строительство**: 🏗️ Прораб, 🧱 Каменщик знаний, 🏛️ Архитектор
+- **Медицина**: 💊 Доктор наук, 🩺 Первая помощь, 🔬 Исследователь
+- **IT**: 💻 Кодер, 🐛 Баг-хантер, 🚀 Деплой мастер
+- **Общие**: 🌟 Звезда курса, 📖 Книжный червь, 🏆 Чемпион
+
+Организация может «применить шаблон» — копирует набор достижений себе, после чего можно редактировать.
+
+### UI: Раздел «Достижения» в настройках ЛК
+В `SettingsStudentDashboardTab` рядом с toggle «Достижения» добавить кнопку «Настроить» → открывает панель управления достижениями:
+
+- **Список** текущих достижений организации (таблица/карточки)
+- **Кнопка «Добавить»** — ручное создание (название, описание, иконка-эмодзи, редкость, категория, условие)
+- **Кнопка «Шаблоны»** — выбор из готовых наборов (Строительство, Медицина, IT, Общие)
+- **Кнопка «Сгенерировать с ИИ»** — ввод темы/направления → edge function генерирует 5-10 достижений
+
+### Edge function: `generate-achievements`
+- Принимает `{ theme: string, organizationId: string, count: number }`
+- Через Lovable AI генерирует достижения с названиями, описаниями, эмодзи, редкостью
+- Возвращает массив для превью → пользователь подтверждает → сохраняем в БД
+
+### Обновить логику показа достижений ученикам
+В `AchievementsPanel` — загружать достижения с фильтром: глобальные ИЛИ принадлежащие организации ученика.
 
 ## Файлы
 
 | Файл | Изменение |
 |---|---|
-| `src/components/organization/OrgDashboardHeader.tsx` | Добавить пункт «Документы» в dropdown |
-| `src/pages/OrganizationDocuments.tsx` | Новая страница с DocumentsTab |
-| `src/pages/OrganizationSettings.tsx` | Убрать вкладку «Документы» |
-| `src/App.tsx` (или роутер) | Добавить маршрут `/organization/documents` |
+| `src/pages/OrganizationSettings.tsx` | Убрать «Управление», добавить 3 top-level вкладки |
+| Миграция SQL | Добавить `organization_id`, `is_template` в achievements, шаблоны, RLS |
+| `src/components/organization/AchievementsManager.tsx` | Новый — управление достижениями (CRUD + шаблоны + ИИ) |
+| `src/components/organization/SettingsStudentDashboardTab.tsx` | Кнопка «Настроить» рядом с toggle достижений |
+| `supabase/functions/generate-achievements/index.ts` | Новый — генерация достижений через Lovable AI |
+| `src/components/student/AchievementsPanel.tsx` | Фильтр по organization_id |
 
