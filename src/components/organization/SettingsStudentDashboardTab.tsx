@@ -122,8 +122,8 @@ export function SettingsStudentDashboardTab({ organizationId }: Props) {
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" className="rounded-xl gap-1.5 text-xs" onClick={() => setAchievementsOpen(true)}>
-              <Pencil className="w-3.5 h-3.5" /> Настроить
+            <Button size="sm" className="rounded-xl gap-1.5 text-xs btn-gradient" onClick={() => setAchievementsOpen(true)}>
+              <Pencil className="w-3.5 h-3.5" /> Настроить достижения
             </Button>
             <button
               onClick={() => setSettings(prev => ({ ...prev, showAchievements: !prev.showAchievements }))}
