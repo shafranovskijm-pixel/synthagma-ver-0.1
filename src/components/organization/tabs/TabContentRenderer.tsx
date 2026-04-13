@@ -192,8 +192,6 @@ export function TabContentRenderer() {
       {/* Subscription Tab */}
       {activeTab === "subscription" && <SubscriptionTab />}
 
-      {/* Settings Tab */}
-      {activeTab === "settings" && <SettingsTab />}
     </>
   );
 }
