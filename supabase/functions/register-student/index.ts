@@ -118,12 +118,14 @@ serve(async (req) => {
 
     const { data: orgData } = await supabaseAdmin
       .from('organizations')
-      .select('subscription_plan')
+      .select('subscription_plan, custom_max_students')
       .eq('id', effectiveOrgId)
       .single();
 
     const plan = orgData?.subscription_plan || 'free';
-    const maxStudents = planLimits[plan] ?? 10;
+    const customMax = (orgData as any)?.custom_max_students;
+    // Custom override takes precedence over plan default
+    const maxStudents = customMax != null ? customMax : (planLimits[plan] ?? 10);
 
     if (maxStudents !== -1) {
       const { data: countResult } = await supabaseAdmin.rpc('count_org_students', { org_id: effectiveOrgId });
