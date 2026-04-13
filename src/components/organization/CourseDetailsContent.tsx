@@ -42,6 +42,7 @@ import {
   FastForward,
   Search,
   UserPlus,
+  ClipboardCheck,
   FileSpreadsheet,
   Bell,
   Globe,
