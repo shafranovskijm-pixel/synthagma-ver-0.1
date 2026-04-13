@@ -354,6 +354,20 @@ export function CourseDetailsContent({
     await handleUpdateLandingContentField("external_card_url", value || null);
   };
 
+  const handleUpdateDefaultAccessDays = async (value: string) => {
+    const days = value ? parseInt(value) : null;
+    if (value && isNaN(days!)) return;
+    setDefaultAccessDays(days);
+    setIsSavingSettings(true);
+    try {
+      const { error } = await supabase.from("courses").update({ default_access_days: days } as any).eq("id", course.id);
+      if (error) throw error;
+      toast.success(days ? `Срок доступа: ${days} дней` : "Безлимитный доступ");
+      onCourseUpdated?.();
+    } catch (error) { console.error("Error updating default_access_days:", error); toast.error("Ошибка сохранения"); }
+    finally { setIsSavingSettings(false); }
+  };
+
   const handleUpdateFrdoSettings = async (field: string, value: string | number | null) => {
     if (!course) return;
     setFrdoSettings(prev => {
