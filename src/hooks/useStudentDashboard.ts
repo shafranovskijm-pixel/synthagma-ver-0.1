@@ -83,6 +83,7 @@ export function useStudentDashboard() {
   const { theme, setTheme } = useTheme();
 
   const [activeTab, setActiveTab] = useState<"catalog" | "library" | "chat" | "store">("catalog");
+  const [initialTabApplied, setInitialTabApplied] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>(initialMessages);
   const [inputValue, setInputValue] = useState("");
   const [isAiLoading, setIsAiLoading] = useState(false);
