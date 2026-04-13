@@ -17,7 +17,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { LoginBrandingSettings } from "@/components/organization/LoginBrandingSettings";
 import { OrgCredentialsSettings } from "@/components/organization/OrgCredentialsSettings";
 import { ThemePersonalization } from "@/components/ui/ThemePersonalization";
-import { ThemePersonalization } from "@/components/ui/ThemePersonalization";
 
 interface OrgProfileSettingsProps {
   organizationId: string;
