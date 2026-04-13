@@ -241,7 +241,7 @@ export function RichTextEditor({ value, onChange, placeholder, className, minHei
         data-placeholder={placeholder}
         className={cn(
           "outline-none prose prose-sm dark:prose-invert max-w-none [&]:!font-[inherit] [&]:!tracking-[inherit]",
-          "[&_a]:text-primary [&_a]:underline [&_a]:underline-offset-2 [&_a]:cursor-pointer [&_a]:break-all [&_a]:hover:opacity-80 [&_a]:transition-opacity",
+          "[&_a]:!text-primary [&_a]:!underline [&_a]:!underline-offset-2 [&_a]:cursor-pointer [&_a]:break-all [&_a]:hover:opacity-80 [&_a]:transition-opacity",
           "empty:before:content-[attr(data-placeholder)] empty:before:text-muted-foreground empty:before:pointer-events-none",
           className
         )}
