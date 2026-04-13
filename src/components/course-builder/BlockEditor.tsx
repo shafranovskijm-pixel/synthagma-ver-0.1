@@ -983,7 +983,7 @@ function SortableBlockItem({ block, isFocused, onFocus, onUpdate, onDelete, onAd
               >
                 <Link2 className="w-4 h-4" />
               </button>
-              <Popover open={linkPopoverOpen} onOpenChange={(open) => {
+              <Dialog open={linkPopoverOpen} onOpenChange={(open) => {
                 if (!open) {
                   setLinkPopoverOpen(false);
                   setLinkUrl("");
@@ -991,13 +991,13 @@ function SortableBlockItem({ block, isFocused, onFocus, onUpdate, onDelete, onAd
                   savedLinkRange.current = null;
                 }
               }}>
-              <PopoverTrigger asChild>
-                <span className="hidden" />
-              </PopoverTrigger>
-              <PopoverContent align="center" className="w-72 p-3 space-y-2" onOpenAutoFocus={(e) => e.preventDefault()}>
-                <p className="text-xs font-medium text-foreground">
-                  {linkHasSelection ? "Обернуть выделенный текст в ссылку" : "Вставить ссылку"}
-                </p>
+              <DialogContent className="sm:max-w-sm" onOpenAutoFocus={(e) => e.preventDefault()}>
+                <DialogHeader>
+                  <DialogTitle className="text-sm">
+                    {linkHasSelection ? "Обернуть выделенный текст в ссылку" : "Вставить ссылку"}
+                  </DialogTitle>
+                </DialogHeader>
+                <div className="space-y-2">
                 {!linkHasSelection && (
                   <Input
                     placeholder="Текст ссылки"
@@ -1016,8 +1016,7 @@ function SortableBlockItem({ block, isFocused, onFocus, onUpdate, onDelete, onAd
                   onKeyDown={(e) => {
                     if (e.key === 'Enter') {
                       e.preventDefault();
-                      // trigger apply
-                      (e.currentTarget.closest('[data-radix-popper-content-wrapper]')?.querySelector('[data-link-apply]') as HTMLButtonElement)?.click();
+                      (e.currentTarget.closest('[role="dialog"]')?.querySelector('[data-link-apply]') as HTMLButtonElement)?.click();
                     }
                   }}
                 />
@@ -1030,54 +1029,56 @@ function SortableBlockItem({ block, isFocused, onFocus, onUpdate, onDelete, onAd
                     const url = linkUrl.trim();
                     if (!url) return;
 
-                    // Find the contenteditable element for this block
-                    const blockEl = document.querySelector(`[data-block-id="${block.id}"] [contenteditable]`) as HTMLElement;
-                    if (!blockEl) return;
+                    const blockId = block.id;
+                    const hadSelection = linkHasSelection;
+                    const rangeClone = savedLinkRange.current ? savedLinkRange.current.cloneRange() : null;
+                    const text = linkText.trim() || url;
 
-                    // CRITICAL: focus the contenteditable FIRST, otherwise execCommand silently fails
-                    blockEl.focus();
-
-                    const sel = window.getSelection();
-                    if (!sel) return;
-
-                    if (linkHasSelection && savedLinkRange.current) {
-                      // Restore saved selection range, then wrap in link
-                      sel.removeAllRanges();
-                      sel.addRange(savedLinkRange.current);
-                      document.execCommand("createLink", false, url);
-                    } else {
-                      // No selection — insert new link at end of content
-                      const text = linkText.trim() || url;
-                      const html = `<a href="${url}" target="_blank" rel="noopener noreferrer">${text}</a>&nbsp;`;
-                      // Place cursor at end of contenteditable
-                      const range = document.createRange();
-                      range.selectNodeContents(blockEl);
-                      range.collapse(false);
-                      sel.removeAllRanges();
-                      sel.addRange(range);
-                      document.execCommand("insertHTML", false, html);
-                    }
-
-                    // Set target="_blank" on all links in the block
-                    blockEl.querySelectorAll('a[href]').forEach((a) => {
-                      if (!a.getAttribute('target')) {
-                        a.setAttribute('target', '_blank');
-                        a.setAttribute('rel', 'noopener noreferrer');
-                      }
-                    });
-                    // Trigger input event so RichTextEditor picks up changes
-                    blockEl.dispatchEvent(new Event('input', { bubbles: true }));
-
+                    // Close dialog first
                     setLinkPopoverOpen(false);
                     setLinkUrl("");
                     setLinkText("");
                     savedLinkRange.current = null;
+
+                    // Apply link AFTER dialog closes so focus can return to contenteditable
+                    requestAnimationFrame(() => {
+                      const blockEl = document.querySelector(`[data-block-id="${blockId}"] [contenteditable]`) as HTMLElement;
+                      if (!blockEl) return;
+
+                      blockEl.focus();
+
+                      const sel = window.getSelection();
+                      if (!sel) return;
+
+                      if (hadSelection && rangeClone) {
+                        sel.removeAllRanges();
+                        sel.addRange(rangeClone);
+                        document.execCommand("createLink", false, url);
+                      } else {
+                        const html = `<a href="${url}" target="_blank" rel="noopener noreferrer">${text}</a>&nbsp;`;
+                        const range = document.createRange();
+                        range.selectNodeContents(blockEl);
+                        range.collapse(false);
+                        sel.removeAllRanges();
+                        sel.addRange(range);
+                        document.execCommand("insertHTML", false, html);
+                      }
+
+                      blockEl.querySelectorAll('a[href]').forEach((a) => {
+                        if (!a.getAttribute('target')) {
+                          a.setAttribute('target', '_blank');
+                          a.setAttribute('rel', 'noopener noreferrer');
+                        }
+                      });
+                      blockEl.dispatchEvent(new Event('input', { bubbles: true }));
+                    });
                   }}
                 >
                   {linkHasSelection ? "Применить" : "Вставить ссылку"}
                 </Button>
-              </PopoverContent>
-              </Popover>
+                </div>
+              </DialogContent>
+              </Dialog>
             </>
           )}
           <Popover>
