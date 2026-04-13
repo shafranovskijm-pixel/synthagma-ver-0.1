@@ -631,8 +631,11 @@ export const DocumentsTab = React.memo(function DocumentsTab({ organizationId, o
                               {inv.status === "paid" ? (
                                 <span className="text-xs font-medium text-emerald-600">Оплачен</span>
                               ) : (
-                                <span className="text-xs font-medium text-amber-600">Ожидает</span>
+                                <span className="text-xs font-medium text-amber-600">Не оплачен</span>
                               )}
+                              <Button variant="ghost" size="sm" title="Скачать / Печать" onClick={() => window.open(`/invoice/${inv.id}`, "_blank")}>
+                                <Download className="w-4 h-4" />
+                              </Button>
                               <Button variant="ghost" size="sm" title="Открыть" onClick={() => window.open(`/invoice/${inv.id}`, "_blank")}>
                                 <ExternalLink className="w-4 h-4" />
                               </Button>
