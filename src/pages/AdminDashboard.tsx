@@ -135,13 +135,50 @@ const AdminDashboard = () => {
             <p className="text-xs text-muted-foreground">Панель администратора</p>
           </div>
           <div className="flex items-center gap-3">
-            <button
-              onClick={() => setActiveTab("updates")}
-              className="p-2 rounded-lg hover:bg-secondary relative"
-              title="Обновления"
-            >
-              <Bell className="w-5 h-5 text-muted-foreground" />
-            </button>
+            <Popover>
+              <PopoverTrigger asChild>
+                <button
+                  className="p-2 rounded-lg hover:bg-secondary relative"
+                  title="Уведомления"
+                >
+                  <Bell className="w-5 h-5 text-muted-foreground" />
+                  {unreadCount > 0 && (
+                    <span className="absolute -top-0.5 -right-0.5 w-4.5 h-4.5 bg-destructive text-destructive-foreground text-[10px] font-bold rounded-full flex items-center justify-center min-w-[18px] h-[18px]">
+                      {unreadCount > 9 ? "9+" : unreadCount}
+                    </span>
+                  )}
+                </button>
+              </PopoverTrigger>
+              <PopoverContent align="end" className="w-80 p-0">
+                <div className="flex items-center justify-between px-4 py-3 border-b border-border">
+                  <p className="text-sm font-semibold">Уведомления</p>
+                  {unreadCount > 0 && (
+                    <Button variant="ghost" size="sm" className="text-xs h-7" onClick={markAllRead}>
+                      <Check className="w-3 h-3 mr-1" />
+                      Прочитать все
+                    </Button>
+                  )}
+                </div>
+                <ScrollArea className="max-h-80">
+                  {notifications.length === 0 ? (
+                    <p className="text-sm text-muted-foreground text-center py-8">Нет уведомлений</p>
+                  ) : (
+                    notifications.map(n => (
+                      <div
+                        key={n.id}
+                        className={`px-4 py-3 border-b border-border last:border-0 ${!n.is_read ? "bg-primary/5" : ""}`}
+                      >
+                        <p className="text-sm font-medium">{n.title}</p>
+                        {n.message && <p className="text-xs text-muted-foreground mt-0.5 whitespace-pre-line">{n.message}</p>}
+                        <p className="text-[10px] text-muted-foreground mt-1">
+                          {formatDistanceToNow(new Date(n.created_at), { addSuffix: true, locale: ru })}
+                        </p>
+                      </div>
+                    ))
+                  )}
+                </ScrollArea>
+              </PopoverContent>
+            </Popover>
             <DropdownMenu>
               <DropdownMenuTrigger className="flex items-center gap-2 px-2 py-1.5 rounded-xl hover:bg-secondary transition-colors outline-none">
                 <Avatar className="h-8 w-8">
