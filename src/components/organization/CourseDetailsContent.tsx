@@ -547,6 +547,7 @@ export function CourseDetailsContent({
               { value: "history" as const, label: "История", icon: History, color: "text-violet-500" },
               { value: "tests" as const, label: "Тесты", icon: CheckSquare, color: "text-emerald-500" },
               { value: "groups" as const, label: "Группы", icon: Users, color: "text-blue-500" },
+              { value: "achievements" as const, label: "Достижения", icon: Trophy, color: "text-amber-500" },
             ]).map(item => (
               <button
                 key={item.value}
@@ -780,6 +781,9 @@ export function CourseDetailsContent({
 
           {activeTab === "groups" && (
             <CourseGroupsTab courseId={course.id} organizationId={organizationId || ""} onRefreshStudents={onRefreshStudents} />
+          )}
+          {activeTab === "achievements" && organizationId && (
+            <CourseAchievementsTab courseId={course.id} organizationId={organizationId} />
           )}
         </div>
       </div>
