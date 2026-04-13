@@ -43,7 +43,7 @@ import {
   Bell,
   MessageSquare,
   ShieldOff,
-  Puzzle,
+  
   History,
   Wallet,
   Eye,
@@ -71,7 +71,7 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContaine
 import { OrgDocumentsTab } from "./OrgDocumentsTab";
 import { OrgCommentsTab } from "./OrgCommentsTab";
 import { OrgRemindersTab } from "./OrgRemindersTab";
-import { OrgFeaturesTab } from "./OrgFeaturesTab";
+
 import { OrgAuditLogsTab } from "./OrgAuditLogsTab";
 import { OrgBalanceManager } from "./OrgBalanceManager";
 import { OrgBillingDocsTab } from "./OrgBillingDocsTab";
@@ -774,10 +774,6 @@ export function OrganizationDetailsView({ organization, onBack }: OrganizationDe
               <FileText className="w-4 h-4" />
               <span className="hidden sm:inline">Документы</span>
             </TabsTrigger>
-            <TabsTrigger value="features" className="flex items-center gap-1.5 shrink-0">
-              <Puzzle className="w-4 h-4" />
-              <span className="hidden sm:inline">Функции</span>
-            </TabsTrigger>
             <TabsTrigger value="history" className="flex items-center gap-1.5 shrink-0">
               <History className="w-4 h-4" />
               <span className="hidden sm:inline">История</span>
@@ -1409,6 +1405,7 @@ export function OrganizationDetailsView({ organization, onBack }: OrganizationDe
               <CardDescription>Задайте индивидуальную стоимость и скидку. Эти значения будут использоваться при выставлении счёта.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
+              <p className="text-sm text-muted-foreground">Цена тарифа «{planInfo.name}»: <span className="font-medium text-foreground">{planInfo.price.toLocaleString()} ₽/мес</span></p>
               <div className="flex items-center gap-4">
                 <Label className="w-44 shrink-0">Цена (₽/мес)</Label>
                 <Input
@@ -1420,12 +1417,11 @@ export function OrganizationDetailsView({ organization, onBack }: OrganizationDe
                 />
               </div>
               <div className="flex items-center gap-4">
-                <Label className="w-44 shrink-0">Скидка (%)</Label>
+                <Label className="w-44 shrink-0">Скидка (₽)</Label>
                 <Input
                   type="number"
                   className="w-40"
                   min={0}
-                  max={100}
                   value={customDiscount ?? ''}
                   onChange={(e) => setCustomDiscount(e.target.value ? Number(e.target.value) : null)}
                   placeholder="0"
@@ -1434,9 +1430,9 @@ export function OrganizationDetailsView({ organization, onBack }: OrganizationDe
               {(customPrice != null || customDiscount != null) && (
                 <p className="text-sm text-muted-foreground">
                   Итого к оплате: {(() => {
-                    const base = customPrice ?? 0;
+                    const base = customPrice ?? planInfo.price;
                     const disc = customDiscount ?? 0;
-                    return Math.round(base * (1 - disc / 100)).toLocaleString();
+                    return Math.max(0, base - disc).toLocaleString();
                   })()} ₽/мес
                 </p>
               )}
@@ -1494,13 +1490,6 @@ export function OrganizationDetailsView({ organization, onBack }: OrganizationDe
           />
         </TabsContent>
 
-        {/* Features Tab */}
-        <TabsContent value="features" className="space-y-4">
-          <OrgFeaturesTab
-            organizationId={organization.id}
-            organizationName={organization.name}
-          />
-        </TabsContent>
 
         {/* History/Audit Logs Tab */}
         <TabsContent value="history" className="space-y-4">

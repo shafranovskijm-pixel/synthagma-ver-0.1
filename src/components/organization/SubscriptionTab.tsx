@@ -216,7 +216,7 @@ export function SubscriptionTab() {
       
       const basePrice = customPrice ?? currentPlanInfo.price ?? 1990;
       const discount = customDiscount ?? 0;
-      const amount = Math.round(basePrice * (1 - discount / 100));
+      const amount = Math.max(0, basePrice - discount);
 
       const { data: invoice, error: err } = await supabase
         .from("subscription_invoices")
