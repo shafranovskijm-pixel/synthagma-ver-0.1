@@ -69,7 +69,7 @@ export function useTabNavigation({
     if (menuSettings.showSubscription !== false) baseTabs.push("subscription");
     if (menuSettings.showServices && isEnabled("services")) baseTabs.push("services");
     baseTabs.push("chats");
-    if (isEnabled("settings")) baseTabs.push("settings");
+    baseTabs.push("chats");
     
     return baseTabs;
   }, [menuSettings, isFrdoEnabled, isEnabled]);

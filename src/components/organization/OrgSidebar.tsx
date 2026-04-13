@@ -55,7 +55,6 @@ const tabCategoryMap: Record<string, string> = {
   "labor-safety": "labor_safety",
   frdo: "frdo",
   services: "services",
-  settings: "settings",
 };
 
 function hexToHsl(hex: string): string | null {
