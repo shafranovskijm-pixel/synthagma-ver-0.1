@@ -2555,34 +2555,34 @@ function RenderBlock({ block, quizAnswer, quizSubmitted, onQuizAnswer, onQuizSub
 
   switch (block.type) {
     case "paragraph":
-      return <p className={styleClasses} dangerouslySetInnerHTML={{ __html: sanitizeHtml(block.content) }} />;
+      return <p className={styleClasses} dangerouslySetInnerHTML={{ __html: renderHtml(block.content) }} />;
     case "heading1":
-      return <h1 className={cn("text-2xl font-bold", styleClasses)} dangerouslySetInnerHTML={{ __html: sanitizeHtml(block.content) }} />;
+      return <h1 className={cn("text-2xl font-bold", styleClasses)} dangerouslySetInnerHTML={{ __html: renderHtml(block.content) }} />;
     case "heading2":
-      return <h2 className={cn("text-xl font-semibold", styleClasses)} dangerouslySetInnerHTML={{ __html: sanitizeHtml(block.content) }} />;
+      return <h2 className={cn("text-xl font-semibold", styleClasses)} dangerouslySetInnerHTML={{ __html: renderHtml(block.content) }} />;
     case "bulletList":
-      return <ul className={cn("list-disc pl-6", styleClasses)}>{(block.content || "").replace(/<\/?li>/gi, "").split("\n").filter(Boolean).map((item, i) => <li key={i} dangerouslySetInnerHTML={{ __html: sanitizeHtml(item) }} />)}</ul>;
+      return <ul className={cn("list-disc pl-6", styleClasses)}>{(block.content || "").replace(/<\/?li>/gi, "").split("\n").filter(Boolean).map((item, i) => <li key={i} dangerouslySetInnerHTML={{ __html: renderHtml(item) }} />)}</ul>;
     case "numberedList":
-      return <ol className={cn("list-decimal pl-6", styleClasses)}>{(block.content || "").replace(/<\/?li>/gi, "").split("\n").filter(Boolean).map((item, i) => <li key={i} dangerouslySetInnerHTML={{ __html: sanitizeHtml(item) }} />)}</ol>;
+      return <ol className={cn("list-decimal pl-6", styleClasses)}>{(block.content || "").replace(/<\/?li>/gi, "").split("\n").filter(Boolean).map((item, i) => <li key={i} dangerouslySetInnerHTML={{ __html: renderHtml(item) }} />)}</ol>;
     case "quote":
-      return <blockquote className={cn("border-l-4 border-muted-foreground/30 pl-4 italic text-muted-foreground", styleClasses)} dangerouslySetInnerHTML={{ __html: sanitizeHtml(block.content) }} />;
+      return <blockquote className={cn("border-l-4 border-muted-foreground/30 pl-4 italic text-muted-foreground", styleClasses)} dangerouslySetInnerHTML={{ __html: renderHtml(block.content) }} />;
     case "callout-info":
-      return <div className={cn("rounded-xl p-4 bg-blue-500/10 border border-blue-500/30 flex gap-3 not-prose [&_a]:text-primary [&_a]:underline", styleClasses)}><AlertCircle className="w-5 h-5 text-blue-500 flex-shrink-0" /><p className="text-sm" dangerouslySetInnerHTML={{ __html: sanitizeHtml(block.content) }} /></div>;
+      return <div className={cn("rounded-xl p-4 bg-blue-500/10 border border-blue-500/30 flex gap-3 not-prose [&_a]:text-primary [&_a]:underline", styleClasses)}><AlertCircle className="w-5 h-5 text-blue-500 flex-shrink-0" /><p className="text-sm" dangerouslySetInnerHTML={{ __html: renderHtml(block.content) }} /></div>;
     case "callout-warning":
-      return <div className={cn("rounded-xl p-4 bg-amber-500/10 border border-amber-500/30 flex gap-3 not-prose [&_a]:text-primary [&_a]:underline", styleClasses)}><AlertCircle className="w-5 h-5 text-amber-500 flex-shrink-0" /><p className="text-sm" dangerouslySetInnerHTML={{ __html: sanitizeHtml(block.content) }} /></div>;
+      return <div className={cn("rounded-xl p-4 bg-amber-500/10 border border-amber-500/30 flex gap-3 not-prose [&_a]:text-primary [&_a]:underline", styleClasses)}><AlertCircle className="w-5 h-5 text-amber-500 flex-shrink-0" /><p className="text-sm" dangerouslySetInnerHTML={{ __html: renderHtml(block.content) }} /></div>;
     case "callout-tip":
-      return <div className={cn("rounded-xl p-4 bg-green-500/10 border border-green-500/30 flex gap-3 not-prose [&_a]:text-primary [&_a]:underline", styleClasses)}><Lightbulb className="w-5 h-5 text-green-500 flex-shrink-0" /><p className="text-sm" dangerouslySetInnerHTML={{ __html: sanitizeHtml(block.content) }} /></div>;
+      return <div className={cn("rounded-xl p-4 bg-green-500/10 border border-green-500/30 flex gap-3 not-prose [&_a]:text-primary [&_a]:underline", styleClasses)}><Lightbulb className="w-5 h-5 text-green-500 flex-shrink-0" /><p className="text-sm" dangerouslySetInnerHTML={{ __html: renderHtml(block.content) }} /></div>;
     case "callout-success":
-      return <div className={cn("rounded-xl p-4 bg-emerald-500/10 border border-emerald-500/30 flex gap-3 not-prose [&_a]:text-primary [&_a]:underline", styleClasses)}><CheckCircle className="w-5 h-5 text-emerald-500 flex-shrink-0" /><p className="text-sm" dangerouslySetInnerHTML={{ __html: sanitizeHtml(block.content) }} /></div>;
+      return <div className={cn("rounded-xl p-4 bg-emerald-500/10 border border-emerald-500/30 flex gap-3 not-prose [&_a]:text-primary [&_a]:underline", styleClasses)}><CheckCircle className="w-5 h-5 text-emerald-500 flex-shrink-0" /><p className="text-sm" dangerouslySetInnerHTML={{ __html: renderHtml(block.content) }} /></div>;
     case "callout-danger":
-      return <div className={cn("rounded-xl p-4 bg-red-500/10 border border-red-500/30 flex gap-3 not-prose [&_a]:text-primary [&_a]:underline", styleClasses)}><XCircle className="w-5 h-5 text-red-500 flex-shrink-0" /><p className="text-sm" dangerouslySetInnerHTML={{ __html: sanitizeHtml(block.content) }} /></div>;
+      return <div className={cn("rounded-xl p-4 bg-red-500/10 border border-red-500/30 flex gap-3 not-prose [&_a]:text-primary [&_a]:underline", styleClasses)}><XCircle className="w-5 h-5 text-red-500 flex-shrink-0" /><p className="text-sm" dangerouslySetInnerHTML={{ __html: renderHtml(block.content) }} /></div>;
     case "highlight":
       return (
         <div className={cn("rounded-xl p-4 border border-yellow-400/40 bg-gradient-to-r from-yellow-400/10 via-amber-400/5 to-transparent relative overflow-hidden not-prose [&_a]:text-primary [&_a]:underline", styleClasses)}>
           <div className="absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b from-yellow-400 via-amber-500 to-orange-500" />
           <div className="pl-3 flex gap-3">
             <Highlighter className="w-5 h-5 text-yellow-500 flex-shrink-0" />
-            <p className="text-sm" dangerouslySetInnerHTML={{ __html: sanitizeHtml(block.content) }} />
+            <p className="text-sm" dangerouslySetInnerHTML={{ __html: renderHtml(block.content) }} />
           </div>
         </div>
       );
@@ -2593,7 +2593,7 @@ function RenderBlock({ block, quizAnswer, quizSubmitted, onQuizAnswer, onQuizSub
             {accordionOpen ? <ChevronDown className="w-4 h-4 text-purple-500" /> : <ChevronRight className="w-4 h-4 text-purple-500" />}
             <span className="font-medium">{block.accordionTitle}</span>
           </button>
-          {accordionOpen && <div className="p-3 pt-0 border-t border-purple-500/20"><p className="text-sm" dangerouslySetInnerHTML={{ __html: sanitizeHtml(block.content) }} /></div>}
+          {accordionOpen && <div className="p-3 pt-0 border-t border-purple-500/20"><p className="text-sm" dangerouslySetInnerHTML={{ __html: renderHtml(block.content) }} /></div>}
         </div>
       );
     case "divider":
