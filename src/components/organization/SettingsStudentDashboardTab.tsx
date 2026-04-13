@@ -8,8 +8,9 @@ import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import {
   Save, Settings, Loader2, ExternalLink, Lock, ArrowUpRight,
-  Trophy, MessageCircle, LayoutGrid,
+  Trophy, MessageCircle, LayoutGrid, Pencil,
 } from "lucide-react";
+import { AchievementsManager } from "./AchievementsManager";
 
 interface StudentDashboardSettings {
   showAchievements: boolean;
@@ -34,6 +35,7 @@ export function SettingsStudentDashboardTab({ organizationId }: Props) {
   const hasBranding = SUBSCRIPTION_PLANS[plan]?.limits?.branding ?? false;
   const [settings, setSettings] = useState<StudentDashboardSettings>(DEFAULT_STUDENT);
   const [isSaving, setIsSaving] = useState(false);
+  const [achievementsOpen, setAchievementsOpen] = useState(false);
 
   useEffect(() => {
     const load = async () => {
@@ -119,12 +121,17 @@ export function SettingsStudentDashboardTab({ organizationId }: Props) {
               <p className="text-sm text-muted-foreground">Раздел с наградами и достижениями</p>
             </div>
           </div>
-          <button
-            onClick={() => setSettings(prev => ({ ...prev, showAchievements: !prev.showAchievements }))}
-            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${settings.showAchievements ? 'bg-primary' : 'bg-muted'}`}
-          >
-            <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${settings.showAchievements ? 'translate-x-6' : 'translate-x-1'}`} />
-          </button>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" className="rounded-xl gap-1.5 text-xs" onClick={() => setAchievementsOpen(true)}>
+              <Pencil className="w-3.5 h-3.5" /> Настроить
+            </Button>
+            <button
+              onClick={() => setSettings(prev => ({ ...prev, showAchievements: !prev.showAchievements }))}
+              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${settings.showAchievements ? 'bg-primary' : 'bg-muted'}`}
+            >
+              <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${settings.showAchievements ? 'translate-x-6' : 'translate-x-1'}`} />
+            </button>
+          </div>
         </div>
         <div className="flex items-center justify-between py-3">
           <div className="flex items-center gap-3">
@@ -174,6 +181,7 @@ export function SettingsStudentDashboardTab({ organizationId }: Props) {
           {isSaving ? <><Loader2 className="w-4 h-4 animate-spin" /> Сохранение...</> : <><Save className="w-4 h-4" /> Сохранить настройки</>}
         </Button>
       </div>
+      <AchievementsManager organizationId={organizationId} isOpen={achievementsOpen} onOpenChange={setAchievementsOpen} />
     </div>
   );
 }
