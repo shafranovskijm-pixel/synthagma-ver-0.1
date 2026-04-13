@@ -5835,6 +5835,7 @@ export type Database = {
           id: string
           name: string
           organization_id: string
+          student_group_id: string
           token: string
           used_count: number
         }[]
