@@ -1,46 +1,55 @@
 
 
-# Достижения в настройках курса
+# Генерация полноценного курса «ИИ как инструмент в бизнесе»
 
 ## Суть
-Добавить вкладку «Достижения» в боковое меню курса, где можно выбрать достижения из общего пула организации и привязать их к конкретному курсу.
+Скриптом сгенерировать содержимое всех уроков курса и записать их в базу данных. Курс уже существует (13 уроков видны на скриншоте) — обновим/пересоздадим уроки с полноценным текстовым контентом.
+
+## Структура курса (15-18 уроков)
+
+**Модуль 1. Введение в ИИ для бизнеса**
+1. Что такое ИИ и почему он важен для бизнеса сегодня
+2. Краткая история: от нейросетей к генеративному ИИ
+3. Тест: Основы ИИ
+
+**Модуль 2. Генеративный ИИ — практика**
+4. ChatGPT, Claude, Gemini — сравнение и выбор инструмента
+5. Промпт-инжиниринг: как правильно ставить задачи ИИ
+6. Практика: создание бизнес-документов с помощью ИИ
+7. Тест: Генеративный ИИ
+
+**Модуль 3. ИИ в маркетинге и продажах**
+8. ИИ для контент-маркетинга и SMM
+9. ИИ в воронке продаж и CRM
+10. ИИ для аналитики и визуализации данных
+
+**Модуль 4. ИИ в операционной деятельности**
+11. Автоматизация рутинных процессов (RPA + ИИ)
+12. ИИ-ассистенты и чат-боты для бизнеса
+13. ИИ для HR: подбор, обучение, оценка персонала
+
+**Модуль 5. Стратегия и внедрение**
+14. Юридические и этические аспекты использования ИИ
+15. Как составить дорожную карту внедрения ИИ в компании
+16. Итоговый тест
 
 ## Что будет сделано
 
-### 1. Миграция: таблица `course_achievements`
-```sql
-CREATE TABLE public.course_achievements (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  course_id uuid NOT NULL REFERENCES courses(id) ON DELETE CASCADE,
-  achievement_id uuid NOT NULL REFERENCES achievements(id) ON DELETE CASCADE,
-  created_at timestamptz DEFAULT now(),
-  UNIQUE(course_id, achievement_id)
-);
-ALTER TABLE public.course_achievements ENABLE ROW LEVEL SECURITY;
--- RLS: authenticated users с доступом к организации
-```
+1. **Скрипт** найдет course_id по названию курса в БД
+2. **Удалит** существующие уроки (сохранив course_id)
+3. **Сгенерирует** контент каждого урока через Lovable AI (google/gemini-3-flash-preview) — богатый текст с heading, paragraph, callout-info, callout-tip, highlight, accordion, bulletList, numberedList блоками
+4. **Вставит** уроки в таблицу `lessons` с правильным `order_index`
+5. **Создаст тесты** — вставит вопросы в `test_questions` для тестовых уроков
 
-### 2. Новый компонент `CourseAchievementsTab.tsx`
-- Хук загружает все достижения организации (`achievements` where `organization_id = orgId`)
-- Загружает привязанные к курсу (`course_achievements` where `course_id`)
-- Отображает список достижений с чекбоксами — включить/выключить для курса
-- Карточки с иконкой, названием, редкостью (стили из `RARITY_STYLES`)
-- При toggle — insert/delete в `course_achievements`
+Каждый текстовый урок будет содержать 700+ слов с практическими примерами, конкретными инструментами (ChatGPT, Midjourney, Make.com, n8n, HubSpot AI, Notion AI и др.), блоками-подсказками и аккордеонами.
 
-### 3. Обновить `CourseDetailsContent.tsx`
-- Добавить таб `"achievements"` в тип `activeTab` (в union type и в `CourseDetailsContentProps`)
-- Добавить пункт меню «Достижения» с иконкой `Trophy` в секцию «Обучение» сайдбара
-- Рендерить `CourseAchievementsTab` при `activeTab === "achievements"`
+## Технические детали
 
-### 4. Обновить `useCourseDetailsModal.ts`
-- Добавить `"achievements"` в тип `CourseDetailsTabType`
+- Контент уроков хранится как JSON-массив `ContentBlock[]` в поле `lessons.content`
+- Блоки: `heading1`, `heading2`, `paragraph`, `bulletList`, `numberedList`, `callout-info`, `callout-tip`, `callout-warning`, `highlight`, `accordion`, `quiz`, `divider`
+- Тестовые уроки: тип `test`, вопросы в таблице `test_questions`
+- Скрипт использует `psql` для вставки + edge function или прямой AI gateway для генерации текста
 
 ## Файлы
-
-| Файл | Изменение |
-|---|---|
-| Миграция | Создать таблицу `course_achievements` с RLS |
-| `src/components/organization/CourseAchievementsTab.tsx` | **Новый** — выбор достижений для курса |
-| `src/components/organization/CourseDetailsContent.tsx` | Добавить таб и пункт меню |
-| `src/hooks/useCourseDetailsModal.ts` | Расширить тип табов |
+Изменений в коде проекта нет — только данные в БД.
 
