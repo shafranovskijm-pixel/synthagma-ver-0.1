@@ -49,7 +49,8 @@ import {
   ShieldCheck,
   Droplets,
   ExternalLink,
-  Clock
+  Clock,
+  Trophy
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useSubscriptionLimits } from "@/hooks/useSubscriptionLimits";
@@ -66,6 +67,7 @@ import { CourseGroupsTab } from "@/components/organization/CourseGroupsTab";
 import { CoursePageSettingsContent } from "@/components/course-editor/CoursePageSettingsContent";
 import { CourseSettingsTabbed } from "@/components/organization/CourseSettingsTabbed";
 import { EnrollmentRequestsTab } from "@/components/organization/EnrollmentRequestsTab";
+import { CourseAchievementsTab } from "@/components/organization/CourseAchievementsTab";
 
 interface Course {
   id: string;
@@ -115,8 +117,8 @@ interface CourseDetailsContentProps {
   course: Course;
   courseStudents: Student[];
   organizationId: string | null;
-  activeTab: "students" | "materials" | "history" | "tests" | "landing" | "settings" | "reminders" | "groups" | "requests";
-  onTabChange: (tab: "students" | "materials" | "history" | "tests" | "landing" | "settings" | "reminders" | "groups" | "requests") => void;
+  activeTab: "students" | "materials" | "history" | "tests" | "landing" | "settings" | "reminders" | "groups" | "requests" | "achievements";
+  onTabChange: (tab: "students" | "materials" | "history" | "tests" | "landing" | "settings" | "reminders" | "groups" | "requests" | "achievements") => void;
   onEnrollStudent: () => void;
   onCourseDeleted?: () => void;
   onCourseUpdated?: () => void;
