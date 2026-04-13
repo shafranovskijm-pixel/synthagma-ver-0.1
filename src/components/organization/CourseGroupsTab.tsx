@@ -514,6 +514,17 @@ export function CourseGroupsTab({ courseId, organizationId, onRefreshStudents }:
 
                 <Button
                   size="sm"
+                  variant="outline"
+                  className="rounded-xl gap-1.5 text-xs"
+                  onClick={() => handleOpenAddStudents(group)}
+                  title="Добавить учеников в группу"
+                >
+                  <UserPlus className="w-3.5 h-3.5" />
+                  + Ученики
+                </Button>
+
+                <Button
+                  size="sm"
                   className="rounded-xl gap-1.5 ml-1"
                   disabled={isEnrolling || allEnrolled}
                   onClick={() => handleEnrollGroup(group.id)}
@@ -533,6 +544,7 @@ export function CourseGroupsTab({ courseId, organizationId, onRefreshStudents }:
         })}
       </div>
       {createGroupDialog}
+      {addStudentsDialog}
     </div>
   );
 }
