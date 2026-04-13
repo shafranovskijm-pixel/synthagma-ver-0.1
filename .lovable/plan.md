@@ -1,53 +1,33 @@
 
 
-# Исправление оборачивания текста в ссылку
+# Сделать ссылки видимыми и кликабельными везде
 
 ## Проблема
 
-`requestAnimationFrame` недостаточно — Dialog ещё не полностью закрыт к этому моменту, и `execCommand("createLink")` молча не срабатывает, потому что фокус не успевает вернуться в `contenteditable`. Кроме того, сохранённый `Range` может стать невалидным после закрытия Dialog.
+1. **В редакторе**: `handleClick` на `<a>` уже есть в RichTextEditor — ссылки должны открываться. Но стилизация может не применяться если CSS-класс `[&_a]:text-primary [&_a]:underline` не срабатывает из-за специфичности.
 
-## Решение
+2. **В предпросмотре** (`RenderBlock`): Только блок `paragraph` рендерит HTML через `dangerouslySetInnerHTML`. Все остальные типы (heading1, heading2, quote, callout-*, highlight, bulletList, numberedList) используют `{block.content}` как **plain text** — HTML-теги `<a>` отображаются как текст, а не как ссылки.
 
-Отказаться от ненадёжного `execCommand` и использовать прямую DOM-манипуляцию: `range.surroundContents()` для оборачивания выделенного текста, и `range.insertNode()` для вставки новой ссылки. Это не зависит от фокуса и работает надёжно.
+## Решения
 
-### Изменения в `BlockEditor.tsx` (строки 1043-1074)
+### Файл: `BlockEditor.tsx`
 
-1. **Заменить `requestAnimationFrame` на `setTimeout(..., 150)`** — даёт Dialog время полностью закрыться
-2. **Заменить `execCommand("createLink")` на прямую DOM-манипуляцию:**
-   - Для выделенного текста: создать `<a>` элемент, установить `href/target/rel`, использовать `rangeClone.surroundContents(anchor)` 
-   - Для вставки новой ссылки: создать `<a>` с текстом, использовать `range.insertNode(anchor)`
-3. **После вставки**: диспатчить `input` event для синхронизации состояния
+**A. RenderBlock — все текстовые блоки должны рендерить HTML:**
+- heading1, heading2 → `dangerouslySetInnerHTML` вместо `{block.content}`
+- quote → `dangerouslySetInnerHTML`
+- callout-* и highlight → внутренний `<p>` через `dangerouslySetInnerHTML`
+- bulletList, numberedList → парсить `<a>` теги в элементах списка через `dangerouslySetInnerHTML`
 
-### Ключевой код
+**B. Добавить CSS-класс для кликабельных ссылок в превью:**
+- В обёртку `RenderBlock` добавить стили `[&_a]:text-primary [&_a]:underline [&_a]:cursor-pointer`
+- Ссылки в превью будут кликабельны по умолчанию (не contenteditable → обычное поведение `<a>`)
 
-```typescript
-setTimeout(() => {
-  const blockEl = document.querySelector(`[data-block-id="${blockId}"] [contenteditable]`) as HTMLElement;
-  if (!blockEl) return;
-  blockEl.focus();
+### Файл: `RichTextEditor.tsx`
 
-  if (hadSelection && rangeClone) {
-    const anchor = document.createElement('a');
-    anchor.href = url;
-    anchor.target = '_blank';
-    anchor.rel = 'noopener noreferrer';
-    rangeClone.surroundContents(anchor);
-  } else {
-    const anchor = document.createElement('a');
-    anchor.href = url;
-    anchor.target = '_blank';
-    anchor.rel = 'noopener noreferrer';
-    anchor.textContent = text;
-    const range = document.createRange();
-    range.selectNodeContents(blockEl);
-    range.collapse(false);
-    range.insertNode(anchor);
-  }
+**C. Усилить стилизацию ссылок:**
+- Убедиться что `[&_a]:text-primary [&_a]:underline` применяется корректно (уже есть на строке 194, проверю специфичность)
 
-  blockEl.dispatchEvent(new Event('input', { bubbles: true }));
-}, 150);
-```
-
-### Файлы
-- `src/components/course-builder/BlockEditor.tsx` — замена execCommand на DOM-манипуляцию
+## Что НЕ нужно менять
+- Логика вставки ссылок (DOM-манипуляция через setTimeout) — это уже работает
+- sanitizeHtml — уже разрешает `<a>` с `href`, `target`, `rel`
 
