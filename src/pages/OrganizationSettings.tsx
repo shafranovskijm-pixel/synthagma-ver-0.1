@@ -2,12 +2,16 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-import { ArrowLeft, Settings, LayoutGrid, Save, RefreshCw, RotateCcw, Users, FileText, ClipboardList, FileSpreadsheet, BarChart3, Link, HardHat, ShoppingBag, Building2, ChevronRight, CreditCard, GraduationCap } from "lucide-react";
+import { ArrowLeft, Settings, LayoutGrid, Save, RefreshCw, RotateCcw, Users, FileText, ClipboardList, FileSpreadsheet, BarChart3, Link, HardHat, ShoppingBag, Building2, CreditCard, GraduationCap, Wallet } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import { RobokassaSettings } from "@/components/organization/RobokassaSettings";
 import { SettingsStudentDashboardTab } from "@/components/organization/SettingsStudentDashboardTab";
+import { StaffManager } from "@/components/organization/StaffManager";
+import { JournalsManager } from "@/components/organization/JournalsManager";
+import { FRDOManager } from "@/components/organization/FRDOManager";
+import { OrgDashboardProvider } from "@/contexts/OrgDashboardContext";
 
 interface MenuSettings {
   showStats: boolean;
@@ -34,6 +38,7 @@ export default function OrganizationSettings() {
   const [organizationId, setOrganizationId] = useState<string | null>(null);
   const [menuSettings, setMenuSettings] = useState<MenuSettings>(DEFAULT_MENU);
   const [loading, setLoading] = useState(true);
+  const [activeModuleTab, setActiveModuleTab] = useState("staff");
 
   useEffect(() => {
     if (!user) return;
@@ -91,25 +96,21 @@ export default function OrganizationSettings() {
     toast.success('Меню обновлено');
   };
 
-  const ToggleRow = ({ icon: Icon, iconClass, label, desc, settingsKey }: { icon: any; iconClass: string; label: string; desc: string; settingsKey: keyof MenuSettings }) => (
-    <div className="flex items-center justify-between py-2 lg:py-3 border-b border-border last:border-b-0">
-      <div className="flex items-center gap-2 lg:gap-3">
-        <div className={`w-8 h-8 lg:w-10 lg:h-10 rounded-lg lg:rounded-xl ${iconClass} flex items-center justify-center`}>
-          <Icon className="w-4 h-4 lg:w-5 lg:h-5" />
-        </div>
-        <div>
-          <p className="font-medium text-sm lg:text-base">{label}</p>
-          <p className="text-xs lg:text-sm text-muted-foreground hidden sm:block">{desc}</p>
-        </div>
-      </div>
-      <button
-        onClick={() => setMenuSettings(prev => ({ ...prev, [settingsKey]: !prev[settingsKey] }))}
-        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors shrink-0 ${menuSettings[settingsKey] ? 'bg-primary' : 'bg-muted'}`}
-      >
-        <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${menuSettings[settingsKey] ? 'translate-x-6' : 'translate-x-1'}`} />
-      </button>
-    </div>
-  );
+  const menuItems = [
+    { icon: BarChart3, bg: "bg-accent/15", color: "text-accent", label: "Статистика", desc: "Аналитика и отчёты", key: "showStats" as keyof MenuSettings },
+    { icon: Link, bg: "bg-primary/15", color: "text-primary", label: "Ссылки регистрации", desc: "Самостоятельная регистрация", key: "showLinks" as keyof MenuSettings },
+    { icon: HardHat, bg: "bg-accent/15", color: "text-accent", label: "Охрана труда", desc: "Модуль охраны труда", key: "showLaborSafety" as keyof MenuSettings },
+    { icon: FileText, bg: "bg-destructive/15", color: "text-destructive", label: "Документы", desc: "Документооборот", key: "showDocuments" as keyof MenuSettings },
+    { icon: Building2, bg: "bg-primary/15", color: "text-primary", label: "Компании", desc: "Управление корпоративными клиентами", key: "showCompanies" as keyof MenuSettings },
+    { icon: ShoppingBag, bg: "bg-primary/15", color: "text-primary", label: "Маркетплейс", desc: "Магазин курсов", key: "showServices" as keyof MenuSettings },
+  ];
+
+  const moduleSubTabs = [
+    { id: "staff", icon: Users, label: "Сотрудники" },
+    { id: "documents", icon: FileText, label: "Документы" },
+    { id: "journals", icon: ClipboardList, label: "Журналы" },
+    { id: "frdo", icon: FileSpreadsheet, label: "ФИС ФРДО" },
+  ];
 
   if (loading) {
     return <div className="min-h-screen flex items-center justify-center"><div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full" /></div>;
@@ -134,7 +135,7 @@ export default function OrganizationSettings() {
               <LayoutGrid className="w-4 h-4" /> Разделы меню
             </TabsTrigger>
             <TabsTrigger value="robokassa" className="rounded-lg gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm px-4 py-2">
-              <CreditCard className="w-4 h-4" /> Robokassa
+              <Wallet className="w-4 h-4" /> Касса
             </TabsTrigger>
             <TabsTrigger value="student" className="rounded-lg gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm px-4 py-2">
               <GraduationCap className="w-4 h-4" /> Настройки ЛК
@@ -148,16 +149,36 @@ export default function OrganizationSettings() {
           <TabsContent value="menu">
             <div className="max-w-2xl">
               <div className="bg-card rounded-xl lg:rounded-2xl border border-border p-4 lg:p-6">
-                <p className="text-xs lg:text-sm text-muted-foreground mb-3 lg:mb-4">Включите или отключите разделы в боковом меню</p>
-                <div className="space-y-0">
-                  <ToggleRow icon={BarChart3} iconClass="bg-accent/10 text-accent" label="Статистика" desc="Аналитика и отчёты" settingsKey="showStats" />
-                  <ToggleRow icon={Link} iconClass="bg-primary/10 text-primary" label="Ссылки регистрации" desc="Самостоятельная регистрация" settingsKey="showLinks" />
-                  <ToggleRow icon={HardHat} iconClass="bg-accent/10 text-accent" label="Охрана труда" desc="Модуль охраны труда" settingsKey="showLaborSafety" />
-                  <ToggleRow icon={FileText} iconClass="bg-destructive/10 text-destructive" label="Документы" desc="Документооборот" settingsKey="showDocuments" />
-                  <ToggleRow icon={Building2} iconClass="bg-primary/10 text-primary" label="Компании" desc="Управление корпоративными клиентами" settingsKey="showCompanies" />
-                  <ToggleRow icon={ShoppingBag} iconClass="bg-primary/10 text-primary" label="Маркетплейс" desc="Магазин курсов" settingsKey="showServices" />
+                <p className="text-xs lg:text-sm text-muted-foreground mb-4 lg:mb-5">Включите или отключите разделы в боковом меню</p>
+                <div className="space-y-2">
+                  {menuItems.map((item) => {
+                    const Icon = item.icon;
+                    const isOn = menuSettings[item.key];
+                    return (
+                      <div
+                        key={item.key}
+                        className="flex items-center justify-between p-3 lg:p-4 rounded-xl border border-border/60 hover:border-primary/30 hover:bg-accent/5 transition-all group/row"
+                      >
+                        <div className="flex items-center gap-3 lg:gap-4">
+                          <div className={`w-11 h-11 lg:w-12 lg:h-12 rounded-xl ${item.bg} flex items-center justify-center shadow-sm transition-transform group-hover/row:scale-105`}>
+                            <Icon className={`w-5 h-5 lg:w-[22px] lg:h-[22px] ${item.color}`} />
+                          </div>
+                          <div>
+                            <p className="font-medium text-sm lg:text-base">{item.label}</p>
+                            <p className="text-xs lg:text-sm text-muted-foreground">{item.desc}</p>
+                          </div>
+                        </div>
+                        <button
+                          onClick={() => setMenuSettings(prev => ({ ...prev, [item.key]: !prev[item.key] }))}
+                          className={`relative inline-flex h-7 w-12 items-center rounded-full transition-colors shrink-0 ${isOn ? 'bg-primary shadow-md' : 'bg-muted'}`}
+                        >
+                          <span className={`inline-block h-5 w-5 transform rounded-full bg-white shadow-sm transition-transform ${isOn ? 'translate-x-6' : 'translate-x-1'}`} />
+                        </button>
+                      </div>
+                    );
+                  })}
                 </div>
-                <div className="mt-4 lg:mt-6 pt-3 lg:pt-4 border-t border-border flex flex-wrap gap-2">
+                <div className="mt-5 lg:mt-6 pt-4 border-t border-border flex flex-wrap gap-2">
                   <Button className="btn-gradient rounded-xl gap-2 text-sm" onClick={handleSaveMenuSettings}>
                     <Save className="w-4 h-4" /> Сохранить
                   </Button>
@@ -172,7 +193,7 @@ export default function OrganizationSettings() {
             </div>
           </TabsContent>
 
-          {/* Tab: Robokassa */}
+          {/* Tab: Payment */}
           <TabsContent value="robokassa">
             <div className="max-w-2xl">
               {organizationId && <RobokassaSettings organizationId={organizationId} />}
@@ -186,35 +207,60 @@ export default function OrganizationSettings() {
             </div>
           </TabsContent>
 
-          {/* Tab: Module Management */}
+          {/* Tab: Module Management — embedded components */}
           <TabsContent value="modules">
-            <div className="max-w-2xl space-y-3">
-              <p className="text-sm text-muted-foreground mb-2">Быстрый доступ к разделам управления организацией</p>
-              {[
-                { tab: "staff", icon: Users, iconBg: "bg-primary/10", iconColor: "text-primary", title: "Сотрудники", desc: "Управление ролями и доступом" },
-                { tab: "documents", icon: FileText, iconBg: "bg-destructive/10", iconColor: "text-destructive", title: "Документооборот", desc: "Приказы, протоколы, сертификаты" },
-                { tab: "journals", icon: ClipboardList, iconBg: "bg-accent/10", iconColor: "text-accent", title: "Журналы учёта", desc: "Журналы учёта слушателей" },
-                { tab: "frdo", icon: FileSpreadsheet, iconBg: "bg-primary/10", iconColor: "text-primary", title: "ФИС ФРДО", desc: "Федеральный реестр документов" },
-              ].map(({ tab, icon: Icon, iconBg, iconColor, title, desc }) => (
-                <button
-                  key={tab}
-                  onClick={() => navigate("/organization", { state: { tab } })}
-                  className="w-full flex items-center gap-3 p-3 rounded-xl border border-border hover:bg-accent/5 hover:border-primary/30 transition-all text-left group/nav"
-                >
-                  <div className={`w-9 h-9 rounded-lg ${iconBg} flex items-center justify-center shrink-0`}>
-                    <Icon className={`w-4 h-4 ${iconColor}`} />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="font-medium text-sm">{title}</p>
-                    <p className="text-xs text-muted-foreground">{desc}</p>
-                  </div>
-                  <ChevronRight className="w-4 h-4 text-muted-foreground group-hover/nav:text-primary transition-colors" />
-                </button>
-              ))}
+            <div className="space-y-4">
+              {/* Sub-tab navigation */}
+              <div className="flex flex-wrap gap-2">
+                {moduleSubTabs.map((tab) => {
+                  const Icon = tab.icon;
+                  const isActive = activeModuleTab === tab.id;
+                  return (
+                    <button
+                      key={tab.id}
+                      onClick={() => setActiveModuleTab(tab.id)}
+                      className={`inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium transition-all border ${
+                        isActive
+                          ? 'bg-primary text-primary-foreground shadow-md border-primary'
+                          : 'bg-card hover:bg-accent/10 border-border hover:border-primary/30 text-foreground'
+                      }`}
+                    >
+                      <Icon className="w-4 h-4" />
+                      {tab.label}
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Sub-tab content */}
+              <div className="bg-card rounded-xl lg:rounded-2xl border border-border p-4 lg:p-6">
+                {organizationId && activeModuleTab === "staff" && (
+                  <OrgDashboardProvider>
+                    <StaffManager organizationId={organizationId} />
+                  </OrgDashboardProvider>
+                )}
+                {organizationId && activeModuleTab === "journals" && (
+                  <JournalsManager organizationId={organizationId} />
+                )}
+                {organizationId && activeModuleTab === "frdo" && (
+                  <FRDOManager organizationId={organizationId} />
+                )}
+                {organizationId && activeModuleTab === "documents" && (
+                  <OrgDashboardProvider>
+                    <DocumentsModuleWrapper organizationId={organizationId} />
+                  </OrgDashboardProvider>
+                )}
+              </div>
             </div>
           </TabsContent>
         </Tabs>
       </div>
     </div>
   );
+}
+
+// Lazy wrapper for DocumentsTab to avoid importing it at top level with all its deps
+function DocumentsModuleWrapper({ organizationId }: { organizationId: string }) {
+  const { DocumentsTab } = require("@/components/organization/tabs/DocumentsTab");
+  return <DocumentsTab organizationId={organizationId} organizationName="" isOrdersEnabled={true} />;
 }
