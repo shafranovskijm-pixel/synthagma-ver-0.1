@@ -91,7 +91,7 @@ export function useStudentDashboard() {
   const [categories, setCategories] = useState<{ id: string; name: string; color: string | null }[]>([]);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [branding, setBranding] = useState<Branding | null>(null);
-  const [dashboardSettings, setDashboardSettings] = useState<DashboardSettings>({ showLibrary: true, showAchievements: true, showAiChat: true });
+  const [dashboardSettings, setDashboardSettings] = useState<DashboardSettings>({ showLibrary: true, showAchievements: true, showAiChat: true, catalogMode: "catalog" });
   const [loading, setLoading] = useState(true);
   const [totalTimeSpent, setTotalTimeSpent] = useState(0);
   const [totalCompletedLessons, setTotalCompletedLessons] = useState(0);
@@ -267,7 +267,7 @@ export function useStudentDashboard() {
       }
       if (effectiveDashboardSettings && typeof effectiveDashboardSettings === 'object') {
         const s = effectiveDashboardSettings as Record<string, unknown>;
-        setDashboardSettings({ showLibrary: s.showLibrary === true, showAchievements: s.showAchievements !== false, showAiChat: s.showAiChat !== false });
+        setDashboardSettings({ showLibrary: s.showLibrary === true, showAchievements: s.showAchievements !== false, showAiChat: s.showAiChat !== false, catalogMode: (s.catalogMode as "catalog" | "assigned") || "catalog" });
       }
 
       let cachedCoursesData: StudentCourse[] = [];
