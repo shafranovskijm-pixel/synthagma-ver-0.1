@@ -155,6 +155,13 @@ export function OrgSidebar() {
   
   navItems.push({ id: "chats", icon: MessageCircle, label: "Чаты", badge: d.unreadChatsCount });
 
+  // Utility nav items (pages)
+  const utilityItems: { icon: typeof BookOpen; label: string; path: string }[] = [
+    { icon: Users, label: "Профиль", path: "/organization/profile" },
+    { icon: Settings, label: "Настройки", path: "/organization/settings" },
+    { icon: FileText, label: "Документы", path: "/organization/documents" },
+  ];
+
   return (
     <>
       {/* Mobile overlay */}
@@ -260,6 +267,32 @@ export function OrgSidebar() {
               })}
             </nav>
           </div>
+        </div>
+
+        {/* Utility navigation */}
+        <div className="flex flex-col items-center gap-1.5 px-2 pb-2">
+          <div className="w-10 border-t border-border/40 mb-1" />
+          {utilityItems.map((item) => {
+            const isActive = location.pathname === item.path;
+            return (
+              <Tooltip key={item.path} delayDuration={100}>
+                <TooltipTrigger asChild>
+                  <button
+                    onClick={() => { navigate(item.path); setIsMobileSidebarOpen(false); }}
+                    className={cn(
+                      "flex h-10 w-10 items-center justify-center rounded-xl transition-all duration-200",
+                      isActive
+                        ? "bg-primary/20 text-primary"
+                        : "text-foreground/50 hover:text-foreground hover:bg-muted/50 hover:scale-110"
+                    )}
+                  >
+                    <item.icon className="h-[17px] w-[17px] shrink-0" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="right" className="z-[100]">{item.label}</TooltipContent>
+              </Tooltip>
+            );
+          })}
         </div>
 
         {/* Logout */}
