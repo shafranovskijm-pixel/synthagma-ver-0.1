@@ -49,7 +49,8 @@ import {
   ShieldCheck,
   Droplets,
   ExternalLink,
-  Clock
+  Clock,
+  Trophy
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useSubscriptionLimits } from "@/hooks/useSubscriptionLimits";
@@ -66,6 +67,7 @@ import { CourseGroupsTab } from "@/components/organization/CourseGroupsTab";
 import { CoursePageSettingsContent } from "@/components/course-editor/CoursePageSettingsContent";
 import { CourseSettingsTabbed } from "@/components/organization/CourseSettingsTabbed";
 import { EnrollmentRequestsTab } from "@/components/organization/EnrollmentRequestsTab";
+import { CourseAchievementsTab } from "@/components/organization/CourseAchievementsTab";
 
 interface Course {
   id: string;
@@ -115,8 +117,8 @@ interface CourseDetailsContentProps {
   course: Course;
   courseStudents: Student[];
   organizationId: string | null;
-  activeTab: "students" | "materials" | "history" | "tests" | "landing" | "settings" | "reminders" | "groups" | "requests";
-  onTabChange: (tab: "students" | "materials" | "history" | "tests" | "landing" | "settings" | "reminders" | "groups" | "requests") => void;
+  activeTab: "students" | "materials" | "history" | "tests" | "landing" | "settings" | "reminders" | "groups" | "requests" | "achievements";
+  onTabChange: (tab: "students" | "materials" | "history" | "tests" | "landing" | "settings" | "reminders" | "groups" | "requests" | "achievements") => void;
   onEnrollStudent: () => void;
   onCourseDeleted?: () => void;
   onCourseUpdated?: () => void;
@@ -545,6 +547,7 @@ export function CourseDetailsContent({
               { value: "history" as const, label: "История", icon: History, color: "text-violet-500" },
               { value: "tests" as const, label: "Тесты", icon: CheckSquare, color: "text-emerald-500" },
               { value: "groups" as const, label: "Группы", icon: Users, color: "text-blue-500" },
+              { value: "achievements" as const, label: "Достижения", icon: Trophy, color: "text-amber-500" },
             ]).map(item => (
               <button
                 key={item.value}
@@ -778,6 +781,9 @@ export function CourseDetailsContent({
 
           {activeTab === "groups" && (
             <CourseGroupsTab courseId={course.id} organizationId={organizationId || ""} onRefreshStudents={onRefreshStudents} />
+          )}
+          {activeTab === "achievements" && organizationId && (
+            <CourseAchievementsTab courseId={course.id} organizationId={organizationId} />
           )}
         </div>
       </div>
