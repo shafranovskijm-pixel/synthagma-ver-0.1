@@ -267,7 +267,7 @@ export const CoursesTab = React.memo(function CoursesTab({ organizationId, onCou
     reorderCourses,
   } = useCourses(organizationId, {
     initialCourses: dashboard.courses,
-    initialCategories: dashboard.categories,
+    initialCategories: dashboard.categories as CourseCategory[],
   });
 
   const dndSensors = useSensors(
