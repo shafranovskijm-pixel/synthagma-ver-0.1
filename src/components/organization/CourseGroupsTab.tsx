@@ -255,6 +255,99 @@ export function CourseGroupsTab({ courseId, organizationId, onRefreshStudents }:
     }
   };
 
+  const handleOpenAddStudents = async (group: StudentGroup) => {
+    setSelectedGroupForAdd(group);
+    setSelectedStudentIds(new Set());
+    setShowAddStudentsDialog(true);
+    setLoadingStudents(true);
+    try {
+      const { data } = await supabase
+        .from("profiles")
+        .select("user_id, full_name, email")
+        .eq("organization_id", organizationId)
+        .is("student_group_id", null);
+      setUnassignedStudents((data as any[] || []).map((p: any) => ({
+        user_id: p.user_id,
+        full_name: p.full_name,
+        email: p.email,
+      })));
+    } catch {
+      toast.error("Ошибка загрузки учеников");
+    } finally {
+      setLoadingStudents(false);
+    }
+  };
+
+  const handleAddStudentsToGroup = async () => {
+    if (!selectedGroupForAdd || selectedStudentIds.size === 0) return;
+    setAddingStudents(true);
+    try {
+      const ids = Array.from(selectedStudentIds);
+      for (const uid of ids) {
+        await supabase
+          .from("profiles")
+          .update({ student_group_id: selectedGroupForAdd.id } as any)
+          .eq("user_id", uid);
+      }
+      toast.success(`${ids.length} уч. добавлено в группу`);
+      setShowAddStudentsDialog(false);
+      loadGroups();
+      onRefreshStudents?.();
+    } catch {
+      toast.error("Ошибка добавления учеников");
+    } finally {
+      setAddingStudents(false);
+    }
+  };
+
+  const toggleStudent = (uid: string) => {
+    setSelectedStudentIds(prev => {
+      const next = new Set(prev);
+      if (next.has(uid)) next.delete(uid); else next.add(uid);
+      return next;
+    });
+  };
+
+  const addStudentsDialog = (
+    <Dialog open={showAddStudentsDialog} onOpenChange={setShowAddStudentsDialog}>
+      <DialogContent className="rounded-2xl max-h-[80vh] flex flex-col">
+        <DialogHeader>
+          <DialogTitle>Добавить учеников в «{selectedGroupForAdd?.name}»</DialogTitle>
+        </DialogHeader>
+        <div className="flex-1 overflow-y-auto space-y-1 py-2">
+          {loadingStudents ? (
+            <div className="flex justify-center py-8"><Loader2 className="w-5 h-5 animate-spin text-muted-foreground" /></div>
+          ) : unassignedStudents.length === 0 ? (
+            <p className="text-sm text-muted-foreground text-center py-8">Нет учеников без группы</p>
+          ) : (
+            unassignedStudents.map(s => (
+              <label key={s.user_id} className="flex items-center gap-3 p-2.5 rounded-lg hover:bg-muted/50 cursor-pointer">
+                <Checkbox
+                  checked={selectedStudentIds.has(s.user_id)}
+                  onCheckedChange={() => toggleStudent(s.user_id)}
+                />
+                <div className="min-w-0">
+                  <div className="text-sm font-medium truncate">{s.full_name || "Без имени"}</div>
+                  {s.email && <div className="text-xs text-muted-foreground truncate">{s.email}</div>}
+                </div>
+              </label>
+            ))
+          )}
+        </div>
+        {unassignedStudents.length > 0 && (
+          <Button
+            className="w-full btn-gradient rounded-xl mt-2"
+            disabled={selectedStudentIds.size === 0 || addingStudents}
+            onClick={handleAddStudentsToGroup}
+          >
+            {addingStudents ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <UserPlus className="w-4 h-4 mr-2" />}
+            Добавить ({selectedStudentIds.size})
+          </Button>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+
   const createGroupDialog = (
     <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
       <DialogContent className="rounded-2xl">
