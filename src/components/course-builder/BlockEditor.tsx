@@ -961,36 +961,36 @@ function SortableBlockItem({ block, isFocused, onFocus, onUpdate, onDelete, onAd
             </button>
           )}
           {canStyle && (
-            <Popover open={linkPopoverOpen} onOpenChange={(open) => {
-              if (!open) {
-                setLinkPopoverOpen(false);
-                setLinkUrl("");
-                setLinkText("");
-                savedLinkRange.current = null;
-              }
-            }}>
-              <PopoverTrigger asChild>
-                <button
-                  className="h-8 w-8 flex items-center justify-center hover:bg-white/20 rounded-full transition-colors"
-                  title="Вставить ссылку"
-                  onMouseDown={(e) => {
-                    e.preventDefault();
-                    const sel = window.getSelection();
-                    const hasSelection = !!(sel && !sel.isCollapsed && sel.rangeCount > 0);
-                    if (hasSelection) {
-                      savedLinkRange.current = sel!.getRangeAt(0).cloneRange();
-                    } else {
-                      savedLinkRange.current = null;
-                    }
-                    setLinkHasSelection(hasSelection);
-                    setLinkUrl("");
-                    setLinkText("");
-                    setLinkPopoverOpen(true);
-                  }}
-                >
-                  <Link2 className="w-4 h-4" />
-                </button>
-              </PopoverTrigger>
+            <>
+              <button
+                className="h-8 w-8 flex items-center justify-center hover:bg-white/20 rounded-full transition-colors"
+                title="Вставить ссылку"
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  const sel = window.getSelection();
+                  const hasSelection = !!(sel && !sel.isCollapsed && sel.rangeCount > 0);
+                  if (hasSelection) {
+                    savedLinkRange.current = sel!.getRangeAt(0).cloneRange();
+                  } else {
+                    savedLinkRange.current = null;
+                  }
+                  setLinkHasSelection(hasSelection);
+                  setLinkUrl("");
+                  setLinkText("");
+                  setLinkPopoverOpen(true);
+                }}
+              >
+                <Link2 className="w-4 h-4" />
+              </button>
+              <Popover open={linkPopoverOpen} onOpenChange={(open) => {
+                if (!open) {
+                  setLinkPopoverOpen(false);
+                  setLinkUrl("");
+                  setLinkText("");
+                  savedLinkRange.current = null;
+                }
+              }}>
               <PopoverContent align="center" className="w-72 p-3 space-y-2" onOpenAutoFocus={(e) => e.preventDefault()}>
                 <p className="text-xs font-medium text-foreground">
                   {linkHasSelection ? "Обернуть выделенный текст в ссылку" : "Вставить ссылку"}
@@ -1067,7 +1067,8 @@ function SortableBlockItem({ block, isFocused, onFocus, onUpdate, onDelete, onAd
                   {linkHasSelection ? "Применить" : "Вставить ссылку"}
                 </Button>
               </PopoverContent>
-            </Popover>
+              </Popover>
+            </>
           )}
           <Popover>
             <PopoverTrigger asChild>
