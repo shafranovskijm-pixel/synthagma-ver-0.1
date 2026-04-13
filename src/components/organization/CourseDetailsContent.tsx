@@ -3,7 +3,7 @@ import { useOrgFeatures } from "@/hooks/useOrgFeatures";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { cn } from "@/lib/utils";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
@@ -497,22 +497,68 @@ export function CourseDetailsContent({
         </div>
       </div>
 
-      <Tabs value={activeTab} onValueChange={v => onTabChange(v as any)} className="flex-1 flex flex-col">
-        <div className="px-6 pt-4 border-b border-border">
-          <TabsList className="bg-secondary/50 rounded-xl flex-wrap">
-            <TabsTrigger value="students" className="rounded-lg gap-2"><Users className="w-4 h-4" />Ученики</TabsTrigger>
-            <TabsTrigger value="materials" className="rounded-lg gap-2"><FileText className="w-4 h-4" />Материалы</TabsTrigger>
-            <TabsTrigger value="history" className="rounded-lg gap-2"><History className="w-4 h-4" />История</TabsTrigger>
-            <TabsTrigger value="tests" className="rounded-lg gap-2"><CheckSquare className="w-4 h-4" />Тесты</TabsTrigger>
-            <TabsTrigger value="landing" className="rounded-lg gap-2"><Globe className="w-4 h-4" />Страница курса</TabsTrigger>
-            <TabsTrigger value="settings" className="rounded-lg gap-2"><Settings className="w-4 h-4" />Настройки</TabsTrigger>
-            <TabsTrigger value="reminders" className="rounded-lg gap-2"><Bell className="w-4 h-4" />Напоминания</TabsTrigger>
-            <TabsTrigger value="groups" className="rounded-lg gap-2"><Users className="w-4 h-4" />Группы</TabsTrigger>
-          </TabsList>
-        </div>
+      <div className="flex flex-col lg:flex-row flex-1">
+        {/* Sidebar navigation */}
+        <nav className="lg:w-64 shrink-0 border-b lg:border-b-0 lg:border-r border-border bg-gradient-to-b from-card to-muted/20">
+          <div className="p-4 space-y-1 overflow-x-auto lg:overflow-x-visible flex lg:flex-col gap-1">
+            <div className="hidden lg:block">
+              <p className="text-[11px] font-semibold text-muted-foreground/70 uppercase tracking-wider px-3 mb-2">Обучение</p>
+            </div>
+            {([
+              { value: "students" as const, label: "Ученики", icon: Users, color: "text-primary" },
+              { value: "materials" as const, label: "Материалы", icon: FileText, color: "text-amber-500" },
+              { value: "history" as const, label: "История", icon: History, color: "text-violet-500" },
+              { value: "tests" as const, label: "Тесты", icon: CheckSquare, color: "text-emerald-500" },
+              { value: "groups" as const, label: "Группы", icon: Users, color: "text-blue-500" },
+            ]).map(item => (
+              <button
+                key={item.value}
+                onClick={() => onTabChange(item.value)}
+                className={cn(
+                  "flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 whitespace-nowrap",
+                  "hover:bg-primary/10 hover:text-primary hover:translate-x-0.5",
+                  activeTab === item.value
+                    ? "bg-primary/15 text-primary lg:border-r-2 lg:border-primary"
+                    : "text-muted-foreground"
+                )}
+              >
+                <item.icon className={cn("w-4 h-4 shrink-0", activeTab === item.value ? "text-primary" : item.color)} />
+                {item.label}
+              </button>
+            ))}
 
-        <div className="flex-1 p-6">
-          <TabsContent value="students" className="mt-0">
+            <div className="hidden lg:block mt-4">
+              <div className="border-t border-border/50 mb-3" />
+              <p className="text-[11px] font-semibold text-muted-foreground/70 uppercase tracking-wider px-3 mb-2">Настройки</p>
+            </div>
+            <div className="lg:hidden w-px bg-border/50 mx-1 shrink-0" />
+
+            {([
+              { value: "landing" as const, label: "Страница курса", icon: Globe, color: "text-rose-500" },
+              { value: "settings" as const, label: "Настройки", icon: Settings, color: "text-muted-foreground" },
+              { value: "reminders" as const, label: "Напоминания", icon: Bell, color: "text-orange-500" },
+            ]).map(item => (
+              <button
+                key={item.value}
+                onClick={() => onTabChange(item.value)}
+                className={cn(
+                  "flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 whitespace-nowrap",
+                  "hover:bg-primary/10 hover:text-primary hover:translate-x-0.5",
+                  activeTab === item.value
+                    ? "bg-primary/15 text-primary lg:border-r-2 lg:border-primary"
+                    : "text-muted-foreground"
+                )}
+              >
+                <item.icon className={cn("w-4 h-4 shrink-0", activeTab === item.value ? "text-primary" : item.color)} />
+                {item.label}
+              </button>
+            ))}
+          </div>
+        </nav>
+
+        {/* Content panel */}
+        <div className="flex-1 p-6 min-w-0">
+          {activeTab === "students" && (
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <h3 className="font-semibold">Ученики курса</h3>
@@ -581,21 +627,21 @@ export function CourseDetailsContent({
                 </div>
               )}
             </div>
-          </TabsContent>
+          )}
 
-          <TabsContent value="materials" className="mt-0">
+          {activeTab === "materials" && (
             <CourseDocumentsManager courseId={course.id} courseName={course.title} embedded={true} />
-          </TabsContent>
+          )}
 
-          <TabsContent value="history" className="mt-0">
+          {activeTab === "history" && (
             <EnrollmentHistory courseId={course.id} organizationId={organizationId || ""} courseName={course.title} />
-          </TabsContent>
+          )}
 
-          <TabsContent value="tests" className="mt-0">
+          {activeTab === "tests" && (
             <CourseTestReport courseId={course.id} courseName={course.title} organizationId={organizationId || ""} />
-          </TabsContent>
+          )}
 
-          <TabsContent value="landing" className="mt-0">
+          {activeTab === "landing" && (
             <div className="space-y-4">
               <div className="bg-gradient-to-r from-primary/10 to-accent/10 rounded-xl p-4 border border-primary/20 cursor-pointer hover:shadow-md transition-all" onClick={() => navigate(`/course/${course.id}/landing-editor`)}>
                 <div className="flex items-center justify-between">
@@ -608,9 +654,9 @@ export function CourseDetailsContent({
               </div>
               <CoursePageSettingsContent courseId={course.id} courseTitle={course.title} courseDescription={course.description || undefined} />
             </div>
-          </TabsContent>
+          )}
 
-          <TabsContent value="settings" className="mt-0">
+          {activeTab === "settings" && (
             <div className="space-y-6">
               <h3 className="font-semibold">Настройки курса</h3>
               <div className="bg-secondary/30 rounded-xl p-4 space-y-6">
@@ -661,8 +707,10 @@ export function CourseDetailsContent({
                 </div>
               </div>
             </div>
+          )}
 
-            {isFrdoEnabled && <div className="space-y-4 mt-6">
+          {activeTab === "settings" && isFrdoEnabled && (
+            <div className="space-y-4 mt-6">
               <div className="flex items-center gap-2"><FileSpreadsheet className="w-5 h-5 text-primary" /><h3 className="font-semibold">Настройки ФИС ФРДО</h3></div>
               <p className="text-sm text-muted-foreground">Эти настройки будут автоматически применяться при экспорте данных курса в ФИС ФРДО</p>
               <div className="bg-secondary/30 rounded-xl p-4 space-y-4">
@@ -747,10 +795,10 @@ export function CourseDetailsContent({
                   </Select>
                 </div>
               </div>
-            </div>}
-          </TabsContent>
+            </div>
+          )}
 
-          <TabsContent value="reminders" className="mt-0">
+          {activeTab === "reminders" && (
             <CourseRemindersTab
               courseId={course.id}
               organizationId={organizationId || ""}
@@ -794,13 +842,13 @@ export function CourseDetailsContent({
                 } catch (error) { console.error("Error updating completion_notify_emails:", error); }
               }}
             />
-          </TabsContent>
+          )}
 
-          <TabsContent value="groups" className="mt-0">
+          {activeTab === "groups" && (
             <CourseGroupsTab courseId={course.id} organizationId={organizationId || ""} onRefreshStudents={onRefreshStudents} />
-          </TabsContent>
+          )}
         </div>
-      </Tabs>
+      </div>
 
       {/* Reset Progress Confirmation Dialog */}
       <AlertDialog open={!!resetConfirmStudent} onOpenChange={(open) => !open && setResetConfirmStudent(null)}>
