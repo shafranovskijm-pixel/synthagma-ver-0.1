@@ -295,6 +295,15 @@ const RegisterOrganization = () => {
         } catch (tgErr) {
           console.error("Telegram notification error:", tgErr);
         }
+
+        // Seed welcome course (non-blocking)
+        try {
+          await supabase.functions.invoke("seed-welcome-course", {
+            body: { organizationId: orgId },
+          });
+        } catch (seedErr) {
+          console.error("Seed welcome course error:", seedErr);
+        }
       }
 
       if (selectedPlan && selectedPlan !== 'free') {

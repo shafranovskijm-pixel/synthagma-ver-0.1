@@ -242,6 +242,15 @@ export function OrganizationsManager() {
         }
       }
 
+      // Seed welcome course (non-blocking)
+      try {
+        await supabase.functions.invoke("seed-welcome-course", {
+          body: { organizationId: newOrg.id },
+        });
+      } catch (seedErr) {
+        console.error("Seed welcome course error:", seedErr);
+      }
+
       toast({ title: "Успешно", description: "Организация создана" });
       setIsCreateOpen(false);
       setFormData({ name: "", email: "", phone: "", inn: "", contact_name: "", login_email: "", login_password: "" });
