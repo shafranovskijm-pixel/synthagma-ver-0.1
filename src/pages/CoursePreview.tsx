@@ -798,6 +798,64 @@ const CoursePreview = () => {
               isTransitioning ? "opacity-0 translate-y-4" : "opacity-100 translate-y-0"
             )}
           >
+            {/* Course Documents View */}
+            {showDocumentsView && (
+              <div className="space-y-6">
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center">
+                    <BookOpen className="w-6 h-6 text-primary" />
+                  </div>
+                  <div>
+                    <h2 className="font-display font-bold text-xl">Материалы курса</h2>
+                    <p className="text-sm text-muted-foreground">
+                      {courseDocuments.length} {courseDocuments.length === 1 ? 'документ' : courseDocuments.length < 5 ? 'документа' : 'документов'}
+                    </p>
+                  </div>
+                </div>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  {courseDocuments.map((doc: any) => {
+                    const ext = doc.type?.toLowerCase() || doc.name?.split('.').pop()?.toLowerCase() || '';
+                    const getDocIcon = () => {
+                      if (ext === 'pdf') return FileTextIcon;
+                      if (['doc', 'docx', 'txt', 'rtf'].includes(ext)) return FileTextIcon;
+                      if (['xls', 'xlsx'].includes(ext)) return FileSpreadsheet;
+                      if (['ppt', 'pptx'].includes(ext)) return PresentationIcon;
+                      return File;
+                    };
+                    const getDocColor = () => {
+                      if (ext === 'pdf') return 'text-red-500 bg-red-500/10';
+                      if (['doc', 'docx'].includes(ext)) return 'text-blue-500 bg-blue-500/10';
+                      if (['xls', 'xlsx'].includes(ext)) return 'text-green-500 bg-green-500/10';
+                      if (['ppt', 'pptx'].includes(ext)) return 'text-orange-500 bg-orange-500/10';
+                      return 'text-muted-foreground bg-muted';
+                    };
+                    const DocIcon = getDocIcon();
+                    const docColor = getDocColor();
+                    return (
+                      <button
+                        key={doc.id}
+                        onClick={() => {
+                          if (doc.file_url) {
+                            setPreviewFile({ url: doc.file_url, name: doc.name, type: ext || null });
+                          }
+                        }}
+                        className="flex items-center gap-3 p-4 rounded-xl border border-border bg-card hover:bg-secondary/50 transition-colors group text-left"
+                      >
+                        <div className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 ${docColor}`}>
+                          <DocIcon className="w-5 h-5" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium truncate">{doc.name}</p>
+                          <p className="text-xs text-muted-foreground">{ext?.toUpperCase() || 'Файл'}</p>
+                        </div>
+                        <Eye className="w-4 h-4 text-muted-foreground group-hover:text-primary transition-colors shrink-0" />
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
             {currentLesson?.type === 'text' && (
               <div className="prose prose-lg dark:prose-invert max-w-none">
                 {contentBlocks.length > 0 ? (
