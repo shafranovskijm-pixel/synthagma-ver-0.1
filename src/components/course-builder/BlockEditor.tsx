@@ -511,7 +511,7 @@ function AddBlockButton({ onAdd }: { onAdd: (type: BlockType) => void }) {
           </TabsList>
           {Object.entries(blockCategories).map(([key, cat]) => (
             <TabsContent key={key} value={key} className="mt-2">
-              <BlockCategoryGrid items={cat.items} onSelect={handleSelect} />
+              <BlockCategoryGrid items={cat.items} onSelect={handleSelect} calloutItems={key === "other" ? calloutItems : undefined} />
             </TabsContent>
           ))}
         </Tabs>
@@ -949,7 +949,7 @@ function SortableBlockItem({ block, isFocused, onFocus, onUpdate, onDelete, onAd
                 </TabsList>
                 {Object.entries(blockCategories).map(([key, cat]) => (
                   <TabsContent key={key} value={key} className="mt-2">
-                    <BlockCategoryGrid items={cat.items} onSelect={(type) => onAddAfter(type)} />
+                    <BlockCategoryGrid items={cat.items} onSelect={(type) => onAddAfter(type)} calloutItems={key === "other" ? calloutItems : undefined} />
                   </TabsContent>
                 ))}
               </Tabs>
