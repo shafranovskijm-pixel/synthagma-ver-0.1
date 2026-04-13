@@ -8,10 +8,12 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Checkbox } from "@/components/ui/checkbox";
-import { ArrowLeft, User, Bell, Handshake, Save, Eye, EyeOff, Settings, Upload, X, Loader2, Image as ImageIcon } from "lucide-react";
+import { ArrowLeft, User, Bell, Handshake, Save, Eye, EyeOff, Upload, X, Loader2, Image as ImageIcon, Palette, LogIn } from "lucide-react";
 import { toast } from "sonner";
 import { PartnerCabinet } from "@/components/organization/PartnerCabinet";
-import { OrgProfileSettings } from "@/components/organization/OrgProfileSettings";
+import { ThemePersonalization } from "@/components/ui/ThemePersonalization";
+import { ProfileBrandingTab } from "@/components/organization/ProfileBrandingTab";
+import { ProfileLoginBrandingTab } from "@/components/organization/ProfileLoginBrandingTab";
 
 
 interface ProfileData {
@@ -76,13 +78,13 @@ export default function OrganizationProfile() {
   const iconInputRef = useRef<HTMLInputElement>(null);
 
   const [orgIdLoading, setOrgIdLoading] = useState(true);
+  const [isDarkMode, setIsDarkMode] = useState(() => document.documentElement.classList.contains('dark'));
 
   // Load organizationId reliably on mount
   useEffect(() => {
     if (!user) { setOrgIdLoading(false); return; }
     const loadOrganizationId = async () => {
       try {
-        // Try profile first
         const { data: prof } = await supabase
           .from("profiles")
           .select("organization_id")
@@ -91,12 +93,10 @@ export default function OrganizationProfile() {
         if (prof?.organization_id) {
           setOrganizationId(prof.organization_id);
         } else {
-          // Fallback: use the current_organization_id() database function
           const { data: orgId } = await supabase.rpc("current_organization_id");
           if (orgId) {
             setOrganizationId(orgId as string);
           } else {
-            // Admin fallback: pick the first organization
             const { data: firstOrg } = await supabase
               .from("organizations")
               .select("id")
@@ -319,18 +319,21 @@ export default function OrganizationProfile() {
             <TabsTrigger value="profile" className="rounded-lg gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm px-4 py-2">
               <User className="w-4 h-4" /> Мой профиль
             </TabsTrigger>
-            <TabsTrigger value="settings" className="rounded-lg gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm px-4 py-2">
-              <Settings className="w-4 h-4" /> Настройки
+            <TabsTrigger value="branding" className="rounded-lg gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm px-4 py-2">
+              <Palette className="w-4 h-4" /> Брендирование
+            </TabsTrigger>
+            <TabsTrigger value="login-branding" className="rounded-lg gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm px-4 py-2">
+              <LogIn className="w-4 h-4" /> Бренд. страницы входа
             </TabsTrigger>
             <TabsTrigger value="notifications" className="rounded-lg gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm px-4 py-2">
-              <Bell className="w-4 h-4" /> Настройки уведомлений
+              <Bell className="w-4 h-4" /> Уведомления
             </TabsTrigger>
             <TabsTrigger value="partner" className="rounded-lg gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm px-4 py-2">
               <Handshake className="w-4 h-4" /> Партнёрская программа
             </TabsTrigger>
           </TabsList>
 
-          {/* Tab 1: Profile */}
+          {/* Tab 1: Profile + Theme + Credentials */}
           <TabsContent value="profile">
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
               {/* Left: Profile info */}
@@ -371,8 +374,33 @@ export default function OrganizationProfile() {
                 </CardContent>
               </Card>
 
-              {/* Right: Icon + Email + Password */}
+              {/* Right: Icon + Theme + Email + Password */}
               <div className="space-y-6">
+                {/* Theme */}
+                <Card className="rounded-2xl">
+                  <CardHeader>
+                    <CardTitle className="text-base flex items-center gap-2">
+                      <Palette className="w-4 h-4" />
+                      Тема оформления
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <ThemePersonalization
+                      isDarkMode={isDarkMode}
+                      onToggleDark={(dark) => {
+                        setIsDarkMode(dark);
+                        if (dark) {
+                          document.documentElement.classList.add('dark');
+                          localStorage.setItem('theme', 'dark');
+                        } else {
+                          document.documentElement.classList.remove('dark');
+                          localStorage.setItem('theme', 'light');
+                        }
+                      }}
+                    />
+                  </CardContent>
+                </Card>
+
                 {/* Org Icon */}
                 <Card className="rounded-2xl">
                   <CardHeader>
@@ -427,6 +455,8 @@ export default function OrganizationProfile() {
                     </div>
                   </CardContent>
                 </Card>
+
+                {/* Email */}
                 <Card className="rounded-2xl">
                   <CardHeader>
                     <CardTitle className="text-base">Изменить email</CardTitle>
@@ -439,6 +469,7 @@ export default function OrganizationProfile() {
                   </CardContent>
                 </Card>
 
+                {/* Password */}
                 <Card className="rounded-2xl">
                   <CardHeader>
                     <CardTitle className="text-base">Смена пароля</CardTitle>
@@ -472,22 +503,33 @@ export default function OrganizationProfile() {
             </div>
           </TabsContent>
 
-          {/* Tab 2: Settings */}
-          <TabsContent value="settings">
+          {/* Tab 2: Branding */}
+          <TabsContent value="branding">
             {orgIdLoading ? (
               <div className="flex items-center justify-center py-16">
                 <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
               </div>
             ) : organizationId && user?.id ? (
-              <OrgProfileSettings organizationId={organizationId} userId={user.id} />
+              <ProfileBrandingTab organizationId={organizationId} userId={user.id} />
             ) : (
-              <div className="text-center py-16 text-muted-foreground">
-                Организация не найдена
-              </div>
+              <div className="text-center py-16 text-muted-foreground">Организация не найдена</div>
             )}
           </TabsContent>
 
-          {/* Tab 3: Notifications */}
+          {/* Tab 3: Login Branding */}
+          <TabsContent value="login-branding">
+            {orgIdLoading ? (
+              <div className="flex items-center justify-center py-16">
+                <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+              </div>
+            ) : organizationId && user?.id ? (
+              <ProfileLoginBrandingTab organizationId={organizationId} userId={user.id} />
+            ) : (
+              <div className="text-center py-16 text-muted-foreground">Организация не найдена</div>
+            )}
+          </TabsContent>
+
+          {/* Tab 4: Notifications */}
           <TabsContent value="notifications">
             <Card className="rounded-2xl">
               <CardHeader>
@@ -553,7 +595,7 @@ export default function OrganizationProfile() {
             </Card>
           </TabsContent>
 
-          {/* Tab 3: Partner */}
+          {/* Tab 5: Partner */}
           <TabsContent value="partner">
             <PartnerCabinet />
           </TabsContent>

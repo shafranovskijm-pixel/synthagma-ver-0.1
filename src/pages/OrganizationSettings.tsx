@@ -2,10 +2,12 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-import { ArrowLeft, Settings, LayoutGrid, Save, RefreshCw, RotateCcw, ChevronRight, Users, FileText, ClipboardList, FileSpreadsheet, BarChart3, Link, HardHat, ShoppingBag, Building2 } from "lucide-react";
+import { ArrowLeft, Settings, LayoutGrid, Save, RefreshCw, RotateCcw, Users, FileText, ClipboardList, FileSpreadsheet, BarChart3, Link, HardHat, ShoppingBag, Building2, ChevronRight, CreditCard, GraduationCap } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import { RobokassaSettings } from "@/components/organization/RobokassaSettings";
+import { SettingsStudentDashboardTab } from "@/components/organization/SettingsStudentDashboardTab";
 
 interface MenuSettings {
   showStats: boolean;
@@ -39,7 +41,6 @@ export default function OrganizationSettings() {
       const { data: prof } = await supabase.from("profiles").select("organization_id").eq("user_id", user.id).maybeSingle();
       let orgId = prof?.organization_id || (await supabase.rpc("current_organization_id")).data as string | null;
       if (!orgId) {
-        // Admin fallback: pick the first organization
         const { data: firstOrg } = await supabase.from("organizations").select("id").limit(1).maybeSingle();
         orgId = firstOrg?.id || null;
       }
@@ -126,80 +127,93 @@ export default function OrganizationSettings() {
         </div>
       </header>
 
-      <div className="max-w-2xl mx-auto px-4 py-6 space-y-4 lg:space-y-6">
-        {/* Menu Items Settings */}
-        <details className="bg-card rounded-xl lg:rounded-2xl border border-border group" open>
-          <summary className="p-4 lg:p-6 cursor-pointer list-none flex items-center justify-between">
-            <h3 className="font-display font-semibold text-base lg:text-lg flex items-center gap-2">
-              <LayoutGrid className="w-4 h-4 lg:w-5 lg:h-5" />
-              Разделы меню
-            </h3>
-            <ChevronRight className="w-5 h-5 text-muted-foreground transition-transform group-open:rotate-90" />
-          </summary>
-          <div className="px-4 lg:px-6 pb-4 lg:pb-6">
-            <p className="text-xs lg:text-sm text-muted-foreground mb-3 lg:mb-4">Включите или отключите разделы в боковом меню</p>
-            <div className="space-y-0">
-              <ToggleRow icon={BarChart3} iconClass="bg-accent/10 text-accent" label="Статистика" desc="Аналитика и отчёты" settingsKey="showStats" />
-              <ToggleRow icon={Link} iconClass="bg-primary/10 text-primary" label="Ссылки регистрации" desc="Самостоятельная регистрация" settingsKey="showLinks" />
-              <ToggleRow icon={HardHat} iconClass="bg-accent/10 text-accent" label="Охрана труда" desc="Модуль охраны труда" settingsKey="showLaborSafety" />
-              <ToggleRow icon={FileText} iconClass="bg-destructive/10 text-destructive" label="Документы" desc="Документооборот" settingsKey="showDocuments" />
-              <ToggleRow icon={Building2} iconClass="bg-primary/10 text-primary" label="Компании" desc="Управление корпоративными клиентами" settingsKey="showCompanies" />
-              <ToggleRow icon={ShoppingBag} iconClass="bg-primary/10 text-primary" label="Маркетплейс" desc="Магазин курсов" settingsKey="showServices" />
-            </div>
-            <div className="mt-4 lg:mt-6 pt-3 lg:pt-4 border-t border-border flex flex-wrap gap-2">
-              <Button className="btn-gradient rounded-xl gap-2 text-sm" onClick={handleSaveMenuSettings}>
-                <Save className="w-4 h-4" />
-                Сохранить
-              </Button>
-              <Button variant="outline" className="rounded-xl gap-2 text-sm" onClick={reloadMenuSettings}>
-                <RefreshCw className="w-4 h-4" />
-                Обновить меню
-              </Button>
-              <Button variant="ghost" className="rounded-xl gap-2 text-sm" onClick={resetMenuSettings}>
-                <RotateCcw className="w-4 h-4" />
-                По умолчанию
-              </Button>
-            </div>
-          </div>
-        </details>
+      <div className="max-w-5xl mx-auto px-4 py-6">
+        <Tabs defaultValue="menu">
+          <TabsList className="mb-6 bg-muted/50 p-1 rounded-xl flex-wrap">
+            <TabsTrigger value="menu" className="rounded-lg gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm px-4 py-2">
+              <LayoutGrid className="w-4 h-4" /> Разделы меню
+            </TabsTrigger>
+            <TabsTrigger value="robokassa" className="rounded-lg gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm px-4 py-2">
+              <CreditCard className="w-4 h-4" /> Robokassa
+            </TabsTrigger>
+            <TabsTrigger value="student" className="rounded-lg gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm px-4 py-2">
+              <GraduationCap className="w-4 h-4" /> Настройки ЛК
+            </TabsTrigger>
+            <TabsTrigger value="modules" className="rounded-lg gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm px-4 py-2">
+              <Settings className="w-4 h-4" /> Управление
+            </TabsTrigger>
+          </TabsList>
 
-        {/* Robokassa Payment Settings */}
-        {organizationId && <RobokassaSettings organizationId={organizationId} />}
+          {/* Tab: Menu Items */}
+          <TabsContent value="menu">
+            <div className="max-w-2xl">
+              <div className="bg-card rounded-xl lg:rounded-2xl border border-border p-4 lg:p-6">
+                <p className="text-xs lg:text-sm text-muted-foreground mb-3 lg:mb-4">Включите или отключите разделы в боковом меню</p>
+                <div className="space-y-0">
+                  <ToggleRow icon={BarChart3} iconClass="bg-accent/10 text-accent" label="Статистика" desc="Аналитика и отчёты" settingsKey="showStats" />
+                  <ToggleRow icon={Link} iconClass="bg-primary/10 text-primary" label="Ссылки регистрации" desc="Самостоятельная регистрация" settingsKey="showLinks" />
+                  <ToggleRow icon={HardHat} iconClass="bg-accent/10 text-accent" label="Охрана труда" desc="Модуль охраны труда" settingsKey="showLaborSafety" />
+                  <ToggleRow icon={FileText} iconClass="bg-destructive/10 text-destructive" label="Документы" desc="Документооборот" settingsKey="showDocuments" />
+                  <ToggleRow icon={Building2} iconClass="bg-primary/10 text-primary" label="Компании" desc="Управление корпоративными клиентами" settingsKey="showCompanies" />
+                  <ToggleRow icon={ShoppingBag} iconClass="bg-primary/10 text-primary" label="Маркетплейс" desc="Магазин курсов" settingsKey="showServices" />
+                </div>
+                <div className="mt-4 lg:mt-6 pt-3 lg:pt-4 border-t border-border flex flex-wrap gap-2">
+                  <Button className="btn-gradient rounded-xl gap-2 text-sm" onClick={handleSaveMenuSettings}>
+                    <Save className="w-4 h-4" /> Сохранить
+                  </Button>
+                  <Button variant="outline" className="rounded-xl gap-2 text-sm" onClick={reloadMenuSettings}>
+                    <RefreshCw className="w-4 h-4" /> Обновить меню
+                  </Button>
+                  <Button variant="ghost" className="rounded-xl gap-2 text-sm" onClick={resetMenuSettings}>
+                    <RotateCcw className="w-4 h-4" /> По умолчанию
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </TabsContent>
 
-        {/* Quick Navigation to Sections */}
-        <details className="bg-card rounded-xl lg:rounded-2xl border border-border group">
-          <summary className="p-4 lg:p-6 cursor-pointer list-none flex items-center justify-between">
-            <h3 className="font-display font-semibold text-base lg:text-lg flex items-center gap-2">
-              <Settings className="w-4 h-4 lg:w-5 lg:h-5" />
-              Управление разделами
-            </h3>
-            <ChevronRight className="w-5 h-5 text-muted-foreground transition-transform group-open:rotate-90" />
-          </summary>
-          <div className="px-4 lg:px-6 pb-4 lg:pb-6 space-y-3">
-            <p className="text-xs lg:text-sm text-muted-foreground mb-2">Быстрый доступ к разделам управления организацией</p>
-            {[
-              { tab: "staff", icon: Users, iconBg: "bg-primary/10", iconColor: "text-primary", title: "Сотрудники", desc: "Управление ролями и доступом" },
-              { tab: "documents", icon: FileText, iconBg: "bg-destructive/10", iconColor: "text-destructive", title: "Документооборот", desc: "Приказы, протоколы, сертификаты" },
-              { tab: "journals", icon: ClipboardList, iconBg: "bg-accent/10", iconColor: "text-accent", title: "Журналы учёта", desc: "Журналы учёта слушателей" },
-              { tab: "frdo", icon: FileSpreadsheet, iconBg: "bg-primary/10", iconColor: "text-primary", title: "ФИС ФРДО", desc: "Федеральный реестр документов" },
-            ].map(({ tab, icon: Icon, iconBg, iconColor, title, desc }) => (
-              <button
-                key={tab}
-                onClick={() => navigate("/organization", { state: { tab } })}
-                className="w-full flex items-center gap-3 p-3 rounded-xl border border-border hover:bg-accent/5 hover:border-primary/30 transition-all text-left group/nav"
-              >
-                <div className={`w-9 h-9 rounded-lg ${iconBg} flex items-center justify-center shrink-0`}>
-                  <Icon className={`w-4 h-4 ${iconColor}`} />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="font-medium text-sm">{title}</p>
-                  <p className="text-xs text-muted-foreground">{desc}</p>
-                </div>
-                <ChevronRight className="w-4 h-4 text-muted-foreground group-hover/nav:text-primary transition-colors" />
-              </button>
-            ))}
-          </div>
-        </details>
+          {/* Tab: Robokassa */}
+          <TabsContent value="robokassa">
+            <div className="max-w-2xl">
+              {organizationId && <RobokassaSettings organizationId={organizationId} />}
+            </div>
+          </TabsContent>
+
+          {/* Tab: Student Dashboard Settings */}
+          <TabsContent value="student">
+            <div className="max-w-2xl">
+              {organizationId && <SettingsStudentDashboardTab organizationId={organizationId} />}
+            </div>
+          </TabsContent>
+
+          {/* Tab: Module Management */}
+          <TabsContent value="modules">
+            <div className="max-w-2xl space-y-3">
+              <p className="text-sm text-muted-foreground mb-2">Быстрый доступ к разделам управления организацией</p>
+              {[
+                { tab: "staff", icon: Users, iconBg: "bg-primary/10", iconColor: "text-primary", title: "Сотрудники", desc: "Управление ролями и доступом" },
+                { tab: "documents", icon: FileText, iconBg: "bg-destructive/10", iconColor: "text-destructive", title: "Документооборот", desc: "Приказы, протоколы, сертификаты" },
+                { tab: "journals", icon: ClipboardList, iconBg: "bg-accent/10", iconColor: "text-accent", title: "Журналы учёта", desc: "Журналы учёта слушателей" },
+                { tab: "frdo", icon: FileSpreadsheet, iconBg: "bg-primary/10", iconColor: "text-primary", title: "ФИС ФРДО", desc: "Федеральный реестр документов" },
+              ].map(({ tab, icon: Icon, iconBg, iconColor, title, desc }) => (
+                <button
+                  key={tab}
+                  onClick={() => navigate("/organization", { state: { tab } })}
+                  className="w-full flex items-center gap-3 p-3 rounded-xl border border-border hover:bg-accent/5 hover:border-primary/30 transition-all text-left group/nav"
+                >
+                  <div className={`w-9 h-9 rounded-lg ${iconBg} flex items-center justify-center shrink-0`}>
+                    <Icon className={`w-4 h-4 ${iconColor}`} />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium text-sm">{title}</p>
+                    <p className="text-xs text-muted-foreground">{desc}</p>
+                  </div>
+                  <ChevronRight className="w-4 h-4 text-muted-foreground group-hover/nav:text-primary transition-colors" />
+                </button>
+              ))}
+            </div>
+          </TabsContent>
+        </Tabs>
       </div>
     </div>
   );
