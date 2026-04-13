@@ -1,5 +1,6 @@
 import { useState, useCallback, useEffect, useRef } from "react";
 import DOMPurify from "dompurify";
+import { Link2 } from "lucide-react";
 import { checkAiLimitGlobal, incrementAiLimitGlobal } from "@/hooks/useAiGenerationLimit";
 import { safeInvoke } from "@/utils/safeInvoke";
 import { LazyMediaPreview } from "@/components/course-builder/LazyMediaPreview";
@@ -64,6 +65,10 @@ import {
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
+  DropdownMenuSub,
+  DropdownMenuSubTrigger,
+  DropdownMenuSubContent,
+  DropdownMenuPortal,
 } from "@/components/ui/dropdown-menu";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
@@ -402,6 +407,16 @@ export function BlockEditor({ blocks, onChange, readOnly = false, courseTitle, l
   );
 }
 
+const calloutItems = [
+  { type: "callout-info" as BlockType, icon: AlertCircle, label: "Информация", color: "text-blue-500" },
+  { type: "callout-warning" as BlockType, icon: AlertCircle, label: "Предупреждение", color: "text-amber-500" },
+  { type: "callout-tip" as BlockType, icon: Lightbulb, label: "Совет", color: "text-green-500" },
+  { type: "callout-success" as BlockType, icon: CheckCircle, label: "Выполнено", color: "text-emerald-500" },
+  { type: "callout-danger" as BlockType, icon: XCircle, label: "Ошибка", color: "text-red-500" },
+  { type: "highlight" as BlockType, icon: Highlighter, label: "Выделение", color: "text-yellow-500" },
+  { type: "quote" as BlockType, icon: Quote, label: "Цитата", color: "text-muted-foreground" },
+];
+
 const blockCategories = {
   text: {
     label: "Текст",
@@ -411,18 +426,6 @@ const blockCategories = {
       { type: "heading2" as BlockType, icon: Heading2, label: "Заголовок 2" },
       { type: "bulletList" as BlockType, icon: List, label: "Маркир. список" },
       { type: "numberedList" as BlockType, icon: ListOrdered, label: "Нумер. список" },
-      { type: "quote" as BlockType, icon: Quote, label: "Цитата", color: "text-muted-foreground" },
-    ],
-  },
-  callouts: {
-    label: "Выделение",
-    items: [
-      { type: "callout-info" as BlockType, icon: AlertCircle, label: "Информация", color: "text-blue-500" },
-      { type: "callout-warning" as BlockType, icon: AlertCircle, label: "Предупреждение", color: "text-amber-500" },
-      { type: "callout-tip" as BlockType, icon: Lightbulb, label: "Совет", color: "text-green-500" },
-      { type: "callout-success" as BlockType, icon: CheckCircle, label: "Выполнено", color: "text-emerald-500" },
-      { type: "callout-danger" as BlockType, icon: XCircle, label: "Ошибка", color: "text-red-500" },
-      { type: "highlight" as BlockType, icon: Highlighter, label: "Выделение", color: "text-yellow-500" },
     ],
   },
   media: {
