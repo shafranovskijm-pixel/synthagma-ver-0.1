@@ -1,5 +1,6 @@
 import { useState, useCallback, useEffect, useRef } from "react";
 import DOMPurify from "dompurify";
+import { Link2 } from "lucide-react";
 import { checkAiLimitGlobal, incrementAiLimitGlobal } from "@/hooks/useAiGenerationLimit";
 import { safeInvoke } from "@/utils/safeInvoke";
 import { LazyMediaPreview } from "@/components/course-builder/LazyMediaPreview";
@@ -64,6 +65,10 @@ import {
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
+  DropdownMenuSub,
+  DropdownMenuSubTrigger,
+  DropdownMenuSubContent,
+  DropdownMenuPortal,
 } from "@/components/ui/dropdown-menu";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
@@ -402,6 +407,16 @@ export function BlockEditor({ blocks, onChange, readOnly = false, courseTitle, l
   );
 }
 
+const calloutItems = [
+  { type: "callout-info" as BlockType, icon: AlertCircle, label: "Информация", color: "text-blue-500" },
+  { type: "callout-warning" as BlockType, icon: AlertCircle, label: "Предупреждение", color: "text-amber-500" },
+  { type: "callout-tip" as BlockType, icon: Lightbulb, label: "Совет", color: "text-green-500" },
+  { type: "callout-success" as BlockType, icon: CheckCircle, label: "Выполнено", color: "text-emerald-500" },
+  { type: "callout-danger" as BlockType, icon: XCircle, label: "Ошибка", color: "text-red-500" },
+  { type: "highlight" as BlockType, icon: Highlighter, label: "Выделение", color: "text-yellow-500" },
+  { type: "quote" as BlockType, icon: Quote, label: "Цитата", color: "text-muted-foreground" },
+];
+
 const blockCategories = {
   text: {
     label: "Текст",
@@ -411,18 +426,6 @@ const blockCategories = {
       { type: "heading2" as BlockType, icon: Heading2, label: "Заголовок 2" },
       { type: "bulletList" as BlockType, icon: List, label: "Маркир. список" },
       { type: "numberedList" as BlockType, icon: ListOrdered, label: "Нумер. список" },
-      { type: "quote" as BlockType, icon: Quote, label: "Цитата", color: "text-muted-foreground" },
-    ],
-  },
-  callouts: {
-    label: "Выделение",
-    items: [
-      { type: "callout-info" as BlockType, icon: AlertCircle, label: "Информация", color: "text-blue-500" },
-      { type: "callout-warning" as BlockType, icon: AlertCircle, label: "Предупреждение", color: "text-amber-500" },
-      { type: "callout-tip" as BlockType, icon: Lightbulb, label: "Совет", color: "text-green-500" },
-      { type: "callout-success" as BlockType, icon: CheckCircle, label: "Выполнено", color: "text-emerald-500" },
-      { type: "callout-danger" as BlockType, icon: XCircle, label: "Ошибка", color: "text-red-500" },
-      { type: "highlight" as BlockType, icon: Highlighter, label: "Выделение", color: "text-yellow-500" },
     ],
   },
   media: {
@@ -445,7 +448,8 @@ const blockCategories = {
   },
 };
 
-function BlockCategoryGrid({ items, onSelect }: { items: typeof blockCategories.text.items; onSelect: (type: BlockType) => void }) {
+function BlockCategoryGrid({ items, onSelect, calloutItems: cItems, calloutLabel }: { items: { type: BlockType; icon: any; label: string; color?: string }[]; onSelect: (type: BlockType) => void; calloutItems?: typeof calloutItems; calloutLabel?: string }) {
+  const [showCallouts, setShowCallouts] = useState(false);
   return (
     <div className="grid grid-cols-2 gap-1">
       {items.map((item) => (
@@ -458,6 +462,28 @@ function BlockCategoryGrid({ items, onSelect }: { items: typeof blockCategories.
           <span className="truncate">{item.label}</span>
         </button>
       ))}
+      {cItems && cItems.length > 0 && (
+        <>
+          <button
+            onClick={() => setShowCallouts(!showCallouts)}
+            className="flex items-center gap-2 px-2 py-1.5 rounded-md text-sm hover:bg-accent transition-colors text-left col-span-2"
+          >
+            <Highlighter className="w-4 h-4 shrink-0 text-yellow-500" />
+            <span className="truncate">{calloutLabel || "Выделение"}</span>
+            <ChevronRight className={cn("w-3 h-3 ml-auto transition-transform", showCallouts && "rotate-90")} />
+          </button>
+          {showCallouts && cItems.map((item) => (
+            <button
+              key={item.type}
+              onClick={() => onSelect(item.type)}
+              className="flex items-center gap-2 px-2 py-1.5 rounded-md text-sm hover:bg-accent transition-colors text-left pl-6"
+            >
+              <item.icon className={cn("w-4 h-4 shrink-0", item.color || "text-foreground")} />
+              <span className="truncate">{item.label}</span>
+            </button>
+          ))}
+        </>
+      )}
     </div>
   );
 }
@@ -485,7 +511,7 @@ function AddBlockButton({ onAdd }: { onAdd: (type: BlockType) => void }) {
           </TabsList>
           {Object.entries(blockCategories).map(([key, cat]) => (
             <TabsContent key={key} value={key} className="mt-2">
-              <BlockCategoryGrid items={cat.items} onSelect={handleSelect} />
+              <BlockCategoryGrid items={cat.items} onSelect={handleSelect} calloutItems={key === "other" ? calloutItems : undefined} />
             </TabsContent>
           ))}
         </Tabs>
@@ -553,7 +579,7 @@ const textColorPresets = [
   { value: "white", label: "Белый", class: "text-white", dot: "bg-white border border-border" },
 ];
 
-const wrapTargets: { type: BlockType; icon: any; label: string; color: string }[] = [
+const wrapCalloutTargets: { type: BlockType; icon: any; label: string; color: string }[] = [
   { type: "callout-info", icon: Info, label: "Информация", color: "text-blue-500" },
   { type: "callout-warning", icon: AlertTriangle, label: "Предупреждение", color: "text-amber-500" },
   { type: "callout-tip", icon: Lightbulb, label: "Совет", color: "text-green-500" },
@@ -561,9 +587,12 @@ const wrapTargets: { type: BlockType; icon: any; label: string; color: string }[
   { type: "callout-danger", icon: XCircle, label: "Ошибка", color: "text-red-500" },
   { type: "highlight", icon: Highlighter, label: "Выделение", color: "text-yellow-500" },
   { type: "quote", icon: Quote, label: "Цитата", color: "text-muted-foreground" },
+];
+
+const wrapOtherTargets: { type: BlockType; icon: any; label: string; color: string }[] = [
+  { type: "paragraph", icon: Type, label: "Обычный текст", color: "text-foreground" },
   { type: "accordion", icon: ChevronDown, label: "Сворачиваемая секция", color: "text-purple-500" },
   { type: "audio", icon: Headphones, label: "Аудио (TTS)", color: "text-teal-500" },
-  { type: "paragraph", icon: Type, label: "Обычный текст", color: "text-foreground" },
 ];
 
 // Quick style templates
@@ -736,11 +765,26 @@ function SortableBlockItem({ block, isFocused, onFocus, onUpdate, onDelete, onAd
                 </button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="center" className="w-52">
-                {wrapTargets.filter(t => t.type !== block.type).map((t) => (
+                {wrapOtherTargets.filter(t => t.type !== block.type).map((t) => (
                   <DropdownMenuItem key={t.type} onClick={() => handleConvert(t.type)}>
                     <t.icon className={cn("w-4 h-4 mr-2", t.color)} />{t.label}
                   </DropdownMenuItem>
                 ))}
+                <DropdownMenuSeparator />
+                <DropdownMenuSub>
+                  <DropdownMenuSubTrigger>
+                    <Highlighter className="w-4 h-4 mr-2 text-yellow-500" />Выделение
+                  </DropdownMenuSubTrigger>
+                  <DropdownMenuPortal>
+                    <DropdownMenuSubContent className="w-48">
+                      {wrapCalloutTargets.filter(t => t.type !== block.type).map((t) => (
+                        <DropdownMenuItem key={t.type} onClick={() => handleConvert(t.type)}>
+                          <t.icon className={cn("w-4 h-4 mr-2", t.color)} />{t.label}
+                        </DropdownMenuItem>
+                      ))}
+                    </DropdownMenuSubContent>
+                  </DropdownMenuPortal>
+                </DropdownMenuSub>
               </DropdownMenuContent>
             </DropdownMenu>
           )}
@@ -908,6 +952,34 @@ function SortableBlockItem({ block, isFocused, onFocus, onUpdate, onDelete, onAd
               <Eraser className="w-4 h-4" />
             </button>
           )}
+          {canStyle && (
+            <button
+              className="h-8 w-8 flex items-center justify-center hover:bg-white/20 rounded-full transition-colors"
+              title="Вставить ссылку"
+              onClick={() => {
+                const sel = window.getSelection();
+                if (!sel || sel.isCollapsed) {
+                  alert("Сначала выделите текст, чтобы сделать его ссылкой");
+                  return;
+                }
+                const url = prompt("Введите URL ссылки:");
+                if (!url) return;
+                document.execCommand("createLink", false, url);
+                // Set target="_blank" on new links
+                const editor = sel.anchorNode?.parentElement?.closest('[contenteditable]');
+                if (editor) {
+                  editor.querySelectorAll('a[href]').forEach((a) => {
+                    if (!a.getAttribute('target')) {
+                      a.setAttribute('target', '_blank');
+                      a.setAttribute('rel', 'noopener noreferrer');
+                    }
+                  });
+                }
+              }}
+            >
+              <Link2 className="w-4 h-4" />
+            </button>
+          )}
           <Popover>
             <PopoverTrigger asChild>
               <button className="h-8 w-8 flex items-center justify-center hover:bg-white/20 rounded-full transition-colors" title="Добавить блок">
@@ -923,7 +995,7 @@ function SortableBlockItem({ block, isFocused, onFocus, onUpdate, onDelete, onAd
                 </TabsList>
                 {Object.entries(blockCategories).map(([key, cat]) => (
                   <TabsContent key={key} value={key} className="mt-2">
-                    <BlockCategoryGrid items={cat.items} onSelect={(type) => onAddAfter(type)} />
+                    <BlockCategoryGrid items={cat.items} onSelect={(type) => onAddAfter(type)} calloutItems={key === "other" ? calloutItems : undefined} />
                   </TabsContent>
                 ))}
               </Tabs>
