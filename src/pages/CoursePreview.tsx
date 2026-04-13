@@ -31,7 +31,8 @@ import {
   File,
   FileText as FileTextIcon,
   Presentation as PresentationIcon,
-  MessageSquare
+  MessageSquare,
+  Lock
 } from "lucide-react";
 import { ContentBlock, jsonToBlocks, BlockRenderer } from "@/components/course-builder/BlockEditor";
 import { cn, getAdminAwareBackPath } from "@/lib/utils";
@@ -44,6 +45,7 @@ interface Lesson {
   content: string | null;
   order_index: number;
   test_questions_count?: number | null;
+  is_locked?: boolean;
 }
 
 interface Course {
