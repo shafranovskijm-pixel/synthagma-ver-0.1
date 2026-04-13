@@ -76,6 +76,17 @@ export function useCourses(organizationId: string | null): UseCoursesReturn {
         ]);
         setCourses(coursesData);
         setCategories(categoriesData);
+
+        // Lazy-load student counts after rendering courses
+        const courseIds = coursesData.map(c => c.id);
+        fetchCourseStudentCounts(courseIds).then(countMap => {
+          if (countMap.size > 0) {
+            setCourses(prev => prev.map(c => ({
+              ...c,
+              studentsCount: countMap.get(c.id) ?? c.studentsCount ?? 0
+            })));
+          }
+        });
       } catch (err: any) {
         console.error("Error loading courses:", err);
         setError(err?.message || "Не удалось загрузить курсы");
