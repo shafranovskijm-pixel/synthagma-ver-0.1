@@ -713,6 +713,16 @@ export function CourseDetailsContent({
                 </div>
                 <div className="space-y-3">
                   <div className="flex items-start gap-3">
+                    <div className="p-2 rounded-lg bg-cyan-500/10 mt-0.5"><Clock className="w-5 h-5 text-cyan-500" /></div>
+                    <div className="flex-1">
+                      <Label className="text-sm font-medium">Срок доступа к курсу (дней)</Label>
+                      <p className="text-xs text-muted-foreground mt-1">Количество дней доступа после зачисления. Пустое значение — безлимитный доступ</p>
+                      <Input type="number" min={1} value={defaultAccessDays ?? ""} onChange={(e) => setDefaultAccessDays(e.target.value ? parseInt(e.target.value) : null)} onBlur={(e) => handleUpdateDefaultAccessDays(e.target.value)} placeholder="Безлимитный" className="mt-2 rounded-lg w-48" disabled={isSavingSettings} />
+                    </div>
+                  </div>
+                </div>
+                <div className="space-y-3">
+                  <div className="flex items-start gap-3">
                     <div className="p-2 rounded-lg bg-purple-500/10 mt-0.5"><ExternalLink className="w-5 h-5 text-purple-500" /></div>
                     <div className="flex-1">
                       <Label className="text-sm font-medium">Переход по внешней ссылке при клике на карточку</Label>
