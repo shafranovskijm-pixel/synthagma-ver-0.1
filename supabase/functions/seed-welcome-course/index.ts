@@ -271,49 +271,7 @@ async function seedCourseForOrg(supabase: any, organizationId: string, forceUpda
   // Insert test questions
   const testLesson = insertedLessons?.find((l: any) => l.type === "test");
   if (testLesson) {
-    const questions = [
-      {
-        lesson_id: testLesson.id,
-        question: "Какой ИИ-функционал доступен в СИНТАГМА?",
-        options: JSON.stringify(["Генерация курсов и тестов", "Только проверка орфографии", "Только перевод текстов", "ИИ не используется"]),
-        correct_answer: 0,
-        order_index: 0,
-        explanation: "СИНТАГМА использует ИИ для генерации структуры курсов, текстового контента и тестовых вопросов.",
-      },
-      {
-        lesson_id: testLesson.id,
-        question: "Для чего нужна видеоидентификация?",
-        options: JSON.stringify(["Для записи видеоуроков", "Для подтверждения личности при тестировании", "Для проведения вебинаров", "Для загрузки аватарки"]),
-        correct_answer: 1,
-        order_index: 1,
-        explanation: "Видеоидентификация подтверждает, что тест проходит именно зарегистрированный ученик.",
-      },
-      {
-        lesson_id: testLesson.id,
-        question: "Какие способы зачисления учеников поддерживает платформа?",
-        options: JSON.stringify(["Только ручное добавление", "Ссылки-приглашения, ручное добавление, импорт из Excel", "Только через email", "Только через QR-код"]),
-        correct_answer: 1,
-        order_index: 2,
-        explanation: "Платформа поддерживает ссылки-приглашения, ручное добавление и массовый импорт из Excel.",
-      },
-      {
-        lesson_id: testLesson.id,
-        question: "Что такое ФИС ФРДО?",
-        options: JSON.stringify(["Внутренний формат файлов платформы", "Федеральный реестр документов об образовании", "Система онлайн-оплаты", "Формат экспорта отчётов"]),
-        correct_answer: 1,
-        order_index: 3,
-        explanation: "ФИС ФРДО — Федеральная информационная система «Федеральный реестр сведений о документах об образовании».",
-      },
-      {
-        lesson_id: testLesson.id,
-        question: "Какой максимальный размер загружаемого видео?",
-        options: JSON.stringify(["100 МБ", "500 МБ", "2 ГБ", "Без ограничений"]),
-        correct_answer: 2,
-        order_index: 4,
-        explanation: "Платформа позволяет загружать видеофайлы размером до 2 ГБ.",
-      },
-    ];
-
+    const questions = buildTestQuestions(testLesson.id);
     const { error: qErr } = await supabase.from("test_questions").insert(questions);
     if (qErr) console.error("Test questions error:", qErr);
   }
