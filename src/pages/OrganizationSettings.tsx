@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-import { Settings, LayoutGrid, Save, RefreshCw, RotateCcw, Users, BarChart3, Link, HardHat, ShoppingBag, Building2, GraduationCap, Wallet } from "lucide-react";
+import { Settings, LayoutGrid, Save, RefreshCw, RotateCcw, Users, FileText, BarChart3, Link, HardHat, ShoppingBag, Building2, GraduationCap, Wallet } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
