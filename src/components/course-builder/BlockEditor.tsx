@@ -752,6 +752,7 @@ function SortableBlockItem({ block, isFocused, onFocus, onUpdate, onDelete, onAd
     <div
       ref={setNodeRef}
       style={style}
+      data-block-id={block.id}
       className={cn("group relative rounded-lg transition-all", isFocused && "bg-secondary/30")}
       onClick={onFocus}
     >
