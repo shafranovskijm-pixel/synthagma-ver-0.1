@@ -131,29 +131,7 @@ export function RichTextEditor({ value, onChange, placeholder, className, minHei
       editorRef.current?.focus();
       return;
     }
-
-    const sel = window.getSelection();
-    if (!sel || sel.isCollapsed) return;
-
-    const url = prompt('Введите URL ссылки:');
-    if (!url) return;
-
-    document.execCommand('createLink', false, url);
-
-    // Set target="_blank" and rel on newly created links
-    const editor = editorRef.current;
-    if (editor) {
-      const anchors = editor.querySelectorAll('a[href]');
-      anchors.forEach((a) => {
-        if (!a.getAttribute('target')) {
-          a.setAttribute('target', '_blank');
-          a.setAttribute('rel', 'noopener noreferrer');
-        }
-      });
-    }
-
-    handleInput();
-    editorRef.current?.focus();
+    // Link creation is handled by BlockEditor's popover — do nothing here
   };
 
   const toolbarButtons = [
