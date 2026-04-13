@@ -63,6 +63,7 @@ import {
 import { CourseRemindersTab } from "@/components/organization/CourseRemindersTab";
 import { CourseGroupsTab } from "@/components/organization/CourseGroupsTab";
 import { CoursePageSettingsContent } from "@/components/course-editor/CoursePageSettingsContent";
+import { CourseSettingsTabbed } from "@/components/organization/CourseSettingsTabbed";
 
 interface Course {
   id: string;
