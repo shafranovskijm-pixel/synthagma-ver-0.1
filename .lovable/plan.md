@@ -1,43 +1,40 @@
 
 
-# Улучшение DOOM-лабиринта: звуки из файлов, двери, стартовое поле, пикапы здоровья
+# Карточка ученика → полноэкранная страница
+
+## Суть
+Превратить `StudentDetailCard` из модального окна (Dialog) в полноценную страницу `/organization/student/:studentId` — по аналогии с `OrganizationCourseDetails`: сайдбар слева, шапка с обложкой, вертикальное меню разделов, подвал.
 
 ## Что будет сделано
 
-### 1. Загруженные MP3 вместо синтезированных звуков
-- Скопировать `714786-543-2.mp3` → `public/sounds/shoot.mp3` (звук выстрела)
-- Скопировать `714804543435435.mp3` → `public/sounds/pickup.mp3` (звук подбора здоровья)
-- В `MazeSounds.ts`: использовать `new Audio()` для выстрела пистолета (shoot.mp3), для ракетницы — тот же звук с пониженным `playbackRate`. Кулак оставить синтетическим (глухой удар). Пикап здоровья — pickup.mp3.
+### 1. Новая страница `src/pages/OrganizationStudentDetails.tsx`
+- Скопировать структуру из `OrganizationCourseDetails.tsx`:
+  - `OrgSidebar` слева
+  - Шапка: top bar (логотип, тариф, профиль-меню), hero-баннер с обложкой, sub-header с именем ученика и статусом онлайн
+  - Двухколоночный layout: **вертикальное меню слева** (Личное дело, Идентификация, Курсы, Документы, Активность, Чат) с cyan hover (`hover:text-primary hover:bg-primary/10`)
+  - Контент справа — те же табы (`ProfileTab`, `IdentificationTab`, `CoursesTab`, `DocumentsTab`, `ActivityTab`, `ChatTab`)
+  - `OrgDashboardFooter` внизу
+- Загрузка данных ученика по `studentId` из URL (profiles + enrollments)
 
-### 2. Стартовое открытое поле перед лабиринтом
-- Расширить `MAZE_MAP`: добавить 4 ряда сверху — открытое поле (0), которое сужается воронкой ко входу в лабиринт. Общая карта ~14x18.
-- Спавн игрока в начале поля.
+### 2. Добавить маршрут в `src/App.tsx`
+- `/organization/student/:studentId` → `OrganizationStudentDetails`
 
-### 3. Двери в лабиринте
-- Новый тип клетки `4` в карте — дверь. Визуально: плоский прямоугольник с текстурой (цвет + полоска). 
-- При подходе игрока дверь «открывается» (анимация: уходит вверх или исчезает). Можно привязать к «тарифам» — надпись на двери.
-- Компонент `Door` — mesh с анимацией открытия.
+### 3. Изменить навигацию: клик по ученику → navigate вместо Dialog
+- В `useStudentDetailCard.ts`: `viewStudent` вызывает `navigate(/organization/student/${student.id})` вместо открытия модалки
+- Или: в компонентах, где вызывается `handleViewStudent`, заменить на `navigate`
+- `DialogsContainer.tsx`: убрать `StudentDetailCard` из диалогов (оставить как fallback или удалить)
 
-### 4. Пикапы здоровья (сердечки)
-- Новый тип клетки `5` в карте — пикап здоровья.
-- Визуал: вращающееся красное сердечко (octahedron или shape).
-- При подходе игрока: восстанавливает 1 сердечко (до max 3), проигрывает pickup.mp3, исчезает.
-- 2-3 штуки разбросаны по лабиринту.
-
-### 5. Разные звуки и снаряды для оружия
-- Кулак: синтетический удар, без снаряда (как сейчас)
-- Пистолет: shoot.mp3 на нормальной скорости, маленькая жёлтая пуля
-- Ракетница: shoot.mp3 с `playbackRate = 0.6` (низкий бас), крупный оранжевый снаряд с trail-эффектом (несколько сфер позади)
+### 4. Сохранить вложенные диалоги
+- Preview документа, согласие на ПД, FRDO export — оставить как Dialog внутри новой страницы
 
 ## Файлы
 
 | Файл | Изменение |
 |---|---|
-| `public/sounds/shoot.mp3` | Загруженный звук выстрела |
-| `public/sounds/pickup.mp3` | Загруженный звук подбора здоровья |
-| `src/components/student/MazeSounds.ts` | Заменить синтетические звуки на MP3, добавить `playPickup()`, разные `playbackRate` для оружия |
-| `src/components/student/MazeGame.tsx` | Расширить карту (поле+двери+пикапы), компоненты Door и HealthPickup, trail для ракеты |
-| `src/components/student/Student3DTrainers.tsx` | Обновить maxHealth, синхронизация пикапов |
+| `src/pages/OrganizationStudentDetails.tsx` | **Новый** — полноэкранная страница ученика |
+| `src/App.tsx` | Добавить маршрут `/organization/student/:studentId` |
+| `src/hooks/useStudentDetailCard.ts` | `viewStudent` → navigate вместо setState |
+| `src/components/organization/dialogs/DialogsContainer.tsx` | Убрать `StudentDetailCard` dialog |
 
 Миграций не требуется.
 
