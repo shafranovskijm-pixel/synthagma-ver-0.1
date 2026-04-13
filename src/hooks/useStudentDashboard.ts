@@ -41,8 +41,9 @@ export interface CatalogCourse {
   is_enrolled?: boolean;
   progress?: number;
   completed_lessons?: number;
-  status?: "in_progress" | "completed" | "not_enrolled";
+  status?: "in_progress" | "completed" | "not_enrolled" | "pending";
   external_card_url?: string | null;
+  require_enrollment_approval?: boolean;
 }
 
 interface Profile {
@@ -321,12 +322,14 @@ export function useStudentDashboard() {
 
       // Load catalog: all published courses for this org + categories
       if (effectiveOrgId) {
-        const [coursesRes, catsRes] = await Promise.all([
-          supabase.from("courses").select("id, title, description, duration, price, category_id, cover_image_url, is_published, landing_content").eq("organization_id", effectiveOrgId).eq("is_published", true),
+        const [coursesRes, catsRes, pendingRequestsRes] = await Promise.all([
+          supabase.from("courses").select("id, title, description, duration, price, category_id, cover_image_url, is_published, landing_content, require_enrollment_approval").eq("organization_id", effectiveOrgId).eq("is_published", true),
           supabase.from("course_categories").select("id, name, color").eq("organization_id", effectiveOrgId),
+          supabase.from("enrollment_requests").select("course_id, status").eq("user_id", uid).eq("status", "pending"),
         ]);
         const allOrgCourses = coursesRes.data || [];
         const cats = catsRes.data || [];
+        const pendingRequests = new Set((pendingRequestsRes.data || []).map(r => r.course_id));
         setCategories(cats);
         const catMap = new Map(cats.map(c => [c.id, c]));
         const enrolledIds = new Set(cachedCoursesData.map(c => c.id));
@@ -344,6 +347,7 @@ export function useStudentDashboard() {
         const catalogData: CatalogCourse[] = allOrgCourses.map(c => {
           const enrolled = cachedCoursesData.find(ec => ec.id === c.id);
           const cat = c.category_id ? catMap.get(c.category_id) : null;
+          const isPending = pendingRequests.has(c.id);
           return {
             id: c.id, title: c.title, description: c.description,
             cover_image_url: (c as any).cover_image_url || null,
@@ -353,8 +357,9 @@ export function useStudentDashboard() {
             is_enrolled: enrolledIds.has(c.id),
             progress: enrolled?.progress,
             completed_lessons: enrolled?.completedLessons,
-            status: enrolled ? (enrolled.status === "completed" ? "completed" : "in_progress") : "not_enrolled",
+            status: enrolled ? (enrolled.status === "completed" ? "completed" : "in_progress") : (isPending ? "pending" : "not_enrolled"),
             external_card_url: (c as any).landing_content?.external_card_url || null,
+            require_enrollment_approval: (c as any).require_enrollment_approval || false,
           };
         });
         setCatalogCourses(catalogData);
