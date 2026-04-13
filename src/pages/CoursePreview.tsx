@@ -1232,6 +1232,7 @@ const CoursePreview = () => {
           fileUrl={previewFile.url}
           fileName={previewFile.name}
           fileType={previewFile.type}
+          allowDownload={course?.allow_materials_download !== false}
         />
       )}
     </div>
