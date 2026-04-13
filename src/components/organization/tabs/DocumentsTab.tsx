@@ -143,6 +143,15 @@ export const DocumentsTab = React.memo(function DocumentsTab({ organizationId, o
       .then(({ data }) => {
         if (data) setBillingDocs(data as any[]);
       });
+
+    supabase
+      .from("subscription_invoices")
+      .select("*")
+      .eq("organization_id", organizationId)
+      .order("created_at", { ascending: false })
+      .then(({ data }) => {
+        if (data) setInvoices(data as InvoiceRow[]);
+      });
   }, [organizationId]);
 
   const handleStampUpload = async (url: string) => {
