@@ -15,6 +15,7 @@ export type AdminTabType =
   | "content"
   | "marketplace"
   | "sales"
+  | "billing"
   | "ai"
   | "broadcast"
   | "chats"
@@ -108,6 +109,11 @@ export function AdminSidebar({
           <button onClick={() => handleTabClick("sales")} className={tabButtonClass("sales")}>
             <Briefcase className="w-5 h-5" />
             Продажи
+          </button>
+
+          <button onClick={() => handleTabClick("billing")} className={tabButtonClass("billing")}>
+            <FileText className="w-5 h-5" />
+            Биллинг
           </button>
 
           <button onClick={() => handleTabClick("analytics")} className={tabButtonClass("analytics")}>
