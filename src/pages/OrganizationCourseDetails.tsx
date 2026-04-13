@@ -19,6 +19,7 @@ import {
 import { differenceInDays } from "date-fns";
 import defaultCoverImg from "@/assets/default-org-cover.jpg";
 import { CourseDetailsContent } from "@/components/organization/CourseDetailsContent";
+import { OrgSidebar } from "@/components/organization/OrgSidebar";
 
 function getUserInitials(email?: string | null, name?: string | null): string {
   if (name) {
@@ -279,6 +280,7 @@ function CoursePageInner({ organizationId, courseId }: { organizationId: string;
       </div>
 
       <OrgDashboardFooter />
+      </main>
     </div>
   );
 }
