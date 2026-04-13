@@ -227,6 +227,7 @@ export async function duplicateCourse(courseId: string): Promise<Course | null> 
           test_questions_count: lesson.test_questions_count,
           test_passing_score: lesson.test_passing_score,
           test_questions_to_show: lesson.test_questions_to_show,
+          is_locked: lesson.is_locked ?? false,
         })
         .select("id")
         .single();

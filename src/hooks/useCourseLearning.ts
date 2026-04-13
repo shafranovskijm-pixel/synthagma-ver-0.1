@@ -21,6 +21,7 @@ export interface Lesson {
   type: string;
   content: string | null;
   order_index: number;
+  is_locked?: boolean;
 }
 
 export interface Course {
