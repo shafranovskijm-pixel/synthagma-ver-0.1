@@ -22,75 +22,13 @@ function noise(ctx: AudioContext, duration: number, gain: number) {
   return buf;
 }
 
-/* ─── Background music (Doom-style synth loop) ─── */
+/* ─── Background music — disabled ─── */
 export function playBGMusic() {
-  if (muted || bgMusicNodes) return;
-  const ctx = getCtx();
-  const masterGain = ctx.createGain();
-  masterGain.gain.value = 0.12;
-  masterGain.connect(ctx.destination);
-
-  const oscs: OscillatorNode[] = [];
-
-  const bassOsc = ctx.createOscillator();
-  bassOsc.type = "sawtooth";
-  const bassGain = ctx.createGain();
-  bassGain.gain.value = 0.5;
-
-  const lfo = ctx.createOscillator();
-  lfo.type = "sine";
-  lfo.frequency.value = 4;
-  const lfoGain = ctx.createGain();
-  lfoGain.gain.value = 15;
-  lfo.connect(lfoGain);
-  lfoGain.connect(bassOsc.frequency);
-
-  const bassNotes = [82.4, 98, 110, 123.5, 82.4, 98, 82.4, 73.4];
-  const beatDuration = 0.25;
-  const patternDuration = bassNotes.length * beatDuration;
-
-  function scheduleBass() {
-    const now = ctx.currentTime;
-    for (let rep = 0; rep < 200; rep++) {
-      const repStart = now + rep * patternDuration;
-      bassNotes.forEach((freq, i) => {
-        bassOsc.frequency.setValueAtTime(freq, repStart + i * beatDuration);
-      });
-    }
-  }
-
-  bassOsc.connect(bassGain);
-  bassGain.connect(masterGain);
-  scheduleBass();
-  bassOsc.start();
-  lfo.start();
-  oscs.push(bassOsc, lfo);
-
-  const kickInterval = setInterval(() => {
-    if (muted || !bgMusicNodes) { clearInterval(kickInterval); return; }
-    const kOsc = ctx.createOscillator();
-    kOsc.type = "sine";
-    kOsc.frequency.setValueAtTime(150, ctx.currentTime);
-    kOsc.frequency.exponentialRampToValueAtTime(30, ctx.currentTime + 0.1);
-    const kGain = ctx.createGain();
-    kGain.gain.setValueAtTime(0.4, ctx.currentTime);
-    kGain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.15);
-    kOsc.connect(kGain).connect(masterGain);
-    kOsc.start();
-    kOsc.stop(ctx.currentTime + 0.15);
-  }, 500);
-
-  bgMusicNodes = { osc: oscs, gain: masterGain, _kickInterval: kickInterval };
+  // No background music
 }
 
 export function stopBGMusic() {
-  if (!bgMusicNodes) return;
-  try {
-    bgMusicNodes.osc.forEach(o => { try { o.stop(); } catch {} });
-    bgMusicNodes.gain.disconnect();
-    if (bgMusicNodes._kickInterval) clearInterval(bgMusicNodes._kickInterval);
-  } catch {}
-  bgMusicNodes = null;
+  // No background music to stop
 }
 
 /* ─── MP3-based shoot sounds ─── */
