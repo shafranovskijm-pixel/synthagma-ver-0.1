@@ -16,7 +16,7 @@ import {
 import { CourseDocumentsManager } from "@/components/organization/CourseDocumentsManager";
 import { StudentDocumentsManager } from "@/components/organization/StudentDocumentsManager";
 import { BulkDocumentUpload } from "@/components/organization/BulkDocumentUpload";
-import { StudentDetailCard } from "@/components/organization/StudentDetailCard";
+
 import { BulkFRDOExport } from "@/components/organization/BulkFRDOExport";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Loader2 } from "lucide-react";
