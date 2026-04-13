@@ -1,5 +1,5 @@
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
-import { useRef, useState, useCallback, useEffect, useMemo } from "react";
+import { useRef, useEffect, useMemo } from "react";
 import * as THREE from "three";
 import { useTexture } from "@react-three/drei";
 
@@ -11,7 +11,7 @@ import monster5Url from "@/assets/monster5.jpg";
 
 import { playShoot, playHit, playDamage, playStep, playWin, playGameOver } from "./MazeSounds";
 
-// 14x14 maze: 1=wall, 0=path, 2=start, 3=finish
+// 14x14 maze
 const MAZE_MAP = [
   [1,1,1,1,1,1,1,1,1,1,1,1,1,1],
   [1,2,0,0,1,0,0,0,0,1,0,0,0,1],
@@ -39,13 +39,20 @@ const GRAVITY = 0.006;
 const MONSTER_SPEED = 0.015;
 const MONSTER_ATTACK_DIST = 0.8;
 const SHOOT_RANGE = 16;
+const BULLET_SPEED = 0.5;
+const BULLET_LIFE = 60; // frames
 
-// Monster spawn positions (grid coords)
 const MONSTER_SPAWNS: [number, number][] = [
   [6, 3], [2, 6], [10, 4], [8, 8], [4, 11],
 ];
-
 const MONSTER_TEXTURES = [monster1Url, monster2Url, monster3Url, monster4Url, monster5Url];
+
+interface Bullet {
+  x: number; z: number; y: number;
+  dx: number; dz: number;
+  life: number;
+  weapon: number;
+}
 
 function findCell(value: number): [number, number] {
   for (let z = 0; z < MAZE_MAP.length; z++)
@@ -70,25 +77,25 @@ function canMove(x: number, z: number): boolean {
   );
 }
 
-// Shared input state
 export const inputState = {
   forward: false, backward: false, left: false, right: false,
   jump: false, rotateLeft: false, rotateRight: false, shoot: false,
 };
 
-// Game state shared between components
 export const gameState = {
   health: 3,
   kills: 0,
   gameOver: false,
   won: false,
   shooting: false,
+  weapon: 1,
   monsters: MONSTER_SPAWNS.map((s, i) => ({
     x: s[0] * CELL_SIZE + CELL_SIZE / 2,
     z: s[1] * CELL_SIZE + CELL_SIZE / 2,
     alive: true,
     texIndex: i,
   })),
+  bullets: [] as Bullet[],
 };
 
 export function resetGameState() {
@@ -97,12 +104,14 @@ export function resetGameState() {
   gameState.gameOver = false;
   gameState.won = false;
   gameState.shooting = false;
+  gameState.weapon = 1;
   gameState.monsters = MONSTER_SPAWNS.map((s, i) => ({
     x: s[0] * CELL_SIZE + CELL_SIZE / 2,
     z: s[1] * CELL_SIZE + CELL_SIZE / 2,
     alive: true,
     texIndex: i,
   }));
+  gameState.bullets = [];
 }
 
 /* ─── Walls ─── */
@@ -133,7 +142,7 @@ function Walls() {
   );
 }
 
-/* ─── Floor with checkerboard ─── */
+/* ─── Floor ─── */
 function Floor() {
   const size = MAZE_MAP.length * CELL_SIZE;
   const tex = useMemo(() => {
@@ -187,11 +196,8 @@ function MonsterSprite({ index, playerRef }: { index: number; playerRef: React.M
 
   useFrame(() => {
     if (!m.alive || !meshRef.current) return;
-    // Billboard — face camera
     meshRef.current.position.set(m.x, 1.2, m.z);
     meshRef.current.lookAt(playerRef.current.x, 1.2, playerRef.current.z);
-
-    // Move toward player
     const dx = playerRef.current.x - m.x;
     const dz = playerRef.current.z - m.z;
     const dist = Math.sqrt(dx * dx + dz * dz);
@@ -214,6 +220,69 @@ function MonsterSprite({ index, playerRef }: { index: number; playerRef: React.M
   );
 }
 
+/* ─── Bullets renderer ─── */
+function Bullets() {
+  const groupRef = useRef<THREE.Group>(null);
+  const meshRefs = useRef<(THREE.Mesh | null)[]>([]);
+
+  useFrame(() => {
+    // Update bullets
+    for (let i = gameState.bullets.length - 1; i >= 0; i--) {
+      const b = gameState.bullets[i];
+      b.x += b.dx * BULLET_SPEED;
+      b.z += b.dz * BULLET_SPEED;
+      b.life--;
+
+      // Wall collision
+      if (isWall(b.x, b.z)) {
+        gameState.bullets.splice(i, 1);
+        continue;
+      }
+
+      // Monster collision
+      let hit = false;
+      for (const m of gameState.monsters) {
+        if (!m.alive) continue;
+        const d = Math.sqrt((b.x - m.x) ** 2 + (b.z - m.z) ** 2);
+        if (d < 0.6) {
+          m.alive = false;
+          gameState.kills++;
+          playHit();
+          hit = true;
+          break;
+        }
+      }
+      if (hit || b.life <= 0) {
+        gameState.bullets.splice(i, 1);
+      }
+    }
+
+    // Update mesh positions
+    if (groupRef.current) {
+      const children = groupRef.current.children;
+      // Remove excess
+      while (children.length > gameState.bullets.length) {
+        groupRef.current.remove(children[children.length - 1]);
+      }
+    }
+  });
+
+  return (
+    <group ref={groupRef}>
+      {gameState.bullets.map((b, i) => (
+        <mesh key={i} position={[b.x, b.y, b.z]}>
+          <sphereGeometry args={[b.weapon === 2 ? 0.15 : 0.06, 8, 8]} />
+          <meshStandardMaterial
+            color={b.weapon === 2 ? "#ff6600" : "#ffff00"}
+            emissive={b.weapon === 2 ? "#ff4400" : "#ffaa00"}
+            emissiveIntensity={3}
+          />
+        </mesh>
+      ))}
+    </group>
+  );
+}
+
 /* ─── Player ─── */
 interface PlayerProps {
   onWin: () => void;
@@ -222,9 +291,10 @@ interface PlayerProps {
   onGameOver: () => void;
   onShootAnim: () => void;
   resetKey: number;
+  playerPosRef: React.MutableRefObject<{ x: number; z: number }>;
 }
 
-function Player({ onWin, onDamage, onKill, onGameOver, onShootAnim, resetKey }: PlayerProps) {
+function Player({ onWin, onDamage, onKill, onGameOver, onShootAnim, resetKey, playerPosRef }: PlayerProps) {
   const { camera } = useThree();
   const [sx, sz] = findCell(2);
   const [fx, fz] = findCell(3);
@@ -253,9 +323,6 @@ function Player({ onWin, onDamage, onKill, onGameOver, onShootAnim, resetKey }: 
         case "KeyD": case "ArrowRight": inputState.rotateRight = true; break;
         case "Space": inputState.jump = true; e.preventDefault(); break;
         case "KeyF": case "Enter": inputState.shoot = true; break;
-        case "Digit1": case "Numpad1": break;
-        case "Digit2": case "Numpad2": break;
-        case "Digit3": case "Numpad3": break;
       }
     };
     const onKeyUp = (e: KeyboardEvent) => {
@@ -269,7 +336,7 @@ function Player({ onWin, onDamage, onKill, onGameOver, onShootAnim, resetKey }: 
       }
     };
     const onMouseDown = (e: MouseEvent) => {
-      if (e.button === 0) { inputState.shoot = true; }
+      if (e.button === 0) inputState.shoot = true;
       isDragging.current = true; lastMouseX.current = e.clientX;
     };
     const onMouseMove = (e: MouseEvent) => {
@@ -311,7 +378,6 @@ function Player({ onWin, onDamage, onKill, onGameOver, onShootAnim, resetKey }: 
   useFrame(() => {
     if (gameState.gameOver || gameState.won) return;
 
-    // Rotation
     if (inputState.rotateLeft) yaw.current += ROTATE_SPEED;
     if (inputState.rotateRight) yaw.current -= ROTATE_SPEED;
 
@@ -328,13 +394,14 @@ function Player({ onWin, onDamage, onKill, onGameOver, onShootAnim, resetKey }: 
     else if (canMove(nx, pos.current.z)) { pos.current.x = nx; }
     else if (canMove(pos.current.x, nz)) { pos.current.z = nz; }
 
-    // Steps sound
+    // Sync ref for monsters
+    playerPosRef.current = { x: pos.current.x, z: pos.current.z };
+
     if (moving) {
       stepTimer.current++;
       if (stepTimer.current % 15 === 0) playStep();
     }
 
-    // Jump
     if (inputState.jump && onGround.current) { velY.current = JUMP_FORCE; onGround.current = false; }
     velY.current -= GRAVITY;
     posY.current += velY.current;
@@ -343,30 +410,48 @@ function Player({ onWin, onDamage, onKill, onGameOver, onShootAnim, resetKey }: 
     camera.position.set(pos.current.x, posY.current, pos.current.z);
     camera.rotation.set(0, yaw.current, 0);
 
-    // Shooting
+    // Shooting — spawn bullet
     shootCooldown.current = Math.max(0, shootCooldown.current - 1);
     if (inputState.shoot && shootCooldown.current === 0) {
-      shootCooldown.current = 20;
-      playShoot();
+      const w = gameState.weapon;
+      shootCooldown.current = w === 2 ? 30 : w === 0 ? 10 : 20;
+      playShoot(w);
       onShootAnim();
-      // Raycast forward for monsters
-      const dir = new THREE.Vector3(-sin, 0, -cos).normalize();
-      for (const m of gameState.monsters) {
-        if (!m.alive) continue;
-        const toM = new THREE.Vector3(m.x - pos.current.x, 0, m.z - pos.current.z);
-        const dist = toM.length();
-        if (dist > SHOOT_RANGE) continue;
-        toM.normalize();
-        const dot = dir.dot(toM);
-        if (dot > 0.92) {
-          m.alive = false;
-          gameState.kills++;
-          playHit();
-          onKill();
+
+      if (w === 0) {
+        // Fist — melee: instant check close range
+        const dir = new THREE.Vector3(-sin, 0, -cos).normalize();
+        for (const m of gameState.monsters) {
+          if (!m.alive) continue;
+          const toM = new THREE.Vector3(m.x - pos.current.x, 0, m.z - pos.current.z);
+          const dist = toM.length();
+          if (dist > 2.5) continue;
+          toM.normalize();
+          if (dir.dot(toM) > 0.85) {
+            m.alive = false;
+            gameState.kills++;
+            playHit();
+            onKill();
+          }
         }
+      } else {
+        // Pistol/Rocket — spawn projectile
+        gameState.bullets.push({
+          x: pos.current.x - sin * 0.5,
+          z: pos.current.z - cos * 0.5,
+          y: 1.2,
+          dx: -sin,
+          dz: -cos,
+          life: BULLET_LIFE,
+          weapon: w,
+        });
       }
       inputState.shoot = false;
     }
+
+    // Check bullet kills (handled in Bullets component, but sync onKill)
+    // We check kills delta
+    const prevKills = gameState.kills;
 
     // Monster collision / damage
     damageCooldown.current = Math.max(0, damageCooldown.current - 1);
@@ -385,6 +470,11 @@ function Player({ onWin, onDamage, onKill, onGameOver, onShootAnim, resetKey }: 
           onGameOver();
         }
       }
+    }
+
+    // Sync kills from bullet hits
+    if (gameState.kills > prevKills) {
+      onKill();
     }
 
     // Win check
@@ -426,8 +516,6 @@ export default function MazeGame({
   onWin, onDamage, onKill, onGameOver, onShootAnim, resetKey,
 }: MazeGameProps) {
   const playerPos = useRef({ x: 0, z: 0 });
-
-  // Sync player position for monsters
   const [sx, sz] = findCell(2);
   playerPos.current = { x: sx * CELL_SIZE + CELL_SIZE / 2, z: sz * CELL_SIZE + CELL_SIZE / 2 };
 
@@ -459,6 +547,7 @@ export default function MazeGame({
       <Walls />
       <Floor />
       <FinishMarker />
+      <Bullets />
       {gameState.monsters.map((_, i) => (
         <MonsterSprite key={`${resetKey}-${i}`} index={i} playerRef={playerPos} />
       ))}
@@ -469,6 +558,7 @@ export default function MazeGame({
         onGameOver={onGameOver}
         onShootAnim={onShootAnim}
         resetKey={resetKey}
+        playerPosRef={playerPos}
       />
     </Canvas>
   );
