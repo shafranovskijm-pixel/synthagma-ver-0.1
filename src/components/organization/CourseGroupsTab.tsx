@@ -413,7 +413,7 @@ export function CourseGroupsTab({ courseId, organizationId, onRefreshStudents }:
                 <Button
                   size="sm"
                   className="rounded-xl gap-1.5 ml-1"
-                  disabled={isEnrolling || allEnrolled || total === 0}
+                  disabled={isEnrolling || allEnrolled}
                   onClick={() => handleEnrollGroup(group.id)}
                 >
                   {isEnrolling ? (
