@@ -195,6 +195,16 @@ export function SubscriptionTab() {
     if (!organizationId) return;
     setGeneratingInvoice(true);
     try {
+      // Fetch custom price/discount from organization
+      const { data: orgData } = await supabase
+        .from("organizations")
+        .select("custom_price, custom_discount")
+        .eq("id", organizationId)
+        .single();
+
+      const customPrice = (orgData as any)?.custom_price as number | null;
+      const customDiscount = (orgData as any)?.custom_discount as number | null;
+
       const year = new Date().getFullYear();
       const { count } = await supabase
         .from("subscription_invoices")
@@ -202,7 +212,10 @@ export function SubscriptionTab() {
         .eq("organization_id", organizationId);
 
       const invoiceNum = `СЧ-${year}/${String((count || 0) + 1).padStart(4, "0")}`;
-      const amount = currentPlanInfo.price || 1990;
+      
+      const basePrice = customPrice ?? currentPlanInfo.price ?? 1990;
+      const discount = customDiscount ?? 0;
+      const amount = Math.round(basePrice * (1 - discount / 100));
 
       const { data: invoice, error: err } = await supabase
         .from("subscription_invoices")
