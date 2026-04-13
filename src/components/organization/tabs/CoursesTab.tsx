@@ -1,4 +1,5 @@
-import React, { useState, useMemo, useCallback } from "react";
+import React, { useState, useMemo, useCallback, Suspense, lazy } from "react";
+const Student3DTrainers = lazy(() => import("@/components/student/Student3DTrainers").then(m => ({ default: m.Student3DTrainers })));
 import { WebinarsManager } from "@/components/organization/WebinarsManager";
 import { useOrgDashboard } from "@/contexts/OrgDashboardContext";
 import { useNavigate } from "react-router-dom";
