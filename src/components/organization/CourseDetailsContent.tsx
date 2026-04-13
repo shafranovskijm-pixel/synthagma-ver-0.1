@@ -539,6 +539,7 @@ export function CourseDetailsContent({
             </div>
             {([
               { value: "students" as const, label: "Ученики", icon: Users, color: "text-primary" },
+              { value: "requests" as const, label: "Заявки", icon: ClipboardCheck, color: "text-orange-500" },
               { value: "materials" as const, label: "Материалы", icon: FileText, color: "text-amber-500" },
               { value: "history" as const, label: "История", icon: History, color: "text-violet-500" },
               { value: "tests" as const, label: "Тесты", icon: CheckSquare, color: "text-emerald-500" },
