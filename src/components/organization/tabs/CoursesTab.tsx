@@ -1,4 +1,5 @@
-import React, { useState, useMemo, useCallback } from "react";
+import React, { useState, useMemo, useCallback, Suspense, lazy } from "react";
+const Student3DTrainers = lazy(() => import("@/components/student/Student3DTrainers").then(m => ({ default: m.Student3DTrainers })));
 import { WebinarsManager } from "@/components/organization/WebinarsManager";
 import { useOrgDashboard } from "@/contexts/OrgDashboardContext";
 import { useNavigate } from "react-router-dom";
@@ -1279,16 +1280,12 @@ export const CoursesTab = React.memo(function CoursesTab({ organizationId, onCou
         )
       )}
 
-      {/* 3D trainers stub */}
+      {/* 3D trainers - interactive maze */}
       {contentTab === "3d" && (
-        <div className="flex flex-col items-center justify-center py-20 text-center">
-          <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center mb-4">
-            <Box className="w-8 h-8 text-primary" />
-          </div>
-          <h3 className="text-xl font-semibold text-foreground mb-2">3D-тренажёры</h3>
-          <p className="text-muted-foreground max-w-md">
-            Раздел 3D-тренажёров на Unity скоро будет доступен. Создавайте интерактивные симуляции и практические задания в трёхмерном пространстве.
-          </p>
+        <div className="max-w-3xl mx-auto">
+          <Suspense fallback={<div className="flex justify-center py-8"><div className="animate-spin w-6 h-6 border-2 border-primary border-t-transparent rounded-full" /></div>}>
+            <Student3DTrainers />
+          </Suspense>
         </div>
       )}
 
