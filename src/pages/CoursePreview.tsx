@@ -51,6 +51,7 @@ interface Course {
   title: string;
   description: string | null;
   is_published: boolean;
+  allow_materials_download?: boolean;
 }
 
 interface TestQuestion {
@@ -812,10 +813,18 @@ const CoursePreview = () => {
                     </p>
                   </div>
                 </div>
-                <div className="grid gap-3 sm:grid-cols-2">
+                <div className="space-y-4">
                   {courseDocuments.map((doc: any) => {
                     const ext = doc.type?.toLowerCase() || doc.name?.split('.').pop()?.toLowerCase() || '';
+                    const isVideo = ['mp4', 'webm', 'mov', 'avi', 'mkv'].includes(ext);
+                    const isImage = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'bmp'].includes(ext);
+                    const isAudio = ['mp3', 'wav', 'ogg', 'aac', 'flac'].includes(ext);
+                    const allowDownload = course?.allow_materials_download !== false;
+
                     const getDocIcon = () => {
+                      if (isVideo) return Video;
+                      if (isImage) return Image;
+                      if (isAudio) return Headphones;
                       if (ext === 'pdf') return FileTextIcon;
                       if (['doc', 'docx', 'txt', 'rtf'].includes(ext)) return FileTextIcon;
                       if (['xls', 'xlsx'].includes(ext)) return FileSpreadsheet;
@@ -823,6 +832,9 @@ const CoursePreview = () => {
                       return File;
                     };
                     const getDocColor = () => {
+                      if (isVideo) return 'text-purple-500 bg-purple-500/10';
+                      if (isImage) return 'text-pink-500 bg-pink-500/10';
+                      if (isAudio) return 'text-green-500 bg-green-500/10';
                       if (ext === 'pdf') return 'text-red-500 bg-red-500/10';
                       if (['doc', 'docx'].includes(ext)) return 'text-blue-500 bg-blue-500/10';
                       if (['xls', 'xlsx'].includes(ext)) return 'text-green-500 bg-green-500/10';
@@ -831,25 +843,60 @@ const CoursePreview = () => {
                     };
                     const DocIcon = getDocIcon();
                     const docColor = getDocColor();
+
                     return (
-                      <button
-                        key={doc.id}
-                        onClick={() => {
-                          if (doc.file_url) {
-                            setPreviewFile({ url: doc.file_url, name: doc.name, type: ext || null });
-                          }
-                        }}
-                        className="flex items-center gap-3 p-4 rounded-xl border border-border bg-card hover:bg-secondary/50 transition-colors group text-left"
-                      >
-                        <div className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 ${docColor}`}>
-                          <DocIcon className="w-5 h-5" />
+                      <div key={doc.id} className="rounded-xl border border-border bg-card overflow-hidden">
+                        <div className="flex items-center gap-3 p-4">
+                          <div className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 ${docColor}`}>
+                            <DocIcon className="w-5 h-5" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium truncate">{doc.name}</p>
+                            <p className="text-xs text-muted-foreground">{isVideo ? 'Видео' : isImage ? 'Изображение' : isAudio ? 'Аудио' : ext?.toUpperCase() || 'Файл'}</p>
+                          </div>
+                          <div className="flex items-center gap-2 shrink-0">
+                            {allowDownload && doc.file_url && (
+                              <a href={doc.file_url} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()}>
+                                <Button variant="ghost" size="icon" className="h-8 w-8">
+                                  <Download className="w-4 h-4" />
+                                </Button>
+                              </a>
+                            )}
+                            {!isVideo && !isImage && !isAudio && doc.file_url && (
+                              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setPreviewFile({ url: doc.file_url, name: doc.name, type: ext || null })}>
+                                <Eye className="w-4 h-4" />
+                              </Button>
+                            )}
+                          </div>
                         </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium truncate">{doc.name}</p>
-                          <p className="text-xs text-muted-foreground">{ext?.toUpperCase() || 'Файл'}</p>
-                        </div>
-                        <Eye className="w-4 h-4 text-muted-foreground group-hover:text-primary transition-colors shrink-0" />
-                      </button>
+                        {/* Inline media rendering */}
+                        {isVideo && doc.file_url && (
+                          <div className="px-4 pb-4">
+                            <video
+                              controls
+                              controlsList={allowDownload ? undefined : "nodownload"}
+                              className="w-full rounded-lg bg-black"
+                              preload="metadata"
+                            >
+                              <source src={doc.file_url} />
+                              Ваш браузер не поддерживает видео.
+                            </video>
+                          </div>
+                        )}
+                        {isImage && doc.file_url && (
+                          <div className="px-4 pb-4">
+                            <img src={doc.file_url} alt={doc.name} className="w-full rounded-lg max-h-[600px] object-contain bg-secondary/20" />
+                          </div>
+                        )}
+                        {isAudio && doc.file_url && (
+                          <div className="px-4 pb-4">
+                            <audio controls controlsList={allowDownload ? undefined : "nodownload"} className="w-full" preload="metadata">
+                              <source src={doc.file_url} />
+                              Ваш браузер не поддерживает аудио.
+                            </audio>
+                          </div>
+                        )}
+                      </div>
                     );
                   })}
                 </div>
@@ -1185,6 +1232,7 @@ const CoursePreview = () => {
           fileUrl={previewFile.url}
           fileName={previewFile.name}
           fileType={previewFile.type}
+          allowDownload={course?.allow_materials_download !== false}
         />
       )}
     </div>

@@ -1197,6 +1197,7 @@ export type Database = {
       courses: {
         Row: {
           accent_color: string | null
+          allow_materials_download: boolean
           allow_video_seek: boolean
           catalog_order: number
           category_id: string | null
@@ -1234,6 +1235,7 @@ export type Database = {
         }
         Insert: {
           accent_color?: string | null
+          allow_materials_download?: boolean
           allow_video_seek?: boolean
           catalog_order?: number
           category_id?: string | null
@@ -1271,6 +1273,7 @@ export type Database = {
         }
         Update: {
           accent_color?: string | null
+          allow_materials_download?: boolean
           allow_video_seek?: boolean
           catalog_order?: number
           category_id?: string | null
