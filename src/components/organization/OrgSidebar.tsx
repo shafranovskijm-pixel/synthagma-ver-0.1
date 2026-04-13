@@ -1,4 +1,5 @@
 import { useState, useCallback, useRef } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
 import { 
   BookOpen, Users, Settings, LogOut, Upload,
   Building2, HardHat, HardDrive, CreditCard, Lock, MessageCircle, Wallet,
@@ -114,15 +115,22 @@ export function OrgSidebar() {
 
   const isLocked = (category: string) => !isEnabled(category as any);
 
+  const navigate = useNavigate();
+  const location = useLocation();
+
   const handleTabClick = useCallback((tab: TabType) => {
     const category = tabCategoryMap[tab];
     if (category && isLocked(category)) {
       setUpgradeDialogOpen(true);
       return;
     }
-    setActiveTab(tab);
+    if (location.pathname !== "/organization") {
+      navigate(`/organization?tab=${tab}`);
+    } else {
+      setActiveTab(tab);
+    }
     setIsMobileSidebarOpen(false);
-  }, [isEnabled, setActiveTab, setIsMobileSidebarOpen]);
+  }, [isEnabled, setActiveTab, setIsMobileSidebarOpen, location.pathname, navigate]);
 
   const handleGoToSubscription = () => {
     setUpgradeDialogOpen(false);
