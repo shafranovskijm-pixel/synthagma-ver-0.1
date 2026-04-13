@@ -34,6 +34,7 @@ import { useOrgDashboard } from "@/contexts/OrgDashboardContext";
 import { getSignedStorageUrl } from "@/utils/storageHelpers";
 import { generateAct } from "@/utils/generateAct";
 import { toast } from "@/hooks/use-toast";
+import { PayersSection } from "@/components/organization/PayersSection";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";

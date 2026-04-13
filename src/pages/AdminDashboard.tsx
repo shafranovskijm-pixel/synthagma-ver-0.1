@@ -1,8 +1,10 @@
 import { useState } from "react";
-import { Menu, X } from "lucide-react";
+import { Menu, Bell, LogOut, User, ChevronDown } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useNavigate } from "react-router-dom";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { AdminSidebar, type AdminTabType } from "@/components/admin/AdminSidebar";
 import { OrganizationsManager } from "@/components/admin/OrganizationsManager";
 import { UsersManager } from "@/components/admin/UsersManager";
@@ -87,17 +89,51 @@ const AdminDashboard = () => {
               <Menu className="w-5 h-5" />
             </button>
             <h1 className="font-display font-semibold">{getTabTitle()}</h1>
-            <div className="w-9" /> {/* Spacer for centering */}
+            <div className="w-9" />
+          </div>
+        </header>
+
+        {/* Desktop Header with profile */}
+        <header className="hidden lg:flex sticky top-0 z-30 bg-card/95 backdrop-blur-sm border-b border-border items-center justify-between px-8 h-16">
+          <div>
+            <h1 className="font-display text-xl font-bold">{getTabTitle()}</h1>
+            <p className="text-xs text-muted-foreground">Панель администратора</p>
+          </div>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => setActiveTab("updates")}
+              className="p-2 rounded-lg hover:bg-secondary relative"
+              title="Обновления"
+            >
+              <Bell className="w-5 h-5 text-muted-foreground" />
+            </button>
+            <DropdownMenu>
+              <DropdownMenuTrigger className="flex items-center gap-2 px-2 py-1.5 rounded-xl hover:bg-secondary transition-colors outline-none">
+                <Avatar className="h-8 w-8">
+                  <AvatarFallback className="bg-primary/10 text-primary text-xs font-bold">
+                    {(user?.email || "A")[0].toUpperCase()}
+                  </AvatarFallback>
+                </Avatar>
+                <span className="text-sm font-medium max-w-[160px] truncate">{user?.email}</span>
+                <ChevronDown className="w-4 h-4 text-muted-foreground" />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-48">
+                <DropdownMenuItem onClick={() => setActiveTab("settings")} className="gap-2">
+                  <User className="w-4 h-4" />
+                  Настройки
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={handleSignOut} className="gap-2 text-destructive">
+                  <LogOut className="w-4 h-4" />
+                  Выйти
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </header>
 
         {/* Content */}
         <div className="p-4 lg:p-8">
-          {/* Desktop Header */}
-          <div className="hidden lg:block mb-6">
-            <h1 className="font-display text-2xl font-bold">{getTabTitle()}</h1>
-            <p className="text-muted-foreground">Панель администратора</p>
-          </div>
 
           {/* Tab Content */}
           {activeTab === "analytics" && <AdminAnalytics />}
