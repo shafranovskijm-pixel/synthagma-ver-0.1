@@ -1499,34 +1499,48 @@ function VideoBlock({ block, onUpdate }: { block: ContentBlock; onUpdate: (updat
     <div className="py-2">
       {hasValidEmbed ? (
         <div className="space-y-2">
-          <LazyMediaPreview type="iframe">
-            <div className="relative group/video aspect-video bg-black rounded-lg overflow-hidden">
-              {embedResult.type === 'iframe' ? (
-                <div 
-                  className="w-full h-full [&>iframe]:w-full [&>iframe]:h-full [&>iframe]:border-0"
-                  dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(embedResult.value || '', {
-                    ALLOWED_TAGS: ['iframe'],
-                    ALLOWED_ATTR: ['src', 'width', 'height', 'frameborder', 'allow', 'allowfullscreen', 'title', 'referrerpolicy'],
-                  }) }}
-                />
-              ) : (
-                <iframe 
-                  src={embedResult.value || ''} 
-                  className="w-full h-full border-0" 
-                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" 
-                  allowFullScreen 
-                />
-              )}
+          {embedResult.type === 'direct' ? (
+            <div className="relative group/video">
+              <DirectVideoBlock url={embedResult.value || ''} />
               <Button 
                 variant="secondary" 
                 size="sm" 
-                className="absolute top-2 right-2 opacity-0 group-hover/video:opacity-100" 
+                className="absolute top-2 right-2 opacity-0 group-hover/video:opacity-100 z-10" 
                 onClick={() => onUpdate({ videoUrl: "" })}
               >
                 Удалить
               </Button>
             </div>
-          </LazyMediaPreview>
+          ) : (
+            <LazyMediaPreview type="iframe">
+              <div className="relative group/video aspect-video bg-black rounded-lg overflow-hidden">
+                {embedResult.type === 'iframe' ? (
+                  <div 
+                    className="w-full h-full [&>iframe]:w-full [&>iframe]:h-full [&>iframe]:border-0"
+                    dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(embedResult.value || '', {
+                      ALLOWED_TAGS: ['iframe'],
+                      ALLOWED_ATTR: ['src', 'width', 'height', 'frameborder', 'allow', 'allowfullscreen', 'title', 'referrerpolicy'],
+                    }) }}
+                  />
+                ) : (
+                  <iframe 
+                    src={embedResult.value || ''} 
+                    className="w-full h-full border-0" 
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" 
+                    allowFullScreen 
+                  />
+                )}
+                <Button 
+                  variant="secondary" 
+                  size="sm" 
+                  className="absolute top-2 right-2 opacity-0 group-hover/video:opacity-100" 
+                  onClick={() => onUpdate({ videoUrl: "" })}
+                >
+                  Удалить
+                </Button>
+              </div>
+            </LazyMediaPreview>
+          )}
         </div>
       ) : (
         <div className="bg-muted rounded-xl p-6 space-y-4">
