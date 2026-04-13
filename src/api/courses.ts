@@ -198,6 +198,7 @@ export async function duplicateCourse(courseId: string): Promise<Course | null> 
       training_form: original.training_form,
       notify_on_completion: original.notify_on_completion,
       completion_notify_emails: original.completion_notify_emails,
+      default_access_days: original.default_access_days,
     })
     .select()
     .single();
