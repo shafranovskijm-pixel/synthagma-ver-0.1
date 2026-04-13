@@ -265,7 +265,10 @@ export const CoursesTab = React.memo(function CoursesTab({ organizationId, onCou
     refresh,
     updateCourseLocally,
     reorderCourses,
-  } = useCourses(organizationId);
+  } = useCourses(organizationId, {
+    initialCourses: dashboard.courses,
+    initialCategories: dashboard.categories as CourseCategory[],
+  });
 
   const dndSensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } })

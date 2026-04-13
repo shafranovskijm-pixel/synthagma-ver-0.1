@@ -46,10 +46,16 @@ interface UseCoursesReturn {
   reorderCourses: (activeId: string, overId: string) => Promise<void>;
 }
 
-export function useCourses(organizationId: string | null): UseCoursesReturn {
-  const [courses, setCourses] = useState<Course[]>([]);
-  const [categories, setCategories] = useState<CourseCategory[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+interface UseCoursesOptions {
+  initialCourses?: Course[];
+  initialCategories?: CourseCategory[];
+}
+
+export function useCourses(organizationId: string | null, options?: UseCoursesOptions): UseCoursesReturn {
+  const hasPreloadedData = !!(options?.initialCourses);
+  const [courses, setCourses] = useState<Course[]>(options?.initialCourses || []);
+  const [categories, setCategories] = useState<CourseCategory[]>(options?.initialCategories || []);
+  const [isLoading, setIsLoading] = useState(!hasPreloadedData);
   const [error, setError] = useState<string | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
   
@@ -59,8 +65,25 @@ export function useCourses(organizationId: string | null): UseCoursesReturn {
   const [searchQuery, setSearchQuery] = useState("");
   const [viewMode, setViewMode] = useState<CourseViewMode>("grid");
 
-  // Load courses and categories
+  // Sync preloaded data from parent when it changes
   useEffect(() => {
+    if (options?.initialCourses) {
+      setCourses(options.initialCourses);
+      setIsLoading(false);
+      setError(null);
+    }
+  }, [options?.initialCourses]);
+
+  useEffect(() => {
+    if (options?.initialCategories) {
+      setCategories(options.initialCategories);
+    }
+  }, [options?.initialCategories]);
+
+  // Only fetch from DB if no preloaded data provided
+  useEffect(() => {
+    if (hasPreloadedData) return; // Skip fetch — using preloaded data from dashboard
+
     const load = async () => {
       if (!organizationId) {
         setIsLoading(false);
@@ -89,14 +112,22 @@ export function useCourses(organizationId: string | null): UseCoursesReturn {
         });
       } catch (err: any) {
         console.error("Error loading courses:", err);
-        setError(err?.message || "Не удалось загрузить курсы");
+        // If we already have courses displayed, don't show fatal error
+        setCourses(prev => {
+          if (prev.length > 0) {
+            toast.error("Ошибка обновления курсов");
+            return prev;
+          }
+          setError(err?.message || "Не удалось загрузить курсы");
+          return prev;
+        });
       } finally {
         setIsLoading(false);
       }
     };
 
     load();
-  }, [organizationId, refreshKey]);
+  }, [organizationId, refreshKey, hasPreloadedData]);
 
   // Filtered courses
   const filteredCourses = useMemo(() => {
