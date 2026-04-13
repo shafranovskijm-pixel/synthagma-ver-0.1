@@ -38,7 +38,6 @@ export default function OrganizationSettings() {
   const [organizationId, setOrganizationId] = useState<string | null>(null);
   const [menuSettings, setMenuSettings] = useState<MenuSettings>(DEFAULT_MENU);
   const [loading, setLoading] = useState(true);
-  const [activeModuleTab, setActiveModuleTab] = useState("staff");
 
   useEffect(() => {
     if (!user) return;
@@ -105,13 +104,6 @@ export default function OrganizationSettings() {
     { icon: ShoppingBag, bg: "bg-primary/15", color: "text-primary", label: "Маркетплейс", desc: "Магазин курсов", key: "showServices" as keyof MenuSettings },
   ];
 
-  const moduleSubTabs = [
-    { id: "staff", icon: Users, label: "Сотрудники" },
-    
-    { id: "journals", icon: ClipboardList, label: "Журналы" },
-    { id: "frdo", icon: FileSpreadsheet, label: "ФИС ФРДО" },
-  ];
-
   if (loading) {
     return <div className="min-h-screen flex items-center justify-center"><div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full" /></div>;
   }
@@ -140,8 +132,14 @@ export default function OrganizationSettings() {
             <TabsTrigger value="student" className="rounded-lg gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm px-4 py-2">
               <GraduationCap className="w-4 h-4" /> Настройки ЛК
             </TabsTrigger>
-            <TabsTrigger value="modules" className="rounded-lg gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm px-4 py-2">
-              <Settings className="w-4 h-4" /> Управление
+            <TabsTrigger value="staff" className="rounded-lg gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm px-4 py-2">
+              <Users className="w-4 h-4" /> Сотрудники
+            </TabsTrigger>
+            <TabsTrigger value="journals" className="rounded-lg gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm px-4 py-2">
+              <ClipboardList className="w-4 h-4" /> Журналы
+            </TabsTrigger>
+            <TabsTrigger value="frdo" className="rounded-lg gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm px-4 py-2">
+              <FileSpreadsheet className="w-4 h-4" /> ФИС ФРДО
             </TabsTrigger>
           </TabsList>
 
@@ -207,51 +205,36 @@ export default function OrganizationSettings() {
             </div>
           </TabsContent>
 
+          {/* Tab: Staff */}
+          <TabsContent value="staff">
+            {organizationId && (
+              <OrgDashboardProvider>
+                <div className="bg-card rounded-xl lg:rounded-2xl border border-border p-4 lg:p-6">
+                  <StaffManager organizationId={organizationId} />
+                </div>
+              </OrgDashboardProvider>
+            )}
+          </TabsContent>
 
-          {/* Tab: Module Management — embedded components */}
-          <TabsContent value="modules">
-            <div className="space-y-4">
-              {/* Sub-tab navigation */}
-              <div className="flex flex-wrap gap-2">
-                {moduleSubTabs.map((tab) => {
-                  const Icon = tab.icon;
-                  const isActive = activeModuleTab === tab.id;
-                  return (
-                    <button
-                      key={tab.id}
-                      onClick={() => setActiveModuleTab(tab.id)}
-                      className={`inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium transition-all border ${
-                        isActive
-                          ? 'bg-primary text-primary-foreground shadow-md border-primary'
-                          : 'bg-card hover:bg-accent/10 border-border hover:border-primary/30 text-foreground'
-                      }`}
-                    >
-                      <Icon className="w-4 h-4" />
-                      {tab.label}
-                    </button>
-                  );
-                })}
-              </div>
-
-              {/* Sub-tab content */}
+          {/* Tab: Journals */}
+          <TabsContent value="journals">
+            {organizationId && (
               <div className="bg-card rounded-xl lg:rounded-2xl border border-border p-4 lg:p-6">
-                {organizationId && activeModuleTab === "staff" && (
-                  <OrgDashboardProvider>
-                    <StaffManager organizationId={organizationId} />
-                  </OrgDashboardProvider>
-                )}
-                {organizationId && activeModuleTab === "journals" && (
-                  <JournalsManager organizationId={organizationId} />
-                )}
-                {organizationId && activeModuleTab === "frdo" && (
-                  <FRDOManager organizationId={organizationId} />
-                )}
+                <JournalsManager organizationId={organizationId} />
               </div>
-            </div>
+            )}
+          </TabsContent>
+
+          {/* Tab: FRDO */}
+          <TabsContent value="frdo">
+            {organizationId && (
+              <div className="bg-card rounded-xl lg:rounded-2xl border border-border p-4 lg:p-6">
+                <FRDOManager organizationId={organizationId} />
+              </div>
+            )}
           </TabsContent>
         </Tabs>
       </div>
     </div>
   );
 }
-
