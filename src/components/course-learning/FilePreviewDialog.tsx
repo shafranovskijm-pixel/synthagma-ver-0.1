@@ -9,6 +9,7 @@ interface FilePreviewDialogProps {
   fileUrl: string;
   fileName: string;
   fileType: string | null;
+  allowDownload?: boolean;
 }
 
 const PREVIEWABLE_TYPES = ["pdf"];
@@ -32,7 +33,7 @@ function getGoogleDocsViewerUrl(fileUrl: string): string {
   return `https://docs.google.com/gview?url=${encodeURIComponent(fileUrl)}&embedded=true`;
 }
 
-export function FilePreviewDialog({ open, onOpenChange, fileUrl, fileName, fileType }: FilePreviewDialogProps) {
+export function FilePreviewDialog({ open, onOpenChange, fileUrl, fileName, fileType, allowDownload = true }: FilePreviewDialogProps) {
   const [isLoading, setIsLoading] = useState(true);
 
   const isPdf = canPreviewInline(fileType);
@@ -52,14 +53,16 @@ export function FilePreviewDialog({ open, onOpenChange, fileUrl, fileName, fileT
       <DialogContent className="max-w-5xl w-[95vw] h-[85vh] flex flex-col p-0 gap-0">
         <DialogHeader className="px-6 py-4 border-b border-border flex-row items-center justify-between space-y-0">
           <DialogTitle className="text-base font-medium truncate pr-4">{fileName}</DialogTitle>
-          <div className="flex items-center gap-2 shrink-0">
-            <a href={fileUrl} target="_blank" rel="noopener noreferrer">
-              <Button variant="outline" size="sm" className="gap-2">
-                <Download className="w-4 h-4" />
-                Скачать
-              </Button>
-            </a>
-          </div>
+          {allowDownload && (
+            <div className="flex items-center gap-2 shrink-0">
+              <a href={fileUrl} target="_blank" rel="noopener noreferrer">
+                <Button variant="outline" size="sm" className="gap-2">
+                  <Download className="w-4 h-4" />
+                  Скачать
+                </Button>
+              </a>
+            </div>
+          )}
         </DialogHeader>
 
         <div className="flex-1 relative overflow-hidden bg-muted/30">
