@@ -107,7 +107,7 @@ export default function OrganizationSettings() {
 
   const moduleSubTabs = [
     { id: "staff", icon: Users, label: "Сотрудники" },
-    { id: "documents", icon: FileText, label: "Документы" },
+    
     { id: "journals", icon: ClipboardList, label: "Журналы" },
     { id: "frdo", icon: FileSpreadsheet, label: "ФИС ФРДО" },
   ];
@@ -139,6 +139,9 @@ export default function OrganizationSettings() {
             </TabsTrigger>
             <TabsTrigger value="student" className="rounded-lg gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm px-4 py-2">
               <GraduationCap className="w-4 h-4" /> Настройки ЛК
+            </TabsTrigger>
+            <TabsTrigger value="documents" className="rounded-lg gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm px-4 py-2">
+              <FileText className="w-4 h-4" /> Документы
             </TabsTrigger>
             <TabsTrigger value="modules" className="rounded-lg gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm px-4 py-2">
               <Settings className="w-4 h-4" /> Управление
