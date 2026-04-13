@@ -1,40 +1,46 @@
 
 
-# Регистрационная ссылка для группы
+# Достижения в настройках курса
 
 ## Суть
-При создании группы — добавить поля дат (начало/конец набора) и автоматически генерировать регистрационную ссылку, привязанную к группе. Ученики, регистрирующиеся по этой ссылке, автоматически попадают в группу.
+Добавить вкладку «Достижения» в боковое меню курса, где можно выбрать достижения из общего пула организации и привязать их к конкретному курсу.
 
 ## Что будет сделано
 
-### 1. Миграция: добавить `student_group_id` в `registration_links`
+### 1. Миграция: таблица `course_achievements`
 ```sql
-ALTER TABLE registration_links 
-  ADD COLUMN student_group_id uuid REFERENCES student_groups(id) ON DELETE SET NULL;
+CREATE TABLE public.course_achievements (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  course_id uuid NOT NULL REFERENCES courses(id) ON DELETE CASCADE,
+  achievement_id uuid NOT NULL REFERENCES achievements(id) ON DELETE CASCADE,
+  created_at timestamptz DEFAULT now(),
+  UNIQUE(course_id, achievement_id)
+);
+ALTER TABLE public.course_achievements ENABLE ROW LEVEL SECURITY;
+-- RLS: authenticated users с доступом к организации
 ```
 
-### 2. Обновить `CourseGroupsTab.tsx` — создание группы с датами и ссылкой
-- В диалог создания группы добавить поля: **Дата начала**, **Дата окончания** (DatePicker)
-- При создании группы автоматически создавать `registration_link` с `student_group_id`, `organization_id`, `course_id`, `expires_at = end_date`
-- После создания — показывать ссылку с кнопкой «Скопировать»
-- В списке групп — показывать кнопку копирования ссылки у каждой группы
+### 2. Новый компонент `CourseAchievementsTab.tsx`
+- Хук загружает все достижения организации (`achievements` where `organization_id = orgId`)
+- Загружает привязанные к курсу (`course_achievements` where `course_id`)
+- Отображает список достижений с чекбоксами — включить/выключить для курса
+- Карточки с иконкой, названием, редкостью (стили из `RARITY_STYLES`)
+- При toggle — insert/delete в `course_achievements`
 
-### 3. Обновить `JoinByLink.tsx` — показывать название группы
-- При валидации ссылки: если есть `student_group_id`, загрузить название группы и показать на странице регистрации
+### 3. Обновить `CourseDetailsContent.tsx`
+- Добавить таб `"achievements"` в тип `activeTab` (в union type и в `CourseDetailsContentProps`)
+- Добавить пункт меню «Достижения» с иконкой `Trophy` в секцию «Обучение» сайдбара
+- Рендерить `CourseAchievementsTab` при `activeTab === "achievements"`
 
-### 4. Обновить edge-функцию `register-student` — привязка к группе
-- Принимать `student_group_id` в body
-- При создании профиля — устанавливать `student_group_id` в profiles
-
-### 5. Обновить `JoinByLink.tsx` — передавать `student_group_id`
-- Передавать `student_group_id` из `linkData` в вызов `register-student`
+### 4. Обновить `useCourseDetailsModal.ts`
+- Добавить `"achievements"` в тип `CourseDetailsTabType`
 
 ## Файлы
 
 | Файл | Изменение |
 |---|---|
-| Миграция | `ALTER TABLE registration_links ADD COLUMN student_group_id` |
-| `src/components/organization/CourseGroupsTab.tsx` | Даты + авто-создание ссылки + копирование |
-| `src/pages/JoinByLink.tsx` | Загрузка группы, передача `student_group_id` |
-| `supabase/functions/register-student/index.ts` | Установка `student_group_id` в профиль |
+| Миграция | Создать таблицу `course_achievements` с RLS |
+| `src/components/organization/CourseAchievementsTab.tsx` | **Новый** — выбор достижений для курса |
+| `src/components/organization/CourseDetailsContent.tsx` | Добавить таб и пункт меню |
+| `src/hooks/useCourseDetailsModal.ts` | Расширить тип табов |
 
