@@ -63,6 +63,7 @@ function transliterate(str: string): string {
 export function CoursePageSettingsContent({ courseId, courseTitle }: Props) {
   const [slug, setSlug] = useState("");
   const [accentColor, setAccentColor] = useState("#6366f1");
+  const [price, setPrice] = useState(0);
   const [landingContent, setLandingContent] = useState<LandingContent>({});
   const [promoCodes, setPromoCodes] = useState<PromoCode[]>([]);
   const [saving, setSaving] = useState(false);
