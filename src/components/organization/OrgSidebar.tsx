@@ -155,6 +155,13 @@ export function OrgSidebar() {
   
   navItems.push({ id: "chats", icon: MessageCircle, label: "Чаты", badge: d.unreadChatsCount });
 
+  // Utility nav items (pages)
+  const utilityItems: { icon: typeof BookOpen; label: string; path: string }[] = [
+    { icon: Users, label: "Профиль", path: "/organization/profile" },
+    { icon: Settings, label: "Настройки", path: "/organization/settings" },
+    { icon: FileText, label: "Документы", path: "/organization/documents" },
+  ];
+
   return (
     <>
       {/* Mobile overlay */}
