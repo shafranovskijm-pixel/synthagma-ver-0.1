@@ -64,6 +64,7 @@ interface DashboardSettings {
   showLibrary: boolean;
   showAchievements: boolean;
   showAiChat: boolean;
+  catalogMode: "catalog" | "assigned";
 }
 
 interface ChatMessage {
