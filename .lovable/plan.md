@@ -1,35 +1,40 @@
 
 
-# Добавить кнопку «Войти как ученик» на страницу ученика
+# Регистрационная ссылка для группы
 
 ## Суть
-На странице `/organization/student/:studentId` добавить кнопку «Войти как ученик» (аналогично кнопке «Войти в организацию» у админа). При клике — сохраняем данные в `localStorage` под ключом `adminViewAsStudent` и перенаправляем на `/student`.
+При создании группы — добавить поля дат (начало/конец набора) и автоматически генерировать регистрационную ссылку, привязанную к группе. Ученики, регистрирующиеся по этой ссылке, автоматически попадают в группу.
 
 ## Что будет сделано
 
-### Изменить `src/pages/OrganizationStudentDetails.tsx`
-- В шапке (header), рядом с кнопкой «Назад» или в правой части sub-header, добавить кнопку **«Войти как ученик»** с иконкой `LogIn` или `ExternalLink`
-- Стилизация: outline/ghost с cyan hover (`hover:text-primary hover:bg-primary/10`), аналогично кнопке «Войти в организацию» у админа
-- При клике:
-  ```typescript
-  localStorage.setItem('adminViewAsStudent', JSON.stringify({
-    userId: student.user_id,
-    name: student.name,
-    orgReturn: '/organization'
-  }));
-  navigate('/student');
-  ```
-- Это использует уже существующий механизм «режима просмотра» в `StudentDashboard`, который проверяет `adminViewAsStudent` в localStorage и показывает баннер с кнопкой «Выйти»
+### 1. Миграция: добавить `student_group_id` в `registration_links`
+```sql
+ALTER TABLE registration_links 
+  ADD COLUMN student_group_id uuid REFERENCES student_groups(id) ON DELETE SET NULL;
+```
 
-### Опционально: обновить выход из режима просмотра
-- В `StudentDashboard.tsx` при выходе из режима просмотра — если есть `orgReturn` в данных localStorage, перенаправлять на `/organization` вместо `/admin`
+### 2. Обновить `CourseGroupsTab.tsx` — создание группы с датами и ссылкой
+- В диалог создания группы добавить поля: **Дата начала**, **Дата окончания** (DatePicker)
+- При создании группы автоматически создавать `registration_link` с `student_group_id`, `organization_id`, `course_id`, `expires_at = end_date`
+- После создания — показывать ссылку с кнопкой «Скопировать»
+- В списке групп — показывать кнопку копирования ссылки у каждой группы
+
+### 3. Обновить `JoinByLink.tsx` — показывать название группы
+- При валидации ссылки: если есть `student_group_id`, загрузить название группы и показать на странице регистрации
+
+### 4. Обновить edge-функцию `register-student` — привязка к группе
+- Принимать `student_group_id` в body
+- При создании профиля — устанавливать `student_group_id` в profiles
+
+### 5. Обновить `JoinByLink.tsx` — передавать `student_group_id`
+- Передавать `student_group_id` из `linkData` в вызов `register-student`
 
 ## Файлы
 
 | Файл | Изменение |
 |---|---|
-| `src/pages/OrganizationStudentDetails.tsx` | Добавить кнопку «Войти как ученик» в header |
-| `src/pages/StudentDashboard.tsx` | Обновить редирект выхода из режима просмотра (orgReturn) |
-
-Миграций не требуется.
+| Миграция | `ALTER TABLE registration_links ADD COLUMN student_group_id` |
+| `src/components/organization/CourseGroupsTab.tsx` | Даты + авто-создание ссылки + копирование |
+| `src/pages/JoinByLink.tsx` | Загрузка группы, передача `student_group_id` |
+| `supabase/functions/register-student/index.ts` | Установка `student_group_id` в профиль |
 
