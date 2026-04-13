@@ -207,6 +207,8 @@ export function OrganizationDetailsView({ organization, onBack }: OrganizationDe
   const [customCategories, setCustomCategories] = useState<string[]>(
     (organization as any).custom_enabled_categories || []
   );
+  const [customPrice, setCustomPrice] = useState<number | null>((organization as any).custom_price ?? null);
+  const [customDiscount, setCustomDiscount] = useState<number | null>((organization as any).custom_discount ?? null);
 
   const planKey = (organization.subscription_plan as SubscriptionPlan) || 'free';
   const planInfo = getPlanInfo(planKey);
@@ -548,6 +550,8 @@ export function OrganizationDetailsView({ organization, onBack }: OrganizationDe
         custom_ai_generations_limit: customLimits.aiGenerationsLimit,
         custom_storage_limit_bytes: customLimits.storageLimitBytes,
         custom_enabled_categories: customCategories,
+        custom_price: customPrice,
+        custom_discount: customDiscount,
       };
       console.log("Saving tariff settings:", updatePayload);
       const { error } = await supabase
@@ -1396,6 +1400,46 @@ export function OrganizationDetailsView({ organization, onBack }: OrganizationDe
                   <span className="text-sm text-muted-foreground">Безлимит</span>
                 </div>
               </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Индивидуальная цена</CardTitle>
+              <CardDescription>Задайте индивидуальную стоимость и скидку. Эти значения будут использоваться при выставлении счёта.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex items-center gap-4">
+                <Label className="w-44 shrink-0">Цена (₽/мес)</Label>
+                <Input
+                  type="number"
+                  className="w-40"
+                  value={customPrice ?? ''}
+                  onChange={(e) => setCustomPrice(e.target.value ? Number(e.target.value) : null)}
+                  placeholder="По тарифу"
+                />
+              </div>
+              <div className="flex items-center gap-4">
+                <Label className="w-44 shrink-0">Скидка (%)</Label>
+                <Input
+                  type="number"
+                  className="w-40"
+                  min={0}
+                  max={100}
+                  value={customDiscount ?? ''}
+                  onChange={(e) => setCustomDiscount(e.target.value ? Number(e.target.value) : null)}
+                  placeholder="0"
+                />
+              </div>
+              {(customPrice != null || customDiscount != null) && (
+                <p className="text-sm text-muted-foreground">
+                  Итого к оплате: {(() => {
+                    const base = customPrice ?? 0;
+                    const disc = customDiscount ?? 0;
+                    return Math.round(base * (1 - disc / 100)).toLocaleString();
+                  })()} ₽/мес
+                </p>
+              )}
             </CardContent>
           </Card>
 
