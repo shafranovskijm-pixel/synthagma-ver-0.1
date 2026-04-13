@@ -38,6 +38,7 @@ interface AchievementsPanelProps {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
   embedded?: boolean;
+  organizationId?: string | null;
 }
 
 const rarityColors: Record<Rarity, string> = {
@@ -84,7 +85,7 @@ const getRarity = (rarity: string): Rarity => {
   return "common";
 };
 
-export function AchievementsPanel({ userId, isOpen, onOpenChange, embedded = false }: AchievementsPanelProps) {
+export function AchievementsPanel({ userId, isOpen, onOpenChange, embedded = false, organizationId }: AchievementsPanelProps) {
   const [achievements, setAchievements] = useState<Achievement[]>([]);
   const [userAchievements, setUserAchievements] = useState<UserAchievement[]>([]);
   const [loading, setLoading] = useState(true);
@@ -101,11 +102,20 @@ export function AchievementsPanel({ userId, isOpen, onOpenChange, embedded = fal
   const loadAchievements = async () => {
     setLoading(true);
     try {
-      // Load all achievements
-      const { data: allAchievements } = await supabase
+      // Load achievements: global (no org_id) + org-specific + templates excluded
+      let query = supabase
         .from("achievements")
         .select("*")
+        .eq("is_template", false)
         .order("category", { ascending: true });
+
+      if (organizationId) {
+        query = query.or(`organization_id.is.null,organization_id.eq.${organizationId}`);
+      } else {
+        query = query.is("organization_id", null);
+      }
+
+      const { data: allAchievements } = await query;
 
       if (allAchievements) {
         setAchievements(allAchievements);
