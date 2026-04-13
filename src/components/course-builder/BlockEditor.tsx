@@ -678,6 +678,13 @@ function SortableBlockItem({ block, isFocused, onFocus, onUpdate, onDelete, onAd
   const [ttsVoice, setTtsVoice] = useState(() => localStorage.getItem('block-editor-tts-voice') || 'Natalya_24000');
   const [ttsGenerating, setTtsGenerating] = useState(false);
 
+  // Link popover state
+  const [linkPopoverOpen, setLinkPopoverOpen] = useState(false);
+  const [linkUrl, setLinkUrl] = useState("");
+  const [linkText, setLinkText] = useState("");
+  const [linkHasSelection, setLinkHasSelection] = useState(false);
+  const savedLinkRange = useRef<Range | null>(null);
+
   const handleTtsGenerate = async () => {
     const plainText = (block.content || "").replace(/<[^>]+>/g, "").trim();
     if (!plainText) {
@@ -745,6 +752,7 @@ function SortableBlockItem({ block, isFocused, onFocus, onUpdate, onDelete, onAd
     <div
       ref={setNodeRef}
       style={style}
+      data-block-id={block.id}
       className={cn("group relative rounded-lg transition-all", isFocused && "bg-secondary/30")}
       onClick={onFocus}
     >
@@ -953,43 +961,113 @@ function SortableBlockItem({ block, isFocused, onFocus, onUpdate, onDelete, onAd
             </button>
           )}
           {canStyle && (
-            <button
-              className="h-8 w-8 flex items-center justify-center hover:bg-white/20 rounded-full transition-colors"
-              title="Вставить ссылку"
-              onMouseDown={(e) => {
-                e.preventDefault(); // preserve text selection
-                const sel = window.getSelection();
-                if (!sel || sel.isCollapsed || !sel.rangeCount) {
-                  alert("Сначала выделите текст, чтобы сделать его ссылкой");
-                  return;
-                }
-                const range = sel.getRangeAt(0);
-                const url = prompt("Введите URL ссылки:");
-                if (!url) {
-                  // restore selection after prompt
-                  sel.removeAllRanges();
-                  sel.addRange(range);
-                  return;
-                }
-                // restore selection and create link
-                sel.removeAllRanges();
-                sel.addRange(range);
-                document.execCommand("createLink", false, url);
-                // Set target="_blank" on new links
-                const editor = range.commonAncestorContainer.parentElement?.closest?.('[contenteditable]') || range.commonAncestorContainer;
-                const root = editor instanceof HTMLElement ? editor : (editor as Node).parentElement;
-                if (root) {
-                  root.querySelectorAll('a[href]').forEach((a) => {
-                    if (!a.getAttribute('target')) {
-                      a.setAttribute('target', '_blank');
-                      a.setAttribute('rel', 'noopener noreferrer');
+            <Popover open={linkPopoverOpen} onOpenChange={(open) => {
+              if (!open) {
+                setLinkPopoverOpen(false);
+                setLinkUrl("");
+                setLinkText("");
+                savedLinkRange.current = null;
+              }
+            }}>
+              <PopoverTrigger asChild>
+                <button
+                  className="h-8 w-8 flex items-center justify-center hover:bg-white/20 rounded-full transition-colors"
+                  title="Вставить ссылку"
+                  onMouseDown={(e) => {
+                    e.preventDefault();
+                    const sel = window.getSelection();
+                    const hasSelection = !!(sel && !sel.isCollapsed && sel.rangeCount > 0);
+                    if (hasSelection) {
+                      savedLinkRange.current = sel!.getRangeAt(0).cloneRange();
+                    } else {
+                      savedLinkRange.current = null;
                     }
-                  });
-                }
-              }}
-            >
-              <Link2 className="w-4 h-4" />
-            </button>
+                    setLinkHasSelection(hasSelection);
+                    setLinkUrl("");
+                    setLinkText("");
+                    setLinkPopoverOpen(true);
+                  }}
+                >
+                  <Link2 className="w-4 h-4" />
+                </button>
+              </PopoverTrigger>
+              <PopoverContent align="center" className="w-72 p-3 space-y-2" onOpenAutoFocus={(e) => e.preventDefault()}>
+                <p className="text-xs font-medium text-foreground">
+                  {linkHasSelection ? "Обернуть выделенный текст в ссылку" : "Вставить ссылку"}
+                </p>
+                {!linkHasSelection && (
+                  <Input
+                    placeholder="Текст ссылки"
+                    value={linkText}
+                    onChange={(e) => setLinkText(e.target.value)}
+                    className="h-8 text-sm"
+                    autoFocus
+                  />
+                )}
+                <Input
+                  placeholder="https://example.com"
+                  value={linkUrl}
+                  onChange={(e) => setLinkUrl(e.target.value)}
+                  className="h-8 text-sm"
+                  autoFocus={linkHasSelection}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      // trigger apply
+                      (e.currentTarget.closest('[data-radix-popper-content-wrapper]')?.querySelector('[data-link-apply]') as HTMLButtonElement)?.click();
+                    }
+                  }}
+                />
+                <Button
+                  size="sm"
+                  className="w-full h-8 text-xs"
+                  data-link-apply
+                  disabled={!linkUrl.trim()}
+                  onClick={() => {
+                    const url = linkUrl.trim();
+                    if (!url) return;
+                    const sel = window.getSelection();
+
+                    if (linkHasSelection && savedLinkRange.current && sel) {
+                      // Restore selection and wrap in link
+                      sel.removeAllRanges();
+                      sel.addRange(savedLinkRange.current);
+                      document.execCommand("createLink", false, url);
+                    } else {
+                      // Insert link as new element
+                      const text = linkText.trim() || url;
+                      const html = `<a href="${url}" target="_blank" rel="noopener noreferrer">${text}</a>&nbsp;`;
+                      // Try to find the contenteditable and focus it
+                      const blockEl = document.querySelector(`[data-block-id="${block.id}"] [contenteditable]`) as HTMLElement;
+                      if (blockEl) {
+                        blockEl.focus();
+                        document.execCommand("insertHTML", false, html);
+                      }
+                    }
+
+                    // Set target="_blank" on all new links in the block
+                    const blockEl = document.querySelector(`[data-block-id="${block.id}"] [contenteditable]`) as HTMLElement;
+                    if (blockEl) {
+                      blockEl.querySelectorAll('a[href]').forEach((a) => {
+                        if (!a.getAttribute('target')) {
+                          a.setAttribute('target', '_blank');
+                          a.setAttribute('rel', 'noopener noreferrer');
+                        }
+                      });
+                      // Trigger input event so RichTextEditor picks up changes
+                      blockEl.dispatchEvent(new Event('input', { bubbles: true }));
+                    }
+
+                    setLinkPopoverOpen(false);
+                    setLinkUrl("");
+                    setLinkText("");
+                    savedLinkRange.current = null;
+                  }}
+                >
+                  {linkHasSelection ? "Применить" : "Вставить ссылку"}
+                </Button>
+              </PopoverContent>
+            </Popover>
           )}
           <Popover>
             <PopoverTrigger asChild>
