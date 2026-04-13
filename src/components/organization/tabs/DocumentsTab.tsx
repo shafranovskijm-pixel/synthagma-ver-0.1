@@ -575,7 +575,7 @@ export const DocumentsTab = React.memo(function DocumentsTab({ organizationId, o
             )}
 
             {activeTab === "programs" && (
-              <ProgramsManager organizationId={organizationId} />
+              <CourseProgramsList organizationId={organizationId} />
             )}
 
             {activeTab === "payers" && (
