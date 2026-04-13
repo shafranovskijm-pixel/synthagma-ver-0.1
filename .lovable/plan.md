@@ -1,40 +1,46 @@
 
-Проблема найдена: сейчас на `/organization` курсы грузятся по двум разным путям одновременно.
 
-1. `useOrganizationDataLoader` уже загружает курсы в общий dashboard-state (`d.courses`) — это и было “как раньше”, поэтому страница открывалась быстро.
-2. Но `CoursesTab` этот готовый список игнорирует и запускает второй, отдельный `useCourses(organizationId)`.
-3. В логах видно именно это: один запрос `courses` от dashboard-потока возвращает данные, а второй падает с `57014 statement timeout`. После этого `CoursesTab` показывает ветку `loadError` — “Не удалось загрузить курсы”, хотя данные уже есть.
+# Исправление: обложка не отображается после генерации
 
-Итог: проблема не в том, что курсов нет, а в том, что UI завязан на второй, более хрупкий загрузчик.
+## Причина
 
-Что нужно сделать:
-1. Вернуть старую логику источника данных:
-   - сделать `d.courses` и `d.categoryActions/categories` главным источником для `CoursesTab`
-   - убрать повторную начальную загрузку через `useCourses` на странице организации
+В `useCourses.ts` строка 85: `if (hasPreloadedData) return;` — когда курсы приходят из dashboard (`initialCourses`), **любой вызов `refresh()` игнорируется**, потому что `hasPreloadedData` всегда `true`. После генерации обложки `refresh()` ничего не делает — новый `cover_image_url` не загружается из БД.
 
-2. Разделить “загрузка списка” и “действия над курсами”:
-   - либо вынести из `useCourses` только CRUD/refresh/reorder в отдельный action-hook
-   - либо переделать `useCourses`, чтобы он умел работать от переданных `initialCourses` без собственного fetch при открытии вкладки
+## Решение
 
-3. Починить UX при временных сбоях:
-   - если уже есть последний успешный список курсов, не показывать fatal-error экран
-   - оставлять существующие курсы на экране и делать мягкий фоновый refresh
-   - ошибку показывать как toast/неблокирующее сообщение, а не как полную замену списка
+Два изменения в `src/hooks/useCourses.ts`:
 
-4. Синхронизировать обновления:
-   - `create / update / duplicate / delete / reorder / cover upload` должны обновлять общий dashboard-state
-   - после мутаций использовать `d.refreshData()` и локальные optimistic updates через `d.setCourses`
+1. **Разрешить fetch при явном refresh даже с preloaded data**: добавить флаг `manualRefresh` — когда `refreshKey > 0`, выполнять fetch независимо от `hasPreloadedData`.
 
-5. Проверить организационную страницу после правки:
-   - при открытии `/organization` должен быть один основной запрос на список курсов, а не два
-   - список должен появляться сразу из общего состояния
-   - даже если фоновый refresh неудачен, курсы не должны исчезать
+2. **Оптимистичное обновление обложки**: в `handleGenerateCourseCover` в `CoursesTab.tsx` — после успешной генерации, сразу обновить локальное состояние через `updateCourseLocally(courseId, { cover_image_url: data.url })` вместо `refresh()`, чтобы обложка появилась мгновенно без повторного запроса к БД.
 
-Файлы для изменения:
-- `src/components/organization/tabs/CoursesTab.tsx`
-- `src/components/organization/tabs/TabContentRenderer.tsx`
-- `src/hooks/useCourses.ts` (рефактор в actions-only или optional-fetch)
-- при необходимости `src/hooks/useOrganizationDashboard.ts` / `src/hooks/useOrganizationDataLoader.ts`
+### Конкретные правки
 
-Технически точная причина:
-сейчас “быстрый” загрузчик и “табовый” загрузчик конкурируют. Пользователь видит ошибку не потому, что курсы пропали, а потому что второй запрос таймаутится и перетирает успешный результат первого. Исправление — снова сделать единый источник правды для курсов на organization dashboard.
+**`src/hooks/useCourses.ts`** — строка 84-85:
+```typescript
+// Было:
+if (hasPreloadedData) return;
+
+// Станет:
+if (hasPreloadedData && refreshKey === 0) return;
+```
+Это позволит `refresh()` (который увеличивает `refreshKey`) работать даже с preloaded data.
+
+**`src/components/organization/tabs/CoursesTab.tsx`** — строка 299-300:
+```typescript
+// Было:
+toast.success("Обложка курса сгенерирована!");
+refresh();
+
+// Станет:
+toast.success("Обложка курса сгенерирована!");
+if (data?.url) {
+  updateCourseLocally(courseId, { cover_image_url: data.url });
+}
+```
+Обложка появится мгновенно без запроса к БД.
+
+## Файлы
+- `src/hooks/useCourses.ts` — разрешить refresh при preloaded data
+- `src/components/organization/tabs/CoursesTab.tsx` — оптимистичное обновление обложки
+
