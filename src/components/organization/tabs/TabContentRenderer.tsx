@@ -1,3 +1,4 @@
+import { useNavigate } from "react-router-dom";
 import { CoursesTab } from "./CoursesTab";
 import { StatsCards } from "./StatsCards";
 import { DocumentsStatsCards } from "./DocumentsStatsCards";
@@ -22,6 +23,7 @@ import { WebinarsManager } from "@/components/organization/WebinarsManager";
 import { useOrgDashboard } from "@/contexts/OrgDashboardContext";
 
 export function TabContentRenderer() {
+  const navigate = useNavigate();
   const d = useOrgDashboard();
   const activeTab = d.tabNavigation.activeTab;
   const organizationId = d.organizationId;
@@ -54,9 +56,7 @@ export function TabContentRenderer() {
         <CoursesTab 
           organizationId={organizationId} 
           onOpenCourseDetails={(course) => {
-            d.courseDetailsModal.setSelectedCourseForDetails(course);
-            d.courseDetailsModal.setCourseDetailsTab("students");
-            d.courseDetailsModal.setShowCourseDetailsModal(true);
+            navigate(`/organization/course/${course.id}`);
           }}
           onCoursesDeleted={d.refreshData}
         />

@@ -5,7 +5,6 @@ import {
   EnrollDialog,
   CategoryDialog,
   InviteEmailDialog,
-  CourseDetailsModal,
   StudentDetailsDialog,
   StudentCoursesDialog,
   OrgDetailsDialog,
@@ -80,26 +79,7 @@ export function DialogsContainer() {
         }}
       />
 
-      <CourseDetailsModal
-        open={d.courseDetailsModal.showCourseDetailsModal}
-        onOpenChange={d.courseDetailsModal.setShowCourseDetailsModal}
-        course={d.courseDetailsModal.selectedCourseForDetails}
-        courseStudents={d.courseStudentsManager.courseStudents}
-        organizationId={d.organizationId}
-        activeTab={d.courseDetailsModal.courseDetailsTab}
-        onTabChange={d.courseDetailsModal.setCourseDetailsTab}
-        onEnrollStudent={() => {
-          if (d.courseDetailsModal.selectedCourseForDetails) {
-            d.setStudentCourseFilter(d.courseDetailsModal.selectedCourseForDetails.id);
-            d.setStudentStatusFilter("not_enrolled");
-            d.tabNavigation.setActiveTab("students");
-            d.courseDetailsModal.setShowCourseDetailsModal(false);
-          }
-        }}
-        onCourseDeleted={d.refreshData}
-        onCourseUpdated={d.refreshData}
-        onRefreshStudents={d.loadCourseStudentsForModal}
-      />
+      {/* CourseDetailsModal removed — now a full page at /organization/course/:courseId */}
 
       <CourseStudentsDialog
         open={d.courseStudentsManager.showCourseStudentsDialog}
