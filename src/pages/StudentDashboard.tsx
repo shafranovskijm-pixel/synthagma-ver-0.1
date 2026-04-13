@@ -177,7 +177,13 @@ export default function StudentDashboard() {
             <Eye className="w-4 h-4" />
             <span className="text-sm font-medium">Режим просмотра: {adminViewStudentName}</span>
           </div>
-          <Button variant="secondary" size="sm" onClick={() => { localStorage.removeItem('adminViewAsStudent'); navigate('/admin'); }} className="gap-1">
+          <Button variant="secondary" size="sm" onClick={() => {
+            const raw = localStorage.getItem('adminViewAsStudent');
+            let returnPath = '/admin';
+            try { const d = JSON.parse(raw || '{}'); if (d.orgReturn) returnPath = d.orgReturn; } catch {}
+            localStorage.removeItem('adminViewAsStudent');
+            navigate(returnPath);
+          }} className="gap-1">
             <X className="w-3 h-3" />Выйти
           </Button>
         </div>

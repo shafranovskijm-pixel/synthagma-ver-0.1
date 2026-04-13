@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-import { ArrowLeft, User, CreditCard, Handshake, HelpCircle, LogOut, Sparkles, Settings, FileText, Video, BookOpen, Clock, MessageCircle, Loader2 } from "lucide-react";
+import { ArrowLeft, User, CreditCard, Handshake, HelpCircle, LogOut, Sparkles, Settings, FileText, Video, BookOpen, Clock, MessageCircle, Loader2, LogIn } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { OrgDashboardProvider, useOrgDashboard } from "@/contexts/OrgDashboardContext";
 import { OrgDashboardFooter } from "@/components/organization/OrgDashboardFooter";
@@ -225,6 +225,23 @@ function StudentPageInner({ organizationId, studentId }: { organizationId: strin
             </div>
 
             <div className="flex items-center gap-1.5 sm:gap-2.5">
+              <Button
+                variant="outline"
+                size="sm"
+                className="hidden sm:flex gap-1.5 rounded-full text-xs hover:text-primary hover:bg-primary/10 hover:border-primary/30 transition-all duration-200"
+                onClick={() => {
+                  localStorage.setItem('adminViewAsStudent', JSON.stringify({
+                    odlUsr: student.user_id,
+                    name: student.name,
+                    orgReturn: '/organization'
+                  }));
+                  navigate('/student');
+                }}
+              >
+                <LogIn className="w-4 h-4" />
+                Войти как ученик
+              </Button>
+
               <button
                 onClick={() => navigate("/organization")}
                 className="hidden sm:flex items-center gap-2 px-3.5 py-2 bg-primary/10 rounded-full border border-primary/20 hover:bg-primary/20 hover:border-primary/40 hover:shadow-md hover:shadow-primary/10 transition-all duration-200"
