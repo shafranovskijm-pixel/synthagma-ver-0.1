@@ -259,8 +259,6 @@ export default function OrganizationSettings() {
   );
 }
 
-// Lazy-loaded DocumentsTab wrapper
-import { lazy, Suspense } from "react";
 const LazyDocumentsTab = lazy(() => import("@/components/organization/tabs/DocumentsTab").then(m => ({ default: m.DocumentsTab })));
 
 function DocumentsModuleWrapper({ organizationId }: { organizationId: string }) {
