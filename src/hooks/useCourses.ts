@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import type { Course, CourseCategory, CourseFilter, CourseViewMode } from "@/types";
 import { 
   fetchCourses,
+  fetchCourseStudentCounts,
   fetchCategories,
   createCourse,
   updateCourse,
