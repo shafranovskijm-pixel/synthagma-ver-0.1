@@ -28,9 +28,16 @@ import { StudentLibrary } from "@/components/student/StudentLibrary";
 import { cn } from "@/lib/utils";
 import { Video } from "lucide-react";
 import { StudentWebinarsList } from "@/components/student/StudentWebinarsList";
+import { Student3DTrainers } from "@/components/student/Student3DTrainers";
 
 function CatalogContent({ catalogCourses, categories, profile, branding, handleCourseClick }: any) {
-  const [contentTab, setContentTab] = useState<"courses" | "webinars">("courses");
+  const [contentTab, setContentTab] = useState<"courses" | "webinars" | "trainers">("courses");
+
+  const tabs = [
+    { id: "courses" as const, label: "Курсы" },
+    { id: "webinars" as const, label: "Вебинары" },
+    { id: "trainers" as const, label: "3D-тренажёры" },
+  ];
 
   return (
     <div className="p-6 space-y-6 max-w-[1400px] mx-auto flex-1">
@@ -43,41 +50,32 @@ function CatalogContent({ catalogCourses, categories, profile, branding, handleC
         secondaryColor={branding?.secondaryColor}
       />
 
-      {/* Courses / Webinars toggle */}
       <div className="flex gap-1 bg-muted rounded-lg p-1 w-fit">
-        <button
-          onClick={() => setContentTab("courses")}
-          className={cn(
-            "px-5 py-2 rounded-md text-sm font-medium transition-all",
-            contentTab === "courses"
-              ? "bg-background text-foreground shadow-sm"
-              : "text-muted-foreground hover:text-foreground"
-          )}
-        >
-          Курсы
-        </button>
-        <button
-          onClick={() => setContentTab("webinars")}
-          className={cn(
-            "px-5 py-2 rounded-md text-sm font-medium transition-all",
-            contentTab === "webinars"
-              ? "bg-background text-foreground shadow-sm"
-              : "text-muted-foreground hover:text-foreground"
-          )}
-        >
-          Вебинары
-        </button>
+        {tabs.map((t) => (
+          <button
+            key={t.id}
+            onClick={() => setContentTab(t.id)}
+            className={cn(
+              "px-5 py-2 rounded-md text-sm font-medium transition-all",
+              contentTab === t.id
+                ? "bg-background text-foreground shadow-sm"
+                : "text-muted-foreground hover:text-foreground"
+            )}
+          >
+            {t.label}
+          </button>
+        ))}
       </div>
 
-      {contentTab === "courses" ? (
+      {contentTab === "courses" && (
         <CourseCatalog
           courses={catalogCourses}
           categories={categories}
           onCourseClick={(id: string, enrolled: boolean) => handleCourseClick(id, enrolled)}
         />
-      ) : (
-        <StudentWebinarsList />
       )}
+      {contentTab === "webinars" && <StudentWebinarsList />}
+      {contentTab === "trainers" && <Student3DTrainers />}
     </div>
   );
 }
