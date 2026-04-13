@@ -1,10 +1,12 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
+import { Helmet } from "react-helmet-async";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Loader2, Play, ArrowLeft } from "lucide-react";
+import { getBaseUrl } from "@/utils/getBaseUrl";
 import { toast } from "sonner";
 import { LandingHeroSection } from "@/components/course-landing/LandingHeroSection";
 import { LandingAudienceSection } from "@/components/course-landing/LandingAudienceSection";
@@ -308,8 +310,45 @@ export default function CourseLanding() {
     }
   };
 
+  const seoData = landingContent?.seo || {};
+  const metaTitle = seoData.meta_title || `${course.title} — ${orgName}`;
+  const metaDescription = seoData.meta_description || (course.description ? course.description.substring(0, 160) : `Курс «${course.title}» от ${orgName}`);
+  const metaKeywords = seoData.keywords || "";
+  const ogImage = seoData.og_image_url || course.cover_image_url || "";
+  const canonicalUrl = seoData.canonical_url || `${getBaseUrl()}/c/${course.slug || courseId}`;
+
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@type": "Course",
+    name: course.title,
+    description: course.description || "",
+    provider: { "@type": "Organization", name: orgName },
+    ...(ogImage ? { image: ogImage } : {}),
+    ...(course.price > 0
+      ? { offers: { "@type": "Offer", price: finalPrice, priceCurrency: "RUB", availability: "https://schema.org/InStock" } }
+      : { isAccessibleForFree: true }),
+    ...(lessons.length > 0 ? { hasCourseInstance: { "@type": "CourseInstance", courseMode: "online" } } : {}),
+  };
+
   return (
     <div className="min-h-screen bg-background">
+      <Helmet>
+        <title>{metaTitle}</title>
+        <meta name="description" content={metaDescription} />
+        {metaKeywords && <meta name="keywords" content={metaKeywords} />}
+        <meta name="robots" content="index, follow" />
+        <link rel="canonical" href={canonicalUrl} />
+        <meta property="og:type" content="website" />
+        <meta property="og:title" content={metaTitle} />
+        <meta property="og:description" content={metaDescription} />
+        <meta property="og:url" content={canonicalUrl} />
+        {ogImage && <meta property="og:image" content={ogImage} />}
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content={metaTitle} />
+        <meta name="twitter:description" content={metaDescription} />
+        {ogImage && <meta name="twitter:image" content={ogImage} />}
+        <script type="application/ld+json">{JSON.stringify(jsonLd)}</script>
+      </Helmet>
       {sectionsOrder.map((sectionId) => renderPublicSection(sectionId))}
     </div>
   );

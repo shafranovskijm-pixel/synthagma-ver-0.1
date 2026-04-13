@@ -4,14 +4,16 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
+import { Textarea } from "@/components/ui/textarea";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Copy, Plus, Trash2, Loader2, ExternalLink } from "lucide-react";
+import { Copy, Plus, Trash2, Loader2, ExternalLink, Sparkles } from "lucide-react";
 
 interface Props {
   courseId: string;
   courseTitle: string;
+  courseDescription?: string;
 }
 
 interface PromoCode {
@@ -39,6 +41,13 @@ interface LandingContent {
     ga_event_name?: string;
     meta_pixel_id?: string;
   };
+  seo?: {
+    meta_title?: string;
+    meta_description?: string;
+    keywords?: string;
+    og_image_url?: string;
+    canonical_url?: string;
+  };
   blocks?: any[];
   external_url?: string;
 }
@@ -60,7 +69,7 @@ function transliterate(str: string): string {
     .substring(0, 60);
 }
 
-export function CoursePageSettingsContent({ courseId, courseTitle }: Props) {
+export function CoursePageSettingsContent({ courseId, courseTitle, courseDescription }: Props) {
   const [slug, setSlug] = useState("");
   const [accentColor, setAccentColor] = useState("#6366f1");
   const [price, setPrice] = useState(0);
@@ -68,6 +77,7 @@ export function CoursePageSettingsContent({ courseId, courseTitle }: Props) {
   const [promoCodes, setPromoCodes] = useState<PromoCode[]>([]);
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [aiLoading, setAiLoading] = useState<string | null>(null);
 
   const [newCode, setNewCode] = useState("");
   const [newDiscount, setNewDiscount] = useState(10);
@@ -88,7 +98,6 @@ export function CoursePageSettingsContent({ courseId, courseTitle }: Props) {
       setSlug(courseRes.data.slug || transliterate(courseTitle));
       setAccentColor(courseRes.data.accent_color || "#6366f1");
       setPrice(courseRes.data.price || 0);
-      setLandingContent((courseRes.data.landing_content as LandingContent) || {});
       setLandingContent((courseRes.data.landing_content as LandingContent) || {});
     }
     setPromoCodes((promoRes.data as PromoCode[]) || []);
@@ -157,6 +166,52 @@ export function CoursePageSettingsContent({ courseId, courseTitle }: Props) {
     }));
   };
 
+  const updateSeo = (key: string, value: string) => {
+    setLandingContent((prev) => ({
+      ...prev,
+      seo: { ...prev.seo, [key]: value },
+    }));
+  };
+
+  const handleAiGenerate = async (type: "seo" | "form") => {
+    setAiLoading(type);
+    try {
+      const { data, error } = await supabase.functions.invoke("generate-seo", {
+        body: { courseTitle, courseDescription: courseDescription || "", type },
+      });
+      if (error) throw error;
+      if (!data) throw new Error("Нет данных");
+
+      if (type === "seo") {
+        setLandingContent((prev) => ({
+          ...prev,
+          seo: {
+            ...prev.seo,
+            meta_title: data.meta_title || prev.seo?.meta_title,
+            meta_description: data.meta_description || prev.seo?.meta_description,
+            keywords: data.keywords || prev.seo?.keywords,
+          },
+        }));
+        toast.success("SEO-теги сгенерированы");
+      } else if (type === "form") {
+        setLandingContent((prev) => ({
+          ...prev,
+          enrollment_form: {
+            ...prev.enrollment_form,
+            subtitle: data.subtitle || prev.enrollment_form?.subtitle,
+            button_text: data.button_text || prev.enrollment_form?.button_text,
+          },
+        }));
+        toast.success("Тексты формы сгенерированы");
+      }
+    } catch (e: any) {
+      console.error(e);
+      toast.error("Ошибка ИИ-генерации", { description: e.message });
+    } finally {
+      setAiLoading(null);
+    }
+  };
+
   const publicUrl = `${window.location.origin}/c/${slug}`;
 
   const copyUrl = () => {
@@ -172,10 +227,13 @@ export function CoursePageSettingsContent({ courseId, courseTitle }: Props) {
     );
   }
 
+  const descCharCount = (landingContent.seo?.meta_description || "").length;
+
   return (
     <Tabs defaultValue="page" className="mt-2">
-      <TabsList className="w-full grid grid-cols-4">
+      <TabsList className="w-full grid grid-cols-5">
         <TabsTrigger value="page">Страница</TabsTrigger>
+        <TabsTrigger value="seo">SEO</TabsTrigger>
         <TabsTrigger value="form">Форма записи</TabsTrigger>
         <TabsTrigger value="promo">Промокоды</TabsTrigger>
         <TabsTrigger value="analytics">Аналитика</TabsTrigger>
@@ -246,7 +304,95 @@ export function CoursePageSettingsContent({ courseId, courseTitle }: Props) {
         </Button>
       </TabsContent>
 
+      <TabsContent value="seo" className="space-y-5 mt-4">
+        <div className="flex items-center justify-between">
+          <h3 className="text-sm font-medium">SEO-настройки</h3>
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-1.5"
+            onClick={() => handleAiGenerate("seo")}
+            disabled={aiLoading === "seo"}
+          >
+            {aiLoading === "seo" ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
+            Заполнить с ИИ
+          </Button>
+        </div>
+
+        <div className="space-y-2">
+          <Label>Meta Title <span className="text-muted-foreground text-xs">(до 60 символов)</span></Label>
+          <Input
+            value={landingContent.seo?.meta_title || ""}
+            onChange={(e) => updateSeo("meta_title", e.target.value)}
+            placeholder={courseTitle}
+            maxLength={60}
+          />
+          <p className="text-xs text-muted-foreground">{(landingContent.seo?.meta_title || "").length}/60</p>
+        </div>
+
+        <div className="space-y-2">
+          <Label>Meta Description <span className="text-muted-foreground text-xs">(до 160 символов)</span></Label>
+          <Textarea
+            value={landingContent.seo?.meta_description || ""}
+            onChange={(e) => updateSeo("meta_description", e.target.value)}
+            placeholder="Краткое описание курса для поисковых систем"
+            maxLength={160}
+            rows={3}
+          />
+          <p className={`text-xs ${descCharCount > 160 ? "text-destructive" : "text-muted-foreground"}`}>
+            {descCharCount}/160
+          </p>
+        </div>
+
+        <div className="space-y-2">
+          <Label>Ключевые слова</Label>
+          <Input
+            value={landingContent.seo?.keywords || ""}
+            onChange={(e) => updateSeo("keywords", e.target.value)}
+            placeholder="обучение, курс, онлайн, повышение квалификации"
+          />
+          <p className="text-xs text-muted-foreground">Через запятую, 5-8 ключевых слов</p>
+        </div>
+
+        <div className="space-y-2">
+          <Label>OG Image URL <span className="text-muted-foreground text-xs">(для соцсетей)</span></Label>
+          <Input
+            value={landingContent.seo?.og_image_url || ""}
+            onChange={(e) => updateSeo("og_image_url", e.target.value)}
+            placeholder="По умолчанию используется обложка курса"
+          />
+        </div>
+
+        <div className="space-y-2">
+          <Label>Canonical URL <span className="text-muted-foreground text-xs">(необязательно)</span></Label>
+          <Input
+            value={landingContent.seo?.canonical_url || ""}
+            onChange={(e) => updateSeo("canonical_url", e.target.value)}
+            placeholder="Автоматически генерируется из slug"
+          />
+        </div>
+
+        <Button onClick={handleSave} disabled={saving} className="w-full gap-2">
+          {saving && <Loader2 className="w-4 h-4 animate-spin" />}
+          Сохранить настройки
+        </Button>
+      </TabsContent>
+
       <TabsContent value="form" className="space-y-5 mt-4">
+        <div className="flex items-center justify-between">
+          <h3 className="text-sm font-medium">Форма записи</h3>
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-1.5"
+            onClick={() => handleAiGenerate("form")}
+            disabled={aiLoading === "form"}
+          >
+            {aiLoading === "form" ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
+            Заполнить с ИИ
+          </Button>
+        </div>
+
         <div className="space-y-2">
           <Label>Подзаголовок формы</Label>
           <Input
