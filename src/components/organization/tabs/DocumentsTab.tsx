@@ -121,20 +121,28 @@ export const DocumentsTab = React.memo(function DocumentsTab({ organizationId, o
   const [actBasis, setActBasis] = useState("");
   const [actAmount, setActAmount] = useState("");
   const [actSubmitting, setActSubmitting] = useState(false);
-  const [orgDetails, setOrgDetails] = useState<{ inn?: string; director_name?: string; director_position?: string }>({});
+  const [generatingInvoice, setGeneratingInvoice] = useState(false);
+  const [orgDetails, setOrgDetails] = useState<{ inn?: string; director_name?: string; director_position?: string; custom_price?: number; custom_discount?: number; subscription_plan?: string }>({});
 
   useEffect(() => {
     if (!organizationId) return;
     supabase
       .from('organizations')
-      .select('stamp_url, signature_url, inn, director_name, director_position')
+      .select('stamp_url, signature_url, inn, director_name, director_position, custom_price, custom_discount, subscription_plan')
       .eq('id', organizationId)
       .single()
       .then(({ data }) => {
         if (data) {
           setStampUrl(data.stamp_url);
           setSignatureUrl(data.signature_url);
-          setOrgDetails({ inn: data.inn, director_name: data.director_name, director_position: data.director_position });
+          setOrgDetails({
+            inn: data.inn,
+            director_name: data.director_name,
+            director_position: (data as any).director_position,
+            custom_price: (data as any).custom_price,
+            custom_discount: (data as any).custom_discount,
+            subscription_plan: data.subscription_plan,
+          });
         }
       });
 
@@ -249,6 +257,48 @@ export const DocumentsTab = React.memo(function DocumentsTab({ organizationId, o
     setActSubmitting(false);
   };
 
+  const handleGenerateInvoiceFromDocs = async () => {
+    if (!organizationId) return;
+    setGeneratingInvoice(true);
+    try {
+      const PLAN_PRICES: Record<string, number> = {
+        free: 0, start: 1990, standard: 4990, professional: 9990, maximum: 19990,
+      };
+      const plan = orgDetails.subscription_plan || "start";
+      const basePrice = orgDetails.custom_price ?? PLAN_PRICES[plan] ?? 1990;
+      const discount = orgDetails.custom_discount ?? 0;
+      const amount = Math.max(0, basePrice - discount);
+
+      const year = new Date().getFullYear();
+      const { count } = await supabase
+        .from("subscription_invoices")
+        .select("*", { count: "exact", head: true })
+        .eq("organization_id", organizationId);
+
+      const invoiceNum = `СЧ-${year}/${String((count || 0) + 1).padStart(4, "0")}`;
+
+      const { data: invoice, error: err } = await supabase
+        .from("subscription_invoices")
+        .insert({
+          organization_id: organizationId,
+          invoice_number: invoiceNum,
+          plan,
+          amount,
+          period_months: 1,
+        } as any)
+        .select("id")
+        .single();
+
+      if (err) throw err;
+      setInvoices(prev => [{ id: (invoice as any).id, invoice_number: invoiceNum, amount, status: "pending", plan, period_months: 1, invoice_date: new Date().toISOString(), created_at: new Date().toISOString() }, ...prev]);
+      toast({ title: "Счёт создан", description: `Счёт ${invoiceNum} на ${amount.toLocaleString("ru-RU")} ₽` });
+    } catch (e: any) {
+      toast({ title: "Ошибка", description: e.message, variant: "destructive" });
+    } finally {
+      setGeneratingInvoice(false);
+    }
+  };
+
   if (!organizationId) {
     return (
       <div className="text-center py-12 text-muted-foreground">
@@ -356,6 +406,12 @@ export const DocumentsTab = React.memo(function DocumentsTab({ organizationId, o
               )}
             </div>
             <div className="flex items-center gap-2">
+              {activeTab === "billing" && billingSubTab === "invoices" && (
+                <Button variant="outline" size="sm" className="rounded-xl gap-1.5" onClick={handleGenerateInvoiceFromDocs} disabled={generatingInvoice}>
+                  <Receipt className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline">{generatingInvoice ? "Создание..." : "Сформировать счёт"}</span>
+                </Button>
+              )}
               {activeTab === "billing" && billingSubTab === "closing" && (
                 <Button variant="outline" size="sm" className="rounded-xl gap-1.5" onClick={() => setShowActDialog(true)}>
                   <FileText className="w-3.5 h-3.5" />
@@ -575,8 +631,11 @@ export const DocumentsTab = React.memo(function DocumentsTab({ organizationId, o
                               {inv.status === "paid" ? (
                                 <span className="text-xs font-medium text-emerald-600">Оплачен</span>
                               ) : (
-                                <span className="text-xs font-medium text-amber-600">Ожидает</span>
+                                <span className="text-xs font-medium text-amber-600">Не оплачен</span>
                               )}
+                              <Button variant="ghost" size="sm" title="Скачать / Печать" onClick={() => window.open(`/invoice/${inv.id}`, "_blank")}>
+                                <Download className="w-4 h-4" />
+                              </Button>
                               <Button variant="ghost" size="sm" title="Открыть" onClick={() => window.open(`/invoice/${inv.id}`, "_blank")}>
                                 <ExternalLink className="w-4 h-4" />
                               </Button>
