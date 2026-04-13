@@ -422,10 +422,14 @@ const CoursePreview = () => {
   // Attachments state
   const [lessonAttachments, setLessonAttachments] = useState<Record<string, any[]>>({});
   
+  // Course documents state
+  const [courseDocuments, setCourseDocuments] = useState<any[]>([]);
+  const [showDocumentsView, setShowDocumentsView] = useState(false);
+  
   // File preview state
   const [previewFile, setPreviewFile] = useState<{ url: string; name: string; type: string | null } | null>(null);
 
-  const currentLesson = lessons[currentLessonIndex];
+  const currentLesson = showDocumentsView ? null : lessons[currentLessonIndex];
 
   // Parse content blocks
   const contentBlocks: ContentBlock[] = currentLesson?.content 
