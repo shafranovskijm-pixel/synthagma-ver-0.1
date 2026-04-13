@@ -229,16 +229,7 @@ export function DialogsContainer() {
         />
       )}
 
-      {/* Student Detail Card */}
-      {d.organizationId && (
-        <StudentDetailCard
-          isOpen={d.studentDetailCard.showStudentDetailCard}
-          onOpenChange={d.studentDetailCard.setShowStudentDetailCard}
-          student={d.studentDetailCard.studentDetailCardData}
-          organizationId={d.organizationId}
-          enrollments={d.studentDetailCard.studentDetailCardEnrollments}
-        />
-      )}
+      {/* Student Detail Card — now a full page at /organization/student/:studentId */}
       
       <BulkFRDOExport
         isOpen={d.enrollmentActions.showBulkFRDOExport}
