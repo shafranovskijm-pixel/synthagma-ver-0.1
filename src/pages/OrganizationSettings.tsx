@@ -210,6 +210,17 @@ export default function OrganizationSettings() {
             </div>
           </TabsContent>
 
+          {/* Tab: Documents */}
+          <TabsContent value="documents">
+            <div>
+              {organizationId && (
+                <OrgDashboardProvider>
+                  <DocumentsModuleWrapper organizationId={organizationId} />
+                </OrgDashboardProvider>
+              )}
+            </div>
+          </TabsContent>
+
           {/* Tab: Module Management — embedded components */}
           <TabsContent value="modules">
             <div className="space-y-4">
@@ -247,11 +258,6 @@ export default function OrganizationSettings() {
                 )}
                 {organizationId && activeModuleTab === "frdo" && (
                   <FRDOManager organizationId={organizationId} />
-                )}
-                {organizationId && activeModuleTab === "documents" && (
-                  <OrgDashboardProvider>
-                    <DocumentsModuleWrapper organizationId={organizationId} />
-                  </OrgDashboardProvider>
                 )}
               </div>
             </div>
