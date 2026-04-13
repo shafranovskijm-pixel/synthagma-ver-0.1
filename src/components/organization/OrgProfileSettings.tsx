@@ -8,7 +8,7 @@ import {
   ChevronRight, Loader2, Upload,
   X, ExternalLink, Image, Eye, Lock, ArrowUpRight, LogIn, KeyRound,
   RefreshCw, RotateCcw, Trophy, MessageCircle,
-  BarChart3, Link, HardHat, FileText, ShoppingBag, Building2
+  BarChart3, Link, HardHat, FileText, ShoppingBag, Building2, Users, ClipboardList, FileSpreadsheet
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -829,6 +829,82 @@ export function OrgProfileSettings({ organizationId, userId }: OrgProfileSetting
 
       {/* Robokassa Payment Settings */}
       <RobokassaSettings organizationId={organizationId} />
+
+      {/* Quick Navigation to Sections */}
+      <details className="bg-card rounded-xl lg:rounded-2xl border border-border group">
+        <summary className="p-4 lg:p-6 cursor-pointer list-none flex items-center justify-between">
+          <h3 className="font-display font-semibold text-base lg:text-lg flex items-center gap-2">
+            <Settings className="w-4 h-4 lg:w-5 lg:h-5" />
+            Управление разделами
+          </h3>
+          <ChevronRight className="w-5 h-5 text-muted-foreground transition-transform group-open:rotate-90" />
+        </summary>
+        <div className="px-4 lg:px-6 pb-4 lg:pb-6 space-y-3">
+          <p className="text-xs lg:text-sm text-muted-foreground mb-2">
+            Быстрый доступ к разделам управления организацией
+          </p>
+          
+          {/* Staff */}
+          <button
+            onClick={() => navigate("/organization", { state: { tab: "staff" } })}
+            className="w-full flex items-center gap-3 p-3 rounded-xl border border-border hover:bg-accent/5 hover:border-primary/30 transition-all text-left group/nav"
+          >
+            <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+              <Users className="w-4 h-4 text-primary" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="font-medium text-sm">Сотрудники</p>
+              <p className="text-xs text-muted-foreground">Управление ролями и доступом</p>
+            </div>
+            <ChevronRight className="w-4 h-4 text-muted-foreground group-hover/nav:text-primary transition-colors" />
+          </button>
+
+          {/* Documents */}
+          <button
+            onClick={() => navigate("/organization", { state: { tab: "documents" } })}
+            className="w-full flex items-center gap-3 p-3 rounded-xl border border-border hover:bg-accent/5 hover:border-primary/30 transition-all text-left group/nav"
+          >
+            <div className="w-9 h-9 rounded-lg bg-sigma-orange/10 flex items-center justify-center shrink-0">
+              <FileText className="w-4 h-4 text-sigma-orange" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="font-medium text-sm">Документооборот</p>
+              <p className="text-xs text-muted-foreground">Приказы, протоколы, сертификаты</p>
+            </div>
+            <ChevronRight className="w-4 h-4 text-muted-foreground group-hover/nav:text-primary transition-colors" />
+          </button>
+
+          {/* Journals */}
+          <button
+            onClick={() => navigate("/organization", { state: { tab: "journals" } })}
+            className="w-full flex items-center gap-3 p-3 rounded-xl border border-border hover:bg-accent/5 hover:border-primary/30 transition-all text-left group/nav"
+          >
+            <div className="w-9 h-9 rounded-lg bg-accent/10 flex items-center justify-center shrink-0">
+              <ClipboardList className="w-4 h-4 text-accent" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="font-medium text-sm">Журналы учёта</p>
+              <p className="text-xs text-muted-foreground">Журналы учёта слушателей</p>
+            </div>
+            <ChevronRight className="w-4 h-4 text-muted-foreground group-hover/nav:text-primary transition-colors" />
+          </button>
+
+          {/* FRDO */}
+          <button
+            onClick={() => navigate("/organization", { state: { tab: "frdo" } })}
+            className="w-full flex items-center gap-3 p-3 rounded-xl border border-border hover:bg-accent/5 hover:border-primary/30 transition-all text-left group/nav"
+          >
+            <div className="w-9 h-9 rounded-lg bg-sigma-green/10 flex items-center justify-center shrink-0">
+              <FileSpreadsheet className="w-4 h-4 text-sigma-green" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="font-medium text-sm">ФИС ФРДО</p>
+              <p className="text-xs text-muted-foreground">Федеральный реестр документов</p>
+            </div>
+            <ChevronRight className="w-4 h-4 text-muted-foreground group-hover/nav:text-primary transition-colors" />
+          </button>
+        </div>
+      </details>
     </div>
   );
 }

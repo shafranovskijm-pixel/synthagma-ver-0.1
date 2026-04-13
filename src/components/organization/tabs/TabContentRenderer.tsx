@@ -2,7 +2,7 @@ import { CoursesTab } from "./CoursesTab";
 import { StatsCards } from "./StatsCards";
 import { DocumentsStatsCards } from "./DocumentsStatsCards";
 import { StudentsTab } from "./StudentsTab";
-import { SettingsTab } from "./SettingsTab";
+
 import { LinksTab } from "./LinksTab";
 import { StatsTab } from "./StatsTab";
 import { DocumentsTab } from "./DocumentsTab";
@@ -28,7 +28,7 @@ export function TabContentRenderer() {
 
   const shouldShowStatsCards = activeTab !== "organizations" && 
     activeTab !== "services" && 
-    activeTab !== "settings" && 
+     
     activeTab !== "students" && 
     activeTab !== "frdo" && 
     activeTab !== "library" && 
@@ -192,8 +192,6 @@ export function TabContentRenderer() {
       {/* Subscription Tab */}
       {activeTab === "subscription" && <SubscriptionTab />}
 
-      {/* Settings Tab */}
-      {activeTab === "settings" && <SettingsTab />}
     </>
   );
 }

@@ -55,7 +55,6 @@ const tabCategoryMap: Record<string, string> = {
   "labor-safety": "labor_safety",
   frdo: "frdo",
   services: "services",
-  settings: "settings",
 };
 
 function hexToHsl(hex: string): string | null {
@@ -147,7 +146,6 @@ export function OrgSidebar() {
   navItems.push({ id: "homework-review", icon: BookCheck, label: "Задания" });
   
   navItems.push({ id: "chats", icon: MessageCircle, label: "Чаты", badge: d.unreadChatsCount });
-  navItems.push({ id: "settings", icon: Settings, label: "Настройки", category: "settings" });
 
   return (
     <>
