@@ -16,7 +16,7 @@ function lessonContent() {
       { id: uid(), type: "paragraph", content: "<b>СИНТАГМА</b> — это современная платформа для организации дистанционного обучения. Здесь вы сможете создавать курсы, управлять учениками, проводить аттестации и выдавать документы — всё в одном месте." },
       { id: uid(), type: "callout-info", content: "Платформа разработана специально для учебных центров, корпоративных университетов и образовательных организаций в России." },
       { id: uid(), type: "heading2", content: "Что умеет платформа?" },
-      { id: uid(), type: "accordion", content: "• <b>Конструктор курсов</b> — создавайте уроки с текстом, видео, тестами и практическими заданиями<br>• <b>Блочный редактор</b> — гибкая структура: заголовки, списки, инфо-блоки, аккордеоны, изображения<br>• <b>Слайдер</b> — встроенные презентации прямо в уроке<br>• <b>Видеоуроки</b> — загрузка файлов до 2 ГБ с прогресс-баром", accordionTitle: "📚 Создание курсов", accordionOpen: false },
+      { id: uid(), type: "accordion", content: "• <b>Конструктор курсов</b> — создавайте уроки с текстом, видео, тестами и практическими заданиями<br>• <b>Блочный редактор</b> — гибкая структура: заголовки, списки, инфо-блоки, аккордеоны, изображения<br>• <b>Слайдер</b> — встроенные презентации прямо в уроке<br>• <b>Видеоуроки</b> — загрузка через Kinescope без ограничений по размеру или напрямую на сервер (до 2 ГБ)", accordionTitle: "📚 Создание курсов", accordionOpen: false },
       { id: uid(), type: "accordion", content: "• <b>Генерация структуры курса</b> — ИИ создаёт уроки, тексты и тесты по вашей теме<br>• <b>Написание контента</b> — кнопка «Написать с ИИ» в каждом уроке<br>• <b>Генерация изображений</b> — обложки и иллюстрации<br>• <b>Озвучка уроков</b> — автоматическая аудио-лекция голосом<br>• <b>Генерация тестов</b> — вопросы по содержанию урока", accordionTitle: "🤖 ИИ-помощник", accordionOpen: false },
       { id: uid(), type: "accordion", content: "• <b>Ссылки-приглашения</b> — ученик переходит по ссылке и автоматически зачисляется<br>• <b>Ручное добавление</b> — создание ученика с логином и паролем<br>• <b>Импорт из Excel</b> — массовая загрузка списка учеников<br>• <b>Компании</b> — группировка учеников по организациям", accordionTitle: "👥 Управление учениками", accordionOpen: false },
       { id: uid(), type: "accordion", content: "• <b>Автоматическая проверка</b> — тесты с банком вопросов и перемешиванием<br>• <b>Видеоидентификация</b> — фото с документом перед тестом<br>• <b>Удостоверения и дипломы</b> — автогенерация при завершении<br>• <b>Выгрузка в ФИС ФРДО</b> — формирование данных для реестра", accordionTitle: "📝 Тестирование и документы", accordionOpen: false },
@@ -32,7 +32,7 @@ function lessonContent() {
       { id: uid(), type: "numberedList", content: "Нажмите «Создать курс» → «Сгенерировать с ИИ»\nВведите название и описание курса\nИИ создаст уроки с контентом и тестами\nОтредактируйте при необходимости и опубликуйте" },
       { id: uid(), type: "heading2", content: "Способ 2: Ручное создание" },
       { id: uid(), type: "paragraph", content: "Используйте блочный редактор для создания уроков вручную. Доступные типы контента:" },
-      { id: uid(), type: "bulletList", content: "<b>Текстовые уроки</b> — заголовки, абзацы, списки, изображения\n<b>Видеоуроки</b> — загрузите видео до 2 ГБ\n<b>Тесты</b> — создайте вопросы с автоматической проверкой\n<b>Практические задания</b> — задания с проверкой преподавателем\n<b>Слайдер</b> — презентации прямо в уроке" },
+      { id: uid(), type: "bulletList", content: "<b>Текстовые уроки</b> — заголовки, абзацы, списки, изображения\n<b>Видеоуроки</b> — загрузка через Kinescope (без ограничений) или на сервер (до 2 ГБ)\n<b>Тесты</b> — создайте вопросы с автоматической проверкой\n<b>Практические задания</b> — задания с проверкой преподавателем\n<b>Слайдер</b> — презентации прямо в уроке" },
       { id: uid(), type: "callout-info", content: "<b>Блочный редактор</b> поддерживает: параграфы, заголовки, списки, изображения, видео, аудио, аккордеоны, инфо-блоки, предупреждения, выделения, цитаты и разделители." },
       { id: uid(), type: "divider", content: "" },
       { id: uid(), type: "highlight", content: "💡 Используйте категории курсов для удобной организации каталога." },
@@ -90,6 +90,76 @@ function lessonContent() {
       { id: uid(), type: "highlight", content: "Теперь вы знакомы со всеми основными возможностями СИНТАГМА! Пройдите небольшой тест, чтобы проверить свои знания о платформе. Удачи! 🍀" },
     ]),
   };
+}
+
+function buildTestQuestions(lessonId: string) {
+  return [
+    {
+      lesson_id: lessonId,
+      question: "Какой ИИ-функционал доступен в СИНТАГМА?",
+      options: JSON.stringify([
+        "Генерация курсов, тестов, озвучка и изображения",
+        "Только проверка орфографии (и то через раз)",
+        "ИИ пишет за вас диссертацию",
+        "Робот-помощник приносит кофе",
+      ]),
+      correct_answer: 0,
+      order_index: 0,
+      explanation: "СИНТАГМА использует ИИ для генерации структуры курсов, текстов, тестов, озвучки уроков и создания изображений.",
+    },
+    {
+      lesson_id: lessonId,
+      question: "Для чего нужна видеоидентификация?",
+      options: JSON.stringify([
+        "Чтобы записать видеоклип для TikTok",
+        "Подтверждение личности ученика при тестировании",
+        "Чтобы сделать красивое селфи",
+        "Для проведения кастинга в кино",
+      ]),
+      correct_answer: 1,
+      order_index: 1,
+      explanation: "Видеоидентификация подтверждает, что тест проходит именно зарегистрированный ученик — это важно для выдачи официальных документов.",
+    },
+    {
+      lesson_id: lessonId,
+      question: "Какие способы зачисления учеников поддерживает платформа?",
+      options: JSON.stringify([
+        "Только по знакомству",
+        "Ссылки-приглашения, ручное добавление, импорт из Excel",
+        "Только через голубиную почту",
+        "Нужно лично прийти в офис с заявлением",
+      ]),
+      correct_answer: 1,
+      order_index: 2,
+      explanation: "Платформа поддерживает ссылки-приглашения, ручное добавление и массовый импорт из Excel.",
+    },
+    {
+      lesson_id: lessonId,
+      question: "Что такое ФИС ФРДО?",
+      options: JSON.stringify([
+        "Секретный код для входа в систему",
+        "Название нового супергероя",
+        "Федеральный реестр документов об образовании",
+        "Формула для расчёта зарплаты",
+      ]),
+      correct_answer: 2,
+      order_index: 3,
+      explanation: "ФИС ФРДО — Федеральная информационная система «Федеральный реестр сведений о документах об образовании и (или) о квалификации».",
+    },
+    {
+      lesson_id: lessonId,
+      question: "Какой максимальный размер видео через Kinescope?",
+      options: JSON.stringify([
+        "100 МБ (как в 2005 году)",
+        "500 МБ",
+        "2 ГБ (только на сервер)",
+        "Без ограничений через Kinescope",
+      ]),
+      correct_answer: 3,
+      order_index: 4,
+      explanation: "Через Kinescope можно загружать видео без ограничений по размеру. Напрямую на сервер — до 2 ГБ.",
+    },
+  ];
 }
 
 async function generateCoverImage(supabase: any, courseId: string, organizationId: string): Promise<string | null> {
@@ -192,7 +262,14 @@ async function seedCourseForOrg(supabase: any, organizationId: string, forceUpda
       };
 
       for (const lesson of existingLessons) {
-        if (lesson.type === "test") continue;
+        if (lesson.type === "test") {
+          // Delete old test questions and re-insert with humorous options
+          await supabase.from("test_questions").delete().eq("lesson_id", lesson.id);
+          const questions = buildTestQuestions(lesson.id);
+          const { error: qErr } = await supabase.from("test_questions").insert(questions);
+          if (qErr) console.error("Test questions update error:", qErr);
+          continue;
+        }
         const newContent = contentMap[lesson.order_index];
         if (newContent) {
           await supabase.from("lessons").update({ content: newContent }).eq("id", lesson.id);
@@ -264,49 +341,7 @@ async function seedCourseForOrg(supabase: any, organizationId: string, forceUpda
   // Insert test questions
   const testLesson = insertedLessons?.find((l: any) => l.type === "test");
   if (testLesson) {
-    const questions = [
-      {
-        lesson_id: testLesson.id,
-        question: "Какой ИИ-функционал доступен в СИНТАГМА?",
-        options: JSON.stringify(["Генерация курсов и тестов", "Только проверка орфографии", "Только перевод текстов", "ИИ не используется"]),
-        correct_answer: 0,
-        order_index: 0,
-        explanation: "СИНТАГМА использует ИИ для генерации структуры курсов, текстового контента и тестовых вопросов.",
-      },
-      {
-        lesson_id: testLesson.id,
-        question: "Для чего нужна видеоидентификация?",
-        options: JSON.stringify(["Для записи видеоуроков", "Для подтверждения личности при тестировании", "Для проведения вебинаров", "Для загрузки аватарки"]),
-        correct_answer: 1,
-        order_index: 1,
-        explanation: "Видеоидентификация подтверждает, что тест проходит именно зарегистрированный ученик.",
-      },
-      {
-        lesson_id: testLesson.id,
-        question: "Какие способы зачисления учеников поддерживает платформа?",
-        options: JSON.stringify(["Только ручное добавление", "Ссылки-приглашения, ручное добавление, импорт из Excel", "Только через email", "Только через QR-код"]),
-        correct_answer: 1,
-        order_index: 2,
-        explanation: "Платформа поддерживает ссылки-приглашения, ручное добавление и массовый импорт из Excel.",
-      },
-      {
-        lesson_id: testLesson.id,
-        question: "Что такое ФИС ФРДО?",
-        options: JSON.stringify(["Внутренний формат файлов платформы", "Федеральный реестр документов об образовании", "Система онлайн-оплаты", "Формат экспорта отчётов"]),
-        correct_answer: 1,
-        order_index: 3,
-        explanation: "ФИС ФРДО — Федеральная информационная система «Федеральный реестр сведений о документах об образовании».",
-      },
-      {
-        lesson_id: testLesson.id,
-        question: "Какой максимальный размер загружаемого видео?",
-        options: JSON.stringify(["100 МБ", "500 МБ", "2 ГБ", "Без ограничений"]),
-        correct_answer: 2,
-        order_index: 4,
-        explanation: "Платформа позволяет загружать видеофайлы размером до 2 ГБ.",
-      },
-    ];
-
+    const questions = buildTestQuestions(testLesson.id);
     const { error: qErr } = await supabase.from("test_questions").insert(questions);
     if (qErr) console.error("Test questions error:", qErr);
   }
