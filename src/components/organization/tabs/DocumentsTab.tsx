@@ -257,6 +257,48 @@ export const DocumentsTab = React.memo(function DocumentsTab({ organizationId, o
     setActSubmitting(false);
   };
 
+  const handleGenerateInvoiceFromDocs = async () => {
+    if (!organizationId) return;
+    setGeneratingInvoice(true);
+    try {
+      const PLAN_PRICES: Record<string, number> = {
+        free: 0, start: 1990, standard: 4990, professional: 9990, maximum: 19990,
+      };
+      const plan = orgDetails.subscription_plan || "start";
+      const basePrice = orgDetails.custom_price ?? PLAN_PRICES[plan] ?? 1990;
+      const discount = orgDetails.custom_discount ?? 0;
+      const amount = Math.max(0, basePrice - discount);
+
+      const year = new Date().getFullYear();
+      const { count } = await supabase
+        .from("subscription_invoices")
+        .select("*", { count: "exact", head: true })
+        .eq("organization_id", organizationId);
+
+      const invoiceNum = `СЧ-${year}/${String((count || 0) + 1).padStart(4, "0")}`;
+
+      const { data: invoice, error: err } = await supabase
+        .from("subscription_invoices")
+        .insert({
+          organization_id: organizationId,
+          invoice_number: invoiceNum,
+          plan,
+          amount,
+          period_months: 1,
+        } as any)
+        .select("id")
+        .single();
+
+      if (err) throw err;
+      setInvoices(prev => [{ id: (invoice as any).id, invoice_number: invoiceNum, amount, status: "pending", plan, period_months: 1, invoice_date: new Date().toISOString(), created_at: new Date().toISOString() }, ...prev]);
+      toast({ title: "Счёт создан", description: `Счёт ${invoiceNum} на ${amount.toLocaleString("ru-RU")} ₽` });
+    } catch (e: any) {
+      toast({ title: "Ошибка", description: e.message, variant: "destructive" });
+    } finally {
+      setGeneratingInvoice(false);
+    }
+  };
+
   if (!organizationId) {
     return (
       <div className="text-center py-12 text-muted-foreground">
