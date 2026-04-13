@@ -64,7 +64,7 @@ const docTypeLabels: Record<string, { label: string; icon: React.ReactNode }> = 
 };
 
 const NAV_ITEMS: { value: DocumentSubTab; label: string; shortLabel?: string; icon: React.ElementType; ordersOnly?: boolean }[] = [
-  { value: "constructor", label: "Конструктор", icon: Wrench },
+  { value: "billing", label: "Договоры", icon: FolderOpen },
   { value: "org", label: "Документы орг.", icon: FileText },
   { value: "orders", label: "Приказы", icon: Users, ordersOnly: true },
   { value: "protocols", label: "Протоколы АК", icon: ClipboardList },
@@ -72,7 +72,7 @@ const NAV_ITEMS: { value: DocumentSubTab; label: string; shortLabel?: string; ic
   { value: "diplomas", label: "Дипломы", icon: GraduationCap },
   { value: "testimonials", label: "Свидетельства", icon: FileCheck },
   { value: "programs", label: "Программы", icon: BookOpen },
-  { value: "billing", label: "Закрывающие", icon: FolderOpen },
+  { value: "constructor", label: "Конструктор", icon: Wrench },
 ];
 
 const SECTION_DESCRIPTIONS: Partial<Record<DocumentSubTab, string>> = {
