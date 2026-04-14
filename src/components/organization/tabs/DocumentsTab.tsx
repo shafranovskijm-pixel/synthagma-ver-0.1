@@ -128,6 +128,12 @@ export const DocumentsTab = React.memo(function DocumentsTab({ organizationId, o
   const [actAmount, setActAmount] = useState("");
   const [actSubmitting, setActSubmitting] = useState(false);
   const [generatingInvoice, setGeneratingInvoice] = useState(false);
+  const [showInvoiceDialog, setShowInvoiceDialog] = useState(false);
+  const [invoiceOtherPayer, setInvoiceOtherPayer] = useState(false);
+  const [invoiceBuyerName, setInvoiceBuyerName] = useState("");
+  const [invoiceBuyerInn, setInvoiceBuyerInn] = useState("");
+  const [invoiceBuyerKpp, setInvoiceBuyerKpp] = useState("");
+  const [innSearching, setInnSearching] = useState(false);
   const [orgDetails, setOrgDetails] = useState<{ inn?: string; director_name?: string; director_position?: string; custom_price?: number; custom_discount?: number; subscription_plan?: string }>({});
 
   useEffect(() => {
