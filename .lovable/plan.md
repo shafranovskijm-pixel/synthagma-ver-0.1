@@ -1,32 +1,44 @@
 
 
-# Kinescope: ошибка «method not allowed» при загрузке видео
+# Ограничение Kinescope на бесплатных тарифах
 
-## Диагностика
+## Что делаем
 
-Я протестировал API-токен Kinescope напрямую:
-- **GET-запросы работают** — `list_projects` и `list_videos` возвращают данные корректно
-- **POST /v1/videos — падает** с ошибкой `400405: method not allowed`
+На тарифах «Бесплатный», «Старт» и «Стандарт» заменяем вкладку Kinescope в загрузке видео на промо-заглушку с призывом перейти на тариф «Профессиональный». Загрузка «На сервер (до 2 ГБ)» остаётся доступной на всех тарифах.
 
-Это значит, что текущий API-токен Kinescope **не имеет права на запись (write)**. Он может только читать данные.
+## Изменения
 
-## Что нужно сделать
+### 1. `src/pages/CourseBuilder.tsx`
+Пробросить `organizationId` в `SortableLessonItem` как новый проп.
 
-### 1. Обновить API-токен Kinescope
+### 2. `src/components/course-builder/SortableLessonItem.tsx`
+- Добавить проп `organizationId?: string`
+- Импортировать `useSubscriptionLimits` и `Lock` из lucide
+- Определить `isKinescopeAvailable` — план `professional` или `maximum`
+- Если Kinescope недоступен:
+  - Вкладка Kinescope в `TabsList` отображается, но при клике переключает на заглушку
+  - Вместо зоны загрузки показывать промо-блок:
+    ```
+    🔒 Загрузка через Kinescope
+    Профессиональный видеохостинг с CDN и DRM-защитой
+    доступен на тарифе «Профессиональный» и выше.
+    [Перейти к тарифам →]
+    ```
+  - Кнопка «Перейти к тарифам» ведёт на `/organization/{orgId}?tab=tariffs` (через `useNavigate`)
+  - По умолчанию активная вкладка `videoUploadTab` ставится на `"server"` если Kinescope недоступен
 
-Нужно зайти в [Kinescope Dashboard](https://app.kinescope.io) → **Настройки** → **API-токены** и:
-- Либо **создать новый токен** с правами `api: read, write, delete` и `upload`
-- Либо **обновить существующий** токен, добавив права на запись
+### 3. `src/constants/subscriptionPlans.ts`
+Добавить `kinescopeEnabled: boolean` в `PlanLimits`:
+- `false` для free, start, standard
+- `true` для professional, maximum
 
-После этого обновить секрет `KINESCOPE_API_TOKEN` в проекте с новым значением токена.
+Это позволит проверять доступность через `limits.kinescopeEnabled` единообразно по всему проекту.
 
-### 2. (Опционально) Улучшить сообщение об ошибке
+## Файлы
 
-Добавить в `kinescope-proxy/index.ts` проверку на `400405` и выдавать понятное сообщение: «Токен Kinescope не имеет прав на запись. Обновите токен в настройках.»
-
-## Действия
-
-Единственное, что нужно — **обновить API-токен**. Текущий токен работает только на чтение.
-
-Подтвердите, что вы обновили токен в Kinescope, и я обновлю секрет в проекте.
+| Файл | Изменение |
+|------|-----------|
+| `src/constants/subscriptionPlans.ts` | Новое поле `kinescopeEnabled` в лимитах |
+| `src/pages/CourseBuilder.tsx` | Проброс `organizationId` в `SortableLessonItem` |
+| `src/components/course-builder/SortableLessonItem.tsx` | Проверка плана + промо-заглушка вместо Kinescope |
 
