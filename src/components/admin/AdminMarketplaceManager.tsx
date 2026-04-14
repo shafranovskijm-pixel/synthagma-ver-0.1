@@ -322,28 +322,6 @@ export function AdminMarketplaceManager() {
             </Card>
           ) : h.viewMode === "list" ? (
             <div className="space-y-4">
-              <div className="bg-gradient-to-r from-primary/5 via-accent/5 to-primary/3 border border-border rounded-lg p-4">
-                <div className="flex gap-3 items-start">
-                  <ShieldCheck className="w-5 h-5 text-primary mt-0.5 shrink-0" />
-                  <div>
-                    <h4 className="font-semibold text-sm text-foreground mb-1">Курсы ДПО и профессионального обучения</h4>
-                    <p className="text-xs text-muted-foreground leading-relaxed">
-                      Повышение квалификации, профпереподготовка, охрана труда и рабочие профессии. Тесты соответствуют требованиям аттестации.
-                    </p>
-                    <div className="flex gap-2 mt-2">
-                      <Badge variant="secondary" className="text-xs">ДПО</Badge>
-                      <Badge variant="secondary" className="text-xs">ОТ / ПБ</Badge>
-                      <Badge variant="secondary" className="text-xs">Бесплатно</Badge>
-                    </div>
-                    <div className="flex items-start gap-1.5 mt-3 pt-3 border-t border-border/50">
-                      <Lightbulb className="w-3.5 h-3.5 text-amber-500 mt-0.5 shrink-0" />
-                      <p className="text-xs text-muted-foreground">
-                        Порядок категорий и курсов здесь = порядок в магазине. Перетаскивайте подкатегории для изменения порядка.
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              </div>
 
               {selectedCourses.size > 0 && (
                 <div className="sticky top-0 z-10 flex items-center gap-3 bg-primary/10 border border-primary/20 rounded-lg p-3">
