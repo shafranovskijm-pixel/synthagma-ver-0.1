@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { ThemePersonalization } from "@/components/ui/ThemePersonalization";
 import {
   Palette, Database, Shield, Bell, Loader2, Save, Globe, Tag, Sparkles,
-  RefreshCw, BarChart3, FileText, Bot, Terminal
+  RefreshCw, BarChart3, FileText, Bot, Terminal, Users
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -14,16 +14,18 @@ import { AdminAnalytics } from "./AdminAnalytics";
 import { BlogManager } from "./BlogManager";
 import { AISettingsManager } from "./AISettingsManager";
 import { DevToolsPanel } from "./DevToolsPanel";
+import { AdminStaffTab } from "./AdminStaffTab";
 
 interface SystemSettings {
   maintenanceMode: boolean;
   registrationEnabled: boolean;
 }
 
-type SectionKey = "theme" | "db" | "cache" | "seo" | "system" | "promo" | "notifications" | "analytics" | "content" | "ai" | "devtools";
+type SectionKey = "theme" | "staff" | "db" | "cache" | "seo" | "system" | "promo" | "notifications" | "analytics" | "content" | "ai" | "devtools";
 
 const SECTIONS: { key: SectionKey; label: string; icon: React.ElementType; color: string }[] = [
   { key: "theme", label: "Тема оформления", icon: Palette, color: "text-violet-500" },
+  { key: "staff", label: "Сотрудники", icon: Users, color: "text-cyan-500" },
   { key: "db", label: "Статистика БД", icon: Database, color: "text-blue-500" },
   { key: "cache", label: "Сброс кеша", icon: RefreshCw, color: "text-red-500" },
   { key: "seo", label: "SEO", icon: Globe, color: "text-emerald-500" },
@@ -215,6 +217,7 @@ export function AdminSettings() {
           </div>
         );
 
+      case "staff": return <AdminStaffTab />;
       case "analytics": return <AdminAnalytics />;
       case "content": return <BlogManager />;
       case "ai": return <AISettingsManager />;
