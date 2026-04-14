@@ -52,7 +52,6 @@ const App = () => (
               <ScrollToTop />
               <OfflineIndicator />
               <TooltipProvider>
-                <Toaster />
                 <Sonner />
                 <SpecialOfferPopup />
                 <Suspense fallback={<LazyLoadFallback />}>
