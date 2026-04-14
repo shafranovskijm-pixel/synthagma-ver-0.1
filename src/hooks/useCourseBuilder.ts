@@ -159,7 +159,7 @@ export function useCourseBuilder() {
         if (error) throw new Error(error.message || "Ошибка импорта");
         if (!data.success) throw new Error(data.error || 'Ошибка импорта');
         if (!courseTitle && data.courseTitle) setCourseTitle(data.courseTitle);
-        const importedLessons: Lesson[] = (data.lessons || []).map((l: any) => {
+        const importedLessons: Lesson[] = (data.lessons || []).map((l: { id: string; title: string; content?: string }) => {
           const blocks = htmlToBlocks(l.content || "");
           return { id: l.id, type: "text" as LessonType, title: l.title, content: blocksToJson(blocks), blocks, expanded: false };
         });
@@ -175,7 +175,7 @@ export function useCourseBuilder() {
       } else {
         toast.warning("Не удалось извлечь уроки из файла");
       }
-    } catch (error: any) { console.error('Import error:', error); toast.error(error.message || 'Ошибка импорта файлов'); }
+    } catch (error: unknown) { const msg = error instanceof Error ? error.message : 'Ошибка импорта файлов'; toast.error(msg); }
     finally { setIsImporting(false); if (fileInputRef.current) fileInputRef.current.value = ''; }
   };
 
@@ -366,7 +366,7 @@ export function useCourseBuilder() {
       const { data, error } = await safeInvoke<any>("generate-course-structure", { body: { title: courseTitle, description: courseDescription } });
       if (error) throw new Error(error.message || "Ошибка генерации");
       if (!data.success) throw new Error(data.error || "Ошибка генерации структуры");
-      const generatedLessons: Lesson[] = (data.lessons || []).map((l: any) => ({
+      const generatedLessons: Lesson[] = (data.lessons || []).map((l: { type: string; title: string; description?: string }) => ({
         id: crypto.randomUUID(), type: l.type as LessonType, title: l.title,
         content: l.type === "text" || l.type === "test" ? (l.description || "") : "",
         expanded: false, blocks: l.type === "text" ? [] : undefined,
@@ -379,7 +379,7 @@ export function useCourseBuilder() {
         setTimeout(() => { saveCourse(true); }, 500);
       }
       else toast.error("AI не вернул уроки");
-    } catch (error: any) { console.error("Generate error:", error); toast.error(error.message || "Ошибка генерации"); }
+    } catch (error: unknown) { const msg = error instanceof Error ? error.message : "Ошибка генерации"; toast.error(msg); }
     finally { setIsGenerating(false); }
   };
 
@@ -412,7 +412,7 @@ export function useCourseBuilder() {
           if (result) { newLesson.content = result.url; toast.success("Аудиолекция сгенерирована!"); }
           else throw new Error('Upload failed');
         } catch { const blobUrl = URL.createObjectURL(audioBlob); newLesson.content = blobUrl; toast.warning("Аудио создано, но не сохранено"); }
-      } catch (error: any) { toast.error(error.message || "Ошибка генерации аудио"); return; }
+      } catch (error: unknown) { const msg = error instanceof Error ? error.message : "Ошибка генерации аудио"; toast.error(msg); return; }
     }
 
     if (type === "test") {
@@ -434,7 +434,7 @@ export function useCourseBuilder() {
           try {
             const parsedSlides = JSON.parse(data.content);
             if (Array.isArray(parsedSlides)) {
-              newLesson.blocks = [{ id: crypto.randomUUID(), type: "slider" as const, content: prompt, sliderSlides: parsedSlides.map((s: any) => ({ id: s.id || crypto.randomUUID(), title: s.title || "Слайд", content: s.content || "", imageUrl: s.imageUrl || undefined })), sliderCurrentIndex: 0 }];
+              newLesson.blocks = [{ id: crypto.randomUUID(), type: "slider" as const, content: prompt, sliderSlides: parsedSlides.map((s: { id?: string; title?: string; content?: string; imageUrl?: string }) => ({ id: s.id || crypto.randomUUID(), title: s.title || "Слайд", content: s.content || "", imageUrl: s.imageUrl || undefined })), sliderCurrentIndex: 0 }];
               newLesson.content = JSON.stringify(parsedSlides);
               toast.success(`Слайды сгенерированы!`);
             } else { _createFallbackSlides(newLesson, prompt, data.content); }
@@ -600,8 +600,9 @@ export function useCourseBuilder() {
       if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
       autoSaveTimerRef.current = setTimeout(() => setAutoSaveStatus('idle'), 3000);
       return true;
-    } catch (error: any) {
-      if (error?.name === 'AbortError' || error?.message?.includes('AbortError')) {
+    } catch (error: unknown) {
+      const err = error instanceof Error ? error : new Error(String(error));
+      if (err.name === 'AbortError' || err.message?.includes('AbortError')) {
         if (!silent) toast.success(courseId ? "Курс обновлён" : "Курс создан");
         setHasUnsavedChanges(false);
         clearDraftFromLocal(courseId);
@@ -610,7 +611,7 @@ export function useCourseBuilder() {
         autoSaveTimerRef.current = setTimeout(() => setAutoSaveStatus('idle'), 3000);
         return true;
       } else {
-        toast.error("Ошибка сохранения: " + error.message);
+        toast.error("Ошибка сохранения: " + err.message);
         setAutoSaveStatus('error');
         return false;
       }
@@ -641,7 +642,7 @@ export function useCourseBuilder() {
         if (error) throw error;
         toast.success("Лекция сохранена");
       }
-    } catch (error: any) { toast.error("Ошибка сохранения: " + error.message); }
+    } catch (error: unknown) { const msg = error instanceof Error ? error.message : String(error); toast.error("Ошибка сохранения: " + msg); }
     finally { setIsSaving(false); }
   };
 
