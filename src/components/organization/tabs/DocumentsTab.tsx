@@ -388,7 +388,7 @@ export const DocumentsTab = React.memo(function DocumentsTab({ organizationId, o
 
       if (err) throw err;
       setInvoices(prev => [{ id: (invoice as any).id, invoice_number: invoiceNum, amount, status: "pending", plan, period_months: 1, invoice_date: new Date().toISOString(), created_at: new Date().toISOString() }, ...prev]);
-      toast.success("Счёт создан", { description: `Счёт ${invoiceNum} на ${amount.toLocaleString(` });
+      toast.success("Счёт создан", { description: `Счёт ${invoiceNum} на ${amount.toLocaleString("ru-RU")} ₽` });
       setShowInvoiceDialog(false);
       setInvoiceOtherPayer(false);
       setInvoiceBuyerName("");
