@@ -285,7 +285,7 @@ export function useLessonMedia(
   // AI content generation
   const [isGeneratingContent, setIsGeneratingContent] = useState(false);
 
-  const handleGenerateContent = useCallback(async (lessonTitle: string, lessonType: string, courseTitle: string, courseDescription: string, blocks?: ContentBlock[]) => {
+  const handleGenerateContent = useCallback(async (lessonTitle: string, lessonType: string, courseTitle: string, courseDescription: string, blocks?: ContentBlock[], mode: "text" | "image" | "full" = "full") => {
     setIsGeneratingContent(true);
     try {
       const { data, error } = await safeInvoke<any>("generate-lesson-content", {
@@ -314,8 +314,8 @@ export function useLessonMedia(
           ...(b.imageSrc ? { imageSrc: b.imageSrc } : {}),
         }));
         if (newBlocks.length > 0) {
-          // Generate hero image (non-blocking)
-          try {
+          // Generate hero image (non-blocking) — skip in "text" mode
+          if (mode === "image" || mode === "full") try {
             const snippet = newBlocks
               .filter(b => b.type === "paragraph")
               .map(b => (b.content || "").replace(/<[^>]+>/g, ""))
@@ -338,8 +338,8 @@ export function useLessonMedia(
           } catch (e) {
           }
 
-          // Generate intro audio via SaluteSpeech (non-blocking)
-          try {
+          // Generate intro audio via SaluteSpeech (non-blocking) — only in "full" mode
+          if (mode === "full") try {
             const firstPara = newBlocks.find(
               b => b.type === "paragraph" && b.content && b.content.replace(/<[^>]+>/g, "").trim().length > 50
             );

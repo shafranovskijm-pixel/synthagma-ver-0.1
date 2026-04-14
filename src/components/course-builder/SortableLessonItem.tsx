@@ -140,7 +140,7 @@ export function SortableLessonItem({
 
   useEffect(() => { if (!isPreviewMode) media.handleStopSpeech(); }, [isPreviewMode]);
 
-  const onGenerate = () => media.handleGenerateContent(lesson.title, lesson.type, courseTitle, courseDescription, lesson.blocks);
+  const onGenerate = (mode: "text" | "image" | "full" = "full") => media.handleGenerateContent(lesson.title, lesson.type, courseTitle, courseDescription, lesson.blocks, mode);
 
   return (
     <div ref={setNodeRef} style={style} className="border border-border rounded-xl overflow-hidden bg-card">
@@ -196,11 +196,38 @@ export function SortableLessonItem({
                       ))}
                     </DropdownMenuContent>
                   </DropdownMenu>
-                  <DropdownMenuSeparator className="hidden" />
-                  <Button variant="outline" size="sm" className="rounded-lg text-xs gap-1 border-primary text-primary hover:bg-primary/10" onClick={onGenerate} disabled={media.isGeneratingContent}>
-                    {media.isGeneratingContent ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
-                    {media.isGeneratingContent ? "Генерация..." : "Написать с AI"}
-                  </Button>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="outline" size="sm" className="rounded-lg text-xs gap-1 border-primary text-primary hover:bg-primary/10" disabled={media.isGeneratingContent}>
+                        {media.isGeneratingContent ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
+                        {media.isGeneratingContent ? "Генерация..." : "Написать с AI"}
+                        <ChevronDown className="w-3 h-3 ml-0.5" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="w-64">
+                      <DropdownMenuItem onClick={() => onGenerate("text")} className="gap-2">
+                        <span className="text-base">⚡</span>
+                        <div>
+                          <div className="font-medium text-sm">Только текст</div>
+                          <div className="text-xs text-muted-foreground">Быстрая генерация</div>
+                        </div>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => onGenerate("image")} className="gap-2">
+                        <span className="text-base">🖼</span>
+                        <div>
+                          <div className="font-medium text-sm">Текст + картинка</div>
+                          <div className="text-xs text-muted-foreground">Средняя скорость</div>
+                        </div>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => onGenerate("full")} className="gap-2">
+                        <span className="text-base">🎵</span>
+                        <div>
+                          <div className="font-medium text-sm">Полная генерация</div>
+                          <div className="text-xs text-muted-foreground">Текст + картинка + аудио</div>
+                        </div>
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 </div>
               </div>
               {isPreviewMode ? (
@@ -450,7 +477,7 @@ export function SortableLessonItem({
                     <Bot className="w-3 h-3" />Ответы через AI
                   </Button>
                 </TestAnswersDialog>
-                <Button variant="outline" size="sm" className="rounded-lg text-xs gap-1 border-primary text-primary hover:bg-primary/10" onClick={onGenerate} disabled={media.isGeneratingContent}>
+                <Button variant="outline" size="sm" className="rounded-lg text-xs gap-1 border-primary text-primary hover:bg-primary/10" onClick={() => onGenerate("full")} disabled={media.isGeneratingContent}>
                   {media.isGeneratingContent ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
                   {media.isGeneratingContent ? "Генерация..." : "Сгенерировать вопросы с AI"}
                 </Button>
