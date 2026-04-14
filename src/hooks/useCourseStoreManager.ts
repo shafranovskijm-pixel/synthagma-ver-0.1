@@ -27,6 +27,7 @@ interface MarketplaceCourse {
     title: string;
     description?: string | null;
     duration?: string | null;
+    cover_image_url?: string | null;
   };
   organization?: { name: string };
 }
@@ -220,7 +221,7 @@ export function useCourseStoreManager({ organizationId, userRole = 'organization
   const fetchCatalog = async () => {
     const { data, error } = await supabase
       .from('marketplace_courses')
-      .select(`*, course:courses(id, title, description, duration, category_id), organization:organizations(name)`)
+      .select(`*, course:courses(id, title, description, duration, category_id, cover_image_url), organization:organizations(name)`)
       .eq('is_active', true).neq('organization_id', organizationId);
     if (error) { console.error('Error fetching catalog:', error); return; }
     setCatalogCourses(data || []);
@@ -229,7 +230,7 @@ export function useCourseStoreManager({ organizationId, userRole = 'organization
   const fetchMyCourses = async () => {
     const { data, error } = await supabase
       .from('marketplace_courses')
-      .select(`*, course:courses(id, title, description, duration)`)
+      .select(`*, course:courses(id, title, description, duration, cover_image_url)`)
       .eq('organization_id', organizationId);
     if (error) { console.error('Error fetching my courses:', error); return; }
     setMyCourses(data || []);
