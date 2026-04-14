@@ -31,6 +31,7 @@ const EmailResponse = lazyWithRetry(() => import("@/pages/EmailResponse"));
 const ProposalPublic = lazyWithRetry(() => import("@/pages/ProposalPublic"));
 const PlatformPresentation = lazyWithRetry(() => import("@/pages/PlatformPresentation"));
 const WhatsNew = lazyWithRetry(() => import("@/pages/WhatsNew"));
+const HelpCenter = lazyWithRetry(() => import("@/pages/HelpCenter"));
 const JoinByLink = lazyWithRetry(() => import("@/pages/JoinByLink"));
 const CourseLanding = lazyWithRetry(() => import("@/pages/CourseLanding"));
 const NotFound = lazyWithRetry(() => import("@/pages/NotFound"));
@@ -72,6 +73,7 @@ export const publicRoutes = (
     <Route path="/proposal/:id" element={<ProposalPublic />} />
     <Route path="/presentation" element={<PlatformPresentation />} />
     <Route path="/whats-new" element={<WhatsNew />} />
+    <Route path="/help" element={<HelpCenter />} />
     <Route path="*" element={<NotFound />} />
   </>
 );

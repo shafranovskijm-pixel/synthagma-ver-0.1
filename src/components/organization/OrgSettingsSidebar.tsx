@@ -10,7 +10,7 @@ const settingsNavItems = [
   { icon: Settings, label: "Настройки", path: "/organization/settings" },
   { icon: FileText, label: "Документы", path: "/organization/documents" },
   { icon: Sparkles, label: "Что нового", path: "/organization/whats-new" },
-  { icon: HelpCircle, label: "Помощь", path: "/organization/help" },
+  { icon: HelpCircle, label: "Помощь", path: "/help" },
 ];
 
 export function OrgSettingsSidebar() {
