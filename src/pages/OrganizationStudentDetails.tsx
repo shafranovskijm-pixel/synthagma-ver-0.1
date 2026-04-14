@@ -197,12 +197,30 @@ function StudentPageInner({ studentId }: { studentId: string }) {
   const userEmail = d.user?.email;
   const initials = getUserInitials(userEmail);
 
+  if (!organizationId) {
+    return <div className="min-h-screen flex items-center justify-center text-muted-foreground">Организация не найдена</div>;
+  }
+
   if (loading) {
-    return <div className="min-h-screen flex items-center justify-center"><div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full" /></div>;
+    return (
+      <div className="min-h-screen bg-background flex">
+        <OrgSidebar />
+        <main className="flex-1 flex items-center justify-center lg:ml-[88px]">
+          <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full" />
+        </main>
+      </div>
+    );
   }
 
   if (!student) {
-    return <div className="min-h-screen flex items-center justify-center text-muted-foreground">Ученик не найден</div>;
+    return (
+      <div className="min-h-screen bg-background flex">
+        <OrgSidebar />
+        <main className="flex-1 flex items-center justify-center lg:ml-[88px] text-muted-foreground">
+          Ученик не найден
+        </main>
+      </div>
+    );
   }
 
   return (
