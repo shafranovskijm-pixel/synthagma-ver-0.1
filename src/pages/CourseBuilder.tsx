@@ -15,6 +15,8 @@ import { SortableLessonItem } from "@/components/course-builder/SortableLessonIt
 import { AIGenerateDialog } from "@/components/course-builder/AIGenerateDialog";
 import { useCourseBuilder } from "@/hooks/useCourseBuilder";
 import { LessonType } from "@/components/course-builder/LessonTypeConfig";
+import { CourseGroupsTab } from "@/components/organization/CourseGroupsTab";
+import { Users } from "lucide-react";
 
 export default function CourseBuilder() {
   const navigate = useNavigate();

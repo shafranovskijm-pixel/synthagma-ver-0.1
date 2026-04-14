@@ -654,5 +654,6 @@ export function useCourseBuilder() {
     addLesson, handleGenerateStructure, handleAIGenerate,
     updateLesson, deleteLesson, toggleLesson,
     sensors, handleDragEnd, saveCourse, saveSingleLesson,
+    organizationId,
   };
 }
