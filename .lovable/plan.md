@@ -1,44 +1,33 @@
 
 
-# Переработка Маркетплейса и Магазина курсов
+# Fix: RovingFocusGroupItem crash in Marketplace/Store
 
-## Что делаем
+## Problem
 
-### 1. Вертикальное меню вместо горизонтальных табов
+The error `RovingFocusGroupItem must be used within RovingFocusGroup` happens because `TabsTrigger` (Radix UI) requires being inside a `TabsList` component. In the recent vertical nav refactor, `TabsTrigger` was placed inside a plain `<nav>` without `<TabsList>`, breaking the component hierarchy.
 
-В обоих компонентах заменяем горизонтальный `TabsList` на вертикальное боковое меню (как в `AdminSettings`):
+## Fix
 
-**AdminMarketplaceManager** — 9 пунктов:
-- Каталог, Программы, Создать курс, Генератор, Импорт, Банк знаний, Заявки, История, Настройки
+In both files, replace the bare `<nav>` wrapper with a `<TabsList>` styled as a vertical column. This restores the required Radix context while keeping the visual design.
 
-**CourseStoreManager** — 4 пункта:
-- Каталог, Мои курсы, Заявки, Добавленные
+### `src/components/admin/AdminMarketplaceManager.tsx` (line ~180)
 
-Layout: `flex` с левой колонкой (~200px) и правой колонкой с содержимым. Активный пункт — `bg-primary/10` с cyan-подсветкой.
+Replace:
+```tsx
+<nav className="flex flex-col gap-1 sticky top-4">
+```
+With:
+```tsx
+<TabsList className="flex flex-col gap-1 sticky top-4 h-auto bg-transparent p-0">
+```
+And close `</TabsList>` instead of `</nav>`.
 
-### 2. Новые hero-карточки с реальными курсами
+### `src/components/organization/CourseStoreManager.tsx` (line ~104)
 
-Заменяем текущие 5 generic-категорий на 5 конкретных курсов из базы:
-- **Специалист по пожарной профилактике** (профпереподготовка)
-- **Обращение с отходами I-IV классов опасности** (профподготовка)
-- **Охрана труда для руководителей** (повышение квалификации)
-- **Электробезопасность до 1000В** (допуск)
-- **Промышленная безопасность А.1** (аттестация)
+Same change — replace `<nav>` → `<TabsList>` with vertical styling.
 
-### 3. Новые AI-обложки
-
-Сгенерируем 5 новых красивых обложек через Lovable AI (gemini-3.1-flash-image-preview) — чистые фотореалистичные изображения без текста, как в демо кабинете ученика. Заменим текущие файлы в `src/assets/marketplace/`.
-
-### 4. Клик по hero-карточке → переход к курсу
-
-Вместо фильтрации по категории, клик ищет курс по названию в каталоге и открывает его детали (или проваливается в `selectedCourseDetail`).
-
-## Файлы
-
-| Действие | Файл |
+| File | Change |
 |---|---|
-| Изменить | `src/components/admin/AdminMarketplaceManager.tsx` — вертикальное меню |
-| Изменить | `src/components/organization/CourseStoreManager.tsx` — вертикальное меню |
-| Переписать | `src/components/admin/marketplace/MarketplaceHeroCards.tsx` — реальные курсы, новый `onCardClick` с courseTitle |
-| Заменить | `src/assets/marketplace/hero-*.jpg` — 5 новых AI-обложек |
+| `src/components/admin/AdminMarketplaceManager.tsx` | `<nav>` → `<TabsList>` vertical |
+| `src/components/organization/CourseStoreManager.tsx` | `<nav>` → `<TabsList>` vertical |
 
