@@ -872,6 +872,81 @@ export const DocumentsTab = React.memo(function DocumentsTab({ organizationId, o
                 step="0.01"
               />
             </div>
+            <div className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                id="actOtherCustomer"
+                checked={actOtherCustomer}
+                onChange={e => {
+                  setActOtherCustomer(e.target.checked);
+                  if (!e.target.checked) {
+                    setActCustomerName("");
+                    setActCustomerInn("");
+                    setActCustomerKpp("");
+                    setActCustomerDirector("");
+                    setActCustomerPosition("");
+                  }
+                }}
+                className="rounded border-input"
+              />
+              <Label htmlFor="actOtherCustomer" className="text-sm cursor-pointer">Заказчик — другая организация</Label>
+            </div>
+            {actOtherCustomer && (
+              <div className="space-y-3 p-3 rounded-lg border border-border bg-muted/30">
+                <div className="space-y-2">
+                  <Label>ИНН заказчика</Label>
+                  <div className="flex gap-2">
+                    <Input
+                      placeholder="Введите ИНН"
+                      value={actCustomerInn}
+                      onChange={e => setActCustomerInn(e.target.value)}
+                    />
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleActSearchByInn(actCustomerInn)}
+                      disabled={actInnSearching || actCustomerInn.length < 10}
+                    >
+                      {actInnSearching ? "Поиск..." : "Найти"}
+                    </Button>
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label>Название организации</Label>
+                  <Input
+                    placeholder="ООО «Компания»"
+                    value={actCustomerName}
+                    onChange={e => setActCustomerName(e.target.value)}
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-2">
+                    <Label>КПП</Label>
+                    <Input
+                      placeholder="КПП"
+                      value={actCustomerKpp}
+                      onChange={e => setActCustomerKpp(e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Должность руководителя</Label>
+                    <Input
+                      placeholder="Генеральный директор"
+                      value={actCustomerPosition}
+                      onChange={e => setActCustomerPosition(e.target.value)}
+                    />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label>ФИО руководителя</Label>
+                  <Input
+                    placeholder="Иванов Иван Иванович"
+                    value={actCustomerDirector}
+                    onChange={e => setActCustomerDirector(e.target.value)}
+                  />
+                </div>
+              </div>
+            )}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowActDialog(false)}>Отмена</Button>
