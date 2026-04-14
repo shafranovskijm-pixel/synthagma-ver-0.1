@@ -162,7 +162,7 @@ export function OrgDashboardHeader() {
           <Tooltip>
             <TooltipTrigger asChild>
               <button
-                onClick={() => navigate("/partner")}
+                onClick={() => navigate("/organization/profile?tab=partner")}
                 className="flex h-9 w-9 items-center justify-center rounded-full text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
               >
                 <Handshake className="w-4.5 h-4.5" />
