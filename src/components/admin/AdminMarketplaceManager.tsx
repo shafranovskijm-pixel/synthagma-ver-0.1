@@ -39,6 +39,7 @@ import { useAdminMarketplace } from "@/hooks/useAdminMarketplace";
 import { renderGroupedCourses, SortableCategoryItem } from "./marketplace/MarketplaceCourseTable";
 import { useMarketplaceValidation } from "./marketplace/useMarketplaceValidation";
 import { MarketplaceCourseForm } from "./marketplace/MarketplaceCourseForm";
+import { MarketplaceHeroCards } from "./marketplace/MarketplaceHeroCards";
 import {
   MarketplaceEditDialog,
   MarketplaceOrderDialog,
@@ -183,6 +184,9 @@ export function AdminMarketplaceManager() {
 
         {/* Catalog */}
         <TabsContent value="catalog" className="space-y-4">
+          {/* Hero Cards */}
+          <MarketplaceHeroCards onCardClick={(cat) => h.setSearchQuery(cat)} />
+
           {/* Tools */}
           <Card className="shadow-sm">
             <CardContent className="p-4">
