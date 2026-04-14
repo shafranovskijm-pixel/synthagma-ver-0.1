@@ -8,7 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Checkbox } from "@/components/ui/checkbox";
-import { User, Bell, Handshake, Save, Eye, EyeOff, Upload, X, Loader2, Image as ImageIcon, Palette, LogIn } from "lucide-react";
+import { User, Bell, Handshake, Save, Eye, EyeOff, Upload, X, Loader2, Image as ImageIcon, Palette, LogIn, Camera } from "lucide-react";
 import { toast } from "sonner";
 import { PartnerCabinet } from "@/components/organization/PartnerCabinet";
 import { ThemePersonalization } from "@/components/ui/ThemePersonalization";
@@ -65,8 +65,10 @@ function ProfileContent() {
   const [soundEnabled, setSoundEnabled] = useState(false);
   const [orgLogoUrl, setOrgLogoUrl] = useState<string>("");
   const [isUploadingIcon, setIsUploadingIcon] = useState(false);
+  const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
   const [organizationId, setOrganizationId] = useState<string | null>(null);
   const iconInputRef = useRef<HTMLInputElement>(null);
+  const avatarInputRef = useRef<HTMLInputElement>(null);
   const [orgIdLoading, setOrgIdLoading] = useState(true);
   const [isDarkMode, setIsDarkMode] = useState(() => document.documentElement.classList.contains('dark'));
 
