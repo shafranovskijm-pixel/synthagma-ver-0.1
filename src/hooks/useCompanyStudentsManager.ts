@@ -59,10 +59,10 @@ export function useCompanyStudentsManager(organizationId: string) {
 
           return {
             ...profile,
-            enrollments: (enrollments || []).map((e: any) => ({
-              course_title: e.courses?.title || "Неизвестный курс",
-              progress: e.progress || 0,
-              status: e.status || "active",
+            enrollments: (enrollments || []).map((e: Record<string, unknown>) => ({
+              course_title: (e.courses as Record<string, string> | null)?.title || "Неизвестный курс",
+              progress: (e.progress as number) || 0,
+              status: (e.status as string) || "active",
             })),
           };
         })
@@ -95,13 +95,13 @@ export function useCompanyStudentsManager(organizationId: string) {
       if (error) throw error;
 
       setAvailableStudents(
-        (data || []).map((p: any) => ({
-          id: p.id,
-          user_id: p.user_id,
-          full_name: p.full_name || "Без имени",
-          email: p.email || "",
-          company_id: p.company_id,
-          company_name: p.companies?.name || null,
+        (data || []).map((p: Record<string, unknown>) => ({
+          id: p.id as string,
+          user_id: p.user_id as string,
+          full_name: (p.full_name as string) || "Без имени",
+          email: (p.email as string) || "",
+          company_id: p.company_id as string | null,
+          company_name: (p.companies as Record<string, string> | null)?.name || null,
         }))
       );
     } catch (error) {
