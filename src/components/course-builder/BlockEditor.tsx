@@ -274,6 +274,7 @@ function DirectVideoBlock({ url, lazy = true }: { url: string; lazy?: boolean })
 export function BlockEditor({ blocks, onChange, readOnly = false, courseTitle, lessonTitle }: BlockEditorProps) {
   const [focusedBlockId, setFocusedBlockId] = useState<string | null>(null);
   const [stylePresets, setStylePresets] = useState(() => loadPresets());
+  const [isFormatting, setIsFormatting] = useState(false);
 
   // Undo/Redo history
   const historyRef = useRef<ContentBlock[][]>([JSON.parse(JSON.stringify(blocks))]);
