@@ -9,35 +9,35 @@ export async function fetchStudents(
   courseIds: string[]
 ): Promise<{ students: Student[]; allProfiles: Student[] }> {
   // Get all enrollments for org courses (with pagination to bypass 1000-row limit)
-  let allEnrollments: Record<string, unknown>[] = [];
+  let allEnrollments: any[] = [];
   if (courseIds.length > 0) {
-    allEnrollments = await fetchAllRows<Record<string, unknown>>(({ from, to }) =>
+    allEnrollments = await fetchAllRows<any>(({ from, to }) =>
       supabase
         .from("enrollments")
         .select("*")
         .in("course_id", courseIds)
         .range(from, to)
-        .then(r => ({ data: r.data as Record<string, unknown>[] | null, error: r.error }))
+        .then(r => ({ data: r.data as any[] | null, error: r.error }))
     );
   }
 
   // Fetch all profiles for the organization (without generated_password - it's encrypted)
   // Fetch all profiles with pagination
-  const allProfilesData = await fetchAllRows<Record<string, unknown>>(({ from, to }) =>
+  const allProfilesData: any[] = await fetchAllRows<any>(({ from, to }) =>
     supabase
       .from("profiles")
       .select("id, user_id, full_name, email, login, company_id, last_visit_at")
       .eq("organization_id", organizationId)
       .range(from, to)
-      .then(r => ({ data: r.data as Record<string, unknown>[] | null, error: r.error }))
+      .then(r => ({ data: r.data as any[] | null, error: r.error }))
   );
 
   // Fetch decrypted passwords via secure RPC
   const { data: decryptedPasswords } = await supabase
     .rpc("get_decrypted_student_passwords", { p_organization_id: organizationId });
   const passwordMap = new Map<string, string>();
-  (decryptedPasswords || []).forEach((row: Record<string, unknown>) => {
-    if (row.decrypted_password) passwordMap.set(row.user_id as string, row.decrypted_password as string);
+  (decryptedPasswords || []).forEach((row: any) => {
+    if (row.decrypted_password) passwordMap.set(row.user_id, row.decrypted_password);
   });
 
   // Fetch user roles to exclude organization/admin users from student list
