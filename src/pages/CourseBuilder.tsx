@@ -33,6 +33,7 @@ export default function CourseBuilder() {
     handleSaveAndExit, handleExitWithoutSave, handleBackClick,
     sensors, handleDragEnd, saveCourse, autoSaveStatus,
     courseId: resolvedCourseId,
+    organizationId,
   } = useCourseBuilder();
 
   const handlePreview = async () => {
