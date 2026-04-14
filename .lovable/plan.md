@@ -1,106 +1,118 @@
 
 
-# Kinescope API: найдена причина ошибки 405 + полный аудит возможностей
+# Глубокий рефакторинг кодовой базы
 
-## КРИТИЧЕСКАЯ НАХОДКА: Неправильный эндпоинт загрузки
+## Обзор
 
-Причина ошибки `405 method not allowed` — **мы используем неправильный API для загрузки видео**.
+Кодовая база — ~147K строк. Основные проблемы:
+- **BlockEditor.tsx** — 3043 строки, 20+ компонентов в одном файле
+- **AdminMarketplaceManager.tsx** — 2283 строки
+- 75+ использований `: any` в хуках
+- console.log в production-коде (useAuth, useVideoProgress и др.)
+- App.tsx — 280 строк маршрутов без группировки
+- Повторяющиеся паттерны в organization-компонентах (журналы, генераторы документов)
 
-Наш код в `kinescope-proxy` делает:
-```
-POST https://api.kinescope.io/v1/videos   ← ЭТО НЕ ЗАГРУЗКА, этот эндпоинт НЕ существует для создания видео!
-```
+## Стратегия
 
-По документации Kinescope, загрузка видео идет через **Uploader API**:
-```
-POST https://uploader.kinescope.io/v2/init   ← Способ 1: получить ссылку для загрузки
-POST https://uploader.kinescope.io/v2/video  ← Способ 2: загрузка одним запросом или по URL
-```
-
-Это не проблема токена — это проблема неправильного эндпоинта. Токен работает нормально.
+Разбиваем на **5 этапов**, каждый — самостоятельный и не ломает предыдущий. Выполняем последовательно.
 
 ---
 
-## Что нужно исправить
+### Этап 1. Декомпозиция BlockEditor (3043 → ~8 файлов)
 
-### 1. `upload_init` — переписать на правильный Uploader API
+Создать `src/components/course-builder/block-editor/` с подмодулями:
 
-Вместо `POST /v1/videos` → использовать `POST https://uploader.kinescope.io/v2/init`:
-
-```text
-POST https://uploader.kinescope.io/v2/init
-Authorization: Bearer ${token}
-Content-Type: application/json
-
-{
-  "type": "video",
-  "parent_id": "...",
-  "title": "...",
-  "filesize": 12345678
-}
-
-→ Ответ: { data: { id: "video_id", endpoint: "https://...upload-url..." } }
-```
-
-Фронтенд затем загружает файл напрямую по `endpoint` через TUS или обычный POST.
-
-### 2. `kinescope-migrate-videos` — исправить загрузку по URL
-
-Вместо `POST /v1/videos` с `{ url: "..." }` → использовать `POST https://uploader.kinescope.io/v2/video` с заголовками:
-
-```text
-POST https://uploader.kinescope.io/v2/video
-Authorization: Bearer ${token}
-X-Parent-ID: ${parent_id}
-X-Video-Title: ${title}
-X-Video-URL: ${source_url}
-```
-
----
-
-## Аудит: что мы используем vs. что доступно
-
-| Возможность | Статус | Комментарий |
-|---|---|---|
-| Загрузка видео (TUS) | ❌ Сломано | Неправильный эндпоинт — нужно исправить |
-| Загрузка по URL (миграция) | ❌ Сломано | Тот же неправильный эндпоинт |
-| Список проектов/видео | ✅ Работает | `GET /v1/projects`, `GET /v1/videos` |
-| Удаление видео | ✅ Работает | `DELETE /v1/videos/{id}` |
-| DRM авторизационный бэкенд | ✅ Реализовано | `kinescope-drm-auth` edge function |
-| Трансляции (Live) | ✅ Реализовано | create/stop/get/list live |
-| Вебхуки | ❌ Не реализовано | Можно получать уведомления о готовности видео |
-| IFrame Player API (JS SDK) | ❌ Не используем | Сейчас просто iframe; можно отслеживать прогресс, события |
-| Аналитика API | ❌ Не используем | Статистика просмотров |
-| Постеры видео | ❌ Не используем | `https://kinescope.io/{id}/poster.jpg` |
-
----
-
-## Рекомендуемый план (по приоритету)
-
-### Фаза 1 — Исправить загрузку (критическое)
-
-| Файл | Изменение |
+| Новый файл | Что переносим |
 |---|---|
-| `supabase/functions/kinescope-proxy/index.ts` | `upload_init`: заменить `POST /v1/videos` на `POST uploader.kinescope.io/v2/init` |
-| `supabase/functions/kinescope-migrate-videos/index.ts` | Заменить `POST /v1/videos` с URL на `POST uploader.kinescope.io/v2/video` с заголовком `X-Video-URL` |
+| `types.ts` | `BlockType`, `ContentBlock`, `QuizOption`, `SliderSlide`, `StylePreset` + утилиты `createBlock`, `blockTypeConfig`, `blockCategories`, `calloutItems` |
+| `utils.ts` | `linkifyHtml`, `sanitizeHtml`, `renderHtml`, `summarizeExistingContent`, `loadPresets`, `savePresets`, `extractStyle`, `describeStyle` |
+| `parsers.ts` | `blocksToJson`, `jsonToBlocks`, `markdownToBlocks`, `htmlToBlocks`, `normalizeLines` |
+| `BlockRenderer.tsx` | `BlockRenderer`, `RenderBlock` + все read-only рендереры |
+| `blocks/MediaBlocks.tsx` | `ImageBlock`, `VideoBlock`, `AudioBlock`, `DocumentBlock`, `SliderBlock`, `DirectVideoBlock` |
+| `blocks/TextBlocks.tsx` | `ParagraphBlock`, `QuoteBlock`, `CalloutBlock`, `HighlightBlock`, `AccordionBlock`, `QuizBlock` |
+| `SortableBlockItem.tsx` | `SortableBlockItem`, `BlockContent`, `AddBlockButton`, `BlockCategoryGrid`, `AIGenerateButton` |
+| `index.ts` | Реэкспорт всех публичных API (чтобы существующие импорты `from "@/components/course-builder/BlockEditor"` **продолжали работать**) |
 
-### Фаза 2 — Вебхуки (полезно)
-
-Создать edge function `kinescope-webhook` для получения уведомлений `media.update.status`. Когда видео обработано (`status: "done"`), обновлять статус в БД. Пользователь будет видеть, готово ли видео к просмотру.
-
-### Фаза 3 — IFrame Player API (улучшение LMS)
-
-Интегрировать JS SDK Kinescope в `VideoPlayerInline` для:
-- Отслеживания реального прогресса просмотра (не просто «открыл урок»)
-- Автоперехода к следующему уроку при завершении видео
-- Сохранения позиции просмотра (resume)
-
-### Фаза 4 — Постеры и аналитика (приятно)
-
-- Показывать превью видео (`poster.jpg`) в списке уроков
-- Подключить аналитику Kinescope (статистика просмотров по видео)
+**Переходный `BlockEditor.tsx`** — остаётся как реэкспорт из `block-editor/index.ts` для обратной совместимости.
 
 ---
 
-**Рекомендую начать с Фазы 1 — это починит загрузку видео.** Подтвердите, и я исправлю оба файла.
+### Этап 2. Типизация хуков — убрать `any`
+
+Файлы с наибольшим количеством `any`:
+
+| Файл | Проблема | Решение |
+|---|---|---|
+| `useBulkPipeline.ts` | 12× `any` — `error: any`, `data: any`, `q: any`, `l: any` | Типизировать через существующие типы из `types/` |
+| `useCourseBuilder.ts` | `l: any`, `error: any` | Использовать `Lesson`, `Error` |
+| `useCompaniesManager.ts` | `updateData: any` | Определить `CompanyUpdatePayload` |
+| `useCompanyStudentsManager.ts` | `e: any`, `p: any` | Типизировать через DB-типы |
+| `useAdminMarketplace.ts` | `error: any` | `Error` |
+
+Также удалить `console.log` из:
+- `useAuth.tsx` (8 шт)
+- `useVideoProgress.ts` (6 шт)
+- `AdminMarketplaceManager.tsx` (7 шт)
+
+---
+
+### Этап 3. Рефакторинг маршрутизации App.tsx
+
+Текущая структура — плоский список 60+ маршрутов. Разбить на модули:
+
+```text
+src/routes/
+  publicRoutes.tsx      — /, /login, /features, /blog, /about, /privacy...
+  studentRoutes.tsx     — /student/*, /course/*/learn
+  organizationRoutes.tsx — /organization/*, /course-builder, /course-*/edit
+  adminRoutes.tsx       — /admin, /sales
+  partnerRoutes.tsx     — /partner/*
+  companyRoutes.tsx     — /company
+```
+
+`App.tsx` станет ~50 строк: провайдеры + `<Routes>{...allRoutes}</Routes>`.
+
+Также вынести обёртку `ProtectedRoute` в хелпер:
+```tsx
+const protectedRoute = (el: JSX.Element, role?: string) => (
+  <ProtectedRoute requiredRole={role}>{el}</ProtectedRoute>
+);
+```
+
+---
+
+### Этап 4. Декомпозиция крупных компонентов
+
+**AdminMarketplaceManager.tsx (2283 строк)**:
+- Вынести таб-контент в отдельные компоненты (часть уже вынесена — `BulkCourseImporter`, `ContentGeneratorTab` и т.д.)
+- Выделить `MarketplaceCourseEditor.tsx` — форма создания/редактирования курса
+- Выделить `MarketplaceOrdersList.tsx` — таблица заказов
+- Выделить `MarketplaceCategoryManager.tsx` — управление категориями
+
+**OrganizationDetailsView.tsx (1900 строк)**:
+- Разбить на табы: `OrgDetailsOverview`, `OrgDetailsSubscription`, `OrgDetailsCourses`
+
+**CoursesTab.tsx (1747 строк)**:
+- Выделить `CourseCard.tsx`, `CourseFilters.tsx`, `CourseActions.tsx`
+
+---
+
+### Этап 5. Оптимизация ре-рендеров и общие паттерны
+
+1. **Мемоизация тяжёлых компонентов**: обернуть в `React.memo` компоненты-списки (`CourseCard`, `StudentRow`, `BlockItem`)
+2. **Вынести общий паттерн журналов**: `AutoDocumentRegistrationJournal`, `AutoFinalAttestationJournal`, `CopiesDuplicatesJournal` — похожая структура. Создать `BaseJournal` компонент с конфигурацией колонок
+3. **Вынести общий паттерн генераторов документов**: `ActGenerator`, `ConsentGenerator`, `InvoiceGenerator` — обобщить шаблон с preview + export
+
+---
+
+## Гарантии безопасности
+
+- Каждый этап — отдельный коммит
+- Все существующие импорты сохраняются через реэкспорты
+- Никакой бизнес-логики не удаляется и не меняется
+- Только структурные изменения: перемещение кода, добавление типов, удаление `console.log`
+
+## Порядок выполнения
+
+Начинаем с **Этапа 1** (BlockEditor) — наибольший эффект при минимальном риске, так как все импорты проходят через один файл.
 
