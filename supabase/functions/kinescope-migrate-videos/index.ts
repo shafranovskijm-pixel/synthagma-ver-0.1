@@ -146,19 +146,15 @@ serve(async (req) => {
       const lessonTitle = lesson.title || "Untitled";
 
       try {
-        // Import video by URL via Kinescope API
-        const importRes = await fetch(`${KINESCOPE_API}/videos`, {
+        // Import video by URL via Kinescope Uploader API v2
+        const importRes = await fetch("https://uploader.kinescope.io/v2/video", {
           method: "POST",
           headers: {
             Authorization: `Bearer ${kinescopeToken}`,
-            "Content-Type": "application/json",
+            "X-Parent-ID": projectId,
+            "X-Video-Title": lessonTitle,
+            "X-Video-URL": videoUrl,
           },
-          body: JSON.stringify({
-            parent_id: projectId,
-            title: lessonTitle,
-            url: videoUrl,
-            type: "vod",
-          }),
         });
 
         if (!importRes.ok) {

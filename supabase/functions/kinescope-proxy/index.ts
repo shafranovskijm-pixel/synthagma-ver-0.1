@@ -38,77 +38,67 @@ serve(async (req) => {
 
       case "upload_init": {
         const { parent_id, title, file_size } = params;
-        const createRes = await fetch(`${KINESCOPE_API}/videos`, {
+
+        // Use Kinescope Uploader API v2 to initialize upload
+        const initRes = await fetch(`${KINESCOPE_UPLOADER}/init`, {
           method: "POST",
           headers: {
             Authorization: `Bearer ${token}`,
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
+            type: "video",
             parent_id: parent_id || undefined,
             title: title || "Untitled",
-            type: "vod",
+            filesize: file_size,
           }),
         });
 
-        if (!createRes.ok) {
-          const errBody = await createRes.text();
-          console.error("Kinescope POST /v1/videos failed:", {
-            status: createRes.status,
+        if (!initRes.ok) {
+          const errBody = await initRes.text();
+          console.error("Kinescope Uploader /v2/init failed:", {
+            status: initRes.status,
             body: errBody,
           });
           return new Response(JSON.stringify({
-            error: "Kinescope API error",
-            status: createRes.status,
+            error: "Kinescope Uploader API error",
+            status: initRes.status,
             raw_response: errBody,
             request_info: {
               method: "POST",
-              url: `${KINESCOPE_API}/videos`,
+              url: `${KINESCOPE_UPLOADER}/init`,
               body: {
+                type: "video",
                 parent_id: parent_id || undefined,
                 title: title || "Untitled",
-                type: "vod",
+                filesize: file_size,
               },
             },
           }), {
-            status: createRes.status,
+            status: initRes.status,
             headers: { ...corsHeaders, "Content-Type": "application/json" },
           });
         }
 
-        const createData = await createRes.json();
-        const videoId = createData.data?.id;
+        const initData = await initRes.json();
+        const videoId = initData.data?.id;
+        const uploadEndpoint = initData.data?.endpoint;
 
-        if (!videoId) {
-          return new Response(JSON.stringify({ error: "No video ID returned from Kinescope" }), {
+        if (!videoId || !uploadEndpoint) {
+          return new Response(JSON.stringify({
+            error: "No video ID or upload endpoint returned from Kinescope",
+            raw_response: JSON.stringify(initData),
+          }), {
             status: 500,
             headers: { ...corsHeaders, "Content-Type": "application/json" },
           });
         }
 
-        const tusRes = await fetch(`${KINESCOPE_UPLOADER}/video/${videoId}`, {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Upload-Length": String(file_size),
-            "Tus-Resumable": "1.0.0",
-          },
-        });
-
-        if (!tusRes.ok) {
-          const errBody = await tusRes.text();
-          return new Response(JSON.stringify({ error: `TUS init failed: ${errBody}` }), {
-            status: tusRes.status,
-            headers: { ...corsHeaders, "Content-Type": "application/json" },
-          });
-        }
-
-        const uploadUrl = tusRes.headers.get("Location");
         const embedUrl = `https://kinescope.io/embed/${videoId}`;
 
         return new Response(JSON.stringify({
           video_id: videoId,
-          upload_url: uploadUrl,
+          upload_url: uploadEndpoint,
           embed_url: embedUrl,
         }), {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
