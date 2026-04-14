@@ -1,21 +1,25 @@
 
 
-# Быстрый переход «Партнёры» внутри кабинета организации
+# Перенос «Сотрудники» внутрь «Настройки»
 
-## Проблема
+## Что делаем
 
-Кнопка «Партнёрам» (Handshake) в хедере организации ведёт на `/partner` — отдельную лендинг-страницу с полной перезагрузкой. У админа аналогичный пункт «Партнёры» просто переключает таб на месте (`setActiveTab("referrals")`), что мгновенно.
-
-## Решение
-
-В `OrganizationProfile.tsx` уже есть вкладка `"partner"` с компонентом `PartnerCabinet`. Нужно лишь изменить навигацию кнопки, чтобы она вела на `/organization/profile?tab=partner` — тот же быстрый переход, как у «Профиль», «Настройки» и т.д.
+Убираем «Сотрудники» как отдельный пункт из выпадающего меню в хедере админа и добавляем его как секцию внутри AdminSettings (между «Настройки» → левое меню, рядом с «Тема оформления», «Статистика БД» и т.д.).
 
 ## Изменения
 
-### `src/components/organization/OrgDashboardHeader.tsx`
-- Заменить `navigate("/partner")` на `navigate("/organization/profile?tab=partner")`
+### 1. `src/components/admin/AdminSettings.tsx`
+- Добавить `"staff"` в `SectionKey`
+- Добавить в массив `SECTIONS` пункт `{ key: "staff", label: "Сотрудники", icon: Users, color: "text-cyan-500" }` — сразу после «Тема оформления»
+- В `renderContent()` добавить `case "staff": return <AdminStaffTab />;`
+- Импортировать `Users` и `AdminStaffTab`
 
-### `src/pages/OrganizationProfile.tsx`
-- При монтировании читать `?tab=partner` из URL и устанавливать начальную вкладку `"partner"` вместо дефолтной `"profile"`
+### 2. `src/components/admin/AdminDashboardHeader.tsx`
+- Убрать пункт «Сотрудники» из выпадающего меню (DropdownMenuItem с `setActiveTab("staff")`)
 
-Всего 2 файла, минимальные правки — ~5 строк.
+### 3. `src/pages/AdminDashboard.tsx`
+- Убрать отдельный рендер `{activeTab === "staff" && <AdminStaffTab />}` — теперь он внутри AdminSettings
+
+### 4. `src/components/admin/AdminSidebar.tsx`
+- Убрать `"staff"` из типа `AdminTabType` (опционально, можно оставить для обратной совместимости)
+
