@@ -253,10 +253,10 @@ export const DocumentsTab = React.memo(function DocumentsTab({ organizationId, o
     setActSubmitting(true);
     const result = await generateAct({
       organizationId,
-      orgName: d.organizationName || organizationName || "",
-      orgInn: orgDetails.inn || null,
-      directorName: orgDetails.director_name || null,
-      directorPosition: orgDetails.director_position || null,
+      orgName: actOtherCustomer && actCustomerName ? actCustomerName : (d.organizationName || organizationName || ""),
+      orgInn: actOtherCustomer && actCustomerInn ? actCustomerInn : (orgDetails.inn || null),
+      directorName: actOtherCustomer && actCustomerDirector ? actCustomerDirector : (orgDetails.director_name || null),
+      directorPosition: actOtherCustomer && actCustomerPosition ? actCustomerPosition : (orgDetails.director_position || null),
       actDate,
       basis: actBasis,
       amount: parseFloat(actAmount),
@@ -270,10 +270,56 @@ export const DocumentsTab = React.memo(function DocumentsTab({ organizationId, o
       setActBasis("");
       setActAmount("");
       setActDate(new Date());
+      setActOtherCustomer(false);
+      setActCustomerName("");
+      setActCustomerInn("");
+      setActCustomerKpp("");
+      setActCustomerDirector("");
+      setActCustomerPosition("");
     } else {
       toast({ title: "Ошибка", description: "Не удалось сгенерировать акт", variant: "destructive" });
     }
     setActSubmitting(false);
+  };
+
+  const handleActSearchByInn = async (inn: string) => {
+    if (inn.length < 10) return;
+    setActInnSearching(true);
+    try {
+      // First try local DB
+      const { data } = await supabase
+        .from("organizations")
+        .select("name, inn, kpp, director_name, director_position")
+        .eq("inn", inn)
+        .maybeSingle();
+      if (data) {
+        setActCustomerName(data.name || "");
+        setActCustomerInn(data.inn || inn);
+        setActCustomerKpp(data.kpp || "");
+        setActCustomerDirector(data.director_name || "");
+        setActCustomerPosition((data as any).director_position || "Руководитель");
+        toast({ title: "Организация найдена", description: data.name });
+      } else {
+        // Fallback to DaData
+        const { data: dadataResult } = await supabase.functions.invoke("dadata-company", {
+          body: { inn },
+        });
+        if (dadataResult?.success) {
+          setActCustomerName(dadataResult.company.shortName || dadataResult.company.name || "");
+          setActCustomerInn(dadataResult.company.inn || inn);
+          setActCustomerKpp(dadataResult.company.kpp || "");
+          setActCustomerDirector(dadataResult.company.management || "");
+          setActCustomerPosition(dadataResult.company.managementPosition || "Руководитель");
+          toast({ title: "Организация найдена (DaData)", description: dadataResult.company.shortName || dadataResult.company.name });
+        } else {
+          toast({ title: "Не найдено", description: "Введите реквизиты вручную" });
+        }
+      }
+    } catch {
+      toast({ title: "Ошибка поиска", variant: "destructive" });
+    } finally {
+      setActInnSearching(false);
+    }
   };
 
   const handleSearchByInn = async (inn: string) => {
