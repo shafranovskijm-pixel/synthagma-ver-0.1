@@ -6,10 +6,7 @@ import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Label } from "@/components/ui/label";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
@@ -18,9 +15,9 @@ import {
   Search, Filter, Tag, Plus, LayoutGrid, List, Loader2, 
   BookOpen, Users, Edit, Eye, EyeOff, Trash2, FolderOpen, Folder,
   ChevronDown, ChevronRight, MoreVertical, FolderPlus, 
-  MoveRight, Pencil, Video, VideoOff, Lock, Unlock, FastForward,
-  Sparkles, ShoppingCart, GripVertical, CheckCircle, Palette, Play, Copy, ImagePlus, Wand2,
-  Radio, Box, Upload, Crown, ArrowRight, Calendar
+  MoveRight, Video, VideoOff, Lock, Unlock, FastForward,
+  Sparkles, ShoppingCart, GripVertical, CheckCircle, Copy, ImagePlus, Wand2,
+  Radio, Box, Play, Crown, ArrowRight, Calendar
 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { useCourses } from "@/hooks/useCourses";
@@ -30,8 +27,10 @@ import { toast } from "sonner";
 import { showLimitToast } from "@/utils/limitToast";
 import type { Course, CourseCategory, CourseFilter, CourseViewMode } from "@/types";
 import { DndContext, closestCenter, PointerSensor, useSensor, useSensors, DragEndEvent } from "@dnd-kit/core";
-import { SortableContext, verticalListSortingStrategy, useSortable } from "@dnd-kit/sortable";
-import { CSS } from "@dnd-kit/utilities";
+import { SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable";
+import { CoursesEmptyState } from "./courses/CoursesEmptyState";
+import { SortableCourseListRow } from "./courses/CourseListRow";
+import { CategoryDialog, CreateCourseDialog, MoveCourseDialog, BulkDeleteDialog } from "./courses/CourseDialogs";
 
 interface CoursesTabProps {
   organizationId: string;
