@@ -867,7 +867,7 @@ export function OrganizationDetailsView({ organization, onBack }: OrganizationDe
         <div className="flex-1 min-w-0">
 
         {/* Overview Tab */}
-        <TabsContent value="overview" className="space-y-6">
+        {activeTab === "overview" && <div className="space-y-6">
           {/* Usage Charts */}
           <div className="grid md:grid-cols-2 gap-6">
             <Card className={cardClass}>
@@ -1040,10 +1040,10 @@ export function OrganizationDetailsView({ organization, onBack }: OrganizationDe
               </div>
             </CardContent>
           </Card>
-        </TabsContent>
+        </div>}
 
         {/* Students Tab */}
-        <TabsContent value="students" className="space-y-4">
+        {activeTab === "students" && <div className="space-y-4">
           <div className="flex items-center gap-4">
             <div className="relative flex-1 max-w-md">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
@@ -1200,10 +1200,10 @@ export function OrganizationDetailsView({ organization, onBack }: OrganizationDe
               </ScrollArea>
             </CardContent>
           </Card>
-        </TabsContent>
+        </div>}
 
         {/* Courses Tab */}
-        <TabsContent value="courses" className="space-y-4">
+        {activeTab === "courses" && <div className="space-y-4">
           {(() => {
             const readyCourses = courses.filter(c => c.lessons_count > 0 && c.is_published);
             const needsReview = courses.filter(c => c.lessons_count === 0);
@@ -1331,15 +1331,15 @@ export function OrganizationDetailsView({ organization, onBack }: OrganizationDe
               </DndContext>
             </CardContent>
           </Card>
-        </TabsContent>
+        </div>}
 
         {/* Balance Tab */}
-        <TabsContent value="balance" className="space-y-4">
+        {activeTab === "balance" && <div className="space-y-4">
           <OrgBalanceManager organizationId={organization.id} />
-        </TabsContent>
+        </div>}
 
         {/* Tariffs Tab */}
-        <TabsContent value="tariffs" className="space-y-4">
+        {activeTab === "tariffs" && <div className="space-y-4">
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -1552,40 +1552,40 @@ export function OrganizationDetailsView({ organization, onBack }: OrganizationDe
             {isSavingTariff ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
             Сохранить тарифные настройки
           </Button>
-        </TabsContent>
+        </div>}
 
         {/* Documents Tab */}
-        <TabsContent value="documents" className="space-y-4">
+        {activeTab === "documents" && <div className="space-y-4">
           <OrgDocumentsTab
             organizationId={organization.id}
             documents={documents}
             onDocumentsChange={fetchDocuments}
           />
-        </TabsContent>
+        </div>}
 
 
         {/* History/Audit Logs Tab */}
-        <TabsContent value="history" className="space-y-4">
+        {activeTab === "history" && <div className="space-y-4">
           <OrgAuditLogsTab organizationId={organization.id} />
-        </TabsContent>
+        </div>}
 
         {/* Comments Tab */}
-        <TabsContent value="comments" className="space-y-4">
+        {activeTab === "comments" && <div className="space-y-4">
           <OrgCommentsTab organizationId={organization.id} />
-        </TabsContent>
+        </div>}
 
         {/* Reminders Tab */}
-        <TabsContent value="reminders" className="space-y-4">
+        {activeTab === "reminders" && <div className="space-y-4">
           <OrgRemindersTab organizationId={organization.id} />
-        </TabsContent>
+        </div>}
 
         {/* Billing Documents Tab */}
-        <TabsContent value="billing-docs">
+        {activeTab === "billing-docs" && <div>
           <OrgBillingDocsTab organizationId={organization.id} />
-        </TabsContent>
+        </div>}
 
         {/* Settings Tab */}
-        <TabsContent value="settings" className="space-y-6">
+        {activeTab === "settings" && <div className="space-y-6">
           <Card className={`${cardClass} border-primary/20`}>
             <CardHeader className="pb-3">
               <CardDescription className="flex items-center gap-1.5">
@@ -1913,8 +1913,8 @@ export function OrganizationDetailsView({ organization, onBack }: OrganizationDe
             {isSaving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Save className="w-4 h-4 mr-2" />}
             Сохранить все настройки
           </Button>
-        </TabsContent>
-      </Tabs>
+        </div>}
+      
     </div>
 
     <SkillspaceImportDialog
