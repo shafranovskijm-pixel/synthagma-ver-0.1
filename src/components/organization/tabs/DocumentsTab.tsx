@@ -474,9 +474,9 @@ export const DocumentsTab = React.memo(function DocumentsTab({ organizationId, o
             </div>
             <div className="flex items-center gap-2">
               {activeTab === "billing" && billingSubTab === "invoices" && (
-                <Button variant="outline" size="sm" className="rounded-xl gap-1.5" onClick={handleGenerateInvoiceFromDocs} disabled={generatingInvoice}>
+                <Button variant="outline" size="sm" className="rounded-xl gap-1.5" onClick={() => setShowInvoiceDialog(true)}>
                   <Receipt className="w-3.5 h-3.5" />
-                  <span className="hidden sm:inline">{generatingInvoice ? "Создание..." : "Сформировать счёт"}</span>
+                  <span className="hidden sm:inline">Сформировать счёт</span>
                 </Button>
               )}
               {activeTab === "billing" && billingSubTab === "closing" && (
