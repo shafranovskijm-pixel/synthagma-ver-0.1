@@ -369,16 +369,32 @@ export function useCourseStoreManager({ organizationId, userRole = 'organization
 
       try {
         let buyerName = 'Неизвестный';
+        let buyerEmail = '';
         if (userRole === 'student' && userId) {
-          const { data: profile } = await supabase.from('profiles').select('full_name').eq('user_id', userId).single();
+          const { data: profile } = await supabase.from('profiles').select('full_name, email').eq('user_id', userId).single();
           buyerName = profile?.full_name || 'Студент';
+          buyerEmail = profile?.email || '';
         } else if (userRole === 'organization') {
-          const { data: org } = await supabase.from('organizations').select('name').eq('id', organizationId).single();
+          const { data: org } = await supabase.from('organizations').select('name, email').eq('id', organizationId).single();
           buyerName = org?.name || 'Организация';
+          buyerEmail = org?.email || '';
         }
+
+        const courseName = selectedCourseForOrder.course?.title || 'Курс';
+
+        // Create org notification for seller
+        await supabase.from("org_notifications").insert({
+          type: "order",
+          title: `Новый заказ: ${courseName}`,
+          message: `${buyerName} (${buyerEmail}) оформил заказ на курс "${courseName}" — ${studentsCount} уч.`,
+          organization_id: selectedCourseForOrder.organization_id,
+          related_id: orderData?.id || null,
+          user_id: currentUser?.id || userId || '',
+        });
+
         await safeInvoke('notify-course-order', {
           body: {
-            orderId: orderData?.id || 'new', courseName: selectedCourseForOrder.course?.title || 'Курс',
+            orderId: orderData?.id || 'new', courseName,
             buyerName, buyerType: userRole,
             studentsCount: userRole === 'organization' ? studentsCount : 1,
             price: 0, notes: orderNotes || undefined,

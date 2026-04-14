@@ -906,6 +906,7 @@ export type Database = {
         Row: {
           color: string | null
           created_at: string
+          hidden_from_catalog: boolean
           icon: string | null
           id: string
           name: string
@@ -916,6 +917,7 @@ export type Database = {
         Insert: {
           color?: string | null
           created_at?: string
+          hidden_from_catalog?: boolean
           icon?: string | null
           id?: string
           name: string
@@ -926,6 +928,7 @@ export type Database = {
         Update: {
           color?: string | null
           created_at?: string
+          hidden_from_catalog?: boolean
           icon?: string | null
           id?: string
           name?: string
@@ -1253,6 +1256,7 @@ export type Database = {
           frdo_qualification_name: string | null
           frdo_qualification_rank: string | null
           frdo_specialty_group: string | null
+          hidden_from_catalog: boolean
           id: string
           is_published: boolean
           landing_content: Json | null
@@ -1293,6 +1297,7 @@ export type Database = {
           frdo_qualification_name?: string | null
           frdo_qualification_rank?: string | null
           frdo_specialty_group?: string | null
+          hidden_from_catalog?: boolean
           id?: string
           is_published?: boolean
           landing_content?: Json | null
@@ -1333,6 +1338,7 @@ export type Database = {
           frdo_qualification_name?: string | null
           frdo_qualification_rank?: string | null
           frdo_specialty_group?: string | null
+          hidden_from_catalog?: boolean
           id?: string
           is_published?: boolean
           landing_content?: Json | null

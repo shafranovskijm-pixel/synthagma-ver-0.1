@@ -323,12 +323,13 @@ export function useStudentDashboard() {
       // Load catalog: all published courses for this org + categories
       if (effectiveOrgId) {
         const [coursesRes, catsRes, pendingRequestsRes] = await Promise.all([
-          supabase.from("courses").select("id, title, description, duration, price, category_id, cover_image_url, is_published, landing_content, require_enrollment_approval").eq("organization_id", effectiveOrgId).eq("is_published", true),
-          supabase.from("course_categories").select("id, name, color").eq("organization_id", effectiveOrgId),
+          supabase.from("courses").select("id, title, description, duration, price, category_id, cover_image_url, is_published, landing_content, require_enrollment_approval, hidden_from_catalog").eq("organization_id", effectiveOrgId).eq("is_published", true),
+          supabase.from("course_categories").select("id, name, color, hidden_from_catalog").eq("organization_id", effectiveOrgId),
           supabase.from("enrollment_requests").select("course_id, status").eq("user_id", uid).eq("status", "pending"),
         ]);
         const allOrgCourses = coursesRes.data || [];
-        const cats = catsRes.data || [];
+        const cats = (catsRes.data || []).filter((c: any) => !c.hidden_from_catalog);
+        const hiddenCategoryIds = new Set((catsRes.data || []).filter((c: any) => c.hidden_from_catalog).map((c: any) => c.id));
         const pendingRequests = new Set((pendingRequestsRes.data || []).map(r => r.course_id));
         setCategories(cats);
         const catMap = new Map(cats.map(c => [c.id, c]));
@@ -344,7 +345,9 @@ export function useStudentDashboard() {
           lessonCountMap.set(l.course_id, (lessonCountMap.get(l.course_id) || 0) + 1);
         }
 
-        const catalogData: CatalogCourse[] = allOrgCourses.map(c => {
+        const catalogData: CatalogCourse[] = allOrgCourses
+          .filter(c => !(c as any).hidden_from_catalog && !hiddenCategoryIds.has(c.category_id || ''))
+          .map(c => {
           const enrolled = cachedCoursesData.find(ec => ec.id === c.id);
           const cat = c.category_id ? catMap.get(c.category_id) : null;
           const isPending = pendingRequests.has(c.id);

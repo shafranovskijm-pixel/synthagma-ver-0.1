@@ -16,7 +16,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
 import { 
   Search, Filter, Tag, Plus, LayoutGrid, List, Loader2, 
-  BookOpen, Users, Edit, Eye, Trash2, FolderOpen, Folder,
+  BookOpen, Users, Edit, Eye, EyeOff, Trash2, FolderOpen, Folder,
   ChevronDown, ChevronRight, MoreVertical, FolderPlus, 
   MoveRight, Pencil, Video, VideoOff, Lock, Unlock, FastForward,
   Sparkles, ShoppingCart, GripVertical, CheckCircle, Palette, Play, Copy, ImagePlus, Wand2,
@@ -633,9 +633,9 @@ export const CoursesTab = React.memo(function CoursesTab({ organizationId, onCou
   };
 
   // Toggle course settings with optimistic update
-  const handleToggleCourseSetting = async (course: Course, setting: 'skip_video_identification' | 'sequential_lessons' | 'allow_video_seek', e: React.MouseEvent) => {
+  const handleToggleCourseSetting = async (course: Course, setting: 'skip_video_identification' | 'sequential_lessons' | 'allow_video_seek' | 'hidden_from_catalog', e: React.MouseEvent) => {
     e.stopPropagation();
-    if (!hasCourseSettings) {
+    if (setting !== 'hidden_from_catalog' && !hasCourseSettings) {
       showLimitToast('Настройки курсов доступны начиная с тарифа «Старт». Перейдите на следующий тариф.');
       return;
     }
@@ -655,6 +655,7 @@ export const CoursesTab = React.memo(function CoursesTab({ organizationId, onCou
         skip_video_identification: ['Видеоидентификация отключена', 'Видеоидентификация включена'],
         sequential_lessons: ['Последовательность уроков включена', 'Последовательность уроков отключена'],
         allow_video_seek: ['Перемотка видео включена', 'Перемотка видео отключена'],
+        hidden_from_catalog: ['Курс скрыт из витрины', 'Курс показан в витрине'],
       };
       const [onMsg, offMsg] = messages[setting];
       toast.success(newValue ? onMsg : offMsg);
@@ -662,6 +663,22 @@ export const CoursesTab = React.memo(function CoursesTab({ organizationId, onCou
       toast.error('Ошибка сохранения');
       // Revert on error
       updateCourseLocally(course.id, { [setting]: currentValue });
+    }
+  };
+
+  // Toggle category hidden_from_catalog
+  const handleToggleCategoryVisibility = async (categoryId: string, currentHidden: boolean, e: React.MouseEvent) => {
+    e.stopPropagation();
+    const newValue = !currentHidden;
+    const { error } = await supabase
+      .from('course_categories')
+      .update({ hidden_from_catalog: newValue })
+      .eq('id', categoryId);
+    if (!error) {
+      toast.success(newValue ? 'Категория скрыта из витрины' : 'Категория показана в витрине');
+      refresh();
+    } else {
+      toast.error('Ошибка сохранения');
     }
   };
 
@@ -743,7 +760,7 @@ export const CoursesTab = React.memo(function CoursesTab({ organizationId, onCou
                     <TooltipContent>Редактировать</TooltipContent>
                   </Tooltip>
                   
-                  <Tooltip>
+                   <Tooltip>
                     <TooltipTrigger asChild>
                       <Button 
                         variant="ghost" 
@@ -762,46 +779,14 @@ export const CoursesTab = React.memo(function CoursesTab({ organizationId, onCou
                       <Button 
                         variant="ghost" 
                         size="icon" 
-                        className={`h-7 w-7 ${!hasCourseSettings ? 'opacity-40 cursor-not-allowed' : ''} ${course.skip_video_identification ? 'text-muted-foreground' : 'text-sigma-green'}`}
-                        onClick={e => handleToggleCourseSetting(course, 'skip_video_identification', e)}
+                        className={`h-7 w-7 ${course.hidden_from_catalog ? 'text-muted-foreground' : 'text-sigma-green'}`}
+                        onClick={e => handleToggleCourseSetting(course, 'hidden_from_catalog', e)}
                       >
-                        {course.skip_video_identification ? <VideoOff className="w-3.5 h-3.5" /> : <Video className="w-3.5 h-3.5" />}
+                        {course.hidden_from_catalog ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
                       </Button>
                     </TooltipTrigger>
                     <TooltipContent>
-                      {course.skip_video_identification ? 'Видеоидентификация выкл.' : 'Видеоидентификация вкл.'}
-                    </TooltipContent>
-                  </Tooltip>
-
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button 
-                        variant="ghost" 
-                        size="icon" 
-                        className={`h-7 w-7 ${!hasCourseSettings ? 'opacity-40 cursor-not-allowed' : ''} ${course.sequential_lessons ? 'text-amber-500' : 'text-muted-foreground'}`}
-                        onClick={e => handleToggleCourseSetting(course, 'sequential_lessons', e)}
-                      >
-                        {course.sequential_lessons ? <Lock className="w-3.5 h-3.5" /> : <Unlock className="w-3.5 h-3.5" />}
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      {course.sequential_lessons ? 'Последовательность уроков вкл.' : 'Последовательность уроков выкл.'}
-                    </TooltipContent>
-                  </Tooltip>
-
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button 
-                        variant="ghost" 
-                        size="icon" 
-                        className={`h-7 w-7 ${!hasCourseSettings ? 'opacity-40 cursor-not-allowed' : ''} ${course.allow_video_seek === false ? 'text-destructive' : 'text-muted-foreground'}`}
-                        onClick={e => handleToggleCourseSetting(course, 'allow_video_seek', e)}
-                      >
-                        <FastForward className="w-3.5 h-3.5" />
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      {course.allow_video_seek === false ? 'Перемотка видео запрещена' : 'Перемотка видео разрешена'}
+                      {course.hidden_from_catalog ? 'Скрыт из витрины' : 'Виден в витрине'}
                     </TooltipContent>
                   </Tooltip>
                   
@@ -819,6 +804,19 @@ export const CoursesTab = React.memo(function CoursesTab({ organizationId, onCou
                       <DropdownMenuItem onClick={e => { e.stopPropagation(); navigate(`/course-preview/${course.id}`); }}>
                         <Eye className="w-4 h-4 mr-2" />
                         Просмотр
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem onClick={e => handleToggleCourseSetting(course, 'skip_video_identification', e)}>
+                        {course.skip_video_identification ? <VideoOff className="w-4 h-4 mr-2" /> : <Video className="w-4 h-4 mr-2" />}
+                        {course.skip_video_identification ? 'Включить видеоидент.' : 'Отключить видеоидент.'}
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={e => handleToggleCourseSetting(course, 'sequential_lessons', e)}>
+                        {course.sequential_lessons ? <Lock className="w-4 h-4 mr-2" /> : <Unlock className="w-4 h-4 mr-2" />}
+                        {course.sequential_lessons ? 'Отключить послед. уроков' : 'Включить послед. уроков'}
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={e => handleToggleCourseSetting(course, 'allow_video_seek', e)}>
+                        <FastForward className="w-4 h-4 mr-2" />
+                        {course.allow_video_seek === false ? 'Разрешить перемотку' : 'Запретить перемотку'}
                       </DropdownMenuItem>
                       <DropdownMenuSeparator />
                       <DropdownMenuItem onClick={e => { e.stopPropagation(); handleDuplicate(course.id); }}>
@@ -888,60 +886,14 @@ export const CoursesTab = React.memo(function CoursesTab({ organizationId, onCou
                 <Button 
                   variant="ghost" 
                   size="icon" 
-                  className="h-7 w-7 bg-background/80 backdrop-blur-sm"
-                  onClick={e => { e.stopPropagation(); navigate(`/course-preview/${course.id}`); }}
+                  className={`h-7 w-7 bg-background/80 backdrop-blur-sm ${course.hidden_from_catalog ? 'text-muted-foreground' : 'text-sigma-green'}`}
+                  onClick={e => handleToggleCourseSetting(course, 'hidden_from_catalog', e)}
                 >
-                  <Eye className="w-3.5 h-3.5" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>Просмотр</TooltipContent>
-            </Tooltip>
-
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button 
-                  variant="ghost" 
-                  size="icon" 
-                  className={`h-7 w-7 bg-background/80 backdrop-blur-sm ${!hasCourseSettings ? 'opacity-40 cursor-not-allowed' : ''} ${course.skip_video_identification ? 'text-muted-foreground' : 'text-sigma-green'}`}
-                  onClick={e => handleToggleCourseSetting(course, 'skip_video_identification', e)}
-                >
-                  {course.skip_video_identification ? <VideoOff className="w-3.5 h-3.5" /> : <Video className="w-3.5 h-3.5" />}
+                  {course.hidden_from_catalog ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
                 </Button>
               </TooltipTrigger>
               <TooltipContent>
-                {course.skip_video_identification ? 'Видеоидентификация выкл.' : 'Видеоидентификация вкл.'}
-              </TooltipContent>
-            </Tooltip>
-
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button 
-                  variant="ghost" 
-                  size="icon" 
-                  className={`h-7 w-7 bg-background/80 backdrop-blur-sm ${!hasCourseSettings ? 'opacity-40 cursor-not-allowed' : ''} ${course.sequential_lessons ? 'text-amber-500' : 'text-muted-foreground'}`}
-                  onClick={e => handleToggleCourseSetting(course, 'sequential_lessons', e)}
-                >
-                  {course.sequential_lessons ? <Lock className="w-3.5 h-3.5" /> : <Unlock className="w-3.5 h-3.5" />}
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>
-                {course.sequential_lessons ? 'Последовательность уроков вкл.' : 'Последовательность уроков выкл.'}
-              </TooltipContent>
-            </Tooltip>
-
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button 
-                  variant="ghost" 
-                  size="icon" 
-                  className={`h-7 w-7 bg-background/80 backdrop-blur-sm ${!hasCourseSettings ? 'opacity-40 cursor-not-allowed' : ''} ${course.allow_video_seek === false ? 'text-destructive' : 'text-muted-foreground'}`}
-                  onClick={e => handleToggleCourseSetting(course, 'allow_video_seek', e)}
-                >
-                  <FastForward className="w-3.5 h-3.5" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>
-                {course.allow_video_seek === false ? 'Перемотка видео запрещена' : 'Перемотка видео разрешена'}
+                {course.hidden_from_catalog ? 'Скрыт из витрины' : 'Виден в витрине'}
               </TooltipContent>
             </Tooltip>
           </div>
@@ -966,6 +918,19 @@ export const CoursesTab = React.memo(function CoursesTab({ organizationId, onCou
                   Просмотр
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={e => handleToggleCourseSetting(course, 'skip_video_identification', e)}>
+                  {course.skip_video_identification ? <VideoOff className="w-4 h-4 mr-2" /> : <Video className="w-4 h-4 mr-2" />}
+                  {course.skip_video_identification ? 'Включить видеоидент.' : 'Отключить видеоидент.'}
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={e => handleToggleCourseSetting(course, 'sequential_lessons', e)}>
+                  {course.sequential_lessons ? <Lock className="w-4 h-4 mr-2" /> : <Unlock className="w-4 h-4 mr-2" />}
+                  {course.sequential_lessons ? 'Отключить послед. уроков' : 'Включить послед. уроков'}
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={e => handleToggleCourseSetting(course, 'allow_video_seek', e)}>
+                  <FastForward className="w-4 h-4 mr-2" />
+                  {course.allow_video_seek === false ? 'Разрешить перемотку' : 'Запретить перемотку'}
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={e => { e.stopPropagation(); handleDuplicate(course.id); }}>
                   <Copy className="w-4 h-4 mr-2" />
                   Дублировать курс
@@ -983,7 +948,7 @@ export const CoursesTab = React.memo(function CoursesTab({ organizationId, onCou
   );
 
   // Render folder with courses
-  const renderCategoryFolder = (categoryId: string, categoryName: string, categoryColor: string | null, coursesInCategory: Course[], isSystem = false) => {
+  const renderCategoryFolder = (categoryId: string, categoryName: string, categoryColor: string | null, coursesInCategory: Course[], isSystem = false, hiddenFromCatalog = false) => {
     const isExpanded = expandedCategories.has(categoryId);
     const courseCount = coursesInCategory.length;
     
@@ -1007,28 +972,42 @@ export const CoursesTab = React.memo(function CoursesTab({ organizationId, onCou
                 {isExpanded ? <ChevronDown className="w-4 h-4 text-muted-foreground" /> : <ChevronRight className="w-4 h-4 text-muted-foreground" />}
               </div>
               
-              {!isSystem && (
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild onClick={e => e.stopPropagation()}>
-                    <Button variant="ghost" size="icon" className="h-7 w-7">
-                      <MoreVertical className="w-4 h-4" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuItem onClick={() => openEditCategory({ id: categoryId, name: categoryName, color: categoryColor || '#6366f1', organization_id: organizationId, created_at: '' })}>
-                      <Pencil className="w-4 h-4 mr-2" />
-                      Редактировать
-                    </DropdownMenuItem>
-                    <DropdownMenuItem 
-                      className="text-destructive"
-                      onClick={() => handleDeleteCategory(categoryId)}
-                    >
-                      <Trash2 className="w-4 h-4 mr-2" />
-                      Удалить
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              )}
+              <div className="flex items-center gap-1">
+                {!isSystem && (
+                  <TooltipProvider delayDuration={200}>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button variant="ghost" size="icon" className={`h-7 w-7 ${hiddenFromCatalog ? 'text-muted-foreground' : 'text-sigma-green'}`} onClick={e => handleToggleCategoryVisibility(categoryId, hiddenFromCatalog, e)}>
+                          {hiddenFromCatalog ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>{hiddenFromCatalog ? 'Категория скрыта из витрины' : 'Категория видна в витрине'}</TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                )}
+                {!isSystem && (
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild onClick={e => e.stopPropagation()}>
+                      <Button variant="ghost" size="icon" className="h-7 w-7">
+                        <MoreVertical className="w-4 h-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem onClick={() => openEditCategory({ id: categoryId, name: categoryName, color: categoryColor || '#6366f1', organization_id: organizationId, created_at: '' })}>
+                        <Pencil className="w-4 h-4 mr-2" />
+                        Редактировать
+                      </DropdownMenuItem>
+                      <DropdownMenuItem 
+                        className="text-destructive"
+                        onClick={() => handleDeleteCategory(categoryId)}
+                      >
+                        <Trash2 className="w-4 h-4 mr-2" />
+                        Удалить
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                )}
+              </div>
             </div>
           </CollapsibleTrigger>
           
@@ -1482,7 +1461,7 @@ export const CoursesTab = React.memo(function CoursesTab({ organizationId, onCou
         <div className="space-y-3">
           {/* Render categories as folders */}
           {categories.map(cat => 
-            renderCategoryFolder(cat.id, cat.name, cat.color, coursesByCategory[cat.id] || [])
+            renderCategoryFolder(cat.id, cat.name, cat.color, coursesByCategory[cat.id] || [], false, !!(cat as any).hidden_from_catalog)
           )}
           {/* Uncategorized folder */}
           {coursesByCategory.uncategorized.length > 0 && (
