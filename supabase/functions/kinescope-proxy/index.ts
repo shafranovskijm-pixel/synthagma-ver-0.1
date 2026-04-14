@@ -53,11 +53,24 @@ serve(async (req) => {
 
         if (!createRes.ok) {
           const errBody = await createRes.text();
-          const isMethodNotAllowed = createRes.status === 405 || errBody.includes("400405") || errBody.includes("method not allowed");
-          const userMessage = isMethodNotAllowed
-            ? "Токен Kinescope не имеет прав на запись (write). Обновите API-токен в настройках Kinescope, добавив права api:write и upload."
-            : `Kinescope create failed: ${errBody}`;
-          return new Response(JSON.stringify({ error: userMessage }), {
+          console.error("Kinescope POST /v1/videos failed:", {
+            status: createRes.status,
+            body: errBody,
+          });
+          return new Response(JSON.stringify({
+            error: "Kinescope API error",
+            status: createRes.status,
+            raw_response: errBody,
+            request_info: {
+              method: "POST",
+              url: `${KINESCOPE_API}/videos`,
+              body: {
+                parent_id: parent_id || undefined,
+                title: title || "Untitled",
+                type: "vod",
+              },
+            },
+          }), {
             status: createRes.status,
             headers: { ...corsHeaders, "Content-Type": "application/json" },
           });
