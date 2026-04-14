@@ -260,7 +260,7 @@ export function useSalesManager() {
       });
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
-      toast.success("Менеджер создан", { description: `${fullName} (${email`}) });
+      toast.success("Менеджер создан", { description: `${fullName} (${email})` });
       await fetchManagers();
       return true;
     } catch (err: any) {

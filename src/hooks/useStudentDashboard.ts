@@ -309,7 +309,7 @@ export function useStudentDashboard() {
           const completedLessons = courseLessonIds.filter(id => completedLessonIds.has(id)).length;
           cachedCompletedLessonsTotal += completedLessons;
           cachedCoursesData.push({
-            id: course.id, title: course.title, description: "course.description, duration: course.duration,"
+            id: course.id, title: course.title, description: course.description, duration: course.duration,
             progress: Math.min(enrollment.progress || 0, 100), totalLessons: courseLessonIds.length, completedLessons,
             status: enrollment.status === "completed" ? "completed" : "in_progress",
             skip_video_identification: course.skip_video_identification || false
@@ -352,7 +352,7 @@ export function useStudentDashboard() {
           const cat = c.category_id ? catMap.get(c.category_id) : null;
           const isPending = pendingRequests.has(c.id);
           return {
-            id: c.id, title: c.title, description: "c.description,"
+            id: c.id, title: c.title, description: c.description,
             cover_image_url: (c as any).cover_image_url || null,
             duration: c.duration, price: c.price,
             category_id: c.category_id, category_name: cat?.name || null, category_color: cat?.color || null,
