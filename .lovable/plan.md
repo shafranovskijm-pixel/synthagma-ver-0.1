@@ -1,80 +1,79 @@
 
 
-# Глобальная оптимизация: производительность и качество кода
-
-## Текущий статус после предыдущих рефакторингов
-
-Выполнено: маршруты модулизированы, BlockEditor разбит, toast унифицирован, 28 файлов архивированы, 597 console.log удалены. Однако остались существенные проблемы.
-
----
+# Следующая волна оптимизаций
 
 ## Обнаруженные проблемы
 
-### 1. Крупные файлы-монолиты (10 файлов > 1000 строк)
+### 1. Неиспользуемые UI-компоненты и зависимости — мёртвый вес в бандле
 
-| Файл | Строк |
-|---|---|
-| OrganizationDetailsView.tsx | 1899 |
-| CoursesTab.tsx | 1747 |
-| BlockEditorMain.tsx | 1461 |
-| AdminAnalytics.tsx | 1435 |
-| CourseDetailsModal.tsx | 1416 |
-| LaborSafetyStudentDetailCard.tsx | 1295 |
-| SelfExaminationQuiz.tsx | 1250 |
-| CoursePreview.tsx | 1248 |
-| AutoDocumentRegistrationJournal.tsx | 1246 |
-| StudentsTab.tsx | 1186 |
+6 UI-компонентов из `src/components/ui/` **нигде не импортируются** в проекте:
 
-### 2. `: any` — 200+ в активном коде
+| Компонент | npm-зависимость | ~KB в бандле |
+|---|---|---|
+| `toast.tsx` | `@radix-ui/react-toast` | ~15 |
+| `resizable.tsx` | `react-resizable-panels` | ~25 |
+| `carousel.tsx` | `embla-carousel-react` | ~20 |
+| `hover-card.tsx` | `@radix-ui/react-hover-card` | ~8 |
+| `menubar.tsx` | `@radix-ui/react-menubar` | ~12 |
+| `navigation-menu.tsx` | `@radix-ui/react-navigation-menu` | ~10 |
+| `aspect-ratio.tsx` | `@radix-ui/react-aspect-ratio` | ~3 |
+| `input-otp.tsx` | `input-otp` | ~5 |
 
-Топ-файлы: `useMarketplaceValidation.ts` (18), `BulkContentGenerator.tsx` (17), `ProfileTab.tsx` (12), `useOrganizationDataLoader.ts` (11), `ContentGeneratorTab.tsx` (10).
+Также **3 npm-пакета Capacitor** (`@capacitor/core`, `@capacitor/ios`, `@capacitor/android`, `@capacitor/cli`) используются только в 2 строках проверки `window.Capacitor` — сами пакеты не нужны в web-бандле.
 
-### 3. Производительность — отсутствие мемоизации
+**Действие**: удалить файлы и зависимости (~100 KB экономии бандла).
 
-- Только 3 компонента используют `React.memo` (StudentsTab, DocumentsTab, CoursesTab).
-- `OrganizationDetailsView` (1899 строк) — 0 `useMemo`, 2 `useCallback`, 26 операций `.filter/.map/.reduce` при каждом рендере.
-- `useOrganizationDataLoader` — 11 `any`, 19 array operations без мемоизации промежуточных результатов.
+### 2. `useCourseLearning.ts` — монолитный хук (834 строки, 35 useState, 13 useEffect)
 
-### 4. Оставшиеся console.log/warn — 125 шт
+Самый тяжёлый хук проекта. Возвращает **50+ значений**. Содержит логику:
+- Навигации по урокам
+- Тестирования
+- TTS (синтез речи)
+- AI-чат
+- Видео-прогресс
+- Офлайн-кеш
+- Обратная связь
 
-В основном `console.warn` в `ContentGeneratorTab.tsx` (12 шт), `safeInvoke.ts` (3), `useOrganizationDataLoader.ts` (4), `SupportRequestForm.tsx` (1). Это diagnostic warnings — часть из них полезна, но Production должен быть чистым.
+**Действие**: разбить на 5 хуков: `useLessonNavigation`, `useTestLogic`, `useLessonTTS`, `useLessonChat`, `useLessonVideo`.
 
-### 5. Дублирующие запросы к БД
+### 3. Оставшиеся `: any` — 236 штук
 
-`useStudents.ts` — 3 отдельных `useEffect` запускают 3 запроса к `profiles` таблице (студенты, группы, маппинг групп). Можно объединить в 1.
+Топ-5 файлов:
+- `useMarketplaceValidation.ts` — 17
+- `BulkContentGenerator.tsx` — 13
+- `ProfileTab.tsx` — 12
+- `courseCache.ts` — 11
+- `AdminMarketplaceManager.tsx` — 10
+
+### 4. Дублированная загрузка данных организации
+
+`ActGenerator`, `InvoiceGenerator`, `ConsentGenerator` — каждый имеет свою функцию `loadOrganization()` с одинаковым запросом к таблице `organizations`. Можно вынести в общий хук.
 
 ---
 
-## План оптимизации
+## План работ
 
-### Этап 1. Производительность — мемоизация и React.memo
+### Этап 1. Удаление неиспользуемых UI-компонентов и зависимостей
 
-**OrganizationDetailsView.tsx** — обернуть тяжелые фильтрации/маппинги в `useMemo`, добавить `React.memo` на дочерние табы. Это сократит ненужные рендеры при переключении табов.
+Удалить 8 файлов из `components/ui/` и соответствующие npm-зависимости из `package.json`. Это уменьшит бандл на ~100 KB.
 
-**useOrganizationDataLoader.ts** — типизировать промежуточные данные (убрать `any[]`), мемоизировать вычисления статистики.
+### Этап 2. Декомпозиция useCourseLearning (834 строки → 5 хуков)
 
-### Этап 2. Объединение запросов в useStudents
+- `useLessonNavigation.ts` — навигация, прогресс, sidebar
+- `useLessonTest.ts` — тестирование, ответы, пересдача
+- `useLessonTTS.ts` — синтез речи
+- `useLessonChat.ts` — AI-чат
+- `useLessonVideo.ts` — видео-прогресс, позиция
 
-Объединить 3 `useEffect` (студенты, группы, маппинг) в 1 `useEffect` с `Promise.all`. Сократит время загрузки вкладки «Студенты» на ~30% (3 последовательных запроса → 1 параллельный).
+`useCourseLearning` остаётся как фасад, вызывающий 5 подхуков.
 
-### Этап 3. Удаление оставшихся production warnings
+### Этап 3. Общий хук useOrganizationDetails для генераторов документов
 
-Удалить или заменить на тихие обработчики ~125 `console.warn/log` в 9 файлах. Оставить только `console.error` в критических catch-блоках.
+Вынести `loadOrganization()` из Act/Invoice/ConsentGenerator в `useOrganizationDetails.ts`. Уберёт ~150 строк дублированного кода.
 
-### Этап 4. Типизация топ-5 файлов
+### Этап 4. Типизация топ-5 файлов (63 any → 0)
 
-Убрать `: any` в:
-- `useMarketplaceValidation.ts` (18 → 0)
-- `BulkContentGenerator.tsx` (17 → 0)
-- `useOrganizationDataLoader.ts` (11 → 0)
-- `ProfileTab.tsx` (12 → 0)
-- `ContentGeneratorTab.tsx` (10 → 0)
-
-### Этап 5. Декомпозиция 3 крупнейших монолитов
-
-- **OrganizationDetailsView.tsx** (1899) → выделить `OrgDetailsOverviewTab`, `OrgDetailsCoursesTab`, `OrgDetailsBillingTab`
-- **CoursesTab.tsx** (1747) → выделить `CourseCardGrid`, `CourseActionsToolbar`, `CreateCourseDialog`
-- **CourseDetailsModal.tsx** (1416) → выделить `CourseStudentsList`, `CourseSettingsPanel`
+Заменить `: any` на конкретные типы из `Database` или создать локальные интерфейсы.
 
 ---
 
@@ -82,15 +81,10 @@
 
 | Метрика | До | После |
 |---|---|---|
-| Файлов > 1000 строк | 10 | 4-5 |
-| `: any` в топ-файлах | 68 | 0 |
-| console.warn в production | 125 | 0 |
-| Лишних DB-запросов (useStudents) | 3 последовательных | 1 параллельный |
-| React.memo на тяжелых компонентах | 3 | 8+ |
-
-## Безопасность изменений
-
-- Никакая бизнес-логика не удаляется
-- Все существующие интерфейсы сохраняются
-- Только структурные, типовые и performance-оптимизации
+| Неиспользуемые UI-компоненты | 8 | 0 |
+| Лишние npm-зависимости | ~8 пакетов | 0 |
+| useCourseLearning строк | 834 | ~100 (фасад) |
+| Дубликаты loadOrganization | 3 копии | 1 хук |
+| `: any` в топ-файлах | 63 | 0 |
+| Размер бандла | −~100 KB |
 
