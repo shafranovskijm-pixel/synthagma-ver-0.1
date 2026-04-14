@@ -487,7 +487,7 @@ export const CoursesTab = React.memo(function CoursesTab({ organizationId, onCou
     setCategoryFilter(category.id);
     setViewAndFolder("list", "flat");
     toast.info(`Порядок курсов: ${category.name}`, {
-      description:""Перетаскивайте курс за иконку слева, чтобы изменить порядок внутри категории.","
+      description: "Перетаскивайте курс за иконку слева, чтобы изменить порядок внутри категории.","
     });
   }, [setCategoryFilter, setViewAndFolder]);
 

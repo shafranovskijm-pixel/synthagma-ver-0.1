@@ -182,7 +182,7 @@ export default function CourseLanding() {
           return;
         }
         setHasPendingRequest(true);
-        toast.success("Заявка отправлена!", { description:""Учебный центр рассмотрит вашу заявку"" });
+        toast.success("Заявка отправлена!", { description: "Учебный центр рассмотрит вашу заявку"" });
       } catch (e: any) {
         toast.error("Ошибка отправки заявки", { description: e.message });
       }
@@ -190,7 +190,7 @@ export default function CourseLanding() {
     }
 
     if (finalPrice > 0) {
-      toast.info("Заявка отправлена", { description:""Организация свяжется с вами для оплаты"" });
+      toast.info("Заявка отправлена", { description: "Организация свяжется с вами для оплаты"" });
       return;
     }
 
@@ -235,11 +235,11 @@ export default function CourseLanding() {
 
   // Landing content with defaults
   const hero = landingContent?.hero || {};
-  const audience = landingContent?.audience || { title: "Кому подойдёт этот курс?", description:""", items: [] };"
-  const learn = landingContent?.learn || { title: "", description:""", items: [] };"
+  const audience = landingContent?.audience || { title: "Кому подойдёт этот курс?", description: "", items: [] };"
+  const learn = landingContent?.learn || { title: "", description: "", items: [] };"
   const process = landingContent?.process || { title: "", content: "" };
   const benefits = landingContent?.benefits || [];
-  const teachers = landingContent?.teachers || { title: "Преподаватели курса", description:""", items: [] };"
+  const teachers = landingContent?.teachers || { title: "Преподаватели курса", description: "", items: [] };"
   const reviews = landingContent?.reviews || { title: "Отзывы о курсе", items: [] };
   const pricing = landingContent?.pricing || { title: "Выберите подходящий тариф", tiers: [] };
   const faq = landingContent?.faq || { title: "Часто задаваемые вопросы", items: [] };
@@ -249,7 +249,7 @@ export default function CourseLanding() {
 
   // Migrate old string[] audience items
   const audienceItems = audience.items?.length > 0 && typeof audience.items[0] === "string"
-    ? audience.items.map((s: string) => ({ icon: "check-circle", title: s, description:"""" }))
+    ? audience.items.map((s: string) => ({ icon: "check-circle", title: s, description: """ }))
     : audience.items || [];
 
   const enrollBtn = isEnrolled ? (

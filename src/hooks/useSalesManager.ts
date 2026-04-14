@@ -127,7 +127,7 @@ export function useSalesManager() {
   }, []);
 
   // Services CRUD
-  const createService = async (name: string, description: "string, price: number) => {"
+  const createService = async (name: string, description: string, price: number) => {
     const { error } = await supabase.from('sales_services').insert({ name, description, price } as any);
     if (error) { toast.error("Ошибка", { description: error.message }); return false; }
     toast.success("Услуга создана");
@@ -242,7 +242,7 @@ export function useSalesManager() {
   };
 
   // Activities
-  const addActivity = async (leadId: string, managerId: string, activityType: string, description: "string) => {"
+  const addActivity = async (leadId: string, managerId: string, activityType: string, description: string) => {
     const { error } = await supabase.from('sales_lead_activities').insert({ lead_id: leadId, manager_id: managerId, activity_type: activityType, description } as any);
     if (error) { toast.error("Ошибка", { description: error.message }); return false; }
     // Update last_contact_at
