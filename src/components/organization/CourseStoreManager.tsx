@@ -97,13 +97,37 @@ export function CourseStoreManager({ organizationId, userRole = 'organization', 
         </div>
       </div>
 
-      <Tabs value={h.activeTab} onValueChange={(v) => h.setActiveTab(v as any)} className="space-y-6">
-        <TabsList className="grid w-full grid-cols-4 max-w-2xl">
-          <TabsTrigger value="catalog" className="flex items-center gap-2"><Package className="w-4 h-4" /><span className="hidden sm:inline">Каталог</span></TabsTrigger>
-          <TabsTrigger value="my-courses" className="flex items-center gap-2"><GraduationCap className="w-4 h-4" /><span className="hidden sm:inline">Мои курсы</span></TabsTrigger>
-          <TabsTrigger value="orders" className="flex items-center gap-2"><ShoppingCart className="w-4 h-4" /><span className="hidden sm:inline">Заявки</span></TabsTrigger>
-          <TabsTrigger value="my-orders" className="flex items-center gap-2"><Tag className="w-4 h-4" /><span className="hidden sm:inline">Добавленные</span></TabsTrigger>
-        </TabsList>
+      <Tabs value={h.activeTab} onValueChange={(v) => h.setActiveTab(v as any)} className="space-y-0">
+        <div className="flex gap-6">
+          {/* Vertical sidebar nav */}
+          <div className="w-[200px] shrink-0">
+            <nav className="flex flex-col gap-1 sticky top-4">
+              {[
+                { value: "catalog", icon: Package, label: "Каталог" },
+                { value: "my-courses", icon: GraduationCap, label: "Мои курсы" },
+                { value: "orders", icon: ShoppingCart, label: "Заявки" },
+                { value: "my-orders", icon: Tag, label: "Добавленные" },
+              ].map((item) => {
+                const Icon = item.icon;
+                const isActive = h.activeTab === item.value;
+                return (
+                  <TabsTrigger
+                    key={item.value}
+                    value={item.value}
+                    className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium justify-start w-full transition-colors
+                      ${isActive ? "bg-primary/10 text-primary shadow-sm" : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"}
+                    `}
+                  >
+                    <Icon className="w-4 h-4 shrink-0" />
+                    {item.label}
+                  </TabsTrigger>
+                );
+              })}
+            </nav>
+          </div>
+
+          {/* Main content */}
+          <div className="flex-1 min-w-0 space-y-6">
 
         {/* Catalog Tab */}
         <TabsContent value="catalog" className="space-y-6">
@@ -487,6 +511,8 @@ export function CourseStoreManager({ organizationId, userRole = 'organization', 
             </TableBody></Table></Card>
           )}
         </TabsContent>
+          </div>{/* end main content */}
+        </div>{/* end flex */}
       </Tabs>
 
       {/* Add Course Dialog */}

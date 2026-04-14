@@ -1,4 +1,4 @@
-import { Flame, HardHat, Stethoscope, Zap, Factory, TrendingUp } from "lucide-react";
+import { Flame, HardHat, Zap, Factory, Droplets, TrendingUp } from "lucide-react";
 import heroFire from "@/assets/marketplace/hero-fire-safety.jpg";
 import heroLabor from "@/assets/marketplace/hero-labor-safety.jpg";
 import heroMedicine from "@/assets/marketplace/hero-medicine.jpg";
@@ -14,15 +14,15 @@ interface HeroCard {
 }
 
 const HERO_CARDS: HeroCard[] = [
-  { title: "Пожарная безопасность", subtitle: "Профилактика и защита", image: heroFire, icon: Flame, gradient: "from-red-500/80 to-orange-500/80" },
-  { title: "Охрана труда", subtitle: "Безопасность на рабочем месте", image: heroLabor, icon: HardHat, gradient: "from-amber-500/80 to-yellow-500/80" },
-  { title: "Медицина", subtitle: "Повышение квалификации", image: heroMedicine, icon: Stethoscope, gradient: "from-teal-500/80 to-cyan-500/80" },
-  { title: "Электробезопасность", subtitle: "Группы допуска", image: heroElectrical, icon: Zap, gradient: "from-yellow-500/80 to-lime-500/80" },
-  { title: "Промышленная безопасность", subtitle: "Аттестация специалистов", image: heroIndustrial, icon: Factory, gradient: "from-orange-500/80 to-red-400/80" },
+  { title: "Специалист по пожарной профилактике", subtitle: "Профпереподготовка", image: heroFire, icon: Flame, gradient: "from-red-500/80 to-orange-500/80" },
+  { title: "Обращение с отходами I-IV классов", subtitle: "Профессиональная подготовка", image: heroLabor, icon: Droplets, gradient: "from-teal-500/80 to-cyan-500/80" },
+  { title: "Охрана труда для руководителей", subtitle: "Повышение квалификации", image: heroMedicine, icon: HardHat, gradient: "from-amber-500/80 to-yellow-500/80" },
+  { title: "Электробезопасность до 1000В", subtitle: "Группы допуска", image: heroElectrical, icon: Zap, gradient: "from-yellow-500/80 to-lime-500/80" },
+  { title: "Промышленная безопасность А.1", subtitle: "Аттестация специалистов", image: heroIndustrial, icon: Factory, gradient: "from-orange-500/80 to-red-400/80" },
 ];
 
 interface MarketplaceHeroCardsProps {
-  onCardClick?: (category: string) => void;
+  onCardClick?: (courseTitle: string) => void;
 }
 
 export function MarketplaceHeroCards({ onCardClick }: MarketplaceHeroCardsProps) {
@@ -30,7 +30,7 @@ export function MarketplaceHeroCards({ onCardClick }: MarketplaceHeroCardsProps)
     <div className="space-y-3">
       <div className="flex items-center gap-2">
         <TrendingUp className="w-5 h-5 text-primary" />
-        <h3 className="text-lg font-semibold">Популярные направления</h3>
+        <h3 className="text-lg font-semibold">Популярные курсы</h3>
       </div>
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
         {HERO_CARDS.map((card) => {
