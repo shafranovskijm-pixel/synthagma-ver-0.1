@@ -163,7 +163,31 @@ function ProfileContent() {
     toast.success("Значок удалён");
   };
 
-  const handleSaveProfile = async () => {
+  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !user) return;
+    setIsUploadingAvatar(true);
+    try {
+      const ext = file.name.split('.').pop();
+      const filePath = `${user.id}/avatar_${Date.now()}.${ext}`;
+      const { error: uploadError } = await supabase.storage.from("organization-assets").upload(filePath, file, { upsert: true });
+      if (uploadError) throw uploadError;
+      const { data: urlData } = supabase.storage.from("organization-assets").getPublicUrl(filePath);
+      const publicUrl = urlData.publicUrl;
+      await supabase.from("profiles").update({ avatar_url: publicUrl } as any).eq("user_id", user.id);
+      setProfile(p => ({ ...p, avatar_url: publicUrl }));
+      toast.success("Аватар обновлён");
+    } catch (err: any) { toast.error("Ошибка загрузки: " + err.message); }
+    finally { setIsUploadingAvatar(false); if (e.target) e.target.value = ""; }
+  };
+
+  const handleRemoveAvatar = async () => {
+    if (!user) return;
+    await supabase.from("profiles").update({ avatar_url: null } as any).eq("user_id", user.id);
+    setProfile(p => ({ ...p, avatar_url: "" }));
+    toast.success("Аватар удалён");
+  };
+
     setSaving(true);
     try {
       const { error } = await supabase.from("profiles").update({
