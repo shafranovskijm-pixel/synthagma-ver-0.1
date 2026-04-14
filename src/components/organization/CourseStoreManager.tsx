@@ -25,6 +25,7 @@ import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import { useCourseStoreManager } from "@/hooks/useCourseStoreManager";
 import { CourseComments } from "./CourseComments";
+import { MarketplaceHeroCards } from "@/components/admin/marketplace/MarketplaceHeroCards";
 
 const statusLabels: Record<string, { label: string; color: string }> = {
   pending: { label: "Ожидает", color: "bg-yellow-500/10 text-yellow-600 border-yellow-500/20" },
