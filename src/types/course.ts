@@ -20,6 +20,7 @@ export interface Course {
   lessonsCount?: number;
   studentsCount?: number;
   catalog_order?: number;
+  hidden_from_catalog?: boolean;
 }
 
 export interface CourseCategory {
@@ -29,6 +30,7 @@ export interface CourseCategory {
   organization_id: string;
   created_at: string;
   order_index?: number | null;
+  hidden_from_catalog?: boolean;
 }
 
 export interface Lesson {
