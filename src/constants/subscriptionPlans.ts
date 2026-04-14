@@ -13,6 +13,7 @@ export interface PlanLimits {
   branding: boolean;
   frdoEnabled: boolean;
   reportsEnabled: boolean;
+  kinescopeEnabled: boolean;
 }
 
 export interface PlanInfo {
@@ -45,6 +46,7 @@ export const SUBSCRIPTION_PLANS: Record<SubscriptionPlan, PlanInfo> = {
       branding: true,
       frdoEnabled: true,
       reportsEnabled: true,
+      kinescopeEnabled: false,
     },
     enabledCategories: ['courses', 'students', 'companies', 'documents', 'journals', 'frdo', 'links', 'library', 'services', 'settings', 'student_cabinet', 'labor_safety'],
   },
@@ -66,6 +68,7 @@ export const SUBSCRIPTION_PLANS: Record<SubscriptionPlan, PlanInfo> = {
       branding: true,
       frdoEnabled: true,
       reportsEnabled: true,
+      kinescopeEnabled: false,
     },
     enabledCategories: ['courses', 'students', 'companies', 'documents', 'journals', 'frdo', 'links', 'library', 'services', 'settings', 'student_cabinet', 'labor_safety'],
   },
@@ -87,6 +90,7 @@ export const SUBSCRIPTION_PLANS: Record<SubscriptionPlan, PlanInfo> = {
       branding: true,
       frdoEnabled: true,
       reportsEnabled: true,
+      kinescopeEnabled: false,
     },
     enabledCategories: ['courses', 'students', 'companies', 'documents', 'journals', 'frdo', 'links', 'library', 'services', 'settings', 'student_cabinet', 'labor_safety'],
   },
@@ -108,6 +112,7 @@ export const SUBSCRIPTION_PLANS: Record<SubscriptionPlan, PlanInfo> = {
       branding: true,
       frdoEnabled: true,
       reportsEnabled: true,
+      kinescopeEnabled: true,
     },
     enabledCategories: ['courses', 'students', 'companies', 'documents', 'journals', 'frdo', 'links', 'library', 'services', 'settings', 'student_cabinet', 'labor_safety', 'webinars'],
   },
@@ -129,6 +134,7 @@ export const SUBSCRIPTION_PLANS: Record<SubscriptionPlan, PlanInfo> = {
       branding: true,
       frdoEnabled: true,
       reportsEnabled: true,
+      kinescopeEnabled: true,
     },
     enabledCategories: ['courses', 'students', 'companies', 'documents', 'journals', 'frdo', 'links', 'library', 'services', 'settings', 'student_cabinet', 'labor_safety', 'webinars'],
   },
