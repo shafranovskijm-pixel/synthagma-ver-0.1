@@ -128,6 +128,12 @@ export const DocumentsTab = React.memo(function DocumentsTab({ organizationId, o
   const [actAmount, setActAmount] = useState("");
   const [actSubmitting, setActSubmitting] = useState(false);
   const [generatingInvoice, setGeneratingInvoice] = useState(false);
+  const [showInvoiceDialog, setShowInvoiceDialog] = useState(false);
+  const [invoiceOtherPayer, setInvoiceOtherPayer] = useState(false);
+  const [invoiceBuyerName, setInvoiceBuyerName] = useState("");
+  const [invoiceBuyerInn, setInvoiceBuyerInn] = useState("");
+  const [invoiceBuyerKpp, setInvoiceBuyerKpp] = useState("");
+  const [innSearching, setInnSearching] = useState(false);
   const [orgDetails, setOrgDetails] = useState<{ inn?: string; director_name?: string; director_position?: string; custom_price?: number; custom_discount?: number; subscription_plan?: string }>({});
 
   useEffect(() => {
@@ -263,6 +269,30 @@ export const DocumentsTab = React.memo(function DocumentsTab({ organizationId, o
     setActSubmitting(false);
   };
 
+  const handleSearchByInn = async (inn: string) => {
+    if (inn.length < 10) return;
+    setInnSearching(true);
+    try {
+      const { data } = await supabase
+        .from("organizations")
+        .select("name, inn, kpp")
+        .eq("inn", inn)
+        .maybeSingle();
+      if (data) {
+        setInvoiceBuyerName(data.name || "");
+        setInvoiceBuyerInn(data.inn || inn);
+        setInvoiceBuyerKpp(data.kpp || "");
+        toast({ title: "Организация найдена", description: data.name });
+      } else {
+        toast({ title: "Не найдено", description: "Введите реквизиты вручную" });
+      }
+    } catch {
+      // ignore
+    } finally {
+      setInnSearching(false);
+    }
+  };
+
   const handleGenerateInvoiceFromDocs = async () => {
     if (!organizationId) return;
     setGeneratingInvoice(true);
@@ -283,21 +313,34 @@ export const DocumentsTab = React.memo(function DocumentsTab({ organizationId, o
 
       const invoiceNum = `СЧ-${year}/${String((count || 0) + 1).padStart(4, "0")}`;
 
+      const insertData: any = {
+        organization_id: organizationId,
+        invoice_number: invoiceNum,
+        plan,
+        amount,
+        period_months: 1,
+      };
+
+      if (invoiceOtherPayer && invoiceBuyerName) {
+        insertData.buyer_name = invoiceBuyerName;
+        insertData.buyer_inn = invoiceBuyerInn || null;
+        insertData.buyer_kpp = invoiceBuyerKpp || null;
+      }
+
       const { data: invoice, error: err } = await supabase
         .from("subscription_invoices")
-        .insert({
-          organization_id: organizationId,
-          invoice_number: invoiceNum,
-          plan,
-          amount,
-          period_months: 1,
-        } as any)
+        .insert(insertData)
         .select("id")
         .single();
 
       if (err) throw err;
       setInvoices(prev => [{ id: (invoice as any).id, invoice_number: invoiceNum, amount, status: "pending", plan, period_months: 1, invoice_date: new Date().toISOString(), created_at: new Date().toISOString() }, ...prev]);
       toast({ title: "Счёт создан", description: `Счёт ${invoiceNum} на ${amount.toLocaleString("ru-RU")} ₽` });
+      setShowInvoiceDialog(false);
+      setInvoiceOtherPayer(false);
+      setInvoiceBuyerName("");
+      setInvoiceBuyerInn("");
+      setInvoiceBuyerKpp("");
     } catch (e: any) {
       toast({ title: "Ошибка", description: e.message, variant: "destructive" });
     } finally {
@@ -431,9 +474,9 @@ export const DocumentsTab = React.memo(function DocumentsTab({ organizationId, o
             </div>
             <div className="flex items-center gap-2">
               {activeTab === "billing" && billingSubTab === "invoices" && (
-                <Button variant="outline" size="sm" className="rounded-xl gap-1.5" onClick={handleGenerateInvoiceFromDocs} disabled={generatingInvoice}>
+                <Button variant="outline" size="sm" className="rounded-xl gap-1.5" onClick={() => setShowInvoiceDialog(true)}>
                   <Receipt className="w-3.5 h-3.5" />
-                  <span className="hidden sm:inline">{generatingInvoice ? "Создание..." : "Сформировать счёт"}</span>
+                  <span className="hidden sm:inline">Сформировать счёт</span>
                 </Button>
               )}
               {activeTab === "billing" && billingSubTab === "closing" && (
@@ -781,6 +824,84 @@ export const DocumentsTab = React.memo(function DocumentsTab({ organizationId, o
             <Button variant="outline" onClick={() => setShowActDialog(false)}>Отмена</Button>
             <Button onClick={handleGenerateAct} disabled={actSubmitting || !actBasis || !actAmount}>
               {actSubmitting ? "Генерация..." : "Создать акт"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Invoice Generation Dialog */}
+      <Dialog open={showInvoiceDialog} onOpenChange={setShowInvoiceDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Сформировать счёт</DialogTitle>
+            <DialogDescription>
+              Счёт на оплату подписки платформы Sintagma
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                id="otherPayer"
+                checked={invoiceOtherPayer}
+                onChange={e => {
+                  setInvoiceOtherPayer(e.target.checked);
+                  if (!e.target.checked) {
+                    setInvoiceBuyerName("");
+                    setInvoiceBuyerInn("");
+                    setInvoiceBuyerKpp("");
+                  }
+                }}
+                className="rounded border-input"
+              />
+              <Label htmlFor="otherPayer" className="text-sm cursor-pointer">Плательщик — другая организация</Label>
+            </div>
+            {invoiceOtherPayer && (
+              <div className="space-y-3 p-3 rounded-lg border border-border bg-muted/30">
+                <div className="space-y-2">
+                  <Label>ИНН плательщика</Label>
+                  <div className="flex gap-2">
+                    <Input
+                      placeholder="Введите ИНН"
+                      value={invoiceBuyerInn}
+                      onChange={e => setInvoiceBuyerInn(e.target.value)}
+                    />
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleSearchByInn(invoiceBuyerInn)}
+                      disabled={innSearching || invoiceBuyerInn.length < 10}
+                    >
+                      {innSearching ? "Поиск..." : "Найти"}
+                    </Button>
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label>Название организации</Label>
+                  <Input
+                    placeholder="ООО «Компания»"
+                    value={invoiceBuyerName}
+                    onChange={e => setInvoiceBuyerName(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>КПП</Label>
+                  <Input
+                    placeholder="КПП (необязательно)"
+                    value={invoiceBuyerKpp}
+                    onChange={e => setInvoiceBuyerKpp(e.target.value)}
+                  />
+                </div>
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowInvoiceDialog(false)}>Отмена</Button>
+            <Button
+              onClick={handleGenerateInvoiceFromDocs}
+              disabled={generatingInvoice || (invoiceOtherPayer && !invoiceBuyerName)}
+            >
+              {generatingInvoice ? "Создание..." : "Создать счёт"}
             </Button>
           </DialogFooter>
         </DialogContent>
