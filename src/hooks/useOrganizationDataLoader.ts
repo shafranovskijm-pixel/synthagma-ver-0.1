@@ -188,11 +188,12 @@ export function useOrganizationDataLoader({ userId, onCategoriesLoaded }: UseOrg
         // Lazy-load lesson counts (non-blocking)
         const allCourseIds = coursesWithStats.map((c: any) => c.id);
         if (allCourseIds.length > 0) {
-          supabase
-            .from("lessons")
-            .select("course_id")
-            .in("course_id", allCourseIds)
-            .then(({ data: lessonsData }) => {
+          (async () => {
+            try {
+              const { data: lessonsData } = await supabase
+                .from("lessons")
+                .select("course_id")
+                .in("course_id", allCourseIds);
               if (cancelled || !lessonsData || lessonsData.length === 0) return;
               const countMap = new Map<string, number>();
               for (const row of lessonsData) {
@@ -202,8 +203,10 @@ export function useOrganizationDataLoader({ userId, onCategoriesLoaded }: UseOrg
                 ...c,
                 lessonsCount: countMap.get(c.id) ?? c.lessonsCount ?? 0
               })));
-            })
-            .catch(err => console.warn("Failed to load lesson counts (non-fatal):", err));
+            } catch (err) {
+              console.warn("Failed to load lesson counts (non-fatal):", err);
+            }
+          })();
         }
 
         // ===== PHASE 2: Enrollments (needed for students tab) =====
