@@ -6,10 +6,7 @@ import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Label } from "@/components/ui/label";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
@@ -18,9 +15,9 @@ import {
   Search, Filter, Tag, Plus, LayoutGrid, List, Loader2, 
   BookOpen, Users, Edit, Eye, EyeOff, Trash2, FolderOpen, Folder,
   ChevronDown, ChevronRight, MoreVertical, FolderPlus, 
-  MoveRight, Pencil, Video, VideoOff, Lock, Unlock, FastForward,
-  Sparkles, ShoppingCart, GripVertical, CheckCircle, Palette, Play, Copy, ImagePlus, Wand2,
-  Radio, Box, Upload, Crown, ArrowRight, Calendar
+  MoveRight, Video, VideoOff, Lock, Unlock, FastForward,
+  Sparkles, ShoppingCart, GripVertical, CheckCircle, Copy, ImagePlus, Wand2,
+  Radio, Box, Play, Crown, ArrowRight, Calendar, Pencil
 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { useCourses } from "@/hooks/useCourses";
@@ -30,8 +27,10 @@ import { toast } from "sonner";
 import { showLimitToast } from "@/utils/limitToast";
 import type { Course, CourseCategory, CourseFilter, CourseViewMode } from "@/types";
 import { DndContext, closestCenter, PointerSensor, useSensor, useSensors, DragEndEvent } from "@dnd-kit/core";
-import { SortableContext, verticalListSortingStrategy, useSortable } from "@dnd-kit/sortable";
-import { CSS } from "@dnd-kit/utilities";
+import { SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable";
+import { CoursesEmptyState } from "./courses/CoursesEmptyState";
+import { SortableCourseListRow } from "./courses/CourseListRow";
+import { CategoryDialog, CreateCourseDialog, MoveCourseDialog, BulkDeleteDialog } from "./courses/CourseDialogs";
 
 interface CoursesTabProps {
   organizationId: string;
@@ -40,203 +39,7 @@ interface CoursesTabProps {
   onCoursesDeleted?: () => void;
 }
 
-function CoursesEmptyState({ onCreateCourse }: { onCreateCourse: () => void }) {
-  let dashboard: ReturnType<typeof useOrgDashboard> | null = null;
-  try { dashboard = useOrgDashboard(); } catch {}
-
-  const features = [
-    { icon: GripVertical, text: "Drag-and-drop конструктор уроков" },
-    { icon: CheckCircle, text: "Тесты с автоматической проверкой" },
-    { icon: Play, text: "Видеоуроки с контролем просмотра" },
-    { icon: Lock, text: "Последовательное прохождение уроков" },
-    { icon: Palette, text: "Брендирование и настройка внешнего вида" },
-  ];
-
-  return (
-    <div className="py-8">
-      <div className="text-center mb-8">
-        <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-primary/10 mb-4">
-          <Sparkles className="w-8 h-8 text-primary" />
-        </div>
-        <h2 className="text-2xl font-bold text-foreground">Начните обучение прямо сейчас</h2>
-        <p className="text-muted-foreground mt-2 max-w-lg mx-auto">
-          Создайте свой первый курс или выберите из каталога готовых программ
-        </p>
-      </div>
-
-      <div className="grid md:grid-cols-2 gap-6 max-w-4xl mx-auto">
-        {/* Create course card */}
-        <Card className="relative overflow-hidden border-2 border-dashed border-primary/30 hover:border-primary/60 transition-all group">
-          <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-primary/10 opacity-0 group-hover:opacity-100 transition-opacity" />
-          <div className="relative p-6 space-y-4">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
-                <Edit className="w-5 h-5 text-primary" />
-              </div>
-              <h3 className="text-lg font-semibold text-foreground">Создать свой курс</h3>
-            </div>
-            <p className="text-sm text-muted-foreground leading-relaxed">
-              Мощный и интуитивный конструктор курсов — создавайте профессиональные учебные программы за минуты, а не дни.
-            </p>
-            <ul className="space-y-2.5">
-              {features.map((f, i) => (
-                <li key={i} className="flex items-center gap-2.5 text-sm text-muted-foreground">
-                  <f.icon className="w-4 h-4 text-primary/70 shrink-0" />
-                  <span>{f.text}</span>
-                </li>
-              ))}
-            </ul>
-            <Button className="w-full rounded-xl gap-2 mt-2" onClick={onCreateCourse}>
-              <Plus className="w-4 h-4" />
-              Создать курс
-            </Button>
-          </div>
-        </Card>
-
-        {/* Marketplace card */}
-        <Card className="relative overflow-hidden border-2 border-dashed border-accent/30 hover:border-accent/60 transition-all group">
-          <div className="absolute inset-0 bg-gradient-to-br from-accent/5 via-transparent to-accent/10 opacity-0 group-hover:opacity-100 transition-opacity" />
-          <div className="relative p-6 space-y-4">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-accent/20 flex items-center justify-center">
-                <ShoppingCart className="w-5 h-5 text-accent-foreground" />
-              </div>
-              <h3 className="text-lg font-semibold text-foreground">Магазин готовых курсов</h3>
-            </div>
-            <p className="text-sm text-muted-foreground leading-relaxed">
-              Более <span className="font-semibold text-foreground">200 готовых курсов</span> уже ждут вас — по охране труда, пожарной безопасности, экологии и другим направлениям.
-            </p>
-            <div className="rounded-xl bg-accent/10 p-4 space-y-1">
-              <p className="text-sm font-medium text-foreground">🎁 Бесплатно для вашей организации</p>
-              <p className="text-xs text-muted-foreground">
-                Добавляйте курсы из каталога в один клик — без дополнительных затрат
-              </p>
-            </div>
-            <ul className="space-y-2 text-sm text-muted-foreground">
-              <li className="flex items-center gap-2"><BookOpen className="w-4 h-4 text-primary/70" /> Программы от экспертов отрасли</li>
-              <li className="flex items-center gap-2"><Users className="w-4 h-4 text-primary/70" /> Готовы к назначению слушателям</li>
-            </ul>
-            <Button 
-              variant="outline" 
-              className="w-full rounded-xl gap-2 mt-2"
-              onClick={() => dashboard?.tabNavigation.setActiveTab("services" as any)}
-            >
-              <ShoppingCart className="w-4 h-4" />
-              Перейти в магазин
-            </Button>
-          </div>
-        </Card>
-      </div>
-    </div>
-  );
-}
-
-interface SortableCourseListRowProps {
-  course: Course;
-  isSelected: boolean;
-  onToggleSelect: () => void;
-  onClick: () => void;
-  onEdit: (e: React.MouseEvent) => void;
-  onPreview: (e: React.MouseEvent) => void;
-  onMove: (e: React.MouseEvent) => void;
-  category?: CourseCategory;
-}
-
-function SortableCourseListRow({ course, isSelected, onToggleSelect, onClick, onEdit, onPreview, onMove, category }: SortableCourseListRowProps) {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: course.id });
-  const style = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-    opacity: isDragging ? 0.5 : 1,
-  };
-
-  return (
-    <tr
-      ref={setNodeRef}
-      style={style}
-      className={`border-b border-border last:border-0 hover:bg-secondary/50 transition-colors cursor-pointer ${
-        isSelected ? 'bg-primary/5' : ''
-      }`}
-      onClick={onClick}
-    >
-      <td className="px-2 py-4" onClick={e => e.stopPropagation()}>
-        <button {...attributes} {...listeners} className="cursor-grab active:cursor-grabbing p-1 text-muted-foreground hover:text-foreground">
-          <GripVertical className="w-4 h-4" />
-        </button>
-      </td>
-      <td className="px-4 py-4" onClick={e => e.stopPropagation()}>
-        <Checkbox checked={isSelected} onCheckedChange={onToggleSelect} />
-      </td>
-      <td className="px-6 py-4">
-        <div>
-          <div className="font-medium">{course.title}</div>
-          {course.description && (
-            <div className="text-sm text-muted-foreground line-clamp-1">{course.description}</div>
-          )}
-        </div>
-      </td>
-      <td className="px-6 py-4">
-        {category ? (
-          <div className="flex items-center gap-2">
-            <div className="w-3 h-3 rounded-full" style={{ backgroundColor: category.color || undefined }} />
-            <span className="text-sm">{category.name}</span>
-          </div>
-        ) : (
-          <span className="text-muted-foreground">—</span>
-        )}
-      </td>
-      <td className="px-6 py-4">
-        <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${
-          course.is_published ? 'bg-sigma-green/10 text-sigma-green' : 'bg-muted text-muted-foreground'
-        }`}>
-          {course.is_published ? 'Опубликован' : 'Черновик'}
-        </span>
-      </td>
-      <td className="px-6 py-4">
-        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-primary/10 text-primary">
-          <Users className="w-3 h-3" />
-          {course.studentsCount || 0}
-        </span>
-      </td>
-      <td className="px-6 py-4">
-        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-accent/10 text-accent">
-          <BookOpen className="w-3 h-3" />
-          {course.lessonsCount || 0}
-        </span>
-      </td>
-      <td className="px-6 py-4">
-        <TooltipProvider>
-          <div className="flex gap-2">
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button variant="outline" size="sm" className="rounded-lg" onClick={onEdit}>
-                  <Edit className="w-4 h-4" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>Редактировать</TooltipContent>
-            </Tooltip>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button variant="outline" size="sm" className="rounded-lg" onClick={onPreview}>
-                  <Eye className="w-4 h-4" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>Предпросмотр</TooltipContent>
-            </Tooltip>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button variant="outline" size="sm" className="rounded-lg" onClick={onMove}>
-                  <MoveRight className="w-4 h-4" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>Переместить в категорию</TooltipContent>
-            </Tooltip>
-          </div>
-        </TooltipProvider>
-      </td>
-    </tr>
-  );
-}
+// CoursesEmptyState and SortableCourseListRow extracted to ./courses/
 
 export const CoursesTab = React.memo(function CoursesTab({ organizationId, onCourseClick, onOpenCourseDetails, onCoursesDeleted }: CoursesTabProps) {
   const navigate = useNavigate();
@@ -1543,204 +1346,37 @@ export const CoursesTab = React.memo(function CoursesTab({ organizationId, onCou
         </DndContext>
       )}
 
-      {/* Category Dialog */}
-      <Dialog open={showCategoryDialog} onOpenChange={setShowCategoryDialog}>
-        <DialogContent className="rounded-2xl">
-          <DialogHeader>
-            <DialogTitle>{editingCategory ? 'Редактировать категорию' : 'Новая категория'}</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label>Название</Label>
-              <Input
-                value={newCategoryName}
-                onChange={e => setNewCategoryName(e.target.value)}
-                placeholder="Название категории"
-                className="rounded-xl"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Цвет</Label>
-              <div className="flex items-center gap-3">
-                <input
-                  type="color"
-                  value={newCategoryColor}
-                  onChange={e => setNewCategoryColor(e.target.value)}
-                  className="w-12 h-10 rounded-lg cursor-pointer border-0"
-                />
-                <Input
-                  value={newCategoryColor}
-                  onChange={e => setNewCategoryColor(e.target.value)}
-                  className="rounded-xl flex-1"
-                />
-              </div>
-            </div>
-          </div>
-          <div className="flex gap-2 justify-end">
-            <Button variant="outline" onClick={() => setShowCategoryDialog(false)} className="rounded-xl">
-              Отмена
-            </Button>
-            <Button onClick={handleCreateCategory} disabled={isCreatingCategory || !newCategoryName.trim()} className="rounded-xl">
-              {isCreatingCategory && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-              {editingCategory ? 'Сохранить' : 'Создать'}
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
+      <CategoryDialog
+        open={showCategoryDialog} onOpenChange={setShowCategoryDialog}
+        editingCategory={editingCategory} name={newCategoryName} setName={setNewCategoryName}
+        color={newCategoryColor} setColor={setNewCategoryColor}
+        isCreating={isCreatingCategory} onSubmit={handleCreateCategory}
+      />
 
-      {/* Create Course Dialog */}
-      <Dialog open={showCreateCourseDialog} onOpenChange={setShowCreateCourseDialog}>
-        <DialogContent className="rounded-2xl">
-          <DialogHeader>
-            <DialogTitle>Создать курс</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label>Название курса *</Label>
-              <Input
-                value={newCourseTitle}
-                onChange={e => setNewCourseTitle(e.target.value)}
-                placeholder="Введите название"
-                className="rounded-xl"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Описание</Label>
-              <Textarea
-                value={newCourseDescription}
-                onChange={e => setNewCourseDescription(e.target.value)}
-                placeholder="Краткое описание курса"
-                className="rounded-xl resize-none"
-                rows={3}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Категория</Label>
-              {!showInlineNewCategory ? (
-                <div className="flex gap-2">
-                  <Select value={newCourseCategoryId} onValueChange={setNewCourseCategoryId}>
-                    <SelectTrigger className="rounded-xl flex-1">
-                      <SelectValue placeholder="Без категории" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="none">Без категории</SelectItem>
-                      {categories.map(cat => (
-                        <SelectItem key={cat.id} value={cat.id}>
-                          <div className="flex items-center gap-2">
-                            <div className="w-3 h-3 rounded-full" style={{ backgroundColor: cat.color }} />
-                            {cat.name}
-                          </div>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <Button variant="outline" size="icon" onClick={() => setShowInlineNewCategory(true)} className="rounded-xl shrink-0">
-                    <Plus className="w-4 h-4" />
-                  </Button>
-                </div>
-              ) : (
-                <div className="space-y-2 p-3 bg-secondary/50 rounded-xl">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium">Новая категория</span>
-                    <Button variant="ghost" size="sm" onClick={() => setShowInlineNewCategory(false)}>
-                      Отмена
-                    </Button>
-                  </div>
-                  <Input
-                    value={inlineNewCategoryName}
-                    onChange={e => setInlineNewCategoryName(e.target.value)}
-                    placeholder="Название категории"
-                    className="rounded-lg"
-                  />
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="color"
-                      value={inlineNewCategoryColor}
-                      onChange={e => setInlineNewCategoryColor(e.target.value)}
-                      className="w-8 h-8 rounded cursor-pointer border-0"
-                    />
-                    <span className="text-xs text-muted-foreground">Выберите цвет</span>
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-          <div className="flex gap-2 justify-end">
-            <Button variant="outline" onClick={() => setShowCreateCourseDialog(false)} className="rounded-xl">
-              Отмена
-            </Button>
-            <Button onClick={handleCreateCourse} disabled={isCreatingCourse || !newCourseTitle.trim()} className="rounded-xl">
-              {isCreatingCourse && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-              Создать и редактировать
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
+      <CreateCourseDialog
+        open={showCreateCourseDialog} onOpenChange={setShowCreateCourseDialog}
+        title={newCourseTitle} setTitle={setNewCourseTitle}
+        description={newCourseDescription} setDescription={setNewCourseDescription}
+        categoryId={newCourseCategoryId} setCategoryId={setNewCourseCategoryId}
+        categories={categories}
+        showInlineNewCategory={showInlineNewCategory} setShowInlineNewCategory={setShowInlineNewCategory}
+        inlineNewCategoryName={inlineNewCategoryName} setInlineNewCategoryName={setInlineNewCategoryName}
+        inlineNewCategoryColor={inlineNewCategoryColor} setInlineNewCategoryColor={setInlineNewCategoryColor}
+        isCreating={isCreatingCourse} onSubmit={handleCreateCourse}
+      />
 
-      {/* Move Course Dialog */}
-      <Dialog open={showMoveCourseDialog} onOpenChange={setShowMoveCourseDialog}>
-        <DialogContent className="rounded-2xl">
-          <DialogHeader>
-            <DialogTitle>Переместить курс</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <p className="text-sm text-muted-foreground">
-              Курс: <span className="font-medium text-foreground">{movingCourse?.title}</span>
-            </p>
-            <div className="space-y-2">
-              <Label>Выберите категорию</Label>
-              <Select value={targetCategoryId} onValueChange={setTargetCategoryId}>
-                <SelectTrigger className="rounded-xl">
-                  <SelectValue placeholder="Выберите категорию" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">Без категории</SelectItem>
-                  {categories.map(cat => (
-                    <SelectItem key={cat.id} value={cat.id}>
-                      <div className="flex items-center gap-2">
-                        <div className="w-3 h-3 rounded-full" style={{ backgroundColor: cat.color }} />
-                        {cat.name}
-                      </div>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-          <div className="flex gap-2 justify-end">
-            <Button variant="outline" onClick={() => setShowMoveCourseDialog(false)} className="rounded-xl">
-              Отмена
-            </Button>
-            <Button onClick={handleMoveCourse} disabled={isMovingCourse} className="rounded-xl">
-              {isMovingCourse && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-              Переместить
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
+      <MoveCourseDialog
+        open={showMoveCourseDialog} onOpenChange={setShowMoveCourseDialog}
+        movingCourse={movingCourse} targetCategoryId={targetCategoryId}
+        setTargetCategoryId={setTargetCategoryId} categories={categories}
+        isMoving={isMovingCourse} onSubmit={handleMoveCourse}
+      />
 
-      {/* Bulk Delete Confirmation */}
-      <AlertDialog open={showBulkDeleteConfirm} onOpenChange={setShowBulkDeleteConfirm}>
-        <AlertDialogContent className="rounded-2xl">
-          <AlertDialogHeader>
-            <AlertDialogTitle>Удалить выбранные курсы?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Будет удалено {selectedCourseIds.size} курсов со всеми уроками, записями учеников и документами. Это действие нельзя отменить.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel className="rounded-xl">Отмена</AlertDialogCancel>
-            <AlertDialogAction 
-              onClick={handleBulkDelete} 
-              disabled={isDeletingCourses}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90 rounded-xl"
-            >
-              {isDeletingCourses && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-              Удалить
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <BulkDeleteDialog
+        open={showBulkDeleteConfirm} onOpenChange={setShowBulkDeleteConfirm}
+        count={selectedCourseIds.size} isDeleting={isDeletingCourses}
+        onConfirm={handleBulkDelete}
+      />
       </>}
     </div>
   );
