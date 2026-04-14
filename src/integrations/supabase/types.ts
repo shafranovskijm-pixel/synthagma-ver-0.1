@@ -4815,6 +4815,9 @@ export type Database = {
       subscription_invoices: {
         Row: {
           amount: number
+          buyer_inn: string | null
+          buyer_kpp: string | null
+          buyer_name: string | null
           created_at: string | null
           id: string
           invoice_date: string
@@ -4826,6 +4829,9 @@ export type Database = {
         }
         Insert: {
           amount: number
+          buyer_inn?: string | null
+          buyer_kpp?: string | null
+          buyer_name?: string | null
           created_at?: string | null
           id?: string
           invoice_date?: string
@@ -4837,6 +4843,9 @@ export type Database = {
         }
         Update: {
           amount?: number
+          buyer_inn?: string | null
+          buyer_kpp?: string | null
+          buyer_name?: string | null
           created_at?: string | null
           id?: string
           invoice_date?: string
