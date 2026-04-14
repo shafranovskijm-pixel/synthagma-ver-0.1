@@ -159,22 +159,46 @@ export function AdminMarketplaceManager() {
     );
   }
 
+  const adminNavItems = [
+    { value: "catalog", icon: Package, label: "Каталог" },
+    { value: "programs", icon: BookOpen, label: "Программы" },
+    { value: "create", icon: Plus, label: "Создать курс" },
+    { value: "generator", icon: Sparkles, label: "Генератор" },
+    { value: "import", icon: Upload, label: "Импорт" },
+    { value: "knowledge", icon: Library, label: "Банк знаний" },
+    { value: "orders", icon: ShoppingCart, label: "Заявки" },
+    { value: "history", icon: History, label: "История" },
+    { value: "settings", icon: Settings, label: "Настройки" },
+  ];
+
   return (
     <div className="space-y-6">
-      <Tabs value={h.activeTab} onValueChange={(v) => h.setActiveTab(v as any)} className="space-y-6">
-        <div className="overflow-x-auto -mx-1 px-1">
-          <TabsList className="inline-flex h-11 w-auto min-w-full gap-1 p-1">
-            <TabsTrigger value="catalog" className="flex items-center gap-2 px-4 whitespace-nowrap"><Package className="w-4 h-4 shrink-0" />Каталог</TabsTrigger>
-            <TabsTrigger value="programs" className="flex items-center gap-2 px-4 whitespace-nowrap"><BookOpen className="w-4 h-4 shrink-0" />Программы</TabsTrigger>
-            <TabsTrigger value="create" className="flex items-center gap-2 px-4 whitespace-nowrap"><Plus className="w-4 h-4 shrink-0" />Создать курс</TabsTrigger>
-            <TabsTrigger value="generator" className="flex items-center gap-2 px-4 whitespace-nowrap"><Sparkles className="w-4 h-4 shrink-0" />Генератор</TabsTrigger>
-            <TabsTrigger value="import" className="flex items-center gap-2 px-4 whitespace-nowrap"><Upload className="w-4 h-4 shrink-0" />Импорт</TabsTrigger>
-            <TabsTrigger value="knowledge" className="flex items-center gap-2 px-4 whitespace-nowrap"><Library className="w-4 h-4 shrink-0" />Банк знаний</TabsTrigger>
-            <TabsTrigger value="orders" className="flex items-center gap-2 px-4 whitespace-nowrap"><ShoppingCart className="w-4 h-4 shrink-0" />Заявки</TabsTrigger>
-            <TabsTrigger value="history" className="flex items-center gap-2 px-4 whitespace-nowrap"><History className="w-4 h-4 shrink-0" />История</TabsTrigger>
-            <TabsTrigger value="settings" className="flex items-center gap-2 px-4 whitespace-nowrap"><Settings className="w-4 h-4 shrink-0" />Настройки</TabsTrigger>
-          </TabsList>
-        </div>
+      <Tabs value={h.activeTab} onValueChange={(v) => h.setActiveTab(v as any)} className="space-y-0">
+        <div className="flex gap-6">
+          {/* Vertical sidebar nav */}
+          <div className="w-[200px] shrink-0">
+            <nav className="flex flex-col gap-1 sticky top-4">
+              {adminNavItems.map((item) => {
+                const Icon = item.icon;
+                const isActive = h.activeTab === item.value;
+                return (
+                  <TabsTrigger
+                    key={item.value}
+                    value={item.value}
+                    className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium justify-start w-full transition-colors
+                      ${isActive ? "bg-primary/10 text-primary shadow-sm" : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"}
+                    `}
+                  >
+                    <Icon className="w-4 h-4 shrink-0" />
+                    {item.label}
+                  </TabsTrigger>
+                );
+              })}
+            </nav>
+          </div>
+
+          {/* Main content */}
+          <div className="flex-1 min-w-0 space-y-6">
 
         <TabsContent value="history" className="space-y-4"><GenerationHistoryTab /></TabsContent>
         <TabsContent value="settings" className="space-y-4"><MarketplaceSettingsTab onSettingsLoaded={handleSettingsLoaded} /></TabsContent>
