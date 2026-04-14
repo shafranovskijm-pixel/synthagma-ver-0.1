@@ -27,7 +27,7 @@ export const CODE_TREE: CodeTreeGroup[] = [
     icon: React.createElement(Component, { className: "w-4 h-4" }),
     color: "#8b5cf6",
     subfolders: [
-      { name: "admin/ (devtools, analytics, billing, marketplace)", files: 69, lines: 24421 },
+      { name: "admin/ (devtools, analytics, billing, marketplace)", files: 69, lines: 24354 },
       { name: "organization/ (tabs, dialogs, journals, документы)", files: 118, lines: 45107 },
       { name: "student/ (dashboard, games, video-id)", files: 20, lines: 4699 },
       { name: "landing/", files: 14, lines: 3405 },
