@@ -628,6 +628,8 @@ export function AdminMarketplaceManager() {
         <TabsContent value="orders" className="space-y-6">
           <MarketplaceOrdersList orders={h.orders as any} onViewOrder={(order) => { h.setSelectedOrder(order as any); h.setShowOrderDialog(true); }} />
         </TabsContent>
+          </div>{/* end main content */}
+        </div>{/* end flex */}
       </Tabs>
 
       {/* Dialogs */}
