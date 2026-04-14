@@ -54,7 +54,7 @@ import {
   Download,
   Trash2,
   RefreshCw,
-  CreditCard,
+  
   Image,
   Upload,
   GripVertical,
