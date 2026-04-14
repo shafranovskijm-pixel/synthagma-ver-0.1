@@ -1,42 +1,34 @@
 
 
-# Редизайн AdminSettings — левое меню + правая панель
+# Убираем визуальные артефакты (линии/засветы) в сайдбарах
 
-## Что делаем
+## Проблема
 
-Заменяем текущий вертикальный список `<details>` секций на двухколоночный layout:
-- **Левая колонка** (~220px): вертикальное меню с иконками и названиями секций, с активной подсветкой (как в OrgSettingsSidebar / StudentProfile)
-- **Правая колонка**: содержимое выбранной секции
+Во всех трех сайдбарах (Admin, Organization, Student) есть `border border-border/60` на pill-контейнере навигации и `border-r border-border/60` на самом aside. При полупрозрачных фонах и `backdrop-blur-sm` эти бордеры выглядят как «засветы» / недоработанные линии.
 
-## Секции меню (10 пунктов)
+## Решение
 
-| Иконка | Название | Компонент |
-|---|---|---|
-| Palette | Тема оформления | ThemePersonalization |
-| Database | Статистика БД | inline (grid stats) |
-| RefreshCw | Сброс кеша | inline |
-| Globe | SEO | SEOSettingsManager |
-| Shield | Системные | inline (toggles) |
-| Tag | Промоакции | PromoCodesManager |
-| Bell | Уведомления | placeholder |
-| BarChart3 | Аналитика | AdminAnalytics |
-| FileText | Контент | BlogManager |
-| Bot | ИИ-провайдеры | AISettingsManager |
-| Terminal | Developer Tools | DevToolsPanel |
+Убрать бордеры и заменить на мягкие тени для глубины:
 
-## Реализация
+1. **Pill-контейнер** (`rounded-[28px]`): убрать `border border-border/60`, оставить только `shadow-sm` или заменить на `shadow-md` для мягкой глубины
+2. **Aside**: убрать `border-r border-border/60`, добавить `shadow-lg` справа для мягкого разделения
+3. **Лого-контейнер**: убрать `border border-border/60`, оставить `shadow-sm`
+4. **Кнопки навигации**: без изменений (бордеров нет)
 
-### `AdminSettings.tsx` — полная переработка
+Одинаковые правки во всех 3 файлах для консистентности.
 
-- Добавить `useState` для `activeSection` (по умолчанию `"theme"`)
-- Layout: `flex` с двумя колонками
-- Левая колонка: список кнопок с иконками, `bg-primary/10` для активной, `hover:bg-primary/5` для остальных, cyan-подсветка в стиле платформы
-- Правая колонка: рендер содержимого по `activeSection` (switch/case или map)
-- На мобильных: левое меню горизонтальный скролл сверху или скрыто с бургером
-
-### Один файл
+## Файлы
 
 | Действие | Файл |
 |---|---|
-| Переписать | `src/components/admin/AdminSettings.tsx` |
+| Изменить | `src/components/admin/AdminSidebar.tsx` |
+| Изменить | `src/components/organization/OrgSidebar.tsx` |
+| Изменить | `src/components/student/StudentSidebar.tsx` |
+
+## Конкретные изменения
+
+В каждом файле:
+- `aside`: `border-r border-border/60` → `shadow-[2px_0_8px_rgba(0,0,0,0.06)]`
+- pill `div`: `border border-border/60` → убрать (оставить `shadow-sm`)
+- logo `div`: `border border-border/60` → убрать (оставить `shadow-sm`)
 
