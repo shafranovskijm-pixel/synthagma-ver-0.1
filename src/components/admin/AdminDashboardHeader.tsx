@@ -18,6 +18,7 @@ import { formatDistanceToNow } from "date-fns";
 import { ru } from "date-fns/locale";
 import defaultCoverImg from "@/assets/default-org-cover.jpg";
 import type { AdminTabType } from "./AdminSidebar";
+import { HelpCenterDialog, useHelpCenterDialog } from "@/components/shared/HelpCenterDialog";
 
 interface AdminDashboardHeaderProps {
   activeTab: AdminTabType;
@@ -75,6 +76,7 @@ export function AdminDashboardHeader({
 }: AdminDashboardHeaderProps) {
   const coverInputRef = useRef<HTMLInputElement>(null);
   const [isGeneratingCover, setIsGeneratingCover] = useState(false);
+  const helpDialog = useHelpCenterDialog();
 
   const handleGenerateAICover = useCallback(async () => {
     if (isGeneratingCover) return;
@@ -101,6 +103,7 @@ export function AdminDashboardHeader({
   const initials = getInitials(userEmail);
 
   return (
+    <>
     <header className="sticky top-0 z-30 bg-card border-b border-border">
       {/* Top bar */}
       <div className="flex items-center justify-between px-4 lg:px-6 h-14">
@@ -195,7 +198,7 @@ export function AdminDashboardHeader({
                 <Sparkles className="w-4 h-4" />
                 Что нового?
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => window.open("/help", "_blank")} className="rounded-lg gap-2.5 py-2.5">
+              <DropdownMenuItem onClick={helpDialog.openHelp} className="rounded-lg gap-2.5 py-2.5">
                 <HelpCircle className="w-4 h-4" />
                 Помощь
               </DropdownMenuItem>
@@ -263,5 +266,7 @@ export function AdminDashboardHeader({
         </h1>
       </div>
     </header>
+    <HelpCenterDialog open={helpDialog.open} onOpenChange={helpDialog.setOpen} />
+    </>
   );
 }

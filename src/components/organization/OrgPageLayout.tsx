@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 import { differenceInDays } from "date-fns";
 import defaultCoverImg from "@/assets/default-org-cover.jpg";
+import { HelpCenterDialog, useHelpCenterDialog } from "@/components/shared/HelpCenterDialog";
 
 function getUserInitials(email?: string | null, name?: string | null): string {
   if (name) {
@@ -43,6 +44,7 @@ interface OrgPageLayoutInnerProps {
 function OrgPageLayoutInner({ organizationId, title, icon: Icon, children }: OrgPageLayoutInnerProps) {
   const navigate = useNavigate();
   const d = useOrgDashboard();
+  const helpDialog = useHelpCenterDialog();
 
   const organizationName = d.organizationName;
   const customName = d.branding.brandingSettings.customName;
@@ -148,7 +150,7 @@ function OrgPageLayoutInner({ organizationId, title, icon: Icon, children }: Org
                   <DropdownMenuItem onClick={() => navigate("/organization/whats-new")} className="rounded-lg gap-2.5 py-2.5">
                     <Sparkles className="w-4 h-4" /> Что нового?
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => window.open("/help", "_blank")} className="rounded-lg gap-2.5 py-2.5">
+                  <DropdownMenuItem onClick={helpDialog.openHelp} className="rounded-lg gap-2.5 py-2.5">
                     <HelpCircle className="w-4 h-4" /> Помощь
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
@@ -206,6 +208,7 @@ function OrgPageLayoutInner({ organizationId, title, icon: Icon, children }: Org
 
         <OrgDashboardFooter />
       </main>
+      <HelpCenterDialog open={helpDialog.open} onOpenChange={helpDialog.setOpen} />
     </div>
   );
 }
