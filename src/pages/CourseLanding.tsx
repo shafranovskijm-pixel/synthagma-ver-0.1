@@ -356,7 +356,7 @@ export default function CourseLanding() {
     "@context": "https://schema.org",
     "@type": "Course",
     name: course.title,
-    description: course.description || "","
+    description: course.description || "",
     provider: { "@type": "Organization", name: orgName },
     ...(ogImage ? { image: ogImage } : {}),
     ...(course.price > 0
