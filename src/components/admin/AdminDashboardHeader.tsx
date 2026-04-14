@@ -1,5 +1,5 @@
 import { useRef, useState, useCallback } from "react";
-import { Menu, Bell, User, LogOut, Settings, FileText, Sparkles, HelpCircle, ImagePlus, Wand2, Loader2, Users, Check } from "lucide-react";
+import { Menu, Bell, User, LogOut, Settings, FileText, Sparkles, HelpCircle, ImagePlus, Wand2, Loader2, Users, Check, Gift } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { SigmaLogo } from "@/components/ui/SigmaLogo";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -190,6 +190,10 @@ export function AdminDashboardHeader({
               <DropdownMenuItem onClick={() => setActiveTab("billing")} className="rounded-lg gap-2.5 py-2.5">
                 <FileText className="w-4 h-4" />
                 Документооборот
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setActiveTab("referrals")} className="rounded-lg gap-2.5 py-2.5">
+                <Gift className="w-4 h-4" />
+                Партнёры
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => setActiveTab("updates")} className="rounded-lg gap-2.5 py-2.5">
                 <Sparkles className="w-4 h-4" />
