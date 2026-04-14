@@ -42,9 +42,9 @@ export default function InvoiceView() {
       const invoiceData: InvoiceData = {
         invoiceNumber: invoice.invoice_number,
         invoiceDate: new Date(invoice.invoice_date).toLocaleDateString("ru-RU"),
-        buyerName: org?.name || "Организация",
-        buyerInn: org?.inn,
-        buyerKpp: org?.kpp,
+        buyerName: (invoice as any).buyer_name || org?.name || "Организация",
+        buyerInn: (invoice as any).buyer_inn || org?.inn,
+        buyerKpp: (invoice as any).buyer_kpp || org?.kpp,
         buyerAddress: org?.legal_address,
         planName: planInfo?.name || invoice.plan,
         periodMonths: invoice.period_months,

@@ -828,6 +828,84 @@ export const DocumentsTab = React.memo(function DocumentsTab({ organizationId, o
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Invoice Generation Dialog */}
+      <Dialog open={showInvoiceDialog} onOpenChange={setShowInvoiceDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Сформировать счёт</DialogTitle>
+            <DialogDescription>
+              Счёт на оплату подписки платформы Sintagma
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                id="otherPayer"
+                checked={invoiceOtherPayer}
+                onChange={e => {
+                  setInvoiceOtherPayer(e.target.checked);
+                  if (!e.target.checked) {
+                    setInvoiceBuyerName("");
+                    setInvoiceBuyerInn("");
+                    setInvoiceBuyerKpp("");
+                  }
+                }}
+                className="rounded border-input"
+              />
+              <Label htmlFor="otherPayer" className="text-sm cursor-pointer">Плательщик — другая организация</Label>
+            </div>
+            {invoiceOtherPayer && (
+              <div className="space-y-3 p-3 rounded-lg border border-border bg-muted/30">
+                <div className="space-y-2">
+                  <Label>ИНН плательщика</Label>
+                  <div className="flex gap-2">
+                    <Input
+                      placeholder="Введите ИНН"
+                      value={invoiceBuyerInn}
+                      onChange={e => setInvoiceBuyerInn(e.target.value)}
+                    />
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleSearchByInn(invoiceBuyerInn)}
+                      disabled={innSearching || invoiceBuyerInn.length < 10}
+                    >
+                      {innSearching ? "Поиск..." : "Найти"}
+                    </Button>
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label>Название организации</Label>
+                  <Input
+                    placeholder="ООО «Компания»"
+                    value={invoiceBuyerName}
+                    onChange={e => setInvoiceBuyerName(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>КПП</Label>
+                  <Input
+                    placeholder="КПП (необязательно)"
+                    value={invoiceBuyerKpp}
+                    onChange={e => setInvoiceBuyerKpp(e.target.value)}
+                  />
+                </div>
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowInvoiceDialog(false)}>Отмена</Button>
+            <Button
+              onClick={handleGenerateInvoiceFromDocs}
+              disabled={generatingInvoice || (invoiceOtherPayer && !invoiceBuyerName)}
+            >
+              {generatingInvoice ? "Создание..." : "Создать счёт"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 });
