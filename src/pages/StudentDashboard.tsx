@@ -124,7 +124,7 @@ export default function StudentDashboard() {
       const course = courses.find(c => c.id === courseId);
       const needsVerification = course?.skip_video_identification === false && !isVideoIdentified;
       if (needsVerification) {
-        toast.error("Требуется видеоидентификация", { description: "Пройдите видеоидентификацию перед началом курса"" });
+        toast.error("Требуется видеоидентификация", { description: "Пройдите видеоидентификацию перед началом курса" });
         setShowVideoIdentification(true);
         return;
       }
