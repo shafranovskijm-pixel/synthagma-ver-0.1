@@ -1956,55 +1956,7 @@ export function AdminMarketplaceManager() {
           <KnowledgeBankTab />
         </TabsContent>
         <TabsContent value="orders" className="space-y-6">
-          {h.orders.length === 0 ? (
-            <Card className="border-dashed">
-              <CardContent className="py-12 text-center">
-                <ShoppingCart className="w-12 h-12 text-muted-foreground/50 mx-auto mb-4" />
-                <p className="text-muted-foreground">Заявок пока нет</p>
-              </CardContent>
-            </Card>
-          ) : (
-            <Card>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Курс</TableHead>
-                    <TableHead>Продавец</TableHead>
-                    <TableHead>Покупатель</TableHead>
-                    <TableHead>Сумма</TableHead>
-                    <TableHead>Статус</TableHead>
-                    <TableHead>Дата</TableHead>
-                    <TableHead></TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {h.orders.map((order) => (
-                    <TableRow key={order.id}>
-                      <TableCell className="font-medium">{order.marketplace_course?.course?.title || "—"}</TableCell>
-                      <TableCell className="text-muted-foreground">{order.marketplace_course?.organization?.name || "Платформа"}</TableCell>
-                      <TableCell>
-                        {order.buyer_organization ? order.buyer_organization.name : order.buyer_type === "student" ? (order.buyer_profile?.full_name || order.buyer_profile?.email || "Студент") : "—"}
-                      </TableCell>
-                      <TableCell className="font-semibold">{order.price.toLocaleString()} ₽</TableCell>
-                      <TableCell>
-                        <Badge className={statusLabels[order.status]?.color || ""}>
-                          {statusLabels[order.status]?.label || order.status}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-muted-foreground">
-                        {format(new Date(order.created_at), "dd.MM.yyyy", { locale: ru })}
-                      </TableCell>
-                      <TableCell>
-                        <Button variant="ghost" size="sm" onClick={() => { h.setSelectedOrder(order); h.setShowOrderDialog(true); }}>
-                          <Eye className="w-4 h-4" />
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </Card>
-          )}
+          <MarketplaceOrdersList orders={h.orders} onViewOrder={(order) => { h.setSelectedOrder(order); h.setShowOrderDialog(true); }} />
         </TabsContent>
 
 
