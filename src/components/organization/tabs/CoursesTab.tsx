@@ -17,7 +17,7 @@ import {
   ChevronDown, ChevronRight, MoreVertical, FolderPlus, 
   MoveRight, Video, VideoOff, Lock, Unlock, FastForward,
   Sparkles, ShoppingCart, GripVertical, CheckCircle, Copy, ImagePlus, Wand2,
-  Radio, Box, Play, Crown, ArrowRight, Calendar
+  Radio, Box, Play, Crown, ArrowRight, Calendar, Pencil
 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { useCourses } from "@/hooks/useCourses";
