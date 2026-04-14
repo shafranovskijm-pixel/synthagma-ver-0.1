@@ -11,7 +11,6 @@ serve(async (req) => {
 
   try {
     const { organizationId, courseId, type } = await req.json();
-    // type: "org" | "course"
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -21,8 +20,18 @@ serve(async (req) => {
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
 
     let context = "";
+    let coverType: "org" | "course" | "admin" = type;
 
-    if (type === "org" && organizationId) {
+    if (type === "admin") {
+      // Admin dashboard cover — generic educational platform banner
+      const { data: orgs } = await supabase
+        .from("organizations")
+        .select("name")
+        .limit(5);
+      const orgNames = (orgs || []).map((o: any) => o.name).join(", ");
+      context = `Панель администратора образовательной платформы. Организации: ${orgNames || "учебные центры"}`;
+      coverType = "admin";
+    } else if (type === "org" && organizationId) {
       const { data: org } = await supabase
         .from("organizations")
         .select("name")
@@ -55,10 +64,18 @@ serve(async (req) => {
         context = `Курс: "${course?.title}". Описание: ${(course?.description || "").slice(0, 200)}`;
       }
     } else {
-      throw new Error("organizationId or courseId is required");
+      throw new Error("organizationId or courseId is required, or type must be 'admin'");
     }
 
-    // Step 1: Use Lovable AI to generate an image prompt based on context
+    const bannerDesc = coverType === "course"
+      ? "квадратной обложки курса"
+      : "широкой баннерной обложки учебного центра";
+
+    const compositionDesc = coverType === "course"
+      ? "Чистая композиция с центральным объектом"
+      : "Широкоформатный баннер с градиентами и абстрактной тематикой направления школы";
+
+    // Step 1: Generate image prompt
     const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
       headers: {
@@ -70,21 +87,18 @@ serve(async (req) => {
         messages: [
           {
             role: "system",
-            content: `Ты генератор промптов для создания обложек. На вход получаешь контекст организации/курса. На выход даёшь ТОЛЬКО короткий промпт на английском (1-2 предложения) для генерации ${type === "org" ? "широкой баннерной обложки учебного центра" : "квадратной обложки курса"}.
+            content: `Ты генератор промптов для создания обложек. На вход получаешь контекст организации/курса. На выход даёшь ТОЛЬКО короткий промпт на английском (1-2 предложения) для генерации ${bannerDesc}.
 
 Требования к промпту:
 - Фотореалистичный стиль, профессиональное качество
 - БЕЗ текста, надписей, букв, цифр на изображении
 - Один главный объект или сцена, связанная с тематикой
 - Красивая цветовая палитра, подходящая для образовательной платформы
-- ${type === "org" ? "Широкоформатный баннер с градиентами и абстрактной тематикой направления школы" : "Чистая композиция с центральным объектом"}
+- ${compositionDesc}
 
 Отвечай ТОЛЬКО промптом, без пояснений.`
           },
-          {
-            role: "user",
-            content: context,
-          },
+          { role: "user", content: context },
         ],
       }),
     });
@@ -92,6 +106,16 @@ serve(async (req) => {
     if (!aiResponse.ok) {
       const errorText = await aiResponse.text();
       console.error("AI prompt generation error:", aiResponse.status, errorText);
+      if (aiResponse.status === 429) {
+        return new Response(JSON.stringify({ error: "Превышен лимит запросов, попробуйте позже" }), {
+          status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      if (aiResponse.status === 402) {
+        return new Response(JSON.stringify({ error: "Необходимо пополнить баланс ИИ" }), {
+          status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
       throw new Error("Failed to generate image prompt");
     }
 
@@ -101,10 +125,9 @@ serve(async (req) => {
 
     if (!imagePrompt) throw new Error("AI returned empty prompt");
 
-    // Step 2: Try Lovable AI image generation first, then fallback to GigaChat
+    // Step 2: Generate image (Lovable AI → GigaChat fallback)
     let base64Url: string | null = null;
 
-    // --- Attempt 1: Lovable AI ---
     try {
       console.log("[generate-cover] Trying Lovable AI image generation...");
       const imageResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
@@ -137,7 +160,7 @@ serve(async (req) => {
       console.warn("[generate-cover] Lovable AI image error:", e);
     }
 
-    // --- Attempt 2: GigaChat fallback ---
+    // GigaChat fallback
     if (!base64Url) {
       console.log("[generate-cover] Falling back to GigaChat...");
       try {
@@ -153,7 +176,6 @@ serve(async (req) => {
         if (gigachatResponse.ok) {
           const gigachatData = await gigachatResponse.json();
           if (gigachatData.url) {
-            // GigaChat returns a URL, not base64 — download it
             console.log("[generate-cover] GigaChat returned URL, downloading...");
             const imgDl = await fetch(gigachatData.url);
             if (imgDl.ok) {
@@ -181,7 +203,14 @@ serve(async (req) => {
     const base64Data = base64Url.replace(/^data:image\/\w+;base64,/, "");
     const binaryData = Uint8Array.from(atob(base64Data), (c) => c.charCodeAt(0));
 
-    const folder = type === "org" ? "org-covers" : `${courseId}/cover`;
+    let folder: string;
+    if (coverType === "admin") {
+      folder = "admin-covers";
+    } else if (coverType === "org") {
+      folder = "org-covers";
+    } else {
+      folder = `${courseId}/cover`;
+    }
     const fileName = `${folder}/ai-cover-${Date.now()}.png`;
 
     const { error: uploadError } = await supabase.storage
@@ -200,12 +229,30 @@ serve(async (req) => {
     const publicUrl = `${supabaseUrl}/storage/v1/object/public/course-files/${fileName}`;
 
     // Step 4: Update the record
-    if (type === "org" && organizationId) {
+    if (coverType === "admin") {
+      // Update admin_branding table
+      const { data: existing } = await supabase
+        .from("admin_branding")
+        .select("id")
+        .limit(1)
+        .single();
+
+      if (existing) {
+        await supabase
+          .from("admin_branding")
+          .update({ cover_url: publicUrl, updated_at: new Date().toISOString() })
+          .eq("id", existing.id);
+      } else {
+        await supabase
+          .from("admin_branding")
+          .insert({ cover_url: publicUrl });
+      }
+    } else if (coverType === "org" && organizationId) {
       await supabase
         .from("organizations")
         .update({ cover_url: publicUrl })
         .eq("id", organizationId);
-    } else if (type === "course" && courseId) {
+    } else if (coverType === "course" && courseId) {
       await supabase
         .from("courses")
         .update({ cover_image_url: publicUrl })
