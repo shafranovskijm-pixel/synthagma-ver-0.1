@@ -179,7 +179,8 @@ export function useStudentDashboard() {
           if (!achievement) return;
           setTimeout(() => {
             toast.success(`${rarityEmoji[achievement.rarity] || "🎖️"} Новое достижение!`, {
-              description: `${achievement.name}: ${achievement.description}`, duration: 5000,`
+              description: `${achievement.name}: ${achievement.description}`,
+              duration: 5000,
               style: { borderLeft: `4px solid ${achievement.color}` }
             });
           }, index * 1500);
