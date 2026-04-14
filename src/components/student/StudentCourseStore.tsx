@@ -206,7 +206,7 @@ export function StudentCourseStore({ userId, organizationId }: StudentCourseStor
 
     setIsOrdering(true);
     try {
-      const { error } = await supabase.from("marketplace_orders").insert({
+      const { data: orderData, error } = await supabase.from("marketplace_orders").insert({
         marketplace_course_id: selectedCourse.id,
         buyer_user_id: userId,
         buyer_type: "student",
@@ -214,25 +214,39 @@ export function StudentCourseStore({ userId, organizationId }: StudentCourseStor
         students_count: 1,
         notes: orderNotes || null,
         status: "pending",
-      });
+      }).select("id").single();
 
       if (error) throw error;
 
+      // Create org notification for seller
       try {
         const { data: profile } = await supabase
           .from("profiles")
-          .select("full_name")
+          .select("full_name, email")
           .eq("user_id", userId)
           .single();
 
+        const studentName = profile?.full_name || "Студент";
+        const studentEmail = profile?.email || "";
+        const courseName = selectedCourse.course?.title || "Курс";
+        const price = selectedCourse.price_student;
+
+        await supabase.from("org_notifications").insert({
+          type: "order",
+          title: `Новый заказ: ${courseName}`,
+          message: `${studentName} (${studentEmail}) оформил заказ на курс "${courseName}" — ${price} ₽`,
+          organization_id: selectedCourse.organization_id,
+          related_id: orderData?.id || null,
+        });
+
         await safeInvoke("notify-course-order", {
           body: {
-            orderId: "new",
-            courseName: selectedCourse.course?.title || "Курс",
-            buyerName: profile?.full_name || "Студент",
+            orderId: orderData?.id || "new",
+            courseName,
+            buyerName: studentName,
             buyerType: "student",
             studentsCount: 1,
-            price: selectedCourse.price_student,
+            price,
             sellerOrganizationId: selectedCourse.organization_id,
           },
         });

@@ -1461,7 +1461,7 @@ export const CoursesTab = React.memo(function CoursesTab({ organizationId, onCou
         <div className="space-y-3">
           {/* Render categories as folders */}
           {categories.map(cat => 
-            renderCategoryFolder(cat.id, cat.name, cat.color, coursesByCategory[cat.id] || [])
+            renderCategoryFolder(cat.id, cat.name, cat.color, coursesByCategory[cat.id] || [], false, !!(cat as any).hidden_from_catalog)
           )}
           {/* Uncategorized folder */}
           {coursesByCategory.uncategorized.length > 0 && (
