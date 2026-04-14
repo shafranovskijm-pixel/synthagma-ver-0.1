@@ -158,16 +158,18 @@ export function OrgDashboardHeader() {
             </span>
           </button>
 
-          {/* Partner program */}
-          <Button
-            variant="ghost"
-            size="sm"
-            className="hidden lg:flex rounded-full gap-1.5 text-xs text-muted-foreground hover:text-foreground h-9 px-3"
-            onClick={() => navigate("/partner")}
-          >
-            <Handshake className="w-4.5 h-4.5" />
-            Партнёрам
-          </Button>
+          {/* Partner program — icon only */}
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                onClick={() => navigate("/partner")}
+                className="flex h-9 w-9 items-center justify-center rounded-full text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
+              >
+                <Handshake className="w-4.5 h-4.5" />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent>Партнёрам</TooltipContent>
+          </Tooltip>
 
           {/* Notifications */}
           {organizationId && (
@@ -185,9 +187,13 @@ export function OrgDashboardHeader() {
           <DropdownMenu>
             <Tooltip>
               <TooltipTrigger asChild>
-                <DropdownMenuTrigger asChild>
-                  <button className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/15 text-primary hover:bg-primary/25 hover:scale-105 transition-all font-bold text-sm">
-                    {initials}
+                 <DropdownMenuTrigger asChild>
+                  <button className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/15 text-primary hover:bg-primary/25 hover:scale-105 transition-all font-bold text-sm overflow-hidden">
+                    {avatarUrl ? (
+                      <img src={avatarUrl} alt="Аватар" className="w-full h-full object-cover" />
+                    ) : (
+                      initials
+                    )}
                   </button>
                 </DropdownMenuTrigger>
               </TooltipTrigger>
