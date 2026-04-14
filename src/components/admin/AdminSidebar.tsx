@@ -74,14 +74,14 @@ export function AdminSidebar({
         role="navigation"
         aria-label="Админ навигация"
         className={cn(
-          "fixed inset-y-0 left-0 z-50 w-[88px] border-r border-border/60 flex flex-col transition-transform duration-300",
+          "fixed inset-y-0 left-0 z-50 w-[88px] shadow-[2px_0_8px_rgba(0,0,0,0.06)] flex flex-col transition-transform duration-300",
           isMobileSidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
         )}
         style={{ backgroundColor: `hsl(${brandHsl} / 0.07)` }}
       >
         {/* Logo */}
         <div className="flex justify-center py-4">
-          <div className="flex h-12 w-12 items-center justify-center rounded-xl border border-border/60 bg-card/80 shadow-sm">
+          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-card/80 shadow-sm">
             <SigmaLogo size="sm" showText={false} />
           </div>
         </div>
@@ -89,7 +89,7 @@ export function AdminSidebar({
         {/* Navigation pill */}
         <div className="flex-1 flex items-center justify-center overflow-y-auto scrollbar-hide px-2">
           <div
-            className="rounded-[28px] border border-border/60 p-2 shadow-sm backdrop-blur-sm"
+            className="rounded-[28px] p-2 shadow-md backdrop-blur-sm"
             style={{ backgroundColor: `hsl(${brandHsl} / 0.14)` }}
           >
             <nav className="flex flex-col items-center gap-1.5">

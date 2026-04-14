@@ -78,13 +78,13 @@ export function StudentSidebar({
   return (
     <aside
       className={cn(
-        "sticky top-0 h-screen w-[88px] shrink-0 border-r border-border/60",
+        "sticky top-0 h-screen w-[88px] shrink-0 shadow-[2px_0_8px_rgba(0,0,0,0.06)]",
         (isPreviewMode || isAdminView) && "top-10 h-[calc(100vh-40px)]"
       )}
       style={{ backgroundColor: `hsl(${brandHsl} / 0.07)` }}
     >
       <div className="flex h-full flex-col items-center px-2 py-4">
-        <div className="mb-4 flex h-12 w-12 items-center justify-center overflow-hidden rounded-xl border border-border/60 bg-card/80 shadow-sm">
+        <div className="mb-4 flex h-12 w-12 items-center justify-center overflow-hidden rounded-xl bg-card/80 shadow-sm">
           {branding?.logoUrl ? (
             <img
               src={branding.logoUrl}
@@ -98,7 +98,7 @@ export function StudentSidebar({
 
         <div className="flex flex-1 items-center justify-center w-full">
           <div
-            className="rounded-[28px] border border-border/60 p-2 shadow-sm backdrop-blur-sm"
+            className="rounded-[28px] p-2 shadow-md backdrop-blur-sm"
             style={{ backgroundColor: `hsl(${brandHsl} / 0.14)` }}
           >
             <nav className="flex flex-col items-center gap-2">
