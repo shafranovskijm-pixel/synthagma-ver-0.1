@@ -204,8 +204,15 @@ export function CourseStoreManager({ organizationId, userRole = 'organization', 
             </div>
           ) : (
              <>
-               {/* Single banner */}
-               <MarketplaceHeroCards onCardClick={(cat) => h.setSearchQuery(cat)} />
+               {/* Hero Cards */}
+               <MarketplaceHeroCards onCardClick={(courseTitle) => {
+                 const found = h.catalogCourses.find(c => c.course?.title?.includes(courseTitle.split('—')[0].trim()) || courseTitle.includes(c.course?.title || '___'));
+                 if (found) {
+                   setSelectedCourseDetail(found);
+                 } else {
+                   h.setSearchQuery(courseTitle);
+                 }
+               }} />
 
                <div className="flex items-center gap-4">
                  <div className="relative flex-1 max-w-md">
