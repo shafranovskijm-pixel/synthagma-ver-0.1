@@ -195,7 +195,7 @@ export function AdminDashboardHeader({
                 <Sparkles className="w-4 h-4" />
                 Что нового?
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => window.open("https://t.me/sintagma_support", "_blank")} className="rounded-lg gap-2.5 py-2.5">
+              <DropdownMenuItem onClick={() => window.open("/help", "_blank")} className="rounded-lg gap-2.5 py-2.5">
                 <HelpCircle className="w-4 h-4" />
                 Помощь
               </DropdownMenuItem>

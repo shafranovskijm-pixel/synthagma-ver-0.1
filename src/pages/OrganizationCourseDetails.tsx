@@ -222,7 +222,7 @@ function CoursePageInner({ organizationId, courseId }: { organizationId: string;
                 <DropdownMenuItem onClick={() => navigate("/organization/settings")} className="rounded-lg gap-2.5 py-2.5"><Settings className="w-4 h-4" />Настройки</DropdownMenuItem>
                 <DropdownMenuItem onClick={() => navigate("/organization/documents")} className="rounded-lg gap-2.5 py-2.5"><FileText className="w-4 h-4" />Документы</DropdownMenuItem>
                 <DropdownMenuItem onClick={() => navigate("/whats-new")} className="rounded-lg gap-2.5 py-2.5"><Sparkles className="w-4 h-4" />Что нового?</DropdownMenuItem>
-                <DropdownMenuItem onClick={() => window.open("https://t.me/sintagma_support", "_blank")} className="rounded-lg gap-2.5 py-2.5"><HelpCircle className="w-4 h-4" />Помощь</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => window.open("/help", "_blank")} className="rounded-lg gap-2.5 py-2.5"><HelpCircle className="w-4 h-4" />Помощь</DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={d.handleLogout} className="rounded-lg gap-2.5 py-2.5 text-destructive"><LogOut className="w-4 h-4" />Выйти</DropdownMenuItem>
               </DropdownMenuContent>

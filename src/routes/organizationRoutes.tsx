@@ -8,7 +8,7 @@ const OrganizationSettings = lazyWithRetry(() => import("@/pages/OrganizationSet
 const OrganizationDocuments = lazyWithRetry(() => import("@/pages/OrganizationDocuments"));
 const OrganizationCourseDetails = lazyWithRetry(() => import("@/pages/OrganizationCourseDetails"));
 const OrganizationWhatsNew = lazyWithRetry(() => import("@/pages/OrganizationWhatsNew"));
-const OrganizationHelp = lazyWithRetry(() => import("@/pages/OrganizationHelp"));
+
 const OrganizationStudentDetails = lazyWithRetry(() => import("@/pages/OrganizationStudentDetails"));
 const CourseEditor = lazyWithRetry(() => import("@/pages/CourseEditor"));
 const CourseBuilder = lazyWithRetry(() => import("@/pages/CourseBuilder"));
@@ -27,7 +27,7 @@ export const organizationRoutes = (
     <Route path="/organization/documents" element={protectedRoute(<OrganizationDocuments />, org)} />
     <Route path="/organization/course/:courseId" element={protectedRoute(<OrganizationCourseDetails />, org)} />
     <Route path="/organization/whats-new" element={protectedRoute(<OrganizationWhatsNew />, org)} />
-    <Route path="/organization/help" element={protectedRoute(<OrganizationHelp />, org)} />
+    
     <Route path="/organization/student/:studentId" element={protectedRoute(<OrganizationStudentDetails />, org)} />
     <Route path="/course/:courseId/edit" element={protectedRoute(<CourseEditor />, org)} />
     <Route path="/course-builder" element={protectedRoute(<CourseBuilder />, org)} />
