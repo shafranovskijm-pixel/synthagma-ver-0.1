@@ -220,8 +220,6 @@ export function ProgramListImporter({ onComplete }: ProgramListImporterProps) {
           const hours = Math.max(...programs.filter(p => p.category === catName).map(p => parseInt(p.hours) || 0));
           const parentType = getParentType(catName, hours);
 
-          console.log(`Creating category "${catName}" with parent_type="${parentType}"`);
-
           const { data: newCat, error: catErr } = await supabase
             .from("course_categories")
             .insert({
@@ -240,7 +238,6 @@ export function ProgramListImporter({ onComplete }: ProgramListImporterProps) {
           }
           if (newCat) {
             catMap.set(newCat.name.toLowerCase(), newCat.id);
-            console.log(`Category "${catName}" created with id=${newCat.id}`);
           }
         }
       }
@@ -266,7 +263,6 @@ export function ProgramListImporter({ onComplete }: ProgramListImporterProps) {
           }
         }
         if (orphansFixed > 0) {
-          console.log(`Fixed ${orphansFixed} orphaned courses`);
         }
       }
 

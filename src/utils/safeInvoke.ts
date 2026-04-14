@@ -37,7 +37,6 @@ export async function safeInvoke<T = unknown>(
     // Wait before retry (skip for first attempt)
     if (attempt > 0) {
       const delay = RETRY_DELAYS[attempt] ?? 5000;
-      console.log(`[safeInvoke] ${functionName} retry ${attempt + 1}/${MAX_RETRIES}, waiting ${delay}ms`);
       await new Promise(r => setTimeout(r, delay));
     }
 
@@ -97,7 +96,6 @@ export async function safeFetch(
   for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
     if (attempt > 0) {
       const delay = RETRY_DELAYS[attempt] ?? 5000;
-      console.log(`[safeFetch] retry ${attempt + 1}/${MAX_RETRIES}, waiting ${delay}ms`);
       await new Promise(r => setTimeout(r, delay));
     }
 

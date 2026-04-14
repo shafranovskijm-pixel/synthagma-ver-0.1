@@ -23,7 +23,6 @@ export function lazyWithRetry<T extends ComponentType<any>>(
         const alreadyReloaded = sessionStorage.getItem(RELOAD_FLAG);
         if (!alreadyReloaded) {
           sessionStorage.setItem(RELOAD_FLAG, "1");
-          console.warn("[lazyWithRetry] Chunk load failed, reloading page...");
           window.location.reload();
           // Return a never-resolving promise to keep Suspense showing
           return new Promise(() => {});

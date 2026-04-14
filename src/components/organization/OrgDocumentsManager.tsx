@@ -322,7 +322,6 @@ export function OrgDocumentsManager({ organizationId }: OrgDocumentsManagerProps
         .upload(fileName, selectedFile);
 
       if (uploadError) {
-        console.warn("File upload failed:", uploadError);
       } else {
         const { data: urlData } = supabase.storage
           .from("org-documents")

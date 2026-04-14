@@ -191,7 +191,6 @@ const Login = () => {
       if (accountType === "admin" && signUpData.user) {
         // Note: Admin role assignment requires existing admin privileges
         // Demo admin accounts should be pre-seeded in the database
-        console.log("Admin demo account created - role must be assigned by existing admin or database seeding");
       }
 
       // Sign in with new account

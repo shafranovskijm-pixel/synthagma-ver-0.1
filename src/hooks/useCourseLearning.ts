@@ -462,7 +462,6 @@ export function useCourseLearning() {
         if (attachmentsResult.error) {
           console.error('Error fetching lesson attachments:', attachmentsResult.error);
         }
-        console.log('Lesson attachments loaded:', attachmentsResult.data?.length || 0, 'items for', courseLessonIds.length, 'lessons');
         progressData = progressResult.data || [];
         setLessonProgress(progressData);
         // Group attachments by lesson_id
@@ -486,7 +485,6 @@ export function useCourseLearning() {
       if (courseId) {
         const cached = await getCachedCourseData(courseId);
         if (cached) {
-          console.log('[CourseCache] Loading from offline cache');
           setCourse(cached.course);
           setLessons(cached.lessons);
           setLessonProgress(cached.lessonProgress);

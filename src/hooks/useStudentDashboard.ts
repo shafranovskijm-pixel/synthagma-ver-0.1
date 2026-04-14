@@ -225,7 +225,6 @@ export function useStudentDashboard() {
 
     // Safety timeout: never show spinner for more than 15 seconds
     const safetyTimer = setTimeout(() => {
-      console.warn('[StudentDashboard] Loading timeout reached, forcing display');
       setLoading(false);
     }, 15000);
 
@@ -403,7 +402,6 @@ export function useStudentDashboard() {
       if (uid) {
         const cached = await getCachedDashboardData(uid);
         if (cached) {
-          console.log('[DashboardCache] Loading from offline cache');
           setCourses(cached.courses || []);
           if (cached.profile) setProfile(cached.profile);
           if (cached.branding) setBranding(cached.branding);

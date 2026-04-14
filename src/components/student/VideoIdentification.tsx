@@ -54,7 +54,6 @@ export function VideoIdentification({
   const [debugLog, setDebugLog] = useState<string[]>([]);
   
   const addLog = (msg: string) => {
-    console.log("[Camera]", msg);
     setDebugLog(prev => [...prev, `${new Date().toLocaleTimeString()}: ${msg}`]);
   };
 

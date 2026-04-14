@@ -59,7 +59,6 @@ async function putItem(storeName: string, data: any): Promise<void> {
     });
     db.close();
   } catch (e) {
-    console.warn('[CourseCache] put error:', e);
   }
 }
 
@@ -75,7 +74,6 @@ async function getItem<T>(storeName: string, key: string): Promise<T | null> {
     db.close();
     return result;
   } catch (e) {
-    console.warn('[CourseCache] get error:', e);
     return null;
   }
 }
@@ -118,7 +116,6 @@ export async function clearCourseCache(courseId: string): Promise<void> {
     });
     db.close();
   } catch (e) {
-    console.warn('[CourseCache] clear error:', e);
   }
 }
 
@@ -158,6 +155,5 @@ export async function cleanupExpiredCache(): Promise<void> {
     }
     db.close();
   } catch (e) {
-    console.warn('[CourseCache] cleanup error:', e);
   }
 }

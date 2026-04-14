@@ -294,7 +294,6 @@ export function useStudentManagement({
     const skippedCount = studentsToCreate.length - validStudents.length;
     
     if (skippedCount > 0) {
-      console.warn(`Skipped ${skippedCount} students with invalid/deleted profiles`);
     }
     
     if (validStudents.length === 0) {

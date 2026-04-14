@@ -245,7 +245,6 @@ const RegisterOrganization = () => {
         }
         
         if (confirmedRole !== 'organization') {
-          console.warn('[RegisterOrganization] Role not confirmed as organization, got:', confirmedRole);
         }
 
         // Send Telegram notification (non-blocking)

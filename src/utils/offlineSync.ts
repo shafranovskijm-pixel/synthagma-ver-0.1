@@ -46,7 +46,6 @@ export async function addToSyncQueue(action: Omit<SyncAction, 'id' | 'createdAt'
     });
     db.close();
   } catch (e) {
-    console.warn('[OfflineSync] addToQueue error:', e);
   }
 }
 
@@ -62,7 +61,6 @@ async function getAllFromQueue(): Promise<SyncAction[]> {
     db.close();
     return result;
   } catch (e) {
-    console.warn('[OfflineSync] getAll error:', e);
     return [];
   }
 }
@@ -78,7 +76,6 @@ async function removeFromQueue(id: string): Promise<void> {
     });
     db.close();
   } catch (e) {
-    console.warn('[OfflineSync] remove error:', e);
   }
 }
 
@@ -101,7 +98,6 @@ export async function syncOfflineQueue(): Promise<number> {
           .from('lesson_progress')
           .upsert(action.data, { onConflict: 'lesson_id,user_id' });
         if (error) {
-          console.warn('[OfflineSync] lesson_progress sync failed:', error);
           continue; // keep in queue
         }
       } else if (action.type === 'enrollment_update') {
@@ -111,7 +107,6 @@ export async function syncOfflineQueue(): Promise<number> {
           .update(updateData)
           .eq('id', enrollmentId);
         if (error) {
-          console.warn('[OfflineSync] enrollment sync failed:', error);
           continue;
         }
       }
@@ -119,13 +114,11 @@ export async function syncOfflineQueue(): Promise<number> {
       await removeFromQueue(action.id);
       synced++;
     } catch (e) {
-      console.warn('[OfflineSync] sync action failed:', e);
       // Keep in queue for next attempt
     }
   }
 
   if (synced > 0) {
-    console.log(`[OfflineSync] Synced ${synced}/${queue.length} queued actions`);
   }
   return synced;
 }
@@ -137,7 +130,6 @@ export function setupOfflineSyncListeners(): () => void {
   const handleOnline = async () => {
     const synced = await syncOfflineQueue();
     if (synced > 0) {
-      console.log(`[OfflineSync] Auto-synced ${synced} queued actions on reconnect`);
     }
   };
 

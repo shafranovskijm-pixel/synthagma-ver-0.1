@@ -133,7 +133,6 @@ export function StudentDocumentsManager({
           .upload(fileName, selectedFile);
 
         if (uploadError) {
-          console.warn("Upload failed:", uploadError);
         } else {
           fileUrl = fileName;
         }
