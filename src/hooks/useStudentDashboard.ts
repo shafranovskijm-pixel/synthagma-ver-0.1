@@ -18,7 +18,7 @@ import demoOrgBanner from "@/assets/demo/org-banner.jpg";
 export interface StudentCourse {
   id: string;
   title: string;
-  description: string | null;
+  description: "string | null;"
   duration: string | null;
   progress: number;
   totalLessons: number;
@@ -30,7 +30,7 @@ export interface StudentCourse {
 export interface CatalogCourse {
   id: string;
   title: string;
-  description: string | null;
+  description: "string | null;"
   cover_image_url?: string | null;
   duration?: string | null;
   price?: number;
@@ -179,7 +179,7 @@ export function useStudentDashboard() {
           if (!achievement) return;
           setTimeout(() => {
             toast.success(`${rarityEmoji[achievement.rarity] || "🎖️"} Новое достижение!`, {
-              description: `${achievement.name}: ${achievement.description}`, duration: 5000,
+              description:``${achievement.name}: ${achievement.description}`, duration: 5000,`
               style: { borderLeft: `4px solid ${achievement.color}` }
             });
           }, index * 1500);
@@ -194,16 +194,16 @@ export function useStudentDashboard() {
     const previewFlag = localStorage.getItem('previewStudentDashboard');
     if (previewFlag === 'true' || isPreviewMode) {
       setCourses([
-        { id: "demo-1", title: "Охрана труда на предприятии", description: "Основы безопасности на рабочем месте, требования законодательства и практические навыки", duration: "16 часов", progress: 65, totalLessons: 12, completedLessons: 8, status: "in_progress", skip_video_identification: false },
-        { id: "demo-2", title: "Пожарная безопасность", description: "Пожарно-технический минимум для руководителей и специалистов", duration: "8 часов", progress: 100, totalLessons: 8, completedLessons: 8, status: "completed", skip_video_identification: false },
-        { id: "demo-3", title: "Первая помощь пострадавшим", description: "Навыки оказания первой доврачебной помощи при несчастных случаях", duration: "4 часа", progress: 30, totalLessons: 6, completedLessons: 2, status: "in_progress", skip_video_identification: false },
-        { id: "demo-4", title: "Электробезопасность", description: "Требования безопасности при работе с электроустановками", duration: "12 часов", progress: 0, totalLessons: 10, completedLessons: 0, status: "in_progress", skip_video_identification: false },
+        { id: "demo-1", title: "Охрана труда на предприятии", description:""Основы безопасности на рабочем месте, требования законодательства и практические навыки", duration: "16 часов", progress: 65, totalLessons: 12, completedLessons: 8, status: "in_progress", skip_video_identification: false },"
+        { id: "demo-2", title: "Пожарная безопасность", description:""Пожарно-технический минимум для руководителей и специалистов", duration: "8 часов", progress: 100, totalLessons: 8, completedLessons: 8, status: "completed", skip_video_identification: false },"
+        { id: "demo-3", title: "Первая помощь пострадавшим", description:""Навыки оказания первой доврачебной помощи при несчастных случаях", duration: "4 часа", progress: 30, totalLessons: 6, completedLessons: 2, status: "in_progress", skip_video_identification: false },"
+        { id: "demo-4", title: "Электробезопасность", description:""Требования безопасности при работе с электроустановками", duration: "12 часов", progress: 0, totalLessons: 10, completedLessons: 0, status: "in_progress", skip_video_identification: false },"
       ]);
       setCatalogCourses([
-        { id: "demo-1", title: "Охрана труда на предприятии", description: "Основы безопасности на рабочем месте", cover_image_url: demoCourseSafety, duration: "16 часов", category_id: "cat-1", category_name: "Охрана труда", category_color: "#14b8a6", total_lessons: 12, is_enrolled: true, progress: 65, completed_lessons: 8, status: "in_progress" },
-        { id: "demo-2", title: "Пожарная безопасность", description: "Пожарно-технический минимум для руководителей", cover_image_url: demoCourseFire, duration: "8 часов", category_id: "cat-1", category_name: "Охрана труда", category_color: "#14b8a6", total_lessons: 8, is_enrolled: true, progress: 100, completed_lessons: 8, status: "completed" },
-        { id: "demo-3", title: "Первая помощь пострадавшим", description: "Навыки оказания первой доврачебной помощи", cover_image_url: demoCourseFirstaid, duration: "4 часа", category_id: "cat-2", category_name: "Медицина", category_color: "#ef4444", total_lessons: 6, is_enrolled: true, progress: 30, completed_lessons: 2, status: "in_progress" },
-        { id: "demo-4", title: "Электробезопасность", description: "Требования безопасности при работе с электроустановками", cover_image_url: demoCourseElectrical, duration: "12 часов", category_id: "cat-3", category_name: "Электробезопасность", category_color: "#3b82f6", total_lessons: 10, is_enrolled: false, status: "not_enrolled" },
+        { id: "demo-1", title: "Охрана труда на предприятии", description:""Основы безопасности на рабочем месте", cover_image_url: demoCourseSafety, duration: "16 часов", category_id: "cat-1", category_name: "Охрана труда", category_color: "#14b8a6", total_lessons: 12, is_enrolled: true, progress: 65, completed_lessons: 8, status: "in_progress" },"
+        { id: "demo-2", title: "Пожарная безопасность", description:""Пожарно-технический минимум для руководителей", cover_image_url: demoCourseFire, duration: "8 часов", category_id: "cat-1", category_name: "Охрана труда", category_color: "#14b8a6", total_lessons: 8, is_enrolled: true, progress: 100, completed_lessons: 8, status: "completed" },"
+        { id: "demo-3", title: "Первая помощь пострадавшим", description:""Навыки оказания первой доврачебной помощи", cover_image_url: demoCourseFirstaid, duration: "4 часа", category_id: "cat-2", category_name: "Медицина", category_color: "#ef4444", total_lessons: 6, is_enrolled: true, progress: 30, completed_lessons: 2, status: "in_progress" },"
+        { id: "demo-4", title: "Электробезопасность", description:""Требования безопасности при работе с электроустановками", cover_image_url: demoCourseElectrical, duration: "12 часов", category_id: "cat-3", category_name: "Электробезопасность", category_color: "#3b82f6", total_lessons: 10, is_enrolled: false, status: "not_enrolled" },"
       ]);
       setCategories([
         { id: "cat-1", name: "Охрана труда", color: "#14b8a6" },
@@ -213,7 +213,7 @@ export function useStudentDashboard() {
       setBranding({ coverUrl: demoOrgBanner, primaryColor: "#0d9488", secondaryColor: "#115e59", logoUrl: "", showOrgName: true });
       setTotalTimeSpent(2450);
       setTotalCompletedLessons(18);
-      setProfile({ full_name: "Иванов Иван Иванович", organization_name: "Демо-организация", organization_id: null, org_description: "Учебный центр профессионального развития и повышения квалификации" });
+      setProfile({ full_name: "Иванов Иван Иванович", organization_name: "Демо-организация", organization_id: null, org_description:""Учебный центр профессионального развития и повышения квалификации"" });
       setDocumentsProgress({ completed: 2, total: 3 });
       setLoading(false);
       return;
@@ -225,7 +225,6 @@ export function useStudentDashboard() {
 
     // Safety timeout: never show spinner for more than 15 seconds
     const safetyTimer = setTimeout(() => {
-      console.warn('[StudentDashboard] Loading timeout reached, forcing display');
       setLoading(false);
     }, 15000);
 
@@ -242,7 +241,7 @@ export function useStudentDashboard() {
         effectiveBranding = org?.branding;
         effectiveDashboardSettings = org?.student_dashboard_settings;
         if (org?.subscription_plan) setOrgPlan(org.subscription_plan);
-        setProfile({ full_name: profileData.full_name, organization_name: effectiveOrgName, organization_id: profileData.organization_id, org_description: (org as any)?.description || null });
+        setProfile({ full_name: profileData.full_name, organization_name: effectiveOrgName, organization_id: profileData.organization_id, org_description: "(org as any)?.description || null" });
       }
 
       const { data: laborProfile } = await supabase.from("labor_safety_profiles").select("organization_id, full_name, organizations(name, branding, student_dashboard_settings, subscription_plan)").eq("user_id", uid).order("created_at", { ascending: false }).limit(1).maybeSingle();
@@ -309,7 +308,7 @@ export function useStudentDashboard() {
           const completedLessons = courseLessonIds.filter(id => completedLessonIds.has(id)).length;
           cachedCompletedLessonsTotal += completedLessons;
           cachedCoursesData.push({
-            id: course.id, title: course.title, description: course.description, duration: course.duration,
+            id: course.id, title: course.title, description: "course.description, duration: course.duration,"
             progress: Math.min(enrollment.progress || 0, 100), totalLessons: courseLessonIds.length, completedLessons,
             status: enrollment.status === "completed" ? "completed" : "in_progress",
             skip_video_identification: course.skip_video_identification || false
@@ -352,7 +351,7 @@ export function useStudentDashboard() {
           const cat = c.category_id ? catMap.get(c.category_id) : null;
           const isPending = pendingRequests.has(c.id);
           return {
-            id: c.id, title: c.title, description: c.description,
+            id: c.id, title: c.title, description: "c.description,"
             cover_image_url: (c as any).cover_image_url || null,
             duration: c.duration, price: c.price,
             category_id: c.category_id, category_name: cat?.name || null, category_color: cat?.color || null,
@@ -403,7 +402,6 @@ export function useStudentDashboard() {
       if (uid) {
         const cached = await getCachedDashboardData(uid);
         if (cached) {
-          console.log('[DashboardCache] Loading from offline cache');
           setCourses(cached.courses || []);
           if (cached.profile) setProfile(cached.profile);
           if (cached.branding) setBranding(cached.branding);
@@ -411,7 +409,7 @@ export function useStudentDashboard() {
           setTotalTimeSpent(cached.totalTimeSpent || 0);
           setTotalCompletedLessons(cached.totalCompletedLessons || 0);
           setDocumentsProgress(cached.documentsProgress || { completed: 0, total: 3 });
-          toast.info('Загружены данные из кеша', { description: 'Данные могут быть устаревшими' });
+          toast.info('Загружены данные из кеша', { description:"'Данные могут быть устаревшими'" });
         }
       }
     } finally { clearTimeout(safetyTimer); setLoading(false); }

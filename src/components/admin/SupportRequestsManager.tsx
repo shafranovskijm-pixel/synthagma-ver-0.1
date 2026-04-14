@@ -5,10 +5,10 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { toast } from "@/hooks/use-toast";
 import { MessageSquare, ExternalLink, RefreshCw, ChevronDown, ChevronUp, Clock, User, Globe, AlertTriangle } from "lucide-react";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
+import { toast } from "sonner";
 
 interface SupportRequest {
   id: string;
@@ -88,9 +88,9 @@ export function SupportRequestsManager() {
         .eq("id", id);
       if (error) throw error;
       setRequests(prev => prev.map(r => r.id === id ? { ...r, status: newStatus } : r));
-      toast({ title: "Статус обновлён" });
+      toast.success("Статус обновлён");
     } catch {
-      toast({ title: "Ошибка обновления", variant: "destructive" });
+      toast.error("Ошибка обновления");
     }
   };
 
@@ -102,9 +102,9 @@ export function SupportRequestsManager() {
         .eq("id", id);
       if (error) throw error;
       setRequests(prev => prev.map(r => r.id === id ? { ...r, admin_notes: editingNotes[id] || "" } : r));
-      toast({ title: "Заметка сохранена" });
+      toast.success("Заметка сохранена");
     } catch {
-      toast({ title: "Ошибка сохранения", variant: "destructive" });
+      toast.error("Ошибка сохранения");
     }
   };
 

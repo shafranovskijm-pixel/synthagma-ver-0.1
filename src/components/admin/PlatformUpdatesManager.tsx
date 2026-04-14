@@ -7,9 +7,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
-import { useToast } from "@/hooks/use-toast";
 import { Plus, Pencil, Trash2, Save, X, Sparkles, ExternalLink } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { toast } from "sonner";
 
 interface PlatformUpdate {
   id: string;
@@ -27,8 +27,6 @@ export function PlatformUpdatesManager() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState({ title: "", description: "", image_url: "", is_published: true });
   const [showForm, setShowForm] = useState(false);
-  const { toast } = useToast();
-
   const load = async () => {
     const { data } = await supabase
       .from("platform_updates")
@@ -48,7 +46,7 @@ export function PlatformUpdatesManager() {
 
   const handleSave = async () => {
     if (!form.title.trim() || !form.description.trim()) {
-      toast({ title: "Заполните заголовок и описание", variant: "destructive" });
+      toast.error("Заполните заголовок и описание");
       return;
     }
 
@@ -62,12 +60,12 @@ export function PlatformUpdatesManager() {
 
     if (editingId) {
       const { error } = await supabase.from("platform_updates").update(payload).eq("id", editingId);
-      if (error) { toast({ title: "Ошибка", variant: "destructive" }); return; }
-      toast({ title: "Обновлено" });
+      if (error) { toast.error("Ошибка"); return; }
+      toast.success("Обновлено");
     } else {
       const { error } = await supabase.from("platform_updates").insert(payload);
-      if (error) { toast({ title: "Ошибка", variant: "destructive" }); return; }
-      toast({ title: "Создано" });
+      if (error) { toast.error("Ошибка"); return; }
+      toast.success("Создано");
     }
     resetForm();
     load();
@@ -81,8 +79,8 @@ export function PlatformUpdatesManager() {
 
   const handleDelete = async (id: string) => {
     const { error } = await supabase.from("platform_updates").delete().eq("id", id);
-    if (error) { toast({ title: "Ошибка удаления", variant: "destructive" }); return; }
-    toast({ title: "Удалено" });
+    if (error) { toast.error("Ошибка удаления"); return; }
+    toast.success("Удалено");
     load();
   };
 

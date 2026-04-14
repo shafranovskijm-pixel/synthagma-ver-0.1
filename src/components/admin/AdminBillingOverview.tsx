@@ -11,8 +11,7 @@ import { FileText, Receipt, Search, Eye, ExternalLink, ScrollText, Plus } from "
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import { getSignedStorageUrl } from "@/utils/storageHelpers";
-import { toast } from "@/hooks/use-toast";
-
+import { toast } from "sonner";
 interface Invoice {
   id: string;
   invoice_number: string;
@@ -89,7 +88,7 @@ export const AdminBillingOverview = () => {
   const handleViewDoc = async (doc: BillingDoc) => {
     const url = await getSignedStorageUrl("billing-documents", doc.file_url);
     if (url) window.open(url, "_blank");
-    else toast({ title: "Ошибка", description: "Не удалось получить ссылку", variant: "destructive" });
+    else toast.error("Ошибка", { description: "Не удалось получить ссылку" });
   };
 
   const handleCreateContract = async () => {
@@ -102,9 +101,9 @@ export const AdminBillingOverview = () => {
       status: "active",
     });
     if (error) {
-      toast({ title: "Ошибка", description: error.message, variant: "destructive" });
+      toast.error("Ошибка", { description: "error.message" });
     } else {
-      toast({ title: "Договор создан" });
+      toast.success("Договор создан");
       setShowCreateContract(false);
       setContractForm({ organization_id: "", contract_number: "", contract_date: "" });
       loadData();

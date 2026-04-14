@@ -38,11 +38,11 @@ import {
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { useToast } from "@/hooks/use-toast";
 import { Trash2, Search, Loader2, Users, Shield, Building2, GraduationCap, Copy, Eye, EyeOff, BookOpen, FileText, Clock, Mail, Phone, MapPin, KeyRound, Save, Plus, Pencil, ExternalLink } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
+import { toast } from "sonner";
 
 interface UserWithRole {
   id: string;
@@ -82,7 +82,6 @@ export function UsersManager() {
     login: "", password: "", editing: false, saving: false,
   });
   const [credPasswordVisible, setCredPasswordVisible] = useState(false);
-  const { toast } = useToast();
   const navigate = useNavigate();
 
   const viewAsStudent = (user: UserWithRole) => {
@@ -109,7 +108,7 @@ export function UsersManager() {
   const copyCredentials = (login: string, password: string) => {
     const text = `Логин: ${login}\nПароль: ${password}`;
     navigator.clipboard.writeText(text);
-    toast({ title: "Скопировано", description: "Логин и пароль скопированы в буфер обмена" });
+    toast.success("Скопировано", { description: "Логин и пароль скопированы в буфер обмена" });
   };
 
   const fetchUserDetail = async (user: UserWithRole) => {
@@ -166,10 +165,10 @@ export function UsersManager() {
       ));
       setSelectedUser(prev => prev ? { ...prev, login: credEdit.login.trim(), generated_password: credEdit.password.trim() } : prev);
       setCredEdit(prev => ({ ...prev, editing: false, saving: false }));
-      toast({ title: "Успешно", description: "Учётные данные обновлены" });
+      toast.success("Успешно", { description: "Учётные данные обновлены" });
     } catch (error: any) {
       console.error("Error saving credentials:", error);
-      toast({ title: "Ошибка", description: error?.message || "Не удалось сохранить учётные данные", variant: "destructive" });
+      toast.error("Ошибка", { description: "error?.message || "Не удалось сохранить учётные данные"" });
       setCredEdit(prev => ({ ...prev, saving: false }));
     }
   };
@@ -224,11 +223,7 @@ export function UsersManager() {
       setUsers(usersWithRoles);
     } catch (error) {
       console.error("Error fetching users:", error);
-      toast({
-        title: "Ошибка",
-        description: "Не удалось загрузить пользователей",
-        variant: "destructive",
-      });
+      toast.error("Ошибка", { description: "Не удалось загрузить пользователей" });
     } finally {
       setLoading(false);
     }
@@ -248,7 +243,7 @@ export function UsersManager() {
         prev.map((u) => (u.user_id === userId ? { ...u, role: newRole } : u))
       );
 
-      toast({ title: "Успешно", description: "Роль обновлена" });
+      toast.success("Успешно", { description: "Роль обновлена" });
     } catch (error: any) {
       console.error("Error updating role:", error);
       const errorMessage = error?.message?.includes("Cannot remove last admin") 
@@ -256,11 +251,7 @@ export function UsersManager() {
         : error?.message?.includes("Unauthorized") 
           ? "Недостаточно прав для изменения роли"
           : "Не удалось обновить роль";
-      toast({
-        title: "Ошибка",
-        description: errorMessage,
-        variant: "destructive",
-      });
+      toast.error("Ошибка", { description: "errorMessage" });
     }
   };
 
@@ -283,14 +274,10 @@ export function UsersManager() {
         )
       );
 
-      toast({ title: "Успешно", description: "Организация обновлена" });
+      toast.success("Успешно", { description: "Организация обновлена" });
     } catch (error) {
       console.error("Error updating organization:", error);
-      toast({
-        title: "Ошибка",
-        description: "Не удалось обновить организацию",
-        variant: "destructive",
-      });
+      toast.error("Ошибка", { description: "Не удалось обновить организацию" });
     }
   };
 
@@ -307,15 +294,11 @@ export function UsersManager() {
       // Note: We can't delete from auth.users from client - that would require admin API
 
       setUsers((prev) => prev.filter((u) => u.id !== deleteUser.id));
-      toast({ title: "Успешно", description: "Профиль пользователя удален" });
+      toast.success("Успешно", { description: "Профиль пользователя удален" });
       setDeleteUser(null);
     } catch (error) {
       console.error("Error deleting user:", error);
-      toast({
-        title: "Ошибка",
-        description: "Не удалось удалить пользователя",
-        variant: "destructive",
-      });
+      toast.error("Ошибка", { description: "Не удалось удалить пользователя" });
     }
   };
 

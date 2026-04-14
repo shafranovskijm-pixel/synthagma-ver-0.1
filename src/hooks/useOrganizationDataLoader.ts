@@ -22,12 +22,10 @@ async function retryQuery<T>(fn: () => PromiseLike<{ data: T | null; error: any 
   for (let attempt = 0; attempt < 3; attempt++) {
     if (attempt > 0) {
       const delay = attempt * 3000; // 3s, 6s
-      console.log(`[retryQuery] ${label} attempt ${attempt + 1}/3, waiting ${delay}ms`);
       await new Promise(r => setTimeout(r, delay));
     }
     const { data, error } = await fn();
     if (!error) return data;
-    console.warn(`[retryQuery] ${label} attempt ${attempt + 1} failed:`, error);
     if (attempt === 2) throw error;
   }
   return null;

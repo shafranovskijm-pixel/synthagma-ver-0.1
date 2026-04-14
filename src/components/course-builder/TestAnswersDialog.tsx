@@ -105,7 +105,6 @@ export function TestAnswersDialog({ questions, courseTitle, lessonTitle, onApply
       if (data.parseError) {
         setAutoError("ИИ вернул ответ в неожиданном формате. Попробуйте ещё раз.");
         setUsedModel(data.model || null);
-        console.warn("AI raw response:", data.raw);
         return;
       }
 

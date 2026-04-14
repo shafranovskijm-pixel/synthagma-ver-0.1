@@ -1,8 +1,7 @@
 import { useState, useEffect } from 'react';
 import { initExternalSupabase, getExternalSupabase } from '@/integrations/external-supabase/client';
 import { supabase } from '@/integrations/supabase/client';
-import { useToast } from '@/hooks/use-toast';
-
+import { toast } from "sonner";
 interface UploadResult {
   url: string;
   path: string;
@@ -13,8 +12,6 @@ export const useExternalStorage = () => {
   const [isUploading, setIsUploading] = useState(false);
   const [isExternalConfigured, setIsExternalConfigured] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
-  const { toast } = useToast();
-
   useEffect(() => {
     initExternalSupabase().then((client) => {
       setIsExternalConfigured(!!client);
@@ -81,11 +78,7 @@ export const useExternalStorage = () => {
       };
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : 'Не удалось загрузить файл';
-      toast({
-        title: 'Ошибка загрузки',
-        description: message,
-        variant: 'destructive',
-      });
+      toast.error("Ошибка загрузки", { description: "message" });
       return null;
     } finally {
       setIsUploading(false);
@@ -107,11 +100,7 @@ export const useExternalStorage = () => {
       return true;
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : 'Не удалось удалить файл';
-      toast({
-        title: 'Ошибка удаления',
-        description: message,
-        variant: 'destructive',
-      });
+      toast.error("Ошибка удаления", { description: "message" });
       return false;
     }
   };

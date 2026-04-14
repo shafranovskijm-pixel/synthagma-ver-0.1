@@ -1,6 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { toast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -12,6 +11,7 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { Plus, Eye, Download, Trash2, X, FileText, Stamp } from 'lucide-react';
 import { generateSintagmaContract, type ContractCustomService, type ContractData } from '@/constants/contractTemplates';
+import { toast } from "sonner";
 
 interface SalesContract {
   id: string;
@@ -129,7 +129,7 @@ export function SalesContracts() {
   };
 
   const handleSave = async () => {
-    if (!form.company_name) { toast({ title: 'Укажите название компании', variant: 'destructive' }); return; }
+    if (!form.company_name) { toast.error("Укажите название компании"); return; }
 
     const contractData: ContractData = {
       contractNumber: form.contract_number,
@@ -165,8 +165,8 @@ export function SalesContracts() {
       html_content: html,
     } as any);
 
-    if (error) { toast({ title: 'Ошибка', description: error.message, variant: 'destructive' }); return; }
-    toast({ title: 'Договор создан' });
+    if (error) { toast.error("Ошибка", { description: "error.message" }); return; }
+    toast.success("Договор создан");
     setShowForm(false);
     resetForm();
     fetchContracts();
@@ -175,7 +175,7 @@ export function SalesContracts() {
   const handleDelete = async (id: string) => {
     if (!confirm('Удалить договор?')) return;
     await supabase.from('sales_contracts').delete().eq('id', id);
-    toast({ title: 'Договор удалён' });
+    toast.success("Договор удалён");
     fetchContracts();
   };
 

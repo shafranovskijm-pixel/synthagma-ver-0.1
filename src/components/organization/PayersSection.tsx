@@ -7,8 +7,8 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Plus, Search, Users, Building2, User, Archive, Mail, Phone } from "lucide-react";
-import { toast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 
 interface Payer {
   id: string;
@@ -63,9 +63,9 @@ export function PayersSection({ organizationId }: Props) {
       payer_type: form.payer_type,
     } as any);
     if (error) {
-      toast({ title: "Ошибка", description: error.message, variant: "destructive" });
+      toast.error("Ошибка", { description: "error.message" });
     } else {
-      toast({ title: "Плательщик добавлен" });
+      toast.success("Плательщик добавлен");
       setShowDialog(false);
       setForm({ name: "", inn: "", phone: "", email: "", payer_type: "individual" });
       loadPayers();

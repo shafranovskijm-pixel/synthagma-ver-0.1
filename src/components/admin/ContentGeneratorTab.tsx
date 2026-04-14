@@ -184,12 +184,10 @@ export function ContentGeneratorTab({ courses, dbCategories, onComplete }: Props
         body: { prompt, provider: "gigachat" },
       });
       if (error || !data?.url) {
-        console.warn("Hero image generation failed:", error);
         return null;
       }
       return data.url;
     } catch (e) {
-      console.warn("Hero image generation error:", e);
       return null;
     }
   };
@@ -211,7 +209,6 @@ export function ContentGeneratorTab({ courses, dbCategories, onComplete }: Props
         }
       );
       if (!response.ok) {
-        console.warn("SaluteSpeech TTS failed:", response.status);
         return null;
       }
       const audioBlob = await response.blob();
@@ -224,13 +221,11 @@ export function ContentGeneratorTab({ courses, dbCategories, onComplete }: Props
         .from("course-files")
         .upload(fileName, audioBlob, { contentType: "audio/ogg", cacheControl: "3600", upsert: true });
       if (uploadError) {
-        console.warn("Audio upload error:", uploadError);
         return null;
       }
       const { data: urlData } = storageClient.storage.from("course-files").getPublicUrl(fileName);
       return urlData?.publicUrl || null;
     } catch (e) {
-      console.warn("Intro audio generation error:", e);
       return null;
     }
   };
@@ -641,7 +636,6 @@ export function ContentGeneratorTab({ courses, dbCategories, onComplete }: Props
                   insertedCount++;
                 }
               } catch (e) {
-                console.warn(`Enrichment slider failed for "${lesson.title}":`, e);
               }
             }
 
@@ -660,7 +654,6 @@ export function ContentGeneratorTab({ courses, dbCategories, onComplete }: Props
               }).then(({ error: h }) => h && console.warn("History insert error:", h));
             }
           } catch (e) {
-            console.warn(`Enrichment failed for lesson "${lesson.title}":`, e);
           }
         };
 
@@ -677,7 +670,6 @@ export function ContentGeneratorTab({ courses, dbCategories, onComplete }: Props
         );
 
         if (enrichedCount > 0) {
-          console.log(`Enrichment complete: ${enrichedCount} lessons enriched`);
         }
       }
 

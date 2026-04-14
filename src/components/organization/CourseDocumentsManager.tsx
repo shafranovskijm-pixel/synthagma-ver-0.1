@@ -142,7 +142,6 @@ export function CourseDocumentsManager({
           .upload(fileName, selectedFile);
 
         if (uploadError) {
-          console.warn("Upload failed:", uploadError);
         } else {
           const { data: urlData } = supabase.storage
             .from("course-files")

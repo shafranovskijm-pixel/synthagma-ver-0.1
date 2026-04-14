@@ -999,7 +999,6 @@ export function AdminMarketplaceManager() {
               toast.loading(`Анализирую уроки: ${analyzedCount}/${lessonsToEnrich.length}...`, { id: toastId });
 
               if (analysisErr || !analysisData?.visuals || analysisData.visuals.length === 0) {
-                console.warn(`[Auto-fix enrichment] Skip "${lesson.title}":`, analysisErr?.message || "no visuals");
                 return;
               }
 
@@ -1075,7 +1074,6 @@ export function AdminMarketplaceManager() {
                     imgUrl = imgData.url;
                   } else {
                     lastImgErr = imgErr;
-                    console.warn(`[Enrichment] Wave ${wave + 1}: generate-image failed for "${lesson.title}":`, imgErr?.message ?? 'no url');
                   }
 
                   let insertedCount = 0;
@@ -1130,7 +1128,6 @@ export function AdminMarketplaceManager() {
           }
 
           if (pending.length > 0) {
-            console.warn(`[Enrichment] ${pending.length} images failed after ${MAX_WAVES} waves`);
             await supabase.from("generation_history").insert({
               course_id: courseId, course_title: courseTitle,
               action: "media",

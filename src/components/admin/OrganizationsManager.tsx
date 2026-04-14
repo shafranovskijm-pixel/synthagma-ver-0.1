@@ -24,13 +24,13 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { useToast } from "@/hooks/use-toast";
 import { Plus, Pencil, Trash2, Building2, Loader2, Users, BookOpen, Key, Eye, EyeOff, Copy, Check, Download, ExternalLink, Search, X, FolderOpen, DollarSign, Calendar, RefreshCw, Mail, Phone, Crown, LayoutGrid, List } from "lucide-react";
 import { getPlanInfo, type SubscriptionPlan } from "@/constants/subscriptionPlans";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import { getXLSX } from "@/utils/xlsxHelper";
 import { OrganizationDetailsView } from "./OrganizationDetailsView";
+import { toast } from "sonner";
 
 interface Organization {
   id: string;
@@ -84,8 +84,6 @@ export function OrganizationsManager() {
     login_password: "",
   });
   const [saving, setSaving] = useState(false);
-  const { toast } = useToast();
-
   // Filter organizations based on search query
   const filteredOrganizations = organizations.filter((org) => {
     if (!searchQuery.trim()) return true;
@@ -177,11 +175,7 @@ export function OrganizationsManager() {
       setDetailsLoading(false);
     } catch (error) {
       console.error("Error fetching organizations:", error);
-      toast({
-        title: "Ошибка",
-        description: "Не удалось загрузить организации",
-        variant: "destructive",
-      });
+      toast.error("Ошибка", { description: "Не удалось загрузить организации" });
       setLoading(false);
       setDetailsLoading(false);
     }
@@ -192,11 +186,7 @@ export function OrganizationsManager() {
 
   const handleCreate = async () => {
     if (!formData.name || !formData.email) {
-      toast({
-        title: "Ошибка",
-        description: "Заполните обязательные поля",
-        variant: "destructive",
-      });
+      toast.error("Ошибка", { description: "Заполните обязательные поля" });
       return;
     }
 
@@ -227,11 +217,7 @@ export function OrganizationsManager() {
 
         if (userError) {
           console.error("Error creating user:", userError);
-          toast({
-            title: "Предупреждение",
-            description: "Организация создана, но не удалось создать пользователя",
-            variant: "destructive",
-          });
+          toast.error("Предупреждение", { description: "Организация создана, но не удалось создать пользователя" });
         } else {
           // Save credentials for admin reference
           await supabase.from("organization_credentials").insert({
@@ -251,17 +237,13 @@ export function OrganizationsManager() {
         console.error("Seed welcome course error:", seedErr);
       }
 
-      toast({ title: "Успешно", description: "Организация создана" });
+      toast.success("Успешно", { description: "Организация создана" });
       setIsCreateOpen(false);
       setFormData({ name: "", email: "", phone: "", inn: "", contact_name: "", login_email: "", login_password: "" });
       fetchOrganizations();
     } catch (error) {
       console.error("Error creating organization:", error);
-      toast({
-        title: "Ошибка",
-        description: "Не удалось создать организацию",
-        variant: "destructive",
-      });
+      toast.error("Ошибка", { description: "Не удалось создать организацию" });
     } finally {
       setSaving(false);
     }
@@ -269,11 +251,7 @@ export function OrganizationsManager() {
 
   const handleUpdate = async () => {
     if (!editOrg || !formData.name || !formData.email) {
-      toast({
-        title: "Ошибка",
-        description: "Заполните обязательные поля",
-        variant: "destructive",
-      });
+      toast.error("Ошибка", { description: "Заполните обязательные поля" });
       return;
     }
 
@@ -292,18 +270,14 @@ export function OrganizationsManager() {
 
       if (error) throw error;
 
-      toast({ title: "Успешно", description: "Организация обновлена" });
+      toast.success("Успешно", { description: "Организация обновлена" });
       setIsEditOpen(false);
       setEditOrg(null);
       setFormData({ name: "", email: "", phone: "", inn: "", contact_name: "", login_email: "", login_password: "" });
       fetchOrganizations();
     } catch (error) {
       console.error("Error updating organization:", error);
-      toast({
-        title: "Ошибка",
-        description: "Не удалось обновить организацию",
-        variant: "destructive",
-      });
+      toast.error("Ошибка", { description: "Не удалось обновить организацию" });
     } finally {
       setSaving(false);
     }
@@ -405,16 +379,12 @@ export function OrganizationsManager() {
       const { error } = await supabase.from("organizations").delete().eq("id", orgId);
       if (error) throw error;
 
-      toast({ title: "Успешно", description: "Организация удалена" });
+      toast.success("Успешно", { description: "Организация удалена" });
       setDeleteOrg(null);
       fetchOrganizations();
     } catch (error) {
       console.error("Error deleting organization:", error);
-      toast({
-        title: "Ошибка",
-        description: "Не удалось удалить организацию. Проверьте консоль для деталей.",
-        variant: "destructive",
-      });
+      toast.error("Ошибка", { description: "Не удалось удалить организацию. Проверьте консоль для деталей." });
     }
   };
 
@@ -453,20 +423,12 @@ export function OrganizationsManager() {
 
   const handleResetPassword = async () => {
     if (!resetPasswordOrg || !newPassword) {
-      toast({
-        title: "Ошибка",
-        description: "Введите новый пароль",
-        variant: "destructive",
-      });
+      toast.error("Ошибка", { description: "Введите новый пароль" });
       return;
     }
 
     if (newPassword.length < 6) {
-      toast({
-        title: "Ошибка",
-        description: "Пароль должен быть не менее 6 символов",
-        variant: "destructive",
-      });
+      toast.error("Ошибка", { description: "Пароль должен быть не менее 6 символов" });
       return;
     }
 
@@ -482,17 +444,13 @@ export function OrganizationsManager() {
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
 
-      toast({ title: "Успешно", description: "Пароль изменён" });
+      toast.success("Успешно", { description: "Пароль изменён" });
       setResetPasswordOrg(null);
       setNewPassword("");
       fetchOrganizations();
     } catch (error: any) {
       console.error("Error resetting password:", error);
-      toast({
-        title: "Ошибка",
-        description: error?.message || "Не удалось сбросить пароль",
-        variant: "destructive",
-      });
+      toast.error("Ошибка", { description: "error?.message || "Не удалось сбросить пароль"" });
     } finally {
       setResettingPassword(false);
     }
@@ -507,18 +465,11 @@ export function OrganizationsManager() {
 
       if (error) throw error;
 
-      toast({ 
-        title: "Успешно", 
-        description: `Учётные данные созданы: ${data.login_email}` 
-      });
+      toast.success("Успешно", { description: `Учётные данные созданы: ${data.login_email}` });
       fetchOrganizations();
     } catch (error) {
       console.error("Error generating credentials:", error);
-      toast({
-        title: "Ошибка",
-        description: "Не удалось создать учётные данные",
-        variant: "destructive",
-      });
+      toast.error("Ошибка", { description: "Не удалось создать учётные данные" });
     } finally {
       setGeneratingCredentials(null);
     }
@@ -563,7 +514,7 @@ export function OrganizationsManager() {
     const fileName = `Организации_${format(new Date(), "dd-MM-yyyy")}.xlsx`;
     XLSX.writeFile(workbook, fileName);
     
-    toast({ title: "Успешно", description: "Файл скачан" });
+    toast.success("Успешно", { description: "Файл скачан" });
   };
 
   if (loading) {

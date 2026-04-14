@@ -121,7 +121,6 @@ export function SkillspaceImportDialog({ open, onOpenChange, organizationId, exi
           clearTimeout(timeoutId);
           break; // success
         } catch (fetchErr: any) {
-          console.warn(`Import fetch attempt ${attempt + 1} failed:`, fetchErr.message);
           if (attempt === delays.length - 1) throw fetchErr;
         }
       }

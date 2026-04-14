@@ -85,7 +85,6 @@ const logHistory = async (
       stream_index: streamIndex ?? null,
     });
   } catch (e) {
-    console.warn("Failed to log generation history:", e);
   }
 };
 

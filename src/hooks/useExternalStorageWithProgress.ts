@@ -2,8 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { initExternalSupabase, getExternalSupabase } from '@/integrations/external-supabase/client';
 import { supabase } from '@/integrations/supabase/client';
 import { safeInvoke } from '@/utils/safeInvoke';
-import { useToast } from '@/hooks/use-toast';
-
+import { toast } from "sonner";
 interface UploadResult {
   url: string;
   path: string;
@@ -37,8 +36,6 @@ export const useExternalStorageWithProgress = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [externalConfig, setExternalConfig] = useState<ExternalStorageConfig | null>(null);
   const xhrRef = useRef<XMLHttpRequest | null>(null);
-  const { toast } = useToast();
-
   useEffect(() => {
     getExternalConfig().then((config) => {
       setExternalConfig(config);
@@ -191,11 +188,7 @@ export const useExternalStorageWithProgress = () => {
       };
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : 'Не удалось загрузить файл';
-      toast({
-        title: 'Ошибка загрузки',
-        description: message,
-        variant: 'destructive',
-      });
+      toast.error("Ошибка загрузки", { description: "message" });
       return null;
     }
   }, [toast]);

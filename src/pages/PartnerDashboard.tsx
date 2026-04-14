@@ -10,14 +10,13 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { SigmaLogo } from "@/components/ui/SigmaLogo";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "@/hooks/use-toast";
 import { Copy, TrendingUp, Users, DollarSign, Wallet, ArrowLeft, Download, ExternalLink } from "lucide-react";
 import { getBaseUrl } from "@/utils/getBaseUrl";
+import { toast } from "sonner";
 
 const PartnerDashboard = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const { toast } = useToast();
   const [partner, setPartner] = useState<any>(null);
   const [registrations, setRegistrations] = useState<any[]>([]);
   const [commissions, setCommissions] = useState<any[]>([]);
@@ -62,7 +61,7 @@ const PartnerDashboard = () => {
   const handleCopyLink = () => {
     if (!partner) return;
     navigator.clipboard.writeText(`${getBaseUrl()}/register?ref=${partner.code}`);
-    toast({ title: "Ссылка скопирована!" });
+    toast.success("Ссылка скопирована!");
   };
 
   const handleSaveBankDetails = async () => {
@@ -72,9 +71,9 @@ const PartnerDashboard = () => {
       .update({ bank_details: bankDetails })
       .eq("id", partner.id);
     if (error) {
-      toast({ title: "Ошибка сохранения", variant: "destructive" });
+      toast.error("Ошибка сохранения");
     } else {
-      toast({ title: "Реквизиты сохранены" });
+      toast.success("Реквизиты сохранены");
     }
   };
 
@@ -82,11 +81,11 @@ const PartnerDashboard = () => {
     if (!partner) return;
     const amount = parseFloat(payoutAmount);
     if (isNaN(amount) || amount < 1000) {
-      toast({ title: "Минимальная сумма вывода — 1 000 ₽", variant: "destructive" });
+      toast.error("Минимальная сумма вывода — 1 000 ₽");
       return;
     }
     if (amount > Number(partner.balance)) {
-      toast({ title: "Недостаточно средств", variant: "destructive" });
+      toast.error("Недостаточно средств");
       return;
     }
     const { error } = await supabase.from("referral_payouts").insert({
@@ -94,9 +93,9 @@ const PartnerDashboard = () => {
       amount,
     });
     if (error) {
-      toast({ title: "Ошибка запроса", description: error.message, variant: "destructive" });
+      toast.error("Ошибка запроса", { description: "error.message" });
     } else {
-      toast({ title: "Запрос на вывод отправлен" });
+      toast.success("Запрос на вывод отправлен");
       setPayoutAmount("");
       loadData();
     }
@@ -316,7 +315,7 @@ const PartnerDashboard = () => {
                       <pre className="text-sm whitespace-pre-wrap mb-3 font-sans">{text}</pre>
                       <Button size="sm" variant="outline" onClick={() => {
                         navigator.clipboard.writeText(text);
-                        toast({ title: "Текст скопирован!" });
+                        toast.success("Текст скопирован!");
                       }}>
                         <Copy className="w-3 h-3 mr-1" /> Копировать
                       </Button>
@@ -338,7 +337,7 @@ const PartnerDashboard = () => {
                       <pre className="text-sm whitespace-pre-wrap mb-3 font-sans">{text}</pre>
                       <Button size="sm" variant="outline" onClick={() => {
                         navigator.clipboard.writeText(text);
-                        toast({ title: "Текст скопирован!" });
+                        toast.success("Текст скопирован!");
                       }}>
                         <Copy className="w-3 h-3 mr-1" /> Копировать
                       </Button>

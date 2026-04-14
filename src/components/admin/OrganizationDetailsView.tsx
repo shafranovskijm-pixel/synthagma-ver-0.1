@@ -553,7 +553,6 @@ export function OrganizationDetailsView({ organization, onBack }: OrganizationDe
         custom_price: customPrice,
         custom_discount: customDiscount,
       };
-      console.log("Saving tariff settings:", updatePayload);
       const { error } = await supabase
         .from("organizations")
         .update(updatePayload as any)

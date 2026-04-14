@@ -382,7 +382,6 @@ export function useBulkPipeline({ courses, onComplete, enableVerification = fals
         });
 
         if (corrected > 0) {
-          console.log(`[Verification] Corrected ${corrected}/${verified} answers for course "${courseTitle}"`);
         }
       }
     }
@@ -456,7 +455,6 @@ export function useBulkPipeline({ courses, onComplete, enableVerification = fals
             await supabase.from("lessons").update({ content: cached }).eq("id", lesson.id);
             lessonsFilled++;
             filledSoFar++;
-            console.log(`[cache-hit] Reused content for "${lesson.title}"`);
             return;
           }
 
@@ -472,11 +470,9 @@ export function useBulkPipeline({ courses, onComplete, enableVerification = fals
               await supabase.from("lessons").update({ content: kbContent }).eq("id", lesson.id);
               lessonsFilled++;
               filledSoFar++;
-              console.log(`[kb-hit] Reused from knowledge bank "${kbResult[0].title}" (score: ${kbResult[0].similarity_score?.toFixed(2)}) for "${lesson.title}"`);
               return;
             }
           } catch (e) {
-            console.warn("[kb-search] Knowledge bank search failed, continuing:", e);
           }
 
           // ── Step C: Search DB for similar content (pg_trgm) ──
@@ -490,7 +486,6 @@ export function useBulkPipeline({ courses, onComplete, enableVerification = fals
             await supabase.from("lessons").update({ content: reusedContent }).eq("id", lesson.id);
             lessonsFilled++;
             filledSoFar++;
-            console.log(`[db-hit] Reused from "${similar[0].title}" (score: ${similar[0].similarity_score?.toFixed(2)}) for "${lesson.title}"`);
             return;
           }
 

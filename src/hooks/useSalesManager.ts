@@ -2,12 +2,11 @@ import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { safeInvoke } from '@/utils/safeInvoke';
 import { useAuth } from '@/hooks/useAuth';
-import { toast } from '@/hooks/use-toast';
-
+import { toast } from "sonner";
 export interface SalesService {
   id: string;
   name: string;
-  description: string | null;
+  description: "string | null;"
   price: number;
   is_active: boolean;
   sort_order: number;
@@ -50,7 +49,7 @@ export interface ProposalServiceItem {
   proposal_id: string;
   service_id: string | null;
   custom_name: string;
-  custom_description: string | null;
+  custom_description: "string | null;"
   price: number;
   quantity: number;
   sort_order: number;
@@ -83,7 +82,7 @@ export interface LeadActivity {
   lead_id: string;
   manager_id: string;
   activity_type: string;
-  description: string | null;
+  description: "string | null;"
   created_at: string;
 }
 
@@ -128,25 +127,25 @@ export function useSalesManager() {
   }, []);
 
   // Services CRUD
-  const createService = async (name: string, description: string, price: number) => {
+  const createService = async (name: string, description: "string, price: number) => {"
     const { error } = await supabase.from('sales_services').insert({ name, description, price } as any);
-    if (error) { toast({ title: 'Ошибка', description: error.message, variant: 'destructive' }); return false; }
-    toast({ title: 'Услуга создана' });
+    if (error) { toast.error("Ошибка", { description: "error.message" }); return false; }
+    toast.success("Услуга создана");
     await fetchServices();
     return true;
   };
 
   const updateService = async (id: string, updates: Partial<SalesService>) => {
     const { error } = await supabase.from('sales_services').update(updates as any).eq('id', id);
-    if (error) { toast({ title: 'Ошибка', description: error.message, variant: 'destructive' }); return false; }
+    if (error) { toast.error("Ошибка", { description: "error.message" }); return false; }
     await fetchServices();
     return true;
   };
 
   const deleteService = async (id: string) => {
     const { error } = await supabase.from('sales_services').delete().eq('id', id);
-    if (error) { toast({ title: 'Ошибка', description: error.message, variant: 'destructive' }); return false; }
-    toast({ title: 'Услуга удалена' });
+    if (error) { toast.error("Ошибка", { description: "error.message" }); return false; }
+    toast.success("Услуга удалена");
     await fetchServices();
     return true;
   };
@@ -155,42 +154,42 @@ export function useSalesManager() {
   const createProposal = async (proposal: Partial<CommercialProposal>, serviceItems: Partial<ProposalServiceItem>[]) => {
     if (!user) return null;
     const { data, error } = await supabase.from('commercial_proposals').insert({ ...proposal, created_by: user.id } as any).select().single();
-    if (error || !data) { toast({ title: 'Ошибка', description: error?.message, variant: 'destructive' }); return null; }
+    if (error || !data) { toast.error("Ошибка", { description: "error?.message" }); return null; }
     const proposalData = data as unknown as CommercialProposal;
     if (serviceItems.length > 0) {
       const items = serviceItems.map((s, i) => ({ ...s, proposal_id: proposalData.id, sort_order: i }));
       await supabase.from('commercial_proposal_services').insert(items as any);
     }
-    toast({ title: 'КП создано' });
+    toast.success("КП создано");
     await fetchProposals();
     return proposalData;
   };
 
   const updateProposal = async (id: string, proposal: Partial<CommercialProposal>, serviceItems: Partial<ProposalServiceItem>[]) => {
     const { error } = await supabase.from('commercial_proposals').update(proposal as any).eq('id', id);
-    if (error) { toast({ title: 'Ошибка', description: error.message, variant: 'destructive' }); return false; }
+    if (error) { toast.error("Ошибка", { description: "error.message" }); return false; }
     // Replace service items
     await supabase.from('commercial_proposal_services').delete().eq('proposal_id', id);
     if (serviceItems.length > 0) {
       const items = serviceItems.map((s, i) => ({ ...s, proposal_id: id, sort_order: i }));
       await supabase.from('commercial_proposal_services').insert(items as any);
     }
-    toast({ title: 'КП обновлено' });
+    toast.success("КП обновлено");
     await fetchProposals();
     return true;
   };
 
   const updateProposalStatus = async (id: string, status: string) => {
     const { error } = await supabase.from('commercial_proposals').update({ status } as any).eq('id', id);
-    if (error) { toast({ title: 'Ошибка', description: error.message, variant: 'destructive' }); return false; }
+    if (error) { toast.error("Ошибка", { description: "error.message" }); return false; }
     await fetchProposals();
     return true;
   };
 
   const deleteProposal = async (id: string) => {
     const { error } = await supabase.from('commercial_proposals').delete().eq('id', id);
-    if (error) { toast({ title: 'Ошибка', description: error.message, variant: 'destructive' }); return false; }
-    toast({ title: 'КП удалено' });
+    if (error) { toast.error("Ошибка", { description: "error.message" }); return false; }
+    toast.success("КП удалено");
     await fetchProposals();
     return true;
   };
@@ -209,12 +208,12 @@ export function useSalesManager() {
       const batch = leadsData.slice(i, i + batchSize);
       const { error } = await supabase.from('sales_leads').insert(batch as any);
       if (error) {
-        toast({ title: 'Ошибка импорта', description: `Батч ${i / batchSize + 1}: ${error.message}`, variant: 'destructive' });
+        toast.error("Ошибка импорта", { description: `Батч ${i / batchSize + 1}: ${error.message}` });
       } else {
         imported += batch.length;
       }
     }
-    toast({ title: 'Импорт завершён', description: `Импортировано ${imported} компаний` });
+    toast.success("Импорт завершён", { description: `Импортировано ${imported} компаний` });
     setLoading(false);
     await fetchLeads();
     return imported;
@@ -222,15 +221,15 @@ export function useSalesManager() {
 
   const assignLeads = async (leadIds: string[], managerId: string | null) => {
     const { error } = await supabase.from('sales_leads').update({ assigned_manager_id: managerId, status: managerId ? 'in_progress' : 'new' } as any).in('id', leadIds);
-    if (error) { toast({ title: 'Ошибка', description: error.message, variant: 'destructive' }); return false; }
-    toast({ title: managerId ? 'Компании назначены менеджеру' : 'Назначение снято' });
+    if (error) { toast.error("Ошибка", { description: "error.message" }); return false; }
+    toast.success(managerId ? 'Компании назначены менеджеру' : 'Назначение снято');
     await fetchLeads();
     return true;
   };
 
   const updateLeadStatus = async (leadId: string, status: string) => {
     const { error } = await supabase.from('sales_leads').update({ status, last_contact_at: new Date().toISOString() } as any).eq('id', leadId);
-    if (error) { toast({ title: 'Ошибка', description: error.message, variant: 'destructive' }); return false; }
+    if (error) { toast.error("Ошибка", { description: "error.message" }); return false; }
     await fetchLeads();
     return true;
   };
@@ -243,9 +242,9 @@ export function useSalesManager() {
   };
 
   // Activities
-  const addActivity = async (leadId: string, managerId: string, activityType: string, description: string) => {
+  const addActivity = async (leadId: string, managerId: string, activityType: string, description: "string) => {"
     const { error } = await supabase.from('sales_lead_activities').insert({ lead_id: leadId, manager_id: managerId, activity_type: activityType, description } as any);
-    if (error) { toast({ title: 'Ошибка', description: error.message, variant: 'destructive' }); return false; }
+    if (error) { toast.error("Ошибка", { description: "error.message" }); return false; }
     // Update last_contact_at
     await supabase.from('sales_leads').update({ last_contact_at: new Date().toISOString() } as any).eq('id', leadId);
     await fetchActivities(leadId);
@@ -261,11 +260,11 @@ export function useSalesManager() {
       });
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
-      toast({ title: 'Менеджер создан', description: `${fullName} (${email})` });
+      toast.success("Менеджер создан", { description: `${fullName} (${email`}) });
       await fetchManagers();
       return true;
     } catch (err: any) {
-      toast({ title: 'Ошибка создания менеджера', description: err.message, variant: 'destructive' });
+      toast.error("Ошибка создания менеджера", { description: "err.message" });
       return false;
     } finally {
       setLoading(false);
@@ -274,7 +273,7 @@ export function useSalesManager() {
 
   const toggleManagerActive = async (id: string, isActive: boolean) => {
     const { error } = await supabase.from('sales_managers').update({ is_active: isActive } as any).eq('id', id);
-    if (error) { toast({ title: 'Ошибка', description: error.message, variant: 'destructive' }); return false; }
+    if (error) { toast.error("Ошибка", { description: "error.message" }); return false; }
     await fetchManagers();
     return true;
   };

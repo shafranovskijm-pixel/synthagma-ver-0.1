@@ -16,13 +16,11 @@ export async function withRetry<T>(
     try {
       if (attempt > 0) {
         const delay = RETRY_DELAYS[attempt] ?? 3000;
-        console.log(`[withRetry] ${label} attempt ${attempt + 1}/${maxRetries}, waiting ${delay}ms`);
         await new Promise((resolve) => setTimeout(resolve, delay));
       }
       return await fn();
     } catch (error) {
       lastError = error;
-      console.warn(`[withRetry] ${label} attempt ${attempt + 1} failed:`, error);
     }
   }
 

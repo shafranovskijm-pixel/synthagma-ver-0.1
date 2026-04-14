@@ -6,9 +6,9 @@ import { SigmaLogo } from "@/components/ui/SigmaLogo";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { ArrowLeft, Mail, Lock, User, Loader2, Building2, AlertTriangle, BookOpen, Users } from "lucide-react";
+import { toast } from "sonner";
 
 interface LinkData {
   id: string;
@@ -34,7 +34,6 @@ interface LinkData {
 const JoinByLink = () => {
   const { token } = useParams();
   const navigate = useNavigate();
-  const { toast } = useToast();
   const { user, loading: authLoading } = useAuth();
 
   const [linkData, setLinkData] = useState<LinkData | null>(null);
@@ -151,29 +150,17 @@ const JoinByLink = () => {
     e.preventDefault();
 
     if (!fullName || !email || !password) {
-      toast({
-        title: "Ошибка",
-        description: "Заполните все обязательные поля",
-        variant: "destructive",
-      });
+      toast.error("Ошибка", { description: "Заполните все обязательные поля" });
       return;
     }
 
     if (password !== confirmPassword) {
-      toast({
-        title: "Ошибка",
-        description: "Пароли не совпадают",
-        variant: "destructive",
-      });
+      toast.error("Ошибка", { description: "Пароли не совпадают" });
       return;
     }
 
     if (password.length < 6) {
-      toast({
-        title: "Ошибка",
-        description: "Пароль должен быть не менее 6 символов",
-        variant: "destructive",
-      });
+      toast.error("Ошибка", { description: "Пароль должен быть не менее 6 символов" });
       return;
     }
 
@@ -195,11 +182,7 @@ const JoinByLink = () => {
       const count = Number(currentCount) || 0;
 
       if (maxStudents !== -1 && count >= maxStudents) {
-        toast({
-          title: "Регистрация невозможна",
-          description: "Организация достигла лимита учеников. Обратитесь к администратору.",
-          variant: "destructive",
-        });
+        toast.error("Регистрация невозможна", { description: "Организация достигла лимита учеников. Обратитесь к администратору." });
         setIsSubmitting(false);
         return;
       }
@@ -238,12 +221,7 @@ const JoinByLink = () => {
         .update({ used_count: (linkData.used_count || 0) + 1 })
         .eq('id', linkData.id);
 
-      toast({
-        title: "Успешно!",
-        description: linkData.course_id 
-          ? `Вы зарегистрированы и записаны на курс` 
-          : `Вы зарегистрированы в ${organizationName}`,
-      });
+      toast.success("Успешно!", { description: "linkData.course_id" });
 
       navigate('/student');
     } catch (err: any) {
@@ -251,11 +229,7 @@ const JoinByLink = () => {
       if (err.message.includes("already registered")) {
         errorMessage = "Пользователь с таким email уже зарегистрирован";
       }
-      toast({
-        title: "Ошибка регистрации",
-        description: errorMessage,
-        variant: "destructive",
-      });
+      toast.error("Ошибка регистрации", { description: "errorMessage" });
     } finally {
       setIsSubmitting(false);
     }

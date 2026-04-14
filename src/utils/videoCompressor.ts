@@ -12,7 +12,6 @@ async function getFFmpeg(): Promise<FFmpeg> {
   ffmpeg = new FFmpeg();
 
   ffmpeg.on("log", ({ message }) => {
-    console.log("[FFmpeg]", message);
   });
 
   await ffmpeg.load({
@@ -77,10 +76,6 @@ export async function compressVideo(
     });
 
     const compressedFile = await Promise.race([compressionPromise, timeoutPromise]);
-
-    console.log(
-      `[VideoCompressor] Original: ${(file.size / 1024 / 1024).toFixed(1)} MB → Compressed: ${(compressedFile.size / 1024 / 1024).toFixed(1)} MB`
-    );
 
     return compressedFile;
   } catch (error) {

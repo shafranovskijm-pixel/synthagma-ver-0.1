@@ -11,8 +11,8 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { safeInvoke } from "@/utils/safeInvoke";
 import { showLimitToast } from "@/utils/limitToast";
-import { useToast } from "@/hooks/use-toast";
 import { Upload, FileSpreadsheet, Loader2, Download, CheckCircle2, XCircle, AlertCircle } from "lucide-react";
+import { toast } from "sonner";
 
 interface Course {
   id: string;
@@ -48,8 +48,6 @@ export default function ImportStudentsForm({ organizationId, courses, companies,
   const [results, setResults] = useState<ImportResult[]>([]);
   const [showResults, setShowResults] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const { toast } = useToast();
-
   const generatePassword = () => {
     const chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
     let password = "";
@@ -99,11 +97,11 @@ export default function ImportStudentsForm({ organizationId, courses, companies,
 
   const handleImport = async () => {
     if (!file) {
-      toast({ title: "Ошибка", description: "Выберите файл для импорта", variant: "destructive" });
+      toast.error("Ошибка", { description: "Выберите файл для импорта" });
       return;
     }
     if (!organizationId) {
-      toast({ title: "Ошибка", description: "Организация не определена. Попробуйте обновить страницу.", variant: "destructive" });
+      toast.error("Ошибка", { description: "Организация не определена. Попробуйте обновить страницу." });
       return;
     }
 
@@ -115,7 +113,7 @@ export default function ImportStudentsForm({ organizationId, courses, companies,
       const students = parseCSV(text);
 
       if (students.length === 0) {
-        toast({ title: "Ошибка", description: "Не найдено записей для импорта", variant: "destructive" });
+        toast.error("Ошибка", { description: "Не найдено записей для импорта" });
         setIsImporting(false);
         return;
       }
@@ -182,15 +180,15 @@ export default function ImportStudentsForm({ organizationId, courses, companies,
       const failCount = importResults.filter(r => !r.success).length;
 
       if (failCount === 0) {
-        toast({ title: "Успешно", description: `Импортировано ${successCount} учеников` });
+        toast.success("Успешно", { description: `Импортировано ${successCount} учеников` });
       } else if (successCount === 0) {
-        toast({ title: "Ошибка", description: `Ошибка импорта всех ${failCount} учеников`, variant: "destructive" });
+        toast.error("Ошибка", { description: `Ошибка импорта всех ${failCount} учеников` });
       } else {
-        toast({ title: "Частичный успех", description: `Импортировано ${successCount} из ${students.length} учеников` });
+        toast.success("Частичный успех", { description: `Импортировано ${successCount} из ${students.length} учеников` });
       }
     } catch (error: any) {
       console.error("Import error:", error);
-      toast({ title: "Ошибка", description: error.message, variant: "destructive" });
+      toast.error("Ошибка", { description: "error.message" });
     } finally {
       setIsImporting(false);
     }

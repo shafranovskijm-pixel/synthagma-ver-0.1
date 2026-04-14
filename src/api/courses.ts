@@ -89,7 +89,6 @@ export async function fetchCourseStudentCounts(courseIds: string[]): Promise<Map
         .in("role", ["organization", "admin"]);
       orgAdminUserIds = new Set((rolesData || []).map(r => r.user_id));
     } catch (e) {
-      console.warn("Failed to fetch user roles for student count filtering:", e);
     }
 
     for (const courseId of courseIds) {

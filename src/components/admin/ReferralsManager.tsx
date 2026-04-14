@@ -6,11 +6,10 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useToast } from "@/hooks/use-toast";
 import { Users, DollarSign, TrendingUp, CheckCircle, XCircle } from "lucide-react";
+import { toast } from "sonner";
 
 export function ReferralsManager() {
-  const { toast } = useToast();
   const [partners, setPartners] = useState<any[]>([]);
   const [payouts, setPayouts] = useState<any[]>([]);
   const [commissions, setCommissions] = useState<any[]>([]);
@@ -39,9 +38,9 @@ export function ReferralsManager() {
       .update({ commission_percent: newPercent })
       .eq("id", partnerId);
     if (error) {
-      toast({ title: "Ошибка", description: error.message, variant: "destructive" });
+      toast.error("Ошибка", { description: "error.message" });
     } else {
-      toast({ title: "Комиссия обновлена" });
+      toast.success("Комиссия обновлена");
       loadData();
     }
   };
@@ -52,7 +51,7 @@ export function ReferralsManager() {
       .update({ status: action, paid_at: action === "paid" ? new Date().toISOString() : null })
       .eq("id", payoutId);
     if (error) {
-      toast({ title: "Ошибка", variant: "destructive" });
+      toast.error("Ошибка");
     } else {
       // If paid, deduct from partner balance
       if (action === "paid") {
@@ -67,7 +66,7 @@ export function ReferralsManager() {
           }
         }
       }
-      toast({ title: action === "paid" ? "Выплата одобрена" : "Выплата отклонена" });
+      toast.success(action === "paid" ? "Выплата одобрена" : "Выплата отклонена");
       loadData();
     }
   };
@@ -75,7 +74,7 @@ export function ReferralsManager() {
   const handleToggleStatus = async (partnerId: string, currentStatus: string) => {
     const newStatus = currentStatus === "active" ? "blocked" : "active";
     await supabase.from("referral_partners").update({ status: newStatus }).eq("id", partnerId);
-    toast({ title: `Статус изменён на ${newStatus}` });
+    toast.success("Статус изменён на ${newStatus}");
     loadData();
   };
 

@@ -46,11 +46,11 @@ import {
   MessageSquare,
   Inbox,
 } from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import { DocumentDropZone } from "../DocumentDropZone";
 import type { Company, CompanyDocument } from "@/hooks/useCompaniesManager";
+import { toast } from "sonner";
 
 interface CompanyDetailDialogProps {
   open: boolean;
@@ -628,7 +628,6 @@ function DocumentItem({
 }
 
 function CompanyAccessTab({ company }: { company: Company }) {
-  const { toast } = useToast();
   const [creating, setCreating] = useState(false);
   const [email, setEmail] = useState(company.email || "");
   const [password, setPassword] = useState("");
@@ -661,7 +660,7 @@ function CompanyAccessTab({ company }: { company: Company }) {
 
   const handleCreate = async () => {
     if (!email || !password) {
-      toast({ title: "Заполните email и пароль", variant: "destructive" });
+      toast.error("Заполните email и пароль");
       return;
     }
     setCreating(true);
@@ -671,10 +670,10 @@ function CompanyAccessTab({ company }: { company: Company }) {
       });
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
-      toast({ title: "Аккаунт создан", description: `Логин: ${email}` });
+      toast.success("Аккаунт создан", { description: `Логин: ${email}` });
       setCredentials({ login_email: email, login_password: password });
     } catch (e: any) {
-      toast({ title: "Ошибка", description: e.message, variant: "destructive" });
+      toast.error("Ошибка", { description: "e.message" });
     } finally {
       setCreating(false);
     }
@@ -682,7 +681,7 @@ function CompanyAccessTab({ company }: { company: Company }) {
 
   const copyToClipboard = (text: string, label: string) => {
     navigator.clipboard.writeText(text);
-    toast({ title: `${label} скопирован` });
+    toast.success("${label} скопирован");
   };
 
   if (hasAccount || credentials) {
@@ -813,7 +812,6 @@ const STATUS_VARIANT: Record<string, "default" | "secondary" | "destructive" | "
 };
 
 function CompanyRequestsOrgView({ companyId }: { companyId: string }) {
-  const { toast } = useToast();
   const [requests, setRequests] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
@@ -846,10 +844,10 @@ function CompanyRequestsOrgView({ companyId }: { companyId: string }) {
         .update({ status, org_response: response || null } as any)
         .eq("id", id);
       if (error) throw error;
-      toast({ title: "Заявка обновлена" });
+      toast.success("Заявка обновлена");
       loadRequests();
     } catch (e: any) {
-      toast({ title: "Ошибка", description: e.message, variant: "destructive" });
+      toast.error("Ошибка", { description: "e.message" });
     } finally {
       setUpdatingId(null);
     }

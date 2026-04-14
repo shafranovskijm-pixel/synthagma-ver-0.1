@@ -6,8 +6,8 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Star, MessageSquarePlus } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { toast } from "@/hooks/use-toast";
 import { LandingLoginDialog } from "./LandingLoginDialog";
+import { toast } from "sonner";
 
 interface TestimonialFormProps {
   onSubmitted?: () => void;
@@ -69,7 +69,7 @@ export function TestimonialForm({ onSubmitted }: TestimonialFormProps) {
     if (!user) {
       setShowLogin(true);
     } else if (!isOrgUser) {
-      toast({ title: "Доступ ограничен", description: "Оставлять отзывы могут только зарегистрированные организации", variant: "destructive" });
+      toast.error("Доступ ограничен", { description: "Оставлять отзывы могут только зарегистрированные организации" });
     } else {
       setShowForm(true);
     }
@@ -108,14 +108,14 @@ export function TestimonialForm({ onSubmitted }: TestimonialFormProps) {
 
       if (error) throw error;
 
-      toast({ title: "Отзыв отправлен!", description: "Он будет опубликован после модерации" });
+      toast.success("Отзыв отправлен!", { description: "Он будет опубликован после модерации" });
       setShowForm(false);
       setContent("");
       setHighlight("");
       setRating(5);
       onSubmitted?.();
     } catch (err: any) {
-      toast({ title: "Ошибка", description: err.message, variant: "destructive" });
+      toast.error("Ошибка", { description: "err.message" });
     } finally {
       setLoading(false);
     }

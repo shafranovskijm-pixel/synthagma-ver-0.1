@@ -11,8 +11,8 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { safeInvoke } from "@/utils/safeInvoke";
 import { showLimitToast } from "@/utils/limitToast";
-import { useToast } from "@/hooks/use-toast";
 import * as XLSX from "xlsx";
+import { toast } from "sonner";
 
 interface Props {
   open: boolean;
@@ -30,7 +30,6 @@ interface ImportRow {
 }
 
 export function EmployeeImportDialog({ open, onOpenChange, companyId, organizationId, onImportComplete }: Props) {
-  const { toast } = useToast();
   const [rows, setRows] = useState<ImportRow[]>([]);
   const [importing, setImporting] = useState(false);
   const [progress, setProgress] = useState(0);
@@ -59,7 +58,7 @@ export function EmployeeImportDialog({ open, onOpenChange, companyId, organizati
         setDone(false);
         setProgress(0);
       } catch {
-        toast({ title: "Ошибка", description: "Не удалось прочитать файл", variant: "destructive" });
+        toast.error("Ошибка", { description: "Не удалось прочитать файл" });
       }
     };
     reader.readAsBinaryString(file);
@@ -111,7 +110,7 @@ export function EmployeeImportDialog({ open, onOpenChange, companyId, organizati
     setImporting(false);
     setDone(true);
     onImportComplete();
-    toast({ title: "Импорт завершён", description: `Успешно: ${updated.filter((r) => r.status === "success").length} из ${updated.length}` });
+    toast.success("Импорт завершён", { description: `Успешно: ${updated.filter((r) => r.status ===` });
   };
 
   const handleClose = (v: boolean) => {

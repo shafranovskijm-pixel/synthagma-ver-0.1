@@ -4,8 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
-import { toast } from "@/hooks/use-toast";
-
+import { toast } from "sonner";
 interface LandingLoginDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -23,9 +22,9 @@ export function LandingLoginDialog({ open, onOpenChange, onSuccess }: LandingLog
     try {
       const { error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) {
-        toast({ title: "Ошибка входа", description: error.message, variant: "destructive" });
+        toast.error("Ошибка входа", { description: "error.message" });
       } else {
-        toast({ title: "Вход выполнен" });
+        toast.success("Вход выполнен");
         onOpenChange(false);
         onSuccess();
       }

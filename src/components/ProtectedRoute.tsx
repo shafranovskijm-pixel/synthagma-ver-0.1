@@ -19,7 +19,6 @@ export function ProtectedRoute({ children, requiredRole }: ProtectedRouteProps) 
   useEffect(() => {
     if (!loading && user && requiredRole && !userRole) {
       const timer = setTimeout(() => {
-        console.warn('[ProtectedRoute] Role loading timed out after', ROLE_LOADING_TIMEOUT, 'ms');
         setTimedOut(true);
       }, ROLE_LOADING_TIMEOUT);
       return () => clearTimeout(timer);

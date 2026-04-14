@@ -4,9 +4,9 @@ import { X, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "@/hooks/use-toast";
 import { motion, AnimatePresence } from "framer-motion";
 import specialOfferBg from "@/assets/special-offer-bg.jpg";
+import { toast } from "sonner";
 
 const STORAGE_KEY = "special_offer_dismissed";
 const DELAY_MS = 300000;
@@ -17,7 +17,6 @@ export function SpecialOfferPopup() {
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [sending, setSending] = useState(false);
-  const { toast } = useToast();
   const location = useLocation();
 
   const isPrivatePage = PRIVATE_PREFIXES.some(p => location.pathname.startsWith(p));
@@ -63,10 +62,10 @@ export function SpecialOfferPopup() {
         // Telegram notification is best-effort
       }
 
-      toast({ title: "Заявка отправлена!", description: "Мы свяжемся с вами в ближайшее время." });
+      toast.success("Заявка отправлена!", { description: "Мы свяжемся с вами в ближайшее время." });
       dismiss();
     } catch {
-      toast({ title: "Ошибка", description: "Попробуйте позже", variant: "destructive" });
+      toast.error("Ошибка", { description: "Попробуйте позже" });
     } finally {
       setSending(false);
     }

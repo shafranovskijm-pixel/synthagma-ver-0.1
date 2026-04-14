@@ -336,7 +336,6 @@ export function useLessonMedia(
               toast.success("Изображение сгенерировано");
             }
           } catch (e) {
-            console.warn("Hero image generation skipped:", e);
           }
 
           // Generate intro audio via SaluteSpeech (non-blocking)
@@ -381,7 +380,6 @@ export function useLessonMedia(
               }
             }
           } catch (e) {
-            console.warn("Intro audio generation skipped:", e);
           }
 
           onUpdate({ blocks: newBlocks, content: blocksToJsonFn(newBlocks) });

@@ -1,6 +1,5 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { toast } from "@/hooks/use-toast";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Upload, FileText, Receipt, File, Trash2, Download, FolderOpen, Eye } from "lucide-react";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
+import { toast } from "sonner";
 
 interface BillingDoc {
   id: string;
@@ -53,7 +53,7 @@ export function OrgBillingDocsTab({ organizationId }: OrgBillingDocsTabProps) {
 
   const handleUpload = async () => {
     if (!uploadFile || !uploadDocName.trim()) {
-      toast({ title: "Заполните все поля", variant: "destructive" });
+      toast.error("Заполните все поля");
       return;
     }
     setUploading(true);
@@ -64,7 +64,7 @@ export function OrgBillingDocsTab({ organizationId }: OrgBillingDocsTabProps) {
       .upload(filePath, uploadFile);
 
     if (uploadError) {
-      toast({ title: "Ошибка загрузки", description: uploadError.message, variant: "destructive" });
+      toast.error("Ошибка загрузки", { description: "uploadError.message" });
       setUploading(false);
       return;
     }
@@ -79,9 +79,9 @@ export function OrgBillingDocsTab({ organizationId }: OrgBillingDocsTabProps) {
       } as any);
 
     if (dbError) {
-      toast({ title: "Ошибка сохранения", description: dbError.message, variant: "destructive" });
+      toast.error("Ошибка сохранения", { description: "dbError.message" });
     } else {
-      toast({ title: "Документ загружен" });
+      toast.success("Документ загружен");
       setUploadDocName("");
       setUploadFile(null);
       fetchDocs();
@@ -96,9 +96,9 @@ export function OrgBillingDocsTab({ organizationId }: OrgBillingDocsTabProps) {
       .delete()
       .eq("id", doc.id);
     if (error) {
-      toast({ title: "Ошибка удаления", description: error.message, variant: "destructive" });
+      toast.error("Ошибка удаления", { description: "error.message" });
     } else {
-      toast({ title: "Документ удалён" });
+      toast.success("Документ удалён");
       setBillingDocs(prev => prev.filter(d => d.id !== doc.id));
     }
   };
@@ -108,7 +108,7 @@ export function OrgBillingDocsTab({ organizationId }: OrgBillingDocsTabProps) {
       .from("billing-documents")
       .createSignedUrl(doc.file_url, 3600);
     if (!data?.signedUrl) {
-      toast({ title: "Ошибка", description: "Не удалось получить ссылку", variant: "destructive" });
+      toast.error("Ошибка", { description: "Не удалось получить ссылку" });
       return;
     }
     try {
@@ -127,14 +127,14 @@ export function OrgBillingDocsTab({ organizationId }: OrgBillingDocsTabProps) {
       .from("billing-documents")
       .createSignedUrl(doc.file_url, 3600);
     if (!data?.signedUrl) {
-      toast({ title: "Ошибка", description: "Не удалось скачать", variant: "destructive" });
+      toast.error("Ошибка", { description: "Не удалось скачать" });
       return;
     }
     try {
       const { downloadHtmlFile } = await import("@/utils/downloadHtmlFile");
       await downloadHtmlFile(data.signedUrl, doc.name);
     } catch {
-      toast({ title: "Ошибка", description: "Не удалось скачать файл", variant: "destructive" });
+      toast.error("Ошибка", { description: "Не удалось скачать файл" });
     }
   };
 
