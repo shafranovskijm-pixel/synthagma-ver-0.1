@@ -201,8 +201,8 @@ export function useOrganizationDataLoader({ userId, onCategoriesLoaded }: UseOrg
                 ...c,
                 lessonsCount: countMap.get(c.id) ?? c.lessonsCount ?? 0
               })));
-            } catch (err) {
-              console.warn("Failed to load lesson counts (non-fatal):", err);
+            } catch {
+              // non-fatal: lesson counts load silently
             }
           })();
         }
@@ -344,8 +344,8 @@ export function useOrganizationDataLoader({ userId, onCategoriesLoaded }: UseOrg
               generated_password: passwordMap.get(s.user_id) || s.generated_password
             })));
           }
-        }).catch(err => {
-          console.warn("Failed to load passwords (non-fatal):", err);
+        }).catch(() => {
+          // non-fatal: passwords load silently
         });
 
         // Identity docs — deferred
@@ -379,8 +379,8 @@ export function useOrganizationDataLoader({ userId, onCategoriesLoaded }: UseOrg
 
           setStudentDocsByUser(docsByUser);
           setDocumentsStats({ total: studentProfilesData.length, withPassport, withSnils, withEducation, complete });
-        }).catch(err => {
-          console.warn("Failed to load identity docs (non-fatal):", err);
+        }).catch(() => {
+          // non-fatal: identity docs load silently
         });
 
         // FRDO data — deferred
@@ -419,8 +419,8 @@ export function useOrganizationDataLoader({ userId, onCategoriesLoaded }: UseOrg
               }
             }
             setStudentFrdoStatus(frdoStatusMap);
-          }).catch(err => {
-            console.warn("Failed to load FRDO data (non-fatal):", err);
+          }).catch(() => {
+            // non-fatal: FRDO data loads silently
           });
         }
 
