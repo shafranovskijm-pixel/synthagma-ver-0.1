@@ -806,6 +806,19 @@ export const CoursesTab = React.memo(function CoursesTab({ organizationId, onCou
                         Просмотр
                       </DropdownMenuItem>
                       <DropdownMenuSeparator />
+                      <DropdownMenuItem onClick={e => handleToggleCourseSetting(course, 'skip_video_identification', e)}>
+                        {course.skip_video_identification ? <VideoOff className="w-4 h-4 mr-2" /> : <Video className="w-4 h-4 mr-2" />}
+                        {course.skip_video_identification ? 'Включить видеоидент.' : 'Отключить видеоидент.'}
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={e => handleToggleCourseSetting(course, 'sequential_lessons', e)}>
+                        {course.sequential_lessons ? <Lock className="w-4 h-4 mr-2" /> : <Unlock className="w-4 h-4 mr-2" />}
+                        {course.sequential_lessons ? 'Отключить послед. уроков' : 'Включить послед. уроков'}
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={e => handleToggleCourseSetting(course, 'allow_video_seek', e)}>
+                        <FastForward className="w-4 h-4 mr-2" />
+                        {course.allow_video_seek === false ? 'Разрешить перемотку' : 'Запретить перемотку'}
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
                       <DropdownMenuItem onClick={e => { e.stopPropagation(); handleDuplicate(course.id); }}>
                         <Copy className="w-4 h-4 mr-2" />
                         Дублировать курс
