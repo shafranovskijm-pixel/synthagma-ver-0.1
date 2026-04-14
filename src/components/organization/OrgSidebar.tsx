@@ -166,7 +166,7 @@ export function OrgSidebar() {
         role="navigation"
         aria-label="Основная навигация"
         className={cn(
-          "fixed inset-y-0 left-0 z-50 w-[88px] border-r border-border/60 flex flex-col transition-transform duration-300",
+          "fixed inset-y-0 left-0 z-50 w-[88px] shadow-[2px_0_8px_rgba(0,0,0,0.06)] flex flex-col transition-transform duration-300",
           isMobileSidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
         )}
         style={{ backgroundColor: `hsl(${brandHsl} / 0.07)` }}
@@ -184,7 +184,7 @@ export function OrgSidebar() {
             <TooltipTrigger asChild>
               <button
                 onClick={() => logoInputRef.current?.click()}
-                className="relative flex h-12 w-12 items-center justify-center overflow-hidden rounded-xl border border-border/60 bg-card/80 shadow-sm hover:ring-2 hover:ring-primary/40 transition-all group/logo"
+                className="relative flex h-12 w-12 items-center justify-center overflow-hidden rounded-xl bg-card/80 shadow-sm hover:ring-2 hover:ring-primary/40 transition-all group/logo"
               >
                 {isUploadingLogo ? (
                   <div className="animate-spin rounded-full h-5 w-5 border-2 border-primary border-t-transparent" />
@@ -205,7 +205,7 @@ export function OrgSidebar() {
         {/* Navigation pill */}
         <div className="flex-1 flex items-center justify-center overflow-y-auto scrollbar-hide px-2">
           <div
-            className="rounded-[28px] border border-border/60 p-2 shadow-sm backdrop-blur-sm"
+            className="rounded-[28px] p-2 shadow-md backdrop-blur-sm"
             style={{ backgroundColor: `hsl(${brandHsl} / 0.14)` }}
           >
             <nav className="flex flex-col items-center gap-1.5">
