@@ -205,7 +205,7 @@ export function OrgSidebar() {
         {/* Navigation pill */}
         <div className="flex-1 flex items-center justify-center overflow-y-auto scrollbar-hide px-2">
           <div
-            className="rounded-[28px] p-2 shadow-md backdrop-blur-sm"
+            className="rounded-[28px] p-2 shadow-md"
             style={{ backgroundColor: `hsl(${brandHsl} / 0.14)` }}
           >
             <nav className="flex flex-col items-center gap-1.5">
@@ -246,7 +246,7 @@ export function OrgSidebar() {
                     <TooltipContent
                       side="right"
                       sideOffset={12}
-                      className="z-[100] rounded-xl px-4 py-2 text-sm font-medium shadow-lg border-border/60 backdrop-blur-sm"
+                      className="z-[100] rounded-xl px-4 py-2 text-sm font-medium shadow-lg border-border/60"
                       style={{
                         backgroundColor: `hsl(${brandHsl})`,
                         color: 'white',
