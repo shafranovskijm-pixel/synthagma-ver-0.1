@@ -23,7 +23,6 @@ export function OrgSettingsSidebar() {
   const isMobileSidebarOpen = d.isMobileSidebarOpen;
   const setIsMobileSidebarOpen = d.setIsMobileSidebarOpen;
   const [helpOpen, setHelpOpen] = useState(false);
-  const setIsMobileSidebarOpen = d.setIsMobileSidebarOpen;
 
   return (
     <>

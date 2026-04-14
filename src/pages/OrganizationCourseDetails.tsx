@@ -44,6 +44,7 @@ function CoursePageInner({ organizationId, courseId }: { organizationId: string;
   const displayCover = coverUrl || defaultCoverImg;
 
   const [paidUntil, setPaidUntil] = useState<string | null>(null);
+  const [helpOpen, setHelpOpen] = useState(false);
   const planName = d.subscriptionLimits?.plan;
 
   // Course data
