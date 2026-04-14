@@ -390,6 +390,41 @@ export function CourseStoreManager({ organizationId, userRole = 'organization', 
           )}
         </TabsContent>
 
+        {/* Requests Tab - Ищут курсы */}
+        <TabsContent value="requests" className="space-y-6">
+          <div className="flex items-center justify-between">
+            <p className="text-sm text-muted-foreground">Объявления о поиске курсов</p>
+            <Button variant="outline" className="rounded-xl gap-2" onClick={() => h.setShowRequestDialog(true)}>
+              <MessageSquarePlus className="w-4 h-4" />Создать объявление
+            </Button>
+          </div>
+          {h.courseRequests.length === 0 ? (
+            <Card className="border-dashed"><CardContent className="py-12 text-center"><Megaphone className="w-12 h-12 text-muted-foreground/50 mx-auto mb-4" /><p className="text-muted-foreground">Пока нет объявлений о поиске курсов</p></CardContent></Card>
+          ) : (
+            <div className="space-y-3">
+              {h.courseRequests.map((request) => (
+                <Card key={request.id} className="hover:border-primary/30 transition-colors">
+                  <CardContent className="p-4">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex-1 min-w-0">
+                        <h4 className="font-medium line-clamp-1">{request.title}</h4>
+                        {request.description && <p className="text-sm text-muted-foreground mt-1 line-clamp-2">{request.description}</p>}
+                        <div className="flex flex-wrap items-center gap-3 mt-2 text-xs text-muted-foreground">
+                          {request.students_count && request.students_count > 1 && <span className="flex items-center gap-1"><Users className="w-3 h-3" />{request.students_count} чел.</span>}
+                          <span className="flex items-center gap-1"><Clock className="w-3 h-3" />{format(new Date(request.created_at), 'd MMM', { locale: ru })}</span>
+                        </div>
+                      </div>
+                      <Button size="sm" variant="outline" className="rounded-lg shrink-0" onClick={() => { h.setSelectedRequest(request); h.setShowProposeDialog(true); }}>
+                        <Send className="w-3 h-3 mr-1" />Предложить
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
+        </TabsContent>
+
         {/* My Courses Tab */}
         <TabsContent value="my-courses" className="space-y-6">
           <div className="flex items-center justify-between">
