@@ -6,7 +6,7 @@ import type { Course, CourseCategory, Enrollment } from "@/types";
 export async function fetchCourses(organizationId: string): Promise<Course[]> {
   const { data: coursesData, error } = await supabase
     .from("courses")
-    .select("id, title, description, is_published, created_at, updated_at, organization_id, category_id, duration, skip_video_identification, sequential_lessons, allow_video_seek, training_form, notify_on_completion, completion_notify_emails, cover_image_url, catalog_order, price, lessons(count)")
+    .select("id, title, description, is_published, created_at, updated_at, organization_id, category_id, duration, skip_video_identification, sequential_lessons, allow_video_seek, training_form, notify_on_completion, completion_notify_emails, cover_image_url, catalog_order, price")
     .eq("organization_id", organizationId)
     .order("catalog_order", { ascending: true })
     .order("created_at", { ascending: false });
@@ -28,7 +28,7 @@ export async function fetchCourses(organizationId: string): Promise<Course[]> {
     organization_id: course.organization_id,
     category_id: course.category_id,
     duration: course.duration,
-    lessonsCount: course.lessons?.[0]?.count || 0,
+    lessonsCount: 0,
     studentsCount: 0,
     skip_video_identification: course.skip_video_identification ?? false,
     sequential_lessons: course.sequential_lessons ?? false,
@@ -40,6 +40,29 @@ export async function fetchCourses(organizationId: string): Promise<Course[]> {
     catalog_order: course.catalog_order ?? 0,
     price: course.price ?? 0,
   }));
+}
+
+/** Fetch lesson counts for courses separately (non-blocking). */
+export async function fetchCourseLessonCounts(courseIds: string[]): Promise<Map<string, number>> {
+  const countMap = new Map<string, number>();
+  if (courseIds.length === 0) return countMap;
+
+  try {
+    const { data } = await supabase
+      .from("lessons")
+      .select("course_id")
+      .in("course_id", courseIds);
+
+    if (!data || data.length === 0) return countMap;
+
+    for (const row of data) {
+      countMap.set(row.course_id, (countMap.get(row.course_id) || 0) + 1);
+    }
+  } catch (e) {
+    console.warn("Failed to load lesson counts (non-fatal):", e);
+  }
+
+  return countMap;
 }
 
 /** Fetch student counts for courses separately (non-blocking). */

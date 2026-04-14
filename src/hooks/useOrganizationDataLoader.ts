@@ -128,7 +128,7 @@ export function useOrganizationDataLoader({ userId, onCategoriesLoaded }: UseOrg
           retryQuery(
             () => supabase
               .from("courses")
-              .select("id, title, description, is_published, created_at, category_id, duration, cover_image_url, skip_video_identification, sequential_lessons, allow_video_seek, price, lessons(count)")
+              .select("id, title, description, is_published, created_at, category_id, duration, cover_image_url, skip_video_identification, sequential_lessons, allow_video_seek, price")
               .eq("organization_id", orgId!)
               .order("created_at", { ascending: false }),
             "courses"
@@ -171,7 +171,7 @@ export function useOrganizationDataLoader({ userId, onCategoriesLoaded }: UseOrg
           description: course.description,
           is_published: course.is_published,
           created_at: course.created_at,
-          lessonsCount: course.lessons?.[0]?.count || 0,
+          lessonsCount: 0, // will be updated asynchronously
           studentsCount: 0, // will be updated in phase 2
           duration: course.duration || "—",
           category_id: course.category_id,
@@ -184,6 +184,27 @@ export function useOrganizationDataLoader({ userId, onCategoriesLoaded }: UseOrg
         
         setCourses(coursesWithStats);
         setIsLoadingCourses(false); // Courses visible NOW
+
+        // Lazy-load lesson counts (non-blocking)
+        const allCourseIds = coursesWithStats.map((c: any) => c.id);
+        if (allCourseIds.length > 0) {
+          supabase
+            .from("lessons")
+            .select("course_id")
+            .in("course_id", allCourseIds)
+            .then(({ data: lessonsData }) => {
+              if (cancelled || !lessonsData || lessonsData.length === 0) return;
+              const countMap = new Map<string, number>();
+              for (const row of lessonsData) {
+                countMap.set(row.course_id, (countMap.get(row.course_id) || 0) + 1);
+              }
+              setCourses(prev => prev.map(c => ({
+                ...c,
+                lessonsCount: countMap.get(c.id) ?? c.lessonsCount ?? 0
+              })));
+            })
+            .catch(err => console.warn("Failed to load lesson counts (non-fatal):", err));
+        }
 
         // ===== PHASE 2: Enrollments (needed for students tab) =====
         const courseIds = (coursesData || []).map((c: any) => c.id);
