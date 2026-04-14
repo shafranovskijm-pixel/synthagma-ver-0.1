@@ -477,7 +477,7 @@ export function SortableLessonItem({
                     <Bot className="w-3 h-3" />Ответы через AI
                   </Button>
                 </TestAnswersDialog>
-                <Button variant="outline" size="sm" className="rounded-lg text-xs gap-1 border-primary text-primary hover:bg-primary/10" onClick={onGenerate} disabled={media.isGeneratingContent}>
+                <Button variant="outline" size="sm" className="rounded-lg text-xs gap-1 border-primary text-primary hover:bg-primary/10" onClick={() => onGenerate("full")} disabled={media.isGeneratingContent}>
                   {media.isGeneratingContent ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
                   {media.isGeneratingContent ? "Генерация..." : "Сгенерировать вопросы с AI"}
                 </Button>
