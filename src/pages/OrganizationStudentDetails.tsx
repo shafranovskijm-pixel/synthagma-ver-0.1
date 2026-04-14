@@ -94,6 +94,7 @@ function StudentPageInner({ organizationId, studentId }: { organizationId: strin
   const displayCover = coverUrl || defaultCoverImg;
 
   const [paidUntil, setPaidUntil] = useState<string | null>(null);
+  const [helpOpen, setHelpOpen] = useState(false);
   const planName = d.subscriptionLimits?.plan;
 
   const [student, setStudent] = useState<StudentData | null>(null);
