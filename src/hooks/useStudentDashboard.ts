@@ -345,7 +345,9 @@ export function useStudentDashboard() {
           lessonCountMap.set(l.course_id, (lessonCountMap.get(l.course_id) || 0) + 1);
         }
 
-        const catalogData: CatalogCourse[] = allOrgCourses.map(c => {
+        const catalogData: CatalogCourse[] = allOrgCourses
+          .filter(c => !(c as any).hidden_from_catalog && !hiddenCategoryIds.has(c.category_id || ''))
+          .map(c => {
           const enrolled = cachedCoursesData.find(ec => ec.id === c.id);
           const cat = c.category_id ? catMap.get(c.category_id) : null;
           const isPending = pendingRequests.has(c.id);
