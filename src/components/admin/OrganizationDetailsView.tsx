@@ -45,7 +45,6 @@ import {
   ShieldOff,
   
   History,
-  Wallet,
   Eye,
   EyeOff,
   ExternalLink,
@@ -55,7 +54,7 @@ import {
   Download,
   Trash2,
   RefreshCw,
-  CreditCard,
+  
   Image,
   Upload,
   GripVertical,
@@ -68,13 +67,10 @@ import { CSS } from "@dnd-kit/utilities";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line } from "recharts";
-import { OrgDocumentsTab } from "./OrgDocumentsTab";
 import { OrgCommentsTab } from "./OrgCommentsTab";
 import { OrgRemindersTab } from "./OrgRemindersTab";
 
 import { OrgAuditLogsTab } from "./OrgAuditLogsTab";
-import { OrgBalanceManager } from "./OrgBalanceManager";
-import { OrgBillingDocsTab } from "./OrgBillingDocsTab";
 import { getPlanInfo, type SubscriptionPlan } from "@/constants/subscriptionPlans";
 import { SkillspaceImportDialog } from "./SkillspaceImportDialog";
 import { SkillspaceBatchImportDialog } from "./SkillspaceBatchImportDialog";
@@ -758,13 +754,10 @@ export function OrganizationDetailsView({ organization, onBack }: OrganizationDe
               {[
                 { key: "students", icon: Users, label: "Ученики" },
                 { key: "courses", icon: BookOpen, label: "Курсы" },
-                { key: "balance", icon: Wallet, label: "Баланс" },
                 { key: "tariffs", icon: Crown, label: "Тарифы" },
-                { key: "documents", icon: FileText, label: "Документы" },
                 { key: "history", icon: History, label: "История" },
                 { key: "comments", icon: MessageSquare, label: "Заметки" },
                 { key: "reminders", icon: Bell, label: "Напоминания" },
-                { key: "billing-docs", icon: CreditCard, label: "Закрывающие" },
                 { key: "settings", icon: Settings, label: "Настройки" },
               ].map(item => {
                 const Icon = item.icon;
@@ -794,7 +787,6 @@ export function OrganizationDetailsView({ organization, onBack }: OrganizationDe
           {[
             { key: "students", icon: Users, label: "Ученики" },
             { key: "courses", icon: BookOpen, label: "Курсы" },
-            { key: "balance", icon: Wallet, label: "Баланс" },
             { key: "tariffs", icon: Crown, label: "Тарифы" },
           ].map(item => {
             const Icon = item.icon;
@@ -815,13 +807,11 @@ export function OrganizationDetailsView({ organization, onBack }: OrganizationDe
           })}
 
           <div className="my-2 border-t border-border/30" />
-          <div className="px-3 pb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/60">Документы и история</div>
+          <div className="px-3 pb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/60">История</div>
           {[
-            { key: "documents", icon: FileText, label: "Документы" },
             { key: "history", icon: History, label: "История" },
             { key: "comments", icon: MessageSquare, label: "Заметки" },
             { key: "reminders", icon: Bell, label: "Напоминания" },
-            { key: "billing-docs", icon: CreditCard, label: "Закрывающие" },
           ].map(item => {
             const Icon = item.icon;
             return (
@@ -1333,11 +1323,6 @@ export function OrganizationDetailsView({ organization, onBack }: OrganizationDe
           </Card>
         </div>}
 
-        {/* Balance Tab */}
-        {activeTab === "balance" && <div className="space-y-4">
-          <OrgBalanceManager organizationId={organization.id} />
-        </div>}
-
         {/* Tariffs Tab */}
         {activeTab === "tariffs" && <div className="space-y-4">
           <Card>
@@ -1554,16 +1539,6 @@ export function OrganizationDetailsView({ organization, onBack }: OrganizationDe
           </Button>
         </div>}
 
-        {/* Documents Tab */}
-        {activeTab === "documents" && <div className="space-y-4">
-          <OrgDocumentsTab
-            organizationId={organization.id}
-            documents={documents}
-            onDocumentsChange={fetchDocuments}
-          />
-        </div>}
-
-
         {/* History/Audit Logs Tab */}
         {activeTab === "history" && <div className="space-y-4">
           <OrgAuditLogsTab organizationId={organization.id} />
@@ -1577,11 +1552,6 @@ export function OrganizationDetailsView({ organization, onBack }: OrganizationDe
         {/* Reminders Tab */}
         {activeTab === "reminders" && <div className="space-y-4">
           <OrgRemindersTab organizationId={organization.id} />
-        </div>}
-
-        {/* Billing Documents Tab */}
-        {activeTab === "billing-docs" && <div>
-          <OrgBillingDocsTab organizationId={organization.id} />
         </div>}
 
         {/* Settings Tab */}
@@ -1756,155 +1726,6 @@ export function OrganizationDetailsView({ organization, onBack }: OrganizationDe
                 </div>
               </div>
 
-              <div className="border-t pt-6 space-y-4">
-                <div className="flex items-center justify-between p-4 bg-muted/50 rounded-xl">
-                  <div className="space-y-1">
-                    <Label className="text-base flex items-center gap-2">
-                      <Sparkles className="w-4 h-4 text-violet-500" />
-                      ИИ-помощник
-                      {shouldBlockAI && (
-                        <Badge variant="destructive" className="text-xs">
-                          <ShieldOff className="w-3 h-3 mr-1" />
-                          Заблокирован
-                        </Badge>
-                      )}
-                    </Label>
-                    <p className="text-sm text-muted-foreground">
-                      {shouldBlockAI 
-                        ? "ИИ-помощник заблокирован из-за превышения лимита генераций"
-                        : "Разрешить использование ИИ-помощника для учеников"
-                      }
-                    </p>
-                  </div>
-                  <Switch
-                    checked={settings.ai_enabled}
-                    onCheckedChange={(checked) => setSettings({ ...settings, ai_enabled: checked })}
-                    disabled={shouldBlockAI}
-                  />
-                </div>
-
-                {settings.ai_enabled && (
-                  <div className="flex items-center justify-between p-4 bg-muted/30 rounded-xl ml-4 border border-border/60">
-                    <div className="space-y-1">
-                      <Label className="text-sm">ИИ-провайдер</Label>
-                      <p className="text-xs text-muted-foreground">Выберите провайдера для генерации контента</p>
-                    </div>
-                    <Select
-                      value={settings.ai_provider}
-                      onValueChange={(value) => setSettings({ ...settings, ai_provider: value })}
-                    >
-                      <SelectTrigger className="w-48">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="gigachat">GigaChat</SelectItem>
-                        <SelectItem value="lovable_ai">Lovable AI (Gemini)</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                )}
-
-                <div className="flex items-center justify-between p-4 bg-muted/50 rounded-xl">
-                  <div className="space-y-0.5">
-                    <Label className="text-base flex items-center gap-2">
-                      <FileText className="w-4 h-4 text-emerald-500" />
-                      ФИС ФРДО
-                    </Label>
-                    <p className="text-sm text-muted-foreground">
-                      Включить модуль для работы с федеральным реестром документов
-                    </p>
-                  </div>
-                  <Switch
-                    checked={settings.frdo_enabled}
-                    onCheckedChange={(checked) => setSettings({ ...settings, frdo_enabled: checked })}
-                  />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Limits Settings Card */}
-          <Card className={cardClass}>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <div className="p-1.5 rounded-lg bg-cyan-500/10">
-                  <HardDrive className="w-5 h-5 text-cyan-500" />
-                </div>
-                Лимиты ресурсов
-              </CardTitle>
-              <CardDescription>Установите ограничения на использование ресурсов организацией</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="grid md:grid-cols-2 gap-6">
-                <div className="space-y-4">
-                  <div className="space-y-2">
-                    <Label>Лимит хранилища (ГБ)</Label>
-                    <Input
-                      type="number"
-                      min="0.1"
-                      step="0.1"
-                      value={(settings.storage_limit_bytes / (1024 * 1024 * 1024)).toFixed(1)}
-                      onChange={(e) => setSettings({ 
-                        ...settings, 
-                        storage_limit_bytes: Math.round(parseFloat(e.target.value || "1") * 1024 * 1024 * 1024)
-                      })}
-                    />
-                    <p className="text-xs text-muted-foreground">
-                      Текущее использование: {formatBytes(usage.storage_bytes)} ({storageLimitPercent.toFixed(1)}%)
-                    </p>
-                  </div>
-                </div>
-
-                <div className="space-y-4">
-                  <div className="space-y-2">
-                    <Label>ИИ-генерации (лимит по тарифу)</Label>
-                    <div className="flex items-center gap-3 p-3 bg-muted/30 rounded-lg border">
-                      <Sparkles className="w-4 h-4 text-purple-500" />
-                      <div>
-                        <p className="text-sm font-medium">
-                          {aiGenerationsLimit === Infinity ? "Безлимит" : `${aiGenerationsLimit} генераций / мес`}
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          Использовано: {usage.ai_generations_count} {aiGenerationsLimit !== Infinity ? `(${aiGenerationsPercent.toFixed(1)}%)` : ""}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div className="border-t pt-6 space-y-4">
-                <h4 className="font-medium flex items-center gap-2">
-                  <Bell className="w-4 h-4 text-amber-500" />
-                  Уведомления
-                </h4>
-                
-                <div className="flex items-center justify-between">
-                  <div className="space-y-1">
-                    <Label>Предупреждение при 80%</Label>
-                    <p className="text-sm text-muted-foreground">
-                      Показывать предупреждение при достижении 80% лимита
-                    </p>
-                  </div>
-                  <Switch
-                    checked={settings.notify_on_limit_80}
-                    onCheckedChange={(checked) => setSettings({ ...settings, notify_on_limit_80: checked })}
-                  />
-                </div>
-
-                <div className="flex items-center justify-between">
-                  <div className="space-y-1">
-                    <Label>Уведомление о превышении</Label>
-                    <p className="text-sm text-muted-foreground">
-                      Показывать уведомление при превышении лимита
-                    </p>
-                  </div>
-                  <Switch
-                    checked={settings.notify_on_limit_exceeded}
-                    onCheckedChange={(checked) => setSettings({ ...settings, notify_on_limit_exceeded: checked })}
-                  />
-                </div>
-              </div>
             </CardContent>
           </Card>
 
