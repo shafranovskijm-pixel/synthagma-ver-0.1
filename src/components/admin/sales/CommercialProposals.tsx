@@ -151,7 +151,7 @@ export function CommercialProposals() {
   const copyLink = (p: CommercialProposal) => {
     const url = `${getBaseUrl()}/proposal/${p.id}`;
     navigator.clipboard.writeText(url);
-    toast.success("Ссылка скопирована", { description: url });
+    toast.success("Ссылка скопирована", { description: "url" });
   };
 
   const openSendDialog = async (p: CommercialProposal) => {
@@ -165,7 +165,7 @@ export function CommercialProposals() {
   const handleSendEmail = async () => {
     if (!sendProposal) return;
     if (!sendEmail || !sendEmail.includes('@')) {
-      toast.error("Ошибка", { description: Введите корректный email });
+      toast.error("Ошибка", { description: "Введите корректный email" });
       return;
     }
     setIsSending(true);
@@ -181,11 +181,11 @@ export function CommercialProposals() {
       });
       if (error) throw error;
       await updateProposalStatus(sendProposal.id, 'sent');
-      toast.success("КП отправлено", { description: Письмо отправлено на ${sendEmail} });
+      toast.success("КП отправлено", { description: `Письмо отправлено на ${sendEmail}` });
       setSendDialogOpen(false);
     } catch (err: any) {
       console.error('Error sending proposal email:', err);
-      toast.error("Ошибка отправки", { description: err.message || 'Не удалось отправить письмо' });
+      toast.error("Ошибка отправки", { description: "err.message || 'Не удалось отправить письмо'" });
     } finally {
       setIsSending(false);
     }

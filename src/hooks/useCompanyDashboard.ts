@@ -160,7 +160,7 @@ export function useCompanyDashboard(viewAsUserId?: string) {
       const count = Number(currentCount) || 0;
 
       if (maxStudents !== -1 && count >= maxStudents) {
-        toast.error("Лимит учеников", { description: Максимум ${maxStudents} учеников на текущем тарифе. Обратитесь к организации. });
+        toast.error("Лимит учеников", { description: `Максимум ${maxStudents} учеников на текущем тарифе. Обратитесь к организации.` });
         setAddingEmployee(false);
         return;
       }
@@ -176,12 +176,12 @@ export function useCompanyDashboard(viewAsUserId?: string) {
 
       if (error) throw error;
 
-      toast.success("Сотрудник добавлен", { description: ${fullName} зарегистрирован в системе });
+      toast.success("Сотрудник добавлен", { description: `${fullName} зарегистрирован в системе` });
 
       await loadData();
       return data;
     } catch (error: any) {
-      toast.error("Ошибка", { description: error.message || 'Не удалось добавить сотрудника' });
+      toast.error("Ошибка", { description: "error.message || 'Не удалось добавить сотрудника'" });
     } finally {
       setAddingEmployee(false);
     }

@@ -58,7 +58,7 @@ export function EmployeeImportDialog({ open, onOpenChange, companyId, organizati
         setDone(false);
         setProgress(0);
       } catch {
-        toast.error("Ошибка", { description: Не удалось прочитать файл });
+        toast.error("Ошибка", { description: "Не удалось прочитать файл" });
       }
     };
     reader.readAsBinaryString(file);
@@ -110,7 +110,7 @@ export function EmployeeImportDialog({ open, onOpenChange, companyId, organizati
     setImporting(false);
     setDone(true);
     onImportComplete();
-    toast.success("Импорт завершён", { description: Успешно: ${updated.filter((r) => r.status === });
+    toast.success("Импорт завершён", { description: `Успешно: ${updated.filter((r) => r.status ===` });
   };
 
   const handleClose = (v: boolean) => {

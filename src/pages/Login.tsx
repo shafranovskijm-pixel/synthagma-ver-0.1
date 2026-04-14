@@ -61,12 +61,12 @@ const Login = () => {
     e.preventDefault();
     
     if (loginMode === "email" && (!email || !password)) {
-      toast.error("Ошибка", { description: Заполните все поля });
+      toast.error("Ошибка", { description: "Заполните все поля" });
       return;
     }
 
     if (loginMode === "login" && (!login || !password)) {
-      toast.error("Ошибка", { description: Заполните все поля });
+      toast.error("Ошибка", { description: "Заполните все поля" });
       return;
     }
 
@@ -83,7 +83,7 @@ const Login = () => {
         .rpc('public_lookup_user_by_login', { login_input: cleanLogin });
       
       if (lookupError || !lookupResult || lookupResult.length === 0) {
-        toast.error("Ошибка входа", { description: Неверный логин или пароль });
+        toast.error("Ошибка входа", { description: "Неверный логин или пароль" });
         setIsLoading(false);
         return;
       }
@@ -95,9 +95,9 @@ const Login = () => {
     const { error } = await signIn(signInEmail, cleanPassword);
     
     if (error) {
-      toast.error("Ошибка входа", { description: error.message === "Invalid login credentials" });
+      toast.error("Ошибка входа", { description: "error.message === "Invalid login credentials"" });
     } else {
-      toast.success("Успешно!", { description: Вы вошли в систему });
+      toast.success("Успешно!", { description: "Вы вошли в систему" });
       // Role is already loaded in context by signIn, useEffect will navigate
     }
     setIsLoading(false);
@@ -105,7 +105,7 @@ const Login = () => {
 
   const handleForgotPassword = async () => {
     if (!resetEmail) {
-      toast.error("Ошибка", { description: Введите email });
+      toast.error("Ошибка", { description: "Введите email" });
       return;
     }
 
@@ -124,12 +124,12 @@ const Login = () => {
         throw response.error;
       }
 
-      toast.success("Письмо отправлено", { description: Проверьте почту для восстановления пароля });
+      toast.success("Письмо отправлено", { description: "Проверьте почту для восстановления пароля" });
       setShowForgotPassword(false);
       setResetEmail("");
     } catch (error: any) {
       console.error("Password reset error:", error);
-      toast.error("Ошибка", { description: error.message || "Не удалось отправить письмо" });
+      toast.error("Ошибка", { description: "error.message || "Не удалось отправить письмо"" });
     }
     
     setIsResetting(false);
@@ -155,7 +155,7 @@ const Login = () => {
       });
 
       if (signUpError) {
-        toast.error("Ошибка", { description: Не удалось создать демо-аккаунт });
+        toast.error("Ошибка", { description: "Не удалось создать демо-аккаунт" });
         setDemoLoading(null);
         return;
       }
@@ -196,17 +196,17 @@ const Login = () => {
       // Sign in with new account
       const { error: loginError } = await signIn(account.email, account.password);
       if (loginError) {
-        toast.error("Ошибка", { description: Не удалось войти });
+        toast.error("Ошибка", { description: "Не удалось войти" });
         setDemoLoading(null);
         return;
       }
     } else if (error) {
-      toast.error("Ошибка входа", { description: error.message });
+      toast.error("Ошибка входа", { description: "error.message" });
       setDemoLoading(null);
       return;
     }
 
-    toast.success("Добро пожаловать!", { description: Вы вошли как ${account.label} });
+    toast.success("Добро пожаловать!", { description: `Вы вошли как ${account.label}` });
 
     // Navigate based on role
     if (accountType === "admin") {

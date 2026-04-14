@@ -38,7 +38,7 @@ export function ReferralsManager() {
       .update({ commission_percent: newPercent })
       .eq("id", partnerId);
     if (error) {
-      toast.error("Ошибка", { description: error.message });
+      toast.error("Ошибка", { description: "error.message" });
     } else {
       toast.success("Комиссия обновлена");
       loadData();

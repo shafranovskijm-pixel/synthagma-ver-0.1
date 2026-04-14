@@ -204,7 +204,7 @@ export const DocumentsTab = React.memo(function DocumentsTab({ organizationId, o
   const handleViewDoc = async (doc: BillingDoc) => {
     const url = await getSignedStorageUrl("billing-documents", doc.file_url);
     if (!url) {
-      toast.error("Ошибка", { description: Не удалось получить ссылку на файл });
+      toast.error("Ошибка", { description: "Не удалось получить ссылку на файл" });
       return;
     }
     try {
@@ -222,7 +222,7 @@ export const DocumentsTab = React.memo(function DocumentsTab({ organizationId, o
   const handleDownloadDoc = async (doc: BillingDoc) => {
     const url = await getSignedStorageUrl("billing-documents", doc.file_url);
     if (!url) {
-      toast.error("Ошибка", { description: Не удалось получить ссылку на файл });
+      toast.error("Ошибка", { description: "Не удалось получить ссылку на файл" });
       return;
     }
     try {
@@ -230,7 +230,7 @@ export const DocumentsTab = React.memo(function DocumentsTab({ organizationId, o
       await downloadHtmlFile(url, doc.name);
     } catch (e) {
       console.error("Error downloading document:", e);
-      toast.error("Ошибка", { description: Не удалось скачать файл });
+      toast.error("Ошибка", { description: "Не удалось скачать файл" });
     }
   };
 
@@ -244,7 +244,7 @@ export const DocumentsTab = React.memo(function DocumentsTab({ organizationId, o
       toast.success("Документ удалён");
     } catch (e) {
       console.error("Error deleting document:", e);
-      toast.error("Ошибка", { description: Не удалось удалить документ });
+      toast.error("Ошибка", { description: "Не удалось удалить документ" });
     }
   };
 
@@ -262,7 +262,7 @@ export const DocumentsTab = React.memo(function DocumentsTab({ organizationId, o
       amount: parseFloat(actAmount),
     });
     if (result) {
-      toast.success("Акт создан", { description: result });
+      toast.success("Акт создан", { description: "result" });
       const { data } = await supabase.from("org_billing_documents" as any)
         .select("*").eq("organization_id", organizationId).order("created_at", { ascending: false });
       if (data) setBillingDocs(data as any[]);
@@ -277,7 +277,7 @@ export const DocumentsTab = React.memo(function DocumentsTab({ organizationId, o
       setActCustomerDirector("");
       setActCustomerPosition("");
     } else {
-      toast.error("Ошибка", { description: Не удалось сгенерировать акт });
+      toast.error("Ошибка", { description: "Не удалось сгенерировать акт" });
     }
     setActSubmitting(false);
   };
@@ -298,7 +298,7 @@ export const DocumentsTab = React.memo(function DocumentsTab({ organizationId, o
         setActCustomerKpp(data.kpp || "");
         setActCustomerDirector(data.director_name || "");
         setActCustomerPosition((data as any).director_position || "Руководитель");
-        toast.success("Организация найдена", { description: data.name });
+        toast.success("Организация найдена", { description: "data.name" });
       } else {
         // Fallback to DaData
         const { data: dadataResult } = await supabase.functions.invoke("dadata-company", {
@@ -310,9 +310,9 @@ export const DocumentsTab = React.memo(function DocumentsTab({ organizationId, o
           setActCustomerKpp(dadataResult.company.kpp || "");
           setActCustomerDirector(dadataResult.company.management || "");
           setActCustomerPosition(dadataResult.company.managementPosition || "Руководитель");
-          toast.success("Организация найдена (DaData)", { description: dadataResult.company.shortName || dadataResult.company.name });
+          toast.success("Организация найдена (DaData)", { description: "dadataResult.company.shortName || dadataResult.company.name" });
         } else {
-          toast.success("Не найдено", { description: Введите реквизиты вручную });
+          toast.success("Не найдено", { description: "Введите реквизиты вручную" });
         }
       }
     } catch {
@@ -335,9 +335,9 @@ export const DocumentsTab = React.memo(function DocumentsTab({ organizationId, o
         setInvoiceBuyerName(data.name || "");
         setInvoiceBuyerInn(data.inn || inn);
         setInvoiceBuyerKpp(data.kpp || "");
-        toast.success("Организация найдена", { description: data.name });
+        toast.success("Организация найдена", { description: "data.name" });
       } else {
-        toast.success("Не найдено", { description: Введите реквизиты вручную });
+        toast.success("Не найдено", { description: "Введите реквизиты вручную" });
       }
     } catch {
       // ignore
@@ -388,14 +388,14 @@ export const DocumentsTab = React.memo(function DocumentsTab({ organizationId, o
 
       if (err) throw err;
       setInvoices(prev => [{ id: (invoice as any).id, invoice_number: invoiceNum, amount, status: "pending", plan, period_months: 1, invoice_date: new Date().toISOString(), created_at: new Date().toISOString() }, ...prev]);
-      toast.success("Счёт создан", { description: Счёт ${invoiceNum} на ${amount.toLocaleString( });
+      toast.success("Счёт создан", { description: `Счёт ${invoiceNum} на ${amount.toLocaleString(` });
       setShowInvoiceDialog(false);
       setInvoiceOtherPayer(false);
       setInvoiceBuyerName("");
       setInvoiceBuyerInn("");
       setInvoiceBuyerKpp("");
     } catch (e: any) {
-      toast.error("Ошибка", { description: e.message });
+      toast.error("Ошибка", { description: "e.message" });
     } finally {
       setGeneratingInvoice(false);
     }

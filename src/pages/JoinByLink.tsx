@@ -150,17 +150,17 @@ const JoinByLink = () => {
     e.preventDefault();
 
     if (!fullName || !email || !password) {
-      toast.error("Ошибка", { description: Заполните все обязательные поля });
+      toast.error("Ошибка", { description: "Заполните все обязательные поля" });
       return;
     }
 
     if (password !== confirmPassword) {
-      toast.error("Ошибка", { description: Пароли не совпадают });
+      toast.error("Ошибка", { description: "Пароли не совпадают" });
       return;
     }
 
     if (password.length < 6) {
-      toast.error("Ошибка", { description: Пароль должен быть не менее 6 символов });
+      toast.error("Ошибка", { description: "Пароль должен быть не менее 6 символов" });
       return;
     }
 
@@ -182,7 +182,7 @@ const JoinByLink = () => {
       const count = Number(currentCount) || 0;
 
       if (maxStudents !== -1 && count >= maxStudents) {
-        toast.error("Регистрация невозможна", { description: Организация достигла лимита учеников. Обратитесь к администратору. });
+        toast.error("Регистрация невозможна", { description: "Организация достигла лимита учеников. Обратитесь к администратору." });
         setIsSubmitting(false);
         return;
       }
@@ -221,7 +221,7 @@ const JoinByLink = () => {
         .update({ used_count: (linkData.used_count || 0) + 1 })
         .eq('id', linkData.id);
 
-      toast.success("Успешно!", { description: linkData.course_id });
+      toast.success("Успешно!", { description: "linkData.course_id" });
 
       navigate('/student');
     } catch (err: any) {
@@ -229,7 +229,7 @@ const JoinByLink = () => {
       if (err.message.includes("already registered")) {
         errorMessage = "Пользователь с таким email уже зарегистрирован";
       }
-      toast.error("Ошибка регистрации", { description: errorMessage });
+      toast.error("Ошибка регистрации", { description: "errorMessage" });
     } finally {
       setIsSubmitting(false);
     }

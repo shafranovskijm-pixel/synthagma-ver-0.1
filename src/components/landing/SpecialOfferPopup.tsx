@@ -62,10 +62,10 @@ export function SpecialOfferPopup() {
         // Telegram notification is best-effort
       }
 
-      toast.success("Заявка отправлена!", { description: Мы свяжемся с вами в ближайшее время. });
+      toast.success("Заявка отправлена!", { description: "Мы свяжемся с вами в ближайшее время." });
       dismiss();
     } catch {
-      toast.error("Ошибка", { description: Попробуйте позже });
+      toast.error("Ошибка", { description: "Попробуйте позже" });
     } finally {
       setSending(false);
     }

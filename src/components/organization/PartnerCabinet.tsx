@@ -64,10 +64,10 @@ export function PartnerCabinet() {
     try {
       const { data, error } = await supabase.rpc("become_referral_partner");
       if (error) throw error;
-      toast.success("Вы стали партнёром!", { description: Ваш реферальный код: ${data} });
+      toast.success("Вы стали партнёром!", { description: `Ваш реферальный код: ${data}` });
       loadData();
     } catch (e: any) {
-      toast.error("Ошибка", { description: e.message });
+      toast.error("Ошибка", { description: "e.message" });
     } finally {
       setIsBecoming(false);
     }
@@ -108,7 +108,7 @@ export function PartnerCabinet() {
       amount,
     });
     if (error) {
-      toast.error("Ошибка запроса", { description: error.message });
+      toast.error("Ошибка запроса", { description: "error.message" });
     } else {
       toast.success("Запрос на вывод отправлен");
       setPayoutAmount("");

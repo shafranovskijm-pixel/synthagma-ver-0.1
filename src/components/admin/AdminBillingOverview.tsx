@@ -88,7 +88,7 @@ export const AdminBillingOverview = () => {
   const handleViewDoc = async (doc: BillingDoc) => {
     const url = await getSignedStorageUrl("billing-documents", doc.file_url);
     if (url) window.open(url, "_blank");
-    else toast.error("Ошибка", { description: Не удалось получить ссылку });
+    else toast.error("Ошибка", { description: "Не удалось получить ссылку" });
   };
 
   const handleCreateContract = async () => {
@@ -101,7 +101,7 @@ export const AdminBillingOverview = () => {
       status: "active",
     });
     if (error) {
-      toast.error("Ошибка", { description: error.message });
+      toast.error("Ошибка", { description: "error.message" });
     } else {
       toast.success("Договор создан");
       setShowCreateContract(false);

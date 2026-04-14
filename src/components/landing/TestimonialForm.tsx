@@ -69,7 +69,7 @@ export function TestimonialForm({ onSubmitted }: TestimonialFormProps) {
     if (!user) {
       setShowLogin(true);
     } else if (!isOrgUser) {
-      toast.error("Доступ ограничен", { description: Оставлять отзывы могут только зарегистрированные организации });
+      toast.error("Доступ ограничен", { description: "Оставлять отзывы могут только зарегистрированные организации" });
     } else {
       setShowForm(true);
     }
@@ -108,14 +108,14 @@ export function TestimonialForm({ onSubmitted }: TestimonialFormProps) {
 
       if (error) throw error;
 
-      toast.success("Отзыв отправлен!", { description: Он будет опубликован после модерации });
+      toast.success("Отзыв отправлен!", { description: "Он будет опубликован после модерации" });
       setShowForm(false);
       setContent("");
       setHighlight("");
       setRating(5);
       onSubmitted?.();
     } catch (err: any) {
-      toast.error("Ошибка", { description: err.message });
+      toast.error("Ошибка", { description: "err.message" });
     } finally {
       setLoading(false);
     }

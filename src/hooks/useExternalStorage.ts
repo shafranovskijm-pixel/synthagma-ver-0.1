@@ -78,7 +78,7 @@ export const useExternalStorage = () => {
       };
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : 'Не удалось загрузить файл';
-      toast.error("Ошибка загрузки", { description: message });
+      toast.error("Ошибка загрузки", { description: "message" });
       return null;
     } finally {
       setIsUploading(false);
@@ -100,7 +100,7 @@ export const useExternalStorage = () => {
       return true;
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : 'Не удалось удалить файл';
-      toast.error("Ошибка удаления", { description: message });
+      toast.error("Ошибка удаления", { description: "message" });
       return false;
     }
   };

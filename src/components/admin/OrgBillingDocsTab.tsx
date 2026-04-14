@@ -64,7 +64,7 @@ export function OrgBillingDocsTab({ organizationId }: OrgBillingDocsTabProps) {
       .upload(filePath, uploadFile);
 
     if (uploadError) {
-      toast.error("Ошибка загрузки", { description: uploadError.message });
+      toast.error("Ошибка загрузки", { description: "uploadError.message" });
       setUploading(false);
       return;
     }
@@ -79,7 +79,7 @@ export function OrgBillingDocsTab({ organizationId }: OrgBillingDocsTabProps) {
       } as any);
 
     if (dbError) {
-      toast.error("Ошибка сохранения", { description: dbError.message });
+      toast.error("Ошибка сохранения", { description: "dbError.message" });
     } else {
       toast.success("Документ загружен");
       setUploadDocName("");
@@ -96,7 +96,7 @@ export function OrgBillingDocsTab({ organizationId }: OrgBillingDocsTabProps) {
       .delete()
       .eq("id", doc.id);
     if (error) {
-      toast.error("Ошибка удаления", { description: error.message });
+      toast.error("Ошибка удаления", { description: "error.message" });
     } else {
       toast.success("Документ удалён");
       setBillingDocs(prev => prev.filter(d => d.id !== doc.id));
@@ -108,7 +108,7 @@ export function OrgBillingDocsTab({ organizationId }: OrgBillingDocsTabProps) {
       .from("billing-documents")
       .createSignedUrl(doc.file_url, 3600);
     if (!data?.signedUrl) {
-      toast.error("Ошибка", { description: Не удалось получить ссылку });
+      toast.error("Ошибка", { description: "Не удалось получить ссылку" });
       return;
     }
     try {
@@ -127,14 +127,14 @@ export function OrgBillingDocsTab({ organizationId }: OrgBillingDocsTabProps) {
       .from("billing-documents")
       .createSignedUrl(doc.file_url, 3600);
     if (!data?.signedUrl) {
-      toast.error("Ошибка", { description: Не удалось скачать });
+      toast.error("Ошибка", { description: "Не удалось скачать" });
       return;
     }
     try {
       const { downloadHtmlFile } = await import("@/utils/downloadHtmlFile");
       await downloadHtmlFile(data.signedUrl, doc.name);
     } catch {
-      toast.error("Ошибка", { description: Не удалось скачать файл });
+      toast.error("Ошибка", { description: "Не удалось скачать файл" });
     }
   };
 

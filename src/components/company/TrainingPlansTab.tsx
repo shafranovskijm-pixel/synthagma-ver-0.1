@@ -110,7 +110,7 @@ export function TrainingPlansTab({ companyId, organizationId, employees }: Props
       setFormUserId(""); setFormCourseId(""); setFormCourseName(""); setFormDate(undefined); setFormNotes("");
       loadData();
     } catch (err: any) {
-      toast.error("Ошибка", { description: err.message });
+      toast.error("Ошибка", { description: "err.message" });
     } finally {
       setSaving(false);
     }

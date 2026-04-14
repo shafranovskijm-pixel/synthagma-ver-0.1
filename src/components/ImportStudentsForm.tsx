@@ -97,11 +97,11 @@ export default function ImportStudentsForm({ organizationId, courses, companies,
 
   const handleImport = async () => {
     if (!file) {
-      toast.error("Ошибка", { description: Выберите файл для импорта });
+      toast.error("Ошибка", { description: "Выберите файл для импорта" });
       return;
     }
     if (!organizationId) {
-      toast.error("Ошибка", { description: Организация не определена. Попробуйте обновить страницу. });
+      toast.error("Ошибка", { description: "Организация не определена. Попробуйте обновить страницу." });
       return;
     }
 
@@ -113,7 +113,7 @@ export default function ImportStudentsForm({ organizationId, courses, companies,
       const students = parseCSV(text);
 
       if (students.length === 0) {
-        toast.error("Ошибка", { description: Не найдено записей для импорта });
+        toast.error("Ошибка", { description: "Не найдено записей для импорта" });
         setIsImporting(false);
         return;
       }
@@ -180,15 +180,15 @@ export default function ImportStudentsForm({ organizationId, courses, companies,
       const failCount = importResults.filter(r => !r.success).length;
 
       if (failCount === 0) {
-        toast.success("Успешно", { description: Импортировано ${successCount} учеников });
+        toast.success("Успешно", { description: `Импортировано ${successCount} учеников` });
       } else if (successCount === 0) {
-        toast.error("Ошибка", { description: Ошибка импорта всех ${failCount} учеников });
+        toast.error("Ошибка", { description: `Ошибка импорта всех ${failCount} учеников` });
       } else {
-        toast.success("Частичный успех", { description: Импортировано ${successCount} из ${students.length} учеников });
+        toast.success("Частичный успех", { description: `Импортировано ${successCount} из ${students.length} учеников` });
       }
     } catch (error: any) {
       console.error("Import error:", error);
-      toast.error("Ошибка", { description: error.message });
+      toast.error("Ошибка", { description: "error.message" });
     } finally {
       setIsImporting(false);
     }

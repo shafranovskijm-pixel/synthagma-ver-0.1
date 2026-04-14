@@ -99,12 +99,12 @@ const BrandedLogin = () => {
     e.preventDefault();
     
     if (loginMode === "email" && (!email || !password)) {
-      toast.error("Ошибка", { description: Заполните все поля });
+      toast.error("Ошибка", { description: "Заполните все поля" });
       return;
     }
 
     if (loginMode === "login" && (!login || !password)) {
-      toast.error("Ошибка", { description: Заполните все поля });
+      toast.error("Ошибка", { description: "Заполните все поля" });
       return;
     }
 
@@ -120,7 +120,7 @@ const BrandedLogin = () => {
         .rpc('public_lookup_user_by_login', { login_input: cleanLogin });
       
       if (lookupError || !lookupResult || lookupResult.length === 0) {
-        toast.error("Ошибка входа", { description: Неверный логин или пароль });
+        toast.error("Ошибка входа", { description: "Неверный логин или пароль" });
         setIsLoading(false);
         return;
       }
@@ -132,9 +132,9 @@ const BrandedLogin = () => {
     const { error } = await signIn(signInEmail, cleanPassword);
     
     if (error) {
-      toast.error("Ошибка входа", { description: error.message === "Invalid login credentials" });
+      toast.error("Ошибка входа", { description: "error.message === "Invalid login credentials"" });
     } else {
-      toast.success("Успешно!", { description: Вы вошли в систему });
+      toast.success("Успешно!", { description: "Вы вошли в систему" });
     }
     
     setIsLoading(false);

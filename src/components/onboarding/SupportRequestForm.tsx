@@ -23,7 +23,7 @@ export function SupportRequestForm() {
     const file = e.target.files?.[0];
     if (!file) return;
     if (file.size > 5 * 1024 * 1024) {
-      toast.error("Файл слишком большой", { description: Максимум 5 МБ });
+      toast.error("Файл слишком большой", { description: "Максимум 5 МБ" });
       return;
     }
     setScreenshot(file);
@@ -104,7 +104,7 @@ export function SupportRequestForm() {
           user_email: userEmail || null,
           user_role: userRole || null,
           organization_id: orgId || null,
-          description: description.trim(),
+          description: "description.trim(),"
           contact_phone: contactPhone.trim() || null,
           screenshot_url: photoUrl,
           browser_info: navigator.userAgent.slice(0, 200),
@@ -145,13 +145,13 @@ ${errorsText}${photoUrl ? `\n\n<b>Скриншот:</b> ${photoUrl}` : ""}`;
         console.warn("Telegram notification failed (non-blocking):", telegramErr);
       }
 
-      toast.success("Обращение отправлено!", { description: Мы свяжемся с вами в ближайшее время });
+      toast.success("Обращение отправлено!", { description: "Мы свяжемся с вами в ближайшее время" });
       setDescription("");
       setContactPhone("");
       removeScreenshot();
     } catch (err) {
       console.error("Support request error:", err);
-      toast.error("Ошибка отправки", { description: Попробуйте позже });
+      toast.error("Ошибка отправки", { description: "Попробуйте позже" });
     } finally {
       setSending(false);
     }

@@ -51,7 +51,7 @@ const RegisterOrganization = () => {
 
   const loadCompanyByInn = async () => {
     if (!inn || inn.length < 10) {
-      toast.error("Ошибка", { description: Введите корректный ИНН (10 или 12 цифр) });
+      toast.error("Ошибка", { description: "Введите корректный ИНН (10 или 12 цифр)" });
       return;
     }
 
@@ -72,13 +72,13 @@ const RegisterOrganization = () => {
         setDirectorName(company.management || "");
         setInnLoaded(true);
         
-        toast.success("Данные загружены", { description: Найдена компания: ${company.shortName || company.name} });
+        toast.success("Данные загружены", { description: `Найдена компания: ${company.shortName || company.name}` });
       } else {
-        toast.error("Компания не найдена", { description: Проверьте правильность ИНН });
+        toast.error("Компания не найдена", { description: "Проверьте правильность ИНН" });
       }
     } catch (error: any) {
       console.error("Error loading company:", error);
-      toast.error("Ошибка загрузки", { description: error.message || "Не удалось загрузить данные компании" });
+      toast.error("Ошибка загрузки", { description: "error.message || "Не удалось загрузить данные компании"" });
     } finally {
       setIsLoadingInn(false);
     }
@@ -143,17 +143,17 @@ const RegisterOrganization = () => {
     e.preventDefault();
     
     if (!orgName || !contactName || !email || !phone || !password) {
-      toast.error("Ошибка", { description: Заполните все обязательные поля (включая телефон) });
+      toast.error("Ошибка", { description: "Заполните все обязательные поля (включая телефон)" });
       return;
     }
 
     if (password !== confirmPassword) {
-      toast.error("Ошибка", { description: Пароли не совпадают });
+      toast.error("Ошибка", { description: "Пароли не совпадают" });
       return;
     }
 
     if (password.length < 6) {
-      toast.error("Ошибка", { description: Пароль должен быть не менее 6 символов });
+      toast.error("Ошибка", { description: "Пароль должен быть не менее 6 символов" });
       return;
     }
 
@@ -277,9 +277,9 @@ const RegisterOrganization = () => {
       }
 
       if (selectedPlan && selectedPlan !== 'free') {
-        toast.success("Спасибо за регистрацию!", { description: Ваш тариф будет подключён после оплаты. Наш менеджер свяжется с вами. Спасибо! });
+        toast.success("Спасибо за регистрацию!", { description: "Ваш тариф будет подключён после оплаты. Наш менеджер свяжется с вами. Спасибо!" });
       } else {
-        toast.success("Успешно!", { description: Организация зарегистрирована. Добро пожаловать! });
+        toast.success("Успешно!", { description: "Организация зарегистрирована. Добро пожаловать!" });
       }
       
       // Navigate — role should already be refreshed above
@@ -290,7 +290,7 @@ const RegisterOrganization = () => {
       if (error.message?.includes("already registered")) {
         errorMessage = "Пользователь с таким email уже зарегистрирован";
       }
-      toast.error("Ошибка регистрации", { description: errorMessage });
+      toast.error("Ошибка регистрации", { description: "errorMessage" });
     }
     
     setIsLoading(false);

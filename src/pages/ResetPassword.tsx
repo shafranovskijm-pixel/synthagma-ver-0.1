@@ -24,7 +24,7 @@ const ResetPassword = () => {
       // Also check query params
       const queryParams = new URLSearchParams(window.location.search);
       if (!queryParams.get('code')) {
-        toast.error("Ошибка", { description: Недействительная ссылка для сброса пароля });
+        toast.error("Ошибка", { description: "Недействительная ссылка для сброса пароля" });
       }
     }
   }, [toast]);
@@ -33,17 +33,17 @@ const ResetPassword = () => {
     e.preventDefault();
     
     if (!password || !confirmPassword) {
-      toast.error("Ошибка", { description: Заполните все поля });
+      toast.error("Ошибка", { description: "Заполните все поля" });
       return;
     }
 
     if (password.length < 6) {
-      toast.error("Ошибка", { description: Пароль должен быть не менее 6 символов });
+      toast.error("Ошибка", { description: "Пароль должен быть не менее 6 символов" });
       return;
     }
 
     if (password !== confirmPassword) {
-      toast.error("Ошибка", { description: Пароли не совпадают });
+      toast.error("Ошибка", { description: "Пароли не совпадают" });
       return;
     }
 
@@ -54,10 +54,10 @@ const ResetPassword = () => {
     });
 
     if (error) {
-      toast.error("Ошибка", { description: error.message });
+      toast.error("Ошибка", { description: "error.message" });
     } else {
       setIsSuccess(true);
-      toast.success("Успешно!", { description: Пароль успешно изменён });
+      toast.success("Успешно!", { description: "Пароль успешно изменён" });
       
       // Redirect to login after 2 seconds
       setTimeout(() => {

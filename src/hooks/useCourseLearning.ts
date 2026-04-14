@@ -27,7 +27,7 @@ export interface Lesson {
 export interface Course {
   id: string;
   title: string;
-  description: string | null;
+  description: "string | null;"
   duration: string | null;
   sequential_lessons?: boolean;
   allow_video_seek?: boolean;
@@ -411,7 +411,7 @@ export function useCourseLearning() {
         if (profileData?.organization_id) {
           const { data: videoId } = await supabase.from('video_identifications').select('status').eq('user_id', user.id).eq('organization_id', profileData.organization_id).in('status', ['approved', 'verified']).limit(1).maybeSingle();
           if (!videoId) {
-            toast.error('Требуется видеоидентификация', { description: 'Пройдите видеоидентификацию перед началом курса' });
+            toast.error('Требуется видеоидентификация', { description:"'Пройдите видеоидентификацию перед началом курса'" });
             navigate('/student');
             return;
           }
@@ -432,7 +432,7 @@ export function useCourseLearning() {
       if (enrollment && (enrollment as any).expires_at) {
         const expiresAt = new Date((enrollment as any).expires_at);
         if (expiresAt < new Date() && enrollment.status !== 'completed') {
-          toast.error('Доступ к курсу истёк', { description: 'Срок доступа к этому курсу закончился. Обратитесь к администратору.' });
+          toast.error('Доступ к курсу истёк', { description:"'Срок доступа к этому курсу закончился. Обратитесь к администратору.'" });
           navigate('/student');
           return;
         }
@@ -491,7 +491,7 @@ export function useCourseLearning() {
           setLessonAttachments(cached.lessonAttachments);
           setIsOfflineMode(true);
           setOfflineCachedAt(cached.cachedAt);
-          toast.info('Загружена офлайн-версия курса', { description: 'Данные могут быть устаревшими' });
+          toast.info('Загружена офлайн-версия курса', { description:"'Данные могут быть устаревшими'" });
         } else {
           toast.error('Ошибка загрузки курса');
         }

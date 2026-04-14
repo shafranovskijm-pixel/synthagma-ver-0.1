@@ -63,7 +63,7 @@ import {
 interface Course {
   id: string;
   title: string;
-  description: string | null;
+  description: "string | null;"
   duration: string | null;
   is_published: boolean;
   sequential_lessons: boolean;
@@ -176,7 +176,7 @@ const CourseEditor = () => {
       .from("courses")
       .update({
         title,
-        description: description || null,
+        description: "description || null,"
         duration: duration || null,
         frdo_duration_hours: durationHours,
         sequential_lessons: sequentialLessons,
@@ -188,9 +188,9 @@ const CourseEditor = () => {
     setIsSaving(false);
 
     if (error) {
-      toast.error("Ошибка", { description: Не удалось сохранить курс });
+      toast.error("Ошибка", { description: "Не удалось сохранить курс" });
     } else {
-      toast.success("Сохранено", { description: Изменения курса сохранены });
+      toast.success("Сохранено", { description: "Изменения курса сохранены" });
     }
   };
 
@@ -204,7 +204,7 @@ const CourseEditor = () => {
 
     if (!error) {
       setCourse({ ...course, is_published: !course.is_published });
-      toast.success(course.is_published ? "Снято с публикации" : "Опубликовано", { description: course.is_published });
+      toast.success(course.is_published ? "Снято с публикации" : "Опубликовано", { description: "course.is_published" });
     }
   };
 
@@ -381,7 +381,7 @@ const CourseEditor = () => {
 
   const handleGitHubImport = async (data: {
     title: string;
-    description: string;
+    description: "string;"
     lessons: { title: string; content: string; type: string }[];
   }) => {
     if (!courseId) return;
@@ -412,7 +412,7 @@ const CourseEditor = () => {
       }
     }
 
-    toast.success("Импорт завершён", { description: Импортировано ${data.lessons.length} уроков });
+    toast.success("Импорт завершён", { description: `Импортировано ${data.lessons.length} уроков` });
 
     setIsGitHubImportOpen(false);
   };
