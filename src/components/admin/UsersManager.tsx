@@ -346,7 +346,7 @@ export function UsersManager() {
                 </TableRow>
               ) : (
                 filteredUsers.map((user) => (
-                  <TableRow key={user.id} className="cursor-pointer hover:bg-secondary/50" onClick={() => fetchUserDetail(user)}>
+                  <TableRow key={user.id} className="cursor-pointer hover:bg-secondary/50" onClick={() => navigate(`/admin/user/${user.user_id}`)}>
                     <TableCell>
                       <div className="flex items-center gap-3">
                         <Avatar>
