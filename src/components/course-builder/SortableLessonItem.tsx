@@ -269,6 +269,22 @@ export function SortableLessonItem({
                       <Button variant="outline" size="sm" className="mt-2 gap-1 text-destructive hover:text-destructive border-destructive/50 hover:bg-destructive/10" onClick={media.cancelVideoUpload}><Trash2 className="w-3 h-3" />Отменить</Button>
                     </div>
                   </div>
+                ) : videoUploadTab === "kinescope" && !isKinescopeAvailable ? (
+                  <div className="space-y-3 py-2">
+                    <Lock className="w-10 h-10 mx-auto text-muted-foreground" />
+                    <p className="text-sm font-medium">Загрузка через Kinescope</p>
+                    <p className="text-xs text-muted-foreground max-w-sm mx-auto">
+                      Профессиональный видеохостинг с CDN и DRM-защитой доступен на тарифе «Профессиональный» и выше.
+                    </p>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="gap-2"
+                      onClick={() => navigate(organizationId ? `/organization/${organizationId}?tab=tariffs` : '/settings')}
+                    >
+                      Перейти к тарифам →
+                    </Button>
+                  </div>
                 ) : videoUploadTab === "kinescope" ? (
                   <>
                     <Video className="w-10 h-10 mx-auto mb-3 text-sigma-purple" />
