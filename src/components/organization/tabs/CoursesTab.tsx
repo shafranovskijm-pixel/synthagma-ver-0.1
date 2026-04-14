@@ -16,7 +16,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
 import { 
   Search, Filter, Tag, Plus, LayoutGrid, List, Loader2, 
-  BookOpen, Users, Edit, Eye, Trash2, FolderOpen, Folder,
+  BookOpen, Users, Edit, Eye, EyeOff, Trash2, FolderOpen, Folder,
   ChevronDown, ChevronRight, MoreVertical, FolderPlus, 
   MoveRight, Pencil, Video, VideoOff, Lock, Unlock, FastForward,
   Sparkles, ShoppingCart, GripVertical, CheckCircle, Palette, Play, Copy, ImagePlus, Wand2,
@@ -633,9 +633,9 @@ export const CoursesTab = React.memo(function CoursesTab({ organizationId, onCou
   };
 
   // Toggle course settings with optimistic update
-  const handleToggleCourseSetting = async (course: Course, setting: 'skip_video_identification' | 'sequential_lessons' | 'allow_video_seek', e: React.MouseEvent) => {
+  const handleToggleCourseSetting = async (course: Course, setting: 'skip_video_identification' | 'sequential_lessons' | 'allow_video_seek' | 'hidden_from_catalog', e: React.MouseEvent) => {
     e.stopPropagation();
-    if (!hasCourseSettings) {
+    if (setting !== 'hidden_from_catalog' && !hasCourseSettings) {
       showLimitToast('Настройки курсов доступны начиная с тарифа «Старт». Перейдите на следующий тариф.');
       return;
     }
@@ -655,6 +655,7 @@ export const CoursesTab = React.memo(function CoursesTab({ organizationId, onCou
         skip_video_identification: ['Видеоидентификация отключена', 'Видеоидентификация включена'],
         sequential_lessons: ['Последовательность уроков включена', 'Последовательность уроков отключена'],
         allow_video_seek: ['Перемотка видео включена', 'Перемотка видео отключена'],
+        hidden_from_catalog: ['Курс скрыт из витрины', 'Курс показан в витрине'],
       };
       const [onMsg, offMsg] = messages[setting];
       toast.success(newValue ? onMsg : offMsg);
@@ -662,6 +663,22 @@ export const CoursesTab = React.memo(function CoursesTab({ organizationId, onCou
       toast.error('Ошибка сохранения');
       // Revert on error
       updateCourseLocally(course.id, { [setting]: currentValue });
+    }
+  };
+
+  // Toggle category hidden_from_catalog
+  const handleToggleCategoryVisibility = async (categoryId: string, currentHidden: boolean, e: React.MouseEvent) => {
+    e.stopPropagation();
+    const newValue = !currentHidden;
+    const { error } = await supabase
+      .from('course_categories')
+      .update({ hidden_from_catalog: newValue })
+      .eq('id', categoryId);
+    if (!error) {
+      toast.success(newValue ? 'Категория скрыта из витрины' : 'Категория показана в витрине');
+      refresh();
+    } else {
+      toast.error('Ошибка сохранения');
     }
   };
 
