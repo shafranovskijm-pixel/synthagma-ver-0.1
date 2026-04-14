@@ -8,17 +8,53 @@ import heroIndustrial from "@/assets/marketplace/hero-industrial.jpg";
 interface HeroCard {
   title: string;
   subtitle: string;
+  searchTitle: string;
   image: string;
   icon: React.ElementType;
   gradient: string;
 }
 
 const HERO_CARDS: HeroCard[] = [
-  { title: "Специалист по пожарной профилактике", subtitle: "Профпереподготовка", image: heroFire, icon: Flame, gradient: "from-red-500/80 to-orange-500/80" },
-  { title: "Обращение с отходами I-IV классов", subtitle: "Профессиональная подготовка", image: heroLabor, icon: Droplets, gradient: "from-teal-500/80 to-cyan-500/80" },
-  { title: "Охрана труда для руководителей", subtitle: "Повышение квалификации", image: heroMedicine, icon: HardHat, gradient: "from-amber-500/80 to-yellow-500/80" },
-  { title: "Электробезопасность до 1000В", subtitle: "Группы допуска", image: heroElectrical, icon: Zap, gradient: "from-yellow-500/80 to-lime-500/80" },
-  { title: "Промышленная безопасность А.1", subtitle: "Аттестация специалистов", image: heroIndustrial, icon: Factory, gradient: "from-orange-500/80 to-red-400/80" },
+  {
+    title: "Специалист по пожарной профилактике",
+    subtitle: "Профпереподготовка",
+    searchTitle: "Профессиональная переподготовка для получения квалификации «Специалист по пожарной профилактике»",
+    image: heroFire,
+    icon: Flame,
+    gradient: "from-red-500/80 to-orange-500/80",
+  },
+  {
+    title: "Обращение с отходами I-IV классов",
+    subtitle: "Профессиональная подготовка",
+    searchTitle: "Профессиональная подготовка лиц допущенных к обращению с отходами I-IV классов опасности",
+    image: heroLabor,
+    icon: Droplets,
+    gradient: "from-teal-500/80 to-cyan-500/80",
+  },
+  {
+    title: "Охрана труда при работах на высоте",
+    subtitle: "Повышение квалификации",
+    searchTitle: "Охрана труда при работах на высоте",
+    image: heroMedicine,
+    icon: HardHat,
+    gradient: "from-amber-500/80 to-yellow-500/80",
+  },
+  {
+    title: "Пожарная безопасность",
+    subtitle: "Обучение руководителей",
+    searchTitle: "Обучение мерам пожарной безопасности руководителей организаций",
+    image: heroElectrical,
+    icon: Zap,
+    gradient: "from-yellow-500/80 to-lime-500/80",
+  },
+  {
+    title: "Промышленная безопасность",
+    subtitle: "Общие требования",
+    searchTitle: "Общие требования промышленной безопасности",
+    image: heroIndustrial,
+    icon: Factory,
+    gradient: "from-orange-500/80 to-red-400/80",
+  },
 ];
 
 interface MarketplaceHeroCardsProps {
@@ -38,7 +74,7 @@ export function MarketplaceHeroCards({ onCardClick }: MarketplaceHeroCardsProps)
           return (
             <button
               key={card.title}
-              onClick={() => onCardClick?.(card.title)}
+              onClick={() => onCardClick?.(card.searchTitle)}
               className="group relative rounded-2xl overflow-hidden aspect-[4/3] border border-border hover:shadow-lg transition-all"
             >
               <img
