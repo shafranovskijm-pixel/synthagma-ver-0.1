@@ -308,12 +308,103 @@ export function CourseGroupsTab({ courseId, organizationId, onRefreshStudents }:
     });
   };
 
+  // New student creation state
+  const [showNewStudentForm, setShowNewStudentForm] = useState(false);
+  const [newStudentName, setNewStudentName] = useState("");
+  const [newStudentEmail, setNewStudentEmail] = useState("");
+  const [creatingStudent, setCreatingStudent] = useState(false);
+
+  const handleCreateStudentInGroup = async () => {
+    if (!selectedGroupForAdd || !newStudentName.trim()) return;
+    setCreatingStudent(true);
+    try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData?.session?.access_token;
+      if (!token) { toast.error("Необходима авторизация"); return; }
+
+      const { data, error } = await supabase.functions.invoke("register-student", {
+        body: {
+          full_name: newStudentName.trim(),
+          email: newStudentEmail.trim() || undefined,
+          organization_id: organizationId,
+          student_group_id: selectedGroupForAdd.id,
+        },
+      });
+
+      if (error) throw error;
+      if (data?.error) { toast.error(data.error); return; }
+
+      toast.success(data?.message || "Ученик создан и добавлен в группу");
+      setNewStudentName("");
+      setNewStudentEmail("");
+      setShowNewStudentForm(false);
+      // Refresh unassigned list and groups
+      handleOpenAddStudents(selectedGroupForAdd);
+      loadGroups();
+      onRefreshStudents?.();
+    } catch (err: any) {
+      toast.error("Ошибка создания ученика: " + (err.message || ""));
+    } finally {
+      setCreatingStudent(false);
+    }
+  };
+
   const addStudentsDialog = (
     <Dialog open={showAddStudentsDialog} onOpenChange={setShowAddStudentsDialog}>
       <DialogContent className="rounded-2xl max-h-[80vh] flex flex-col">
         <DialogHeader>
           <DialogTitle>Добавить учеников в «{selectedGroupForAdd?.name}»</DialogTitle>
         </DialogHeader>
+
+        {/* New student creation form */}
+        {showNewStudentForm ? (
+          <div className="space-y-3 p-3 rounded-xl border border-border bg-muted/30">
+            <div className="text-sm font-medium">Новый ученик</div>
+            <Input
+              placeholder="ФИО *"
+              value={newStudentName}
+              onChange={(e) => setNewStudentName(e.target.value)}
+              className="rounded-xl"
+            />
+            <Input
+              placeholder="Email (необязательно)"
+              value={newStudentEmail}
+              onChange={(e) => setNewStudentEmail(e.target.value)}
+              className="rounded-xl"
+              type="email"
+            />
+            <div className="flex gap-2">
+              <Button
+                size="sm"
+                className="rounded-xl flex-1"
+                disabled={!newStudentName.trim() || creatingStudent}
+                onClick={handleCreateStudentInGroup}
+              >
+                {creatingStudent ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <Plus className="w-4 h-4 mr-1" />}
+                Создать
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                className="rounded-xl"
+                onClick={() => setShowNewStudentForm(false)}
+              >
+                Отмена
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <Button
+            variant="outline"
+            size="sm"
+            className="rounded-xl gap-1.5 self-start"
+            onClick={() => setShowNewStudentForm(true)}
+          >
+            <Plus className="w-4 h-4" />
+            Создать нового ученика
+          </Button>
+        )}
+
         <div className="flex-1 overflow-y-auto space-y-1 py-2">
           {loadingStudents ? (
             <div className="flex justify-center py-8"><Loader2 className="w-5 h-5 animate-spin text-muted-foreground" /></div>

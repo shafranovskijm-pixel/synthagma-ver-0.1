@@ -15,6 +15,8 @@ import { SortableLessonItem } from "@/components/course-builder/SortableLessonIt
 import { AIGenerateDialog } from "@/components/course-builder/AIGenerateDialog";
 import { useCourseBuilder } from "@/hooks/useCourseBuilder";
 import { LessonType } from "@/components/course-builder/LessonTypeConfig";
+import { CourseGroupsTab } from "@/components/organization/CourseGroupsTab";
+import { Users } from "lucide-react";
 
 export default function CourseBuilder() {
   const navigate = useNavigate();
@@ -31,6 +33,7 @@ export default function CourseBuilder() {
     handleSaveAndExit, handleExitWithoutSave, handleBackClick,
     sensors, handleDragEnd, saveCourse, autoSaveStatus,
     courseId: resolvedCourseId,
+    organizationId,
   } = useCourseBuilder();
 
   const handlePreview = async () => {
@@ -211,9 +214,19 @@ export default function CourseBuilder() {
                   <span className="text-[10px] sm:text-xs font-semibold">Задание</span>
                   <span className="text-[9px] sm:text-[10px] text-muted-foreground leading-tight text-center hidden sm:block">Домашняя работа</span>
                 </Button>
+          {/* Groups section - visible after course is saved */}
+          {resolvedCourseId && organizationId && (
+            <div className="mt-8 p-6 bg-card rounded-2xl border border-border shadow-sm">
+              <div className="flex items-center gap-2 mb-4">
+                <Users className="w-5 h-5 text-primary" />
+                <h2 className="text-lg font-semibold">Ближайшие группы</h2>
               </div>
+              <CourseGroupsTab courseId={resolvedCourseId} organizationId={organizationId} />
             </div>
-          </div>
+          )}
+        </div>
+      </div>
+    </div>
         </div>
       </div>
 
