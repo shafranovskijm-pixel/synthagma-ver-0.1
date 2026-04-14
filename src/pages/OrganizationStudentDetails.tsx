@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { ArrowLeft, User, CreditCard, Handshake, HelpCircle, LogOut, Sparkles, Settings, FileText, Video, BookOpen, Clock, MessageCircle, Loader2, LogIn } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { OrgDashboardProvider, useOrgDashboard } from "@/contexts/OrgDashboardContext";
+import { useOrgDashboard } from "@/contexts/OrgDashboardContext";
 import { OrgDashboardFooter } from "@/components/organization/OrgDashboardFooter";
 import { OrgNotifications } from "@/components/organization/OrgNotifications";
 import { SigmaLogo } from "@/components/ui/SigmaLogo";
@@ -81,7 +81,9 @@ const TABS = [
   { key: "chat", label: "Чат", icon: MessageCircle },
 ];
 
-function StudentPageInner({ organizationId, studentId }: { organizationId: string; studentId: string }) {
+function StudentPageInner({ studentId }: { studentId: string }) {
+  const d = useOrgDashboard();
+  const organizationId = d.organizationId;
   const navigate = useNavigate();
   const d = useOrgDashboard();
   const { user } = useAuth();
@@ -453,37 +455,11 @@ function StudentPageInner({ organizationId, studentId }: { organizationId: strin
 }
 
 export default function OrganizationStudentDetails() {
-  const { user } = useAuth();
   const { studentId } = useParams();
-  const [organizationId, setOrganizationId] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    if (!user) return;
-    const load = async () => {
-      const { data: prof } = await supabase.from("profiles").select("organization_id").eq("user_id", user.id).maybeSingle();
-      let orgId = prof?.organization_id || (await supabase.rpc("current_organization_id")).data as string | null;
-      if (!orgId) {
-        const { data: firstOrg } = await supabase.from("organizations").select("id").limit(1).maybeSingle();
-        orgId = firstOrg?.id || null;
-      }
-      setOrganizationId(orgId);
-      setLoading(false);
-    };
-    load();
-  }, [user]);
-
-  if (loading) {
-    return <div className="min-h-screen flex items-center justify-center"><div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full" /></div>;
-  }
-
-  if (!organizationId || !studentId) {
+  if (!studentId) {
     return <div className="min-h-screen flex items-center justify-center text-muted-foreground">Ученик не найден</div>;
   }
 
-  return (
-    <OrgDashboardProvider>
-      <StudentPageInner organizationId={organizationId} studentId={studentId} />
-    </OrgDashboardProvider>
-  );
+  return <StudentPageInner studentId={studentId} />;
 }
