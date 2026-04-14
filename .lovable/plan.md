@@ -1,40 +1,38 @@
 
 
-# Вертикальное меню в карточке организации (админка)
+# Полноценная страница «Помощь» + открытие в модалке из админки/организации
 
 ## Что делаем
 
-Заменяем горизонтальные табы (`TabsList` + `ScrollArea`) в `OrganizationDetailsView.tsx` на двухколоночный макет с вертикальным боковым меню — точно по образцу `DocumentsTab.tsx`.
+1. **Редизайн HelpCenter.tsx** — переделываем страницу по образцу SkillSpace: красивый hero с декоративными элементами (круги, градиенты), анимации fade-in на секциях, hover-эффекты на карточках категорий (подъём + тень), более крупные иконки в цветных кругах, плавные переходы. Контент остаётся тот же, но визуально — premium-уровень.
+
+2. **Создать `HelpCenterDialog.tsx`** — компонент-обёртка Dialog (большой, `max-w-4xl`, `max-h-[85vh]` со скроллом), который рендерит содержимое HelpCenter внутри модального окна. Используется из админки и организации.
+
+3. **Обновить вызовы** — везде где `window.open("/help", "_blank")` или `navigate("/help")` из админки и организации → вместо этого открывать `HelpCenterDialog`:
+   - `AdminDashboardHeader.tsx` — dropdown menu item
+   - `OrgSettingsSidebar.tsx` — sidebar button  
+   - `OrgPageLayout.tsx` — dropdown menu item
+   - `OrganizationStudentDetails.tsx` — dropdown menu item
+   - `OrganizationCourseDetails.tsx` — dropdown menu item
+
+## Дизайн-детали (по образцу SkillSpace)
+
+- **Hero**: градиент primary → primary/70, декоративные полупрозрачные круги (абсолютно позиционированные), анимация `animate-fade-in`
+- **Категории**: карточки с крупными цветными иконками в кругах, `hover:-translate-y-1 hover:shadow-lg transition-all duration-300`
+- **FAQ**: аккордеон с плавной анимацией, мягкие тени
+- **Секции**: каждая с `animate-fade-in` и задержкой через `style={{ animationDelay }}`
+- **Контакты**: карточки с gradient-бордером при hover
 
 ## Изменения
 
-### `src/components/admin/OrganizationDetailsView.tsx`
+### Файлы
+1. **`src/pages/HelpCenter.tsx`** — редизайн с декором и анимациями
+2. **`src/components/shared/HelpCenterDialog.tsx`** — новый: Dialog + содержимое HelpCenter (или рендерит HelpCenter внутри)
+3. **`src/components/admin/AdminDashboardHeader.tsx`** — `window.open("/help")` → state + HelpCenterDialog
+4. **`src/components/organization/OrgSettingsSidebar.tsx`** — `navigate("/help")` → state + HelpCenterDialog
+5. **`src/components/organization/OrgPageLayout.tsx`** — аналогично
+6. **`src/pages/OrganizationStudentDetails.tsx`** — аналогично
+7. **`src/pages/OrganizationCourseDetails.tsx`** — аналогично
 
-1. **Убрать** обёртку `<Tabs>` / `<TabsList>` / `<TabsTrigger>` / `<TabsContent>` — заменить на ручное управление через `activeTab` state (уже есть) и условный рендеринг контента.
-
-2. **Добавить двухколоночный макет** (как в DocumentsTab):
-```text
-┌──────────────┬──────────────────────────────────┐
-│ Ученики      │                                  │
-│ Курсы        │   Контент активного раздела      │
-│ Баланс       │                                  │
-│ Тарифы       │                                  │
-│ ─────────    │                                  │
-│ Документы    │                                  │
-│ История      │                                  │
-│ Заметки      │                                  │
-│ Напоминания  │                                  │
-│ Закрывающие  │                                  │
-│ ─────────    │                                  │
-│ Настройки    │                                  │
-└──────────────┴──────────────────────────────────┘
-```
-
-3. **Навигация** — массив `navItems` с группами (основное / история / настройки), кнопки со стилем `bg-primary/15 text-primary border-r-2 border-primary` для активного, `hover:bg-primary/10 hover:translate-x-0.5` для остальных.
-
-4. **Мобильная версия** — горизонтальный скролл кнопок (как в DocumentsTab: `lg:hidden`).
-
-5. **Контент** — справа `flex-1`, рендер по условию `activeTab === "students"` и т.д. (содержимое бывших `TabsContent` без изменений).
-
-Один файл, структурная переработка секции табов (~50 строк замены).
+Итого: 2 файла создание/редизайн, 5 файлов мелкие правки (добавить state + Dialog).
 
