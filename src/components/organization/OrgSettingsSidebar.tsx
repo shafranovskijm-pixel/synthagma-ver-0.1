@@ -31,13 +31,13 @@ export function OrgSettingsSidebar() {
         role="navigation"
         aria-label="Навигация настроек"
         className={cn(
-          "fixed inset-y-0 left-0 z-50 w-[88px] border-r border-border/60 bg-card/50 backdrop-blur-sm flex flex-col transition-transform duration-300",
+          "fixed inset-y-0 left-0 z-50 w-[88px] shadow-[2px_0_8px_rgba(0,0,0,0.06)] bg-card/50 backdrop-blur-sm flex flex-col transition-transform duration-300",
           isMobileSidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
         )}
       >
         {/* Logo */}
         <div className="flex justify-center py-4">
-          <div className="flex h-12 w-12 items-center justify-center rounded-xl border border-border/60 bg-card/80 shadow-sm">
+          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-card/80 shadow-sm">
             {logoUrl ? (
               <img src={logoUrl} alt="Логотип" className="h-10 w-10 object-contain" />
             ) : (
@@ -63,7 +63,7 @@ export function OrgSettingsSidebar() {
 
         {/* Navigation pill */}
         <div className="flex-1 flex items-center justify-center px-2">
-          <div className="rounded-[28px] border border-border/60 bg-primary/10 p-2 shadow-sm backdrop-blur-sm">
+          <div className="rounded-[28px] bg-primary/10 p-2 shadow-sm backdrop-blur-sm">
             <nav className="flex flex-col items-center gap-1.5">
               {settingsNavItems.map((item) => {
                 const isActive = location.pathname === item.path;

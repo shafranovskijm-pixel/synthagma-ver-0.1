@@ -10,6 +10,7 @@ import { OrgNotifications } from "./OrgNotifications";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { differenceInDays } from "date-fns";
+import { useAuth } from "@/hooks/useAuth";
 import defaultCoverImg from "@/assets/default-org-cover.jpg";
 import {
   DropdownMenu,
