@@ -109,7 +109,7 @@ export function useCourseLearning() {
       });
       if (protocolName) toast.success('Курс завершён! Протокол аттестационной комиссии создан.');
 
-      if ((course as Record<string, unknown>).notify_on_completion) {
+      if ((course as unknown as Record<string, unknown>).notify_on_completion) {
         try { await safeInvoke('notify-course-completion', { body: { enrollment_id: enrollmentId, course_id: courseId, user_id: user.id } }); } catch (e) { console.error('Notification error:', e); }
       }
     } catch (error) { console.error('Error handling course completion:', error); }
