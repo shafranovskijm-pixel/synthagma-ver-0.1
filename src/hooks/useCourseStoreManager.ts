@@ -389,6 +389,7 @@ export function useCourseStoreManager({ organizationId, userRole = 'organization
           message: `${buyerName} (${buyerEmail}) оформил заказ на курс "${courseName}" — ${studentsCount} уч.`,
           organization_id: selectedCourseForOrder.organization_id,
           related_id: orderData?.id || null,
+          user_id: currentUser?.id || userId || '',
         });
 
         await safeInvoke('notify-course-order', {

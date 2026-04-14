@@ -237,6 +237,7 @@ export function StudentCourseStore({ userId, organizationId }: StudentCourseStor
           message: `${studentName} (${studentEmail}) оформил заказ на курс "${courseName}" — ${price} ₽`,
           organization_id: selectedCourse.organization_id,
           related_id: orderData?.id || null,
+          user_id: userId,
         });
 
         await safeInvoke("notify-course-order", {
