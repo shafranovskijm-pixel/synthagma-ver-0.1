@@ -34,7 +34,7 @@ export function OrgSettingsSidebar() {
         role="navigation"
         aria-label="Навигация настроек"
         className={cn(
-          "fixed inset-y-0 left-0 z-50 w-[88px] shadow-[2px_0_8px_rgba(0,0,0,0.06)] bg-card/50 backdrop-blur-sm flex flex-col transition-transform duration-300",
+          "fixed inset-y-0 left-0 z-50 w-[88px] shadow-[2px_0_8px_rgba(0,0,0,0.06)] bg-card/50 flex flex-col transition-transform duration-300",
           isMobileSidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
         )}
       >
@@ -66,7 +66,7 @@ export function OrgSettingsSidebar() {
 
         {/* Navigation pill */}
         <div className="flex-1 flex items-center justify-center px-2">
-          <div className="rounded-[28px] bg-primary/10 p-2 shadow-sm backdrop-blur-sm">
+          <div className="rounded-[28px] bg-primary/10 p-2 shadow-sm">
             <nav className="flex flex-col items-center gap-1.5">
               {settingsNavItems.map((item) => {
                 const isActive = item.path !== "__help_dialog__" && location.pathname === item.path;
@@ -97,7 +97,7 @@ export function OrgSettingsSidebar() {
                     <TooltipContent
                       side="right"
                       sideOffset={12}
-                      className="z-[100] rounded-xl px-4 py-2 text-sm font-medium shadow-lg border-border/60 backdrop-blur-sm bg-primary text-primary-foreground"
+                      className="z-[100] rounded-xl px-4 py-2 text-sm font-medium shadow-lg border-border/60 bg-primary text-primary-foreground"
                       style={{ boxShadow: "0 4px 20px hsl(var(--primary) / 0.3)" }}
                     >
                       {item.label}

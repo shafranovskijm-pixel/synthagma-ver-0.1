@@ -98,7 +98,7 @@ export function StudentSidebar({
 
         <div className="flex flex-1 items-center justify-center w-full">
           <div
-            className="rounded-[28px] p-2 shadow-md backdrop-blur-sm"
+            className="rounded-[28px] p-2 shadow-md"
             style={{ backgroundColor: `hsl(${brandHsl} / 0.14)` }}
           >
             <nav className="flex flex-col items-center gap-2">
