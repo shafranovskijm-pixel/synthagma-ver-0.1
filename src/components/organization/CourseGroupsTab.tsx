@@ -193,7 +193,8 @@ export function CourseGroupsTab({ courseId, organizationId, onRefreshStudents }:
 
       const userIds = (profiles as any[] || []).map((p: any) => p.user_id);
       if (userIds.length === 0) {
-        toast.warning("В группе нет учеников");
+        const group = groups.find(g => g.id === groupId);
+        if (group) handleOpenAddStudents(group);
         return;
       }
 
