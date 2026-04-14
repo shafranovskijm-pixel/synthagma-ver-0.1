@@ -2,7 +2,16 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { Check, X, Loader2, ClipboardCheck } from "lucide-react";
+import { Check, X, Loader2, ClipboardCheck, Users } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { format } from "date-fns";
+import { ru } from "date-fns/locale";
 
 interface EnrollmentRequest {
   id: string;
@@ -12,6 +21,12 @@ interface EnrollmentRequest {
   created_at: string;
   user_name: string;
   user_email: string;
+}
+
+interface CourseGroup {
+  id: string;
+  name: string;
+  start_date: string | null;
 }
 
 interface EnrollmentRequestsTabProps {
@@ -24,10 +39,38 @@ export function EnrollmentRequestsTab({ courseId, defaultAccessDays, onRefreshSt
   const [requests, setRequests] = useState<EnrollmentRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [processingId, setProcessingId] = useState<string | null>(null);
+  const [groups, setGroups] = useState<CourseGroup[]>([]);
+  const [selectedGroupId, setSelectedGroupId] = useState<Record<string, string>>({});
 
   useEffect(() => {
     loadRequests();
+    loadGroups();
   }, [courseId]);
+
+  const loadGroups = async () => {
+    try {
+      // Find groups linked to this course via registration_links
+      const { data: links } = await supabase
+        .from("registration_links")
+        .select("student_group_id")
+        .eq("course_id", courseId)
+        .not("student_group_id", "is", null);
+
+      if (links && links.length > 0) {
+        const groupIds = [...new Set(links.map(l => l.student_group_id).filter(Boolean))];
+        if (groupIds.length > 0) {
+          const { data: groupsData } = await supabase
+            .from("student_groups")
+            .select("id, name, start_date")
+            .in("id", groupIds as string[])
+            .order("name");
+          setGroups((groupsData as any[] || []) as CourseGroup[]);
+        }
+      }
+    } catch (e) {
+      console.error("Failed to load groups", e);
+    }
+  };
 
   const loadRequests = async () => {
     setLoading(true);
@@ -68,6 +111,8 @@ export function EnrollmentRequestsTab({ courseId, defaultAccessDays, onRefreshSt
   const handleApprove = async (request: EnrollmentRequest) => {
     setProcessingId(request.id);
     try {
+      const groupId = selectedGroupId[request.id];
+
       // Create enrollment
       const { error: enrollError } = await supabase.from("enrollments").insert({
         user_id: request.user_id,
@@ -77,6 +122,29 @@ export function EnrollmentRequestsTab({ courseId, defaultAccessDays, onRefreshSt
         ...(defaultAccessDays ? { access_days: defaultAccessDays } : {}),
       });
       if (enrollError) throw enrollError;
+
+      // If a group was selected, assign student to group
+      if (groupId) {
+        await supabase
+          .from("profiles")
+          .update({ student_group_id: groupId } as any)
+          .eq("user_id", request.user_id);
+
+        // Send chat notification about group assignment
+        const group = groups.find(g => g.id === groupId);
+        if (group) {
+          const startInfo = group.start_date
+            ? `, старт: ${format(new Date(group.start_date), "d MMMM yyyy", { locale: ru })}`
+            : "";
+          
+          await supabase.from("chat_messages").insert({
+            user_id: request.user_id,
+            course_id: request.course_id,
+            role: "system",
+            content: `Вы зачислены в группу «${group.name}»${startInfo}. Добро пожаловать!`,
+          });
+        }
+      }
 
       // Update request status
       const { error: updateError } = await supabase
@@ -136,15 +204,38 @@ export function EnrollmentRequestsTab({ courseId, defaultAccessDays, onRefreshSt
         ) : (
           <div className="space-y-2">
             {pendingRequests.map(request => (
-              <div key={request.id} className="flex items-center justify-between p-4 bg-secondary/50 rounded-xl">
-                <div>
+              <div key={request.id} className="flex items-center justify-between p-4 bg-secondary/50 rounded-xl gap-3">
+                <div className="min-w-0">
                   <div className="font-medium">{request.user_name}</div>
                   <div className="text-sm text-muted-foreground">{request.user_email}</div>
                   <div className="text-xs text-muted-foreground mt-1">
                     {new Date(request.created_at).toLocaleDateString("ru-RU", { day: "numeric", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit" })}
                   </div>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-shrink-0">
+                  {groups.length > 0 && (
+                    <Select
+                      value={selectedGroupId[request.id] || ""}
+                      onValueChange={(val) => setSelectedGroupId(prev => ({ ...prev, [request.id]: val }))}
+                    >
+                      <SelectTrigger className="w-[180px] h-9 text-xs">
+                        <Users className="w-3.5 h-3.5 mr-1.5 text-muted-foreground" />
+                        <SelectValue placeholder="Группа (опц.)" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {groups.map(g => (
+                          <SelectItem key={g.id} value={g.id} className="text-xs">
+                            {g.name}
+                            {g.start_date && (
+                              <span className="ml-1 text-muted-foreground">
+                                ({format(new Date(g.start_date), "dd.MM.yy")})
+                              </span>
+                            )}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
                   <Button
                     size="sm"
                     className="gap-1.5"
