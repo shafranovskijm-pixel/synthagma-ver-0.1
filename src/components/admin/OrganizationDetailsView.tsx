@@ -8,7 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+// Tabs removed — vertical nav used instead
 import { Switch } from "@/components/ui/switch";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import {
@@ -749,53 +749,122 @@ export function OrganizationDetailsView({ organization, onBack }: OrganizationDe
         </CardContent>
       </Card>
 
-      {/* Tabs */}
-      <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <ScrollArea className="w-full">
-          <TabsList className="inline-flex w-auto min-w-full gap-1 p-1">
-            <TabsTrigger value="students" className="flex items-center gap-1.5 shrink-0">
-              <Users className="w-4 h-4" />
-              <span className="hidden sm:inline">Ученики</span>
-            </TabsTrigger>
-            <TabsTrigger value="courses" className="flex items-center gap-1.5 shrink-0">
-              <BookOpen className="w-4 h-4" />
-              <span className="hidden sm:inline">Курсы</span>
-            </TabsTrigger>
-            <TabsTrigger value="balance" className="flex items-center gap-1.5 shrink-0">
-              <Wallet className="w-4 h-4" />
-              <span className="hidden sm:inline">Баланс</span>
-            </TabsTrigger>
-            <TabsTrigger value="tariffs" className="flex items-center gap-1.5 shrink-0">
-              <Crown className="w-4 h-4" />
-              <span className="hidden sm:inline">Тарифы</span>
-            </TabsTrigger>
-            <TabsTrigger value="documents" className="flex items-center gap-1.5 shrink-0">
-              <FileText className="w-4 h-4" />
-              <span className="hidden sm:inline">Документы</span>
-            </TabsTrigger>
-            <TabsTrigger value="history" className="flex items-center gap-1.5 shrink-0">
-              <History className="w-4 h-4" />
-              <span className="hidden sm:inline">История</span>
-            </TabsTrigger>
-            <TabsTrigger value="comments" className="flex items-center gap-1.5 shrink-0">
-              <MessageSquare className="w-4 h-4" />
-              <span className="hidden sm:inline">Заметки</span>
-            </TabsTrigger>
-            <TabsTrigger value="reminders" className="flex items-center gap-1.5 shrink-0">
-              <Bell className="w-4 h-4" />
-              <span className="hidden sm:inline">Напоминания</span>
-            </TabsTrigger>
-            <TabsTrigger value="billing-docs" className="flex items-center gap-1.5 shrink-0">
-              <CreditCard className="w-4 h-4" />
-              <span className="hidden sm:inline">Закрывающие</span>
-            </TabsTrigger>
-            <TabsTrigger value="settings" className="flex items-center gap-1.5 shrink-0">
-              <Settings className="w-4 h-4" />
-              <span className="hidden sm:inline">Настройки</span>
-            </TabsTrigger>
-          </TabsList>
-          <ScrollBar orientation="horizontal" />
-        </ScrollArea>
+      {/* Two-column layout: vertical nav + content */}
+      <div className="flex flex-col lg:flex-row gap-6">
+        {/* Mobile: horizontal scroll */}
+        <div className="lg:hidden">
+          <ScrollArea className="w-full">
+            <div className="flex gap-1 p-1">
+              {[
+                { key: "students", icon: Users, label: "Ученики" },
+                { key: "courses", icon: BookOpen, label: "Курсы" },
+                { key: "balance", icon: Wallet, label: "Баланс" },
+                { key: "tariffs", icon: Crown, label: "Тарифы" },
+                { key: "documents", icon: FileText, label: "Документы" },
+                { key: "history", icon: History, label: "История" },
+                { key: "comments", icon: MessageSquare, label: "Заметки" },
+                { key: "reminders", icon: Bell, label: "Напоминания" },
+                { key: "billing-docs", icon: CreditCard, label: "Закрывающие" },
+                { key: "settings", icon: Settings, label: "Настройки" },
+              ].map(item => {
+                const Icon = item.icon;
+                return (
+                  <button
+                    key={item.key}
+                    onClick={() => setActiveTab(item.key)}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium whitespace-nowrap transition-colors ${
+                      activeTab === item.key
+                        ? "bg-primary/15 text-primary"
+                        : "text-muted-foreground hover:bg-muted"
+                    }`}
+                  >
+                    <Icon className="w-4 h-4" />
+                    {item.label}
+                  </button>
+                );
+              })}
+            </div>
+            <ScrollBar orientation="horizontal" />
+          </ScrollArea>
+        </div>
+
+        {/* Desktop: vertical sidebar */}
+        <nav className="hidden lg:flex lg:w-56 shrink-0 flex-col gap-0.5 pr-4 border-r border-border/50">
+          <div className="px-3 pb-1 pt-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/60">Основное</div>
+          {[
+            { key: "students", icon: Users, label: "Ученики" },
+            { key: "courses", icon: BookOpen, label: "Курсы" },
+            { key: "balance", icon: Wallet, label: "Баланс" },
+            { key: "tariffs", icon: Crown, label: "Тарифы" },
+          ].map(item => {
+            const Icon = item.icon;
+            return (
+              <button
+                key={item.key}
+                onClick={() => setActiveTab(item.key)}
+                className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-150 w-full text-left ${
+                  activeTab === item.key
+                    ? "bg-primary/15 text-primary border-r-2 border-primary"
+                    : "text-muted-foreground hover:bg-primary/10 hover:text-foreground hover:translate-x-0.5"
+                }`}
+              >
+                <Icon className="w-4 h-4 shrink-0" />
+                {item.label}
+              </button>
+            );
+          })}
+
+          <div className="my-2 border-t border-border/30" />
+          <div className="px-3 pb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/60">Документы и история</div>
+          {[
+            { key: "documents", icon: FileText, label: "Документы" },
+            { key: "history", icon: History, label: "История" },
+            { key: "comments", icon: MessageSquare, label: "Заметки" },
+            { key: "reminders", icon: Bell, label: "Напоминания" },
+            { key: "billing-docs", icon: CreditCard, label: "Закрывающие" },
+          ].map(item => {
+            const Icon = item.icon;
+            return (
+              <button
+                key={item.key}
+                onClick={() => setActiveTab(item.key)}
+                className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-150 w-full text-left ${
+                  activeTab === item.key
+                    ? "bg-primary/15 text-primary border-r-2 border-primary"
+                    : "text-muted-foreground hover:bg-primary/10 hover:text-foreground hover:translate-x-0.5"
+                }`}
+              >
+                <Icon className="w-4 h-4 shrink-0" />
+                {item.label}
+              </button>
+            );
+          })}
+
+          <div className="my-2 border-t border-border/30" />
+          <div className="px-3 pb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/60">Система</div>
+          {[
+            { key: "settings", icon: Settings, label: "Настройки" },
+          ].map(item => {
+            const Icon = item.icon;
+            return (
+              <button
+                key={item.key}
+                onClick={() => setActiveTab(item.key)}
+                className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-150 w-full text-left ${
+                  activeTab === item.key
+                    ? "bg-primary/15 text-primary border-r-2 border-primary"
+                    : "text-muted-foreground hover:bg-primary/10 hover:text-foreground hover:translate-x-0.5"
+                }`}
+              >
+                <Icon className="w-4 h-4 shrink-0" />
+                {item.label}
+              </button>
+            );
+          })}
+        </nav>
+
+        {/* Content */}
+        <div className="flex-1 min-w-0">
 
         {/* Overview Tab */}
         <TabsContent value="overview" className="space-y-6">
