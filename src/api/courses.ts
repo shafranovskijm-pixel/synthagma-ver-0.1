@@ -6,7 +6,7 @@ import type { Course, CourseCategory, Enrollment } from "@/types";
 export async function fetchCourses(organizationId: string): Promise<Course[]> {
   const { data: coursesData, error } = await supabase
     .from("courses")
-    .select("id, title, description, is_published, created_at, updated_at, organization_id, category_id, duration, skip_video_identification, sequential_lessons, allow_video_seek, training_form, notify_on_completion, completion_notify_emails, cover_image_url, catalog_order, price")
+    .select("id, title, description, is_published, created_at, updated_at, organization_id, category_id, duration, skip_video_identification, sequential_lessons, allow_video_seek, training_form, notify_on_completion, completion_notify_emails, cover_image_url, catalog_order, price, hidden_from_catalog")
     .eq("organization_id", organizationId)
     .order("catalog_order", { ascending: true })
     .order("created_at", { ascending: false });
@@ -39,6 +39,7 @@ export async function fetchCourses(organizationId: string): Promise<Course[]> {
     cover_image_url: course.cover_image_url ?? null,
     catalog_order: course.catalog_order ?? 0,
     price: course.price ?? 0,
+    hidden_from_catalog: course.hidden_from_catalog ?? false,
   }));
 }
 
