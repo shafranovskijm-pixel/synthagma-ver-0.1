@@ -98,7 +98,7 @@ export function AdminSettings() {
             Настройки
           </h2>
         </div>
-        <p className="text-sm text-muted-foreground">6 секций • Панель администратора</p>
+        <p className="text-sm text-muted-foreground">10 секций • Панель администратора</p>
       </div>
 
       {/* Theme Settings */}
