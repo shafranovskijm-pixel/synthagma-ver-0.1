@@ -1,10 +1,9 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/hooks/useAuth";
 import { ArrowLeft, BookOpen, CreditCard, Handshake, HelpCircle, User, LogOut, Sparkles, Settings, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { OrgDashboardProvider, useOrgDashboard } from "@/contexts/OrgDashboardContext";
+import { useOrgDashboard } from "@/contexts/OrgDashboardContext";
 import { OrgDashboardFooter } from "@/components/organization/OrgDashboardFooter";
 import { OrgNotifications } from "@/components/organization/OrgNotifications";
 import { SigmaLogo } from "@/components/ui/SigmaLogo";
@@ -32,9 +31,11 @@ function getUserInitials(email?: string | null, name?: string | null): string {
   return "?";
 }
 
-function CoursePageInner({ organizationId, courseId }: { organizationId: string; courseId: string }) {
+export default function OrganizationCourseDetails() {
   const navigate = useNavigate();
+  const { courseId } = useParams();
   const d = useOrgDashboard();
+  const organizationId = d.organizationId;
 
   const organizationName = d.organizationName;
   const customName = d.branding.brandingSettings.customName;
@@ -72,13 +73,11 @@ function CoursePageInner({ organizationId, courseId }: { organizationId: string;
         .single();
 
       if (courseData) {
-        // Get lessons count
         const { count: lessonsCount } = await supabase
           .from("lessons")
           .select("*", { count: "exact", head: true })
           .eq("course_id", courseId);
 
-        // Get enrollments with profiles
         const { data: enrollments } = await supabase
           .from("enrollments")
           .select("id, user_id, progress, status")
@@ -96,13 +95,9 @@ function CoursePageInner({ organizationId, courseId }: { organizationId: string;
           for (const e of enrollments) {
             const prof = profileMap.get(e.user_id);
             studentsList.push({
-              id: e.id,
-              user_id: e.user_id,
-              enrollment_id: e.id,
-              name: prof?.full_name || "Без имени",
-              email: prof?.email || "",
-              progress: e.progress || 0,
-              status: e.status,
+              id: e.id, user_id: e.user_id, enrollment_id: e.id,
+              name: prof?.full_name || "Без имени", email: prof?.email || "",
+              progress: e.progress || 0, status: e.status,
             });
           }
         }
@@ -152,12 +147,30 @@ function CoursePageInner({ organizationId, courseId }: { organizationId: string;
   const userEmail = d.user?.email;
   const initials = getUserInitials(userEmail);
 
+  if (!organizationId || !courseId) {
+    return <div className="min-h-screen flex items-center justify-center text-muted-foreground">Курс не найден</div>;
+  }
+
   if (loading) {
-    return <div className="min-h-screen flex items-center justify-center"><div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full" /></div>;
+    return (
+      <div className="min-h-screen bg-background flex">
+        <OrgSidebar />
+        <main className="flex-1 flex items-center justify-center lg:ml-[88px]">
+          <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full" />
+        </main>
+      </div>
+    );
   }
 
   if (!course) {
-    return <div className="min-h-screen flex items-center justify-center text-muted-foreground">Курс не найден</div>;
+    return (
+      <div className="min-h-screen bg-background flex">
+        <OrgSidebar />
+        <main className="flex-1 flex items-center justify-center lg:ml-[88px] text-muted-foreground">
+          Курс не найден
+        </main>
+      </div>
+    );
   }
 
   return (
@@ -258,7 +271,7 @@ function CoursePageInner({ organizationId, courseId }: { organizationId: string;
         </div>
 
         {/* Sub-header */}
-        <div className="flex items-center justify-between px-4 lg:px-6 h-12 border-t border-border/50 bg-card/95 backdrop-blur-sm">
+        <div className="flex items-center justify-between px-4 lg:px-6 h-12 border-t border-border/50 bg-card/95">
           <div className="flex items-center gap-2">
             <BookOpen className="w-4.5 h-4.5 text-primary" />
             <h1 className="font-display text-base font-semibold text-foreground/80">Курс</h1>
@@ -285,41 +298,5 @@ function CoursePageInner({ organizationId, courseId }: { organizationId: string;
       </main>
       <HelpCenterDialog open={helpOpen} onOpenChange={setHelpOpen} />
     </div>
-  );
-}
-
-export default function OrganizationCourseDetails() {
-  const { user } = useAuth();
-  const { courseId } = useParams();
-  const [organizationId, setOrganizationId] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    if (!user) return;
-    const load = async () => {
-      const { data: prof } = await supabase.from("profiles").select("organization_id").eq("user_id", user.id).maybeSingle();
-      let orgId = prof?.organization_id || (await supabase.rpc("current_organization_id")).data as string | null;
-      if (!orgId) {
-        const { data: firstOrg } = await supabase.from("organizations").select("id").limit(1).maybeSingle();
-        orgId = firstOrg?.id || null;
-      }
-      setOrganizationId(orgId);
-      setLoading(false);
-    };
-    load();
-  }, [user]);
-
-  if (loading) {
-    return <div className="min-h-screen flex items-center justify-center"><div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full" /></div>;
-  }
-
-  if (!organizationId || !courseId) {
-    return <div className="min-h-screen flex items-center justify-center text-muted-foreground">Курс не найден</div>;
-  }
-
-  return (
-    <OrgDashboardProvider>
-      <CoursePageInner organizationId={organizationId} courseId={courseId} />
-    </OrgDashboardProvider>
   );
 }
