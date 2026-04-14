@@ -390,7 +390,11 @@ export function BlockEditor({ blocks, onChange, readOnly = false, courseTitle, l
         toast.error(error?.message || "Не удалось оформить текст");
         return;
       }
-      const formatted: ContentBlock[] = data.blocks.map((b: any) => createBlock(b.type as BlockType, b));
+      const formatted: ContentBlock[] = data.blocks.map((b: any) => ({
+        ...createBlock(b.type as BlockType),
+        content: b.content || "",
+        ...(b.accordionTitle && { accordionTitle: b.accordionTitle }),
+      }));
       onChangeWithHistory(formatted);
       await incrementAiLimitGlobal();
       const { toast } = await import("sonner");
