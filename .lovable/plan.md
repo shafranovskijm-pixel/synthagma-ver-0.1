@@ -1,36 +1,45 @@
 
 
-# Добавить поиск по ИНН (DaData) в диалог создания акта
+# Перенос групп из редактора + связь заявок с группами
 
 ## Что сделать
 
-Добавить в диалог «Создать акт» такой же переключатель «Заказчик — другая организация», как уже реализовано в диалоге счёта. При включении — поле ИНН с кнопкой «Найти», поля названия, КПП и ФИО руководителя. Поиск идёт сначала по локальной БД (`organizations`), если не найдено — через edge function `dadata-company`.
+### 1. Убрать «Ближайшие группы» из редактора курса
+Удалить блок в `src/pages/CourseBuilder.tsx` (строки 217–226) — секцию с `CourseGroupsTab` внутри конструктора. Группы уже доступны на странице курса через боковое меню (вкладка «Группы»), дублирование не нужно.
 
-## Изменения
+### 2. Связать заявки с группами
+На вкладке «Заявки» (`requests` в `CourseDetailsContent.tsx`) добавить возможность:
+- При одобрении заявки предлагать выбрать группу для зачисления (dropdown с существующими группами курса)
+- Кнопка «Зачислить в группу» — автоматически добавляет ученика в `student_groups` и делает enrollment
+- После зачисления в группу — отправлять сообщение в чат ученику: «Вы зачислены в группу "X", старт: DD.MM.YYYY»
 
-### 1. `src/components/organization/tabs/DocumentsTab.tsx`
-- Добавить state: `actOtherCustomer`, `actCustomerName`, `actCustomerInn`, `actCustomerKpp`, `actCustomerDirector`, `actCustomerPosition`
-- Расширить `handleSearchByInn` или создать `handleActSearchByInn` — сначала ищет в `organizations`, если не найдено — вызывает `supabase.functions.invoke("dadata-company", { body: { inn } })` для получения реквизитов через DaData
-- В диалоге акта (строки 780–830) добавить чекбокс и блок полей (аналогично invoice dialog)
-- В `handleGenerateAct` — если `actOtherCustomer`, передавать кастомные данные вместо `orgDetails`
+### 3. Уведомление в чат о группе
+При зачислении через заявку — автоматическое сообщение в чат (таблица `messages`) с информацией о группе и дате старта.
 
-### 2. `src/utils/generateAct.ts`
-Никаких изменений не нужно — он уже принимает `orgName`, `orgInn`, `directorName`, `directorPosition` как параметры.
+## Файлы
+
+| Файл | Изменение |
+|------|-----------|
+| `src/pages/CourseBuilder.tsx` | Удалить блок «Ближайшие группы» (строки 217–226), убрать неиспользуемый импорт `CourseGroupsTab` |
+| `src/components/organization/CourseDetailsContent.tsx` | В секции обработки заявок добавить выбор группы при одобрении и автоотправку сообщения в чат |
 
 ## Технические детали
 
-Поиск по ИНН через DaData:
-```typescript
-const { data: dadataResult } = await supabase.functions.invoke("dadata-company", {
-  body: { inn }
-});
-if (dadataResult?.success) {
-  setActCustomerName(dadataResult.company.shortName);
-  setActCustomerInn(dadataResult.company.inn);
-  setActCustomerKpp(dadataResult.company.kpp || "");
-  setActCustomerDirector(dadataResult.company.management || "");
-  setActCustomerPosition(dadataResult.company.managementPosition || "Руководитель");
-}
+Блок удаления в CourseBuilder:
+```
+// Удалить строки 217-226:
+{resolvedCourseId && organizationId && (
+  <div className="mt-8 p-6 bg-card rounded-2xl border border-border shadow-sm">
+    <div className="flex items-center gap-2 mb-4">
+      <Users className="w-5 h-5 text-primary" />
+      <h2 className="text-lg font-semibold">Ближайшие группы</h2>
+    </div>
+    <CourseGroupsTab courseId={resolvedCourseId} organizationId={organizationId} />
+  </div>
+)}
 ```
 
-Изменения только в одном файле (`DocumentsTab.tsx`), миграции не нужны.
+Для связи заявок с группами — при клике «Одобрить» показывать select с группами курса (запрос `student_groups` по `course_id`). При выборе группы:
+1. `student_group_id` в `profiles` обновляется
+2. Создаётся enrollment
+3. В `messages` вставляется уведомление с текстом о группе и дате старта
