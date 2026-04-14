@@ -168,7 +168,7 @@ export function UsersManager() {
       toast.success("Успешно", { description: "Учётные данные обновлены" });
     } catch (error: any) {
       console.error("Error saving credentials:", error);
-      toast.error("Ошибка", { description: "error?.message || "Не удалось сохранить учётные данные"" });
+      toast.error("Ошибка", { description: error?.message || "Не удалось сохранить учётные данные" });
       setCredEdit(prev => ({ ...prev, saving: false }));
     }
   };

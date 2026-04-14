@@ -54,7 +54,7 @@ const ResetPassword = () => {
     });
 
     if (error) {
-      toast.error("Ошибка", { description: "error.message" });
+      toast.error("Ошибка", { description: error.message });
     } else {
       setIsSuccess(true);
       toast.success("Успешно!", { description: "Пароль успешно изменён" });

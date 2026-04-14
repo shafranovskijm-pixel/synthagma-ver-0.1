@@ -23,7 +23,7 @@ import { LandingFaqSection } from "@/components/course-landing/LandingFaqSection
 interface CourseData {
   id: string;
   title: string;
-  description: "string | null;"
+  description: string | null;
   duration: string | null;
   price: number;
   cover_image_url: string | null;
@@ -184,7 +184,7 @@ export default function CourseLanding() {
         setHasPendingRequest(true);
         toast.success("Заявка отправлена!", { description:""Учебный центр рассмотрит вашу заявку"" });
       } catch (e: any) {
-        toast.error("Ошибка отправки заявки", { description: "e.message" });
+        toast.error("Ошибка отправки заявки", { description: e.message });
       }
       return;
     }
@@ -211,7 +211,7 @@ export default function CourseLanding() {
       toast.success("Вы записаны на курс!");
       navigate(`/course/${course.id}/learn`);
     } catch (e: any) {
-      toast.error("Ошибка записи", { description: "e.message" });
+      toast.error("Ошибка записи", { description: e.message });
     }
   };
 
@@ -356,7 +356,7 @@ export default function CourseLanding() {
     "@context": "https://schema.org",
     "@type": "Course",
     name: course.title,
-    description: "course.description || "","
+    description: course.description || "","
     provider: { "@type": "Organization", name: orgName },
     ...(ogImage ? { image: ogImage } : {}),
     ...(course.price > 0

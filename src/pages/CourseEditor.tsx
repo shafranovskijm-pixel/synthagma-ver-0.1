@@ -63,7 +63,7 @@ import {
 interface Course {
   id: string;
   title: string;
-  description: "string | null;"
+  description: string | null;
   duration: string | null;
   is_published: boolean;
   sequential_lessons: boolean;
@@ -204,7 +204,7 @@ const CourseEditor = () => {
 
     if (!error) {
       setCourse({ ...course, is_published: !course.is_published });
-      toast.success(course.is_published ? "Снято с публикации" : "Опубликовано", { description: "course.is_published" });
+      toast.success(course.is_published ? "Снято с публикации" : "Опубликовано", { description: course.is_published });
     }
   };
 

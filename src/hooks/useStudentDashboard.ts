@@ -18,7 +18,7 @@ import demoOrgBanner from "@/assets/demo/org-banner.jpg";
 export interface StudentCourse {
   id: string;
   title: string;
-  description: "string | null;"
+  description: string | null;
   duration: string | null;
   progress: number;
   totalLessons: number;
@@ -30,7 +30,7 @@ export interface StudentCourse {
 export interface CatalogCourse {
   id: string;
   title: string;
-  description: "string | null;"
+  description: string | null;
   cover_image_url?: string | null;
   duration?: string | null;
   price?: number;
@@ -241,7 +241,7 @@ export function useStudentDashboard() {
         effectiveBranding = org?.branding;
         effectiveDashboardSettings = org?.student_dashboard_settings;
         if (org?.subscription_plan) setOrgPlan(org.subscription_plan);
-        setProfile({ full_name: profileData.full_name, organization_name: effectiveOrgName, organization_id: profileData.organization_id, org_description: "(org as any)?.description || null" });
+        setProfile({ full_name: profileData.full_name, organization_name: effectiveOrgName, organization_id: profileData.organization_id, org_description: (org as any)?.description || null });
       }
 
       const { data: laborProfile } = await supabase.from("labor_safety_profiles").select("organization_id, full_name, organizations(name, branding, student_dashboard_settings, subscription_plan)").eq("user_id", uid).order("created_at", { ascending: false }).limit(1).maybeSingle();

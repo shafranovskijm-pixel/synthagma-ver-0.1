@@ -160,7 +160,7 @@ export function SubscriptionTab() {
     } as any);
 
     if (error) {
-      toast.error("Ошибка", { description: "error.message" });
+      toast.error("Ошибка", { description: error.message });
     } else {
       toast.success("Заявка отправлена", { description: "Мы свяжемся с вами для оформления перехода на новый тариф" });
       setPendingRequest({ requested_plan: selectedPlan, created_at: new Date().toISOString() });
@@ -233,7 +233,7 @@ export function SubscriptionTab() {
       if (err) throw err;
       nav(`/invoice/${(invoice as any).id}`);
     } catch (e: any) {
-      toast.error("Ошибка", { description: "e.message" });
+      toast.error("Ошибка", { description: e.message });
     } finally {
       setGeneratingInvoice(false);
     }

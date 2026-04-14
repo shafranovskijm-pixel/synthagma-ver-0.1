@@ -224,7 +224,7 @@ export default function StudentProfile() {
     const path = `avatars/${user.id}.${ext}`;
     const { error: uploadError } = await supabase.storage.from("student-documents").upload(path, file, { upsert: true });
     if (uploadError) {
-      toast.error("Ошибка загрузки", { description: "uploadError.message" });
+      toast.error("Ошибка загрузки", { description: uploadError.message });
       return;
     }
     const { data: urlData } = supabase.storage.from("student-documents").getPublicUrl(path);
@@ -243,7 +243,7 @@ export default function StudentProfile() {
       if (error) throw error;
       toast.success("Письмо отправлено", { description: "Подтвердите новый email по ссылке в письме" });
     } catch (err: any) {
-      toast.error("Ошибка", { description: "err.message" });
+      toast.error("Ошибка", { description: err.message });
     } finally {
       setEmailSaving(false);
     }
@@ -267,7 +267,7 @@ export default function StudentProfile() {
       setConfirmPassword("");
       toast.success("Пароль изменён");
     } catch (err: any) {
-      toast.error("Ошибка", { description: "err.message" });
+      toast.error("Ошибка", { description: err.message });
     } finally {
       setPasswordSaving(false);
     }

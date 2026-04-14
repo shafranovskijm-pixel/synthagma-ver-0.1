@@ -78,7 +78,7 @@ const RegisterOrganization = () => {
       }
     } catch (error: any) {
       console.error("Error loading company:", error);
-      toast.error("Ошибка загрузки", { description: "error.message || "Не удалось загрузить данные компании"" });
+      toast.error("Ошибка загрузки", { description: error.message || "Не удалось загрузить данные компании" });
     } finally {
       setIsLoadingInn(false);
     }

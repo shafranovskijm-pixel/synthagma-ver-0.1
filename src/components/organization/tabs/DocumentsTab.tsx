@@ -298,7 +298,7 @@ export const DocumentsTab = React.memo(function DocumentsTab({ organizationId, o
         setActCustomerKpp(data.kpp || "");
         setActCustomerDirector(data.director_name || "");
         setActCustomerPosition((data as any).director_position || "Руководитель");
-        toast.success("Организация найдена", { description: "data.name" });
+        toast.success("Организация найдена", { description: data.name });
       } else {
         // Fallback to DaData
         const { data: dadataResult } = await supabase.functions.invoke("dadata-company", {
@@ -335,7 +335,7 @@ export const DocumentsTab = React.memo(function DocumentsTab({ organizationId, o
         setInvoiceBuyerName(data.name || "");
         setInvoiceBuyerInn(data.inn || inn);
         setInvoiceBuyerKpp(data.kpp || "");
-        toast.success("Организация найдена", { description: "data.name" });
+        toast.success("Организация найдена", { description: data.name });
       } else {
         toast.success("Не найдено", { description: "Введите реквизиты вручную" });
       }
@@ -395,7 +395,7 @@ export const DocumentsTab = React.memo(function DocumentsTab({ organizationId, o
       setInvoiceBuyerInn("");
       setInvoiceBuyerKpp("");
     } catch (e: any) {
-      toast.error("Ошибка", { description: "e.message" });
+      toast.error("Ошибка", { description: e.message });
     } finally {
       setGeneratingInvoice(false);
     }

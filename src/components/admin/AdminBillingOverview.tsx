@@ -101,7 +101,7 @@ export const AdminBillingOverview = () => {
       status: "active",
     });
     if (error) {
-      toast.error("Ошибка", { description: "error.message" });
+      toast.error("Ошибка", { description: error.message });
     } else {
       toast.success("Договор создан");
       setShowCreateContract(false);

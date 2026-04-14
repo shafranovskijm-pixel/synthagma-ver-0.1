@@ -157,7 +157,7 @@ export function EnrollmentRequestsTab({ courseId, defaultAccessDays, onRefreshSt
       loadRequests();
       onRefreshStudents?.();
     } catch (e: any) {
-      toast.error("Ошибка одобрения заявки", { description: "e.message" });
+      toast.error("Ошибка одобрения заявки", { description: e.message });
     } finally {
       setProcessingId(null);
     }
@@ -175,7 +175,7 @@ export function EnrollmentRequestsTab({ courseId, defaultAccessDays, onRefreshSt
       toast.success(`Заявка отклонена: ${request.user_name}`);
       loadRequests();
     } catch (e: any) {
-      toast.error("Ошибка отклонения заявки", { description: "e.message" });
+      toast.error("Ошибка отклонения заявки", { description: e.message });
     } finally {
       setProcessingId(null);
     }

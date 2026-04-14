@@ -42,7 +42,7 @@ export function TestimonialsManager() {
       .update({ is_approved: true })
       .eq("id", id);
     if (error) {
-      toast.error("Ошибка", { description: "error.message" });
+      toast.error("Ошибка", { description: error.message });
     } else {
       toast.success("Отзыв одобрен");
       fetchTestimonials();
@@ -54,7 +54,7 @@ export function TestimonialsManager() {
       .update({ is_approved: false })
       .eq("id", id);
     if (error) {
-      toast.error("Ошибка", { description: "error.message" });
+      toast.error("Ошибка", { description: error.message });
     } else {
       toast.success("Отзыв скрыт");
       fetchTestimonials();
@@ -67,7 +67,7 @@ export function TestimonialsManager() {
       .delete()
       .eq("id", id);
     if (error) {
-      toast.error("Ошибка", { description: "error.message" });
+      toast.error("Ошибка", { description: error.message });
     } else {
       toast.success("Отзыв удалён");
       fetchTestimonials();

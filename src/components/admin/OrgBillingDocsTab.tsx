@@ -64,7 +64,7 @@ export function OrgBillingDocsTab({ organizationId }: OrgBillingDocsTabProps) {
       .upload(filePath, uploadFile);
 
     if (uploadError) {
-      toast.error("Ошибка загрузки", { description: "uploadError.message" });
+      toast.error("Ошибка загрузки", { description: uploadError.message });
       setUploading(false);
       return;
     }
@@ -79,7 +79,7 @@ export function OrgBillingDocsTab({ organizationId }: OrgBillingDocsTabProps) {
       } as any);
 
     if (dbError) {
-      toast.error("Ошибка сохранения", { description: "dbError.message" });
+      toast.error("Ошибка сохранения", { description: dbError.message });
     } else {
       toast.success("Документ загружен");
       setUploadDocName("");
@@ -96,7 +96,7 @@ export function OrgBillingDocsTab({ organizationId }: OrgBillingDocsTabProps) {
       .delete()
       .eq("id", doc.id);
     if (error) {
-      toast.error("Ошибка удаления", { description: "error.message" });
+      toast.error("Ошибка удаления", { description: error.message });
     } else {
       toast.success("Документ удалён");
       setBillingDocs(prev => prev.filter(d => d.id !== doc.id));
