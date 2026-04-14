@@ -177,7 +177,7 @@ export function AdminMarketplaceManager() {
         <div className="flex gap-6">
           {/* Vertical sidebar nav */}
           <div className="w-[200px] shrink-0">
-            <nav className="flex flex-col gap-1 sticky top-4">
+            <TabsList className="flex flex-col gap-1 sticky top-4 h-auto bg-transparent p-0 w-full">
               {adminNavItems.map((item) => {
                 const Icon = item.icon;
                 const isActive = h.activeTab === item.value;
@@ -194,7 +194,7 @@ export function AdminMarketplaceManager() {
                   </TabsTrigger>
                 );
               })}
-            </nav>
+            </TabsList>
           </div>
 
           {/* Main content */}

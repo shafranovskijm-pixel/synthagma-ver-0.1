@@ -101,7 +101,7 @@ export function CourseStoreManager({ organizationId, userRole = 'organization', 
         <div className="flex gap-6">
           {/* Vertical sidebar nav */}
           <div className="w-[200px] shrink-0">
-            <nav className="flex flex-col gap-1 sticky top-4">
+            <TabsList className="flex flex-col gap-1 sticky top-4 h-auto bg-transparent p-0 w-full">
               {[
                 { value: "catalog", icon: Package, label: "Каталог" },
                 { value: "my-courses", icon: GraduationCap, label: "Мои курсы" },
@@ -123,7 +123,7 @@ export function CourseStoreManager({ organizationId, userRole = 'organization', 
                   </TabsTrigger>
                 );
               })}
-            </nav>
+            </TabsList>
           </div>
 
           {/* Main content */}
