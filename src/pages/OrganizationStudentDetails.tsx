@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { HelpCenterDialog } from "@/components/shared/HelpCenterDialog";
 import { differenceInDays } from "date-fns";
 import defaultCoverImg from "@/assets/default-org-cover.jpg";
 import { OrgSidebar } from "@/components/organization/OrgSidebar";
@@ -445,6 +446,8 @@ function StudentPageInner({ organizationId, studentId }: { organizationId: strin
           organizationId={organizationId}
         />
       )}
+
+      <HelpCenterDialog open={helpOpen} onOpenChange={setHelpOpen} />
     </div>
   );
 }

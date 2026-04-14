@@ -20,6 +20,7 @@ import { differenceInDays } from "date-fns";
 import defaultCoverImg from "@/assets/default-org-cover.jpg";
 import { CourseDetailsContent } from "@/components/organization/CourseDetailsContent";
 import { OrgSidebar } from "@/components/organization/OrgSidebar";
+import { HelpCenterDialog } from "@/components/shared/HelpCenterDialog";
 
 function getUserInitials(email?: string | null, name?: string | null): string {
   if (name) {
@@ -282,6 +283,7 @@ function CoursePageInner({ organizationId, courseId }: { organizationId: string;
 
       <OrgDashboardFooter />
       </main>
+      <HelpCenterDialog open={helpOpen} onOpenChange={setHelpOpen} />
     </div>
   );
 }
