@@ -104,7 +104,7 @@ export function SupportRequestForm() {
           user_email: userEmail || null,
           user_role: userRole || null,
           organization_id: orgId || null,
-          description: "description.trim(),"
+          description: description.trim(),
           contact_phone: contactPhone.trim() || null,
           screenshot_url: photoUrl,
           browser_info: navigator.userAgent.slice(0, 200),
