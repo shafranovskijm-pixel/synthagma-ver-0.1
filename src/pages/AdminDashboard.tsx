@@ -113,7 +113,7 @@ const AdminDashboard = () => {
           {activeTab === "broadcast" && <BroadcastManager />}
           {activeTab === "chats" && <AdminChatsManager />}
           {activeTab === "referrals" && <ReferralsManager />}
-          {activeTab === "staff" && <AdminStaffTab />}
+          
           {activeTab === "devtools" && <DevToolsPanel />}
           {activeTab === "updates" && <PlatformUpdatesManager />}
           {activeTab === "settings" && <AdminSettings />}

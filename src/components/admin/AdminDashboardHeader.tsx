@@ -183,10 +183,6 @@ export function AdminDashboardHeader({
                 <Settings className="w-4 h-4" />
                 Настройки
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setActiveTab("staff")} className="rounded-lg gap-2.5 py-2.5">
-                <Users className="w-4 h-4" />
-                Сотрудники
-              </DropdownMenuItem>
               <DropdownMenuItem onClick={() => setActiveTab("billing")} className="rounded-lg gap-2.5 py-2.5">
                 <FileText className="w-4 h-4" />
                 Документооборот
