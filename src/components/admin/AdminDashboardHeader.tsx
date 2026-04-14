@@ -1,5 +1,5 @@
 import { useRef, useState, useCallback } from "react";
-import { Menu, Bell, User, LogOut, Settings, FileText, Sparkles, HelpCircle, ImagePlus, Wand2, Loader2, Users, Check } from "lucide-react";
+import { Menu, Bell, User, LogOut, Settings, FileText, Sparkles, HelpCircle, ImagePlus, Wand2, Loader2, Users, Check, Gift } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { SigmaLogo } from "@/components/ui/SigmaLogo";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
