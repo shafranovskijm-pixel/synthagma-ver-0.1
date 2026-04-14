@@ -22,6 +22,7 @@ import { differenceInDays } from "date-fns";
 import defaultCoverImg from "@/assets/default-org-cover.jpg";
 import { HelpCenterDialog, useHelpCenterDialog } from "@/components/shared/HelpCenterDialog";
 import { useState, useEffect } from "react";
+import { supabase } from "@/integrations/supabase/client";
 
 function getUserInitials(email?: string | null, name?: string | null): string {
   if (name) {
