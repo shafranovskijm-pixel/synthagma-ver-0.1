@@ -68,12 +68,20 @@ export function OrgDashboardHeader() {
   // Tariff info
   const [paidUntil, setPaidUntil] = useState<string | null>(null);
   const planName = d.subscriptionLimits?.plan;
+  const { user: authUser } = useAuth();
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
 
   useEffect(() => {
     if (!organizationId) return;
     supabase.from("organizations").select("paid_until").eq("id", organizationId).single()
       .then(({ data }) => { if (data?.paid_until) setPaidUntil(data.paid_until); });
   }, [organizationId]);
+
+  useEffect(() => {
+    if (!authUser?.id) return;
+    supabase.from("profiles").select("avatar_url").eq("user_id", authUser.id).single()
+      .then(({ data }) => { if (data?.avatar_url) setAvatarUrl(data.avatar_url); });
+  }, [authUser?.id]);
 
   const daysRemaining = paidUntil ? Math.max(0, differenceInDays(new Date(paidUntil), new Date())) : null;
 
