@@ -1,16 +1,18 @@
+import { useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { User, Settings, FileText, Sparkles, HelpCircle, LogOut, ArrowLeft } from "lucide-react";
 import { SigmaLogo } from "@/components/ui/SigmaLogo";
 import { useOrgDashboard } from "@/contexts/OrgDashboardContext";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
+import { HelpCenterDialog } from "@/components/shared/HelpCenterDialog";
 
 const settingsNavItems = [
   { icon: User, label: "Профиль", path: "/organization/profile" },
   { icon: Settings, label: "Настройки", path: "/organization/settings" },
   { icon: FileText, label: "Документы", path: "/organization/documents" },
   { icon: Sparkles, label: "Что нового", path: "/organization/whats-new" },
-  { icon: HelpCircle, label: "Помощь", path: "/help" },
+  { icon: HelpCircle, label: "Помощь", path: "__help_dialog__" },
 ];
 
 export function OrgSettingsSidebar() {
@@ -19,6 +21,8 @@ export function OrgSettingsSidebar() {
   const location = useLocation();
   const logoUrl = d.branding.brandingSettings.logoUrl;
   const isMobileSidebarOpen = d.isMobileSidebarOpen;
+  const setIsMobileSidebarOpen = d.setIsMobileSidebarOpen;
+  const [helpOpen, setHelpOpen] = useState(false);
   const setIsMobileSidebarOpen = d.setIsMobileSidebarOpen;
 
   return (
@@ -66,12 +70,19 @@ export function OrgSettingsSidebar() {
           <div className="rounded-[28px] bg-primary/10 p-2 shadow-sm backdrop-blur-sm">
             <nav className="flex flex-col items-center gap-1.5">
               {settingsNavItems.map((item) => {
-                const isActive = location.pathname === item.path;
+                const isActive = item.path !== "__help_dialog__" && location.pathname === item.path;
                 return (
                   <Tooltip key={item.path} delayDuration={100}>
                     <TooltipTrigger asChild>
                       <button
-                        onClick={() => { navigate(item.path); setIsMobileSidebarOpen(false); }}
+                        onClick={() => {
+                          if (item.path === "__help_dialog__") {
+                            setHelpOpen(true);
+                          } else {
+                            navigate(item.path);
+                          }
+                          setIsMobileSidebarOpen(false);
+                        }}
                         className={cn(
                           "flex h-11 w-11 items-center justify-center rounded-xl transition-all duration-200",
                           isActive
@@ -115,6 +126,7 @@ export function OrgSettingsSidebar() {
           </Tooltip>
         </div>
       </aside>
+      <HelpCenterDialog open={helpOpen} onOpenChange={setHelpOpen} />
     </>
   );
 }
