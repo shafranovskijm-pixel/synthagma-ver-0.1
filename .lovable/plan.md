@@ -1,61 +1,35 @@
 
 
-# Обновление devToolsData.ts — актуальная статистика проекта
+# Очистка карточки организации — удаление неактуальных разделов
 
-## Реальные цифры проекта (собрано сканированием)
+## Что убираем
 
-| Раздел | Файлов | Строк |
-|--------|--------|-------|
-| src/components/admin/ | 69 | 24 421 |
-| src/components/organization/ | 118 | 45 107 |
-| src/components/student/ | 20 | 4 699 |
-| src/components/landing/ | 14 | 3 405 |
-| src/components/course-builder/ | 20 | 6 321 |
-| src/components/course-editor/ | 5 | 1 806 |
-| src/components/course-learning/ | 4 | 883 |
-| src/components/course-landing/ | 14 | 1 595 |
-| src/components/onboarding/ | 4 | 489 |
-| src/components/ui/ | 46 | 3 768 |
-| src/components/company/ | 7 | 1 380 |
-| src/components/shared/ | 1 | 23 |
-| **src/hooks/** | 70+ (вкл. course-learning/) | 16 721 |
-| **src/pages/** | 58 | 17 866 |
-| **src/utils/** | 31 | 3 556 |
-| **supabase/functions/** | 59 | 15 661 |
-| **БД таблиц** | 118 | — |
-| **Всего** | ~562 файлов | ~148K строк |
+1. **Баланс** — вкладка и компонент `OrgBalanceManager` (больше не используется)
+2. **Закрывающие** — вкладка `billing-docs` и `OrgBillingDocsTab` (перенесено в документооборот)
+3. **Документы** — вкладка `documents` и `OrgDocumentsTab` (перенесено в документооборот)
+4. **Из настроек** — убираем блоки «ИИ-помощник», «ФИС ФРДО» и «Лимиты ресурсов» (всё это уже в тарифах)
 
-## Что обновляем в `devToolsData.ts`
+## Что остаётся в настройках
 
-### 1. CODE_TREE — актуальные числа
-- Все subfolders с реальными files/lines (добавить company/, course-landing/, shared/)
-- totalFiles и totalLines пересчитать
-- Добавить новые папки (company, course-landing, shared)
+- Учётные данные (логин/пароль)
+- Основные поля (название, email, телефон, ИНН, контактное лицо)
+- Кнопка «Сохранить»
 
-### 2. LARGEST_FILES — топ-20 реальных файлов >800 строк
-28 файлов >800 строк — это показывает, что нужен рефакторинг. Обновить список с актуальными путями, строками, статусами:
-- `OrganizationDetailsView.tsx` — 1969 строк (needs-work)
-- `CoursesTab.tsx` — 1747 (needs-work)
-- `BlockEditorMain.tsx` — 1461 (needs-work)
-- `AdminAnalytics.tsx` — 1435 (needs-work)
-- И т.д. — все файлы >800
+## Итоговая навигация
 
-### 3. QUALITY_METRICS — реальные метрики
-- Средний размер файла: ~263 строк (148K / 562)
-- Крупнейший файл: 1969 строк (was 800)
-- Покрытие тестами: 10 файлов
-- Кастомные хуки: 70+
-- Edge-функции: 59
-- Файлов >800 строк: 28 (новая метрика)
+**Основное**: Ученики, Курсы, Тарифы
 
-### 4. EDGE_FUNCTIONS — актуальный список 59 функций
-Добавить новые: batch-skillspace-import, bulk-pipeline, check-secrets-status, check-subscription-expiry, convert-lesson-content, create-company-user, create-sales-manager, generate-achievements, generate-cover, generate-image, generate-seo, gigachat, handle-email-action, kinescope-*, manage-secret, migrate-course-media, notify-program-order, parse-skillspace-course, referral-commission, reimport-skillspace-batch, review-course, robokassa-*, salutespeech-tts, seed-welcome-course
+**Документы и история** → **История**: История, Заметки, Напоминания
 
-### 5. CODE_RECOMMENDATIONS — актуальные рекомендации
-- Добавить предупреждения о 28 файлах >800 строк (needs-work)
-- Пометить OrganizationDetailsView (1969), CoursesTab (1747) как критичные
-- Обновить статусы выполненных оптимизаций
+**Система**: Настройки
 
-## Файлы
-- `src/components/admin/devtools/devToolsData.ts` — полная перезапись данных
+## Изменения в `OrganizationDetailsView.tsx`
+
+1. **Навигация** — убрать пункты `balance`, `documents`, `billing-docs` из всех трёх мест (mobile, desktop группа «Основное», desktop группа «Документы и история»)
+2. **Контент** — удалить блоки `activeTab === "balance"`, `activeTab === "documents"`, `activeTab === "billing-docs"`
+3. **Настройки** — удалить карточки «ИИ-помощник + ФИС ФРДО» (строки 1759–1821) и «Лимиты ресурсов» (строки 1826–1909)
+4. **Импорты** — убрать `OrgBalanceManager`, `OrgBillingDocsTab`, `OrgDocumentsTab`, `Wallet`
+5. **defaultTab** остаётся `"courses"`
+
+Один файл, ~250 строк удаления.
 
