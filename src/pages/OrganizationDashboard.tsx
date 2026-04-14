@@ -11,10 +11,10 @@ import { Button } from "@/components/ui/button";
 import { Eye, X } from "lucide-react";
 import { OnboardingDialog } from "@/components/onboarding/OnboardingDialog";
 import { organizationOnboardingSteps } from "@/constants/onboardingSteps";
-import { OrgDashboardProvider, useOrgDashboard } from "@/contexts/OrgDashboardContext";
+import { useOrgDashboard } from "@/contexts/OrgDashboardContext";
 import { PlatformAnnouncementsBanner } from "@/components/organization/PlatformAnnouncementsBanner";
 
-function OrganizationDashboardContent() {
+export default function OrganizationDashboard() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const d = useOrgDashboard();
@@ -87,13 +87,5 @@ function OrganizationDashboardContent() {
         onNavigateToTab={(tab) => d.tabNavigation.setActiveTab(tab as any)}
       />
     </div>
-  );
-}
-
-export default function OrganizationDashboard() {
-  return (
-    <OrgDashboardProvider>
-      <OrganizationDashboardContent />
-    </OrgDashboardProvider>
   );
 }

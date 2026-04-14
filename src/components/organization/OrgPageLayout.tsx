@@ -1,8 +1,6 @@
-import { useState, useEffect, ReactNode } from "react";
+import { ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/hooks/useAuth";
-import { OrgDashboardProvider, useOrgDashboard } from "@/contexts/OrgDashboardContext";
+import { useOrgDashboard } from "@/contexts/OrgDashboardContext";
 import { OrgDashboardFooter } from "@/components/organization/OrgDashboardFooter";
 import { OrgSettingsSidebar } from "@/components/organization/OrgSettingsSidebar";
 import { OrgNotifications } from "@/components/organization/OrgNotifications";
@@ -23,6 +21,8 @@ import {
 import { differenceInDays } from "date-fns";
 import defaultCoverImg from "@/assets/default-org-cover.jpg";
 import { HelpCenterDialog, useHelpCenterDialog } from "@/components/shared/HelpCenterDialog";
+import { useState, useEffect } from "react";
+import { supabase } from "@/integrations/supabase/client";
 
 function getUserInitials(email?: string | null, name?: string | null): string {
   if (name) {
@@ -34,17 +34,17 @@ function getUserInitials(email?: string | null, name?: string | null): string {
   return "?";
 }
 
-interface OrgPageLayoutInnerProps {
-  organizationId: string;
+interface OrgPageLayoutProps {
   title: string;
   icon: LucideIcon;
   children: ReactNode;
 }
 
-function OrgPageLayoutInner({ organizationId, title, icon: Icon, children }: OrgPageLayoutInnerProps) {
+export default function OrgPageLayout({ title, icon: Icon, children }: OrgPageLayoutProps) {
   const navigate = useNavigate();
   const d = useOrgDashboard();
   const helpDialog = useHelpCenterDialog();
+  const organizationId = d.organizationId;
 
   const organizationName = d.organizationName;
   const customName = d.branding.brandingSettings.customName;
@@ -68,6 +68,10 @@ function OrgPageLayoutInner({ organizationId, title, icon: Icon, children }: Org
 
   const userEmail = d.user?.email;
   const initials = getUserInitials(userEmail);
+
+  if (!organizationId) {
+    return <div className="min-h-screen flex items-center justify-center text-muted-foreground">Организация не найдена</div>;
+  }
 
   return (
     <div className="min-h-screen bg-background flex">
@@ -193,7 +197,7 @@ function OrgPageLayoutInner({ organizationId, title, icon: Icon, children }: Org
           </div>
 
           {/* Sub-header: page title */}
-          <div className="flex items-center justify-between px-4 lg:px-6 h-12 border-t border-border/50 bg-card/95 backdrop-blur-sm">
+          <div className="flex items-center justify-between px-4 lg:px-6 h-12 border-t border-border/50 bg-card/95">
             <div className="flex items-center gap-2">
               <Icon className="w-4.5 h-4.5 text-primary" />
               <h1 className="font-display text-base font-semibold text-foreground/80">{title}</h1>
@@ -213,48 +217,5 @@ function OrgPageLayoutInner({ organizationId, title, icon: Icon, children }: Org
   );
 }
 
-interface OrgPageLayoutProps {
-  title: string;
-  icon: LucideIcon;
-  children: ReactNode;
-}
-
-export default function OrgPageLayout({ title, icon, children }: OrgPageLayoutProps) {
-  const { user } = useAuth();
-  const [organizationId, setOrganizationId] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    if (!user) return;
-    const load = async () => {
-      const { data: prof } = await supabase.from("profiles").select("organization_id").eq("user_id", user.id).maybeSingle();
-      let orgId = prof?.organization_id || (await supabase.rpc("current_organization_id")).data as string | null;
-      if (!orgId) {
-        const { data: firstOrg } = await supabase.from("organizations").select("id").limit(1).maybeSingle();
-        orgId = firstOrg?.id || null;
-      }
-      setOrganizationId(orgId);
-      setLoading(false);
-    };
-    load();
-  }, [user]);
-
-  if (loading) {
-    return <div className="min-h-screen flex items-center justify-center"><div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full" /></div>;
-  }
-
-  if (!organizationId) {
-    return <div className="min-h-screen flex items-center justify-center text-muted-foreground">Организация не найдена</div>;
-  }
-
-  return (
-    <OrgDashboardProvider>
-      <OrgPageLayoutInner organizationId={organizationId} title={title} icon={icon}>
-        {children}
-      </OrgPageLayoutInner>
-    </OrgDashboardProvider>
-  );
-}
-
-// Re-export for pages that need the organizationId
-export { OrgPageLayoutInner };
+// Re-export for backward compatibility
+export { OrgPageLayout as OrgPageLayoutInner };

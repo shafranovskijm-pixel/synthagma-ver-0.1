@@ -2,6 +2,7 @@ import { Route } from "react-router-dom";
 import { lazyWithRetry } from "@/utils/lazyWithRetry";
 import { protectedRoute } from "./helpers";
 
+const OrgLayout = lazyWithRetry(() => import("@/components/organization/OrgLayout"));
 const OrganizationDashboard = lazyWithRetry(() => import("@/pages/OrganizationDashboard"));
 const OrganizationProfile = lazyWithRetry(() => import("@/pages/OrganizationProfile"));
 const OrganizationSettings = lazyWithRetry(() => import("@/pages/OrganizationSettings"));
@@ -21,14 +22,18 @@ const org = "organization";
 
 export const organizationRoutes = (
   <>
-    <Route path="/organization" element={protectedRoute(<OrganizationDashboard />, org)} />
-    <Route path="/organization/profile" element={protectedRoute(<OrganizationProfile />, org)} />
-    <Route path="/organization/settings" element={protectedRoute(<OrganizationSettings />, org)} />
-    <Route path="/organization/documents" element={protectedRoute(<OrganizationDocuments />, org)} />
-    <Route path="/organization/course/:courseId" element={protectedRoute(<OrganizationCourseDetails />, org)} />
-    <Route path="/organization/whats-new" element={protectedRoute(<OrganizationWhatsNew />, org)} />
-    
-    <Route path="/organization/student/:studentId" element={protectedRoute(<OrganizationStudentDetails />, org)} />
+    {/* All /organization/* routes share a single OrgDashboardProvider via OrgLayout */}
+    <Route path="/organization" element={protectedRoute(<OrgLayout />, org)}>
+      <Route index element={<OrganizationDashboard />} />
+      <Route path="profile" element={<OrganizationProfile />} />
+      <Route path="settings" element={<OrganizationSettings />} />
+      <Route path="documents" element={<OrganizationDocuments />} />
+      <Route path="course/:courseId" element={<OrganizationCourseDetails />} />
+      <Route path="whats-new" element={<OrganizationWhatsNew />} />
+      <Route path="student/:studentId" element={<OrganizationStudentDetails />} />
+    </Route>
+
+    {/* These routes have their own layout, not nested under /organization */}
     <Route path="/course/:courseId/edit" element={protectedRoute(<CourseEditor />, org)} />
     <Route path="/course-builder" element={protectedRoute(<CourseBuilder />, org)} />
     <Route path="/course-builder/:courseId" element={protectedRoute(<CourseBuilder />, org)} />
