@@ -84,19 +84,6 @@ export function CourseStoreManager({ organizationId, userRole = 'organization', 
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="bg-gradient-to-r from-primary/10 via-accent/10 to-primary/5 rounded-2xl p-6 border border-border">
-        <div className="flex items-center justify-between flex-wrap gap-3">
-          <div>
-            <div className="flex items-center gap-3 mb-2">
-              <Store className="w-6 h-6 text-primary" />
-              <h2 className="text-xl font-semibold">Магазин курсов</h2>
-            </div>
-            <p className="text-muted-foreground">Готовые курсы для обучения и аттестации — добавьте в свою организацию бесплатно</p>
-          </div>
-        </div>
-      </div>
-
       <Tabs value={h.activeTab} onValueChange={(v) => h.setActiveTab(v as any)} className="space-y-0">
         <div className="flex gap-6">
           {/* Vertical sidebar nav */}
@@ -105,6 +92,7 @@ export function CourseStoreManager({ organizationId, userRole = 'organization', 
               {[
                 { value: "catalog", icon: Package, label: "Каталог" },
                 { value: "my-courses", icon: GraduationCap, label: "Мои курсы" },
+                { value: "requests", icon: Megaphone, label: "Ищут курсы" },
                 { value: "orders", icon: ShoppingCart, label: "Заявки" },
                 { value: "my-orders", icon: Tag, label: "Добавленные" },
               ].map((item) => {
@@ -120,6 +108,9 @@ export function CourseStoreManager({ organizationId, userRole = 'organization', 
                   >
                     <Icon className="w-4 h-4 shrink-0" />
                     {item.label}
+                    {item.value === "requests" && h.courseRequests.length > 0 && (
+                      <Badge variant="secondary" className="ml-auto text-[10px] px-1.5 py-0 bg-amber-500/10 text-amber-600">{h.courseRequests.length}</Badge>
+                    )}
                   </TabsTrigger>
                 );
               })}
