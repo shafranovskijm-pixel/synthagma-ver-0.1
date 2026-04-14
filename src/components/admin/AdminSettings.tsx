@@ -2,7 +2,8 @@ import { useState, useEffect } from "react";
 import { ThemePersonalization } from "@/components/ui/ThemePersonalization";
 import { 
   Palette, ChevronRight, Database,
-  Shield, Bell, Loader2, Save, Globe, Tag, Sparkles, Settings, RefreshCw
+  Shield, Bell, Loader2, Save, Globe, Tag, Sparkles, Settings, RefreshCw,
+  BarChart3, FileText, Bot, Terminal
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,6 +14,10 @@ import { supabase } from "@/integrations/supabase/client";
 import { SEOSettingsManager } from "./SEOSettingsManager";
 import { PromoCodesManager } from "./PromoCodesManager";
 import { SigmaLogo } from "@/components/ui/SigmaLogo";
+import { AdminAnalytics } from "./AdminAnalytics";
+import { BlogManager } from "./BlogManager";
+import { AISettingsManager } from "./AISettingsManager";
+import { DevToolsPanel } from "./DevToolsPanel";
 
 interface SystemSettings {
   maintenanceMode: boolean;
@@ -93,7 +98,7 @@ export function AdminSettings() {
             Настройки
           </h2>
         </div>
-        <p className="text-sm text-muted-foreground">6 секций • Панель администратора</p>
+        <p className="text-sm text-muted-foreground">10 секций • Панель администратора</p>
       </div>
 
       {/* Theme Settings */}
@@ -332,6 +337,70 @@ export function AdminSettings() {
               Настройка уведомлений для администраторов о важных событиях в системе
             </p>
           </div>
+        </div>
+      </details>
+
+      {/* Analytics */}
+      <details className={cardClass}>
+        <summary className="p-4 lg:p-6 cursor-pointer list-none flex items-center justify-between">
+          <h3 className="font-display font-semibold text-base lg:text-lg flex items-center gap-2">
+            <div className="p-1.5 rounded-lg bg-sky-500/10">
+              <BarChart3 className="w-4 h-4 lg:w-5 lg:h-5 text-sky-500" />
+            </div>
+            Аналитика
+          </h3>
+          <ChevronRight className="w-5 h-5 text-muted-foreground transition-transform group-open:rotate-90" />
+        </summary>
+        <div className="px-4 lg:px-6 pb-4 lg:pb-6">
+          <AdminAnalytics />
+        </div>
+      </details>
+
+      {/* Content */}
+      <details className={cardClass}>
+        <summary className="p-4 lg:p-6 cursor-pointer list-none flex items-center justify-between">
+          <h3 className="font-display font-semibold text-base lg:text-lg flex items-center gap-2">
+            <div className="p-1.5 rounded-lg bg-teal-500/10">
+              <FileText className="w-4 h-4 lg:w-5 lg:h-5 text-teal-500" />
+            </div>
+            Контент
+          </h3>
+          <ChevronRight className="w-5 h-5 text-muted-foreground transition-transform group-open:rotate-90" />
+        </summary>
+        <div className="px-4 lg:px-6 pb-4 lg:pb-6">
+          <BlogManager />
+        </div>
+      </details>
+
+      {/* AI Providers */}
+      <details className={cardClass}>
+        <summary className="p-4 lg:p-6 cursor-pointer list-none flex items-center justify-between">
+          <h3 className="font-display font-semibold text-base lg:text-lg flex items-center gap-2">
+            <div className="p-1.5 rounded-lg bg-purple-500/10">
+              <Bot className="w-4 h-4 lg:w-5 lg:h-5 text-purple-500" />
+            </div>
+            ИИ-провайдеры
+          </h3>
+          <ChevronRight className="w-5 h-5 text-muted-foreground transition-transform group-open:rotate-90" />
+        </summary>
+        <div className="px-4 lg:px-6 pb-4 lg:pb-6">
+          <AISettingsManager />
+        </div>
+      </details>
+
+      {/* DevTools */}
+      <details className={cardClass}>
+        <summary className="p-4 lg:p-6 cursor-pointer list-none flex items-center justify-between">
+          <h3 className="font-display font-semibold text-base lg:text-lg flex items-center gap-2">
+            <div className="p-1.5 rounded-lg bg-gray-500/10">
+              <Terminal className="w-4 h-4 lg:w-5 lg:h-5 text-gray-500" />
+            </div>
+            Developer Tools
+          </h3>
+          <ChevronRight className="w-5 h-5 text-muted-foreground transition-transform group-open:rotate-90" />
+        </summary>
+        <div className="px-4 lg:px-6 pb-4 lg:pb-6">
+          <DevToolsPanel />
         </div>
       </details>
 

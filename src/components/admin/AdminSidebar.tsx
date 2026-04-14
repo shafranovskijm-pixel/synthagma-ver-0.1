@@ -1,6 +1,5 @@
 import { 
-  BarChart3, Building2, Users, LogOut, Store, Briefcase, 
-  MessageSquare, FileText, Bot, Terminal, Sparkles
+  Building2, Users, LogOut, Store, Briefcase, MessageSquare
 } from "lucide-react";
 import { SigmaLogo } from "@/components/ui/SigmaLogo";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -60,12 +59,7 @@ export function AdminSidebar({
     { id: "users", icon: Users, label: "Пользователи" },
     { id: "marketplace", icon: Store, label: "Маркетплейс" },
     { id: "sales", icon: Briefcase, label: "Продажи" },
-    { id: "analytics", icon: BarChart3, label: "Аналитика" },
     { id: "chats", icon: MessageSquare, label: "Чаты", badge: unreadChats },
-    { id: "content", icon: FileText, label: "Контент" },
-    { id: "ai", icon: Bot, label: "ИИ-провайдеры" },
-    { id: "updates", icon: Sparkles, label: "Обновления" },
-    { id: "devtools", icon: Terminal, label: "Dev Tools" },
   ];
 
   const brandHsl = "220 70% 50%";
