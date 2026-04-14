@@ -886,60 +886,14 @@ export const CoursesTab = React.memo(function CoursesTab({ organizationId, onCou
                 <Button 
                   variant="ghost" 
                   size="icon" 
-                  className="h-7 w-7 bg-background/80 backdrop-blur-sm"
-                  onClick={e => { e.stopPropagation(); navigate(`/course-preview/${course.id}`); }}
+                  className={`h-7 w-7 bg-background/80 backdrop-blur-sm ${course.hidden_from_catalog ? 'text-muted-foreground' : 'text-sigma-green'}`}
+                  onClick={e => handleToggleCourseSetting(course, 'hidden_from_catalog', e)}
                 >
-                  <Eye className="w-3.5 h-3.5" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>Просмотр</TooltipContent>
-            </Tooltip>
-
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button 
-                  variant="ghost" 
-                  size="icon" 
-                  className={`h-7 w-7 bg-background/80 backdrop-blur-sm ${!hasCourseSettings ? 'opacity-40 cursor-not-allowed' : ''} ${course.skip_video_identification ? 'text-muted-foreground' : 'text-sigma-green'}`}
-                  onClick={e => handleToggleCourseSetting(course, 'skip_video_identification', e)}
-                >
-                  {course.skip_video_identification ? <VideoOff className="w-3.5 h-3.5" /> : <Video className="w-3.5 h-3.5" />}
+                  {course.hidden_from_catalog ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
                 </Button>
               </TooltipTrigger>
               <TooltipContent>
-                {course.skip_video_identification ? 'Видеоидентификация выкл.' : 'Видеоидентификация вкл.'}
-              </TooltipContent>
-            </Tooltip>
-
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button 
-                  variant="ghost" 
-                  size="icon" 
-                  className={`h-7 w-7 bg-background/80 backdrop-blur-sm ${!hasCourseSettings ? 'opacity-40 cursor-not-allowed' : ''} ${course.sequential_lessons ? 'text-amber-500' : 'text-muted-foreground'}`}
-                  onClick={e => handleToggleCourseSetting(course, 'sequential_lessons', e)}
-                >
-                  {course.sequential_lessons ? <Lock className="w-3.5 h-3.5" /> : <Unlock className="w-3.5 h-3.5" />}
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>
-                {course.sequential_lessons ? 'Последовательность уроков вкл.' : 'Последовательность уроков выкл.'}
-              </TooltipContent>
-            </Tooltip>
-
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button 
-                  variant="ghost" 
-                  size="icon" 
-                  className={`h-7 w-7 bg-background/80 backdrop-blur-sm ${!hasCourseSettings ? 'opacity-40 cursor-not-allowed' : ''} ${course.allow_video_seek === false ? 'text-destructive' : 'text-muted-foreground'}`}
-                  onClick={e => handleToggleCourseSetting(course, 'allow_video_seek', e)}
-                >
-                  <FastForward className="w-3.5 h-3.5" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>
-                {course.allow_video_seek === false ? 'Перемотка видео запрещена' : 'Перемотка видео разрешена'}
+                {course.hidden_from_catalog ? 'Скрыт из витрины' : 'Виден в витрине'}
               </TooltipContent>
             </Tooltip>
           </div>
@@ -962,6 +916,19 @@ export const CoursesTab = React.memo(function CoursesTab({ organizationId, onCou
                 <DropdownMenuItem onClick={e => { e.stopPropagation(); navigate(`/course-preview/${course.id}`); }}>
                   <Eye className="w-4 h-4 mr-2" />
                   Просмотр
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={e => handleToggleCourseSetting(course, 'skip_video_identification', e)}>
+                  {course.skip_video_identification ? <VideoOff className="w-4 h-4 mr-2" /> : <Video className="w-4 h-4 mr-2" />}
+                  {course.skip_video_identification ? 'Включить видеоидент.' : 'Отключить видеоидент.'}
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={e => handleToggleCourseSetting(course, 'sequential_lessons', e)}>
+                  {course.sequential_lessons ? <Lock className="w-4 h-4 mr-2" /> : <Unlock className="w-4 h-4 mr-2" />}
+                  {course.sequential_lessons ? 'Отключить послед. уроков' : 'Включить послед. уроков'}
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={e => handleToggleCourseSetting(course, 'allow_video_seek', e)}>
+                  <FastForward className="w-4 h-4 mr-2" />
+                  {course.allow_video_seek === false ? 'Разрешить перемотку' : 'Запретить перемотку'}
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={e => { e.stopPropagation(); handleDuplicate(course.id); }}>
