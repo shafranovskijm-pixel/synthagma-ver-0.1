@@ -23,6 +23,7 @@ export type AdminTabType =
   | "support"
   | "devtools"
   | "updates"
+  | "staff"
   | "settings";
 
 const PLATFORM_TABS: AdminTabType[] = ["content", "ai", "devtools", "updates"];
