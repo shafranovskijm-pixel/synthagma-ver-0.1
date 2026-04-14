@@ -511,6 +511,8 @@ export function CourseStoreManager({ organizationId, userRole = 'organization', 
             </TableBody></Table></Card>
           )}
         </TabsContent>
+          </div>{/* end main content */}
+        </div>{/* end flex */}
       </Tabs>
 
       {/* Add Course Dialog */}
