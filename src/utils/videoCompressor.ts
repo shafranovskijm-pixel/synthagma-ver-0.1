@@ -28,7 +28,7 @@ export async function compressVideo(
 ): Promise<File> {
   // Refuse to compress files > 1 GB — FFmpeg.wasm will crash the browser
   if (file.size > MAX_COMPRESSIBLE_SIZE) {
-    console.warn(`[VideoCompressor] File too large for browser compression (${(file.size / 1024 / 1024).toFixed(0)} MB > 1024 MB). Skipping.`);
+    // File too large for browser compression — skip
     throw new Error('File too large for browser compression');
   }
 

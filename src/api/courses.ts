@@ -60,7 +60,7 @@ export async function fetchCourseLessonCounts(courseIds: string[]): Promise<Map<
       countMap.set(row.course_id, (countMap.get(row.course_id) || 0) + 1);
     }
   } catch (e) {
-    console.warn("Failed to load lesson counts (non-fatal):", e);
+    // non-fatal: lesson counts load silently
   }
 
   return countMap;
@@ -100,7 +100,7 @@ export async function fetchCourseStudentCounts(courseIds: string[]): Promise<Map
       studentCountMap.set(courseId, uniqueStudents.size);
     }
   } catch (e) {
-    console.warn("Failed to load student counts (non-fatal):", e);
+    // non-fatal: student counts load silently
   }
 
   return studentCountMap;

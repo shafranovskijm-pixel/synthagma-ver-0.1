@@ -263,7 +263,7 @@ export function ContentGeneratorTab({ courses, dbCategories, onComplete }: Props
           course_id: courseId, course_title: courseTitle,
           action: "content", details: `❌ Поток ${streamIndex}: ошибка «${lesson.title}» — ${errMsg}`, items_count: 0,
           stream_index: streamIndex, duration_ms: contentDuration,
-        }).then(({ error: h }) => h && console.warn("History insert error:", h));
+        }).then(({ error: h }) => { if (h) { /* history insert failed silently */ } });
       }
       if (!contentError && contentData?.content) {
         // Clean AI intro and convert to blocks
@@ -303,7 +303,7 @@ export function ContentGeneratorTab({ courses, dbCategories, onComplete }: Props
           action: "content", details: `Поток ${streamIndex}: контент «${lesson.title}»${heroImageUrl ? ' + изображение' : ''}${firstPara ? ' + аудио' : ''}`, items_count: 1,
           stream_index: streamIndex, duration_ms: contentDuration,
         });
-        if (histErr) console.warn("⚠️ History insert error (content):", histErr, { courseId, courseTitle, streamIndex });
+        if (histErr) { /* history insert failed silently */ }
       }
       await delay(500);
     }
@@ -333,7 +333,7 @@ export function ContentGeneratorTab({ courses, dbCategories, onComplete }: Props
             course_id: courseId, course_title: courseTitle,
             action: "questions", details: `❌ Поток ${streamIndex}: ошибка вопросов «${lesson.title}» — ${errMsg}`, items_count: 0,
             stream_index: streamIndex, duration_ms: Date.now() - qStart,
-          }).then(({ error: h }) => h && console.warn("History insert error:", h));
+           }).then(({ error: h }) => { if (h) { /* history insert failed silently */ } });
         }
         if (!qError && qData?.questions) {
           for (const q of qData.questions) {
@@ -350,7 +350,7 @@ export function ContentGeneratorTab({ courses, dbCategories, onComplete }: Props
             action: "questions", details: `Поток ${streamIndex}: вопросы «${lesson.title}»`, items_count: qData.questions.length,
             stream_index: streamIndex, duration_ms: qDuration,
           });
-          if (histErr) console.warn("⚠️ History insert error (questions):", histErr, { courseId, courseTitle, streamIndex });
+          if (histErr) { /* history insert failed silently */ }
         }
         await delay(500);
       }
@@ -382,7 +382,7 @@ export function ContentGeneratorTab({ courses, dbCategories, onComplete }: Props
             course_id: courseId, course_title: courseTitle,
             action: "answers", details: `❌ Поток ${streamIndex}: ошибка ответов «${lesson.title}» — ${errMsg}`, items_count: 0,
             stream_index: streamIndex, duration_ms: Date.now() - ansStart,
-          }).then(({ error: h }) => h && console.warn("History insert error:", h));
+           }).then(({ error: h }) => { if (h) { /* history insert failed silently */ } });
         }
         if (!ansError && ansData?.answers) {
           let solved = 0;
@@ -399,7 +399,7 @@ export function ContentGeneratorTab({ courses, dbCategories, onComplete }: Props
               action: "answers", details: `Поток ${streamIndex}: решено ${solved} вопросов (${lesson.title})`, items_count: solved,
               stream_index: streamIndex, duration_ms: ansDuration,
             });
-            if (histErr) console.warn("⚠️ History insert error (answers):", histErr, { courseId, courseTitle, streamIndex });
+            if (histErr) { /* history insert failed silently */ }
           }
         }
         await delay(500);

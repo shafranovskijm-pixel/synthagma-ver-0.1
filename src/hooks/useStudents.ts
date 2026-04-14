@@ -92,7 +92,7 @@ export function useStudents(
   // Memoize courseIds join to prevent infinite loops
   const courseIdsKey = useMemo(() => courseIds.join(","), [courseIds]);
 
-  // Load students
+  // Load students, groups, and group assignments in parallel
   useEffect(() => {
     const load = async () => {
       if (!organizationId) {
@@ -102,12 +102,33 @@ export function useStudents(
 
       setIsLoading(true);
       try {
-        const { students: studentsData, allProfiles: profilesData } = await fetchStudents(
-          organizationId,
-          courseIds
-        );
+        // Run all 3 queries in parallel instead of 3 sequential useEffects
+        const [studentsResult, groupsResult, groupMapResult] = await Promise.all([
+          fetchStudents(organizationId, courseIds),
+          supabase
+            .from("student_groups")
+            .select("*")
+            .eq("organization_id", organizationId)
+            .order("name"),
+          supabase
+            .from("profiles")
+            .select("user_id, student_group_id")
+            .eq("organization_id", organizationId),
+        ]);
+
+        const { students: studentsData, allProfiles: profilesData } = studentsResult;
         setStudents(studentsData);
         setAllProfiles(profilesData);
+
+        // Groups
+        setStudentGroups((groupsResult.data as StudentGroup[]) || []);
+
+        // Group map
+        const map = new Map<string, string | null>();
+        (groupMapResult.data || []).forEach((p: { user_id: string; student_group_id: string | null }) => 
+          map.set(p.user_id, p.student_group_id)
+        );
+        setStudentGroupMap(map);
 
         // Fetch FRDO status
         const userIds = [...new Set(studentsData.map(s => s.user_id))];
@@ -123,44 +144,7 @@ export function useStudents(
     };
 
     load();
-  }, [organizationId, courseIdsKey, refreshKey]);
-
-  // Load student groups
-  useEffect(() => {
-    const loadGroups = async () => {
-      if (!organizationId) return;
-      try {
-        const { data } = await supabase
-          .from("student_groups")
-          .select("*")
-          .eq("organization_id", organizationId)
-          .order("name");
-        setStudentGroups((data as any[]) || []);
-      } catch (e) {
-        console.error("Error loading student groups:", e);
-      }
-    };
-    loadGroups();
-  }, [organizationId, groupsRefreshKey]);
-
-  // Load student group assignments
-  useEffect(() => {
-    const loadGroupMap = async () => {
-      if (!organizationId) return;
-      try {
-        const { data } = await supabase
-          .from("profiles")
-          .select("user_id, student_group_id")
-          .eq("organization_id", organizationId);
-        const map = new Map<string, string | null>();
-        (data || []).forEach((p: any) => map.set(p.user_id, p.student_group_id));
-        setStudentGroupMap(map);
-      } catch (e) {
-        console.error("Error loading group map:", e);
-      }
-    };
-    loadGroupMap();
-  }, [organizationId, refreshKey, groupsRefreshKey]);
+  }, [organizationId, courseIdsKey, refreshKey, groupsRefreshKey]);
 
   const refreshGroups = useCallback(() => {
     setGroupsRefreshKey(prev => prev + 1);

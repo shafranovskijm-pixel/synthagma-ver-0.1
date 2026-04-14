@@ -18,7 +18,7 @@ interface UseOrganizationDataLoaderProps {
 }
 
 /** Helper: run a Supabase query with up to 3 retries, increased delays */
-async function retryQuery<T>(fn: () => PromiseLike<{ data: T | null; error: any }>, label = "query"): Promise<T | null> {
+async function retryQuery<T>(fn: () => PromiseLike<{ data: T | null; error: unknown }>, label = "query"): Promise<T | null> {
   for (let attempt = 0; attempt < 3; attempt++) {
     if (attempt > 0) {
       const delay = attempt * 3000; // 3s, 6s
@@ -163,7 +163,8 @@ export function useOrganizationDataLoader({ userId, onCategoriesLoaded }: UseOrg
         setCompanies((companiesData || []) as Company[]);
 
         // Process courses immediately (without student counts yet)
-        const coursesWithStats = ((coursesData || []) as any[]).map((course: any) => ({
+        const rawCourses = (coursesData || []) as Array<{ id: string; title: string; description: string | null; is_published: boolean; created_at: string; category_id: string | null; duration: string | null; cover_image_url: string | null; skip_video_identification: boolean | null; sequential_lessons: boolean; allow_video_seek: boolean; price: number }>;
+        const coursesWithStats = rawCourses.map((course) => ({
           id: course.id,
           title: course.title,
           description: course.description,
@@ -184,7 +185,7 @@ export function useOrganizationDataLoader({ userId, onCategoriesLoaded }: UseOrg
         setIsLoadingCourses(false); // Courses visible NOW
 
         // Lazy-load lesson counts (non-blocking)
-        const allCourseIds = coursesWithStats.map((c: any) => c.id);
+        const allCourseIds = coursesWithStats.map((c) => c.id);
         if (allCourseIds.length > 0) {
           (async () => {
             try {
@@ -201,15 +202,15 @@ export function useOrganizationDataLoader({ userId, onCategoriesLoaded }: UseOrg
                 ...c,
                 lessonsCount: countMap.get(c.id) ?? c.lessonsCount ?? 0
               })));
-            } catch (err) {
-              console.warn("Failed to load lesson counts (non-fatal):", err);
+            } catch {
+              // non-fatal: lesson counts load silently
             }
           })();
         }
 
         // ===== PHASE 2: Enrollments (needed for students tab) =====
-        const courseIds = (coursesData || []).map((c: any) => c.id);
-        let allEnrollments: any[] = [];
+        const courseIds = rawCourses.map((c) => c.id);
+        let allEnrollments: Array<{ id: string; user_id: string; course_id: string; progress: number; status: string; started_at: string }> = [];
         if (courseIds.length > 0) {
           const enrollmentsData = await retryQuery(
             () => supabase
@@ -218,13 +219,13 @@ export function useOrganizationDataLoader({ userId, onCategoriesLoaded }: UseOrg
               .in("course_id", courseIds),
             "enrollments"
           );
-          allEnrollments = (enrollmentsData || []) as any[];
+          allEnrollments = (enrollmentsData || []) as typeof allEnrollments;
         }
 
         if (cancelled) return;
 
         // Filter org/admin users
-        const profileUserIds = uniq((allProfilesData || []).map((p: any) => p.user_id));
+        const profileUserIds = uniq((allProfilesData || []).map((p: { user_id: string }) => p.user_id));
         let orgAdminUserIds = new Set<string>();
         if (profileUserIds.length > 0) {
           const rolesData = await fetchAllRows(({ from, to }) =>
@@ -235,16 +236,16 @@ export function useOrganizationDataLoader({ userId, onCategoriesLoaded }: UseOrg
               .in("role", ["organization", "admin"])
               .range(from, to)
           );
-          orgAdminUserIds = new Set(((rolesData || []) as any[]).map((r: any) => r.user_id));
+          orgAdminUserIds = new Set(((rolesData || []) as Array<{ user_id: string; role: string }>).map((r) => r.user_id));
         }
 
         if (cancelled) return;
 
         const studentProfilesData = (allProfilesData || []).filter(
-          (p: any) => !orgAdminUserIds.has(p.user_id)
+          (p: { user_id: string }) => !orgAdminUserIds.has(p.user_id)
         );
           
-        const userEnrollmentsMap: Record<string, any[]> = {};
+        const userEnrollmentsMap: Record<string, typeof allEnrollments> = {};
         for (const enrollment of allEnrollments) {
           if (!userEnrollmentsMap[enrollment.user_id]) {
             userEnrollmentsMap[enrollment.user_id] = [];
@@ -275,7 +276,7 @@ export function useOrganizationDataLoader({ userId, onCategoriesLoaded }: UseOrg
             });
           } else {
             for (const enrollment of userEnrollments) {
-              const course = (coursesData || []).find((c: any) => c.id === enrollment.course_id);
+              const course = rawCourses.find((c) => c.id === enrollment.course_id);
               studentsList.push({
                 id: profile.id,
                 user_id: profile.user_id,
@@ -302,7 +303,7 @@ export function useOrganizationDataLoader({ userId, onCategoriesLoaded }: UseOrg
         setIsLoadingStudents(false);
 
         // Update course student counts now that we have enrollments
-        const studentUserIdsSet = new Set(studentProfilesData.map((p: any) => p.user_id));
+        const studentUserIdsSet = new Set(studentProfilesData.map((p: { user_id: string }) => p.user_id));
         const studentEnrollments = allEnrollments.filter(e => studentUserIdsSet.has(e.user_id));
 
         setCourses(prev => prev.map(course => {
@@ -331,7 +332,7 @@ export function useOrganizationDataLoader({ userId, onCategoriesLoaded }: UseOrg
         ).then(decryptedPasswords => {
           if (cancelled) return;
           const passwordMap = new Map<string, string>();
-          ((decryptedPasswords || []) as any[]).forEach((row: any) => {
+          ((decryptedPasswords || []) as Array<{ user_id: string; decrypted_password: string | null }>).forEach((row) => {
             if (row.decrypted_password) passwordMap.set(row.user_id, row.decrypted_password);
           });
           if (passwordMap.size > 0) {
@@ -344,8 +345,8 @@ export function useOrganizationDataLoader({ userId, onCategoriesLoaded }: UseOrg
               generated_password: passwordMap.get(s.user_id) || s.generated_password
             })));
           }
-        }).catch(err => {
-          console.warn("Failed to load passwords (non-fatal):", err);
+        }).catch(() => {
+          // non-fatal: passwords load silently
         });
 
         // Identity docs — deferred
@@ -357,7 +358,7 @@ export function useOrganizationDataLoader({ userId, onCategoriesLoaded }: UseOrg
           "identity-docs"
         ).then(identityDocsData => {
           if (cancelled) return;
-          const identityDocs = (identityDocsData || []) as any[];
+          const identityDocs = (identityDocsData || []) as Array<{ user_id: string; type: string }>;
           const docsByUser = new Map<string, string[]>();
           identityDocs.forEach(doc => {
             const existing = docsByUser.get(doc.user_id) || [];
@@ -379,8 +380,8 @@ export function useOrganizationDataLoader({ userId, onCategoriesLoaded }: UseOrg
 
           setStudentDocsByUser(docsByUser);
           setDocumentsStats({ total: studentProfilesData.length, withPassport, withSnils, withEducation, complete });
-        }).catch(err => {
-          console.warn("Failed to load identity docs (non-fatal):", err);
+        }).catch(() => {
+          // non-fatal: identity docs load silently
         });
 
         // FRDO data — deferred
@@ -394,7 +395,7 @@ export function useOrganizationDataLoader({ userId, onCategoriesLoaded }: UseOrg
             "frdo-data"
           ).then(frdoDataResult => {
             if (cancelled) return;
-            const frdoData = ((frdoDataResult || []) as any[]);
+            const frdoData = ((frdoDataResult || []) as Array<Record<string, unknown>>);
             const frdoStatusMap = new Map<string, FrdoStatus>();
             const requiredFields = [
               { key: "last_name", label: "Фамилия" },
@@ -419,8 +420,8 @@ export function useOrganizationDataLoader({ userId, onCategoriesLoaded }: UseOrg
               }
             }
             setStudentFrdoStatus(frdoStatusMap);
-          }).catch(err => {
-            console.warn("Failed to load FRDO data (non-fatal):", err);
+          }).catch(() => {
+            // non-fatal: FRDO data loads silently
           });
         }
 
