@@ -104,7 +104,7 @@ export function AdminSidebar({
                           "relative flex h-11 w-11 items-center justify-center rounded-xl transition-all duration-200",
                           isActive
                             ? "text-primary-foreground shadow-md"
-                            : "text-foreground/70 hover:text-foreground"
+                            : "text-foreground/70 hover:text-foreground hover:scale-105"
                         )}
                         style={{
                           backgroundColor: isActive
