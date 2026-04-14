@@ -163,7 +163,8 @@ export function useOrganizationDataLoader({ userId, onCategoriesLoaded }: UseOrg
         setCompanies((companiesData || []) as Company[]);
 
         // Process courses immediately (without student counts yet)
-        const coursesWithStats = ((coursesData || []) as Array<Record<string, unknown>>).map((course) => ({
+        const rawCourses = (coursesData || []) as Array<{ id: string; title: string; description: string | null; is_published: boolean; created_at: string; category_id: string | null; duration: string | null; cover_image_url: string | null; skip_video_identification: boolean | null; sequential_lessons: boolean; allow_video_seek: boolean; price: number }>;
+        const coursesWithStats = rawCourses.map((course) => ({
           id: course.id,
           title: course.title,
           description: course.description,
@@ -208,7 +209,7 @@ export function useOrganizationDataLoader({ userId, onCategoriesLoaded }: UseOrg
         }
 
         // ===== PHASE 2: Enrollments (needed for students tab) =====
-        const courseIds = (coursesData || []).map((c: Record<string, unknown>) => c.id as string);
+        const courseIds = rawCourses.map((c) => c.id);
         let allEnrollments: Array<{ id: string; user_id: string; course_id: string; progress: number; status: string; started_at: string }> = [];
         if (courseIds.length > 0) {
           const enrollmentsData = await retryQuery(
@@ -275,7 +276,7 @@ export function useOrganizationDataLoader({ userId, onCategoriesLoaded }: UseOrg
             });
           } else {
             for (const enrollment of userEnrollments) {
-              const course = (coursesData || []).find((c: Record<string, unknown>) => c.id === enrollment.course_id);
+              const course = rawCourses.find((c) => c.id === enrollment.course_id);
               studentsList.push({
                 id: profile.id,
                 user_id: profile.user_id,
@@ -284,7 +285,7 @@ export function useOrganizationDataLoader({ userId, onCategoriesLoaded }: UseOrg
                 email: profile.email || "",
                 login: profile.login || null,
                 generated_password: null, // will be filled in phase 3
-                course: (course?.title as string) || "—",
+                course: course?.title || "—",
                 course_id: enrollment.course_id,
                 progress: enrollment.progress || 0,
                 lastActivity: enrollment.started_at,
