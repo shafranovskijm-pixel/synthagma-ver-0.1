@@ -7,9 +7,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
-import { Plus, Pencil, Trash2, Save, X, Sparkles, ExternalLink } from "lucide-react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Plus, Pencil, Trash2, Save, X, ExternalLink } from "lucide-react";
 import { toast } from "sonner";
+import { motion } from "framer-motion";
 
 interface PlatformUpdate {
   id: string;
@@ -27,6 +27,7 @@ export function PlatformUpdatesManager() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState({ title: "", description: "", image_url: "", is_published: true });
   const [showForm, setShowForm] = useState(false);
+
   const load = async () => {
     const { data } = await supabase
       .from("platform_updates")
@@ -49,7 +50,6 @@ export function PlatformUpdatesManager() {
       toast.error("Заполните заголовок и описание");
       return;
     }
-
     const payload = {
       title: form.title.trim(),
       description: form.description.trim(),
@@ -57,7 +57,6 @@ export function PlatformUpdatesManager() {
       is_published: form.is_published,
       published_at: new Date().toISOString(),
     };
-
     if (editingId) {
       const { error } = await supabase.from("platform_updates").update(payload).eq("id", editingId);
       if (error) { toast.error("Ошибка"); return; }
@@ -91,6 +90,7 @@ export function PlatformUpdatesManager() {
 
   return (
     <div className="space-y-6">
+      {/* Header */}
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-xl font-bold">Обновления платформы</h2>
@@ -106,6 +106,7 @@ export function PlatformUpdatesManager() {
         </div>
       </div>
 
+      {/* Form */}
       {showForm && (
         <Card className="border-primary/30">
           <CardHeader>
@@ -136,42 +137,62 @@ export function PlatformUpdatesManager() {
         </Card>
       )}
 
+      {/* Timeline */}
       {loading ? (
         <div className="flex justify-center py-12"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" /></div>
+      ) : updates.length === 0 ? (
+        <p className="text-center text-muted-foreground py-20">Пока нет обновлений</p>
       ) : (
-        <div className="space-y-3">
-          {updates.map((u) => (
-            <Card key={u.id} className="hover:shadow-sm transition-shadow">
-              <CardContent className="py-4 flex items-start gap-4">
-                <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0 mt-0.5">
-                  <Sparkles className="w-5 h-5 text-primary" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-1">
-                    <h3 className="font-semibold truncate">{u.title}</h3>
-                    <Badge variant={u.is_published ? "default" : "secondary"} className="shrink-0">
-                      {u.is_published ? "Опубликовано" : "Черновик"}
-                    </Badge>
+        <div className="max-w-3xl mx-auto">
+          <div className="relative">
+            <div className="absolute left-6 top-0 bottom-0 w-px bg-border hidden sm:block" />
+            <div className="space-y-6">
+              {updates.map((u, i) => (
+                <motion.article
+                  key={u.id}
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: i * 0.07 }}
+                  className="relative flex gap-4 sm:gap-6"
+                >
+                  <div className="hidden sm:flex flex-col items-center shrink-0">
+                    <div className={`w-3 h-3 rounded-full ring-4 ring-background z-10 ${u.is_published ? 'bg-primary' : 'bg-muted-foreground/40'}`} />
                   </div>
-                  <p className="text-sm text-muted-foreground line-clamp-2">{u.description}</p>
-                  <span className="text-xs text-muted-foreground mt-1 block">
-                    {new Date(u.published_at).toLocaleDateString("ru-RU")}
-                  </span>
-                </div>
-                <div className="flex items-center gap-1 shrink-0">
-                  <Button variant="ghost" size="icon" onClick={() => handleTogglePublish(u.id, u.is_published)} title={u.is_published ? "Скрыть" : "Опубликовать"}>
-                    <Switch checked={u.is_published} className="pointer-events-none" />
-                  </Button>
-                  <Button variant="ghost" size="icon" onClick={() => handleEdit(u)}>
-                    <Pencil className="w-4 h-4" />
-                  </Button>
-                  <Button variant="ghost" size="icon" className="text-destructive" onClick={() => handleDelete(u.id)}>
-                    <Trash2 className="w-4 h-4" />
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+                  <div className={`flex-1 bg-card border rounded-xl p-5 hover:shadow-md transition-shadow ${!u.is_published ? 'border-dashed border-muted-foreground/30 opacity-70' : 'border-border'}`}>
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-medium text-primary bg-primary/10 px-2 py-0.5 rounded-full">
+                          {new Date(u.published_at).toLocaleDateString("ru-RU", { day: "numeric", month: "long" })}
+                        </span>
+                        <span className="text-xs text-muted-foreground">
+                          {new Date(u.published_at).getFullYear()}
+                        </span>
+                        {!u.is_published && (
+                          <Badge variant="secondary" className="text-[10px] px-1.5 py-0">Черновик</Badge>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleTogglePublish(u.id, u.is_published)} title={u.is_published ? "Скрыть" : "Опубликовать"}>
+                          <Switch checked={u.is_published} className="pointer-events-none scale-75" />
+                        </Button>
+                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleEdit(u)}>
+                          <Pencil className="w-3.5 h-3.5" />
+                        </Button>
+                        <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => handleDelete(u.id)}>
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </Button>
+                      </div>
+                    </div>
+                    <h3 className="font-semibold text-base mb-1.5">{u.title}</h3>
+                    <p className="text-muted-foreground text-sm leading-relaxed">{u.description}</p>
+                    {u.image_url && (
+                      <img src={u.image_url} alt={u.title} className="mt-4 rounded-lg max-h-56 object-cover w-full" loading="lazy" />
+                    )}
+                  </div>
+                </motion.article>
+              ))}
+            </div>
+          </div>
         </div>
       )}
     </div>
