@@ -49,8 +49,9 @@ const DEFAULT_NOTIFS: NotifRow[] = [
 
 function ProfileContent() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { user } = useAuth();
-  const [activeTab, setActiveTab] = useState("profile");
+  const [activeTab, setActiveTab] = useState(() => searchParams.get("tab") || "profile");
   const handleTabChange = (tab: string) => { setActiveTab(tab); };
   const [saving, setSaving] = useState(false);
 
