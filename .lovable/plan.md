@@ -1,65 +1,71 @@
 
 
-# Единый layout для кабинета организации — загрузка без перезагрузки страницы
+# Продолжение декомпозиции: BlockEditorMain + OrganizationDetailsView + devToolsData
 
-## Проблема
-Каждая страница организации (`/organization`, `/organization/course/:id`, `/organization/student/:id`, и т.д.) создает свой собственный `OrgDashboardProvider`. При переходе, например, с дашборда на курс — весь экран пропадает, показывается полноэкранный спиннер, заново загружаются все данные организации (брендинг, лимиты, курсы). В админке такого нет, потому что админка — одна страница с вкладками, а у организации — отдельные роуты.
+## 1. BlockEditorMain.tsx (1461 → ~300 строк)
 
-## Решение
-Создать общий layout-компонент `OrgLayout`, который оборачивает все `/organization/*` роуты через вложенные маршруты React Router (`<Route element={<OrgLayout />}>`). Этот layout содержит единственный `OrgDashboardProvider` + `OrgSidebar`, а дочерние страницы рендерятся через `<Outlet />`. При навигации между страницами сайдбар остается на месте, провайдер не перемонтируется.
+### Новые файлы в `src/components/course-builder/block-editor/blocks/`:
 
-## Файлы
+**`TextBlocks.tsx`** (~210 строк) — ParagraphBlock, QuoteBlock, CalloutBlock, HighlightBlock, AccordionBlock (строки 152–355). Все используют общий паттерн AI-генерации + RichTextEditor.
 
-### 1. Создать `src/components/organization/OrgLayout.tsx` (~60 строк)
-- Загрузка `organizationId` (та же логика, что сейчас дублируется в каждой странице)
-- `OrgDashboardProvider` — один на все страницы
-- `OrgSidebar` — всегда на месте
-- `<Outlet />` для дочерних страниц
-- При загрузке `organizationId` — показывать спиннер **внутри layout** (сайдбар уже виден)
+**`QuizBlock.tsx`** (~75 строк) — QuizBlock (строки 357–431).
 
-### 2. Изменить `src/routes/organizationRoutes.tsx`
-- Обернуть `/organization/*` роуты во вложенный `<Route element={<OrgLayout />}>` с `<Outlet />`
-- Страницы, которые используют OrgSidebar (dashboard, course, student) — дочерние
-- Страницы с OrgSettingsSidebar (profile, settings, documents) — тоже дочерние, но layout различается внутри самих страниц
+**`MediaBlocks.tsx`** (~370 строк) — ImageBlock, VideoBlock, AudioBlock, DocumentBlock, DirectVideoBlock (строки 54–808). Самый большой подкомпонент из-за логики загрузки/embed.
 
-```text
-<Route path="/organization" element={<OrgLayout />}>
-  <Route index element={<OrganizationDashboard />} />
-  <Route path="course/:courseId" element={<OrganizationCourseDetails />} />
-  <Route path="student/:studentId" element={<OrganizationStudentDetails />} />
-  <Route path="profile" element={<OrganizationProfile />} />
-  <Route path="settings" element={<OrganizationSettings />} />
-  <Route path="documents" element={<OrganizationDocuments />} />
-  <Route path="whats-new" element={<OrganizationWhatsNew />} />
-</Route>
-```
+**`SliderBlock.tsx`** (~160 строк) — SliderBlock с парсером PPTX (строки 810–967).
 
-### 3. Упростить `OrganizationCourseDetails.tsx`
-- Убрать внешний компонент-обертку с загрузкой `organizationId` и `OrgDashboardProvider` (это теперь в OrgLayout)
-- Убрать `OrgSidebar` из JSX (уже в layout)
-- Убрать дублирование хедера — использовать `useOrgDashboard()` напрямую
-- Спиннер загрузки курса — **внутри** content area, хедер и сайдбар остаются
+**`BlockContent.tsx`** (~50 строк) — диспетчер BlockContent (строки 969–1014). Импортирует все блоки выше и маршрутизирует по `block.type`.
 
-### 4. Упростить `OrganizationStudentDetails.tsx`
-- Аналогично: убрать обертку, `OrgDashboardProvider`, `OrgSidebar`
-- Спиннер загрузки ученика — внутри content area
+**`AddBlockButton.tsx`** (~60 строк) — BlockCategoryGrid + AddBlockButton + AIGenerateButton (строки 85–150).
 
-### 5. Упростить `OrganizationDashboard.tsx`
-- Убрать `OrgDashboardProvider` (уже в layout)
-- `OrgSidebar` убрать (уже в layout)
+**`SortableBlockItem.tsx`** (~280 строк) — SortableBlockItem с toolbar, стилями, пресетами, TTS, ссылками (строки 1016–1306).
 
-### 6. Упростить `OrgPageLayout.tsx`
-- Убрать `OrgDashboardProvider` и загрузку `organizationId` (уже в layout)
-- Получать `organizationId` из контекста OrgLayout
+### Изменённый `BlockEditorMain.tsx` (~155 строк)
+Остаётся только `export function BlockEditor` (строки 1308–1461): хуки истории, undo/redo, DnD контекст, formatWithAI. Импортирует SortableBlockItem и AddBlockButton.
 
-### 7. Передача `organizationId` через контекст
-- Добавить в `OrgLayout` контекст `OrgLayoutContext` с `organizationId`
-- Или проще: получать `organizationId` из `useOrgDashboard()` (уже есть в контексте dashboard)
+## 2. OrganizationDetailsView.tsx (1790 → ~500 строк)
 
-## Результат
-- Переход на курс/ученика: сайдбар остается, хедер остается, загружается только контент
-- Данные организации загружаются один раз при входе в `/organization/*`
-- При возврате назад — мгновенно, без перезагрузки
+### Новые файлы:
 
-## Объем
-~7 файлов, основная работа — создание OrgLayout и удаление дублированного кода из страниц.
+**`src/hooks/useOrgDetailsView.ts`** (~300 строк) — все useState, fetchStudents, fetchCourses, fetchDocuments, fetchUsage, fetchCredentials, saveSettings, handleSaveTariff, handleSaveCustomLimits и т.д. Возвращает объект со всеми стейтами и хендлерами.
+
+**`src/components/admin/org-details/OrgSettingsPanel.tsx`** (~300 строк) — содержимое вкладки «Настройки»: тариф, кастомные лимиты, брендинг, учётные данные, настройки организации, кнопка сохранения (строки ~1400–1737).
+
+**`src/components/admin/org-details/OrgCoursesPanel.tsx`** (~200 строк) — вкладка «Курсы»: таблица курсов, кнопки импорта, миграция блоков.
+
+**`src/components/admin/org-details/OrgStudentsPanel.tsx`** (~150 строк) — вкладка «Ученики»: поиск, таблица студентов.
+
+**`src/components/admin/org-details/OrgStatsPanel.tsx`** (~100 строк) — вкладка «Статистика»: графики usage, history.
+
+### Изменённый `OrganizationDetailsView.tsx` (~500 строк)
+Остаётся: интерфейсы, оркестратор с навигацией по вкладкам, header с бейджами тарифа, диалоги импорта. Использует `useOrgDetailsView()` + подкомпоненты через activeTab.
+
+## 3. devToolsData.ts — обновление метрик
+
+После декомпозиции:
+- Крупнейший файл: ~500 (OrganizationDetailsView)
+- Файлов >800: пересчитать (уменьшится на ~3-4)
+- Критичные рекомендации по BlockEditorMain и OrganizationDetailsView → статус `applied`
+
+## Файлы (создание/изменение)
+
+| Действие | Файл |
+|----------|------|
+| Создать | `src/components/course-builder/block-editor/blocks/TextBlocks.tsx` |
+| Создать | `src/components/course-builder/block-editor/blocks/QuizBlock.tsx` |
+| Создать | `src/components/course-builder/block-editor/blocks/MediaBlocks.tsx` |
+| Создать | `src/components/course-builder/block-editor/blocks/SliderBlock.tsx` |
+| Создать | `src/components/course-builder/block-editor/blocks/BlockContent.tsx` |
+| Создать | `src/components/course-builder/block-editor/blocks/AddBlockButton.tsx` |
+| Создать | `src/components/course-builder/block-editor/blocks/SortableBlockItem.tsx` |
+| Изменить | `src/components/course-builder/block-editor/BlockEditorMain.tsx` |
+| Создать | `src/hooks/useOrgDetailsView.ts` |
+| Создать | `src/components/admin/org-details/OrgSettingsPanel.tsx` |
+| Создать | `src/components/admin/org-details/OrgCoursesPanel.tsx` |
+| Создать | `src/components/admin/org-details/OrgStudentsPanel.tsx` |
+| Создать | `src/components/admin/org-details/OrgStatsPanel.tsx` |
+| Изменить | `src/components/admin/OrganizationDetailsView.tsx` |
+| Изменить | `src/components/admin/devtools/devToolsData.ts` |
+
+~15 файлов. Все существующие импорты продолжат работать — внешний API BlockEditor не меняется, OrganizationDetailsView остаётся экспортом из того же пути.
+
