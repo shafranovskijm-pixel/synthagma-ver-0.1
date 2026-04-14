@@ -269,6 +269,7 @@ export const CoursesTab = React.memo(function CoursesTab({ organizationId, onCou
   } = useCourses(organizationId, {
     initialCourses: dashboard.courses,
     initialCategories: dashboard.categories as CourseCategory[],
+    parentReady: !dashboard.isLoadingCourses,
   });
 
   const dndSensors = useSensors(
