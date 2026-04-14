@@ -21,6 +21,7 @@ import { ProgramListImporter } from "./ProgramListImporter";
 import { KnowledgeBankTab } from "./KnowledgeBankTab";
 import { MarketplaceSettingsTab, type ValidationRules, type AiPrompts } from "./MarketplaceSettingsTab";
 import { ProgramsTab } from "./ProgramsTab";
+import { MarketplaceOrdersList } from "./MarketplaceOrdersList";
 import { supabase } from "@/integrations/supabase/client";
 import { safeInvoke } from "@/utils/safeInvoke";
 import { toast } from "sonner";
