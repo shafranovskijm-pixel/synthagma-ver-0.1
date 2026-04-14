@@ -176,7 +176,7 @@ const CourseEditor = () => {
       .from("courses")
       .update({
         title,
-        description: "description || null,"
+        description: description || null,
         duration: duration || null,
         frdo_duration_hours: durationHours,
         sequential_lessons: sequentialLessons,
@@ -381,7 +381,7 @@ const CourseEditor = () => {
 
   const handleGitHubImport = async (data: {
     title: string;
-    description: "string;"
+    description: string;
     lessons: { title: string; content: string; type: string }[];
   }) => {
     if (!courseId) return;

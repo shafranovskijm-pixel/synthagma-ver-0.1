@@ -310,7 +310,7 @@ export const DocumentsTab = React.memo(function DocumentsTab({ organizationId, o
           setActCustomerKpp(dadataResult.company.kpp || "");
           setActCustomerDirector(dadataResult.company.management || "");
           setActCustomerPosition(dadataResult.company.managementPosition || "Руководитель");
-          toast.success("Организация найдена (DaData)", { description: "dadataResult.company.shortName || dadataResult.company.name" });
+          toast.success("Организация найдена (DaData)", { description: dadataResult.company.shortName || dadataResult.company.name });
         } else {
           toast.success("Не найдено", { description: "Введите реквизиты вручную" });
         }
