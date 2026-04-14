@@ -760,7 +760,7 @@ export const CoursesTab = React.memo(function CoursesTab({ organizationId, onCou
                     <TooltipContent>Редактировать</TooltipContent>
                   </Tooltip>
                   
-                  <Tooltip>
+                   <Tooltip>
                     <TooltipTrigger asChild>
                       <Button 
                         variant="ghost" 
@@ -779,46 +779,14 @@ export const CoursesTab = React.memo(function CoursesTab({ organizationId, onCou
                       <Button 
                         variant="ghost" 
                         size="icon" 
-                        className={`h-7 w-7 ${!hasCourseSettings ? 'opacity-40 cursor-not-allowed' : ''} ${course.skip_video_identification ? 'text-muted-foreground' : 'text-sigma-green'}`}
-                        onClick={e => handleToggleCourseSetting(course, 'skip_video_identification', e)}
+                        className={`h-7 w-7 ${course.hidden_from_catalog ? 'text-muted-foreground' : 'text-sigma-green'}`}
+                        onClick={e => handleToggleCourseSetting(course, 'hidden_from_catalog', e)}
                       >
-                        {course.skip_video_identification ? <VideoOff className="w-3.5 h-3.5" /> : <Video className="w-3.5 h-3.5" />}
+                        {course.hidden_from_catalog ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
                       </Button>
                     </TooltipTrigger>
                     <TooltipContent>
-                      {course.skip_video_identification ? 'Видеоидентификация выкл.' : 'Видеоидентификация вкл.'}
-                    </TooltipContent>
-                  </Tooltip>
-
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button 
-                        variant="ghost" 
-                        size="icon" 
-                        className={`h-7 w-7 ${!hasCourseSettings ? 'opacity-40 cursor-not-allowed' : ''} ${course.sequential_lessons ? 'text-amber-500' : 'text-muted-foreground'}`}
-                        onClick={e => handleToggleCourseSetting(course, 'sequential_lessons', e)}
-                      >
-                        {course.sequential_lessons ? <Lock className="w-3.5 h-3.5" /> : <Unlock className="w-3.5 h-3.5" />}
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      {course.sequential_lessons ? 'Последовательность уроков вкл.' : 'Последовательность уроков выкл.'}
-                    </TooltipContent>
-                  </Tooltip>
-
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button 
-                        variant="ghost" 
-                        size="icon" 
-                        className={`h-7 w-7 ${!hasCourseSettings ? 'opacity-40 cursor-not-allowed' : ''} ${course.allow_video_seek === false ? 'text-destructive' : 'text-muted-foreground'}`}
-                        onClick={e => handleToggleCourseSetting(course, 'allow_video_seek', e)}
-                      >
-                        <FastForward className="w-3.5 h-3.5" />
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      {course.allow_video_seek === false ? 'Перемотка видео запрещена' : 'Перемотка видео разрешена'}
+                      {course.hidden_from_catalog ? 'Скрыт из витрины' : 'Виден в витрине'}
                     </TooltipContent>
                   </Tooltip>
                   
