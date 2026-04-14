@@ -36,7 +36,21 @@ export default function CourseBuilder() {
     organizationId,
   } = useCourseBuilder();
 
-  const handlePreview = async () => {
+  const {
+    isReviewing, reviewResult, activeFindings, dismissedIds,
+    startReview, dismissFinding, dismissAll, resetReview,
+  } = useCourseReview();
+  const [showReviewDialog, setShowReviewDialog] = useState(false);
+
+  const handleStartReview = async () => {
+    if (!resolvedCourseId) {
+      toast.error("Сначала сохраните курс");
+      return;
+    }
+    setShowReviewDialog(true);
+    await startReview(resolvedCourseId);
+  };
+
     if (resolvedCourseId && !hasUnsavedChanges) {
       navigate(`/course-preview/${resolvedCourseId}`);
       return;
