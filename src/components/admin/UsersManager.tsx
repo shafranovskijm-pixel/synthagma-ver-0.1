@@ -101,67 +101,6 @@ export function UsersManager() {
     toast.success("Скопировано", { description: "Логин и пароль скопированы в буфер обмена" });
   };
 
-  const fetchUserDetail = async (user: UserWithRole) => {
-    setSelectedUser(user);
-    setUserDetail({ enrollments: [], profile: null, loading: true });
-    setCredEdit({ login: "", password: "", editing: false, saving: false });
-    setCredPasswordVisible(false);
-    try {
-      const [enrollRes, profileRes, identityRes] = await Promise.all([
-        supabase
-          .from("enrollments")
-          .select("id, course_id, status, progress, started_at, completed_at, time_spent, courses(title)")
-          .eq("user_id", user.user_id),
-        supabase
-          .from("profiles")
-          .select("full_name, email, phone, login, snils, birth_date, address, organization_id, company_id, created_at")
-          .eq("user_id", user.user_id)
-          .maybeSingle(),
-        supabase
-          .from("student_identity_documents" as any)
-          .select("*")
-          .eq("user_id", user.user_id)
-          .maybeSingle(),
-      ]);
-      const profileData = profileRes.data as Record<string, any> | null;
-      setUserDetail({
-        enrollments: enrollRes.data || [],
-        profile: { ...(profileData || {}), identity: identityRes.data },
-        loading: false,
-      });
-    } catch {
-      setUserDetail(prev => ({ ...prev, loading: false }));
-    }
-  };
-
-  const handleSaveCredentials = async () => {
-    if (!selectedUser) return;
-    setCredEdit(prev => ({ ...prev, saving: true }));
-    try {
-      const { error } = await safeInvoke<any>("update-student-credentials", {
-        body: {
-          userId: selectedUser.user_id,
-          login: credEdit.login.trim(),
-          password: credEdit.password.trim(),
-        },
-      });
-      if (error) throw error;
-
-      // Update local state
-      setUsers(prev => prev.map(u =>
-        u.user_id === selectedUser.user_id
-          ? { ...u, login: credEdit.login.trim(), generated_password: credEdit.password.trim() }
-          : u
-      ));
-      setSelectedUser(prev => prev ? { ...prev, login: credEdit.login.trim(), generated_password: credEdit.password.trim() } : prev);
-      setCredEdit(prev => ({ ...prev, editing: false, saving: false }));
-      toast.success("Успешно", { description: "Учётные данные обновлены" });
-    } catch (error: any) {
-      console.error("Error saving credentials:", error);
-      toast.error("Ошибка", { description: error?.message || "Не удалось сохранить учётные данные" });
-      setCredEdit(prev => ({ ...prev, saving: false }));
-    }
-  };
 
   useEffect(() => {
     fetchData();
