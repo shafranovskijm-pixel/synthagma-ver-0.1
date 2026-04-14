@@ -173,6 +173,51 @@ ${practiceGreetingRule}
           }
         }
       };
+    } else if (lessonType === "format") {
+      systemPrompt = `Ты — эксперт по оформлению образовательного контента. Тебе дан сырой текст, скопированный пользователем. Твоя задача — красиво оформить его, НЕ меняя содержание:
+
+1. Разбей на логические секции с заголовками (heading1, heading2)
+2. Найди все URL-ссылки и оберни их в HTML-теги <a href="..." target="_blank" rel="noopener noreferrer">текст ссылки</a>
+3. Выдели ключевые определения и термины в highlight-блоки
+4. Оберни практические советы в callout-tip
+5. Важные предупреждения — в callout-warning
+6. Справочную/дополнительную информацию — в accordion (обязательно укажи accordionTitle)
+7. Перечисления оформи как bulletList или numberedList
+8. Длинные абзацы разбей на параграфы по 2-3 предложения
+9. НЕ удаляй и не меняй смысл текста — только оформление и структурирование
+10. На каждые 3-4 параграфа — минимум 1 callout или highlight блок`;
+
+      toolDefinition = {
+        type: "function",
+        function: {
+          name: "create_lesson_content",
+          description: "Оформляет текст в структурированные блоки",
+          parameters: {
+            type: "object",
+            properties: {
+              blocks: {
+                type: "array",
+                items: {
+                  type: "object",
+                  properties: {
+                    type: { 
+                      type: "string", 
+                      enum: ["heading1", "heading2", "paragraph", "bulletList", "numberedList", "quote", "callout-info", "callout-warning", "callout-tip", "callout-danger", "highlight", "accordion"],
+                      description: "Тип блока контента"
+                    },
+                    content: { type: "string", description: "Содержимое блока. Для ссылок используй HTML-тег <a>" },
+                    accordionTitle: { type: "string", description: "Заголовок для accordion блока (только для type=accordion)" }
+                  },
+                  required: ["type", "content"],
+                  additionalProperties: false
+                }
+              }
+            },
+            required: ["blocks"],
+            additionalProperties: false
+          }
+        }
+      };
     } else {
       const greetingRule = (lessonIndex != null && lessonIndex > 0)
         ? `9. НЕ начинай с приветствия или обращения к слушателям (никаких «Уважаемые коллеги», «Дорогие слушатели» и т.п.). Начинай СРАЗУ с тематического содержания.`
