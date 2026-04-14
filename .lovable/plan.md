@@ -1,33 +1,21 @@
 
 
-# Fix: RovingFocusGroupItem crash in Marketplace/Store
+# Быстрый переход «Партнёры» внутри кабинета организации
 
-## Problem
+## Проблема
 
-The error `RovingFocusGroupItem must be used within RovingFocusGroup` happens because `TabsTrigger` (Radix UI) requires being inside a `TabsList` component. In the recent vertical nav refactor, `TabsTrigger` was placed inside a plain `<nav>` without `<TabsList>`, breaking the component hierarchy.
+Кнопка «Партнёрам» (Handshake) в хедере организации ведёт на `/partner` — отдельную лендинг-страницу с полной перезагрузкой. У админа аналогичный пункт «Партнёры» просто переключает таб на месте (`setActiveTab("referrals")`), что мгновенно.
 
-## Fix
+## Решение
 
-In both files, replace the bare `<nav>` wrapper with a `<TabsList>` styled as a vertical column. This restores the required Radix context while keeping the visual design.
+В `OrganizationProfile.tsx` уже есть вкладка `"partner"` с компонентом `PartnerCabinet`. Нужно лишь изменить навигацию кнопки, чтобы она вела на `/organization/profile?tab=partner` — тот же быстрый переход, как у «Профиль», «Настройки» и т.д.
 
-### `src/components/admin/AdminMarketplaceManager.tsx` (line ~180)
+## Изменения
 
-Replace:
-```tsx
-<nav className="flex flex-col gap-1 sticky top-4">
-```
-With:
-```tsx
-<TabsList className="flex flex-col gap-1 sticky top-4 h-auto bg-transparent p-0">
-```
-And close `</TabsList>` instead of `</nav>`.
+### `src/components/organization/OrgDashboardHeader.tsx`
+- Заменить `navigate("/partner")` на `navigate("/organization/profile?tab=partner")`
 
-### `src/components/organization/CourseStoreManager.tsx` (line ~104)
+### `src/pages/OrganizationProfile.tsx`
+- При монтировании читать `?tab=partner` из URL и устанавливать начальную вкладку `"partner"` вместо дефолтной `"profile"`
 
-Same change — replace `<nav>` → `<TabsList>` with vertical styling.
-
-| File | Change |
-|---|---|
-| `src/components/admin/AdminMarketplaceManager.tsx` | `<nav>` → `<TabsList>` vertical |
-| `src/components/organization/CourseStoreManager.tsx` | `<nav>` → `<TabsList>` vertical |
-
+Всего 2 файла, минимальные правки — ~5 строк.
