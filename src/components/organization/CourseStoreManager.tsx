@@ -84,19 +84,6 @@ export function CourseStoreManager({ organizationId, userRole = 'organization', 
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="bg-gradient-to-r from-primary/10 via-accent/10 to-primary/5 rounded-2xl p-6 border border-border">
-        <div className="flex items-center justify-between flex-wrap gap-3">
-          <div>
-            <div className="flex items-center gap-3 mb-2">
-              <Store className="w-6 h-6 text-primary" />
-              <h2 className="text-xl font-semibold">Магазин курсов</h2>
-            </div>
-            <p className="text-muted-foreground">Готовые курсы для обучения и аттестации — добавьте в свою организацию бесплатно</p>
-          </div>
-        </div>
-      </div>
-
       <Tabs value={h.activeTab} onValueChange={(v) => h.setActiveTab(v as any)} className="space-y-0">
         <div className="flex gap-6">
           {/* Vertical sidebar nav */}
@@ -105,6 +92,7 @@ export function CourseStoreManager({ organizationId, userRole = 'organization', 
               {[
                 { value: "catalog", icon: Package, label: "Каталог" },
                 { value: "my-courses", icon: GraduationCap, label: "Мои курсы" },
+                { value: "requests", icon: Megaphone, label: "Ищут курсы" },
                 { value: "orders", icon: ShoppingCart, label: "Заявки" },
                 { value: "my-orders", icon: Tag, label: "Добавленные" },
               ].map((item) => {
@@ -120,6 +108,9 @@ export function CourseStoreManager({ organizationId, userRole = 'organization', 
                   >
                     <Icon className="w-4 h-4 shrink-0" />
                     {item.label}
+                    {item.value === "requests" && h.courseRequests.length > 0 && (
+                      <Badge variant="secondary" className="ml-auto text-[10px] px-1.5 py-0 bg-amber-500/10 text-amber-600">{h.courseRequests.length}</Badge>
+                    )}
                   </TabsTrigger>
                 );
               })}
@@ -212,92 +203,31 @@ export function CourseStoreManager({ organizationId, userRole = 'organization', 
               <CourseComments marketplaceCourseId={selectedCourseDetail.id} userId={userId} />
             </div>
           ) : (
-            <>
-              {/* Hero Cards */}
-              <MarketplaceHeroCards onCardClick={(cat) => h.setSearchQuery(cat)} />
+             <>
+               {/* Single banner */}
+               <MarketplaceHeroCards onCardClick={(cat) => h.setSearchQuery(cat)} />
 
-              <div className="flex items-center gap-4">
-                <div className="relative flex-1 max-w-md">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                  <Input placeholder="Поиск курсов..." value={h.searchQuery} onChange={(e) => h.setSearchQuery(e.target.value)} className="pl-10 rounded-xl" />
-                </div>
-                <div className="flex items-center gap-1 border rounded-lg p-0.5">
-                  <Button variant={catalogViewMode === "list" ? "default" : "ghost"} size="icon" className="h-8 w-8" onClick={() => setCatalogViewMode("list")}>
-                    <List className="w-4 h-4" />
-                  </Button>
-                  <Button variant={catalogViewMode === "grid" ? "default" : "ghost"} size="icon" className="h-8 w-8" onClick={() => setCatalogViewMode("grid")}>
-                    <LayoutGrid className="w-4 h-4" />
-                  </Button>
-                </div>
-                <Badge variant="secondary">{h.filteredCatalog.length} курсов</Badge>
-                <Button variant="outline" className="rounded-xl gap-2" onClick={() => h.setShowRequestDialog(true)}>
-                  <MessageSquarePlus className="w-4 h-4" /><span className="hidden sm:inline">Объявление</span>
-                </Button>
-              </div>
-
-              {/* Course Requests */}
-              {h.courseRequests.length > 0 && (
-                <Card className="border-amber-500/30 bg-amber-500/5 overflow-hidden">
-                  <button
-                    onClick={() => setRequestsOpen(!requestsOpen)}
-                    className="w-full px-6 py-4 flex items-center justify-between hover:bg-amber-500/5 transition-colors"
-                  >
-                    <div className="flex items-center gap-2">
-                      <Megaphone className="w-5 h-5 text-amber-500" />
-                      <span className="font-semibold">Ищут курсы</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Badge variant="secondary" className="bg-amber-500/10 text-amber-600">{h.courseRequests.length} объявлений</Badge>
-                      <ChevronDown className={`w-4 h-4 text-muted-foreground transition-transform ${requestsOpen ? 'rotate-180' : ''}`} />
-                    </div>
-                  </button>
-                  {requestsOpen && (
-                    <CardContent className="space-y-3 pt-0">
-                      {h.courseRequests.slice(0, 5).map((request) => (
-                        <div key={request.id} className="p-4 rounded-xl bg-card border border-border hover:border-primary/30 transition-colors">
-                          <div className="flex items-start justify-between gap-3">
-                            <div className="flex-1 min-w-0">
-                              <h4 className="font-medium line-clamp-1">{request.title}</h4>
-                              {request.description && <p className="text-sm text-muted-foreground mt-1 line-clamp-2">{request.description}</p>}
-                              <div className="flex flex-wrap items-center gap-3 mt-2 text-xs text-muted-foreground">
-                                {request.students_count && request.students_count > 1 && <span className="flex items-center gap-1"><Users className="w-3 h-3" />{request.students_count} чел.</span>}
-                                <span className="flex items-center gap-1"><Clock className="w-3 h-3" />{format(new Date(request.created_at), 'd MMM', { locale: ru })}</span>
-                              </div>
-                            </div>
-                            <Button size="sm" variant="outline" className="rounded-lg shrink-0" onClick={() => { h.setSelectedRequest(request); h.setShowProposeDialog(true); }}>
-                              <Send className="w-3 h-3 mr-1" />Предложить
-                            </Button>
-                          </div>
-                        </div>
-                      ))}
-                    </CardContent>
-                  )}
-                </Card>
-              )}
+               <div className="flex items-center gap-4">
+                 <div className="relative flex-1 max-w-md">
+                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                   <Input placeholder="Поиск курсов..." value={h.searchQuery} onChange={(e) => h.setSearchQuery(e.target.value)} className="pl-10 rounded-xl" />
+                 </div>
+                 <div className="flex items-center gap-1 border rounded-lg p-0.5">
+                   <Button variant={catalogViewMode === "list" ? "default" : "ghost"} size="icon" className="h-8 w-8" onClick={() => setCatalogViewMode("list")}>
+                     <List className="w-4 h-4" />
+                   </Button>
+                   <Button variant={catalogViewMode === "grid" ? "default" : "ghost"} size="icon" className="h-8 w-8" onClick={() => setCatalogViewMode("grid")}>
+                     <LayoutGrid className="w-4 h-4" />
+                   </Button>
+                 </div>
+                 <Badge variant="secondary">{h.filteredCatalog.length} курсов</Badge>
+               </div>
 
               {h.filteredCatalog.length === 0 ? (
                 <Card className="border-dashed"><CardContent className="py-12 text-center"><Package className="w-12 h-12 text-muted-foreground/50 mx-auto mb-4" /><p className="text-muted-foreground">{h.searchQuery ? 'Курсы не найдены' : 'В каталоге пока нет курсов'}</p></CardContent></Card>
               ) : catalogViewMode === 'list' ? (
                 /* Grouped list view — card per category */
                 <div className="space-y-4">
-                  {/* Info banner */}
-                  <div className="bg-gradient-to-r from-primary/5 via-accent/5 to-primary/3 border border-border rounded-lg p-4">
-                    <div className="flex gap-3 items-start">
-                      <ShieldCheck className="w-5 h-5 text-primary mt-0.5 shrink-0" />
-                      <div>
-                       <h4 className="font-semibold text-sm text-foreground mb-1">Курсы ДПО и профессионального обучения</h4>
-                        <p className="text-xs text-muted-foreground leading-relaxed">
-                          Повышение квалификации, профпереподготовка, охрана труда и рабочие профессии. Тесты соответствуют требованиям аттестации.
-                        </p>
-                        <div className="flex gap-2 mt-2">
-                          <Badge variant="secondary" className="text-xs">ДПО</Badge>
-                          <Badge variant="secondary" className="text-xs">ОТ / ПБ</Badge>
-                          <Badge variant="secondary" className="text-xs">Бесплатно</Badge>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
                   <div className="grid gap-6">
                     {h.groupedCatalog.map((group) => {
                       const meta = getProgramTypeMeta(group.category);
@@ -439,6 +369,41 @@ export function CourseStoreManager({ organizationId, userRole = 'organization', 
                 </div>
               )}
             </>
+          )}
+        </TabsContent>
+
+        {/* Requests Tab - Ищут курсы */}
+        <TabsContent value="requests" className="space-y-6">
+          <div className="flex items-center justify-between">
+            <p className="text-sm text-muted-foreground">Объявления о поиске курсов</p>
+            <Button variant="outline" className="rounded-xl gap-2" onClick={() => h.setShowRequestDialog(true)}>
+              <MessageSquarePlus className="w-4 h-4" />Создать объявление
+            </Button>
+          </div>
+          {h.courseRequests.length === 0 ? (
+            <Card className="border-dashed"><CardContent className="py-12 text-center"><Megaphone className="w-12 h-12 text-muted-foreground/50 mx-auto mb-4" /><p className="text-muted-foreground">Пока нет объявлений о поиске курсов</p></CardContent></Card>
+          ) : (
+            <div className="space-y-3">
+              {h.courseRequests.map((request) => (
+                <Card key={request.id} className="hover:border-primary/30 transition-colors">
+                  <CardContent className="p-4">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex-1 min-w-0">
+                        <h4 className="font-medium line-clamp-1">{request.title}</h4>
+                        {request.description && <p className="text-sm text-muted-foreground mt-1 line-clamp-2">{request.description}</p>}
+                        <div className="flex flex-wrap items-center gap-3 mt-2 text-xs text-muted-foreground">
+                          {request.students_count && request.students_count > 1 && <span className="flex items-center gap-1"><Users className="w-3 h-3" />{request.students_count} чел.</span>}
+                          <span className="flex items-center gap-1"><Clock className="w-3 h-3" />{format(new Date(request.created_at), 'd MMM', { locale: ru })}</span>
+                        </div>
+                      </div>
+                      <Button size="sm" variant="outline" className="rounded-lg shrink-0" onClick={() => { h.setSelectedRequest(request); h.setShowProposeDialog(true); }}>
+                        <Send className="w-3 h-3 mr-1" />Предложить
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
           )}
         </TabsContent>
 
