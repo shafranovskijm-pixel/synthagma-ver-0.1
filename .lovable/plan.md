@@ -1,34 +1,36 @@
 
 
-# Fix: генерация актов + счёт на другую организацию
+# Добавить поиск по ИНН (DaData) в диалог создания акта
 
-## Проблема 1: Акт не создаётся для организации
+## Что сделать
 
-**Причина**: RLS-политики разрешают INSERT в `org_billing_documents` и UPLOAD в `billing-documents` storage только админам. Когда пользователь организации нажимает «Создать акт», запросы падают с ошибкой доступа.
+Добавить в диалог «Создать акт» такой же переключатель «Заказчик — другая организация», как уже реализовано в диалоге счёта. При включении — поле ИНН с кнопкой «Найти», поля названия, КПП и ФИО руководителя. Поиск идёт сначала по локальной БД (`organizations`), если не найдено — через edge function `dadata-company`.
 
-**Исправление (миграция)**:
-- Добавить INSERT-политику на `org_billing_documents` для пользователей организации (`organization_id = current_organization_id()`)
-- Добавить UPLOAD-политику на storage `billing-documents` для пользователей, чей `organization_id` совпадает с папкой файла
+## Изменения
 
-## Проблема 2: Счёт на другую организацию (по ИНН)
+### 1. `src/components/organization/tabs/DocumentsTab.tsx`
+- Добавить state: `actOtherCustomer`, `actCustomerName`, `actCustomerInn`, `actCustomerKpp`, `actCustomerDirector`, `actCustomerPosition`
+- Расширить `handleSearchByInn` или создать `handleActSearchByInn` — сначала ищет в `organizations`, если не найдено — вызывает `supabase.functions.invoke("dadata-company", { body: { inn } })` для получения реквизитов через DaData
+- В диалоге акта (строки 780–830) добавить чекбокс и блок полей (аналогично invoice dialog)
+- В `handleGenerateAct` — если `actOtherCustomer`, передавать кастомные данные вместо `orgDetails`
 
-Сейчас счёт всегда выставляется на текущую организацию. Нужна возможность ввести ИНН другой организации-плательщика, система найдёт её реквизиты и подставит в счёт.
+### 2. `src/utils/generateAct.ts`
+Никаких изменений не нужно — он уже принимает `orgName`, `orgInn`, `directorName`, `directorPosition` как параметры.
 
-**Миграция**: добавить в `subscription_invoices` поля:
-- `buyer_name TEXT` — название плательщика (если отличается)
-- `buyer_inn TEXT` — ИНН плательщика
-- `buyer_kpp TEXT` — КПП плательщика
+## Технические детали
 
-**UI в DocumentsTab**: при выставлении счёта добавить переключатель «Плательщик — другая организация». При включении — поле ИНН с автопоиском по таблице `organizations`. Найденные реквизиты подставляются автоматически. Можно ввести вручную, если организации нет в базе.
+Поиск по ИНН через DaData:
+```typescript
+const { data: dadataResult } = await supabase.functions.invoke("dadata-company", {
+  body: { inn }
+});
+if (dadataResult?.success) {
+  setActCustomerName(dadataResult.company.shortName);
+  setActCustomerInn(dadataResult.company.inn);
+  setActCustomerKpp(dadataResult.company.kpp || "");
+  setActCustomerDirector(dadataResult.company.management || "");
+  setActCustomerPosition(dadataResult.company.managementPosition || "Руководитель");
+}
+```
 
-**InvoiceView**: при рендере счёта — если есть `buyer_name`/`buyer_inn`, использовать их вместо данных текущей организации.
-
-## Файлы
-
-| Файл | Изменение |
-|------|-----------|
-| Миграция SQL | RLS-политики для org_billing_documents (INSERT) и storage (UPLOAD); поля buyer_name/inn/kpp в subscription_invoices |
-| `src/components/organization/tabs/DocumentsTab.tsx` | UI для выбора плательщика по ИНН при выставлении счёта |
-| `src/pages/InvoiceView.tsx` | Использовать buyer_name/inn/kpp если заполнены |
-| `src/constants/invoiceTemplate.ts` | Расширить InvoiceData для поддержки кастомного плательщика (уже поддерживает buyerName/buyerInn/buyerKpp) |
-
+Изменения только в одном файле (`DocumentsTab.tsx`), миграции не нужны.
