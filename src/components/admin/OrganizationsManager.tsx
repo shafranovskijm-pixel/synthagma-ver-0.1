@@ -74,6 +74,7 @@ export function OrganizationsManager() {
   const [copiedField, setCopiedField] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('list');
+  const [showStats, setShowStats] = useState(false);
   const [formData, setFormData] = useState({
     name: "",
     email: "",
