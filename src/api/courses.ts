@@ -18,7 +18,7 @@ export async function fetchCourses(organizationId: string): Promise<Course[]> {
 
   if (!coursesData || coursesData.length === 0) return [];
 
-  return coursesData.map((course: any) => ({
+  return coursesData.map((course) => ({
     id: course.id,
     title: course.title,
     description: course.description,
