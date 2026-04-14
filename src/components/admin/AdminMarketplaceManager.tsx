@@ -21,6 +21,7 @@ import { ProgramListImporter } from "./ProgramListImporter";
 import { KnowledgeBankTab } from "./KnowledgeBankTab";
 import { MarketplaceSettingsTab, type ValidationRules, type AiPrompts } from "./MarketplaceSettingsTab";
 import { ProgramsTab } from "./ProgramsTab";
+import { MarketplaceOrdersList } from "./MarketplaceOrdersList";
 import { supabase } from "@/integrations/supabase/client";
 import { safeInvoke } from "@/utils/safeInvoke";
 import { toast } from "sonner";
@@ -938,7 +939,7 @@ export function AdminMarketplaceManager() {
       // Для рабочих профессий — до 9 изображений, для остальных — 3
       const mediaLimit = programType === "Рабочие профессии" ? 9 : 3;
       const lessonsToEnrich = lessonsNeedingMedia.slice(0, mediaLimit);
-      console.log(`[Auto-fix] Media recompute: ${lessonsNeedingMedia.length} lessons need media, limit=${mediaLimit}, enriching=${lessonsToEnrich.length}`);
+      // Media recompute: enriching lessons that need media
       if (lessonsToEnrich.length > 0) {
         let enrichedCount = 0;
 
@@ -1035,7 +1036,7 @@ export function AdminMarketplaceManager() {
           for (let wave = 0; wave < MAX_WAVES && pending.length > 0; wave++) {
             if (wave > 0) {
               const waveCooldown = 20000 * wave; // 20s, 40s
-              console.log(`[Enrichment] Wave ${wave + 1}: retrying ${pending.length} failed items after ${waveCooldown / 1000}s cooldown`);
+              // Retrying failed items in next wave
               toast.loading(`Повторная генерация (волна ${wave + 1}): ${pending.length} изображений...`, { id: toastId });
               await new Promise(r => setTimeout(r, waveCooldown));
             }
@@ -1046,13 +1047,13 @@ export function AdminMarketplaceManager() {
             for (let batchStart = 0; batchStart < pending.length; batchStart += BATCH_SIZE) {
               // Early exit: already got enough images
               if (successCount >= mediaLimit) {
-                console.log(`[Enrichment] Reached mediaLimit (${mediaLimit}), stopping generation`);
+                // Reached media limit, stopping
                 break;
               }
 
               const batch = pending.slice(batchStart, batchStart + BATCH_SIZE);
               if (batchStart > 0) {
-                console.log(`[Enrichment] Wave ${wave + 1}: cooldown ${BATCH_COOLDOWN_MS}ms before batch ${Math.floor(batchStart / BATCH_SIZE) + 1}`);
+                // Cooldown between batches
                 await new Promise(r => setTimeout(r, BATCH_COOLDOWN_MS));
               }
 
@@ -1123,7 +1124,7 @@ export function AdminMarketplaceManager() {
             if (successCount >= mediaLimit) break;
             pending = failedThisWave;
             if (pending.length === 0) {
-              console.log(`[Enrichment] All images generated successfully on wave ${wave + 1}`);
+              // All images generated successfully
               break;
             }
           }
@@ -1139,11 +1140,11 @@ export function AdminMarketplaceManager() {
           }
         }
         if (enrichedCount > 0) {
-          console.log(`[Auto-fix] Enriched ${enrichedCount} images across ${lessonsNeedingMedia.length} lessons`);
+          // Enrichment complete
         }
       } else if (allTextLessonsPost.length > 0) {
         // All lessons already have images — log and skip
-        console.log(`[Auto-fix] All text lessons already contain images, skipping enrichment`);
+        // All text lessons already contain images, skipping enrichment
         await supabase.from("generation_history").insert({
           course_id: courseId, course_title: courseTitle,
           action: "media",
@@ -1956,55 +1957,7 @@ export function AdminMarketplaceManager() {
           <KnowledgeBankTab />
         </TabsContent>
         <TabsContent value="orders" className="space-y-6">
-          {h.orders.length === 0 ? (
-            <Card className="border-dashed">
-              <CardContent className="py-12 text-center">
-                <ShoppingCart className="w-12 h-12 text-muted-foreground/50 mx-auto mb-4" />
-                <p className="text-muted-foreground">Заявок пока нет</p>
-              </CardContent>
-            </Card>
-          ) : (
-            <Card>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Курс</TableHead>
-                    <TableHead>Продавец</TableHead>
-                    <TableHead>Покупатель</TableHead>
-                    <TableHead>Сумма</TableHead>
-                    <TableHead>Статус</TableHead>
-                    <TableHead>Дата</TableHead>
-                    <TableHead></TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {h.orders.map((order) => (
-                    <TableRow key={order.id}>
-                      <TableCell className="font-medium">{order.marketplace_course?.course?.title || "—"}</TableCell>
-                      <TableCell className="text-muted-foreground">{order.marketplace_course?.organization?.name || "Платформа"}</TableCell>
-                      <TableCell>
-                        {order.buyer_organization ? order.buyer_organization.name : order.buyer_type === "student" ? (order.buyer_profile?.full_name || order.buyer_profile?.email || "Студент") : "—"}
-                      </TableCell>
-                      <TableCell className="font-semibold">{order.price.toLocaleString()} ₽</TableCell>
-                      <TableCell>
-                        <Badge className={statusLabels[order.status]?.color || ""}>
-                          {statusLabels[order.status]?.label || order.status}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-muted-foreground">
-                        {format(new Date(order.created_at), "dd.MM.yyyy", { locale: ru })}
-                      </TableCell>
-                      <TableCell>
-                        <Button variant="ghost" size="sm" onClick={() => { h.setSelectedOrder(order); h.setShowOrderDialog(true); }}>
-                          <Eye className="w-4 h-4" />
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </Card>
-          )}
+          <MarketplaceOrdersList orders={h.orders as any} onViewOrder={(order) => { h.setSelectedOrder(order as any); h.setShowOrderDialog(true); }} />
         </TabsContent>
 
 

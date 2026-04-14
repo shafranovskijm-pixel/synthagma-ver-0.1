@@ -38,19 +38,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         .rpc('get_user_role', { _user_id: userId });
       
       if (data && !error) {
-        console.log('Fetched user role:', data);
         const role = data as 'admin' | 'organization' | 'student' | 'sales_manager' | 'company';
         setUserRole(role);
         localStorage.setItem('user_role', role);
         return role;
       } else {
-        console.error('Error fetching user role:', error);
         // Don't fallback to 'student' — keep current role or null
         // This prevents race conditions during org registration
         return null;
       }
-    } catch (error) {
-      console.error('Error fetching user role:', error);
+    } catch {
       return null;
     } finally {
       roleFetchInFlight.current = null;
@@ -62,26 +59,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (recoveryInProgress.current) return;
     recoveryInProgress.current = true;
     
-    console.log('[Auth] Attempting session recovery...');
+    
     await new Promise(resolve => setTimeout(resolve, 2000));
     
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (session) {
-        console.log('[Auth] Session recovered');
         setSession(session);
         setUser(session.user);
         hadSession.current = true;
       } else {
-        console.log('[Auth] Session recovery failed, clearing state');
         setUser(null);
         setSession(null);
         setUserRole(null);
         localStorage.removeItem('user_role');
         hadSession.current = false;
       }
-    } catch (error) {
-      console.error('[Auth] Session recovery error:', error);
+    } catch {
     } finally {
       recoveryInProgress.current = false;
     }
@@ -117,7 +111,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // Set up auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
-        console.log('[Auth] onAuthStateChange:', event, !!session);
+        
         
         if (event === 'TOKEN_REFRESHED') {
           if (session) {
@@ -153,7 +147,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             fetchUserRole(session.user.id);
           }, 0);
         } else if (!session && hadSession.current) {
-          console.warn('[Auth] Session lost unexpectedly, attempting recovery...');
           attemptSessionRecovery();
         }
       }
@@ -173,8 +166,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           localStorage.removeItem('user_role');
           setUserRole(null);
         }
-      } catch (error) {
-        console.error('Auth initialization error:', error);
+      } catch {
       } finally {
         setLoading(false);
       }
@@ -190,7 +182,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [fetchUserRole, attemptSessionRecovery]);
 
   const signIn = async (email: string, password: string) => {
-    console.log('[Auth] signIn attempt for:', email);
     signInInProgress.current = true;
     
     try {
@@ -200,13 +191,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       });
       
       if (!error && data?.user) {
-        console.log('[Auth] signIn success, fetching role for:', data.user.id);
         hadSession.current = true;
         setSession(data.session);
         setUser(data.user);
         
         await fetchUserRole(data.user.id);
-        console.log('[Auth] role fetched, userRole is now set');
         
         // Fire-and-forget: log the login event
         supabase

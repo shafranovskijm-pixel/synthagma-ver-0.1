@@ -1,3 +1,4 @@
+import type { LucideIcon } from "lucide-react";
 import {
   FileText, Video, Image, FileQuestion, Headphones, Presentation, ClipboardList, MessageSquare, BookCheck,
 } from "lucide-react";
@@ -53,7 +54,7 @@ export interface GeneratedQuestion {
   explanation?: string;
 }
 
-export const lessonIcons: Record<LessonType, any> = {
+export const lessonIcons: Record<LessonType, LucideIcon> = {
   text: FileText,
   video: Video,
   image: Image,

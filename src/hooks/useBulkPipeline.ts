@@ -42,11 +42,12 @@ class CreditsExhaustedError extends Error {
   }
 }
 
-function checkFor402(error: any) {
-  if (error?.context?.status === 402 || error?.status === 402) {
+function checkFor402(error: unknown) {
+  const err = error as Record<string, unknown> | null;
+  if ((err?.context as Record<string, unknown>)?.status === 402 || err?.status === 402) {
     throw new CreditsExhaustedError();
   }
-  const msg = error?.message || String(error || "");
+  const msg = (err?.message as string) || String(error || "");
   if (msg.includes("402") || msg.includes("кредит") || msg.includes("баланс") || msg.includes("payment_required") || msg.includes("Not enough credits")) {
     throw new CreditsExhaustedError();
   }
@@ -84,7 +85,7 @@ function getDelay(type: "batch" | "lesson"): number {
   return type === "batch" ? 1500 : 1000;
 }
 
-function detectProvider(data: any) {
+function detectProvider(data: Record<string, unknown> | null) {
   const model = data?.model || data?.modelUsed || "";
   if (typeof model === "string") {
     const lower = model.toLowerCase();
@@ -130,7 +131,7 @@ async function parallelMap<T, R>(
         if (e instanceof CreditsExhaustedError) throw e;
         if (abortSignal?.current) break;
         console.error(`[parallelMap] Item ${i} failed/timed out:`, e instanceof Error ? e.message : String(e));
-        results[i] = undefined as any;
+        results[i] = undefined as unknown as R;
       }
     }
   }
@@ -202,7 +203,7 @@ export function useBulkPipeline({ courses, onComplete, enableVerification = fals
       const { data: questions } = await supabase
         .from("test_questions").select("id, lesson_id, correct_answer, explanation, question, options").in("lesson_id", testIds);
 
-      const byLessonMap = new Map<string, any[]>();
+      const byLessonMap = new Map<string, Array<{ id: string; lesson_id: string; correct_answer: number | null; explanation: string | null; question: string; options: unknown }>>();
       for (const q of questions || []) {
         const arr = byLessonMap.get(q.lesson_id) || [];
         arr.push(q);
@@ -213,14 +214,14 @@ export function useBulkPipeline({ courses, onComplete, enableVerification = fals
       const suspiciousLessons = new Set<string>();
       for (const [lid, qs] of byLessonMap) {
         if (qs.length > 3) {
-          const allSame = qs.every((q: any) => q.correct_answer === qs[0]?.correct_answer);
-          const noExplanations = qs.every((q: any) => !q.explanation);
+          const allSame = qs.every((q) => q.correct_answer === qs[0]?.correct_answer);
+          const noExplanations = qs.every((q) => !q.explanation);
           if (allSame && noExplanations) suspiciousLessons.add(lid);
         }
       }
 
       // Smart filter: skip reliably solved questions
-      const unanswered = (questions || []).filter((q: any) => {
+      const unanswered = (questions || []).filter((q) => {
         if (suspiciousLessons.has(q.lesson_id)) return true;
         return !isReliablySolved(q);
       });
@@ -237,7 +238,7 @@ export function useBulkPipeline({ courses, onComplete, enableVerification = fals
         const lessonEntries = Array.from(byLesson.entries());
         await parallelMap(lessonEntries, 5, async ([lessonId, qs]) => {
           if (stopRef.current) return;
-          const lessonInfo = currentLessons.find((l: any) => l.id === lessonId);
+          const lessonInfo = currentLessons.find((l) => l.id === lessonId);
           const batchSize = 60;
           for (let i = 0; i < qs.length; i += batchSize) {
             if (stopRef.current) return;
@@ -303,7 +304,7 @@ export function useBulkPipeline({ courses, onComplete, enableVerification = fals
         .from("test_questions").select("id, lesson_id, correct_answer, explanation, question, options").in("lesson_id", testIds);
 
       // Only verify questions that were just solved (have answer but short/missing explanation or were suspicious)
-      const toVerify = (solvedQuestions || []).filter((q: any) =>
+      const toVerify = (solvedQuestions || []).filter((q) =>
         q.correct_answer !== null && q.correct_answer !== undefined &&
         (!q.explanation || q.explanation.length < 30)
       );
@@ -410,11 +411,11 @@ export function useBulkPipeline({ courses, onComplete, enableVerification = fals
         detectProvider(data);
         if (data?.lessons && Array.isArray(data.lessons)) {
           const newLessons = data.lessons
-            .filter((l: any) => l.type !== "test")
-            .map((l: any, idx: number) => ({
+            .filter((l: Record<string, unknown>) => l.type !== "test")
+            .map((l: Record<string, unknown>, idx: number) => ({
               course_id: courseId,
-              title: l.title,
-              type: l.type || "text",
+              title: l.title as string,
+              type: (l.type as string) || "text",
               content: null,
               order_index: currentLessons.length + idx,
             }));
@@ -597,14 +598,14 @@ export function useBulkPipeline({ courses, onComplete, enableVerification = fals
           totalQuestions: result.totalQuestions,
           message: result.skippedBatches > 0 ? `${result.skippedBatches} батч(ей) пропущено` : undefined,
         }]);
-      } catch (e: any) {
+      } catch (e: unknown) {
         if (e instanceof CreditsExhaustedError) {
           setCompletedLog(prev => [...prev, { courseName: name, status: "error", message: "⚠️ Кредиты ИИ исчерпаны" }]);
           totalErrors++;
           break;
         }
         const phaseInfo = currentPhaseRef.current ? ` [${currentPhaseRef.current}]` : "";
-        setCompletedLog(prev => [...prev, { courseName: name, status: "error", message: (e?.message || "Ошибка") + phaseInfo }]);
+        setCompletedLog(prev => [...prev, { courseName: name, status: "error", message: ((e instanceof Error ? e.message : String(e)) || "Ошибка") + phaseInfo }]);
         totalErrors++;
       }
     }
@@ -661,9 +662,10 @@ export function useBulkPipeline({ courses, onComplete, enableVerification = fals
         testsSolved: result.testsSolved,
       }]);
       toast[result.ok ? "success" : "warning"](`Тест: ${name} — ${result.ok ? "готово" : "прервано"}`);
-    } catch (e: any) {
-      setCompletedLog([{ courseName: name, status: "error", message: e?.message || "Ошибка" }]);
-      toast.error(`Тест: ошибка — ${e?.message}`);
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : "Ошибка";
+      setCompletedLog([{ courseName: name, status: "error", message: msg }]);
+      toast.error(`Тест: ошибка — ${msg}`);
     }
 
     setIsTestRunning(false);
@@ -680,6 +682,6 @@ export function useBulkPipeline({ courses, onComplete, enableVerification = fals
     aiSessionCalls,
     hasResumableProgress,
     handleStart, handleStop, handleTestRun, handleResetProgress,
-    setQueueOpen: undefined as any,
+    setQueueOpen: undefined as unknown as React.Dispatch<React.SetStateAction<boolean>>,
   };
 }

@@ -294,7 +294,7 @@ export function useCompaniesManager(organizationId: string) {
 
     setIsSaving(true);
     try {
-      const updateData: any = {
+      const updateData: Record<string, string | null> = {
         name: editCompanyName.trim(),
         inn: dadataEditCompanyInfo?.inn || editCompanyInn.trim() || editingCompany.inn,
         email: editCompanyEmail.trim() || null,

@@ -40,15 +40,13 @@ export const useVideoProgress = (
           .maybeSingle();
         
         if (error) {
-          console.error('[useVideoProgress] Error loading:', error);
+          setState(prev => ({ ...prev, isLoading: false }));
           setState(prev => ({ ...prev, isLoading: false }));
           return;
         }
         
-        const position = (data as any)?.video_position ?? 0;
-        const duration = (data as any)?.video_duration ?? 0;
-        
-        console.log('[useVideoProgress] Loaded position:', position, 'duration:', duration);
+        const position = data?.video_position ?? 0;
+        const duration = data?.video_duration ?? 0;
         lastSavedPositionRef.current = position;
         
         setState({
@@ -56,8 +54,8 @@ export const useVideoProgress = (
           duration,
           isLoading: false,
         });
-      } catch (err) {
-        console.error('[useVideoProgress] Load error:', err);
+      } catch {
+        setState(prev => ({ ...prev, isLoading: false }));
         setState(prev => ({ ...prev, isLoading: false }));
       }
     };
@@ -83,7 +81,7 @@ export const useVideoProgress = (
       
       saveTimeoutRef.current = setTimeout(async () => {
         try {
-          console.log('[useVideoProgress] Saving position:', position);
+          lastSavedPositionRef.current = position;
           lastSavedPositionRef.current = position;
           
           await supabase
@@ -97,8 +95,8 @@ export const useVideoProgress = (
               },
               { onConflict: 'lesson_id,user_id' }
             );
-        } catch (err) {
-          console.error('[useVideoProgress] Save error:', err);
+        } catch {
+          // Save failed silently
         }
       }, 3000); // 3 second debounce
     },
@@ -115,7 +113,6 @@ export const useVideoProgress = (
       }
       
       try {
-        console.log('[useVideoProgress] Immediate save:', position);
         lastSavedPositionRef.current = position;
         
         await supabase
@@ -129,8 +126,8 @@ export const useVideoProgress = (
             },
             { onConflict: 'lesson_id,user_id' }
           );
-      } catch (err) {
-        console.error('[useVideoProgress] Immediate save error:', err);
+      } catch {
+        // Immediate save failed silently
       }
     },
     [userId, lessonId]
@@ -144,7 +141,7 @@ export const useVideoProgress = (
       if (document.visibilityState === 'hidden') {
         const { position, duration } = currentPositionRef.current;
         if (position > 0 && Math.abs(position - lastSavedPositionRef.current) >= 1) {
-          console.log('[useVideoProgress] Saving on visibility hidden:', position);
+          
           
           // Clear any pending timeout
           if (saveTimeoutRef.current) {
@@ -167,9 +164,8 @@ export const useVideoProgress = (
                   },
                   { onConflict: 'lesson_id,user_id' }
                 );
-              console.log('[useVideoProgress] Saved on visibility change');
-            } catch (err) {
-              console.error('[useVideoProgress] Visibility save error:', err);
+            } catch {
+              // Visibility save failed silently
             }
           })();
         }
@@ -195,15 +191,11 @@ export const useVideoProgress = (
           // and use Prefer header via URL approach
           const beaconUrl = `${url}&apikey=${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`;
           const sent = navigator.sendBeacon(beaconUrl, blob);
-          
           if (sent) {
-            console.log('[useVideoProgress] sendBeacon save on unload:', position);
             lastSavedPositionRef.current = position;
-          } else {
-            console.warn('[useVideoProgress] sendBeacon failed, data may be lost');
           }
-        } catch (err) {
-          console.error('[useVideoProgress] Beacon save error:', err);
+        } catch {
+          // Beacon save failed silently
         }
       }
     };

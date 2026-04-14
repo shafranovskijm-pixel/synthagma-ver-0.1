@@ -207,7 +207,7 @@ export function useAdminMarketplace() {
       resetCreateForm();
       fetchCourses();
       return courseData.id;
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error creating course:", error);
       toast.error("Ошибка при создании курса");
       return null;
