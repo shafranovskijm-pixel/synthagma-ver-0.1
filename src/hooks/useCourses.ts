@@ -4,6 +4,7 @@ import type { Course, CourseCategory, CourseFilter, CourseViewMode } from "@/typ
 import { 
   fetchCourses,
   fetchCourseStudentCounts,
+  fetchCourseLessonCounts,
   fetchCategories,
   createCourse,
   updateCourse,
@@ -49,13 +50,17 @@ interface UseCoursesReturn {
 interface UseCoursesOptions {
   initialCourses?: Course[];
   initialCategories?: CourseCategory[];
+  /** True when the parent loader has finished (even if result is []). Prevents treating [] as "ready". */
+  parentReady?: boolean;
 }
 
 export function useCourses(organizationId: string | null, options?: UseCoursesOptions): UseCoursesReturn {
-  const hasPreloadedData = !!(options?.initialCourses);
+  // Only consider preloaded when parent explicitly says data is ready AND there are courses
+  const hasPreloadedData = !!(options?.initialCourses && options.initialCourses.length > 0);
+  const parentReady = options?.parentReady ?? false;
   const [courses, setCourses] = useState<Course[]>(options?.initialCourses || []);
   const [categories, setCategories] = useState<CourseCategory[]>(options?.initialCategories || []);
-  const [isLoading, setIsLoading] = useState(!hasPreloadedData);
+  const [isLoading, setIsLoading] = useState(!hasPreloadedData && !parentReady);
   const [error, setError] = useState<string | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
   
@@ -67,12 +72,17 @@ export function useCourses(organizationId: string | null, options?: UseCoursesOp
 
   // Sync preloaded data from parent when it changes
   useEffect(() => {
-    if (options?.initialCourses) {
+    if (options?.initialCourses && options.initialCourses.length > 0) {
       setCourses(options.initialCourses);
       setIsLoading(false);
       setError(null);
+    } else if (parentReady) {
+      // Parent finished loading but returned empty — that's genuinely empty
+      setCourses(options?.initialCourses || []);
+      setIsLoading(false);
+      setError(null);
     }
-  }, [options?.initialCourses]);
+  }, [options?.initialCourses, parentReady]);
 
   useEffect(() => {
     if (options?.initialCategories) {
@@ -100,15 +110,17 @@ export function useCourses(organizationId: string | null, options?: UseCoursesOp
         setCourses(coursesData);
         setCategories(categoriesData);
 
-        // Lazy-load student counts after rendering courses
+        // Lazy-load student counts and lesson counts after rendering courses
         const courseIds = coursesData.map(c => c.id);
-        fetchCourseStudentCounts(courseIds).then(countMap => {
-          if (countMap.size > 0) {
-            setCourses(prev => prev.map(c => ({
-              ...c,
-              studentsCount: countMap.get(c.id) ?? c.studentsCount ?? 0
-            })));
-          }
+        Promise.all([
+          fetchCourseStudentCounts(courseIds),
+          fetchCourseLessonCounts(courseIds),
+        ]).then(([studentMap, lessonMap]) => {
+          setCourses(prev => prev.map(c => ({
+            ...c,
+            studentsCount: studentMap.get(c.id) ?? c.studentsCount ?? 0,
+            lessonsCount: lessonMap.get(c.id) ?? c.lessonsCount ?? 0,
+          })));
         });
       } catch (err: any) {
         console.error("Error loading courses:", err);
@@ -127,7 +139,7 @@ export function useCourses(organizationId: string | null, options?: UseCoursesOp
     };
 
     load();
-  }, [organizationId, refreshKey, hasPreloadedData]);
+  }, [organizationId, refreshKey, hasPreloadedData, parentReady]);
 
   // Filtered courses
   const filteredCourses = useMemo(() => {

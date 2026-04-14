@@ -54,6 +54,7 @@ export function useOrganizationDashboard() {
     organizationId, organizationName, isFrdoEnabled, isAdminView,
     courses, setCourses, students, setStudents, allProfiles, setAllProfiles,
     companies, stats, setStats, documentsStats, studentDocsByUser, refreshData,
+    isLoadingCourses,
   } = dataLoader;
 
   // Update category actions with organizationId
@@ -263,6 +264,7 @@ export function useOrganizationDashboard() {
     organizationId, organizationName, isFrdoEnabled, isAdminView,
     courses, setCourses, students, setStudents, allProfiles, setAllProfiles,
     companies, stats, setStats, documentsStats, studentDocsByUser, refreshData,
+    isLoadingCourses,
     // Features & limits
     isEnabled, checkLimit, subscriptionLimits,
     // UI state
