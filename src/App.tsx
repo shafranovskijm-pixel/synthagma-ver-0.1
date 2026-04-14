@@ -37,7 +37,7 @@ const queryClient = new QueryClient({
   },
 });
 
-const isNative = typeof (window as Record<string, unknown>).Capacitor !== 'undefined';
+const isNative = typeof (window as unknown as Record<string, unknown>).Capacitor !== 'undefined';
 const Router = isNative ? HashRouter : BrowserRouter;
 
 function ThemeInit() { useThemePersonalization(); return null; }
