@@ -10,6 +10,7 @@ import { OrgNotifications } from "./OrgNotifications";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { differenceInDays } from "date-fns";
+import { useAuth } from "@/hooks/useAuth";
 import defaultCoverImg from "@/assets/default-org-cover.jpg";
 import {
   DropdownMenu,
@@ -67,12 +68,20 @@ export function OrgDashboardHeader() {
   // Tariff info
   const [paidUntil, setPaidUntil] = useState<string | null>(null);
   const planName = d.subscriptionLimits?.plan;
+  const { user: authUser } = useAuth();
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
 
   useEffect(() => {
     if (!organizationId) return;
     supabase.from("organizations").select("paid_until").eq("id", organizationId).single()
       .then(({ data }) => { if (data?.paid_until) setPaidUntil(data.paid_until); });
   }, [organizationId]);
+
+  useEffect(() => {
+    if (!authUser?.id) return;
+    supabase.from("profiles").select("avatar_url").eq("user_id", authUser.id).single()
+      .then(({ data }) => { if (data?.avatar_url) setAvatarUrl(data.avatar_url); });
+  }, [authUser?.id]);
 
   const daysRemaining = paidUntil ? Math.max(0, differenceInDays(new Date(paidUntil), new Date())) : null;
 
@@ -149,16 +158,18 @@ export function OrgDashboardHeader() {
             </span>
           </button>
 
-          {/* Partner program */}
-          <Button
-            variant="ghost"
-            size="sm"
-            className="hidden lg:flex rounded-full gap-1.5 text-xs text-muted-foreground hover:text-foreground h-9 px-3"
-            onClick={() => navigate("/partner")}
-          >
-            <Handshake className="w-4.5 h-4.5" />
-            Партнёрам
-          </Button>
+          {/* Partner program — icon only */}
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                onClick={() => navigate("/partner")}
+                className="flex h-9 w-9 items-center justify-center rounded-full text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
+              >
+                <Handshake className="w-4.5 h-4.5" />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent>Партнёрам</TooltipContent>
+          </Tooltip>
 
           {/* Notifications */}
           {organizationId && (
@@ -176,9 +187,13 @@ export function OrgDashboardHeader() {
           <DropdownMenu>
             <Tooltip>
               <TooltipTrigger asChild>
-                <DropdownMenuTrigger asChild>
-                  <button className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/15 text-primary hover:bg-primary/25 hover:scale-105 transition-all font-bold text-sm">
-                    {initials}
+                 <DropdownMenuTrigger asChild>
+                  <button className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/15 text-primary hover:bg-primary/25 hover:scale-105 transition-all font-bold text-sm overflow-hidden">
+                    {avatarUrl ? (
+                      <img src={avatarUrl} alt="Аватар" className="w-full h-full object-cover" />
+                    ) : (
+                      initials
+                    )}
                   </button>
                 </DropdownMenuTrigger>
               </TooltipTrigger>

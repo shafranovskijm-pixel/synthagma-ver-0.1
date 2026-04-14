@@ -8,7 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Checkbox } from "@/components/ui/checkbox";
-import { User, Bell, Handshake, Save, Eye, EyeOff, Upload, X, Loader2, Image as ImageIcon, Palette, LogIn } from "lucide-react";
+import { User, Bell, Handshake, Save, Eye, EyeOff, Upload, X, Loader2, Image as ImageIcon, Palette, LogIn, Camera } from "lucide-react";
 import { toast } from "sonner";
 import { PartnerCabinet } from "@/components/organization/PartnerCabinet";
 import { ThemePersonalization } from "@/components/ui/ThemePersonalization";
@@ -65,8 +65,10 @@ function ProfileContent() {
   const [soundEnabled, setSoundEnabled] = useState(false);
   const [orgLogoUrl, setOrgLogoUrl] = useState<string>("");
   const [isUploadingIcon, setIsUploadingIcon] = useState(false);
+  const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
   const [organizationId, setOrganizationId] = useState<string | null>(null);
   const iconInputRef = useRef<HTMLInputElement>(null);
+  const avatarInputRef = useRef<HTMLInputElement>(null);
   const [orgIdLoading, setOrgIdLoading] = useState(true);
   const [isDarkMode, setIsDarkMode] = useState(() => document.documentElement.classList.contains('dark'));
 
@@ -161,6 +163,31 @@ function ProfileContent() {
     toast.success("Значок удалён");
   };
 
+  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !user) return;
+    setIsUploadingAvatar(true);
+    try {
+      const ext = file.name.split('.').pop();
+      const filePath = `${user.id}/avatar_${Date.now()}.${ext}`;
+      const { error: uploadError } = await supabase.storage.from("organization-assets").upload(filePath, file, { upsert: true });
+      if (uploadError) throw uploadError;
+      const { data: urlData } = supabase.storage.from("organization-assets").getPublicUrl(filePath);
+      const publicUrl = urlData.publicUrl;
+      await supabase.from("profiles").update({ avatar_url: publicUrl } as any).eq("user_id", user.id);
+      setProfile(p => ({ ...p, avatar_url: publicUrl }));
+      toast.success("Аватар обновлён");
+    } catch (err: any) { toast.error("Ошибка загрузки: " + err.message); }
+    finally { setIsUploadingAvatar(false); if (e.target) e.target.value = ""; }
+  };
+
+  const handleRemoveAvatar = async () => {
+    if (!user) return;
+    await supabase.from("profiles").update({ avatar_url: null } as any).eq("user_id", user.id);
+    setProfile(p => ({ ...p, avatar_url: "" }));
+    toast.success("Аватар удалён");
+  };
+
   const handleSaveProfile = async () => {
     setSaving(true);
     try {
@@ -239,6 +266,39 @@ function ProfileContent() {
           <Card className="lg:col-span-2 rounded-2xl">
             <CardHeader><CardTitle className="text-lg">Основная информация</CardTitle></CardHeader>
             <CardContent className="space-y-4">
+              {/* Avatar upload */}
+              <div className="flex items-center gap-4 pb-2">
+                <input ref={avatarInputRef} type="file" accept="image/*" className="hidden" onChange={handleAvatarUpload} />
+                <button
+                  onClick={() => avatarInputRef.current?.click()}
+                  className="relative w-20 h-20 rounded-full border-2 border-dashed border-border flex items-center justify-center overflow-hidden hover:border-primary/50 hover:bg-primary/5 transition-all group/avatar"
+                >
+                  {isUploadingAvatar ? (
+                    <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+                  ) : profile.avatar_url ? (
+                    <>
+                      <img src={profile.avatar_url} alt="Аватар" className="w-full h-full object-cover" />
+                      <div className="absolute inset-0 bg-black/40 opacity-0 group-hover/avatar:opacity-100 transition-opacity flex items-center justify-center rounded-full">
+                        <Camera className="w-5 h-5 text-white" />
+                      </div>
+                    </>
+                  ) : (
+                    <div className="flex flex-col items-center gap-1">
+                      <Camera className="w-5 h-5 text-muted-foreground" />
+                      <span className="text-[10px] text-muted-foreground">Фото</span>
+                    </div>
+                  )}
+                </button>
+                <div>
+                  <p className="text-sm font-medium">Фото профиля</p>
+                  <p className="text-xs text-muted-foreground">Отображается в шапке вместо инициалов</p>
+                  {profile.avatar_url && (
+                    <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive hover:bg-destructive/10 rounded-lg gap-1 mt-1 h-7 px-2 text-xs" onClick={handleRemoveAvatar}>
+                      <X className="w-3 h-3" /> Удалить
+                    </Button>
+                  )}
+                </div>
+              </div>
               <div>
                 <label className="text-sm font-medium text-muted-foreground mb-1 block">Email</label>
                 <Input value={profile.email} disabled className="bg-muted/30 rounded-xl" />
