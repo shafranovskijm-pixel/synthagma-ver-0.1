@@ -1,97 +1,77 @@
 
 
-# Оптимизация кодовой базы: мёртвый код, дубликаты, console.log
+# Рефакторинг — Продолжение: Декомпозиция крупных файлов + типизация
 
-## Обнаруженные проблемы
+## Текущий статус
 
-### 1. Неиспользуемые файлы — ~7,000 строк мёртвого кода
+Выполнено ранее:
+- BlockEditor разбит на 6 файлов
+- console.log удалены (597 → 0)
+- Toast унифицирован на Sonner
+- 28 мёртвых файлов архивированы
+- Маршруты модулизированы
 
-25 файлов, которые **нигде не импортируются**. Крупнейшие:
+## Что осталось
 
-| Файл | Строк | Описание |
-|---|---|---|
-| `StudentCourseStore.tsx` | 769 | Магазин курсов студента — не подключён |
-| `SystemFeaturesManager.tsx` | 701 | Управление фичами — не подключён |
-| `OrgProfileSettings.tsx` | 658 | Настройки профиля орг. — не подключён |
-| `CostCalculator.tsx` | 597 | Калькулятор стоимости — не подключён |
-| `OrgFeaturesTab.tsx` | 567 | Табы фич орг. — не подключён |
-| `PatchUpdatesManager.tsx` | 504 | Менеджер обновлений — не подключён |
-| `ServiceOrdersManager.tsx` | 490 | Менеджер заказов — не подключён |
-| `SystemFeaturesReport.tsx` | 466 | Отчёт фич — не подключён |
-| + 17 файлов поменьше | ~2,200 | UI-компоненты, хуки, диалоги |
-
-**Действие**: перенести в `src/_archived/` (не удалять — могут пригодиться), чтобы не загружали бандл и не путали разработку.
-
----
-
-### 2. Дублирование системы уведомлений (toast)
-
-Проект использует **две системы** одновременно:
-- **Sonner** (`import { toast } from "sonner"`) — 185 файлов
-- **use-toast** (`import { useToast } from "@/hooks/use-toast"`) — 45 файлов (186 строк хука + 224 строки UI-компонента)
-
-Sonner проще и покрывает все кейсы. 45 файлов с `use-toast` нужно мигрировать на Sonner и удалить старую систему (~410 строк).
-
----
-
-### 3. Console.log в production — 597 штук
-
-- **Компоненты**: 358 шт
-- **Хуки/Страницы**: 239 шт
-
-Замусоривают консоль браузера у пользователей, замедляют рендер. Нужно удалить все `console.log`, оставив только `console.error` для реальных ошибок.
-
----
-
-### 4. Крупные файлы — остались после рефакторинга
-
-Файлы, которые ещё нужно декомпозировать:
-
-| Файл | Строк |
+| Проблема | Масштаб |
 |---|---|
-| `AdminMarketplaceManager.tsx` | 2,236 |
-| `OrganizationDetailsView.tsx` | 1,900 |
-| `CoursesTab.tsx` | 1,747 |
-| `BlockEditorMain.tsx` | 1,461 |
-| `AdminAnalytics.tsx` | 1,435 |
-| `CourseDetailsModal.tsx` | 1,416 |
+| Крупные файлы (800+ строк) | 28 файлов |
+| Использования `: any` | 365 шт в 132 файлах |
+| Топ-6 файлов-монолитов | 2233, 1899, 1747, 1461, 1435, 1416 строк |
 
 ---
 
 ## План работ
 
-### Фаза 1 — Чистка мёртвого кода
-Перенести 25 неиспользуемых файлов (~7K строк) в `src/_archived/`. Это уменьшит размер проекта и ускорит IDE/сборку.
+### Этап 1. Декомпозиция AdminMarketplaceManager (2233 строк)
 
-### Фаза 2 — Унификация toast
-Заменить все 45 импортов `use-toast` на `sonner`. Удалить `src/hooks/use-toast.ts` и `src/components/ui/toast.tsx`. Это убирает ~410 строк дублирующего кода и уменьшает бандл.
+Вынести из монолита:
+- `MarketplaceCourseRow.tsx` — рендер строки курса в таблице (функции `CourseRow`, `GroupedCourseRow`, `CoursesTable`)
+- `MarketplaceBulkActions.tsx` — функции `handleBulkValidate`, `handleAutoFix`, `handleBulkGenerate` (~500 строк)
+- `MarketplaceCourseForm.tsx` — диалог создания/редактирования курса
 
-### Фаза 3 — Удаление console.log
-Удалить все `console.log` из `src/`. Оставить только `console.error` в catch-блоках. ~597 строк.
+### Этап 2. Декомпозиция OrganizationDetailsView (1899 строк)
 
-### Фаза 4 — Декомпозиция оставшихся крупных файлов
-- `AdminMarketplaceManager.tsx` → выделить `MarketplaceCourseForm`, `MarketplaceCategoryManager`
-- `OrganizationDetailsView.tsx` → разбить на `OrgOverviewTab`, `OrgSubscriptionTab`, `OrgCoursesTab`
-- `CoursesTab.tsx` → выделить `CourseCard`, `CourseFilters`
+Разбить по табам:
+- `OrgDetailsOverviewTab.tsx` — общая информация и настройки
+- `OrgDetailsCoursesTab.tsx` — курсы организации
+- `OrgDetailsStudentsTab.tsx` — студенты организации
+- `OrgDetailsBillingTab.tsx` — биллинг и подписки
+
+### Этап 3. Декомпозиция CoursesTab (1747 строк)
+
+Вынести:
+- `CourseCardItem.tsx` — карточка курса
+- `CourseListFilters.tsx` — фильтры и поиск
+- `CourseActionButtons.tsx` — кнопки действий
+
+### Этап 4. Типизация — убрать `: any` в ключевых файлах
+
+Приоритетные файлы (наибольшее кол-во `any`):
+- `AdminMarketplaceManager.tsx` — ~30 any → типизировать через DB-типы
+- `ContentGeneratorTab.tsx` — ~12 any → lesson/block типы
+- `api/students.ts` — ~6 any → enrollment/profile типы
+- `api/courses.ts` — ~3 any → course типы
+- `AdminBillingOverview.tsx` — ~5 any → invoice/contract типы
+
+Не трогаем `error: any` в catch-блоках — это допустимый паттерн.
+
+### Этап 5. Документ-генераторы — общий базовый паттерн
+
+`ActGenerator`, `InvoiceGenerator`, `ConsentGenerator` — 3 файла × ~830 строк с идентичной структурой (загрузка данных орг., preview, export).
+Вынести общую логику загрузки данных организации в хук `useOrganizationDetails.ts`.
 
 ---
+
+## Порядок выполнения
+
+Последовательно, этап за этапом. Каждый этап — обратносовместимый через реэкспорты. Начинаю с Этапа 1 (AdminMarketplaceManager) как самого крупного файла.
 
 ## Ожидаемый эффект
 
 | Метрика | До | После |
 |---|---|---|
-| Мёртвый код | ~7,000 строк | 0 |
-| Дублирование toast | 2 системы | 1 (Sonner) |
-| console.log в production | 597 | 0 |
-| Средний размер файла | ~180 строк | ~150 строк |
-
-## Файлы
-
-| Действие | Файлы |
-|---|---|
-| Архивировать (перенести в `_archived/`) | 25 неиспользуемых файлов |
-| Удалить | `src/hooks/use-toast.ts`, `src/components/ui/toast.tsx`, `src/components/ui/toaster.tsx` |
-| Редактировать (toast миграция) | 45 файлов с `use-toast` импортами |
-| Редактировать (console.log) | ~60 файлов |
-| Создать/разбить | 6-8 новых компонентов из крупных файлов |
+| Макс. размер файла | 2233 строк | ~600 строк |
+| `: any` | 365 | ~100 (только catch + DB callbacks) |
+| Файлов > 1000 строк | 15 | 6-7 |
 
