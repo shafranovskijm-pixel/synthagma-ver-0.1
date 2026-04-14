@@ -204,6 +204,23 @@ export function CourseStoreManager({ organizationId, userRole = 'organization', 
             </div>
           ) : (
              <>
+               {/* Info banner */}
+               <div className="bg-gradient-to-r from-primary/5 via-accent/5 to-primary/3 border border-border rounded-xl p-4">
+                 <div className="flex gap-3 items-start">
+                   <ShieldCheck className="w-5 h-5 text-primary mt-0.5 shrink-0" />
+                   <div>
+                     <h4 className="font-semibold text-sm text-foreground mb-1">Курсы ДПО и профессионального обучения</h4>
+                     <p className="text-xs text-muted-foreground leading-relaxed">
+                       Повышение квалификации, профпереподготовка, охрана труда и рабочие профессии. Тесты соответствуют требованиям аттестации.
+                     </p>
+                     <div className="flex gap-2 mt-2">
+                       <Badge variant="secondary" className="text-xs">ДПО</Badge>
+                       <Badge variant="secondary" className="text-xs">ОТ / ПБ</Badge>
+                       <Badge variant="secondary" className="text-xs">Бесплатно</Badge>
+                     </div>
+                   </div>
+                 </div>
+               </div>
                {/* Hero Cards */}
                <MarketplaceHeroCards onCardClick={(courseTitle) => {
                  const found = h.catalogCourses.find(c => c.course?.title?.includes(courseTitle.split('—')[0].trim()) || courseTitle.includes(c.course?.title || '___'));
