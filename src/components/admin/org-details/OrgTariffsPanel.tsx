@@ -26,7 +26,13 @@ interface OrgTariffsPanelProps {
     aiGenerationsLimit: number | null;
     storageLimitBytes: number | null;
   };
-  setCustomLimits: React.Dispatch<React.SetStateAction<typeof customLimits>>;
+  setCustomLimits: React.Dispatch<React.SetStateAction<{
+    maxCourses: number | null;
+    maxStudents: number | null;
+    maxTrainedPerMonth: number | null;
+    aiGenerationsLimit: number | null;
+    storageLimitBytes: number | null;
+  }>>;
   customCategories: string[];
   setCustomCategories: React.Dispatch<React.SetStateAction<string[]>>;
   customPrice: number | null;
