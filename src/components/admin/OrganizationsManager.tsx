@@ -450,7 +450,7 @@ export function OrganizationsManager() {
       fetchOrganizations();
     } catch (error: any) {
       console.error("Error resetting password:", error);
-      toast.error("Ошибка", { description: "error?.message || "Не удалось сбросить пароль"" });
+      toast.error("Ошибка", { description: error?.message || "Не удалось сбросить пароль" });
     } finally {
       setResettingPassword(false);
     }

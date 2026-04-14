@@ -21,7 +21,7 @@ import {
   Github,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { toast as sonnerToast } from "sonner";
+import { toast as sonnerToast, toast } from "sonner";
 import { getAdminAwareBackPath } from "@/lib/utils";
 import {
   DndContext,
@@ -63,7 +63,7 @@ import {
 interface Course {
   id: string;
   title: string;
-  description: "string | null;"
+  description: string | null;
   duration: string | null;
   is_published: boolean;
   sequential_lessons: boolean;
@@ -176,7 +176,7 @@ const CourseEditor = () => {
       .from("courses")
       .update({
         title,
-        description: "description || null,"
+        description: description || null,
         duration: duration || null,
         frdo_duration_hours: durationHours,
         sequential_lessons: sequentialLessons,
@@ -204,7 +204,7 @@ const CourseEditor = () => {
 
     if (!error) {
       setCourse({ ...course, is_published: !course.is_published });
-      toast.success(course.is_published ? "Снято с публикации" : "Опубликовано", { description: "course.is_published" });
+      toast.success(course.is_published ? "Снято с публикации" : "Опубликовано", { description: course.is_published });
     }
   };
 
@@ -381,7 +381,7 @@ const CourseEditor = () => {
 
   const handleGitHubImport = async (data: {
     title: string;
-    description: "string;"
+    description: string;
     lessons: { title: string; content: string; type: string }[];
   }) => {
     if (!courseId) return;

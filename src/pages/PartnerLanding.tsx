@@ -47,7 +47,7 @@ const PartnerLanding = () => {
       setIsPartner(true);
       toast.success("Вы стали партнёром!", { description: `Ваш реферальный код: ${data}` });
     } catch (e: any) {
-      toast.error("Ошибка", { description: "e.message" });
+      toast.error("Ошибка", { description: e.message });
     } finally { setIsBecoming(false); }
   };
 

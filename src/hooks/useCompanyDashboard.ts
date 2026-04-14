@@ -181,7 +181,7 @@ export function useCompanyDashboard(viewAsUserId?: string) {
       await loadData();
       return data;
     } catch (error: any) {
-      toast.error("Ошибка", { description: "error.message || 'Не удалось добавить сотрудника'" });
+      toast.error("Ошибка", { description: error.message || 'Не удалось добавить сотрудника' });
     } finally {
       setAddingEmployee(false);
     }

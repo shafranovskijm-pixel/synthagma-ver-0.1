@@ -107,7 +107,7 @@ export function CourseProgramsList({ organizationId }: CourseProgramsListProps) 
       toast.success("Заявка отправлена", { description: "Мы свяжемся с вами для уточнения деталей" });
       fetchCourses();
     } catch (e: any) {
-      toast.error("Ошибка", { description: "e.message" });
+      toast.error("Ошибка", { description: e.message });
     } finally {
       setOrdering(null);
     }

@@ -673,7 +673,7 @@ function CompanyAccessTab({ company }: { company: Company }) {
       toast.success("Аккаунт создан", { description: `Логин: ${email}` });
       setCredentials({ login_email: email, login_password: password });
     } catch (e: any) {
-      toast.error("Ошибка", { description: "e.message" });
+      toast.error("Ошибка", { description: e.message });
     } finally {
       setCreating(false);
     }
@@ -847,7 +847,7 @@ function CompanyRequestsOrgView({ companyId }: { companyId: string }) {
       toast.success("Заявка обновлена");
       loadRequests();
     } catch (e: any) {
-      toast.error("Ошибка", { description: "e.message" });
+      toast.error("Ошибка", { description: e.message });
     } finally {
       setUpdatingId(null);
     }

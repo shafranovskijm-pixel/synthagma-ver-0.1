@@ -22,7 +22,7 @@ export function LandingLoginDialog({ open, onOpenChange, onSuccess }: LandingLog
     try {
       const { error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) {
-        toast.error("Ошибка входа", { description: "error.message" });
+        toast.error("Ошибка входа", { description: error.message });
       } else {
         toast.success("Вход выполнен");
         onOpenChange(false);

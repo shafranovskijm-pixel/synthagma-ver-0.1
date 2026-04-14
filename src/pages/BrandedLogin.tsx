@@ -132,7 +132,7 @@ const BrandedLogin = () => {
     const { error } = await signIn(signInEmail, cleanPassword);
     
     if (error) {
-      toast.error("Ошибка входа", { description: "error.message === "Invalid login credentials"" });
+      toast.error("Ошибка входа", { description: error.message === "Invalid login credentials" ? "Неверный логин или пароль" : error.message });
     } else {
       toast.success("Успешно!", { description: "Вы вошли в систему" });
     }

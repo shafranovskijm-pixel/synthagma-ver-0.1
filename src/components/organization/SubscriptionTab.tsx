@@ -51,22 +51,22 @@ const planBorders: Record<SubscriptionPlan, string> = {
 interface FeatureHighlight {
   icon: React.ReactNode;
   title: string;
-  description: "string;"
+  description: string;
   minPlan: SubscriptionPlan;
   link?: string;
 }
 
 const FEATURE_HIGHLIGHTS: (FeatureHighlight & { categoryKey?: string })[] = [
-  { icon: <Palette className="w-5 h-5" />, title: "Брендирование", description:""Ваш логотип и цвета в портале ученика", minPlan: "standard", link: "/feature/branding", categoryKey: "branding" },"
-  { icon: <Video className="w-5 h-5" />, title: "Видео-идентификация", description:""Автоматическая проверка личности ученика", minPlan: "standard", link: "/feature/video-id", categoryKey: "video_id" },"
-  { icon: <FileCheck className="w-5 h-5" />, title: "Чек-лист документов", description:""100% контроль документов при зачислении", minPlan: "standard", link: "/feature/document-checklist", categoryKey: "document_checklist" },"
-  { icon: <ClipboardList className="w-5 h-5" />, title: "Журналы", description:""Автогенерация журналов посещаемости и оценок", minPlan: "professional", categoryKey: "journals" },"
-  { icon: <FileSpreadsheet className="w-5 h-5" />, title: "Документооборот", description:""Полный цикл документов организации", minPlan: "professional", link: "/feature/documents", categoryKey: "documents" },"
-  { icon: <HardHat className="w-5 h-5" />, title: "Охрана труда", description:""Полное управление обучением ОТ", minPlan: "professional", link: "/feature/labor-safety", categoryKey: "labor_safety" },"
-  { icon: <ShoppingCart className="w-5 h-5" />, title: "Магазин курсов", description:""Продавайте и покупайте курсы на маркетплейсе", minPlan: "professional", link: "/feature/course-store", categoryKey: "services" },"
-  { icon: <FileSpreadsheet className="w-5 h-5" />, title: "ФИС ФРДО", description:""Автоматическая отчётность в федеральный реестр", minPlan: "maximum", link: "/feature/frdo", categoryKey: "frdo" },"
-  { icon: <Brain className="w-5 h-5" />, title: "ИИ-генерация", description:""Создание контента курсов за минуты с ИИ", minPlan: "maximum", link: "/feature/ai-courses", categoryKey: "ai_generation" },"
-  { icon: <Infinity className="w-5 h-5" />, title: "Без ограничений", description:""Безлимитные курсы и ученики — масштабируйтесь свободно", minPlan: "maximum", categoryKey: "unlimited" },"
+  { icon: <Palette className="w-5 h-5" />, title: "Брендирование", description: "Ваш логотип и цвета в портале ученика", minPlan: "standard", link: "/feature/branding", categoryKey: "branding" },
+  { icon: <Video className="w-5 h-5" />, title: "Видео-идентификация", description: "Автоматическая проверка личности ученика", minPlan: "standard", link: "/feature/video-id", categoryKey: "video_id" },
+  { icon: <FileCheck className="w-5 h-5" />, title: "Чек-лист документов", description: "100% контроль документов при зачислении", minPlan: "standard", link: "/feature/document-checklist", categoryKey: "document_checklist" },
+  { icon: <ClipboardList className="w-5 h-5" />, title: "Журналы", description: "Автогенерация журналов посещаемости и оценок", minPlan: "professional", categoryKey: "journals" },
+  { icon: <FileSpreadsheet className="w-5 h-5" />, title: "Документооборот", description: "Полный цикл документов организации", minPlan: "professional", link: "/feature/documents", categoryKey: "documents" },
+  { icon: <HardHat className="w-5 h-5" />, title: "Охрана труда", description: "Полное управление обучением ОТ", minPlan: "professional", link: "/feature/labor-safety", categoryKey: "labor_safety" },
+  { icon: <ShoppingCart className="w-5 h-5" />, title: "Магазин курсов", description: "Продавайте и покупайте курсы на маркетплейсе", minPlan: "professional", link: "/feature/course-store", categoryKey: "services" },
+  { icon: <FileSpreadsheet className="w-5 h-5" />, title: "ФИС ФРДО", description: "Автоматическая отчётность в федеральный реестр", minPlan: "maximum", link: "/feature/frdo", categoryKey: "frdo" },
+  { icon: <Brain className="w-5 h-5" />, title: "ИИ-генерация", description: "Создание контента курсов за минуты с ИИ", minPlan: "maximum", link: "/feature/ai-courses", categoryKey: "ai_generation" },
+  { icon: <Infinity className="w-5 h-5" />, title: "Без ограничений", description: "Безлимитные курсы и ученики — масштабируйтесь свободно", minPlan: "maximum", categoryKey: "unlimited" },
 ];
 
 interface FeatureRow {
@@ -160,7 +160,7 @@ export function SubscriptionTab() {
     } as any);
 
     if (error) {
-      toast.error("Ошибка", { description: "error.message" });
+      toast.error("Ошибка", { description: error.message });
     } else {
       toast.success("Заявка отправлена", { description: "Мы свяжемся с вами для оформления перехода на новый тариф" });
       setPendingRequest({ requested_plan: selectedPlan, created_at: new Date().toISOString() });
@@ -233,7 +233,7 @@ export function SubscriptionTab() {
       if (err) throw err;
       nav(`/invoice/${(invoice as any).id}`);
     } catch (e: any) {
-      toast.error("Ошибка", { description: "e.message" });
+      toast.error("Ошибка", { description: e.message });
     } finally {
       setGeneratingInvoice(false);
     }

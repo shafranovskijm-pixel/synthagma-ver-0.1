@@ -27,7 +27,7 @@ export interface Lesson {
 export interface Course {
   id: string;
   title: string;
-  description: "string | null;"
+  description: string | null;
   duration: string | null;
   sequential_lessons?: boolean;
   allow_video_seek?: boolean;

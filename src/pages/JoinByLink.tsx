@@ -221,7 +221,7 @@ const JoinByLink = () => {
         .update({ used_count: (linkData.used_count || 0) + 1 })
         .eq('id', linkData.id);
 
-      toast.success("Успешно!", { description: "linkData.course_id" });
+      toast.success("Успешно!", { description: linkData.course_id });
 
       navigate('/student');
     } catch (err: any) {

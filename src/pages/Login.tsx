@@ -11,8 +11,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { safeInvoke } from "@/utils/safeInvoke";
 import { getBaseUrl } from "@/utils/getBaseUrl";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import {
 import { toast } from "sonner";
+import {
   Dialog,
   DialogContent,
   DialogDescription,
@@ -95,7 +95,7 @@ const Login = () => {
     const { error } = await signIn(signInEmail, cleanPassword);
     
     if (error) {
-      toast.error("Ошибка входа", { description: "error.message === "Invalid login credentials"" });
+      toast.error("Ошибка входа", { description: error.message === "Invalid login credentials" ? "Неверный логин или пароль" : error.message });
     } else {
       toast.success("Успешно!", { description: "Вы вошли в систему" });
       // Role is already loaded in context by signIn, useEffect will navigate
@@ -129,7 +129,7 @@ const Login = () => {
       setResetEmail("");
     } catch (error: any) {
       console.error("Password reset error:", error);
-      toast.error("Ошибка", { description: "error.message || "Не удалось отправить письмо"" });
+      toast.error("Ошибка", { description: error.message || "Не удалось отправить письмо" });
     }
     
     setIsResetting(false);
@@ -201,7 +201,7 @@ const Login = () => {
         return;
       }
     } else if (error) {
-      toast.error("Ошибка входа", { description: "error.message" });
+      toast.error("Ошибка входа", { description: error.message });
       setDemoLoading(null);
       return;
     }

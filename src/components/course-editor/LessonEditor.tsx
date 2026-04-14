@@ -305,7 +305,7 @@ export const LessonEditor = ({
       if (error) throw error;
 
       if (data.error) {
-        toast.error("Ошибка генерации", { description: "data.error" });
+        toast.error("Ошибка генерации", { description: data.error });
         return;
       }
 
@@ -490,7 +490,7 @@ export const LessonEditor = ({
                             }
                           } catch (err: any) {
                             if (err.message !== 'Загрузка отменена') {
-                              toast.error("Ошибка загрузки", { description: "err.message || "Не удалось загрузить видео"" });
+                              toast.error("Ошибка загрузки", { description: err.message || "Не удалось загрузить видео" });
                             }
                           } finally {
                             setVideoUploadProgress(null);

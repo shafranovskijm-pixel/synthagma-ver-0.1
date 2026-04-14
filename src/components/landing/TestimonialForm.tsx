@@ -115,7 +115,7 @@ export function TestimonialForm({ onSubmitted }: TestimonialFormProps) {
       setRating(5);
       onSubmitted?.();
     } catch (err: any) {
-      toast.error("Ошибка", { description: "err.message" });
+      toast.error("Ошибка", { description: err.message });
     } finally {
       setLoading(false);
     }

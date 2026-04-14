@@ -298,7 +298,7 @@ export const DocumentsTab = React.memo(function DocumentsTab({ organizationId, o
         setActCustomerKpp(data.kpp || "");
         setActCustomerDirector(data.director_name || "");
         setActCustomerPosition((data as any).director_position || "Руководитель");
-        toast.success("Организация найдена", { description: "data.name" });
+        toast.success("Организация найдена", { description: data.name });
       } else {
         // Fallback to DaData
         const { data: dadataResult } = await supabase.functions.invoke("dadata-company", {
@@ -310,7 +310,7 @@ export const DocumentsTab = React.memo(function DocumentsTab({ organizationId, o
           setActCustomerKpp(dadataResult.company.kpp || "");
           setActCustomerDirector(dadataResult.company.management || "");
           setActCustomerPosition(dadataResult.company.managementPosition || "Руководитель");
-          toast.success("Организация найдена (DaData)", { description: "dadataResult.company.shortName || dadataResult.company.name" });
+          toast.success("Организация найдена (DaData)", { description: dadataResult.company.shortName || dadataResult.company.name });
         } else {
           toast.success("Не найдено", { description: "Введите реквизиты вручную" });
         }
@@ -335,7 +335,7 @@ export const DocumentsTab = React.memo(function DocumentsTab({ organizationId, o
         setInvoiceBuyerName(data.name || "");
         setInvoiceBuyerInn(data.inn || inn);
         setInvoiceBuyerKpp(data.kpp || "");
-        toast.success("Организация найдена", { description: "data.name" });
+        toast.success("Организация найдена", { description: data.name });
       } else {
         toast.success("Не найдено", { description: "Введите реквизиты вручную" });
       }
@@ -388,14 +388,14 @@ export const DocumentsTab = React.memo(function DocumentsTab({ organizationId, o
 
       if (err) throw err;
       setInvoices(prev => [{ id: (invoice as any).id, invoice_number: invoiceNum, amount, status: "pending", plan, period_months: 1, invoice_date: new Date().toISOString(), created_at: new Date().toISOString() }, ...prev]);
-      toast.success("Счёт создан", { description: `Счёт ${invoiceNum} на ${amount.toLocaleString(` });
+      toast.success("Счёт создан", { description: `Счёт ${invoiceNum} на ${amount.toLocaleString("ru-RU")} ₽` });
       setShowInvoiceDialog(false);
       setInvoiceOtherPayer(false);
       setInvoiceBuyerName("");
       setInvoiceBuyerInn("");
       setInvoiceBuyerKpp("");
     } catch (e: any) {
-      toast.error("Ошибка", { description: "e.message" });
+      toast.error("Ошибка", { description: e.message });
     } finally {
       setGeneratingInvoice(false);
     }

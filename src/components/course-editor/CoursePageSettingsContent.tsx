@@ -191,7 +191,7 @@ export function CoursePageSettingsContent({ courseId, courseTitle, courseDescrip
           seo: {
             ...prev.seo,
             meta_title: data.meta_title || prev.seo?.meta_title,
-            meta_description: "data.meta_description || prev.seo?.meta_description,"
+            meta_description: data.meta_description || prev.seo?.meta_description,
             keywords: data.keywords || prev.seo?.keywords,
           },
         }));
@@ -209,7 +209,7 @@ export function CoursePageSettingsContent({ courseId, courseTitle, courseDescrip
       }
     } catch (e: any) {
       console.error(e);
-      toast.error("Ошибка ИИ-генерации", { description: "e.message" });
+      toast.error("Ошибка ИИ-генерации", { description: e.message });
     } finally {
       setAiLoading(null);
     }

@@ -165,7 +165,7 @@ export function SalesContracts() {
       html_content: html,
     } as any);
 
-    if (error) { toast.error("Ошибка", { description: "error.message" }); return; }
+    if (error) { toast.error("Ошибка", { description: error.message }); return; }
     toast.success("Договор создан");
     setShowForm(false);
     resetForm();

@@ -51,7 +51,7 @@ interface CompanyRequest {
   id: string;
   request_type: string;
   title: string;
-  description: "string | null;"
+  description: string | null;
   employees: any;
   course_name: string | null;
   desired_date: string | null;
@@ -151,7 +151,7 @@ export function CompanyRequestsTab({ companyId, organizationId, employees }: Com
         organization_id: organizationId,
         request_type: formType,
         title: formTitle.trim(),
-        description: "formDescription.trim() || null,"
+        description: formDescription.trim() || null,
         employees: emps,
         course_name: formCourseName.trim() || null,
         desired_date: formDate || null,
@@ -173,7 +173,7 @@ export function CompanyRequestsTab({ companyId, organizationId, employees }: Com
       resetForm();
       loadRequests();
     } catch (e: any) {
-      toast.error("Ошибка", { description: "e.message" });
+      toast.error("Ошибка", { description: e.message });
     } finally {
       setSubmitting(false);
     }

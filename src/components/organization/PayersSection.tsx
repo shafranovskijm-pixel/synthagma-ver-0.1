@@ -63,7 +63,7 @@ export function PayersSection({ organizationId }: Props) {
       payer_type: form.payer_type,
     } as any);
     if (error) {
-      toast.error("Ошибка", { description: "error.message" });
+      toast.error("Ошибка", { description: error.message });
     } else {
       toast.success("Плательщик добавлен");
       setShowDialog(false);
