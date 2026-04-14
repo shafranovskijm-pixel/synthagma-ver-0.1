@@ -266,6 +266,39 @@ function ProfileContent() {
           <Card className="lg:col-span-2 rounded-2xl">
             <CardHeader><CardTitle className="text-lg">Основная информация</CardTitle></CardHeader>
             <CardContent className="space-y-4">
+              {/* Avatar upload */}
+              <div className="flex items-center gap-4 pb-2">
+                <input ref={avatarInputRef} type="file" accept="image/*" className="hidden" onChange={handleAvatarUpload} />
+                <button
+                  onClick={() => avatarInputRef.current?.click()}
+                  className="relative w-20 h-20 rounded-full border-2 border-dashed border-border flex items-center justify-center overflow-hidden hover:border-primary/50 hover:bg-primary/5 transition-all group/avatar"
+                >
+                  {isUploadingAvatar ? (
+                    <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+                  ) : profile.avatar_url ? (
+                    <>
+                      <img src={profile.avatar_url} alt="Аватар" className="w-full h-full object-cover" />
+                      <div className="absolute inset-0 bg-black/40 opacity-0 group-hover/avatar:opacity-100 transition-opacity flex items-center justify-center rounded-full">
+                        <Camera className="w-5 h-5 text-white" />
+                      </div>
+                    </>
+                  ) : (
+                    <div className="flex flex-col items-center gap-1">
+                      <Camera className="w-5 h-5 text-muted-foreground" />
+                      <span className="text-[10px] text-muted-foreground">Фото</span>
+                    </div>
+                  )}
+                </button>
+                <div>
+                  <p className="text-sm font-medium">Фото профиля</p>
+                  <p className="text-xs text-muted-foreground">Отображается в шапке вместо инициалов</p>
+                  {profile.avatar_url && (
+                    <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive hover:bg-destructive/10 rounded-lg gap-1 mt-1 h-7 px-2 text-xs" onClick={handleRemoveAvatar}>
+                      <X className="w-3 h-3" /> Удалить
+                    </Button>
+                  )}
+                </div>
+              </div>
               <div>
                 <label className="text-sm font-medium text-muted-foreground mb-1 block">Email</label>
                 <Input value={profile.email} disabled className="bg-muted/30 rounded-xl" />
