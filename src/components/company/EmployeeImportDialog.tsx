@@ -110,7 +110,7 @@ export function EmployeeImportDialog({ open, onOpenChange, companyId, organizati
     setImporting(false);
     setDone(true);
     onImportComplete();
-    toast.success("Импорт завершён", { description: `Успешно: ${updated.filter((r) => r.status ===` });
+    toast.success("Импорт завершён", { description: `Успешно: ${updated.filter((r) => r.status === "success").length}, ошибок: ${updated.filter((r) => r.status === "error").length}` });
   };
 
   const handleClose = (v: boolean) => {
