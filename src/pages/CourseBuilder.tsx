@@ -145,7 +145,11 @@ export default function CourseBuilder() {
                   <input type="file" ref={fileInputRef} onChange={handleFileImport} multiple accept=".docx,.txt,.md,.html,.htm" className="hidden" />
                   <Button variant="outline" size="sm" onClick={handleGenerateStructure} disabled={isGenerating} className="h-auto py-2 px-3 flex flex-col items-center gap-0.5">
                     <span className="flex items-center gap-1.5"><Wand2 className="w-4 h-4" />{isGenerating ? 'Генерация...' : 'AI Структура'}</span>
-                    <span className="text-[10px] text-muted-foreground font-normal">По названию и описанию курса</span>
+                     <span className="text-[10px] text-muted-foreground font-normal">По названию и описанию курса</span>
+                  </Button>
+                  <Button variant="outline" size="sm" onClick={handleStartReview} disabled={isReviewing || !resolvedCourseId || lessons.length === 0} className="h-auto py-2 px-3 flex flex-col items-center gap-0.5">
+                    <span className="flex items-center gap-1.5"><SearchCheck className="w-4 h-4" />{isReviewing ? 'Проверка...' : 'AI Проверка'}</span>
+                    <span className="text-[10px] text-muted-foreground font-normal">Актуальность и ошибки</span>
                   </Button>
                 </div>
               </div>
@@ -248,6 +252,17 @@ export default function CourseBuilder() {
       </AlertDialog>
 
       <AIGenerateDialog open={showAIGenerateDialog} onOpenChange={setShowAIGenerateDialog} onGenerate={handleAIGenerate} courseTitle={courseTitle} courseDescription={courseDescription} />
+
+      <CourseReviewDialog
+        open={showReviewDialog}
+        onOpenChange={setShowReviewDialog}
+        isReviewing={isReviewing}
+        reviewResult={reviewResult}
+        activeFindings={activeFindings}
+        dismissedCount={dismissedIds.size}
+        onDismiss={dismissFinding}
+        onDismissAll={dismissAll}
+      />
     </div>
     </TooltipProvider>
   );
