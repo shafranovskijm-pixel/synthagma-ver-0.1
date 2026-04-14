@@ -1957,7 +1957,7 @@ export function AdminMarketplaceManager() {
           <KnowledgeBankTab />
         </TabsContent>
         <TabsContent value="orders" className="space-y-6">
-          <MarketplaceOrdersList orders={h.orders} onViewOrder={(order) => { h.setSelectedOrder(order); h.setShowOrderDialog(true); }} />
+          <MarketplaceOrdersList orders={h.orders as any} onViewOrder={(order) => { h.setSelectedOrder(order as any); h.setShowOrderDialog(true); }} />
         </TabsContent>
 
 
