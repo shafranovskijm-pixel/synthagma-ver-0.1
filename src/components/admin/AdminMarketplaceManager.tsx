@@ -938,7 +938,7 @@ export function AdminMarketplaceManager() {
       // Для рабочих профессий — до 9 изображений, для остальных — 3
       const mediaLimit = programType === "Рабочие профессии" ? 9 : 3;
       const lessonsToEnrich = lessonsNeedingMedia.slice(0, mediaLimit);
-      console.log(`[Auto-fix] Media recompute: ${lessonsNeedingMedia.length} lessons need media, limit=${mediaLimit}, enriching=${lessonsToEnrich.length}`);
+      // Media recompute: enriching lessons that need media
       if (lessonsToEnrich.length > 0) {
         let enrichedCount = 0;
 
@@ -1035,7 +1035,7 @@ export function AdminMarketplaceManager() {
           for (let wave = 0; wave < MAX_WAVES && pending.length > 0; wave++) {
             if (wave > 0) {
               const waveCooldown = 20000 * wave; // 20s, 40s
-              console.log(`[Enrichment] Wave ${wave + 1}: retrying ${pending.length} failed items after ${waveCooldown / 1000}s cooldown`);
+              // Retrying failed items in next wave
               toast.loading(`Повторная генерация (волна ${wave + 1}): ${pending.length} изображений...`, { id: toastId });
               await new Promise(r => setTimeout(r, waveCooldown));
             }
@@ -1046,13 +1046,13 @@ export function AdminMarketplaceManager() {
             for (let batchStart = 0; batchStart < pending.length; batchStart += BATCH_SIZE) {
               // Early exit: already got enough images
               if (successCount >= mediaLimit) {
-                console.log(`[Enrichment] Reached mediaLimit (${mediaLimit}), stopping generation`);
+                // Reached media limit, stopping
                 break;
               }
 
               const batch = pending.slice(batchStart, batchStart + BATCH_SIZE);
               if (batchStart > 0) {
-                console.log(`[Enrichment] Wave ${wave + 1}: cooldown ${BATCH_COOLDOWN_MS}ms before batch ${Math.floor(batchStart / BATCH_SIZE) + 1}`);
+                // Cooldown between batches
                 await new Promise(r => setTimeout(r, BATCH_COOLDOWN_MS));
               }
 
@@ -1123,7 +1123,7 @@ export function AdminMarketplaceManager() {
             if (successCount >= mediaLimit) break;
             pending = failedThisWave;
             if (pending.length === 0) {
-              console.log(`[Enrichment] All images generated successfully on wave ${wave + 1}`);
+              // All images generated successfully
               break;
             }
           }
@@ -1139,11 +1139,11 @@ export function AdminMarketplaceManager() {
           }
         }
         if (enrichedCount > 0) {
-          console.log(`[Auto-fix] Enriched ${enrichedCount} images across ${lessonsNeedingMedia.length} lessons`);
+          // Enrichment complete
         }
       } else if (allTextLessonsPost.length > 0) {
         // All lessons already have images — log and skip
-        console.log(`[Auto-fix] All text lessons already contain images, skipping enrichment`);
+        // All text lessons already contain images, skipping enrichment
         await supabase.from("generation_history").insert({
           course_id: courseId, course_title: courseTitle,
           action: "media",
