@@ -6,14 +6,16 @@ import { Textarea } from "@/components/ui/textarea";
 import { SigmaLogo } from "@/components/ui/SigmaLogo";
 import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from "@/components/ui/tooltip";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-import { ArrowLeft, Save, Loader2, Eye, Plus, FileUp, Wand2, Check, AlertCircle, FileText, Video, CheckSquare, Sparkles, Presentation, Headphones, BookOpen, Layers, MessageSquare, BookCheck } from "lucide-react";
+import { ArrowLeft, Save, Loader2, Eye, Plus, FileUp, Wand2, Check, AlertCircle, FileText, Video, CheckSquare, Sparkles, Presentation, Headphones, BookOpen, Layers, MessageSquare, BookCheck, SearchCheck } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { DndContext, closestCenter, useSensor, useSensors, PointerSensor, KeyboardSensor } from "@dnd-kit/core";
 import { SortableContext, verticalListSortingStrategy, sortableKeyboardCoordinates } from "@dnd-kit/sortable";
 import { SortableLessonItem } from "@/components/course-builder/SortableLessonItem";
 import { AIGenerateDialog } from "@/components/course-builder/AIGenerateDialog";
+import { CourseReviewDialog } from "@/components/course-builder/CourseReviewDialog";
 import { useCourseBuilder } from "@/hooks/useCourseBuilder";
+import { useCourseReview } from "@/hooks/useCourseReview";
 import { LessonType } from "@/components/course-builder/LessonTypeConfig";
 
 export default function CourseBuilder() {
@@ -33,6 +35,21 @@ export default function CourseBuilder() {
     courseId: resolvedCourseId,
     organizationId,
   } = useCourseBuilder();
+
+  const {
+    isReviewing, reviewResult, activeFindings, dismissedIds,
+    startReview, dismissFinding, dismissAll, resetReview,
+  } = useCourseReview();
+  const [showReviewDialog, setShowReviewDialog] = useState(false);
+
+  const handleStartReview = async () => {
+    if (!resolvedCourseId) {
+      toast.error("Сначала сохраните курс");
+      return;
+    }
+    setShowReviewDialog(true);
+    await startReview(resolvedCourseId);
+  };
 
   const handlePreview = async () => {
     if (resolvedCourseId && !hasUnsavedChanges) {
@@ -128,7 +145,11 @@ export default function CourseBuilder() {
                   <input type="file" ref={fileInputRef} onChange={handleFileImport} multiple accept=".docx,.txt,.md,.html,.htm" className="hidden" />
                   <Button variant="outline" size="sm" onClick={handleGenerateStructure} disabled={isGenerating} className="h-auto py-2 px-3 flex flex-col items-center gap-0.5">
                     <span className="flex items-center gap-1.5"><Wand2 className="w-4 h-4" />{isGenerating ? 'Генерация...' : 'AI Структура'}</span>
-                    <span className="text-[10px] text-muted-foreground font-normal">По названию и описанию курса</span>
+                     <span className="text-[10px] text-muted-foreground font-normal">По названию и описанию курса</span>
+                  </Button>
+                  <Button variant="outline" size="sm" onClick={handleStartReview} disabled={isReviewing || !resolvedCourseId || lessons.length === 0} className="h-auto py-2 px-3 flex flex-col items-center gap-0.5">
+                    <span className="flex items-center gap-1.5"><SearchCheck className="w-4 h-4" />{isReviewing ? 'Проверка...' : 'AI Проверка'}</span>
+                    <span className="text-[10px] text-muted-foreground font-normal">Актуальность и ошибки</span>
                   </Button>
                 </div>
               </div>
@@ -231,6 +252,17 @@ export default function CourseBuilder() {
       </AlertDialog>
 
       <AIGenerateDialog open={showAIGenerateDialog} onOpenChange={setShowAIGenerateDialog} onGenerate={handleAIGenerate} courseTitle={courseTitle} courseDescription={courseDescription} />
+
+      <CourseReviewDialog
+        open={showReviewDialog}
+        onOpenChange={setShowReviewDialog}
+        isReviewing={isReviewing}
+        reviewResult={reviewResult}
+        activeFindings={activeFindings}
+        dismissedCount={dismissedIds.size}
+        onDismiss={dismissFinding}
+        onDismissAll={dismissAll}
+      />
     </div>
     </TooltipProvider>
   );
