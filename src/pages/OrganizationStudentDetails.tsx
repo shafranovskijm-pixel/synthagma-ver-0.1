@@ -82,10 +82,9 @@ const TABS = [
 ];
 
 function StudentPageInner({ studentId }: { studentId: string }) {
-  const d = useOrgDashboard();
-  const organizationId = d.organizationId;
   const navigate = useNavigate();
   const d = useOrgDashboard();
+  const organizationId = d.organizationId;
   const { user } = useAuth();
 
   const organizationName = d.organizationName;
