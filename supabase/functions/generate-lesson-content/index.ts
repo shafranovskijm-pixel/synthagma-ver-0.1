@@ -52,11 +52,19 @@ serve(async (req) => {
       );
     }
 
-    const { lessonTitle, lessonType, courseTitle, courseDescription, previousLessons, ai_provider, taskIndex, lessonIndex } = await req.json();
+    const { lessonTitle, lessonType, courseTitle, courseDescription, previousLessons, ai_provider, taskIndex, lessonIndex, rawText } = await req.json();
 
-    if (!lessonTitle?.trim()) {
+    // For "format" mode, rawText is required instead of lessonTitle
+    if (lessonType !== "format" && !lessonTitle?.trim()) {
       return new Response(
         JSON.stringify({ error: "Название урока обязательно" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    if (lessonType === "format" && !rawText?.trim()) {
+      return new Response(
+        JSON.stringify({ error: "Текст для оформления обязателен" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
