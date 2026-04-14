@@ -14,6 +14,8 @@ export const LearningRedirect = () => {
   return <Navigate to={`/course/${courseId}/learn`} replace />;
 };
 
-export const protectedRoute = (element: ReactElement, requiredRole?: string) => (
+type UserRole = 'admin' | 'organization' | 'student' | 'sales_manager' | 'company';
+
+export const protectedRoute = (element: ReactElement, requiredRole?: UserRole) => (
   <ProtectedRoute requiredRole={requiredRole}>{element}</ProtectedRoute>
 );
