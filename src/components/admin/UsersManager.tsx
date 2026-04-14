@@ -72,16 +72,6 @@ export function UsersManager() {
   const [roleFilter, setRoleFilter] = useState<string>("all");
   const [deleteUser, setDeleteUser] = useState<UserWithRole | null>(null);
   const [visiblePasswords, setVisiblePasswords] = useState<Set<string>>(new Set());
-  const [selectedUser, setSelectedUser] = useState<UserWithRole | null>(null);
-  const [userDetail, setUserDetail] = useState<{
-    enrollments: any[];
-    profile: any;
-    loading: boolean;
-  }>({ enrollments: [], profile: null, loading: false });
-  const [credEdit, setCredEdit] = useState<{ login: string; password: string; editing: boolean; saving: boolean }>({
-    login: "", password: "", editing: false, saving: false,
-  });
-  const [credPasswordVisible, setCredPasswordVisible] = useState(false);
   const navigate = useNavigate();
 
   const viewAsStudent = (user: UserWithRole) => {
