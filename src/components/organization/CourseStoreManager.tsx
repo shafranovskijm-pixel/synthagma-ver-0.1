@@ -372,28 +372,46 @@ export function CourseStoreManager({ organizationId, userRole = 'organization', 
                   </div>
                 </div>
               ) : (
-                /* Grid view */
-                <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {h.filteredCatalog.map((item) => (
-                    <Card key={item.id} className="overflow-hidden hover:shadow-lg transition-shadow cursor-pointer" onClick={() => setSelectedCourseDetail(item)}>
-                      <CardHeader>
-                        <CardTitle className="text-lg leading-tight">{item.course?.title}</CardTitle>
-                        <CardDescription className="mt-1 flex items-center gap-1"><Building2 className="w-3 h-3" />{item.organization?.name}</CardDescription>
-                      </CardHeader>
-                      <CardContent className="space-y-4">
-                        {item.description_short && <p className="text-sm text-muted-foreground line-clamp-2">{item.description_short}</p>}
-                        <div className="flex items-center gap-2">
-                          {item.course?.duration && <Badge variant="outline" className="text-xs">{item.course.duration}</Badge>}
-                          {(() => {
-                            const price = h.userRole === 'organization' ? item.price_organization : item.price_student;
-                            return price > 0 
-                              ? <Badge className="bg-primary/10 text-primary border-primary/20">{price.toLocaleString()} ₽</Badge>
-                              : <Badge className="bg-green-500/10 text-green-600 border-green-500/20">Бесплатно</Badge>;
-                          })()}
+                /* Grid view - CourseCardNew style */
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+                  {h.filteredCatalog.map((item) => {
+                    const price = h.userRole === 'organization' ? item.price_organization : item.price_student;
+                    return (
+                      <div
+                        key={item.id}
+                        onClick={() => setSelectedCourseDetail(item)}
+                        className="group bg-card rounded-2xl border border-border overflow-hidden hover:shadow-lg transition-all cursor-pointer flex flex-col"
+                      >
+                        <div className="relative h-36 bg-muted overflow-hidden">
+                          {item.course?.cover_image_url ? (
+                            <img src={item.course.cover_image_url} alt={item.course?.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" loading="lazy" />
+                          ) : (
+                            <div className="w-full h-full bg-gradient-to-br from-primary/20 to-accent/20 flex items-center justify-center">
+                              <BookOpen className="w-10 h-10 text-primary/40" />
+                            </div>
+                          )}
+                          {item.course?.duration && (
+                            <Badge variant="secondary" className="absolute top-2 left-2 text-[10px]">{item.course.duration}</Badge>
+                          )}
                         </div>
-                      </CardContent>
-                    </Card>
-                  ))}
+                        <div className="p-3 flex flex-col flex-1">
+                          <h3 className="font-semibold text-sm line-clamp-2 mb-1">{item.course?.title}</h3>
+                          {item.description_short && <p className="text-xs text-muted-foreground line-clamp-2 mb-2">{item.description_short}</p>}
+                          <div className="mt-auto space-y-2">
+                            <div className="flex items-center justify-between text-xs text-muted-foreground">
+                              <span className="flex items-center gap-1"><Building2 className="w-3 h-3" />{item.organization?.name}</span>
+                              <span className={`font-bold ${price > 0 ? "text-primary" : "text-green-600"}`}>
+                                {price > 0 ? `${price.toLocaleString()} ₽` : "Бесплатно"}
+                              </span>
+                            </div>
+                            <Button size="sm" className="w-full gap-1.5" variant="outline">
+                              <Gift className="w-3.5 h-3.5" />Получить курс
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               )}
             </>
