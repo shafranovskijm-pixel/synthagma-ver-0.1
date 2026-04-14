@@ -209,7 +209,7 @@ export function AdminMarketplaceManager() {
         {/* Catalog */}
         <TabsContent value="catalog" className="space-y-4">
           {/* Hero Cards */}
-          <MarketplaceHeroCards onCardClick={(cat) => h.setSearchQuery(cat)} />
+          <MarketplaceHeroCards onCardClick={(courseTitle) => h.setSearchQuery(courseTitle)} />
 
           {/* Tools */}
           <Card className="shadow-sm">
