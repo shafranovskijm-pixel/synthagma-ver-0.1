@@ -269,6 +269,30 @@ export const DocumentsTab = React.memo(function DocumentsTab({ organizationId, o
     setActSubmitting(false);
   };
 
+  const handleSearchByInn = async (inn: string) => {
+    if (inn.length < 10) return;
+    setInnSearching(true);
+    try {
+      const { data } = await supabase
+        .from("organizations")
+        .select("name, inn, kpp")
+        .eq("inn", inn)
+        .maybeSingle();
+      if (data) {
+        setInvoiceBuyerName(data.name || "");
+        setInvoiceBuyerInn(data.inn || inn);
+        setInvoiceBuyerKpp(data.kpp || "");
+        toast({ title: "Организация найдена", description: data.name });
+      } else {
+        toast({ title: "Не найдено", description: "Введите реквизиты вручную" });
+      }
+    } catch {
+      // ignore
+    } finally {
+      setInnSearching(false);
+    }
+  };
+
   const handleGenerateInvoiceFromDocs = async () => {
     if (!organizationId) return;
     setGeneratingInvoice(true);
@@ -289,21 +313,34 @@ export const DocumentsTab = React.memo(function DocumentsTab({ organizationId, o
 
       const invoiceNum = `СЧ-${year}/${String((count || 0) + 1).padStart(4, "0")}`;
 
+      const insertData: any = {
+        organization_id: organizationId,
+        invoice_number: invoiceNum,
+        plan,
+        amount,
+        period_months: 1,
+      };
+
+      if (invoiceOtherPayer && invoiceBuyerName) {
+        insertData.buyer_name = invoiceBuyerName;
+        insertData.buyer_inn = invoiceBuyerInn || null;
+        insertData.buyer_kpp = invoiceBuyerKpp || null;
+      }
+
       const { data: invoice, error: err } = await supabase
         .from("subscription_invoices")
-        .insert({
-          organization_id: organizationId,
-          invoice_number: invoiceNum,
-          plan,
-          amount,
-          period_months: 1,
-        } as any)
+        .insert(insertData)
         .select("id")
         .single();
 
       if (err) throw err;
       setInvoices(prev => [{ id: (invoice as any).id, invoice_number: invoiceNum, amount, status: "pending", plan, period_months: 1, invoice_date: new Date().toISOString(), created_at: new Date().toISOString() }, ...prev]);
       toast({ title: "Счёт создан", description: `Счёт ${invoiceNum} на ${amount.toLocaleString("ru-RU")} ₽` });
+      setShowInvoiceDialog(false);
+      setInvoiceOtherPayer(false);
+      setInvoiceBuyerName("");
+      setInvoiceBuyerInn("");
+      setInvoiceBuyerKpp("");
     } catch (e: any) {
       toast({ title: "Ошибка", description: e.message, variant: "destructive" });
     } finally {
