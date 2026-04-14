@@ -948,7 +948,7 @@ export const CoursesTab = React.memo(function CoursesTab({ organizationId, onCou
   );
 
   // Render folder with courses
-  const renderCategoryFolder = (categoryId: string, categoryName: string, categoryColor: string | null, coursesInCategory: Course[], isSystem = false) => {
+  const renderCategoryFolder = (categoryId: string, categoryName: string, categoryColor: string | null, coursesInCategory: Course[], isSystem = false, hiddenFromCatalog = false) => {
     const isExpanded = expandedCategories.has(categoryId);
     const courseCount = coursesInCategory.length;
     
@@ -972,28 +972,42 @@ export const CoursesTab = React.memo(function CoursesTab({ organizationId, onCou
                 {isExpanded ? <ChevronDown className="w-4 h-4 text-muted-foreground" /> : <ChevronRight className="w-4 h-4 text-muted-foreground" />}
               </div>
               
-              {!isSystem && (
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild onClick={e => e.stopPropagation()}>
-                    <Button variant="ghost" size="icon" className="h-7 w-7">
-                      <MoreVertical className="w-4 h-4" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuItem onClick={() => openEditCategory({ id: categoryId, name: categoryName, color: categoryColor || '#6366f1', organization_id: organizationId, created_at: '' })}>
-                      <Pencil className="w-4 h-4 mr-2" />
-                      Редактировать
-                    </DropdownMenuItem>
-                    <DropdownMenuItem 
-                      className="text-destructive"
-                      onClick={() => handleDeleteCategory(categoryId)}
-                    >
-                      <Trash2 className="w-4 h-4 mr-2" />
-                      Удалить
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              )}
+              <div className="flex items-center gap-1">
+                {!isSystem && (
+                  <TooltipProvider delayDuration={200}>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button variant="ghost" size="icon" className={`h-7 w-7 ${hiddenFromCatalog ? 'text-muted-foreground' : 'text-sigma-green'}`} onClick={e => handleToggleCategoryVisibility(categoryId, hiddenFromCatalog, e)}>
+                          {hiddenFromCatalog ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>{hiddenFromCatalog ? 'Категория скрыта из витрины' : 'Категория видна в витрине'}</TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                )}
+                {!isSystem && (
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild onClick={e => e.stopPropagation()}>
+                      <Button variant="ghost" size="icon" className="h-7 w-7">
+                        <MoreVertical className="w-4 h-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem onClick={() => openEditCategory({ id: categoryId, name: categoryName, color: categoryColor || '#6366f1', organization_id: organizationId, created_at: '' })}>
+                        <Pencil className="w-4 h-4 mr-2" />
+                        Редактировать
+                      </DropdownMenuItem>
+                      <DropdownMenuItem 
+                        className="text-destructive"
+                        onClick={() => handleDeleteCategory(categoryId)}
+                      >
+                        <Trash2 className="w-4 h-4 mr-2" />
+                        Удалить
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                )}
+              </div>
             </div>
           </CollapsibleTrigger>
           
