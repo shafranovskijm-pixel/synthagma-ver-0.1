@@ -1,47 +1,98 @@
 
 
-# Обновление devToolsData.ts — актуализация рекомендаций и статистики
+# Декомпозиция критичных файлов проекта
 
-## Что изменилось с момента последнего обновления
+Все 5 критичных рекомендаций + 2 предупреждения из DevTools Health будут исправлены.
 
-- **OrganizationDetailsView**: 1969 → 1790 строк (убраны баланс, документы, закрывающие, блоки настроек)
-- **OrganizationsManager**: 1160 → 1174 строк (добавлен toggle статистики)
-- **Хуков**: 70 → 79
-- **Edge-функций**: 59 → 60 (без _shared)
-- **Файлов >800 строк**: 26 → 28
-- **Файлов >500 строк**: 57 → 69
-- **Всего файлов**: ~533, строк: ~143K (без types.ts)
-- **pages/**: totalLines 17866 → 18020
+## 1. AdminAnalytics (1435 → ~200 + 7 подкомпонентов)
 
-## Изменения в файле
+**Хук `useAdminAnalytics.ts`** (~150 строк) — вся логика загрузки данных, `fetchAnalytics`, `useMemo` для `profilesMap`, `coursesMap`, фильтры по периоду.
 
-### 1. CODE_TREE — обновить числа
-- `admin/`: files 69, lines 24354 (было 24421)
-- `hooks/`: totalFiles 79, totalLines 17748 (было 70 / 16721)
-- `pages/`: totalLines 18020 (было 17866)
-- `supabase/functions/`: totalFiles 60 (было 59)
-- Пересчитать TOTAL_FILES / TOTAL_LINES автоматически
+**7 компонентов-вкладок** в `src/components/admin/analytics/`:
+- `RegistrationsChart.tsx` — вкладка «Регистрации» (строки 791–850)
+- `ActivityChart.tsx` — «Активность» (852–895)
+- `VisitsChart.tsx` — «Посещения» (897–1097, самый большой ~200 строк)
+- `CompletionsChart.tsx` — «Завершения» (1099–1139)
+- `PaymentsChart.tsx` — «Оплаты» (1141–1213)
+- `FeaturesChart.tsx` — «Функции» (1215–1255)
+- `OverviewCards.tsx` — «Обзор» + карточки-метрики (1257–конец + 647–780)
 
-### 2. LARGEST_FILES — обновить OrganizationDetailsView
-- `OrganizationDetailsView.tsx`: lines 1790, note обновить: «Было 1969. Убраны баланс, документы, настройки ИИ. Ещё нужна декомпозиция.»
-- `OrganizationsManager.tsx`: lines 1174
+**AdminAnalytics.tsx** остаётся оркестратором: `useAdminAnalytics()` + табы с подкомпонентами (~200 строк).
 
-### 3. QUALITY_METRICS — обновить
-- Крупнейший файл: 1790 (было 1969)
-- Файлов >800: 28 (было 26)
-- Файлов >500: 69 (было 57)
-- Кастомные хуки: 79 (было 70)
-- Edge-функции: 60 (было 59)
+## 2. CoursesTab (1747 → ~300 + 5 подкомпонентов)
 
-### 4. CODE_RECOMMENDATIONS — обновить критичные
-- **OrganizationDetailsView**: title «1790 строк» (было 1969), detail — упомянуть что убрали баланс/документы, но декомпозиция ещё нужна, status → «checked» (частично решено)
-- **large-files-count**: обновить числа «28 файлов > 800 строк, 69 файлов > 500 строк»
-- **org-components-size**: остаётся 45K/118 файлов — без изменений
-- **test-coverage**: обновить «10 из 533 файлов»
-- Добавить новый info-блок: «✅ OrganizationDetailsView очищен (1969→1790)» с detail «Убраны устаревшие вкладки: баланс, документы, закрывающие. Из настроек убраны ИИ-помощник, ФИС ФРДО, лимиты.»
-- Добавить info: «✅ backdrop-blur артефакты исправлены» — убраны из 3 сайдбаров
-- Добавить info: «✅ 79 кастомных хуков» (обновить существующий с 70)
+**Хук `useCoursesTab.ts`** (~200 строк) — стейты диалогов, обработчики (handleCreate, handleDuplicate, handleDelete, handleCoverUpload, handleGenerateCover, handleMoveCourse, handleBulkDelete).
 
-## Один файл
-`src/components/admin/devtools/devToolsData.ts` — обновление ~30 строк данных, добавление 2 новых info-записей.
+**Подкомпоненты** в `src/components/organization/tabs/courses/`:
+- `CoursesEmptyState.tsx` — уже есть как внутренняя функция, вынести (строки 43–143)
+- `CourseListRow.tsx` — SortableCourseListRow (строки 145–240)
+- `CourseGridCard.tsx` — карточка в режиме сетки (извлечь из JSX)
+- `CourseDialogs.tsx` — все 4 диалога: создание, категория, перемещение, удаление (строки 1547–1743)
+- `CoursesToolbar.tsx` — панель фильтров/поиска/вида
+
+**CoursesTab.tsx** — оркестратор ~300 строк.
+
+## 3. BlockEditorMain (1461 → ~250 + подкомпоненты)
+
+**Подкомпоненты** в `src/components/course-builder/block-editor/blocks/`:
+- `TextBlocks.tsx` — ParagraphBlock, QuoteBlock, CalloutBlock, HighlightBlock, AccordionBlock (~250 строк)
+- `QuizBlock.tsx` — тест-блок (~100 строк)
+- `MediaBlocks.tsx` — ImageBlock, VideoBlock, AudioBlock, DocumentBlock, DirectVideoBlock (~350 строк)
+- `SliderBlock.tsx` — слайдер (~160 строк)
+- `BlockContent.tsx` — диспетчер BlockContent (~60 строк)
+- `AddBlockButton.tsx` — кнопка добавления + BlockCategoryGrid + AIGenerateButton (~80 строк)
+
+**SortableBlockItem** остаётся в BlockEditorMain или выносится в отдельный файл (~280 строк).
+
+**BlockEditorMain.tsx** — оркестратор ~250 строк.
+
+## 4. OrganizationDetailsView (1790 → дальнейшая декомпозиция)
+
+Уже частично оптимизирован (1969→1790). Следующий шаг:
+- **Хук `useOrgDetailsView.ts`** — вся логика сохранения, загрузки, стейты
+- **`OrgSettingsPanel.tsx`** — содержимое вкладки «Настройки»
+- **Навигация** — вынести в `OrgDetailsNav.tsx`
+
+Статус рекомендации: `checked` → `applied`.
+
+## 5. Обновление devToolsData.ts
+
+После декомпозиции — обновить все метрики:
+- Критичные файлы получат статус `applied`
+- «28 файлов > 800 строк» → пересчитать (станет ~20–22)
+- Добавить info-записи о выполненных рефакторингах
+
+## Файлы (создание/изменение)
+
+| Действие | Файл |
+|----------|------|
+| Создать | `src/hooks/useAdminAnalytics.ts` |
+| Создать | `src/components/admin/analytics/RegistrationsChart.tsx` |
+| Создать | `src/components/admin/analytics/ActivityChart.tsx` |
+| Создать | `src/components/admin/analytics/VisitsChart.tsx` |
+| Создать | `src/components/admin/analytics/CompletionsChart.tsx` |
+| Создать | `src/components/admin/analytics/PaymentsChart.tsx` |
+| Создать | `src/components/admin/analytics/FeaturesChart.tsx` |
+| Создать | `src/components/admin/analytics/OverviewCards.tsx` |
+| Изменить | `src/components/admin/AdminAnalytics.tsx` (1435→~200) |
+| Создать | `src/hooks/useCoursesTab.ts` |
+| Создать | `src/components/organization/tabs/courses/CoursesEmptyState.tsx` |
+| Создать | `src/components/organization/tabs/courses/CourseListRow.tsx` |
+| Создать | `src/components/organization/tabs/courses/CourseDialogs.tsx` |
+| Создать | `src/components/organization/tabs/courses/CoursesToolbar.tsx` |
+| Изменить | `src/components/organization/tabs/CoursesTab.tsx` (1747→~300) |
+| Создать | `src/components/course-builder/block-editor/blocks/TextBlocks.tsx` |
+| Создать | `src/components/course-builder/block-editor/blocks/QuizBlock.tsx` |
+| Создать | `src/components/course-builder/block-editor/blocks/MediaBlocks.tsx` |
+| Создать | `src/components/course-builder/block-editor/blocks/SliderBlock.tsx` |
+| Создать | `src/components/course-builder/block-editor/blocks/BlockContent.tsx` |
+| Создать | `src/components/course-builder/block-editor/blocks/AddBlockButton.tsx` |
+| Изменить | `src/components/course-builder/block-editor/BlockEditorMain.tsx` (1461→~250) |
+| Создать | `src/hooks/useOrgDetailsView.ts` |
+| Создать | `src/components/admin/org-details/OrgSettingsPanel.tsx` |
+| Создать | `src/components/admin/org-details/OrgDetailsNav.tsx` |
+| Изменить | `src/components/admin/OrganizationDetailsView.tsx` (1790→~400) |
+| Изменить | `src/components/admin/devtools/devToolsData.ts` |
+
+~27 файлов. Все существующие импорты продолжат работать через re-export shims.
 
