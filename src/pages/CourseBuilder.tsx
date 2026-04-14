@@ -147,6 +147,7 @@ export default function CourseBuilder() {
                         courseId={resolvedCourseId}
                         courseTitle={courseTitle}
                         courseDescription={courseDescription}
+                        organizationId={organizationId}
                       />
                     ))}
                   </div>

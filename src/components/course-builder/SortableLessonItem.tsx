@@ -9,6 +9,7 @@ import {
   Trash2, Eye, Sparkles, Upload, ChevronDown, ChevronUp,
   Loader2, Headphones, Volume2, Pause, Play, Square,
   Presentation, FileSpreadsheet, FolderOpen, Bot, CheckCircle2,
+  Lock,
 } from "lucide-react";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator,
@@ -33,6 +34,8 @@ import { SliderLessonEditor } from "@/components/course-builder/SliderLessonEdit
 import { LessonAttachments } from "@/components/course-builder/LessonAttachments";
 import { TestAnswersDialog } from "@/components/course-builder/TestAnswersDialog";
 import { useLessonMedia } from "@/hooks/useLessonMedia";
+import { useSubscriptionLimits } from "@/hooks/useSubscriptionLimits";
+import { useNavigate } from "react-router-dom";
 import type { ParsedAnswer } from "@/utils/testAnswersExport";
 
 interface SortableLessonProps {
@@ -44,6 +47,7 @@ interface SortableLessonProps {
   courseId: string | undefined;
   courseTitle: string;
   courseDescription: string;
+  organizationId?: string;
   generatedQuestions?: GeneratedQuestion[];
   onQuestionsProcessed?: () => void;
 }
@@ -51,12 +55,16 @@ interface SortableLessonProps {
 export function SortableLessonItem({
   lesson, index, onToggle, onUpdate, onDelete,
   courseId, courseTitle, courseDescription,
+  organizationId,
   generatedQuestions, onQuestionsProcessed,
 }: SortableLessonProps) {
   const [isPreviewMode, setIsPreviewMode] = useState(false);
   const [showMediaLibrary, setShowMediaLibrary] = useState(false);
   const [skipCompression, setSkipCompression] = useState(false);
-  const [videoUploadTab, setVideoUploadTab] = useState<string>("kinescope");
+  const navigate = useNavigate();
+  const { limits } = useSubscriptionLimits(organizationId || null);
+  const isKinescopeAvailable = limits.kinescopeEnabled;
+  const [videoUploadTab, setVideoUploadTab] = useState<string>(isKinescopeAvailable ? "kinescope" : "server");
   const media = useLessonMedia(lesson.id, courseId, onUpdate);
 
   // SaluteSpeech TTS for course builder preview
