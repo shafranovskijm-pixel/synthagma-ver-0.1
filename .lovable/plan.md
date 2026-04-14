@@ -1,38 +1,61 @@
 
 
-# Полноценная страница «Помощь» + открытие в модалке из админки/организации
+# Обновление devToolsData.ts — актуальная статистика проекта
 
-## Что делаем
+## Реальные цифры проекта (собрано сканированием)
 
-1. **Редизайн HelpCenter.tsx** — переделываем страницу по образцу SkillSpace: красивый hero с декоративными элементами (круги, градиенты), анимации fade-in на секциях, hover-эффекты на карточках категорий (подъём + тень), более крупные иконки в цветных кругах, плавные переходы. Контент остаётся тот же, но визуально — premium-уровень.
+| Раздел | Файлов | Строк |
+|--------|--------|-------|
+| src/components/admin/ | 69 | 24 421 |
+| src/components/organization/ | 118 | 45 107 |
+| src/components/student/ | 20 | 4 699 |
+| src/components/landing/ | 14 | 3 405 |
+| src/components/course-builder/ | 20 | 6 321 |
+| src/components/course-editor/ | 5 | 1 806 |
+| src/components/course-learning/ | 4 | 883 |
+| src/components/course-landing/ | 14 | 1 595 |
+| src/components/onboarding/ | 4 | 489 |
+| src/components/ui/ | 46 | 3 768 |
+| src/components/company/ | 7 | 1 380 |
+| src/components/shared/ | 1 | 23 |
+| **src/hooks/** | 70+ (вкл. course-learning/) | 16 721 |
+| **src/pages/** | 58 | 17 866 |
+| **src/utils/** | 31 | 3 556 |
+| **supabase/functions/** | 59 | 15 661 |
+| **БД таблиц** | 118 | — |
+| **Всего** | ~562 файлов | ~148K строк |
 
-2. **Создать `HelpCenterDialog.tsx`** — компонент-обёртка Dialog (большой, `max-w-4xl`, `max-h-[85vh]` со скроллом), который рендерит содержимое HelpCenter внутри модального окна. Используется из админки и организации.
+## Что обновляем в `devToolsData.ts`
 
-3. **Обновить вызовы** — везде где `window.open("/help", "_blank")` или `navigate("/help")` из админки и организации → вместо этого открывать `HelpCenterDialog`:
-   - `AdminDashboardHeader.tsx` — dropdown menu item
-   - `OrgSettingsSidebar.tsx` — sidebar button  
-   - `OrgPageLayout.tsx` — dropdown menu item
-   - `OrganizationStudentDetails.tsx` — dropdown menu item
-   - `OrganizationCourseDetails.tsx` — dropdown menu item
+### 1. CODE_TREE — актуальные числа
+- Все subfolders с реальными files/lines (добавить company/, course-landing/, shared/)
+- totalFiles и totalLines пересчитать
+- Добавить новые папки (company, course-landing, shared)
 
-## Дизайн-детали (по образцу SkillSpace)
+### 2. LARGEST_FILES — топ-20 реальных файлов >800 строк
+28 файлов >800 строк — это показывает, что нужен рефакторинг. Обновить список с актуальными путями, строками, статусами:
+- `OrganizationDetailsView.tsx` — 1969 строк (needs-work)
+- `CoursesTab.tsx` — 1747 (needs-work)
+- `BlockEditorMain.tsx` — 1461 (needs-work)
+- `AdminAnalytics.tsx` — 1435 (needs-work)
+- И т.д. — все файлы >800
 
-- **Hero**: градиент primary → primary/70, декоративные полупрозрачные круги (абсолютно позиционированные), анимация `animate-fade-in`
-- **Категории**: карточки с крупными цветными иконками в кругах, `hover:-translate-y-1 hover:shadow-lg transition-all duration-300`
-- **FAQ**: аккордеон с плавной анимацией, мягкие тени
-- **Секции**: каждая с `animate-fade-in` и задержкой через `style={{ animationDelay }}`
-- **Контакты**: карточки с gradient-бордером при hover
+### 3. QUALITY_METRICS — реальные метрики
+- Средний размер файла: ~263 строк (148K / 562)
+- Крупнейший файл: 1969 строк (was 800)
+- Покрытие тестами: 10 файлов
+- Кастомные хуки: 70+
+- Edge-функции: 59
+- Файлов >800 строк: 28 (новая метрика)
 
-## Изменения
+### 4. EDGE_FUNCTIONS — актуальный список 59 функций
+Добавить новые: batch-skillspace-import, bulk-pipeline, check-secrets-status, check-subscription-expiry, convert-lesson-content, create-company-user, create-sales-manager, generate-achievements, generate-cover, generate-image, generate-seo, gigachat, handle-email-action, kinescope-*, manage-secret, migrate-course-media, notify-program-order, parse-skillspace-course, referral-commission, reimport-skillspace-batch, review-course, robokassa-*, salutespeech-tts, seed-welcome-course
 
-### Файлы
-1. **`src/pages/HelpCenter.tsx`** — редизайн с декором и анимациями
-2. **`src/components/shared/HelpCenterDialog.tsx`** — новый: Dialog + содержимое HelpCenter (или рендерит HelpCenter внутри)
-3. **`src/components/admin/AdminDashboardHeader.tsx`** — `window.open("/help")` → state + HelpCenterDialog
-4. **`src/components/organization/OrgSettingsSidebar.tsx`** — `navigate("/help")` → state + HelpCenterDialog
-5. **`src/components/organization/OrgPageLayout.tsx`** — аналогично
-6. **`src/pages/OrganizationStudentDetails.tsx`** — аналогично
-7. **`src/pages/OrganizationCourseDetails.tsx`** — аналогично
+### 5. CODE_RECOMMENDATIONS — актуальные рекомендации
+- Добавить предупреждения о 28 файлах >800 строк (needs-work)
+- Пометить OrganizationDetailsView (1969), CoursesTab (1747) как критичные
+- Обновить статусы выполненных оптимизаций
 
-Итого: 2 файла создание/редизайн, 5 файлов мелкие правки (добавить state + Dialog).
+## Файлы
+- `src/components/admin/devtools/devToolsData.ts` — полная перезапись данных
 
