@@ -27,6 +27,7 @@ interface MarketplaceCourse {
     title: string;
     description?: string | null;
     duration?: string | null;
+    cover_image_url?: string | null;
   };
   organization?: { name: string };
 }
