@@ -369,15 +369,62 @@ export function BlockEditor({ blocks, onChange, readOnly = false, courseTitle, l
     }
   };
 
+  const handleFormatWithAI = useCallback(async () => {
+    if (blocks.length === 0) return;
+    const rawText = blocks.map(b => {
+      if (b.type === "accordion" && b.accordionTitle) return `${b.accordionTitle}\n${b.content}`;
+      return b.content;
+    }).filter(Boolean).join("\n\n");
+    if (!rawText.trim()) return;
+
+    const canProceed = await checkAiLimitGlobal();
+    if (!canProceed) return;
+
+    setIsFormatting(true);
+    try {
+      const { data, error } = await safeInvoke<{ success: boolean; blocks: any[] }>("generate-lesson-content", {
+        body: { rawText, lessonType: "format", courseTitle, lessonTitle },
+      });
+      if (error || !data?.success || !data.blocks?.length) {
+        const { toast } = await import("sonner");
+        toast.error(error?.message || "Не удалось оформить текст");
+        return;
+      }
+      const formatted: ContentBlock[] = data.blocks.map((b: any) => createBlock(b.type as BlockType, b));
+      onChangeWithHistory(formatted);
+      await incrementAiLimitGlobal();
+      const { toast } = await import("sonner");
+      toast.success("Текст оформлен с помощью ИИ");
+    } catch (err) {
+      console.error("Format with AI error:", err);
+    } finally {
+      setIsFormatting(false);
+    }
+  }, [blocks, courseTitle, lessonTitle, onChangeWithHistory]);
+
   if (readOnly) {
     return <BlockRenderer blocks={blocks} />;
   }
 
   return (
     <div className="space-y-2">
-      {/* Undo/Redo toolbar */}
+      {/* Undo/Redo + Format AI toolbar */}
       <div className="flex justify-end">
         <div className="inline-flex items-center gap-1 bg-background/90 backdrop-blur-sm border border-border rounded-lg p-1.5 shadow-md">
+          {blocks.length > 0 && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleFormatWithAI}
+              disabled={isFormatting}
+              title="Оформить текст с помощью ИИ"
+              className="h-10 px-3 gap-1.5 text-xs font-medium"
+            >
+              {isFormatting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Wand2 className="w-4 h-4" />}
+              Оформить с ИИ
+            </Button>
+          )}
+          <div className="w-px h-6 bg-border" />
           <Button variant="ghost" size="sm" onClick={handleUndo} disabled={!canUndo} title="Отменить (Ctrl+Z)" className="h-10 w-10 p-0">
             <Undo2 className="w-5 h-5" />
           </Button>
