@@ -191,6 +191,10 @@ export function AdminDashboardHeader({
                 <FileText className="w-4 h-4" />
                 Документооборот
               </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setActiveTab("referrals")} className="rounded-lg gap-2.5 py-2.5">
+                <Gift className="w-4 h-4" />
+                Партнёры
+              </DropdownMenuItem>
               <DropdownMenuItem onClick={() => setActiveTab("updates")} className="rounded-lg gap-2.5 py-2.5">
                 <Sparkles className="w-4 h-4" />
                 Что нового?

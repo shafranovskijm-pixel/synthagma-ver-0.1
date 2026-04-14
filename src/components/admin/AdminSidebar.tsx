@@ -1,10 +1,9 @@
-import { useState } from "react";
 import { 
-  BarChart3, Building2, Users, 
-  LogOut, Shield, Settings, FileText, Terminal, Store, HeadphonesIcon, Briefcase, Bot, Megaphone, MessageSquare, Gift, Sparkles, Wrench, ChevronDown
+  BarChart3, Building2, Users, LogOut, Store, Briefcase, 
+  MessageSquare, FileText, Bot, Terminal, Sparkles
 } from "lucide-react";
 import { SigmaLogo } from "@/components/ui/SigmaLogo";
-import { HelpButton } from "@/components/onboarding/HelpButton";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useAdminUnreadChats } from "@/hooks/useAdminUnreadChats";
 import { cn } from "@/lib/utils";
 
@@ -26,8 +25,12 @@ export type AdminTabType =
   | "staff"
   | "settings";
 
-const PLATFORM_TABS: AdminTabType[] = ["content", "ai", "devtools", "updates"];
-const CHATS_TABS: AdminTabType[] = ["chats", "support", "broadcast"];
+interface NavItem {
+  id: AdminTabType;
+  icon: typeof Building2;
+  label: string;
+  badge?: number;
+}
 
 interface AdminSidebarProps {
   activeTab: AdminTabType;
@@ -41,202 +44,125 @@ interface AdminSidebarProps {
 export function AdminSidebar({
   activeTab,
   setActiveTab,
-  userEmail,
   isMobileSidebarOpen,
   setIsMobileSidebarOpen,
   onLogout
 }: AdminSidebarProps) {
-  
   const unreadChats = useAdminUnreadChats();
-  const [platformOpen, setPlatformOpen] = useState(() => PLATFORM_TABS.includes(activeTab));
-  const [chatsOpen, setChatsOpen] = useState(() => CHATS_TABS.includes(activeTab));
 
   const handleTabClick = (tab: AdminTabType) => {
     setActiveTab(tab);
     setIsMobileSidebarOpen(false);
   };
 
-  const tabButtonClass = (tab: AdminTabType) => {
-    return `w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-colors ${
-      activeTab === tab ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-secondary"
-    }`;
-  };
+  const navItems: NavItem[] = [
+    { id: "organizations", icon: Building2, label: "Организации" },
+    { id: "users", icon: Users, label: "Пользователи" },
+    { id: "marketplace", icon: Store, label: "Маркетплейс" },
+    { id: "sales", icon: Briefcase, label: "Продажи" },
+    { id: "analytics", icon: BarChart3, label: "Аналитика" },
+    { id: "chats", icon: MessageSquare, label: "Чаты", badge: unreadChats },
+    { id: "content", icon: FileText, label: "Контент" },
+    { id: "ai", icon: Bot, label: "ИИ-провайдеры" },
+    { id: "updates", icon: Sparkles, label: "Обновления" },
+    { id: "devtools", icon: Terminal, label: "Dev Tools" },
+  ];
 
-  const subTabButtonClass = (tab: AdminTabType) => {
-    return `w-full flex items-center gap-3 pl-8 pr-4 py-2.5 rounded-xl text-sm font-medium transition-colors ${
-      activeTab === tab ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-secondary"
-    }`;
-  };
+  const brandHsl = "220 70% 50%";
 
   return (
-    <aside className={`
-      fixed inset-y-0 left-0 z-50 w-64 bg-card border-r border-border 
-      flex flex-col transform transition-transform duration-300
-      lg:translate-x-0 ${isMobileSidebarOpen ? 'translate-x-0' : '-translate-x-full'}
-    `}>
-      {/* Logo */}
-      <div className="p-6 border-b border-border flex-shrink-0">
-        <div className="flex items-center gap-3">
-          <SigmaLogo size="lg" showText={false} />
-          <div>
-            <span className="font-display font-bold text-lg">СИНТАГМА</span>
-            <div className="text-xs text-muted-foreground flex items-center gap-1">
-              <Shield className="w-3 h-3" />
-              Администратор
-            </div>
+    <>
+      {isMobileSidebarOpen && (
+        <div className="fixed inset-0 bg-black/50 z-40 lg:hidden" onClick={() => setIsMobileSidebarOpen(false)} />
+      )}
+
+      <aside
+        role="navigation"
+        aria-label="Админ навигация"
+        className={cn(
+          "fixed inset-y-0 left-0 z-50 w-[88px] border-r border-border/60 flex flex-col transition-transform duration-300",
+          isMobileSidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
+        )}
+        style={{ backgroundColor: `hsl(${brandHsl} / 0.07)` }}
+      >
+        {/* Logo */}
+        <div className="flex justify-center py-4">
+          <div className="flex h-12 w-12 items-center justify-center rounded-xl border border-border/60 bg-card/80 shadow-sm">
+            <SigmaLogo size="sm" showText={false} />
           </div>
         </div>
-      </div>
-      
-      {/* Navigation */}
-      <nav className="flex-1 p-4 overflow-y-auto scrollbar-hide">
-        <div className="space-y-2">
-          <button onClick={() => handleTabClick("organizations")} className={tabButtonClass("organizations")}>
-            <Building2 className="w-5 h-5" />
-            Организации
-          </button>
-          
-          
-          <button onClick={() => handleTabClick("users")} className={tabButtonClass("users")}>
-            <Users className="w-5 h-5" />
-            Пользователи
-          </button>
 
-          <button onClick={() => handleTabClick("marketplace")} className={tabButtonClass("marketplace")}>
-            <Store className="w-5 h-5" />
-            Маркетплейс
-          </button>
-
-          <button onClick={() => handleTabClick("sales")} className={tabButtonClass("sales")}>
-            <Briefcase className="w-5 h-5" />
-            Продажи
-          </button>
-
-          <button onClick={() => handleTabClick("billing")} className={tabButtonClass("billing")}>
-            <FileText className="w-5 h-5" />
-            Биллинг
-          </button>
-
-          <button onClick={() => handleTabClick("analytics")} className={tabButtonClass("analytics")}>
-            <BarChart3 className="w-5 h-5" />
-            Аналитика
-          </button>
-
-          {/* Chats group: Чаты, Поддержка, Рассылка */}
-          <div>
-            <button
-              onClick={() => setChatsOpen(prev => !prev)}
-              className={cn(
-                "w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-colors",
-                CHATS_TABS.includes(activeTab)
-                  ? "bg-primary/10 text-primary"
-                  : "text-muted-foreground hover:bg-secondary"
-              )}
-            >
-              <MessageSquare className="w-5 h-5" />
-              Чаты
-              {unreadChats > 0 && (
-                <span className="bg-destructive text-destructive-foreground text-xs font-bold rounded-full min-w-[20px] h-5 flex items-center justify-center px-1.5">
-                  {unreadChats > 99 ? "99+" : unreadChats}
-                </span>
-              )}
-              <ChevronDown className={cn("w-4 h-4 ml-auto transition-transform", chatsOpen && "rotate-180")} />
-            </button>
-            {chatsOpen && (
-              <div className="mt-1 space-y-1">
-                <button onClick={() => handleTabClick("chats")} className={subTabButtonClass("chats")}>
-                  <MessageSquare className="w-4 h-4" />
-                  Сообщения
-                </button>
-                <button onClick={() => handleTabClick("support")} className={subTabButtonClass("support")}>
-                  <HeadphonesIcon className="w-4 h-4" />
-                  Поддержка
-                </button>
-                <button onClick={() => handleTabClick("broadcast")} className={subTabButtonClass("broadcast")}>
-                  <Megaphone className="w-4 h-4" />
-                  Рассылка
-                </button>
-              </div>
-            )}
+        {/* Navigation pill */}
+        <div className="flex-1 flex items-center justify-center overflow-y-auto scrollbar-hide px-2">
+          <div
+            className="rounded-[28px] border border-border/60 p-2 shadow-sm backdrop-blur-sm"
+            style={{ backgroundColor: `hsl(${brandHsl} / 0.14)` }}
+          >
+            <nav className="flex flex-col items-center gap-1.5">
+              {navItems.map((item) => {
+                const isActive = activeTab === item.id;
+                return (
+                  <Tooltip key={item.id} delayDuration={100}>
+                    <TooltipTrigger asChild>
+                      <button
+                        onClick={() => handleTabClick(item.id)}
+                        className={cn(
+                          "relative flex h-11 w-11 items-center justify-center rounded-xl transition-all duration-200",
+                          isActive
+                            ? "text-primary-foreground shadow-md"
+                            : "text-foreground/70 hover:text-foreground hover:scale-110"
+                        )}
+                        style={{
+                          backgroundColor: isActive
+                            ? `hsl(${brandHsl})`
+                            : `hsl(${brandHsl} / 0.12)`,
+                          ...(isActive ? { boxShadow: `0 4px 14px hsl(${brandHsl} / 0.4)` } : {}),
+                        }}
+                        aria-current={isActive ? "page" : undefined}
+                      >
+                        <item.icon className="h-[18px] w-[18px] shrink-0" />
+                        {(item.badge ?? 0) > 0 && (
+                          <span className="absolute -top-1 -right-1 bg-destructive text-destructive-foreground text-[9px] font-bold rounded-full min-w-[16px] h-4 flex items-center justify-center px-1">
+                            {item.badge! > 99 ? "99+" : item.badge}
+                          </span>
+                        )}
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent
+                      side="right"
+                      sideOffset={12}
+                      className="z-[100] rounded-xl px-4 py-2 text-sm font-medium shadow-lg border-border/60 backdrop-blur-sm"
+                      style={{
+                        backgroundColor: `hsl(${brandHsl})`,
+                        color: 'white',
+                        boxShadow: `0 4px 20px hsl(${brandHsl} / 0.3)`,
+                      }}
+                    >
+                      {item.label}
+                    </TooltipContent>
+                  </Tooltip>
+                );
+              })}
+            </nav>
           </div>
-
-          <button onClick={() => handleTabClick("referrals")} className={tabButtonClass("referrals")}>
-            <Gift className="w-5 h-5" />
-            Партнёры
-          </button>
-
-          <button onClick={() => handleTabClick("staff")} className={tabButtonClass("staff")}>
-            <Users className="w-5 h-5" />
-            Сотрудники
-          </button>
-
-          {/* Platform group */}
-          <div>
-            <button
-              onClick={() => setPlatformOpen(prev => !prev)}
-              className={cn(
-                "w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-colors",
-                PLATFORM_TABS.includes(activeTab)
-                  ? "bg-primary/10 text-primary"
-                  : "text-muted-foreground hover:bg-secondary"
-              )}
-            >
-              <Wrench className="w-5 h-5" />
-              Платформа
-              <ChevronDown className={cn("w-4 h-4 ml-auto transition-transform", platformOpen && "rotate-180")} />
-            </button>
-            {platformOpen && (
-              <div className="mt-1 space-y-1">
-                <button onClick={() => handleTabClick("content")} className={subTabButtonClass("content")}>
-                  <FileText className="w-4 h-4" />
-                  Контент
-                </button>
-                <button onClick={() => handleTabClick("ai")} className={subTabButtonClass("ai")}>
-                  <Bot className="w-4 h-4" />
-                  ИИ-провайдеры
-                </button>
-                <button onClick={() => handleTabClick("updates")} className={subTabButtonClass("updates")}>
-                  <Sparkles className="w-4 h-4" />
-                  Обновления
-                </button>
-                <button onClick={() => handleTabClick("devtools")} className={subTabButtonClass("devtools")}>
-                  <Terminal className="w-4 h-4" />
-                  Dev Tools
-                </button>
-              </div>
-            )}
-          </div>
-          
-          <button onClick={() => handleTabClick("settings")} className={tabButtonClass("settings")}>
-            <Settings className="w-5 h-5" />
-            Настройки
-          </button>
         </div>
-      </nav>
 
-      {/* Footer */}
-      <div className="p-4 border-t border-border flex-shrink-0 bg-card space-y-2">
-        <HelpButton tips={[]} variant="sidebar" />
-        <div className="flex items-center gap-3 px-3 py-2">
-          <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-            <span className="text-xs font-bold text-primary">{(userEmail || "A")[0].toUpperCase()}</span>
-          </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-xs font-medium truncate">{userEmail}</p>
-            <p className="text-[10px] text-muted-foreground">Администратор</p>
-          </div>
-          <button onClick={() => handleTabClick("settings")} className="p-1.5 rounded-lg hover:bg-muted/50 text-muted-foreground" title="Настройки">
-            <Settings className="w-4 h-4" />
-          </button>
+        {/* Logout */}
+        <div className="flex justify-center py-4">
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                onClick={onLogout}
+                className="flex h-10 w-10 items-center justify-center rounded-xl text-destructive hover:bg-destructive/10 transition-colors"
+                aria-label="Выйти"
+              >
+                <LogOut className="h-5 w-5" />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="right" className="z-[100]">Выйти</TooltipContent>
+          </Tooltip>
         </div>
-        <button 
-          onClick={onLogout} 
-          className="w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm text-destructive hover:bg-destructive/10 transition-colors"
-        >
-          <LogOut className="w-4 h-4" />
-          Выйти
-        </button>
-      </div>
-    </aside>
+      </aside>
+    </>
   );
 }

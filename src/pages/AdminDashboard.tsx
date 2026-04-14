@@ -84,7 +84,7 @@ const AdminDashboard = () => {
       />
 
       {/* Main Content */}
-      <main className="lg:pl-64 flex-1 flex flex-col min-h-screen">
+      <main className="lg:pl-[88px] flex-1 flex flex-col min-h-screen">
         {/* Header with hero banner */}
         <AdminDashboardHeader
           activeTab={activeTab}
