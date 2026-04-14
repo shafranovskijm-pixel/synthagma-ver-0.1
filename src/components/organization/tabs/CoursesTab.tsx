@@ -1346,204 +1346,37 @@ export const CoursesTab = React.memo(function CoursesTab({ organizationId, onCou
         </DndContext>
       )}
 
-      {/* Category Dialog */}
-      <Dialog open={showCategoryDialog} onOpenChange={setShowCategoryDialog}>
-        <DialogContent className="rounded-2xl">
-          <DialogHeader>
-            <DialogTitle>{editingCategory ? 'Редактировать категорию' : 'Новая категория'}</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label>Название</Label>
-              <Input
-                value={newCategoryName}
-                onChange={e => setNewCategoryName(e.target.value)}
-                placeholder="Название категории"
-                className="rounded-xl"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Цвет</Label>
-              <div className="flex items-center gap-3">
-                <input
-                  type="color"
-                  value={newCategoryColor}
-                  onChange={e => setNewCategoryColor(e.target.value)}
-                  className="w-12 h-10 rounded-lg cursor-pointer border-0"
-                />
-                <Input
-                  value={newCategoryColor}
-                  onChange={e => setNewCategoryColor(e.target.value)}
-                  className="rounded-xl flex-1"
-                />
-              </div>
-            </div>
-          </div>
-          <div className="flex gap-2 justify-end">
-            <Button variant="outline" onClick={() => setShowCategoryDialog(false)} className="rounded-xl">
-              Отмена
-            </Button>
-            <Button onClick={handleCreateCategory} disabled={isCreatingCategory || !newCategoryName.trim()} className="rounded-xl">
-              {isCreatingCategory && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-              {editingCategory ? 'Сохранить' : 'Создать'}
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
+      <CategoryDialog
+        open={showCategoryDialog} onOpenChange={setShowCategoryDialog}
+        editingCategory={editingCategory} name={newCategoryName} setName={setNewCategoryName}
+        color={newCategoryColor} setColor={setNewCategoryColor}
+        isCreating={isCreatingCategory} onSubmit={handleCreateCategory}
+      />
 
-      {/* Create Course Dialog */}
-      <Dialog open={showCreateCourseDialog} onOpenChange={setShowCreateCourseDialog}>
-        <DialogContent className="rounded-2xl">
-          <DialogHeader>
-            <DialogTitle>Создать курс</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label>Название курса *</Label>
-              <Input
-                value={newCourseTitle}
-                onChange={e => setNewCourseTitle(e.target.value)}
-                placeholder="Введите название"
-                className="rounded-xl"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Описание</Label>
-              <Textarea
-                value={newCourseDescription}
-                onChange={e => setNewCourseDescription(e.target.value)}
-                placeholder="Краткое описание курса"
-                className="rounded-xl resize-none"
-                rows={3}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Категория</Label>
-              {!showInlineNewCategory ? (
-                <div className="flex gap-2">
-                  <Select value={newCourseCategoryId} onValueChange={setNewCourseCategoryId}>
-                    <SelectTrigger className="rounded-xl flex-1">
-                      <SelectValue placeholder="Без категории" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="none">Без категории</SelectItem>
-                      {categories.map(cat => (
-                        <SelectItem key={cat.id} value={cat.id}>
-                          <div className="flex items-center gap-2">
-                            <div className="w-3 h-3 rounded-full" style={{ backgroundColor: cat.color }} />
-                            {cat.name}
-                          </div>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <Button variant="outline" size="icon" onClick={() => setShowInlineNewCategory(true)} className="rounded-xl shrink-0">
-                    <Plus className="w-4 h-4" />
-                  </Button>
-                </div>
-              ) : (
-                <div className="space-y-2 p-3 bg-secondary/50 rounded-xl">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium">Новая категория</span>
-                    <Button variant="ghost" size="sm" onClick={() => setShowInlineNewCategory(false)}>
-                      Отмена
-                    </Button>
-                  </div>
-                  <Input
-                    value={inlineNewCategoryName}
-                    onChange={e => setInlineNewCategoryName(e.target.value)}
-                    placeholder="Название категории"
-                    className="rounded-lg"
-                  />
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="color"
-                      value={inlineNewCategoryColor}
-                      onChange={e => setInlineNewCategoryColor(e.target.value)}
-                      className="w-8 h-8 rounded cursor-pointer border-0"
-                    />
-                    <span className="text-xs text-muted-foreground">Выберите цвет</span>
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-          <div className="flex gap-2 justify-end">
-            <Button variant="outline" onClick={() => setShowCreateCourseDialog(false)} className="rounded-xl">
-              Отмена
-            </Button>
-            <Button onClick={handleCreateCourse} disabled={isCreatingCourse || !newCourseTitle.trim()} className="rounded-xl">
-              {isCreatingCourse && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-              Создать и редактировать
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
+      <CreateCourseDialog
+        open={showCreateCourseDialog} onOpenChange={setShowCreateCourseDialog}
+        title={newCourseTitle} setTitle={setNewCourseTitle}
+        description={newCourseDescription} setDescription={setNewCourseDescription}
+        categoryId={newCourseCategoryId} setCategoryId={setNewCourseCategoryId}
+        categories={categories}
+        showInlineNewCategory={showInlineNewCategory} setShowInlineNewCategory={setShowInlineNewCategory}
+        inlineNewCategoryName={inlineNewCategoryName} setInlineNewCategoryName={setInlineNewCategoryName}
+        inlineNewCategoryColor={inlineNewCategoryColor} setInlineNewCategoryColor={setInlineNewCategoryColor}
+        isCreating={isCreatingCourse} onSubmit={handleCreateCourse}
+      />
 
-      {/* Move Course Dialog */}
-      <Dialog open={showMoveCourseDialog} onOpenChange={setShowMoveCourseDialog}>
-        <DialogContent className="rounded-2xl">
-          <DialogHeader>
-            <DialogTitle>Переместить курс</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <p className="text-sm text-muted-foreground">
-              Курс: <span className="font-medium text-foreground">{movingCourse?.title}</span>
-            </p>
-            <div className="space-y-2">
-              <Label>Выберите категорию</Label>
-              <Select value={targetCategoryId} onValueChange={setTargetCategoryId}>
-                <SelectTrigger className="rounded-xl">
-                  <SelectValue placeholder="Выберите категорию" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">Без категории</SelectItem>
-                  {categories.map(cat => (
-                    <SelectItem key={cat.id} value={cat.id}>
-                      <div className="flex items-center gap-2">
-                        <div className="w-3 h-3 rounded-full" style={{ backgroundColor: cat.color }} />
-                        {cat.name}
-                      </div>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-          <div className="flex gap-2 justify-end">
-            <Button variant="outline" onClick={() => setShowMoveCourseDialog(false)} className="rounded-xl">
-              Отмена
-            </Button>
-            <Button onClick={handleMoveCourse} disabled={isMovingCourse} className="rounded-xl">
-              {isMovingCourse && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-              Переместить
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
+      <MoveCourseDialog
+        open={showMoveCourseDialog} onOpenChange={setShowMoveCourseDialog}
+        movingCourse={movingCourse} targetCategoryId={targetCategoryId}
+        setTargetCategoryId={setTargetCategoryId} categories={categories}
+        isMoving={isMovingCourse} onSubmit={handleMoveCourse}
+      />
 
-      {/* Bulk Delete Confirmation */}
-      <AlertDialog open={showBulkDeleteConfirm} onOpenChange={setShowBulkDeleteConfirm}>
-        <AlertDialogContent className="rounded-2xl">
-          <AlertDialogHeader>
-            <AlertDialogTitle>Удалить выбранные курсы?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Будет удалено {selectedCourseIds.size} курсов со всеми уроками, записями учеников и документами. Это действие нельзя отменить.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel className="rounded-xl">Отмена</AlertDialogCancel>
-            <AlertDialogAction 
-              onClick={handleBulkDelete} 
-              disabled={isDeletingCourses}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90 rounded-xl"
-            >
-              {isDeletingCourses && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-              Удалить
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <BulkDeleteDialog
+        open={showBulkDeleteConfirm} onOpenChange={setShowBulkDeleteConfirm}
+        count={selectedCourseIds.size} isDeleting={isDeletingCourses}
+        onConfirm={handleBulkDelete}
+      />
       </>}
     </div>
   );
