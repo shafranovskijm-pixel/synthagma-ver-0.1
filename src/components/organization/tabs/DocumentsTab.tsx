@@ -950,7 +950,7 @@ export const DocumentsTab = React.memo(function DocumentsTab({ organizationId, o
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowActDialog(false)}>Отмена</Button>
-            <Button onClick={handleGenerateAct} disabled={actSubmitting || !actBasis || !actAmount}>
+            <Button onClick={handleGenerateAct} disabled={actSubmitting || !actBasis || !actAmount || (actOtherCustomer && !actCustomerName)}>
               {actSubmitting ? "Генерация..." : "Создать акт"}
             </Button>
           </DialogFooter>
