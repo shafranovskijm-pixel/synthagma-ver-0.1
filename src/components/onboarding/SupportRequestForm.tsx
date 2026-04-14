@@ -142,7 +142,7 @@ ${errorsText}${photoUrl ? `\n\n<b>Скриншот:</b> ${photoUrl}` : ""}`;
       try {
         await supabase.functions.invoke("send-telegram-notification", { body });
       } catch (telegramErr) {
-        console.warn("Telegram notification failed (non-blocking):", telegramErr);
+        // Telegram notification failed (non-blocking)
       }
 
       toast.success("Обращение отправлено!", { description: "Мы свяжемся с вами в ближайшее время" });

@@ -399,7 +399,7 @@ export function ContentGeneratorTab({ courses, dbCategories, onComplete }: Props
               action: "answers", details: `Поток ${streamIndex}: решено ${solved} вопросов (${lesson.title})`, items_count: solved,
               stream_index: streamIndex, duration_ms: ansDuration,
             });
-            if (histErr) console.warn("⚠️ History insert error (answers):", histErr, { courseId, courseTitle, streamIndex });
+            if (histErr) { /* history insert failed silently */ }
           }
         }
         await delay(500);
