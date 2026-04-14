@@ -7,7 +7,7 @@ import { toast } from "sonner";
 import { RobokassaSettings } from "@/components/organization/RobokassaSettings";
 import { SettingsStudentDashboardTab } from "@/components/organization/SettingsStudentDashboardTab";
 import { StaffManager } from "@/components/organization/StaffManager";
-import { OrgDashboardProvider } from "@/contexts/OrgDashboardContext";
+import { useOrgDashboard } from "@/contexts/OrgDashboardContext";
 import OrgPageLayout from "@/components/organization/OrgPageLayout";
 import { cn } from "@/lib/utils";
 
@@ -181,11 +181,9 @@ function SettingsContent() {
         )}
 
         {activeTab === "staff" && organizationId && (
-          <OrgDashboardProvider>
-            <div className="bg-card rounded-xl lg:rounded-2xl border border-border p-4 lg:p-6">
-              <StaffManager organizationId={organizationId} />
-            </div>
-          </OrgDashboardProvider>
+          <div className="bg-card rounded-xl lg:rounded-2xl border border-border p-4 lg:p-6">
+            <StaffManager organizationId={organizationId} />
+          </div>
         )}
       </div>
     </div>
