@@ -51,7 +51,7 @@ const planBorders: Record<SubscriptionPlan, string> = {
 interface FeatureHighlight {
   icon: React.ReactNode;
   title: string;
-  description: "string;"
+  description: string;
   minPlan: SubscriptionPlan;
   link?: string;
 }

@@ -21,7 +21,7 @@ import {
   Github,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { toast as sonnerToast } from "sonner";
+import { toast as sonnerToast, toast } from "sonner";
 import { getAdminAwareBackPath } from "@/lib/utils";
 import {
   DndContext,
