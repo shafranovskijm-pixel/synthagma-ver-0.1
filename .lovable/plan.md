@@ -1,118 +1,97 @@
 
 
-# Глубокий рефакторинг кодовой базы
+# Оптимизация кодовой базы: мёртвый код, дубликаты, console.log
 
-## Обзор
+## Обнаруженные проблемы
 
-Кодовая база — ~147K строк. Основные проблемы:
-- **BlockEditor.tsx** — 3043 строки, 20+ компонентов в одном файле
-- **AdminMarketplaceManager.tsx** — 2283 строки
-- 75+ использований `: any` в хуках
-- console.log в production-коде (useAuth, useVideoProgress и др.)
-- App.tsx — 280 строк маршрутов без группировки
-- Повторяющиеся паттерны в organization-компонентах (журналы, генераторы документов)
+### 1. Неиспользуемые файлы — ~7,000 строк мёртвого кода
 
-## Стратегия
+25 файлов, которые **нигде не импортируются**. Крупнейшие:
 
-Разбиваем на **5 этапов**, каждый — самостоятельный и не ломает предыдущий. Выполняем последовательно.
-
----
-
-### Этап 1. Декомпозиция BlockEditor (3043 → ~8 файлов)
-
-Создать `src/components/course-builder/block-editor/` с подмодулями:
-
-| Новый файл | Что переносим |
-|---|---|
-| `types.ts` | `BlockType`, `ContentBlock`, `QuizOption`, `SliderSlide`, `StylePreset` + утилиты `createBlock`, `blockTypeConfig`, `blockCategories`, `calloutItems` |
-| `utils.ts` | `linkifyHtml`, `sanitizeHtml`, `renderHtml`, `summarizeExistingContent`, `loadPresets`, `savePresets`, `extractStyle`, `describeStyle` |
-| `parsers.ts` | `blocksToJson`, `jsonToBlocks`, `markdownToBlocks`, `htmlToBlocks`, `normalizeLines` |
-| `BlockRenderer.tsx` | `BlockRenderer`, `RenderBlock` + все read-only рендереры |
-| `blocks/MediaBlocks.tsx` | `ImageBlock`, `VideoBlock`, `AudioBlock`, `DocumentBlock`, `SliderBlock`, `DirectVideoBlock` |
-| `blocks/TextBlocks.tsx` | `ParagraphBlock`, `QuoteBlock`, `CalloutBlock`, `HighlightBlock`, `AccordionBlock`, `QuizBlock` |
-| `SortableBlockItem.tsx` | `SortableBlockItem`, `BlockContent`, `AddBlockButton`, `BlockCategoryGrid`, `AIGenerateButton` |
-| `index.ts` | Реэкспорт всех публичных API (чтобы существующие импорты `from "@/components/course-builder/BlockEditor"` **продолжали работать**) |
-
-**Переходный `BlockEditor.tsx`** — остаётся как реэкспорт из `block-editor/index.ts` для обратной совместимости.
-
----
-
-### Этап 2. Типизация хуков — убрать `any`
-
-Файлы с наибольшим количеством `any`:
-
-| Файл | Проблема | Решение |
+| Файл | Строк | Описание |
 |---|---|---|
-| `useBulkPipeline.ts` | 12× `any` — `error: any`, `data: any`, `q: any`, `l: any` | Типизировать через существующие типы из `types/` |
-| `useCourseBuilder.ts` | `l: any`, `error: any` | Использовать `Lesson`, `Error` |
-| `useCompaniesManager.ts` | `updateData: any` | Определить `CompanyUpdatePayload` |
-| `useCompanyStudentsManager.ts` | `e: any`, `p: any` | Типизировать через DB-типы |
-| `useAdminMarketplace.ts` | `error: any` | `Error` |
+| `StudentCourseStore.tsx` | 769 | Магазин курсов студента — не подключён |
+| `SystemFeaturesManager.tsx` | 701 | Управление фичами — не подключён |
+| `OrgProfileSettings.tsx` | 658 | Настройки профиля орг. — не подключён |
+| `CostCalculator.tsx` | 597 | Калькулятор стоимости — не подключён |
+| `OrgFeaturesTab.tsx` | 567 | Табы фич орг. — не подключён |
+| `PatchUpdatesManager.tsx` | 504 | Менеджер обновлений — не подключён |
+| `ServiceOrdersManager.tsx` | 490 | Менеджер заказов — не подключён |
+| `SystemFeaturesReport.tsx` | 466 | Отчёт фич — не подключён |
+| + 17 файлов поменьше | ~2,200 | UI-компоненты, хуки, диалоги |
 
-Также удалить `console.log` из:
-- `useAuth.tsx` (8 шт)
-- `useVideoProgress.ts` (6 шт)
-- `AdminMarketplaceManager.tsx` (7 шт)
-
----
-
-### Этап 3. Рефакторинг маршрутизации App.tsx
-
-Текущая структура — плоский список 60+ маршрутов. Разбить на модули:
-
-```text
-src/routes/
-  publicRoutes.tsx      — /, /login, /features, /blog, /about, /privacy...
-  studentRoutes.tsx     — /student/*, /course/*/learn
-  organizationRoutes.tsx — /organization/*, /course-builder, /course-*/edit
-  adminRoutes.tsx       — /admin, /sales
-  partnerRoutes.tsx     — /partner/*
-  companyRoutes.tsx     — /company
-```
-
-`App.tsx` станет ~50 строк: провайдеры + `<Routes>{...allRoutes}</Routes>`.
-
-Также вынести обёртку `ProtectedRoute` в хелпер:
-```tsx
-const protectedRoute = (el: JSX.Element, role?: string) => (
-  <ProtectedRoute requiredRole={role}>{el}</ProtectedRoute>
-);
-```
+**Действие**: перенести в `src/_archived/` (не удалять — могут пригодиться), чтобы не загружали бандл и не путали разработку.
 
 ---
 
-### Этап 4. Декомпозиция крупных компонентов
+### 2. Дублирование системы уведомлений (toast)
 
-**AdminMarketplaceManager.tsx (2283 строк)**:
-- Вынести таб-контент в отдельные компоненты (часть уже вынесена — `BulkCourseImporter`, `ContentGeneratorTab` и т.д.)
-- Выделить `MarketplaceCourseEditor.tsx` — форма создания/редактирования курса
-- Выделить `MarketplaceOrdersList.tsx` — таблица заказов
-- Выделить `MarketplaceCategoryManager.tsx` — управление категориями
+Проект использует **две системы** одновременно:
+- **Sonner** (`import { toast } from "sonner"`) — 185 файлов
+- **use-toast** (`import { useToast } from "@/hooks/use-toast"`) — 45 файлов (186 строк хука + 224 строки UI-компонента)
 
-**OrganizationDetailsView.tsx (1900 строк)**:
-- Разбить на табы: `OrgDetailsOverview`, `OrgDetailsSubscription`, `OrgDetailsCourses`
-
-**CoursesTab.tsx (1747 строк)**:
-- Выделить `CourseCard.tsx`, `CourseFilters.tsx`, `CourseActions.tsx`
+Sonner проще и покрывает все кейсы. 45 файлов с `use-toast` нужно мигрировать на Sonner и удалить старую систему (~410 строк).
 
 ---
 
-### Этап 5. Оптимизация ре-рендеров и общие паттерны
+### 3. Console.log в production — 597 штук
 
-1. **Мемоизация тяжёлых компонентов**: обернуть в `React.memo` компоненты-списки (`CourseCard`, `StudentRow`, `BlockItem`)
-2. **Вынести общий паттерн журналов**: `AutoDocumentRegistrationJournal`, `AutoFinalAttestationJournal`, `CopiesDuplicatesJournal` — похожая структура. Создать `BaseJournal` компонент с конфигурацией колонок
-3. **Вынести общий паттерн генераторов документов**: `ActGenerator`, `ConsentGenerator`, `InvoiceGenerator` — обобщить шаблон с preview + export
+- **Компоненты**: 358 шт
+- **Хуки/Страницы**: 239 шт
+
+Замусоривают консоль браузера у пользователей, замедляют рендер. Нужно удалить все `console.log`, оставив только `console.error` для реальных ошибок.
 
 ---
 
-## Гарантии безопасности
+### 4. Крупные файлы — остались после рефакторинга
 
-- Каждый этап — отдельный коммит
-- Все существующие импорты сохраняются через реэкспорты
-- Никакой бизнес-логики не удаляется и не меняется
-- Только структурные изменения: перемещение кода, добавление типов, удаление `console.log`
+Файлы, которые ещё нужно декомпозировать:
 
-## Порядок выполнения
+| Файл | Строк |
+|---|---|
+| `AdminMarketplaceManager.tsx` | 2,236 |
+| `OrganizationDetailsView.tsx` | 1,900 |
+| `CoursesTab.tsx` | 1,747 |
+| `BlockEditorMain.tsx` | 1,461 |
+| `AdminAnalytics.tsx` | 1,435 |
+| `CourseDetailsModal.tsx` | 1,416 |
 
-Начинаем с **Этапа 1** (BlockEditor) — наибольший эффект при минимальном риске, так как все импорты проходят через один файл.
+---
+
+## План работ
+
+### Фаза 1 — Чистка мёртвого кода
+Перенести 25 неиспользуемых файлов (~7K строк) в `src/_archived/`. Это уменьшит размер проекта и ускорит IDE/сборку.
+
+### Фаза 2 — Унификация toast
+Заменить все 45 импортов `use-toast` на `sonner`. Удалить `src/hooks/use-toast.ts` и `src/components/ui/toast.tsx`. Это убирает ~410 строк дублирующего кода и уменьшает бандл.
+
+### Фаза 3 — Удаление console.log
+Удалить все `console.log` из `src/`. Оставить только `console.error` в catch-блоках. ~597 строк.
+
+### Фаза 4 — Декомпозиция оставшихся крупных файлов
+- `AdminMarketplaceManager.tsx` → выделить `MarketplaceCourseForm`, `MarketplaceCategoryManager`
+- `OrganizationDetailsView.tsx` → разбить на `OrgOverviewTab`, `OrgSubscriptionTab`, `OrgCoursesTab`
+- `CoursesTab.tsx` → выделить `CourseCard`, `CourseFilters`
+
+---
+
+## Ожидаемый эффект
+
+| Метрика | До | После |
+|---|---|---|
+| Мёртвый код | ~7,000 строк | 0 |
+| Дублирование toast | 2 системы | 1 (Sonner) |
+| console.log в production | 597 | 0 |
+| Средний размер файла | ~180 строк | ~150 строк |
+
+## Файлы
+
+| Действие | Файлы |
+|---|---|
+| Архивировать (перенести в `_archived/`) | 25 неиспользуемых файлов |
+| Удалить | `src/hooks/use-toast.ts`, `src/components/ui/toast.tsx`, `src/components/ui/toaster.tsx` |
+| Редактировать (toast миграция) | 45 файлов с `use-toast` импортами |
+| Редактировать (console.log) | ~60 файлов |
+| Создать/разбить | 6-8 новых компонентов из крупных файлов |
 
