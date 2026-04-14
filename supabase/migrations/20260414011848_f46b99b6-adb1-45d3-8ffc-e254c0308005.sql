@@ -1,0 +1,2 @@
+ALTER TABLE public.courses ADD COLUMN IF NOT EXISTS hidden_from_catalog boolean NOT NULL DEFAULT false;
+ALTER TABLE public.course_categories ADD COLUMN IF NOT EXISTS hidden_from_catalog boolean NOT NULL DEFAULT false;
