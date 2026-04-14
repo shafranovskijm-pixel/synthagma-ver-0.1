@@ -86,7 +86,7 @@ interface UseCourseStoreManagerProps {
 
 export function useCourseStoreManager({ organizationId, userRole = 'organization', userId }: UseCourseStoreManagerProps) {
   const { checkLimit, refetch: refetchLimits } = useSubscriptionLimits(organizationId);
-  const [activeTab, setActiveTab] = useState<'catalog' | 'my-courses' | 'orders' | 'my-orders'>('catalog');
+  const [activeTab, setActiveTab] = useState<'catalog' | 'my-courses' | 'orders' | 'my-orders' | 'requests'>('catalog');
   const [isLoading, setIsLoading] = useState(true);
   const [catalogCourses, setCatalogCourses] = useState<MarketplaceCourse[]>([]);
   const [myCourses, setMyCourses] = useState<MarketplaceCourse[]>([]);
