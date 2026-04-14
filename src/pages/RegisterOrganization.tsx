@@ -6,11 +6,11 @@ import { Label } from "@/components/ui/label";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { ArrowLeft, Mail, Lock, User, Building, Phone, Loader2, Search, CheckCircle2, Tag, Check } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
-import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { safeInvoke } from "@/utils/safeInvoke";
 import { SUBSCRIPTION_PLANS, YEARLY_DISCOUNT, type SubscriptionPlan } from "@/constants/subscriptionPlans";
 import { getRefCode, clearRefCode, captureRefFromUrl } from "@/utils/referralCookie";
+import { toast } from "sonner";
 
 const planKeys: SubscriptionPlan[] = ['free', 'start', 'standard', 'professional', 'maximum'];
 
@@ -44,8 +44,6 @@ const RegisterOrganization = () => {
   
   const { user, userRole, loading, refreshUserRole } = useAuth();
   const navigate = useNavigate();
-  const { toast } = useToast();
-
   // Capture ref code from URL on mount
   useEffect(() => {
     captureRefFromUrl();
@@ -53,11 +51,7 @@ const RegisterOrganization = () => {
 
   const loadCompanyByInn = async () => {
     if (!inn || inn.length < 10) {
-      toast({
-        title: "Ошибка",
-        description: "Введите корректный ИНН (10 или 12 цифр)",
-        variant: "destructive",
-      });
+      toast.error("Ошибка", { description: Введите корректный ИНН (10 или 12 цифр) });
       return;
     }
 
@@ -78,24 +72,13 @@ const RegisterOrganization = () => {
         setDirectorName(company.management || "");
         setInnLoaded(true);
         
-        toast({
-          title: "Данные загружены",
-          description: `Найдена компания: ${company.shortName || company.name}`,
-        });
+        toast.success("Данные загружены", { description: Найдена компания: ${company.shortName || company.name} });
       } else {
-        toast({
-          title: "Компания не найдена",
-          description: "Проверьте правильность ИНН",
-          variant: "destructive",
-        });
+        toast.error("Компания не найдена", { description: Проверьте правильность ИНН });
       }
     } catch (error: any) {
       console.error("Error loading company:", error);
-      toast({
-        title: "Ошибка загрузки",
-        description: error.message || "Не удалось загрузить данные компании",
-        variant: "destructive",
-      });
+      toast.error("Ошибка загрузки", { description: error.message || "Не удалось загрузить данные компании" });
     } finally {
       setIsLoadingInn(false);
     }
@@ -126,7 +109,7 @@ const RegisterOrganization = () => {
 
       if (error) throw error;
       if (!data) {
-        toast({ title: "Промокод не найден", variant: "destructive" });
+        toast.error("Промокод не найден");
         setPromoApplied(false);
         setPromoDiscount(0);
         return;
@@ -134,13 +117,13 @@ const RegisterOrganization = () => {
 
       const promo = data as any;
       if (promo.valid_until && new Date(promo.valid_until) < new Date()) {
-        toast({ title: "Промокод истёк", variant: "destructive" });
+        toast.error("Промокод истёк");
         setPromoApplied(false);
         setPromoDiscount(0);
         return;
       }
       if (promo.max_uses && promo.used_count >= promo.max_uses) {
-        toast({ title: "Промокод исчерпан", variant: "destructive" });
+        toast.error("Промокод исчерпан");
         setPromoApplied(false);
         setPromoDiscount(0);
         return;
@@ -148,9 +131,9 @@ const RegisterOrganization = () => {
 
       setPromoDiscount(promo.discount_percent);
       setPromoApplied(true);
-      toast({ title: `Скидка ${promo.discount_percent}% применена!` });
+      toast.success("Скидка ${promo.discount_percent}% применена!");
     } catch {
-      toast({ title: "Ошибка проверки промокода", variant: "destructive" });
+      toast.error("Ошибка проверки промокода");
     } finally {
       setIsCheckingPromo(false);
     }
@@ -160,29 +143,17 @@ const RegisterOrganization = () => {
     e.preventDefault();
     
     if (!orgName || !contactName || !email || !phone || !password) {
-      toast({
-        title: "Ошибка",
-        description: "Заполните все обязательные поля (включая телефон)",
-        variant: "destructive",
-      });
+      toast.error("Ошибка", { description: Заполните все обязательные поля (включая телефон) });
       return;
     }
 
     if (password !== confirmPassword) {
-      toast({
-        title: "Ошибка",
-        description: "Пароли не совпадают",
-        variant: "destructive",
-      });
+      toast.error("Ошибка", { description: Пароли не совпадают });
       return;
     }
 
     if (password.length < 6) {
-      toast({
-        title: "Ошибка",
-        description: "Пароль должен быть не менее 6 символов",
-        variant: "destructive",
-      });
+      toast.error("Ошибка", { description: Пароль должен быть не менее 6 символов });
       return;
     }
 
@@ -307,15 +278,9 @@ const RegisterOrganization = () => {
       }
 
       if (selectedPlan && selectedPlan !== 'free') {
-        toast({
-          title: "Спасибо за регистрацию!",
-          description: "Ваш тариф будет подключён после оплаты. Наш менеджер свяжется с вами. Спасибо!",
-        });
+        toast.success("Спасибо за регистрацию!", { description: Ваш тариф будет подключён после оплаты. Наш менеджер свяжется с вами. Спасибо! });
       } else {
-        toast({
-          title: "Успешно!",
-          description: "Организация зарегистрирована. Добро пожаловать!",
-        });
+        toast.success("Успешно!", { description: Организация зарегистрирована. Добро пожаловать! });
       }
       
       // Navigate — role should already be refreshed above
@@ -326,11 +291,7 @@ const RegisterOrganization = () => {
       if (error.message?.includes("already registered")) {
         errorMessage = "Пользователь с таким email уже зарегистрирован";
       }
-      toast({
-        title: "Ошибка регистрации",
-        description: errorMessage,
-        variant: "destructive",
-      });
+      toast.error("Ошибка регистрации", { description: errorMessage });
     }
     
     setIsLoading(false);

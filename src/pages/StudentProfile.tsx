@@ -21,13 +21,11 @@ import { StudentConsentForm } from "@/components/student/StudentConsentForm";
 import { StudentDocumentsUpload } from "@/components/student/StudentDocumentsUpload";
 import { AchievementsPanel } from "@/components/student/AchievementsPanel";
 import { cn } from "@/lib/utils";
-import { useToast } from "@/hooks/use-toast";
-
+import { toast } from "sonner";
 export default function StudentProfile() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const { theme, setTheme } = useTheme();
-  const { toast } = useToast();
   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState("profile");
 
@@ -124,7 +122,7 @@ export default function StudentProfile() {
         ...prev,
         [type]: { ...prev[type], [channel]: !newValue },
       }));
-      toast({ title: "Ошибка", description: "Не удалось сохранить настройку", variant: "destructive" });
+      toast.error("Ошибка", { description: Не удалось сохранить настройку });
     }
   }, [user?.id, notifSettings, toast]);
 
@@ -211,9 +209,9 @@ export default function StudentProfile() {
         .eq("user_id", user.id) as any);
       if (error) throw error;
       queryClient.invalidateQueries({ queryKey: ["student-profile-page"] });
-      toast({ title: "Профиль сохранён" });
+      toast.success("Профиль сохранён");
     } catch {
-      toast({ title: "Ошибка", description: "Не удалось сохранить профиль", variant: "destructive" });
+      toast.error("Ошибка", { description: Не удалось сохранить профиль });
     } finally {
       setProfileSaving(false);
     }
@@ -226,7 +224,7 @@ export default function StudentProfile() {
     const path = `avatars/${user.id}.${ext}`;
     const { error: uploadError } = await supabase.storage.from("student-documents").upload(path, file, { upsert: true });
     if (uploadError) {
-      toast({ title: "Ошибка загрузки", description: uploadError.message, variant: "destructive" });
+      toast.error("Ошибка загрузки", { description: uploadError.message });
       return;
     }
     const { data: urlData } = supabase.storage.from("student-documents").getPublicUrl(path);
@@ -234,7 +232,7 @@ export default function StudentProfile() {
     await (supabase.from("profiles").update({ avatar_url: url } as any).eq("user_id", user.id) as any);
     setAvatarUrl(url);
     queryClient.invalidateQueries({ queryKey: ["student-profile-page"] });
-    toast({ title: "Аватар обновлён" });
+    toast.success("Аватар обновлён");
   };
 
   const handleChangeEmail = async () => {
@@ -243,9 +241,9 @@ export default function StudentProfile() {
     try {
       const { error } = await supabase.auth.updateUser({ email: newEmail });
       if (error) throw error;
-      toast({ title: "Письмо отправлено", description: "Подтвердите новый email по ссылке в письме" });
+      toast.success("Письмо отправлено", { description: Подтвердите новый email по ссылке в письме });
     } catch (err: any) {
-      toast({ title: "Ошибка", description: err.message, variant: "destructive" });
+      toast.error("Ошибка", { description: err.message });
     } finally {
       setEmailSaving(false);
     }
@@ -254,11 +252,11 @@ export default function StudentProfile() {
   const handleChangePassword = async () => {
     if (!newPassword) return;
     if (newPassword !== confirmPassword) {
-      toast({ title: "Ошибка", description: "Пароли не совпадают", variant: "destructive" });
+      toast.error("Ошибка", { description: Пароли не совпадают });
       return;
     }
     if (newPassword.length < 6) {
-      toast({ title: "Ошибка", description: "Пароль должен быть не менее 6 символов", variant: "destructive" });
+      toast.error("Ошибка", { description: Пароль должен быть не менее 6 символов });
       return;
     }
     setPasswordSaving(true);
@@ -267,9 +265,9 @@ export default function StudentProfile() {
       if (error) throw error;
       setNewPassword("");
       setConfirmPassword("");
-      toast({ title: "Пароль изменён" });
+      toast.success("Пароль изменён");
     } catch (err: any) {
-      toast({ title: "Ошибка", description: err.message, variant: "destructive" });
+      toast.error("Ошибка", { description: err.message });
     } finally {
       setPasswordSaving(false);
     }

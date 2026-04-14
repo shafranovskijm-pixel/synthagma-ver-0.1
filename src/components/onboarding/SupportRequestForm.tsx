@@ -3,11 +3,11 @@ import { Send, ImagePlus, X, Loader2, Phone } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 
 import { useAuth } from "@/hooks/useAuth";
 import { useErrorLogger } from "@/hooks/useErrorLogger";
+import { toast } from "sonner";
 
 export function SupportRequestForm() {
   const [description, setDescription] = useState("");
@@ -23,7 +23,7 @@ export function SupportRequestForm() {
     const file = e.target.files?.[0];
     if (!file) return;
     if (file.size > 5 * 1024 * 1024) {
-      toast({ title: "Файл слишком большой", description: "Максимум 5 МБ", variant: "destructive" });
+      toast.error("Файл слишком большой", { description: Максимум 5 МБ });
       return;
     }
     setScreenshot(file);
@@ -39,7 +39,7 @@ export function SupportRequestForm() {
 
   const handleSend = async () => {
     if (!description.trim()) {
-      toast({ title: "Опишите проблему", variant: "destructive" });
+      toast.error("Опишите проблему");
       return;
     }
 
@@ -145,13 +145,13 @@ ${errorsText}${photoUrl ? `\n\n<b>Скриншот:</b> ${photoUrl}` : ""}`;
         console.warn("Telegram notification failed (non-blocking):", telegramErr);
       }
 
-      toast({ title: "Обращение отправлено!", description: "Мы свяжемся с вами в ближайшее время" });
+      toast.success("Обращение отправлено!", { description: Мы свяжемся с вами в ближайшее время });
       setDescription("");
       setContactPhone("");
       removeScreenshot();
     } catch (err) {
       console.error("Support request error:", err);
-      toast({ title: "Ошибка отправки", description: "Попробуйте позже", variant: "destructive" });
+      toast.error("Ошибка отправки", { description: Попробуйте позже });
     } finally {
       setSending(false);
     }

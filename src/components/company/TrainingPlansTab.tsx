@@ -13,8 +13,7 @@ import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "@/hooks/use-toast";
-
+import { toast } from "sonner";
 interface Employee {
   user_id: string;
   full_name: string;
@@ -52,7 +51,6 @@ const statusConfig: Record<string, { label: string; color: string }> = {
 };
 
 export function TrainingPlansTab({ companyId, organizationId, employees }: Props) {
-  const { toast } = useToast();
   const [plans, setPlans] = useState<TrainingPlan[]>([]);
   const [courses, setCourses] = useState<Course[]>([]);
   const [loading, setLoading] = useState(true);
@@ -107,12 +105,12 @@ export function TrainingPlansTab({ companyId, organizationId, employees }: Props
         status: "planned",
       });
       if (error) throw error;
-      toast({ title: "План добавлен" });
+      toast.success("План добавлен");
       setShowAdd(false);
       setFormUserId(""); setFormCourseId(""); setFormCourseName(""); setFormDate(undefined); setFormNotes("");
       loadData();
     } catch (err: any) {
-      toast({ title: "Ошибка", description: err.message, variant: "destructive" });
+      toast.error("Ошибка", { description: err.message });
     } finally {
       setSaving(false);
     }

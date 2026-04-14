@@ -9,14 +9,13 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "@/hooks/use-toast";
 import { Copy, TrendingUp, Users, DollarSign, Wallet, Sparkles, Link as LinkIcon } from "lucide-react";
 import { getBaseUrl } from "@/utils/getBaseUrl";
 import { Link } from "react-router-dom";
+import { toast } from "sonner";
 
 export function PartnerCabinet() {
   const { user } = useAuth();
-  const { toast } = useToast();
   const [partner, setPartner] = useState<any>(null);
   const [registrations, setRegistrations] = useState<any[]>([]);
   const [commissions, setCommissions] = useState<any[]>([]);
@@ -65,10 +64,10 @@ export function PartnerCabinet() {
     try {
       const { data, error } = await supabase.rpc("become_referral_partner");
       if (error) throw error;
-      toast({ title: "Вы стали партнёром!", description: `Ваш реферальный код: ${data}` });
+      toast.success("Вы стали партнёром!", { description: Ваш реферальный код: ${data} });
       loadData();
     } catch (e: any) {
-      toast({ title: "Ошибка", description: e.message, variant: "destructive" });
+      toast.error("Ошибка", { description: e.message });
     } finally {
       setIsBecoming(false);
     }
@@ -77,7 +76,7 @@ export function PartnerCabinet() {
   const handleCopyLink = () => {
     if (!partner) return;
     navigator.clipboard.writeText(`${getBaseUrl()}/register?ref=${partner.code}`);
-    toast({ title: "Ссылка скопирована!" });
+    toast.success("Ссылка скопирована!");
   };
 
   const handleSaveBankDetails = async () => {
@@ -87,9 +86,9 @@ export function PartnerCabinet() {
       .update({ bank_details: bankDetails })
       .eq("id", partner.id);
     if (error) {
-      toast({ title: "Ошибка сохранения", variant: "destructive" });
+      toast.error("Ошибка сохранения");
     } else {
-      toast({ title: "Реквизиты сохранены" });
+      toast.success("Реквизиты сохранены");
     }
   };
 
@@ -97,11 +96,11 @@ export function PartnerCabinet() {
     if (!partner) return;
     const amount = parseFloat(payoutAmount);
     if (isNaN(amount) || amount < 1000) {
-      toast({ title: "Минимальная сумма вывода — 1 000 ₽", variant: "destructive" });
+      toast.error("Минимальная сумма вывода — 1 000 ₽");
       return;
     }
     if (amount > Number(partner.balance)) {
-      toast({ title: "Недостаточно средств", variant: "destructive" });
+      toast.error("Недостаточно средств");
       return;
     }
     const { error } = await supabase.from("referral_payouts").insert({
@@ -109,9 +108,9 @@ export function PartnerCabinet() {
       amount,
     });
     if (error) {
-      toast({ title: "Ошибка запроса", description: error.message, variant: "destructive" });
+      toast.error("Ошибка запроса", { description: error.message });
     } else {
-      toast({ title: "Запрос на вывод отправлен" });
+      toast.success("Запрос на вывод отправлен");
       setPayoutAmount("");
       loadData();
     }
@@ -346,7 +345,7 @@ export function PartnerCabinet() {
                     <pre className="text-sm whitespace-pre-wrap mb-3 font-sans">{text}</pre>
                     <Button size="sm" variant="outline" className="rounded-lg" onClick={() => {
                       navigator.clipboard.writeText(text);
-                      toast({ title: "Текст скопирован!" });
+                      toast.success("Текст скопирован!");
                     }}>
                       <Copy className="w-3 h-3 mr-1" /> Копировать
                     </Button>
@@ -365,7 +364,7 @@ export function PartnerCabinet() {
                     <pre className="text-sm whitespace-pre-wrap mb-3 font-sans">{text}</pre>
                     <Button size="sm" variant="outline" className="rounded-lg" onClick={() => {
                       navigator.clipboard.writeText(text);
-                      toast({ title: "Текст скопирован!" });
+                      toast.success("Текст скопирован!");
                     }}>
                       <Copy className="w-3 h-3 mr-1" /> Копировать
                     </Button>

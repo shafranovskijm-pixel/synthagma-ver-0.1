@@ -2,8 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { safeInvoke } from '@/utils/safeInvoke';
 import { useAuth } from '@/hooks/useAuth';
-import { useToast } from '@/hooks/use-toast';
-
+import { toast } from "sonner";
 interface CompanyData {
   id: string;
   name: string;
@@ -37,7 +36,6 @@ interface CompanyStats {
 
 export function useCompanyDashboard(viewAsUserId?: string) {
   const { user } = useAuth();
-  const { toast } = useToast();
   const [company, setCompany] = useState<CompanyData | null>(null);
   const [employees, setEmployees] = useState<EmployeeWithProgress[]>([]);
   const [stats, setStats] = useState<CompanyStats>({
@@ -162,11 +160,7 @@ export function useCompanyDashboard(viewAsUserId?: string) {
       const count = Number(currentCount) || 0;
 
       if (maxStudents !== -1 && count >= maxStudents) {
-        toast({
-          title: 'Лимит учеников',
-          description: `Максимум ${maxStudents} учеников на текущем тарифе. Обратитесь к организации.`,
-          variant: 'destructive',
-        });
+        toast.error("Лимит учеников", { description: Максимум ${maxStudents} учеников на текущем тарифе. Обратитесь к организации. });
         setAddingEmployee(false);
         return;
       }
@@ -182,19 +176,12 @@ export function useCompanyDashboard(viewAsUserId?: string) {
 
       if (error) throw error;
 
-      toast({
-        title: 'Сотрудник добавлен',
-        description: `${fullName} зарегистрирован в системе`,
-      });
+      toast.success("Сотрудник добавлен", { description: ${fullName} зарегистрирован в системе });
 
       await loadData();
       return data;
     } catch (error: any) {
-      toast({
-        title: 'Ошибка',
-        description: error.message || 'Не удалось добавить сотрудника',
-        variant: 'destructive',
-      });
+      toast.error("Ошибка", { description: error.message || 'Не удалось добавить сотрудника' });
     } finally {
       setAddingEmployee(false);
     }

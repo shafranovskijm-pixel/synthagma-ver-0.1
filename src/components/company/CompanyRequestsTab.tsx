@@ -38,9 +38,9 @@ import {
   MessageSquare,
   Inbox,
 } from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
+import { toast } from "sonner";
 
 interface Employee {
   user_id: string;
@@ -82,7 +82,6 @@ const STATUS_CONFIG: Record<string, { label: string; variant: "default" | "secon
 };
 
 export function CompanyRequestsTab({ companyId, organizationId, employees }: CompanyRequestsTabProps) {
-  const { toast } = useToast();
   const [requests, setRequests] = useState<CompanyRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [showDialog, setShowDialog] = useState(false);
@@ -138,7 +137,7 @@ export function CompanyRequestsTab({ companyId, organizationId, employees }: Com
 
   const handleSubmit = async () => {
     if (!formTitle.trim()) {
-      toast({ title: "Укажите тему заявки", variant: "destructive" });
+      toast.error("Укажите тему заявки");
       return;
     }
     setSubmitting(true);
@@ -169,12 +168,12 @@ export function CompanyRequestsTab({ companyId, organizationId, employees }: Com
         message: `Тип: ${REQUEST_TYPES[formType]}. Тема: ${formTitle.trim()}`,
       } as any);
 
-      toast({ title: "Заявка отправлена" });
+      toast.success("Заявка отправлена");
       setShowDialog(false);
       resetForm();
       loadRequests();
     } catch (e: any) {
-      toast({ title: "Ошибка", description: e.message, variant: "destructive" });
+      toast.error("Ошибка", { description: e.message });
     } finally {
       setSubmitting(false);
     }

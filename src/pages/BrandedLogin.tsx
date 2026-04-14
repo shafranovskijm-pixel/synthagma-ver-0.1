@@ -5,9 +5,9 @@ import { Label } from "@/components/ui/label";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { Mail, Lock, Loader2, User, ExternalLink, Eye, EyeOff } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
-import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { toast } from "sonner";
 
 interface LoginBranding {
   backgroundUrl?: string;
@@ -40,8 +40,6 @@ const BrandedLogin = () => {
   
   const { signIn, user, userRole, loading } = useAuth();
   const navigate = useNavigate();
-  const { toast } = useToast();
-
   // Load organization by slug
   useEffect(() => {
     const loadOrganization = async () => {
@@ -101,12 +99,12 @@ const BrandedLogin = () => {
     e.preventDefault();
     
     if (loginMode === "email" && (!email || !password)) {
-      toast({ title: "Ошибка", description: "Заполните все поля", variant: "destructive" });
+      toast.error("Ошибка", { description: Заполните все поля });
       return;
     }
 
     if (loginMode === "login" && (!login || !password)) {
-      toast({ title: "Ошибка", description: "Заполните все поля", variant: "destructive" });
+      toast.error("Ошибка", { description: Заполните все поля });
       return;
     }
 
@@ -122,7 +120,7 @@ const BrandedLogin = () => {
         .rpc('public_lookup_user_by_login', { login_input: cleanLogin });
       
       if (lookupError || !lookupResult || lookupResult.length === 0) {
-        toast({ title: "Ошибка входа", description: "Неверный логин или пароль", variant: "destructive" });
+        toast.error("Ошибка входа", { description: Неверный логин или пароль });
         setIsLoading(false);
         return;
       }
@@ -134,15 +132,9 @@ const BrandedLogin = () => {
     const { error } = await signIn(signInEmail, cleanPassword);
     
     if (error) {
-      toast({
-        title: "Ошибка входа",
-        description: error.message === "Invalid login credentials" 
-          ? (loginMode === "login" ? "Неверный логин или пароль" : "Неверный email или пароль")
-          : error.message,
-        variant: "destructive",
-      });
+      toast.error("Ошибка входа", { description: error.message === "Invalid login credentials" });
     } else {
-      toast({ title: "Успешно!", description: "Вы вошли в систему" });
+      toast.success("Успешно!", { description: Вы вошли в систему });
     }
     
     setIsLoading(false);

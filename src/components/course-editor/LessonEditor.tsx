@@ -22,10 +22,10 @@ import { BlockEditor, ContentBlock } from "@/components/course-builder/BlockEdit
 import { TestImportDialog } from "@/components/course-builder/TestImportDialog";
 import { supabase } from "@/integrations/supabase/client";
 import { safeInvoke } from "@/utils/safeInvoke";
-import { useToast } from "@/hooks/use-toast";
 import { useExternalStorageWithProgress } from "@/hooks/useExternalStorageWithProgress";
 import { Badge } from "@/components/ui/badge";
 import { MediaLibraryDialog } from "@/components/course-builder/MediaLibraryDialog";
+import { toast } from "sonner";
 // Video preview component for lesson editor
 function VideoPreview({ videoUrl }: { videoUrl: string }) {
   const isIframeEmbed = (content: string): boolean => {
@@ -176,7 +176,6 @@ export const LessonEditor = ({
   courseTitle = "",
   courseDescription = ""
 }: LessonEditorProps) => {
-  const { toast } = useToast();
   const [title, setTitle] = useState("");
   const [type, setType] = useState("text");
   const [blocks, setBlocks] = useState<ContentBlock[]>([]);
@@ -288,11 +287,7 @@ export const LessonEditor = ({
 
   const handleGenerateContent = async () => {
     if (!title.trim()) {
-      toast({
-        title: "Введите название урока",
-        description: "Для генерации контента нужно указать название урока",
-        variant: "destructive",
-      });
+      toast.error("Введите название урока", { description: Для генерации контента нужно указать название урока });
       return;
     }
 
@@ -310,11 +305,7 @@ export const LessonEditor = ({
       if (error) throw error;
 
       if (data.error) {
-        toast({
-          title: "Ошибка генерации",
-          description: data.error,
-          variant: "destructive",
-        });
+        toast.error("Ошибка генерации", { description: data.error });
         return;
       }
 
@@ -327,10 +318,7 @@ export const LessonEditor = ({
             order_index: index,
           }))
         );
-        toast({
-          title: "✨ Тест сгенерирован",
-          description: `Создано ${data.questions.length} вопросов. Отредактируйте их при необходимости.`,
-        });
+        toast.success("✨ Тест сгенерирован", { description: Создано ${data.questions.length} вопросов. Отредактируйте их при необходимости. });
       } else if (data.blocks) {
         const generatedBlocks: ContentBlock[] = data.blocks.map((block: any) => ({
           id: crypto.randomUUID(),
@@ -338,18 +326,11 @@ export const LessonEditor = ({
           content: block.content,
         }));
         setBlocks(generatedBlocks);
-        toast({
-          title: "✨ Контент сгенерирован",
-          description: "Отредактируйте содержание при необходимости и сохраните урок.",
-        });
+        toast.success("✨ Контент сгенерирован", { description: Отредактируйте содержание при необходимости и сохраните урок. });
       }
     } catch (error) {
       console.error("Generate content error:", error);
-      toast({
-        title: "Ошибка",
-        description: "Не удалось сгенерировать контент",
-        variant: "destructive",
-      });
+      toast.error("Ошибка", { description: Не удалось сгенерировать контент });
     } finally {
       setIsGenerating(false);
     }
@@ -505,18 +486,11 @@ export const LessonEditor = ({
                             
                             if (result) {
                               setVideoUrl(result.url);
-                              toast({
-                                title: "Видео загружено",
-                                description: "Файл успешно загружен",
-                              });
+                              toast.success("Видео загружено", { description: Файл успешно загружен });
                             }
                           } catch (err: any) {
                             if (err.message !== 'Загрузка отменена') {
-                              toast({
-                                title: "Ошибка загрузки",
-                                description: err.message || "Не удалось загрузить видео",
-                                variant: "destructive",
-                              });
+                              toast.error("Ошибка загрузки", { description: err.message || "Не удалось загрузить видео" });
                             }
                           } finally {
                             setVideoUploadProgress(null);

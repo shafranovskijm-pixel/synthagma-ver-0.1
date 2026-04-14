@@ -4,9 +4,9 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Star, Check, Trash2, Clock } from "lucide-react";
-import { toast } from "@/hooks/use-toast";
 import { format, differenceInMonths } from "date-fns";
 import { ru } from "date-fns/locale";
+import { toast } from "sonner";
 
 interface Testimonial {
   id: string;
@@ -42,9 +42,9 @@ export function TestimonialsManager() {
       .update({ is_approved: true })
       .eq("id", id);
     if (error) {
-      toast({ title: "Ошибка", description: error.message, variant: "destructive" });
+      toast.error("Ошибка", { description: error.message });
     } else {
-      toast({ title: "Отзыв одобрен" });
+      toast.success("Отзыв одобрен");
       fetchTestimonials();
     }
   };
@@ -54,9 +54,9 @@ export function TestimonialsManager() {
       .update({ is_approved: false })
       .eq("id", id);
     if (error) {
-      toast({ title: "Ошибка", description: error.message, variant: "destructive" });
+      toast.error("Ошибка", { description: error.message });
     } else {
-      toast({ title: "Отзыв скрыт" });
+      toast.success("Отзыв скрыт");
       fetchTestimonials();
     }
   };
@@ -67,9 +67,9 @@ export function TestimonialsManager() {
       .delete()
       .eq("id", id);
     if (error) {
-      toast({ title: "Ошибка", description: error.message, variant: "destructive" });
+      toast.error("Ошибка", { description: error.message });
     } else {
-      toast({ title: "Отзыв удалён" });
+      toast.success("Отзыв удалён");
       fetchTestimonials();
     }
   };

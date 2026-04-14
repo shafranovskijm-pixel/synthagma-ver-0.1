@@ -2,12 +2,12 @@ import { useRef, useState } from 'react';
 import { X, Download, Link2, Printer } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
-import { toast } from '@/hooks/use-toast';
 import { getBaseUrl } from '@/utils/getBaseUrl';
 import { format } from 'date-fns';
 import { ru } from 'date-fns/locale';
 import type { CommercialProposal, ProposalServiceItem } from '@/hooks/useSalesManager';
 import { SUBSCRIPTION_PLANS, YEARLY_DISCOUNT, formatStorageSize, type SubscriptionPlan } from '@/constants/subscriptionPlans';
+import { toast } from "sonner";
 
 interface Props {
   open: boolean;
@@ -282,7 +282,7 @@ export function ProposalPreview({ open, onClose, proposal, services, showActions
   const handleCopyLink = () => {
     const url = `${getBaseUrl()}/proposal/${proposal.id}`;
     navigator.clipboard.writeText(url);
-    toast({ title: 'Ссылка скопирована', description: url });
+    toast.success("Ссылка скопирована", { description: url });
   };
 
   return (

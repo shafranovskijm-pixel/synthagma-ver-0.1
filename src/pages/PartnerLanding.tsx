@@ -8,18 +8,17 @@ import { motion } from "framer-motion";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { useState, useEffect } from "react";
-import { useToast } from "@/hooks/use-toast";
 import { Footer } from "@/components/landing/Footer";
 import { Helmet } from "react-helmet-async";
 import { getBaseUrl } from "@/utils/getBaseUrl";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { FloatingParticles } from "@/components/landing/FloatingParticles";
+import { toast } from "sonner";
 
 const PartnerLanding = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const { toast } = useToast();
   const [isPartner, setIsPartner] = useState(false);
   const [partnerCode, setPartnerCode] = useState<string | null>(null);
   const [isBecoming, setIsBecoming] = useState(false);
@@ -46,9 +45,9 @@ const PartnerLanding = () => {
       if (error) throw error;
       setPartnerCode(data);
       setIsPartner(true);
-      toast({ title: "Вы стали партнёром!", description: `Ваш реферальный код: ${data}` });
+      toast.success("Вы стали партнёром!", { description: Ваш реферальный код: ${data} });
     } catch (e: any) {
-      toast({ title: "Ошибка", description: e.message, variant: "destructive" });
+      toast.error("Ошибка", { description: e.message });
     } finally { setIsBecoming(false); }
   };
 
@@ -89,7 +88,7 @@ const PartnerLanding = () => {
 
   const copyText = (text: string) => {
     navigator.clipboard.writeText(text);
-    toast({ title: "Текст скопирован!" });
+    toast.success("Текст скопирован!");
   };
 
   return (

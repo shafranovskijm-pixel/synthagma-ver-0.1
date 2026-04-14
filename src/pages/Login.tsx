@@ -7,12 +7,12 @@ import { Link, useNavigate } from "react-router-dom";
 import { ArrowLeft, Mail, Lock, Loader2, Shield, Building2, GraduationCap, User, Eye, EyeOff, RefreshCw } from "lucide-react";
 import { forceClientRefresh } from "@/utils/forceClientRefresh";
 import { useAuth } from "@/hooks/useAuth";
-import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { safeInvoke } from "@/utils/safeInvoke";
 import { getBaseUrl } from "@/utils/getBaseUrl";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
+import { toast } from "sonner";
   Dialog,
   DialogContent,
   DialogDescription,
@@ -40,8 +40,6 @@ const Login = () => {
   
   const { signIn, user, userRole, loading } = useAuth();
   const navigate = useNavigate();
-  const { toast } = useToast();
-
   useEffect(() => {
     if (user && !loading) {
       // Wait for userRole to be loaded before navigating
@@ -63,20 +61,12 @@ const Login = () => {
     e.preventDefault();
     
     if (loginMode === "email" && (!email || !password)) {
-      toast({
-        title: "Ошибка",
-        description: "Заполните все поля",
-        variant: "destructive",
-      });
+      toast.error("Ошибка", { description: Заполните все поля });
       return;
     }
 
     if (loginMode === "login" && (!login || !password)) {
-      toast({
-        title: "Ошибка",
-        description: "Заполните все поля",
-        variant: "destructive",
-      });
+      toast.error("Ошибка", { description: Заполните все поля });
       return;
     }
 
@@ -93,11 +83,7 @@ const Login = () => {
         .rpc('public_lookup_user_by_login', { login_input: cleanLogin });
       
       if (lookupError || !lookupResult || lookupResult.length === 0) {
-        toast({
-          title: "Ошибка входа",
-          description: "Неверный логин или пароль",
-          variant: "destructive",
-        });
+        toast.error("Ошибка входа", { description: Неверный логин или пароль });
         setIsLoading(false);
         return;
       }
@@ -109,18 +95,9 @@ const Login = () => {
     const { error } = await signIn(signInEmail, cleanPassword);
     
     if (error) {
-      toast({
-        title: "Ошибка входа",
-        description: error.message === "Invalid login credentials" 
-          ? (loginMode === "login" ? "Неверный логин или пароль" : "Неверный email или пароль")
-          : error.message,
-        variant: "destructive",
-      });
+      toast.error("Ошибка входа", { description: error.message === "Invalid login credentials" });
     } else {
-      toast({
-        title: "Успешно!",
-        description: "Вы вошли в систему",
-      });
+      toast.success("Успешно!", { description: Вы вошли в систему });
       // Role is already loaded in context by signIn, useEffect will navigate
     }
     setIsLoading(false);
@@ -128,11 +105,7 @@ const Login = () => {
 
   const handleForgotPassword = async () => {
     if (!resetEmail) {
-      toast({
-        title: "Ошибка",
-        description: "Введите email",
-        variant: "destructive",
-      });
+      toast.error("Ошибка", { description: Введите email });
       return;
     }
 
@@ -151,19 +124,12 @@ const Login = () => {
         throw response.error;
       }
 
-      toast({
-        title: "Письмо отправлено",
-        description: "Проверьте почту для восстановления пароля",
-      });
+      toast.success("Письмо отправлено", { description: Проверьте почту для восстановления пароля });
       setShowForgotPassword(false);
       setResetEmail("");
     } catch (error: any) {
       console.error("Password reset error:", error);
-      toast({
-        title: "Ошибка",
-        description: error.message || "Не удалось отправить письмо",
-        variant: "destructive",
-      });
+      toast.error("Ошибка", { description: error.message || "Не удалось отправить письмо" });
     }
     
     setIsResetting(false);
@@ -189,11 +155,7 @@ const Login = () => {
       });
 
       if (signUpError) {
-        toast({
-          title: "Ошибка",
-          description: "Не удалось создать демо-аккаунт",
-          variant: "destructive",
-        });
+        toast.error("Ошибка", { description: Не удалось создать демо-аккаунт });
         setDemoLoading(null);
         return;
       }
@@ -235,28 +197,17 @@ const Login = () => {
       // Sign in with new account
       const { error: loginError } = await signIn(account.email, account.password);
       if (loginError) {
-        toast({
-          title: "Ошибка",
-          description: "Не удалось войти",
-          variant: "destructive",
-        });
+        toast.error("Ошибка", { description: Не удалось войти });
         setDemoLoading(null);
         return;
       }
     } else if (error) {
-      toast({
-        title: "Ошибка входа",
-        description: error.message,
-        variant: "destructive",
-      });
+      toast.error("Ошибка входа", { description: error.message });
       setDemoLoading(null);
       return;
     }
 
-    toast({
-      title: "Добро пожаловать!",
-      description: `Вы вошли как ${account.label}`,
-    });
+    toast.success("Добро пожаловать!", { description: Вы вошли как ${account.label} });
 
     // Navigate based on role
     if (accountType === "admin") {

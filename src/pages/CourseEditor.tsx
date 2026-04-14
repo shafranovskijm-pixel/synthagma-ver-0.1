@@ -22,7 +22,6 @@ import {
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast as sonnerToast } from "sonner";
-import { useToast } from "@/hooks/use-toast";
 import { getAdminAwareBackPath } from "@/lib/utils";
 import {
   DndContext,
@@ -95,7 +94,6 @@ interface TestQuestion {
 const CourseEditor = () => {
   const { courseId } = useParams();
   const navigate = useNavigate();
-  const { toast } = useToast();
   const { user } = useAuth();
 
   const [course, setCourse] = useState<Course | null>(null);
@@ -190,16 +188,9 @@ const CourseEditor = () => {
     setIsSaving(false);
 
     if (error) {
-      toast({
-        title: "Ошибка",
-        description: "Не удалось сохранить курс",
-        variant: "destructive",
-      });
+      toast.error("Ошибка", { description: Не удалось сохранить курс });
     } else {
-      toast({
-        title: "Сохранено",
-        description: "Изменения курса сохранены",
-      });
+      toast.success("Сохранено", { description: Изменения курса сохранены });
     }
   };
 
@@ -213,12 +204,7 @@ const CourseEditor = () => {
 
     if (!error) {
       setCourse({ ...course, is_published: !course.is_published });
-      toast({
-        title: course.is_published ? "Снято с публикации" : "Опубликовано",
-        description: course.is_published
-          ? "Курс больше не доступен ученикам"
-          : "Курс теперь доступен ученикам",
-      });
+      toast.success(course.is_published ? "Снято с публикации" : "Опубликовано", { description: course.is_published });
     }
   };
 
@@ -336,7 +322,7 @@ const CourseEditor = () => {
               : l
           )
         );
-        toast({ title: "Урок обновлён" });
+        toast.success("Урок обновлён");
       }
     } else {
       // Create new lesson
@@ -368,7 +354,7 @@ const CourseEditor = () => {
         }
 
         setLessons([...lessons, newLesson]);
-        toast({ title: "Урок создан" });
+        toast.success("Урок создан");
       }
     }
 
@@ -387,7 +373,7 @@ const CourseEditor = () => {
 
     if (!error) {
       setLessons(lessons.filter((l) => l.id !== deletingLessonId));
-      toast({ title: "Урок удалён" });
+      toast.success("Урок удалён");
     }
 
     setDeletingLessonId(null);
@@ -426,10 +412,7 @@ const CourseEditor = () => {
       }
     }
 
-    toast({
-      title: "Импорт завершён",
-      description: `Импортировано ${data.lessons.length} уроков`,
-    });
+    toast.success("Импорт завершён", { description: Импортировано ${data.lessons.length} уроков });
 
     setIsGitHubImportOpen(false);
   };

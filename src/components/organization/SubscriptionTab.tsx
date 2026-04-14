@@ -4,7 +4,6 @@ import { supabase } from "@/integrations/supabase/client";
 
 import { SUBSCRIPTION_PLANS, type SubscriptionPlan, type PlanInfo, formatStorageSize, YEARLY_DISCOUNT } from "@/constants/subscriptionPlans";
 import { useOrgDashboard } from "@/contexts/OrgDashboardContext";
-import { toast } from "@/hooks/use-toast";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Button } from "@/components/ui/button";
@@ -21,6 +20,7 @@ import {
 } from "lucide-react";
 import { differenceInDays, format } from "date-fns";
 import { ru } from "date-fns/locale";
+import { toast } from "sonner";
 
 const PLAN_ORDER: SubscriptionPlan[] = ['free', 'start', 'standard', 'professional', 'maximum'];
 
@@ -160,9 +160,9 @@ export function SubscriptionTab() {
     } as any);
 
     if (error) {
-      toast({ title: "Ошибка", description: error.message, variant: "destructive" });
+      toast.error("Ошибка", { description: error.message });
     } else {
-      toast({ title: "Заявка отправлена", description: "Мы свяжемся с вами для оформления перехода на новый тариф" });
+      toast.success("Заявка отправлена", { description: Мы свяжемся с вами для оформления перехода на новый тариф });
       setPendingRequest({ requested_plan: selectedPlan, created_at: new Date().toISOString() });
       setShowUpgradeDialog(false);
       setMessage("");
@@ -233,7 +233,7 @@ export function SubscriptionTab() {
       if (err) throw err;
       nav(`/invoice/${(invoice as any).id}`);
     } catch (e: any) {
-      toast({ title: "Ошибка", description: e.message, variant: "destructive" });
+      toast.error("Ошибка", { description: e.message });
     } finally {
       setGeneratingInvoice(false);
     }

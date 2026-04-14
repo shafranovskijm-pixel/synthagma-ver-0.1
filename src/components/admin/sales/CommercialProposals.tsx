@@ -13,9 +13,9 @@ import { ProposalEditor } from './ProposalEditor';
 import { ProposalPreview } from './ProposalPreview';
 import { format } from 'date-fns';
 import { ru } from 'date-fns/locale';
-import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { SUBSCRIPTION_PLANS, YEARLY_DISCOUNT, formatStorageSize, type SubscriptionPlan } from '@/constants/subscriptionPlans';
+import { toast } from "sonner";
 
 const STATUS_MAP: Record<string, { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline' }> = {
   draft: { label: 'Черновик', variant: 'secondary' },
@@ -151,7 +151,7 @@ export function CommercialProposals() {
   const copyLink = (p: CommercialProposal) => {
     const url = `${getBaseUrl()}/proposal/${p.id}`;
     navigator.clipboard.writeText(url);
-    toast({ title: 'Ссылка скопирована', description: url });
+    toast.success("Ссылка скопирована", { description: url });
   };
 
   const openSendDialog = async (p: CommercialProposal) => {
@@ -165,7 +165,7 @@ export function CommercialProposals() {
   const handleSendEmail = async () => {
     if (!sendProposal) return;
     if (!sendEmail || !sendEmail.includes('@')) {
-      toast({ title: 'Ошибка', description: 'Введите корректный email', variant: 'destructive' });
+      toast.error("Ошибка", { description: Введите корректный email });
       return;
     }
     setIsSending(true);
@@ -181,11 +181,11 @@ export function CommercialProposals() {
       });
       if (error) throw error;
       await updateProposalStatus(sendProposal.id, 'sent');
-      toast({ title: 'КП отправлено', description: `Письмо отправлено на ${sendEmail}` });
+      toast.success("КП отправлено", { description: Письмо отправлено на ${sendEmail} });
       setSendDialogOpen(false);
     } catch (err: any) {
       console.error('Error sending proposal email:', err);
-      toast({ title: 'Ошибка отправки', description: err.message || 'Не удалось отправить письмо', variant: 'destructive' });
+      toast.error("Ошибка отправки", { description: err.message || 'Не удалось отправить письмо' });
     } finally {
       setIsSending(false);
     }

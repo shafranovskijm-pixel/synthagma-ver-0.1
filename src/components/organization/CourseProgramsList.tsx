@@ -4,8 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
-import { toast } from "@/hooks/use-toast";
-
+import { toast } from "sonner";
 interface CourseProgramsListProps {
   organizationId: string | null;
 }
@@ -105,10 +104,10 @@ export function CourseProgramsList({ organizationId }: CourseProgramsListProps) 
         },
       });
 
-      toast({ title: "Заявка отправлена", description: "Мы свяжемся с вами для уточнения деталей" });
+      toast.success("Заявка отправлена", { description: Мы свяжемся с вами для уточнения деталей });
       fetchCourses();
     } catch (e: any) {
-      toast({ title: "Ошибка", description: e.message, variant: "destructive" });
+      toast.error("Ошибка", { description: e.message });
     } finally {
       setOrdering(null);
     }

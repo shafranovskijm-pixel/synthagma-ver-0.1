@@ -5,8 +5,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Link, useNavigate } from "react-router-dom";
 import { ArrowLeft, Lock, Loader2, CheckCircle } from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
 const ResetPassword = () => {
   const [password, setPassword] = useState("");
@@ -15,8 +15,6 @@ const ResetPassword = () => {
   const [isSuccess, setIsSuccess] = useState(false);
   
   const navigate = useNavigate();
-  const { toast } = useToast();
-
   useEffect(() => {
     // Check if we have access token in URL (from email link)
     const hashParams = new URLSearchParams(window.location.hash.substring(1));
@@ -26,11 +24,7 @@ const ResetPassword = () => {
       // Also check query params
       const queryParams = new URLSearchParams(window.location.search);
       if (!queryParams.get('code')) {
-        toast({
-          title: "Ошибка",
-          description: "Недействительная ссылка для сброса пароля",
-          variant: "destructive",
-        });
+        toast.error("Ошибка", { description: Недействительная ссылка для сброса пароля });
       }
     }
   }, [toast]);
@@ -39,29 +33,17 @@ const ResetPassword = () => {
     e.preventDefault();
     
     if (!password || !confirmPassword) {
-      toast({
-        title: "Ошибка",
-        description: "Заполните все поля",
-        variant: "destructive",
-      });
+      toast.error("Ошибка", { description: Заполните все поля });
       return;
     }
 
     if (password.length < 6) {
-      toast({
-        title: "Ошибка",
-        description: "Пароль должен быть не менее 6 символов",
-        variant: "destructive",
-      });
+      toast.error("Ошибка", { description: Пароль должен быть не менее 6 символов });
       return;
     }
 
     if (password !== confirmPassword) {
-      toast({
-        title: "Ошибка",
-        description: "Пароли не совпадают",
-        variant: "destructive",
-      });
+      toast.error("Ошибка", { description: Пароли не совпадают });
       return;
     }
 
@@ -72,17 +54,10 @@ const ResetPassword = () => {
     });
 
     if (error) {
-      toast({
-        title: "Ошибка",
-        description: error.message,
-        variant: "destructive",
-      });
+      toast.error("Ошибка", { description: error.message });
     } else {
       setIsSuccess(true);
-      toast({
-        title: "Успешно!",
-        description: "Пароль успешно изменён",
-      });
+      toast.success("Успешно!", { description: Пароль успешно изменён });
       
       // Redirect to login after 2 seconds
       setTimeout(() => {
