@@ -72,12 +72,17 @@ export function useCourses(organizationId: string | null, options?: UseCoursesOp
 
   // Sync preloaded data from parent when it changes
   useEffect(() => {
-    if (options?.initialCourses) {
+    if (options?.initialCourses && options.initialCourses.length > 0) {
       setCourses(options.initialCourses);
       setIsLoading(false);
       setError(null);
+    } else if (parentReady) {
+      // Parent finished loading but returned empty — that's genuinely empty
+      setCourses(options?.initialCourses || []);
+      setIsLoading(false);
+      setError(null);
     }
-  }, [options?.initialCourses]);
+  }, [options?.initialCourses, parentReady]);
 
   useEffect(() => {
     if (options?.initialCategories) {
