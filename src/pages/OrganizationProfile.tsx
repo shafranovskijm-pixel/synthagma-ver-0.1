@@ -188,6 +188,7 @@ function ProfileContent() {
     toast.success("Аватар удалён");
   };
 
+  const handleSaveProfile = async () => {
     setSaving(true);
     try {
       const { error } = await supabase.from("profiles").update({
