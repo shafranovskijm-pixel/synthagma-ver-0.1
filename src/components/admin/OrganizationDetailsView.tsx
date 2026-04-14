@@ -1,148 +1,25 @@
-import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Progress } from "@/components/ui/progress";
-
-import { Switch } from "@/components/ui/switch";
+import { Card, CardContent } from "@/components/ui/card";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
-import { toast } from "sonner";
-import {
-  ArrowLeft,
-  Users,
-  BookOpen,
-  FileText,
-  Settings,
-  BarChart3,
-  HardDrive,
-  Sparkles,
-  CheckCircle2,
-  Clock,
-  XCircle,
-  Loader2,
-  Search,
-  Building2,
-  Save,
-  TrendingUp,
-  AlertTriangle,
-  AlertCircle,
-  Bell,
-  MessageSquare,
-  ShieldOff,
-  
-  History,
-  Eye,
-  EyeOff,
-  ExternalLink,
-  Calendar,
-  Copy,
-  KeyRound,
-  Download,
-  Trash2,
-  RefreshCw,
-  
-  Image,
-  Upload,
-  GripVertical,
-  Crown,
-} from "lucide-react";
-import { safeInvoke } from "@/utils/safeInvoke";
-import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent } from "@dnd-kit/core";
-import { SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy, useSortable, arrayMove } from "@dnd-kit/sortable";
-import { CSS } from "@dnd-kit/utilities";
+import { Loader2, ArrowLeft, Users, BookOpen, Settings, Crown, History, MessageSquare, Bell, ShieldOff, AlertTriangle, ExternalLink, Calendar, Image } from "lucide-react";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line } from "recharts";
+import { useOrgDetailsView, type Organization } from "@/hooks/useOrgDetailsView";
+import { OrgStudentsPanel } from "./org-details/OrgStudentsPanel";
+import { OrgCoursesPanel } from "./org-details/OrgCoursesPanel";
+import { OrgSettingsPanel } from "./org-details/OrgSettingsPanel";
+import { OrgStatsPanel } from "./org-details/OrgStatsPanel";
+import { OrgTariffsPanel } from "./org-details/OrgTariffsPanel";
 import { OrgCommentsTab } from "./OrgCommentsTab";
 import { OrgRemindersTab } from "./OrgRemindersTab";
-
 import { OrgAuditLogsTab } from "./OrgAuditLogsTab";
-import { getPlanInfo, type SubscriptionPlan } from "@/constants/subscriptionPlans";
 import { SkillspaceImportDialog } from "./SkillspaceImportDialog";
 import { SkillspaceBatchImportDialog } from "./SkillspaceBatchImportDialog";
 import { StudentBulkImportDialog } from "./StudentBulkImportDialog";
-import { SortableCourseRow } from "./SortableCourseRow";
-
-interface Organization {
-  id: string;
-  name: string;
-  email: string;
-  phone: string | null;
-  inn: string | null;
-  contact_name: string | null;
-  ai_enabled: boolean;
-  ai_provider?: string;
-  frdo_enabled?: boolean;
-  created_at: string;
-  storage_limit_bytes?: number;
-  notify_on_limit_80?: boolean;
-  notify_on_limit_exceeded?: boolean;
-  subscription_plan?: string;
-  tariff_custom_label?: string;
-  paid_until?: string;
-}
-
-interface Student {
-  id: string;
-  user_id: string;
-  full_name: string | null;
-  email: string | null;
-  login: string | null;
-  enrollments: {
-    course_title: string;
-    progress: number;
-    status: string;
-    started_at: string;
-  }[];
-}
-
-interface Course {
-  id: string;
-  title: string;
-  is_published: boolean;
-  students_count: number;
-  lessons_count: number;
-  catalog_order: number;
-}
-
-interface OrgDocument {
-  id: string;
-  name: string;
-  type: string;
-  file_url: string | null;
-  created_at: string;
-}
-
-interface UsageData {
-  storage_bytes: number;
-  ai_generations_count: number;
-}
-
-interface UsageHistoryItem {
-  month: string;
-  month_label: string;
-  ai_generations_count: number;
-  storage_bytes: number;
-}
-
-interface OrganizationDetailsViewProps {
-  organization: Organization;
-  onBack: () => void;
-}
+import { supabase } from "@/integrations/supabase/client";
 
 const PLAN_BADGE_COLORS: Record<string, string> = {
   free: "bg-slate-500/10 text-slate-600 border-slate-500/20",
@@ -152,587 +29,99 @@ const PLAN_BADGE_COLORS: Record<string, string> = {
   maximum: "bg-emerald-500/10 text-emerald-600 border-emerald-500/20",
 };
 
-const cardClass = "shadow-sm hover:shadow-md transition-shadow duration-200";
+interface OrganizationDetailsViewProps {
+  organization: Organization;
+  onBack: () => void;
+}
 
 export function OrganizationDetailsView({ organization, onBack }: OrganizationDetailsViewProps) {
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState("courses");
-  const [showSkillspaceImport, setShowSkillspaceImport] = useState(false);
-  const [showSkillspaceBatchImport, setShowSkillspaceBatchImport] = useState(false);
-  const [showStudentBulkImport, setShowStudentBulkImport] = useState(false);
-  const [pendingEnrollmentsCount, setPendingEnrollmentsCount] = useState(0);
-  const [skillspaceUpdateCourse, setSkillspaceUpdateCourse] = useState<{ id: string; title: string } | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [students, setStudents] = useState<Student[]>([]);
-  const [courses, setCourses] = useState<Course[]>([]);
-  const [documents, setDocuments] = useState<OrgDocument[]>([]);
-  const [usage, setUsage] = useState<UsageData>({ storage_bytes: 0, ai_generations_count: 0 });
-  const [usageHistory, setUsageHistory] = useState<UsageHistoryItem[]>([]);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [settings, setSettings] = useState({
-    ai_enabled: organization.ai_enabled,
-    ai_provider: organization.ai_provider || "gigachat",
-    frdo_enabled: organization.frdo_enabled ?? false,
-    name: organization.name,
-    email: organization.email,
-    phone: organization.phone || "",
-    inn: organization.inn || "",
-    contact_name: organization.contact_name || "",
-    storage_limit_bytes: organization.storage_limit_bytes || getPlanInfo((organization.subscription_plan as SubscriptionPlan) || 'free').limits.storageBytes,
-    notify_on_limit_80: organization.notify_on_limit_80 ?? true,
-    notify_on_limit_exceeded: organization.notify_on_limit_exceeded ?? true,
-  });
-  const [isSaving, setIsSaving] = useState(false);
-  const [credentials, setCredentials] = useState<{ login_email: string; login_password: string } | null>(null);
-  const [showPassword, setShowPassword] = useState(false);
-  const [generatingCredentials, setGeneratingCredentials] = useState(false);
-  const [resettingPassword, setResettingPassword] = useState(false);
-  const [migratingCourseId, setMigratingCourseId] = useState<string | null>(null);
-  const [migrationResult, setMigrationResult] = useState<Record<string, { status: 'success' | 'error'; message: string }>>({});
-  const [orgBranding, setOrgBranding] = useState<{ coverUrl?: string; primaryColor?: string; logoUrl?: string }>({});
-  const [tariffCustomLabel, setTariffCustomLabel] = useState(organization.tariff_custom_label || "");
-  const [tariffPaidUntil, setTariffPaidUntil] = useState(organization.paid_until || "");
-  const [isSavingTariff, setIsSavingTariff] = useState(false);
-  const [customLimits, setCustomLimits] = useState({
-    maxCourses: (organization as any).custom_max_courses as number | null,
-    maxStudents: (organization as any).custom_max_students as number | null,
-    maxTrainedPerMonth: (organization as any).custom_max_trained_per_month as number | null,
-    aiGenerationsLimit: (organization as any).custom_ai_generations_limit as number | null,
-    storageLimitBytes: (organization as any).custom_storage_limit_bytes as number | null,
-  });
-  const [customCategories, setCustomCategories] = useState<string[]>(
-    (organization as any).custom_enabled_categories || []
-  );
-  const [customPrice, setCustomPrice] = useState<number | null>((organization as any).custom_price ?? null);
-  const [customDiscount, setCustomDiscount] = useState<number | null>((organization as any).custom_discount ?? null);
+  const vm = useOrgDetailsView(organization);
 
-  const planKey = (organization.subscription_plan as SubscriptionPlan) || 'free';
-  const planInfo = getPlanInfo(planKey);
-
-  // Calculate limit warnings
-  const storageLimitPercent = (usage.storage_bytes / settings.storage_limit_bytes) * 100;
-  const aiGenerationsLimit = planKey === 'free' ? 3 : Infinity;
-  const aiGenerationsPercent = aiGenerationsLimit === Infinity ? 0 : (usage.ai_generations_count / aiGenerationsLimit) * 100;
-  const isStorageWarning = storageLimitPercent >= 80;
-  const isStorageExceeded = storageLimitPercent >= 100;
-  const isAiGenWarning = aiGenerationsLimit !== Infinity && aiGenerationsPercent >= 80;
-  const isAiGenExceeded = aiGenerationsLimit !== Infinity && aiGenerationsPercent >= 100;
-
-  // AI should be auto-blocked when generations exceeded on free plan
-  const shouldBlockAI = isAiGenExceeded;
-
-  // Stats
-  const [stats, setStats] = useState({
-    totalStudents: 0,
-    totalCourses: 0,
-    completedEnrollments: 0,
-    averageProgress: 0,
-  });
-
-  const dndSensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
-    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
-  );
-
-  const handleCourseDragEnd = useCallback(async (event: DragEndEvent) => {
-    const { active, over } = event;
-    if (!over || active.id === over.id) return;
-
-    const oldIndex = courses.findIndex(c => c.id === active.id);
-    const newIndex = courses.findIndex(c => c.id === over.id);
-    if (oldIndex === -1 || newIndex === -1) return;
-
-    const reordered = arrayMove(courses, oldIndex, newIndex);
-    setCourses(reordered);
-
-    // Save new order to DB
-    const updates = reordered.map((c, i) => 
-      supabase.from("courses").update({ catalog_order: i } as any).eq("id", c.id)
-    );
-    await Promise.all(updates);
-  }, [courses]);
-
-  useEffect(() => {
-    fetchAllData();
-  }, [organization.id]);
-
-  const fetchAllData = async () => {
-    setLoading(true);
-    try {
-      await Promise.all([
-        fetchStudents(),
-        fetchCourses(),
-        fetchDocuments(),
-        fetchUsage(),
-        fetchUsageHistory(),
-        fetchCredentials(),
-        fetchBranding(),
-        fetchPendingEnrollmentsCount(),
-      ]);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const fetchStudents = async () => {
-    try {
-      const { data: profiles, error } = await supabase
-        .from("profiles")
-        .select("id, user_id, full_name, email, login")
-        .eq("organization_id", organization.id);
-
-      if (error) {
-        console.error("Error fetching students:", error);
-        return;
-      }
-
-      if (!profiles || profiles.length === 0) {
-        setStudents([]);
-        setStats(prev => ({ ...prev, totalStudents: 0 }));
-        return;
-      }
-
-      const { data: orgCourses } = await supabase
-        .from("courses")
-        .select("id, title")
-        .eq("organization_id", organization.id);
-
-      const courseIds = (orgCourses || []).map(c => c.id);
-      const coursesMap: Record<string, string> = Object.fromEntries(
-        (orgCourses || []).map(c => [c.id, c.title])
-      );
-
-      let enrollments: any[] = [];
-      if (courseIds.length > 0) {
-        const { data: enrollmentsData, error: enrollError } = await supabase
-          .from("enrollments")
-          .select("user_id, course_id, progress, status, started_at")
-          .in("course_id", courseIds);
-
-        if (enrollError) {
-          console.error("Error fetching enrollments:", enrollError);
-        } else {
-          enrollments = enrollmentsData || [];
-        }
-      }
-
-      const studentsWithEnrollments = profiles.map(profile => ({
-        ...profile,
-        enrollments: enrollments
-          .filter(e => e.user_id === profile.user_id)
-          .map(e => ({
-            course_title: coursesMap[e.course_id] || "Неизвестный курс",
-            progress: e.progress,
-            status: e.status,
-            started_at: e.started_at,
-          })),
-      }));
-
-      setStudents(studentsWithEnrollments);
-
-      const totalEnrollments = enrollments.length;
-      const completedEnrollments = enrollments.filter(e => e.status === "completed").length;
-      const avgProgress = totalEnrollments > 0
-        ? enrollments.reduce((sum, e) => sum + (e.progress || 0), 0) / totalEnrollments
-        : 0;
-
-      setStats(prev => ({
-        ...prev,
-        totalStudents: profiles.length,
-        completedEnrollments,
-        averageProgress: Math.round(avgProgress),
-      }));
-    } catch (err) {
-      console.error("Error in fetchStudents:", err);
-    }
-  };
-
-  const fetchCourses = async () => {
-    const { data: coursesData, error } = await supabase
-      .from("courses")
-      .select("id, title, is_published, catalog_order")
-      .eq("organization_id", organization.id)
-      .order("catalog_order", { ascending: true });
-
-    if (error) {
-      console.error("Error fetching courses:", error);
-      return;
-    }
-
-    const coursesWithStats = await Promise.all(
-      (coursesData || []).map(async (course) => {
-        const [lessonsResult, enrollmentsResult] = await Promise.all([
-          supabase.from("lessons").select("id", { count: "exact" }).eq("course_id", course.id),
-          supabase.from("enrollments").select("id", { count: "exact" }).eq("course_id", course.id),
-        ]);
-
-        return {
-          ...course,
-          lessons_count: lessonsResult.count || 0,
-          students_count: enrollmentsResult.count || 0,
-        };
-      })
-    );
-
-    setCourses(coursesWithStats);
-    setStats(prev => ({ ...prev, totalCourses: coursesData?.length || 0 }));
-  };
-
-  const fetchDocuments = async () => {
-    const { data, error } = await supabase
-      .from("org_documents")
-      .select("*")
-      .eq("organization_id", organization.id)
-      .order("created_at", { ascending: false });
-
-    if (error) {
-      console.error("Error fetching documents:", error);
-      return;
-    }
-
-    setDocuments(data || []);
-  };
-
-  const fetchCredentials = async () => {
-    try {
-      const { data, error } = await supabase.rpc("get_decrypted_org_credentials", {
-        p_organization_id: organization.id,
-      });
-      if (!error && data && data.length > 0) {
-        setCredentials(data[0]);
-      }
-    } catch (err) {
-      console.error("Error fetching credentials:", err);
-    }
-  };
-
-  const fetchUsage = async () => {
-    // Get AI generations from organization_usage
-    const currentMonth = new Date().toISOString().slice(0, 7) + "-01";
-    const { data: usageRow } = await supabase
-      .from("organization_usage")
-      .select("ai_generations_count")
-      .eq("organization_id", organization.id)
-      .eq("month_start", currentMonth)
-      .maybeSingle();
-
-    const aiCount = (usageRow as any)?.ai_generations_count || 0;
-
-    // Always calculate real storage by scanning buckets (like StorageManager)
-    let totalBytes = 0;
-    const baseUrl = import.meta.env.VITE_SUPABASE_URL;
-
-    const scanPath = async (
-      client: any,
-      bucket: string,
-      prefix: string,
-      depth = 0,
-    ) => {
-      try {
-        const { data: items } = await client.storage.from(bucket).list(prefix, { limit: 500 });
-        if (!items) return;
-        for (const f of items) {
-          if (f.id === null && depth < 2) {
-            await scanPath(client, bucket, `${prefix}/${f.name}`, depth + 1);
-          } else if (f.id !== null) {
-            totalBytes += (f.metadata as any)?.size || 0;
-          }
-        }
-      } catch { /* bucket/path doesn't exist */ }
-    };
-
-    // Get course IDs for this org
-    const { data: courses } = await supabase
-      .from("courses")
-      .select("id")
-      .eq("organization_id", organization.id);
-    const courseIds = courses?.map(c => c.id) || [];
-
-    // Scan course-level buckets
-    const courseScans = courseIds.flatMap(courseId => [
-      scanPath(supabase, "course-files", courseId),
-      scanPath(supabase, "presentations", courseId),
-    ]);
-
-    // Scan org-level buckets
-    const orgScans = [
-      scanPath(supabase, "org-documents", organization.id),
-      scanPath(supabase, "company-documents", organization.id),
-      scanPath(supabase, "org-branding", organization.id),
-      scanPath(supabase, "library-files", `library/${organization.id}`),
-      scanPath(supabase, "billing-documents", organization.id),
-      scanPath(supabase, "student-documents", organization.id),
-    ];
-
-    await Promise.all([...courseScans, ...orgScans]);
-
-    // External storage (course-videos)
-    try {
-      const { data: config } = await safeInvoke<any>("get-external-storage-config");
-      if (config?.configured && config?.url && config?.key) {
-        const { createClient } = await import("@supabase/supabase-js");
-        const extClient = createClient(config.url, config.key);
-        await Promise.all(
-          courseIds.map(courseId => scanPath(extClient, "course-videos", courseId))
-        );
-      }
-    } catch { /* external not configured */ }
-
-    setUsage({
-      storage_bytes: totalBytes,
-      ai_generations_count: aiCount,
-    });
-  };
-
-  const fetchUsageHistory = async () => {
-    const sixMonthsAgo = new Date();
-    sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
-    const startDate = sixMonthsAgo.toISOString().slice(0, 7) + "-01";
-
-    const { data, error } = await supabase
-      .from("organization_usage")
-      .select("month_start, ai_generations_count, storage_bytes")
-      .eq("organization_id", organization.id)
-      .gte("month_start", startDate)
-      .order("month_start", { ascending: true });
-
-    if (error) {
-      console.error("Error fetching usage history:", error);
-      return;
-    }
-
-    const months: UsageHistoryItem[] = [];
-    const now = new Date();
-    for (let i = 5; i >= 0; i--) {
-      const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
-      const monthStr = date.toISOString().slice(0, 10);
-      const existingData = data?.find(d => d.month_start === monthStr);
-      
-      months.push({
-        month: monthStr,
-        month_label: format(date, "MMM yy", { locale: ru }),
-        ai_generations_count: (existingData as any)?.ai_generations_count || 0,
-        storage_bytes: existingData?.storage_bytes || 0,
-      });
-    }
-
-    setUsageHistory(months);
-  };
-  const fetchBranding = async () => {
-    const { data } = await supabase
-      .from("organizations")
-      .select("branding")
-      .eq("id", organization.id)
-      .single();
-    if (data?.branding) {
-      const b = data.branding as any;
-      setOrgBranding({
-        coverUrl: b.coverUrl || b.cover_url,
-        primaryColor: b.primaryColor || b.primary_color,
-        logoUrl: b.logoUrl || b.logo_url,
-      });
-    }
-  };
-
-  const saveTariffSettings = async () => {
-    setIsSavingTariff(true);
-    try {
-      const updatePayload: Record<string, unknown> = {
-        tariff_custom_label: tariffCustomLabel || null,
-        paid_until: tariffPaidUntil || null,
-        custom_max_courses: customLimits.maxCourses,
-        custom_max_students: customLimits.maxStudents,
-        custom_max_trained_per_month: customLimits.maxTrainedPerMonth,
-        custom_ai_generations_limit: customLimits.aiGenerationsLimit,
-        custom_storage_limit_bytes: customLimits.storageLimitBytes,
-        custom_enabled_categories: customCategories,
-        custom_price: customPrice,
-        custom_discount: customDiscount,
-      };
-      const { error } = await supabase
-        .from("organizations")
-        .update(updatePayload as any)
-        .eq("id", organization.id);
-      if (error) throw error;
-      toast.success("Тарифные настройки сохранены");
-    } catch (err) {
-      console.error(err);
-      toast.error("Ошибка сохранения тарифных настроек");
-    } finally {
-      setIsSavingTariff(false);
-    }
-  };
-
-  const saveSettings = async () => {
-    setIsSaving(true);
-    try {
-      const aiEnabled = shouldBlockAI ? false : settings.ai_enabled;
-
-      const { error } = await supabase
-        .from("organizations")
-        .update({
-          name: settings.name,
-          email: settings.email,
-          phone: settings.phone || null,
-          inn: settings.inn || null,
-          contact_name: settings.contact_name || null,
-          ai_enabled: aiEnabled,
-          ai_provider: settings.ai_provider,
-          frdo_enabled: settings.frdo_enabled,
-          storage_limit_bytes: settings.storage_limit_bytes,
-          notify_on_limit_80: settings.notify_on_limit_80,
-          notify_on_limit_exceeded: settings.notify_on_limit_exceeded,
-        } as any)
-        .eq("id", organization.id);
-
-      if (error) throw error;
-      
-      if (shouldBlockAI && settings.ai_enabled) {
-        toast.success("Настройки сохранены. ИИ-помощник заблокирован из-за превышения лимита генераций.");
-      } else {
-        toast.success("Настройки сохранены");
-      }
-    } catch (error) {
-      console.error("Error saving settings:", error);
-      toast.error("Ошибка сохранения настроек");
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
-  const formatBytes = (bytes: number): string => {
-    if (bytes === 0) return "0 Б";
-    const k = 1024;
-    const sizes = ["Б", "КБ", "МБ", "ГБ"];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i];
-  };
-
-  const fetchPendingEnrollmentsCount = async () => {
-    const { count } = await supabase
-      .from("pending_enrollments")
-      .select("id", { count: "exact", head: true })
-      .eq("organization_id", organization.id)
-      .eq("status", "pending");
-    setPendingEnrollmentsCount(count || 0);
-  };
-
-
-  const filteredStudents = students.filter(s => {
-    if (!searchQuery) return true;
-    const query = searchQuery.toLowerCase();
-    return (
-      (s.full_name?.toLowerCase() || "").includes(query) ||
-      (s.email?.toLowerCase() || "").includes(query) ||
-      (s.login?.toLowerCase() || "").includes(query)
-    );
-  });
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center py-12">
-        <Loader2 className="w-8 h-8 animate-spin text-primary" />
-      </div>
-    );
+  if (vm.loading) {
+    return <div className="flex items-center justify-center py-12"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>;
   }
+
+  const navItems = [
+    { key: "students", icon: Users, label: "Ученики", group: "main" },
+    { key: "courses", icon: BookOpen, label: "Курсы", group: "main" },
+    { key: "tariffs", icon: Crown, label: "Тарифы", group: "main" },
+    { key: "history", icon: History, label: "История", group: "history" },
+    { key: "comments", icon: MessageSquare, label: "Заметки", group: "history" },
+    { key: "reminders", icon: Bell, label: "Напоминания", group: "history" },
+    { key: "settings", icon: Settings, label: "Настройки", group: "system" },
+  ];
 
   return (
     <>
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-start gap-4">
-        <Button variant="ghost" size="icon" onClick={onBack} className="mt-1">
-          <ArrowLeft className="w-5 h-5" />
-        </Button>
+        <Button variant="ghost" size="icon" onClick={onBack} className="mt-1"><ArrowLeft className="w-5 h-5" /></Button>
         <div className="flex items-center gap-4 flex-1 min-w-0">
           <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center border border-primary/10 shrink-0">
-            <Building2 className="w-7 h-7 text-primary" />
+            <BookOpen className="w-7 h-7 text-primary" />
           </div>
           <div className="min-w-0">
             <div className="flex items-center gap-3 flex-wrap">
               <h2 className="text-2xl font-display font-bold truncate">{organization.name}</h2>
-              <Badge className={`text-xs font-medium border ${PLAN_BADGE_COLORS[planKey] || PLAN_BADGE_COLORS.free}`}>
-                {planInfo.name}
-              </Badge>
-              {shouldBlockAI && (
-                <Badge variant="destructive" className="flex items-center gap-1">
-                  <ShieldOff className="w-3 h-3" />
-                  ИИ заблокирован
-                </Badge>
-              )}
+              <Badge className={`text-xs font-medium border ${PLAN_BADGE_COLORS[vm.planKey] || PLAN_BADGE_COLORS.free}`}>{vm.planInfo.name}</Badge>
+              {vm.shouldBlockAI && <Badge variant="destructive" className="flex items-center gap-1"><ShieldOff className="w-3 h-3" />ИИ заблокирован</Badge>}
             </div>
             <div className="flex items-center gap-3 text-sm text-muted-foreground mt-0.5">
               <span>{organization.email}</span>
               <span className="text-border">•</span>
-              <span className="flex items-center gap-1">
-                <Calendar className="w-3.5 h-3.5" />
-                {format(new Date(organization.created_at), "d MMM yyyy", { locale: ru })}
-              </span>
+              <span className="flex items-center gap-1"><Calendar className="w-3.5 h-3.5" />{format(new Date(organization.created_at), "d MMM yyyy", { locale: ru })}</span>
             </div>
           </div>
         </div>
-        <div className="flex items-center gap-2 shrink-0">
-          <Button
-            variant="outline"
-            size="sm"
-            className="gap-2"
-            onClick={() => {
-              localStorage.setItem("adminViewAsOrg", JSON.stringify({
-                id: organization.id,
-                name: organization.name,
-              }));
-              navigate("/organization");
-            }}
-          >
-            <ExternalLink className="w-4 h-4" />
-            Войти в организацию
-          </Button>
-        </div>
+        <Button variant="outline" size="sm" className="gap-2 shrink-0" onClick={() => {
+          localStorage.setItem("adminViewAsOrg", JSON.stringify({ id: organization.id, name: organization.name }));
+          navigate("/organization");
+        }}><ExternalLink className="w-4 h-4" />Войти в организацию</Button>
       </div>
 
-      {(isStorageExceeded || isAiGenExceeded) && (
+      {/* Limit Alerts */}
+      {(vm.isStorageExceeded || vm.isAiGenExceeded) && (
         <Alert variant="destructive">
           <AlertTriangle className="h-4 w-4" />
           <AlertTitle>Лимит превышен!</AlertTitle>
           <AlertDescription>
-            {isStorageExceeded && "Лимит хранилища превышен. "}
-            {isAiGenExceeded && "Лимит ИИ-генераций превышен. ИИ-помощник автоматически заблокирован. "}
+            {vm.isStorageExceeded && "Лимит хранилища превышен. "}
+            {vm.isAiGenExceeded && "Лимит ИИ-генераций превышен. ИИ-помощник автоматически заблокирован. "}
             Увеличьте лимиты в настройках организации.
           </AlertDescription>
         </Alert>
       )}
-
-      {!isStorageExceeded && !isAiGenExceeded && (isStorageWarning || isAiGenWarning) && (
+      {!vm.isStorageExceeded && !vm.isAiGenExceeded && (vm.isStorageWarning || vm.isAiGenWarning) && (
         <Alert className="border-yellow-500 bg-yellow-500/10">
           <AlertTriangle className="h-4 w-4 text-yellow-500" />
           <AlertTitle className="text-yellow-600">Приближение к лимиту</AlertTitle>
           <AlertDescription className="text-yellow-600">
-            {isStorageWarning && `Хранилище: ${storageLimitPercent.toFixed(0)}% использовано. `}
-            {isAiGenWarning && `ИИ-генерации: ${aiGenerationsPercent.toFixed(0)}% использовано. `}
+            {vm.isStorageWarning && `Хранилище: ${vm.storageLimitPercent.toFixed(0)}% использовано. `}
+            {vm.isAiGenWarning && `ИИ-генерации: ${vm.aiGenerationsPercent.toFixed(0)}% использовано. `}
           </AlertDescription>
         </Alert>
       )}
 
-      {/* Organization Cover / Branding Preview */}
-      <Card className={cardClass}>
+      {/* Branding Preview */}
+      <Card className="shadow-sm hover:shadow-md transition-shadow duration-200">
         <CardContent className="p-0 overflow-hidden rounded-lg">
-          {orgBranding.coverUrl ? (
+          {vm.orgBranding.coverUrl ? (
             <div className="relative h-40 w-full">
-              <img src={orgBranding.coverUrl} alt="Обложка организации" className="w-full h-full object-cover" />
+              <img src={vm.orgBranding.coverUrl} alt="Обложка организации" className="w-full h-full object-cover" />
               <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
               <div className="absolute bottom-3 left-4 flex items-center gap-3">
-                {orgBranding.logoUrl && (
-                  <img src={orgBranding.logoUrl} alt="Логотип" className="w-10 h-10 rounded-lg border border-white/30 bg-white/90 object-contain" />
-                )}
+                {vm.orgBranding.logoUrl && <img src={vm.orgBranding.logoUrl} alt="Логотип" className="w-10 h-10 rounded-lg border border-white/30 bg-white/90 object-contain" />}
                 <div>
                   <p className="text-white font-semibold text-lg drop-shadow">{organization.name}</p>
                   <p className="text-white/80 text-sm drop-shadow">{organization.email}</p>
                 </div>
               </div>
-              {orgBranding.primaryColor && (
+              {vm.orgBranding.primaryColor && (
                 <div className="absolute top-3 right-3 flex items-center gap-2 bg-black/30 rounded-full px-3 py-1">
-                  <div className="w-4 h-4 rounded-full border border-white/40" style={{ backgroundColor: orgBranding.primaryColor }} />
-                  <span className="text-white text-xs">{orgBranding.primaryColor}</span>
+                  <div className="w-4 h-4 rounded-full border border-white/40" style={{ backgroundColor: vm.orgBranding.primaryColor }} />
+                  <span className="text-white text-xs">{vm.orgBranding.primaryColor}</span>
                 </div>
               )}
             </div>
@@ -745,34 +134,18 @@ export function OrganizationDetailsView({ organization, onBack }: OrganizationDe
         </CardContent>
       </Card>
 
-      {/* Two-column layout: vertical nav + content */}
+      {/* Two-column layout */}
       <div className="flex flex-col lg:flex-row gap-6">
-        {/* Mobile: horizontal scroll */}
+        {/* Mobile nav */}
         <div className="lg:hidden">
           <ScrollArea className="w-full">
             <div className="flex gap-1 p-1">
-              {[
-                { key: "students", icon: Users, label: "Ученики" },
-                { key: "courses", icon: BookOpen, label: "Курсы" },
-                { key: "tariffs", icon: Crown, label: "Тарифы" },
-                { key: "history", icon: History, label: "История" },
-                { key: "comments", icon: MessageSquare, label: "Заметки" },
-                { key: "reminders", icon: Bell, label: "Напоминания" },
-                { key: "settings", icon: Settings, label: "Настройки" },
-              ].map(item => {
+              {navItems.map(item => {
                 const Icon = item.icon;
                 return (
-                  <button
-                    key={item.key}
-                    onClick={() => setActiveTab(item.key)}
-                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium whitespace-nowrap transition-colors ${
-                      activeTab === item.key
-                        ? "bg-primary/15 text-primary"
-                        : "text-muted-foreground hover:bg-muted"
-                    }`}
-                  >
-                    <Icon className="w-4 h-4" />
-                    {item.label}
+                  <button key={item.key} onClick={() => vm.setActiveTab(item.key)}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium whitespace-nowrap transition-colors ${vm.activeTab === item.key ? "bg-primary/15 text-primary" : "text-muted-foreground hover:bg-muted"}`}>
+                    <Icon className="w-4 h-4" />{item.label}
                   </button>
                 );
               })}
@@ -781,1010 +154,51 @@ export function OrganizationDetailsView({ organization, onBack }: OrganizationDe
           </ScrollArea>
         </div>
 
-        {/* Desktop: vertical sidebar */}
+        {/* Desktop nav */}
         <nav className="hidden lg:flex lg:w-56 shrink-0 flex-col gap-0.5 pr-4 border-r border-border/50">
-          <div className="px-3 pb-1 pt-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/60">Основное</div>
-          {[
-            { key: "students", icon: Users, label: "Ученики" },
-            { key: "courses", icon: BookOpen, label: "Курсы" },
-            { key: "tariffs", icon: Crown, label: "Тарифы" },
-          ].map(item => {
-            const Icon = item.icon;
-            return (
-              <button
-                key={item.key}
-                onClick={() => setActiveTab(item.key)}
-                className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-150 w-full text-left ${
-                  activeTab === item.key
-                    ? "bg-primary/15 text-primary border-r-2 border-primary"
-                    : "text-muted-foreground hover:bg-primary/10 hover:text-foreground hover:translate-x-0.5"
-                }`}
-              >
-                <Icon className="w-4 h-4 shrink-0" />
-                {item.label}
-              </button>
-            );
-          })}
-
-          <div className="my-2 border-t border-border/30" />
-          <div className="px-3 pb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/60">История</div>
-          {[
-            { key: "history", icon: History, label: "История" },
-            { key: "comments", icon: MessageSquare, label: "Заметки" },
-            { key: "reminders", icon: Bell, label: "Напоминания" },
-          ].map(item => {
-            const Icon = item.icon;
-            return (
-              <button
-                key={item.key}
-                onClick={() => setActiveTab(item.key)}
-                className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-150 w-full text-left ${
-                  activeTab === item.key
-                    ? "bg-primary/15 text-primary border-r-2 border-primary"
-                    : "text-muted-foreground hover:bg-primary/10 hover:text-foreground hover:translate-x-0.5"
-                }`}
-              >
-                <Icon className="w-4 h-4 shrink-0" />
-                {item.label}
-              </button>
-            );
-          })}
-
-          <div className="my-2 border-t border-border/30" />
-          <div className="px-3 pb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/60">Система</div>
-          {[
-            { key: "settings", icon: Settings, label: "Настройки" },
-          ].map(item => {
-            const Icon = item.icon;
-            return (
-              <button
-                key={item.key}
-                onClick={() => setActiveTab(item.key)}
-                className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-150 w-full text-left ${
-                  activeTab === item.key
-                    ? "bg-primary/15 text-primary border-r-2 border-primary"
-                    : "text-muted-foreground hover:bg-primary/10 hover:text-foreground hover:translate-x-0.5"
-                }`}
-              >
-                <Icon className="w-4 h-4 shrink-0" />
-                {item.label}
-              </button>
-            );
-          })}
+          {["main", "history", "system"].map((group, gi) => (
+            <div key={group}>
+              {gi > 0 && <div className="my-2 border-t border-border/30" />}
+              <div className="px-3 pb-1 pt-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/60">
+                {group === "main" ? "Основное" : group === "history" ? "История" : "Система"}
+              </div>
+              {navItems.filter(i => i.group === group).map(item => {
+                const Icon = item.icon;
+                return (
+                  <button key={item.key} onClick={() => vm.setActiveTab(item.key)}
+                    className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-150 w-full text-left ${vm.activeTab === item.key ? "bg-primary/15 text-primary border-r-2 border-primary" : "text-muted-foreground hover:bg-primary/10 hover:text-foreground hover:translate-x-0.5"}`}>
+                    <Icon className="w-4 h-4 shrink-0" />{item.label}
+                  </button>
+                );
+              })}
+            </div>
+          ))}
         </nav>
 
         {/* Content */}
         <div className="flex-1 min-w-0">
-
-        {/* Overview Tab */}
-        {activeTab === "overview" && <div className="space-y-6">
-          {/* Usage Charts */}
-          <div className="grid md:grid-cols-2 gap-6">
-            <Card className={cardClass}>
-              <CardHeader>
-                <CardTitle className="text-lg flex items-center gap-2">
-                  <div className="p-1.5 rounded-lg bg-violet-500/10">
-                    <Sparkles className="w-5 h-5 text-violet-500" />
-                  </div>
-                  ИИ-генерации
-                </CardTitle>
-                <CardDescription>Последние 6 месяцев</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="h-[250px]">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={usageHistory}>
-                      <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                      <XAxis 
-                        dataKey="month_label" 
-                        tick={{ fontSize: 12 }}
-                        className="text-muted-foreground"
-                      />
-                      <YAxis 
-                        tick={{ fontSize: 12 }}
-                        className="text-muted-foreground"
-                        allowDecimals={false}
-                      />
-                      <Tooltip 
-                        formatter={(value: number) => [value, "Генерации"]}
-                        labelClassName="text-foreground"
-                        contentStyle={{ 
-                          backgroundColor: 'hsl(var(--card))', 
-                          border: '1px solid hsl(var(--border))',
-                          borderRadius: '8px'
-                        }}
-                      />
-                      <Bar 
-                        dataKey="ai_generations_count" 
-                        fill="hsl(var(--primary))" 
-                        radius={[4, 4, 0, 0]}
-                      />
-                    </BarChart>
-                  </ResponsiveContainer>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className={cardClass}>
-              <CardHeader>
-                <CardTitle className="text-lg flex items-center gap-2">
-                  <div className="p-1.5 rounded-lg bg-cyan-500/10">
-                    <HardDrive className="w-5 h-5 text-cyan-500" />
-                  </div>
-                  Использование хранилища
-                </CardTitle>
-                <CardDescription>Последние 6 месяцев</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="h-[250px]">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={usageHistory}>
-                      <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                      <XAxis 
-                        dataKey="month_label" 
-                        tick={{ fontSize: 12 }}
-                        className="text-muted-foreground"
-                      />
-                      <YAxis 
-                        tick={{ fontSize: 12 }}
-                        tickFormatter={(value) => formatBytes(value)}
-                        className="text-muted-foreground"
-                      />
-                      <Tooltip 
-                        formatter={(value: number) => [formatBytes(value), "Хранилище"]}
-                        labelClassName="text-foreground"
-                        contentStyle={{ 
-                          backgroundColor: 'hsl(var(--card))', 
-                          border: '1px solid hsl(var(--border))',
-                          borderRadius: '8px'
-                        }}
-                      />
-                      <Line 
-                        type="monotone" 
-                        dataKey="storage_bytes" 
-                        stroke="hsl(var(--primary))" 
-                        strokeWidth={2}
-                        dot={{ fill: 'hsl(var(--primary))' }}
-                      />
-                    </LineChart>
-                  </ResponsiveContainer>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-
-          <div className="grid md:grid-cols-2 gap-6">
-            {/* Recent Students */}
-            <Card className={cardClass}>
-              <CardHeader>
-                <CardTitle className="text-lg">Недавние ученики</CardTitle>
-              </CardHeader>
-              <CardContent>
-                {students.slice(0, 5).map((student) => (
-                  <div key={student.id} className="flex items-center justify-between py-2.5 border-b last:border-0 hover:bg-muted/30 -mx-2 px-2 rounded-lg transition-colors">
-                    <div>
-                      <p className="font-medium">{student.full_name || "Без имени"}</p>
-                      <p className="text-sm text-muted-foreground">{student.email}</p>
-                    </div>
-                    <Badge variant="secondary">
-                      {student.enrollments.length} курсов
-                    </Badge>
-                  </div>
-                ))}
-                {students.length === 0 && (
-                  <p className="text-muted-foreground text-center py-4">Нет учеников</p>
-                )}
-              </CardContent>
-            </Card>
-
-            {/* Recent Courses */}
-            <Card className={cardClass}>
-              <CardHeader>
-                <CardTitle className="text-lg">Курсы</CardTitle>
-              </CardHeader>
-              <CardContent>
-                {courses.slice(0, 5).map((course) => (
-                  <div key={course.id} className="flex items-center justify-between py-2.5 border-b last:border-0 hover:bg-muted/30 -mx-2 px-2 rounded-lg transition-colors">
-                    <div className="flex items-center gap-2">
-                      <BookOpen className="w-4 h-4 text-muted-foreground" />
-                      <p className="font-medium">{course.title}</p>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Badge variant={course.is_published ? "default" : "secondary"}>
-                        {course.is_published ? "Опубликован" : "Черновик"}
-                      </Badge>
-                      <Badge variant="outline">{course.students_count} уч.</Badge>
-                    </div>
-                  </div>
-                ))}
-                {courses.length === 0 && (
-                  <p className="text-muted-foreground text-center py-4">Нет курсов</p>
-                )}
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Usage Limits */}
-          <Card className={cardClass}>
-            <CardHeader>
-              <CardTitle className="text-lg">Использование ресурсов (текущий месяц)</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                <div>
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-sm text-muted-foreground">Хранилище</span>
-                    <span className="text-sm font-medium">{formatBytes(usage.storage_bytes)} / {formatBytes(settings.storage_limit_bytes)}</span>
-                  </div>
-                  <Progress value={Math.min(storageLimitPercent, 100)} className="h-2" />
-                </div>
-                <div>
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-sm text-muted-foreground">ИИ-генерации (месяц)</span>
-                    <span className="text-sm font-medium">
-                      {usage.ai_generations_count} / {aiGenerationsLimit === Infinity ? "∞" : aiGenerationsLimit}
-                    </span>
-                  </div>
-                  <Progress value={aiGenerationsLimit === Infinity ? 0 : Math.min(aiGenerationsPercent, 100)} className="h-2" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </div>}
-
-        {/* Students Tab */}
-        {activeTab === "students" && <div className="space-y-4">
-          <div className="flex items-center gap-4">
-            <div className="relative flex-1 max-w-md">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-              <Input
-                placeholder="Поиск учеников..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10"
-              />
-            </div>
-            <Badge variant="outline" className="text-sm">
-              Всего: {students.length}
-            </Badge>
-            {pendingEnrollmentsCount > 0 && (
-              <Badge variant="secondary" className="text-sm gap-1">
-                <Clock className="w-3 h-3" />
-                Ожидают зачисления: {pendingEnrollmentsCount}
-              </Badge>
-            )}
-            <Button
-              variant="outline"
-              size="sm"
-              className="gap-2"
-              onClick={() => setShowStudentBulkImport(true)}
-            >
-              <Upload className="w-4 h-4" />
-              Импорт из Excel
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              className="gap-2"
-              onClick={() => {
-                localStorage.setItem('previewStudentDashboard', 'true');
-                window.open('/student', '_blank');
-              }}
-            >
-              <Eye className="w-4 h-4" />
-              Кабинет ученика
-            </Button>
-          </div>
-
-          <Card className={cardClass}>
-            <CardContent className="p-0">
-              <ScrollArea className="h-[500px]">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Ученик</TableHead>
-                      <TableHead>Логин</TableHead>
-                      <TableHead>Курсы</TableHead>
-                      <TableHead>Прогресс</TableHead>
-                      <TableHead>Статус</TableHead>
-                      <TableHead>Действия</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {filteredStudents.map((student) => (
-                      <TableRow key={student.id} className="hover:bg-muted/40">
-                        <TableCell>
-                          <div>
-                            <p className="font-medium">{student.full_name || "Без имени"}</p>
-                            <p className="text-sm text-muted-foreground">{student.email}</p>
-                          </div>
-                        </TableCell>
-                        <TableCell className="font-mono text-sm">
-                          {student.login || "—"}
-                        </TableCell>
-                        <TableCell>
-                          {student.enrollments.length > 0 ? (
-                            <div className="space-y-1">
-                              {student.enrollments.slice(0, 2).map((e, i) => (
-                                <Badge key={i} variant="secondary" className="text-xs mr-1">
-                                  {e.course_title}
-                                </Badge>
-                              ))}
-                              {student.enrollments.length > 2 && (
-                                <Badge variant="outline" className="text-xs">
-                                  +{student.enrollments.length - 2}
-                                </Badge>
-                              )}
-                            </div>
-                          ) : (
-                            <span className="text-muted-foreground">Не записан</span>
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          {student.enrollments.length > 0 ? (
-                            <div className="space-y-1">
-                              {student.enrollments.slice(0, 2).map((e, i) => (
-                                <div key={i} className="flex items-center gap-2">
-                                  <Progress value={Math.min(e.progress, 100)} className="h-1.5 w-16" />
-                                  <span className="text-xs text-muted-foreground">{Math.min(e.progress, 100)}%</span>
-                                </div>
-                              ))}
-                            </div>
-                          ) : (
-                            <span className="text-muted-foreground">—</span>
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          {student.enrollments.length > 0 ? (
-                            <div className="space-y-1">
-                              {student.enrollments.slice(0, 2).map((e, i) => (
-                                <Badge
-                                  key={i}
-                                  variant={
-                                    e.status === "completed" ? "default" :
-                                    e.status === "in_progress" ? "secondary" : "outline"
-                                  }
-                                  className="text-xs"
-                                >
-                                  {e.status === "completed" && <CheckCircle2 className="w-3 h-3 mr-1" />}
-                                  {e.status === "in_progress" && <Clock className="w-3 h-3 mr-1" />}
-                                  {e.status === "active" && <Clock className="w-3 h-3 mr-1" />}
-                                  {e.status === "not_started" && <XCircle className="w-3 h-3 mr-1" />}
-                                  {e.status === "completed" ? "Завершён" :
-                                   e.status === "in_progress" || e.status === "active" ? "В процессе" : "Не начат"}
-                                </Badge>
-                              ))}
-                            </div>
-                          ) : (
-                            <Badge variant="outline" className="text-xs">Не записан</Badge>
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => {
-                              localStorage.setItem('adminViewAsStudent', JSON.stringify({
-                                userId: student.user_id,
-                                name: student.full_name || student.email,
-                                orgName: organization.name,
-                              }));
-                              navigate('/student');
-                            }}
-                            title="Войти в кабинет ученика"
-                          >
-                            <Eye className="w-4 h-4" />
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                    {filteredStudents.length === 0 && (
-                      <TableRow>
-                        <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
-                          {searchQuery ? "Ничего не найдено" : "Нет учеников в этой организации"}
-                        </TableCell>
-                      </TableRow>
-                    )}
-                  </TableBody>
-                </Table>
-              </ScrollArea>
-            </CardContent>
-          </Card>
-        </div>}
-
-        {/* Courses Tab */}
-        {activeTab === "courses" && <div className="space-y-4">
-          {(() => {
-            const readyCourses = courses.filter(c => c.lessons_count > 0 && c.is_published);
-            const needsReview = courses.filter(c => c.lessons_count === 0);
-            return (
-              <div className="flex items-center justify-between gap-2 flex-wrap">
-                <div className="flex items-center gap-3">
-                  <div className="flex items-center gap-2 px-3 py-1.5 rounded-md bg-muted text-sm text-muted-foreground">
-                    <BookOpen className="w-4 h-4" />
-                    <span>Всего курсов: <span className="font-semibold text-foreground">{courses.length}</span></span>
-                  </div>
-                  {readyCourses.length > 0 && (
-                    <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md bg-emerald-50 text-sm text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-400">
-                      <CheckCircle2 className="w-3.5 h-3.5" />
-                      <span>{readyCourses.length} готово</span>
-                    </div>
-                  )}
-                  {needsReview.length > 0 && (
-                    <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md bg-amber-50 text-sm text-amber-700 dark:bg-amber-950/30 dark:text-amber-400">
-                      <AlertCircle className="w-3.5 h-3.5" />
-                      <span>{needsReview.length} без уроков</span>
-                    </div>
-                  )}
-                </div>
-                <div className="flex gap-2">
-                  <Button variant="outline" size="sm" onClick={() => setShowSkillspaceBatchImport(true)}>
-                    <Download className="w-4 h-4 mr-2" />
-                    Пакетный импорт
-                  </Button>
-                  <Button variant="outline" size="sm" onClick={() => setShowSkillspaceImport(true)}>
-                    <Download className="w-4 h-4 mr-2" />
-                    Импорт со SkillSpace
-                  </Button>
-                </div>
-              </div>
-            );
-          })()}
-          <Card className={cardClass}>
-            <CardContent className="p-0">
-              <DndContext sensors={dndSensors} collisionDetection={closestCenter} onDragEnd={handleCourseDragEnd}>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead className="w-10"></TableHead>
-                      <TableHead>Курс</TableHead>
-                      <TableHead className="text-center">Уроков</TableHead>
-                      <TableHead className="text-center">Учеников</TableHead>
-                      <TableHead>Статус</TableHead>
-                      <TableHead className="w-10"></TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    <SortableContext items={courses.map(c => c.id)} strategy={verticalListSortingStrategy}>
-                      {courses.map((course) => (
-                        <SortableCourseRow
-                          key={course.id}
-                          course={course}
-                          migratingCourseId={migratingCourseId}
-                          migrationResult={migrationResult}
-                          onMigrate={async () => {
-                            setMigratingCourseId(course.id);
-                            setMigrationResult(prev => { const next = { ...prev }; delete next[course.id]; return next; });
-                            try {
-                              const res = await fetch(
-                                `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/migrate-course-media`,
-                                {
-                                  method: "POST",
-                                  headers: {
-                                    "Content-Type": "application/json",
-                                    Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
-                                  },
-                                  body: JSON.stringify({ courseId: course.id, organizationId: organization.id }),
-                                  signal: AbortSignal.timeout(300000),
-                                }
-                              );
-                              const data = await res.json();
-                              if (data.success) {
-                                const msg = `Перенесено: ${data.filesTransferred}, ошибок: ${data.filesFailed || 0}, пропущено: ${data.filesSkipped || 0}`;
-                                setMigrationResult(prev => ({ ...prev, [course.id]: { status: 'success', message: msg } }));
-                                toast.success(msg, { duration: 15000 });
-                              } else {
-                                const isWorkerLimit = data.error?.includes("WORKER_LIMIT") || data.code === "WORKER_LIMIT";
-                                const msg = isWorkerLimit
-                                  ? "Файлы слишком большие для автоматического переноса"
-                                  : (data.error || "Ошибка миграции");
-                                setMigrationResult(prev => ({ ...prev, [course.id]: { status: 'error', message: msg } }));
-                                toast.error(msg, { duration: 15000 });
-                              }
-                            } catch (e: any) {
-                              const isTimeout = e.name === "TimeoutError" || e.name === "AbortError";
-                              const msg = isTimeout
-                                ? "Миграция заняла слишком много времени"
-                                : "Ошибка: " + e.message;
-                              setMigrationResult(prev => ({ ...prev, [course.id]: { status: 'error', message: msg } }));
-                              toast.error(msg, { duration: 15000 });
-                            } finally {
-                              setMigratingCourseId(null);
-                              setTimeout(() => {
-                                setMigrationResult(prev => { const next = { ...prev }; delete next[course.id]; return next; });
-                              }, 10000);
-                            }
-                          }}
-                          onUpdate={() => setSkillspaceUpdateCourse({ id: course.id, title: course.title })}
-                          onDelete={async () => {
-                            if (!confirm(`Удалить курс «${course.title}»? Это действие нельзя отменить.`)) return;
-                            const { error } = await supabase.from("courses").delete().eq("id", course.id);
-                            if (error) {
-                              toast.error("Ошибка удаления: " + error.message);
-                            } else {
-                              toast.success("Курс удалён");
-                              fetchCourses();
-                            }
-                          }}
-                        />
-                      ))}
-                    </SortableContext>
-                    {courses.length === 0 && (
-                      <TableRow>
-                        <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
-                          Нет курсов
-                        </TableCell>
-                      </TableRow>
-                    )}
-                  </TableBody>
-                </Table>
-              </DndContext>
-            </CardContent>
-          </Card>
-        </div>}
-
-        {/* Tariffs Tab */}
-        {activeTab === "tariffs" && <div className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Crown className="w-5 h-5" />
-                Тарифный план
-              </CardTitle>
-              <CardDescription>Управление тарифом и индивидуальными лимитами</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              {/* Current plan */}
-              <div className="space-y-3">
-                <Label>Текущий тариф</Label>
-                <Select
-                  value={organization.subscription_plan || 'free'}
-                  onValueChange={async (val) => {
-                    const { error } = await supabase
-                      .from("organizations")
-                      .update({ subscription_plan: val } as any)
-                      .eq("id", organization.id);
-                    if (error) {
-                      toast.error("Ошибка смены тарифа");
-                    } else {
-                      toast.success(`Тариф изменён на "${getPlanInfo(val as SubscriptionPlan).name}"`);
-                    }
-                  }}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="free">Бесплатный</SelectItem>
-                    <SelectItem value="start">Старт — 3 490 ₽/мес</SelectItem>
-                    <SelectItem value="standard">Стандарт — 6 990 ₽/мес</SelectItem>
-                    <SelectItem value="professional">Профессиональный — 16 990 ₽/мес</SelectItem>
-                    <SelectItem value="maximum">Максимальный — 24 990 ₽/мес</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {/* Custom label */}
-              <div className="space-y-2">
-                <Label>Кастомная метка тарифа</Label>
-                <Input
-                  value={tariffCustomLabel}
-                  onChange={(e) => setTariffCustomLabel(e.target.value)}
-                  placeholder="Например: VIP, Партнёр, Тестовый"
-                />
-              </div>
-
-              {/* Paid until */}
-              <div className="space-y-2">
-                <Label>Оплачен до</Label>
-                <Input
-                  type="date"
-                  value={tariffPaidUntil}
-                  onChange={(e) => setTariffPaidUntil(e.target.value)}
-                />
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Индивидуальные лимиты</CardTitle>
-              <CardDescription>Переопределяют стандартные лимиты тарифа. Оставьте пустым для использования значений тарифа.</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {[
-                { key: 'maxCourses' as const, label: 'Макс. курсов' },
-                { key: 'maxStudents' as const, label: 'Макс. учеников' },
-                { key: 'maxTrainedPerMonth' as const, label: 'Обученных в месяц' },
-                { key: 'aiGenerationsLimit' as const, label: 'ИИ-генераций' },
-              ].map(({ key, label }) => (
-                <div key={key} className="flex items-center gap-4">
-                  <Label className="w-44 shrink-0">{label}</Label>
-                  <Input
-                    type="number"
-                    className="w-32"
-                    value={customLimits[key] === -1 ? '' : (customLimits[key] ?? '')}
-                    disabled={customLimits[key] === -1}
-                    onChange={(e) => setCustomLimits(prev => ({
-                      ...prev,
-                      [key]: e.target.value ? Number(e.target.value) : null,
-                    }))}
-                    placeholder="По тарифу"
-                  />
-                  <div className="flex items-center gap-2">
-                    <Switch
-                      checked={customLimits[key] === -1}
-                      onCheckedChange={(checked) => setCustomLimits(prev => ({
-                        ...prev,
-                        [key]: checked ? -1 : null,
-                      }))}
-                    />
-                    <span className="text-sm text-muted-foreground">Безлимит</span>
-                  </div>
-                </div>
-              ))}
-
-              {/* Storage separately — in GB */}
-              <div className="flex items-center gap-4">
-                <Label className="w-44 shrink-0">Хранилище (ГБ)</Label>
-                <Input
-                  type="number"
-                  className="w-32"
-                  value={customLimits.storageLimitBytes === -1 ? '' : (customLimits.storageLimitBytes != null ? Math.round(customLimits.storageLimitBytes / 1073741824) : '')}
-                  disabled={customLimits.storageLimitBytes === -1}
-                  onChange={(e) => setCustomLimits(prev => ({
-                    ...prev,
-                    storageLimitBytes: e.target.value ? Number(e.target.value) * 1073741824 : null,
-                  }))}
-                  placeholder="По тарифу"
-                />
-                <div className="flex items-center gap-2">
-                  <Switch
-                    checked={customLimits.storageLimitBytes === -1}
-                    onCheckedChange={(checked) => setCustomLimits(prev => ({
-                      ...prev,
-                      storageLimitBytes: checked ? -1 : null,
-                    }))}
-                  />
-                  <span className="text-sm text-muted-foreground">Безлимит</span>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Индивидуальная цена</CardTitle>
-              <CardDescription>Задайте индивидуальную стоимость и скидку. Эти значения будут использоваться при выставлении счёта.</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <p className="text-sm text-muted-foreground">Цена тарифа «{planInfo.name}»: <span className="font-medium text-foreground">{planInfo.price.toLocaleString()} ₽/мес</span></p>
-              <div className="flex items-center gap-4">
-                <Label className="w-44 shrink-0">Цена (₽/мес)</Label>
-                <Input
-                  type="number"
-                  className="w-40"
-                  value={customPrice ?? ''}
-                  onChange={(e) => setCustomPrice(e.target.value ? Number(e.target.value) : null)}
-                  placeholder="По тарифу"
-                />
-              </div>
-              <div className="flex items-center gap-4">
-                <Label className="w-44 shrink-0">Скидка (₽)</Label>
-                <Input
-                  type="number"
-                  className="w-40"
-                  min={0}
-                  value={customDiscount ?? ''}
-                  onChange={(e) => setCustomDiscount(e.target.value ? Number(e.target.value) : null)}
-                  placeholder="0"
-                />
-              </div>
-              {(customPrice != null || customDiscount != null) && (
-                <p className="text-sm text-muted-foreground">
-                  Итого к оплате: {(() => {
-                    const base = customPrice ?? planInfo.price;
-                    const disc = customDiscount ?? 0;
-                    return Math.max(0, base - disc).toLocaleString();
-                  })()} ₽/мес
-                </p>
-              )}
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Индивидуальные возможности</CardTitle>
-              <CardDescription>Включите категории, которые будут доступны организации независимо от тарифа.</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                {[
-                  { key: 'journals', label: 'Журналы' },
-                  { key: 'documents', label: 'Документооборот' },
-                  { key: 'labor_safety', label: 'Охрана труда' },
-                  { key: 'services', label: 'Магазин курсов' },
-                  { key: 'frdo', label: 'ФИС ФРДО' },
-                  { key: 'webinars', label: 'Вебинары' },
-                  { key: '3d_trainers', label: '3D-тренажёры' },
-                  { key: 'branding', label: 'Брендирование' },
-                  { key: 'video_id', label: 'Видео-идентификация' },
-                  { key: 'document_checklist', label: 'Чек-лист документов' },
-                  { key: 'ai_generation', label: 'ИИ-генерация' },
-                  { key: 'unlimited', label: 'Без ограничений' },
-                ].map(({ key, label }) => (
-                  <label key={key} className="flex items-center gap-2 p-2 rounded-lg border cursor-pointer hover:bg-muted/50 transition-colors">
-                    <input
-                      type="checkbox"
-                      className="h-4 w-4 rounded border-primary accent-primary"
-                      checked={customCategories.includes(key)}
-                      onChange={(e) => {
-                        if (e.target.checked) {
-                          setCustomCategories(prev => [...prev, key]);
-                        } else {
-                          setCustomCategories(prev => prev.filter(c => c !== key));
-                        }
-                      }}
-                    />
-                    <span className="text-sm font-medium">{label}</span>
-                  </label>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-
-          <Button onClick={saveTariffSettings} disabled={isSavingTariff}>
-            {isSavingTariff ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
-            Сохранить тарифные настройки
-          </Button>
-        </div>}
-
-        {/* History/Audit Logs Tab */}
-        {activeTab === "history" && <div className="space-y-4">
-          <OrgAuditLogsTab organizationId={organization.id} />
-        </div>}
-
-        {/* Comments Tab */}
-        {activeTab === "comments" && <div className="space-y-4">
-          <OrgCommentsTab organizationId={organization.id} />
-        </div>}
-
-        {/* Reminders Tab */}
-        {activeTab === "reminders" && <div className="space-y-4">
-          <OrgRemindersTab organizationId={organization.id} />
-        </div>}
-
-        {/* Settings Tab */}
-        {activeTab === "settings" && <div className="space-y-6">
-          <Card className={`${cardClass} border-primary/20`}>
-            <CardHeader className="pb-3">
-              <CardDescription className="flex items-center gap-1.5">
-                <div className="p-1 rounded-md bg-primary/10">
-                  <KeyRound className="w-3 h-3 text-primary" />
-                </div>
-                Учётные данные организации
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="pt-0">
-              {credentials ? (
-                <div className="space-y-3">
-                  <div className="flex flex-wrap items-center gap-4">
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm text-muted-foreground">Логин:</span>
-                      <code className="text-sm font-mono bg-muted px-2 py-0.5 rounded">{credentials.login_email}</code>
-                      <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => {
-                        navigator.clipboard.writeText(credentials.login_email);
-                        toast.success("Логин скопирован");
-                      }}>
-                        <Copy className="w-3.5 h-3.5" />
-                      </Button>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm text-muted-foreground">Пароль:</span>
-                      <code className="text-sm font-mono bg-muted px-2 py-0.5 rounded">
-                        {showPassword ? credentials.login_password : "••••••••"}
-                      </code>
-                      <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setShowPassword(!showPassword)}>
-                        {showPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
-                      </Button>
-                      <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => {
-                        navigator.clipboard.writeText(credentials.login_password);
-                        toast.success("Пароль скопирован");
-                      }}>
-                        <Copy className="w-3.5 h-3.5" />
-                      </Button>
-                    </div>
-                    <Button variant="outline" size="sm" className="gap-1.5" onClick={() => {
-                      const text = `Логин: ${credentials.login_email}\nПароль: ${credentials.login_password}`;
-                      navigator.clipboard.writeText(text);
-                      toast.success("Логин и пароль скопированы");
-                    }}>
-                      <Copy className="w-3.5 h-3.5" />
-                      Скопировать всё
-                    </Button>
-                  </div>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    disabled={resettingPassword}
-                    onClick={async () => {
-                      setResettingPassword(true);
-                      try {
-                        const { data, error } = await supabase.functions.invoke("reset-org-password", {
-                          body: { organization_id: organization.id }
-                        });
-                        if (error) throw error;
-                        toast.success("Пароль сброшен");
-                        // Reload credentials
-                        const { data: newCreds } = await supabase.rpc('get_decrypted_org_credentials', { p_organization_id: organization.id });
-                        if (newCreds && newCreds.length > 0) {
-                          setCredentials(newCreds[0]);
-                        }
-                      } catch (err: any) {
-                        console.error("Reset password error:", err);
-                        toast.error("Ошибка сброса пароля");
-                      } finally {
-                        setResettingPassword(false);
-                      }
-                    }}
-                  >
-                    {resettingPassword ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" /> : <KeyRound className="w-3.5 h-3.5 mr-1.5" />}
-                    Сбросить пароль
-                  </Button>
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm text-muted-foreground">Логин:</span>
-                    <code className="text-sm font-mono bg-muted px-2 py-0.5 rounded">{organization.email || "—"}</code>
-                    {organization.email && (
-                      <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => {
-                        navigator.clipboard.writeText(organization.email);
-                        toast.success("Email скопирован");
-                      }}>
-                        <Copy className="w-3.5 h-3.5" />
-                      </Button>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm text-muted-foreground italic">Пароль не сохранён в системе</span>
-                  </div>
-                  <Button
-                    variant="default"
-                    size="sm"
-                    disabled={generatingCredentials}
-                    onClick={async () => {
-                      setGeneratingCredentials(true);
-                      try {
-                        const { data, error } = await supabase.functions.invoke("generate-org-credentials", {
-                          body: { organization_id: organization.id }
-                        });
-                        if (error) throw error;
-                        toast.success(`Учётные данные созданы: ${data.login_email}`);
-                        // Reload credentials
-                        const { data: newCreds } = await supabase.rpc('get_decrypted_org_credentials', { p_organization_id: organization.id });
-                        if (newCreds && newCreds.length > 0) {
-                          setCredentials(newCreds[0]);
-                        }
-                      } catch (err: any) {
-                        console.error("Generate credentials error:", err);
-                        toast.error("Ошибка генерации учётных данных");
-                      } finally {
-                        setGeneratingCredentials(false);
-                      }
-                    }}
-                  >
-                    {generatingCredentials ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" /> : <KeyRound className="w-3.5 h-3.5 mr-1.5" />}
-                    Сгенерировать учётные данные
-                  </Button>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-          <Card className={cardClass}>
-            <CardHeader>
-              <CardTitle>Настройки организации</CardTitle>
-              <CardDescription>Управление параметрами организации</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="grid md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>Название организации</Label>
-                  <Input
-                    value={settings.name}
-                    onChange={(e) => setSettings({ ...settings, name: e.target.value })}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Email</Label>
-                  <Input
-                    type="email"
-                    value={settings.email}
-                    onChange={(e) => setSettings({ ...settings, email: e.target.value })}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Телефон</Label>
-                  <Input
-                    value={settings.phone}
-                    onChange={(e) => setSettings({ ...settings, phone: e.target.value })}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>ИНН</Label>
-                  <Input
-                    value={settings.inn}
-                    onChange={(e) => setSettings({ ...settings, inn: e.target.value })}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Контактное лицо</Label>
-                  <Input
-                    value={settings.contact_name}
-                    onChange={(e) => setSettings({ ...settings, contact_name: e.target.value })}
-                  />
-                </div>
-              </div>
-
-            </CardContent>
-          </Card>
-
-          {/* Single Save Button */}
-          <Button onClick={saveSettings} disabled={isSaving} className="w-full md:w-auto" size="lg">
-            {isSaving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Save className="w-4 h-4 mr-2" />}
-            Сохранить все настройки
-          </Button>
-        </div>}
-        </div>{/* end content */}
-      </div>{/* end flex layout */}
+          {vm.activeTab === "overview" && <OrgStatsPanel students={vm.students} courses={vm.courses} usage={vm.usage} usageHistory={vm.usageHistory} storageLimitPercent={vm.storageLimitPercent} aiGenerationsLimit={vm.aiGenerationsLimit} aiGenerationsPercent={vm.aiGenerationsPercent} formatBytes={vm.formatBytes} storageLimit={vm.settings.storage_limit_bytes} />}
+          {vm.activeTab === "students" && <OrgStudentsPanel students={vm.students} filteredStudents={vm.filteredStudents} searchQuery={vm.searchQuery} setSearchQuery={vm.setSearchQuery} pendingEnrollmentsCount={vm.pendingEnrollmentsCount} organizationName={organization.name} onShowBulkImport={() => vm.setShowStudentBulkImport(true)} />}
+          {vm.activeTab === "courses" && <OrgCoursesPanel courses={vm.courses} organizationId={organization.id} dndSensors={vm.dndSensors} handleCourseDragEnd={vm.handleCourseDragEnd} migratingCourseId={vm.migratingCourseId} setMigratingCourseId={vm.setMigratingCourseId} migrationResult={vm.migrationResult} setMigrationResult={vm.setMigrationResult} onShowSkillspaceImport={() => vm.setShowSkillspaceImport(true)} onShowSkillspaceBatchImport={() => vm.setShowSkillspaceBatchImport(true)} onSkillspaceUpdate={vm.setSkillspaceUpdateCourse} fetchCourses={vm.fetchCourses} />}
+          {vm.activeTab === "tariffs" && <OrgTariffsPanel organizationId={organization.id} subscriptionPlan={organization.subscription_plan || 'free'} planInfo={vm.planInfo} tariffCustomLabel={vm.tariffCustomLabel} setTariffCustomLabel={vm.setTariffCustomLabel} tariffPaidUntil={vm.tariffPaidUntil} setTariffPaidUntil={vm.setTariffPaidUntil} isSavingTariff={vm.isSavingTariff} saveTariffSettings={vm.saveTariffSettings} customLimits={vm.customLimits} setCustomLimits={vm.setCustomLimits} customCategories={vm.customCategories} setCustomCategories={vm.setCustomCategories} customPrice={vm.customPrice} setCustomPrice={vm.setCustomPrice} customDiscount={vm.customDiscount} setCustomDiscount={vm.setCustomDiscount} />}
+          {vm.activeTab === "history" && <OrgAuditLogsTab organizationId={organization.id} />}
+          {vm.activeTab === "comments" && <OrgCommentsTab organizationId={organization.id} />}
+          {vm.activeTab === "reminders" && <OrgRemindersTab organizationId={organization.id} />}
+          {vm.activeTab === "settings" && <OrgSettingsPanel organizationId={organization.id} organizationEmail={organization.email} settings={vm.settings} setSettings={vm.setSettings} isSaving={vm.isSaving} saveSettings={vm.saveSettings} credentials={vm.credentials} setCredentials={vm.setCredentials} showPassword={vm.showPassword} setShowPassword={vm.setShowPassword} generatingCredentials={vm.generatingCredentials} setGeneratingCredentials={vm.setGeneratingCredentials} resettingPassword={vm.resettingPassword} setResettingPassword={vm.setResettingPassword} />}
+        </div>
+      </div>
     </div>
 
-    <SkillspaceImportDialog
-      open={showSkillspaceImport}
-      onOpenChange={setShowSkillspaceImport}
-      organizationId={organization.id}
-      onSuccess={() => {
-        // Refresh courses
-        supabase
-          .from("courses")
-          .select("id, title, is_published, catalog_order, lessons(id), enrollments(id)")
-          .eq("organization_id", organization.id)
-          .then(({ data }) => {
-            if (data) {
-               setCourses(data.map((c: any) => ({
-                 id: c.id,
-                 title: c.title,
-                 is_published: c.is_published,
-                 lessons_count: c.lessons?.length || 0,
-                 students_count: c.enrollments?.length || 0,
-                 catalog_order: c.catalog_order || 0,
-               })));
-            }
-          });
-      }}
-    />
-    {skillspaceUpdateCourse && (
-      <SkillspaceImportDialog
-        open={!!skillspaceUpdateCourse}
-        onOpenChange={(open) => { if (!open) setSkillspaceUpdateCourse(null); }}
-        organizationId={organization.id}
-        existingCourseId={skillspaceUpdateCourse.id}
-        existingCourseTitle={skillspaceUpdateCourse.title}
-        onSuccess={() => fetchCourses()}
-      />
+    <SkillspaceImportDialog open={vm.showSkillspaceImport} onOpenChange={vm.setShowSkillspaceImport} organizationId={organization.id} onSuccess={() => {
+      supabase.from("courses").select("id, title, is_published, catalog_order, lessons(id), enrollments(id)").eq("organization_id", organization.id).then(({ data }) => {
+        if (data) vm.setCourses(data.map((c: any) => ({ id: c.id, title: c.title, is_published: c.is_published, lessons_count: c.lessons?.length || 0, students_count: c.enrollments?.length || 0, catalog_order: c.catalog_order || 0 })));
+      });
+    }} />
+    {vm.skillspaceUpdateCourse && (
+      <SkillspaceImportDialog open={!!vm.skillspaceUpdateCourse} onOpenChange={(open) => { if (!open) vm.setSkillspaceUpdateCourse(null); }} organizationId={organization.id} existingCourseId={vm.skillspaceUpdateCourse.id} existingCourseTitle={vm.skillspaceUpdateCourse.title} onSuccess={() => vm.fetchCourses()} />
     )}
-    <SkillspaceBatchImportDialog
-      open={showSkillspaceBatchImport}
-      onOpenChange={setShowSkillspaceBatchImport}
-      organizationId={organization.id}
-      onSuccess={() => fetchCourses()}
-    />
-    <StudentBulkImportDialog
-      open={showStudentBulkImport}
-      onOpenChange={setShowStudentBulkImport}
-      organizationId={organization.id}
-      onImportComplete={() => { fetchStudents(); fetchPendingEnrollmentsCount(); }}
-    />
+    <SkillspaceBatchImportDialog open={vm.showSkillspaceBatchImport} onOpenChange={vm.setShowSkillspaceBatchImport} organizationId={organization.id} onSuccess={() => vm.fetchCourses()} />
+    <StudentBulkImportDialog open={vm.showStudentBulkImport} onOpenChange={vm.setShowStudentBulkImport} organizationId={organization.id} onImportComplete={() => { vm.fetchStudents(); vm.fetchPendingEnrollmentsCount(); }} />
     </>
   );
 }

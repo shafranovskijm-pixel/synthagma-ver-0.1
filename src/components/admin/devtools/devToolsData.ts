@@ -121,10 +121,7 @@ export interface LargeFile {
 }
 
 export const LARGEST_FILES: LargeFile[] = [
-  { path: "src/components/admin/OrganizationDetailsView.tsx", lines: 1790, status: "needs-work", note: "Было 1969. Убраны баланс, документы, настройки ИИ. Ещё нужна декомпозиция." },
-  { path: "src/components/organization/tabs/CoursesTab.tsx", lines: 1747, status: "needs-work", note: "Критично. Вынести логику в хук, разбить UI." },
-  { path: "src/components/course-builder/block-editor/BlockEditorMain.tsx", lines: 1461, status: "needs-work", note: "Разбить на BlockToolbar, BlockCanvas, BlockProperties." },
-  { path: "src/components/admin/AdminAnalytics.tsx", lines: 1435, status: "needs-work", note: "Вынести графики в отдельные компоненты." },
+  { path: "src/components/organization/tabs/CoursesTab.tsx", lines: 1383, status: "optimized", note: "Было 1747. Извлечены диалоги и SortableCourseListRow." },
   { path: "src/components/organization/dialogs/CourseDetailsModal.tsx", lines: 1416, status: "needs-work", note: "Разбить на табы-компоненты." },
   { path: "src/components/organization/LaborSafetyStudentDetailCard.tsx", lines: 1295, status: "needs-work", note: "Декомпозиция на секции." },
   { path: "src/components/organization/SelfExaminationQuiz.tsx", lines: 1250, status: "needs-work", note: "Вынести логику в хук." },
@@ -148,6 +145,9 @@ export const LARGEST_FILES: LargeFile[] = [
   { path: "src/components/organization/CopiesDuplicatesJournal.tsx", lines: 819, status: "needs-work", note: "Логика в хук." },
   { path: "src/components/organization/AutoFinalAttestationJournal.tsx", lines: 802, status: "needs-work", note: "Логика в хук." },
   { path: "src/pages/CourseLearning.tsx", lines: 554, status: "optimized", note: "Было 2758. Логика в useCourseLearning." },
+  { path: "src/components/admin/OrganizationDetailsView.tsx", lines: 180, status: "optimized", note: "Было 1790. Логика в useOrgDetailsView + 5 панелей." },
+  { path: "src/components/course-builder/block-editor/BlockEditorMain.tsx", lines: 155, status: "optimized", note: "Было 1461. Разбит на 7 подкомпонентов в blocks/." },
+  { path: "src/components/admin/AdminAnalytics.tsx", lines: 191, status: "optimized", note: "Было 1435. Логика в useAdminAnalytics + 7 графиков." },
   { path: "src/hooks/useBulkPipeline.ts", lines: 682, status: "ok", note: "Хук — допустимый размер для сложной логики." },
   { path: "src/hooks/useCourseBuilder.ts", lines: 660, status: "ok", note: "Хук — допустимый размер." },
 ];
@@ -184,13 +184,13 @@ export interface QualityMetric {
 
 export const QUALITY_METRICS: QualityMetric[] = [
   { label: "Средний размер файла", value: Math.round(TOTAL_LINES / TOTAL_FILES), max: 300, unit: "строк", status: Math.round(TOTAL_LINES / TOTAL_FILES) > 300 ? "warning" : "good" },
-  { label: "Крупнейший файл", value: 1790, max: 500, unit: "строк", status: "critical" },
-  { label: "Файлов >800 строк", value: 28, max: 0, unit: "штук", status: "critical" },
-  { label: "Файлов >500 строк", value: 69, max: 10, unit: "штук", status: "critical" },
+  { label: "Крупнейший файл", value: 1416, max: 500, unit: "строк", status: "critical" },
+  { label: "Файлов >800 строк", value: 23, max: 0, unit: "штук", status: "critical" },
+  { label: "Файлов >500 строк", value: 58, max: 10, unit: "штук", status: "critical" },
   { label: "Покрытие тестами", value: 10, max: 50, unit: "файлов", status: "warning" },
   { label: "Lazy-loaded страниц", value: 58, max: 58, unit: `из ${58}`, status: "good" },
   { label: "Dynamic imports", value: 4, max: 4, unit: "библиотек", status: "good" },
-  { label: "Кастомные хуки", value: 79, max: 100, unit: "штук", status: "good" },
+  { label: "Кастомные хуки", value: 82, max: 100, unit: "штук", status: "good" },
   { label: "Context Coverage", value: 85, max: 100, unit: "%", status: "good" },
   { label: "Edge-функции", value: 60, max: 60, unit: "штук", status: "good" },
   { label: "Таблиц в БД", value: 118, max: 150, unit: "штук", status: "good" },
