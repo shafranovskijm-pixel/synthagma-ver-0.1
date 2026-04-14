@@ -1914,7 +1914,8 @@ export function OrganizationDetailsView({ organization, onBack }: OrganizationDe
             Сохранить все настройки
           </Button>
         </div>}
-      
+        </div>{/* end content */}
+      </div>{/* end flex layout */}
     </div>
 
     <SkillspaceImportDialog
