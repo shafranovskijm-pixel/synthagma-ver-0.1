@@ -531,56 +531,59 @@ export function AdminMarketplaceManager() {
               </div>
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {h.filteredCourses.map((item: any) => (
-                <Card key={item.id} className="overflow-hidden hover:shadow-md transition-shadow">
-                  <CardHeader className="pb-2">
-                    <div className="flex items-start justify-between gap-2">
-                      <CardTitle className="text-sm font-semibold leading-tight line-clamp-2">{item.course?.title || ""}</CardTitle>
-                      <Badge variant={item.is_active ? "default" : "secondary"} className="shrink-0">{item.is_active ? "Активен" : "Скрыт"}</Badge>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+              {h.filteredCourses.map((item: any) => {
+                const catName = h.dbCategories.find((c: any) => c.id === item.course?.category_id)?.name;
+                return (
+                  <div key={item.id} className="group bg-card rounded-2xl border border-border overflow-hidden hover:shadow-lg transition-all flex flex-col">
+                    {/* Cover */}
+                    <div className="relative h-36 bg-muted overflow-hidden">
+                      {item.course?.cover_image_url ? (
+                        <img src={item.course.cover_image_url} alt={item.course?.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" loading="lazy" />
+                      ) : (
+                        <div className="w-full h-full bg-gradient-to-br from-primary/20 to-accent/20 flex items-center justify-center">
+                          <BookOpen className="w-10 h-10 text-primary/40" />
+                        </div>
+                      )}
+                      {catName && (
+                        <Badge className="absolute top-2 left-2 text-[10px]">{catName}</Badge>
+                      )}
+                      <Badge variant={item.is_active ? "default" : "secondary"} className="absolute top-2 right-2 text-[10px]">
+                        {item.is_active ? "Активен" : "Скрыт"}
+                      </Badge>
                     </div>
-                    <CardDescription className="flex items-center gap-1 text-xs">
-                      <Building2 className="w-3 h-3" />{item.organization?.name || "Платформа"}
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-3">
-                    {item.description_short && <p className="text-sm text-muted-foreground line-clamp-2">{item.description_short}</p>}
-                    <div className="grid grid-cols-2 gap-2">
-                      <div className="text-center p-2 bg-secondary/50 rounded-lg">
-                        <div className="text-[10px] text-muted-foreground">Студенты</div>
-                        <div className="font-semibold text-sm">{item.price_student.toLocaleString()} ₽</div>
-                      </div>
-                      <div className="text-center p-2 bg-secondary/50 rounded-lg">
-                        <div className="text-[10px] text-muted-foreground">Организации</div>
-                        <div className="font-semibold text-sm">{item.price_organization.toLocaleString()} ₽</div>
-                      </div>
-                    </div>
-                    <div className="flex items-center justify-between pt-1">
-                      <div className="flex items-center gap-2">
-                        <Switch checked={item.is_active} onCheckedChange={() => h.handleToggleActive(item)} />
-                        <span className="text-xs text-muted-foreground">{item.is_active ? "Виден" : "Скрыт"}</span>
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <Button variant="ghost" size="icon" className="h-8 w-8" title="AI контент" onClick={() => handleBulkGenerate(item)}>
-                          <Sparkles className="w-3.5 h-3.5" />
-                        </Button>
-                        <Button variant="ghost" size="icon" className="h-8 w-8" title="Переместить" onClick={() => { h.setMovingCourse(item); h.setTargetCategory(h.extractCategory(item.course?.title)); h.setShowMoveCategoryDialog(true); }}>
-                          <FolderInput className="w-3.5 h-3.5" />
-                        </Button>
-                        <Button variant="ghost" size="icon" className="h-8 w-8" title="Редактировать уроки" onClick={() => navigate(`/course-builder/${item.course_id}`)}>
-                          <BookOpen className="w-3.5 h-3.5" />
-                        </Button>
-                        <Button variant="ghost" size="icon" className="h-8 w-8" title="Редактировать курс" onClick={() => { h.setEditingCourse(item); h.setShowEditDialog(true); }}>
-                          <Edit className="w-3.5 h-3.5" />
-                        </Button>
-                        <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive" onClick={() => h.handleDeleteCourse(item.id)}>
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </Button>
+                    {/* Content */}
+                    <div className="p-3 flex flex-col flex-1">
+                      <h3 className="font-semibold text-sm line-clamp-2 mb-1">{item.course?.title || ""}</h3>
+                      {item.description_short && <p className="text-xs text-muted-foreground line-clamp-2 mb-2">{item.description_short}</p>}
+                      <div className="mt-auto space-y-2">
+                        <div className="flex items-center justify-between text-xs text-muted-foreground">
+                          <span className="flex items-center gap-1"><Building2 className="w-3 h-3" />{item.organization?.name || "Платформа"}</span>
+                          <span className="font-medium text-primary">
+                            {item.price_student > 0 ? `${item.price_student.toLocaleString()} ₽` : "Бесплатно"}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-1 pt-1 border-t border-border/50">
+                          <Switch checked={item.is_active} onCheckedChange={() => h.handleToggleActive(item)} />
+                          <span className="text-[10px] text-muted-foreground mr-auto">{item.is_active ? "Виден" : "Скрыт"}</span>
+                          <Button variant="ghost" size="icon" className="h-7 w-7" title="AI контент" onClick={() => handleBulkGenerate(item)}>
+                            <Sparkles className="w-3.5 h-3.5" />
+                          </Button>
+                          <Button variant="ghost" size="icon" className="h-7 w-7" title="Уроки" onClick={() => navigate(`/course-builder/${item.course_id}`)}>
+                            <BookOpen className="w-3.5 h-3.5" />
+                          </Button>
+                          <Button variant="ghost" size="icon" className="h-7 w-7" title="Редактировать" onClick={() => { h.setEditingCourse(item); h.setShowEditDialog(true); }}>
+                            <Edit className="w-3.5 h-3.5" />
+                          </Button>
+                          <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive" onClick={() => h.handleDeleteCourse(item.id)}>
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </Button>
+                        </div>
                       </div>
                     </div>
-                  </CardContent>
-                </Card>
-              ))}
+                  </div>
+                );
+              })}
             </div>
           )}
         </TabsContent>
