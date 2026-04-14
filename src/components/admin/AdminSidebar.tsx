@@ -23,6 +23,7 @@ export type AdminTabType =
   | "support"
   | "devtools"
   | "updates"
+  | "staff"
   | "settings";
 
 const PLATFORM_TABS: AdminTabType[] = ["content", "ai", "devtools", "updates"];
@@ -162,6 +163,11 @@ export function AdminSidebar({
           <button onClick={() => handleTabClick("referrals")} className={tabButtonClass("referrals")}>
             <Gift className="w-5 h-5" />
             Партнёры
+          </button>
+
+          <button onClick={() => handleTabClick("staff")} className={tabButtonClass("staff")}>
+            <Users className="w-5 h-5" />
+            Сотрудники
           </button>
 
           {/* Platform group */}
