@@ -1,44 +1,45 @@
 
 
-# Ограничение Kinescope на бесплатных тарифах
+# Диагностика ошибки Kinescope: получить точный ответ API
 
-## Что делаем
+## Проблема
 
-На тарифах «Бесплатный», «Старт» и «Стандарт» заменяем вкладку Kinescope в загрузке видео на промо-заглушку с призывом перейти на тариф «Профессиональный». Загрузка «На сервер (до 2 ГБ)» остаётся доступной на всех тарифах.
+На скриншоте видно, что оба токена в Kinescope имеют полные права (загрузка, чтение, изменение, удаление). Однако при вызове `POST /v1/videos` Kinescope возвращает статус 405 или тело с кодом `400405`. Текущий прокси перехватывает эту ошибку и подменяет сообщение, поэтому мы не видим **оригинальный ответ API**.
 
-## Изменения
+## Что сделать
 
-### 1. `src/pages/CourseBuilder.tsx`
-Пробросить `organizationId` в `SortableLessonItem` как новый проп.
+### 1. Обновить `kinescope-proxy/index.ts` — логировать и возвращать сырой ответ
 
-### 2. `src/components/course-builder/SortableLessonItem.tsx`
-- Добавить проп `organizationId?: string`
-- Импортировать `useSubscriptionLimits` и `Lock` из lucide
-- Определить `isKinescopeAvailable` — план `professional` или `maximum`
-- Если Kinescope недоступен:
-  - Вкладка Kinescope в `TabsList` отображается, но при клике переключает на заглушку
-  - Вместо зоны загрузки показывать промо-блок:
-    ```
-    🔒 Загрузка через Kinescope
-    Профессиональный видеохостинг с CDN и DRM-защитой
-    доступен на тарифе «Профессиональный» и выше.
-    [Перейти к тарифам →]
-    ```
-  - Кнопка «Перейти к тарифам» ведёт на `/organization/{orgId}?tab=tariffs` (через `useNavigate`)
-  - По умолчанию активная вкладка `videoUploadTab` ставится на `"server"` если Kinescope недоступен
+В блоке `upload_init`, при ошибке `createRes`, добавить в ответ **оригинальное тело и статус** от Kinescope:
 
-### 3. `src/constants/subscriptionPlans.ts`
-Добавить `kinescopeEnabled: boolean` в `PlanLimits`:
-- `false` для free, start, standard
-- `true` для professional, maximum
+```
+{
+  "error": "Kinescope API error",
+  "status": 405,
+  "raw_response": "<полный текст ответа Kinescope>",
+  "request_info": {
+    "method": "POST",
+    "url": "https://api.kinescope.io/v1/videos",
+    "body": { "title": "...", "type": "vod" }
+  }
+}
+```
 
-Это позволит проверять доступность через `limits.kinescopeEnabled` единообразно по всему проекту.
+Это позволит:
+- Увидеть точный код и текст ошибки от Kinescope
+- Передать эту информацию в поддержку Kinescope
+
+### 2. Текст письма для поддержки Kinescope
+
+После получения сырого ответа — подготовлю точный текст запроса в поддержку с:
+- Названием токена (SINTAGMA)
+- Точным запросом (`POST /v1/videos`)
+- Точным ответом API (статус + тело)
+- Вопросом: почему токен с правами write возвращает 405
 
 ## Файлы
 
 | Файл | Изменение |
 |------|-----------|
-| `src/constants/subscriptionPlans.ts` | Новое поле `kinescopeEnabled` в лимитах |
-| `src/pages/CourseBuilder.tsx` | Проброс `organizationId` в `SortableLessonItem` |
-| `src/components/course-builder/SortableLessonItem.tsx` | Проверка плана + промо-заглушка вместо Kinescope |
+| `supabase/functions/kinescope-proxy/index.ts` | Добавить raw_response в ответ ошибки для диагностики |
 
