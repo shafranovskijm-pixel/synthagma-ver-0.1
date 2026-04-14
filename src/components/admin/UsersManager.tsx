@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { safeInvoke } from "@/utils/safeInvoke";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -29,17 +28,10 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Trash2, Search, Loader2, Users, Shield, Building2, GraduationCap, Copy, Eye, EyeOff, BookOpen, FileText, Clock, Mail, Phone, MapPin, KeyRound, Save, Plus, Pencil, ExternalLink } from "lucide-react";
-import { Label } from "@/components/ui/label";
+import { Trash2, Search, Loader2, Users, Shield, Building2, GraduationCap, Copy, Eye, EyeOff, ExternalLink } from "lucide-react";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import { toast } from "sonner";
