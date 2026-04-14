@@ -281,7 +281,9 @@ ${greetingRule}
       ? `\n\nУЖЕ СОЗДАННЫЕ УРОКИ (НЕ ДУБЛИРУЙ ИХ СОДЕРЖАНИЕ, создай УНИКАЛЬНЫЙ контент):\n${previousLessons.map((t: string, i: number) => `${i + 1}. ${t}`).join("\n")}`
       : "";
 
-    const userPrompt = `Создай контент для урока:
+    const userPrompt = lessonType === "format"
+      ? `Оформи следующий текст, сохранив всё содержание:\n\n${rawText}`
+      : `Создай контент для урока:
 Название урока: ${lessonTitle}
 ${courseTitle ? `Курс: ${courseTitle}` : ""}
 ${courseDescription ? `Описание курса: ${courseDescription}` : ""}
