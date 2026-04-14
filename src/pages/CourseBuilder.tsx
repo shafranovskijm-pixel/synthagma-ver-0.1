@@ -51,6 +51,7 @@ export default function CourseBuilder() {
     await startReview(resolvedCourseId);
   };
 
+  const handlePreview = async () => {
     if (resolvedCourseId && !hasUnsavedChanges) {
       navigate(`/course-preview/${resolvedCourseId}`);
       return;
