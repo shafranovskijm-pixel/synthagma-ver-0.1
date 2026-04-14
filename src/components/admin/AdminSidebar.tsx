@@ -165,6 +165,11 @@ export function AdminSidebar({
             Партнёры
           </button>
 
+          <button onClick={() => handleTabClick("staff")} className={tabButtonClass("staff")}>
+            <Users className="w-5 h-5" />
+            Сотрудники
+          </button>
+
           {/* Platform group */}
           <div>
             <button
