@@ -53,7 +53,11 @@ serve(async (req) => {
 
         if (!createRes.ok) {
           const errBody = await createRes.text();
-          return new Response(JSON.stringify({ error: `Kinescope create failed: ${errBody}` }), {
+          const isMethodNotAllowed = createRes.status === 405 || errBody.includes("400405") || errBody.includes("method not allowed");
+          const userMessage = isMethodNotAllowed
+            ? "Токен Kinescope не имеет прав на запись (write). Обновите API-токен в настройках Kinescope, добавив права api:write и upload."
+            : `Kinescope create failed: ${errBody}`;
+          return new Response(JSON.stringify({ error: userMessage }), {
             status: createRes.status,
             headers: { ...corsHeaders, "Content-Type": "application/json" },
           });
