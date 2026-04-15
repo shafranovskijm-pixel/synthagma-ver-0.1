@@ -1,4 +1,5 @@
 import React, { useState, useCallback } from "react";
+import { LoadMoreControls } from "@/components/ui/LoadMoreControls";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
