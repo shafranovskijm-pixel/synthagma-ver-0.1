@@ -388,10 +388,20 @@ export default function StudentProfile() {
             )}
           </div>
         </div>
-        <Button variant="outline" size="sm" onClick={handleLogout} className="absolute top-4 right-6 gap-2 bg-background/80 hover:bg-background">
-          <LogOut className="w-4 h-4" />
-          Выйти
-        </Button>
+        {isAdminView ? (
+          <Button variant="outline" size="sm" onClick={() => {
+            localStorage.removeItem('adminViewAsStudent');
+            navigate(adminViewData?.orgReturn || '/admin');
+          }} className="absolute top-4 right-6 gap-2 bg-background/80 hover:bg-background">
+            <ArrowLeft className="w-4 h-4" />
+            Вернуться в панель
+          </Button>
+        ) : (
+          <Button variant="outline" size="sm" onClick={handleLogout} className="absolute top-4 right-6 gap-2 bg-background/80 hover:bg-background">
+            <LogOut className="w-4 h-4" />
+            Выйти
+          </Button>
+        )}
       </div>
 
       {/* Back button */}
