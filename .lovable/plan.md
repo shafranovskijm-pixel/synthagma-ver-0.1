@@ -1,41 +1,55 @@
 
 
-# Карточка ученика внутри дашборда + пагинация + «Войти как ученик»
+# Исправление предупреждений здоровья проекта
 
-## 3 задачи
+## Текущее состояние
+- **22 файла > 800 строк** (без архивных и types.ts)
+- **organization/ — 47K строк в 131 файле**
+- Топ-3 кандидата на декомпозицию: `DocumentsTab` (1440), `CourseDetailsModal` (1412), `LaborSafetyStudentDetailCard` (1279)
 
-### 1. Карточка ученика — вкладка в дашборде (как курс)
-Сейчас `onViewStudent` → `navigate("/organization/student/:id")` — отдельная страница с собственным хедером/сайдбаром. Нужно открывать как вкладку `"student-details"` внутри основного дашборда, аналогично `"course-details"`.
+## План: декомпозиция 3 крупнейших файлов
 
-**Изменения:**
-- `OrgSidebar.tsx` — добавить `"student-details"` в `TabType`
-- `useTabNavigation.ts` — добавить `selectedStudentId` / `setSelectedStudentId`
-- `useStudentDetailCard.ts` — вместо `navigate(...)` → вызывать `setSelectedStudentId` + `setActiveTab("student-details")`
-- Новый `StudentDetailsTab.tsx` — обёртка, берёт `selectedStudentId` из контекста, рендерит содержимое карточки (логика из `OrganizationStudentDetails.tsx`): вертикальное меню + контент (Личное дело, Идентификация, Курсы, Документы, Активность, Чат). Кнопка «Назад» → `setActiveTab("students")`
-- `TabContentRenderer.tsx` — рендер `StudentDetailsTab` при `activeTab === "student-details"`, добавить в `shouldShowStatsCards` исключение
-- `OrganizationStudentDetails.tsx` — редирект → `/organization?tab=student-details&studentId=...`
-- `OrganizationDashboard.tsx` — обработка `?studentId=` query param
+### 1. DocumentsTab.tsx (1440 → ~300)
+Извлечь логику и подразделы:
+- `useDocumentsTab.ts` — хук с состоянием, загрузкой billing-документов, requisites
+- `DocumentsNavSidebar.tsx` — боковое меню навигации по разделам
+- `BillingDocumentsSection.tsx` — раздел «Синтагма» (счета, акты)
+- `CounterpartiesSection.tsx` — раздел «Контрагенты»
+- `ConstructorSection.tsx` — раздел конструктора (договоры, протоколы, сертификаты, дипломы)
+- `OrdersSection.tsx` — раздел приказов
+- Основной `DocumentsTab.tsx` остаётся оркестратором (~300 строк)
 
-### 2. «Войти как ученик» в хедере карточки
-Кнопка уже есть в `OrganizationStudentDetails.tsx`. Перенести её в `StudentDetailsTab.tsx` — показывать вверху рядом с кнопкой «Назад». Использует тот же `adminViewAsStudent` localStorage механизм с `orgReturn: '/organization'`.
+### 2. CourseDetailsModal.tsx (1412 → ~200)
+Извлечь вкладки модального окна в подкомпоненты:
+- `useCourseDetailsModal.ts` — хук с загрузкой курса, учеников, настроек
+- `CourseOverviewTab.tsx` — обзор курса (статистика, прогресс)
+- `CourseStudentsTab.tsx` — список учеников курса
+- `CourseSettingsTab.tsx` — настройки курса (ФРДО, видео, доступ)
+- `CourseDocumentsTab.tsx` — документы и отчёты курса
+- `CourseRemindersGroupsTab.tsx` — напоминания и группы
+- Основной `CourseDetailsModal.tsx` — Dialog + Tabs оркестрация (~200 строк)
 
-### 3. Пагинация списка учеников (10 по умолчанию)
-В `StudentsTab.tsx` сейчас все ученики показываются сразу. Добавить:
-- Состояние `pageSize` (по умолчанию 10) с выбором 10 / 25 / 50 / 100
-- Состояние `currentPage`
-- Применять `slice()` к отфильтрованному списку
-- UI: внизу таблицы — навигация по страницам + выбор количества на странице
+### 3. LaborSafetyStudentDetailCard.tsx (1279 → ~200)
+Извлечь секции карточки:
+- `useLaborSafetyStudent.ts` — хук с загрузкой данных студента, курсов, идентификации
+- `LSStudentPersonalTab.tsx` — личные данные, СНИЛС, ИНН
+- `LSStudentCoursesTab.tsx` — курсы и прогресс
+- `LSStudentIdentificationTab.tsx` — видео-идентификация
+- `LSStudentCredentialsTab.tsx` — логин/пароль
+- Основной файл — Dialog + Tabs (~200 строк)
+
+### 4. Обновить devToolsData.ts
+- Обновить счётчики и рекомендации: отметить 3 новых декомпозиции как «Применено»
+- Обновить `large-files-count`: «20 файлов > 800 строк» (снижено с 22)
+- Обновить `org-components-size`: отразить уменьшение
 
 ## Файлы
 
-| Файл | Действие |
+| Действие | Файлы |
 |---|---|
-| `src/components/organization/OrgSidebar.tsx` | Добавить `"student-details"` в `TabType` |
-| `src/hooks/useTabNavigation.ts` | Добавить `selectedStudentId` / `setSelectedStudentId` |
-| `src/hooks/useStudentDetailCard.ts` | Переключать на вкладку вместо навигации |
-| `src/components/organization/tabs/StudentDetailsTab.tsx` | Новый — обёртка карточки ученика |
-| `src/components/organization/tabs/TabContentRenderer.tsx` | Рендер `StudentDetailsTab` |
-| `src/components/organization/tabs/StudentsTab.tsx` | Пагинация (10/25/50/100) |
-| `src/pages/OrganizationStudentDetails.tsx` | Редирект в дашборд |
-| `src/pages/OrganizationDashboard.tsx` | Обработка `?studentId=` |
+| Новые (DocumentsTab) | `useDocumentsTab.ts`, `DocumentsNavSidebar.tsx`, `BillingDocumentsSection.tsx`, `CounterpartiesSection.tsx`, `ConstructorSection.tsx`, `OrdersSection.tsx` |
+| Новые (CourseDetailsModal) | `useCourseDetailsModal.ts`, `CourseOverviewTab.tsx`, `CourseStudentsTab.tsx`, `CourseSettingsTab.tsx`, `CourseDocumentsTab.tsx` |
+| Новые (LaborSafety) | `useLaborSafetyStudent.ts`, `LSStudentPersonalTab.tsx`, `LSStudentCoursesTab.tsx`, `LSStudentIdentificationTab.tsx`, `LSStudentCredentialsTab.tsx` |
+| Рефакторинг | `DocumentsTab.tsx`, `CourseDetailsModal.tsx`, `LaborSafetyStudentDetailCard.tsx` |
+| Обновление | `devToolsData.ts` |
 
