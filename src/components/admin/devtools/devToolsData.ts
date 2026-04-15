@@ -328,6 +328,24 @@ export const CODE_RECOMMENDATIONS: Recommendation[] = [
   },
   // ── Выполненные оптимизации ──
   {
+    id: "course-details-modal-decomposed",
+    severity: "info",
+    category: "architecture",
+    title: "✅ CourseDetailsModal декомпозирован (1416 → 250)",
+    detail: "Логика → useCourseDetailsLogic. Табы: CourseStudentsTab, CourseSettingsTab. Настройки FRDO, enrollment, reset — в хуке.",
+    actionable: false,
+    status: "applied",
+  },
+  {
+    id: "labor-safety-card-decomposed",
+    severity: "info",
+    category: "architecture",
+    title: "✅ LaborSafetyStudentDetailCard декомпозирован (1295 → 140)",
+    detail: "Логика → useLaborSafetyStudent. 4 таба: LSProfileTab, LSIdentificationTab, LSCoursesTab, LSDocumentsTab.",
+    actionable: false,
+    status: "applied",
+  },
+  {
     id: "org-details-decomposed",
     severity: "info",
     category: "architecture",
