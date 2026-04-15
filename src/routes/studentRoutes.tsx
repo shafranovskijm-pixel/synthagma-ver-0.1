@@ -4,6 +4,7 @@ import { protectedRoute, LearningRedirect } from "./helpers";
 
 const StudentDashboard = lazyWithRetry(() => import("@/pages/StudentDashboard"));
 const StudentProfile = lazyWithRetry(() => import("@/pages/StudentProfile"));
+const StudentWhatsNew = lazyWithRetry(() => import("@/pages/StudentWhatsNew"));
 const CourseLearning = lazyWithRetry(() => import("@/pages/CourseLearning"));
 const InvoiceView = lazyWithRetry(() => import("@/pages/InvoiceView"));
 
@@ -11,6 +12,7 @@ export const studentRoutes = (
   <>
     <Route path="/student" element={protectedRoute(<StudentDashboard />)} />
     <Route path="/student/profile" element={protectedRoute(<StudentProfile />)} />
+    <Route path="/student/whats-new" element={protectedRoute(<StudentWhatsNew />)} />
     <Route path="/course/:courseId/learn" element={protectedRoute(<CourseLearning />)} />
     <Route path="/learning/:courseId" element={<LearningRedirect />} />
     <Route path="/invoice/:id" element={protectedRoute(<InvoiceView />)} />

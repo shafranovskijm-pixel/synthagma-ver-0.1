@@ -234,7 +234,7 @@ export function OrgDashboardHeader() {
                 <FileText className="w-4 h-4" />
                 Документы
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => navigate("/whats-new")} className="rounded-lg gap-2.5 py-2.5 focus:bg-primary/10 focus:text-primary">
+              <DropdownMenuItem onClick={() => navigate("/organization/whats-new")} className="rounded-lg gap-2.5 py-2.5 focus:bg-primary/10 focus:text-primary">
                 <Sparkles className="w-4 h-4" />
                 Что нового?
               </DropdownMenuItem>

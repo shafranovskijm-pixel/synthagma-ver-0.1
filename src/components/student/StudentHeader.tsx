@@ -95,7 +95,7 @@ export function StudentHeader({
               )}
             </DropdownMenuItem>
 
-            <DropdownMenuItem onClick={() => navigate("/whats-new")}>
+            <DropdownMenuItem onClick={() => navigate("/student/whats-new")}>
               <Sparkles className="w-4 h-4 mr-2" />
               Что нового?
             </DropdownMenuItem>
