@@ -250,6 +250,34 @@ export function SubscriptionTab() {
     }
   };
 
+  const handlePayOnline = async () => {
+    if (!organizationId || !selectedPlan) return;
+    setPayingOnline(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("tbank-init-subscription", {
+        body: {
+          organization_id: organizationId,
+          plan: selectedPlan,
+          period_months: 1,
+          email: orgContact.email || undefined,
+        },
+      });
+
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+
+      if (data?.url) {
+        window.location.href = data.url;
+      } else {
+        toast.error("Не удалось получить ссылку на оплату");
+      }
+    } catch (e: any) {
+      toast.error("Ошибка оплаты", { description: e.message });
+    } finally {
+      setPayingOnline(false);
+    }
+  };
+
   const coursesPercent = subscriptionLimits.limits.maxCourses === -1 ? 0 :
     Math.round((subscriptionLimits.usage.coursesCount / subscriptionLimits.limits.maxCourses) * 100);
   const studentsPercent = subscriptionLimits.limits.maxStudents === -1 ? 0 :
