@@ -79,47 +79,6 @@ export function AdminDashboardHeader({
   onCoverUpload }: AdminDashboardHeaderProps) {
   const helpDialog = useHelpCenterDialog();
 
-  // Theme-aware banner
-  const [themeBannerUrl, setThemeBannerUrl] = useState<string | null>(() => {
-    const id = getStoredThemeId();
-    return id ? getThemeById(id)?.bannerUrl || null : null;
-  });
-  const [themeBannerPosition, setThemeBannerPosition] = useState<string | undefined>(() => {
-    const id = getStoredThemeId();
-    return id ? getThemeById(id)?.bannerPosition : undefined;
-  });
-
-  useEffect(() => {
-    const handler = (e: Event) => {
-      const id = (e as CustomEvent).detail;
-      const theme = id ? getThemeById(id) : null;
-      setThemeBannerUrl(theme?.bannerUrl || null);
-      setThemeBannerPosition(theme?.bannerPosition);
-    };
-    window.addEventListener("visual-theme-change", handler);
-    return () => window.removeEventListener("visual-theme-change", handler);
-  }, []);
-
-  const handleGenerateAICover = useCallback(async () => {
-    if (isGeneratingCover) return;
-    setIsGeneratingCover(true);
-    toast.info("Генерируем обложку с ИИ...", { duration: 10000 });
-    try {
-      const { data, error } = await supabase.functions.invoke("generate-cover", {
-        body: { type: "admin" } });
-      if (error) throw error;
-      if (data?.error) throw new Error(data.error);
-      toast.success("Обложка сгенерирована!");
-      window.location.reload();
-    } catch (e: any) {
-      console.error("AI cover generation error:", e);
-      toast.error(e?.message || "Ошибка генерации обложки");
-    } finally {
-      setIsGeneratingCover(false);
-    }
-  }, [isGeneratingCover]);
-
-  const displayCover = themeBannerUrl || branding.coverUrl || defaultCoverImg;
   const displayName = branding.customName || "СИНТАГМА";
   const initials = getInitials(userEmail);
 
@@ -240,24 +199,9 @@ export function AdminDashboardHeader({
         </div>
       </div>
 
-      {/* Hero banner */}
-      <div className="relative w-full h-36 lg:h-48 overflow-hidden">
-        <img
-          src={displayCover}
-          alt="Обложка"
-          className="w-full h-full"
-          style={{
-            objectFit: (themeBannerUrl || branding.coverUrl) ? ((branding.coverPosition === "contain" && !themeBannerUrl) ? "contain" : "cover") : "cover",
-            objectPosition: themeBannerPosition || (
-              branding.coverPosition === "top" ? "center top"
-              : branding.coverPosition === "bottom" ? "center bottom"
-              : "center center"
-            ),
-            backgroundColor: "hsl(var(--muted))" }}
-        />
-        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent" />
-
-        <div className="absolute bottom-4 left-6 flex items-end gap-3">
+      {/* Hero banner with theme swiper */}
+      <HeroBannerSwiper>
+        <div className="absolute bottom-4 left-6 flex items-end gap-3 z-10">
           {branding.logoUrl && (
             <img src={branding.logoUrl} alt="" className="w-12 h-12 rounded-xl object-contain bg-white/90 p-1 shadow-md" />
           )}
@@ -266,26 +210,7 @@ export function AdminDashboardHeader({
             {branding.customSubtitle && <p className="text-xs lg:text-sm opacity-80 mt-0.5">{branding.customSubtitle}</p>}
           </div>
         </div>
-
-        <div className="absolute top-3 right-3 flex items-center gap-1.5">
-          <button
-            onClick={handleGenerateAICover}
-            disabled={isGeneratingCover}
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-black/40 hover:bg-black/60 backdrop-blur-sm text-white text-xs font-medium rounded-lg transition-colors disabled:opacity-50"
-          >
-            {isGeneratingCover ? <SigmaSpinner size="xs" className=".5 .5" /> : <Wand2 className="w-3.5 h-3.5" />}
-            {isGeneratingCover ? "Генерация..." : "Сгенерировать с ИИ"}
-          </button>
-          <button
-            onClick={() => coverInputRef.current?.click()}
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-black/40 hover:bg-black/60 backdrop-blur-sm text-white text-xs font-medium rounded-lg transition-colors"
-          >
-            <ImagePlus className="w-3.5 h-3.5" />
-            Изменить обложку
-          </button>
-        </div>
-        <input ref={coverInputRef} type="file" accept="image/*" className="hidden" onChange={onCoverUpload} />
-      </div>
+      </HeroBannerSwiper>
 
       {/* Sub-header: page title */}
       <div className="flex items-center px-4 lg:px-6 h-12 border-t border-border/50 bg-card/95 backdrop-blur-sm">
