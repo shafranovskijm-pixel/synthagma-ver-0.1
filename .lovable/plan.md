@@ -1,45 +1,36 @@
 
-
-# Уведомление админу при формировании счёта организацией
+# Кнопка «Оплачено» на счетах — продление тарифа
 
 ## Что будет сделано
 
-Когда организация формирует счёт на оплату (в `SubscriptionTab` или `DocumentsTab`), автоматически создаётся запись в `admin_notifications` с информацией о счёте. Админ видит уведомление в колокольчике, кликает — переходит в карточку организации на вкладку биллинга, где может отметить счёт как оплаченный и продлить тариф.
+На каждом счёте со статусом «Ожидает» (pending) появится кнопка «Оплачено» (иконка CheckCircle). При клике:
 
-## Изменения
+1. Статус счёта в `subscription_invoices` меняется на `paid`
+2. Поле `paid_until` в таблице `organizations` продлевается: если текущий `paid_until` ещё не истёк — к нему добавляется `period_months` месяцев; если уже истёк или null — от текущей даты + `period_months` месяцев
+3. Данные обновляются на экране
 
-### 1. Отправка уведомления при создании счёта организацией
+## Технические детали
 
-**Файл**: `src/components/organization/SubscriptionTab.tsx`
-После успешного `insert` в `subscription_invoices` (строка ~231) — добавить вставку в `admin_notifications`:
-- `type`: `"invoice"`
-- `title`: `"Новый счёт: {invoiceNum}"`
-- `message`: `"Организация «{orgName}» сформировала счёт на {amount} ₽ (план: {plan})"`
-- `related_entity_id`: ID организации (для навигации)
-- `metadata`: `{ invoice_id, organization_id, amount, plan }`
+### Файл: `src/components/admin/AdminBillingOverview.tsx`
 
-**Файл**: `src/components/organization/tabs/DocumentsTab.tsx`
-Аналогично — после `handleSavePendingInvoice` (строка ~453) добавить ту же вставку в `admin_notifications`.
+**Новая функция `handleMarkPaid(invoice)`:**
+- `UPDATE subscription_invoices SET status = 'paid' WHERE id = inv.id`
+- Запрос текущего `paid_until` из `organizations` по `inv.organization_id`
+- Если `paid_until` > now() → новый `paid_until` = `paid_until` + `period_months` месяцев
+- Иначе → `paid_until` = now() + `period_months` месяцев
+- `UPDATE organizations SET paid_until = ... WHERE id = inv.organization_id`
+- Вызов `loadData()` для обновления списка
+- Toast «Оплата подтверждена, тариф продлён»
 
-Для получения имени организации — использовать уже загруженные данные или сделать дополнительный запрос.
+**Изменения в компонентах `OrgInvoicesList` и `AllBillingContent` (таб «Счета»):**
+- Передать `onMarkPaid` callback
+- Для счетов со `status === "pending"` — добавить кнопку с иконкой CheckCircle2 рядом с бейджем
 
-### 2. Кликабельные уведомления в админ-панели
-
-**Файл**: `src/components/admin/AdminDashboardHeader.tsx`
-Сейчас уведомления — просто текст без действий. Добавить:
-- При клике на уведомление типа `invoice` — вызвать `onClick(n)` callback
-- Передать callback из `AdminDashboard.tsx`, который переключает на вкладку «Организации», открывает карточку организации по `related_entity_id` на вкладке биллинга
-
-**Файл**: `src/pages/AdminDashboard.tsx`
-- Добавить обработчик клика по уведомлению: `handleNotificationClick(n)` — определяет тип, переключает на нужную вкладку/организацию
-- Для `type === "invoice"`: переход в `OrganizationDetailsView` → вкладка «Биллинг»
+### Миграция: не требуется
+Поле `paid_until` уже существует в таблице `organizations`.
 
 ## Файлы
 
 | Файл | Действие |
 |---|---|
-| `src/components/organization/SubscriptionTab.tsx` | Добавить insert в `admin_notifications` после создания счёта |
-| `src/components/organization/tabs/DocumentsTab.tsx` | Аналогично — уведомление после создания счёта |
-| `src/components/admin/AdminDashboardHeader.tsx` | Сделать уведомления кликабельными с callback |
-| `src/pages/AdminDashboard.tsx` | Добавить обработчик клика → навигация к организации |
-
+| `src/components/admin/AdminBillingOverview.tsx` | Добавить `handleMarkPaid`, кнопку «Оплачено» в оба списка счетов |
