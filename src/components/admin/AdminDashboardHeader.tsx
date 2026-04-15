@@ -200,32 +200,32 @@ export function AdminDashboardHeader({
               <TooltipContent>Профиль</TooltipContent>
             </Tooltip>
             <DropdownMenuContent align="end" className="w-52 rounded-xl">
-              <DropdownMenuItem onClick={() => setActiveTab("settings")} className="rounded-lg gap-2.5 py-2.5">
+              <DropdownMenuItem onClick={() => setActiveTab("settings")} className="rounded-lg gap-2.5 py-2.5 focus:bg-primary/10 focus:text-primary">
                 <User className="w-4 h-4" />
                 Профиль
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setActiveTab("settings")} className="rounded-lg gap-2.5 py-2.5">
+              <DropdownMenuItem onClick={() => setActiveTab("settings")} className="rounded-lg gap-2.5 py-2.5 focus:bg-primary/10 focus:text-primary">
                 <Settings className="w-4 h-4" />
                 Настройки
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setActiveTab("billing")} className="rounded-lg gap-2.5 py-2.5">
+              <DropdownMenuItem onClick={() => setActiveTab("billing")} className="rounded-lg gap-2.5 py-2.5 focus:bg-primary/10 focus:text-primary">
                 <FileText className="w-4 h-4" />
                 Документооборот
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setActiveTab("referrals")} className="rounded-lg gap-2.5 py-2.5">
+              <DropdownMenuItem onClick={() => setActiveTab("referrals")} className="rounded-lg gap-2.5 py-2.5 focus:bg-primary/10 focus:text-primary">
                 <Gift className="w-4 h-4" />
                 Партнёры
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setActiveTab("updates")} className="rounded-lg gap-2.5 py-2.5">
+              <DropdownMenuItem onClick={() => setActiveTab("updates")} className="rounded-lg gap-2.5 py-2.5 focus:bg-primary/10 focus:text-primary">
                 <Sparkles className="w-4 h-4" />
                 Что нового?
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={helpDialog.openHelp} className="rounded-lg gap-2.5 py-2.5">
+              <DropdownMenuItem onClick={helpDialog.openHelp} className="rounded-lg gap-2.5 py-2.5 focus:bg-primary/10 focus:text-primary">
                 <HelpCircle className="w-4 h-4" />
                 Помощь
               </DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={onLogout} className="rounded-lg gap-2.5 py-2.5 text-destructive">
+              <DropdownMenuItem onClick={onLogout} className="rounded-lg gap-2.5 py-2.5 text-destructive focus:bg-destructive/10 focus:text-destructive">
                 <LogOut className="w-4 h-4" />
                 Выйти
               </DropdownMenuItem>
