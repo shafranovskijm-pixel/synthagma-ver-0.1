@@ -30,27 +30,29 @@ function formatAmount(amount: number): string {
 }
 
 function amountInWords(amount: number): string {
-  // Simplified Russian amount in words
   const rubles = Math.floor(amount);
   const kopecks = Math.round((amount - rubles) * 100);
   return `${rubles} руб. ${kopecks.toString().padStart(2, "0")} коп.`;
 }
 
-export async function generateAct({
-  organizationId,
-  orgName,
-  orgInn,
-  directorName,
-  directorPosition,
-  actDate,
-  basis,
-  amount,
-}: ActParams): Promise<string | null> {
+export interface GeneratedAct {
+  html: string;
+  actNumber: string;
+  docName: string;
+  organizationId: string;
+  basis: string;
+}
+
+/**
+ * Generate act HTML without saving to DB.
+ * Call saveActDocument() to persist after download/print/email.
+ */
+export async function generateActHtml(params: ActParams): Promise<GeneratedAct | null> {
   try {
+    const { organizationId, orgName, orgInn, directorName, directorPosition, actDate, basis, amount } = params;
     const actNumber = `A-${Date.now().toString().slice(-6)}`;
     const formattedDate = format(actDate, "dd MMMM yyyy", { locale: ru });
 
-    // Convert images to base64 for embedding
     const [stampBase64, signatureBase64] = await Promise.all([
       imageToBase64(stampImg),
       imageToBase64(signatureImg),
@@ -155,8 +157,22 @@ export async function generateAct({
 </body>
 </html>`.trim();
 
-    const blob = new Blob([html], { type: "text/html;charset=utf-8" });
-    const fileName = `${organizationId}/acts/act_${actNumber}_${Date.now()}.html`;
+    const docName = `Акт № ${actNumber} от ${formattedDate} — ${basis}`;
+    return { html, actNumber, docName, organizationId, basis };
+  } catch (error) {
+    console.error("Error generating act HTML:", error);
+    return null;
+  }
+}
+
+/**
+ * Save a generated act to storage and DB.
+ * Call this only when the user explicitly downloads, prints, or emails the act.
+ */
+export async function saveActDocument(act: GeneratedAct): Promise<string | null> {
+  try {
+    const blob = new Blob([act.html], { type: "text/html;charset=utf-8" });
+    const fileName = `${act.organizationId}/acts/act_${act.actNumber}_${Date.now()}.html`;
 
     const { error: uploadError } = await supabase.storage
       .from("billing-documents")
@@ -167,13 +183,11 @@ export async function generateAct({
       return null;
     }
 
-    const docName = `Акт № ${actNumber} от ${formattedDate} — ${basis}`;
-
     const { error: dbError } = await supabase
       .from("org_billing_documents")
       .insert({
-        organization_id: organizationId,
-        name: docName,
+        organization_id: act.organizationId,
+        name: act.docName,
         doc_type: "act",
         file_url: fileName,
       } as any);
@@ -183,9 +197,19 @@ export async function generateAct({
       return null;
     }
 
-    return docName;
+    return act.docName;
   } catch (error) {
-    console.error("Error generating act:", error);
+    console.error("Error saving act:", error);
     return null;
   }
+}
+
+/**
+ * Legacy wrapper — generates AND saves (kept for backward compatibility).
+ * @deprecated Use generateActHtml() + saveActDocument() separately.
+ */
+export async function generateAct(params: ActParams): Promise<string | null> {
+  const act = await generateActHtml(params);
+  if (!act) return null;
+  return saveActDocument(act);
 }
