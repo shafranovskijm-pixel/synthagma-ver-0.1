@@ -18,6 +18,7 @@ import { StudentDocumentsUpload } from "@/components/student/StudentDocumentsUpl
 import { AchievementsPanel } from "@/components/student/AchievementsPanel";
 import { ThemeSelector } from "@/components/ui/ThemeSelector";
 import { StudentPartnerTab } from "@/components/student/StudentPartnerTab";
+import { RadioSettings } from "@/components/radio/RadioSettings";
 import { StudentProfileBanner } from "@/components/student/StudentProfileBanner";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
