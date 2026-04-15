@@ -35,14 +35,14 @@ interface StudentCardEnrollment {
 }
 
 export function useStudentDetailCard() {
+  const navigate = useNavigate();
   const [showStudentDetailCard, setShowStudentDetailCard] = useState(false);
   const [studentDetailCardData, setStudentDetailCardData] = useState<StudentCardData | null>(null);
   const [studentDetailCardEnrollments, setStudentDetailCardEnrollments] = useState<StudentCardEnrollment[]>([]);
 
   const viewStudent = useCallback(async (student: Student) => {
-    // Navigate to full-page student detail view
-    window.location.href = `/organization/student/${student.user_id}`;
-  }, []);
+    navigate(`/organization/student/${student.user_id}`);
+  }, [navigate]);
 
   return {
     showStudentDetailCard,
