@@ -21,7 +21,7 @@ import { StudentPartnerTab } from "@/components/student/StudentPartnerTab";
 import { StudentProfileBanner } from "@/components/student/StudentProfileBanner";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
-import { HelpCenter } from "@/components/help/HelpCenter";
+import HelpCenter from "@/pages/HelpCenter";
 
 interface StudentProfileContentProps {
   effectiveUserId: string;
