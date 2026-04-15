@@ -126,6 +126,11 @@ export const AdminBillingOverview = () => {
   const [actInnSearching, setActInnSearching] = useState(false);
   const [pendingAct, setPendingAct] = useState<GeneratedAct | null>(null);
 
+  // Invoice selection & delete
+  const [selectedInvoiceIds, setSelectedInvoiceIds] = useState<Set<string>>(new Set());
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+
   useEffect(() => { loadData(); }, []);
 
   const loadData = async () => {
@@ -434,6 +439,34 @@ export const AdminBillingOverview = () => {
     setActInnSearching(false);
   };
 
+  const toggleInvoiceSelection = (id: string) => {
+    if (id === '__clear__') { setSelectedInvoiceIds(new Set()); return; }
+    setSelectedInvoiceIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+
+  const handleDeleteSelectedInvoices = async () => {
+    if (selectedInvoiceIds.size === 0) return;
+    setDeleting(true);
+    try {
+      const ids = Array.from(selectedInvoiceIds);
+      for (const id of ids) {
+        const { error } = await supabase.from("subscription_invoices").delete().eq("id", id);
+        if (error) throw error;
+      }
+      toast.success(`Удалено счетов: ${ids.length}`);
+      setSelectedInvoiceIds(new Set());
+      setShowDeleteConfirm(false);
+      loadData();
+    } catch (e: any) {
+      toast.error("Ошибка удаления", { description: e.message });
+    }
+    setDeleting(false);
+  };
+
   const handleMarkPaid = async (inv: Invoice) => {
     try {
       // 1. Update invoice status
@@ -618,6 +651,9 @@ export const AdminBillingOverview = () => {
               onCreateContract={() => setShowCreateContract(true)}
               orgs={orgs}
               onMarkPaid={handleMarkPaid}
+              selectedInvoiceIds={selectedInvoiceIds}
+              toggleInvoiceSelection={toggleInvoiceSelection}
+              onDeleteSelected={() => setShowDeleteConfirm(true)}
             />}
             {activeSection === "org-contracts" && (
               selectedOrgId ? (
@@ -626,7 +662,7 @@ export const AdminBillingOverview = () => {
             )}
             {activeSection === "org-invoices" && (
               selectedOrgId ? (
-                <OrgInvoicesList invoices={orgInvoices} statusBadge={statusBadge} onMarkPaid={handleMarkPaid} />
+                <OrgInvoicesList invoices={orgInvoices} statusBadge={statusBadge} onMarkPaid={handleMarkPaid} selectedInvoiceIds={selectedInvoiceIds} toggleInvoiceSelection={toggleInvoiceSelection} onDeleteSelected={() => setShowDeleteConfirm(true)} />
               ) : <EmptyOrgPrompt />
             )}
             {activeSection === "org-closing" && (
@@ -832,6 +868,22 @@ export const AdminBillingOverview = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Delete invoices confirmation */}
+      <Dialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Удалить счета?</DialogTitle></DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            Вы уверены, что хотите удалить выбранные счета ({selectedInvoiceIds.size} шт.)? Это действие необратимо.
+          </p>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowDeleteConfirm(false)}>Отмена</Button>
+            <Button variant="destructive" onClick={handleDeleteSelectedInvoices} disabled={deleting}>
+              {deleting ? "Удаление..." : `Удалить (${selectedInvoiceIds.size})`}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
@@ -842,7 +894,7 @@ function EmptyOrgPrompt() {
   return <div className="text-center py-12 text-muted-foreground text-sm">Выберите организацию в боковом меню</div>;
 }
 
-function AllBillingContent({ search, setSearch, filteredContracts, filteredInvoices, filteredDocs, statusBadge, handleViewDoc, onCreateContract, orgs, onMarkPaid }: any) {
+function AllBillingContent({ search, setSearch, filteredContracts, filteredInvoices, filteredDocs, statusBadge, handleViewDoc, onCreateContract, orgs, onMarkPaid, selectedInvoiceIds, toggleInvoiceSelection, onDeleteSelected }: any) {
   return (
     <div className="space-y-4">
       <div className="relative max-w-sm">
@@ -880,11 +932,21 @@ function AllBillingContent({ search, setSearch, filteredContracts, filteredInvoi
         </TabsContent>
 
         <TabsContent value="invoices" className="mt-4">
+          {selectedInvoiceIds.size > 0 && (
+            <div className="flex items-center gap-2 mb-3">
+              <span className="text-sm text-muted-foreground">Выбрано: {selectedInvoiceIds.size}</span>
+              <Button variant="destructive" size="sm" className="rounded-xl gap-1.5" onClick={onDeleteSelected}>
+                <Trash2 className="w-3.5 h-3.5" />Удалить
+              </Button>
+              <Button variant="ghost" size="sm" onClick={() => selectedInvoiceIds.size && toggleInvoiceSelection('__clear__')}>Снять выделение</Button>
+            </div>
+          )}
           {filteredInvoices.length === 0 ? <EmptyState text="Счетов не найдено" /> : (
             <div className="space-y-2">
               {filteredInvoices.map((inv: Invoice) => (
-                <div key={inv.id} className="flex items-center justify-between p-3 rounded-lg border border-border hover:bg-muted/30 transition-colors">
+                <div key={inv.id} className={cn("flex items-center justify-between p-3 rounded-lg border transition-colors", selectedInvoiceIds.has(inv.id) ? "border-primary bg-primary/5" : "border-border hover:bg-muted/30")}>
                   <div className="flex items-center gap-3">
+                    <Checkbox checked={selectedInvoiceIds.has(inv.id)} onCheckedChange={() => toggleInvoiceSelection(inv.id)} />
                     <Receipt className="w-4 h-4 text-blue-500" />
                     <div>
                       <div className="text-sm font-medium">Счёт {inv.invoice_number}</div>
@@ -949,13 +1011,22 @@ function OrgContractsList({ contracts, statusBadge }: { contracts: Contract[]; s
   );
 }
 
-function OrgInvoicesList({ invoices, statusBadge, onMarkPaid }: { invoices: Invoice[]; statusBadge: (s: string) => React.ReactNode; onMarkPaid?: (inv: Invoice) => void }) {
+function OrgInvoicesList({ invoices, statusBadge, onMarkPaid, selectedInvoiceIds, toggleInvoiceSelection, onDeleteSelected }: { invoices: Invoice[]; statusBadge: (s: string) => React.ReactNode; onMarkPaid?: (inv: Invoice) => void; selectedInvoiceIds: Set<string>; toggleInvoiceSelection: (id: string) => void; onDeleteSelected: () => void }) {
   if (invoices.length === 0) return <EmptyState text="Нет счетов" />;
   return (
     <div className="space-y-2">
+      {selectedInvoiceIds.size > 0 && (
+        <div className="flex items-center gap-2 mb-1">
+          <span className="text-sm text-muted-foreground">Выбрано: {selectedInvoiceIds.size}</span>
+          <Button variant="destructive" size="sm" className="rounded-xl gap-1.5" onClick={onDeleteSelected}>
+            <Trash2 className="w-3.5 h-3.5" />Удалить
+          </Button>
+        </div>
+      )}
       {invoices.map(inv => (
-        <div key={inv.id} className="flex items-center justify-between p-3 rounded-lg border border-border hover:bg-muted/30 transition-colors">
+        <div key={inv.id} className={cn("flex items-center justify-between p-3 rounded-lg border transition-colors", selectedInvoiceIds.has(inv.id) ? "border-primary bg-primary/5" : "border-border hover:bg-muted/30")}>
           <div className="flex items-center gap-3">
+            <Checkbox checked={selectedInvoiceIds.has(inv.id)} onCheckedChange={() => toggleInvoiceSelection(inv.id)} />
             <Receipt className="w-4 h-4 text-blue-500" />
             <div>
               <div className="text-sm font-medium">Счёт {inv.invoice_number}</div>
