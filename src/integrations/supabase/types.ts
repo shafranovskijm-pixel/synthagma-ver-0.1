@@ -5055,6 +5055,9 @@ export type Database = {
           invoice_date: string
           invoice_number: string
           organization_id: string
+          paid_at: string | null
+          payment_id: string | null
+          payment_method: string | null
           period_months: number
           plan: string
           status: string
@@ -5069,6 +5072,9 @@ export type Database = {
           invoice_date?: string
           invoice_number: string
           organization_id: string
+          paid_at?: string | null
+          payment_id?: string | null
+          payment_method?: string | null
           period_months?: number
           plan: string
           status?: string
@@ -5083,6 +5089,9 @@ export type Database = {
           invoice_date?: string
           invoice_number?: string
           organization_id?: string
+          paid_at?: string | null
+          payment_id?: string | null
+          payment_method?: string | null
           period_months?: number
           plan?: string
           status?: string
