@@ -113,9 +113,8 @@ export const StudentsTab = React.memo(function StudentsTab({
   const [showRemindConfirm, setShowRemindConfirm] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
-  // Pagination
-  const [pageSize, setPageSize] = useState(10);
-  const [currentPage, setCurrentPage] = useState(1);
+  // Load-more pagination
+  const [visibleCount, setVisibleCount] = useState(10);
 
   const handleCreateGroup = async () => {
     if (!newGroupName.trim()) return;
@@ -272,13 +271,11 @@ export const StudentsTab = React.memo(function StudentsTab({
     );
   };
 
-  // Pagination
-  const totalPages = Math.max(1, Math.ceil(filteredStudents.length / pageSize));
-  const safePage = Math.min(currentPage, totalPages);
-  const paginatedStudents = filteredStudents.slice((safePage - 1) * pageSize, safePage * pageSize);
+  // Load-more pagination
+  const paginatedStudents = filteredStudents.slice(0, visibleCount);
 
-  // Reset page when filters change
-  React.useEffect(() => { setCurrentPage(1); }, [searchQuery, statusFilter, courseFilter, groupFilter, docsFilter, pageSize]);
+  // Reset visible count when filters change
+  React.useEffect(() => { setVisibleCount(10); }, [searchQuery, statusFilter, courseFilter, groupFilter, docsFilter]);
 
   return (
     <div className="bg-card rounded-xl lg:rounded-2xl border border-border">
