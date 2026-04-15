@@ -272,6 +272,14 @@ export const StudentsTab = React.memo(function StudentsTab({
     );
   };
 
+  // Pagination
+  const totalPages = Math.max(1, Math.ceil(filteredStudents.length / pageSize));
+  const safePage = Math.min(currentPage, totalPages);
+  const paginatedStudents = filteredStudents.slice((safePage - 1) * pageSize, safePage * pageSize);
+
+  // Reset page when filters change
+  React.useEffect(() => { setCurrentPage(1); }, [searchQuery, statusFilter, courseFilter, groupFilter, docsFilter, pageSize]);
+
   return (
     <div className="bg-card rounded-xl lg:rounded-2xl border border-border">
       <div className="p-4 lg:p-6 border-b border-border space-y-4">
