@@ -20,6 +20,7 @@ import {
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { RadioPlayerButton } from "@/components/radio/RadioPlayerButton";
 
 function getUserInitials(email?: string | null, name?: string | null): string {
   if (name) {
@@ -178,6 +179,9 @@ export function OrgDashboardHeader() {
               )}
             </span>
           </button>
+
+          {/* Radio */}
+          <RadioPlayerButton />
 
           {/* Partner program — icon only */}
           <Tooltip>

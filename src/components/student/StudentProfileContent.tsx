@@ -18,6 +18,7 @@ import { StudentDocumentsUpload } from "@/components/student/StudentDocumentsUpl
 import { AchievementsPanel } from "@/components/student/AchievementsPanel";
 import { ThemeSelector } from "@/components/ui/ThemeSelector";
 import { StudentPartnerTab } from "@/components/student/StudentPartnerTab";
+import { RadioSettings } from "@/components/radio/RadioSettings";
 import { StudentProfileBanner } from "@/components/student/StudentProfileBanner";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -555,6 +556,15 @@ export function StudentProfileContent({ effectiveUserId, isAdminView = false }: 
                 ))}
               </div>
             </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Radio */}
+      {activeTab === "radio" && (
+        <Card className="rounded-2xl border-border/60 shadow-sm">
+          <CardContent className="pt-6">
+            <RadioSettings />
           </CardContent>
         </Card>
       )}

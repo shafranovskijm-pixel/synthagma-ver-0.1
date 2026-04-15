@@ -3963,6 +3963,42 @@ export type Database = {
         }
         Relationships: []
       }
+      radio_stations: {
+        Row: {
+          created_at: string
+          genre: string | null
+          id: string
+          is_active: boolean | null
+          logo_url: string | null
+          name: string
+          radioapi_stream_id: number | null
+          sort_order: number | null
+          stream_url: string
+        }
+        Insert: {
+          created_at?: string
+          genre?: string | null
+          id?: string
+          is_active?: boolean | null
+          logo_url?: string | null
+          name: string
+          radioapi_stream_id?: number | null
+          sort_order?: number | null
+          stream_url: string
+        }
+        Update: {
+          created_at?: string
+          genre?: string | null
+          id?: string
+          is_active?: boolean | null
+          logo_url?: string | null
+          name?: string
+          radioapi_stream_id?: number | null
+          sort_order?: number | null
+          stream_url?: string
+        }
+        Relationships: []
+      }
       referral_commissions: {
         Row: {
           amount: number
