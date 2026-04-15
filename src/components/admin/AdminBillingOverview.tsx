@@ -773,6 +773,27 @@ export const AdminBillingOverview = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Pending Invoice Actions */}
+      <Dialog open={!!pendingInvoice} onOpenChange={() => setPendingInvoice(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Счёт сформирован</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            Счёт «{pendingInvoice?.invoiceNum}» на {pendingInvoice?.amount?.toLocaleString("ru-RU")} ₽ готов. Выберите действие для сохранения:
+          </p>
+          <DialogFooter className="flex-col sm:flex-row gap-2">
+            <Button variant="outline" onClick={() => setPendingInvoice(null)}>Закрыть без сохранения</Button>
+            <Button variant="outline" className="gap-1.5" onClick={() => handleSavePendingInvoice('print')}>
+              <Eye className="w-4 h-4" />Печать
+            </Button>
+            <Button className="gap-1.5" onClick={() => handleSavePendingInvoice('download')}>
+              <Download className="w-4 h-4" />Скачать
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
