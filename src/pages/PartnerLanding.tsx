@@ -633,10 +633,10 @@ const PartnerLanding = () => {
             </motion.p>
             <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6 max-w-4xl mx-auto">
               {[
-                { value: "200+", label: "готовых программ ДПО", icon: GraduationCap },
-                { value: "∞", label: "учеников на всех тарифах", icon: Users },
-                { value: "ФИС ФРДО", label: "встроенная интеграция", icon: FileCheck },
-                { value: "ИИ", label: "генерация курсов за минуты", icon: Brain },
+                { value: "300+", label: "готовых программ ДПО и ПО", icon: GraduationCap, gradient: "from-teal-500/20 via-emerald-500/10 to-teal-500/5" },
+                { value: "∞", label: "учеников на всех тарифах", icon: Users, gradient: "from-cyan-500/20 via-blue-500/10 to-cyan-500/5" },
+                { value: "ФИС ФРДО", label: "выгрузка файла для загрузки (от Проф.)", icon: FileCheck, gradient: "from-violet-500/20 via-purple-500/10 to-violet-500/5" },
+                { value: "ИИ", label: "генерация курсов за минуты", icon: Brain, gradient: "from-amber-500/20 via-orange-500/10 to-amber-500/5" },
               ].map((stat, i) => (
                 <motion.div key={stat.label} initial={{ opacity: 0, scale: 0.9 }} whileInView={{ opacity: 1, scale: 1 }} viewport={{ once: true }} transition={{ delay: i * 0.1 }}>
                   <Card className="text-center border border-teal-500/10 bg-card/80 hover:shadow-lg hover:shadow-teal-500/5 transition-all">
