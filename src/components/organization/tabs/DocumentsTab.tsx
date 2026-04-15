@@ -70,7 +70,7 @@ const docTypeLabels: Record<string, { label: string; icon: React.ReactNode }> = 
 };
 
 const NAV_ITEMS: { value: DocumentSubTab; label: string; shortLabel?: string; icon: React.ElementType; ordersOnly?: boolean; iconColor?: string; group?: string }[] = [
-  { value: "billing", label: "Документы Синтагма", icon: FolderOpen, group: "platform" },
+  { value: "billing", label: "Синтагма", icon: FolderOpen, group: "platform" },
   { value: "counterparties", label: "Контрагенты", icon: Building2, group: "platform" },
   { value: "payers", label: "Плательщики", icon: Users, group: "platform" },
   { value: "org", label: "Документы орг.", icon: FileText, iconColor: "text-primary/70", group: "docs" },
