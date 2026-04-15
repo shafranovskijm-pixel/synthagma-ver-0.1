@@ -842,7 +842,7 @@ function EmptyOrgPrompt() {
   return <div className="text-center py-12 text-muted-foreground text-sm">Выберите организацию в боковом меню</div>;
 }
 
-function AllBillingContent({ search, setSearch, filteredContracts, filteredInvoices, filteredDocs, statusBadge, handleViewDoc, onCreateContract, orgs }: any) {
+function AllBillingContent({ search, setSearch, filteredContracts, filteredInvoices, filteredDocs, statusBadge, handleViewDoc, onCreateContract, orgs, onMarkPaid }: any) {
   return (
     <div className="space-y-4">
       <div className="relative max-w-sm">
