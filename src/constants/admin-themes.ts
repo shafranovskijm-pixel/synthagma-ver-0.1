@@ -163,7 +163,7 @@ export const ADMIN_THEMES: AdminTheme[] = [
     label: "Минимализм",
     emoji: "💎",
     group: "style",
-    bannerUrl: "https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?w=1920&q=85",
+    bannerUrl: "https://images.unsplash.com/photo-1493246507139-91e8fad9978e?w=1920&q=85",
     bgClass: "bg-gradient-to-b from-violet-50/80 via-purple-50/40 to-white",
     headerClass: "bg-gradient-to-r from-violet-100/80 to-purple-50/60",
     cardClass: "border-violet-200/60 bg-white/90",

@@ -23,7 +23,7 @@ import { AdminStaffTab } from "@/components/admin/AdminStaffTab";
 import { useAdminBranding } from "@/hooks/useAdminBranding";
 import { supabase } from "@/integrations/supabase/client";
 import { getStoredThemeId, getThemeById, type AdminTheme } from "@/constants/admin-themes";
-import { ThemeAnimations } from "@/components/ui/ThemeAnimations";
+import { ThemeAnimations, getStoredAnimationLevel, type AnimationLevel } from "@/components/ui/ThemeAnimations";
 import { AtmosphericBleed } from "@/components/ui/AtmosphericBleed";
 
 const AdminDashboard = () => {
@@ -40,14 +40,20 @@ const AdminDashboard = () => {
     const id = getStoredThemeId();
     return id ? getThemeById(id) || null : null;
   });
+  const [animLevel, setAnimLevel] = useState<AnimationLevel>(getStoredAnimationLevel);
 
   useEffect(() => {
     const handler = (e: Event) => {
       const id = (e as CustomEvent).detail;
       setActiveTheme(id ? getThemeById(id) || null : null);
     };
+    const animHandler = (e: Event) => setAnimLevel((e as CustomEvent).detail);
     window.addEventListener("visual-theme-change", handler);
-    return () => window.removeEventListener("visual-theme-change", handler);
+    window.addEventListener("visual-animation-change", animHandler);
+    return () => {
+      window.removeEventListener("visual-theme-change", handler);
+      window.removeEventListener("visual-animation-change", animHandler);
+    };
   }, []);
 
   const fetchNotifications = useCallback(async () => {
@@ -89,7 +95,7 @@ const AdminDashboard = () => {
       } : undefined}
     >
       {/* Theme animations */}
-      {activeTheme && <ThemeAnimations animation={activeTheme.animation} />}
+      {activeTheme && <ThemeAnimations animation={activeTheme.animation} level={animLevel} />}
       {activeTheme && (
         <AtmosphericBleed
           bannerUrl={activeTheme.bannerUrl}

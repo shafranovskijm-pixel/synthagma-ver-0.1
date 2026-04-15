@@ -3,6 +3,7 @@ import { Check, Sun, Moon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ThemeSelector } from "@/components/ui/ThemeSelector";
 import { getStoredThemeId, getThemeById } from "@/constants/admin-themes";
+import { getStoredAnimationLevel, storeAnimationLevel, type AnimationLevel } from "@/components/ui/ThemeAnimations";
 
 const ACCENT_COLORS = [
   { name: "Золотой", hsl: "38 75% 55%" },
@@ -26,6 +27,42 @@ const RADIUS_OPTIONS = [
   { value: "default", label: "Скруглённые", radius: "8px", preview: "rounded-lg" },
   { value: "soft", label: "Мягкие", radius: "16px", preview: "rounded-2xl" },
 ];
+
+const ANIMATION_OPTIONS: { value: AnimationLevel; label: string }[] = [
+  { value: "full", label: "Включена" },
+  { value: "reduced", label: "Уменьшена" },
+  { value: "none", label: "Выключена" },
+];
+
+function AnimationLevelSelector() {
+  const [level, setLevel] = useState<AnimationLevel>(getStoredAnimationLevel);
+  const select = useCallback((v: AnimationLevel) => {
+    setLevel(v);
+    storeAnimationLevel(v);
+  }, []);
+  return (
+    <div>
+      <p className="font-medium text-sm mb-1">Анимация</p>
+      <p className="text-xs text-muted-foreground mb-3">Управление анимационными эффектами темы</p>
+      <div className="grid grid-cols-3 gap-2">
+        {ANIMATION_OPTIONS.map((opt) => (
+          <button
+            key={opt.value}
+            onClick={() => select(opt.value)}
+            className={cn(
+              "rounded-xl border-2 px-3 py-2.5 text-xs font-medium transition-all duration-200",
+              level === opt.value
+                ? "border-accent bg-accent/10 text-accent-foreground"
+                : "border-border hover:border-muted-foreground/30 text-muted-foreground"
+            )}
+          >
+            {opt.label}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 function hexToHsl(hex: string): string | null {
   const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
@@ -217,6 +254,9 @@ export function ThemePersonalization({ isDarkMode, onToggleDark }: ThemePersonal
 
       {/* Visual theme selector — AFTER mode toggle */}
       <ThemeSelector onThemeChange={() => {}} />
+
+      {/* Animation level */}
+      <AnimationLevelSelector />
 
       {/* Accent Color */}
       <div>
