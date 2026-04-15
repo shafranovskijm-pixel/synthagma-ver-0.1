@@ -893,7 +893,7 @@ function EmptyOrgPrompt() {
   return <div className="text-center py-12 text-muted-foreground text-sm">Выберите организацию в боковом меню</div>;
 }
 
-function AllBillingContent({ search, setSearch, filteredContracts, filteredInvoices, filteredDocs, statusBadge, handleViewDoc, onCreateContract, orgs, onMarkPaid }: any) {
+function AllBillingContent({ search, setSearch, filteredContracts, filteredInvoices, filteredDocs, statusBadge, handleViewDoc, onCreateContract, orgs, onMarkPaid, selectedInvoiceIds, toggleInvoiceSelection, onDeleteSelected }: any) {
   return (
     <div className="space-y-4">
       <div className="relative max-w-sm">
@@ -1000,7 +1000,7 @@ function OrgContractsList({ contracts, statusBadge }: { contracts: Contract[]; s
   );
 }
 
-function OrgInvoicesList({ invoices, statusBadge, onMarkPaid }: { invoices: Invoice[]; statusBadge: (s: string) => React.ReactNode; onMarkPaid?: (inv: Invoice) => void }) {
+function OrgInvoicesList({ invoices, statusBadge, onMarkPaid, selectedInvoiceIds, toggleInvoiceSelection, onDeleteSelected }: { invoices: Invoice[]; statusBadge: (s: string) => React.ReactNode; onMarkPaid?: (inv: Invoice) => void; selectedInvoiceIds: Set<string>; toggleInvoiceSelection: (id: string) => void; onDeleteSelected: () => void }) {
   if (invoices.length === 0) return <EmptyState text="Нет счетов" />;
   return (
     <div className="space-y-2">
