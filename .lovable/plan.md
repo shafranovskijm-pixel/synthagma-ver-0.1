@@ -1,57 +1,56 @@
 
 
-# Система визуальных тем для всех кабинетов (Админ, Организация, Слушатель)
+# Полная интеграция визуальных тем: сайдбар, баннер, фон, новые варианты
 
-## Что будет сделано
+## Проблемы (по скриншотам)
 
-Добавление системы из 6 визуальных тем (Свежесть, Офис, Нью-Йорк, Закат, Минимализм, Бирюза) с анимациями, атмосферными эффектами и выбором баннера — во все три кабинета: админа, организации и слушателя.
+1. **Сайдбар не меняет цвет** — `AdminSidebar` и `OrgSidebar` используют жёстко заданный `brandHsl`, не учитывая активную тему
+2. **Hero-баннер не меняется** — `AdminDashboardHeader` и `OrgDashboardHeader` показывают `branding.coverUrl`, а не баннер темы
+3. **Фон не "просвечивается"** — на скриншотах видно, что тема должна заливать весь фон страницы (включая нижнюю часть), а не только верхний градиент
+4. **Минимализм** — нужно перерисовать: баннер с горами/фиолетом (как на скриншоте), а не абстрактный градиент
+5. **Нет вариантов** — нужно несколько закатов (Гавайи + текущий), несколько офисов (текущий + с зеленью)
+6. **Организация и Слушатель** — тема не применяется к их макетам (нет ThemeAnimations, AtmosphericBleed, sidebarClass)
 
-## Новые файлы
+## Что будет изменено
 
-### 1. `src/constants/admin-themes.ts` (~120 строк)
-Определения 6 тем: id, label, emoji, bannerUrl, bgClass, headerClass, cardClass, sidebarClass, accent HSL, animation type, atmosphereBlur/Opacity/Sharp настройки.
+### 1. `src/constants/admin-themes.ts`
+- Добавить вариант **"Офис с зеленью"** (id: `office-green`) — фото офиса с растениями (как на скриншоте)
+- Добавить вариант **"Гавайи"** (id: `hawaii`) — тропический закат с пальмами
+- **Минимализм** — заменить bannerUrl на горный фиолетовый пейзаж (как на скриншоте, не абстрактный gradient)
+- Добавить поле `sidebarAccent?: string` для переопределения цвета сайдбара при активной теме
 
-### 2. `src/components/ui/ThemeAnimations.tsx` (~250 строк)
-7 типов анимаций на framer-motion:
-- `leaves` — 12 падающих 🍃
-- `fade` — пульсирующий градиент
-- `lights` — 20 мерцающих точек
-- `gradient` — плавающий орб
-- `glow` — пульсирующие фиолетовые сферы
-- `particles` — 45 слоёных блёсток
-- `sand` — 30 дрейфующих песчинок
+### 2. `src/components/admin/AdminSidebar.tsx`
+- Импортировать `getStoredThemeId`, `getThemeById`
+- Слушать `visual-theme-change` event
+- Если тема активна: использовать `theme.accent` как `brandHsl` и `theme.sidebarClass` для фона `<aside>`
 
-### 3. `src/components/ui/AtmosphericBleed.tsx` (~80 строк)
-Атмосферные фрагменты баннера в углах страницы через CSS mask-image с blur/saturate.
+### 3. `src/components/organization/OrgSidebar.tsx`
+- Аналогично: подхватывать активную тему и переопределять цвет сайдбара
 
-### 4. `src/components/ui/ThemeSelector.tsx` (~150 строк)
-Универсальный компонент выбора темы: сетка карточек с превью баннеров, загрузка кастомного баннера, выбор режима отображения (cover/contain/tile/stretch). Сохранение в localStorage.
+### 4. `src/components/admin/AdminDashboardHeader.tsx`
+- Если активна визуальная тема — показывать `theme.bannerUrl` вместо `branding.coverUrl` в hero-баннере (с сохранением кнопок загрузки/генерации поверх)
 
-## Изменяемые файлы
+### 5. `src/components/organization/OrgDashboardHeader.tsx`
+- Аналогично: если тема активна, использовать её баннер
 
-### 5. `src/components/ui/ThemePersonalization.tsx`
-Добавить секцию «Визуальная тема» с ThemeSelector. Существующие настройки (акцент, плотность, радиус) остаются.
+### 6. `src/pages/OrganizationDashboard.tsx`
+- Добавить состояние `activeTheme` (как в AdminDashboard)
+- Применить `bgClass` на корневой `<div>`
+- Добавить `<ThemeAnimations>` и `<AtmosphericBleed>` (как в AdminDashboard)
 
-### 6. `src/pages/StudentProfile.tsx`
-Заменить простой light/dark/system переключатель на полный ThemeSelector + существующие режимы.
+### 7. `src/components/ui/AtmosphericBleed.tsx`
+- Усилить "просвечивание": увеличить размеры фрагментов и opacity, чтобы фон страницы визуально сливался с баннером (как на скриншотах — фон внизу продолжает тематику)
 
-### 7. `src/pages/AdminDashboard.tsx`
-Применить activeTheme на корневой div: переопределение `--primary`, bgClass, анимации, атмосферные фрагменты.
-
-### 8. `src/pages/OrganizationProfile.tsx`
-Тема уже есть через ThemePersonalization — новый ThemeSelector автоматически появится.
-
-### 9. `src/App.tsx` / `useThemePersonalization`
-Добавить восстановление визуальной темы из localStorage при загрузке.
+### 8. Страница слушателя
+- Проверить, что тема применяется к макету студенческого кабинета (анимации + фон)
 
 ## Технические детали
 
-- Темы сохраняются в `localStorage('visual-theme')` — работают для каждого пользователя индивидуально на его устройстве
-- Активная тема переопределяет `--primary` и `--primary-foreground` CSS-переменные через inline style
-- Все shadcn/ui кнопки автоматически перекрашиваются через `bg-primary`
-- Баннерные изображения — статические URL (можно использовать Unsplash или загрузить в public/)
-- framer-motion уже установлен в проекте
+- Все данные тем остаются в `localStorage('visual-theme')` — без изменений в БД
+- Сайдбары будут реагировать на `visual-theme-change` CustomEvent через `useEffect`
+- Баннер темы приоритетнее кастомного баннера, но пользователь может сбросить тему
+- Новые Unsplash URL для баннеров (горный фиолет, офис с зеленью, Гавайи)
 
 ## Объём
-~10 файлов, ~700 строк нового кода.
+~8 файлов, ~150 строк изменений
 
