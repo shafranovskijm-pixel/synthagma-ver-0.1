@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -37,6 +38,8 @@ interface LaborSafetyManagerProps {
 
 export function LaborSafetyManager({ organizationId }: LaborSafetyManagerProps) {
   const h = useLaborSafetyManager({ organizationId });
+  const [visibleGroupCount, setVisibleGroupCount] = useState(10);
+  const paginatedGroups = h.filteredGroups.slice(0, visibleGroupCount);
 
   if (h.isLoading) {
     return (
@@ -164,7 +167,7 @@ export function LaborSafetyManager({ organizationId }: LaborSafetyManagerProps) 
           )
         ) : (
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-            {h.filteredGroups.map(group => (
+            {paginatedGroups.map(group => (
               <Card key={group.id} className="cursor-pointer hover:border-primary/50 hover:shadow-md transition-all group" onClick={() => h.setSelectedGroup(group)}>
                 <CardContent className="p-4">
                   <div className="flex items-start justify-between gap-2">
@@ -192,6 +195,11 @@ export function LaborSafetyManager({ organizationId }: LaborSafetyManagerProps) 
               </Card>
             ))}
           </div>
+          <LoadMoreControls
+            visibleCount={paginatedGroups.length}
+            totalCount={h.filteredGroups.length}
+            onLoadMore={(n) => setVisibleGroupCount(prev => prev + n)}
+          />
         )}
 
         {/* Group Dialog */}
