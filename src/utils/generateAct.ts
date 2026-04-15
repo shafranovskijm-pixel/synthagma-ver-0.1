@@ -70,6 +70,7 @@ export async function generateAct({
     @page { size: A4; margin: 15mm 20mm; }
     @media print {
       body { padding: 0; margin: 0; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      .signatures { page-break-inside: avoid; break-inside: avoid; }
     }
     body { font-family: 'Times New Roman', Times, serif; font-size: 12pt; line-height: 1.4; padding: 40px 50px; color: #000; }
     .header { text-align: center; margin-bottom: 20px; }
@@ -82,14 +83,14 @@ export async function generateAct({
     table.act-table th { background: #f0f0f0; text-align: center; }
     .total { text-align: right; font-weight: bold; margin: 10px 0; font-size: 12pt; }
     .total-words { margin: 10px 0 30px; }
-    .signatures { display: flex; justify-content: space-between; margin-top: 40px; page-break-inside: avoid; }
+    .signatures { display: flex; justify-content: space-between; margin-top: 40px; page-break-inside: avoid; break-inside: avoid; }
     .sig-block { width: 45%; }
     .sig-block h4 { font-size: 12pt; margin-bottom: 15px; border-bottom: 1px solid #000; padding-bottom: 5px; }
-    .sig-line { display: flex; align-items: flex-end; gap: 10px; margin-top: 30px; position: relative; min-height: 80px; }
-    .sig-images { position: relative; width: 250px; height: 120px; }
+    .sig-line { display: flex; align-items: flex-end; gap: 10px; margin-top: 30px; position: relative; min-height: 100px; }
+    .sig-images { position: relative; width: 280px; height: 150px; overflow: visible; }
     .sig-images img { position: absolute; }
-    .sig-stamp { left: 0; top: 0; width: 120px; height: auto; opacity: 0.9; }
-    .sig-sign { left: 50px; top: 20px; width: 160px; height: auto; opacity: 0.9; }
+    .sig-stamp { left: 0; top: 0; width: 150px; height: auto; opacity: 0.9; }
+    .sig-sign { left: 60px; top: 20px; width: 180px; height: auto; opacity: 0.9; }
     .no-print { display: none; }
   </style>
 </head>

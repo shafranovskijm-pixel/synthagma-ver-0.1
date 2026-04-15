@@ -127,16 +127,16 @@ export function generateInvoiceHtml(data: InvoiceData): string {
   <div style="font-size: 10pt; color: #555; margin-top: 4px;">НДС не облагается (УСН)</div>
 </div>
 
-<div class="sign-block" style="min-height: 120px;">
+<div class="sign-block" style="min-height: 180px;">
   <div style="margin-top: 30px;">
     <b>Индивидуальный предприниматель</b>
   </div>
   <div style="margin-top: 30px; position: relative;">
     <span>__________________ / Шафрановский М.М. /</span>
     <img src="data:image/png;base64,${CONTRACT_SIGNATURE_B64}" 
-         style="position: absolute; left: -10px; top: -35px; height: 70px; opacity: 0.9;" />
+         style="position: absolute; left: -10px; top: -40px; height: 90px; opacity: 0.9;" />
     <img src="data:image/png;base64,${CONTRACT_STAMP_B64}" 
-         style="position: absolute; left: 200px; top: -50px; height: 110px; opacity: 0.85;" />
+         style="position: absolute; left: 180px; top: -65px; height: 160px; opacity: 0.85;" />
   </div>
 </div>
 
