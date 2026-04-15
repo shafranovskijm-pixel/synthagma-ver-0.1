@@ -2,7 +2,7 @@ import { ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
 import { useOrgDashboard } from "@/contexts/OrgDashboardContext";
 import { OrgDashboardFooter } from "@/components/organization/OrgDashboardFooter";
-import { OrgSettingsSidebar } from "@/components/organization/OrgSettingsSidebar";
+import { OrgSidebar } from "@/components/organization/OrgSidebar";
 import { OrgNotifications } from "@/components/organization/OrgNotifications";
 import { SigmaLogo } from "@/components/ui/SigmaLogo";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -114,7 +114,7 @@ export default function OrgPageLayout({ title, icon: Icon, children }: OrgPageLa
           sharp={activeTheme.atmosphereSharp}
         />
       )}
-      <OrgSettingsSidebar />
+      <OrgSidebar />
       <main className="flex-1 flex flex-col min-w-0 lg:ml-[88px]">
         {/* Sticky header */}
         <header className="sticky top-0 z-30 bg-card border-b border-border">
