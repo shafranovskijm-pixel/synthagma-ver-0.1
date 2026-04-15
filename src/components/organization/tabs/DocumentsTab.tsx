@@ -34,7 +34,7 @@ import { Eye } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useOrgDashboard } from "@/contexts/OrgDashboardContext";
 import { getSignedStorageUrl } from "@/utils/storageHelpers";
-import { generateAct } from "@/utils/generateAct";
+import { generateActHtml, saveActDocument, type GeneratedAct } from "@/utils/generateAct";
 import { PayersSection } from "@/components/organization/PayersSection";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
