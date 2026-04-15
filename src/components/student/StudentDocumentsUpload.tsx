@@ -5,8 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import {
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
+import {
   User,
   Shield,
   GraduationCap,

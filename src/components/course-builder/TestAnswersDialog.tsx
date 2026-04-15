@@ -7,8 +7,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Download, Upload, Bot, CheckCircle2, AlertTriangle, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import {
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
+import {
   exportQuestionsForAI,
   parseAnswersFile,
   downloadTextFile,
