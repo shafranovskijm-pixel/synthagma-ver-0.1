@@ -28,7 +28,6 @@ const DEFAULT_MENU: MenuSettings = {
 
 const settingsTabs = [
   { key: "menu", label: "Разделы меню", icon: LayoutGrid },
-  { key: "robokassa", label: "Касса", icon: Wallet },
   { key: "student", label: "Настройки ЛК", icon: GraduationCap },
   { key: "staff", label: "Сотрудники", icon: Users },
 ];
@@ -170,10 +169,6 @@ function SettingsContent() {
               </div>
             </div>
           </div>
-        )}
-
-        {activeTab === "robokassa" && (
-          <div className="max-w-2xl">{organizationId && <TBankSettings organizationId={organizationId} />}</div>
         )}
 
         {activeTab === "student" && (

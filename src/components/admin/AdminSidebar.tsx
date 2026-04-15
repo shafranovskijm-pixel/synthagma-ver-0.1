@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { 
-  Building2, Users, LogOut, Store, Briefcase, MessageSquare
+  Building2, Users, LogOut, Store, Briefcase, MessageSquare, CreditCard
 } from "lucide-react";
 import { SigmaLogo } from "@/components/ui/SigmaLogo";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -16,6 +16,7 @@ export type AdminTabType =
   | "marketplace"
   | "sales"
   | "billing"
+  | "finance"
   | "ai"
   | "broadcast"
   | "chats"
@@ -76,6 +77,7 @@ export function AdminSidebar({
     { id: "users", icon: Users, label: "Пользователи" },
     { id: "marketplace", icon: Store, label: "Маркетплейс" },
     { id: "sales", icon: Briefcase, label: "Продажи" },
+    { id: "finance", icon: CreditCard, label: "Финансы" },
     { id: "chats", icon: MessageSquare, label: "Чаты", badge: unreadChats },
   ];
 
