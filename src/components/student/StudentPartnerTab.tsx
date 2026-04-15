@@ -7,7 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Send, CheckCircle, Clock, Users, TrendingUp, CalendarClock, Plug, ChevronDown } from "lucide-react";
 import { toast } from "sonner";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+
 import { cn } from "@/lib/utils";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 
@@ -21,7 +21,7 @@ export function StudentPartnerTab({ userId, userEmail, userName }: Props) {
   const [loading, setLoading] = useState(true);
   const [existing, setExisting] = useState<any>(null);
   const [submitting, setSubmitting] = useState(false);
-  const [offerOpen, setOfferOpen] = useState(false);
+  
 
   const [fullName, setFullName] = useState(userName || "");
   const [email, setEmail] = useState(userEmail || "");
