@@ -120,6 +120,7 @@ export function OrgSidebar() {
   const logoInputRef = useRef<HTMLInputElement>(null);
 
   const [upgradeDialogOpen, setUpgradeDialogOpen] = useState(false);
+  const [helpOpen, setHelpOpen] = useState(false);
 
   // Theme-aware accent
   const [themeAccent, setThemeAccent] = useState<string | null>(() => {
@@ -143,7 +144,11 @@ export function OrgSidebar() {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const handleTabClick = useCallback((tab: TabType) => {
+  const handleTabClick = useCallback((tab: TabType | "__help_dialog__") => {
+    if (tab === "__help_dialog__") {
+      setHelpOpen(true);
+      return;
+    }
     const category = tabCategoryMap[tab];
     if (category && isLocked(category)) {
       setUpgradeDialogOpen(true);
@@ -180,7 +185,13 @@ export function OrgSidebar() {
   
   navItems.push({ id: "chats", icon: MessageCircle, label: "Чаты", badge: d.unreadChatsCount });
 
-  
+  // Settings section - always visible, like in admin panel
+  navItems.push({ id: "profile", icon: User, label: "Профиль" });
+  navItems.push({ id: "settings", icon: Settings, label: "Настройки" });
+  navItems.push({ id: "org-documents", icon: FileText, label: "Документы" });
+  navItems.push({ id: "whats-new", icon: Sparkles, label: "Что нового" });
+  navItems.push({ id: "__help_dialog__" as any, icon: HelpCircle, label: "Помощь" });
+
 
   return (
     <>
