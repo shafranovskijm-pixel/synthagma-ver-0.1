@@ -470,10 +470,15 @@ function StudentPageInner({ studentId }: { studentId: string }) {
 
 export default function OrganizationStudentDetails() {
   const { studentId } = useParams();
+  const navigate = useNavigate();
 
-  if (!studentId) {
-    return <div className="min-h-screen flex items-center justify-center text-muted-foreground">Ученик не найден</div>;
-  }
+  useEffect(() => {
+    if (studentId) {
+      navigate(`/organization?tab=student-details&studentId=${studentId}`, { replace: true });
+    } else {
+      navigate('/organization', { replace: true });
+    }
+  }, [studentId, navigate]);
 
-  return <StudentPageInner studentId={studentId} />;
+  return <div className="min-h-screen flex items-center justify-center"><SigmaSpinner size="lg" /></div>;
 }

@@ -48,9 +48,13 @@ export default function OrganizationDashboard() {
   useEffect(() => {
     const tab = searchParams.get('tab');
     const courseId = searchParams.get('courseId');
+    const studentId = searchParams.get('studentId');
     if (tab) {
       if (tab === 'course-details' && courseId) {
         d.tabNavigation.setSelectedCourseId(courseId);
+      }
+      if (tab === 'student-details' && studentId) {
+        d.tabNavigation.setSelectedStudentId(studentId);
       }
       d.tabNavigation.setActiveTab(tab as any);
       setSearchParams({}, { replace: true });
