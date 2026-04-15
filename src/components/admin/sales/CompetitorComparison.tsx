@@ -26,6 +26,7 @@ const data: ComparisonRow[] = [
   { category: 'LMS', feature: 'Домашние задания', sintagma: 'yes', getcourse: 'yes', ispring: 'yes', moodle: 'yes' },
   { category: 'LMS', feature: 'Сертификаты', sintagma: 'yes', getcourse: 'partial', ispring: 'yes', moodle: 'partial' },
   { category: 'LMS', feature: 'Мобильная версия', sintagma: 'yes', getcourse: 'yes', ispring: 'yes', moodle: 'partial' },
+  { category: 'LMS', feature: 'Скорость загрузки видео', sintagma: 'До 100 МБ/с (CDN)', getcourse: 'Медленная', ispring: 'Средняя', moodle: 'Зависит от сервера' },
   // Документооборот
   { category: 'Документооборот', feature: 'Договоры', sintagma: 'yes', getcourse: 'no', ispring: 'no', moodle: 'no' },
   { category: 'Документооборот', feature: 'Акты', sintagma: 'yes', getcourse: 'no', ispring: 'no', moodle: 'no' },
