@@ -1,4 +1,4 @@
-import { useRef, useState, useCallback, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { Menu, Bell, User, LogOut, Settings, FileText, Sparkles, HelpCircle, Users, Check, Gift } from "lucide-react";
 import { RadioPlayerButton } from "@/components/radio/RadioPlayerButton";
 import { Button } from "@/components/ui/button";

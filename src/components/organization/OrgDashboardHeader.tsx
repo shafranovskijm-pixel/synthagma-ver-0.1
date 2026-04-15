@@ -1,4 +1,4 @@
-import { useRef, useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Plus, FileSpreadsheet, Menu, CreditCard, HelpCircle, User, LogOut, Handshake, Sparkles, ShoppingBag, Settings, FileText } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -7,8 +7,7 @@ import { showLimitToast } from "@/utils/limitToast";
 import { useOrgDashboard } from "@/contexts/OrgDashboardContext";
 import { SigmaLogo } from "@/components/ui/SigmaLogo";
 import { OrgNotifications } from "./OrgNotifications";
-import { supabase } from "@/integrations/supabase/client";
-import { toast } from "sonner";
+import { differenceInDays } from "date-fns";
 import { differenceInDays } from "date-fns";
 import { useAuth } from "@/hooks/useAuth";
 import defaultCoverImg from "@/assets/default-org-cover.jpg";
