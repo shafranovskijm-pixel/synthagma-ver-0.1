@@ -193,27 +193,16 @@ export function StudentPartnerTab({ userId, userEmail, userName }: Props) {
         </Card>
       )}
 
-      {/* Оферта */}
-      <Collapsible open={offerOpen} onOpenChange={setOfferOpen}>
-        <CollapsibleTrigger asChild>
-          <button className="w-full flex items-center justify-between px-4 py-3 rounded-xl border border-border bg-card hover:bg-muted/50 transition-colors text-sm font-medium">
-            <span>📄 Оферта партнёрской программы</span>
-            <ChevronDown className={cn("w-4 h-4 transition-transform", offerOpen && "rotate-180")} />
-          </button>
-        </CollapsibleTrigger>
-        <CollapsibleContent>
-          <div className="mt-2 p-5 rounded-xl border border-border bg-card text-sm text-muted-foreground space-y-3 leading-relaxed">
-            <p className="font-semibold text-foreground">Условия партнёрской программы</p>
-            <p>1. Партнёр привлекает новые организации на платформу по персональной реферальной ссылке.</p>
-            <p>2. Комиссия начисляется по 3 уровням: Уровень 1 (прямые) — 20%, Уровень 2 — 10%, Уровень 3 — 5%.</p>
-            <p>3. Комиссионные выплаты производятся в течение 2 (двух) лет с момента первой оплаты привлечённой организацией.</p>
-            <p>4. При обороте сети более 100 000 ₽/мес — дополнительный бонус +5%. Топ-10 партнёров месяца получают +3%.</p>
-            <p>5. Выплаты производятся ежемесячно на реквизиты, указанные партнёром, при накоплении суммы от 1 000 ₽.</p>
-            <p>6. Платформа оставляет за собой право изменять условия программы с уведомлением партнёров за 30 дней.</p>
-            <p>7. Подавая заявку, вы соглашаетесь с данными условиями.</p>
-          </div>
-        </CollapsibleContent>
-      </Collapsible>
+      {/* Оферта — ссылка */}
+      <a
+        href="/partner/offer"
+        target="_blank"
+        rel="noopener noreferrer"
+        className="w-full flex items-center justify-between px-4 py-3 rounded-xl border border-border bg-card hover:bg-muted/50 transition-colors text-sm font-medium"
+      >
+        <span>📄 Оферта партнёрской программы</span>
+        <ChevronDown className="w-4 h-4 -rotate-90" />
+      </a>
     </div>
   );
 }
