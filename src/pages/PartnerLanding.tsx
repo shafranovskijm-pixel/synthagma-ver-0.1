@@ -631,19 +631,30 @@ const PartnerLanding = () => {
             <motion.p className="text-muted-foreground text-center mb-12 max-w-xl mx-auto" initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} viewport={{ once: true }} transition={{ delay: 0.2 }}>
               Ваши клиенты остаются, потому что не найдут аналогов
             </motion.p>
-            <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6 max-w-4xl mx-auto">
+            <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6 max-w-5xl mx-auto">
               {[
-                { value: "200+", label: "готовых программ ДПО", icon: GraduationCap },
-                { value: "∞", label: "учеников на всех тарифах", icon: Users },
-                { value: "ФИС ФРДО", label: "встроенная интеграция", icon: FileCheck },
-                { value: "ИИ", label: "генерация курсов за минуты", icon: Brain },
+                { value: "300+", label: "готовых программ ДПО и ПО", icon: GraduationCap, gradient: "from-teal-500/20 via-emerald-500/10 to-teal-500/5", iconColor: "text-teal-500", glow: "shadow-teal-500/20" },
+                { value: "∞", label: "учеников на всех тарифах", icon: Users, gradient: "from-cyan-500/20 via-blue-500/10 to-cyan-500/5", iconColor: "text-cyan-500", glow: "shadow-cyan-500/20" },
+                { value: "ФИС ФРДО", label: "выгрузка файла для загрузки (от Проф.)", icon: FileCheck, gradient: "from-violet-500/20 via-purple-500/10 to-violet-500/5", iconColor: "text-violet-500", glow: "shadow-violet-500/20" },
+                { value: "ИИ", label: "генерация курсов за минуты", icon: Brain, gradient: "from-amber-500/20 via-orange-500/10 to-amber-500/5", iconColor: "text-amber-500", glow: "shadow-amber-500/20" },
               ].map((stat, i) => (
-                <motion.div key={stat.label} initial={{ opacity: 0, scale: 0.9 }} whileInView={{ opacity: 1, scale: 1 }} viewport={{ once: true }} transition={{ delay: i * 0.1 }}>
-                  <Card className="text-center border border-teal-500/10 bg-card/80 hover:shadow-lg hover:shadow-teal-500/5 transition-all">
-                    <CardContent className="pt-6 pb-5">
-                      <stat.icon className="w-8 h-8 text-teal-500 mx-auto mb-3" />
-                      <div className="text-3xl font-bold text-teal-600 mb-1">{stat.value}</div>
-                      <div className="text-sm text-muted-foreground">{stat.label}</div>
+                <motion.div
+                  key={stat.label}
+                  initial={{ opacity: 0, y: 40, rotateY: -15 }}
+                  whileInView={{ opacity: 1, y: 0, rotateY: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ delay: i * 0.12, type: "spring", damping: 15 }}
+                  whileHover={{ y: -8, scale: 1.05 }}
+                >
+                  <Card className={`text-center border-0 bg-gradient-to-br ${stat.gradient} backdrop-blur-sm hover:shadow-2xl ${stat.glow} transition-all duration-500 overflow-hidden relative group`}>
+                    {/* Shimmer effect */}
+                    <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/[0.06] to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000" />
+                    <CardContent className="pt-8 pb-7 relative">
+                      <div className={`w-16 h-16 rounded-2xl bg-gradient-to-br ${stat.gradient} flex items-center justify-center mx-auto mb-4 shadow-lg ${stat.glow} group-hover:scale-110 transition-transform duration-300`}>
+                        <stat.icon className={`w-8 h-8 ${stat.iconColor}`} />
+                      </div>
+                      <div className="text-4xl font-extrabold bg-gradient-to-b from-foreground to-foreground/70 bg-clip-text text-transparent mb-2">{stat.value}</div>
+                      <div className="text-sm text-muted-foreground font-medium">{stat.label}</div>
                     </CardContent>
                   </Card>
                 </motion.div>
