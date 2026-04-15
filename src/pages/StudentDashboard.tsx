@@ -234,6 +234,7 @@ export default function StudentDashboard() {
             onShowConsent={() => setShowConsentForm(true)}
             onShowDocs={() => setShowDocumentsUpload(true)}
             onShowAchievements={() => setShowAchievements(true)}
+            onProfileClick={() => setActiveTab("profile" as any)}
           />
         </div>
 
