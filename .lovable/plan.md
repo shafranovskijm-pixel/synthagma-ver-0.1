@@ -1,39 +1,52 @@
 
 
-# Курс как вкладка в основном дашборде
+# «Создать договор» — генерация готового договора + конструктор внутри дашборда
 
 ## Суть
-Сейчас при клике на курс происходит `navigate("/organization/course/:id")` — отдельная страница. Нужно, чтобы курс открывался прямо в основном окне дашборда как ещё одна вкладка (аналогично профилю/настройкам).
+Две задачи:
 
-## Решение
+1. **«Создать договор»** (в разделе Контрагенты → Договоры) должна открывать **диалог создания готового договора**, а не конструктор шаблона. Диалог:
+   - Автоматически подставляет реквизиты организации (из БД)
+   - Предлагает выбрать контрагента: из существующих учеников, из компаний, или найти по ИНН (DaData)
+   - Предлагает выбрать шаблон договора (из сохранённых)
+   - Предлагает выбрать курс(ы) для подстановки
+   - Генерирует готовый договор с подставленными данными
 
-### 1. Добавить `"course-details"` в `TabType` (`OrgSidebar.tsx`)
-Новый тип вкладки для отображения деталей курса.
+2. **Конструктор шаблона договора** (в Инструменты → Конструктор → Договор) должен открываться **внутри дашборда** как вкладка, а не переходить на `/contract-editor`.
 
-### 2. Состояние выбранного курса в контексте
-В `useOrganizationDashboard` (или `useTabNavigation`) добавить `selectedCourseId: string | null` и `setSelectedCourseId`. При выборе курса — устанавливать ID и переключать `activeTab` на `"course-details"`.
+## Изменения
 
-### 3. Изменить навигацию в `TabContentRenderer.tsx`
-- Вместо `navigate("/organization/course/${course.id}")` → `setSelectedCourseId(course.id)` + `setActiveTab("course-details")`
-- Добавить рендер `CourseDetailsContent` при `activeTab === "course-details"` (с загрузкой данных курса по `selectedCourseId`)
+### 1. Новый компонент `CreateContractDialog.tsx`
+Диалог с шагами:
+- **Шаг 1**: Выбор шаблона договора (из сохранённых в `organization_settings`)
+- **Шаг 2**: Выбор контрагента — 3 варианта:
+  - Из учеников (поиск по `enrollments` + `profiles`)
+  - Из компаний (поиск по `company_clients`)
+  - По ИНН (DaData lookup, как уже реализовано в `ExternalInvoiceForm`)
+- **Шаг 3**: Выбор курса (подтягивает `course_title`, `course_hours`, `course_duration`, цену)
+- **Шаг 4**: Заполнение оставшихся полей (номер договора, даты, количество, сумма)
+- **Шаг 5**: Предпросмотр заполненного договора → сохранение
 
-### 4. Создать обёртку `CourseDetailsTab.tsx`
-Новый компонент, который берёт `selectedCourseId` из контекста, загружает данные курса (логика из `OrganizationCourseDetails.tsx`) и рендерит `CourseDetailsContent`. Кнопка «Назад» → `setActiveTab("courses")`.
+### 2. `DocumentsTab.tsx` — кнопка «Создать договор»
+Заменить `navigate("/contract-editor")` на открытие `CreateContractDialog` во всех 3 местах (строки 661, 727, 880).
 
-### 5. Обратная совместимость
-`OrganizationCourseDetails.tsx` → `<Navigate to="/organization?tab=course-details&courseId=..." />` или оставить как fallback для прямых ссылок.
+### 3. Конструктор договора внутри дашборда
+- Добавить `"contract-editor"` в `TabType` (`OrgSidebar.tsx`)
+- В `DocumentsTab.tsx` строка 726 («Открыть конструктор») — вместо `navigate("/contract-editor")` → `setActiveTab("contract-editor")` (через контекст `useOrgDashboard`)
+- В `TabContentRenderer.tsx` — рендерить `ContractTemplateEditor` при `activeTab === "contract-editor"`
+- Добавить `"contract-editor"` в список вкладок, скрывающих stats/banner
 
-### 6. Скрыть stats cards и banner для `course-details`
-Добавить в `shouldShowStatsCards` исключение.
+### 4. Маршрут `/contract-editor`
+Оставить как редирект → `/organization?tab=contract-editor` для обратной совместимости.
 
 ## Файлы
 
 | Файл | Действие |
 |---|---|
-| `src/components/organization/OrgSidebar.tsx` | Добавить `"course-details"` в `TabType` |
-| `src/components/organization/tabs/CourseDetailsTab.tsx` | Новый — обёртка с загрузкой курса |
-| `src/components/organization/tabs/TabContentRenderer.tsx` | Рендер `CourseDetailsTab`, изменить навигацию курса |
-| `src/hooks/useTabNavigation.ts` | Добавить `selectedCourseId` / `setSelectedCourseId` |
-| `src/pages/OrganizationCourseDetails.tsx` | Редирект в дашборд |
-| `src/pages/OrganizationDashboard.tsx` | Обработка `?courseId=` query param |
+| `src/components/organization/CreateContractDialog.tsx` | Новый — диалог генерации готового договора |
+| `src/components/organization/tabs/DocumentsTab.tsx` | Кнопки «Создать договор» → открывают диалог; «Открыть конструктор» → `setActiveTab` |
+| `src/components/organization/OrgSidebar.tsx` | Добавить `"contract-editor"` в `TabType` |
+| `src/components/organization/tabs/TabContentRenderer.tsx` | Рендер `ContractTemplateEditor` при `contract-editor` |
+| `src/pages/OrganizationDashboard.tsx` | Обработка `?tab=contract-editor` |
+| `src/pages/ContractEditor.tsx` | Редирект → `/organization?tab=contract-editor` |
 
