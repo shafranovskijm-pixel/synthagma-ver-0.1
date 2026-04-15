@@ -1,16 +1,16 @@
 import { useMemo } from "react";
 import { motion } from "framer-motion";
 
-function LeavesAnimation() {
+function LeavesAnimation({ count = 12 }: { count?: number }) {
   const leaves = useMemo(() =>
-    Array.from({ length: 12 }, (_, i) => ({
+    Array.from({ length: count }, (_, i) => ({
       id: i,
       left: `${Math.random() * 100}%`,
       delay: Math.random() * 8,
       duration: 6 + Math.random() * 6,
       size: 14 + Math.random() * 10,
       drift: (Math.random() - 0.5) * 80,
-    })), []);
+    })), [count]);
   return (
     <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden">
       {leaves.map(l => (
@@ -40,16 +40,16 @@ function FadeAnimation() {
   );
 }
 
-function LightsAnimation() {
+function LightsAnimation({ count = 20 }: { count?: number }) {
   const dots = useMemo(() =>
-    Array.from({ length: 20 }, (_, i) => ({
+    Array.from({ length: count }, (_, i) => ({
       id: i,
       left: `${Math.random() * 100}%`,
       top: `${Math.random() * 100}%`,
       delay: Math.random() * 4,
       duration: 2 + Math.random() * 3,
       size: 2 + Math.random() * 3,
-    })), []);
+    })), [count]);
   return (
     <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden">
       {dots.map(d => (
@@ -97,17 +97,17 @@ function GlowAnimation() {
   );
 }
 
-function ParticlesAnimation() {
+function ParticlesAnimation({ count = 45 }: { count?: number }) {
   const particles = useMemo(() =>
-    Array.from({ length: 45 }, (_, i) => ({
+    Array.from({ length: count }, (_, i) => ({
       id: i,
       left: `${Math.random() * 100}%`,
       top: `${Math.random() * 100}%`,
       delay: Math.random() * 6,
       duration: 3 + Math.random() * 4,
-      size: i < 10 ? 3 + Math.random() * 3 : i < 25 ? 1.5 + Math.random() * 2 : 0.5 + Math.random() * 1.5,
-      opacity: i < 10 ? 0.4 : i < 25 ? 0.3 : 0.2,
-    })), []);
+      size: i < Math.floor(count * 0.22) ? 3 + Math.random() * 3 : i < Math.floor(count * 0.55) ? 1.5 + Math.random() * 2 : 0.5 + Math.random() * 1.5,
+      opacity: i < Math.floor(count * 0.22) ? 0.4 : i < Math.floor(count * 0.55) ? 0.3 : 0.2,
+    })), [count]);
   return (
     <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden">
       {particles.map(p => (
@@ -127,16 +127,16 @@ function ParticlesAnimation() {
   );
 }
 
-function SandAnimation() {
+function SandAnimation({ count = 30 }: { count?: number }) {
   const grains = useMemo(() =>
-    Array.from({ length: 30 }, (_, i) => ({
+    Array.from({ length: count }, (_, i) => ({
       id: i,
       left: `${Math.random() * 100}%`,
       delay: Math.random() * 8,
       duration: 5 + Math.random() * 5,
       size: 1.5 + Math.random() * 2.5,
       drift: 30 + Math.random() * 60,
-    })), []);
+    })), [count]);
   return (
     <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden">
       {grains.map(g => (
