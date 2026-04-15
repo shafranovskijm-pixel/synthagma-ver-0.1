@@ -21,7 +21,6 @@ const navItems: { id: StudentTab; icon: typeof BookOpen; label: string }[] = [
   { id: "catalog", icon: BookOpen, label: "Каталог" },
   { id: "library", icon: Library, label: "Мои курсы" },
   { id: "chat", icon: MessageCircle, label: "Чат" },
-  { id: "profile", icon: User, label: "Профиль" },
 ];
 
 function hexToHsl(hex: string): string | null {
