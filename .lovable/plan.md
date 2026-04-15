@@ -1,40 +1,37 @@
 
 
-# Реструктуризация документооборота: «Документы Синтагма» + «Контрагенты»
+# Интеграция профиля в основной дашборд организации
 
-## Что делаем
+## Проблема
+Сейчас «Профиль» — отдельная страница `/organization/profile` с собственным `OrgPageLayout`. Это ощущается как «два разных мира». Пользователь хочет, чтобы профиль (мой профиль, брендирование, уведомления, партнёрская программа) был просто ещё одной вкладкой в основном сайдбаре, с плавным переключением как у остальных разделов.
 
-Перестраиваем навигацию в `DocumentsTab.tsx` — добавляем новый пункт «Контрагенты» рядом с «Документы Синтагма» в боковом меню. Контрагенты — это раздел для работы с договорами, счетами и актами с клиентами организации (компаниями), с кнопкой «Создать договор» и встроенной инструкцией по 273-ФЗ.
+## Решение
 
-### 1. Новый пункт в боковом меню: «Контрагенты»
+### 1. Добавить вкладку «Профиль» в сайдбар (`OrgSidebar.tsx`)
+- Добавить `"profile"` в тип `TabType`
+- Добавить иконку `User` в навигацию сайдбара — в нижнюю часть, перед кнопкой «Выйти» (отделяя от основных рабочих вкладок)
 
-Добавляем в `NAV_ITEMS` новый элемент `counterparties` с группой `platform`, сразу после «Документы Синтагма»:
+### 2. Вынести содержимое профиля в компонент-вкладку (`ProfileTab.tsx`)
+- Извлечь `ProfileContent` из `OrganizationProfile.tsx` в новый компонент `src/components/organization/tabs/ProfileTab.tsx`
+- Компонент принимает `organizationId` и рендерит те же sub-tabs: Мой профиль, Брендирование, Бренд. страницы входа, Уведомления, Партнёрская программа
 
-```
-{ value: "counterparties", label: "Контрагенты", icon: Building2, group: "platform" }
-```
+### 3. Подключить в `TabContentRenderer.tsx`
+- Добавить рендер `ProfileTab` при `activeTab === "profile"`
 
-### 2. Содержимое вкладки «Контрагенты»
+### 4. Обновить навигацию в хедере (`OrgDashboardHeader.tsx`)
+- Вместо `navigate("/organization/profile")` → `setActiveTab("profile")`
+- Вместо `navigate("/organization/profile?tab=partner")` → `setActiveTab("profile")` + передать начальный sub-tab
 
-Внутри — sub-tabs (как в billing): **Договоры** / **Счета** / **Акты** + **Справка 273-ФЗ**.
-
-- **Договоры** — загружает `company_documents` с `type = "contract"` по всем компаниям организации. Таблица: название, номер, дата, компания, скачать. Кнопка «Создать договор» в хедере → навигация на `/contract-editor` (существующий конструктор).
-- **Счета** — `company_documents` с `type = "invoice"`. Показывает сумму + статус оплаты.
-- **Акты** — `company_documents` с `type = "act"`.
-- **Справка** — переиспользуем текущий FAQ-блок из конструктора (обязательные пункты 273-ФЗ, шаблоны, ссылки на законы), вынесем в отдельный компонент `ContractLegalFaq.tsx`.
-
-### 3. Кнопка «Создать договор» в хедере
-
-При `activeTab === "counterparties"` и sub-tab `contracts` показываем кнопку «Создать договор» → открывает `/contract-editor`.
-
-### 4. Рефакторинг FAQ в отдельный компонент
-
-Выносим блок справки (строки 740-888) в `src/components/organization/ContractLegalFaq.tsx`, чтобы переиспользовать и в конструкторе, и в контрагентах.
+### 5. Упростить `OrganizationProfile.tsx`
+- Оставить как редирект `<Navigate to="/organization?tab=profile" />` для обратной совместимости
 
 ## Файлы
 
 | Файл | Действие |
 |---|---|
-| `src/components/organization/tabs/DocumentsTab.tsx` | Добавить `counterparties` в навигацию, добавить контент с sub-tabs, кнопку «Создать договор», заменить inline FAQ на компонент |
-| `src/components/organization/ContractLegalFaq.tsx` | Новый — вынесенный FAQ по 273-ФЗ (обязательные пункты, шаблоны, законы) |
+| `src/components/organization/tabs/ProfileTab.tsx` | Новый — содержимое профиля из `OrganizationProfile.tsx` |
+| `src/components/organization/OrgSidebar.tsx` | Добавить `"profile"` в `TabType` и кнопку `User` перед Logout |
+| `src/components/organization/tabs/TabContentRenderer.tsx` | Добавить рендер `ProfileTab` |
+| `src/components/organization/OrgDashboardHeader.tsx` | Заменить `navigate` на `setActiveTab("profile")` |
+| `src/pages/OrganizationProfile.tsx` | Заменить на `<Navigate to="/organization?tab=profile" />` |
 
