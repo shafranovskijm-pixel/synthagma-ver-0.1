@@ -148,6 +148,7 @@ const AdminDashboard = () => {
           notifications={notifications}
           unreadCount={unreadCount}
           onMarkAllRead={markAllRead}
+          onNotificationClick={handleNotificationClick}
           branding={adminBranding.branding}
           onCoverUpload={adminBranding.handleCoverUpload}
         />
@@ -155,7 +156,7 @@ const AdminDashboard = () => {
         {/* Content */}
         <div className="p-4 lg:p-8 flex-1">
           {activeTab === "analytics" && <AdminAnalytics />}
-          {activeTab === "organizations" && <OrganizationsManager />}
+          {activeTab === "organizations" && <OrganizationsManager openOrgId={openOrgId} onOpenOrgHandled={() => setOpenOrgId(null)} />}
           {activeTab === "marketplace" && <AdminMarketplaceManager />}
           {activeTab === "sales" && <SalesManager />}
           {activeTab === "billing" && <AdminBillingOverview />}
