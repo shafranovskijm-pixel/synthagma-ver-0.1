@@ -183,15 +183,15 @@ export function OrgDashboardHeader() {
                 <User className="w-4 h-4" />
                 Профиль
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => navigate("/organization/settings")} className="rounded-lg gap-2.5 py-2.5 focus:bg-primary/10 focus:text-primary">
+              <DropdownMenuItem onClick={() => d.tabNavigation.setActiveTab("settings" as any)} className="rounded-lg gap-2.5 py-2.5 focus:bg-primary/10 focus:text-primary">
                 <Settings className="w-4 h-4" />
                 Настройки
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => navigate("/organization/documents")} className="rounded-lg gap-2.5 py-2.5 focus:bg-primary/10 focus:text-primary">
+              <DropdownMenuItem onClick={() => d.tabNavigation.setActiveTab("org-documents" as any)} className="rounded-lg gap-2.5 py-2.5 focus:bg-primary/10 focus:text-primary">
                 <FileText className="w-4 h-4" />
                 Документы
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => navigate("/organization/whats-new")} className="rounded-lg gap-2.5 py-2.5 focus:bg-primary/10 focus:text-primary">
+              <DropdownMenuItem onClick={() => d.tabNavigation.setActiveTab("whats-new" as any)} className="rounded-lg gap-2.5 py-2.5 focus:bg-primary/10 focus:text-primary">
                 <Sparkles className="w-4 h-4" />
                 Что нового?
               </DropdownMenuItem>

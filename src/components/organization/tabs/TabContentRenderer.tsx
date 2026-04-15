@@ -20,6 +20,9 @@ import { HomeworkReviewTab } from "@/components/organization/HomeworkReviewTab";
 import { StaffManager } from "@/components/organization/StaffManager";
 import { WebinarsManager } from "@/components/organization/WebinarsManager";
 import { ProfileTab } from "@/components/organization/tabs/ProfileTab";
+import { OrgSettingsContent } from "@/components/organization/tabs/OrgSettingsContent";
+import { WhatsNewTab } from "@/components/organization/tabs/WhatsNewTab";
+import { OrgDocumentsTab } from "@/components/organization/tabs/OrgDocumentsTab";
 
 import { useOrgDashboard } from "@/contexts/OrgDashboardContext";
 
@@ -45,6 +48,9 @@ export function TabContentRenderer() {
     activeTab !== "staff" &&
     activeTab !== "webinars" &&
     activeTab !== "profile" &&
+    activeTab !== "settings" &&
+    activeTab !== "whats-new" &&
+    activeTab !== "org-documents" &&
     !activeTab.startsWith("documents");
 
   return (
@@ -175,7 +181,6 @@ export function TabContentRenderer() {
         <StaffManager organizationId={organizationId} />
       )}
 
-
       {/* Course Store Tab */}
       {activeTab === "services" && organizationId && (
         <CourseStoreManager
@@ -199,6 +204,16 @@ export function TabContentRenderer() {
         <ProfileTab organizationId={organizationId} />
       )}
 
+      {/* Settings Tab */}
+      {activeTab === "settings" && <OrgSettingsContent />}
+
+      {/* What's New Tab */}
+      {activeTab === "whats-new" && <WhatsNewTab />}
+
+      {/* Org Documents Tab (profile section) */}
+      {activeTab === "org-documents" && organizationId && (
+        <OrgDocumentsTab organizationId={organizationId} />
+      )}
     </>
   );
 }

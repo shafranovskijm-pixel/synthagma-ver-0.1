@@ -45,7 +45,9 @@ export type TabType =
   | "staff"
   | "webinars"
   | "frdo"
-  | "profile";
+  | "profile"
+  | "whats-new"
+  | "org-documents";
 
 const tabCategoryMap: Record<string, string> = {
   courses: "courses",
