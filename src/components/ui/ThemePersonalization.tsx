@@ -1,6 +1,8 @@
 import { useState, useEffect, useCallback } from "react";
 import { Check, Sun, Moon } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { ThemeSelector } from "@/components/ui/ThemeSelector";
+import { getStoredThemeId, getThemeById } from "@/constants/admin-themes";
 
 const ACCENT_COLORS = [
   { name: "Золотой", hsl: "38 75% 55%" },
@@ -63,6 +65,19 @@ function applyRadius(value: string) {
   localStorage.setItem('theme-radius', value);
 }
 
+function applyVisualTheme(themeId: string | null) {
+  if (!themeId) {
+    document.documentElement.style.removeProperty('--primary');
+    document.documentElement.style.removeProperty('--primary-foreground');
+    return;
+  }
+  const theme = getThemeById(themeId);
+  if (theme) {
+    document.documentElement.style.setProperty('--primary', theme.accent);
+    document.documentElement.style.setProperty('--primary-foreground', theme.accentForeground);
+  }
+}
+
 export function useThemePersonalization() {
   useEffect(() => {
     const accent = localStorage.getItem('theme-accent');
@@ -71,6 +86,17 @@ export function useThemePersonalization() {
     if (density) applyDensity(density);
     const radius = localStorage.getItem('theme-radius');
     if (radius) applyRadius(radius);
+    // Restore visual theme
+    const vt = getStoredThemeId();
+    if (vt) applyVisualTheme(vt);
+
+    // Listen for theme changes from ThemeSelector
+    const handler = (e: Event) => {
+      const id = (e as CustomEvent).detail;
+      applyVisualTheme(id);
+    };
+    window.addEventListener("visual-theme-change", handler);
+    return () => window.removeEventListener("visual-theme-change", handler);
   }, []);
 }
 
@@ -108,6 +134,12 @@ export function ThemePersonalization({ isDarkMode, onToggleDark }: ThemePersonal
 
   return (
     <div className="space-y-6">
+      {/* Visual theme selector */}
+      <ThemeSelector onThemeChange={(theme) => {
+        // Theme is persisted in localStorage by ThemeSelector
+        // CSS variable override happens in useThemePersonalization
+      }} />
+
       {/* Theme mode cards */}
       <div>
         <p className="font-medium text-sm mb-1">Режим оформления</p>
