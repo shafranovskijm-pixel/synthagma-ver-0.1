@@ -29,6 +29,7 @@ import { LaborSafetyStudentDetailCard } from "./LaborSafetyStudentDetailCard";
 import { useLaborSafetyManager } from "@/hooks/useLaborSafetyManager";
 import { Progress } from "@/components/ui/progress";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
+import { LoadMoreControls } from "@/components/ui/LoadMoreControls";
 
 interface LaborSafetyManagerProps {
   organizationId: string;
