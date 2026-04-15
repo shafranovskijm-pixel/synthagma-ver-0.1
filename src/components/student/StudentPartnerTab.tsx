@@ -87,9 +87,9 @@ export function StudentPartnerTab({ userId, userEmail, userName }: Props) {
   }
 
   const benefits = [
-    { icon: TrendingUp, title: "10–25%", desc: "комиссии с оплат", color: "from-emerald-500/20 to-emerald-500/5 border-emerald-500/20" },
+    { icon: TrendingUp, title: "До 45%", desc: "комиссии с 3 уровней", color: "from-emerald-500/20 to-emerald-500/5 border-emerald-500/20" },
     { icon: CalendarClock, title: "2 года", desc: "выплат с каждого клиента", color: "from-blue-500/20 to-blue-500/5 border-blue-500/20" },
-    { icon: Plug, title: "Просто", desc: "подключиться и начать", color: "from-violet-500/20 to-violet-500/5 border-violet-500/20" },
+    { icon: Plug, title: "3 уровня", desc: "многоуровневая сеть", color: "from-violet-500/20 to-violet-500/5 border-violet-500/20" },
   ];
 
   return (
@@ -104,7 +104,7 @@ export function StudentPartnerTab({ userId, userEmail, userName }: Props) {
           </div>
           <h2 className="text-2xl sm:text-3xl font-bold mb-2">Зарабатывайте с нами</h2>
           <p className="text-white/80 max-w-lg">
-            Приглашайте организации на платформу и получайте от 10% до 25% комиссии с их оплат подписки в течение 2 лет.
+            Многоуровневая партнёрская программа: 20% с прямых + 10% уровень 2 + 5% уровень 3. Бонусы за оборот (+5%) и лидерский рейтинг (+3%).
           </p>
         </div>
       </div>
@@ -205,9 +205,9 @@ export function StudentPartnerTab({ userId, userEmail, userName }: Props) {
           <div className="mt-2 p-5 rounded-xl border border-border bg-card text-sm text-muted-foreground space-y-3 leading-relaxed">
             <p className="font-semibold text-foreground">Условия партнёрской программы</p>
             <p>1. Партнёр привлекает новые организации на платформу по персональной реферальной ссылке.</p>
-            <p>2. За каждую привлечённую организацию, оформившую платную подписку, партнёру начисляется комиссия в размере от 10% до 25% от суммы оплат.</p>
+            <p>2. Комиссия начисляется по 3 уровням: Уровень 1 (прямые) — 20%, Уровень 2 — 10%, Уровень 3 — 5%.</p>
             <p>3. Комиссионные выплаты производятся в течение 2 (двух) лет с момента первой оплаты привлечённой организацией.</p>
-            <p>4. Размер комиссии зависит от количества привлечённых организаций: до 5 — 10%, от 5 до 15 — 15%, от 15 до 30 — 20%, более 30 — 25%.</p>
+            <p>4. При обороте сети более 100 000 ₽/мес — дополнительный бонус +5%. Топ-10 партнёров месяца получают +3%.</p>
             <p>5. Выплаты производятся ежемесячно на реквизиты, указанные партнёром, при накоплении суммы от 1 000 ₽.</p>
             <p>6. Платформа оставляет за собой право изменять условия программы с уведомлением партнёров за 30 дней.</p>
             <p>7. Подавая заявку, вы соглашаетесь с данными условиями.</p>
