@@ -1,3 +1,4 @@
+import { useState, useEffect } from "react";
 import { 
   Building2, Users, LogOut, Store, Briefcase, MessageSquare
 } from "lucide-react";
@@ -5,6 +6,7 @@ import { SigmaLogo } from "@/components/ui/SigmaLogo";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useAdminUnreadChats } from "@/hooks/useAdminUnreadChats";
 import { cn } from "@/lib/utils";
+import { getStoredThemeId, getThemeById } from "@/constants/admin-themes";
 
 export type AdminTabType = 
   | "analytics" 
@@ -49,6 +51,21 @@ export function AdminSidebar({
 }: AdminSidebarProps) {
   const unreadChats = useAdminUnreadChats();
 
+  // Theme-aware accent
+  const [themeAccent, setThemeAccent] = useState<string | null>(() => {
+    const id = getStoredThemeId();
+    return id ? getThemeById(id)?.accent || null : null;
+  });
+
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const id = (e as CustomEvent).detail;
+      setThemeAccent(id ? getThemeById(id)?.accent || null : null);
+    };
+    window.addEventListener("visual-theme-change", handler);
+    return () => window.removeEventListener("visual-theme-change", handler);
+  }, []);
+
   const handleTabClick = (tab: AdminTabType) => {
     setActiveTab(tab);
     setIsMobileSidebarOpen(false);
@@ -62,7 +79,7 @@ export function AdminSidebar({
     { id: "chats", icon: MessageSquare, label: "Чаты", badge: unreadChats },
   ];
 
-  const brandHsl = "220 70% 50%";
+  const brandHsl = themeAccent || "220 70% 50%";
 
   return (
     <>
