@@ -617,6 +617,7 @@ export const AdminBillingOverview = () => {
               statusBadge={statusBadge} handleViewDoc={handleViewDoc}
               onCreateContract={() => setShowCreateContract(true)}
               orgs={orgs}
+              onMarkPaid={handleMarkPaid}
             />}
             {activeSection === "org-contracts" && (
               selectedOrgId ? (
