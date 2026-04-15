@@ -5,7 +5,6 @@ import { Settings, LayoutGrid, Save, RefreshCw, RotateCcw, Users, FileText, BarC
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { SettingsStudentDashboardTab } from "@/components/organization/SettingsStudentDashboardTab";
-import { SettingsStudentDashboardTab } from "@/components/organization/SettingsStudentDashboardTab";
 import { StaffManager } from "@/components/organization/StaffManager";
 import { useOrgDashboard } from "@/contexts/OrgDashboardContext";
 import OrgPageLayout from "@/components/organization/OrgPageLayout";
