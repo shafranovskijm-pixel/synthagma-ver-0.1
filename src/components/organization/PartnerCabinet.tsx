@@ -15,6 +15,81 @@ import { getBaseUrl } from "@/utils/getBaseUrl";
 import { Link } from "react-router-dom";
 import { toast } from "sonner";
 
+function EarningsCalculator({ commissionPercent }: { commissionPercent: number }) {
+  const [clients, setClients] = useState(5);
+  const [avgPayment, setAvgPayment] = useState(15000);
+
+  const monthly = useMemo(() => {
+    return Math.round(clients * avgPayment * (commissionPercent / 100));
+  }, [clients, avgPayment, commissionPercent]);
+
+  const yearly = monthly * 12;
+
+  return (
+    <Card className="rounded-2xl">
+      <CardHeader>
+        <CardTitle className="text-lg flex items-center gap-2">
+          <Calculator className="w-5 h-5" /> Калькулятор дохода
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <label className="text-sm font-medium text-muted-foreground">Привлечённых клиентов</label>
+              <span className="text-sm font-bold">{clients}</span>
+            </div>
+            <Slider
+              value={[clients]}
+              onValueChange={(v) => setClients(v[0])}
+              min={1}
+              max={50}
+              step={1}
+              className="w-full"
+            />
+            <div className="flex justify-between text-xs text-muted-foreground">
+              <span>1</span><span>50</span>
+            </div>
+          </div>
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <label className="text-sm font-medium text-muted-foreground">Средний платёж клиента</label>
+              <span className="text-sm font-bold">{avgPayment.toLocaleString("ru-RU")} ₽</span>
+            </div>
+            <Slider
+              value={[avgPayment]}
+              onValueChange={(v) => setAvgPayment(v[0])}
+              min={3000}
+              max={100000}
+              step={1000}
+              className="w-full"
+            />
+            <div className="flex justify-between text-xs text-muted-foreground">
+              <span>3 000 ₽</span><span>100 000 ₽</span>
+            </div>
+          </div>
+        </div>
+
+        <div className="border-t border-border pt-4">
+          <div className="grid grid-cols-2 gap-4">
+            <div className="bg-primary/5 rounded-xl p-4 text-center">
+              <p className="text-xs text-muted-foreground mb-1">В месяц</p>
+              <p className="text-2xl font-bold text-primary">{monthly.toLocaleString("ru-RU")} ₽</p>
+            </div>
+            <div className="bg-primary/5 rounded-xl p-4 text-center">
+              <p className="text-xs text-muted-foreground mb-1">В год</p>
+              <p className="text-2xl font-bold text-primary">{yearly.toLocaleString("ru-RU")} ₽</p>
+            </div>
+          </div>
+          <p className="text-xs text-muted-foreground mt-3 text-center">
+            При комиссии {commissionPercent}% · Расчёт приблизительный
+          </p>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
 export function PartnerCabinet() {
   const { user } = useAuth();
   const [partner, setPartner] = useState<any>(null);
