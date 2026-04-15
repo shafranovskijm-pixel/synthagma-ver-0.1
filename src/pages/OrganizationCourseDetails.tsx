@@ -109,7 +109,7 @@ export default function OrganizationCourseDetails() {
     return (
       <OrgPageLayout title="Курс" icon={BookOpen}>
         <div className="flex items-center justify-center py-20">
-          <SigmaSpinner size={32} />
+          <SigmaSpinner size="lg" />
         </div>
       </OrgPageLayout>
     );
