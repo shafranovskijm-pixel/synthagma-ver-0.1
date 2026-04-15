@@ -1,12 +1,13 @@
 import { useState } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { FileText, Package, Users, Building2, BarChart3, ScrollText } from 'lucide-react';
+import { FileText, Package, Users, Building2, BarChart3, ScrollText, GitCompareArrows } from 'lucide-react';
 import { CommercialProposals } from './sales/CommercialProposals';
 import { SalesServices } from './sales/SalesServices';
 import { SalesManagersList } from './sales/SalesManagersList';
 import { LeadsManager } from './sales/LeadsManager';
 import { SalesControlPanel } from './sales/SalesControlPanel';
 import { SalesContracts } from './sales/SalesContracts';
+import { CompetitorComparison } from './sales/CompetitorComparison';
 
 export function SalesManager() {
   return (
