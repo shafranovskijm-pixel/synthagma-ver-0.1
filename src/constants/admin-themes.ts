@@ -1,3 +1,5 @@
+import beachPalmsSunset from "@/assets/beach-palms-sunset.jpg";
+
 export interface AdminTheme {
   id: string;
   label: string;
