@@ -139,7 +139,7 @@ const PartnerLanding = () => {
       icon: User,
       title: "Новичок",
       subtitle: "Достаточно 3 знакомых",
-      color: "from-teal-500/20 to-teal-500/5 border-teal-500/25",
+      color: "from-teal-900/90 to-teal-950/80 border-teal-500/30",
       iconBg: "bg-teal-500/15",
       iconColor: "text-teal-500",
       image: caseBeginner,
