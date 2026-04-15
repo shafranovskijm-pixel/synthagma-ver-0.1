@@ -3,7 +3,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { SigmaLogo } from "@/components/ui/SigmaLogo";
-import { ArrowRight, Gift, TrendingUp, Users, Clock, DollarSign, CheckCircle2, Copy, ExternalLink, Zap, Shield, BarChart3, MessageCircle, Mail, FileText, Building2, GraduationCap, Briefcase, Star, Sparkles, Download, HelpCircle, Network, Award, Crown } from "lucide-react";
+import { Slider } from "@/components/ui/slider";
+import { ArrowRight, Gift, TrendingUp, Users, Clock, DollarSign, CheckCircle2, Copy, ExternalLink, Zap, Shield, BarChart3, MessageCircle, Mail, FileText, Building2, GraduationCap, Briefcase, Star, Sparkles, Download, HelpCircle, Network, Award, Crown, Rocket, Brain, FileCheck, Video, CreditCard, ShieldCheck, User, UserPlus, Trophy } from "lucide-react";
 import { motion } from "framer-motion";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
@@ -24,6 +25,12 @@ const PartnerLanding = () => {
   const [partnerCode, setPartnerCode] = useState<string | null>(null);
   const [isBecoming, setIsBecoming] = useState(false);
   const [agreedToTerms, setAgreedToTerms] = useState(false);
+
+  // Interactive calculator state
+  const [calcLevel1, setCalcLevel1] = useState(5);
+  const [calcLevel2, setCalcLevel2] = useState(10);
+  const [calcLevel3, setCalcLevel3] = useState(20);
+  const [calcAvgPrice, setCalcAvgPrice] = useState(6990);
 
   useEffect(() => {
     if (user) {
@@ -90,6 +97,79 @@ const PartnerLanding = () => {
   const bonuses = [
     { title: "Бонус за оборот", condition: "Оборот сети > 100 000 ₽/мес", bonus: "+5%", icon: TrendingUp, color: "text-emerald-500" },
     { title: "Лидерский бонус", condition: "Топ-10 партнёров месяца", bonus: "+3%", icon: Crown, color: "text-amber-500" },
+  ];
+
+  const whyEasyToSell = [
+    { icon: Gift, title: "Бесплатный тариф навсегда", desc: "Клиент ничем не рискует — может попробовать все функции бесплатно и перейти на платный тариф, когда будет готов" },
+    { icon: Users, title: "Безлимит учеников", desc: "На всех тарифах — нет скрытых платежей за количество пользователей. Платите только за функционал" },
+    { icon: Brain, title: "ИИ-генерация курсов", desc: "Курс из 30 уроков с тестами создаётся за 5 минут — WOW-эффект при демонстрации клиенту" },
+    { icon: FileCheck, title: "Документооборот + ФИС ФРДО", desc: "Договоры, акты, согласия + передача данных в ФРДО — заменяет 3-4 отдельные системы" },
+    { icon: CreditCard, title: "Онлайн-касса и платежи", desc: "Встроенный приём платежей от учеников — клиент сразу начинает монетизировать обучение" },
+    { icon: ShieldCheck, title: "Видеоидентификация и прокторинг", desc: "Требование закона для ДПО — у нас уже встроено, конкуренты этого не предлагают" },
+  ];
+
+  const casStudies = [
+    {
+      icon: User,
+      title: "Новичок",
+      subtitle: "Достаточно 3 знакомых",
+      color: "from-teal-500/20 to-teal-500/5 border-teal-500/25",
+      iconBg: "bg-teal-500/15",
+      iconColor: "text-teal-500",
+      rows: [
+        { label: "Уровень 1: 3 организации × 3 490 ₽ × 20%", value: "2 094 ₽" },
+      ],
+      total: "2 094 ₽/мес",
+      note: "Пассивный доход — расскажите о платформе трём знакомым руководителям учебных центров",
+    },
+    {
+      icon: UserPlus,
+      title: "Активный партнёр",
+      subtitle: "Полноценный доход на полставки",
+      color: "from-cyan-500/15 to-cyan-500/5 border-cyan-500/25",
+      iconBg: "bg-cyan-500/15",
+      iconColor: "text-cyan-500",
+      rows: [
+        { label: "Уровень 1: 5 организаций × 6 990 ₽ × 20%", value: "6 990 ₽" },
+        { label: "Уровень 2: 10 организаций × 3 490 ₽ × 10%", value: "3 490 ₽" },
+      ],
+      total: "10 480 ₽/мес",
+      note: "Привлекайте сами и помогайте своим партнёрам находить клиентов",
+    },
+    {
+      icon: Trophy,
+      title: "Лидер сети",
+      subtitle: "Сопоставимо с зарплатой менеджера",
+      color: "from-amber-500/10 to-amber-500/5 border-amber-500/20",
+      iconBg: "bg-amber-500/15",
+      iconColor: "text-amber-500",
+      rows: [
+        { label: "Уровень 1: 10 организаций × 10 000 ₽ × 20%", value: "20 000 ₽" },
+        { label: "Уровень 2: 30 организаций × 5 000 ₽ × 10%", value: "15 000 ₽" },
+        { label: "Уровень 3: 50 организаций × 4 000 ₽ × 5%", value: "10 000 ₽" },
+        { label: "Бонус за оборот (+5%)", value: "5 000 ₽" },
+        { label: "Лидерский бонус (+3%)", value: "3 000 ₽" },
+      ],
+      total: "53 000 ₽/мес",
+      note: "Стройте сеть партнёров, обучайте их привлекать клиентов и получайте комиссию с 3 уровней",
+    },
+  ];
+
+  // Calculator
+  const calcIncome1 = calcLevel1 * calcAvgPrice * 0.2;
+  const calcIncome2 = calcLevel2 * calcAvgPrice * 0.1;
+  const calcIncome3 = calcLevel3 * calcAvgPrice * 0.05;
+  const calcTotal = calcIncome1 + calcIncome2 + calcIncome3;
+  const calcTurnoverBonus = calcTotal > 100000 ? calcTotal * 0.05 : 0;
+  const calcGrandTotal = calcTotal + calcTurnoverBonus;
+
+  const formatRub = (n: number) => Math.round(n).toLocaleString("ru-RU") + " ₽";
+
+  const priceOptions = [
+    { label: "Старт (3 490 ₽)", value: 3490 },
+    { label: "Стандарт (6 990 ₽)", value: 6990 },
+    { label: "Проф. (16 990 ₽)", value: 16990 },
+    { label: "Макс. (24 990 ₽)", value: 24990 },
   ];
 
   const messengerText = `🎓 Я использую платформу СИНТАГМА для дистанционного обучения — современная LMS с документооборотом, ФРДО, видеоидентификацией и ИИ.\n\nПопробуйте бесплатно: ${refLink}`;
@@ -211,9 +291,40 @@ const PartnerLanding = () => {
           </div>
         </section>
 
-        {/* How it works */}
+        {/* === NEW: Why easy to sell === */}
         <section className="py-24 relative overflow-hidden bg-gradient-to-b from-secondary/30 via-background to-secondary/30 section-padding">
           <div className="absolute inset-0 opacity-[0.02] bg-[radial-gradient(hsl(var(--foreground))_1px,transparent_1px)] [background-size:24px_24px]" />
+          <div className="container mx-auto px-6 relative">
+            <motion.div className="text-center mb-4" initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}>
+              <Badge className="mb-4 px-3 py-1 bg-teal-500/10 text-teal-600 border-teal-500/20">
+                <Rocket className="w-3.5 h-3.5 mr-1" /> Ваше преимущество
+              </Badge>
+              <h2 className="font-display text-3xl lg:text-4xl font-bold">Почему легко привлекать клиентов</h2>
+            </motion.div>
+            <motion.p className="text-muted-foreground text-center mb-14 max-w-2xl mx-auto" initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} viewport={{ once: true }} transition={{ delay: 0.2 }}>
+              Платформа продаёт себя сама — вам достаточно показать возможности. Вот почему клиенты остаются:
+            </motion.p>
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-5xl mx-auto">
+              {whyEasyToSell.map((item, i) => (
+                <motion.div key={item.title} initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.1 }} whileHover={{ y: -4 }}>
+                  <Card className="h-full border border-teal-500/10 shadow-lg hover:shadow-xl hover:shadow-teal-500/5 transition-all bg-card/80 backdrop-blur-sm group">
+                    <CardContent className="pt-6 pb-5">
+                      <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-teal-500/20 to-cyan-400/10 flex items-center justify-center mb-4 group-hover:shadow-[0_0_15px_rgba(20,184,166,0.2)] transition-shadow">
+                        <item.icon className="w-6 h-6 text-teal-600" />
+                      </div>
+                      <h3 className="font-semibold mb-2">{item.title}</h3>
+                      <p className="text-sm text-muted-foreground leading-relaxed">{item.desc}</p>
+                    </CardContent>
+                  </Card>
+                </motion.div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* How it works */}
+        <section className="py-24 relative overflow-hidden section-padding">
+          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_50%_0%,rgba(20,184,166,0.06),transparent_60%)]" />
           <div className="container mx-auto px-6 relative">
             <motion.h2 className="font-display text-3xl lg:text-4xl font-bold text-center mb-4" initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}>
               Как это работает
@@ -243,8 +354,8 @@ const PartnerLanding = () => {
         </section>
 
         {/* Benefits */}
-        <section className="py-24 relative overflow-hidden section-padding">
-          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_50%_0%,rgba(20,184,166,0.06),transparent_60%)]" />
+        <section className="py-24 relative overflow-hidden bg-gradient-to-b from-secondary/30 via-background to-secondary/30 section-padding">
+          <div className="absolute inset-0 opacity-[0.02] bg-[radial-gradient(hsl(var(--foreground))_1px,transparent_1px)] [background-size:24px_24px]" />
           <FloatingParticles count={10} mode="dots" />
           <div className="container mx-auto px-6 relative">
             <motion.h2 className="font-display text-3xl lg:text-4xl font-bold text-center mb-14" initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}>
@@ -268,9 +379,9 @@ const PartnerLanding = () => {
           </div>
         </section>
 
-        {/* Network Levels — NEW MLM section */}
-        <section className="py-24 relative overflow-hidden bg-gradient-to-b from-secondary/30 via-background to-secondary/30 section-padding">
-          <div className="absolute inset-0 opacity-[0.02] bg-[radial-gradient(hsl(var(--foreground))_1px,transparent_1px)] [background-size:24px_24px]" />
+        {/* Network Levels */}
+        <section className="py-24 relative overflow-hidden section-padding">
+          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_50%_0%,rgba(20,184,166,0.06),transparent_60%)]" />
           <div className="container mx-auto px-6 relative">
             <motion.h2 className="font-display text-3xl lg:text-4xl font-bold text-center mb-4" initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} viewport={{ once: true }}>
               Многоуровневая комиссия
@@ -279,11 +390,10 @@ const PartnerLanding = () => {
               Зарабатывайте не только с прямых приглашений, но и со всей вашей сети
             </motion.p>
 
-            {/* 3-level visual */}
             <div className="max-w-3xl mx-auto space-y-4 mb-12">
               {networkLevels.map((row, i) => (
                 <motion.div key={row.level} initial={{ opacity: 0, x: -30 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.15 }}>
-                  <div className={`flex items-center justify-between px-6 py-6 rounded-xl bg-gradient-to-r ${row.color} border backdrop-blur-sm hover:scale-[1.02] hover:${row.glow} transition-all duration-300`}>
+                  <div className={`flex items-center justify-between px-6 py-6 rounded-xl bg-gradient-to-r ${row.color} border backdrop-blur-sm hover:scale-[1.02] transition-all duration-300`}>
                     <div>
                       <div className="font-semibold text-lg">{row.level}</div>
                       <div className="text-sm text-muted-foreground">{row.desc}</div>
@@ -294,7 +404,6 @@ const PartnerLanding = () => {
               ))}
             </div>
 
-            {/* Bonuses */}
             <div className="max-w-3xl mx-auto grid sm:grid-cols-2 gap-4">
               {bonuses.map((b, i) => (
                 <motion.div key={b.title} initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: 0.5 + i * 0.1 }}>
@@ -313,28 +422,177 @@ const PartnerLanding = () => {
                 </motion.div>
               ))}
             </div>
+          </div>
+        </section>
 
-            {/* Example calculation */}
-            <motion.div className="max-w-3xl mx-auto mt-10" initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} viewport={{ once: true }} transition={{ delay: 0.7 }}>
-              <Card className="bg-foreground text-white border-teal-500/20">
-                <CardContent className="pt-6 pb-5">
-                  <h4 className="font-semibold text-teal-400 mb-3 flex items-center gap-2">
-                    <BarChart3 className="w-5 h-5" /> Пример расчёта
-                  </h4>
-                  <div className="text-sm text-white/70 space-y-2 leading-relaxed">
-                    <p>Организация Org1 оплачивает подписку <strong className="text-white">300 000 ₽/мес</strong>.</p>
-                    <p>Вы (Партнёр уровня 1): <strong className="text-teal-400">20% = 60 000 ₽</strong></p>
-                    <p>Ваш наставник (уровень 2): <strong className="text-cyan-400">10% = 30 000 ₽</strong></p>
-                    <p>Наставник наставника (уровень 3): <strong className="text-blue-400">5% = 15 000 ₽</strong></p>
-                    <div className="border-t border-white/10 pt-2 mt-3">
-                      <p>+ Оборот сети &gt; 100 000 ₽ → <strong className="text-emerald-400">бонус +5% = 15 000 ₽</strong></p>
-                      <p>+ Топ-10 партнёр → <strong className="text-amber-400">бонус +3% = 9 000 ₽</strong></p>
-                      <p className="text-lg mt-2 font-semibold text-white">Итого вам: <span className="text-teal-400">до 84 000 ₽/мес</span> с одного клиента</p>
+        {/* === NEW: Case Studies — 3 кейса расчёта === */}
+        <section className="py-24 relative overflow-hidden bg-foreground section-padding">
+          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_30%_30%,rgba(20,184,166,0.12),transparent_60%)]" />
+          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_70%_70%,rgba(6,182,212,0.08),transparent_60%)]" />
+          <div className="absolute inset-0 opacity-[0.03] bg-[radial-gradient(#fff_1px,transparent_1px)] [background-size:32px_32px]" />
+          <FloatingParticles count={10} mode="dots" />
+          <div className="container mx-auto px-6 relative z-10">
+            <motion.div className="text-center mb-14" initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}>
+              <Badge className="mb-4 px-3 py-1 bg-teal-500/15 text-teal-300 border-teal-500/30">
+                <BarChart3 className="w-3.5 h-3.5 mr-1" /> Реальные цифры
+              </Badge>
+              <h2 className="font-display text-3xl lg:text-4xl font-bold text-white mb-4">Образец расчёта дохода</h2>
+              <p className="text-white/50 max-w-2xl mx-auto">На основе реальных тарифов платформы — от 3 490 до 24 990 ₽/мес</p>
+            </motion.div>
+
+            <div className="grid md:grid-cols-3 gap-6 max-w-5xl mx-auto mb-16">
+              {casStudies.map((cs, i) => (
+                <motion.div key={cs.title} initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.15 }}>
+                  <Card className={`h-full border bg-gradient-to-b ${cs.color} backdrop-blur-sm hover:scale-[1.02] transition-all duration-300`}>
+                    <CardContent className="pt-6 pb-5">
+                      <div className="flex items-center gap-3 mb-5">
+                        <div className={`w-12 h-12 rounded-xl ${cs.iconBg} flex items-center justify-center`}>
+                          <cs.icon className={`w-6 h-6 ${cs.iconColor}`} />
+                        </div>
+                        <div>
+                          <h3 className="font-semibold text-white text-lg">{cs.title}</h3>
+                          <p className="text-xs text-white/40">{cs.subtitle}</p>
+                        </div>
+                      </div>
+                      <div className="space-y-2 mb-5">
+                        {cs.rows.map((row, ri) => (
+                          <div key={ri} className="flex justify-between items-start gap-2 text-sm">
+                            <span className="text-white/50 leading-tight">{row.label}</span>
+                            <span className="text-teal-400 font-semibold whitespace-nowrap">{row.value}</span>
+                          </div>
+                        ))}
+                      </div>
+                      <div className="border-t border-white/10 pt-4 mb-3">
+                        <div className="flex justify-between items-center">
+                          <span className="text-white/70 font-medium">Итого в месяц:</span>
+                          <span className="text-2xl font-bold text-teal-400">{cs.total}</span>
+                        </div>
+                      </div>
+                      <p className="text-xs text-white/35 leading-relaxed">{cs.note}</p>
+                    </CardContent>
+                  </Card>
+                </motion.div>
+              ))}
+            </div>
+
+            {/* Interactive calculator */}
+            <motion.div className="max-w-3xl mx-auto" initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: 0.3 }}>
+              <Card className="bg-white/[0.04] border border-teal-500/20 backdrop-blur-sm">
+                <CardContent className="pt-6 pb-6">
+                  <h3 className="font-display text-xl font-bold text-white mb-6 flex items-center gap-2">
+                    <Sparkles className="w-5 h-5 text-teal-400" /> Рассчитайте свой доход
+                  </h3>
+
+                  <div className="space-y-6 mb-8">
+                    {/* Average price selector */}
+                    <div>
+                      <label className="text-sm text-white/60 mb-3 block">Средний тариф клиентов</label>
+                      <div className="flex flex-wrap gap-2">
+                        {priceOptions.map(opt => (
+                          <button
+                            key={opt.value}
+                            onClick={() => setCalcAvgPrice(opt.value)}
+                            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                              calcAvgPrice === opt.value
+                                ? "bg-teal-500 text-white shadow-[0_0_15px_rgba(20,184,166,0.3)]"
+                                : "bg-white/[0.06] text-white/50 hover:bg-white/[0.1] hover:text-white/70 border border-white/[0.06]"
+                            }`}
+                          >
+                            {opt.label}
+                          </button>
+                        ))}
+                      </div>
                     </div>
+
+                    {/* Level 1 slider */}
+                    <div>
+                      <div className="flex justify-between text-sm mb-2">
+                        <span className="text-white/60">Уровень 1 — ваши прямые клиенты</span>
+                        <span className="text-teal-400 font-semibold">{calcLevel1}</span>
+                      </div>
+                      <Slider value={[calcLevel1]} onValueChange={v => setCalcLevel1(v[0])} min={1} max={30} step={1} className="[&_[role=slider]]:bg-teal-500 [&_[role=slider]]:border-teal-500 [&_.bg-primary]:bg-teal-500" />
+                    </div>
+
+                    {/* Level 2 slider */}
+                    <div>
+                      <div className="flex justify-between text-sm mb-2">
+                        <span className="text-white/60">Уровень 2 — клиенты ваших партнёров</span>
+                        <span className="text-cyan-400 font-semibold">{calcLevel2}</span>
+                      </div>
+                      <Slider value={[calcLevel2]} onValueChange={v => setCalcLevel2(v[0])} min={0} max={100} step={1} className="[&_[role=slider]]:bg-cyan-500 [&_[role=slider]]:border-cyan-500 [&_.bg-primary]:bg-cyan-500" />
+                    </div>
+
+                    {/* Level 3 slider */}
+                    <div>
+                      <div className="flex justify-between text-sm mb-2">
+                        <span className="text-white/60">Уровень 3 — третье поколение сети</span>
+                        <span className="text-blue-400 font-semibold">{calcLevel3}</span>
+                      </div>
+                      <Slider value={[calcLevel3]} onValueChange={v => setCalcLevel3(v[0])} min={0} max={200} step={1} className="[&_[role=slider]]:bg-blue-500 [&_[role=slider]]:border-blue-500 [&_.bg-primary]:bg-blue-500" />
+                    </div>
+                  </div>
+
+                  {/* Results */}
+                  <div className="bg-white/[0.04] rounded-xl border border-white/[0.06] p-5 space-y-3">
+                    <div className="flex justify-between text-sm">
+                      <span className="text-white/50">Уровень 1: {calcLevel1} × {formatRub(calcAvgPrice)} × 20%</span>
+                      <span className="text-teal-400 font-semibold">{formatRub(calcIncome1)}</span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-white/50">Уровень 2: {calcLevel2} × {formatRub(calcAvgPrice)} × 10%</span>
+                      <span className="text-cyan-400 font-semibold">{formatRub(calcIncome2)}</span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-white/50">Уровень 3: {calcLevel3} × {formatRub(calcAvgPrice)} × 5%</span>
+                      <span className="text-blue-400 font-semibold">{formatRub(calcIncome3)}</span>
+                    </div>
+                    {calcTurnoverBonus > 0 && (
+                      <div className="flex justify-between text-sm">
+                        <span className="text-white/50">Бонус за оборот (+5%)</span>
+                        <span className="text-emerald-400 font-semibold">+{formatRub(calcTurnoverBonus)}</span>
+                      </div>
+                    )}
+                    <div className="border-t border-white/10 pt-3 flex justify-between items-center">
+                      <span className="text-white/80 font-medium">Ваш доход в месяц:</span>
+                      <span className="text-3xl font-bold text-teal-400">{formatRub(calcGrandTotal)}</span>
+                    </div>
+                    <p className="text-xs text-white/30 pt-1">
+                      * Расчёт без учёта лидерского бонуса (+3% для топ-10 партнёров)
+                    </p>
                   </div>
                 </CardContent>
               </Card>
             </motion.div>
+          </div>
+        </section>
+
+        {/* === NEW: Platform sells itself === */}
+        <section className="py-20 relative overflow-hidden bg-gradient-to-b from-secondary/30 via-background to-secondary/30 section-padding">
+          <div className="container mx-auto px-6 relative">
+            <motion.h2 className="font-display text-3xl lg:text-4xl font-bold text-center mb-4" initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} viewport={{ once: true }}>
+              Платформа, которая продаёт себя сама
+            </motion.h2>
+            <motion.p className="text-muted-foreground text-center mb-12 max-w-xl mx-auto" initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} viewport={{ once: true }} transition={{ delay: 0.2 }}>
+              Ваши клиенты остаются, потому что не найдут аналогов
+            </motion.p>
+            <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6 max-w-4xl mx-auto">
+              {[
+                { value: "200+", label: "готовых программ ДПО", icon: GraduationCap },
+                { value: "∞", label: "учеников на всех тарифах", icon: Users },
+                { value: "ФИС ФРДО", label: "встроенная интеграция", icon: FileCheck },
+                { value: "ИИ", label: "генерация курсов за минуты", icon: Brain },
+              ].map((stat, i) => (
+                <motion.div key={stat.label} initial={{ opacity: 0, scale: 0.9 }} whileInView={{ opacity: 1, scale: 1 }} viewport={{ once: true }} transition={{ delay: i * 0.1 }}>
+                  <Card className="text-center border border-teal-500/10 bg-card/80 hover:shadow-lg hover:shadow-teal-500/5 transition-all">
+                    <CardContent className="pt-6 pb-5">
+                      <stat.icon className="w-8 h-8 text-teal-500 mx-auto mb-3" />
+                      <div className="text-3xl font-bold text-teal-600 mb-1">{stat.value}</div>
+                      <div className="text-sm text-muted-foreground">{stat.label}</div>
+                    </CardContent>
+                  </Card>
+                </motion.div>
+              ))}
+            </div>
           </div>
         </section>
 
