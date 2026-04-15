@@ -126,6 +126,11 @@ export const AdminBillingOverview = () => {
   const [actInnSearching, setActInnSearching] = useState(false);
   const [pendingAct, setPendingAct] = useState<GeneratedAct | null>(null);
 
+  // Invoice selection & delete
+  const [selectedInvoiceIds, setSelectedInvoiceIds] = useState<Set<string>>(new Set());
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+
   useEffect(() => { loadData(); }, []);
 
   const loadData = async () => {
