@@ -570,11 +570,22 @@ export function SubscriptionTab() {
               rows={3}
             />
           </div>
-          <DialogFooter>
+          <DialogFooter className="flex-col sm:flex-row gap-2">
             <Button variant="outline" onClick={() => setShowUpgradeDialog(false)}>Отмена</Button>
             <Button onClick={handleRequestUpgrade} disabled={submitting}>
               {submitting ? "Отправка..." : "Отправить заявку"}
             </Button>
+            {selectedPlan && SUBSCRIPTION_PLANS[selectedPlan].price > 0 && PLAN_ORDER.indexOf(selectedPlan) > currentPlanIndex && (
+              <Button
+                variant="default"
+                className="bg-emerald-600 hover:bg-emerald-700"
+                disabled={payingOnline}
+                onClick={handlePayOnline}
+              >
+                <CreditCard className="w-4 h-4 mr-2" />
+                {payingOnline ? "Переход к оплате..." : "Оплатить онлайн"}
+              </Button>
+            )}
           </DialogFooter>
         </DialogContent>
       </Dialog>
