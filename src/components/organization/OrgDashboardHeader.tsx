@@ -95,7 +95,7 @@ export function OrgDashboardHeader() {
     }
   };
 
-  const displayCover = themeBannerUrl || coverUrl || defaultCoverImg;
+  
 
   return (
     <header className="sticky top-0 z-30 bg-card border-b border-border">
@@ -211,65 +211,19 @@ export function OrgDashboardHeader() {
         </div>
       </div>
 
-      {/* Hero banner — always visible */}
-      <div className="relative w-full h-36 lg:h-48 overflow-hidden">
-        <img
-          src={displayCover}
-          alt="Обложка организации"
-          className="w-full h-full"
-          width={1920}
-          height={512}
-          style={{
-            objectFit: (themeBannerUrl || coverUrl) ? ((coverPosition === 'contain' && !themeBannerUrl) ? 'contain' : 'cover') : 'cover',
-            objectPosition: themeBannerPosition || (
-              coverPosition === 'top' ? 'center top'
-              : coverPosition === 'bottom' ? 'center bottom'
-              : 'center center'
-            ),
-            backgroundColor: 'hsl(var(--muted))'
-          }}
-        />
-        {/* Gradient overlay */}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent" />
-
-        {/* Org info overlay */}
-        <div className="absolute bottom-4 left-6 flex items-end gap-3">
+      {/* Hero banner with theme swiper */}
+      <HeroBannerSwiper>
+        <div className="absolute bottom-4 left-6 flex items-end gap-3 z-10">
           {logoUrl && (
             <img src={logoUrl} alt="" className="w-12 h-12 rounded-xl object-contain bg-white/90 p-1 shadow-md" />
           )}
           <div className="text-white">
-            {!coverUrl && <span className="text-xs font-medium opacity-70 block mb-0.5">Онлайн-обучение</span>}
+            <span className="text-xs font-medium opacity-70 block mb-0.5">Онлайн-обучение</span>
             <h2 className="text-lg lg:text-2xl font-bold drop-shadow-md leading-tight">{customName || organizationName}</h2>
             {customSubtitle && <p className="text-xs lg:text-sm opacity-80 mt-0.5">{customSubtitle}</p>}
           </div>
         </div>
-
-        {/* Cover action buttons */}
-        <div className="absolute top-3 right-3 flex items-center gap-1.5">
-          <button
-            onClick={handleGenerateAICover}
-            disabled={isGeneratingCover}
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-black/40 hover:bg-black/60 backdrop-blur-sm text-white text-xs font-medium rounded-lg transition-colors disabled:opacity-50"
-          >
-            {isGeneratingCover ? <SigmaSpinner size="xs" className=".5 .5" /> : <Wand2 className="w-3.5 h-3.5" />}
-            {isGeneratingCover ? "Генерация..." : "Сгенерировать с ИИ"}
-          </button>
-          <button
-            onClick={() => coverInputRef.current?.click()}
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-black/40 hover:bg-black/60 backdrop-blur-sm text-white text-xs font-medium rounded-lg transition-colors"
-          >
-            <ImagePlus className="w-3.5 h-3.5" />
-            Изменить обложку
-          </button>
-        </div>
-        <input
-          ref={coverInputRef}
-          type="file"
-          accept="image/*"
-          className="hidden"
-          onChange={d.branding.handleCoverUpload}
-        />
-      </div>
+      </HeroBannerSwiper>
 
       {/* Sub-header: page title + action buttons */}
       <div className="flex items-center justify-between px-4 lg:px-6 h-12 border-t border-border/50 bg-card/95 backdrop-blur-sm">
