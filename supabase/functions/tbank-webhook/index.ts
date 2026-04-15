@@ -39,7 +39,90 @@ Deno.serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
 
-    // Get payment record to find organization
+    // Determine if this is a subscription payment (OrderId starts with "sub_")
+    const isSubscription = OrderId.startsWith("sub_");
+    const realId = isSubscription ? OrderId.replace("sub_", "") : OrderId;
+
+    let password: string;
+
+    if (isSubscription) {
+      // Get invoice to find organization
+      const { data: invoice } = await supabaseAdmin
+        .from("subscription_invoices")
+        .select("id, organization_id, plan, period_months")
+        .eq("id", realId)
+        .single();
+
+      if (!invoice) {
+        console.error("Subscription invoice not found:", realId);
+        return new Response("OK", { status: 200 });
+      }
+
+      // Get payment settings for verification
+      const { data: settings } = await supabaseAdmin
+        .rpc("get_decrypted_payment_settings", { p_organization_id: (invoice as any).organization_id });
+
+      if (settings && settings.length > 0 && settings[0].password) {
+        password = settings[0].password;
+      } else {
+        // Try platform-level settings
+        const { data: appSettings } = await supabaseAdmin
+          .from("app_settings")
+          .select("setting_key, setting_value")
+          .in("setting_key", ["tbank_password"]);
+        const pwRow = (appSettings || []).find((s: any) => s.setting_key === "tbank_password");
+        password = pwRow?.setting_value || "";
+      }
+
+      // Verify token
+      const verifyParams: Record<string, string> = {};
+      for (const [key, value] of Object.entries(body)) {
+        if (key === "Token" || typeof value === "object") continue;
+        verifyParams[key] = String(value);
+      }
+      const expectedToken = await generateToken(verifyParams, password);
+      if (receivedToken.toLowerCase() !== expectedToken.toLowerCase()) {
+        console.error("Token mismatch (subscription):", { received: receivedToken, expected: expectedToken });
+        return new Response("OK", { status: 200 });
+      }
+
+      // Process subscription payment
+      if (Status === "CONFIRMED" || Status === "AUTHORIZED") {
+        const now = new Date();
+        const paidUntil = new Date(now);
+        paidUntil.setMonth(paidUntil.getMonth() + ((invoice as any).period_months || 1));
+
+        // Update invoice
+        await supabaseAdmin
+          .from("subscription_invoices")
+          .update({
+            status: "paid",
+            paid_at: now.toISOString(),
+            payment_id: String(PaymentId),
+          } as any)
+          .eq("id", realId);
+
+        // Update organization plan
+        await supabaseAdmin
+          .from("organizations")
+          .update({
+            subscription_plan: (invoice as any).plan,
+            paid_until: paidUntil.toISOString(),
+          })
+          .eq("id", (invoice as any).organization_id);
+
+        console.log("Subscription activated:", { org: (invoice as any).organization_id, plan: (invoice as any).plan, until: paidUntil.toISOString() });
+      } else if (Status === "REJECTED" || Status === "CANCELED") {
+        await supabaseAdmin
+          .from("subscription_invoices")
+          .update({ status: "failed" } as any)
+          .eq("id", realId);
+      }
+
+      return new Response("OK", { status: 200 });
+    }
+
+    // --- Original course payment logic ---
     const { data: payment } = await supabaseAdmin
       .from("course_payments")
       .select("id, organization_id, course_id, user_id")
@@ -51,7 +134,6 @@ Deno.serve(async (req) => {
       return new Response("OK", { status: 200 });
     }
 
-    // Get decrypted password for verification
     const { data: settings } = await supabaseAdmin
       .rpc("get_decrypted_payment_settings", { p_organization_id: payment.organization_id });
 
@@ -60,9 +142,8 @@ Deno.serve(async (req) => {
       return new Response("OK", { status: 200 });
     }
 
-    const password = settings[0].password;
+    password = settings[0].password;
 
-    // Verify token: collect all root-level params except Token, add Password, sort, concat values, SHA-256
     const verifyParams: Record<string, string> = {};
     for (const [key, value] of Object.entries(body)) {
       if (key === "Token" || typeof value === "object") continue;
@@ -79,7 +160,6 @@ Deno.serve(async (req) => {
       return new Response("OK", { status: 200 });
     }
 
-    // Token valid — process based on status
     if (Status === "CONFIRMED" || Status === "AUTHORIZED") {
       await supabaseAdmin
         .from("course_payments")
@@ -90,7 +170,6 @@ Deno.serve(async (req) => {
         })
         .eq("id", OrderId);
 
-      // Auto-enroll user
       if (payment.user_id && payment.course_id) {
         const { data: existing } = await supabaseAdmin
           .from("enrollments")
@@ -117,7 +196,6 @@ Deno.serve(async (req) => {
         .eq("id", OrderId);
     }
 
-    // T-Bank requires HTTP 200 with "OK"
     return new Response("OK", { status: 200 });
   } catch (err) {
     console.error("tbank-webhook error:", err);

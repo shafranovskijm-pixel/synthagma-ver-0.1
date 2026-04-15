@@ -107,6 +107,7 @@ export function SubscriptionTab() {
   const [selectedPlan, setSelectedPlan] = useState<SubscriptionPlan | null>(null);
   const [message, setMessage] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [payingOnline, setPayingOnline] = useState(false);
   const [pendingRequest, setPendingRequest] = useState<{ requested_plan: string; created_at: string } | null>(null);
   const [orgContact, setOrgContact] = useState<{ email?: string; phone?: string; contact_name?: string }>({});
   const [customEnabledCategories, setCustomEnabledCategories] = useState<string[]>([]);
@@ -246,6 +247,34 @@ export function SubscriptionTab() {
       toast.error("Ошибка", { description: e.message });
     } finally {
       setGeneratingInvoice(false);
+    }
+  };
+
+  const handlePayOnline = async () => {
+    if (!organizationId || !selectedPlan) return;
+    setPayingOnline(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("tbank-init-subscription", {
+        body: {
+          organization_id: organizationId,
+          plan: selectedPlan,
+          period_months: 1,
+          email: orgContact.email || undefined,
+        },
+      });
+
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+
+      if (data?.url) {
+        window.location.href = data.url;
+      } else {
+        toast.error("Не удалось получить ссылку на оплату");
+      }
+    } catch (e: any) {
+      toast.error("Ошибка оплаты", { description: e.message });
+    } finally {
+      setPayingOnline(false);
     }
   };
 
@@ -570,11 +599,22 @@ export function SubscriptionTab() {
               rows={3}
             />
           </div>
-          <DialogFooter>
+          <DialogFooter className="flex-col sm:flex-row gap-2">
             <Button variant="outline" onClick={() => setShowUpgradeDialog(false)}>Отмена</Button>
             <Button onClick={handleRequestUpgrade} disabled={submitting}>
               {submitting ? "Отправка..." : "Отправить заявку"}
             </Button>
+            {selectedPlan && SUBSCRIPTION_PLANS[selectedPlan].price > 0 && PLAN_ORDER.indexOf(selectedPlan) > currentPlanIndex && (
+              <Button
+                variant="default"
+                className="bg-emerald-600 hover:bg-emerald-700"
+                disabled={payingOnline}
+                onClick={handlePayOnline}
+              >
+                <CreditCard className="w-4 h-4 mr-2" />
+                {payingOnline ? "Переход к оплате..." : "Оплатить онлайн"}
+              </Button>
+            )}
           </DialogFooter>
         </DialogContent>
       </Dialog>
