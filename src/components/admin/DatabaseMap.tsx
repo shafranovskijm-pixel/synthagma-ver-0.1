@@ -1,9 +1,10 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Building2, Users, GraduationCap, Briefcase, FileText, BookOpen, Library, HardHat, ShoppingCart, Settings, MoreHorizontal, ArrowRight, RefreshCw, Download } from "lucide-react";
+import { Building2, Users, GraduationCap, Briefcase, FileText, BookOpen, Library, HardHat, ShoppingCart, Settings, MoreHorizontal, ArrowRight, RefreshCw, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
+import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 
 interface TableGroup {
   name: string;
@@ -180,9 +181,7 @@ export function DatabaseMap() {
         name: g.name,
         tables: g.tables,
         counts: Object.fromEntries(g.tables.map(t => [t, tableCounts[t] ?? null])),
-        connections: g.connections,
-      })),
-    };
+        connections: g.connections })) };
     const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: "application/json" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -265,7 +264,7 @@ export function DatabaseMap() {
             Скачать JSON
           </Button>
           <Button variant="outline" size="sm" onClick={fetchCounts} disabled={loading} className="gap-2 rounded-xl">
-            {loading ? <Loader2 className="w-3 h-3 animate-spin" /> : <RefreshCw className="w-3 h-3" />}
+            {loading ? <SigmaSpinner size="xs" /> : <RefreshCw className="w-3 h-3" />}
             Обновить
           </Button>
         </div>

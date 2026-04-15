@@ -2,10 +2,11 @@ import { useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { FileUp, Trash2, FileText, FileSpreadsheet, Presentation, File, Loader2, Download, Pencil, Check, X } from "lucide-react";
+import { FileUp, Trash2, FileText, FileSpreadsheet, Presentation, File, Download, Pencil, Check, X } from "lucide-react";
 import { toast } from "sonner";
 import { uploadToStorage } from "@/utils/courseBuilderHelpers";
 import { supabase } from "@/integrations/supabase/client";
+import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 
 export interface LessonAttachment {
   id: string;
@@ -101,8 +102,7 @@ export function LessonAttachments({ lessonId, courseId, attachments, onAttachmen
           file_size: file.size,
           category,
           order_index: activeAttachments.length,
-          isNew: true,
-        });
+          isNew: true });
       } catch (err: any) {
         toast.error(`Ошибка загрузки "${file.name}": ${err.message}`);
       }
@@ -214,7 +214,7 @@ export function LessonAttachments({ lessonId, courseId, attachments, onAttachmen
         <div className="flex items-center justify-between">
           <Label className="text-xs text-muted-foreground">Лекции (PDF, DOC)</Label>
           <Button variant="outline" size="sm" className="h-7 text-xs gap-1" onClick={() => lectureInputRef.current?.click()} disabled={isUploading || !courseId}>
-            {isUploading ? <Loader2 className="w-3 h-3 animate-spin" /> : <FileUp className="w-3 h-3" />}
+            {isUploading ? <SigmaSpinner size="xs" /> : <FileUp className="w-3 h-3" />}
             Загрузить
           </Button>
           <input ref={lectureInputRef} type="file" accept={ACCEPTED_TYPES} multiple className="hidden" onChange={(e) => { handleUpload(e.target.files, "lecture"); e.target.value = ""; }} />
@@ -229,7 +229,7 @@ export function LessonAttachments({ lessonId, courseId, attachments, onAttachmen
         <div className="flex items-center justify-between">
           <Label className="text-xs text-muted-foreground">Методические материалы</Label>
           <Button variant="outline" size="sm" className="h-7 text-xs gap-1" onClick={() => materialInputRef.current?.click()} disabled={isUploading || !courseId}>
-            {isUploading ? <Loader2 className="w-3 h-3 animate-spin" /> : <FileUp className="w-3 h-3" />}
+            {isUploading ? <SigmaSpinner size="xs" /> : <FileUp className="w-3 h-3" />}
             Загрузить
           </Button>
           <input ref={materialInputRef} type="file" accept={ACCEPTED_TYPES} multiple className="hidden" onChange={(e) => { handleUpload(e.target.files, "material"); e.target.value = ""; }} />

@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef, useCallback } from "react";
-import { Send, Paperclip, Image as ImageIcon, FileText, Loader2, MessageCircle } from "lucide-react";
+import { Send, Paperclip, Image as ImageIcon, FileText, MessageCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
@@ -7,6 +7,7 @@ import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import { toast } from "sonner";
 import { getSignedStorageUrl } from "@/utils/storageHelpers";
+import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 
 interface Message {
   id: string;
@@ -53,8 +54,7 @@ export function ChatTab({ studentUserId, organizationId, currentUserId, studentN
           event: "INSERT",
           schema: "public",
           table: "org_student_messages",
-          filter: `student_user_id=eq.${studentUserId}`,
-        },
+          filter: `student_user_id=eq.${studentUserId}` },
         (payload) => {
           const newMsg = payload.new as Message;
           if (newMsg.organization_id !== organizationId) return;
@@ -125,8 +125,7 @@ export function ChatTab({ studentUserId, organizationId, currentUserId, studentN
       const optimisticMsg: Message = {
         id: tempId, sender_user_id: currentUserId, content: text,
         attachment_url: null, attachment_name: null, attachment_type: null,
-        is_read: false, created_at: new Date().toISOString(),
-      };
+        is_read: false, created_at: new Date().toISOString() };
       setMessages(prev => [...prev, optimisticMsg]);
       setNewMessage("");
       setTimeout(scrollToBottom, 50);
@@ -134,8 +133,7 @@ export function ChatTab({ studentUserId, organizationId, currentUserId, studentN
         organization_id: organizationId,
         student_user_id: studentUserId,
         sender_user_id: currentUserId,
-        content: text,
-      }).select().single();
+        content: text }).select().single();
       if (error) throw error;
       if (data) setMessages(prev => prev.map(m => m.id === tempId ? (data as Message) : m));
     } catch {
@@ -169,8 +167,7 @@ export function ChatTab({ studentUserId, organizationId, currentUserId, studentN
         content: null,
         attachment_url: path,
         attachment_name: file.name,
-        attachment_type: isImage ? "image" : "file",
-      });
+        attachment_type: isImage ? "image" : "file" });
       if (error) throw error;
     } catch {
       toast.error("Ошибка загрузки файла");
@@ -194,7 +191,7 @@ export function ChatTab({ studentUserId, organizationId, currentUserId, studentN
   };
 
   if (isLoading) {
-    return <div className="flex justify-center py-12"><Loader2 className="w-6 h-6 animate-spin text-primary" /></div>;
+    return <div className="flex justify-center py-12"><SigmaSpinner /></div>;
   }
 
   return (
@@ -266,7 +263,7 @@ export function ChatTab({ studentUserId, organizationId, currentUserId, studentN
           onClick={() => fileInputRef.current?.click()}
           disabled={isUploading}
         >
-          {isUploading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Paperclip className="w-5 h-5" />}
+          {isUploading ? <SigmaSpinner /> : <Paperclip className="w-5 h-5" />}
         </Button>
         <Textarea
           value={newMessage}

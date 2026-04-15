@@ -6,8 +6,9 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-import { Loader2, Plus } from "lucide-react";
+import { Plus } from "lucide-react";
 import type { Course, CourseCategory } from "@/types";
+import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 
 interface CategoryDialogProps {
   open: boolean;
@@ -44,7 +45,7 @@ export function CategoryDialog({ open, onOpenChange, editingCategory, name, setN
         <div className="flex gap-2 justify-end">
           <Button variant="outline" onClick={() => onOpenChange(false)} className="rounded-xl">Отмена</Button>
           <Button onClick={onSubmit} disabled={isCreating || !name.trim()} className="rounded-xl">
-            {isCreating && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+            {isCreating && <SigmaSpinner size="sm" className="mr-2" />}
             {editingCategory ? 'Сохранить' : 'Создать'}
           </Button>
         </div>
@@ -79,8 +80,7 @@ export function CreateCourseDialog({
   showInlineNewCategory, setShowInlineNewCategory,
   inlineNewCategoryName, setInlineNewCategoryName,
   inlineNewCategoryColor, setInlineNewCategoryColor,
-  isCreating, onSubmit,
-}: CreateCourseDialogProps) {
+  isCreating, onSubmit }: CreateCourseDialogProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="rounded-2xl">
@@ -134,7 +134,7 @@ export function CreateCourseDialog({
         <div className="flex gap-2 justify-end">
           <Button variant="outline" onClick={() => onOpenChange(false)} className="rounded-xl">Отмена</Button>
           <Button onClick={onSubmit} disabled={isCreating || !title.trim()} className="rounded-xl">
-            {isCreating && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+            {isCreating && <SigmaSpinner size="sm" className="mr-2" />}
             Создать и редактировать
           </Button>
         </div>
@@ -184,7 +184,7 @@ export function MoveCourseDialog({ open, onOpenChange, movingCourse, targetCateg
         <div className="flex gap-2 justify-end">
           <Button variant="outline" onClick={() => onOpenChange(false)} className="rounded-xl">Отмена</Button>
           <Button onClick={onSubmit} disabled={isMoving} className="rounded-xl">
-            {isMoving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+            {isMoving && <SigmaSpinner size="sm" className="mr-2" />}
             Переместить
           </Button>
         </div>
@@ -218,7 +218,7 @@ export function BulkDeleteDialog({ open, onOpenChange, count, isDeleting, onConf
             disabled={isDeleting}
             className="bg-destructive text-destructive-foreground hover:bg-destructive/90 rounded-xl"
           >
-            {isDeleting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+            {isDeleting && <SigmaSpinner size="sm" className="mr-2" />}
             Удалить
           </AlertDialogAction>
         </AlertDialogFooter>

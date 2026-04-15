@@ -8,23 +8,21 @@ import {
   SelectContent,
   SelectItem,
   SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+  SelectValue } from "@/components/ui/select";
 import {
   FileText,
   Download,
   Trash2,
-  Loader2,
   Search,
   Eye,
   FolderOpen,
   ArrowUpDown,
   ChevronLeft,
-  ChevronRight,
-} from "lucide-react";
+  ChevronRight } from "lucide-react";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import { OrdersArchive } from "./OrdersArchive";
+import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 
 interface OrgDocument {
   id: string;
@@ -48,8 +46,7 @@ export function DocumentArchiveView({
   organizationId,
   categoryId,
   title,
-  docTypes,
-}: DocumentArchiveViewProps) {
+  docTypes }: DocumentArchiveViewProps) {
   const [documents, setDocuments] = useState<OrgDocument[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
@@ -133,7 +130,7 @@ export function DocumentArchiveView({
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-12">
-        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        <SigmaSpinner size="lg" />
       </div>
     );
   }
@@ -214,8 +211,7 @@ export function DocumentArchiveView({
                       </span>
                       <div className="text-xs text-muted-foreground mt-0.5">
                         {format(new Date(doc.created_at), "d MMMM yyyy, HH:mm", {
-                          locale: ru,
-                        })}
+                          locale: ru })}
                       </div>
                     </div>
                   </div>

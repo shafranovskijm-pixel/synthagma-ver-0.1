@@ -6,18 +6,17 @@ import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import {
+import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
   User,
   Shield,
   GraduationCap,
   Upload,
   Trash2,
   Eye,
-  Loader2,
   CheckCircle2,
   FileText,
   AlertCircle,
-  ChevronDown,
-} from "lucide-react";
+  ChevronDown } from "lucide-react";
 
 interface StudentDocumentsUploadProps {
   userId: string;
@@ -41,29 +40,25 @@ const DOCUMENT_TYPES = [
     label: "Паспорт",
     description: "Копия паспорта (страницы с фото и пропиской)",
     icon: User,
-    required: true,
-  },
+    required: true },
   {
     id: "birth_certificate",
     label: "Свидетельство о рождении",
     description: "Для несовершеннолетних вместо паспорта",
     icon: User,
-    required: false,
-  },
+    required: false },
   {
     id: "snils",
     label: "СНИЛС",
     description: "Обязателен для внесения данных в государственные системы",
     icon: Shield,
-    required: true,
-  },
+    required: true },
   {
     id: "education_document",
     label: "Документ об образовании",
     description: "Аттестат, диплом или справка для подтверждения права на освоение программы",
     icon: GraduationCap,
-    required: true,
-  },
+    required: true },
 ];
 
 export function StudentDocumentsUpload({
@@ -71,8 +66,7 @@ export function StudentDocumentsUpload({
   organizationId,
   isOpen,
   onOpenChange,
-  embedded = false,
-}: StudentDocumentsUploadProps) {
+  embedded = false }: StudentDocumentsUploadProps) {
   const [documents, setDocuments] = useState<IdentityDocument[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [uploadingType, setUploadingType] = useState<string | null>(null);
@@ -200,8 +194,7 @@ export function StudentDocumentsUpload({
           type: selectedDocType,
           name: docInfo?.label || file.name,
           file_url: fileName,
-          file_path: fileName,
-        });
+          file_path: fileName });
 
       if (insertError) throw insertError;
 
@@ -297,7 +290,7 @@ export function StudentDocumentsUpload({
 
         {isLoading ? (
           <div className="flex items-center justify-center py-12">
-            <Loader2 className="w-8 h-8 animate-spin text-primary" />
+            <SigmaSpinner size="lg" />
           </div>
         ) : (
           <div className="space-y-3 max-h-[60vh] overflow-y-auto" data-scrollable>
@@ -373,7 +366,7 @@ export function StudentDocumentsUpload({
                             disabled={isUploading}
                           >
                             {isUploading ? (
-                              <Loader2 className="w-4 h-4 animate-spin" />
+                              <SigmaSpinner size="sm" />
                             ) : (
                               <Upload className="w-4 h-4" />
                             )}

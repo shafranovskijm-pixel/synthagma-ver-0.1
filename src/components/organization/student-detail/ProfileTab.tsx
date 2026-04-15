@@ -1,13 +1,13 @@
 import {
   User, Mail, Building2, GraduationCap, Key, Pencil, Check, Copy,
-  Eye, EyeOff, Loader2, CheckCircle2, Upload, Trash2, Download,
-  Bell, FileText, Shield, AlertCircle,
-} from "lucide-react";
+  Eye, EyeOff, CheckCircle2, Upload, Trash2, Download,
+  Bell, FileText, Shield, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { getStatusBadge } from "./StatusBadge";
 import { toast } from "sonner";
+import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 
 interface ProfileTabProps {
   student: {
@@ -92,7 +92,7 @@ export function ProfileTab({ student, enrollmentsCount, h, orgPlan }: ProfileTab
               </div>
               <div className="flex gap-2">
                 <Button size="sm" className="rounded-lg gap-2" onClick={h.handleUpdateCredentials} disabled={h.isUpdatingCredentials}>
-                  {h.isUpdatingCredentials ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}Сохранить
+                  {h.isUpdatingCredentials ? <SigmaSpinner size="sm" /> : <Check className="w-4 h-4" />}Сохранить
                 </Button>
                 <Button size="sm" variant="outline" className="rounded-lg" onClick={() => { h.setIsEditingCredentials(false); h.setNewLogin(""); h.setNewPassword(""); }} disabled={h.isUpdatingCredentials}>Отмена</Button>
               </div>
@@ -137,7 +137,7 @@ export function ProfileTab({ student, enrollmentsCount, h, orgPlan }: ProfileTab
           <h3 className="font-semibold flex items-center gap-2"><CheckCircle2 className="w-5 h-5 text-primary" />Чек-лист документов</h3>
           {h.getMissingDocuments().length > 0 && (
             <Button size="sm" variant="outline" className="rounded-lg gap-2" onClick={h.handleSendDocumentsReminder} disabled={h.isSendingReminder}>
-              {h.isSendingReminder ? <Loader2 className="w-4 h-4 animate-spin" /> : <Bell className="w-4 h-4" />}Напомнить о документах
+              {h.isSendingReminder ? <SigmaSpinner size="sm" /> : <Bell className="w-4 h-4" />}Напомнить о документах
             </Button>
           )}
         </div>
@@ -163,7 +163,7 @@ export function ProfileTab({ student, enrollmentsCount, h, orgPlan }: ProfileTab
                           </div>
                         ) : (
                           <Button size="sm" variant="outline" className="h-7 px-2 text-xs" onClick={() => item.uploadType && h.handleUploadClick(item.uploadType)} disabled={isUploading}>
-                            {isUploading ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : <Upload className="w-3 h-3 mr-1" />}Загрузить
+                            {isUploading ? <SigmaSpinner size="xs" className="mr-1" /> : <Upload className="w-3 h-3 mr-1" />}Загрузить
                           </Button>
                         )}
                       </div>

@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { Loader2, UserPlus, UserMinus, History, FileSpreadsheet, Filter, X, Calendar, BarChart3 } from "lucide-react";
+import { UserPlus, UserMinus, History, FileSpreadsheet, Filter, X, Calendar, BarChart3 } from "lucide-react";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import { Button } from "@/components/ui/button";
@@ -10,15 +10,14 @@ import {
   SelectContent,
   SelectItem,
   SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+  SelectValue } from "@/components/ui/select";
 import {
   Popover,
   PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
+  PopoverTrigger } from "@/components/ui/popover";
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import {
+import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
   BarChart,
   Bar,
   XAxis,
@@ -26,8 +25,7 @@ import {
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
-  Legend,
-} from "recharts";
+  Legend } from "recharts";
 
 interface EnrollmentHistoryItem {
   id: string;
@@ -176,7 +174,7 @@ export function EnrollmentHistory({ courseId, organizationId, courseName }: Enro
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-8">
-        <Loader2 className="w-6 h-6 animate-spin text-primary" />
+        <SigmaSpinner />
       </div>
     );
   }
@@ -308,8 +306,7 @@ export function EnrollmentHistory({ courseId, organizationId, courseName }: Enro
                   backgroundColor: "hsl(var(--background))",
                   border: "1px solid hsl(var(--border))",
                   borderRadius: "8px",
-                  fontSize: "12px",
-                }}
+                  fontSize: "12px" }}
                 labelStyle={{ fontWeight: 600 }}
               />
               <Legend 

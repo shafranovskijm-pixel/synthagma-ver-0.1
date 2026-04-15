@@ -3,11 +3,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { Mail, Lock, Loader2, User, ExternalLink, Eye, EyeOff } from "lucide-react";
+import { Mail, Lock, User, ExternalLink, Eye, EyeOff } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
+import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 
 interface LoginBranding {
   backgroundUrl?: string;
@@ -53,8 +54,7 @@ const BrandedLogin = () => {
         // Use a SECURITY DEFINER RPC to avoid exposing the full organizations table publicly.
         // This function returns ONLY non-sensitive fields required for branded login.
         const { data, error } = await supabase.rpc('public_get_organization_by_slug', {
-          p_slug: slug,
-        });
+          p_slug: slug });
 
         if (error) throw error;
 
@@ -143,7 +143,7 @@ const BrandedLogin = () => {
   if (loading || loadingOrg) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
-        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        <SigmaSpinner size="lg" />
       </div>
     );
   }
@@ -276,7 +276,7 @@ const BrandedLogin = () => {
             >
               {isLoading ? (
                 <>
-                  <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                  <SigmaSpinner className="mr-2" />
                   Вход...
                 </>
               ) : (

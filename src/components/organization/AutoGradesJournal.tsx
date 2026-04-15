@@ -6,22 +6,19 @@ import {
   SelectContent,
   SelectItem,
   SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+  SelectValue } from "@/components/ui/select";
 import {
   Table,
   TableBody,
   TableCell,
   TableHead,
   TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+  TableRow } from "@/components/ui/table";
 import { Calendar } from "@/components/ui/calendar";
 import {
   Popover,
   PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
+  PopoverTrigger } from "@/components/ui/popover";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import {
@@ -29,20 +26,19 @@ import {
   Calendar as CalendarIcon,
   Search,
   Users,
-  Loader2,
   BookOpen,
   Award,
   FileSpreadsheet,
   CheckCircle,
   XCircle,
   TrendingUp,
-  GraduationCap,
-} from "lucide-react";
+  GraduationCap } from "lucide-react";
 import { format, parseISO, startOfMonth, endOfMonth, isWithinInterval } from "date-fns";
 import { ru } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { getXLSX } from "@/utils/xlsxHelper";
 import { Badge } from "@/components/ui/badge";
+import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 
 interface GradeRecord {
   id: string;
@@ -73,8 +69,7 @@ interface AutoGradesJournalProps {
 
 export function AutoGradesJournal({
   organizationId,
-  onClose,
-}: AutoGradesJournalProps) {
+  onClose }: AutoGradesJournalProps) {
   const [loading, setLoading] = useState(true);
   const [records, setRecords] = useState<GradeRecord[]>([]);
   const [courses, setCourses] = useState<Course[]>([]);
@@ -86,8 +81,7 @@ export function AutoGradesJournal({
     to: Date;
   }>({
     from: startOfMonth(new Date()),
-    to: endOfMonth(new Date()),
-  });
+    to: endOfMonth(new Date()) });
 
   // Fetch all data
   useEffect(() => {
@@ -187,8 +181,7 @@ export function AutoGradesJournal({
             score: attempt.score,
             max_score: attempt.max_score,
             passed: percentage >= 70,
-            control_type: "test",
-          });
+            control_type: "test" });
         }
 
         // Process lesson progress (non-test lessons as completed assignments)
@@ -219,8 +212,7 @@ export function AutoGradesJournal({
             score: null,
             max_score: null,
             passed: true,
-            control_type: lesson.type === "test" ? "test" : "lesson",
-          });
+            control_type: lesson.type === "test" ? "test" : "lesson" });
         }
 
         // Sort by date descending
@@ -264,8 +256,7 @@ export function AutoGradesJournal({
       const recordDate = parseISO(record.completed_at);
       const matchesDate = isWithinInterval(recordDate, {
         start: dateRange.from,
-        end: dateRange.to,
-      });
+        end: dateRange.to });
 
       return matchesSearch && matchesCourse && matchesType && matchesDate;
     });
@@ -317,9 +308,7 @@ export function AutoGradesJournal({
         : "—",
       "Результат": record.passed ? "Зачёт" : "Незачёт",
       "Дата": format(parseISO(record.completed_at), "dd.MM.yyyy HH:mm", {
-        locale: ru,
-      }),
-    }));
+        locale: ru }) }));
 
     const worksheet = XLSX.utils.json_to_sheet(exportData);
     const workbook = XLSX.utils.book_new();
@@ -356,7 +345,7 @@ export function AutoGradesJournal({
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        <SigmaSpinner size="lg" />
       </div>
     );
   }
@@ -507,8 +496,7 @@ export function AutoGradesJournal({
                 const now = new Date();
                 setDateRange({
                   from: startOfMonth(now),
-                  to: endOfMonth(now),
-                });
+                  to: endOfMonth(now) });
               }}
             >
               Этот месяц
@@ -522,8 +510,7 @@ export function AutoGradesJournal({
                 const lastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
                 setDateRange({
                   from: startOfMonth(lastMonth),
-                  to: endOfMonth(lastMonth),
-                });
+                  to: endOfMonth(lastMonth) });
               }}
             >
               Прошлый месяц
@@ -616,8 +603,7 @@ export function AutoGradesJournal({
                     <TableCell className="text-center">
                       <span className="text-sm text-muted-foreground">
                         {format(parseISO(record.completed_at), "dd.MM.yyyy HH:mm", {
-                          locale: ru,
-                        })}
+                          locale: ru })}
                       </span>
                     </TableCell>
                   </TableRow>

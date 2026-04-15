@@ -19,11 +19,10 @@ import {
   Download,
   CheckCircle2,
   Calculator,
-  Sparkles,
-  Loader2,
-} from "lucide-react";
+  Sparkles } from "lucide-react";
 import { SigmaLogo } from "@/components/ui/SigmaLogo";
 import { supabase } from "@/integrations/supabase/client";
+import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 
 interface FeatureItem {
   id: string;
@@ -54,8 +53,7 @@ const iconMap: Record<string, React.ElementType> = {
   library: Library,
   services: ShoppingBag,
   settings: Settings,
-  student_cabinet: GraduationCap,
-};
+  student_cabinet: GraduationCap };
 
 const colorMap: Record<string, string> = {
   courses: "#6366f1",
@@ -68,8 +66,7 @@ const colorMap: Record<string, string> = {
   library: "#f97316",
   services: "#84cc16",
   settings: "#64748b",
-  student_cabinet: "#0ea5e9",
-};
+  student_cabinet: "#0ea5e9" };
 
 const getDefaultFeatures = (): FeatureCategory[] => [
   {
@@ -88,8 +85,7 @@ const getDefaultFeatures = (): FeatureCategory[] => [
       { id: "courses_ai", name: "ИИ-генерация контента курсов", price: 2000, included: false, isEnabled: true },
       { id: "courses_preview", name: "Предпросмотр курса перед публикацией", price: 0, included: true, isEnabled: true },
       { id: "courses_duration", name: "Управление продолжительностью обучения", price: 0, included: true, isEnabled: true },
-    ],
-  },
+    ] },
   {
     id: "students",
     title: "Управление слушателями",
@@ -108,8 +104,7 @@ const getDefaultFeatures = (): FeatureCategory[] => [
       { id: "students_companies", name: "Привязка к компаниям-заказчикам", price: 0, included: true, isEnabled: true },
       { id: "students_bulk", name: "Массовые операции (отчисление, рассылка)", price: 500, included: false, isEnabled: true },
       { id: "students_filter", name: "Фильтрация по статусу, курсу, документам", price: 0, included: true, isEnabled: true },
-    ],
-  },
+    ] },
   {
     id: "companies",
     title: "Компании (юридические лица)",
@@ -124,8 +119,7 @@ const getDefaultFeatures = (): FeatureCategory[] => [
       { id: "companies_stamp", name: "Загрузка печати и подписи", price: 500, included: false, isEnabled: true },
       { id: "companies_docs", name: "Документы компаний (договоры, счета)", price: 0, included: true, isEnabled: true },
       { id: "companies_students", name: "Привязка слушателей к компаниям", price: 0, included: true, isEnabled: true },
-    ],
-  },
+    ] },
   {
     id: "documents",
     title: "Документооборот",
@@ -144,8 +138,7 @@ const getDefaultFeatures = (): FeatureCategory[] => [
       { id: "docs_bulk", name: "Массовая загрузка документов", price: 500, included: false, isEnabled: true },
       { id: "docs_student", name: "Управление документами слушателей", price: 0, included: true, isEnabled: true },
       { id: "docs_journal", name: "Экспорт классного журнала", price: 500, included: false, isEnabled: true },
-    ],
-  },
+    ] },
   {
     id: "journals",
     title: "Журналы учёта",
@@ -167,8 +160,7 @@ const getDefaultFeatures = (): FeatureCategory[] => [
       { id: "journal_safety", name: "Журнал инструктажей по ТБ", price: 0, included: true, isEnabled: true },
       { id: "journal_custom", name: "Создание пользовательских журналов", price: 500, included: false, isEnabled: true },
       { id: "journal_export", name: "Экспорт журналов в Excel", price: 0, included: true, isEnabled: true },
-    ],
-  },
+    ] },
   {
     id: "frdo",
     title: "ФРДО (Федеральный реестр)",
@@ -181,8 +173,7 @@ const getDefaultFeatures = (): FeatureCategory[] => [
       { id: "frdo_check", name: "Проверка полноты данных", price: 0, included: true, isEnabled: true },
       { id: "frdo_bulk", name: "Массовый экспорт в формате ФРДО", price: 0, included: true, isEnabled: true },
       { id: "frdo_single", name: "Индивидуальный экспорт данных", price: 0, included: true, isEnabled: true },
-    ],
-  },
+    ] },
   {
     id: "links",
     title: "Ссылки регистрации",
@@ -196,8 +187,7 @@ const getDefaultFeatures = (): FeatureCategory[] => [
       { id: "links_companies", name: "Привязка к компаниям", price: 0, included: true, isEnabled: true },
       { id: "links_stats", name: "Отслеживание использования", price: 0, included: true, isEnabled: true },
       { id: "links_expire", name: "Срок действия ссылок", price: 0, included: true, isEnabled: true },
-    ],
-  },
+    ] },
   {
     id: "library",
     title: "Библиотека",
@@ -210,8 +200,7 @@ const getDefaultFeatures = (): FeatureCategory[] => [
       { id: "library_folders", name: "Организация по папкам", price: 0, included: true, isEnabled: true },
       { id: "library_formats", name: "Загрузка файлов различных форматов", price: 0, included: true, isEnabled: true },
       { id: "library_access", name: "Доступ для слушателей", price: 0, included: true, isEnabled: true },
-    ],
-  },
+    ] },
   {
     id: "services",
     title: "Услуги",
@@ -223,8 +212,7 @@ const getDefaultFeatures = (): FeatureCategory[] => [
       { id: "services_catalog", name: "Каталог дополнительных услуг", price: 0, included: true, isEnabled: true },
       { id: "services_orders", name: "Заказ услуг организациями", price: 0, included: true, isEnabled: true },
       { id: "services_status", name: "Отслеживание статусов заказов", price: 0, included: true, isEnabled: true },
-    ],
-  },
+    ] },
   {
     id: "settings",
     title: "Настройки системы",
@@ -238,8 +226,7 @@ const getDefaultFeatures = (): FeatureCategory[] => [
       { id: "settings_menu", name: "Настройки видимости меню", price: 0, included: true, isEnabled: true },
       { id: "settings_student", name: "Настройки кабинета слушателя", price: 0, included: true, isEnabled: true },
       { id: "settings_notifications", name: "Управление уведомлениями", price: 0, included: true, isEnabled: true },
-    ],
-  },
+    ] },
   {
     id: "student_cabinet",
     title: "Кабинет слушателя",
@@ -256,8 +243,7 @@ const getDefaultFeatures = (): FeatureCategory[] => [
       { id: "cabinet_achievements", name: "Система достижений и бейджей", price: 500, included: false, isEnabled: true },
       { id: "cabinet_ai", name: "ИИ-помощник (чат-бот)", price: 2000, included: false, isEnabled: true },
       { id: "cabinet_progress", name: "Просмотр прогресса обучения", price: 0, included: true, isEnabled: true },
-    ],
-  },
+    ] },
 ];
 
 export default function Features() {
@@ -292,10 +278,8 @@ export default function Features() {
             return {
               ...feature,
               price: dbFeature?.price ?? feature.price,
-              isEnabled: dbFeature?.is_enabled ?? true,
-            };
-          }),
-        };
+              isEnabled: dbFeature?.is_enabled ?? true };
+          }) };
       });
 
       // Filter only enabled categories and features
@@ -303,8 +287,7 @@ export default function Features() {
         .filter(cat => cat.isEnabled)
         .map(cat => ({
           ...cat,
-          features: cat.features.filter(f => f.isEnabled),
-        }));
+          features: cat.features.filter(f => f.isEnabled) }));
 
       setFeatures(enabledFeatures);
     } catch (error) {
@@ -327,7 +310,7 @@ export default function Features() {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <SigmaSpinner size="lg" />
       </div>
     );
   }

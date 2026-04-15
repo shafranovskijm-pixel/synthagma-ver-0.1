@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Settings, RotateCcw, Save, Loader2 } from "lucide-react";
+import { Settings, RotateCcw, Save} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -10,6 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { DEFAULT_PROMPTS } from "./MarketplaceSettings";
+import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 
 export interface ValidationRules {
   minLessons: number;
@@ -31,8 +32,7 @@ const DEFAULT_VALIDATION: ValidationRules = {
   minContentLength: 50,
   requireTest: true,
   requireText: true,
-  checkDuplicateTitles: true,
-};
+  checkDuplicateTitles: true };
 
 interface Props {
   onSettingsLoaded?: (rules: ValidationRules, prompts: AiPrompts) => void;
@@ -108,7 +108,7 @@ export function MarketplaceSettingsTab({ onSettingsLoaded }: Props) {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
-        <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+        <SigmaSpinner />
       </div>
     );
   }
@@ -126,7 +126,7 @@ export function MarketplaceSettingsTab({ onSettingsLoaded }: Props) {
           </p>
         </div>
         <Button onClick={saveSettings} disabled={saving} className="rounded-xl">
-          {saving ? <Loader2 className="w-4 h-4 mr-1.5 animate-spin" /> : <Save className="w-4 h-4 mr-1.5" />}
+          {saving ? <SigmaSpinner size="sm" className="mr-1.5" /> : <Save className="w-4 h-4 mr-1.5" />}
           Сохранить
         </Button>
       </div>

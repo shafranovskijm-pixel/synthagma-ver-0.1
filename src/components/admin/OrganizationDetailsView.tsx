@@ -4,7 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
-import { Loader2, ArrowLeft, Users, BookOpen, Settings, Crown, History, MessageSquare, Bell, ShieldOff, AlertTriangle, ExternalLink, Calendar, Image } from "lucide-react";
+import { ArrowLeft, Users, BookOpen, Settings, Crown, History, MessageSquare, Bell, ShieldOff, AlertTriangle, ExternalLink, Calendar, Image } from "lucide-react";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import { useOrgDetailsView, type Organization } from "@/hooks/useOrgDetailsView";
@@ -20,14 +20,14 @@ import { SkillspaceImportDialog } from "./SkillspaceImportDialog";
 import { SkillspaceBatchImportDialog } from "./SkillspaceBatchImportDialog";
 import { StudentBulkImportDialog } from "./StudentBulkImportDialog";
 import { supabase } from "@/integrations/supabase/client";
+import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 
 const PLAN_BADGE_COLORS: Record<string, string> = {
   free: "bg-slate-500/10 text-slate-600 border-slate-500/20",
   start: "bg-blue-500/10 text-blue-600 border-blue-500/20",
   standard: "bg-violet-500/10 text-violet-600 border-violet-500/20",
   professional: "bg-amber-500/10 text-amber-600 border-amber-500/20",
-  maximum: "bg-emerald-500/10 text-emerald-600 border-emerald-500/20",
-};
+  maximum: "bg-emerald-500/10 text-emerald-600 border-emerald-500/20" };
 
 interface OrganizationDetailsViewProps {
   organization: Organization;
@@ -39,7 +39,7 @@ export function OrganizationDetailsView({ organization, onBack }: OrganizationDe
   const vm = useOrgDetailsView(organization);
 
   if (vm.loading) {
-    return <div className="flex items-center justify-center py-12"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>;
+    return <div className="flex items-center justify-center py-12"><SigmaSpinner size="lg" /></div>;
   }
 
   const navItems = [

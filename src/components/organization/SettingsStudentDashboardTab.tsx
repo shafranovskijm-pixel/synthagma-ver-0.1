@@ -7,10 +7,10 @@ import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/comp
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import {
-  Save, Settings, Loader2, ExternalLink, Lock, ArrowUpRight,
-  Trophy, MessageCircle, LayoutGrid, Pencil,
-} from "lucide-react";
+  Save, Settings, ExternalLink, Lock, ArrowUpRight,
+  Trophy, MessageCircle, LayoutGrid, Pencil } from "lucide-react";
 import { AchievementsManager } from "./AchievementsManager";
+import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 
 interface StudentDashboardSettings {
   showAchievements: boolean;
@@ -22,8 +22,7 @@ interface StudentDashboardSettings {
 const DEFAULT_STUDENT: StudentDashboardSettings = {
   showAchievements: false,
   showAiChat: false,
-  catalogMode: "catalog",
-};
+  catalogMode: "catalog" };
 
 interface Props {
   organizationId: string;
@@ -49,8 +48,7 @@ export function SettingsStudentDashboardTab({ organizationId }: Props) {
         setSettings({
           showAchievements: s.showAchievements ?? false,
           showAiChat: s.showAiChat ?? false,
-          catalogMode: s.catalogMode || "catalog",
-        });
+          catalogMode: s.catalogMode || "catalog" });
       }
     };
     load();
@@ -178,7 +176,7 @@ export function SettingsStudentDashboardTab({ organizationId }: Props) {
       </div>
       <div className="mt-6 pt-4 border-t border-border">
         <Button className="btn-gradient rounded-xl gap-2" onClick={handleSave} disabled={isSaving}>
-          {isSaving ? <><Loader2 className="w-4 h-4 animate-spin" /> Сохранение...</> : <><Save className="w-4 h-4" /> Сохранить настройки</>}
+          {isSaving ? <><SigmaSpinner size="sm" /> Сохранение...</> : <><Save className="w-4 h-4" /> Сохранить настройки</>}
         </Button>
       </div>
       <AchievementsManager organizationId={organizationId} isOpen={achievementsOpen} onOpenChange={setAchievementsOpen} />

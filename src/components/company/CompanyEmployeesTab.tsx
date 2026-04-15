@@ -5,15 +5,13 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import {
-  Users, UserPlus, Search, Loader2, CheckCircle2, Clock, Upload,
-} from "lucide-react";
+  Users, UserPlus, Search, CheckCircle2, Clock, Upload } from "lucide-react";
 import {
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger,
-} from "@/components/ui/dialog";
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import {
-  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
-} from "@/components/ui/table";
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { EmployeeImportDialog } from "./EmployeeImportDialog";
+import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 
 interface Enrollment {
   course_id: string;
@@ -121,7 +119,7 @@ export function CompanyEmployeesTab({ employees, addingEmployee, addEmployee, co
                 >
                   {addingEmployee ? (
                     <>
-                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      <SigmaSpinner size="sm" className="mr-2" />
                       Регистрация...
                     </>
                   ) : (

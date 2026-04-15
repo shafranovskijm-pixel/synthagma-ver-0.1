@@ -5,9 +5,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Progress } from "@/components/ui/progress";
-import { Loader2, BookOpen, Users, GraduationCap, CheckCircle2, XCircle, Search, Send, Copy, Building2, Save, Key, Mail, Trash2 } from "lucide-react";
+import { BookOpen, Users, GraduationCap, CheckCircle2, XCircle, Search, Send, Copy, Building2, Save, Key, Mail, Trash2 } from "lucide-react";
 import ImportStudentsForm from "@/components/ImportStudentsForm";
 import { CourseGroupedList } from "./CourseGroupedList";
+import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 
 interface Company {
   id: string;
@@ -93,7 +94,7 @@ export function UnenrollConfirmDialog({ open, onOpenChange, selectedCount, isUne
           <Button variant="destructive" className="rounded-xl" onClick={onConfirm} disabled={isUnenrolling}>
             {isUnenrolling ? (
               <>
-                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                <SigmaSpinner size="sm" className="mr-2" />
                 Отчисление...
               </>
             ) : (
@@ -272,7 +273,7 @@ export function AddStudentDialog({ open, onOpenChange, courses, companies, onSub
           <Button className="w-full btn-gradient rounded-xl" onClick={handleSubmit} disabled={isCreating}>
             {isCreating ? (
               <>
-                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                <SigmaSpinner size="sm" className="mr-2" />
                 Добавление...
               </>
             ) : "Добавить ученика"}
@@ -382,7 +383,7 @@ export function EnrollDialog({
           >
             {isEnrolling ? (
               <>
-                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                <SigmaSpinner size="sm" className="mr-2" />
                 Зачисление...
               </>
             ) : (
@@ -455,7 +456,7 @@ export function CategoryDialog({ open, onOpenChange, isCreating, onCreate }: Cat
           >
             {isCreating ? (
               <>
-                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                <SigmaSpinner size="sm" className="mr-2" />
                 Создание...
               </>
             ) : "Создать"}
@@ -513,7 +514,7 @@ export function InviteEmailDialog({ open, onOpenChange, courseTitle, isSending, 
           >
             {isSending ? (
               <>
-                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                <SigmaSpinner size="sm" className="mr-2" />
                 Отправка...
               </>
             ) : (

@@ -7,23 +7,21 @@ import {
   DialogContent,
   DialogDescription,
   DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+  DialogTitle } from "@/components/ui/dialog";
 import {
-  Loader2,
   Search,
   Users,
   Mail,
   Calendar,
   Check,
   UserPlus,
-  FileSpreadsheet,
-} from "lucide-react";
+  FileSpreadsheet } from "lucide-react";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import { getXLSX } from "@/utils/xlsxHelper";
 import { toast } from "sonner";
 import type { Company } from "@/hooks/useCompaniesManager";
+import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 
 interface CompanyStudent {
   id: string;
@@ -64,8 +62,7 @@ export function ViewStudentsDialog({
   students,
   isLoading,
   searchQuery,
-  setSearchQuery,
-}: ViewStudentsDialogProps) {
+  setSearchQuery }: ViewStudentsDialogProps) {
   const filteredStudents = students.filter(
     (s) =>
       s.full_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -84,8 +81,7 @@ export function ViewStudentsDialog({
           "Email": student.email,
           "Курс": "Не зачислен",
           "Прогресс": "",
-          "Статус": "",
-        });
+          "Статус": "" });
       } else {
         student.enrollments.forEach((enrollment) => {
           exportData.push({
@@ -93,8 +89,7 @@ export function ViewStudentsDialog({
             "Email": student.email,
             "Курс": enrollment.course_title,
             "Прогресс": `${enrollment.progress}%`,
-            "Статус": enrollment.status === "completed" ? "Завершён" : "Активный",
-          });
+            "Статус": enrollment.status === "completed" ? "Завершён" : "Активный" });
         });
       }
     });
@@ -133,7 +128,7 @@ export function ViewStudentsDialog({
           <div className="flex-1 overflow-y-auto">
             {isLoading ? (
               <div className="flex items-center justify-center py-12">
-                <Loader2 className="w-8 h-8 animate-spin text-primary" />
+                <SigmaSpinner size="lg" />
               </div>
             ) : filteredStudents.length === 0 ? (
               <div className="text-center py-12 text-muted-foreground">
@@ -262,8 +257,7 @@ export function BulkAssignStudentsDialog({
   setShowOnlyUnassigned,
   onToggleStudent,
   onToggleSelectAll,
-  onAssign,
-}: BulkAssignStudentsDialogProps) {
+  onAssign }: BulkAssignStudentsDialogProps) {
   const filteredStudents = availableStudents.filter((s) => {
     const matchesSearch =
       s.full_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -335,7 +329,7 @@ export function BulkAssignStudentsDialog({
           <div className="flex-1 overflow-y-auto border border-border rounded-xl">
             {isLoading ? (
               <div className="flex items-center justify-center py-12">
-                <Loader2 className="w-8 h-8 animate-spin text-primary" />
+                <SigmaSpinner size="lg" />
               </div>
             ) : filteredStudents.length === 0 ? (
               <div className="text-center py-12 text-muted-foreground">
@@ -404,7 +398,7 @@ export function BulkAssignStudentsDialog({
           >
             {isAssigning ? (
               <>
-                <Loader2 className="w-4 h-4 animate-spin" />
+                <SigmaSpinner size="sm" />
                 Назначение...
               </>
             ) : (

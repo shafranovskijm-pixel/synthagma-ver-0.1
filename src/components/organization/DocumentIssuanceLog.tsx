@@ -12,15 +12,14 @@ import {
   Plus,
   Download,
   Search,
-  Loader2,
   Calendar,
   Send,
   Award,
-  BookOpen,
-} from "lucide-react";
+  BookOpen } from "lucide-react";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import { getXLSX } from "@/utils/xlsxHelper";
+import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 
 interface DocumentLog {
   id: string;
@@ -52,8 +51,7 @@ export function DocumentIssuanceLog({ organizationId }: DocumentIssuanceLogProps
     document_name: "",
     reg_number: "",
     send_method: "",
-    send_number: "",
-  });
+    send_number: "" });
 
   useEffect(() => {
     if (organizationId) {
@@ -95,8 +93,7 @@ export function DocumentIssuanceLog({ organizationId }: DocumentIssuanceLogProps
         document_name: newEntry.document_name,
         reg_number: newEntry.reg_number || null,
         send_method: newEntry.send_method || null,
-        send_number: newEntry.send_number || null,
-      });
+        send_number: newEntry.send_number || null });
 
       if (error) throw error;
 
@@ -108,8 +105,7 @@ export function DocumentIssuanceLog({ organizationId }: DocumentIssuanceLogProps
         document_name: "",
         reg_number: "",
         send_method: "",
-        send_number: "",
-      });
+        send_number: "" });
       loadLogs();
     } catch (error) {
       console.error("Error adding entry:", error);
@@ -129,8 +125,7 @@ export function DocumentIssuanceLog({ organizationId }: DocumentIssuanceLogProps
       "Рег.номер": log.reg_number || "-",
       "Подпись/номер отправки": log.send_method 
         ? `${getSendMethodLabel(log.send_method)}${log.send_number ? `: ${log.send_number}` : ""}`
-        : "-",
-    }));
+        : "-" }));
 
     const ws = XLSX.utils.json_to_sheet(exportData);
     const wb = XLSX.utils.book_new();
@@ -145,8 +140,7 @@ export function DocumentIssuanceLog({ organizationId }: DocumentIssuanceLogProps
       diploma: "Диплом",
       protocol: "Протокол",
       reference: "Справка",
-      other: "Другое",
-    };
+      other: "Другое" };
     return types[type] || type;
   };
 
@@ -155,8 +149,7 @@ export function DocumentIssuanceLog({ organizationId }: DocumentIssuanceLogProps
       email: "Email",
       mail: "Почта",
       handed: "Вручен лично",
-      courier: "Курьер",
-    };
+      courier: "Курьер" };
     return methods[method] || method;
   };
 
@@ -221,7 +214,7 @@ export function DocumentIssuanceLog({ organizationId }: DocumentIssuanceLogProps
       {/* Table */}
       {isLoading ? (
         <div className="flex items-center justify-center py-12">
-          <Loader2 className="w-8 h-8 animate-spin text-primary" />
+          <SigmaSpinner size="lg" />
         </div>
       ) : filteredLogs.length === 0 ? (
         <div className="text-center py-12 text-muted-foreground bg-card rounded-2xl border border-border">
@@ -390,7 +383,7 @@ export function DocumentIssuanceLog({ organizationId }: DocumentIssuanceLogProps
               >
                 {isAdding ? (
                   <>
-                    <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                    <SigmaSpinner size="sm" className="mr-2" />
                     Сохранение...
                   </>
                 ) : (

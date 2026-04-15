@@ -13,12 +13,13 @@ import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { 
   Plus, Sparkles, Pencil, Trash2, Eye, EyeOff, 
-  Star, StarOff, Loader2, FileText, Calendar, Mail, Users, MessageSquare
+  Star, StarOff, FileText, Calendar, Mail, Users, MessageSquare
 } from "lucide-react";
 import { TestimonialsManager } from "./TestimonialsManager";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
+import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 
 interface BlogPost {
   id: string;
@@ -173,8 +174,7 @@ export function BlogManager() {
     setIsGenerating(true);
     try {
       const { data, error } = await safeInvoke<any>("generate-blog-post", {
-        body: { topic, category },
-      });
+        body: { topic, category } });
 
       if (error) throw error;
 
@@ -217,8 +217,7 @@ export function BlogManager() {
         read_time: readTime || null,
         is_published: isPublished,
         is_featured: isFeatured,
-        published_at: isPublished && !editingPost?.published_at ? new Date().toISOString() : editingPost?.published_at,
-      };
+        published_at: isPublished && !editingPost?.published_at ? new Date().toISOString() : editingPost?.published_at };
 
       if (editingPost) {
         const { error } = await supabase
@@ -302,7 +301,7 @@ export function BlogManager() {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-12">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <SigmaSpinner size="lg" />
       </div>
     );
   }
@@ -446,7 +445,7 @@ export function BlogManager() {
         <TabsContent value="subscribers" className="mt-6">
           {isLoadingSubscribers ? (
             <div className="flex items-center justify-center py-12">
-              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+              <SigmaSpinner size="lg" />
             </div>
           ) : subscribers.length === 0 ? (
             <Card className="p-12 text-center">
@@ -529,7 +528,7 @@ export function BlogManager() {
                   </Select>
                   <Button onClick={generateWithAI} disabled={isGenerating}>
                     {isGenerating ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
+                      <SigmaSpinner size="sm" />
                     ) : (
                       <Sparkles className="h-4 w-4" />
                     )}
@@ -639,7 +638,7 @@ export function BlogManager() {
             </Button>
             <Button onClick={savePost} disabled={isSaving}>
               {isSaving ? (
-                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                <SigmaSpinner size="sm" className="mr-2" />
               ) : null}
               {editingPost ? "Сохранить" : "Создать"}
             </Button>

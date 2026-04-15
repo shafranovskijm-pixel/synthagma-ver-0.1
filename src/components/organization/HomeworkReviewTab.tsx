@@ -4,9 +4,10 @@ import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { BookCheck, Loader2, Clock, CheckCircle2, AlertCircle, RotateCcw } from "lucide-react";
+import { BookCheck, Clock, CheckCircle2, AlertCircle, RotateCcw } from "lucide-react";
 import { useOrgDashboard } from "@/contexts/OrgDashboardContext";
 import { HomeworkReviewDialog } from "./HomeworkReviewDialog";
+import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 
 interface Submission {
   id: string;
@@ -39,8 +40,7 @@ const statusBadge: Record<string, string> = {
   pending: "bg-amber-500/10 text-amber-600 border-amber-500/20",
   revision: "bg-orange-500/10 text-orange-600 border-orange-500/20",
   approved: "bg-green-500/10 text-green-600 border-green-500/20",
-  rejected: "bg-destructive/10 text-destructive border-destructive/20",
-};
+  rejected: "bg-destructive/10 text-destructive border-destructive/20" };
 
 export function HomeworkReviewTab() {
   const d = useOrgDashboard();
@@ -121,7 +121,7 @@ export function HomeworkReviewTab() {
       </div>
 
       {loading ? (
-        <div className="flex justify-center py-12"><Loader2 className="w-6 h-6 animate-spin text-muted-foreground" /></div>
+        <div className="flex justify-center py-12"><SigmaSpinner /></div>
       ) : submissions.length === 0 ? (
         <div className="text-center py-12 max-w-lg mx-auto">
           <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-indigo-500/10 flex items-center justify-center">

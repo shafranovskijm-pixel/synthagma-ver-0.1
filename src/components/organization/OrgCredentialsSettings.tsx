@@ -1,11 +1,12 @@
 import { useState, useEffect } from "react";
-import { KeyRound, Eye, EyeOff, Save, Loader2, Copy } from "lucide-react";
+import { KeyRound, Eye, EyeOff, Save, Copy } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { safeInvoke } from "@/utils/safeInvoke";
+import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 
 interface OrgCredentialsSettingsProps {
   organizationId: string;
@@ -120,7 +121,7 @@ export function OrgCredentialsSettings({ organizationId }: OrgCredentialsSetting
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-8">
-        <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+        <SigmaSpinner />
       </div>
     );
   }
@@ -235,7 +236,7 @@ export function OrgCredentialsSettings({ organizationId }: OrgCredentialsSetting
           className="btn-gradient rounded-xl gap-2 w-full sm:w-auto"
         >
           {isSaving ? (
-            <Loader2 className="w-4 h-4 animate-spin" />
+            <SigmaSpinner size="sm" />
           ) : (
             <Save className="w-4 h-4" />
           )}

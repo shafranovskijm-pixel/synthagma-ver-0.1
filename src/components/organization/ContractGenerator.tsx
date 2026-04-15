@@ -4,8 +4,9 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Loader2, Building2, Calendar, Printer, Save, Eye, ArrowLeft, Download, Plus, Trash2, User } from "lucide-react";
+import { Building2, Calendar, Printer, Save, Eye, ArrowLeft, Download, Plus, Trash2, User } from "lucide-react";
 import { useContractGenerator, type CounterpartyType } from "@/hooks/useContractGenerator";
+import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 
 interface Company {
   id: string; name: string; inn: string | null; kpp: string | null; ogrn: string | null; address: string | null; director: string | null;
@@ -33,8 +34,7 @@ export function ContractGenerator(props: ContractGeneratorProps) {
     contractNumber, setContractNumber, contractDate, setContractDate,
     serviceStartDate, setServiceStartDate, serviceEndDate, setServiceEndDate,
     additionalTerms, setAdditionalTerms,
-    selectedCompany, effectiveCounterparty, formatPrice, handleGenerate, handleDownloadDOC, handleSaveContract, handlePreview,
-  } = useContractGenerator(props);
+    selectedCompany, effectiveCounterparty, formatPrice, handleGenerate, handleDownloadDOC, handleSaveContract, handlePreview } = useContractGenerator(props);
 
   if (showPreview) {
     return (
@@ -44,9 +44,9 @@ export function ContractGenerator(props: ContractGeneratorProps) {
           <div className="flex-1 overflow-hidden"><div className="border rounded-lg overflow-hidden bg-white h-[60vh]"><iframe srcDoc={previewHtml} className="w-full h-full border-0" title="Предпросмотр" /></div></div>
           <div className="flex gap-3 pt-4 border-t border-border">
             <Button variant="ghost" onClick={() => setShowPreview(false)}><ArrowLeft className="w-4 h-4 mr-2" />Назад</Button>
-            {props.onSave && <Button variant="outline" className="flex-1" onClick={handleSaveContract} disabled={isSaving}>{isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}Сохранить</Button>}
+            {props.onSave && <Button variant="outline" className="flex-1" onClick={handleSaveContract} disabled={isSaving}>{isSaving ? <SigmaSpinner size="sm" /> : <Save className="w-4 h-4 mr-2" />}Сохранить</Button>}
             <Button variant="outline" className="flex-1" onClick={handleDownloadDOC}><Download className="w-4 h-4 mr-2" />Скачать DOC</Button>
-            <Button className="btn-gradient flex-1" onClick={handleGenerate} disabled={isGenerating}>{isGenerating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Printer className="w-4 h-4 mr-2" />}Печать</Button>
+            <Button className="btn-gradient flex-1" onClick={handleGenerate} disabled={isGenerating}>{isGenerating ? <SigmaSpinner size="sm" /> : <Printer className="w-4 h-4 mr-2" />}Печать</Button>
           </div>
         </DialogContent>
       </Dialog>
@@ -57,7 +57,7 @@ export function ContractGenerator(props: ContractGeneratorProps) {
     <Dialog open={props.isOpen} onOpenChange={props.onClose}>
       <DialogContent className="max-w-2xl rounded-2xl max-h-[90vh] overflow-auto">
         <DialogHeader><DialogTitle className="flex gap-2"><div className="text-primary">📄</div>Генерация договора</DialogTitle><DialogDescription>Заполните данные для формирования</DialogDescription></DialogHeader>
-        {isLoading ? <div className="flex justify-center py-12"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div> : (
+        {isLoading ? <div className="flex justify-center py-12"><SigmaSpinner size="lg" /></div> : (
           <div className="space-y-6 py-4">
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2"><Label>Номер договора</Label><Input value={contractNumber} onChange={e => setContractNumber(e.target.value)} className="rounded-xl" /></div>
@@ -212,7 +212,7 @@ export function ContractGenerator(props: ContractGeneratorProps) {
             <div className="bg-secondary/30 rounded-xl p-4"><p className="text-sm font-medium mb-2">Исполнитель:</p><p className="text-sm text-muted-foreground">{props.orgRequisites.name} • ИНН: {props.orgRequisites.inn}</p>{!props.orgRequisites.inn && <p className="text-xs text-destructive mt-2">⚠️ Заполните реквизиты организации</p>}</div>
             <div className="flex gap-3 pt-4 border-t border-border">
               <Button variant="outline" className="flex-1" onClick={handlePreview} disabled={!effectiveCounterparty || !hasValidPrograms}><Eye className="w-4 h-4 mr-2" />Предпросмотр</Button>
-              {props.onSave && <Button variant="outline" className="flex-1" onClick={handleSaveContract} disabled={isSaving || !effectiveCounterparty || !hasValidPrograms}>{isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}Сохранить</Button>}
+              {props.onSave && <Button variant="outline" className="flex-1" onClick={handleSaveContract} disabled={isSaving || !effectiveCounterparty || !hasValidPrograms}>{isSaving ? <SigmaSpinner size="sm" /> : <Save className="w-4 h-4 mr-2" />}Сохранить</Button>}
             </div>
           </div>
         )}

@@ -2,16 +2,15 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import {
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
-} from "@/components/ui/dialog";
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import {
-  Plus, Sparkles, LayoutGrid, Wand2, Loader2, Trash2,
+import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
+  Plus, Sparkles, LayoutGrid, Wand2, Trash2,
   ChevronDown, ChevronUp, HardHat, Stethoscope, Monitor, Star,
-  Trophy, BookOpen, Award,
-} from "lucide-react";
+  Trophy, BookOpen, Award } from "lucide-react";
 
 interface Achievement {
   id: string;
@@ -38,8 +37,7 @@ const RARITY_STYLES: Record<string, { bg: string; border: string; badge: string;
   common:    { bg: "bg-muted/40",       border: "border-border",           badge: "bg-muted text-muted-foreground",   label: "Обычное",     glow: "" },
   rare:      { bg: "bg-blue-500/5",     border: "border-blue-400/40",      badge: "bg-blue-500/15 text-blue-400",     label: "Редкое",      glow: "shadow-blue-500/10 shadow-md" },
   epic:      { bg: "bg-purple-500/5",   border: "border-purple-400/40",    badge: "bg-purple-500/15 text-purple-400", label: "Эпичное",     glow: "shadow-purple-500/15 shadow-lg" },
-  legendary: { bg: "bg-amber-500/5",    border: "border-amber-400/50",     badge: "bg-amber-500/15 text-amber-500",   label: "Легендарное", glow: "shadow-amber-500/20 shadow-lg" },
-};
+  legendary: { bg: "bg-amber-500/5",    border: "border-amber-400/50",     badge: "bg-amber-500/15 text-amber-500",   label: "Легендарное", glow: "shadow-amber-500/20 shadow-lg" } };
 
 const getRarity = (r: string) => RARITY_STYLES[r] || RARITY_STYLES.common;
 
@@ -53,8 +51,7 @@ const TEMPLATE_CATEGORIES = [
       { name: "Архитектор", description: "Прошёл все курсы в категории", icon: "🏛️", rarity: "epic", code: "architect", category: "completion", color: "#8b5cf6" },
       { name: "Мастер безопасности", description: "Сдал экзамен по ОТ на 100%", icon: "🦺", rarity: "legendary", code: "safety_master", category: "excellence", color: "#f59e0b" },
       { name: "Высотник", description: "Завершил курс по работам на высоте", icon: "🏔️", rarity: "rare", code: "height_worker", category: "learning", color: "#06b6d4" },
-    ],
-  },
+    ] },
   {
     id: "medicine", name: "Медицина", description: "Достижения для медицинских и санитарных курсов",
     icon: Stethoscope, gradient: "from-emerald-500/20 to-teal-500/10", borderColor: "border-emerald-400/30",
@@ -63,8 +60,7 @@ const TEMPLATE_CATEGORIES = [
       { name: "Исследователь", description: "Изучил 20 уроков", icon: "🔬", rarity: "rare", code: "researcher", category: "streak", color: "#3b82f6" },
       { name: "Доктор наук", description: "Прошёл 5 медицинских курсов", icon: "💊", rarity: "epic", code: "doctor", category: "completion", color: "#8b5cf6" },
       { name: "Светило медицины", description: "Идеальный результат по всем тестам", icon: "⚕️", rarity: "legendary", code: "medical_star", category: "excellence", color: "#f59e0b" },
-    ],
-  },
+    ] },
   {
     id: "it", name: "IT и технологии", description: "Достижения для IT-курсов и цифровых навыков",
     icon: Monitor, gradient: "from-cyan-500/20 to-blue-500/10", borderColor: "border-cyan-400/30",
@@ -73,8 +69,7 @@ const TEMPLATE_CATEGORIES = [
       { name: "Баг-хантер", description: "Сдал 10 тестов без ошибок", icon: "🐛", rarity: "rare", code: "bug_hunter", category: "streak", color: "#3b82f6" },
       { name: "Деплой мастер", description: "Завершил продвинутый курс", icon: "🚀", rarity: "epic", code: "deploy_master", category: "completion", color: "#8b5cf6" },
       { name: "Full Stack", description: "Прошёл все IT-курсы организации", icon: "🧠", rarity: "legendary", code: "full_stack", category: "excellence", color: "#f59e0b" },
-    ],
-  },
+    ] },
   {
     id: "general", name: "Общие", description: "Универсальные достижения для любых курсов",
     icon: Star, gradient: "from-violet-500/20 to-pink-500/10", borderColor: "border-violet-400/30",
@@ -84,8 +79,7 @@ const TEMPLATE_CATEGORIES = [
       { name: "Звезда курса", description: "Лучший результат на курсе", icon: "🌟", rarity: "epic", code: "course_star", category: "excellence", color: "#8b5cf6" },
       { name: "Чемпион", description: "Прошёл все курсы с отличием", icon: "🏆", rarity: "legendary", code: "champion", category: "excellence", color: "#f59e0b" },
       { name: "Марафонец", description: "30 дней подряд обучения", icon: "🏃", rarity: "epic", code: "marathoner", category: "streak", color: "#ec4899" },
-    ],
-  },
+    ] },
 ];
 
 type View = "gallery" | "templates" | "create" | "ai";
@@ -151,8 +145,7 @@ export function AchievementsManager({ organizationId, isOpen, onOpenChange }: Pr
     setSaving(true);
     const { error } = await supabase.from("achievements").insert({
       ...form, code: form.code || `org_${organizationId.slice(0, 8)}_${Date.now()}`,
-      color: "#6366f1", condition_type: "manual", organization_id: organizationId, is_template: false,
-    });
+      color: "#6366f1", condition_type: "manual", organization_id: organizationId, is_template: false });
     if (error) toast.error("Ошибка создания");
     else { toast.success("Достижение создано"); setForm({ name: "", description: "", icon: "🎯", rarity: "common", category: "learning", code: "" }); load(); setView("gallery"); }
     setSaving(false);
@@ -164,8 +157,7 @@ export function AchievementsManager({ organizationId, isOpen, onOpenChange }: Pr
     setApplyingTemplate(catId);
     const inserts = cat.items.map(i => ({
       ...i, code: `org_${organizationId.slice(0, 8)}_${i.code}_${Date.now()}`,
-      condition_type: "manual", organization_id: organizationId, is_template: false,
-    }));
+      condition_type: "manual", organization_id: organizationId, is_template: false }));
     const { error } = await supabase.from("achievements").insert(inserts);
     if (error) toast.error("Ошибка применения шаблона");
     else { toast.success(`Шаблон «${cat.name}» применён`); load(); }
@@ -189,8 +181,7 @@ export function AchievementsManager({ organizationId, isOpen, onOpenChange }: Pr
     const inserts = aiResults.map((a: any) => ({
       name: a.name, description: a.description, icon: a.icon, rarity: a.rarity,
       category: a.category || "learning", code: `org_${organizationId.slice(0, 8)}_ai_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
-      color: "#6366f1", condition_type: "manual", organization_id: organizationId, is_template: false,
-    }));
+      color: "#6366f1", condition_type: "manual", organization_id: organizationId, is_template: false }));
     const { error } = await supabase.from("achievements").insert(inserts);
     if (error) toast.error("Ошибка сохранения");
     else { toast.success("Достижения сохранены"); setAiResults([]); setAiTheme(""); load(); setView("gallery"); }
@@ -246,7 +237,7 @@ export function AchievementsManager({ organizationId, isOpen, onOpenChange }: Pr
                 <p className="text-sm text-muted-foreground mb-5">Достижения, доступные вашим ученикам</p>
                 {loading ? (
                   <div className="flex items-center justify-center py-20">
-                    <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+                    <SigmaSpinner />
                   </div>
                 ) : achievements.length === 0 ? (
                   <div className="text-center py-16">
@@ -307,7 +298,7 @@ export function AchievementsManager({ organizationId, isOpen, onOpenChange }: Pr
                               <Button size="sm" className="rounded-xl gap-1.5 text-xs btn-gradient"
                                 disabled={applyingTemplate === cat.id} onClick={() => handleApplyTemplate(cat.id)}>
                                 {applyingTemplate === cat.id
-                                  ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                  ? <SigmaSpinner size="xs" className=".5 .5" />
                                   : <Plus className="w-3.5 h-3.5" />}
                                 Применить
                               </Button>
@@ -383,7 +374,7 @@ export function AchievementsManager({ organizationId, isOpen, onOpenChange }: Pr
                       </div>
                     </div>
                     <Button className="w-full rounded-xl gap-2 btn-gradient" onClick={handleCreate} disabled={saving}>
-                      {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
+                      {saving ? <SigmaSpinner size="sm" /> : <Plus className="w-4 h-4" />}
                       Создать достижение
                     </Button>
                   </div>
@@ -409,13 +400,13 @@ export function AchievementsManager({ organizationId, isOpen, onOpenChange }: Pr
                     value={aiTheme} onChange={e => setAiTheme(e.target.value)}
                     onKeyDown={e => e.key === "Enter" && handleAiGenerate()} />
                   <Button className="rounded-xl gap-2 btn-gradient" onClick={handleAiGenerate} disabled={aiLoading}>
-                    {aiLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Wand2 className="w-4 h-4" />}
+                    {aiLoading ? <SigmaSpinner size="sm" /> : <Wand2 className="w-4 h-4" />}
                     Сгенерировать
                   </Button>
                 </div>
                 {aiLoading && (
                   <div className="flex flex-col items-center justify-center py-16 gap-3">
-                    <Loader2 className="w-8 h-8 animate-spin text-primary" />
+                    <SigmaSpinner size="lg" />
                     <p className="text-sm text-muted-foreground">Генерируем достижения...</p>
                   </div>
                 )}
@@ -435,7 +426,7 @@ export function AchievementsManager({ organizationId, isOpen, onOpenChange }: Pr
                       })}
                     </div>
                     <Button className="w-full rounded-xl gap-2 btn-gradient" onClick={handleSaveAiResults} disabled={saving}>
-                      {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
+                      {saving ? <SigmaSpinner size="sm" /> : <Plus className="w-4 h-4" />}
                       Сохранить все ({aiResults.length})
                     </Button>
                   </>

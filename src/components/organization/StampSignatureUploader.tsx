@@ -2,7 +2,8 @@ import { useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Upload, Loader2, X, Image as ImageIcon, Stamp, PenTool } from "lucide-react";
+import { Upload, X, Image as ImageIcon, Stamp, PenTool } from "lucide-react";
+import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 
 interface StampSignatureUploaderProps {
   type: "stamp" | "signature";
@@ -19,8 +20,7 @@ export function StampSignatureUploader({
   onUpload,
   onRemove,
   organizationId,
-  companyId,
-}: StampSignatureUploaderProps) {
+  companyId }: StampSignatureUploaderProps) {
   const [isUploading, setIsUploading] = useState(false);
   const [isRemoving, setIsRemoving] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -130,7 +130,7 @@ export function StampSignatureUploader({
             disabled={isRemoving}
           >
             {isRemoving ? (
-              <Loader2 className="w-3 h-3 animate-spin" />
+              <SigmaSpinner size="xs" />
             ) : (
               <X className="w-3 h-3" />
             )}
@@ -143,7 +143,7 @@ export function StampSignatureUploader({
         >
           {isUploading ? (
             <div className="flex flex-col items-center gap-2">
-              <Loader2 className="w-8 h-8 animate-spin text-primary" />
+              <SigmaSpinner size="lg" />
               <span className="text-sm text-muted-foreground">Загрузка...</span>
             </div>
           ) : (

@@ -2,10 +2,10 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import {
-  Presentation, Upload, ChevronLeft, ChevronRight, Trash2, Loader2,
-  Image as ImageIcon,
-} from "lucide-react";
+  Presentation, Upload, ChevronLeft, ChevronRight, Trash2,
+  Image as ImageIcon } from "lucide-react";
 import type { ContentBlock, SliderSlide } from "../types";
+import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 
 export function SliderBlock({ block, onUpdate }: { block: ContentBlock; onUpdate: (updates: Partial<ContentBlock>) => void }) {
   const [isLoading, setIsLoading] = useState(false);
@@ -105,7 +105,7 @@ export function SliderBlock({ block, onUpdate }: { block: ContentBlock; onUpdate
           </div>
           {error && <div className="text-sm text-destructive text-center">{error}</div>}
           <label className="flex items-center justify-center gap-2 p-3 border-2 border-dashed border-border rounded-lg cursor-pointer hover:border-primary/50 transition-colors">
-            {isLoading ? <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" /> : <Upload className="w-5 h-5 text-muted-foreground" />}
+            {isLoading ? <SigmaSpinner /> : <Upload className="w-5 h-5 text-muted-foreground" />}
             <span className="text-sm text-muted-foreground">{isLoading ? 'Обработка...' : 'Выбрать файл PPTX'}</span>
             <input type="file" accept=".pptx" onChange={handleFileUpload} className="hidden" disabled={isLoading} />
           </label>

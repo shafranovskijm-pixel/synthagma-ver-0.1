@@ -4,7 +4,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
-import { Copy, Eye, EyeOff, KeyRound, Loader2, Save } from "lucide-react";
+import { Copy, Eye, EyeOff, KeyRound, Save } from "lucide-react";
+import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 
 interface OrgSettingsPanelProps {
   organizationId: string;
@@ -32,8 +33,7 @@ const cardClass = "shadow-sm hover:shadow-md transition-shadow duration-200";
 export function OrgSettingsPanel({
   organizationId, organizationEmail, settings, setSettings, isSaving, saveSettings,
   credentials, setCredentials, showPassword, setShowPassword,
-  generatingCredentials, setGeneratingCredentials, resettingPassword, setResettingPassword,
-}: OrgSettingsPanelProps) {
+  generatingCredentials, setGeneratingCredentials, resettingPassword, setResettingPassword }: OrgSettingsPanelProps) {
   return (
     <div className="space-y-6">
       <Card className={`${cardClass} border-primary/20`}>
@@ -80,7 +80,7 @@ export function OrgSettingsPanel({
                 } catch (err: any) { console.error("Reset password error:", err); toast.error("Ошибка сброса пароля"); }
                 finally { setResettingPassword(false); }
               }}>
-                {resettingPassword ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" /> : <KeyRound className="w-3.5 h-3.5 mr-1.5" />}
+                {resettingPassword ? <SigmaSpinner size="xs" className=".5 .5 mr-1.5" /> : <KeyRound className="w-3.5 h-3.5 mr-1.5" />}
                 Сбросить пароль
               </Button>
             </div>
@@ -109,7 +109,7 @@ export function OrgSettingsPanel({
                 } catch (err: any) { console.error("Generate credentials error:", err); toast.error("Ошибка генерации учётных данных"); }
                 finally { setGeneratingCredentials(false); }
               }}>
-                {generatingCredentials ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" /> : <KeyRound className="w-3.5 h-3.5 mr-1.5" />}
+                {generatingCredentials ? <SigmaSpinner size="xs" className=".5 .5 mr-1.5" /> : <KeyRound className="w-3.5 h-3.5 mr-1.5" />}
                 Сгенерировать учётные данные
               </Button>
             </div>
@@ -149,7 +149,7 @@ export function OrgSettingsPanel({
       </Card>
 
       <Button onClick={saveSettings} disabled={isSaving} className="w-full md:w-auto" size="lg">
-        {isSaving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Save className="w-4 h-4 mr-2" />}
+        {isSaving ? <SigmaSpinner size="sm" className="mr-2" /> : <Save className="w-4 h-4 mr-2" />}
         Сохранить все настройки
       </Button>
     </div>

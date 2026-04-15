@@ -8,29 +8,25 @@ import {
   SelectContent,
   SelectItem,
   SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+  SelectValue } from "@/components/ui/select";
 import {
   Table,
   TableBody,
   TableCell,
   TableHead,
   TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+  TableRow } from "@/components/ui/table";
 import { Calendar } from "@/components/ui/calendar";
 import {
   Popover,
   PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
+  PopoverTrigger } from "@/components/ui/popover";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogFooter,
-} from "@/components/ui/dialog";
+  DialogFooter } from "@/components/ui/dialog";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -39,15 +35,13 @@ import {
   AlertDialogDescription,
   AlertDialogFooter,
   AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
+  AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import {
   ArrowLeft,
   Calendar as CalendarIcon,
   Search,
-  Loader2,
   FileSpreadsheet,
   Copy,
   FileText,
@@ -55,13 +49,13 @@ import {
   Pencil,
   Trash2,
   Hash,
-  User,
-} from "lucide-react";
+  User } from "lucide-react";
 import { format, parseISO, startOfYear, endOfYear, isWithinInterval } from "date-fns";
 import { ru } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { getXLSX } from "@/utils/xlsxHelper";
 import { Badge } from "@/components/ui/badge";
+import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 
 interface CopyDuplicateRecord {
   id: string;
@@ -99,8 +93,7 @@ const ISSUE_REASONS = [
 
 export function CopiesDuplicatesJournal({
   organizationId,
-  onClose,
-}: CopiesDuplicatesJournalProps) {
+  onClose }: CopiesDuplicatesJournalProps) {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [records, setRecords] = useState<CopyDuplicateRecord[]>([]);
@@ -111,8 +104,7 @@ export function CopiesDuplicatesJournal({
     to: Date;
   }>({
     from: startOfYear(new Date()),
-    to: endOfYear(new Date()),
-  });
+    to: endOfYear(new Date()) });
 
   // Dialog states
   const [showAddDialog, setShowAddDialog] = useState(false);
@@ -129,8 +121,7 @@ export function CopiesDuplicatesJournal({
     copy_type: "copy" as "copy" | "duplicate",
     issue_date: new Date(),
     issue_reason: "lost",
-    notes: "",
-  });
+    notes: "" });
 
   // Load records from localStorage (simulating database)
   useEffect(() => {
@@ -173,8 +164,7 @@ export function CopiesDuplicatesJournal({
       const recordDate = parseISO(record.issue_date);
       const matchesDate = isWithinInterval(recordDate, {
         start: dateRange.from,
-        end: dateRange.to,
-      });
+        end: dateRange.to });
 
       return matchesSearch && matchesCopyType && matchesDate;
     });
@@ -198,8 +188,7 @@ export function CopiesDuplicatesJournal({
       copy_type: "copy",
       issue_date: new Date(),
       issue_reason: "lost",
-      notes: "",
-    });
+      notes: "" });
   };
 
   // Generate registration number
@@ -231,8 +220,7 @@ export function CopiesDuplicatesJournal({
       copy_type: record.copy_type,
       issue_date: parseISO(record.issue_date),
       issue_reason: record.issue_reason,
-      notes: record.notes || "",
-    });
+      notes: record.notes || "" });
     setEditingRecord(record);
   };
 
@@ -264,8 +252,7 @@ export function CopiesDuplicatesJournal({
         copy_type: formData.copy_type,
         issue_date: formData.issue_date.toISOString(),
         issue_reason: formData.issue_reason,
-        notes: formData.notes.trim() || null,
-      };
+        notes: formData.notes.trim() || null };
 
       let newRecords: CopyDuplicateRecord[];
 
@@ -319,8 +306,7 @@ export function CopiesDuplicatesJournal({
       "Дата выдачи оригинала": format(parseISO(record.original_issue_date), "dd.MM.yyyy", { locale: ru }),
       "Дата выдачи копии/дубликата": format(parseISO(record.issue_date), "dd.MM.yyyy", { locale: ru }),
       "Причина выдачи": ISSUE_REASONS.find((r) => r.value === record.issue_reason)?.label || record.issue_reason,
-      "Примечание": record.notes || "—",
-    }));
+      "Примечание": record.notes || "—" }));
 
     const worksheet = XLSX.utils.json_to_sheet(exportData);
     const workbook = XLSX.utils.book_new();
@@ -348,7 +334,7 @@ export function CopiesDuplicatesJournal({
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        <SigmaSpinner size="lg" />
       </div>
     );
   }
@@ -779,7 +765,7 @@ export function CopiesDuplicatesJournal({
             <Button onClick={handleSave} disabled={saving}>
               {saving ? (
                 <>
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  <SigmaSpinner size="sm" className="mr-2" />
                   Сохранение...
                 </>
               ) : editingRecord ? (

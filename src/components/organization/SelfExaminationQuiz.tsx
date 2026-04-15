@@ -9,15 +9,13 @@ import {
   SelectContent,
   SelectItem,
   SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+  SelectValue } from "@/components/ui/select";
 import {
   Dialog,
   DialogContent,
   DialogDescription,
   DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+  DialogTitle } from "@/components/ui/dialog";
 import { Progress } from "@/components/ui/progress";
 import { 
   ChevronLeft, 
@@ -28,7 +26,6 @@ import {
   ClipboardCheck,
   Monitor,
   FileText,
-  Loader2,
   Plus,
   Trash2,
   Sparkles,
@@ -39,6 +36,7 @@ import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { safeInvoke } from "@/utils/safeInvoke";
 import { toast } from "sonner";
+import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 
 interface CommissionMember {
   fio: string;
@@ -159,8 +157,7 @@ const initialQuizData: QuizData = {
   hasMultimedia: true,
   hasLibrary: true,
   additionalEquipment: "",
-  additionalNotes: "",
-};
+  additionalNotes: "" };
 
 const steps = [
   { id: 1, title: "Организация", icon: Building2, description: "Основные сведения" },
@@ -196,8 +193,7 @@ export function SelfExaminationQuiz({
   onOpenChange,
   onSubmit,
   isSubmitting,
-  organizationData,
-}: SelfExaminationQuizProps) {
+  organizationData }: SelfExaminationQuizProps) {
   const [currentStep, setCurrentStep] = useState(1);
   const [isLoadingInn, setIsLoadingInn] = useState(false);
   const [innLoaded, setInnLoaded] = useState(false);
@@ -221,8 +217,7 @@ export function SelfExaminationQuiz({
     periodEnd: new Date().toISOString().split('T')[0],
     orderDate: new Date().toISOString().split('T')[0],
     orderNumber: `${new Date().getFullYear()}-СО-01`,
-    pedagogicalCouncilProtocolDate: new Date().toISOString().split('T')[0],
-  }));
+    pedagogicalCouncilProtocolDate: new Date().toISOString().split('T')[0] }));
 
   const loadCompanyByInn = async () => {
     if (!data.inn || data.inn.length < 10) {
@@ -283,8 +278,7 @@ export function SelfExaminationQuiz({
           },
           founders: foundersText,
           licenseNumber: company.license?.number || data.licenseNumber,
-          licenseDate: licenseDate,
-        });
+          licenseDate: licenseDate });
 
         setInnLoaded(true);
         
@@ -514,7 +508,7 @@ export function SelfExaminationQuiz({
                   className="rounded-xl"
                 >
                   {isLoadingInn ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <SigmaSpinner size="sm" />
                   ) : (
                     <>
                       <Search className="h-4 w-4 mr-2" />
@@ -1232,7 +1226,7 @@ export function SelfExaminationQuiz({
             >
               {isSubmitting ? (
                 <>
-                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <SigmaSpinner size="sm" />
                   Отправка...
                 </>
               ) : (

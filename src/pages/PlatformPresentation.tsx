@@ -6,7 +6,7 @@ import {
   Video, Shield, ShoppingBag, Smartphone, Zap, CheckCircle2, BarChart3,
   Clock, Globe, Award, Lock, MessageSquare, ClipboardList, AlertTriangle,
   Layers, Database, RefreshCw, Play, Star, Target, Landmark, HardHat,
-  Factory, Flame, Waves, Download, Loader2, Copy, Check, ExternalLink,
+  Factory, Flame, Waves, Download, Copy, Check, ExternalLink,
   Settings, Headphones, Image, Sparkles
 } from "lucide-react";
 import { toast } from "sonner";
@@ -29,6 +29,7 @@ import screenshotStudent from "@/assets/presentation/screenshot-student.png";
 import screenshotOrg from "@/assets/presentation/screenshot-org.png";
 import screenshotCompany from "@/assets/presentation/screenshot-company.png";
 import screenshotTeacher from "@/assets/presentation/screenshot-teacher.png";
+import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 
 const PRESENTATION_VERSION = "v3";
 
@@ -157,7 +158,7 @@ export default function PlatformPresentation() {
             </button>
             <button onClick={handleDownloadPDF} disabled={isExporting}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[hsl(174_72%_46%)] text-white text-xs font-medium hover:opacity-90 transition-opacity disabled:opacity-50">
-              {isExporting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />}
+              {isExporting ? <SigmaSpinner size="xs" className=".5 .5" /> : <Download className="w-3.5 h-3.5" />}
               <span className="hidden sm:inline">PDF</span>
             </button>
           </div>

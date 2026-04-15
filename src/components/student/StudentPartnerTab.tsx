@@ -5,10 +5,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Loader2, Send, CheckCircle, Clock, Users, TrendingUp, CalendarClock, Plug, ChevronDown } from "lucide-react";
+import { Send, CheckCircle, Clock, Users, TrendingUp, CalendarClock, Plug, ChevronDown } from "lucide-react";
 import { toast } from "sonner";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { cn } from "@/lib/utils";
+import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 
 interface Props {
   userId: string;
@@ -58,16 +59,14 @@ export function StudentPartnerTab({ userId, userEmail, userName }: Props) {
         email: email.trim() || null,
         phone: phone.trim() || null,
         inn: inn.trim() || null,
-        comment: comment.trim() || null,
-      });
+        comment: comment.trim() || null });
       if (error) throw error;
 
       await supabase.from("admin_notifications").insert({
         type: "partner",
         title: "Новая заявка на партнёрство",
         message: `${fullName.trim()} (${email || "—"}) подал заявку на партнёрство`,
-        is_read: false,
-      });
+        is_read: false });
 
       toast.success("Заявка на партнёрство отправлена!");
       loadExisting();
@@ -82,7 +81,7 @@ export function StudentPartnerTab({ userId, userEmail, userName }: Props) {
   if (loading) {
     return (
       <div className="flex justify-center py-12">
-        <Loader2 className="w-6 h-6 animate-spin text-primary" />
+        <SigmaSpinner />
       </div>
     );
   }
@@ -132,8 +131,7 @@ export function StudentPartnerTab({ userId, userEmail, userName }: Props) {
               const statusMap: Record<string, { label: string; icon: any; color: string }> = {
                 pending: { label: "На рассмотрении", icon: Clock, color: "text-amber-500" },
                 approved: { label: "Одобрена", icon: CheckCircle, color: "text-green-500" },
-                rejected: { label: "Отклонена", icon: Clock, color: "text-destructive" },
-              };
+                rejected: { label: "Отклонена", icon: Clock, color: "text-destructive" } };
               const st = statusMap[existing.status] || statusMap.pending;
               const Icon = st.icon;
               return (
@@ -188,7 +186,7 @@ export function StudentPartnerTab({ userId, userEmail, userName }: Props) {
               <Textarea value={comment} onChange={e => setComment(e.target.value)} placeholder="Расскажите о себе и опыте" rows={3} className="rounded-xl" />
             </div>
             <Button onClick={handleSubmit} disabled={submitting} className="rounded-xl w-full sm:w-auto">
-              {submitting ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Send className="w-4 h-4 mr-2" />}
+              {submitting ? <SigmaSpinner size="sm" className="mr-2" /> : <Send className="w-4 h-4 mr-2" />}
               Отправить заявку
             </Button>
           </CardContent>

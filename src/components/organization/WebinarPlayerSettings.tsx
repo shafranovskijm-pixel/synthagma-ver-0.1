@@ -5,7 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Loader2, ChevronDown, ChevronUp, Settings } from "lucide-react";
+import { ChevronDown, ChevronUp, Settings } from "lucide-react";
+import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 
 export interface PlayerSettings {
   autoplay: boolean;
@@ -32,8 +33,7 @@ export const defaultPlayerSettings: PlayerSettings = {
   pip: true,
   chromecast: true,
   airplay: true,
-  watermarkText: "",
-};
+  watermarkText: "" };
 
 export function buildKinescopeEmbedUrl(videoId: string, settings?: Partial<PlayerSettings>): string {
   const base = `https://kinescope.io/embed/${videoId}`;
@@ -66,8 +66,7 @@ export function InlinePlayerSettings({ webinarId, initialSettings, onSaved }: Pr
   const [expanded, setExpanded] = useState(false);
   const [settings, setSettings] = useState<PlayerSettings>({
     ...defaultPlayerSettings,
-    ...initialSettings,
-  });
+    ...initialSettings });
   const [saving, setSaving] = useState(false);
   const [dirty, setDirty] = useState(false);
 
@@ -153,7 +152,7 @@ export function InlinePlayerSettings({ webinarId, initialSettings, onSaved }: Pr
 
           {dirty && (
             <Button size="sm" className="w-full h-7 text-xs" onClick={handleSave} disabled={saving}>
-              {saving && <Loader2 className="w-3 h-3 mr-1 animate-spin" />}
+              {saving && <SigmaSpinner size="xs" className="mr-1" />}
               Сохранить
             </Button>
           )}

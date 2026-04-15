@@ -6,22 +6,19 @@ import {
   SelectContent,
   SelectItem,
   SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+  SelectValue } from "@/components/ui/select";
 import {
   Table,
   TableBody,
   TableCell,
   TableHead,
   TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+  TableRow } from "@/components/ui/table";
 import { Calendar } from "@/components/ui/calendar";
 import {
   Popover,
   PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
+  PopoverTrigger } from "@/components/ui/popover";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import {
@@ -30,17 +27,16 @@ import {
   Check,
   Search,
   Users,
-  Loader2,
   Download,
   BookOpen,
   Clock,
   Filter,
-  FileSpreadsheet,
-} from "lucide-react";
+  FileSpreadsheet } from "lucide-react";
 import { format, parseISO, startOfMonth, endOfMonth, isWithinInterval } from "date-fns";
 import { ru } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { getXLSX } from "@/utils/xlsxHelper";
+import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 
 interface AttendanceRecord {
   id: string;
@@ -67,8 +63,7 @@ interface AutoAttendanceJournalProps {
 
 export function AutoAttendanceJournal({
   organizationId,
-  onClose,
-}: AutoAttendanceJournalProps) {
+  onClose }: AutoAttendanceJournalProps) {
   const [loading, setLoading] = useState(true);
   const [records, setRecords] = useState<AttendanceRecord[]>([]);
   const [courses, setCourses] = useState<Course[]>([]);
@@ -79,8 +74,7 @@ export function AutoAttendanceJournal({
     to: Date;
   }>({
     from: startOfMonth(new Date()),
-    to: endOfMonth(new Date()),
-  });
+    to: endOfMonth(new Date()) });
 
   // Fetch all data
   useEffect(() => {
@@ -170,8 +164,7 @@ export function AutoAttendanceJournal({
             lesson_id: progress.lesson_id,
             lesson_title: lesson.title,
             completed_at: progress.completed_at!,
-            time_spent: progress.time_spent || 0,
-          });
+            time_spent: progress.time_spent || 0 });
         }
 
         setRecords(attendanceRecords);
@@ -206,8 +199,7 @@ export function AutoAttendanceJournal({
       const recordDate = parseISO(record.completed_at);
       const matchesDate = isWithinInterval(recordDate, {
         start: dateRange.from,
-        end: dateRange.to,
-      });
+        end: dateRange.to });
 
       return matchesSearch && matchesCourse && matchesDate;
     });
@@ -239,10 +231,8 @@ export function AutoAttendanceJournal({
       "Курс": record.course_title,
       "Урок": record.lesson_title,
       "Дата посещения": format(parseISO(record.completed_at), "dd.MM.yyyy HH:mm", {
-        locale: ru,
-      }),
-      "Время (мин)": Math.round(record.time_spent / 60),
-    }));
+        locale: ru }),
+      "Время (мин)": Math.round(record.time_spent / 60) }));
 
     const worksheet = XLSX.utils.json_to_sheet(exportData);
     const workbook = XLSX.utils.book_new();
@@ -275,7 +265,7 @@ export function AutoAttendanceJournal({
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        <SigmaSpinner size="lg" />
       </div>
     );
   }
@@ -414,8 +404,7 @@ export function AutoAttendanceJournal({
                 const now = new Date();
                 setDateRange({
                   from: startOfMonth(now),
-                  to: endOfMonth(now),
-                });
+                  to: endOfMonth(now) });
               }}
             >
               Этот месяц
@@ -429,8 +418,7 @@ export function AutoAttendanceJournal({
                 const lastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
                 setDateRange({
                   from: startOfMonth(lastMonth),
-                  to: endOfMonth(lastMonth),
-                });
+                  to: endOfMonth(lastMonth) });
               }}
             >
               Прошлый месяц
@@ -480,8 +468,7 @@ export function AutoAttendanceJournal({
                         <div className="w-2 h-2 rounded-full bg-green-500" />
                         <span className="text-sm">
                           {format(parseISO(record.completed_at), "dd.MM.yyyy HH:mm", {
-                            locale: ru,
-                          })}
+                            locale: ru })}
                         </span>
                       </div>
                     </TableCell>

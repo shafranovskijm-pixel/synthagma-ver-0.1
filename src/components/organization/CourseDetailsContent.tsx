@@ -15,8 +15,7 @@ import {
   SelectContent,
   SelectItem,
   SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+  SelectValue } from "@/components/ui/select";
 import { CourseDocumentsManager } from "@/components/organization/CourseDocumentsManager";
 import { EnrollmentHistory } from "@/components/organization/EnrollmentHistory";
 import { CourseTestReport } from "@/components/organization/CourseTestReport";
@@ -34,7 +33,6 @@ import {
   CheckSquare,
   Plus,
   Trash2,
-  Loader2,
   Settings,
   Video,
   RotateCcw,
@@ -60,14 +58,14 @@ import {
   FRDO_PROFESSIONAL_AREAS,
   FRDO_SPECIALTY_GROUPS,
   FRDO_TRAINING_FORMS,
-  type CourseFRDOSettings,
-} from "@/constants/frdo";
+  type CourseFRDOSettings } from "@/constants/frdo";
 import { CourseRemindersTab } from "@/components/organization/CourseRemindersTab";
 import { CourseGroupsTab } from "@/components/organization/CourseGroupsTab";
 import { CoursePageSettingsContent } from "@/components/course-editor/CoursePageSettingsContent";
 import { CourseSettingsTabbed } from "@/components/organization/CourseSettingsTabbed";
 import { EnrollmentRequestsTab } from "@/components/organization/EnrollmentRequestsTab";
 import { CourseAchievementsTab } from "@/components/organization/CourseAchievementsTab";
+import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 
 interface Course {
   id: string;
@@ -178,8 +176,7 @@ export function CourseDetailsContent({
     frdo_qualification_rank: null,
     frdo_duration_hours: null,
     frdo_financing_source: null,
-    frdo_education_form: null,
-  });
+    frdo_education_form: null });
 
   useEffect(() => {
     if (course) {
@@ -203,8 +200,7 @@ export function CourseDetailsContent({
         frdo_qualification_rank: course.frdo_qualification_rank || null,
         frdo_duration_hours: course.frdo_duration_hours ?? null,
         frdo_financing_source: course.frdo_financing_source || null,
-        frdo_education_form: course.frdo_education_form || null,
-      });
+        frdo_education_form: course.frdo_education_form || null });
       const lc = (course as any).landing_content as any;
       setCopyProtection(lc?.copy_protection || false);
       setVideoWatermark(lc?.video_watermark || false);
@@ -613,7 +609,7 @@ export function CourseDetailsContent({
                     </div>
                     <ScrollArea className="h-64">
                       {isLoadingAvailable ? (
-                        <div className="flex items-center justify-center py-8"><Loader2 className="w-6 h-6 animate-spin text-muted-foreground" /></div>
+                        <div className="flex items-center justify-center py-8"><SigmaSpinner /></div>
                       ) : filteredAvailableStudents.length === 0 ? (
                         <div className="text-center py-8 text-muted-foreground text-sm">
                           {availableStudents.length === 0 ? "Нет доступных учеников для зачисления" : "Ученики не найдены"}
@@ -635,7 +631,7 @@ export function CourseDetailsContent({
                     {selectedToEnroll.size > 0 && (
                       <div className="p-3 border-t border-border">
                         <Button className="w-full btn-gradient rounded-lg gap-2" onClick={handleEnrollSelected} disabled={isEnrolling}>
-                          {isEnrolling ? (<><Loader2 className="w-4 h-4 animate-spin" />Зачисление...</>) : (<><UserPlus className="w-4 h-4" />Зачислить ({selectedToEnroll.size})</>)}
+                          {isEnrolling ? (<><SigmaSpinner size="sm" />Зачисление...</>) : (<><UserPlus className="w-4 h-4" />Зачислить ({selectedToEnroll.size})</>)}
                         </Button>
                       </div>
                     )}
@@ -798,7 +794,7 @@ export function CourseDetailsContent({
           <AlertDialogFooter>
             <AlertDialogCancel className="rounded-xl" disabled={isResetting}>Отмена</AlertDialogCancel>
             <AlertDialogAction className="rounded-xl bg-destructive text-destructive-foreground hover:bg-destructive/90" onClick={() => resetConfirmStudent && handleResetProgress(resetConfirmStudent)} disabled={isResetting}>
-              {isResetting ? (<><Loader2 className="w-4 h-4 mr-2 animate-spin" />Сброс...</>) : (<><RotateCcw className="w-4 h-4 mr-2" />Сбросить</>)}
+              {isResetting ? (<><SigmaSpinner size="sm" className="mr-2" />Сброс...</>) : (<><RotateCcw className="w-4 h-4 mr-2" />Сбросить</>)}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -814,7 +810,7 @@ export function CourseDetailsContent({
           <AlertDialogFooter>
             <AlertDialogCancel className="rounded-xl" disabled={isDeleting}>Отмена</AlertDialogCancel>
             <AlertDialogAction className="rounded-xl bg-destructive text-destructive-foreground hover:bg-destructive/90" onClick={handleDeleteCourse} disabled={isDeleting}>
-              {isDeleting ? (<><Loader2 className="w-4 h-4 mr-2 animate-spin" />Удаление...</>) : (<><Trash2 className="w-4 h-4 mr-2" />Удалить</>)}
+              {isDeleting ? (<><SigmaSpinner size="sm" className="mr-2" />Удаление...</>) : (<><Trash2 className="w-4 h-4 mr-2" />Удалить</>)}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

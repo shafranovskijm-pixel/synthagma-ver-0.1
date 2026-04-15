@@ -8,8 +8,7 @@ import { cn } from "@/lib/utils";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator,
   DropdownMenuTrigger, DropdownMenuSub, DropdownMenuSubTrigger, DropdownMenuSubContent,
-  DropdownMenuPortal,
-} from "@/components/ui/dropdown-menu";
+  DropdownMenuPortal } from "@/components/ui/dropdown-menu";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -17,18 +16,17 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import {
   GripVertical, Trash2, Wand2, Pencil, AlignLeft, AlignCenter, AlignRight,
   Bold, Italic, Strikethrough, Underline, CaseSensitive, Star, X, Eraser,
-  Highlighter, Plus, Link2, Headphones, Volume2, Loader2,
-} from "lucide-react";
+  Highlighter, Plus, Link2, Headphones, Volume2 } from "lucide-react";
 import { SALUTE_VOICES } from "@/components/student/TTSSettingsDialog";
 import type { BlockType, ContentBlock, StylePreset } from "../types";
 import {
   convertibleTypes, textStyleableTypes, bgColorPresets, bgColorDotStyles,
   textColorPresets, quickStyles, wrapCalloutTargets, wrapOtherTargets,
-  blockCategories, calloutItems,
-} from "../types";
+  blockCategories, calloutItems } from "../types";
 import { extractStyle, describeStyle } from "../utils";
 import { BlockContent } from "./BlockContent";
 import { BlockCategoryGrid } from "./AddBlockButton";
+import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 
 interface SortableBlockItemProps {
   block: ContentBlock;
@@ -74,8 +72,7 @@ export function SortableBlockItem({ block, isFocused, onFocus, onUpdate, onDelet
         method: "POST",
         headers: { "Content-Type": "application/json", apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY, Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}` },
         body: JSON.stringify({ text: plainText, voice: voiceName }),
-        signal: ttsController.signal,
-      });
+        signal: ttsController.signal });
       clearTimeout(ttsTimeout);
       if (!response.ok) { const errData = await response.json().catch(() => null); throw new Error(errData?.error || `Ошибка: ${response.status}`); }
       const audioBlob = await response.blob();
@@ -311,7 +308,7 @@ export function SortableBlockItem({ block, isFocused, onFocus, onUpdate, onDelet
               </Select>
             </div>
             <Button onClick={handleTtsGenerate} disabled={ttsGenerating} className="w-full gap-2">
-              {ttsGenerating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Headphones className="w-4 h-4" />}
+              {ttsGenerating ? <SigmaSpinner size="sm" /> : <Headphones className="w-4 h-4" />}
               {ttsGenerating ? "Генерация..." : "Озвучить текст"}
             </Button>
           </div>

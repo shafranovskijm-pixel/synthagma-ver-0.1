@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
-import { MessageCircle, Search, ArrowLeft, Loader2, Bell, Paperclip, Clock, Shield, Plus, UserPlus, X } from "lucide-react";
+import { MessageCircle, Search, ArrowLeft, Bell, Paperclip, Clock, Shield, Plus, UserPlus, X } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -12,11 +12,11 @@ import { format, isToday, isYesterday } from "date-fns";
 import { ru } from "date-fns/locale";
 import { useIsMobile } from "@/hooks/use-mobile";
 import {
+import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
   Dialog,
   DialogContent,
   DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+  DialogTitle } from "@/components/ui/dialog";
 
 export function OrgChatsTab() {
   const d = useOrgDashboard();
@@ -55,8 +55,7 @@ export function OrgChatsTab() {
         event: "*",
         schema: "public",
         table: "admin_org_messages",
-        filter: `organization_id=eq.${organizationId}`,
-      }, () => { loadAdminUnread(); })
+        filter: `organization_id=eq.${organizationId}` }, () => { loadAdminUnread(); })
       .subscribe();
 
     return () => { supabase.removeChannel(channel); };
@@ -136,7 +135,7 @@ export function OrgChatsTab() {
   if (isLoading) {
     return (
       <div className="flex justify-center py-12">
-        <Loader2 className="w-6 h-6 animate-spin text-primary" />
+        <SigmaSpinner />
       </div>
     );
   }
@@ -332,7 +331,7 @@ export function OrgChatsTab() {
             <div className="max-h-72 overflow-y-auto border border-border rounded-lg">
               {loadingStudents ? (
                 <div className="flex justify-center py-8">
-                  <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+                  <SigmaSpinner />
                 </div>
               ) : filteredNewStudents.length === 0 ? (
                 <div className="text-center py-8 text-muted-foreground text-sm">

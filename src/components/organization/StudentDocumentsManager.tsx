@@ -9,15 +9,13 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
+  DialogTrigger } from "@/components/ui/dialog";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+  SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import {
@@ -25,17 +23,16 @@ import {
   FileText,
   Download,
   Trash2,
-  Loader2,
   Upload,
   User,
   Eye,
   Award,
   FileCheck,
   File,
-  GraduationCap,
-} from "lucide-react";
+  GraduationCap } from "lucide-react";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
+import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 
 interface StudentDocument {
   id: string;
@@ -67,8 +64,7 @@ export function StudentDocumentsManager({
   studentName,
   courseName,
   isOpen,
-  onClose,
-}: StudentDocumentsManagerProps) {
+  onClose }: StudentDocumentsManagerProps) {
   const [documents, setDocuments] = useState<StudentDocument[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showAddDialog, setShowAddDialog] = useState(false);
@@ -144,8 +140,7 @@ export function StudentDocumentsManager({
           enrollment_id: enrollmentId,
           name: docName.trim(),
           type: docType,
-          file_url: fileUrl,
-        });
+          file_url: fileUrl });
 
       if (error) throw error;
 
@@ -277,7 +272,7 @@ export function StudentDocumentsManager({
                   >
                     {isUploading ? (
                       <>
-                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        <SigmaSpinner size="sm" className="mr-2" />
                         Загрузка...
                       </>
                     ) : (
@@ -291,7 +286,7 @@ export function StudentDocumentsManager({
 
           {isLoading ? (
             <div className="flex items-center justify-center py-12">
-              <Loader2 className="w-8 h-8 animate-spin text-primary" />
+              <SigmaSpinner size="lg" />
             </div>
           ) : documents.length === 0 ? (
             <div className="text-center py-12 text-muted-foreground">

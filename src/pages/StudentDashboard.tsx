@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { Navigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import {
-  BookOpen, MessageCircle, Menu, Eye, X, Loader2, Building2, Bot,
+  BookOpen, MessageCircle, Menu, Eye, X, Building2, Bot,
   Library, ArrowLeft
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -30,6 +30,7 @@ import { Video } from "lucide-react";
 import { StudentWebinarsList } from "@/components/student/StudentWebinarsList";
 import { Student3DTrainers } from "@/components/student/Student3DTrainers";
 import { StudentProfileContent } from "@/components/student/StudentProfileContent";
+import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 
 function CatalogContent({ catalogCourses, categories, profile, branding, handleCourseClick }: any) {
   const [contentTab, setContentTab] = useState<"courses" | "webinars" | "trainers">("courses");
@@ -102,8 +103,7 @@ export default function StudentDashboard() {
     showAchievements, setShowAchievements, mobileMenuOpen, setMobileMenuOpen,
     documentsProgress, isVideoIdentified, setIsVideoIdentified, showOnboarding, handleOnboardingClose,
     handleLogout, pullToRefreshRef, pullDistance, isRefreshing, canRefresh, orgPlan,
-    isAdminView, adminViewStudentName,
-  } = useStudentDashboard();
+    isAdminView, adminViewStudentName } = useStudentDashboard();
 
   // Narrow the tab type (hook may still have "store" internally)
   const setActiveTab = (tab: StudentTab) => setActiveTabRaw(tab as any);
@@ -118,7 +118,7 @@ export default function StudentDashboard() {
     if (userRole === 'sales_manager') return <Navigate to="/sales" replace />;
   }
 
-  if (loading) return <div className="min-h-screen flex items-center justify-center"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>;
+  if (loading) return <div className="min-h-screen flex items-center justify-center"><SigmaSpinner size="lg" /></div>;
 
   const handleCourseClick = (courseId: string, isEnrolled: boolean) => {
     if (isEnrolled) {
@@ -315,7 +315,7 @@ export default function StudentDashboard() {
                     <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
                   </div>
                 ))}
-                {isAiLoading && <div className="bg-secondary rounded-2xl p-4 max-w-[80%]"><Loader2 className="w-4 h-4 animate-spin" /></div>}
+                {isAiLoading && <div className="bg-secondary rounded-2xl p-4 max-w-[80%]"><SigmaSpinner size="sm" /></div>}
               </div>
               <div className="p-4 border-t border-border flex gap-2">
                 <input

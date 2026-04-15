@@ -1,12 +1,13 @@
 import { useState } from "react";
 import { safeInvoke } from "@/utils/safeInvoke";
 import { toast } from "sonner";
-import { GitCompareArrows, Loader2, Play, Clock, Cpu, Hash } from "lucide-react";
+import { GitCompareArrows, Play, Clock, Cpu, Hash } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent } from "@/components/ui/card";
+import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 
 type ComparisonResult = {
   model: string;
@@ -57,9 +58,7 @@ export function AIComparisonPanel() {
             action: "generate_content",
             courseTitle: "A/B Тест",
             lessonTitle: prompt,
-            ai_provider: m.provider,
-          },
-        });
+            ai_provider: m.provider } });
         const elapsed = Math.round(performance.now() - start);
         if (error) throw error;
         const text = data?.content || data?.raw || "";
@@ -68,8 +67,7 @@ export function AIComparisonPanel() {
           label: m.label,
           response: text,
           timeMs: elapsed,
-          charCount: text.length,
-        } as ComparisonResult;
+          charCount: text.length } as ComparisonResult;
       } catch (e: any) {
         return {
           model: m.model,
@@ -77,8 +75,7 @@ export function AIComparisonPanel() {
           response: "",
           timeMs: Math.round(performance.now() - start),
           charCount: 0,
-          error: e.message,
-        } as ComparisonResult;
+          error: e.message } as ComparisonResult;
       }
     });
 
@@ -126,7 +123,7 @@ export function AIComparisonPanel() {
         </div>
 
         <Button onClick={runComparison} disabled={loading || selectedModels.length < 2} className="gap-2">
-          {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Play className="w-4 h-4" />}
+          {loading ? <SigmaSpinner size="sm" /> : <Play className="w-4 h-4" />}
           {loading ? "Сравнение..." : "Сравнить"}
         </Button>
       </div>

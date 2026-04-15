@@ -4,8 +4,7 @@ import {
   Dialog,
   DialogContent,
   DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+  DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -14,13 +13,12 @@ import {
   SelectContent,
   SelectItem,
   SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+  SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Download, Save, Loader2, FileSpreadsheet, User, GraduationCap, Briefcase } from "lucide-react";
+import { Download, Save, FileSpreadsheet, User, GraduationCap, Briefcase } from "lucide-react";
 import { format } from "date-fns";
 import {
   detectGenderFromMiddleName,
@@ -29,14 +27,13 @@ import {
   FRDO_TRAINING_FORMS,
   FRDO_FINANCING_SOURCES,
   FRDO_EDUCATION_FORMS,
-  FRDO_EDUCATION_LEVELS,
-} from "@/constants/frdo";
+  FRDO_EDUCATION_LEVELS } from "@/constants/frdo";
 import {
+import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
   buildDPORow,
   buildPORow,
   exportFRDOExcel,
-  formatDateForFRDO,
-} from "@/utils/frdoExcelExport";
+  formatDateForFRDO } from "@/utils/frdoExcelExport";
 
 interface FRDOExportDialogProps {
   isOpen: boolean;
@@ -89,12 +86,10 @@ const defaultFRDOData: FRDOData = {
   training_form: "Очная", financing_source: "Платное обучение",
   education_form: "в образовательной организации",
   professional_area: "", specialty_group: "",
-  qualification_name: "", profession_name: "", qualification_rank: "",
-};
+  qualification_name: "", profession_name: "", qualification_rank: "" };
 
 export function FRDOExportDialog({
-  isOpen, onOpenChange, student, organizationId, enrollment,
-}: FRDOExportDialogProps) {
+  isOpen, onOpenChange, student, organizationId, enrollment }: FRDOExportDialogProps) {
   const [activeTab, setActiveTab] = useState("personal");
   const [frдоData, setFrdoData] = useState<FRDOData>(defaultFRDOData);
   const [isLoading, setIsLoading] = useState(false);
@@ -143,16 +138,14 @@ export function FRDOExportDialog({
           specialty_group: data.specialty_group || "",
           qualification_name: data.qualification_name || "",
           profession_name: data.profession_name || "",
-          qualification_rank: data.qualification_rank || "",
-        });
+          qualification_rank: data.qualification_rank || "" });
       } else {
         const nameParts = student.name.split(" ");
         const middleName = nameParts[2] || "";
         setFrdoData({
           ...defaultFRDOData,
           last_name: nameParts[0] || "", first_name: nameParts[1] || "",
-          middle_name: middleName, gender: detectGenderFromMiddleName(middleName) || "",
-        });
+          middle_name: middleName, gender: detectGenderFromMiddleName(middleName) || "" });
       }
     } catch (error) {
       console.error("Error loading FRDO data:", error);
@@ -179,8 +172,7 @@ export function FRDOExportDialog({
           qualification_rank: prev.qualification_rank || data.frdo_qualification_rank || "",
           training_form: prev.training_form || data.training_form || "Очная",
           financing_source: prev.financing_source || data.frdo_financing_source || "Платное обучение",
-          education_form: prev.education_form || data.frdo_education_form || "в образовательной организации",
-        }));
+          education_form: prev.education_form || data.frdo_education_form || "в образовательной организации" }));
       }
     } catch (error) {
       console.error("Error loading course data:", error);
@@ -208,8 +200,7 @@ export function FRDOExportDialog({
         specialty_group: frдоData.specialty_group || null,
         qualification_name: frдоData.qualification_name || null,
         profession_name: frдоData.profession_name || null,
-        qualification_rank: frдоData.qualification_rank || null,
-      };
+        qualification_rank: frдоData.qualification_rank || null };
 
       if (frдоData.id) {
         const { error } = await supabase.from("student_frdo_data").update(dataToSave).eq("id", frдоData.id);
@@ -256,8 +247,7 @@ export function FRDOExportDialog({
       document_type: documentType, document_number: docNumber, reg_number: regNumber,
       issue_date: enrollment.completed_at || new Date().toISOString(),
       specialty_name: courseData?.title || enrollment.course_title,
-      qualification_name: qualificationName, document_status: "Оригинал",
-    });
+      qualification_name: qualificationName, document_status: "Оригинал" });
 
     const row = buildDPORow({
       documentType, docNumber, regNumber,
@@ -273,8 +263,7 @@ export function FRDOExportDialog({
       birthDate: formatDateForFRDO(frдоData.birth_date),
       gender: frдоData.gender, snils: frдоData.snils,
       trainingForm: frдоData.training_form, financingSource: frдоData.financing_source,
-      educationForm: frдоData.education_form, citizenshipCode: frдоData.citizenship_code,
-    });
+      educationForm: frдоData.education_form, citizenshipCode: frдоData.citizenship_code });
 
     await exportFRDOExcel([row], "dpo", `${frдоData.last_name}_${format(new Date(), "dd-MM-yyyy")}`);
     toast.success("Документ зарегистрирован в журнале");
@@ -306,8 +295,7 @@ export function FRDOExportDialog({
       document_type: documentType, document_number: docNumber, reg_number: regNumber,
       issue_date: enrollment.completed_at || new Date().toISOString(),
       specialty_name: courseData?.title || enrollment.course_title,
-      qualification_name: professionName, document_status: "Оригинал",
-    });
+      qualification_name: professionName, document_status: "Оригинал" });
 
     const row = buildPORow({
       documentType, docNumber, regNumber,
@@ -320,8 +308,7 @@ export function FRDOExportDialog({
       birthDate: formatDateForFRDO(frдоData.birth_date),
       gender: frдоData.gender, snils: frдоData.snils, citizenshipCode: frдоData.citizenship_code,
       trainingForm: frдоData.training_form, financingSource: frдоData.financing_source,
-      educationForm: frдоData.education_form,
-    });
+      educationForm: frдоData.education_form });
 
     await exportFRDOExcel([row], "po", `${frдоData.last_name}_${format(new Date(), "dd-MM-yyyy")}`);
     toast.success("Документ зарегистрирован в журнале");
@@ -350,7 +337,7 @@ export function FRDOExportDialog({
 
         {isLoading ? (
           <div className="flex items-center justify-center py-12">
-            <Loader2 className="w-8 h-8 animate-spin text-primary" />
+            <SigmaSpinner size="lg" />
           </div>
         ) : (
           <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1">
@@ -503,7 +490,7 @@ export function FRDOExportDialog({
 
             <div className="p-6 border-t border-border flex items-center justify-between gap-4">
               <Button variant="outline" className="rounded-xl gap-2" onClick={handleSave} disabled={isSaving}>
-                {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                {isSaving ? <SigmaSpinner size="sm" /> : <Save className="w-4 h-4" />}
                 Сохранить данные
               </Button>
               <div className="flex gap-2">

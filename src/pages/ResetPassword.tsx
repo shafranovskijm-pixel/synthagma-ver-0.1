@@ -4,9 +4,10 @@ import { SigmaLogo } from "@/components/ui/SigmaLogo";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Link, useNavigate } from "react-router-dom";
-import { ArrowLeft, Lock, Loader2, CheckCircle } from "lucide-react";
+import { ArrowLeft, Lock, CheckCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 
 const ResetPassword = () => {
   const [password, setPassword] = useState("");
@@ -144,7 +145,7 @@ const ResetPassword = () => {
           >
             {isLoading ? (
               <>
-                <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                <SigmaSpinner className="mr-2" />
                 Сохранение...
               </>
             ) : (

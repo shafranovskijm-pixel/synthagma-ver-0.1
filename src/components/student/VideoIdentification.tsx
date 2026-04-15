@@ -3,10 +3,11 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Video, Camera, CheckCircle2, AlertCircle, Loader2, RefreshCw, UserCheck, Shield, History } from "lucide-react";
+import { Video, Camera, CheckCircle2, AlertCircle, RefreshCw, UserCheck, Shield, History } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 
 interface VideoIdentificationProps {
   userId: string;
@@ -36,8 +37,7 @@ export function VideoIdentification({
   onVerified,
   isOpen = false,
   onOpenChange,
-  embedded = false,
-}: VideoIdentificationProps) {
+  embedded = false }: VideoIdentificationProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [stream, setStream] = useState<MediaStream | null>(null);
@@ -263,8 +263,7 @@ export function VideoIdentification({
         .from("avatars")
         .upload(fileName, blob, {
           contentType: "image/jpeg",
-          upsert: true,
-        });
+          upsert: true });
 
       if (uploadError) throw uploadError;
 
@@ -306,9 +305,7 @@ export function VideoIdentification({
             platform: navigator.platform,
             language: navigator.language,
             screenWidth: window.screen.width,
-            screenHeight: window.screen.height,
-          },
-        })
+            screenHeight: window.screen.height } })
         .select()
         .single();
 
@@ -341,8 +338,7 @@ export function VideoIdentification({
       month: "long",
       year: "numeric",
       hour: "2-digit",
-      minute: "2-digit",
-    });
+      minute: "2-digit" });
   };
 
   const getStatusBadge = (status: string) => {
@@ -361,7 +357,7 @@ export function VideoIdentification({
   if (isLoading) {
     const loadingContent = (
       <div className="flex items-center justify-center py-12">
-        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        <SigmaSpinner size="lg" />
       </div>
     );
     if (embedded) return loadingContent;
@@ -538,7 +534,7 @@ export function VideoIdentification({
                 {/* Loading indicator - полупрозрачный, не блокирует видео */}
                 {isCameraLoading && (
                   <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/50">
-                    <Loader2 className="w-8 h-8 animate-spin text-white mb-2" />
+                    <SigmaSpinner size="lg" className="text-white mb-2" />
                     <p className="text-white text-sm">Подключение к камере...</p>
                   </div>
                 )}
@@ -608,7 +604,7 @@ export function VideoIdentification({
                 >
                   {isUploading ? (
                     <>
-                      <Loader2 className="w-4 h-4 animate-spin" />
+                      <SigmaSpinner size="sm" />
                       Сохранение...
                     </>
                   ) : (

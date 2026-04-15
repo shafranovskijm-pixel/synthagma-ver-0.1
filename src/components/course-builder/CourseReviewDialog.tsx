@@ -2,21 +2,20 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Loader2, AlertTriangle, Info, AlertCircle, Scale, ClipboardCheck, Bug, Lightbulb, CheckCircle2, X } from "lucide-react";
+import { AlertTriangle, Info, AlertCircle, Scale, ClipboardCheck, Bug, Lightbulb, CheckCircle2, X } from "lucide-react";
 import type { ReviewFinding, ReviewResult } from "@/hooks/useCourseReview";
+import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 
 const typeConfig = {
   legislation: { label: "Законодательство", icon: Scale, color: "text-amber-600 dark:text-amber-400", bg: "bg-amber-50 dark:bg-amber-950/30" },
   test: { label: "Тест", icon: ClipboardCheck, color: "text-purple-600 dark:text-purple-400", bg: "bg-purple-50 dark:bg-purple-950/30" },
   error: { label: "Ошибка", icon: Bug, color: "text-destructive", bg: "bg-destructive/5" },
-  suggestion: { label: "Предложение", icon: Lightbulb, color: "text-blue-600 dark:text-blue-400", bg: "bg-blue-50 dark:bg-blue-950/30" },
-};
+  suggestion: { label: "Предложение", icon: Lightbulb, color: "text-blue-600 dark:text-blue-400", bg: "bg-blue-50 dark:bg-blue-950/30" } };
 
 const severityConfig = {
   critical: { label: "Критично", variant: "destructive" as const, icon: AlertCircle },
   warning: { label: "Внимание", variant: "secondary" as const, icon: AlertTriangle },
-  info: { label: "Инфо", variant: "outline" as const, icon: Info },
-};
+  info: { label: "Инфо", variant: "outline" as const, icon: Info } };
 
 interface CourseReviewDialogProps {
   open: boolean;
@@ -64,8 +63,7 @@ export function CourseReviewDialog({
   activeFindings,
   dismissedCount,
   onDismiss,
-  onDismissAll,
-}: CourseReviewDialogProps) {
+  onDismissAll }: CourseReviewDialogProps) {
   const totalFindings = reviewResult?.findings.length || 0;
 
   const criticalCount = activeFindings.filter(f => f.severity === "critical").length;
@@ -95,7 +93,7 @@ export function CourseReviewDialog({
 
         {isReviewing && (
           <div className="flex flex-col items-center justify-center py-16 gap-4">
-            <Loader2 className="w-10 h-10 animate-spin text-primary" />
+            <SigmaSpinner size="xl" />
             <p className="text-muted-foreground text-center">
               ИИ анализирует курс...<br />
               <span className="text-xs">Проверка законодательства, тестов и содержания</span>

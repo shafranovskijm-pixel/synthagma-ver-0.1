@@ -1,5 +1,6 @@
 import { motion } from "framer-motion";
-import { Loader2, ArrowDown } from "lucide-react";
+import { ArrowDown } from "lucide-react";
+import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 
 interface PullToRefreshIndicatorProps {
   pullDistance: number;
@@ -12,8 +13,7 @@ export function PullToRefreshIndicator({
   pullDistance,
   isRefreshing,
   canRefresh,
-  threshold = 80,
-}: PullToRefreshIndicatorProps) {
+  threshold = 80 }: PullToRefreshIndicatorProps) {
   if (pullDistance === 0 && !isRefreshing) return null;
 
   const progress = Math.min(pullDistance / threshold, 1);
@@ -34,7 +34,7 @@ export function PullToRefreshIndicator({
         }`}
       >
         {isRefreshing ? (
-          <Loader2 className="w-5 h-5 animate-spin" />
+          <SigmaSpinner />
         ) : (
           <motion.div
             animate={{ rotate: rotation }}

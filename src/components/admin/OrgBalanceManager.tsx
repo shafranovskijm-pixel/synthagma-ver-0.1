@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Wallet, Plus, ArrowUpRight, ArrowDownRight, Loader2 } from "lucide-react";
+import { Wallet, Plus, ArrowUpRight, ArrowDownRight} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -11,6 +11,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import { useOrgBalance } from "@/hooks/useOrgBalance";
+import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 
 interface OrgBalanceManagerProps {
   organizationId: string;
@@ -19,8 +20,7 @@ interface OrgBalanceManagerProps {
 const typeLabels: Record<string, { label: string; icon: typeof ArrowUpRight; color: string }> = {
   topup: { label: "Пополнение", icon: ArrowUpRight, color: "text-green-600" },
   purchase: { label: "Покупка", icon: ArrowDownRight, color: "text-red-600" },
-  refund: { label: "Возврат", icon: ArrowUpRight, color: "text-blue-600" },
-};
+  refund: { label: "Возврат", icon: ArrowUpRight, color: "text-blue-600" } };
 
 export function OrgBalanceManager({ organizationId }: OrgBalanceManagerProps) {
   const { balance, transactions, isLoading, topUpBalance } = useOrgBalance(organizationId);
@@ -45,7 +45,7 @@ export function OrgBalanceManager({ organizationId }: OrgBalanceManagerProps) {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-8">
-        <Loader2 className="w-6 h-6 animate-spin text-primary" />
+        <SigmaSpinner />
       </div>
     );
   }
@@ -148,7 +148,7 @@ export function OrgBalanceManager({ organizationId }: OrgBalanceManagerProps) {
               onClick={handleTopUp}
               disabled={isProcessing || !topUpAmount || parseFloat(topUpAmount) <= 0}
             >
-              {isProcessing ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Обработка...</> : "Пополнить"}
+              {isProcessing ? <><SigmaSpinner size="sm" className="mr-2" />Обработка...</> : "Пополнить"}
             </Button>
           </DialogFooter>
         </DialogContent>

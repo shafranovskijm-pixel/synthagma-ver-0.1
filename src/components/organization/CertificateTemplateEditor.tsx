@@ -4,10 +4,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Save, Loader2, Award, GraduationCap, Eye } from "lucide-react";
+import { Save, Award, GraduationCap, Eye } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { DocumentPreview } from "./DocumentPreview";
+import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 
 interface DocumentSettings {
   series: string;
@@ -24,15 +25,13 @@ const DEFAULT_CERTIFICATE_SETTINGS: DocumentSettings = {
   series: "",
   startNumber: 1,
   city: "",
-  regNumberFormat: "{{year}}-{{number}}",
-};
+  regNumberFormat: "{{year}}-{{number}}" };
 
 const DEFAULT_DIPLOMA_SETTINGS: DocumentSettings = {
   series: "",
   startNumber: 1,
   city: "",
-  regNumberFormat: "{{year}}-{{number}}",
-};
+  regNumberFormat: "{{year}}-{{number}}" };
 
 export function CertificateTemplateEditor({ organizationId }: CertificateTemplateEditorProps) {
   const [certificateSettings, setCertificateSettings] = useState<DocumentSettings>(DEFAULT_CERTIFICATE_SETTINGS);
@@ -83,9 +82,7 @@ export function CertificateTemplateEditor({ organizationId }: CertificateTemplat
           branding: JSON.parse(JSON.stringify({
             ...currentBranding,
             certificateSettings,
-            diplomaSettings,
-          })),
-        })
+            diplomaSettings })) })
         .eq("id", organizationId);
       if (error) throw error;
       toast.success("Настройки документов сохранены");
@@ -164,7 +161,7 @@ export function CertificateTemplateEditor({ organizationId }: CertificateTemplat
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-32">
-        <Loader2 className="w-6 h-6 animate-spin text-primary" />
+        <SigmaSpinner />
       </div>
     );
   }
@@ -217,15 +214,14 @@ export function CertificateTemplateEditor({ organizationId }: CertificateTemplat
                 series: currentSettings.series || (activeTab === "certificate" ? "ПК" : "ДПП"),
                 number: currentSettings.startNumber,
                 city: currentSettings.city || "г. Москва",
-                regNumberFormat: currentSettings.regNumberFormat,
-              }}
+                regNumberFormat: currentSettings.regNumberFormat }}
             />
           </AccordionContent>
         </AccordionItem>
       </Accordion>
 
       <Button onClick={handleSave} disabled={isSaving} className="rounded-xl gap-2">
-        {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+        {isSaving ? <SigmaSpinner size="sm" /> : <Save className="w-4 h-4" />}
         Сохранить настройки документов
       </Button>
     </div>

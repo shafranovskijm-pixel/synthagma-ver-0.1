@@ -4,15 +4,13 @@ import {
   Dialog,
   DialogContent,
   DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+  DialogTitle } from "@/components/ui/dialog";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+  SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
 import { safeInvoke } from "@/utils/safeInvoke";
@@ -21,17 +19,16 @@ import {
   FileText,
   Eye,
   Save,
-  Loader2,
   RotateCcw,
   Upload,
   Sparkles,
   History,
   Plus,
-  Trash2,
-} from "lucide-react";
+  Trash2 } from "lucide-react";
 import { HighlightedTemplateEditor } from "./HighlightedTemplateEditor";
 import { BUILT_IN_TEMPLATES, type ContractTemplate } from "./contract-template/builtInTemplates";
 import { TemplateHistoryDialog, type TemplateHistoryEntry } from "./contract-template/TemplateHistoryDialog";
+import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 
 interface ContractTemplateEditorProps {
   organizationId: string;
@@ -84,8 +81,7 @@ const PLACEHOLDERS = [
 export function ContractTemplateEditor({
   organizationId,
   organizationName,
-  fullPage = false,
-}: ContractTemplateEditorProps) {
+  fullPage = false }: ContractTemplateEditorProps) {
   const [template, setTemplate] = useState(BUILT_IN_TEMPLATES[0].text);
   const [originalTemplate, setOriginalTemplate] = useState(BUILT_IN_TEMPLATES[0].text);
   const [isSaving, setIsSaving] = useState(false);
@@ -172,8 +168,7 @@ export function ContractTemplateEditor({
     const { error } = await supabase
       .from("organizations")
       .update({
-        branding: { ...currentBranding, ...updates } as any,
-      })
+        branding: { ...currentBranding, ...updates } as any })
       .eq("id", organizationId);
 
     if (error) throw error;
@@ -186,8 +181,7 @@ export function ContractTemplateEditor({
       const newHistoryEntry: TemplateHistoryEntry = {
         text: originalTemplate,
         savedAt: new Date().toISOString(),
-        templateName: activeT?.name || "Без имени",
-      };
+        templateName: activeT?.name || "Без имени" };
       const updatedHistory = [newHistoryEntry, ...history].slice(0, 10);
 
       const updatedTemplates = templates.map(t =>
@@ -198,8 +192,7 @@ export function ContractTemplateEditor({
         contractTemplate: template,
         contractTemplates: updatedTemplates,
         activeContractTemplateId: activeTemplateId,
-        contractTemplateHistory: updatedHistory,
-      });
+        contractTemplateHistory: updatedHistory });
 
       setTemplates(updatedTemplates);
       setHistory(updatedHistory);
@@ -229,8 +222,7 @@ export function ContractTemplateEditor({
       id,
       name: newTemplateName.trim(),
       text: template,
-      isBuiltIn: false,
-    };
+      isBuiltIn: false };
     const updatedTemplates = [...templates, newTemplate];
     setTemplates(updatedTemplates);
     setActiveTemplateId(id);
@@ -239,8 +231,7 @@ export function ContractTemplateEditor({
     try {
       await saveBranding({
         contractTemplates: updatedTemplates,
-        activeContractTemplateId: id,
-      });
+        activeContractTemplateId: id });
       toast.success(`Шаблон «${newTemplate.name}» сохранён`);
     } catch {
       toast.error("Ошибка сохранения");
@@ -262,8 +253,7 @@ export function ContractTemplateEditor({
     try {
       await saveBranding({
         contractTemplates: updatedTemplates,
-        activeContractTemplateId: "legal",
-      });
+        activeContractTemplateId: "legal" });
       toast.success(`Шаблон «${active.name}» удалён`);
     } catch {
       toast.error("Ошибка удаления");
@@ -320,8 +310,7 @@ export function ContractTemplateEditor({
         setTemplateBeforeAI(template);
         toast.info("Загружаем и обрабатываем документ...");
         const { data, error } = await safeInvoke<any>("process-contract-template", {
-          body: { text: text.trim(), placeholders: PLACEHOLDERS },
-        });
+          body: { text: text.trim(), placeholders: PLACEHOLDERS } });
         if (error) throw error;
         if (data?.processedText) {
           if (data.processedText.length < text.trim().length * 0.6) {
@@ -347,8 +336,7 @@ export function ContractTemplateEditor({
     setIsAddingVariables(true);
     try {
       const { data, error } = await safeInvoke<any>("process-contract-template", {
-        body: { text: template, placeholders: PLACEHOLDERS },
-      });
+        body: { text: template, placeholders: PLACEHOLDERS } });
       if (error) throw error;
       if (data?.processedText) {
         if (data.processedText.length < template.length * 0.6) {
@@ -389,7 +377,7 @@ export function ContractTemplateEditor({
   if (isLoading) {
     return (
       <div className="flex items-center justify-center p-8">
-        <Loader2 className="w-6 h-6 animate-spin text-primary" />
+        <SigmaSpinner />
       </div>
     );
   }
@@ -439,12 +427,12 @@ export function ContractTemplateEditor({
 
         {/* Right group: actions */}
         <Button variant="ghost" size="sm" className="h-8 px-2 rounded-lg gap-1" onClick={() => fileInputRef.current?.click()} disabled={isProcessingFile} title="Загрузить DOC/PDF">
-          {isProcessingFile ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Upload className="w-3.5 h-3.5" />}
+          {isProcessingFile ? <SigmaSpinner size="xs" className=".5 .5" /> : <Upload className="w-3.5 h-3.5" />}
           <span className="hidden md:inline text-xs">Загрузить</span>
         </Button>
 
         <Button variant="ghost" size="sm" className="h-8 px-2 rounded-lg gap-1" onClick={addVariablesToTemplate} disabled={isAddingVariables} title="Добавить переменные (AI)">
-          {isAddingVariables ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />}
+          {isAddingVariables ? <SigmaSpinner size="xs" className=".5 .5" /> : <Sparkles className="w-3.5 h-3.5" />}
           <span className="hidden md:inline text-xs">AI</span>
         </Button>
 
@@ -467,7 +455,7 @@ export function ContractTemplateEditor({
         <div className="flex-1" />
 
         <Button size="sm" className="h-8 px-3 rounded-lg gap-1.5 text-xs" onClick={handleSave} disabled={isSaving || !hasChanges}>
-          {isSaving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
+          {isSaving ? <SigmaSpinner size="xs" className=".5 .5" /> : <Save className="w-3.5 h-3.5" />}
           Сохранить
         </Button>
       </div>

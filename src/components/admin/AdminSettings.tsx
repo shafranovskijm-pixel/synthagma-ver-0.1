@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { ThemePersonalization } from "@/components/ui/ThemePersonalization";
 import {
-  Palette, Database, Shield, Bell, Loader2, Save, Globe, Tag, Sparkles,
+  Palette, Database, Shield, Bell, Save, Globe, Tag, Sparkles,
   RefreshCw, BarChart3, FileText, Bot, Terminal, Users
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -15,6 +15,7 @@ import { BlogManager } from "./BlogManager";
 import { AISettingsManager } from "./AISettingsManager";
 import { DevToolsPanel } from "./DevToolsPanel";
 import { AdminStaffTab } from "./AdminStaffTab";
+import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 
 interface SystemSettings {
   maintenanceMode: boolean;
@@ -48,8 +49,7 @@ export function AdminSettings() {
 
   const [systemSettings, setSystemSettings] = useState<SystemSettings>({
     maintenanceMode: false,
-    registrationEnabled: true,
-  });
+    registrationEnabled: true });
   const [isSaving, setIsSaving] = useState(false);
   const [isResettingCache, setIsResettingCache] = useState(false);
 
@@ -71,8 +71,7 @@ export function AdminSettings() {
         totalOrgs: orgsRes.count || 0,
         totalUsers: usersRes.count || 0,
         totalCourses: coursesRes.count || 0,
-        totalEnrollments: enrollmentsRes.count || 0,
-      });
+        totalEnrollments: enrollmentsRes.count || 0 });
     } catch (error) {
       console.error("Error fetching stats:", error);
     } finally {
@@ -107,7 +106,7 @@ export function AdminSettings() {
         return (
           <div className="space-y-4">
             {isLoadingStats ? (
-              <div className="flex items-center justify-center py-8"><Loader2 className="w-6 h-6 animate-spin text-primary" /></div>
+              <div className="flex items-center justify-center py-8"><SigmaSpinner /></div>
             ) : (
               <div className="grid grid-cols-2 gap-4">
                 {[
@@ -124,7 +123,7 @@ export function AdminSettings() {
               </div>
             )}
             <Button variant="outline" className="rounded-xl gap-2" onClick={fetchDbStats} disabled={isLoadingStats}>
-              {isLoadingStats ? <Loader2 className="w-4 h-4 animate-spin" /> : <Database className="w-4 h-4" />}
+              {isLoadingStats ? <SigmaSpinner size="sm" /> : <Database className="w-4 h-4" />}
               Обновить статистику
             </Button>
           </div>
@@ -156,7 +155,7 @@ export function AdminSettings() {
                 } finally { setIsResettingCache(false); }
               }}
             >
-              {isResettingCache ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
+              {isResettingCache ? <SigmaSpinner size="sm" /> : <RefreshCw className="w-4 h-4" />}
               Сбросить кеш у всех
             </Button>
           </div>
@@ -173,16 +172,14 @@ export function AdminSettings() {
                 desc: "Разрешить новым организациям регистрироваться",
                 active: systemSettings.registrationEnabled,
                 toggle: () => setSystemSettings(p => ({ ...p, registrationEnabled: !p.registrationEnabled })),
-                colorActive: "bg-primary",
-              },
+                colorActive: "bg-primary" },
               {
                 title: "Режим обслуживания",
                 desc: "Временно заблокировать доступ для пользователей",
                 active: systemSettings.maintenanceMode,
                 toggle: () => setSystemSettings(p => ({ ...p, maintenanceMode: !p.maintenanceMode })),
                 colorActive: "bg-destructive",
-                badge: systemSettings.maintenanceMode,
-              },
+                badge: systemSettings.maintenanceMode },
             ].map(item => (
               <div key={item.title} className="flex items-center justify-between py-3 border-b border-border">
                 <div>
@@ -201,7 +198,7 @@ export function AdminSettings() {
               </div>
             ))}
             <Button className="btn-gradient rounded-xl gap-2" onClick={handleSaveSettings} disabled={isSaving}>
-              {isSaving ? <><Loader2 className="w-4 h-4 animate-spin" /> Сохранение...</> : <><Save className="w-4 h-4" /> Сохранить настройки</>}
+              {isSaving ? <><SigmaSpinner size="sm" /> Сохранение...</> : <><Save className="w-4 h-4" /> Сохранить настройки</>}
             </Button>
           </div>
         );

@@ -11,30 +11,28 @@ import {
   SelectContent,
   SelectItem,
   SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+  SelectValue } from "@/components/ui/select";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogFooter,
-} from "@/components/ui/dialog";
+  DialogFooter } from "@/components/ui/dialog";
 import {
   Table,
   TableBody,
   TableCell,
   TableHead,
   TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+  TableRow } from "@/components/ui/table";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Switch } from "@/components/ui/switch";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Bell, Plus, Send, Check, X, Loader2, Calendar, Building2, User, Edit2, Copy, Eye, Pencil } from "lucide-react";
+import { Bell, Plus, Send, Check, X, Calendar, Building2, User, Edit2, Copy, Eye, Pencil } from "lucide-react";
 import { REMINDER_TEMPLATES, RETRAINING_PERIOD_OPTIONS, ReminderTemplate } from "@/constants/reminderTemplates";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
+import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 
 interface CourseReminder {
   id: string;
@@ -204,8 +202,7 @@ export function CourseRemindersTab({ courseId, organizationId, retrainingPeriodM
           reminder_text: editingReminder.reminder_text,
           notify_organization: editingReminder.notify_organization,
           notify_company: editingReminder.notify_company,
-          notify_student: editingReminder.notify_student,
-        } as any)
+          notify_student: editingReminder.notify_student } as any)
         .eq("id", editingReminder.id);
       if (error) throw error;
       toast.success("Напоминание обновлено");
@@ -354,7 +351,7 @@ export function CourseRemindersTab({ courseId, organizationId, retrainingPeriodM
 
         {loading ? (
           <div className="flex justify-center py-8">
-            <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+            <SigmaSpinner />
           </div>
         ) : activeReminders.length === 0 ? (
           <div className="text-center py-8 text-muted-foreground">
@@ -527,7 +524,7 @@ export function CourseRemindersTab({ courseId, organizationId, retrainingPeriodM
           <DialogFooter>
             <Button variant="outline" className="rounded-xl" onClick={() => setEditingReminder(null)}>Отмена</Button>
             <Button className="rounded-xl btn-gradient" onClick={handleSaveReminderEdit} disabled={isSaving}>
-              {isSaving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+              {isSaving ? <SigmaSpinner size="sm" className="mr-2" /> : null}
               Сохранить
             </Button>
           </DialogFooter>

@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-import { ArrowLeft, User, Video, BookOpen, FileText, Clock, MessageCircle, Loader2, LogIn, Shield, Building2, GraduationCap, Copy, Eye, EyeOff, KeyRound, Pencil, Plus, Save } from "lucide-react";
+import { ArrowLeft, User, Video, BookOpen, FileText, Clock, MessageCircle, LogIn, Shield, Building2, GraduationCap, Copy, Eye, EyeOff, KeyRound, Pencil, Plus, Save } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -19,6 +19,7 @@ import { ChatTab } from "@/components/organization/student-detail/ChatTab";
 import { FRDOExportDialog } from "@/components/organization/FRDOExportDialog";
 import { safeInvoke } from "@/utils/safeInvoke";
 import { toast } from "sonner";
+import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 
 function formatTimeAgo(date: Date): string {
   const diff = Date.now() - date.getTime();
@@ -33,8 +34,7 @@ function formatTimeAgo(date: Date): string {
 const ROLE_LABELS: Record<string, { label: string; color: string }> = {
   admin: { label: "Админ", color: "bg-purple-100 text-purple-700" },
   organization: { label: "Организация", color: "bg-blue-100 text-blue-700" },
-  student: { label: "Слушатель", color: "bg-green-100 text-green-700" },
-};
+  student: { label: "Слушатель", color: "bg-green-100 text-green-700" } };
 
 interface StudentData {
   id: string;
@@ -111,8 +111,7 @@ export default function AdminUserDetails() {
         login: profile.login,
         company_name: companyName,
         generated_password: profile.generated_password,
-        last_visit_at: profile.last_visit_at,
-      });
+        last_visit_at: profile.last_visit_at });
 
       setOrganizationId(orgId);
 
@@ -140,8 +139,7 @@ export default function AdminUserDetails() {
         status: e.status || "active",
         started_at: e.started_at,
         completed_at: e.completed_at,
-        time_spent: e.time_spent || 0,
-      })));
+        time_spent: e.time_spent || 0 })));
 
       setLoading(false);
     };
@@ -153,8 +151,7 @@ export default function AdminUserDetails() {
     student,
     organizationId: organizationId || "",
     enrollments,
-    onStudentUpdated: () => window.location.reload(),
-  });
+    onStudentUpdated: () => window.location.reload() });
 
   const handleSaveCredentials = async () => {
     if (!student) return;
@@ -164,9 +161,7 @@ export default function AdminUserDetails() {
         body: {
           userId: student.user_id,
           login: credEdit.login.trim(),
-          password: credEdit.password.trim(),
-        },
-      });
+          password: credEdit.password.trim() } });
       if (error) throw error;
       setStudent(prev => prev ? { ...prev, login: credEdit.login.trim(), generated_password: credEdit.password.trim() } : prev);
       setCredEdit(prev => ({ ...prev, editing: false, saving: false }));
@@ -186,7 +181,7 @@ export default function AdminUserDetails() {
   const roleInfo = userRole ? ROLE_LABELS[userRole] : null;
 
   if (loading) {
-    return <div className="min-h-screen flex items-center justify-center"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>;
+    return <div className="min-h-screen flex items-center justify-center"><SigmaSpinner size="lg" /></div>;
   }
 
   if (!student) {
@@ -236,8 +231,7 @@ export default function AdminUserDetails() {
                     userId: student.user_id,
                     name: student.name,
                     orgName: organizationName || '',
-                    orgReturn: '/admin',
-                  }));
+                    orgReturn: '/admin' }));
                   navigate('/student');
                 }}
               >
@@ -296,7 +290,7 @@ export default function AdminUserDetails() {
                     <div className="flex gap-1">
                       <Button variant="ghost" size="sm" className="h-6 text-xs flex-1" onClick={() => setCredEdit(p => ({ ...p, editing: false }))}>Отмена</Button>
                       <Button size="sm" className="h-6 text-xs flex-1" disabled={credEdit.saving || !credEdit.login.trim() || !credEdit.password.trim()} onClick={handleSaveCredentials}>
-                        {credEdit.saving ? <Loader2 className="w-3 h-3 animate-spin" /> : <Save className="w-3 h-3 mr-1" />}Сохранить
+                        {credEdit.saving ? <SigmaSpinner size="xs" /> : <Save className="w-3 h-3 mr-1" />}Сохранить
                       </Button>
                     </div>
                   </div>
@@ -353,7 +347,7 @@ export default function AdminUserDetails() {
           {/* Tab content */}
           <div className="flex-1 min-w-0">
             {h.isLoading ? (
-              <div className="flex items-center justify-center py-12"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>
+              <div className="flex items-center justify-center py-12"><SigmaSpinner size="lg" /></div>
             ) : (
               <>
                 {h.activeTab === "profile" && (

@@ -8,13 +8,14 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Checkbox } from "@/components/ui/checkbox";
-import { User, Bell, Handshake, Save, Eye, EyeOff, Upload, X, Loader2, Image as ImageIcon, Palette, LogIn, Camera } from "lucide-react";
+import { User, Bell, Handshake, Save, Eye, EyeOff, Upload, X, Image as ImageIcon, Palette, LogIn, Camera } from "lucide-react";
 import { toast } from "sonner";
 import { PartnerCabinet } from "@/components/organization/PartnerCabinet";
 import { ThemePersonalization } from "@/components/ui/ThemePersonalization";
 import { ProfileBrandingTab } from "@/components/organization/ProfileBrandingTab";
 import { ProfileLoginBrandingTab } from "@/components/organization/ProfileLoginBrandingTab";
 import OrgPageLayout from "@/components/organization/OrgPageLayout";
+import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 
 interface ProfileData {
   full_name: string;
@@ -56,8 +57,7 @@ function ProfileContent() {
   const [saving, setSaving] = useState(false);
 
   const [profile, setProfile] = useState<ProfileData>({
-    full_name: "", email: "", phone: "", avatar_url: "", vk_link: "", telegram_link: "", bio: "",
-  });
+    full_name: "", email: "", phone: "", avatar_url: "", vk_link: "", telegram_link: "", bio: "" });
   const [newEmail, setNewEmail] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -103,8 +103,7 @@ function ProfileContent() {
       setProfile({
         full_name: data.full_name || "", email: data.email || user!.email || "", phone: data.phone || "",
         avatar_url: data.avatar_url || "", vk_link: (data as any).vk_link || "",
-        telegram_link: (data as any).telegram_link || "", bio: (data as any).bio || "",
-      });
+        telegram_link: (data as any).telegram_link || "", bio: (data as any).bio || "" });
       setNewEmail(data.email || user!.email || "");
     }
   };
@@ -194,8 +193,7 @@ function ProfileContent() {
     try {
       const { error } = await supabase.from("profiles").update({
         full_name: profile.full_name, phone: profile.phone,
-        vk_link: profile.vk_link, telegram_link: profile.telegram_link, bio: profile.bio,
-      } as any).eq("user_id", user!.id);
+        vk_link: profile.vk_link, telegram_link: profile.telegram_link, bio: profile.bio } as any).eq("user_id", user!.id);
       if (error) throw error;
       toast.success("Профиль сохранён");
     } catch (e: any) { toast.error(e.message); }
@@ -275,7 +273,7 @@ function ProfileContent() {
                   className="relative w-20 h-20 rounded-full border-2 border-dashed border-border flex items-center justify-center overflow-hidden hover:border-primary/50 hover:bg-primary/5 transition-all group/avatar"
                 >
                   {isUploadingAvatar ? (
-                    <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+                    <SigmaSpinner />
                   ) : profile.avatar_url ? (
                     <>
                       <img src={profile.avatar_url} alt="Аватар" className="w-full h-full object-cover" />
@@ -356,7 +354,7 @@ function ProfileContent() {
                 <div className="flex items-center gap-4">
                   <button onClick={() => iconInputRef.current?.click()} className="relative w-16 h-16 rounded-xl border-2 border-dashed border-border flex items-center justify-center overflow-hidden hover:border-primary/50 hover:bg-primary/5 transition-all group/icon">
                     {isUploadingIcon ? (
-                      <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+                      <SigmaSpinner />
                     ) : orgLogoUrl ? (
                       <>
                         <img src={orgLogoUrl} alt="Значок" className="w-14 h-14 object-contain" />
@@ -407,7 +405,7 @@ function ProfileContent() {
 
       <TabsContent value="branding">
         {orgIdLoading ? (
-          <div className="flex items-center justify-center py-16"><Loader2 className="w-6 h-6 animate-spin text-muted-foreground" /></div>
+          <div className="flex items-center justify-center py-16"><SigmaSpinner /></div>
         ) : organizationId && user?.id ? (
           <ProfileBrandingTab organizationId={organizationId} userId={user.id} />
         ) : (
@@ -417,7 +415,7 @@ function ProfileContent() {
 
       <TabsContent value="login-branding">
         {orgIdLoading ? (
-          <div className="flex items-center justify-center py-16"><Loader2 className="w-6 h-6 animate-spin text-muted-foreground" /></div>
+          <div className="flex items-center justify-center py-16"><SigmaSpinner /></div>
         ) : organizationId && user?.id ? (
           <ProfileLoginBrandingTab organizationId={organizationId} userId={user.id} />
         ) : (

@@ -7,21 +7,18 @@ import {
   DialogContent,
   DialogDescription,
   DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+  DialogTitle } from "@/components/ui/dialog";
 import {
   Accordion,
   AccordionContent,
   AccordionItem,
-  AccordionTrigger,
-} from "@/components/ui/accordion";
+  AccordionTrigger } from "@/components/ui/accordion";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import {
   FileText,
   Download,
   Trash2,
-  Loader2,
   Upload,
   Search,
   Eye,
@@ -38,8 +35,7 @@ import {
   Sparkles,
   CheckCircle,
   ShoppingCart,
-  Check,
-} from "lucide-react";
+  Check } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
@@ -48,6 +44,7 @@ import { OrdersArchive } from "./OrdersArchive";
 import { cn } from "@/lib/utils";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { SelfExaminationQuiz, QuizData } from "./SelfExaminationQuiz";
+import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 
 interface OrgDocument {
   id: string;
@@ -71,8 +68,7 @@ const REGULAR_CATEGORIES = [
       { type: "charter", label: "Устав организации", required: true },
       { type: "license", label: "Лицензия на осуществление образовательной деятельности (с приложениями)", required: true },
       { type: "registration", label: "Свидетельство о государственной регистрации юридического лица", required: true },
-    ],
-  },
+    ] },
   {
     id: "lna_main",
     title: "Локальные нормативные акты",
@@ -90,8 +86,7 @@ const REGULAR_CATEGORIES = [
       { type: "vsoko", label: "Положение о внутренней системе оценки качества образования (ВСОКО)", required: true },
       { type: "elearning_rules", label: "Положение о порядке применения электронного обучения и дистанционных образовательных технологий", required: false },
       { type: "practice_rules", label: "Положение о практике (стажировке) обучающихся", required: false },
-    ],
-  },
+    ] },
   {
     id: "qualification_docs",
     title: "Документы о квалификации",
@@ -102,8 +97,7 @@ const REGULAR_CATEGORIES = [
     documents: [
       { type: "qualification_issuance", label: "Положение о порядке оформления, выдачи и учета документов о квалификации", required: true },
       { type: "credit_rules", label: "Положение о порядке зачета результатов обучения", required: true },
-    ],
-  },
+    ] },
   {
     id: "additional_lna",
     title: "Дополнительные ЛНА",
@@ -117,8 +111,7 @@ const REGULAR_CATEGORIES = [
       { type: "paid_services", label: "Положение о порядке оказания платных образовательных услуг", required: false },
       { type: "personal_data", label: "Положение о защите персональных данных", required: true },
       { type: "electronic_docs_rules", label: "Положение о порядке ведения электронной документации и приравнивании электронных документов к документам на бумажном носителе", required: false },
-    ],
-  },
+    ] },
   {
     id: "orders",
     title: "Основные приказы",
@@ -132,8 +125,7 @@ const REGULAR_CATEGORIES = [
       { type: "commission_orders", label: "Приказы о создании комиссий", required: true },
       { type: "doc_forms_approval", label: "Приказ об утверждении форм документов об образовании", required: true },
       { type: "electronic_docs_order", label: "Приказ об утверждении Положения о порядке ведения электронной документации и приравнивании электронных документов к документам на бумажном носителе", required: false },
-    ],
-  },
+    ] },
   {
     id: "annual_reports",
     title: "Отчёты",
@@ -143,8 +135,7 @@ const REGULAR_CATEGORIES = [
     bgColor: "bg-pink-500/10",
     documents: [
       { type: "self_examination_report", label: "Отчёт о результатах самообследования", required: true, annual: true },
-    ],
-  },
+    ] },
 ];
 
 // Специальные категории с отдельным интерфейсом (в аккордеоне слева)
@@ -159,8 +150,7 @@ const SPECIAL_CATEGORIES = [
     documents: [
       { type: "enrollment_order", label: "Приказ о зачислении", required: false },
       { type: "expulsion_order", label: "Приказ об отчислении", required: false },
-    ],
-  },
+    ] },
   {
     id: "attestation_protocols",
     title: "Протоколы аттестационной комиссии",
@@ -170,8 +160,7 @@ const SPECIAL_CATEGORIES = [
     bgColor: "bg-rose-500/10",
     documents: [
       { type: "attestation_protocol", label: "Протокол аттестационной комиссии", required: false },
-    ],
-  },
+    ] },
   {
     id: "certificates",
     title: "Удостоверения",
@@ -181,8 +170,7 @@ const SPECIAL_CATEGORIES = [
     bgColor: "bg-orange-500/10",
     documents: [
       { type: "certificate_qualification", label: "Удостоверение о повышении квалификации", required: false },
-    ],
-  },
+    ] },
   {
     id: "diplomas",
     title: "Дипломы",
@@ -192,8 +180,7 @@ const SPECIAL_CATEGORIES = [
     bgColor: "bg-violet-500/10",
     documents: [
       { type: "diploma_retraining", label: "Диплом о профессиональной переподготовке", required: false },
-    ],
-  },
+    ] },
   {
     id: "testimonials",
     title: "Свидетельства",
@@ -204,8 +191,7 @@ const SPECIAL_CATEGORIES = [
     documents: [
       { type: "testimonial_profession", label: "Свидетельство о профессии рабочего", required: false },
       { type: "testimonial_position", label: "Свидетельство о должности служащего", required: false },
-    ],
-  },
+    ] },
 ];
 
 const ALL_CATEGORIES = [...REGULAR_CATEGORIES, ...SPECIAL_CATEGORIES];
@@ -218,8 +204,7 @@ const getAllDocumentTypes = () => {
       types.push({
         value: doc.type,
         label: doc.label,
-        categoryId: cat.id,
-      });
+        categoryId: cat.id });
     });
   });
   return types;
@@ -339,8 +324,7 @@ export function OrgDocumentsManager({ organizationId }: OrgDocumentsManagerProps
           .update({
             name: docTypeInfo.label,
             file_url: fileUrl,
-            updated_at: new Date().toISOString(),
-          })
+            updated_at: new Date().toISOString() })
           .eq("id", existingDoc.id);
 
         if (error) throw error;
@@ -353,8 +337,7 @@ export function OrgDocumentsManager({ organizationId }: OrgDocumentsManagerProps
             organization_id: organizationId,
             name: docTypeInfo.label,
             type: uploadDocType,
-            file_url: fileUrl,
-          });
+            file_url: fileUrl });
 
         if (error) throw error;
         toast.success("Документ загружен");
@@ -882,7 +865,7 @@ export function OrgDocumentsManager({ organizationId }: OrgDocumentsManagerProps
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-12">
-        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        <SigmaSpinner size="lg" />
       </div>
     );
   }
@@ -938,7 +921,7 @@ export function OrgDocumentsManager({ organizationId }: OrgDocumentsManagerProps
             >
               {isUploading ? (
                 <>
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  <SigmaSpinner size="sm" className="mr-2" />
                   Загрузка...
                 </>
               ) : (
@@ -1073,7 +1056,7 @@ export function OrgDocumentsManager({ organizationId }: OrgDocumentsManagerProps
               >
                 {isSubmittingOrder ? (
                   <>
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    <SigmaSpinner size="sm" className="mr-2" />
                     Отправка...
                   </>
                 ) : (

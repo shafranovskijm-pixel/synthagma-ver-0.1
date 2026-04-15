@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { Loader2, FileSpreadsheet, CheckCircle2, XCircle, BarChart3, Filter, X, Calendar, ChevronDown, ChevronUp } from "lucide-react";
+import { FileSpreadsheet, CheckCircle2, XCircle, BarChart3, Filter, X, Calendar, ChevronDown, ChevronUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -9,6 +9,7 @@ import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 
 // Helper to normalize option value (can be string or {text: string})
 function normalizeOption(opt: unknown): string {
@@ -347,7 +348,7 @@ export function CourseTestReport({ courseId, courseName, organizationId }: Cours
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-8">
-        <Loader2 className="w-6 h-6 animate-spin text-primary" />
+        <SigmaSpinner />
       </div>
     );
   }

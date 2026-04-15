@@ -1,6 +1,7 @@
+import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
  import { useState, useEffect } from "react";
  import { 
-   Globe, Save, Loader2, RefreshCw, ExternalLink, 
+   Globe, Save, RefreshCw, ExternalLink, 
    FileText, Image, Search, ChevronRight, Copy, Check
  } from "lucide-react";
  import { Button } from "@/components/ui/button";
@@ -375,7 +376,7 @@ const DEFAULT_PAGES: PageSEO[] = [
              Сбросить
            </Button>
            <Button className="btn-gradient rounded-xl gap-2" onClick={handleSave} disabled={isSaving}>
-             {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+             {isSaving ? <SigmaSpinner size="sm" /> : <Save className="w-4 h-4" />}
              Сохранить
            </Button>
          </div>

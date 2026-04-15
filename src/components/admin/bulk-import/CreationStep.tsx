@@ -1,7 +1,8 @@
-import { CheckCircle2, Loader2 } from "lucide-react";
+import { CheckCircle2} from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
+import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 
 interface Props {
   current: number;
@@ -22,7 +23,7 @@ export function CreationStep({ current, total, currentName, completed }: Props) 
             {isDone ? (
               <CheckCircle2 className="w-12 h-12 mx-auto text-green-500 mb-3" />
             ) : (
-              <Loader2 className="w-12 h-12 mx-auto text-primary animate-spin mb-3" />
+              <SigmaSpinner size="xl" className="mx-auto mb-3" />
             )}
             <h3 className="text-lg font-display font-semibold">
               {isDone ? "Все курсы созданы!" : "Создание курсов..."}

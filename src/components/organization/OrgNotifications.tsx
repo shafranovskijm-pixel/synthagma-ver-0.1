@@ -9,17 +9,15 @@ import {
   Shield,
   FileText,
   CheckCircle2,
-  Loader2,
   CreditCard,
-  ClipboardList,
-} from "lucide-react";
+  ClipboardList } from "lucide-react";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import {
+import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
   Popover,
   PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
+  PopoverTrigger } from "@/components/ui/popover";
 
 interface Notification {
   id: string;
@@ -118,8 +116,7 @@ export function OrgNotifications({ organizationId }: OrgNotificationsProps) {
         .channel('org_notifications')
         .on('postgres_changes', {
           event: 'INSERT', schema: 'public', table: 'org_notifications',
-          filter: `organization_id=eq.${organizationId}`,
-        }, (payload) => {
+          filter: `organization_id=eq.${organizationId}` }, (payload) => {
           setNotifications(prev => [payload.new as Notification, ...prev]);
           playNotificationSound();
         })
@@ -173,8 +170,7 @@ export function OrgNotifications({ organizationId }: OrgNotificationsProps) {
   const tabCounts = useMemo(() => ({
     all: notifications.filter(n => !n.is_read).length,
     tasks: getFilteredNotifications(notifications, "tasks").filter(n => !n.is_read).length,
-    payments: getFilteredNotifications(notifications, "payments").filter(n => !n.is_read).length,
-  }), [notifications]);
+    payments: getFilteredNotifications(notifications, "payments").filter(n => !n.is_read).length }), [notifications]);
 
   const tabs: { key: TabKey; label: string; icon: React.ReactNode }[] = [
     { key: "all", label: "Все", icon: <Bell className="w-3.5 h-3.5" /> },
@@ -234,7 +230,7 @@ export function OrgNotifications({ organizationId }: OrgNotificationsProps) {
         {/* Content */}
         {isLoading ? (
           <div className="flex items-center justify-center py-12">
-            <Loader2 className="w-6 h-6 animate-spin text-primary" />
+            <SigmaSpinner />
           </div>
         ) : filtered.length === 0 ? (
           <div className="text-center py-12 text-muted-foreground">

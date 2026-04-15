@@ -1,5 +1,5 @@
 import { useState, useRef } from "react";
-import { Send, ImagePlus, X, Loader2, Phone } from "lucide-react";
+import { Send, ImagePlus, X, Phone } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -8,6 +8,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useErrorLogger } from "@/hooks/useErrorLogger";
 import { toast } from "sonner";
+import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 
 export function SupportRequestForm() {
   const [description, setDescription] = useState("");
@@ -109,8 +110,7 @@ export function SupportRequestForm() {
           screenshot_url: photoUrl,
           browser_info: navigator.userAgent.slice(0, 200),
           page_url: window.location.href,
-          error_logs: errorsText !== "Нет" ? errorsText : null,
-        });
+          error_logs: errorsText !== "Нет" ? errorsText : null });
       }
 
       // Build message
@@ -209,7 +209,7 @@ ${errorsText}${photoUrl ? `\n\n<b>Скриншот:</b> ${photoUrl}` : ""}`;
           Скриншот
         </Button>
         <Button size="sm" onClick={handleSend} disabled={sending || !description.trim()}>
-          {sending ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <Send className="w-4 h-4 mr-1" />}
+          {sending ? <SigmaSpinner size="sm" className="mr-1" /> : <Send className="w-4 h-4 mr-1" />}
           Отправить
         </Button>
       </div>

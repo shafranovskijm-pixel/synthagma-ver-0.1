@@ -8,16 +8,15 @@ import { toast } from "sonner";
 import {
   Download,
   Search,
-  Loader2,
   Clock,
   BookOpen,
   Users,
   Calendar,
-  CheckCircle2,
-} from "lucide-react";
+  CheckCircle2 } from "lucide-react";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import { getXLSX } from "@/utils/xlsxHelper";
+import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 
 interface Course {
   id: string;
@@ -109,8 +108,7 @@ export function ClassJournalExport({ organizationId }: ClassJournalExportProps) 
           status: e.status,
           started_at: e.started_at,
           completed_at: e.completed_at,
-          time_spent: e.time_spent,
-        }));
+          time_spent: e.time_spent }));
 
         setEnrollments(enrichedEnrollments);
       }
@@ -147,8 +145,7 @@ export function ClassJournalExport({ organizationId }: ClassJournalExportProps) 
       "Дата начала": format(new Date(e.started_at), "dd.MM.yyyy", { locale: ru }),
       "Дата завершения": e.completed_at ? format(new Date(e.completed_at), "dd.MM.yyyy", { locale: ru }) : "-",
       "Время изучения": formatDuration(e.time_spent),
-      "Время изучения (мин)": Math.round(e.time_spent / 60),
-    }));
+      "Время изучения (мин)": Math.round(e.time_spent / 60) }));
 
     const ws = XLSX.utils.json_to_sheet(exportData);
     const wb = XLSX.utils.book_new();
@@ -163,8 +160,7 @@ export function ClassJournalExport({ organizationId }: ClassJournalExportProps) 
     avgProgress: filteredEnrollments.length > 0
       ? Math.round(filteredEnrollments.reduce((sum, e) => sum + e.progress, 0) / filteredEnrollments.length)
       : 0,
-    totalTime: filteredEnrollments.reduce((sum, e) => sum + e.time_spent, 0),
-  };
+    totalTime: filteredEnrollments.reduce((sum, e) => sum + e.time_spent, 0) };
 
   return (
     <div className="space-y-6">
@@ -264,7 +260,7 @@ export function ClassJournalExport({ organizationId }: ClassJournalExportProps) 
       {/* Table */}
       {isLoading ? (
         <div className="flex items-center justify-center py-12">
-          <Loader2 className="w-8 h-8 animate-spin text-primary" />
+          <SigmaSpinner size="lg" />
         </div>
       ) : filteredEnrollments.length === 0 ? (
         <div className="text-center py-12 text-muted-foreground bg-card rounded-2xl border border-border">

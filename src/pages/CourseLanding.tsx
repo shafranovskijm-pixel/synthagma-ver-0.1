@@ -5,7 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Loader2, Play, ArrowLeft } from "lucide-react";
+import { Play, ArrowLeft } from "lucide-react";
 import { getBaseUrl } from "@/utils/getBaseUrl";
 import { toast } from "sonner";
 import { LandingHeroSection } from "@/components/course-landing/LandingHeroSection";
@@ -19,6 +19,7 @@ import { LandingTeachersSection } from "@/components/course-landing/LandingTeach
 import { LandingReviewsSection } from "@/components/course-landing/LandingReviewsSection";
 import { LandingPricingSection } from "@/components/course-landing/LandingPricingSection";
 import { LandingFaqSection } from "@/components/course-landing/LandingFaqSection";
+import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 
 interface CourseData {
   id: string;
@@ -215,8 +216,7 @@ export default function CourseLanding() {
           user_id: user.id,
           course_id: course.id,
           role: "user",
-          content: `📌 Заявка на приобретение курса\n\n${contactLines}\n\nПрошу рассмотреть мою заявку на приобретение данного курса.`,
-        });
+          content: `📌 Заявка на приобретение курса\n\n${contactLines}\n\nПрошу рассмотреть мою заявку на приобретение данного курса.` });
 
         // Send notification to organization bell
         await supabase.from("org_notifications").insert({
@@ -225,8 +225,7 @@ export default function CourseLanding() {
           type: "order",
           title: `Заявка на курс: ${course.title}`,
           message: `${studentName} хочет приобрести курс «${course.title}» (${finalPrice.toLocaleString("ru-RU")} ₽)`,
-          is_read: false,
-        });
+          is_read: false });
 
         toast.success("Заявка отправлена!", { description: "Учебный центр свяжется с вами" });
       } catch (e: any) {
@@ -260,7 +259,7 @@ export default function CourseLanding() {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        <SigmaSpinner size="lg" />
       </div>
     );
   }
@@ -308,7 +307,7 @@ export default function CourseLanding() {
         <>
           <Input value={promoCode} onChange={(e) => setPromoCode(e.target.value)} placeholder="Промокод" className="bg-white/10 border-white/20 text-white placeholder:text-white/50 w-32" />
           <Button variant="secondary" size="sm" onClick={checkPromoCode} disabled={promoChecking}>
-            {promoChecking ? <Loader2 className="w-4 h-4 animate-spin" /> : "OK"}
+            {promoChecking ? <SigmaSpinner size="sm" /> : "OK"}
           </Button>
         </>
       )}
@@ -404,8 +403,7 @@ export default function CourseLanding() {
     ...(course.price > 0
       ? { offers: { "@type": "Offer", price: finalPrice, priceCurrency: "RUB", availability: "https://schema.org/InStock" } }
       : { isAccessibleForFree: true }),
-    ...(lessons.length > 0 ? { hasCourseInstance: { "@type": "CourseInstance", courseMode: "online" } } : {}),
-  };
+    ...(lessons.length > 0 ? { hasCourseInstance: { "@type": "CourseInstance", courseMode: "online" } } : {}) };
 
   return (
     <div className="min-h-screen bg-background relative">

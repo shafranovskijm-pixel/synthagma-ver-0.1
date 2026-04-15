@@ -1,22 +1,21 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Loader2, Trophy } from "lucide-react";
+import { Trophy } from "lucide-react";
 import { toast } from "sonner";
+import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 
 const RARITY_STYLES: Record<string, { bg: string; border: string; text: string }> = {
   common: { bg: "bg-muted/50", border: "border-muted-foreground/20", text: "text-muted-foreground" },
   rare: { bg: "bg-blue-500/10", border: "border-blue-500/30", text: "text-blue-500" },
   epic: { bg: "bg-violet-500/10", border: "border-violet-500/30", text: "text-violet-500" },
-  legendary: { bg: "bg-amber-500/10", border: "border-amber-500/30", text: "text-amber-500" },
-};
+  legendary: { bg: "bg-amber-500/10", border: "border-amber-500/30", text: "text-amber-500" } };
 
 const RARITY_LABELS: Record<string, string> = {
   common: "Обычное",
   rare: "Редкое",
   epic: "Эпичное",
-  legendary: "Легендарное",
-};
+  legendary: "Легендарное" };
 
 interface Achievement {
   id: string;
@@ -93,7 +92,7 @@ export function CourseAchievementsTab({ courseId, organizationId }: CourseAchiev
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
-        <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+        <SigmaSpinner />
       </div>
     );
   }
@@ -139,7 +138,7 @@ export function CourseAchievementsTab({ courseId, organizationId }: CourseAchiev
               <span className={`text-xs font-medium px-2 py-1 rounded-full ${style.bg} ${style.text}`}>
                 {RARITY_LABELS[ach.rarity] || ach.rarity}
               </span>
-              {toggling === ach.id && <Loader2 className="w-4 h-4 animate-spin shrink-0" />}
+              {toggling === ach.id && <SigmaSpinner size="sm" className="shrink-0" />}
             </div>
           );
         })}

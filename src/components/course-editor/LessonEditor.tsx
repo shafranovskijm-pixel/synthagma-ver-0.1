@@ -8,16 +8,14 @@ import {
   Dialog,
   DialogContent,
   DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+  DialogTitle } from "@/components/ui/dialog";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { FileText, Video, HelpCircle, Plus, Trash2, Sparkles, Loader2, Settings, Upload, Cloud, FileSpreadsheet, FolderOpen } from "lucide-react";
+  SelectValue } from "@/components/ui/select";
+import { FileText, Video, HelpCircle, Plus, Trash2, Sparkles, Settings, Upload, Cloud, FileSpreadsheet, FolderOpen } from "lucide-react";
 import { BlockEditor, ContentBlock } from "@/components/course-builder/BlockEditor";
 import { TestImportDialog } from "@/components/course-builder/TestImportDialog";
 import { supabase } from "@/integrations/supabase/client";
@@ -26,6 +24,7 @@ import { useExternalStorageWithProgress } from "@/hooks/useExternalStorageWithPr
 import { Badge } from "@/components/ui/badge";
 import { MediaLibraryDialog } from "@/components/course-builder/MediaLibraryDialog";
 import { toast } from "sonner";
+import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 // Video preview component for lesson editor
 function VideoPreview({ videoUrl }: { videoUrl: string }) {
   const isIframeEmbed = (content: string): boolean => {
@@ -116,8 +115,7 @@ function VideoPreview({ videoUrl }: { videoUrl: string }) {
           className="w-full h-full [&>iframe]:w-full [&>iframe]:h-full [&>iframe]:border-0"
           dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(embedResult.value || '', {
             ALLOWED_TAGS: ['iframe'],
-            ALLOWED_ATTR: ['src', 'width', 'height', 'frameborder', 'allow', 'allowfullscreen', 'title', 'referrerpolicy'],
-          }) }}
+            ALLOWED_ATTR: ['src', 'width', 'height', 'frameborder', 'allow', 'allowfullscreen', 'title', 'referrerpolicy'] }) }}
         />
       ) : (
         <iframe 
@@ -266,8 +264,7 @@ export const LessonEditor = ({
         question: "",
         options: ["", "", "", ""],
         correct_answer: 0,
-        order_index: questions.length,
-      },
+        order_index: questions.length },
     ]);
   };
 
@@ -298,9 +295,7 @@ export const LessonEditor = ({
           lessonTitle: title,
           lessonType: type,
           courseTitle,
-          courseDescription,
-        },
-      });
+          courseDescription } });
 
       if (error) throw error;
 
@@ -315,16 +310,14 @@ export const LessonEditor = ({
             question: q.question,
             options: q.options,
             correct_answer: q.correctAnswer,
-            order_index: index,
-          }))
+            order_index: index }))
         );
         toast.success("✨ Тест сгенерирован", { description: `Создано ${data.questions.length} вопросов. Отредактируйте их при необходимости.` });
       } else if (data.blocks) {
         const generatedBlocks: ContentBlock[] = data.blocks.map((block: any) => ({
           id: crypto.randomUUID(),
           type: block.type,
-          content: block.content,
-        }));
+          content: block.content }));
         setBlocks(generatedBlocks);
         toast.success("✨ Контент сгенерирован", { description: "Отредактируйте содержание при необходимости и сохраните урок." });
       }
@@ -351,8 +344,7 @@ export const LessonEditor = ({
       type,
       content,
       questions: type === "test" ? questions : undefined,
-      test_questions_count: type === "test" ? testQuestionsCount : undefined,
-    });
+      test_questions_count: type === "test" ? testQuestionsCount : undefined });
   };
 
   return (
@@ -420,7 +412,7 @@ export const LessonEditor = ({
                     className="gap-2"
                   >
                     {isGenerating ? (
-                      <Loader2 className="w-4 h-4 animate-spin" />
+                      <SigmaSpinner size="sm" />
                     ) : (
                       <Sparkles className="w-4 h-4" />
                     )}
@@ -462,7 +454,7 @@ export const LessonEditor = ({
                         className="gap-2"
                       >
                         {isUploading ? (
-                          <Loader2 className="w-4 h-4 animate-spin" />
+                          <SigmaSpinner size="sm" />
                         ) : (
                           <Upload className="w-4 h-4" />
                         )}
@@ -511,7 +503,7 @@ export const LessonEditor = ({
                       <div className="space-y-2 pt-2">
                         <div className="flex items-center justify-between text-sm">
                           <div className="flex items-center gap-2">
-                            <Loader2 className="w-4 h-4 animate-spin text-primary" />
+                            <SigmaSpinner size="sm" />
                             <span className="font-medium">Загрузка видео...</span>
                           </div>
                           <span className="text-muted-foreground font-mono">{videoUploadProgress}%</span>
@@ -585,8 +577,7 @@ export const LessonEditor = ({
                           question: q.question,
                           options: q.options,
                           correct_answer: q.correctAnswer,
-                          order_index: questions.length + idx,
-                        }));
+                          order_index: questions.length + idx }));
                         setQuestions([...questions, ...newQuestions]);
                       }}
                     >
@@ -609,7 +600,7 @@ export const LessonEditor = ({
                       className="gap-2"
                     >
                       {isGenerating ? (
-                        <Loader2 className="w-4 h-4 animate-spin" />
+                        <SigmaSpinner size="sm" />
                       ) : (
                         <Sparkles className="w-4 h-4" />
                       )}
@@ -697,8 +688,7 @@ export const LessonEditor = ({
                                   onChange={(e) =>
                                     handleUpdateQuestion(qIndex, "option", {
                                       optionIndex: oIndex,
-                                      text: e.target.value,
-                                    })
+                                      text: e.target.value })
                                   }
                                   className="flex-1 border-0 bg-transparent p-0 h-auto focus-visible:ring-0"
                                 />

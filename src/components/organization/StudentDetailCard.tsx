@@ -1,4 +1,4 @@
-import { User, FileText, Video, BookOpen, Loader2, Clock, MessageCircle } from "lucide-react";
+import { User, FileText, Video, BookOpen, Clock, MessageCircle } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -12,6 +12,7 @@ import { ActivityTab } from "./student-detail/ActivityTab";
 import { ChatTab } from "./student-detail/ChatTab";
 import { useSubscriptionLimits } from "@/hooks/useSubscriptionLimits";
 import { useAuth } from "@/hooks/useAuth";
+import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 
 function formatTimeAgo(date: Date): string {
   const diff = Date.now() - date.getTime();
@@ -51,8 +52,7 @@ interface StudentDetailCardProps {
 }
 
 export function StudentDetailCard({
-  isOpen, onOpenChange, student, organizationId, enrollments = [], onStudentUpdated,
-}: StudentDetailCardProps) {
+  isOpen, onOpenChange, student, organizationId, enrollments = [], onStudentUpdated }: StudentDetailCardProps) {
   const h = useStudentDetailCardLogic({ isOpen, student, organizationId, enrollments, onStudentUpdated });
   const { plan: orgPlan } = useSubscriptionLimits(organizationId);
   const { user } = useAuth();
@@ -95,7 +95,7 @@ export function StudentDetailCard({
           <ScrollArea className="h-[60vh]">
             <div className="p-6">
               {h.isLoading ? (
-                <div className="flex items-center justify-center py-12"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>
+                <div className="flex items-center justify-center py-12"><SigmaSpinner size="lg" /></div>
               ) : (
                 <>
                   <TabsContent value="profile" className="m-0">

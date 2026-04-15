@@ -6,28 +6,24 @@ import {
   SelectContent,
   SelectItem,
   SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+  SelectValue } from "@/components/ui/select";
 import {
   Table,
   TableBody,
   TableCell,
   TableHead,
   TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+  TableRow } from "@/components/ui/table";
 import { Calendar } from "@/components/ui/calendar";
 import {
   Popover,
   PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
+  PopoverTrigger } from "@/components/ui/popover";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+  DialogTitle } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import {
@@ -35,7 +31,6 @@ import {
   Calendar as CalendarIcon,
   Search,
   Users,
-  Loader2,
   Award,
   FileSpreadsheet,
   CheckCircle,
@@ -44,13 +39,13 @@ import {
   GraduationCap,
   Clock,
   Eye,
-  CheckCircle2,
-} from "lucide-react";
+  CheckCircle2 } from "lucide-react";
 import { format, parseISO, startOfMonth, endOfMonth, isWithinInterval } from "date-fns";
 import { ru } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { getXLSX } from "@/utils/xlsxHelper";
 import { Badge } from "@/components/ui/badge";
+import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 
 interface AttemptQuestion {
   id: string;
@@ -101,8 +96,7 @@ interface AutoFinalAttestationJournalProps {
 
 export function AutoFinalAttestationJournal({
   organizationId,
-  onClose,
-}: AutoFinalAttestationJournalProps) {
+  onClose }: AutoFinalAttestationJournalProps) {
   const [loading, setLoading] = useState(true);
   const [records, setRecords] = useState<FinalAttestationRecord[]>([]);
   const [courses, setCourses] = useState<Course[]>([]);
@@ -114,8 +108,7 @@ export function AutoFinalAttestationJournal({
     to: Date;
   }>({
     from: startOfMonth(new Date()),
-    to: endOfMonth(new Date()),
-  });
+    to: endOfMonth(new Date()) });
   const [attemptDetails, setAttemptDetails] = useState<AttemptDetails | null>(null);
   const [detailsLoading, setDetailsLoading] = useState(false);
   const [detailsOpen, setDetailsOpen] = useState(false);
@@ -146,8 +139,7 @@ export function AutoFinalAttestationJournal({
         score: attempt.score,
         max_score: attempt.max_score,
         student_name: record.student_name,
-        course_title: record.course_title,
-      });
+        course_title: record.course_title });
     } catch (err) {
       console.error("Error loading attempt details:", err);
       toast.error("Ошибка при загрузке деталей теста");
@@ -278,8 +270,7 @@ export function AutoFinalAttestationJournal({
             final_test_passed: finalTestPassed,
             final_test_date: finalAttempt?.completed_at ?? null,
             total_time_spent: enrollment.time_spent || 0,
-            test_attempt_id: finalAttempt?.id ?? null,
-          });
+            test_attempt_id: finalAttempt?.id ?? null });
         }
 
         setRecords(attestationRecords);
@@ -327,8 +318,7 @@ export function AutoFinalAttestationJournal({
         : parseISO(record.started_at);
       const matchesDate = isWithinInterval(recordDate, {
         start: dateRange.from,
-        end: dateRange.to,
-      });
+        end: dateRange.to });
 
       return matchesSearch && matchesCourse && matchesStatus && matchesDate;
     });
@@ -384,8 +374,7 @@ export function AutoFinalAttestationJournal({
       "Дата итоговой аттестации": record.final_test_date 
         ? format(parseISO(record.final_test_date), "dd.MM.yyyy HH:mm", { locale: ru }) 
         : "—",
-      "Время обучения (мин)": Math.round(record.total_time_spent / 60),
-    }));
+      "Время обучения (мин)": Math.round(record.total_time_spent / 60) }));
 
     const worksheet = XLSX.utils.json_to_sheet(exportData);
     const workbook = XLSX.utils.book_new();
@@ -432,7 +421,7 @@ export function AutoFinalAttestationJournal({
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        <SigmaSpinner size="lg" />
       </div>
     );
   }
@@ -750,7 +739,7 @@ export function AutoFinalAttestationJournal({
           <div className="flex-1 min-h-0 overflow-y-auto space-y-3 pr-1">
             {detailsLoading ? (
               <div className="flex items-center justify-center py-12">
-                <Loader2 className="w-6 h-6 animate-spin text-primary" />
+                <SigmaSpinner />
               </div>
             ) : attemptDetails ? (
               attemptDetails.shown_question_ids

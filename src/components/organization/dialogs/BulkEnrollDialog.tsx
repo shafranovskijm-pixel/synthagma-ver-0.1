@@ -5,16 +5,14 @@ import {
   DialogContent,
   DialogDescription,
   DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+  DialogTitle } from "@/components/ui/dialog";
 import {
-  Loader2,
   GraduationCap,
   BookOpen,
-  Check,
-} from "lucide-react";
+  Check } from "lucide-react";
 import type { Company } from "@/hooks/useCompaniesManager";
 import { CourseGroupedList } from "./CourseGroupedList";
+import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 
 interface CourseCategory {
   id: string;
@@ -54,8 +52,7 @@ export function BulkEnrollDialog({
   onToggleCourse,
   onEnroll,
   categories = [],
-  getCategoryById = () => undefined,
-}: BulkEnrollDialogProps) {
+  getCategoryById = () => undefined }: BulkEnrollDialogProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="rounded-2xl max-w-2xl max-h-[80vh] overflow-hidden flex flex-col">
@@ -80,7 +77,7 @@ export function BulkEnrollDialog({
           <div className="flex-1 overflow-y-auto border border-border rounded-xl p-2">
             {isLoading ? (
               <div className="flex items-center justify-center py-12">
-                <Loader2 className="w-8 h-8 animate-spin text-primary" />
+                <SigmaSpinner size="lg" />
               </div>
             ) : courses.length === 0 ? (
               <div className="text-center py-12 text-muted-foreground">
@@ -149,7 +146,7 @@ export function BulkEnrollDialog({
           >
             {isEnrolling ? (
               <>
-                <Loader2 className="w-4 h-4 animate-spin" />
+                <SigmaSpinner size="sm" />
                 Зачисление...
               </>
             ) : (

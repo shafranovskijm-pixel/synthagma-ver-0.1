@@ -7,20 +7,19 @@ import {
   DialogContent,
   DialogDescription,
   DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+  DialogTitle } from "@/components/ui/dialog";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+  SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { FileCheck, Download, Loader2, Printer, Save, Receipt, ArrowRight, Eye } from "lucide-react";
+import { FileCheck, Download, Printer, Save, Receipt, ArrowRight, Eye } from "lucide-react";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
+import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 
 interface Company {
   id: string;
@@ -80,8 +79,7 @@ export function ActGenerator({
   onClose,
   orgRequisites,
   preselectedCompany,
-  onSave,
-}: ActGeneratorProps) {
+  onSave }: ActGeneratorProps) {
   const [companies, setCompanies] = useState<Company[]>([]);
   const [courses, setCourses] = useState<Course[]>([]);
   const [invoices, setInvoices] = useState<Invoice[]>([]);
@@ -216,8 +214,7 @@ export function ActGenerator({
     if (isNaN(num)) return "0";
     return new Intl.NumberFormat("ru-RU", {
       minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    }).format(num);
+      maximumFractionDigits: 2 }).format(num);
   };
 
   const numberToWords = (num: number): string => {
@@ -739,7 +736,7 @@ ${html.replace(/<html[^>]*>|<\/html>|<head>[\s\S]*?<\/head>|<body[^>]*>|<\/body>
             disabled={isSaving || !selectedCourseId || !price}
             className="flex-1"
           >
-            {isSaving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
+            {isSaving ? <SigmaSpinner size="sm" className="mr-2" /> : <Save className="w-4 h-4 mr-2" />}
             Сохранить
           </Button>
         )}
@@ -779,7 +776,7 @@ ${html.replace(/<html[^>]*>|<\/html>|<head>[\s\S]*?<\/head>|<body[^>]*>|<\/body>
           disabled={isGenerating}
           className="flex-1"
         >
-          {isGenerating ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Printer className="w-4 h-4 mr-2" />}
+          {isGenerating ? <SigmaSpinner size="sm" className="mr-2" /> : <Printer className="w-4 h-4 mr-2" />}
           Печать
         </Button>
         {onSave && (
@@ -788,7 +785,7 @@ ${html.replace(/<html[^>]*>|<\/html>|<head>[\s\S]*?<\/head>|<body[^>]*>|<\/body>
             disabled={isSaving}
             className="flex-1"
           >
-            {isSaving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
+            {isSaving ? <SigmaSpinner size="sm" className="mr-2" /> : <Save className="w-4 h-4 mr-2" />}
             Сохранить
           </Button>
         )}
@@ -815,7 +812,7 @@ ${html.replace(/<html[^>]*>|<\/html>|<head>[\s\S]*?<\/head>|<body[^>]*>|<\/body>
 
         {isLoading ? (
           <div className="flex items-center justify-center py-8">
-            <Loader2 className="w-6 h-6 animate-spin" />
+            <SigmaSpinner />
           </div>
         ) : (
           <>

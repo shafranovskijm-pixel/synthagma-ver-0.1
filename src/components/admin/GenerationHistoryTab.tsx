@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { History, Trash2, Loader2, Layers, FileText, HelpCircle, CheckCircle2, Filter, Timer, ImageIcon } from "lucide-react";
+import { History, Trash2, Layers, FileText, HelpCircle, CheckCircle2, Filter, Timer, ImageIcon } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { format } from "date-fns";
@@ -9,6 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 
 interface HistoryRecord {
   id: string;
@@ -27,15 +28,13 @@ const ACTION_META: Record<string, { label: string; color: string; icon: React.El
   content: { label: "Контент", color: "bg-emerald-500/10 text-emerald-600 border-emerald-500/20", icon: FileText },
   media: { label: "Медиа", color: "bg-pink-500/10 text-pink-600 border-pink-500/20", icon: ImageIcon },
   questions: { label: "Вопросы", color: "bg-amber-500/10 text-amber-600 border-amber-500/20", icon: HelpCircle },
-  answers: { label: "Ответы", color: "bg-violet-500/10 text-violet-600 border-violet-500/20", icon: CheckCircle2 },
-};
+  answers: { label: "Ответы", color: "bg-violet-500/10 text-violet-600 border-violet-500/20", icon: CheckCircle2 } };
 
 const STREAM_COLORS: Record<number, string> = {
   0: "bg-muted/60 text-muted-foreground border-border",
   1: "bg-blue-500/10 text-blue-700 border-blue-500/20",
   2: "bg-emerald-500/10 text-emerald-700 border-emerald-500/20",
-  3: "bg-violet-500/10 text-violet-700 border-violet-500/20",
-};
+  3: "bg-violet-500/10 text-violet-700 border-violet-500/20" };
 
 const formatDuration = (ms: number | null): string | null => {
   if (ms === null || ms === undefined) return null;
@@ -158,7 +157,7 @@ export function GenerationHistoryTab() {
                 disabled={clearing || records.length === 0}
                 className="text-xs"
               >
-                {clearing ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : <Trash2 className="w-3 h-3 mr-1" />}
+                {clearing ? <SigmaSpinner size="xs" className="mr-1" /> : <Trash2 className="w-3 h-3 mr-1" />}
                 Очистить
               </Button>
             </div>
@@ -167,7 +166,7 @@ export function GenerationHistoryTab() {
         <CardContent>
           {loading ? (
             <div className="flex items-center justify-center py-8 text-muted-foreground">
-              <Loader2 className="w-5 h-5 animate-spin mr-2" />
+              <SigmaSpinner className="mr-2" />
               Загрузка...
             </div>
           ) : records.length === 0 ? (

@@ -1,19 +1,18 @@
 import { useState, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
-import { Upload, FileSpreadsheet, Loader2, CheckCircle2, AlertCircle, Clock } from "lucide-react";
+import { Upload, FileSpreadsheet, CheckCircle2, AlertCircle, Clock } from "lucide-react";
 import {
-  Dialog, DialogContent, DialogHeader, DialogTitle,
-} from "@/components/ui/dialog";
+  Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import {
-  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
-} from "@/components/ui/table";
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { supabase } from "@/integrations/supabase/client";
 import { safeInvoke } from "@/utils/safeInvoke";
 import { toast } from "sonner";
 import * as XLSX from "xlsx";
+import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 
 interface Props {
   open: boolean;
@@ -64,8 +63,7 @@ export function StudentBulkImportDialog({ open, onOpenChange, organizationId, on
               full_name: String(name || "").trim() || String(email || "").trim(),
               email: email ? String(email).trim() : undefined,
               courses,
-              status: "pending" as const,
-            };
+              status: "pending" as const };
           })
           .filter(Boolean) as ImportStudent[];
 
@@ -104,9 +102,7 @@ export function StudentBulkImportDialog({ open, onOpenChange, organizationId, on
           body: {
             full_name: updated[i].full_name,
             email: updated[i].email || undefined,
-            organization_id: organizationId,
-          },
-        });
+            organization_id: organizationId } });
         if (error) throw error;
 
         const userId = data?.userId || data?.user_id;
@@ -123,16 +119,14 @@ export function StudentBulkImportDialog({ open, onOpenChange, organizationId, on
               course_id: courseId,
               status: "active",
               progress: 0,
-              time_spent: 0,
-            }, { onConflict: "user_id,course_id" });
+              time_spent: 0 }, { onConflict: "user_id,course_id" });
           } else {
             // Course doesn't exist yet — create pending enrollment
             await supabase.from("pending_enrollments").insert({
               organization_id: organizationId,
               user_id: userId,
               course_title: courseTitle.trim(),
-              status: "pending",
-            });
+              status: "pending" });
           }
         }
 
@@ -247,7 +241,7 @@ export function StudentBulkImportDialog({ open, onOpenChange, organizationId, on
                           </span>
                         )}
                         {row.status === "pending" && <Clock className="w-4 h-4 text-muted-foreground" />}
-                        {row.status === "importing" && <Loader2 className="w-4 h-4 animate-spin text-primary" />}
+                        {row.status === "importing" && <SigmaSpinner size="sm" />}
                       </TableCell>
                     </TableRow>
                   ))}
@@ -262,7 +256,7 @@ export function StudentBulkImportDialog({ open, onOpenChange, organizationId, on
               </p>
               {!done ? (
                 <Button onClick={handleImport} disabled={importing} className="gap-2">
-                  {importing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
+                  {importing ? <SigmaSpinner size="sm" /> : <Upload className="w-4 h-4" />}
                   {importing ? "Импорт..." : "Начать импорт"}
                 </Button>
               ) : (

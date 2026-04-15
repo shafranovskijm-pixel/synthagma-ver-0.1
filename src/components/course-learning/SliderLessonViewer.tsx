@@ -1,8 +1,9 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Presentation, FileText, ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
+import { Presentation, FileText, ChevronLeft, ChevronRight} from "lucide-react";
 import { cn } from "@/lib/utils";
 import DOMPurify from "dompurify";
+import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 
 interface SliderSlide {
   id: string;
@@ -63,7 +64,7 @@ export const SliderLessonViewer = ({ content, title, lessonIndex, isMobile }: Sl
           <div className="relative w-full" style={{ minHeight: isMobile ? '400px' : '600px' }}>
             {isLoading && (
               <div className="absolute inset-0 flex items-center justify-center bg-secondary/50 z-10">
-                <div className="flex flex-col items-center gap-3"><Loader2 className="w-8 h-8 animate-spin text-amber-500" /><p className="text-sm text-muted-foreground">Загрузка...</p></div>
+                <div className="flex flex-col items-center gap-3"><SigmaSpinner size="lg" className="text-amber-500" /><p className="text-sm text-muted-foreground">Загрузка...</p></div>
               </div>
             )}
             {viewerError ? (

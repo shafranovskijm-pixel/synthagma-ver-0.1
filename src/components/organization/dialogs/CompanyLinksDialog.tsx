@@ -6,20 +6,18 @@ import {
   DialogContent,
   DialogDescription,
   DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+  DialogTitle } from "@/components/ui/dialog";
 import {
-  Loader2,
   Link2,
   Plus,
   Copy,
   Trash2,
   Calendar,
   Users,
-  Check,
-} from "lucide-react";
+  Check } from "lucide-react";
 import { toast } from "sonner";
 import type { Company } from "@/hooks/useCompaniesManager";
+import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 
 interface CompanyLink {
   id: string;
@@ -56,8 +54,7 @@ export function CompanyLinksDialog({
   newLinkExpiresDays,
   setNewLinkExpiresDays,
   onCreateLink,
-  onDeleteLink,
-}: CompanyLinksDialogProps) {
+  onDeleteLink }: CompanyLinksDialogProps) {
   const copyLink = (token: string) => {
     const url = `${getBaseUrl()}/join/${token}`;
     navigator.clipboard.writeText(url);
@@ -106,7 +103,7 @@ export function CompanyLinksDialog({
                 disabled={isCreating}
               >
                 {isCreating ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <SigmaSpinner size="sm" />
                 ) : (
                   <>
                     <Plus className="w-4 h-4" />
@@ -124,7 +121,7 @@ export function CompanyLinksDialog({
           <div className="flex-1 overflow-y-auto">
             {isLoading ? (
               <div className="flex items-center justify-center py-12">
-                <Loader2 className="w-8 h-8 animate-spin text-primary" />
+                <SigmaSpinner size="lg" />
               </div>
             ) : links.length === 0 ? (
               <div className="text-center py-12 text-muted-foreground">

@@ -8,15 +8,15 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
+  AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
-import { Loader2, Link, Copy, Send, FileText, Trash2, BarChart3, History, RotateCcw } from "lucide-react";
+import { Link, Copy, Send, FileText, Trash2, BarChart3, History, RotateCcw } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { CourseTestReport } from "@/components/organization/CourseTestReport";
 import { EnrollmentHistory } from "@/components/organization/EnrollmentHistory";
+import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 
 interface Course {
   id: string;
@@ -65,8 +65,7 @@ export function CourseStudentsDialog({
   onRemoveFromCourse,
   onShowInviteEmailDialog,
   onShowStudentDocs,
-  onRefresh,
-}: CourseStudentsDialogProps) {
+  onRefresh }: CourseStudentsDialogProps) {
   const handleResetProgress = async (student: Student) => {
     if (!student.enrollment_id || !course) return;
 
@@ -128,7 +127,7 @@ export function CourseStudentsDialog({
         </DialogHeader>
         {isLoading ? (
           <div className="flex items-center justify-center py-12">
-            <Loader2 className="w-8 h-8 animate-spin text-primary" />
+            <SigmaSpinner size="lg" />
           </div>
         ) : (
           <div className="space-y-6">
@@ -258,7 +257,7 @@ export function CourseStudentsDialog({
                   >
                     {isAddingStudents ? (
                       <>
-                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        <SigmaSpinner size="sm" className="mr-2" />
                         Добавление...
                       </>
                     ) : (

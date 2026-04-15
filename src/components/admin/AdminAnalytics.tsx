@@ -1,7 +1,7 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Loader2, Users, BookOpen, Activity, CheckCircle, Building2, DollarSign, Calendar, TrendingUp } from "lucide-react";
+import { Users, BookOpen, Activity, CheckCircle, Building2, DollarSign, Calendar, TrendingUp } from "lucide-react";
 import { OnlineUsersWidget } from "./OnlineUsersWidget";
 import { useAdminAnalytics } from "@/hooks/useAdminAnalytics";
 import { RegistrationsChart } from "./analytics/RegistrationsChart";
@@ -11,19 +11,19 @@ import { CompletionsChart } from "./analytics/CompletionsChart";
 import { PaymentsChart } from "./analytics/PaymentsChart";
 import { FeaturesChart } from "./analytics/FeaturesChart";
 import { OverviewCards } from "./analytics/OverviewCards";
+import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 
 export function AdminAnalytics() {
   const {
     loading, period, setPeriod, visitFilter, setVisitFilter, visitSearch, setVisitSearch,
     registrationsByDay, activityByDay, completionsByDay, visitsByDay, visitStats, visitLog,
     topUsers, paymentStats, featureUsageStats, stats, aiUsageByOrg, aiUserStats,
-    enrollmentStatusData, paymentStatusData, tariffDistributionData, chartConfig, formatCurrency,
-  } = useAdminAnalytics();
+    enrollmentStatusData, paymentStatusData, tariffDistributionData, chartConfig, formatCurrency } = useAdminAnalytics();
 
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
-        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        <SigmaSpinner size="lg" />
       </div>
     );
   }

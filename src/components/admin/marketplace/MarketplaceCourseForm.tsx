@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Plus, Sparkles, Loader2 } from "lucide-react";
+import { Plus, Sparkles} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { safeInvoke } from "@/utils/safeInvoke";
 import { toast } from "sonner";
 import type { DbCategory } from "@/hooks/useAdminMarketplace";
+import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 
 interface MarketplaceCourseFormProps {
   h: {
@@ -43,8 +44,7 @@ export function MarketplaceCourseForm({ h }: MarketplaceCourseFormProps) {
     setIsGeneratingDesc(true);
     try {
       const { data, error } = await safeInvoke<any>("generate-course-content", {
-        body: { contentType: "description", courseTitle: h.newTitle },
-      });
+        body: { contentType: "description", courseTitle: h.newTitle } });
       if (error) throw error;
       if (data?.content) h.setNewDescription(data.content);
     } catch (e: any) {
@@ -60,8 +60,7 @@ export function MarketplaceCourseForm({ h }: MarketplaceCourseFormProps) {
     setIsGeneratingShortDesc(true);
     try {
       const { data, error } = await safeInvoke<any>("generate-course-content", {
-        body: { contentType: "short_description", courseTitle: h.newTitle, courseDescription: h.newDescription },
-      });
+        body: { contentType: "short_description", courseTitle: h.newTitle, courseDescription: h.newDescription } });
       if (error) throw error;
       if (data?.content) h.setNewShortDesc(data.content);
     } catch (e: any) {
@@ -87,7 +86,7 @@ export function MarketplaceCourseForm({ h }: MarketplaceCourseFormProps) {
           <div className="flex items-center justify-between">
             <Label>Описание</Label>
             <Button variant="ghost" size="sm" onClick={handleGenerateDescription} disabled={isGeneratingDesc || !h.newTitle.trim()}>
-              {isGeneratingDesc ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-1" /> : <Sparkles className="w-3.5 h-3.5 mr-1" />}
+              {isGeneratingDesc ? <SigmaSpinner size="xs" className=".5 .5 mr-1" /> : <Sparkles className="w-3.5 h-3.5 mr-1" />}
               Сгенерировать с ИИ
             </Button>
           </div>
@@ -131,7 +130,7 @@ export function MarketplaceCourseForm({ h }: MarketplaceCourseFormProps) {
           <div className="flex items-center justify-between">
             <Label>Краткое описание для каталога</Label>
             <Button variant="ghost" size="sm" onClick={handleGenerateShortDesc} disabled={isGeneratingShortDesc || !h.newTitle.trim()}>
-              {isGeneratingShortDesc ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-1" /> : <Sparkles className="w-3.5 h-3.5 mr-1" />}
+              {isGeneratingShortDesc ? <SigmaSpinner size="xs" className=".5 .5 mr-1" /> : <Sparkles className="w-3.5 h-3.5 mr-1" />}
               Сгенерировать с ИИ
             </Button>
           </div>
@@ -145,7 +144,7 @@ export function MarketplaceCourseForm({ h }: MarketplaceCourseFormProps) {
           }}
           disabled={h.isCreating || !h.newTitle.trim() || !h.newPriceStudent || !h.newPriceOrg}
         >
-          {h.isCreating ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Создание...</> : <><Plus className="w-4 h-4 mr-2" />Создать и перейти к редактированию</>}
+          {h.isCreating ? <><SigmaSpinner size="sm" className="mr-2" />Создание...</> : <><Plus className="w-4 h-4 mr-2" />Создать и перейти к редактированию</>}
         </Button>
       </CardContent>
     </Card>

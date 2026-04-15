@@ -5,10 +5,11 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { toast } from "sonner";
-import { MessageSquare, Send, Trash2, Loader2 } from "lucide-react";
+import { MessageSquare, Send, Trash2} from "lucide-react";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import { useAuth } from "@/hooks/useAuth";
+import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 
 interface Comment {
   id: string;
@@ -59,8 +60,7 @@ export function OrgCommentsTab({ organizationId }: OrgCommentsTabProps) {
         .insert({
           organization_id: organizationId,
           content: newComment.trim(),
-          created_by: user?.id,
-        });
+          created_by: user?.id });
 
       if (error) throw error;
 
@@ -97,7 +97,7 @@ export function OrgCommentsTab({ organizationId }: OrgCommentsTabProps) {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
-        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        <SigmaSpinner size="lg" />
       </div>
     );
   }
@@ -126,7 +126,7 @@ export function OrgCommentsTab({ organizationId }: OrgCommentsTabProps) {
               className="w-full sm:w-auto"
             >
               {saving ? (
-                <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                <SigmaSpinner size="sm" className="mr-2" />
               ) : (
                 <Send className="w-4 h-4 mr-2" />
               )}

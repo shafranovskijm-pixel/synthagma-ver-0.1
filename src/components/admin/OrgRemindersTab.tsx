@@ -12,14 +12,14 @@ import {
   Dialog,
   DialogContent,
   DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+  DialogTitle } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { toast } from "sonner";
-import { Bell, Plus, Trash2, Loader2, Calendar, Mail, CheckCircle2, Send } from "lucide-react";
+import { Bell, Plus, Trash2, Calendar, Mail, CheckCircle2, Send } from "lucide-react";
 import { format, isPast, isToday } from "date-fns";
 import { ru } from "date-fns/locale";
 import { useAuth } from "@/hooks/useAuth";
+import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 
 interface Reminder {
   id: string;
@@ -47,8 +47,7 @@ export function OrgRemindersTab({ organizationId }: OrgRemindersTabProps) {
     description: "",
     reminder_date: "",
     send_email: true,
-    telegram_chat_id: "",
-  });
+    telegram_chat_id: "" });
 
   useEffect(() => {
     fetchReminders();
@@ -88,8 +87,7 @@ export function OrgRemindersTab({ organizationId }: OrgRemindersTabProps) {
           reminder_date: formData.reminder_date,
           send_email: formData.send_email,
           telegram_chat_id: formData.telegram_chat_id.trim() || null,
-          created_by: user?.id,
-        });
+          created_by: user?.id });
 
       if (error) throw error;
 
@@ -157,7 +155,7 @@ export function OrgRemindersTab({ organizationId }: OrgRemindersTabProps) {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
-        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        <SigmaSpinner size="lg" />
       </div>
     );
   }
@@ -343,7 +341,7 @@ export function OrgRemindersTab({ organizationId }: OrgRemindersTabProps) {
               </p>
             </div>
             <Button onClick={handleCreate} disabled={saving} className="w-full">
-              {saving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Plus className="w-4 h-4 mr-2" />}
+              {saving ? <SigmaSpinner size="sm" className="mr-2" /> : <Plus className="w-4 h-4 mr-2" />}
               Создать напоминание
             </Button>
           </div>

@@ -4,11 +4,12 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Save, Loader2, RotateCcw, Plus, Trash2, Users, Eye } from "lucide-react";
+import { Save, RotateCcw, Plus, Trash2, Users, Eye } from "lucide-react";
 import { HighlightedTemplateEditor } from "./HighlightedTemplateEditor";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { DocumentPreview } from "./DocumentPreview";
+import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 
 interface CommissionMember {
   name: string;
@@ -110,9 +111,7 @@ export function ProtocolTemplateEditor({ organizationId }: ProtocolTemplateEdito
           branding: JSON.parse(JSON.stringify({
             ...currentBranding,
             protocolTemplate: template,
-            commissionMembers,
-          })),
-        })
+            commissionMembers })) })
         .eq("id", organizationId);
       if (error) throw error;
       setOriginalTemplate(template);
@@ -140,7 +139,7 @@ export function ProtocolTemplateEditor({ organizationId }: ProtocolTemplateEdito
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-32">
-        <Loader2 className="w-6 h-6 animate-spin text-primary" />
+        <SigmaSpinner />
       </div>
     );
   }
@@ -240,8 +239,7 @@ export function ProtocolTemplateEditor({ organizationId }: ProtocolTemplateEdito
             <DocumentPreview
               type="protocol"
               data={{
-                commissionMembers: commissionMembers.filter(m => m.name),
-              }}
+                commissionMembers: commissionMembers.filter(m => m.name) }}
             />
           </AccordionContent>
         </AccordionItem>
@@ -250,7 +248,7 @@ export function ProtocolTemplateEditor({ organizationId }: ProtocolTemplateEdito
       {/* Save */}
       <div className="flex gap-3">
         <Button onClick={handleSave} disabled={isSaving} className="rounded-xl gap-2">
-          {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+          {isSaving ? <SigmaSpinner size="sm" /> : <Save className="w-4 h-4" />}
           Сохранить настройки протокола
         </Button>
       </div>

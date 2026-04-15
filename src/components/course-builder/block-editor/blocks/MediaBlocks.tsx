@@ -8,10 +8,9 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import {
-  Image as ImageIcon, Video, Upload, Headphones, BookOpen, FolderOpen, Play,
-  Loader2, Sparkles, Wand2, Trash2,
-} from "lucide-react";
+  Image as ImageIcon, Video, Upload, Headphones, BookOpen, FolderOpen, Play, Sparkles, Wand2, Trash2 } from "lucide-react";
 import type { ContentBlock } from "../types";
+import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 
 // ─── DirectVideoBlock ───────────────────────────────────────────
 function DirectVideoBlockInner({ url }: { url: string }) {
@@ -150,7 +149,7 @@ export function ImageBlock({ block, onUpdate }: { block: ContentBlock; onUpdate:
             <div className="flex gap-2">
               <Input value={editPrompt} onChange={(e) => setEditPrompt(e.target.value)} placeholder="Опишите что исправить..." className="text-sm flex-1" onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleAiEdit(); } }} disabled={isEditing} />
               <Button size="sm" disabled={!editPrompt.trim() || isEditing} onClick={handleAiEdit}>
-                {isEditing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Wand2 className="w-4 h-4" />}
+                {isEditing ? <SigmaSpinner size="sm" /> : <Wand2 className="w-4 h-4" />}
               </Button>
             </div>
           )}
@@ -163,7 +162,7 @@ export function ImageBlock({ block, onUpdate }: { block: ContentBlock; onUpdate:
             <p className="text-sm text-muted-foreground mb-3">Загрузите изображение или вставьте ссылку</p>
             <div className="flex gap-2 justify-center">
               <Button variant="outline" size="sm" disabled={isUploading || isGenerating} onClick={() => { const input = document.createElement('input'); input.type = 'file'; input.accept = 'image/*'; input.onchange = (e) => { const f = (e.target as HTMLInputElement).files?.[0]; if (f) handleFileUpload(f); }; input.click(); }}>
-                {isUploading ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <Upload className="w-4 h-4 mr-1" />}
+                {isUploading ? <SigmaSpinner size="sm" className="mr-1" /> : <Upload className="w-4 h-4 mr-1" />}
                 {isUploading ? "Загрузка..." : "Загрузить файл"}
               </Button>
               <Button variant="outline" size="sm" disabled={isUploading || isGenerating} onClick={() => setShowAiInput(!showAiInput)} className={showAiInput ? "border-primary text-primary" : ""}>
@@ -175,7 +174,7 @@ export function ImageBlock({ block, onUpdate }: { block: ContentBlock; onUpdate:
             <div className="space-y-2">
               <Input value={aiPrompt} onChange={(e) => setAiPrompt(e.target.value)} placeholder="Опишите изображение..." className="text-sm" onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleAiGenerate(); } }} disabled={isGenerating} />
               <Button size="sm" disabled={!aiPrompt.trim() || isGenerating} onClick={handleAiGenerate} className="w-full">
-                {isGenerating ? <><Loader2 className="w-4 h-4 mr-1 animate-spin" /> Генерация...</> : <><Wand2 className="w-4 h-4 mr-1" /> Сгенерировать</>}
+                {isGenerating ? <><SigmaSpinner size="sm" className="mr-1" /> Генерация...</> : <><Wand2 className="w-4 h-4 mr-1" /> Сгенерировать</>}
               </Button>
             </div>
           )}
@@ -280,7 +279,7 @@ export function VideoBlock({ block, onUpdate }: { block: ContentBlock; onUpdate:
             <div className="flex items-center justify-center gap-2 mt-2">
               <Button variant="outline" size="sm" onClick={() => setShowLibrary(true)}><FolderOpen className="w-4 h-4 mr-1" />Выбрать из загруженных</Button>
               <Button variant="outline" size="sm" disabled={isUploading} onClick={() => videoInputRef.current?.click()}>
-                {isUploading ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <Upload className="w-4 h-4 mr-1" />}
+                {isUploading ? <SigmaSpinner size="sm" className="mr-1" /> : <Upload className="w-4 h-4 mr-1" />}
                 {isUploading ? "Загрузка..." : "Загрузить видео"}
               </Button>
               <input ref={videoInputRef} type="file" accept="video/*" className="hidden" onChange={handleVideoUpload} />
@@ -337,7 +336,7 @@ export function AudioBlock({ block, onUpdate }: { block: ContentBlock; onUpdate:
           </div>
           <div className="flex flex-col gap-2">
             <Button variant="outline" size="sm" className="mx-auto" onClick={() => document.getElementById(`audio-upload-${block.id}`)?.click()} disabled={isUploading}>
-              {isUploading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Upload className="w-4 h-4 mr-2" />}Загрузить файл
+              {isUploading ? <SigmaSpinner size="sm" className="mr-2" /> : <Upload className="w-4 h-4 mr-2" />}Загрузить файл
             </Button>
             <input id={`audio-upload-${block.id}`} type="file" accept="audio/*" className="hidden" onChange={(e) => { if (e.target.files?.[0]) handleFileUpload(e.target.files[0]); }} />
             <div className="text-center text-xs text-muted-foreground">или</div>
@@ -406,7 +405,7 @@ export function DocumentBlock({ block, onUpdate }: { block: ContentBlock; onUpda
           </div>
           <div className="flex flex-col gap-2">
             <Button variant="outline" size="sm" className="mx-auto" onClick={() => document.getElementById(`doc-upload-${block.id}`)?.click()} disabled={isUploading}>
-              {isUploading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Upload className="w-4 h-4 mr-2" />}
+              {isUploading ? <SigmaSpinner size="sm" className="mr-2" /> : <Upload className="w-4 h-4 mr-2" />}
               {isUploading ? "Загрузка..." : "Загрузить файл"}
             </Button>
             <input id={`doc-upload-${block.id}`} type="file" accept=".pdf,.doc,.docx" className="hidden" onChange={(e) => { if (e.target.files?.[0]) handleFileUpload(e.target.files[0]); }} />

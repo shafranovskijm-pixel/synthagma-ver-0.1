@@ -1,5 +1,6 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Loader2 } from "lucide-react";
+import {} from "lucide-react";
+import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 
 interface Organization {
   id: string;
@@ -34,8 +35,7 @@ export function OrgDetailsDialog({
   onOpenChange,
   organization,
   students,
-  isLoading,
-}: OrgDetailsDialogProps) {
+  isLoading }: OrgDetailsDialogProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-3xl rounded-2xl max-h-[90vh] overflow-auto">
@@ -44,7 +44,7 @@ export function OrgDetailsDialog({
         </DialogHeader>
         {isLoading ? (
           <div className="flex items-center justify-center py-12">
-            <Loader2 className="w-8 h-8 animate-spin text-primary" />
+            <SigmaSpinner size="lg" />
           </div>
         ) : organization && (
           <div className="space-y-6">

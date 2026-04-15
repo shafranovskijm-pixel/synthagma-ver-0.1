@@ -5,9 +5,10 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Crown, Save, Loader2 } from "lucide-react";
+import { Crown, Save} from "lucide-react";
 import { toast } from "sonner";
 import { getPlanInfo, type SubscriptionPlan } from "@/constants/subscriptionPlans";
+import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 
 interface OrgTariffsPanelProps {
   organizationId: string;
@@ -45,8 +46,7 @@ export function OrgTariffsPanel({
   organizationId, subscriptionPlan, planInfo,
   tariffCustomLabel, setTariffCustomLabel, tariffPaidUntil, setTariffPaidUntil,
   isSavingTariff, saveTariffSettings, customLimits, setCustomLimits,
-  customCategories, setCustomCategories, customPrice, setCustomPrice, customDiscount, setCustomDiscount,
-}: OrgTariffsPanelProps) {
+  customCategories, setCustomCategories, customPrice, setCustomPrice, customDiscount, setCustomDiscount }: OrgTariffsPanelProps) {
   return (
     <div className="space-y-4">
       <Card>
@@ -176,7 +176,7 @@ export function OrgTariffsPanel({
       </Card>
 
       <Button onClick={saveTariffSettings} disabled={isSavingTariff}>
-        {isSavingTariff ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
+        {isSavingTariff ? <SigmaSpinner size="sm" className="mr-2" /> : <Save className="w-4 h-4 mr-2" />}
         Сохранить тарифные настройки
       </Button>
     </div>

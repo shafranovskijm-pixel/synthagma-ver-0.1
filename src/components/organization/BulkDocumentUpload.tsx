@@ -8,20 +8,17 @@ import {
   DialogContent,
   DialogDescription,
   DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+  DialogTitle } from "@/components/ui/dialog";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+  SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import {
   FileText,
-  Loader2,
   Upload,
   Users,
   Award,
@@ -30,9 +27,9 @@ import {
   GraduationCap,
   CheckCircle2,
   Search,
-  Filter,
-} from "lucide-react";
+  Filter } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
+import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 
 interface Student {
   id: string;
@@ -66,8 +63,7 @@ interface BulkDocumentUploadProps {
 export function BulkDocumentUpload({
   organizationId,
   isOpen,
-  onClose,
-}: BulkDocumentUploadProps) {
+  onClose }: BulkDocumentUploadProps) {
   const [students, setStudents] = useState<Student[]>([]);
   const [courses, setCourses] = useState<Course[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -142,8 +138,7 @@ export function BulkDocumentUpload({
           name: profile?.full_name || "Без имени",
           email: profile?.email || "",
           course_id: course.id,
-          course_name: course.title,
-        };
+          course_name: course.title };
       });
 
       setStudents(studentList);
@@ -221,8 +216,7 @@ export function BulkDocumentUpload({
           enrollment_id: enrollmentId,
           name: docName.trim(),
           type: docType,
-          file_url: fileUrl,
-        });
+          file_url: fileUrl });
 
         if (error) {
           console.error(`Error uploading to ${enrollmentId}:`, error);
@@ -276,7 +270,7 @@ export function BulkDocumentUpload({
 
         {isLoading ? (
           <div className="flex items-center justify-center py-12">
-            <Loader2 className="w-8 h-8 animate-spin text-primary" />
+            <SigmaSpinner size="lg" />
           </div>
         ) : (
           <div className="space-y-6">
@@ -442,7 +436,7 @@ export function BulkDocumentUpload({
               >
                 {isUploading ? (
                   <>
-                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <SigmaSpinner size="sm" />
                     Загрузка...
                   </>
                 ) : (

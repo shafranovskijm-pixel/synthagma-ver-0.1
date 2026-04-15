@@ -1,9 +1,10 @@
 import { useState, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Sparkles, Volume2, VolumeX, Heading1, AlignLeft, AlertTriangle, Loader2, Square } from "lucide-react";
+import { Sparkles, Volume2, VolumeX, Heading1, AlignLeft, AlertTriangle, Square } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ScrollReveal } from "@/components/ui/ScrollReveal";
 import { FloatingParticles } from "./FloatingParticles";
+import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 
 const DEMO_AUDIO_BASE = `${import.meta.env.VITE_SUPABASE_URL}/storage/v1/object/public/demo-assets`;
 const DEMO_AUDIO_3 = `${DEMO_AUDIO_BASE}/editor-demo-3blocks.mp3`;
@@ -39,26 +40,22 @@ const generatedContent: DemoBlock = {
   id: "4",
   type: "paragraph",
   content: "Каждый работник имеет право на рабочее место, соответствующее требованиям охраны труда, обязательное социальное страхование и получение достоверной информации об условиях труда.",
-  isNew: true,
-};
+  isNew: true };
 
 const blockIcons = {
   heading1: Heading1,
   paragraph: AlignLeft,
-  callout: AlertTriangle,
-};
+  callout: AlertTriangle };
 
 const blockColors = {
   heading1: "text-primary",
   paragraph: "text-muted-foreground",
-  callout: "text-amber-500",
-};
+  callout: "text-amber-500" };
 
 const blockBgColors = {
   heading1: "bg-primary/5",
   paragraph: "bg-muted/30",
-  callout: "bg-amber-500/10 border-l-2 border-amber-500",
-};
+  callout: "bg-amber-500/10 border-l-2 border-amber-500" };
 
 export function EditorDemo() {
   const [blocks, setBlocks] = useState<DemoBlock[]>(initialBlocks);
@@ -321,7 +318,7 @@ export function EditorDemo() {
                 >
                   {isGenerating ? (
                     <>
-                      <Loader2 className="w-4 h-4 animate-spin" />
+                      <SigmaSpinner size="sm" />
                       Генерация...
                     </>
                   ) : blocks.length > 3 ? (

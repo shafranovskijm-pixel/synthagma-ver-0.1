@@ -8,17 +8,16 @@ import {
   Trash2,
   GripVertical,
   Save,
-  Loader2,
   Sparkles,
   ImagePlus,
-  X,
-} from "lucide-react";
+  X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { safeInvoke } from "@/utils/safeInvoke";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import type { Json } from "@/integrations/supabase/types";
 import { useExternalStorage } from "@/hooks/useExternalStorage";
+import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 
 interface QuestionOption {
   text: string;
@@ -324,9 +323,7 @@ export const TestQuestionEditor = forwardRef<TestQuestionEditorRef, TestQuestion
         body: {
           question: question.question,
           options: question.options.map(o => o.text),
-          correctAnswer: question.correct_answer,
-        },
-      });
+          correctAnswer: question.correct_answer } });
 
       if (error) throw error;
 
@@ -425,7 +422,7 @@ export const TestQuestionEditor = forwardRef<TestQuestionEditorRef, TestQuestion
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-8">
-        <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+        <SigmaSpinner />
       </div>
     );
   }
@@ -500,7 +497,7 @@ export const TestQuestionEditor = forwardRef<TestQuestionEditorRef, TestQuestion
                         )}>
                           {uploadingImageId === question.id ? (
                             <>
-                              <Loader2 className="w-4 h-4 animate-spin" />
+                              <SigmaSpinner size="sm" />
                               Загрузка...
                             </>
                           ) : (
@@ -580,7 +577,7 @@ export const TestQuestionEditor = forwardRef<TestQuestionEditorRef, TestQuestion
                       >
                         {generatingExplanationId === question.id ? (
                           <>
-                            <Loader2 className="w-3 h-3 animate-spin" />
+                            <SigmaSpinner size="xs" />
                             Генерация...
                           </>
                         ) : (
@@ -626,7 +623,7 @@ export const TestQuestionEditor = forwardRef<TestQuestionEditorRef, TestQuestion
               className="gap-2"
             >
               {isSaving ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
+                <SigmaSpinner size="sm" />
               ) : (
                 <Save className="w-4 h-4" />
               )}

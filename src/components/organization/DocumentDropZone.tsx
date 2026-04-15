@@ -1,5 +1,5 @@
 import { useState, useCallback } from "react";
-import { Upload, Loader2, FileText, Receipt, FileCheck, AlertCircle } from "lucide-react";
+import { Upload, FileText, Receipt, FileCheck, AlertCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import {
@@ -8,11 +8,11 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
-  DialogFooter,
-} from "@/components/ui/dialog";
+  DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 
 interface DocumentValidation {
   date: string;
@@ -36,8 +36,7 @@ const typeConfig = {
     borderColor: "border-orange-500",
     label: "Договоры",
     dateLabel: "Дата договора",
-    amountLabel: "Сумма договора",
-  },
+    amountLabel: "Сумма договора" },
   invoice: {
     icon: Receipt,
     color: "text-blue-500",
@@ -45,8 +44,7 @@ const typeConfig = {
     borderColor: "border-blue-500",
     label: "Счета",
     dateLabel: "Дата счёта",
-    amountLabel: "Сумма счёта",
-  },
+    amountLabel: "Сумма счёта" },
   act: {
     icon: FileCheck,
     color: "text-sigma-green",
@@ -54,9 +52,7 @@ const typeConfig = {
     borderColor: "border-sigma-green",
     label: "Акты",
     dateLabel: "Дата акта",
-    amountLabel: "Сумма акта",
-  },
-};
+    amountLabel: "Сумма акта" } };
 
 export function DocumentDropZone({ 
   type, 
@@ -71,8 +67,7 @@ export function DocumentDropZone({
   const [validationData, setValidationData] = useState<DocumentValidation>({
     date: new Date().toISOString().split('T')[0],
     amount: '',
-    serviceName: '',
-  });
+    serviceName: '' });
   const [validationErrors, setValidationErrors] = useState<Partial<Record<keyof DocumentValidation, string>>>({});
   
   const config = typeConfig[type];
@@ -101,8 +96,7 @@ export function DocumentDropZone({
       setValidationData({
         date: new Date().toISOString().split('T')[0],
         amount: '',
-        serviceName: '',
-      });
+        serviceName: '' });
       setValidationErrors({});
       setShowValidationDialog(true);
     } else {
@@ -200,7 +194,7 @@ export function DocumentDropZone({
             isDragging ? config.bgColor : "bg-muted"
           )}>
             {isUploading ? (
-              <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+              <SigmaSpinner />
             ) : (
               <Upload className={cn("w-6 h-6", isDragging ? config.color : "text-muted-foreground")} />
             )}

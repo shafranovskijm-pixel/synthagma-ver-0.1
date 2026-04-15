@@ -8,13 +8,13 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
+  AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Input } from "@/components/ui/input";
-import { Loader2, GraduationCap, Plus, X, Search, RotateCcw } from "lucide-react";
+import { GraduationCap, Plus, X, Search, RotateCcw } from "lucide-react";
 import { CourseGroupedList } from "./CourseGroupedList";
+import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 interface CourseCategory {
   id: string;
   name: string;
@@ -88,8 +88,7 @@ export function StudentCoursesDialog({
   onAddCourses,
   onRemoveEnrollment,
   onResetProgress,
-  getCategoryById,
-}: StudentCoursesDialogProps) {
+  getCategoryById }: StudentCoursesDialogProps) {
   const filteredCourses = availableCourses.filter(c => 
     searchQuery === "" || c.title.toLowerCase().includes(searchQuery.toLowerCase())
   );
@@ -108,7 +107,7 @@ export function StudentCoursesDialog({
         
         {isLoading ? (
           <div className="flex items-center justify-center py-12">
-            <Loader2 className="w-8 h-8 animate-spin text-primary" />
+            <SigmaSpinner size="lg" />
           </div>
         ) : (
           <div className="space-y-6">
@@ -245,7 +244,7 @@ export function StudentCoursesDialog({
                     >
                       {isAddingCourses ? (
                         <>
-                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                          <SigmaSpinner size="sm" className="mr-2" />
                           Зачисление...
                         </>
                       ) : (

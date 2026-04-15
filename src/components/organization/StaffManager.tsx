@@ -9,8 +9,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { toast } from "sonner";
-import { Plus, Trash2, Users, Shield, BookOpen, Edit3, Eye, Loader2, HelpCircle, Settings } from "lucide-react";
+import { Plus, Trash2, Users, Shield, BookOpen, Edit3, Eye, HelpCircle, Settings } from "lucide-react";
 import { useOrgDashboard } from "@/contexts/OrgDashboardContext";
+import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 
 interface StaffMember {
   id: string;
@@ -84,8 +85,7 @@ export function StaffManager({ organizationId }: StaffManagerProps) {
       user_id: profile.user_id,
       role,
       display_name: displayName.trim() || email.trim(),
-      visibility,
-    } as any);
+      visibility } as any);
 
     if (error) {
       if (error.code === "23505") toast.error("Этот сотрудник уже добавлен");
@@ -124,7 +124,7 @@ export function StaffManager({ organizationId }: StaffManagerProps) {
           </div>
 
           {loading ? (
-            <div className="flex justify-center py-12"><Loader2 className="w-6 h-6 animate-spin text-muted-foreground" /></div>
+            <div className="flex justify-center py-12"><SigmaSpinner /></div>
           ) : staff.length === 0 ? (
             <div className="text-center py-12 text-muted-foreground">
               <Users className="w-12 h-12 mx-auto mb-4 opacity-30" />
@@ -272,7 +272,7 @@ export function StaffManager({ organizationId }: StaffManagerProps) {
             <DialogFooter>
               <Button variant="outline" onClick={() => setDialogOpen(false)}>Отмена</Button>
               <Button onClick={handleAdd} disabled={saving} className="btn-gradient gap-2">
-                {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
+                {saving ? <SigmaSpinner size="sm" /> : <Plus className="w-4 h-4" />}
                 Добавить
               </Button>
             </DialogFooter>

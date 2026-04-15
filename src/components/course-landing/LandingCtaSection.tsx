@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Loader2 } from "lucide-react";
+import {} from "lucide-react";
+import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 
 interface Props {
   title: string;
@@ -24,8 +25,7 @@ export function LandingCtaSection({
   onSubtitleChange,
   onSubmit,
   isEnrolled,
-  price = 0,
-}: Props) {
+  price = 0 }: Props) {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
@@ -87,7 +87,7 @@ export function LandingCtaSection({
               disabled={submitting}
               style={accent ? { backgroundColor: accent } : undefined}
             >
-              {submitting ? <Loader2 className="w-5 h-5 animate-spin" /> : (price > 0 ? "Оставить заявку" : "Записаться бесплатно")}
+              {submitting ? <SigmaSpinner /> : (price > 0 ? "Оставить заявку" : "Записаться бесплатно")}
             </Button>
           </form>
         )}

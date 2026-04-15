@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-import { ArrowLeft, User, CreditCard, Handshake, HelpCircle, LogOut, Sparkles, Settings, FileText, Video, BookOpen, Clock, MessageCircle, Loader2, LogIn } from "lucide-react";
+import { ArrowLeft, User, CreditCard, Handshake, HelpCircle, LogOut, Sparkles, Settings, FileText, Video, BookOpen, Clock, MessageCircle, LogIn } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useOrgDashboard } from "@/contexts/OrgDashboardContext";
 import { OrgDashboardFooter } from "@/components/organization/OrgDashboardFooter";
@@ -10,8 +10,7 @@ import { OrgNotifications } from "@/components/organization/OrgNotifications";
 import { SigmaLogo } from "@/components/ui/SigmaLogo";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import {
-  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { HelpCenterDialog } from "@/components/shared/HelpCenterDialog";
@@ -27,6 +26,7 @@ import { DocumentsTab } from "@/components/organization/student-detail/Documents
 import { ActivityTab } from "@/components/organization/student-detail/ActivityTab";
 import { ChatTab } from "@/components/organization/student-detail/ChatTab";
 import { FRDOExportDialog } from "@/components/organization/FRDOExportDialog";
+import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 
 function getUserInitials(email?: string | null, name?: string | null): string {
   if (name) {
@@ -134,8 +134,7 @@ function StudentPageInner({ studentId }: { studentId: string }) {
         login: profile.login,
         company_name: companyName,
         generated_password: profile.generated_password,
-        last_visit_at: profile.last_visit_at,
-      });
+        last_visit_at: profile.last_visit_at });
 
       // Load enrollments for courses belonging to this org
       const { data: orgCourses } = await supabase
@@ -162,8 +161,7 @@ function StudentPageInner({ studentId }: { studentId: string }) {
           completed_at: e.completed_at,
           time_spent: e.time_spent || 0,
           access_days: e.access_days,
-          expires_at: e.expires_at,
-        })));
+          expires_at: e.expires_at })));
       }
 
       setLoading(false);
@@ -186,8 +184,7 @@ function StudentPageInner({ studentId }: { studentId: string }) {
     onStudentUpdated: () => {
       // Reload
       window.location.reload();
-    },
-  });
+    } });
 
   const isOnline = student?.last_visit_at && (Date.now() - new Date(student.last_visit_at).getTime()) < 5 * 60 * 1000;
 
@@ -400,7 +397,7 @@ function StudentPageInner({ studentId }: { studentId: string }) {
             {/* Tab content */}
             <div className="flex-1 min-w-0">
               {h.isLoading ? (
-                <div className="flex items-center justify-center py-12"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>
+                <div className="flex items-center justify-center py-12"><SigmaSpinner size="lg" /></div>
               ) : (
                 <>
                   {h.activeTab === "profile" && (

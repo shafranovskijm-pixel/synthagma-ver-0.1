@@ -3,24 +3,19 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from "@/components/ui/select";
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
-  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
-} from "@/components/ui/table";
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
-} from "@/components/ui/dialog";
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
-  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import {
-  ArrowLeft, Calendar as CalendarIcon, Search, Loader2, FileSpreadsheet, FileText,
-  Plus, Pencil, Trash2, Hash, User, GraduationCap, Award, Mail, Users, CheckCircle2, Sparkles, Printer,
-} from "lucide-react";
+  ArrowLeft, Calendar as CalendarIcon, Search, FileSpreadsheet, FileText,
+  Plus, Pencil, Trash2, Hash, User, GraduationCap, Award, Mail, Users, CheckCircle2, Sparkles, Printer } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import { ru } from "date-fns/locale";
 import { cn } from "@/lib/utils";
@@ -31,10 +26,10 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   useEducationDocumentsJournal,
   DOCUMENT_TYPES,
-  DELIVERY_METHODS,
-} from "@/hooks/useEducationDocumentsJournal";
+  DELIVERY_METHODS } from "@/hooks/useEducationDocumentsJournal";
 import { generateEducationDocumentHtml } from "@/utils/generateEducationDocument";
 import { printHtmlContent } from "@/utils/printHtmlToPdf";
+import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 
 interface EducationDocumentsJournalProps {
   organizationId: string;
@@ -45,8 +40,7 @@ interface EducationDocumentsJournalProps {
 export function EducationDocumentsJournal({
   organizationId,
   onClose,
-  documentTypeFilter,
-}: EducationDocumentsJournalProps) {
+  documentTypeFilter }: EducationDocumentsJournalProps) {
   const {
     loading, saving, searchQuery, setSearchQuery,
     selectedDocType, setSelectedDocType, selectedStatus, setSelectedStatus,
@@ -61,13 +55,12 @@ export function EducationDocumentsJournal({
     resetForm, generateRegNumber, handleOpenAdd, handleOpenEdit,
     handleOpenSelectStudents, handleAutoAddAllGraduates, handleCreateFromStudents,
     toggleStudentSelection, selectAllStudents,
-    handleSave, handleDelete, exportToExcel,
-  } = useEducationDocumentsJournal({ organizationId, documentTypeFilter });
+    handleSave, handleDelete, exportToExcel } = useEducationDocumentsJournal({ organizationId, documentTypeFilter });
 
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        <SigmaSpinner size="lg" />
       </div>
     );
   }
@@ -154,7 +147,7 @@ export function EducationDocumentsJournal({
                 <Users className="w-4 h-4 mr-2" />Выбрать
               </Button>
               <Button onClick={handleAutoAddAllGraduates} disabled={saving} className="rounded-xl">
-                {saving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Plus className="w-4 h-4 mr-1" />}
+                {saving ? <SigmaSpinner size="sm" className="mr-2" /> : <Plus className="w-4 h-4 mr-1" />}
                 Добавить всех
               </Button>
             </div>
@@ -446,7 +439,7 @@ export function EducationDocumentsJournal({
           <DialogFooter>
             <Button variant="outline" onClick={() => { setShowAddDialog(false); setEditingRecord(null); resetForm(); }} className="rounded-xl">Отмена</Button>
             <Button onClick={handleSave} disabled={saving} className="rounded-xl">
-              {saving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+              {saving && <SigmaSpinner size="sm" className="mr-2" />}
               {editingRecord ? "Сохранить" : "Добавить"}
             </Button>
           </DialogFooter>
@@ -465,7 +458,7 @@ export function EducationDocumentsJournal({
               <Input placeholder="Поиск по ФИО или курсу..." value={studentSearchQuery} onChange={(e) => setStudentSearchQuery(e.target.value)} className="pl-10 rounded-xl" />
             </div>
             {loadingStudents ? (
-              <div className="flex justify-center py-8"><Loader2 className="w-6 h-6 animate-spin text-primary" /></div>
+              <div className="flex justify-center py-8"><SigmaSpinner /></div>
             ) : filteredStudents.length === 0 ? (
               <div className="text-center py-8 text-muted-foreground">Нет завершивших студентов для добавления</div>
             ) : (
@@ -500,7 +493,7 @@ export function EducationDocumentsJournal({
           <DialogFooter className="shrink-0">
             <Button variant="outline" onClick={() => setShowSelectStudentsDialog(false)} className="rounded-xl">Отмена</Button>
             <Button onClick={handleCreateFromStudents} disabled={saving || selectedStudents.size === 0} className="rounded-xl">
-              {saving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+              {saving && <SigmaSpinner size="sm" className="mr-2" />}
               Добавить ({selectedStudents.size})
             </Button>
           </DialogFooter>

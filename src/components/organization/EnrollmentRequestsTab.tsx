@@ -2,16 +2,16 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { Check, X, Loader2, ClipboardCheck, Users } from "lucide-react";
+import { Check, X, ClipboardCheck, Users } from "lucide-react";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+  SelectValue } from "@/components/ui/select";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
+import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 
 interface EnrollmentRequest {
   id: string;
@@ -95,8 +95,7 @@ export function EnrollmentRequestsTab({ courseId, defaultAccessDays, onRefreshSt
           return {
             ...r,
             user_name: profile?.full_name || "Без имени",
-            user_email: profile?.email || "",
-          };
+            user_email: profile?.email || "" };
         }));
       } else {
         setRequests([]);
@@ -119,8 +118,7 @@ export function EnrollmentRequestsTab({ courseId, defaultAccessDays, onRefreshSt
         course_id: request.course_id,
         status: "active",
         progress: 0,
-        ...(defaultAccessDays ? { access_days: defaultAccessDays } : {}),
-      });
+        ...(defaultAccessDays ? { access_days: defaultAccessDays } : {}) });
       if (enrollError) throw enrollError;
 
       // If a group was selected, assign student to group
@@ -141,8 +139,7 @@ export function EnrollmentRequestsTab({ courseId, defaultAccessDays, onRefreshSt
             user_id: request.user_id,
             course_id: request.course_id,
             role: "system",
-            content: `Вы зачислены в группу «${group.name}»${startInfo}. Добро пожаловать!`,
-          });
+            content: `Вы зачислены в группу «${group.name}»${startInfo}. Добро пожаловать!` });
         }
       }
 
@@ -187,7 +184,7 @@ export function EnrollmentRequestsTab({ courseId, defaultAccessDays, onRefreshSt
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
-        <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+        <SigmaSpinner />
       </div>
     );
   }
@@ -242,7 +239,7 @@ export function EnrollmentRequestsTab({ courseId, defaultAccessDays, onRefreshSt
                     onClick={() => handleApprove(request)}
                     disabled={processingId === request.id}
                   >
-                    {processingId === request.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
+                    {processingId === request.id ? <SigmaSpinner size="sm" /> : <Check className="w-4 h-4" />}
                     Одобрить
                   </Button>
                   <Button

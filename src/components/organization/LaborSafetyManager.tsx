@@ -6,35 +6,29 @@ import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import {
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
-} from "@/components/ui/dialog";
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
-  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import {
-  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
-} from "@/components/ui/table";
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from "@/components/ui/select";
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
-  Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList,
-} from "@/components/ui/command";
+  Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
-  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Card, CardContent } from "@/components/ui/card";
 import {
-  Plus, Download, Trash2, Edit, Users, Loader2, Search, CheckCircle, FileText, X,
+  Plus, Download, Trash2, Edit, Users, Search, CheckCircle, FileText, X,
   GraduationCap, ArrowLeft, MoreHorizontal, SortAsc, SortDesc, FolderOpen, Calendar,
-  Shield, ChevronRight, User, Key, RefreshCw, ClipboardCheck, BarChart3, BookOpen,
-} from "lucide-react";
+  Shield, ChevronRight, User, Key, RefreshCw, ClipboardCheck, BarChart3, BookOpen } from "lucide-react";
 import { format } from "date-fns";
 import { LaborSafetyStudentDetailCard } from "./LaborSafetyStudentDetailCard";
 import { useLaborSafetyManager } from "@/hooks/useLaborSafetyManager";
 import { Progress } from "@/components/ui/progress";
+import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 
 interface LaborSafetyManagerProps {
   organizationId: string;
@@ -46,7 +40,7 @@ export function LaborSafetyManager({ organizationId }: LaborSafetyManagerProps) 
   if (h.isLoading) {
     return (
       <div className="flex items-center justify-center py-12">
-        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        <SigmaSpinner size="lg" />
       </div>
     );
   }
@@ -208,7 +202,7 @@ export function LaborSafetyManager({ organizationId }: LaborSafetyManagerProps) 
             </div>
             <DialogFooter>
               <Button variant="outline" onClick={() => h.setShowGroupDialog(false)}>Отмена</Button>
-              <Button onClick={h.handleCreateGroup} disabled={h.isCreatingGroup}>{h.isCreatingGroup && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}{h.editingGroup ? 'Сохранить' : 'Создать'}</Button>
+              <Button onClick={h.handleCreateGroup} disabled={h.isCreatingGroup}>{h.isCreatingGroup && <SigmaSpinner size="sm" className="mr-2" />}{h.editingGroup ? 'Сохранить' : 'Создать'}</Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
@@ -275,7 +269,7 @@ export function LaborSafetyManager({ organizationId }: LaborSafetyManagerProps) 
               <Button variant="outline" size="sm" onClick={h.handleGeneratePrikaz} disabled={h.isGenerating}><FileText className="h-4 w-4 mr-2" />Приказ</Button>
               <Button variant="outline" size="sm" onClick={h.openEnrollDialog}><GraduationCap className="h-4 w-4 mr-2" />На курс</Button>
               <Button variant="outline" size="sm" onClick={h.generateCredentialsForSelected} disabled={h.isGeneratingCredentials}>
-                {h.isGeneratingCredentials ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Key className="h-4 w-4 mr-2" />}Доступы
+                {h.isGeneratingCredentials ? <SigmaSpinner size="sm" className="mr-2" /> : <Key className="h-4 w-4 mr-2" />}Доступы
               </Button>
             </div>
           </CardContent>
@@ -284,7 +278,7 @@ export function LaborSafetyManager({ organizationId }: LaborSafetyManagerProps) 
 
       {/* Records table */}
       {h.isLoadingRecords ? (
-        <div className="flex justify-center py-8"><Loader2 className="w-6 h-6 animate-spin text-primary" /></div>
+        <div className="flex justify-center py-8"><SigmaSpinner /></div>
       ) : h.filteredRecords.length === 0 ? (
         <Card className="border-dashed">
           <CardContent className="flex flex-col items-center justify-center py-12">
@@ -368,7 +362,7 @@ export function LaborSafetyManager({ organizationId }: LaborSafetyManagerProps) 
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => h.setShowRecordDialog(false)}>Отмена</Button>
-            <Button onClick={h.handleSaveRecord} disabled={h.isSavingRecord}>{h.isSavingRecord && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}{h.editingRecord ? 'Сохранить' : 'Добавить'}</Button>
+            <Button onClick={h.handleSaveRecord} disabled={h.isSavingRecord}>{h.isSavingRecord && <SigmaSpinner size="sm" className="mr-2" />}{h.editingRecord ? 'Сохранить' : 'Добавить'}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -380,7 +374,7 @@ export function LaborSafetyManager({ organizationId }: LaborSafetyManagerProps) 
           <div className="space-y-4">
             <p className="text-sm text-muted-foreground">Выбрано записей: {h.selectedRecordIds.size}. Выберите курсы для зачисления.</p>
             {h.isLoadingCourses ? (
-              <div className="flex justify-center py-4"><Loader2 className="w-6 h-6 animate-spin" /></div>
+              <div className="flex justify-center py-4"><SigmaSpinner /></div>
             ) : h.courses.length === 0 ? (
               <p className="text-sm text-muted-foreground text-center py-4">Нет доступных курсов</p>
             ) : (
@@ -401,7 +395,7 @@ export function LaborSafetyManager({ organizationId }: LaborSafetyManagerProps) 
           <DialogFooter>
             <Button variant="outline" onClick={() => h.setShowEnrollDialog(false)}>Отмена</Button>
             <Button onClick={h.enrollSelectedToCourse} disabled={h.isEnrolling || h.selectedCourseIds.length === 0}>
-              {h.isEnrolling && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}Зачислить ({h.selectedCourseIds.length})
+              {h.isEnrolling && <SigmaSpinner size="sm" className="mr-2" />}Зачислить ({h.selectedCourseIds.length})
             </Button>
           </DialogFooter>
         </DialogContent>

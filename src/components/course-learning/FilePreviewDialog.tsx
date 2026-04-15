@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Download, ExternalLink, X, FileText, Loader2 } from "lucide-react";
+import { Download, ExternalLink, X, FileText} from "lucide-react";
+import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 
 interface FilePreviewDialogProps {
   open: boolean;
@@ -71,7 +72,7 @@ export function FilePreviewDialog({ open, onOpenChange, fileUrl, fileName, fileT
               {isLoading && (
                 <div className="absolute inset-0 flex items-center justify-center z-10 bg-background/80">
                   <div className="flex flex-col items-center gap-3">
-                    <Loader2 className="w-8 h-8 animate-spin text-primary" />
+                    <SigmaSpinner size="lg" />
                     <p className="text-sm text-muted-foreground">Загрузка предпросмотра…</p>
                   </div>
                 </div>

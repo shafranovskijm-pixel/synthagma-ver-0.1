@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { MessageSquare, Send, Loader2 } from "lucide-react";
+import { MessageSquare, Send} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -7,6 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
+import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 
 interface Comment {
   id: string;
@@ -74,8 +75,7 @@ export function CourseComments({ marketplaceCourseId, userId }: CourseCommentsPr
         marketplace_course_id: marketplaceCourseId,
         user_id: userId,
         author_name: authorName || "Пользователь",
-        content: newComment.trim(),
-      });
+        content: newComment.trim() });
 
     if (error) {
       toast.error("Ошибка при отправке комментария");
@@ -110,14 +110,14 @@ export function CourseComments({ marketplaceCourseId, userId }: CourseCommentsPr
             disabled={isSending || !newComment.trim()}
             className="self-end rounded-xl gap-1.5"
           >
-            {isSending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+            {isSending ? <SigmaSpinner size="sm" /> : <Send className="w-4 h-4" />}
           </Button>
         </div>
 
         {/* Comments list */}
         {isLoading ? (
           <div className="flex justify-center py-4">
-            <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+            <SigmaSpinner />
           </div>
         ) : comments.length === 0 ? (
           <p className="text-sm text-muted-foreground text-center py-3">Комментариев пока нет</p>

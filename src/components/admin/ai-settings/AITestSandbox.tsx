@@ -1,11 +1,12 @@
 import { useState } from "react";
 import { safeInvoke, safeFetch } from "@/utils/safeInvoke";
 import { toast } from "sonner";
-import { Play, Loader2, Clock, Cpu, ImageIcon, Volume2 } from "lucide-react";
+import { Play, Clock, Cpu, ImageIcon, Volume2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent } from "@/components/ui/card";
+import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 
 type TestResult = {
   response: string;
@@ -29,8 +30,7 @@ const DEFAULT_PROMPTS: Record<string, string> = {
   marketplace: "Напиши SEO-описание для курса по пожарной безопасности",
   pipeline: "Создай 1 тестовый вопрос по электробезопасности",
   org_default: "Объясни кратко что такое ДПО",
-  image_generation: "Иллюстрация для курса по охране труда: рабочий в каске на стройке",
-};
+  image_generation: "Иллюстрация для курса по охране труда: рабочий в каске на стройке" };
 
 export function AITestSandbox({ context, provider, gigachatModel, lovableModel }: AITestSandboxProps) {
   const [prompt, setPrompt] = useState(DEFAULT_PROMPTS[context] || "Тестовый запрос");
@@ -47,16 +47,14 @@ export function AITestSandbox({ context, provider, gigachatModel, lovableModel }
     try {
       if (context === "image_generation") {
         const { data, error } = await safeInvoke<any>("generate-image", {
-          body: { prompt, provider, model: provider === "gigachat" ? gigachatModel : lovableModel },
-        });
+          body: { prompt, provider, model: provider === "gigachat" ? gigachatModel : lovableModel } });
         const elapsed = Math.round(performance.now() - start);
         if (error) throw error;
         setResult({
           response: "Изображение сгенерировано",
           timeMs: elapsed,
           model: provider === "gigachat" ? "GigaChat" : (lovableModel || "google/gemini-2.5-flash-image"),
-          imageUrl: data?.url,
-        });
+          imageUrl: data?.url });
       } else if (context === "tts") {
         const response = await safeFetch(
           `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/elevenlabs-tts`,
@@ -65,10 +63,8 @@ export function AITestSandbox({ context, provider, gigachatModel, lovableModel }
             headers: {
               "Content-Type": "application/json",
               apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
-              Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
-            },
-            body: JSON.stringify({ text: prompt, voiceId: "onwK4e9ZLuTAKqWW03F9" }),
-          }
+              Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}` },
+            body: JSON.stringify({ text: prompt, voiceId: "onwK4e9ZLuTAKqWW03F9" }) }
         );
         const elapsed = Math.round(performance.now() - start);
         if (!response.ok) throw new Error(`TTS error: ${response.status}`);
@@ -78,8 +74,7 @@ export function AITestSandbox({ context, provider, gigachatModel, lovableModel }
           response: `Аудио сгенерировано (${(blob.size / 1024).toFixed(1)} КБ)`,
           timeMs: elapsed,
           model: provider === "elevenlabs" ? "ElevenLabs" : "Lovable AI TTS",
-          audioUrl,
-        });
+          audioUrl });
       } else {
         // Text-based AI test via gigachat function
         const aiProvider = provider === "lovable_ai" ? "lovable_ai" : "gigachat";
@@ -88,16 +83,13 @@ export function AITestSandbox({ context, provider, gigachatModel, lovableModel }
             action: "generate_content",
             courseTitle: "Тест ИИ",
             lessonTitle: prompt,
-            ai_provider: aiProvider,
-          },
-        });
+            ai_provider: aiProvider } });
         const elapsed = Math.round(performance.now() - start);
         if (error) throw error;
         setResult({
           response: data?.content || data?.raw || "Нет ответа",
           timeMs: elapsed,
-          model: data?.model || (aiProvider === "lovable_ai" ? lovableModel : gigachatModel),
-        });
+          model: data?.model || (aiProvider === "lovable_ai" ? lovableModel : gigachatModel) });
       }
     } catch (e: any) {
       const elapsed = Math.round(performance.now() - start);
@@ -129,7 +121,7 @@ export function AITestSandbox({ context, provider, gigachatModel, lovableModel }
               onKeyDown={(e) => e.key === "Enter" && !loading && runTest()}
             />
             <Button size="sm" onClick={runTest} disabled={loading} className="shrink-0 gap-1.5">
-              {loading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Play className="w-3.5 h-3.5" />}
+              {loading ? <SigmaSpinner size="xs" className=".5 .5" /> : <Play className="w-3.5 h-3.5" />}
               {loading ? "..." : "▶"}
             </Button>
           </div>

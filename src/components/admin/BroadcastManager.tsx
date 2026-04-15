@@ -7,10 +7,11 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Megaphone, Send, Trash2, Mail, Clock, MessageSquare, CheckCircle2, Loader2 } from "lucide-react";
+import { Megaphone, Send, Trash2, Mail, Clock, MessageSquare, CheckCircle2} from "lucide-react";
 import { toast } from "sonner";
 import { format, differenceInDays } from "date-fns";
 import { ru } from "date-fns/locale";
+import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 
 interface Announcement {
   id: string;
@@ -91,8 +92,7 @@ export function BroadcastManager() {
         .filter(o => o.email)
         .map(o => ({
           ...o,
-          daysInactive: differenceInDays(now, new Date(o.updated_at)),
-        }));
+          daysInactive: differenceInDays(now, new Date(o.updated_at)) }));
 
       if (selectedTemplate === "inactive") {
         const threshold = parseInt(inactivityDays);
@@ -127,8 +127,7 @@ export function BroadcastManager() {
       const { error } = await supabase.from("platform_announcements").insert({
         title: title.trim() || null,
         content: content.trim(),
-        created_by: user?.id || null,
-      });
+        created_by: user?.id || null });
       if (error) throw error;
       toast.success("Рассылка отправлена");
       setTitle("");
@@ -241,8 +240,7 @@ export function BroadcastManager() {
             organization_id: org.id,
             organization_email: org.email!,
             action_type: actionType,
-            template_name: selectedTemplate!,
-          })
+            template_name: selectedTemplate! })
           .select("id")
           .single();
 
@@ -264,9 +262,7 @@ export function BroadcastManager() {
             to: org.email,
             subject,
             html,
-            from: "Sintagma <support@sintagma.com.ru>",
-          },
-        });
+            from: "Sintagma <support@sintagma.com.ru>" } });
 
         successCount++;
       } catch (err) {
@@ -462,7 +458,7 @@ export function BroadcastManager() {
                   >
                     {sendingEmails ? (
                       <>
-                        <Loader2 className="w-4 h-4 animate-spin" />
+                        <SigmaSpinner size="sm" />
                         Отправка {sendProgress.current}/{sendProgress.total}...
                       </>
                     ) : (
