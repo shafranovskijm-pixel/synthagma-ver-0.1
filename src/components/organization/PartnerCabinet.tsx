@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -9,7 +9,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
-import { Copy, TrendingUp, Users, DollarSign, Wallet, Sparkles, Link as LinkIcon } from "lucide-react";
+import { Copy, TrendingUp, Users, DollarSign, Wallet, Sparkles, Link as LinkIcon, Calculator } from "lucide-react";
+import { Slider } from "@/components/ui/slider";
 import { getBaseUrl } from "@/utils/getBaseUrl";
 import { Link } from "react-router-dom";
 import { toast } from "sonner";
@@ -229,6 +230,9 @@ export function PartnerCabinet() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Earnings Calculator */}
+      <EarningsCalculator commissionPercent={partner.commission_percent} />
 
       {/* Detail tabs */}
       <Tabs defaultValue="registrations">
