@@ -1,10 +1,9 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-import { Settings, LayoutGrid, Save, RefreshCw, RotateCcw, Users, FileText, BarChart3, Link, HardHat, ShoppingBag, Building2, GraduationCap, Wallet } from "lucide-react";
+import { Settings, LayoutGrid, Save, RefreshCw, RotateCcw, Users, FileText, BarChart3, Link, HardHat, ShoppingBag, Building2, GraduationCap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { TBankSettings } from "@/components/organization/TBankSettings";
 import { SettingsStudentDashboardTab } from "@/components/organization/SettingsStudentDashboardTab";
 import { StaffManager } from "@/components/organization/StaffManager";
 import { useOrgDashboard } from "@/contexts/OrgDashboardContext";
@@ -28,7 +27,6 @@ const DEFAULT_MENU: MenuSettings = {
 
 const settingsTabs = [
   { key: "menu", label: "Разделы меню", icon: LayoutGrid },
-  { key: "robokassa", label: "Касса", icon: Wallet },
   { key: "student", label: "Настройки ЛК", icon: GraduationCap },
   { key: "staff", label: "Сотрудники", icon: Users },
 ];
@@ -170,10 +168,6 @@ function SettingsContent() {
               </div>
             </div>
           </div>
-        )}
-
-        {activeTab === "robokassa" && (
-          <div className="max-w-2xl">{organizationId && <TBankSettings organizationId={organizationId} />}</div>
         )}
 
         {activeTab === "student" && (

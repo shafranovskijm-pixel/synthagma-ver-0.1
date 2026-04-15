@@ -19,6 +19,7 @@ import { AdminChatsManager } from "@/components/admin/AdminChatsManager";
 import { ReferralsManager } from "@/components/admin/ReferralsManager";
 import { PlatformUpdatesManager } from "@/components/admin/PlatformUpdatesManager";
 import { AdminBillingOverview } from "@/components/admin/AdminBillingOverview";
+import { AdminFinanceOverview } from "@/components/admin/AdminFinanceOverview";
 import { AdminStaffTab } from "@/components/admin/AdminStaffTab";
 import { useAdminBranding } from "@/hooks/useAdminBranding";
 import { supabase } from "@/integrations/supabase/client";
@@ -160,6 +161,7 @@ const AdminDashboard = () => {
           {activeTab === "marketplace" && <AdminMarketplaceManager />}
           {activeTab === "sales" && <SalesManager />}
           {activeTab === "billing" && <AdminBillingOverview />}
+          {activeTab === "finance" && <AdminFinanceOverview />}
           {activeTab === "ai" && <AISettingsManager />}
           {activeTab === "users" && <UsersManager />}
           {activeTab === "content" && <BlogManager />}

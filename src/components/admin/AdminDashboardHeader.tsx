@@ -48,6 +48,7 @@ const TAB_TITLES: Record<AdminTabType, string> = {
   marketplace: "Маркетплейс",
   sales: "Продажи",
   billing: "Биллинг",
+  finance: "Финансы",
   ai: "ИИ-провайдеры",
   broadcast: "Рассылка",
   chats: "Чаты",
