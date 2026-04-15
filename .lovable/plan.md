@@ -1,26 +1,39 @@
 
 
-# Применить баннер из темы на всех страницах организации
+# Применить визуальную тему на всех страницах организации
 
 ## Проблема
 
-Баннер из визуальной темы (Офис с зеленью, Природа и т.д.) применяется только на главной странице дашборда (`OrgDashboardHeader`), но не на подстраницах — Профиль, Курс, Настройки и др. Эти подстраницы используют `OrgPageLayout`, в котором отсутствует логика чтения активной темы.
+Главная страница дашборда (`OrganizationDashboard.tsx`) применяет полную визуальную тему:
+- `activeTheme.bgClass` — градиентный фон
+- `ThemeAnimations` — анимированные частицы/листья
+- `AtmosphericBleed` — размытый фоновый эффект
+
+Подстраницы (Профиль, Курс, Настройки, Документы) используют `OrgPageLayout`, который применяет только баннер-картинку темы, но **не применяет фон, анимации и атмосферу**. Поэтому при переходе на подстраницу фон становится белым/стандартным.
 
 ## Решение
 
-Добавить в `OrgPageLayout.tsx` ту же логику отслеживания темы, что уже есть в `OrgDashboardHeader`:
+Добавить в `OrgPageLayout.tsx` те же визуальные эффекты темы, что есть на главной:
 
-1. `useState` для `themeBannerUrl` и `themeBannerPosition`, инициализированные из `getStoredThemeId()`
-2. `useEffect` с подпиской на `window "visual-theme-change"` event
-3. `displayCover` = `themeBannerUrl || coverUrl || defaultCoverImg`
-4. `objectPosition` учитывает `themeBannerPosition` (приоритет над `coverPosition`)
-5. Скрыть "Онлайн-обучение" когда есть тема-баннер (как в `OrgDashboardHeader`)
+1. Загрузить полный объект `activeTheme` (не только `bannerUrl`)
+2. Применить `activeTheme.bgClass` на корневой `<div>`
+3. Добавить `<ThemeAnimations>` и `<AtmosphericBleed>` компоненты
+4. Обработать специальный кейс для темы `turquoise` (inline gradient)
 
 ## Файлы
 
 | Файл | Действие |
 |---|---|
-| `src/components/organization/OrgPageLayout.tsx` | Добавить theme banner state + listener, обновить `displayCover` и `objectPosition` в hero banner |
+| `src/components/organization/OrgPageLayout.tsx` | Заменить раздельные `themeBannerUrl`/`themeBannerPosition` на полный `activeTheme` объект. Добавить `ThemeAnimations`, `AtmosphericBleed`, `bgClass` на корневой div |
 
-Изменения ~15 строк — только в одном файле. Вся остальная часть компонента остаётся без изменений.
+## Детали изменений
+
+В `OrgPageLayout.tsx`:
+- Заменить два `useState` (`themeBannerUrl`, `themeBannerPosition`) на один `useState<AdminTheme | null>` для `activeTheme`
+- Вычислять `themeBannerUrl` и `themeBannerPosition` из `activeTheme`
+- На корневой `<div>` добавить `activeTheme?.bgClass` и inline style для turquoise
+- Перед `<main>` вставить `<ThemeAnimations>` и `<AtmosphericBleed>` (условно, если activeTheme)
+- Импортировать `ThemeAnimations`, `getStoredAnimationLevel`, `AtmosphericBleed`
+
+Изменения ~20 строк в одном файле.
 
