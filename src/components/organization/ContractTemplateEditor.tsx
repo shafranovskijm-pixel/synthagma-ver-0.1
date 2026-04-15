@@ -76,6 +76,11 @@ const PLACEHOLDERS = [
   { key: "{{service_end_date}}", label: "Дата окончания обучения", example: "«15» февраля 2026 г.", patterns: [] },
   { key: "{{contract_valid_until}}", label: "Срок действия (1 год)", example: "«12» января 2027 г.", patterns: [] },
   { key: "{{additional_terms}}", label: "Дополнительные условия", example: "", patterns: [] },
+  { key: "{{org_license_number}}", label: "Номер лицензии", example: "Л035-00000-00/00000000", patterns: ["лицензи"] },
+  { key: "{{org_license_date}}", label: "Дата лицензии", example: "01.01.2020", patterns: ["лицензи"] },
+  { key: "{{org_license_issuer}}", label: "Кем выдана лицензия", example: "Департаментом образования г. Москвы", patterns: ["выдана"] },
+  { key: "{{document_type_name}}", label: "Вид документа об образовании", example: "удостоверение о повышении квалификации", patterns: ["документ об образовании", "удостоверение", "диплом"] },
+  { key: "{{education_form}}", label: "Форма обучения", example: "заочная (с применением дистанционных технологий)", patterns: ["форма обучения", "очная", "заочная"] },
 ];
 
 export function ContractTemplateEditor({

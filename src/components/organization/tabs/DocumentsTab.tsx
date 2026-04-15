@@ -664,6 +664,10 @@ export const DocumentsTab = React.memo(function DocumentsTab({ organizationId, o
                       <Stamp className="w-3.5 h-3.5" />
                       <span className="hidden sm:inline">Печать</span>
                     </TabsTrigger>
+                    <TabsTrigger value="info" className="rounded-lg text-xs gap-1.5 px-2.5 py-1.5">
+                      <Lightbulb className="w-3.5 h-3.5" />
+                      <span className="hidden sm:inline">Справка</span>
+                    </TabsTrigger>
                   </TabsList>
 
                   <TabsContent value="requisites" className="mt-0 space-y-4">
