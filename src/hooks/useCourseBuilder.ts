@@ -42,21 +42,22 @@ function clearDraftFromLocal(courseId: string | undefined) {
   try { localStorage.removeItem(`${DRAFT_PREFIX}${courseId || 'new'}`); } catch {}
 }
 
-export function useCourseBuilder() {
+export function useCourseBuilder(propCourseId?: string) {
   const navigate = useNavigate();
   const { courseId: paramCourseId } = useParams();
+  const externalCourseId = propCourseId || paramCourseId;
   const { user, userRole } = useAuth();
   const [courseTitle, setCourseTitle] = useState("");
   const [courseDescription, setCourseDescription] = useState("");
   const [lessons, setLessons] = useState<Lesson[]>([]);
   const [isGenerating, setIsGenerating] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  const [isLoading, setIsLoading] = useState(!!paramCourseId);
+  const [isLoading, setIsLoading] = useState(!!externalCourseId);
   const [isImporting, setIsImporting] = useState(false);
   const [organizationId, setOrganizationId] = useState<string | null>(null);
   const [isDataLoaded, setIsDataLoaded] = useState(false);
   const [savedCourseIdState, setSavedCourseIdState] = useState<string | null>(null);
-  const courseId = savedCourseIdState || paramCourseId;
+  const courseId = savedCourseIdState || externalCourseId;
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [showExitDialog, setShowExitDialog] = useState(false);
   const [showAIGenerateDialog, setShowAIGenerateDialog] = useState(false);

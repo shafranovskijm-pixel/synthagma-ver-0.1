@@ -1,4 +1,5 @@
 import { useRef, useState } from "react";
+import { cn } from "@/lib/utils";
 import { useNavigate, useParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -19,9 +20,13 @@ import { useCourseReview } from "@/hooks/useCourseReview";
 import { LessonType } from "@/components/course-builder/LessonTypeConfig";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 
-export default function CourseBuilder() {
+interface CourseBuilderProps {
+  embedded?: boolean;
+  embeddedCourseId?: string;
+}
+
+export default function CourseBuilder({ embedded, embeddedCourseId }: CourseBuilderProps = {}) {
   const navigate = useNavigate();
-  const { courseId } = useParams();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isSavingForPreview, setIsSavingForPreview] = useState(false);
 
@@ -34,7 +39,7 @@ export default function CourseBuilder() {
     handleSaveAndExit, handleExitWithoutSave, handleBackClick,
     sensors, handleDragEnd, saveCourse, autoSaveStatus,
     courseId: resolvedCourseId,
-    organizationId } = useCourseBuilder();
+    organizationId } = useCourseBuilder(embeddedCourseId);
 
   const {
     isReviewing, reviewResult, activeFindings, dismissedIds,
@@ -73,31 +78,33 @@ export default function CourseBuilder() {
     }
   };
 
-  if (isLoading) return <div className="min-h-screen bg-background flex items-center justify-center"><SigmaSpinner size="lg" /></div>;
+  if (isLoading) return <div className={cn(embedded ? "py-16" : "min-h-screen", "bg-background flex items-center justify-center")}><SigmaSpinner size="lg" /></div>;
 
   return (
     <TooltipProvider delayDuration={300}>
-    <div className="min-h-screen bg-background">
-      <header className="bg-card border-b border-border sticky top-0 z-10">
-        <div className="container mx-auto px-3 sm:px-6 py-3 sm:py-4 flex items-center justify-between backdrop-blur-sm bg-card/80">
-          <div className="flex items-center gap-2 sm:gap-4">
-            <Tooltip><TooltipTrigger asChild>
-              <Button variant="ghost" size="sm" onClick={handleBackClick} className="rounded-xl"><ArrowLeft className="w-4 h-4 mr-2" />Назад</Button>
-            </TooltipTrigger><TooltipContent>Вернуться к списку курсов</TooltipContent></Tooltip>
-            <SigmaLogo size="sm" />
+    <div className={cn(embedded ? "" : "min-h-screen", "bg-background")}>
+      {!embedded && (
+        <header className="bg-card border-b border-border sticky top-0 z-10">
+          <div className="container mx-auto px-3 sm:px-6 py-3 sm:py-4 flex items-center justify-between backdrop-blur-sm bg-card/80">
+            <div className="flex items-center gap-2 sm:gap-4">
+              <Tooltip><TooltipTrigger asChild>
+                <Button variant="ghost" size="sm" onClick={handleBackClick} className="rounded-xl"><ArrowLeft className="w-4 h-4 mr-2" />Назад</Button>
+              </TooltipTrigger><TooltipContent>Вернуться к списку курсов</TooltipContent></Tooltip>
+              <SigmaLogo size="sm" />
+            </div>
+            <div className="flex items-center gap-3">
+              <Tooltip><TooltipTrigger asChild>
+                <Button variant="outline" onClick={handlePreview} disabled={isSavingForPreview} className="rounded-xl gap-2">
+                  {isSavingForPreview ? <SigmaSpinner size="sm" /> : <Eye className="w-4 h-4" />}
+                  <span className="hidden sm:inline">{isSavingForPreview ? 'Сохранение...' : 'Предпросмотр'}</span>
+                </Button>
+              </TooltipTrigger><TooltipContent>Посмотреть курс глазами ученика</TooltipContent></Tooltip>
+            </div>
           </div>
-          <div className="flex items-center gap-3">
-            <Tooltip><TooltipTrigger asChild>
-              <Button variant="outline" onClick={handlePreview} disabled={isSavingForPreview} className="rounded-xl gap-2">
-                {isSavingForPreview ? <SigmaSpinner size="sm" /> : <Eye className="w-4 h-4" />}
-                <span className="hidden sm:inline">{isSavingForPreview ? 'Сохранение...' : 'Предпросмотр'}</span>
-              </Button>
-            </TooltipTrigger><TooltipContent>Посмотреть курс глазами ученика</TooltipContent></Tooltip>
-          </div>
-        </div>
-      </header>
+        </header>
+      )}
 
-      <div className="fixed bottom-0 inset-x-0 z-50 bg-gradient-to-t from-background via-background to-transparent pb-3 sm:pb-4 pt-6 sm:pt-8 pointer-events-none">
+      <div className={cn(embedded ? "sticky bottom-0 z-40" : "fixed bottom-0 inset-x-0 z-50", "bg-gradient-to-t from-background via-background to-transparent pb-3 sm:pb-4 pt-6 sm:pt-8 pointer-events-none")}>
         <div className="container mx-auto px-3 sm:px-6 pointer-events-auto flex flex-col items-center gap-2">
           <Tooltip><TooltipTrigger asChild>
             <Button onClick={() => saveCourse()} disabled={isSaving} size="lg" className="btn-gradient rounded-2xl gap-2 sm:gap-3 px-6 sm:px-8 py-5 sm:py-6 text-base sm:text-lg font-semibold shadow-2xl hover:scale-105 transition-transform w-full sm:w-auto">
@@ -107,7 +114,7 @@ export default function CourseBuilder() {
             </Button>
           </TooltipTrigger><TooltipContent>Сохранить все изменения курса</TooltipContent></Tooltip>
           {autoSaveStatus === 'saved' && (
-            <span className="text-xs text-green-600 dark:text-green-400 flex items-center gap-1 animate-in fade-in">
+            <span className="text-xs text-sigma-green flex items-center gap-1 animate-in fade-in">
               <Check className="w-3 h-3" /> Сохранено
             </span>
           )}
