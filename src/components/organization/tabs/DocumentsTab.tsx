@@ -252,7 +252,7 @@ export const DocumentsTab = React.memo(function DocumentsTab({ organizationId, o
   const handleGenerateAct = async () => {
     if (!organizationId || !actBasis || !actAmount) return;
     setActSubmitting(true);
-    const result = await generateAct({
+    const act = await generateActHtml({
       organizationId,
       orgName: actOtherCustomer && actCustomerName ? actCustomerName : (d.organizationName || organizationName || ""),
       orgInn: actOtherCustomer && actCustomerInn ? actCustomerInn : (orgDetails.inn || null),
@@ -262,25 +262,50 @@ export const DocumentsTab = React.memo(function DocumentsTab({ organizationId, o
       basis: actBasis,
       amount: parseFloat(actAmount),
     });
-    if (result) {
-      toast.success("Акт создан", { description: "result" });
-      const { data } = await supabase.from("org_billing_documents" as any)
-        .select("*").eq("organization_id", organizationId).order("created_at", { ascending: false });
-      if (data) setBillingDocs(data as any[]);
+    if (act) {
+      setPendingAct(act);
+      const printWindow = window.open('', '_blank');
+      if (printWindow) {
+        printWindow.document.write(act.html);
+        printWindow.document.close();
+      }
+      toast.success("Акт сформирован", { description: "Скачайте или распечатайте для сохранения" });
       setShowActDialog(false);
-      setActBasis("");
-      setActAmount("");
-      setActDate(new Date());
-      setActOtherCustomer(false);
-      setActCustomerName("");
-      setActCustomerInn("");
-      setActCustomerKpp("");
-      setActCustomerDirector("");
-      setActCustomerPosition("");
+      setActBasis(""); setActAmount(""); setActDate(new Date());
+      setActOtherCustomer(false); setActCustomerName(""); setActCustomerInn("");
+      setActCustomerKpp(""); setActCustomerDirector(""); setActCustomerPosition("");
     } else {
       toast.error("Ошибка", { description: "Не удалось сгенерировать акт" });
     }
     setActSubmitting(false);
+  };
+
+  const handleSavePendingAct = async (action: 'download' | 'print') => {
+    if (!pendingAct) return;
+    await saveActDocument(pendingAct);
+    const { data } = await supabase.from("org_billing_documents" as any)
+      .select("*").eq("organization_id", organizationId).order("created_at", { ascending: false });
+    if (data) setBillingDocs(data as any[]);
+    if (action === 'download') {
+      const docContent = `<!DOCTYPE html><html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'><head><meta charset="utf-8"></head><body>${pendingAct.html.replace(/<html[^>]*>|<\/html>|<head>[\s\S]*?<\/head>|<body[^>]*>|<\/body>|<!DOCTYPE[^>]*>/gi, '')}</body></html>`;
+      const blob = new Blob([docContent], { type: 'application/msword' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url; link.download = `${pendingAct.docName}.doc`;
+      document.body.appendChild(link); link.click(); document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      toast.success("Акт скачан и сохранён");
+    } else {
+      const printWindow = window.open('', '_blank');
+      if (printWindow) {
+        printWindow.document.write(pendingAct.html);
+        printWindow.document.close();
+        printWindow.focus();
+        setTimeout(() => printWindow.print(), 500);
+      }
+      toast.success("Акт отправлен на печать и сохранён");
+    }
+    setPendingAct(null);
   };
 
   const handleActSearchByInn = async (inn: string) => {
