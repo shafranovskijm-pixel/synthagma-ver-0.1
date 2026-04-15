@@ -285,6 +285,44 @@ export default function StudentProfile() {
     }
   };
 
+  // Badge counts for consent and documents — MUST be before any early return
+  const { data: consentCount } = useQuery({
+    queryKey: ["consent-badge", effectiveUserId, profile?.organization_id],
+    queryFn: async () => {
+      if (!effectiveUserId) return 0;
+      const query = supabase
+        .from("student_consents")
+        .select("id", { count: "exact", head: true })
+        .eq("user_id", effectiveUserId)
+        .eq("status", "signed");
+      if (profile?.organization_id) {
+        query.eq("organization_id", profile.organization_id);
+      }
+      const { count } = await query;
+      return (count ?? 0) > 0 ? 0 : 1;
+    },
+    enabled: !!effectiveUserId,
+  });
+
+  const REQUIRED_DOC_TYPES = ["passport", "snils", "education_document"];
+  const { data: docsNeeded } = useQuery({
+    queryKey: ["docs-badge", effectiveUserId, profile?.organization_id],
+    queryFn: async () => {
+      if (!effectiveUserId) return REQUIRED_DOC_TYPES.length;
+      const query = supabase
+        .from("student_identity_documents")
+        .select("type")
+        .eq("user_id", effectiveUserId);
+      if (profile?.organization_id) {
+        query.eq("organization_id", profile.organization_id);
+      }
+      const { data } = await query;
+      const uploadedTypes = new Set(data?.map(d => d.type) || []);
+      return REQUIRED_DOC_TYPES.filter(t => !uploadedTypes.has(t)).length;
+    },
+    enabled: !!effectiveUserId,
+  });
+
   const handleLogout = async () => {
     await supabase.auth.signOut();
     navigate("/login");
@@ -309,44 +347,6 @@ export default function StudentProfile() {
       <p className="text-sm text-muted-foreground">Обратитесь к администратору для подключения.</p>
     </div>
   );
-
-  // Badge counts for consent and documents
-  const { data: consentCount } = useQuery({
-    queryKey: ["consent-badge", effectiveUserId, profile?.organization_id],
-    queryFn: async () => {
-      if (!effectiveUserId) return 0;
-      const query = supabase
-        .from("student_consents")
-        .select("id", { count: "exact", head: true })
-        .eq("user_id", effectiveUserId)
-        .eq("status", "signed");
-      if (profile?.organization_id) {
-        query.eq("organization_id", profile.organization_id);
-      }
-      const { count } = await query;
-      return (count ?? 0) > 0 ? 0 : 1; // 1 = needs consent
-    },
-    enabled: !!effectiveUserId,
-  });
-
-  const REQUIRED_DOC_TYPES = ["passport", "snils", "education_document"];
-  const { data: docsNeeded } = useQuery({
-    queryKey: ["docs-badge", effectiveUserId, profile?.organization_id],
-    queryFn: async () => {
-      if (!effectiveUserId) return REQUIRED_DOC_TYPES.length;
-      const query = supabase
-        .from("student_identity_documents")
-        .select("type")
-        .eq("user_id", effectiveUserId);
-      if (profile?.organization_id) {
-        query.eq("organization_id", profile.organization_id);
-      }
-      const { data } = await query;
-      const uploadedTypes = new Set(data?.map(d => d.type) || []);
-      return REQUIRED_DOC_TYPES.filter(t => !uploadedTypes.has(t)).length;
-    },
-    enabled: !!effectiveUserId,
-  });
 
   const tabs = [
     { id: "profile", label: "Профиль", icon: User, badge: 0 },
@@ -443,36 +443,38 @@ export default function StudentProfile() {
                       <Input value={user?.email || ""} disabled className="bg-muted/50" />
                     </div>
 
-                    <div className="space-y-2">
-                      <Label>Аватар</Label>
-                      <div className="flex items-center gap-4">
-                        <div className="relative group">
-                          <Avatar className="w-16 h-16">
-                            {avatarUrl ? <AvatarImage src={avatarUrl} alt={fullName} /> : null}
-                            <AvatarFallback className="bg-primary/10 text-primary text-xl font-semibold">{initials}</AvatarFallback>
-                          </Avatar>
-                          <label className="absolute inset-0 flex items-center justify-center bg-black/40 rounded-full opacity-0 group-hover:opacity-100 cursor-pointer transition-opacity">
-                            <Camera className="w-5 h-5 text-white" />
-                            <input type="file" accept="image/*" className="hidden" onChange={handleAvatarUpload} />
-                          </label>
+                    {!isAdminView && (
+                      <div className="space-y-2">
+                        <Label>Аватар</Label>
+                        <div className="flex items-center gap-4">
+                          <div className="relative group">
+                            <Avatar className="w-16 h-16">
+                              {avatarUrl ? <AvatarImage src={avatarUrl} alt={fullName} /> : null}
+                              <AvatarFallback className="bg-primary/10 text-primary text-xl font-semibold">{initials}</AvatarFallback>
+                            </Avatar>
+                            <label className="absolute inset-0 flex items-center justify-center bg-black/40 rounded-full opacity-0 group-hover:opacity-100 cursor-pointer transition-opacity">
+                              <Camera className="w-5 h-5 text-white" />
+                              <input type="file" accept="image/*" className="hidden" onChange={handleAvatarUpload} />
+                            </label>
+                          </div>
+                          <p className="text-sm text-muted-foreground">Нажмите на аватар, чтобы загрузить фото</p>
                         </div>
-                        <p className="text-sm text-muted-foreground">Нажмите на аватар, чтобы загрузить фото</p>
                       </div>
-                    </div>
+                    )}
 
                     <div className="space-y-2">
                       <Label>Имя и Фамилия</Label>
-                      <Input value={fullName} onChange={e => setFullName(e.target.value)} placeholder="Введите имя" />
+                      <Input value={fullName} onChange={e => setFullName(e.target.value)} placeholder="Введите имя" disabled={isAdminView} />
                     </div>
 
                     <div className="space-y-2">
                       <Label>Телефон</Label>
-                      <Input value={phone} onChange={e => setPhone(e.target.value)} placeholder="+7 999 123-45-67" />
+                      <Input value={phone} onChange={e => setPhone(e.target.value)} placeholder="+7 999 123-45-67" disabled={isAdminView} />
                     </div>
 
                     <div className="space-y-2">
                       <Label>Город</Label>
-                      <Input value={city} onChange={e => setCity(e.target.value)} placeholder="Введите город" />
+                      <Input value={city} onChange={e => setCity(e.target.value)} placeholder="Введите город" disabled={isAdminView} />
                     </div>
 
                     <div className="space-y-2">
@@ -482,19 +484,22 @@ export default function StudentProfile() {
                         onChange={e => setBio(e.target.value)}
                         placeholder="Опишите карьеру и достижения"
                         rows={4}
+                        disabled={isAdminView}
                       />
                     </div>
 
-                    <Button onClick={handleSaveProfile} disabled={profileSaving}>
-                      {profileSaving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
-                      Сохранить
-                    </Button>
+                    {!isAdminView && (
+                      <Button onClick={handleSaveProfile} disabled={profileSaving}>
+                        {profileSaving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+                        Сохранить
+                      </Button>
+                    )}
                   </CardContent>
                 </Card>
               </div>
 
               {/* Right column — email & password */}
-              <div className="space-y-6">
+              {!isAdminView && <div className="space-y-6">
                 <Card>
                   <CardHeader>
                     <CardTitle className="text-base">Изменить email</CardTitle>
@@ -549,7 +554,7 @@ export default function StudentProfile() {
                     </Button>
                   </CardContent>
                 </Card>
-              </div>
+              </div>}
             </div>
           </TabsContent>
 
