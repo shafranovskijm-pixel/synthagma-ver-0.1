@@ -24,6 +24,7 @@ import { ProfileTab } from "@/components/organization/tabs/ProfileTab";
 import { OrgSettingsContent } from "@/components/organization/tabs/OrgSettingsContent";
 import { WhatsNewTab } from "@/components/organization/tabs/WhatsNewTab";
 import { OrgDocumentsTab } from "@/components/organization/tabs/OrgDocumentsTab";
+import { ContractEditorTab } from "@/components/organization/tabs/ContractEditorTab";
 
 import { useOrgDashboard } from "@/contexts/OrgDashboardContext";
 
@@ -53,7 +54,8 @@ export function TabContentRenderer() {
     activeTab !== "whats-new" &&
     activeTab !== "org-documents" &&
     !activeTab.startsWith("documents") &&
-    activeTab !== "course-details";
+    activeTab !== "course-details" &&
+    activeTab !== "contract-editor";
 
   return (
     <>
@@ -219,6 +221,11 @@ export function TabContentRenderer() {
       {/* Org Documents Tab (profile section) */}
       {activeTab === "org-documents" && organizationId && (
         <OrgDocumentsTab organizationId={organizationId} />
+      )}
+
+      {/* Contract Template Editor Tab */}
+      {activeTab === "contract-editor" && organizationId && (
+        <ContractEditorTab organizationId={organizationId} organizationName={d.organizationName || ""} />
       )}
     </>
   );

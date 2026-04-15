@@ -48,7 +48,8 @@ export type TabType =
   | "profile"
   | "whats-new"
   | "org-documents"
-  | "course-details";
+  | "course-details"
+  | "contract-editor";
 
 const tabCategoryMap: Record<string, string> = {
   courses: "courses",

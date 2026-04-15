@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { 
   Users, ClipboardList, Award, GraduationCap, FileCheck, 
@@ -37,6 +37,8 @@ import { getSignedStorageUrl } from "@/utils/storageHelpers";
 import { generateActHtml, saveActDocument, type GeneratedAct } from "@/utils/generateAct";
 import { PayersSection } from "@/components/organization/PayersSection";
 import { ContractLegalFaq } from "@/components/organization/ContractLegalFaq";
+import { ContractGenerator } from "@/components/organization/ContractGenerator";
+import { type OrgRequisites } from "@/hooks/useCompanyLinksAndGenerators";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
@@ -153,6 +155,39 @@ export const DocumentsTab = React.memo(function DocumentsTab({ organizationId, o
   const [innSearching, setInnSearching] = useState(false);
   const [orgDetails, setOrgDetails] = useState<{ inn?: string; director_name?: string; director_position?: string; custom_price?: number; custom_discount?: number; subscription_plan?: string }>({});
   const [pendingInvoice, setPendingInvoice] = useState<{ html: string; insertData: any; invoiceNum: string; amount: number } | null>(null);
+
+  // Contract Generator state
+  const [showContractGenerator, setShowContractGenerator] = useState(false);
+  const [orgRequisites, setOrgRequisites] = useState<OrgRequisites | null>(null);
+
+  useEffect(() => {
+    if (!organizationId) return;
+    supabase
+      .from("organizations")
+      .select("*")
+      .eq("id", organizationId)
+      .single()
+      .then(({ data }) => {
+        if (data) {
+          setOrgRequisites({
+            name: data.name || "",
+            inn: data.inn || "",
+            kpp: data.kpp || "",
+            ogrn: data.ogrn || "",
+            legal_address: data.legal_address || "",
+            actual_address: data.actual_address || "",
+            director_name: data.director_name || "",
+            director_position: data.director_position || "",
+            bank_name: data.bank_name || "",
+            bank_bik: data.bank_bik || "",
+            bank_account: data.bank_account || "",
+            bank_corr_account: data.bank_corr_account || "",
+            stamp_url: data.stamp_url,
+            signature_url: data.signature_url,
+          });
+        }
+      });
+  }, [organizationId]);
 
   useEffect(() => {
     if (!organizationId) return;
@@ -658,7 +693,7 @@ export const DocumentsTab = React.memo(function DocumentsTab({ organizationId, o
                 </Button>
               )}
               {activeTab === "counterparties" && counterpartySubTab === "contracts" && (
-                <Button size="sm" className="rounded-xl gap-1.5" onClick={() => navigate("/contract-editor")}>
+                <Button size="sm" className="rounded-xl gap-1.5" onClick={() => setShowContractGenerator(true)}>
                   <FileText className="w-3.5 h-3.5" />
                   <span className="hidden sm:inline">Создать договор</span>
                 </Button>
@@ -723,7 +758,7 @@ export const DocumentsTab = React.memo(function DocumentsTab({ organizationId, o
                           Полноэкранный редактор с подсветкой переменных, панелью вставки и предпросмотром
                         </p>
                       </div>
-                      <Button className="rounded-xl gap-2" onClick={() => navigate("/contract-editor")}>
+                      <Button className="rounded-xl gap-2" onClick={() => d.tabNavigation.setActiveTab("contract-editor" as any)}>
                         <ExternalLink className="w-4 h-4" />
                         Открыть конструктор
                       </Button>
@@ -877,7 +912,7 @@ export const DocumentsTab = React.memo(function DocumentsTab({ organizationId, o
                         <ScrollText className="w-10 h-10 mx-auto mb-2 opacity-30" />
                         <p className="text-sm font-medium">Договоры с контрагентами</p>
                         <p className="text-xs mt-1">Создайте первый договор с помощью конструктора</p>
-                        <Button className="mt-4 rounded-xl gap-1.5" size="sm" onClick={() => navigate("/contract-editor")}>
+                        <Button className="mt-4 rounded-xl gap-1.5" size="sm" onClick={() => setShowContractGenerator(true)}>
                           <FileText className="w-3.5 h-3.5" />
                           Создать договор
                         </Button>
@@ -1353,6 +1388,53 @@ export const DocumentsTab = React.memo(function DocumentsTab({ organizationId, o
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      {/* Contract Generator Dialog */}
+      {orgRequisites && organizationId && (
+        <ContractGenerator
+          organizationId={organizationId}
+          isOpen={showContractGenerator}
+          onClose={() => setShowContractGenerator(false)}
+          orgRequisites={orgRequisites}
+          onSave={async (html, contractNumber, companyName, courseId, amount, studentsCount, contractDate) => {
+            // Find company by name to save the document
+            const { data: companies } = await supabase
+              .from("companies")
+              .select("id")
+              .eq("organization_id", organizationId)
+              .ilike("name", companyName)
+              .limit(1);
+            const companyId = companies?.[0]?.id;
+            if (companyId) {
+              await supabase.from("company_documents").insert({
+                company_id: companyId,
+                name: `Договор №${contractNumber} — ${companyName}`,
+                type: "contract",
+                contract_number: contractNumber,
+                contract_date: contractDate,
+                amount,
+                students_count: studentsCount,
+                course_id: courseId || null,
+              });
+              // Refresh counterparty docs
+              const { data: allCompanies } = await supabase.from("companies").select("id, name").eq("organization_id", organizationId);
+              if (allCompanies) {
+                const companyIds = allCompanies.map(c => c.id);
+                const companyMap = Object.fromEntries(allCompanies.map(c => [c.id, c.name]));
+                const { data: docs } = await supabase
+                  .from("company_documents")
+                  .select("id, name, type, file_url, amount, is_paid, uploaded_at, contract_number, contract_date, company_id")
+                  .in("company_id", companyIds)
+                  .order("uploaded_at", { ascending: false });
+                setCounterpartyDocs(
+                  (docs || []).map((doc: any) => ({ ...doc, company_name: companyMap[doc.company_id] || "—" }))
+                );
+              }
+              toast.success("Договор сохранён");
+            }
+            setShowContractGenerator(false);
+          }}
+        />
+      )}
     </div>
   );
 });
