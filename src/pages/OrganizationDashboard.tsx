@@ -55,7 +55,20 @@ export default function OrganizationDashboard() {
   }, [d.tabNavigation]);
 
   return (
-    <div className="min-h-screen bg-background flex">
+    <div className={`min-h-screen bg-background flex relative ${activeTheme?.bgClass || ''}`}
+      style={activeTheme?.id === 'turquoise' ? {
+        background: 'linear-gradient(to bottom, #d4f5ef 0%, #8fd8ca 12%, #4db8a8 25%, #2a8a80 40%, #1a5a58 55%, #0f3a3e 70%, #0c2a30 85%, #050e12 100%)',
+      } : undefined}
+    >
+      {activeTheme && <ThemeAnimations animation={activeTheme.animation} />}
+      {activeTheme && (
+        <AtmosphericBleed
+          bannerUrl={activeTheme.bannerUrl}
+          blur={activeTheme.atmosphereBlur}
+          opacity={activeTheme.atmosphereOpacity}
+          sharp={activeTheme.atmosphereSharp}
+        />
+      )}
       {/* Admin View Banner */}
       {d.isAdminView && (
         <div className="fixed top-0 left-0 right-0 z-50 bg-primary text-primary-foreground py-2 px-4 flex items-center justify-between">
