@@ -37,7 +37,26 @@ serve(async (req) => {
       }
 
       case "upload_init": {
-        const { parent_id, title, file_size } = params;
+        let { parent_id, title, file_size } = params;
+
+        // Kinescope requires parent_id for video uploads — auto-fetch if not provided
+        if (!parent_id) {
+          const projRes = await fetch(`${KINESCOPE_API}/projects`, {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+          const projData = await projRes.json();
+          const projects = projData?.data;
+          if (Array.isArray(projects) && projects.length > 0) {
+            parent_id = projects[0].id;
+          }
+        }
+
+        if (!parent_id) {
+          return new Response(JSON.stringify({ error: "No Kinescope project found. Create a project in Kinescope first." }), {
+            status: 400,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
 
         // Use Kinescope Uploader API v2 to initialize upload
         const initRes = await fetch(`${KINESCOPE_UPLOADER}/init`, {
@@ -48,7 +67,7 @@ serve(async (req) => {
           },
           body: JSON.stringify({
             type: "video",
-            parent_id: parent_id || undefined,
+            parent_id,
             title: title || "Untitled",
             filesize: file_size,
           }),
