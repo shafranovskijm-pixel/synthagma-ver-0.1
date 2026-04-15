@@ -77,11 +77,11 @@ export default function CourseBuilder({ embedded, embeddedCourseId }: CourseBuil
     }
   };
 
-  if (isLoading) return <div className="min-h-screen bg-background flex items-center justify-center"><SigmaSpinner size="lg" /></div>;
+  if (isLoading) return <div className={cn(embedded ? "py-16" : "min-h-screen", "bg-background flex items-center justify-center")}><SigmaSpinner size="lg" /></div>;
 
   return (
     <TooltipProvider delayDuration={300}>
-    <div className="min-h-screen bg-background">
+    <div className={cn(embedded ? "" : "min-h-screen", "bg-background")}>
       <header className="bg-card border-b border-border sticky top-0 z-10">
         <div className="container mx-auto px-3 sm:px-6 py-3 sm:py-4 flex items-center justify-between backdrop-blur-sm bg-card/80">
           <div className="flex items-center gap-2 sm:gap-4">
