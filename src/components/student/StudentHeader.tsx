@@ -5,6 +5,7 @@ import { SigmaLogo } from "@/components/ui/SigmaLogo";
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { RadioPlayerButton } from "@/components/radio/RadioPlayerButton";
 
 interface StudentHeaderProps {
   fullName: string | null;
@@ -45,6 +46,9 @@ export function StudentHeader({
       </div>
 
       <div className="flex items-center gap-3">
+        {/* Radio */}
+        <RadioPlayerButton />
+
         {/* Help */}
         <Tooltip>
           <TooltipTrigger asChild>
