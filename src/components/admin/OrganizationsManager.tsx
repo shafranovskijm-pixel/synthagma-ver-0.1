@@ -56,7 +56,12 @@ interface Organization {
   } | null;
 }
 
-export function OrganizationsManager() {
+interface OrganizationsManagerProps {
+  openOrgId?: string | null;
+  onOpenOrgHandled?: () => void;
+}
+
+export function OrganizationsManager({ openOrgId, onOpenOrgHandled }: OrganizationsManagerProps = {}) {
   const navigate = useNavigate();
   const [organizations, setOrganizations] = useState<Organization[]>([]);
   const [loading, setLoading] = useState(true);
