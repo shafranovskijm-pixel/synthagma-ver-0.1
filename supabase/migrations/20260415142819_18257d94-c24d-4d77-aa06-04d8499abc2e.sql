@@ -1,0 +1,1 @@
+ALTER TABLE public.organization_payment_settings ADD COLUMN IF NOT EXISTS payment_mode text NOT NULL DEFAULT 'redirect';

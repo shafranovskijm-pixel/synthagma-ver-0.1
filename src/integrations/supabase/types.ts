@@ -3167,6 +3167,7 @@ export type Database = {
           organization_id: string
           password1_encrypted: string
           password2_encrypted: string
+          payment_mode: string
           updated_at: string
         }
         Insert: {
@@ -3177,6 +3178,7 @@ export type Database = {
           organization_id: string
           password1_encrypted?: string
           password2_encrypted?: string
+          payment_mode?: string
           updated_at?: string
         }
         Update: {
@@ -3187,6 +3189,7 @@ export type Database = {
           organization_id?: string
           password1_encrypted?: string
           password2_encrypted?: string
+          payment_mode?: string
           updated_at?: string
         }
         Relationships: [

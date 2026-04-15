@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -32,17 +32,46 @@ interface Props {
   userEmail?: string;
 }
 
+// Load T-Bank widget SDK
+let tbankSdkPromise: Promise<void> | null = null;
+function loadTBankSdk(): Promise<void> {
+  if (tbankSdkPromise) return tbankSdkPromise;
+  tbankSdkPromise = new Promise((resolve, reject) => {
+    if ((window as any).pay) { resolve(); return; }
+    const script = document.createElement("script");
+    script.src = "https://pay.tbank.ru/sdk/3.0/payment.js";
+    script.onload = () => resolve();
+    script.onerror = () => reject(new Error("Failed to load T-Bank SDK"));
+    document.head.appendChild(script);
+  });
+  return tbankSdkPromise;
+}
+
 export function AvailablePaidCourses({ userId, organizationId, userEmail }: Props) {
   const navigate = useNavigate();
   const [courses, setCourses] = useState<PaidCourse[]>([]);
   const [loading, setLoading] = useState(true);
   const [sendingCourseId, setSendingCourseId] = useState<string | null>(null);
   const [confirmCourse, setConfirmCourse] = useState<PaidCourse | null>(null);
+  const [paymentMode, setPaymentMode] = useState<"redirect" | "widget">("redirect");
 
   useEffect(() => {
     if (!organizationId) return;
     fetchAvailableCourses();
+    fetchPaymentMode();
   }, [organizationId, userId]);
+
+  const fetchPaymentMode = async () => {
+    if (!organizationId) return;
+    const { data } = await supabase
+      .from("organization_payment_settings")
+      .select("payment_mode" as any)
+      .eq("organization_id", organizationId)
+      .maybeSingle();
+    if (data) {
+      setPaymentMode((data as any).payment_mode || "redirect");
+    }
+  };
 
   const fetchAvailableCourses = async () => {
     if (!organizationId) return;
@@ -84,6 +113,37 @@ export function AvailablePaidCourses({ userId, organizationId, userEmail }: Prop
 
       if (error || !data?.url) {
         throw new Error(data?.error || "Ошибка инициализации оплаты");
+      }
+
+      if (paymentMode === "widget" && data.paymentId) {
+        // Use embedded T-Bank widget
+        try {
+          await loadTBankSdk();
+          const pay = (window as any).pay;
+          if (pay) {
+            pay({
+              paymentId: data.paymentId,
+              onSuccess: () => {
+                toast.success("Оплата прошла успешно!");
+                setSendingCourseId(null);
+                setConfirmCourse(null);
+                // Refresh courses list
+                fetchAvailableCourses();
+              },
+              onClose: () => {
+                setSendingCourseId(null);
+              },
+              onFail: () => {
+                toast.error("Оплата не прошла");
+                setSendingCourseId(null);
+              },
+            });
+            return;
+          }
+        } catch {
+          // Fallback to redirect
+          console.warn("T-Bank SDK unavailable, falling back to redirect");
+        }
       }
 
       // Redirect to T-Bank payment page
