@@ -121,6 +121,7 @@ export const AdminBillingOverview = () => {
   const [actCustomerDirector, setActCustomerDirector] = useState("");
   const [actCustomerPosition, setActCustomerPosition] = useState("");
   const [actInnSearching, setActInnSearching] = useState(false);
+  const [pendingAct, setPendingAct] = useState<GeneratedAct | null>(null);
 
   useEffect(() => { loadData(); }, []);
 
