@@ -36,6 +36,7 @@ import { useOrgDashboard } from "@/contexts/OrgDashboardContext";
 import { getSignedStorageUrl } from "@/utils/storageHelpers";
 import { generateActHtml, saveActDocument, type GeneratedAct } from "@/utils/generateAct";
 import { PayersSection } from "@/components/organization/PayersSection";
+import { ContractLegalFaq } from "@/components/organization/ContractLegalFaq";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
@@ -101,6 +102,7 @@ const SECTION_DESCRIPTIONS: Partial<Record<DocumentSubTab, string>> = {
 };
 
 type BillingSubTab = "contracts" | "invoices" | "closing";
+type CounterpartySubTab = "contracts" | "invoices" | "acts" | "faq";
 
 interface InvoiceRow {
   id: string;
