@@ -1,37 +1,24 @@
 
 
-# Интеграция профиля в основной дашборд организации
+# Убрать «Профиль» из основного сайдбара
 
-## Проблема
-Сейчас «Профиль» — отдельная страница `/organization/profile` с собственным `OrgPageLayout`. Это ощущается как «два разных мира». Пользователь хочет, чтобы профиль (мой профиль, брендирование, уведомления, партнёрская программа) был просто ещё одной вкладкой в основном сайдбаре, с плавным переключением как у остальных разделов.
+## Суть
+Профиль не должен быть кнопкой в основном навигационном меню (сайдбаре). Он открывается через аватарку в хедере (dropdown → «Профиль»), которая уже работает и вызывает `setActiveTab("profile")`. Контент профиля отображается в том же основном окне — без перехода на другую страницу. Просто убираем лишнюю иконку из сайдбара.
 
-## Решение
+## Изменения
 
-### 1. Добавить вкладку «Профиль» в сайдбар (`OrgSidebar.tsx`)
-- Добавить `"profile"` в тип `TabType`
-- Добавить иконку `User` в навигацию сайдбара — в нижнюю часть, перед кнопкой «Выйти» (отделяя от основных рабочих вкладок)
+### `src/components/organization/OrgSidebar.tsx`
+- Удалить строку 176: `navItems.push({ id: "profile", icon: User, label: "Профиль" });`
+- Убрать импорт `User` если больше не используется
 
-### 2. Вынести содержимое профиля в компонент-вкладку (`ProfileTab.tsx`)
-- Извлечь `ProfileContent` из `OrganizationProfile.tsx` в новый компонент `src/components/organization/tabs/ProfileTab.tsx`
-- Компонент принимает `organizationId` и рендерит те же sub-tabs: Мой профиль, Брендирование, Бренд. страницы входа, Уведомления, Партнёрская программа
-
-### 3. Подключить в `TabContentRenderer.tsx`
-- Добавить рендер `ProfileTab` при `activeTab === "profile"`
-
-### 4. Обновить навигацию в хедере (`OrgDashboardHeader.tsx`)
-- Вместо `navigate("/organization/profile")` → `setActiveTab("profile")`
-- Вместо `navigate("/organization/profile?tab=partner")` → `setActiveTab("profile")` + передать начальный sub-tab
-
-### 5. Упростить `OrganizationProfile.tsx`
-- Оставить как редирект `<Navigate to="/organization?tab=profile" />` для обратной совместимости
+Всё остальное уже работает:
+- Dropdown в хедере (`OrgDashboardHeader.tsx`, строка 182) → `setActiveTab("profile")` ✓
+- `TabContentRenderer.tsx` рендерит `ProfileTab` при `activeTab === "profile"` ✓
+- `ProfileTab.tsx` показывает sub-tabs (Мой профиль, Брендирование, Уведомления, Партнёрская) ✓
 
 ## Файлы
 
 | Файл | Действие |
 |---|---|
-| `src/components/organization/tabs/ProfileTab.tsx` | Новый — содержимое профиля из `OrganizationProfile.tsx` |
-| `src/components/organization/OrgSidebar.tsx` | Добавить `"profile"` в `TabType` и кнопку `User` перед Logout |
-| `src/components/organization/tabs/TabContentRenderer.tsx` | Добавить рендер `ProfileTab` |
-| `src/components/organization/OrgDashboardHeader.tsx` | Заменить `navigate` на `setActiveTab("profile")` |
-| `src/pages/OrganizationProfile.tsx` | Заменить на `<Navigate to="/organization?tab=profile" />` |
+| `src/components/organization/OrgSidebar.tsx` | Удалить `profile` из navItems (строка 176) |
 
