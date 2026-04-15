@@ -22,7 +22,7 @@ function DocumentsContent() {
 
 export default function OrganizationDocuments() {
   return (
-    <OrgPageLayout title="Документы" icon={FileText}>
+    <OrgPageLayout title="Документооборот" icon={FileText}>
       <DocumentsContent />
     </OrgPageLayout>
   );
