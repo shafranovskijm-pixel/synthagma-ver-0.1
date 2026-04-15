@@ -113,7 +113,7 @@ export default function StudentProfile() {
   }, [effectiveUserId]);
 
   const toggleNotif = useCallback(async (type: string, channel: string) => {
-    if (!user?.id) return;
+    if (!effectiveUserId || isAdminView) return;
     const newValue = !(notifSettings[type]?.[channel] ?? false);
     setNotifSettings(prev => ({
       ...prev,
@@ -123,7 +123,7 @@ export default function StudentProfile() {
     const { error } = await supabase
       .from("notification_preferences")
       .upsert({
-        user_id: user.id,
+        user_id: effectiveUserId,
         notification_type: type,
         channel: channel,
         enabled: newValue,
@@ -136,7 +136,7 @@ export default function StudentProfile() {
       }));
       toast.error("Ошибка", { description: "Не удалось сохранить настройку" });
     }
-  }, [user?.id, notifSettings, toast]);
+  }, [effectiveUserId, isAdminView, notifSettings, toast]);
 
   const { data: profile, isLoading } = useQuery({
     queryKey: ["student-profile-page", user?.id],
