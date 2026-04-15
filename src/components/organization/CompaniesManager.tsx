@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -23,6 +24,7 @@ import { ContractGenerator } from "./ContractGenerator";
 import { InvoiceGenerator } from "./InvoiceGenerator";
 import { ActGenerator } from "./ActGenerator";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
+import { LoadMoreControls } from "@/components/ui/LoadMoreControls";
 
 interface CompaniesManagerProps {
   organizationId: string;
@@ -55,6 +57,8 @@ export function CompaniesManager({ organizationId }: CompaniesManagerProps) {
   const dm = useCompanyDetailManager(organizationId);
   const sm = useCompanyStudentsManager(organizationId);
   const lg = useCompanyLinksAndGenerators(organizationId);
+  const [visibleCount, setVisibleCount] = useState(10);
+  const paginatedCompanies = cm.filteredCompanies.slice(0, visibleCount);
 
   const handleViewAsCompany = (e: React.MouseEvent, company: any) => {
     e.stopPropagation();
@@ -204,7 +208,7 @@ export function CompaniesManager({ organizationId }: CompaniesManagerProps) {
 
           {lg.viewMode === 'grid' ? (
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              {cm.filteredCompanies.map((company) => (
+              {paginatedCompanies.map((company) => (
                 <button key={company.id} className="bg-card rounded-xl p-5 border border-border hover:border-primary/50 transition-all text-left group" onClick={() => dm.openCompanyDetail(company)}>
                   <div className="flex items-start justify-between mb-3">
                     <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center"><Building2 className="w-6 h-6 text-primary" /></div>
@@ -237,7 +241,7 @@ export function CompaniesManager({ organizationId }: CompaniesManagerProps) {
                   </tr>
                 </thead>
                 <tbody>
-                  {cm.filteredCompanies.map((company) => (
+                  {paginatedCompanies.map((company) => (
                     <tr key={company.id} className="border-b border-border last:border-0 hover:bg-secondary/30 cursor-pointer transition-colors" onClick={() => dm.openCompanyDetail(company)}>
                       <td className="p-4">
                         <div className="flex items-center gap-3">
@@ -262,7 +266,12 @@ export function CompaniesManager({ organizationId }: CompaniesManagerProps) {
                 </tbody>
               </table>
             </div>
-          )}
+           )}
+          <LoadMoreControls
+            visibleCount={paginatedCompanies.length}
+            totalCount={cm.filteredCompanies.length}
+            onLoadMore={(n) => setVisibleCount(prev => prev + n)}
+          />
         </>
       )}
 

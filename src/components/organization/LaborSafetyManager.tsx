@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -29,6 +30,7 @@ import { LaborSafetyStudentDetailCard } from "./LaborSafetyStudentDetailCard";
 import { useLaborSafetyManager } from "@/hooks/useLaborSafetyManager";
 import { Progress } from "@/components/ui/progress";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
+import { LoadMoreControls } from "@/components/ui/LoadMoreControls";
 
 interface LaborSafetyManagerProps {
   organizationId: string;
@@ -36,6 +38,8 @@ interface LaborSafetyManagerProps {
 
 export function LaborSafetyManager({ organizationId }: LaborSafetyManagerProps) {
   const h = useLaborSafetyManager({ organizationId });
+  const [visibleGroupCount, setVisibleGroupCount] = useState(10);
+  const paginatedGroups = h.filteredGroups.slice(0, visibleGroupCount);
 
   if (h.isLoading) {
     return (
@@ -162,35 +166,42 @@ export function LaborSafetyManager({ organizationId }: LaborSafetyManagerProps) 
             </Card>
           )
         ) : (
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-            {h.filteredGroups.map(group => (
-              <Card key={group.id} className="cursor-pointer hover:border-primary/50 hover:shadow-md transition-all group" onClick={() => h.setSelectedGroup(group)}>
-                <CardContent className="p-4">
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="flex-1 min-w-0">
-                      <h3 className="font-medium truncate group-hover:text-primary transition-colors flex items-center gap-2">
-                        {group.name}<ChevronRight className="h-4 w-4 opacity-0 group-hover:opacity-100 transition-opacity" />
-                      </h3>
-                      <div className="flex items-center gap-3 mt-2 text-sm text-muted-foreground">
-                        <span className="flex items-center gap-1"><Users className="h-3.5 w-3.5" />{group.records_count || 0}</span>
-                        <span className="flex items-center gap-1"><Calendar className="h-3.5 w-3.5" />{format(new Date(group.created_at), 'dd.MM.yyyy')}</span>
+          <>
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+              {paginatedGroups.map(group => (
+                <Card key={group.id} className="cursor-pointer hover:border-primary/50 hover:shadow-md transition-all group" onClick={() => h.setSelectedGroup(group)}>
+                  <CardContent className="p-4">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex-1 min-w-0">
+                        <h3 className="font-medium truncate group-hover:text-primary transition-colors flex items-center gap-2">
+                          {group.name}<ChevronRight className="h-4 w-4 opacity-0 group-hover:opacity-100 transition-opacity" />
+                        </h3>
+                        <div className="flex items-center gap-3 mt-2 text-sm text-muted-foreground">
+                          <span className="flex items-center gap-1"><Users className="h-3.5 w-3.5" />{group.records_count || 0}</span>
+                          <span className="flex items-center gap-1"><Calendar className="h-3.5 w-3.5" />{format(new Date(group.created_at), 'dd.MM.yyyy')}</span>
+                        </div>
                       </div>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild onClick={e => e.stopPropagation()}>
+                          <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"><MoreHorizontal className="h-4 w-4" /></Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={(e) => { e.stopPropagation(); h.setEditingGroup(group); h.setGroupName(group.name); h.setShowGroupDialog(true); }}><Edit className="h-4 w-4 mr-2" />Редактировать</DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={(e) => { e.stopPropagation(); h.setGroupToDelete(group); h.setShowDeleteGroupConfirm(true); }}><Trash2 className="h-4 w-4 mr-2" />Удалить</DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </div>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild onClick={e => e.stopPropagation()}>
-                        <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"><MoreHorizontal className="h-4 w-4" /></Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={(e) => { e.stopPropagation(); h.setEditingGroup(group); h.setGroupName(group.name); h.setShowGroupDialog(true); }}><Edit className="h-4 w-4 mr-2" />Редактировать</DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={(e) => { e.stopPropagation(); h.setGroupToDelete(group); h.setShowDeleteGroupConfirm(true); }}><Trash2 className="h-4 w-4 mr-2" />Удалить</DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+            <LoadMoreControls
+              visibleCount={paginatedGroups.length}
+              totalCount={h.filteredGroups.length}
+              onLoadMore={(n) => setVisibleGroupCount(prev => prev + n)}
+            />
+          </>
         )}
 
         {/* Group Dialog */}

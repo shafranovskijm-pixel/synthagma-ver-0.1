@@ -1,4 +1,5 @@
 import React, { useState, useCallback } from "react";
+import { LoadMoreControls } from "@/components/ui/LoadMoreControls";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
@@ -113,9 +114,8 @@ export const StudentsTab = React.memo(function StudentsTab({
   const [showRemindConfirm, setShowRemindConfirm] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
-  // Pagination
-  const [pageSize, setPageSize] = useState(10);
-  const [currentPage, setCurrentPage] = useState(1);
+  // Load-more pagination
+  const [visibleCount, setVisibleCount] = useState(10);
 
   const handleCreateGroup = async () => {
     if (!newGroupName.trim()) return;
@@ -272,13 +272,11 @@ export const StudentsTab = React.memo(function StudentsTab({
     );
   };
 
-  // Pagination
-  const totalPages = Math.max(1, Math.ceil(filteredStudents.length / pageSize));
-  const safePage = Math.min(currentPage, totalPages);
-  const paginatedStudents = filteredStudents.slice((safePage - 1) * pageSize, safePage * pageSize);
+  // Load-more pagination
+  const paginatedStudents = filteredStudents.slice(0, visibleCount);
 
-  // Reset page when filters change
-  React.useEffect(() => { setCurrentPage(1); }, [searchQuery, statusFilter, courseFilter, groupFilter, docsFilter, pageSize]);
+  // Reset visible count when filters change
+  React.useEffect(() => { setVisibleCount(10); }, [searchQuery, statusFilter, courseFilter, groupFilter, docsFilter]);
 
   return (
     <div className="bg-card rounded-xl lg:rounded-2xl border border-border">
@@ -1004,51 +1002,11 @@ export const StudentsTab = React.memo(function StudentsTab({
             </table>
           </div>
 
-          {/* Pagination Controls */}
-          {filteredStudents.length > 0 && (
-            <div className="flex items-center justify-between px-4 py-3 border-t border-border">
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <span>Показано {((safePage - 1) * pageSize) + 1}–{Math.min(safePage * pageSize, filteredStudents.length)} из {filteredStudents.length}</span>
-                <Select value={String(pageSize)} onValueChange={v => setPageSize(Number(v))}>
-                  <SelectTrigger className="w-[80px] h-8 rounded-lg text-xs">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="10">10</SelectItem>
-                    <SelectItem value="25">25</SelectItem>
-                    <SelectItem value="50">50</SelectItem>
-                    <SelectItem value="100">100</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="flex items-center gap-1">
-                <Button variant="outline" size="sm" className="h-8 w-8 p-0 rounded-lg" disabled={safePage <= 1} onClick={() => setCurrentPage(safePage - 1)}>
-                  ‹
-                </Button>
-                {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
-                  let page: number;
-                  if (totalPages <= 5) { page = i + 1; }
-                  else if (safePage <= 3) { page = i + 1; }
-                  else if (safePage >= totalPages - 2) { page = totalPages - 4 + i; }
-                  else { page = safePage - 2 + i; }
-                  return (
-                    <Button
-                      key={page}
-                      variant={page === safePage ? "default" : "outline"}
-                      size="sm"
-                      className="h-8 w-8 p-0 rounded-lg text-xs"
-                      onClick={() => setCurrentPage(page)}
-                    >
-                      {page}
-                    </Button>
-                  );
-                })}
-                <Button variant="outline" size="sm" className="h-8 w-8 p-0 rounded-lg" disabled={safePage >= totalPages} onClick={() => setCurrentPage(safePage + 1)}>
-                  ›
-                </Button>
-              </div>
-            </div>
-          )}
+          <LoadMoreControls
+            visibleCount={paginatedStudents.length}
+            totalCount={filteredStudents.length}
+            onLoadMore={(n) => setVisibleCount(prev => prev + n)}
+          />
         </>
       )}
 
