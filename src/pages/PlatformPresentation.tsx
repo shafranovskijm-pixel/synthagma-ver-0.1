@@ -382,26 +382,35 @@ export default function PlatformPresentation() {
       {/* ═══ КАБИНЕТЫ ═══ */}
       <Section className="bg-[hsl(40_20%_98%)] dark:bg-[hsl(0_0%_8%)]">
         <div className="max-w-7xl mx-auto px-4 md:px-8 py-16 md:py-24">
-          <h2 className="text-3xl md:text-5xl font-bold text-[hsl(0_0%_8%)] dark:text-white mb-3">Три кабинета</h2>
+          <h2 className="text-3xl md:text-5xl font-bold text-[hsl(0_0%_8%)] dark:text-white mb-3">Четыре кабинета</h2>
           <p className="text-base md:text-xl text-[hsl(0_0%_45%)] dark:text-white/60 mb-10">Отдельный интерфейс для каждой роли</p>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
             {[
-              { icon: Building2, title: "Организация", color: "hsl(174 72% 46%)", items: ["Курсы и обучение", "Ученики и группы", "Документооборот", "ФИС ФРДО", "Аналитика"] },
-              { icon: GraduationCap, title: "Ученик", color: "hsl(262 80% 55%)", items: ["Мои курсы", "Тесты и задания", "Достижения", "ИИ-помощник", "Документы"] },
-              { icon: Building2, title: "Компания", color: "hsl(38 92% 50%)", items: ["Сотрудники", "Назначение курсов", "Заявки на обучение", "Документы", "Контроль прогресса"] },
+              { icon: Building2, title: "Организация", color: "hsl(174 72% 46%)", screenshot: screenshotOrg, items: ["Курсы и обучение", "Ученики и группы", "Документооборот", "ФИС ФРДО", "Аналитика"] },
+              { icon: GraduationCap, title: "Ученик", color: "hsl(262 80% 55%)", screenshot: screenshotStudent, items: ["Мои курсы", "Тесты и задания", "Достижения", "ИИ-помощник", "Документы"] },
+              { icon: Building2, title: "Компания", color: "hsl(38 92% 50%)", screenshot: screenshotCompany, items: ["Сотрудники", "Назначение курсов", "Заявки на обучение", "Документы", "Контроль прогресса"] },
+              { icon: Users, title: "Преподаватель", color: "hsl(200 80% 50%)", screenshot: screenshotTeacher, items: ["Проверка заданий", "Оценка тестов", "Ведение вебинаров", "Обратная связь", "Журнал успеваемости"] },
             ].map((c, i) => (
-              <div key={i} className="bg-white dark:bg-white/5 rounded-2xl border border-[hsl(40_15%_90%)] dark:border-white/10 p-6">
-                <div className="w-12 h-12 rounded-xl flex items-center justify-center mb-4" style={{ background: `${c.color.replace(")", " / 0.1)")}` }}>
-                  <c.icon className="w-6 h-6" style={{ color: c.color }} />
+              <div key={i} className="bg-white dark:bg-white/5 rounded-2xl border border-[hsl(40_15%_90%)] dark:border-white/10 overflow-hidden">
+                <div className="relative h-48 md:h-56 overflow-hidden">
+                  <img src={c.screenshot} alt={`Кабинет ${c.title}`} loading="lazy" className="w-full h-full object-cover object-top" />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent" />
                 </div>
-                <h3 className="text-lg font-semibold text-[hsl(0_0%_8%)] dark:text-white mb-3">{c.title}</h3>
-                <ul className="space-y-2">
-                  {c.items.map((item, j) => (
-                    <li key={j} className="flex items-center gap-2 text-sm text-[hsl(0_0%_45%)] dark:text-white/60">
-                      <CheckCircle2 className="w-4 h-4 text-[hsl(142_70%_45%)] flex-shrink-0" />{item}
-                    </li>
-                  ))}
-                </ul>
+                <div className="p-6">
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: `${c.color.replace(")", " / 0.1)")}` }}>
+                      <c.icon className="w-5 h-5" style={{ color: c.color }} />
+                    </div>
+                    <h3 className="text-lg font-semibold text-[hsl(0_0%_8%)] dark:text-white">{c.title}</h3>
+                  </div>
+                  <ul className="space-y-2">
+                    {c.items.map((item, j) => (
+                      <li key={j} className="flex items-center gap-2 text-sm text-[hsl(0_0%_45%)] dark:text-white/60">
+                        <CheckCircle2 className="w-4 h-4 text-[hsl(142_70%_45%)] flex-shrink-0" />{item}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
               </div>
             ))}
           </div>
