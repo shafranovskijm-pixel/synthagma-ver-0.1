@@ -312,20 +312,20 @@ export function SortableLessonItem({
                     <Video className="w-10 h-10 mx-auto mb-3 text-sigma-purple" />
                     <p className="text-sm font-medium mb-1">Загрузить через Kinescope</p>
                     <p className="text-xs text-muted-foreground mb-4">Любой размер файла • CDN • Профессиональный плеер</p>
-                    <label className="inline-flex items-center gap-2 px-4 py-2 bg-sigma-purple text-white rounded-lg cursor-pointer hover:bg-sigma-purple/90 transition-colors">
-                      <Upload className="w-4 h-4" /><span className="text-sm font-medium">Выбрать файл</span>
-                      <input ref={media.kinescopeInputRef} type="file" accept="video/*" className="hidden" onChange={(e) => { const file = e.target.files?.[0]; if (file) media.handleKinescopeUpload(file); }} />
-                    </label>
+                    <input ref={media.kinescopeInputRef} type="file" accept="video/*" className="hidden" onChange={(e) => { console.log('[VideoUpload] Kinescope file selected', e.target.files?.[0]?.name); const file = e.target.files?.[0]; if (file) media.handleKinescopeUpload(file); }} />
+                    <Button type="button" className="gap-2 bg-sigma-purple text-white hover:bg-sigma-purple/90" onClick={(e) => { e.stopPropagation(); e.preventDefault(); media.kinescopeInputRef.current?.click(); }}>
+                      <Upload className="w-4 h-4" />Выбрать файл
+                    </Button>
                   </>
                 ) : (
                   <>
                     <Video className="w-10 h-10 mx-auto mb-3 text-sigma-purple" />
                     <p className="text-sm font-medium mb-1">Загрузить видео на сервер</p>
                     <p className="text-xs text-muted-foreground mb-4">MP4, MOV, AVI и др. — до 2 ГБ</p>
-                    <label className="inline-flex items-center gap-2 px-4 py-2 bg-sigma-purple text-white rounded-lg cursor-pointer hover:bg-sigma-purple/90 transition-colors">
-                      <Upload className="w-4 h-4" /><span className="text-sm font-medium">Выбрать файл</span>
-                      <input ref={media.videoInputRef} type="file" accept="video/*" className="hidden" onChange={(e) => { const file = e.target.files?.[0]; if (file) media.handleVideoUpload(file, skipCompression); }} />
-                    </label>
+                    <input ref={media.videoInputRef} type="file" accept="video/*" className="hidden" onChange={(e) => { console.log('[VideoUpload] Server file selected', e.target.files?.[0]?.name); const file = e.target.files?.[0]; if (file) media.handleVideoUpload(file, skipCompression); }} />
+                    <Button type="button" className="gap-2 bg-sigma-purple text-white hover:bg-sigma-purple/90" onClick={(e) => { e.stopPropagation(); e.preventDefault(); media.videoInputRef.current?.click(); }}>
+                      <Upload className="w-4 h-4" />Выбрать файл
+                    </Button>
                     <label className="inline-flex items-center gap-2 text-xs text-muted-foreground cursor-pointer select-none mt-1">
                       <input type="checkbox" checked={skipCompression} onChange={(e) => setSkipCompression(e.target.checked)} className="rounded border-border" />
                       Без сжатия (быстрее)
