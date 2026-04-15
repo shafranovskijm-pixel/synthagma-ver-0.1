@@ -1,9 +1,20 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { BookOpen, CreditCard, Loader2 } from "lucide-react";
+import { BookOpen, CreditCard, Loader2, Eye, Send } from "lucide-react";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 interface PaidCourse {
   id: string;
@@ -12,6 +23,7 @@ interface PaidCourse {
   duration: string | null;
   price: number;
   organization_id: string;
+  slug: string | null;
 }
 
 interface Props {
@@ -21,9 +33,11 @@ interface Props {
 }
 
 export function AvailablePaidCourses({ userId, organizationId, userEmail }: Props) {
+  const navigate = useNavigate();
   const [courses, setCourses] = useState<PaidCourse[]>([]);
   const [loading, setLoading] = useState(true);
-  const [payingCourseId, setPayingCourseId] = useState<string | null>(null);
+  const [sendingCourseId, setSendingCourseId] = useState<string | null>(null);
+  const [confirmCourse, setConfirmCourse] = useState<PaidCourse | null>(null);
 
   useEffect(() => {
     if (!organizationId) return;
@@ -34,25 +48,21 @@ export function AvailablePaidCourses({ userId, organizationId, userEmail }: Prop
     if (!organizationId) return;
     setLoading(true);
     try {
-      // Get courses with price > 0 from the student's organization
       const { data: paidCourses, error: coursesErr } = await supabase
         .from("courses")
-        .select("id, title, description, duration, price, organization_id")
+        .select("id, title, description, duration, price, organization_id, slug")
         .eq("organization_id", organizationId)
         .eq("is_published", true)
         .gt("price", 0);
 
       if (coursesErr) throw coursesErr;
 
-      // Get student's current enrollments
       const { data: enrollments } = await supabase
         .from("enrollments")
         .select("course_id")
         .eq("user_id", userId);
 
       const enrolledCourseIds = new Set((enrollments || []).map(e => e.course_id));
-
-      // Filter out already enrolled courses
       setCourses((paidCourses || []).filter(c => !enrolledCourseIds.has(c.id)));
     } catch (err) {
       console.error("Error fetching paid courses:", err);
@@ -61,28 +71,51 @@ export function AvailablePaidCourses({ userId, organizationId, userEmail }: Prop
     }
   };
 
-  const handlePay = async (course: PaidCourse) => {
-    setPayingCourseId(course.id);
+  const handleSendRequest = async (course: PaidCourse) => {
+    setSendingCourseId(course.id);
     try {
-      const { data, error } = await supabase.functions.invoke("robokassa-init", {
-        body: {
-          course_id: course.id,
-          user_id: userId,
-          email: userEmail,
-        },
+      // Get student profile name
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("full_name, email")
+        .eq("user_id", userId)
+        .maybeSingle();
+
+      const studentName = profile?.full_name || profile?.email || userEmail || "Ученик";
+
+      // Send chat message to organization
+      await supabase.from("chat_messages").insert({
+        user_id: userId,
+        course_id: course.id,
+        role: "user",
+        content: `📌 Заявка на приобретение курса\n\nКурс: ${course.title}\nСтоимость: ${Number(course.price).toLocaleString("ru-RU")} ₽\nУченик: ${studentName}\nEmail: ${userEmail || profile?.email || "—"}\n\nПрошу рассмотреть мою заявку на приобретение данного курса.`,
       });
 
-      if (error) throw error;
-      if (data?.url) {
-        window.location.href = data.url;
-      } else {
-        toast.error("Не удалось получить ссылку для оплаты");
-      }
+      // Send notification to organization
+      await supabase.from("org_notifications").insert({
+        organization_id: course.organization_id,
+        user_id: userId,
+        type: "order",
+        title: `Заявка на курс: ${course.title}`,
+        message: `${studentName} хочет приобрести курс «${course.title}» (${Number(course.price).toLocaleString("ru-RU")} ₽)`,
+        is_read: false,
+      });
+
+      toast.success("Заявка отправлена в учебный центр");
+      setConfirmCourse(null);
     } catch (err) {
-      console.error("Payment init error:", err);
-      toast.error("Ошибка при инициализации оплаты");
+      console.error("Request send error:", err);
+      toast.error("Ошибка при отправке заявки");
     } finally {
-      setPayingCourseId(null);
+      setSendingCourseId(null);
+    }
+  };
+
+  const handleViewCourse = (course: PaidCourse) => {
+    if (course.slug) {
+      navigate(`/c/${course.slug}`);
+    } else {
+      navigate(`/course/${course.id}/landing`);
     }
   };
 
@@ -90,47 +123,86 @@ export function AvailablePaidCourses({ userId, organizationId, userEmail }: Prop
   if (courses.length === 0) return null;
 
   return (
-    <div className="mt-8">
-      <h2 className="font-display text-xl font-semibold mb-4">Доступные курсы</h2>
-      <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {courses.map((course, i) => (
-          <motion.div
-            key={course.id}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: i * 0.1 }}
-            className="bg-card rounded-2xl border border-border p-5 hover:shadow-lg transition-all"
-          >
-            <div className="flex justify-between items-start mb-4">
-              <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center">
-                <BookOpen className="w-6 h-6 text-primary" />
-              </div>
-              <div className="bg-primary/10 text-primary px-3 py-1 rounded-lg text-sm font-semibold">
-                {Number(course.price).toLocaleString("ru-RU")} ₽
-              </div>
-            </div>
-            <h3 className="font-semibold mb-2 line-clamp-2">{course.title}</h3>
-            {course.description && (
-              <p className="text-sm text-muted-foreground mb-3 line-clamp-2">{course.description}</p>
-            )}
-            {course.duration && (
-              <p className="text-xs text-muted-foreground mb-4">{course.duration}</p>
-            )}
-            <Button
-              className="w-full"
-              onClick={() => handlePay(course)}
-              disabled={payingCourseId === course.id}
+    <>
+      <div className="mt-8">
+        <h2 className="font-display text-xl font-semibold mb-4">Доступные курсы</h2>
+        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {courses.map((course, i) => (
+            <motion.div
+              key={course.id}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: i * 0.1 }}
+              className="bg-card rounded-2xl border border-border p-5 hover:shadow-lg transition-all"
             >
-              {payingCourseId === course.id ? (
+              <div className="flex justify-between items-start mb-4">
+                <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center">
+                  <BookOpen className="w-6 h-6 text-primary" />
+                </div>
+                <div className="bg-primary/10 text-primary px-3 py-1 rounded-lg text-sm font-semibold">
+                  {Number(course.price).toLocaleString("ru-RU")} ₽
+                </div>
+              </div>
+              <h3 className="font-semibold mb-2 line-clamp-2">{course.title}</h3>
+              {course.description && (
+                <p className="text-sm text-muted-foreground mb-3 line-clamp-2">{course.description}</p>
+              )}
+              {course.duration && (
+                <p className="text-xs text-muted-foreground mb-4">{course.duration}</p>
+              )}
+              <div className="flex flex-col gap-2">
+                <Button
+                  variant="outline"
+                  className="w-full"
+                  onClick={() => handleViewCourse(course)}
+                >
+                  <Eye className="w-4 h-4 mr-2" />
+                  Посмотреть курс
+                </Button>
+                <Button
+                  className="w-full"
+                  onClick={() => setConfirmCourse(course)}
+                  disabled={sendingCourseId === course.id}
+                >
+                  {sendingCourseId === course.id ? (
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  ) : (
+                    <Send className="w-4 h-4 mr-2" />
+                  )}
+                  Записаться
+                </Button>
+              </div>
+            </motion.div>
+          ))}
+        </div>
+      </div>
+
+      <AlertDialog open={!!confirmCourse} onOpenChange={(open) => !open && setConfirmCourse(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Заявка на курс</AlertDialogTitle>
+            <AlertDialogDescription>
+              Временно онлайн-касса недоступна. Хотите отправить заявку на приобретение курса
+              «{confirmCourse?.title}» ({confirmCourse ? Number(confirmCourse.price).toLocaleString("ru-RU") : 0} ₽)
+              в чат учебного центра?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Отмена</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => confirmCourse && handleSendRequest(confirmCourse)}
+              disabled={sendingCourseId === confirmCourse?.id}
+            >
+              {sendingCourseId === confirmCourse?.id ? (
                 <Loader2 className="w-4 h-4 mr-2 animate-spin" />
               ) : (
-                <CreditCard className="w-4 h-4 mr-2" />
+                <Send className="w-4 h-4 mr-2" />
               )}
-              Оплатить {Number(course.price).toLocaleString("ru-RU")} ₽
-            </Button>
-          </motion.div>
-        ))}
-      </div>
-    </div>
+              Отправить заявку
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 }

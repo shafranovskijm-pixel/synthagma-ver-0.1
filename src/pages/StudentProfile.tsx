@@ -22,6 +22,9 @@ import { StudentProfileSidebar } from "@/components/student/StudentProfileSideba
 import { cn } from "@/lib/utils";
 import { ThemeSelector } from "@/components/ui/ThemeSelector";
 import { toast } from "sonner";
+import { StudentHeader } from "@/components/student/StudentHeader";
+import { StudentFooter } from "@/components/student/StudentFooter";
+import { StudentPartnerTab } from "@/components/student/StudentPartnerTab";
 
 export default function StudentProfile() {
   const { user } = useAuth();
