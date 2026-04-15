@@ -3,7 +3,6 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { AnimatedTabContent } from "@/components/ui/AnimatedTabContent";
 import { OrgSidebar } from "@/components/organization/OrgSidebar";
-import { OrgSettingsSidebar } from "@/components/organization/OrgSettingsSidebar";
 import { TabContentRenderer } from "@/components/organization/tabs/TabContentRenderer";
 import { DialogsContainer } from "@/components/organization/dialogs/DialogsContainer";
 import { OrgDashboardHeader } from "@/components/organization/OrgDashboardHeader";
@@ -64,11 +63,6 @@ export default function OrganizationDashboard() {
 
   const exitAdminView = () => { localStorage.removeItem("adminViewAsOrg"); navigate("/admin"); };
 
-  const secondaryTabs = ["profile", "settings", "org-documents", "whats-new"];
-  const isSecondaryActive = secondaryTabs.includes(d.tabNavigation.activeTab);
-  const isCourseDetails = d.tabNavigation.activeTab === "course-details";
-  const [mainSidebarHovered, setMainSidebarHovered] = useState(false);
-
   useEffect(() => {
     const handler = () => d.tabNavigation.setActiveTab('subscription' as any);
     window.addEventListener('navigate-to-subscription', handler);
@@ -104,30 +98,13 @@ export default function OrganizationDashboard() {
         </div>
       )}
       
-      {/* Sidebar - 88px icon style, hidden when secondary is active (revealed on hover) */}
-      {isSecondaryActive && (
-        <div
-          className="fixed inset-y-0 left-0 w-3 z-[60] hidden lg:block"
-          onMouseEnter={() => setMainSidebarHovered(true)}
-        />
-      )}
-      <div
-        className={cn(
-          "transition-all duration-300",
-          isSecondaryActive ? (mainSidebarHovered ? "z-[61]" : "hidden lg:block lg:pointer-events-none lg:opacity-0 lg:-translate-x-full") : ""
-        )}
-        onMouseLeave={() => isSecondaryActive && setMainSidebarHovered(false)}
-      >
-        <OrgSidebar />
-      </div>
-
-      {/* Secondary sidebar for profile/settings/docs/whats-new */}
-      {isSecondaryActive && <OrgSettingsSidebar embedded />}
+      {/* Single sidebar - always visible */}
+      <OrgSidebar />
 
       {/* Main content */}
       <main 
         ref={d.swipeRef} 
-        className={`flex-1 flex flex-col min-w-0 transition-all duration-300 ${isSecondaryActive ? 'lg:ml-[88px]' : 'lg:ml-[88px]'} ${d.isAdminView ? 'mt-10' : ''}`}
+        className={`flex-1 flex flex-col min-w-0 transition-all duration-300 lg:ml-[88px] ${d.isAdminView ? 'mt-10' : ''}`}
       >
         {/* Header with hero banner */}
         <OrgDashboardHeader />
