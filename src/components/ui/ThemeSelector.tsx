@@ -65,6 +65,23 @@ export function ThemeSelector({ onThemeChange }: ThemeSelectorProps) {
       </div>
 
       <div className="space-y-1.5">
+        {/* Default theme option */}
+        <button
+          onClick={clearTheme}
+          className={cn(
+            "w-full flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-medium transition-all duration-200",
+            !activeId
+              ? "bg-accent/15 text-accent-foreground ring-1 ring-accent/30"
+              : "hover:bg-muted/60 text-foreground/80"
+          )}
+        >
+          <span className="text-base">⚙️</span>
+          <span className="flex-1 text-left">По умолчанию</span>
+          {!activeId && (
+            <Check className="w-3.5 h-3.5 text-accent-foreground" />
+          )}
+        </button>
+
         {THEME_GROUPS.map((group) => {
           const themesInGroup = ADMIN_THEMES.filter(t => t.group === group.id);
           if (themesInGroup.length === 0) return null;
