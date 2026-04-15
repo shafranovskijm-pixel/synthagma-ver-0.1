@@ -499,7 +499,7 @@ export default function StudentProfile() {
               </div>
 
               {/* Right column — email & password */}
-              <div className="space-y-6">
+              {!isAdminView && <div className="space-y-6">
                 <Card>
                   <CardHeader>
                     <CardTitle className="text-base">Изменить email</CardTitle>
