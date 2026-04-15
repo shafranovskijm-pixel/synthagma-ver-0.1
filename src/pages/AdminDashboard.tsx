@@ -33,6 +33,7 @@ const AdminDashboard = () => {
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [notifications, setNotifications] = useState<any[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [openOrgId, setOpenOrgId] = useState<string | null>(null);
   const adminBranding = useAdminBranding();
 
   // Visual theme
@@ -85,6 +86,19 @@ const AdminDashboard = () => {
   const handleSignOut = async () => {
     await signOut();
     navigate("/login");
+  };
+
+  const handleNotificationClick = async (n: any) => {
+    // Mark as read
+    if (!n.is_read) {
+      await supabase.from("admin_notifications").update({ is_read: true }).eq("id", n.id);
+      fetchNotifications();
+    }
+    // Navigate based on type
+    if (n.type === "invoice" && n.related_entity_id) {
+      setOpenOrgId(n.related_entity_id);
+      setActiveTab("organizations");
+    }
   };
 
   return (
