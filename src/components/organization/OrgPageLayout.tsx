@@ -20,7 +20,9 @@ import {
 } from "lucide-react";
 import { differenceInDays } from "date-fns";
 import defaultCoverImg from "@/assets/default-org-cover.jpg";
-import { getStoredThemeId, getThemeById } from "@/constants/admin-themes";
+import { getStoredThemeId, getThemeById, type AdminTheme } from "@/constants/admin-themes";
+import { ThemeAnimations, getStoredAnimationLevel, type AnimationLevel } from "@/components/ui/ThemeAnimations";
+import { AtmosphericBleed } from "@/components/ui/AtmosphericBleed";
 import { HelpCenterDialog, useHelpCenterDialog } from "@/components/shared/HelpCenterDialog";
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
@@ -54,25 +56,27 @@ export default function OrgPageLayout({ title, icon: Icon, children }: OrgPageLa
   const coverUrl = d.branding.brandingSettings.coverUrl;
   const coverPosition = d.branding.brandingSettings.coverPosition;
 
-  // Theme-aware banner
-  const [themeBannerUrl, setThemeBannerUrl] = useState<string | null>(() => {
+  // Full visual theme
+  const [activeTheme, setActiveTheme] = useState<AdminTheme | null>(() => {
     const id = getStoredThemeId();
-    return id ? getThemeById(id)?.bannerUrl || null : null;
+    return id ? getThemeById(id) || null : null;
   });
-  const [themeBannerPosition, setThemeBannerPosition] = useState<string | undefined>(() => {
-    const id = getStoredThemeId();
-    return id ? getThemeById(id)?.bannerPosition : undefined;
-  });
+  const [animLevel, setAnimLevel] = useState<AnimationLevel>(getStoredAnimationLevel);
   useEffect(() => {
     const handler = (e: Event) => {
       const id = (e as CustomEvent).detail;
-      const theme = id ? getThemeById(id) : null;
-      setThemeBannerUrl(theme?.bannerUrl || null);
-      setThemeBannerPosition(theme?.bannerPosition);
+      setActiveTheme(id ? getThemeById(id) || null : null);
     };
+    const animHandler = (e: Event) => setAnimLevel((e as CustomEvent).detail);
     window.addEventListener("visual-theme-change", handler);
-    return () => window.removeEventListener("visual-theme-change", handler);
+    window.addEventListener("visual-animation-change", animHandler);
+    return () => {
+      window.removeEventListener("visual-theme-change", handler);
+      window.removeEventListener("visual-animation-change", animHandler);
+    };
   }, []);
+  const themeBannerUrl = activeTheme?.bannerUrl || null;
+  const themeBannerPosition = activeTheme?.bannerPosition;
 
   const displayCover = themeBannerUrl || coverUrl || defaultCoverImg;
 
@@ -96,7 +100,20 @@ export default function OrgPageLayout({ title, icon: Icon, children }: OrgPageLa
   }
 
   return (
-    <div className="min-h-screen bg-background flex">
+    <div className={`min-h-screen bg-background flex relative ${activeTheme?.bgClass || ''}`}
+      style={activeTheme?.id === 'turquoise' ? {
+        background: 'linear-gradient(to bottom, #d4f5ef 0%, #8fd8ca 12%, #4db8a8 25%, #2a8a80 40%, #1a5a58 55%, #0f3a3e 70%, #0c2a30 85%, #050e12 100%)',
+      } : undefined}
+    >
+      {activeTheme && <ThemeAnimations animation={activeTheme.animation} level={animLevel} />}
+      {activeTheme && (
+        <AtmosphericBleed
+          bannerUrl={activeTheme.bannerUrl}
+          blur={activeTheme.atmosphereBlur}
+          opacity={activeTheme.atmosphereOpacity}
+          sharp={activeTheme.atmosphereSharp}
+        />
+      )}
       <OrgSettingsSidebar />
       <main className="flex-1 flex flex-col min-w-0 lg:ml-[88px]">
         {/* Sticky header */}
