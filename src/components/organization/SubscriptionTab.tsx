@@ -107,6 +107,7 @@ export function SubscriptionTab() {
   const [selectedPlan, setSelectedPlan] = useState<SubscriptionPlan | null>(null);
   const [message, setMessage] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [payingOnline, setPayingOnline] = useState(false);
   const [pendingRequest, setPendingRequest] = useState<{ requested_plan: string; created_at: string } | null>(null);
   const [orgContact, setOrgContact] = useState<{ email?: string; phone?: string; contact_name?: string }>({});
   const [customEnabledCategories, setCustomEnabledCategories] = useState<string[]>([]);
