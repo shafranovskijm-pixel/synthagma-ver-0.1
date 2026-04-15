@@ -7,16 +7,21 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { cn } from "@/lib/utils";
 import { HelpCenterDialog } from "@/components/shared/HelpCenterDialog";
 import { getStoredThemeId, getThemeById } from "@/constants/admin-themes";
+import type { TabType } from "@/components/organization/OrgSidebar";
 
 const settingsNavItems = [
-  { icon: User, label: "Профиль", path: "/organization/profile" },
-  { icon: Settings, label: "Настройки", path: "/organization/settings" },
-  { icon: FileText, label: "Документы", path: "/organization/documents" },
-  { icon: Sparkles, label: "Что нового", path: "/organization/whats-new" },
-  { icon: HelpCircle, label: "Помощь", path: "__help_dialog__" },
+  { icon: User, label: "Профиль", tab: "profile" as TabType, path: "/organization/profile" },
+  { icon: Settings, label: "Настройки", tab: "settings" as TabType, path: "/organization/settings" },
+  { icon: FileText, label: "Документы", tab: "org-documents" as TabType, path: "/organization/documents" },
+  { icon: Sparkles, label: "Что нового", tab: "whats-new" as TabType, path: "/organization/whats-new" },
+  { icon: HelpCircle, label: "Помощь", tab: "__help_dialog__" as any, path: "__help_dialog__" },
 ];
 
-export function OrgSettingsSidebar() {
+interface OrgSettingsSidebarProps {
+  embedded?: boolean;
+}
+
+export function OrgSettingsSidebar({ embedded }: OrgSettingsSidebarProps) {
   const d = useOrgDashboard();
   const navigate = useNavigate();
   const location = useLocation();
@@ -44,9 +49,37 @@ export function OrgSettingsSidebar() {
     return () => window.removeEventListener("visual-theme-change", handler);
   }, []);
 
+  const activeTab = d.tabNavigation.activeTab;
+  const secondaryTabs: TabType[] = ["profile", "settings", "org-documents", "whats-new"];
+
+  const handleItemClick = (item: typeof settingsNavItems[0]) => {
+    if (item.path === "__help_dialog__") {
+      setHelpOpen(true);
+    } else if (embedded) {
+      d.tabNavigation.setActiveTab(item.tab);
+    } else {
+      navigate(item.path);
+    }
+    setIsMobileSidebarOpen(false);
+  };
+
+  const handleBack = () => {
+    if (embedded) {
+      d.tabNavigation.setActiveTab("courses");
+    } else {
+      navigate("/organization");
+    }
+  };
+
+  const isItemActive = (item: typeof settingsNavItems[0]) => {
+    if (item.path === "__help_dialog__") return false;
+    if (embedded) return activeTab === item.tab;
+    return location.pathname === item.path;
+  };
+
   return (
     <>
-      {isMobileSidebarOpen && (
+      {!embedded && isMobileSidebarOpen && (
         <div className="fixed inset-0 bg-black/50 z-40 lg:hidden" onClick={() => setIsMobileSidebarOpen(false)} />
       )}
 
@@ -54,8 +87,13 @@ export function OrgSettingsSidebar() {
         role="navigation"
         aria-label="Навигация настроек"
         className={cn(
-          "fixed inset-y-0 left-0 z-50 w-[88px] shadow-[2px_0_8px_rgba(0,0,0,0.06)] bg-card/50 flex flex-col transition-transform duration-300",
-          isMobileSidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0",
+          "z-50 w-[88px] shadow-[2px_0_8px_rgba(0,0,0,0.06)] bg-card/50 flex flex-col transition-all duration-300",
+          embedded
+            ? "fixed inset-y-0 left-[88px] lg:translate-x-0"
+            : cn(
+                "fixed inset-y-0 left-0",
+                isMobileSidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
+              ),
           themeSidebarClass
         )}
         style={themeAccent ? { "--primary": themeAccent } as React.CSSProperties : undefined}
@@ -76,7 +114,7 @@ export function OrgSettingsSidebar() {
           <Tooltip>
             <TooltipTrigger asChild>
               <button
-                onClick={() => navigate("/organization")}
+                onClick={handleBack}
                 className="flex h-10 w-10 items-center justify-center rounded-xl text-foreground/60 hover:text-primary hover:bg-primary/10 hover:scale-110 transition-all duration-200"
               >
                 <ArrowLeft className="h-[18px] w-[18px]" />
@@ -91,27 +129,20 @@ export function OrgSettingsSidebar() {
           <div className="rounded-[28px] bg-primary/10 p-2 shadow-sm">
             <nav className="flex flex-col items-center gap-1.5">
               {settingsNavItems.map((item) => {
-                const isActive = item.path !== "__help_dialog__" && location.pathname === item.path;
+                const active = isItemActive(item);
                 return (
                   <Tooltip key={item.path} delayDuration={100}>
                     <TooltipTrigger asChild>
                       <button
-                        onClick={() => {
-                          if (item.path === "__help_dialog__") {
-                            setHelpOpen(true);
-                          } else {
-                            navigate(item.path);
-                          }
-                          setIsMobileSidebarOpen(false);
-                        }}
+                        onClick={() => handleItemClick(item)}
                         className={cn(
                           "flex h-11 w-11 items-center justify-center rounded-xl transition-all duration-200",
-                          isActive
+                          active
                             ? "bg-primary text-primary-foreground shadow-md"
                             : "text-foreground/70 hover:text-primary hover:bg-primary/10 hover:scale-110"
                         )}
-                        style={isActive ? { boxShadow: "0 4px 14px hsl(var(--primary) / 0.4)" } : undefined}
-                        aria-current={isActive ? "page" : undefined}
+                        style={active ? { boxShadow: "0 4px 14px hsl(var(--primary) / 0.4)" } : undefined}
+                        aria-current={active ? "page" : undefined}
                       >
                         <item.icon className="h-[18px] w-[18px] shrink-0" />
                       </button>
