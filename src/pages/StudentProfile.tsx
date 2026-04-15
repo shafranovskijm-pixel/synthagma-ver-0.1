@@ -443,36 +443,38 @@ export default function StudentProfile() {
                       <Input value={user?.email || ""} disabled className="bg-muted/50" />
                     </div>
 
-                    <div className="space-y-2">
-                      <Label>Аватар</Label>
-                      <div className="flex items-center gap-4">
-                        <div className="relative group">
-                          <Avatar className="w-16 h-16">
-                            {avatarUrl ? <AvatarImage src={avatarUrl} alt={fullName} /> : null}
-                            <AvatarFallback className="bg-primary/10 text-primary text-xl font-semibold">{initials}</AvatarFallback>
-                          </Avatar>
-                          <label className="absolute inset-0 flex items-center justify-center bg-black/40 rounded-full opacity-0 group-hover:opacity-100 cursor-pointer transition-opacity">
-                            <Camera className="w-5 h-5 text-white" />
-                            <input type="file" accept="image/*" className="hidden" onChange={handleAvatarUpload} />
-                          </label>
+                    {!isAdminView && (
+                      <div className="space-y-2">
+                        <Label>Аватар</Label>
+                        <div className="flex items-center gap-4">
+                          <div className="relative group">
+                            <Avatar className="w-16 h-16">
+                              {avatarUrl ? <AvatarImage src={avatarUrl} alt={fullName} /> : null}
+                              <AvatarFallback className="bg-primary/10 text-primary text-xl font-semibold">{initials}</AvatarFallback>
+                            </Avatar>
+                            <label className="absolute inset-0 flex items-center justify-center bg-black/40 rounded-full opacity-0 group-hover:opacity-100 cursor-pointer transition-opacity">
+                              <Camera className="w-5 h-5 text-white" />
+                              <input type="file" accept="image/*" className="hidden" onChange={handleAvatarUpload} />
+                            </label>
+                          </div>
+                          <p className="text-sm text-muted-foreground">Нажмите на аватар, чтобы загрузить фото</p>
                         </div>
-                        <p className="text-sm text-muted-foreground">Нажмите на аватар, чтобы загрузить фото</p>
                       </div>
-                    </div>
+                    )}
 
                     <div className="space-y-2">
                       <Label>Имя и Фамилия</Label>
-                      <Input value={fullName} onChange={e => setFullName(e.target.value)} placeholder="Введите имя" />
+                      <Input value={fullName} onChange={e => setFullName(e.target.value)} placeholder="Введите имя" disabled={isAdminView} />
                     </div>
 
                     <div className="space-y-2">
                       <Label>Телефон</Label>
-                      <Input value={phone} onChange={e => setPhone(e.target.value)} placeholder="+7 999 123-45-67" />
+                      <Input value={phone} onChange={e => setPhone(e.target.value)} placeholder="+7 999 123-45-67" disabled={isAdminView} />
                     </div>
 
                     <div className="space-y-2">
                       <Label>Город</Label>
-                      <Input value={city} onChange={e => setCity(e.target.value)} placeholder="Введите город" />
+                      <Input value={city} onChange={e => setCity(e.target.value)} placeholder="Введите город" disabled={isAdminView} />
                     </div>
 
                     <div className="space-y-2">
@@ -482,13 +484,16 @@ export default function StudentProfile() {
                         onChange={e => setBio(e.target.value)}
                         placeholder="Опишите карьеру и достижения"
                         rows={4}
+                        disabled={isAdminView}
                       />
                     </div>
 
-                    <Button onClick={handleSaveProfile} disabled={profileSaving}>
-                      {profileSaving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
-                      Сохранить
-                    </Button>
+                    {!isAdminView && (
+                      <Button onClick={handleSaveProfile} disabled={profileSaving}>
+                        {profileSaving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+                        Сохранить
+                      </Button>
+                    )}
                   </CardContent>
                 </Card>
               </div>
