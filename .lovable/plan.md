@@ -1,29 +1,35 @@
 
 
-# Свайп-переключение темы в баннере профиля ученика
+# Профиль ученика — в рамках основного кабинета
 
-## Что будет сделано
+## Проблема
+Сейчас `StudentProfile` — это отдельная страница со своим сайдбаром (`StudentProfileSidebar`) и отдельным хедером. Пользователь хочет, чтобы профиль был **в том же интерфейсе**, что и основной кабинет: тот же сайдбар (Каталог, Мои курсы, Чат), тот же хедер, тот же баннер «Общий прогресс».
 
-Баннер `StudentProfileBanner` станет интерактивной каруселью тем. Свайп влево/вправо (на мобильных — touch-события, на десктопе — маленькие стрелки по бокам) переключает тему. При переключении:
-- Баннер плавно меняет фоновое изображение (CSS transition на opacity)
-- Применяется вся тема через `storeThemeId` + dispatch `visual-theme-change` → обновляются сайдбар, карточки и т.д.
-- Внизу баннера — точки-индикаторы текущей темы
+## Решение
 
-## Техническая реализация
+### 1. Добавить «Профиль» как вкладку в StudentDashboard
+Вместо отдельной страницы `/student/profile` — профиль станет ещё одной вкладкой внутри `StudentDashboard`. При нажатии на аватар/имя в хедере — переключается на вкладку `profile` (а не `navigate('/student/profile')`).
 
-**Файл**: `src/components/student/StudentProfileBanner.tsx`
+### 2. Профильная навигация — горизонтальное подменю внутри контента
+Когда активна вкладка `profile`, внутри основной области показывается:
+- Баннер `StudentProfileBanner` (с каруселью тем — как сейчас)
+- Горизонтальные табы: Профиль | Уведомления | Идентификация | Согласие | Документы | Тема | Партнёр
+- Содержимое выбранного подраздела
 
-- Импортировать `ADMIN_THEMES`, `storeThemeId`
-- Хранить `currentIndex` в state (инициализация из `getStoredThemeId`)
-- Touch-обработчики: `onTouchStart` / `onTouchEnd` с порогом 50px для свайпа
-- Кнопки `ChevronLeft` / `ChevronRight` (полупрозрачные, маленькие, по бокам баннера)
-- При смене индекса: вызов `storeThemeId(theme.id)` + `dispatchEvent(new CustomEvent("visual-theme-change", { detail: theme.id }))`
-- Плавная смена: два слоя фона с `transition-opacity duration-700`, один исчезает, второй появляется
-- Точки внизу: `ADMIN_THEMES.length` маленьких кружков, активный — белый, остальные — полупрозрачные
+### 3. «Общий прогресс» — один и тот же компонент
+Баннер прогресса (`StudentLibrary` уже показывает его) будет также отображаться в профиле — тот же компонент с `totalProgress`, `totalTimeSpent`, `totalCompletedLessons`.
+
+### 4. Роут `/student/profile` — редирект
+Оставить роут, но сделать редирект на `/student` с параметром `?tab=profile`, чтобы старые ссылки работали.
 
 ## Файлы
 
 | Файл | Действие |
 |---|---|
-| `src/components/student/StudentProfileBanner.tsx` | Полная переработка — свайп-карусель тем |
+| `src/pages/StudentDashboard.tsx` | Добавить вкладку `profile`, встроить содержимое профиля |
+| `src/components/student/StudentSidebar.tsx` | Тип `StudentTab` не меняется — профиль открывается через хедер |
+| `src/components/student/StudentProfileContent.tsx` | Новый компонент — содержимое профиля с горизонтальными табами (извлечь из `StudentProfile.tsx`) |
+| `src/components/student/StudentHeader.tsx` | Клик на аватар/имя → `setActiveTab("profile")` вместо `navigate` |
+| `src/pages/StudentProfile.tsx` | Редирект на `/student?tab=profile` |
+| `src/components/student/StudentProfileSidebar.tsx` | Больше не нужен (профильные табы будут горизонтальными) |
 
