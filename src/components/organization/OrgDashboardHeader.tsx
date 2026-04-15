@@ -12,6 +12,7 @@ import { toast } from "sonner";
 import { differenceInDays } from "date-fns";
 import { useAuth } from "@/hooks/useAuth";
 import defaultCoverImg from "@/assets/default-org-cover.jpg";
+import { getStoredThemeId, getThemeById } from "@/constants/admin-themes";
 import {
   DropdownMenu,
   DropdownMenuContent,
