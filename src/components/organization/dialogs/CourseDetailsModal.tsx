@@ -180,8 +180,8 @@ export function CourseDetailsModal({
                 selectedToEnroll={logic.selectedToEnroll}
                 toggleStudentToEnroll={logic.toggleStudentToEnroll}
                 isEnrolling={logic.isEnrolling}
-                handleEnrollSelected={logic.handleEnrollSelected}
-                onResetProgress={logic.setResetConfirmStudent}
+                onEnrollSelected={logic.handleEnrollSelected}
+                onResetConfirm={logic.setResetConfirmStudent}
               />
             </TabsContent>
 
