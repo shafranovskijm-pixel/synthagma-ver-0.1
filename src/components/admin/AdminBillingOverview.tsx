@@ -949,7 +949,7 @@ function OrgContractsList({ contracts, statusBadge }: { contracts: Contract[]; s
   );
 }
 
-function OrgInvoicesList({ invoices, statusBadge }: { invoices: Invoice[]; statusBadge: (s: string) => React.ReactNode }) {
+function OrgInvoicesList({ invoices, statusBadge, onMarkPaid }: { invoices: Invoice[]; statusBadge: (s: string) => React.ReactNode; onMarkPaid?: (inv: Invoice) => void }) {
   if (invoices.length === 0) return <EmptyState text="Нет счетов" />;
   return (
     <div className="space-y-2">
@@ -963,6 +963,11 @@ function OrgInvoicesList({ invoices, statusBadge }: { invoices: Invoice[]; statu
             </div>
           </div>
           <div className="flex items-center gap-2">
+            {inv.status === "pending" && onMarkPaid && (
+              <Button variant="ghost" size="sm" className="text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50" onClick={() => onMarkPaid(inv)} title="Отметить как оплаченный">
+                <CheckCircle2 className="w-4 h-4" />
+              </Button>
+            )}
             {statusBadge(inv.status)}
             <Button variant="ghost" size="sm" onClick={() => window.open(`/invoice/${inv.id}`, "_blank")}><ExternalLink className="w-4 h-4" /></Button>
           </div>
