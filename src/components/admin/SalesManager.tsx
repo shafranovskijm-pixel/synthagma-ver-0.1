@@ -1,12 +1,13 @@
 import { useState } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { FileText, Package, Users, Building2, BarChart3, ScrollText } from 'lucide-react';
+import { FileText, Package, Users, Building2, BarChart3, ScrollText, GitCompareArrows } from 'lucide-react';
 import { CommercialProposals } from './sales/CommercialProposals';
 import { SalesServices } from './sales/SalesServices';
 import { SalesManagersList } from './sales/SalesManagersList';
 import { LeadsManager } from './sales/LeadsManager';
 import { SalesControlPanel } from './sales/SalesControlPanel';
 import { SalesContracts } from './sales/SalesContracts';
+import { CompetitorComparison } from './sales/CompetitorComparison';
 
 export function SalesManager() {
   return (
@@ -18,6 +19,7 @@ export function SalesManager() {
         <TabsTrigger value="leads" className="gap-1.5"><Building2 className="w-4 h-4" />База компаний</TabsTrigger>
         <TabsTrigger value="contracts" className="gap-1.5"><ScrollText className="w-4 h-4" />Договоры</TabsTrigger>
         <TabsTrigger value="control" className="gap-1.5"><BarChart3 className="w-4 h-4" />Контроль</TabsTrigger>
+        <TabsTrigger value="comparison" className="gap-1.5"><GitCompareArrows className="w-4 h-4" />Сравнение</TabsTrigger>
       </TabsList>
       <TabsContent value="proposals"><CommercialProposals /></TabsContent>
       <TabsContent value="services"><SalesServices /></TabsContent>
@@ -25,6 +27,7 @@ export function SalesManager() {
       <TabsContent value="leads"><LeadsManager /></TabsContent>
       <TabsContent value="contracts"><SalesContracts /></TabsContent>
       <TabsContent value="control"><SalesControlPanel /></TabsContent>
+      <TabsContent value="comparison"><CompetitorComparison /></TabsContent>
     </Tabs>
   );
 }
