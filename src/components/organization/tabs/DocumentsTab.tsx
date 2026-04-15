@@ -156,6 +156,39 @@ export const DocumentsTab = React.memo(function DocumentsTab({ organizationId, o
   const [orgDetails, setOrgDetails] = useState<{ inn?: string; director_name?: string; director_position?: string; custom_price?: number; custom_discount?: number; subscription_plan?: string }>({});
   const [pendingInvoice, setPendingInvoice] = useState<{ html: string; insertData: any; invoiceNum: string; amount: number } | null>(null);
 
+  // Contract Generator state
+  const [showContractGenerator, setShowContractGenerator] = useState(false);
+  const [orgRequisites, setOrgRequisites] = useState<OrgRequisites | null>(null);
+
+  useEffect(() => {
+    if (!organizationId) return;
+    supabase
+      .from("organizations")
+      .select("*")
+      .eq("id", organizationId)
+      .single()
+      .then(({ data }) => {
+        if (data) {
+          setOrgRequisites({
+            name: data.name || "",
+            inn: data.inn || "",
+            kpp: data.kpp || "",
+            ogrn: data.ogrn || "",
+            legal_address: data.legal_address || "",
+            actual_address: data.actual_address || "",
+            director_name: data.director_name || "",
+            director_position: data.director_position || "",
+            bank_name: data.bank_name || "",
+            bank_bik: data.bank_bik || "",
+            bank_account: data.bank_account || "",
+            bank_corr_account: data.bank_corr_account || "",
+            stamp_url: data.stamp_url,
+            signature_url: data.signature_url,
+          });
+        }
+      });
+  }, [organizationId]);
+
   useEffect(() => {
     if (!organizationId) return;
     supabase
