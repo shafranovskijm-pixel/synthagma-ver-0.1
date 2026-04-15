@@ -261,11 +261,12 @@ export function OrgDashboardHeader() {
           width={1920}
           height={512}
           style={{
-            objectFit: coverUrl ? (coverPosition === 'contain' ? 'contain' : 'cover') : 'cover',
-            objectPosition:
+            objectFit: (themeBannerUrl || coverUrl) ? ((coverPosition === 'contain' && !themeBannerUrl) ? 'contain' : 'cover') : 'cover',
+            objectPosition: themeBannerPosition || (
               coverPosition === 'top' ? 'center top'
               : coverPosition === 'bottom' ? 'center bottom'
-              : 'center center',
+              : 'center center'
+            ),
             backgroundColor: 'hsl(var(--muted))'
           }}
         />

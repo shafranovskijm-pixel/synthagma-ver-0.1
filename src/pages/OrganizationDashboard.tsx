@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { AnimatedTabContent } from "@/components/ui/AnimatedTabContent";
 import { OrgSidebar } from "@/components/organization/OrgSidebar";
@@ -13,11 +13,29 @@ import { OnboardingDialog } from "@/components/onboarding/OnboardingDialog";
 import { organizationOnboardingSteps } from "@/constants/onboardingSteps";
 import { useOrgDashboard } from "@/contexts/OrgDashboardContext";
 import { PlatformAnnouncementsBanner } from "@/components/organization/PlatformAnnouncementsBanner";
+import { getStoredThemeId, getThemeById, type AdminTheme } from "@/constants/admin-themes";
+import { ThemeAnimations } from "@/components/ui/ThemeAnimations";
+import { AtmosphericBleed } from "@/components/ui/AtmosphericBleed";
 
 export default function OrganizationDashboard() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const d = useOrgDashboard();
+
+  // Visual theme
+  const [activeTheme, setActiveTheme] = useState<AdminTheme | null>(() => {
+    const id = getStoredThemeId();
+    return id ? getThemeById(id) || null : null;
+  });
+
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const id = (e as CustomEvent).detail;
+      setActiveTheme(id ? getThemeById(id) || null : null);
+    };
+    window.addEventListener("visual-theme-change", handler);
+    return () => window.removeEventListener("visual-theme-change", handler);
+  }, []);
 
   // Handle ?tab= query parameter
   useEffect(() => {
