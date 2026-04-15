@@ -11,9 +11,12 @@ import { SigmaLogo } from "@/components/ui/SigmaLogo";
 import { Progress } from "@/components/ui/progress";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
-import { Copy, TrendingUp, Users, DollarSign, Wallet, ArrowLeft, Network, Crown, Award, ChevronRight } from "lucide-react";
+import { Copy, TrendingUp, Users, DollarSign, Wallet, ArrowLeft, Network, Crown, Award, ChevronRight, FileText, Megaphone, BookOpen } from "lucide-react";
 import { getBaseUrl } from "@/utils/getBaseUrl";
 import { toast } from "sonner";
+import { PartnerNetworkTree } from "@/components/partner/PartnerNetworkTree";
+import { PartnerMaterials } from "@/components/partner/PartnerMaterials";
+import { PartnerHowItWorks } from "@/components/partner/PartnerHowItWorks";
 
 const PartnerDashboard = () => {
   const { user } = useAuth();
@@ -154,6 +157,9 @@ const PartnerDashboard = () => {
             <Badge variant="secondary">Партнёрский кабинет</Badge>
           </div>
           <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" className="gap-1.5 text-xs" onClick={() => navigate("/partner/offer")}>
+              <FileText className="w-3.5 h-3.5" /> Оферта
+            </Button>
             {partner.has_turnover_bonus && <Badge className="bg-emerald-500/15 text-emerald-600 border-emerald-500/30"><Award className="w-3 h-3 mr-1" />Бонус оборота</Badge>}
             {partner.is_top_partner && <Badge className="bg-amber-500/15 text-amber-600 border-amber-500/30"><Crown className="w-3 h-3 mr-1" />Топ-10</Badge>}
           </div>
@@ -246,6 +252,8 @@ const PartnerDashboard = () => {
             <TabsTrigger value="registrations">Клиенты ({registrations.length})</TabsTrigger>
             <TabsTrigger value="commissions">Начисления ({commissions.length})</TabsTrigger>
             <TabsTrigger value="network">Моя сеть ({networkPartners.length})</TabsTrigger>
+            <TabsTrigger value="materials">Материалы</TabsTrigger>
+            <TabsTrigger value="how">Как это работает</TabsTrigger>
             <TabsTrigger value="leaderboard">Рейтинг</TabsTrigger>
             <TabsTrigger value="payouts">Выплаты</TabsTrigger>
             <TabsTrigger value="withdraw">Вывод средств</TabsTrigger>
@@ -324,81 +332,20 @@ const PartnerDashboard = () => {
           </TabsContent>
 
           <TabsContent value="network">
-            <div className="space-y-6">
-              {/* Level 1 */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-base flex items-center gap-2">
-                    <Badge className="bg-teal-500/15 text-teal-600 border-teal-500/30">Уровень 1</Badge>
-                    Прямые партнёры ({level1Partners.length})
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="p-0">
-                  {level1Partners.length === 0 ? (
-                    <div className="text-center text-muted-foreground py-8 text-sm">
-                      Пока нет партнёров. Поделитесь ссылкой для привлечения партнёров!
-                    </div>
-                  ) : (
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Код</TableHead>
-                          <TableHead>Статус</TableHead>
-                          <TableHead>Заработано</TableHead>
-                          <TableHead>Дата</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {level1Partners.map(p => (
-                          <TableRow key={p.id}>
-                            <TableCell className="font-mono text-sm">{p.code}</TableCell>
-                            <TableCell><Badge variant={p.status === "active" ? "default" : "secondary"}>{p.status === "active" ? "Активен" : p.status}</Badge></TableCell>
-                            <TableCell>{Number(p.total_earned).toLocaleString("ru-RU")} ₽</TableCell>
-                            <TableCell>{new Date(p.created_at).toLocaleDateString("ru-RU")}</TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  )}
-                </CardContent>
-              </Card>
+            <PartnerNetworkTree
+              partnerId={partner.id}
+              partnerCode={partner.code}
+              networkPartners={networkPartners}
+              registrations={registrations}
+            />
+          </TabsContent>
 
-              {/* Level 2 */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-base flex items-center gap-2">
-                    <Badge className="bg-cyan-500/15 text-cyan-600 border-cyan-500/30">Уровень 2</Badge>
-                    Партнёры ваших партнёров ({level2Partners.length})
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="p-0">
-                  {level2Partners.length === 0 ? (
-                    <div className="text-center text-muted-foreground py-8 text-sm">Партнёры второго уровня появятся, когда ваши партнёры пригласят своих</div>
-                  ) : (
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Код</TableHead>
-                          <TableHead>Статус</TableHead>
-                          <TableHead>Заработано</TableHead>
-                          <TableHead>Дата</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {level2Partners.map(p => (
-                          <TableRow key={p.id}>
-                            <TableCell className="font-mono text-sm">{p.code}</TableCell>
-                            <TableCell><Badge variant={p.status === "active" ? "default" : "secondary"}>{p.status === "active" ? "Активен" : p.status}</Badge></TableCell>
-                            <TableCell>{Number(p.total_earned).toLocaleString("ru-RU")} ₽</TableCell>
-                            <TableCell>{new Date(p.created_at).toLocaleDateString("ru-RU")}</TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  )}
-                </CardContent>
-              </Card>
-            </div>
+          <TabsContent value="materials">
+            <PartnerMaterials refLink={refLink} partnerRefLink={partnerRefLink} partnerCode={partner.code} />
+          </TabsContent>
+
+          <TabsContent value="how">
+            <PartnerHowItWorks />
           </TabsContent>
 
           <TabsContent value="leaderboard">
