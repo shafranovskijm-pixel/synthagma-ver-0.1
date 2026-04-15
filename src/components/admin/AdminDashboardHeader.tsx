@@ -1,5 +1,5 @@
 import { useRef, useState, useCallback, useEffect } from "react";
-import { Menu, Bell, User, LogOut, Settings, FileText, Sparkles, HelpCircle, ImagePlus, Wand2, Users, Check, Gift } from "lucide-react";
+import { Menu, Bell, User, LogOut, Settings, FileText, Sparkles, HelpCircle, Users, Check, Gift } from "lucide-react";
 import { RadioPlayerButton } from "@/components/radio/RadioPlayerButton";
 import { Button } from "@/components/ui/button";
 import { SigmaLogo } from "@/components/ui/SigmaLogo";
@@ -20,7 +20,7 @@ import defaultCoverImg from "@/assets/default-org-cover.jpg";
 import type { AdminTabType } from "./AdminSidebar";
 import { HelpCenterDialog, useHelpCenterDialog } from "@/components/shared/HelpCenterDialog";
 import { getStoredThemeId, getThemeById } from "@/constants/admin-themes";
-import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
+import { HeroBannerSwiper } from "@/components/shared/HeroBannerSwiper";
 
 interface AdminDashboardHeaderProps {
   activeTab: AdminTabType;
