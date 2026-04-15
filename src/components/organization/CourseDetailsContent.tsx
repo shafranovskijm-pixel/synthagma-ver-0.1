@@ -115,8 +115,8 @@ interface CourseDetailsContentProps {
   course: Course;
   courseStudents: Student[];
   organizationId: string | null;
-  activeTab: "students" | "materials" | "history" | "tests" | "landing" | "settings" | "reminders" | "groups" | "requests" | "achievements";
-  onTabChange: (tab: "students" | "materials" | "history" | "tests" | "landing" | "settings" | "reminders" | "groups" | "requests" | "achievements") => void;
+  activeTab: "students" | "materials" | "history" | "tests" | "landing" | "settings" | "reminders" | "groups" | "requests" | "achievements" | "editor";
+  onTabChange: (tab: "students" | "materials" | "history" | "tests" | "landing" | "settings" | "reminders" | "groups" | "requests" | "achievements" | "editor") => void;
   onEnrollStudent: () => void;
   onCourseDeleted?: () => void;
   onCourseUpdated?: () => void;
@@ -492,7 +492,7 @@ export function CourseDetailsContent({
                 <Eye className="w-4 h-4" />
                 Просмотр
               </Button>
-              <Button className="rounded-xl gap-2 btn-gradient" onClick={() => navigate(`/course-builder/${course.id}`)}>
+              <Button className="rounded-xl gap-2 btn-gradient" onClick={() => onTabChange("editor")}>
                 <Edit className="w-4 h-4" />
                 Редактировать
               </Button>
@@ -568,6 +568,7 @@ export function CourseDetailsContent({
             <div className="lg:hidden w-px bg-border/50 mx-1 shrink-0" />
 
             {([
+              { value: "editor" as const, label: "Редактор", icon: Edit, color: "text-primary" },
               { value: "landing" as const, label: "Страница курса", icon: Globe, color: "text-rose-500" },
               { value: "settings" as const, label: "Настройки", icon: Settings, color: "text-muted-foreground" },
               { value: "reminders" as const, label: "Напоминания", icon: Bell, color: "text-orange-500" },
