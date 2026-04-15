@@ -8,9 +8,10 @@ import { Textarea } from "@/components/ui/textarea";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { SigmaLogo } from "@/components/ui/SigmaLogo";
+import { Progress } from "@/components/ui/progress";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
-import { Copy, TrendingUp, Users, DollarSign, Wallet, ArrowLeft, Download, ExternalLink } from "lucide-react";
+import { Copy, TrendingUp, Users, DollarSign, Wallet, ArrowLeft, Network, Crown, Award, ChevronRight } from "lucide-react";
 import { getBaseUrl } from "@/utils/getBaseUrl";
 import { toast } from "sonner";
 
@@ -21,7 +22,9 @@ const PartnerDashboard = () => {
   const [registrations, setRegistrations] = useState<any[]>([]);
   const [commissions, setCommissions] = useState<any[]>([]);
   const [payouts, setPayouts] = useState<any[]>([]);
-  const [promoMaterials, setPromoMaterials] = useState<any[]>([]);
+  const [networkPartners, setNetworkPartners] = useState<any[]>([]);
+  const [monthlyStats, setMonthlyStats] = useState<any[]>([]);
+  const [topPartners, setTopPartners] = useState<any[]>([]);
   const [payoutAmount, setPayoutAmount] = useState("");
   const [bankDetails, setBankDetails] = useState("");
   const [isLoading, setIsLoading] = useState(true);
@@ -35,22 +38,60 @@ const PartnerDashboard = () => {
     if (!user) return;
     setIsLoading(true);
     try {
-      const [partnerRes, regsRes, commsRes, payoutsRes, materialsRes] = await Promise.all([
+      const [partnerRes, regsRes, commsRes, payoutsRes] = await Promise.all([
         supabase.from("referral_partners").select("*").eq("user_id", user.id).maybeSingle(),
         supabase.from("referral_registrations").select("*, organizations:organization_id(name, email)").order("registered_at", { ascending: false }),
         supabase.from("referral_commissions").select("*, organizations:organization_id(name)").order("created_at", { ascending: false }),
         supabase.from("referral_payouts").select("*").order("created_at", { ascending: false }),
-        supabase.from("referral_promo_materials").select("*").eq("is_active", true),
       ]);
 
       if (partnerRes.data) {
         setPartner(partnerRes.data);
         setBankDetails(partnerRes.data.bank_details || "");
+
+        // Load network (partners referred by this partner)
+        const { data: netPartners } = await supabase
+          .from("referral_partners")
+          .select("id, code, status, total_earned, created_at, referred_by_partner_id")
+          .eq("referred_by_partner_id", partnerRes.data.id);
+        
+        if (netPartners) {
+          setNetworkPartners(netPartners);
+          // Load level 2 partners
+          const level2Ids = netPartners.map(p => p.id);
+          if (level2Ids.length > 0) {
+            const { data: l2Partners } = await supabase
+              .from("referral_partners")
+              .select("id, code, status, total_earned, created_at, referred_by_partner_id")
+              .in("referred_by_partner_id", level2Ids);
+            if (l2Partners) setNetworkPartners(prev => [...prev, ...l2Partners]);
+          }
+        }
+
+        // Load monthly stats
+        const { data: stats } = await supabase
+          .from("partner_monthly_stats")
+          .select("*")
+          .eq("partner_id", partnerRes.data.id)
+          .order("month", { ascending: false })
+          .limit(6);
+        if (stats) setMonthlyStats(stats);
+
+        // Load top-10 for current month
+        const now = new Date();
+        const monthDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-01`;
+        const { data: top } = await supabase
+          .from("partner_monthly_stats")
+          .select("rank, network_revenue, total_commission, partner_id")
+          .eq("month", monthDate)
+          .eq("is_top", true)
+          .order("rank", { ascending: true })
+          .limit(10);
+        if (top) setTopPartners(top);
       }
       if (regsRes.data) setRegistrations(regsRes.data);
       if (commsRes.data) setCommissions(commsRes.data);
       if (payoutsRes.data) setPayouts(payoutsRes.data);
-      if (materialsRes.data) setPromoMaterials(materialsRes.data);
     } catch (e) {
       console.error(e);
     } finally {
@@ -58,148 +99,155 @@ const PartnerDashboard = () => {
     }
   };
 
-  const handleCopyLink = () => {
-    if (!partner) return;
-    navigator.clipboard.writeText(`${getBaseUrl()}/register?ref=${partner.code}`);
+  const handleCopyLink = (link: string) => {
+    navigator.clipboard.writeText(link);
     toast.success("Ссылка скопирована!");
   };
 
   const handleSaveBankDetails = async () => {
     if (!partner) return;
-    const { error } = await supabase
-      .from("referral_partners")
-      .update({ bank_details: bankDetails })
-      .eq("id", partner.id);
-    if (error) {
-      toast.error("Ошибка сохранения");
-    } else {
-      toast.success("Реквизиты сохранены");
-    }
+    const { error } = await supabase.from("referral_partners").update({ bank_details: bankDetails }).eq("id", partner.id);
+    if (error) toast.error("Ошибка сохранения");
+    else toast.success("Реквизиты сохранены");
   };
 
   const handleRequestPayout = async () => {
     if (!partner) return;
     const amount = parseFloat(payoutAmount);
-    if (isNaN(amount) || amount < 1000) {
-      toast.error("Минимальная сумма вывода — 1 000 ₽");
-      return;
-    }
-    if (amount > Number(partner.balance)) {
-      toast.error("Недостаточно средств");
-      return;
-    }
-    const { error } = await supabase.from("referral_payouts").insert({
-      partner_id: partner.id,
-      amount,
-    });
-    if (error) {
-      toast.error("Ошибка запроса", { description: error.message });
-    } else {
-      toast.success("Запрос на вывод отправлен");
-      setPayoutAmount("");
-      loadData();
-    }
+    if (isNaN(amount) || amount < 1000) { toast.error("Минимальная сумма вывода — 1 000 ₽"); return; }
+    if (amount > Number(partner.balance)) { toast.error("Недостаточно средств"); return; }
+    const { error } = await supabase.from("referral_payouts").insert({ partner_id: partner.id, amount });
+    if (error) toast.error("Ошибка запроса", { description: error.message });
+    else { toast.success("Запрос на вывод отправлен"); setPayoutAmount(""); loadData(); }
   };
 
-  if (!user) {
-    navigate("/login");
-    return null;
-  }
-
-  if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
-      </div>
-    );
-  }
-
-  if (!partner) {
-    return (
-      <div className="min-h-screen flex flex-col items-center justify-center gap-4">
-        <p className="text-muted-foreground">Вы ещё не являетесь партнёром.</p>
-        <Button onClick={() => navigate("/partner")}>Стать партнёром</Button>
-      </div>
-    );
-  }
+  if (!user) { navigate("/login"); return null; }
+  if (isLoading) return <div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" /></div>;
+  if (!partner) return <div className="min-h-screen flex flex-col items-center justify-center gap-4"><p className="text-muted-foreground">Вы ещё не являетесь партнёром.</p><Button onClick={() => navigate("/partner")}>Стать партнёром</Button></div>;
 
   const refLink = `${getBaseUrl()}/register?ref=${partner.code}`;
+  const partnerRefLink = `${getBaseUrl()}/partner?partner_ref=${partner.code}`;
+  const networkRevenue = Number(partner.monthly_network_revenue || 0);
+  const turnoverProgress = Math.min((networkRevenue / 100000) * 100, 100);
+
+  // Split commissions by level
+  const l1Earned = commissions.filter(c => c.level === 1 && !c.bonus_type).reduce((s, c) => s + Number(c.commission_amount), 0);
+  const l2Earned = commissions.filter(c => c.level === 2 && !c.bonus_type).reduce((s, c) => s + Number(c.commission_amount), 0);
+  const l3Earned = commissions.filter(c => c.level === 3 && !c.bonus_type).reduce((s, c) => s + Number(c.commission_amount), 0);
+  const bonusEarned = commissions.filter(c => c.bonus_type).reduce((s, c) => s + Number(c.commission_amount), 0);
+
+  // Network counts
+  const level1Partners = networkPartners.filter(p => p.referred_by_partner_id === partner.id);
+  const level2PartnerIds = level1Partners.map(p => p.id);
+  const level2Partners = networkPartners.filter(p => level2PartnerIds.includes(p.referred_by_partner_id));
+
+  const levelLabel = (l: number) => l === 1 ? "Ур. 1" : l === 2 ? "Ур. 2" : "Ур. 3";
+  const bonusLabel = (t: string | null) => t === "turnover" ? "Оборот" : t === "leader" ? "Лидер" : "—";
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Header */}
       <header className="sticky top-0 z-50 bg-card/95 backdrop-blur-sm border-b border-border">
         <div className="container mx-auto px-6 h-16 flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <Button variant="ghost" size="icon" onClick={() => navigate("/partner")}>
-              <ArrowLeft className="w-5 h-5" />
-            </Button>
+            <Button variant="ghost" size="icon" onClick={() => navigate("/partner")}><ArrowLeft className="w-5 h-5" /></Button>
             <SigmaLogo size="md" showText />
             <Badge variant="secondary">Партнёрский кабинет</Badge>
+          </div>
+          <div className="flex items-center gap-2">
+            {partner.has_turnover_bonus && <Badge className="bg-emerald-500/15 text-emerald-600 border-emerald-500/30"><Award className="w-3 h-3 mr-1" />Бонус оборота</Badge>}
+            {partner.is_top_partner && <Badge className="bg-amber-500/15 text-amber-600 border-amber-500/30"><Crown className="w-3 h-3 mr-1" />Топ-10</Badge>}
           </div>
         </div>
       </header>
 
       <main className="container mx-auto px-6 py-8 max-w-6xl">
         {/* Stats */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+        <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
           <Card>
-            <CardContent className="pt-6">
-              <div className="flex items-center gap-2 text-muted-foreground text-sm mb-1">
-                <Users className="w-4 h-4" /> Клиентов
-              </div>
+            <CardContent className="pt-5 pb-4">
+              <div className="flex items-center gap-2 text-muted-foreground text-xs mb-1"><Users className="w-3.5 h-3.5" /> Клиентов</div>
               <div className="text-2xl font-bold">{registrations.length}</div>
             </CardContent>
           </Card>
           <Card>
-            <CardContent className="pt-6">
-              <div className="flex items-center gap-2 text-muted-foreground text-sm mb-1">
-                <TrendingUp className="w-4 h-4" /> Комиссия
-              </div>
-              <div className="text-2xl font-bold">{partner.commission_percent}%</div>
+            <CardContent className="pt-5 pb-4">
+              <div className="flex items-center gap-2 text-muted-foreground text-xs mb-1"><Network className="w-3.5 h-3.5" /> Сеть</div>
+              <div className="text-2xl font-bold">{networkPartners.length}</div>
+              <div className="text-xs text-muted-foreground">Ур.1: {level1Partners.length} • Ур.2: {level2Partners.length}</div>
             </CardContent>
           </Card>
           <Card>
-            <CardContent className="pt-6">
-              <div className="flex items-center gap-2 text-muted-foreground text-sm mb-1">
-                <DollarSign className="w-4 h-4" /> Заработано
-              </div>
+            <CardContent className="pt-5 pb-4">
+              <div className="flex items-center gap-2 text-muted-foreground text-xs mb-1"><TrendingUp className="w-3.5 h-3.5" /> Ставки</div>
+              <div className="text-lg font-bold">{partner.level1_percent}% / {partner.level2_percent}% / {partner.level3_percent}%</div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="pt-5 pb-4">
+              <div className="flex items-center gap-2 text-muted-foreground text-xs mb-1"><DollarSign className="w-3.5 h-3.5" /> Заработано</div>
               <div className="text-2xl font-bold">{Number(partner.total_earned).toLocaleString("ru-RU")} ₽</div>
+              <div className="text-xs text-muted-foreground mt-1">
+                Ур.1: {l1Earned.toLocaleString("ru-RU")} • Ур.2: {l2Earned.toLocaleString("ru-RU")} • Ур.3: {l3Earned.toLocaleString("ru-RU")}
+              </div>
             </CardContent>
           </Card>
           <Card>
-            <CardContent className="pt-6">
-              <div className="flex items-center gap-2 text-muted-foreground text-sm mb-1">
-                <Wallet className="w-4 h-4" /> Баланс
-              </div>
+            <CardContent className="pt-5 pb-4">
+              <div className="flex items-center gap-2 text-muted-foreground text-xs mb-1"><Wallet className="w-3.5 h-3.5" /> Баланс</div>
               <div className="text-2xl font-bold text-primary">{Number(partner.balance).toLocaleString("ru-RU")} ₽</div>
             </CardContent>
           </Card>
         </div>
 
-        {/* Referral link */}
+        {/* Turnover bonus progress */}
         <Card className="mb-8">
-          <CardHeader>
-            <CardTitle className="text-lg">Ваша реферальная ссылка</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-center gap-2">
-              <Input value={refLink} readOnly className="font-mono text-sm" />
-              <Button onClick={handleCopyLink} variant="outline">
-                <Copy className="w-4 h-4 mr-2" /> Копировать
-              </Button>
+          <CardContent className="pt-5 pb-4">
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-2 text-sm font-medium">
+                <Award className="w-4 h-4 text-emerald-500" />
+                Прогресс до бонуса за оборот (+5%)
+              </div>
+              <span className="text-sm text-muted-foreground">
+                {networkRevenue.toLocaleString("ru-RU")} / 100 000 ₽
+              </span>
             </div>
-            <p className="text-xs text-muted-foreground mt-2">Cookie сохраняется на 90 дней после перехода по ссылке.</p>
+            <Progress value={turnoverProgress} className="h-3" />
+            {partner.has_turnover_bonus && (
+              <p className="text-xs text-emerald-600 mt-2 font-medium">✓ Бонус за оборот активен! Вы получаете дополнительно +5% от каждого платежа.</p>
+            )}
           </CardContent>
         </Card>
 
+        {/* Referral links */}
+        <div className="grid md:grid-cols-2 gap-4 mb-8">
+          <Card>
+            <CardHeader className="pb-2"><CardTitle className="text-sm">Ссылка для организаций</CardTitle></CardHeader>
+            <CardContent>
+              <div className="flex items-center gap-2">
+                <Input value={refLink} readOnly className="font-mono text-xs" />
+                <Button onClick={() => handleCopyLink(refLink)} variant="outline" size="sm"><Copy className="w-3.5 h-3.5" /></Button>
+              </div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="pb-2"><CardTitle className="text-sm">Ссылка для привлечения партнёров</CardTitle></CardHeader>
+            <CardContent>
+              <div className="flex items-center gap-2">
+                <Input value={partnerRefLink} readOnly className="font-mono text-xs" />
+                <Button onClick={() => handleCopyLink(partnerRefLink)} variant="outline" size="sm"><Copy className="w-3.5 h-3.5" /></Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
         {/* Tabs */}
         <Tabs defaultValue="registrations">
-          <TabsList className="mb-6">
+          <TabsList className="mb-6 flex-wrap h-auto gap-1">
             <TabsTrigger value="registrations">Клиенты ({registrations.length})</TabsTrigger>
             <TabsTrigger value="commissions">Начисления ({commissions.length})</TabsTrigger>
-            <TabsTrigger value="payouts">Выплаты ({payouts.length})</TabsTrigger>
-            <TabsTrigger value="materials">Материалы</TabsTrigger>
+            <TabsTrigger value="network">Моя сеть ({networkPartners.length})</TabsTrigger>
+            <TabsTrigger value="leaderboard">Рейтинг</TabsTrigger>
+            <TabsTrigger value="payouts">Выплаты</TabsTrigger>
             <TabsTrigger value="withdraw">Вывод средств</TabsTrigger>
           </TabsList>
 
@@ -237,20 +285,30 @@ const PartnerDashboard = () => {
                   <TableHeader>
                     <TableRow>
                       <TableHead>Организация</TableHead>
+                      <TableHead>Уровень</TableHead>
                       <TableHead>Сумма платежа</TableHead>
                       <TableHead>Комиссия</TableHead>
+                      <TableHead>Бонус</TableHead>
                       <TableHead>Статус</TableHead>
                       <TableHead>Дата</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {commissions.length === 0 ? (
-                      <TableRow><TableCell colSpan={5} className="text-center text-muted-foreground py-8">Начислений пока нет</TableCell></TableRow>
+                      <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-8">Начислений пока нет</TableCell></TableRow>
                     ) : commissions.map((c) => (
                       <TableRow key={c.id}>
                         <TableCell>{(c.organizations as any)?.name || "—"}</TableCell>
+                        <TableCell><Badge variant="outline" className="text-xs">{levelLabel(c.level)}</Badge></TableCell>
                         <TableCell>{Number(c.amount).toLocaleString("ru-RU")} ₽</TableCell>
                         <TableCell className="font-medium text-primary">{Number(c.commission_amount).toLocaleString("ru-RU")} ₽</TableCell>
+                        <TableCell>
+                          {c.bonus_type ? (
+                            <Badge className={c.bonus_type === "turnover" ? "bg-emerald-500/15 text-emerald-600 border-emerald-500/30" : "bg-amber-500/15 text-amber-600 border-amber-500/30"}>
+                              {bonusLabel(c.bonus_type)}
+                            </Badge>
+                          ) : "—"}
+                        </TableCell>
                         <TableCell>
                           <Badge variant={c.status === "paid" ? "default" : "secondary"}>
                             {c.status === "paid" ? "Выплачено" : c.status === "pending" ? "Ожидает" : c.status}
@@ -263,6 +321,162 @@ const PartnerDashboard = () => {
                 </Table>
               </CardContent>
             </Card>
+          </TabsContent>
+
+          <TabsContent value="network">
+            <div className="space-y-6">
+              {/* Level 1 */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <Badge className="bg-teal-500/15 text-teal-600 border-teal-500/30">Уровень 1</Badge>
+                    Прямые партнёры ({level1Partners.length})
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="p-0">
+                  {level1Partners.length === 0 ? (
+                    <div className="text-center text-muted-foreground py-8 text-sm">
+                      Пока нет партнёров. Поделитесь ссылкой для привлечения партнёров!
+                    </div>
+                  ) : (
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Код</TableHead>
+                          <TableHead>Статус</TableHead>
+                          <TableHead>Заработано</TableHead>
+                          <TableHead>Дата</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {level1Partners.map(p => (
+                          <TableRow key={p.id}>
+                            <TableCell className="font-mono text-sm">{p.code}</TableCell>
+                            <TableCell><Badge variant={p.status === "active" ? "default" : "secondary"}>{p.status === "active" ? "Активен" : p.status}</Badge></TableCell>
+                            <TableCell>{Number(p.total_earned).toLocaleString("ru-RU")} ₽</TableCell>
+                            <TableCell>{new Date(p.created_at).toLocaleDateString("ru-RU")}</TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Level 2 */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <Badge className="bg-cyan-500/15 text-cyan-600 border-cyan-500/30">Уровень 2</Badge>
+                    Партнёры ваших партнёров ({level2Partners.length})
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="p-0">
+                  {level2Partners.length === 0 ? (
+                    <div className="text-center text-muted-foreground py-8 text-sm">Партнёры второго уровня появятся, когда ваши партнёры пригласят своих</div>
+                  ) : (
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Код</TableHead>
+                          <TableHead>Статус</TableHead>
+                          <TableHead>Заработано</TableHead>
+                          <TableHead>Дата</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {level2Partners.map(p => (
+                          <TableRow key={p.id}>
+                            <TableCell className="font-mono text-sm">{p.code}</TableCell>
+                            <TableCell><Badge variant={p.status === "active" ? "default" : "secondary"}>{p.status === "active" ? "Активен" : p.status}</Badge></TableCell>
+                            <TableCell>{Number(p.total_earned).toLocaleString("ru-RU")} ₽</TableCell>
+                            <TableCell>{new Date(p.created_at).toLocaleDateString("ru-RU")}</TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+          </TabsContent>
+
+          <TabsContent value="leaderboard">
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base flex items-center gap-2">
+                  <Crown className="w-5 h-5 text-amber-500" /> Топ-10 партнёров месяца
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-0">
+                {topPartners.length === 0 ? (
+                  <div className="text-center text-muted-foreground py-8 text-sm">Рейтинг обновляется в начале каждого месяца</div>
+                ) : (
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="w-16">Место</TableHead>
+                        <TableHead>Оборот сети</TableHead>
+                        <TableHead>Комиссия</TableHead>
+                        <TableHead>Это вы?</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {topPartners.map((t) => {
+                        const isMe = t.partner_id === partner.id;
+                        return (
+                          <TableRow key={t.partner_id} className={isMe ? "bg-teal-500/5" : ""}>
+                            <TableCell>
+                              <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm ${t.rank <= 3 ? "bg-amber-500/15 text-amber-600" : "bg-muted text-muted-foreground"}`}>
+                                {t.rank}
+                              </div>
+                            </TableCell>
+                            <TableCell>{Number(t.network_revenue).toLocaleString("ru-RU")} ₽</TableCell>
+                            <TableCell>{Number(t.total_commission).toLocaleString("ru-RU")} ₽</TableCell>
+                            <TableCell>{isMe ? <Badge className="bg-teal-500/15 text-teal-600 border-teal-500/30">Вы</Badge> : "—"}</TableCell>
+                          </TableRow>
+                        );
+                      })}
+                    </TableBody>
+                  </Table>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Monthly stats history */}
+            {monthlyStats.length > 0 && (
+              <Card className="mt-6">
+                <CardHeader><CardTitle className="text-base">Ваша статистика по месяцам</CardTitle></CardHeader>
+                <CardContent className="p-0">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Месяц</TableHead>
+                        <TableHead>Оборот сети</TableHead>
+                        <TableHead>Прямой доход</TableHead>
+                        <TableHead>Всего комиссия</TableHead>
+                        <TableHead>Место</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {monthlyStats.map(s => (
+                        <TableRow key={s.id}>
+                          <TableCell>{new Date(s.month).toLocaleDateString("ru-RU", { month: "long", year: "numeric" })}</TableCell>
+                          <TableCell>{Number(s.network_revenue).toLocaleString("ru-RU")} ₽</TableCell>
+                          <TableCell>{Number(s.direct_revenue).toLocaleString("ru-RU")} ₽</TableCell>
+                          <TableCell className="font-medium">{Number(s.total_commission).toLocaleString("ru-RU")} ₽</TableCell>
+                          <TableCell>
+                            {s.is_top ? (
+                              <Badge className="bg-amber-500/15 text-amber-600 border-amber-500/30">#{s.rank}</Badge>
+                            ) : (s.rank ? `#${s.rank}` : "—")}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </CardContent>
+              </Card>
+            )}
           </TabsContent>
 
           <TabsContent value="payouts">
@@ -298,68 +512,12 @@ const PartnerDashboard = () => {
             </Card>
           </TabsContent>
 
-          <TabsContent value="materials">
-            <div className="grid md:grid-cols-2 gap-6">
-              {/* Social media / messenger texts */}
-              <Card>
-                <CardHeader><CardTitle className="text-lg">Тексты для мессенджеров и соцсетей</CardTitle></CardHeader>
-                <CardContent className="space-y-4">
-                  {[
-                    `🎓 Рекомендую платформу СИНТАГМА для дистанционного обучения! Документооборот, тесты, видеоидентификация — всё в одном месте.\n\nРегистрация: ${refLink}`,
-                    `🚀 Ищете систему для обучения сотрудников? СИНТАГМА — современная LMS с ФРДО, онлайн-кассой и ИИ-генерацией курсов.\n\nПопробуйте бесплатно: ${refLink}`,
-                    `💡 Автоматизируйте обучение с СИНТАГМА! Курсы, тесты, документы, охрана труда — единая платформа для учебных центров.\n\nПодробнее: ${refLink}`,
-                    `📚 Как учебному центру сэкономить 80% времени на документообороте? Перейти на СИНТАГМА — платформу с ИИ, ФРДО и электронной подписью.\n\nУзнать больше: ${refLink}`,
-                    `🏆 Уже 100+ организаций используют СИНТАГМА для дистанционного обучения. Присоединяйтесь!\n\n👉 ${refLink}`,
-                  ].map((text, i) => (
-                    <div key={i} className="bg-muted rounded-lg p-4">
-                      <pre className="text-sm whitespace-pre-wrap mb-3 font-sans">{text}</pre>
-                      <Button size="sm" variant="outline" onClick={() => {
-                        navigator.clipboard.writeText(text);
-                        toast.success("Текст скопирован!");
-                      }}>
-                        <Copy className="w-3 h-3 mr-1" /> Копировать
-                      </Button>
-                    </div>
-                  ))}
-                </CardContent>
-              </Card>
-
-              {/* Email templates */}
-              <Card>
-                <CardHeader><CardTitle className="text-lg">Тексты для email-рассылки</CardTitle></CardHeader>
-                <CardContent className="space-y-4">
-                  {[
-                    `Тема: Платформа для дистанционного обучения — бесплатный старт\n\nЗдравствуйте!\n\nХочу рассказать вам о платформе СИНТАГМА — это современная система дистанционного обучения для учебных центров и организаций.\n\nЧто входит:\n• Создание курсов с ИИ-помощником\n• Тесты и видеоидентификация\n• Интеграция с ФРДО\n• Электронный документооборот\n• Охрана труда\n\nНачать можно бесплатно: ${refLink}\n\nС уважением`,
-                    `Тема: Сэкономьте 80% времени на обучении сотрудников\n\nДобрый день!\n\nЕсли ваша организация проводит обучение — обратите внимание на СИНТАГМА. Платформа автоматизирует:\n\n✅ Создание и назначение курсов\n✅ Тестирование и аттестацию\n✅ Выдачу документов об образовании\n✅ Выгрузку в ФРДО\n\nПопробуйте бесплатно: ${refLink}`,
-                    `Тема: Новая LMS-платформа с ИИ — СИНТАГМА\n\nПриветствую!\n\nСИНТАГМА — платформа нового поколения для учебных центров:\n\n🤖 ИИ генерирует курсы за минуты\n📄 Автоматический документооборот\n🎥 Видеоидентификация учеников\n📊 Аналитика и журналы\n\nРегистрация бесплатна: ${refLink}`,
-                  ].map((text, i) => (
-                    <div key={i} className="bg-muted rounded-lg p-4">
-                      <pre className="text-sm whitespace-pre-wrap mb-3 font-sans">{text}</pre>
-                      <Button size="sm" variant="outline" onClick={() => {
-                        navigator.clipboard.writeText(text);
-                        toast.success("Текст скопирован!");
-                      }}>
-                        <Copy className="w-3 h-3 mr-1" /> Копировать
-                      </Button>
-                    </div>
-                  ))}
-                </CardContent>
-              </Card>
-            </div>
-          </TabsContent>
-
           <TabsContent value="withdraw">
             <div className="grid md:grid-cols-2 gap-6">
               <Card>
                 <CardHeader><CardTitle className="text-lg">Банковские реквизиты</CardTitle></CardHeader>
                 <CardContent>
-                  <Textarea
-                    value={bankDetails}
-                    onChange={(e) => setBankDetails(e.target.value)}
-                    placeholder="ФИО, банк, номер счёта, БИК, ИНН..."
-                    rows={5}
-                    className="mb-4"
-                  />
+                  <Textarea value={bankDetails} onChange={(e) => setBankDetails(e.target.value)} placeholder="ФИО, банк, номер счёта, БИК, ИНН..." rows={5} className="mb-4" />
                   <Button onClick={handleSaveBankDetails}>Сохранить реквизиты</Button>
                 </CardContent>
               </Card>
@@ -369,19 +527,9 @@ const PartnerDashboard = () => {
                   <p className="text-sm text-muted-foreground mb-4">
                     Доступно: <strong>{Number(partner.balance).toLocaleString("ru-RU")} ₽</strong>. Минимальная сумма — 1 000 ₽.
                   </p>
-                  <Input
-                    type="number"
-                    value={payoutAmount}
-                    onChange={(e) => setPayoutAmount(e.target.value)}
-                    placeholder="Сумма вывода"
-                    className="mb-4"
-                  />
-                  <Button onClick={handleRequestPayout} disabled={!bankDetails}>
-                    Запросить вывод
-                  </Button>
-                  {!bankDetails && (
-                    <p className="text-xs text-destructive mt-2">Сначала заполните реквизиты.</p>
-                  )}
+                  <Input type="number" value={payoutAmount} onChange={(e) => setPayoutAmount(e.target.value)} placeholder="Сумма вывода" className="mb-4" />
+                  <Button onClick={handleRequestPayout} disabled={!bankDetails}>Запросить вывод</Button>
+                  {!bankDetails && <p className="text-xs text-destructive mt-2">Сначала заполните реквизиты.</p>}
                 </CardContent>
               </Card>
             </div>

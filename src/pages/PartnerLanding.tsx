@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { SigmaLogo } from "@/components/ui/SigmaLogo";
-import { ArrowRight, Gift, TrendingUp, Users, Clock, DollarSign, CheckCircle2, Copy, ExternalLink, Zap, Shield, BarChart3, MessageCircle, Mail, FileText, Building2, GraduationCap, Briefcase, Star, Sparkles, Download, HelpCircle } from "lucide-react";
+import { ArrowRight, Gift, TrendingUp, Users, Clock, DollarSign, CheckCircle2, Copy, ExternalLink, Zap, Shield, BarChart3, MessageCircle, Mail, FileText, Building2, GraduationCap, Briefcase, Star, Sparkles, Download, HelpCircle, Network, Award, Crown } from "lucide-react";
 import { motion } from "framer-motion";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
@@ -15,6 +15,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { FloatingParticles } from "@/components/landing/FloatingParticles";
 import { toast } from "sonner";
+import { getPartnerRef } from "@/utils/referralCookie";
 
 const PartnerLanding = () => {
   const { user } = useAuth();
@@ -41,7 +42,10 @@ const PartnerLanding = () => {
     if (!user) { navigate("/login"); return; }
     setIsBecoming(true);
     try {
-      const { data, error } = await supabase.rpc("become_referral_partner");
+      const partnerRef = getPartnerRef();
+      const { data, error } = await supabase.rpc("become_referral_partner", {
+        p_referred_by: partnerRef || null,
+      });
       if (error) throw error;
       setPartnerCode(data);
       setIsPartner(true);
@@ -61,30 +65,36 @@ const PartnerLanding = () => {
   };
 
   const refLink = partnerCode ? `${getBaseUrl()}/register?ref=${partnerCode}` : getBaseUrl();
+  const partnerRefLink = partnerCode ? `${getBaseUrl()}/partner?partner_ref=${partnerCode}` : "";
 
   const steps = [
     { icon: Users, title: "Зарегистрируйтесь", desc: "Станьте партнёром за 1 клик — нужен только аккаунт на платформе" },
     { icon: ExternalLink, title: "Делитесь ссылкой", desc: "Отправьте персональную ссылку вашим контактам и аудитории" },
-    { icon: DollarSign, title: "Получайте доход", desc: "10–25% от каждого платежа привлечённых организаций" },
+    { icon: Network, title: "Стройте сеть", desc: "Привлекайте партнёров и получайте комиссию с 3 уровней" },
+    { icon: DollarSign, title: "Получайте доход", desc: "До 45% от каждого платежа по всей вашей сети" },
   ];
 
   const benefits = [
-    { icon: TrendingUp, title: "До 25% комиссии", desc: "Растущая ставка: чем больше клиентов, тем выше ваш процент" },
+    { icon: TrendingUp, title: "До 45% дохода", desc: "20% прямых + 10% уровень 2 + 5% уровень 3 + бонусы" },
     { icon: Clock, title: "2 года выплат", desc: "Получайте комиссию в течение 24 месяцев после регистрации клиента" },
-    { icon: Shield, title: "Прозрачная статистика", desc: "Кабинет партнёра с аналитикой переходов, регистраций и начислений" },
-    { icon: Zap, title: "Быстрый старт", desc: "Готовые тексты для рассылки, без вложений и обязательств" },
+    { icon: Crown, title: "Лидерский бонус", desc: "Топ-10 партнёров месяца получают дополнительно +3% со всей сети" },
+    { icon: Award, title: "Бонус за оборот", desc: "При обороте сети > 100 000 ₽/мес — дополнительно +5%" },
   ];
 
-  const commissionTiers = [
-    { level: "Стартовый", clients: "0–5", percent: "10%", intensity: "from-teal-500/5 to-teal-500/10 border-teal-500/15" },
-    { level: "Базовый", clients: "6–15", percent: "15%", intensity: "from-teal-500/10 to-teal-500/15 border-teal-500/20" },
-    { level: "Продвинутый", clients: "16–30", percent: "20%", intensity: "from-teal-500/15 to-teal-500/20 border-teal-500/25" },
-    { level: "Эксперт", clients: "31+", percent: "25%", intensity: "from-teal-500/20 to-teal-500/30 border-teal-500/35" },
+  const networkLevels = [
+    { level: "Уровень 1", desc: "Прямые приглашения", percent: "20%", color: "from-teal-500/20 to-teal-500/10 border-teal-500/30", glow: "shadow-teal-500/10" },
+    { level: "Уровень 2", desc: "Партнёры ваших партнёров", percent: "10%", color: "from-cyan-500/15 to-cyan-500/5 border-cyan-500/25", glow: "shadow-cyan-500/10" },
+    { level: "Уровень 3", desc: "Третье поколение сети", percent: "5%", color: "from-blue-500/10 to-blue-500/5 border-blue-500/20", glow: "shadow-blue-500/10" },
   ];
 
-  const messengerText = `🎓 Я использую платформу СИНТАГМА для дистанционного обучения — современная LMS с документооборотом, ФРДО, видеоидентификацией и ИИ.\n\nПопробуйте бесплатно: ${getBaseUrl()}`;
-  const socialText = `Для обучения сотрудников использую СИНТАГМА — платформу с полным функционалом:\n\n1. Бесплатный тариф для старта\n2. Безлимит учеников на всех тарифах\n3. ИИ-генерация курсов за минуты\n4. Встроенный документооборот и ФРДО\n5. Видеоидентификация и прокторинг\n6. Онлайн-касса и приём платежей\n7. Охрана труда и журналы\n\nПопробуйте: ${getBaseUrl()}`;
-  const b2bText = `Предлагаю рассмотреть платформу СИНТАГМА для организации дистанционного обучения в вашей компании.\n\nОсновные возможности:\n• Конструктор курсов с ИИ-генерацией контента\n• Встроенный документооборот (договоры, акты, согласия)\n• Интеграция с ФРДО для передачи данных об образовании\n• Видеоидентификация и прокторинг экзаменов\n• Модуль охраны труда с журналами и протоколами\n• Онлайн-касса и приём платежей (комиссия от 2,8%)\n• Безлимит учеников на всех тарифах\n\nБесплатный тестовый период — 14 дней.\nПодробнее: ${getBaseUrl()}`;
+  const bonuses = [
+    { title: "Бонус за оборот", condition: "Оборот сети > 100 000 ₽/мес", bonus: "+5%", icon: TrendingUp, color: "text-emerald-500" },
+    { title: "Лидерский бонус", condition: "Топ-10 партнёров месяца", bonus: "+3%", icon: Crown, color: "text-amber-500" },
+  ];
+
+  const messengerText = `🎓 Я использую платформу СИНТАГМА для дистанционного обучения — современная LMS с документооборотом, ФРДО, видеоидентификацией и ИИ.\n\nПопробуйте бесплатно: ${refLink}`;
+  const socialText = `Для обучения сотрудников использую СИНТАГМА — платформу с полным функционалом:\n\n1. Бесплатный тариф для старта\n2. Безлимит учеников на всех тарифах\n3. ИИ-генерация курсов за минуты\n4. Встроенный документооборот и ФРДО\n5. Видеоидентификация и прокторинг\n6. Онлайн-касса и приём платежей\n7. Охрана труда и журналы\n\nПопробуйте: ${refLink}`;
+  const b2bText = `Предлагаю рассмотреть платформу СИНТАГМА для организации дистанционного обучения в вашей компании.\n\nОсновные возможности:\n• Конструктор курсов с ИИ-генерацией контента\n• Встроенный документооборот (договоры, акты, согласия)\n• Интеграция с ФРДО для передачи данных об образовании\n• Видеоидентификация и прокторинг экзаменов\n• Модуль охраны труда с журналами и протоколами\n• Онлайн-касса и приём платежей (комиссия от 2,8%)\n• Безлимит учеников на всех тарифах\n\nБесплатный тестовый период — 14 дней.\nПодробнее: ${refLink}`;
 
   const copyText = (text: string) => {
     navigator.clipboard.writeText(text);
@@ -94,8 +104,8 @@ const PartnerLanding = () => {
   return (
     <>
       <Helmet>
-        <title>Партнёрская программа — СИНТАГМА</title>
-        <meta name="description" content="Зарабатывайте до 25% от оплат привлечённых организаций. Партнёрская программа СИНТАГМА." />
+        <title>Партнёрская программа — СИНТАГМА | До 45% комиссии</title>
+        <meta name="description" content="Многоуровневая партнёрская программа СИНТАГМА. До 45% комиссии с 3 уровней сети. Бонусы за оборот и лидерский рейтинг." />
       </Helmet>
 
       <div className="min-h-screen bg-background overflow-hidden">
@@ -121,41 +131,15 @@ const PartnerLanding = () => {
 
         {/* Hero — dark section */}
         <section className="relative py-28 lg:py-40 overflow-hidden bg-foreground">
-          {/* Radial teal glows */}
           <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_30%_20%,rgba(20,184,166,0.15),transparent_60%)]" />
           <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_70%_80%,rgba(6,182,212,0.1),transparent_60%)]" />
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(20,184,166,0.05),transparent_70%)]" />
-          
-          {/* Dot pattern */}
           <div className="absolute inset-0 opacity-[0.04] bg-[radial-gradient(#fff_1px,transparent_1px)] [background-size:32px_32px]" />
-          
-          {/* Decorative vertical lines */}
-          <motion.div
-            className="absolute left-[15%] top-0 w-px h-full bg-gradient-to-b from-transparent via-teal-400/20 to-transparent"
-            initial={{ scaleY: 0 }}
-            animate={{ scaleY: 1 }}
-            transition={{ duration: 1.5, ease: "easeOut" }}
-          />
-          <motion.div
-            className="absolute right-[15%] top-0 w-px h-full bg-gradient-to-b from-transparent via-teal-400/15 to-transparent"
-            initial={{ scaleY: 0 }}
-            animate={{ scaleY: 1 }}
-            transition={{ duration: 1.5, delay: 0.3, ease: "easeOut" }}
-          />
-          
-          {/* Corner decorations */}
-          <motion.div
-            className="absolute top-8 left-8 w-20 h-20 border-t-2 border-l-2 border-teal-400/20 rounded-tl-3xl"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 1, duration: 0.8 }}
-          />
-          <motion.div
-            className="absolute bottom-8 right-8 w-20 h-20 border-b-2 border-r-2 border-teal-400/20 rounded-br-3xl"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 1.2, duration: 0.8 }}
-          />
+
+          <motion.div className="absolute left-[15%] top-0 w-px h-full bg-gradient-to-b from-transparent via-teal-400/20 to-transparent" initial={{ scaleY: 0 }} animate={{ scaleY: 1 }} transition={{ duration: 1.5 }} />
+          <motion.div className="absolute right-[15%] top-0 w-px h-full bg-gradient-to-b from-transparent via-teal-400/15 to-transparent" initial={{ scaleY: 0 }} animate={{ scaleY: 1 }} transition={{ duration: 1.5, delay: 0.3 }} />
+          <motion.div className="absolute top-8 left-8 w-20 h-20 border-t-2 border-l-2 border-teal-400/20 rounded-tl-3xl" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 1, duration: 0.8 }} />
+          <motion.div className="absolute bottom-8 right-8 w-20 h-20 border-b-2 border-r-2 border-teal-400/20 rounded-br-3xl" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 1.2, duration: 0.8 }} />
 
           <FloatingParticles count={18} mode="mixed" />
 
@@ -163,7 +147,7 @@ const PartnerLanding = () => {
             <div className="max-w-3xl mx-auto text-center">
               <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }}>
                 <Badge className="mb-6 px-4 py-1.5 text-sm bg-teal-500/15 text-teal-300 border-teal-500/30 hover:bg-teal-500/20">
-                  <Gift className="w-4 h-4 mr-1.5" /> Партнёрская программа
+                  <Gift className="w-4 h-4 mr-1.5" /> Многоуровневая партнёрская программа
                 </Badge>
               </motion.div>
 
@@ -173,17 +157,12 @@ const PartnerLanding = () => {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.3, duration: 0.7 }}
               >
-                Зарабатывайте вместе с{" "}
+                Зарабатывайте до{" "}
+                <span className="text-teal-400 drop-shadow-[0_0_20px_rgba(20,184,166,0.4)]">45%</span>
+                {" "}с{" "}
                 <span className="inline-flex text-teal-400 drop-shadow-[0_0_20px_rgba(20,184,166,0.4)]">
                   {brandName.split("").map((char, i) => (
-                    <motion.span
-                      key={i}
-                      custom={i}
-                      variants={charVariants}
-                      initial="hidden"
-                      animate="visible"
-                      className="inline-block"
-                    >
+                    <motion.span key={i} custom={i} variants={charVariants} initial="hidden" animate="visible" className="inline-block">
                       {char}
                     </motion.span>
                   ))}
@@ -192,19 +171,12 @@ const PartnerLanding = () => {
 
               <motion.p
                 className="text-xl text-white/60 mb-10 max-w-2xl mx-auto leading-relaxed"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: 1.5, duration: 0.8 }}
+                initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 1.5, duration: 0.8 }}
               >
-                Рекомендуйте нашу платформу и получайте до <strong className="text-teal-400">25%</strong> от оплат 
-                привлечённых организаций в течение <strong className="text-teal-400">2 лет</strong>.
+                3 уровня комиссии • Бонус за оборот +5% • Лидерский бонус +3% • Выплаты 2 года
               </motion.p>
 
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 1.8, duration: 0.6 }}
-              >
+              <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 1.8, duration: 0.6 }}>
                 {isPartner && partnerCode ? (
                   <div className="flex flex-col items-center gap-4">
                     <p className="text-sm text-white/50">Ваша реферальная ссылка:</p>
@@ -221,23 +193,16 @@ const PartnerLanding = () => {
                 ) : (
                   <div className="flex flex-col items-center gap-4">
                     <div className="flex items-center gap-2">
-                      <Checkbox
-                        id="hero-agree"
-                        checked={agreedToTerms}
-                        onCheckedChange={(v) => setAgreedToTerms(v === true)}
-                        className="border-teal-500/50 data-[state=checked]:bg-teal-500 data-[state=checked]:border-teal-500"
-                      />
+                      <Checkbox id="hero-agree" checked={agreedToTerms} onCheckedChange={(v) => setAgreedToTerms(v === true)}
+                        className="border-teal-500/50 data-[state=checked]:bg-teal-500 data-[state=checked]:border-teal-500" />
                       <label htmlFor="hero-agree" className="text-sm text-white/50 cursor-pointer">
                         Я согласен с{" "}
-                        <Link to="/partner/offer" className="text-teal-400 underline underline-offset-2 hover:text-teal-300">
-                          условиями партнёрской программы
-                        </Link>
+                        <Link to="/partner/offer" className="text-teal-400 underline underline-offset-2 hover:text-teal-300">условиями партнёрской программы</Link>
                       </label>
                     </div>
                     <Button size="lg" onClick={handleBecomePartner} disabled={isBecoming || !agreedToTerms}
                       className="text-lg px-10 py-7 rounded-xl bg-teal-500 hover:bg-teal-400 text-white shadow-[0_0_40px_rgba(20,184,166,0.4)] hover:shadow-[0_0_60px_rgba(20,184,166,0.5)] transition-all duration-300 disabled:opacity-50">
-                      <Sparkles className="w-5 h-5 mr-2" />
-                      Стать партнёром <ArrowRight className="w-5 h-5 ml-2" />
+                      <Sparkles className="w-5 h-5 mr-2" /> Стать партнёром <ArrowRight className="w-5 h-5 ml-2" />
                     </Button>
                   </div>
                 )}
@@ -250,32 +215,15 @@ const PartnerLanding = () => {
         <section className="py-24 relative overflow-hidden bg-gradient-to-b from-secondary/30 via-background to-secondary/30 section-padding">
           <div className="absolute inset-0 opacity-[0.02] bg-[radial-gradient(hsl(var(--foreground))_1px,transparent_1px)] [background-size:24px_24px]" />
           <div className="container mx-auto px-6 relative">
-            <motion.h2
-              className="font-display text-3xl lg:text-4xl font-bold text-center mb-4"
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-            >
+            <motion.h2 className="font-display text-3xl lg:text-4xl font-bold text-center mb-4" initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}>
               Как это работает
             </motion.h2>
-            <motion.p
-              className="text-muted-foreground text-center mb-14 max-w-lg mx-auto"
-              initial={{ opacity: 0 }}
-              whileInView={{ opacity: 1 }}
-              viewport={{ once: true }}
-              transition={{ delay: 0.2 }}
-            >
-              Три простых шага до стабильного пассивного дохода
+            <motion.p className="text-muted-foreground text-center mb-14 max-w-lg mx-auto" initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} viewport={{ once: true }} transition={{ delay: 0.2 }}>
+              Четыре шага до многоуровневого пассивного дохода
             </motion.p>
-            <div className="grid md:grid-cols-3 gap-8 max-w-4xl mx-auto">
+            <div className="grid md:grid-cols-4 gap-6 max-w-5xl mx-auto">
               {steps.map((step, i) => (
-                <motion.div
-                  key={step.title}
-                  initial={{ opacity: 0, y: 30 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true }}
-                  transition={{ delay: i * 0.15, type: "spring", damping: 20 }}
-                >
+                <motion.div key={step.title} initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.15, type: "spring", damping: 20 }}>
                   <Card className="text-center h-full border border-teal-500/10 shadow-lg hover:shadow-xl hover:shadow-teal-500/5 transition-all bg-card/80 backdrop-blur-sm group">
                     <CardContent className="pt-8 pb-6">
                       <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-teal-500/20 to-cyan-400/10 flex items-center justify-center mx-auto mb-5 relative group-hover:shadow-[0_0_20px_rgba(20,184,166,0.15)] transition-shadow">
@@ -299,24 +247,12 @@ const PartnerLanding = () => {
           <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_50%_0%,rgba(20,184,166,0.06),transparent_60%)]" />
           <FloatingParticles count={10} mode="dots" />
           <div className="container mx-auto px-6 relative">
-            <motion.h2
-              className="font-display text-3xl lg:text-4xl font-bold text-center mb-14"
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-            >
+            <motion.h2 className="font-display text-3xl lg:text-4xl font-bold text-center mb-14" initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}>
               Преимущества программы
             </motion.h2>
             <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 max-w-5xl mx-auto">
               {benefits.map((b, i) => (
-                <motion.div
-                  key={b.title}
-                  initial={{ opacity: 0, y: 30 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true }}
-                  transition={{ delay: i * 0.1 }}
-                  whileHover={{ y: -6 }}
-                >
+                <motion.div key={b.title} initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.1 }} whileHover={{ y: -6 }}>
                   <Card className="h-full border border-teal-500/10 shadow-lg hover:shadow-xl hover:shadow-teal-500/10 transition-all bg-card/80 backdrop-blur-sm group">
                     <CardContent className="pt-6">
                       <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-teal-500/20 to-cyan-400/10 flex items-center justify-center mb-4 group-hover:shadow-[0_0_15px_rgba(20,184,166,0.2)] transition-shadow">
@@ -332,75 +268,89 @@ const PartnerLanding = () => {
           </div>
         </section>
 
-        {/* Commission table */}
+        {/* Network Levels — NEW MLM section */}
         <section className="py-24 relative overflow-hidden bg-gradient-to-b from-secondary/30 via-background to-secondary/30 section-padding">
           <div className="absolute inset-0 opacity-[0.02] bg-[radial-gradient(hsl(var(--foreground))_1px,transparent_1px)] [background-size:24px_24px]" />
           <div className="container mx-auto px-6 relative">
-            <motion.h2
-              className="font-display text-3xl lg:text-4xl font-bold text-center mb-4"
-              initial={{ opacity: 0 }}
-              whileInView={{ opacity: 1 }}
-              viewport={{ once: true }}
-            >
-              Уровни комиссии
+            <motion.h2 className="font-display text-3xl lg:text-4xl font-bold text-center mb-4" initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} viewport={{ once: true }}>
+              Многоуровневая комиссия
             </motion.h2>
-            <motion.p
-              className="text-muted-foreground text-center mb-14 max-w-lg mx-auto"
-              initial={{ opacity: 0 }}
-              whileInView={{ opacity: 1 }}
-              viewport={{ once: true }}
-              transition={{ delay: 0.2 }}
-            >
-              Ваша ставка растёт вместе с количеством привлечённых клиентов
+            <motion.p className="text-muted-foreground text-center mb-14 max-w-lg mx-auto" initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} viewport={{ once: true }} transition={{ delay: 0.2 }}>
+              Зарабатывайте не только с прямых приглашений, но и со всей вашей сети
             </motion.p>
-            <div className="max-w-2xl mx-auto space-y-3">
-              {commissionTiers.map((row, i) => (
-                <motion.div
-                  key={row.level}
-                  initial={{ opacity: 0, x: -30 }}
-                  whileInView={{ opacity: 1, x: 0 }}
-                  viewport={{ once: true }}
-                  transition={{ delay: i * 0.1 }}
-                >
-                  <div className={`flex items-center justify-between px-6 py-5 rounded-xl bg-gradient-to-r ${row.intensity} border backdrop-blur-sm hover:scale-[1.02] hover:shadow-[0_0_20px_rgba(20,184,166,0.08)] transition-all duration-300`}>
+
+            {/* 3-level visual */}
+            <div className="max-w-3xl mx-auto space-y-4 mb-12">
+              {networkLevels.map((row, i) => (
+                <motion.div key={row.level} initial={{ opacity: 0, x: -30 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.15 }}>
+                  <div className={`flex items-center justify-between px-6 py-6 rounded-xl bg-gradient-to-r ${row.color} border backdrop-blur-sm hover:scale-[1.02] hover:${row.glow} transition-all duration-300`}>
                     <div>
-                      <div className="font-semibold">{row.level}</div>
-                      <div className="text-sm text-muted-foreground">{row.clients} клиентов</div>
+                      <div className="font-semibold text-lg">{row.level}</div>
+                      <div className="text-sm text-muted-foreground">{row.desc}</div>
                     </div>
-                    <div className="text-3xl font-bold text-teal-500 drop-shadow-[0_0_8px_rgba(20,184,166,0.3)]">{row.percent}</div>
+                    <div className="text-4xl font-bold text-teal-500 drop-shadow-[0_0_8px_rgba(20,184,166,0.3)]">{row.percent}</div>
                   </div>
                 </motion.div>
               ))}
             </div>
+
+            {/* Bonuses */}
+            <div className="max-w-3xl mx-auto grid sm:grid-cols-2 gap-4">
+              {bonuses.map((b, i) => (
+                <motion.div key={b.title} initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: 0.5 + i * 0.1 }}>
+                  <Card className="border-dashed border-2 border-teal-500/15 bg-teal-500/[0.02]">
+                    <CardContent className="pt-5 pb-4 flex items-center gap-4">
+                      <div className="w-12 h-12 rounded-xl bg-teal-500/10 flex items-center justify-center shrink-0">
+                        <b.icon className={`w-6 h-6 ${b.color}`} />
+                      </div>
+                      <div className="flex-1">
+                        <div className="font-semibold">{b.title}</div>
+                        <div className="text-xs text-muted-foreground">{b.condition}</div>
+                      </div>
+                      <div className="text-2xl font-bold text-teal-500">{b.bonus}</div>
+                    </CardContent>
+                  </Card>
+                </motion.div>
+              ))}
+            </div>
+
+            {/* Example calculation */}
+            <motion.div className="max-w-3xl mx-auto mt-10" initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} viewport={{ once: true }} transition={{ delay: 0.7 }}>
+              <Card className="bg-foreground text-white border-teal-500/20">
+                <CardContent className="pt-6 pb-5">
+                  <h4 className="font-semibold text-teal-400 mb-3 flex items-center gap-2">
+                    <BarChart3 className="w-5 h-5" /> Пример расчёта
+                  </h4>
+                  <div className="text-sm text-white/70 space-y-2 leading-relaxed">
+                    <p>Организация Org1 оплачивает подписку <strong className="text-white">300 000 ₽/мес</strong>.</p>
+                    <p>Вы (Партнёр уровня 1): <strong className="text-teal-400">20% = 60 000 ₽</strong></p>
+                    <p>Ваш наставник (уровень 2): <strong className="text-cyan-400">10% = 30 000 ₽</strong></p>
+                    <p>Наставник наставника (уровень 3): <strong className="text-blue-400">5% = 15 000 ₽</strong></p>
+                    <div className="border-t border-white/10 pt-2 mt-3">
+                      <p>+ Оборот сети &gt; 100 000 ₽ → <strong className="text-emerald-400">бонус +5% = 15 000 ₽</strong></p>
+                      <p>+ Топ-10 партнёр → <strong className="text-amber-400">бонус +3% = 9 000 ₽</strong></p>
+                      <p className="text-lg mt-2 font-semibold text-white">Итого вам: <span className="text-teal-400">до 84 000 ₽/мес</span> с одного клиента</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </motion.div>
           </div>
         </section>
 
         {/* Promo materials — dark section */}
         <section className="py-24 relative overflow-hidden bg-foreground section-padding">
-          {/* Radial glows */}
           <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_20%_50%,rgba(20,184,166,0.1),transparent_60%)]" />
           <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_80%_50%,rgba(6,182,212,0.08),transparent_60%)]" />
-          {/* Dot pattern */}
           <div className="absolute inset-0 opacity-[0.03] bg-[radial-gradient(#fff_1px,transparent_1px)] [background-size:32px_32px]" />
-
           <FloatingParticles count={12} mode="dots" />
-
           <div className="container mx-auto px-6 relative z-10">
-            <motion.div
-              className="text-center mb-14"
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-            >
+            <motion.div className="text-center mb-14" initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}>
               <Badge className="mb-4 px-3 py-1 bg-teal-500/15 text-teal-300 border-teal-500/30">
                 <Star className="w-3.5 h-3.5 mr-1" /> Готовые материалы
               </Badge>
-              <h2 className="font-display text-3xl lg:text-4xl font-bold mb-4 text-white">
-                Рекламные материалы
-              </h2>
-              <p className="text-white/50 max-w-lg mx-auto">
-                Скопируйте готовый текст и отправьте — адаптируйте под свою аудиторию
-              </p>
+              <h2 className="font-display text-3xl lg:text-4xl font-bold mb-4 text-white">Рекламные материалы</h2>
+              <p className="text-white/50 max-w-lg mx-auto">Скопируйте готовый текст и отправьте — адаптируйте под свою аудиторию</p>
             </motion.div>
 
             <div className="grid md:grid-cols-3 gap-6 max-w-5xl mx-auto">
@@ -409,13 +359,7 @@ const PartnerLanding = () => {
                 { icon: FileText, title: "Для соцсетей", sub: "Пост, статья, блог", text: socialText },
                 { icon: Mail, title: "Для B2B / email", sub: "Коммерческое предложение", text: b2bText },
               ].map((item, i) => (
-                <motion.div
-                  key={item.title}
-                  initial={{ opacity: 0, y: 30 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true }}
-                  transition={{ delay: i * 0.1 }}
-                >
+                <motion.div key={item.title} initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.1 }}>
                   <Card className="h-full border border-teal-500/15 bg-white/[0.03] backdrop-blur-sm shadow-xl hover:shadow-2xl hover:shadow-teal-500/5 transition-all group hover:border-teal-500/25">
                     <CardContent className="pt-6 space-y-4">
                       <div className="flex items-center gap-3 mb-2">
@@ -439,14 +383,8 @@ const PartnerLanding = () => {
               ))}
             </div>
 
-            {/* Downloadable promo materials */}
-            <motion.div
-              className="mt-12 max-w-5xl mx-auto"
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ delay: 0.2 }}
-            >
+            {/* Downloadable materials */}
+            <motion.div className="mt-12 max-w-5xl mx-auto" initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: 0.2 }}>
               <h3 className="font-display text-lg font-semibold mb-4 text-center text-white/80">Дополнительные материалы для скачивания</h3>
               <div className="grid sm:grid-cols-3 gap-4">
                 {[
@@ -454,12 +392,7 @@ const PartnerLanding = () => {
                   { name: "Возможности и тарифы СИНТАГМА (для онлайн-школ).pdf", type: "PDF", color: "bg-red-500/15 text-red-400", href: "/promo/tariffs-online-schools.pdf" },
                   { name: "Рекламные баннеры СИНТАГМА.zip", type: "ZIP", color: "bg-amber-500/15 text-amber-400", href: "/promo/banners-sintagma.zip" },
                 ].map((file, i) => (
-                  <a
-                    key={i}
-                    href={file.href}
-                    download
-                    className="flex items-center gap-3 p-4 rounded-xl border border-white/[0.06] bg-white/[0.03] hover:bg-white/[0.06] hover:border-teal-500/20 transition-all group"
-                  >
+                  <a key={i} href={file.href} download className="flex items-center gap-3 p-4 rounded-xl border border-white/[0.06] bg-white/[0.03] hover:bg-white/[0.06] hover:border-teal-500/20 transition-all group">
                     <Badge className={`${file.color} border-0 text-xs font-bold px-2 py-0.5`}>{file.type}</Badge>
                     <span className="text-sm flex-1 leading-tight text-white/70 group-hover:text-white/90 transition-colors">{file.name}</span>
                     <Download className="w-4 h-4 text-white/30 group-hover:text-teal-400 transition-colors shrink-0" />
@@ -469,13 +402,7 @@ const PartnerLanding = () => {
             </motion.div>
 
             {/* Who to recommend */}
-            <motion.div
-              className="mt-20 max-w-4xl mx-auto"
-              initial={{ opacity: 0 }}
-              whileInView={{ opacity: 1 }}
-              viewport={{ once: true }}
-              transition={{ delay: 0.3 }}
-            >
+            <motion.div className="mt-20 max-w-4xl mx-auto" initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} viewport={{ once: true }} transition={{ delay: 0.3 }}>
               <h3 className="font-display text-2xl font-bold text-center mb-8 text-white">Кому рекомендовать</h3>
               <div className="grid sm:grid-cols-3 gap-6">
                 {[
@@ -483,11 +410,7 @@ const PartnerLanding = () => {
                   { icon: Briefcase, title: "Компании", desc: "Обучение персонала, охрана труда, аттестация" },
                   { icon: GraduationCap, title: "Образовательные организации", desc: "Школы, колледжи, университеты — дистанционное обучение" },
                 ].map((item, i) => (
-                  <motion.div
-                    key={i}
-                    whileHover={{ y: -4 }}
-                    transition={{ type: "spring", damping: 20 }}
-                  >
+                  <motion.div key={i} whileHover={{ y: -4 }} transition={{ type: "spring", damping: 20 }}>
                     <Card className="border border-teal-500/15 bg-white/[0.03] backdrop-blur-sm text-center transition-all h-full hover:border-teal-500/25 hover:shadow-[0_0_25px_rgba(20,184,166,0.08)] group">
                       <CardContent className="pt-6 pb-5">
                         <div className="w-14 h-14 rounded-2xl bg-teal-500/15 flex items-center justify-center mx-auto mb-4 group-hover:shadow-[0_0_20px_rgba(20,184,166,0.2)] transition-shadow">
@@ -508,41 +431,26 @@ const PartnerLanding = () => {
         <section className="py-24 relative overflow-hidden bg-gradient-to-b from-secondary/30 via-background to-secondary/30 section-padding">
           <div className="absolute inset-0 opacity-[0.02] bg-[radial-gradient(hsl(var(--foreground))_1px,transparent_1px)] [background-size:24px_24px]" />
           <div className="container mx-auto px-6 relative">
-            <motion.div
-              className="text-center mb-14"
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-            >
+            <motion.div className="text-center mb-14" initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}>
               <Badge className="mb-4 px-3 py-1 bg-teal-500/10 text-teal-600 border-teal-500/20">
                 <HelpCircle className="w-3.5 h-3.5 mr-1" /> FAQ
               </Badge>
               <h2 className="font-display text-3xl lg:text-4xl font-bold">Частые вопросы</h2>
             </motion.div>
 
-            <motion.div
-              className="max-w-3xl mx-auto"
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ delay: 0.1 }}
-            >
+            <motion.div className="max-w-3xl mx-auto" initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: 0.1 }}>
               <Accordion type="single" collapsible className="space-y-3">
                 {[
-                  { q: "Как подключиться к партнёрской программе и начать зарабатывать?", a: "Зарегистрируйтесь на платформе СИНТАГМА и нажмите кнопку «Стать партнёром». Вы получите персональную реферальную ссылку — делитесь ею с потенциальными клиентами. Когда организация зарегистрируется по вашей ссылке и начнёт оплачивать тарифы, вам автоматически начисляется комиссия." },
-                  { q: "Кто может участвовать в партнёрской программе?", a: "Любой пользователь платформы: частное лицо, ИП, организация. Программа подходит для бизнес-тренеров, консультантов, HR-специалистов, блогеров и всех, кто может рекомендовать обучающую платформу своей аудитории." },
-                  { q: "Как отслеживаются регистрации и оплаты рефералов?", a: "Все переходы по вашей ссылке, регистрации и оплаты автоматически фиксируются в системе. В личном кабинете партнёра вы видите полную статистику: клики, регистрации, конверсию и начисленные комиссии." },
-                  { q: "Каким образом происходят выплаты комиссии?", a: "Комиссия начисляется автоматически при каждой оплате привлечённого клиента. Выплаты производятся по запросу на банковский счёт или по реквизитам, указанным в кабинете партнёра." },
-                  { q: "Можно ли заключить договор?", a: "Да, для юридических лиц и ИП мы заключаем партнёрский договор. Свяжитесь с нами через форму обратной связи или напишите на email для оформления документов." },
-                  { q: "Как организована отчётность по выплатам?", a: "В кабинете партнёра доступна полная история начислений и выплат. Вы можете выгрузить отчёт за любой период. Для юридических лиц формируются акты выполненных работ." },
+                  { q: "Что такое многоуровневая партнёрская программа?", a: "Вы получаете комиссию не только от организаций, которых пригласили лично (уровень 1 — 20%), но и от организаций, привлечённых вашими партнёрами (уровень 2 — 10%) и партнёрами партнёров (уровень 3 — 5%). Дополнительно действуют бонусы за оборот (+5%) и лидерский бонус (+3%)." },
+                  { q: "Как пригласить партнёра в свою сеть?", a: "В кабинете партнёра есть специальная ссылка для привлечения партнёров. Когда человек станет партнёром по вашей ссылке, он автоматически попадёт в вашу сеть и вы будете получать комиссию с его привлечённых организаций." },
+                  { q: "Как работает бонус за оборот?", a: "Если суммарная комиссия по вашей сети (все 3 уровня) превышает 100 000 ₽ в месяц, вы получаете дополнительно +5% от каждого платежа. Пересчёт происходит ежемесячно." },
+                  { q: "Что такое лидерский бонус?", a: "Каждый месяц мы определяем топ-10 партнёров по обороту сети. Эти партнёры получают дополнительно +3% от всех платежей. Рейтинг обновляется автоматически." },
+                  { q: "Каким образом происходят выплаты комиссии?", a: "Комиссия начисляется автоматически при каждой оплате. Выплаты производятся по запросу на банковский счёт при накоплении от 1 000 ₽." },
+                  { q: "Можно ли заключить договор?", a: "Да, для юридических лиц и ИП мы заключаем партнёрский договор. Свяжитесь с нами через форму обратной связи." },
                 ].map((item, i) => (
                   <AccordionItem key={i} value={`faq-${i}`} className="border border-teal-500/10 rounded-xl px-5 data-[state=open]:bg-teal-500/3 backdrop-blur-sm">
-                    <AccordionTrigger className="text-left text-sm font-medium hover:no-underline py-4">
-                      {item.q}
-                    </AccordionTrigger>
-                    <AccordionContent className="text-sm text-muted-foreground leading-relaxed pb-4">
-                      {item.a}
-                    </AccordionContent>
+                    <AccordionTrigger className="text-left text-sm font-medium hover:no-underline py-4">{item.q}</AccordionTrigger>
+                    <AccordionContent className="text-sm text-muted-foreground leading-relaxed pb-4">{item.a}</AccordionContent>
                   </AccordionItem>
                 ))}
               </Accordion>
@@ -552,47 +460,17 @@ const PartnerLanding = () => {
 
         {/* CTA — dark section */}
         <section className="py-28 relative overflow-hidden bg-foreground">
-          {/* Radial glows */}
           <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_30%_50%,rgba(20,184,166,0.12),transparent_60%)]" />
           <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_70%_50%,rgba(6,182,212,0.08),transparent_60%)]" />
-          {/* Dot pattern */}
           <div className="absolute inset-0 opacity-[0.04] bg-[radial-gradient(#fff_1px,transparent_1px)] [background-size:32px_32px]" />
-
-          {/* Corner decorations */}
-          <motion.div
-            className="absolute top-8 left-8 w-24 h-24 border-t-2 border-l-2 border-teal-400/20 rounded-tl-3xl"
-            initial={{ opacity: 0 }}
-            whileInView={{ opacity: 1 }}
-            viewport={{ once: true }}
-            transition={{ delay: 0.3, duration: 0.8 }}
-          />
-          <motion.div
-            className="absolute bottom-8 right-8 w-24 h-24 border-b-2 border-r-2 border-teal-400/20 rounded-br-3xl"
-            initial={{ opacity: 0 }}
-            whileInView={{ opacity: 1 }}
-            viewport={{ once: true }}
-            transition={{ delay: 0.5, duration: 0.8 }}
-          />
-
-          {/* Decorative floating elements */}
-          <motion.div
-            className="absolute top-1/2 left-[5%] w-2 h-2 bg-teal-400/40 rounded-full"
-            animate={{ y: [-8, 8, -8], opacity: [0.3, 0.6, 0.3] }}
-            transition={{ duration: 3, repeat: Infinity }}
-          />
-          <motion.div
-            className="absolute top-1/3 right-[8%] w-3 h-3 bg-cyan-400/30 rounded-full"
-            animate={{ scale: [1, 1.5, 1] }}
-            transition={{ duration: 4, repeat: Infinity }}
-          />
-
+          <motion.div className="absolute top-8 left-8 w-24 h-24 border-t-2 border-l-2 border-teal-400/20 rounded-tl-3xl" initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} viewport={{ once: true }} transition={{ delay: 0.3, duration: 0.8 }} />
+          <motion.div className="absolute bottom-8 right-8 w-24 h-24 border-b-2 border-r-2 border-teal-400/20 rounded-br-3xl" initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} viewport={{ once: true }} transition={{ delay: 0.5, duration: 0.8 }} />
           <FloatingParticles count={8} mode="dots" />
-
           <div className="container mx-auto px-6 text-center relative z-10">
             <motion.div initial={{ opacity: 0, scale: 0.95 }} whileInView={{ opacity: 1, scale: 1 }} viewport={{ once: true }}>
-              <h2 className="font-display text-3xl lg:text-4xl font-bold mb-4 text-white">Начните зарабатывать уже сегодня</h2>
+              <h2 className="font-display text-3xl lg:text-4xl font-bold mb-4 text-white">Начните зарабатывать до 45% уже сегодня</h2>
               <p className="text-white/50 mb-10 max-w-lg mx-auto text-lg">
-                Регистрация занимает 1 минуту. Получите персональную ссылку и начните привлекать клиентов.
+                Регистрация занимает 1 минуту. Стройте сеть партнёров и получайте многоуровневый доход.
               </p>
               <div className="flex flex-col sm:flex-row gap-4 justify-center">
                 {isPartner ? (
@@ -603,17 +481,11 @@ const PartnerLanding = () => {
                 ) : (
                   <div className="flex flex-col items-center gap-3">
                     <div className="flex items-center gap-2">
-                      <Checkbox
-                        id="cta-agree"
-                        checked={agreedToTerms}
-                        onCheckedChange={(v) => setAgreedToTerms(v === true)}
-                        className="border-teal-500/50 data-[state=checked]:bg-teal-500 data-[state=checked]:border-teal-500"
-                      />
+                      <Checkbox id="cta-agree" checked={agreedToTerms} onCheckedChange={(v) => setAgreedToTerms(v === true)}
+                        className="border-teal-500/50 data-[state=checked]:bg-teal-500 data-[state=checked]:border-teal-500" />
                       <label htmlFor="cta-agree" className="text-sm text-white/50 cursor-pointer">
                         Я согласен с{" "}
-                        <Link to="/partner/offer" className="text-teal-400 underline underline-offset-2 hover:text-teal-300">
-                          условиями партнёрской программы
-                        </Link>
+                        <Link to="/partner/offer" className="text-teal-400 underline underline-offset-2 hover:text-teal-300">условиями партнёрской программы</Link>
                       </label>
                     </div>
                     <Button size="lg" onClick={handleBecomePartner} disabled={isBecoming || !agreedToTerms}
