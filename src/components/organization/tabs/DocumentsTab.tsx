@@ -657,6 +657,12 @@ export const DocumentsTab = React.memo(function DocumentsTab({ organizationId, o
                   <span className="hidden sm:inline">Сформировать акт</span>
                 </Button>
               )}
+              {activeTab === "counterparties" && counterpartySubTab === "contracts" && (
+                <Button size="sm" className="rounded-xl gap-1.5" onClick={() => navigate("/contract-editor")}>
+                  <FileText className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline">Создать договор</span>
+                </Button>
+              )}
               {onShowBulkUploadDialog && activeTab === "org" && (
                 <Button variant="outline" size="sm" className="rounded-xl gap-1.5" onClick={onShowBulkUploadDialog}>
                   <Upload className="w-3.5 h-3.5" />
