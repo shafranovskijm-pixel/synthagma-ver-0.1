@@ -190,7 +190,49 @@ export default function CourseLanding() {
     }
 
     if (finalPrice > 0) {
-      toast.info("Заявка отправлена", { description: "Организация свяжется с вами для оплаты" });
+      try {
+        // Get student profile
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("full_name, email")
+          .eq("user_id", user.id)
+          .maybeSingle();
+
+        const studentName = formData?.name || profile?.full_name || profile?.email || "Ученик";
+        const studentEmail = formData?.email || profile?.email || "";
+        const studentPhone = formData?.phone || "";
+
+        const contactLines = [
+          `Курс: ${course.title}`,
+          `Стоимость: ${finalPrice.toLocaleString("ru-RU")} ₽`,
+          `Ученик: ${studentName}`,
+          studentEmail ? `Email: ${studentEmail}` : null,
+          studentPhone ? `Телефон: ${studentPhone}` : null,
+        ].filter(Boolean).join("\n");
+
+        // Send chat message to organization
+        await supabase.from("chat_messages").insert({
+          user_id: user.id,
+          course_id: course.id,
+          role: "user",
+          content: `📌 Заявка на приобретение курса\n\n${contactLines}\n\nПрошу рассмотреть мою заявку на приобретение данного курса.`,
+        });
+
+        // Send notification to organization bell
+        await supabase.from("org_notifications").insert({
+          organization_id: course.organization_id,
+          user_id: user.id,
+          type: "order",
+          title: `Заявка на курс: ${course.title}`,
+          message: `${studentName} хочет приобрести курс «${course.title}» (${finalPrice.toLocaleString("ru-RU")} ₽)`,
+          is_read: false,
+        });
+
+        toast.success("Заявка отправлена!", { description: "Учебный центр свяжется с вами" });
+      } catch (e: any) {
+        console.error("Purchase request error:", e);
+        toast.error("Ошибка отправки заявки", { description: e.message });
+      }
       return;
     }
 
