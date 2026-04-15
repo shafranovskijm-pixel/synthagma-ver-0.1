@@ -28,6 +28,17 @@ export default function StudentProfile() {
   const navigate = useNavigate();
   const { theme, setTheme } = useTheme();
   const queryClient = useQueryClient();
+
+  // Admin impersonation support
+  const [adminViewData] = useState(() => {
+    try {
+      const raw = localStorage.getItem('adminViewAsStudent');
+      if (raw) return JSON.parse(raw) as { userId: string; name: string; orgReturn?: string };
+    } catch {}
+    return null;
+  });
+  const isAdminView = !!adminViewData;
+  const effectiveUserId = adminViewData?.userId || user?.id || null;
   const [activeTab, setActiveTab] = useState("profile");
 
   // Profile form state
@@ -79,12 +90,12 @@ export default function StudentProfile() {
 
   // Load notification preferences from DB
   useEffect(() => {
-    if (!user?.id) return;
+    if (!effectiveUserId) return;
     const load = async () => {
       const { data } = await supabase
         .from("notification_preferences")
         .select("notification_type, channel, enabled")
-        .eq("user_id", user.id);
+        .eq("user_id", effectiveUserId);
       if (data && data.length > 0) {
         setNotifSettings(prev => {
           const next = { ...prev };
@@ -99,10 +110,10 @@ export default function StudentProfile() {
       setNotifLoaded(true);
     };
     load();
-  }, [user?.id]);
+  }, [effectiveUserId]);
 
   const toggleNotif = useCallback(async (type: string, channel: string) => {
-    if (!user?.id) return;
+    if (!effectiveUserId || isAdminView) return;
     const newValue = !(notifSettings[type]?.[channel] ?? false);
     setNotifSettings(prev => ({
       ...prev,
@@ -112,7 +123,7 @@ export default function StudentProfile() {
     const { error } = await supabase
       .from("notification_preferences")
       .upsert({
-        user_id: user.id,
+        user_id: effectiveUserId,
         notification_type: type,
         channel: channel,
         enabled: newValue,
@@ -125,16 +136,16 @@ export default function StudentProfile() {
       }));
       toast.error("Ошибка", { description: "Не удалось сохранить настройку" });
     }
-  }, [user?.id, notifSettings, toast]);
+  }, [effectiveUserId, isAdminView, notifSettings, toast]);
 
   const { data: profile, isLoading } = useQuery({
-    queryKey: ["student-profile-page", user?.id],
+    queryKey: ["student-profile-page", effectiveUserId],
     queryFn: async () => {
-      if (!user?.id) return null;
+      if (!effectiveUserId) return null;
       const { data: p } = await (supabase
         .from("profiles")
         .select("full_name, organization_id, phone, city, bio, avatar_url")
-        .eq("user_id", user.id)
+        .eq("user_id", effectiveUserId)
         .maybeSingle() as any);
       if (!p) return null;
       let orgName: string | null = null;
@@ -156,7 +167,7 @@ export default function StudentProfile() {
         avatar_url: (p as any).avatar_url || null,
       };
     },
-    enabled: !!user?.id,
+    enabled: !!effectiveUserId,
   });
 
   // Sync profile data to form state
@@ -301,13 +312,13 @@ export default function StudentProfile() {
 
   // Badge counts for consent and documents
   const { data: consentCount } = useQuery({
-    queryKey: ["consent-badge", user?.id, profile?.organization_id],
+    queryKey: ["consent-badge", effectiveUserId, profile?.organization_id],
     queryFn: async () => {
-      if (!user?.id) return 0;
+      if (!effectiveUserId) return 0;
       const query = supabase
         .from("student_consents")
         .select("id", { count: "exact", head: true })
-        .eq("user_id", user.id)
+        .eq("user_id", effectiveUserId)
         .eq("status", "signed");
       if (profile?.organization_id) {
         query.eq("organization_id", profile.organization_id);
@@ -315,18 +326,18 @@ export default function StudentProfile() {
       const { count } = await query;
       return (count ?? 0) > 0 ? 0 : 1; // 1 = needs consent
     },
-    enabled: !!user?.id,
+    enabled: !!effectiveUserId,
   });
 
   const REQUIRED_DOC_TYPES = ["passport", "snils", "education_document"];
   const { data: docsNeeded } = useQuery({
-    queryKey: ["docs-badge", user?.id, profile?.organization_id],
+    queryKey: ["docs-badge", effectiveUserId, profile?.organization_id],
     queryFn: async () => {
-      if (!user?.id) return REQUIRED_DOC_TYPES.length;
+      if (!effectiveUserId) return REQUIRED_DOC_TYPES.length;
       const query = supabase
         .from("student_identity_documents")
         .select("type")
-        .eq("user_id", user.id);
+        .eq("user_id", effectiveUserId);
       if (profile?.organization_id) {
         query.eq("organization_id", profile.organization_id);
       }
@@ -334,7 +345,7 @@ export default function StudentProfile() {
       const uploadedTypes = new Set(data?.map(d => d.type) || []);
       return REQUIRED_DOC_TYPES.filter(t => !uploadedTypes.has(t)).length;
     },
-    enabled: !!user?.id,
+    enabled: !!effectiveUserId,
   });
 
   const tabs = [
@@ -377,10 +388,20 @@ export default function StudentProfile() {
             )}
           </div>
         </div>
-        <Button variant="outline" size="sm" onClick={handleLogout} className="absolute top-4 right-6 gap-2 bg-background/80 hover:bg-background">
-          <LogOut className="w-4 h-4" />
-          Выйти
-        </Button>
+        {isAdminView ? (
+          <Button variant="outline" size="sm" onClick={() => {
+            localStorage.removeItem('adminViewAsStudent');
+            navigate(adminViewData?.orgReturn || '/admin');
+          }} className="absolute top-4 right-6 gap-2 bg-background/80 hover:bg-background">
+            <ArrowLeft className="w-4 h-4" />
+            Вернуться в панель
+          </Button>
+        ) : (
+          <Button variant="outline" size="sm" onClick={handleLogout} className="absolute top-4 right-6 gap-2 bg-background/80 hover:bg-background">
+            <LogOut className="w-4 h-4" />
+            Выйти
+          </Button>
+        )}
       </div>
 
       {/* Back button */}
@@ -592,9 +613,9 @@ export default function StudentProfile() {
           <TabsContent value="identification">
             <Card>
               <CardContent className="pt-6">
-                {user && (
+                {effectiveUserId && (
                   <VideoIdentification
-                    userId={user.id}
+                    userId={effectiveUserId}
                     userName={profile?.full_name || "Ученик"}
                     organizationId={profile?.organization_id || undefined}
                     embedded={true}
@@ -608,9 +629,9 @@ export default function StudentProfile() {
           <TabsContent value="consent">
             <Card>
               <CardContent className="pt-6">
-                {user && (
+                {effectiveUserId && (
                   <StudentConsentForm
-                    userId={user.id}
+                    userId={effectiveUserId}
                     userName={profile?.full_name || "Ученик"}
                     organizationId={profile?.organization_id || ""}
                     embedded={true}
@@ -624,9 +645,9 @@ export default function StudentProfile() {
           <TabsContent value="documents">
             <Card>
               <CardContent className="pt-6">
-                {user && (
+                {effectiveUserId && (
                   <StudentDocumentsUpload
-                    userId={user.id}
+                    userId={effectiveUserId}
                     organizationId={profile?.organization_id || ""}
                     isOpen={false}
                     onOpenChange={() => {}}
@@ -642,9 +663,9 @@ export default function StudentProfile() {
             <TabsContent value="achievements">
               <Card>
                 <CardContent className="pt-6">
-                  {user && (
+                  {effectiveUserId && (
                     <AchievementsPanel
-                      userId={user.id}
+                      userId={effectiveUserId}
                       isOpen={false}
                       onOpenChange={() => {}}
                       embedded={true}
