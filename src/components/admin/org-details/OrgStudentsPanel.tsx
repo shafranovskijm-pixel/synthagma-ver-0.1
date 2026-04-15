@@ -1,3 +1,4 @@
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -26,6 +27,13 @@ export function OrgStudentsPanel({
   pendingEnrollmentsCount, organizationName, onShowBulkImport, students,
 }: OrgStudentsPanelProps) {
   const navigate = useNavigate();
+  const [visibleCount, setVisibleCount] = useState(10);
+
+  useEffect(() => {
+    setVisibleCount(10);
+  }, [searchQuery]);
+
+  const displayedStudents = filteredStudents.slice(0, visibleCount);
 
   return (
     <div className="space-y-4">
@@ -59,7 +67,7 @@ export function OrgStudentsPanel({
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredStudents.map((student) => (
+                {displayedStudents.map((student) => (
                   <TableRow key={student.id} className="hover:bg-muted/40">
                     <TableCell>
                       <div>
@@ -124,6 +132,27 @@ export function OrgStudentsPanel({
           </ScrollArea>
         </CardContent>
       </Card>
+
+      {filteredStudents.length > visibleCount && (
+        <div className="flex items-center justify-between">
+          <span className="text-sm text-muted-foreground">
+            Показано {Math.min(visibleCount, filteredStudents.length)} из {filteredStudents.length}
+          </span>
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-muted-foreground">Показать ещё:</span>
+            {[10, 25, 50, 100].map((n) => (
+              <Button key={n} variant="outline" size="sm" onClick={() => setVisibleCount((prev) => prev + n)}>
+                +{n}
+              </Button>
+            ))}
+          </div>
+        </div>
+      )}
+      {filteredStudents.length > 0 && filteredStudents.length <= visibleCount && (
+        <div className="text-sm text-muted-foreground">
+          Показано {filteredStudents.length} из {filteredStudents.length}
+        </div>
+      )}
     </div>
   );
 }

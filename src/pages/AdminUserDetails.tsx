@@ -236,6 +236,7 @@ export default function AdminUserDetails() {
                     userId: student.user_id,
                     name: student.name,
                     orgName: organizationName || '',
+                    orgReturn: '/admin',
                   }));
                   navigate('/student');
                 }}
