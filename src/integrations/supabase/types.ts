@@ -3511,6 +3511,50 @@ export type Database = {
           },
         ]
       }
+      partner_monthly_stats: {
+        Row: {
+          created_at: string
+          direct_revenue: number
+          id: string
+          is_top: boolean
+          month: string
+          network_revenue: number
+          partner_id: string
+          rank: number | null
+          total_commission: number
+        }
+        Insert: {
+          created_at?: string
+          direct_revenue?: number
+          id?: string
+          is_top?: boolean
+          month: string
+          network_revenue?: number
+          partner_id: string
+          rank?: number | null
+          total_commission?: number
+        }
+        Update: {
+          created_at?: string
+          direct_revenue?: number
+          id?: string
+          is_top?: boolean
+          month?: string
+          network_revenue?: number
+          partner_id?: string
+          rank?: number | null
+          total_commission?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "partner_monthly_stats_partner_id_fkey"
+            columns: ["partner_id"]
+            isOneToOne: false
+            referencedRelation: "referral_partners"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       pending_enrollments: {
         Row: {
           course_id: string | null
@@ -4005,32 +4049,41 @@ export type Database = {
       referral_commissions: {
         Row: {
           amount: number
+          bonus_type: string | null
           commission_amount: number
           created_at: string
           id: string
+          level: number
           organization_id: string
           partner_id: string
           payment_source: string
+          source_partner_id: string | null
           status: string
         }
         Insert: {
           amount: number
+          bonus_type?: string | null
           commission_amount: number
           created_at?: string
           id?: string
+          level?: number
           organization_id: string
           partner_id: string
           payment_source?: string
+          source_partner_id?: string | null
           status?: string
         }
         Update: {
           amount?: number
+          bonus_type?: string | null
           commission_amount?: number
           created_at?: string
           id?: string
+          level?: number
           organization_id?: string
           partner_id?: string
           payment_source?: string
+          source_partner_id?: string | null
           status?: string
         }
         Relationships: [
@@ -4048,6 +4101,13 @@ export type Database = {
             referencedRelation: "referral_partners"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "referral_commissions_source_partner_id_fkey"
+            columns: ["source_partner_id"]
+            isOneToOne: false
+            referencedRelation: "referral_partners"
+            referencedColumns: ["id"]
+          },
         ]
       }
       referral_partners: {
@@ -4057,7 +4117,14 @@ export type Database = {
           code: string
           commission_percent: number
           created_at: string
+          has_turnover_bonus: boolean
           id: string
+          is_top_partner: boolean
+          level1_percent: number
+          level2_percent: number
+          level3_percent: number
+          monthly_network_revenue: number
+          referred_by_partner_id: string | null
           status: string
           total_earned: number
           updated_at: string
@@ -4069,7 +4136,14 @@ export type Database = {
           code: string
           commission_percent?: number
           created_at?: string
+          has_turnover_bonus?: boolean
           id?: string
+          is_top_partner?: boolean
+          level1_percent?: number
+          level2_percent?: number
+          level3_percent?: number
+          monthly_network_revenue?: number
+          referred_by_partner_id?: string | null
           status?: string
           total_earned?: number
           updated_at?: string
@@ -4081,13 +4155,28 @@ export type Database = {
           code?: string
           commission_percent?: number
           created_at?: string
+          has_turnover_bonus?: boolean
           id?: string
+          is_top_partner?: boolean
+          level1_percent?: number
+          level2_percent?: number
+          level3_percent?: number
+          monthly_network_revenue?: number
+          referred_by_partner_id?: string | null
           status?: string
           total_earned?: number
           updated_at?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "referral_partners_referred_by_partner_id_fkey"
+            columns: ["referred_by_partner_id"]
+            isOneToOne: false
+            referencedRelation: "referral_partners"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       referral_payouts: {
         Row: {
@@ -5861,7 +5950,9 @@ export type Database = {
         Args: { p_achievement_code: string; p_user_id: string }
         Returns: undefined
       }
-      become_referral_partner: { Args: never; Returns: string }
+      become_referral_partner:
+        | { Args: never; Returns: string }
+        | { Args: { p_referred_by?: string }; Returns: string }
       count_org_completions_this_month: {
         Args: { org_id: string }
         Returns: number
