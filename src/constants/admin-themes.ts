@@ -1,3 +1,5 @@
+import beachPalmsSunset from "@/assets/beach-palms-sunset.jpg";
+
 export interface AdminTheme {
   id: string;
   label: string;
@@ -173,6 +175,24 @@ export const ADMIN_THEMES: AdminTheme[] = [
     animation: "sand",
     bannerPosition: "center 60%",
     previewPosition: "center 60%",
+    atmosphereSharp: true,
+    atmosphereOpacity: 0.4,
+  },
+  {
+    id: "tropics",
+    label: "Тропики",
+    emoji: "🌴",
+    group: "sunset",
+    bannerUrl: beachPalmsSunset,
+    bgClass: "bg-gradient-to-b from-rose-50/80 via-amber-50/50 to-orange-50/30",
+    headerClass: "bg-gradient-to-r from-rose-100/80 to-amber-50/60",
+    cardClass: "border-rose-200/60 bg-white/90",
+    sidebarClass: "bg-gradient-to-b from-rose-50 to-amber-50/60",
+    accent: "15 90% 52%",
+    accentForeground: "0 0% 100%",
+    animation: "sand",
+    bannerPosition: "center 55%",
+    previewPosition: "center 55%",
     atmosphereSharp: true,
     atmosphereOpacity: 0.4,
   },
