@@ -25,6 +25,7 @@ import { toast } from "sonner";
 import { StudentHeader } from "@/components/student/StudentHeader";
 import { StudentFooter } from "@/components/student/StudentFooter";
 import { StudentPartnerTab } from "@/components/student/StudentPartnerTab";
+import { StudentProfileBanner } from "@/components/student/StudentProfileBanner";
 
 export default function StudentProfile() {
   const { user } = useAuth();
@@ -391,11 +392,11 @@ export default function StudentProfile() {
             <div className="space-y-6">
               {/* Avatar card */}
               <Card className="rounded-2xl border-border/60 shadow-sm overflow-hidden">
-                <div className="relative h-24 bg-gradient-to-r from-primary/80 to-primary">
-                  {branding?.logoUrl && (
-                    <img src={branding.logoUrl} alt="" className="absolute right-6 top-1/2 -translate-y-1/2 h-12 opacity-20" />
-                  )}
-                </div>
+                <StudentProfileBanner
+                  userName={profile?.full_name}
+                  orgName={profile?.organization_name}
+                  logoUrl={branding?.logoUrl}
+                />
                 <div className="px-6 pb-6 -mt-10">
                   <div className="flex items-end gap-4">
                     <div className="relative group">
