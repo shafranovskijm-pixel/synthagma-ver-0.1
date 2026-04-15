@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { FileText, Receipt, Search, Eye, ExternalLink, ScrollText, Plus, FolderOpen, Building2, FileCheck, Download, Trash2 } from "lucide-react";
+import { FileText, Receipt, Search, Eye, ExternalLink, ScrollText, Plus, FolderOpen, Building2, FileCheck, Download, Trash2, CheckCircle2 } from "lucide-react";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import { getSignedStorageUrl } from "@/utils/storageHelpers";
@@ -434,6 +434,43 @@ export const AdminBillingOverview = () => {
     setActInnSearching(false);
   };
 
+  const handleMarkPaid = async (inv: Invoice) => {
+    try {
+      // 1. Update invoice status
+      const { error: invErr } = await supabase
+        .from("subscription_invoices")
+        .update({ status: "paid" } as any)
+        .eq("id", inv.id);
+      if (invErr) throw invErr;
+
+      // 2. Get current paid_until
+      const { data: orgData, error: orgErr } = await supabase
+        .from("organizations")
+        .select("paid_until")
+        .eq("id", inv.organization_id)
+        .single();
+      if (orgErr) throw orgErr;
+
+      const now = new Date();
+      const currentPaidUntil = orgData?.paid_until ? new Date(orgData.paid_until) : null;
+      const base = currentPaidUntil && currentPaidUntil > now ? currentPaidUntil : now;
+      const newPaidUntil = new Date(base);
+      newPaidUntil.setMonth(newPaidUntil.getMonth() + (inv.period_months || 1));
+
+      // 3. Update organization paid_until
+      const { error: updErr } = await supabase
+        .from("organizations")
+        .update({ paid_until: newPaidUntil.toISOString() } as any)
+        .eq("id", inv.organization_id);
+      if (updErr) throw updErr;
+
+      toast.success("Оплата подтверждена", { description: `Тариф продлён до ${format(newPaidUntil, "d MMMM yyyy", { locale: ru })}` });
+      loadData();
+    } catch (e: any) {
+      toast.error("Ошибка", { description: e.message });
+    }
+  };
+
   if (loading) return <div className="text-center py-8 text-muted-foreground text-sm">Загрузка...</div>;
 
   const activeNavItem = NAV_SECTIONS.find(n => n.value === activeSection) || NAV_SECTIONS[0];
@@ -580,6 +617,7 @@ export const AdminBillingOverview = () => {
               statusBadge={statusBadge} handleViewDoc={handleViewDoc}
               onCreateContract={() => setShowCreateContract(true)}
               orgs={orgs}
+              onMarkPaid={handleMarkPaid}
             />}
             {activeSection === "org-contracts" && (
               selectedOrgId ? (
@@ -588,7 +626,7 @@ export const AdminBillingOverview = () => {
             )}
             {activeSection === "org-invoices" && (
               selectedOrgId ? (
-                <OrgInvoicesList invoices={orgInvoices} statusBadge={statusBadge} />
+                <OrgInvoicesList invoices={orgInvoices} statusBadge={statusBadge} onMarkPaid={handleMarkPaid} />
               ) : <EmptyOrgPrompt />
             )}
             {activeSection === "org-closing" && (
@@ -804,7 +842,7 @@ function EmptyOrgPrompt() {
   return <div className="text-center py-12 text-muted-foreground text-sm">Выберите организацию в боковом меню</div>;
 }
 
-function AllBillingContent({ search, setSearch, filteredContracts, filteredInvoices, filteredDocs, statusBadge, handleViewDoc, onCreateContract, orgs }: any) {
+function AllBillingContent({ search, setSearch, filteredContracts, filteredInvoices, filteredDocs, statusBadge, handleViewDoc, onCreateContract, orgs, onMarkPaid }: any) {
   return (
     <div className="space-y-4">
       <div className="relative max-w-sm">
@@ -854,6 +892,11 @@ function AllBillingContent({ search, setSearch, filteredContracts, filteredInvoi
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
+                    {inv.status === "pending" && onMarkPaid && (
+                      <Button variant="ghost" size="sm" className="text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50" onClick={() => onMarkPaid(inv)} title="Отметить как оплаченный">
+                        <CheckCircle2 className="w-4 h-4" />
+                      </Button>
+                    )}
                     {statusBadge(inv.status)}
                     <Button variant="ghost" size="sm" onClick={() => window.open(`/invoice/${inv.id}`, "_blank")}><ExternalLink className="w-4 h-4" /></Button>
                   </div>
@@ -906,7 +949,7 @@ function OrgContractsList({ contracts, statusBadge }: { contracts: Contract[]; s
   );
 }
 
-function OrgInvoicesList({ invoices, statusBadge }: { invoices: Invoice[]; statusBadge: (s: string) => React.ReactNode }) {
+function OrgInvoicesList({ invoices, statusBadge, onMarkPaid }: { invoices: Invoice[]; statusBadge: (s: string) => React.ReactNode; onMarkPaid?: (inv: Invoice) => void }) {
   if (invoices.length === 0) return <EmptyState text="Нет счетов" />;
   return (
     <div className="space-y-2">
@@ -920,6 +963,11 @@ function OrgInvoicesList({ invoices, statusBadge }: { invoices: Invoice[]; statu
             </div>
           </div>
           <div className="flex items-center gap-2">
+            {inv.status === "pending" && onMarkPaid && (
+              <Button variant="ghost" size="sm" className="text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50" onClick={() => onMarkPaid(inv)} title="Отметить как оплаченный">
+                <CheckCircle2 className="w-4 h-4" />
+              </Button>
+            )}
             {statusBadge(inv.status)}
             <Button variant="ghost" size="sm" onClick={() => window.open(`/invoice/${inv.id}`, "_blank")}><ExternalLink className="w-4 h-4" /></Button>
           </div>
