@@ -28,6 +28,17 @@ export default function StudentProfile() {
   const navigate = useNavigate();
   const { theme, setTheme } = useTheme();
   const queryClient = useQueryClient();
+
+  // Admin impersonation support
+  const [adminViewData] = useState(() => {
+    try {
+      const raw = localStorage.getItem('adminViewAsStudent');
+      if (raw) return JSON.parse(raw) as { userId: string; name: string; orgReturn?: string };
+    } catch {}
+    return null;
+  });
+  const isAdminView = !!adminViewData;
+  const effectiveUserId = adminViewData?.userId || user?.id || null;
   const [activeTab, setActiveTab] = useState("profile");
 
   // Profile form state
