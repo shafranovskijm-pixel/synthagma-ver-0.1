@@ -4,7 +4,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { Settings, LayoutGrid, Save, RefreshCw, RotateCcw, Users, FileText, BarChart3, Link, HardHat, ShoppingBag, Building2, GraduationCap, Wallet } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { RobokassaSettings } from "@/components/organization/RobokassaSettings";
+import { TBankSettings } from "@/components/organization/TBankSettings";
 import { SettingsStudentDashboardTab } from "@/components/organization/SettingsStudentDashboardTab";
 import { StaffManager } from "@/components/organization/StaffManager";
 import { useOrgDashboard } from "@/contexts/OrgDashboardContext";
@@ -173,7 +173,7 @@ function SettingsContent() {
         )}
 
         {activeTab === "robokassa" && (
-          <div className="max-w-2xl">{organizationId && <RobokassaSettings organizationId={organizationId} />}</div>
+          <div className="max-w-2xl">{organizationId && <TBankSettings organizationId={organizationId} />}</div>
         )}
 
         {activeTab === "student" && (

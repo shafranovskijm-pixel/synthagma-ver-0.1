@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { BookOpen, CreditCard, Eye, Send } from "lucide-react";
+import { BookOpen, CreditCard, Eye } from "lucide-react";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
@@ -71,40 +71,26 @@ export function AvailablePaidCourses({ userId, organizationId, userEmail }: Prop
     }
   };
 
-  const handleSendRequest = async (course: PaidCourse) => {
+  const handlePayment = async (course: PaidCourse) => {
     setSendingCourseId(course.id);
     try {
-      // Get student profile name
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("full_name, email")
-        .eq("user_id", userId)
-        .maybeSingle();
+      const { data, error } = await supabase.functions.invoke("tbank-init", {
+        body: {
+          course_id: course.id,
+          user_id: userId,
+          email: userEmail,
+        },
+      });
 
-      const studentName = profile?.full_name || profile?.email || userEmail || "Ученик";
+      if (error || !data?.url) {
+        throw new Error(data?.error || "Ошибка инициализации оплаты");
+      }
 
-      // Send chat message to organization
-      await supabase.from("chat_messages").insert({
-        user_id: userId,
-        course_id: course.id,
-        role: "user",
-        content: `📌 Заявка на приобретение курса\n\nКурс: ${course.title}\nСтоимость: ${Number(course.price).toLocaleString("ru-RU")} ₽\nУченик: ${studentName}\nEmail: ${userEmail || profile?.email || "—"}\n\nПрошу рассмотреть мою заявку на приобретение данного курса.` });
-
-      // Send notification to organization
-      await supabase.from("org_notifications").insert({
-        organization_id: course.organization_id,
-        user_id: userId,
-        type: "order",
-        title: `Заявка на курс: ${course.title}`,
-        message: `${studentName} хочет приобрести курс «${course.title}» (${Number(course.price).toLocaleString("ru-RU")} ₽)`,
-        is_read: false });
-
-      toast.success("Заявка отправлена в учебный центр");
-      setConfirmCourse(null);
-    } catch (err) {
-      console.error("Request send error:", err);
-      toast.error("Ошибка при отправке заявки");
-    } finally {
+      // Redirect to T-Bank payment page
+      window.location.href = data.url;
+    } catch (err: any) {
+      console.error("Payment error:", err);
+      toast.error(err.message || "Ошибка при создании платежа");
       setSendingCourseId(null);
     }
   };
@@ -165,7 +151,7 @@ export function AvailablePaidCourses({ userId, organizationId, userEmail }: Prop
                   {sendingCourseId === course.id ? (
                     <SigmaSpinner size="sm" className="mr-2" />
                   ) : (
-                    <Send className="w-4 h-4 mr-2" />
+                    <CreditCard className="w-4 h-4 mr-2" />
                   )}
                   Записаться
                 </Button>
@@ -178,25 +164,25 @@ export function AvailablePaidCourses({ userId, organizationId, userEmail }: Prop
       <AlertDialog open={!!confirmCourse} onOpenChange={(open) => !open && setConfirmCourse(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Заявка на курс</AlertDialogTitle>
+            <AlertDialogTitle>Оплата курса</AlertDialogTitle>
             <AlertDialogDescription>
-              Временно онлайн-касса недоступна. Хотите отправить заявку на приобретение курса
-              «{confirmCourse?.title}» ({confirmCourse ? Number(confirmCourse.price).toLocaleString("ru-RU") : 0} ₽)
-              в чат учебного центра?
+              Вы будете перенаправлены на страницу оплаты курса
+              «{confirmCourse?.title}» ({confirmCourse ? Number(confirmCourse.price).toLocaleString("ru-RU") : 0} ₽).
+              Оплата проходит через защищённый сервис Т-Банк.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Отмена</AlertDialogCancel>
             <AlertDialogAction
-              onClick={() => confirmCourse && handleSendRequest(confirmCourse)}
+              onClick={() => confirmCourse && handlePayment(confirmCourse)}
               disabled={sendingCourseId === confirmCourse?.id}
             >
               {sendingCourseId === confirmCourse?.id ? (
                 <SigmaSpinner size="sm" className="mr-2" />
               ) : (
-                <Send className="w-4 h-4 mr-2" />
+                <CreditCard className="w-4 h-4 mr-2" />
               )}
-              Отправить заявку
+              Перейти к оплате
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

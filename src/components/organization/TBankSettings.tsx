@@ -12,15 +12,13 @@ interface Props {
   organizationId: string;
 }
 
-export function RobokassaSettings({ organizationId }: Props) {
-  const [merchantLogin, setMerchantLogin] = useState("");
-  const [password1, setPassword1] = useState("");
-  const [password2, setPassword2] = useState("");
+export function TBankSettings({ organizationId }: Props) {
+  const [terminalKey, setTerminalKey] = useState("");
+  const [password, setPassword] = useState("");
   const [isTestMode, setIsTestMode] = useState(true);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [showP1, setShowP1] = useState(false);
-  const [showP2, setShowP2] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const [hasExisting, setHasExisting] = useState(false);
 
   useEffect(() => {
@@ -30,15 +28,15 @@ export function RobokassaSettings({ organizationId }: Props) {
   const fetchSettings = async () => {
     setLoading(true);
     try {
-      const { data, error } = await supabase
+      const { data } = await supabase
         .from("organization_payment_settings")
-        .select("merchant_login, is_test_mode")
+        .select("terminal_key, is_test_mode" as any)
         .eq("organization_id", organizationId)
         .maybeSingle();
 
       if (data) {
-        setMerchantLogin(data.merchant_login || "");
-        setIsTestMode(data.is_test_mode);
+        setTerminalKey((data as any).terminal_key || "");
+        setIsTestMode((data as any).is_test_mode);
         setHasExisting(true);
       }
     } catch (err) {
@@ -53,12 +51,11 @@ export function RobokassaSettings({ organizationId }: Props) {
     try {
       const payload: any = {
         organization_id: organizationId,
-        merchant_login: merchantLogin,
-        is_test_mode: isTestMode };
-      
-      // Only send passwords if they were changed (not empty placeholder)
-      if (password1) payload.password1_encrypted = password1;
-      if (password2) payload.password2_encrypted = password2;
+        terminal_key: terminalKey,
+        is_test_mode: isTestMode,
+      };
+
+      if (password) payload.password_encrypted = password;
 
       if (hasExisting) {
         const { error } = await supabase
@@ -67,8 +64,8 @@ export function RobokassaSettings({ organizationId }: Props) {
           .eq("organization_id", organizationId);
         if (error) throw error;
       } else {
-        if (!password1 || !password2) {
-          toast.error("Заполните оба пароля");
+        if (!password) {
+          toast.error("Введите пароль терминала");
           setSaving(false);
           return;
         }
@@ -79,9 +76,8 @@ export function RobokassaSettings({ organizationId }: Props) {
         setHasExisting(true);
       }
 
-      setPassword1("");
-      setPassword2("");
-      toast.success("Настройки Robokassa сохранены");
+      setPassword("");
+      toast.success("Настройки Т-Банк сохранены");
     } catch (err) {
       console.error(err);
       toast.error("Ошибка сохранения настроек");
@@ -98,51 +94,35 @@ export function RobokassaSettings({ organizationId }: Props) {
     <div className="bg-card rounded-xl lg:rounded-2xl border border-border p-4 lg:p-6">
       <h3 className="font-display font-semibold text-base lg:text-lg flex items-center gap-2 mb-4">
         <CreditCard className="w-4 h-4 lg:w-5 lg:h-5" />
-        Настройки Robokassa
+        Настройки Т-Банк Эквайринг
       </h3>
       <p className="text-sm text-muted-foreground mb-4">
-        Подключите Robokassa для приёма оплат за курсы. Данные из вашего личного кабинета Robokassa.
+        Подключите интернет-эквайринг Т-Банк для приёма оплат за курсы. Данные из вашего личного кабинета Т-Банк Бизнес.
       </p>
 
       <div className="space-y-4 max-w-md">
         <div>
-          <Label htmlFor="merchant-login">MerchantLogin</Label>
+          <Label htmlFor="terminal-key">TerminalKey</Label>
           <Input
-            id="merchant-login"
-            value={merchantLogin}
-            onChange={e => setMerchantLogin(e.target.value)}
-            placeholder="Ваш логин магазина"
+            id="terminal-key"
+            value={terminalKey}
+            onChange={e => setTerminalKey(e.target.value)}
+            placeholder="Ваш ключ терминала"
           />
         </div>
 
         <div>
-          <Label htmlFor="password1">Пароль #1 (для подписи)</Label>
+          <Label htmlFor="tbank-password">Пароль терминала</Label>
           <div className="relative">
             <Input
-              id="password1"
-              type={showP1 ? "text" : "password"}
-              value={password1}
-              onChange={e => setPassword1(e.target.value)}
-              placeholder={hasExisting ? "••••••• (не изменён)" : "Пароль #1"}
+              id="tbank-password"
+              type={showPassword ? "text" : "password"}
+              value={password}
+              onChange={e => setPassword(e.target.value)}
+              placeholder={hasExisting ? "••••••• (не изменён)" : "Пароль"}
             />
-            <button type="button" onClick={() => setShowP1(!showP1)} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
-              {showP1 ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-            </button>
-          </div>
-        </div>
-
-        <div>
-          <Label htmlFor="password2">Пароль #2 (для проверки)</Label>
-          <div className="relative">
-            <Input
-              id="password2"
-              type={showP2 ? "text" : "password"}
-              value={password2}
-              onChange={e => setPassword2(e.target.value)}
-              placeholder={hasExisting ? "••••••• (не изменён)" : "Пароль #2"}
-            />
-            <button type="button" onClick={() => setShowP2(!showP2)} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
-              {showP2 ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+            <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
+              {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
             </button>
           </div>
         </div>
@@ -152,7 +132,7 @@ export function RobokassaSettings({ organizationId }: Props) {
           <Label htmlFor="test-mode" className="cursor-pointer">Тестовый режим</Label>
         </div>
 
-        <Button onClick={handleSave} disabled={saving || !merchantLogin}>
+        <Button onClick={handleSave} disabled={saving || !terminalKey}>
           {saving ? <SigmaSpinner size="sm" className="mr-2" /> : <Save className="w-4 h-4 mr-2" />}
           Сохранить
         </Button>
