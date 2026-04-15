@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { BookOpen, Library, MessageCircle } from "lucide-react";
+import { BookOpen, Library, MessageCircle, User } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { SigmaLogo } from "@/components/ui/SigmaLogo";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -21,6 +21,7 @@ const navItems: { id: StudentTab; icon: typeof BookOpen; label: string }[] = [
   { id: "catalog", icon: BookOpen, label: "Каталог" },
   { id: "library", icon: Library, label: "Мои курсы" },
   { id: "chat", icon: MessageCircle, label: "Чат" },
+  { id: "profile", icon: User, label: "Профиль" },
 ];
 
 function hexToHsl(hex: string): string | null {
