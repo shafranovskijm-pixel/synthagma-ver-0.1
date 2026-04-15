@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { 
   BookOpen, Users, Settings, LogOut, Upload,
@@ -9,6 +9,7 @@ import { SigmaLogo } from "@/components/ui/SigmaLogo";
 import { useOrgDashboard } from "@/contexts/OrgDashboardContext";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
+import { getStoredThemeId, getThemeById } from "@/constants/admin-themes";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -111,7 +112,23 @@ export function OrgSidebar() {
   const logoInputRef = useRef<HTMLInputElement>(null);
 
   const [upgradeDialogOpen, setUpgradeDialogOpen] = useState(false);
-  const brandHsl = normalizeBrandColor(primaryColor);
+
+  // Theme-aware accent
+  const [themeAccent, setThemeAccent] = useState<string | null>(() => {
+    const id = getStoredThemeId();
+    return id ? getThemeById(id)?.accent || null : null;
+  });
+
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const id = (e as CustomEvent).detail;
+      setThemeAccent(id ? getThemeById(id)?.accent || null : null);
+    };
+    window.addEventListener("visual-theme-change", handler);
+    return () => window.removeEventListener("visual-theme-change", handler);
+  }, []);
+
+  const brandHsl = themeAccent || normalizeBrandColor(primaryColor);
 
   const isLocked = (category: string) => !isEnabled(category as any);
 

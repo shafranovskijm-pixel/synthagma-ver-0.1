@@ -12,6 +12,7 @@ import { toast } from "sonner";
 import { differenceInDays } from "date-fns";
 import { useAuth } from "@/hooks/useAuth";
 import defaultCoverImg from "@/assets/default-org-cover.jpg";
+import { getStoredThemeId, getThemeById } from "@/constants/admin-themes";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -35,6 +36,27 @@ export function OrgDashboardHeader() {
   const d = useOrgDashboard();
   const coverInputRef = useRef<HTMLInputElement>(null);
   const [isGeneratingCover, setIsGeneratingCover] = useState(false);
+
+  // Theme-aware banner
+  const [themeBannerUrl, setThemeBannerUrl] = useState<string | null>(() => {
+    const id = getStoredThemeId();
+    return id ? getThemeById(id)?.bannerUrl || null : null;
+  });
+  const [themeBannerPosition, setThemeBannerPosition] = useState<string | undefined>(() => {
+    const id = getStoredThemeId();
+    return id ? getThemeById(id)?.bannerPosition : undefined;
+  });
+
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const id = (e as CustomEvent).detail;
+      const theme = id ? getThemeById(id) : null;
+      setThemeBannerUrl(theme?.bannerUrl || null);
+      setThemeBannerPosition(theme?.bannerPosition);
+    };
+    window.addEventListener("visual-theme-change", handler);
+    return () => window.removeEventListener("visual-theme-change", handler);
+  }, []);
 
   const activeTab = d.tabNavigation.activeTab;
   const organizationName = d.organizationName;
@@ -117,7 +139,7 @@ export function OrgDashboardHeader() {
     }
   };
 
-  const displayCover = coverUrl || defaultCoverImg;
+  const displayCover = themeBannerUrl || coverUrl || defaultCoverImg;
 
   return (
     <header className="sticky top-0 z-30 bg-card border-b border-border">
@@ -239,11 +261,12 @@ export function OrgDashboardHeader() {
           width={1920}
           height={512}
           style={{
-            objectFit: coverUrl ? (coverPosition === 'contain' ? 'contain' : 'cover') : 'cover',
-            objectPosition:
+            objectFit: (themeBannerUrl || coverUrl) ? ((coverPosition === 'contain' && !themeBannerUrl) ? 'contain' : 'cover') : 'cover',
+            objectPosition: themeBannerPosition || (
               coverPosition === 'top' ? 'center top'
               : coverPosition === 'bottom' ? 'center bottom'
-              : 'center center',
+              : 'center center'
+            ),
             backgroundColor: 'hsl(var(--muted))'
           }}
         />

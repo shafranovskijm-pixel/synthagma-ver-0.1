@@ -1,7 +1,9 @@
+import { useState, useEffect } from "react";
 import { BookOpen, Library, MessageCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { SigmaLogo } from "@/components/ui/SigmaLogo";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { getStoredThemeId, getThemeById } from "@/constants/admin-themes";
 
 export type StudentTab = "catalog" | "library" | "chat";
 
@@ -73,7 +75,22 @@ export function StudentSidebar({
   activeTab, setActiveTab, branding, orgName, showAiChat,
   isPreviewMode, isAdminView,
 }: StudentSidebarProps) {
-  const brandHsl = normalizeBrandColor(branding?.primaryColor);
+  // Theme-aware accent
+  const [themeAccent, setThemeAccent] = useState<string | null>(() => {
+    const id = getStoredThemeId();
+    return id ? getThemeById(id)?.accent || null : null;
+  });
+
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const id = (e as CustomEvent).detail;
+      setThemeAccent(id ? getThemeById(id)?.accent || null : null);
+    };
+    window.addEventListener("visual-theme-change", handler);
+    return () => window.removeEventListener("visual-theme-change", handler);
+  }, []);
+
+  const brandHsl = themeAccent || normalizeBrandColor(branding?.primaryColor);
 
   return (
     <aside
