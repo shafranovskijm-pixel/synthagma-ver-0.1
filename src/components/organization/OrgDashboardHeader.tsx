@@ -9,7 +9,7 @@ import { SigmaLogo } from "@/components/ui/SigmaLogo";
 import { supabase } from "@/integrations/supabase/client";
 import { differenceInDays } from "date-fns";
 import { useAuth } from "@/hooks/useAuth";
-import { HeroBannerSwiper } from "@/components/shared/HeroBannerSwiper";
+import { OrgNotifications } from "./OrgNotifications";
 import { HeroBannerSwiper } from "@/components/shared/HeroBannerSwiper";
 import {
   DropdownMenu,
