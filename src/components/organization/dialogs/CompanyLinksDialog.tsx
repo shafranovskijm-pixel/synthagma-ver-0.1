@@ -17,6 +17,7 @@ import {
   Check } from "lucide-react";
 import { toast } from "sonner";
 import type { Company } from "@/hooks/useCompaniesManager";
+import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 
 interface CompanyLink {
   id: string;

@@ -5,6 +5,7 @@ import {
   Video, CheckCircle2, Play, Square, Volume2, VolumeX, Maximize, Minimize, RotateCcw, Gauge,
   ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 
 // Helper to check if content is an iframe embed
 const isIframeEmbed = (content: string): boolean => content.trim().startsWith('<iframe');

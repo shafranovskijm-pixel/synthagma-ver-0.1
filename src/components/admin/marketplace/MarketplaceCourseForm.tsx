@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { safeInvoke } from "@/utils/safeInvoke";
 import { toast } from "sonner";
 import type { DbCategory } from "@/hooks/useAdminMarketplace";
+import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 
 interface MarketplaceCourseFormProps {
   h: {

@@ -14,6 +14,7 @@ import { summarizeExistingContent, loadPresets, savePresets } from "./utils";
 import { BlockRenderer } from "./BlockRenderer";
 import { SortableBlockItem } from "./blocks/SortableBlockItem";
 import { AddBlockButton } from "./blocks/AddBlockButton";
+import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 
 export function BlockEditor({ blocks, onChange, readOnly = false, courseTitle, lessonTitle }: BlockEditorProps) {
   const [focusedBlockId, setFocusedBlockId] = useState<string | null>(null);

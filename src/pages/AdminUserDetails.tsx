@@ -19,6 +19,7 @@ import { ChatTab } from "@/components/organization/student-detail/ChatTab";
 import { FRDOExportDialog } from "@/components/organization/FRDOExportDialog";
 import { safeInvoke } from "@/utils/safeInvoke";
 import { toast } from "sonner";
+import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 
 function formatTimeAgo(date: Date): string {
   const diff = Date.now() - date.getTime();

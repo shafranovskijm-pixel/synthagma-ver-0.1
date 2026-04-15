@@ -8,6 +8,7 @@ import { Download, Upload, Bot, CheckCircle2, AlertTriangle, Sparkles } from "lu
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import {
+import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
   exportQuestionsForAI,
   parseAnswersFile,
   downloadTextFile,

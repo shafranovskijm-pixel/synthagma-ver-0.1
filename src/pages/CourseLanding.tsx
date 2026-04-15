@@ -19,6 +19,7 @@ import { LandingTeachersSection } from "@/components/course-landing/LandingTeach
 import { LandingReviewsSection } from "@/components/course-landing/LandingReviewsSection";
 import { LandingPricingSection } from "@/components/course-landing/LandingPricingSection";
 import { LandingFaqSection } from "@/components/course-landing/LandingFaqSection";
+import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 
 interface CourseData {
   id: string;

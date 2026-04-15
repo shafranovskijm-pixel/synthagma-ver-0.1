@@ -5,6 +5,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { HelpCircle, Plus, Trash2, Sparkles } from "lucide-react";
 import type { ContentBlock } from "../types";
+import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 
 export function QuizBlock({ block, onUpdate, courseTitle, lessonTitle, existingContent }: { block: ContentBlock; onUpdate: (updates: Partial<ContentBlock>) => void; courseTitle?: string; lessonTitle?: string; existingContent?: string }) {
   const [isGenerating, setIsGenerating] = useState(false);

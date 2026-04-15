@@ -6,6 +6,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Building2, Calendar, Printer, Save, Eye, ArrowLeft, Download, Plus, Trash2, User } from "lucide-react";
 import { useContractGenerator, type CounterpartyType } from "@/hooks/useContractGenerator";
+import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 
 interface Company {
   id: string; name: string; inn: string | null; kpp: string | null; ogrn: string | null; address: string | null; director: string | null;

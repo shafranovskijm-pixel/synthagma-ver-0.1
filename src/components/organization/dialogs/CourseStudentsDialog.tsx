@@ -16,6 +16,7 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { CourseTestReport } from "@/components/organization/CourseTestReport";
 import { EnrollmentHistory } from "@/components/organization/EnrollmentHistory";
+import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 
 interface Course {
   id: string;

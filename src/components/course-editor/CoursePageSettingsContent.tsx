@@ -9,6 +9,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Copy, Plus, Trash2, ExternalLink, Sparkles, Tag, ArrowUp, Globe, FileEdit, BarChart3 } from "lucide-react";
+import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 
 interface Props {
   courseId: string;

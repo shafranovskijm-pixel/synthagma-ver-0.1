@@ -16,6 +16,7 @@ import {
   SelectValue } from "@/components/ui/select";
 import { Github, FolderTree, FileText, AlertCircle } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 
 interface GitHubFile {
   name: string;

@@ -22,6 +22,7 @@ import {
   Sparkles } from "lucide-react";
 import { SigmaLogo } from "@/components/ui/SigmaLogo";
 import { supabase } from "@/integrations/supabase/client";
+import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 
 interface FeatureItem {
   id: string;

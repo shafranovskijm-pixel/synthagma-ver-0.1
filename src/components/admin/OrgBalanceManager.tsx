@@ -11,6 +11,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import { useOrgBalance } from "@/hooks/useOrgBalance";
+import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 
 interface OrgBalanceManagerProps {
   organizationId: string;

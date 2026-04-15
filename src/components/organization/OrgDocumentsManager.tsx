@@ -44,6 +44,7 @@ import { OrdersArchive } from "./OrdersArchive";
 import { cn } from "@/lib/utils";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { SelfExaminationQuiz, QuizData } from "./SelfExaminationQuiz";
+import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 
 interface OrgDocument {
   id: string;

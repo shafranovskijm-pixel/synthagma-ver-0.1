@@ -12,6 +12,7 @@ import { DocumentPreview } from "./DocumentPreview";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 
 interface ConsentGeneratorProps {
   organizationId: string;

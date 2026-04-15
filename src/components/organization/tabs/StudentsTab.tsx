@@ -19,6 +19,7 @@ import { useWordDocumentGenerator } from "@/hooks/useWordDocumentGenerator";
 import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
+import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 
 function formatTimeAgo(dateStr: string): string {
   const diff = Date.now() - new Date(dateStr).getTime();

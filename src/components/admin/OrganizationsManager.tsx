@@ -29,6 +29,7 @@ import { ru } from "date-fns/locale";
 import { getXLSX } from "@/utils/xlsxHelper";
 import { OrganizationDetailsView } from "./OrganizationDetailsView";
 import { toast } from "sonner";
+import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 
 interface Organization {
   id: string;

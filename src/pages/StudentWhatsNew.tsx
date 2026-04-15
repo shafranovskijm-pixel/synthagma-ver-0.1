@@ -9,6 +9,7 @@ import { StudentProfileSidebar } from "@/components/student/StudentProfileSideba
 import { useAuth } from "@/hooks/useAuth";
 import { useQuery } from "@tanstack/react-query";
 import {} from "lucide-react";
+import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 
 interface PlatformUpdate {
   id: string;

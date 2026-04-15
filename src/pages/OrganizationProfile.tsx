@@ -15,6 +15,7 @@ import { ThemePersonalization } from "@/components/ui/ThemePersonalization";
 import { ProfileBrandingTab } from "@/components/organization/ProfileBrandingTab";
 import { ProfileLoginBrandingTab } from "@/components/organization/ProfileLoginBrandingTab";
 import OrgPageLayout from "@/components/organization/OrgPageLayout";
+import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 
 interface ProfileData {
   full_name: string;

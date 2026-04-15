@@ -5,6 +5,7 @@ import { ArrowLeft} from "lucide-react";
 import { ContractTemplateEditor } from "@/components/organization/ContractTemplateEditor";
 import { SigmaLogo } from "@/components/ui/SigmaLogo";
 import { getAdminAwareBackPath } from "@/lib/utils";
+import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 
 export default function ContractEditor() {
   const navigate = useNavigate();

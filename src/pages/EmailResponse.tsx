@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
 import { CheckCircle, AlertCircle, Info } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 
 interface TokenInfo {
   orgName: string;

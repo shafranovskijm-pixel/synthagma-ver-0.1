@@ -4,6 +4,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Download, Search, Users, CheckCircle2, AlertCircle, XCircle, Filter, FileSpreadsheet, Shield, BarChart3, Upload, ClipboardCheck, BookOpen } from "lucide-react";
 import { FRDOExportDialog } from "./FRDOExportDialog";
 import { useFRDOManager } from "@/hooks/useFRDOManager";
+import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 
 export function FRDOManager({ organizationId }: { organizationId: string }) {
   const {

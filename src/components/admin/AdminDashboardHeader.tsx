@@ -19,6 +19,7 @@ import defaultCoverImg from "@/assets/default-org-cover.jpg";
 import type { AdminTabType } from "./AdminSidebar";
 import { HelpCenterDialog, useHelpCenterDialog } from "@/components/shared/HelpCenterDialog";
 import { getStoredThemeId, getThemeById } from "@/constants/admin-themes";
+import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 
 interface AdminDashboardHeaderProps {
   activeTab: AdminTabType;

@@ -2,6 +2,7 @@ import { CheckCircle2} from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
+import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 
 interface Props {
   current: number;

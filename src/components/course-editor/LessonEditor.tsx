@@ -24,6 +24,7 @@ import { useExternalStorageWithProgress } from "@/hooks/useExternalStorageWithPr
 import { Badge } from "@/components/ui/badge";
 import { MediaLibraryDialog } from "@/components/course-builder/MediaLibraryDialog";
 import { toast } from "sonner";
+import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 // Video preview component for lesson editor
 function VideoPreview({ videoUrl }: { videoUrl: string }) {
   const isIframeEmbed = (content: string): boolean => {

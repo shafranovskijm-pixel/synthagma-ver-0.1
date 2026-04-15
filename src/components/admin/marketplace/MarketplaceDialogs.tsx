@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { safeInvoke } from "@/utils/safeInvoke";
 import { toast } from "sonner";
 import type { DbCategory } from "@/hooks/useAdminMarketplace";
+import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 
 const statusLabels: Record<string, { label: string; color: string }> = {
   pending: { label: "Ожидает", color: "bg-yellow-500/10 text-yellow-600 border-yellow-500/20" },

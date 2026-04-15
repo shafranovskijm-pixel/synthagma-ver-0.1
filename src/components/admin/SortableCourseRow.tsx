@@ -4,6 +4,7 @@ import { TableRow, TableCell } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { BookOpen, ExternalLink, HardDrive, CheckCircle2, XCircle, RefreshCw, Trash2, GripVertical } from "lucide-react";
+import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 
 interface SortableCourseRowProps {
   course: {

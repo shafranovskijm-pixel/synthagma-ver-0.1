@@ -17,6 +17,7 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import type { Json } from "@/integrations/supabase/types";
 import { useExternalStorage } from "@/hooks/useExternalStorage";
+import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 
 interface QuestionOption {
   text: string;

@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils";
 import { Plus, ChevronRight, Highlighter, Sparkles } from "lucide-react";
 import type { BlockType } from "../types";
 import { blockCategories, calloutItems } from "../types";
+import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 
 function BlockCategoryGrid({ items, onSelect, calloutItems: cItems, calloutLabel }: { items: { type: BlockType; icon: any; label: string; color?: string }[]; onSelect: (type: BlockType) => void; calloutItems?: typeof calloutItems; calloutLabel?: string }) {
   const [showCallouts, setShowCallouts] = useState(false);

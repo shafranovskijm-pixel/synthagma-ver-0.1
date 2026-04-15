@@ -7,6 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { BookCheck, Clock, CheckCircle2, AlertCircle, RotateCcw } from "lucide-react";
 import { useOrgDashboard } from "@/contexts/OrgDashboardContext";
 import { HomeworkReviewDialog } from "./HomeworkReviewDialog";
+import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 
 interface Submission {
   id: string;

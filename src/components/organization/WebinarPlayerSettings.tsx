@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { ChevronDown, ChevronUp, Settings } from "lucide-react";
+import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 
 export interface PlayerSettings {
   autoplay: boolean;

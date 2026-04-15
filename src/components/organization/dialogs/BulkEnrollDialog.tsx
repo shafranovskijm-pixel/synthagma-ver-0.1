@@ -12,6 +12,7 @@ import {
   Check } from "lucide-react";
 import type { Company } from "@/hooks/useCompaniesManager";
 import { CourseGroupedList } from "./CourseGroupedList";
+import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 
 interface CourseCategory {
   id: string;

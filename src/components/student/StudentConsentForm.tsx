@@ -8,6 +8,7 @@ import { toast } from "sonner";
 import { FileCheck, Shield, Check, AlertCircle, Download, History } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
+import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 
 interface StudentConsentFormProps {
   userId: string;

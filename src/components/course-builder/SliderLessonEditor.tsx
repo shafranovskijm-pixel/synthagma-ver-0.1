@@ -9,6 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { LazyMediaPreview } from "@/components/course-builder/LazyMediaPreview";
+import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 
 interface SliderLessonEditorProps {
   lesson: Lesson;

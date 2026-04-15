@@ -4,6 +4,7 @@ import { Sparkles, Volume2, VolumeX, Heading1, AlignLeft, AlertTriangle, Square 
 import { Button } from "@/components/ui/button";
 import { ScrollReveal } from "@/components/ui/ScrollReveal";
 import { FloatingParticles } from "./FloatingParticles";
+import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 
 const DEMO_AUDIO_BASE = `${import.meta.env.VITE_SUPABASE_URL}/storage/v1/object/public/demo-assets`;
 const DEMO_AUDIO_3 = `${DEMO_AUDIO_BASE}/editor-demo-3blocks.mp3`;

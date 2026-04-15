@@ -10,6 +10,7 @@ import {
   Save, Settings, ExternalLink, Lock, ArrowUpRight,
   Trophy, MessageCircle, LayoutGrid, Pencil } from "lucide-react";
 import { AchievementsManager } from "./AchievementsManager";
+import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 
 interface StudentDashboardSettings {
   showAchievements: boolean;

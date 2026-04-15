@@ -10,6 +10,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Upload, FileText, Check, X, AlertTriangle } from "lucide-react";
 import { MARKETPLACE_ORG_ID } from "@/constants/marketplace";
+import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 
 interface ProgramEntry {
   title: string;

@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import {
   Image as ImageIcon, Video, Upload, Headphones, BookOpen, FolderOpen, Play, Sparkles, Wand2, Trash2 } from "lucide-react";
 import type { ContentBlock } from "../types";
+import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 
 // ─── DirectVideoBlock ───────────────────────────────────────────
 function DirectVideoBlockInner({ url }: { url: string }) {

@@ -65,6 +65,7 @@ import { CoursePageSettingsContent } from "@/components/course-editor/CoursePage
 import { CourseSettingsTabbed } from "@/components/organization/CourseSettingsTabbed";
 import { EnrollmentRequestsTab } from "@/components/organization/EnrollmentRequestsTab";
 import { CourseAchievementsTab } from "@/components/organization/CourseAchievementsTab";
+import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 
 interface Course {
   id: string;

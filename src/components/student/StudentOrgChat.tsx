@@ -7,6 +7,7 @@ import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import { toast } from "sonner";
 import { getSignedStorageUrl } from "@/utils/storageHelpers";
+import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 
 interface Message {
   id: string;

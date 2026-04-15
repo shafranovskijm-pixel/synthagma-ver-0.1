@@ -9,6 +9,7 @@ import { HighlightedTemplateEditor } from "./HighlightedTemplateEditor";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { DocumentPreview } from "./DocumentPreview";
+import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 
 interface CommissionMember {
   name: string;

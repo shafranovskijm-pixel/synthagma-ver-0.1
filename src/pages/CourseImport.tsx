@@ -14,6 +14,7 @@ import { safeInvoke } from "@/utils/safeInvoke";
 import { useAuth } from "@/hooks/useAuth";
 import { SigmaLogo } from "@/components/ui/SigmaLogo";
 import { getAdminAwareBackPath } from "@/lib/utils";
+import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 
 interface ParsedLesson {
   id: string;

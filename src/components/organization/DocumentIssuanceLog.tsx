@@ -19,6 +19,7 @@ import {
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import { getXLSX } from "@/utils/xlsxHelper";
+import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 
 interface DocumentLog {
   id: string;

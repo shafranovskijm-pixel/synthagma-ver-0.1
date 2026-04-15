@@ -21,6 +21,7 @@ import { ru } from "date-fns/locale";
 import { getXLSX } from "@/utils/xlsxHelper";
 import { toast } from "sonner";
 import type { Company } from "@/hooks/useCompaniesManager";
+import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 
 interface CompanyStudent {
   id: string;

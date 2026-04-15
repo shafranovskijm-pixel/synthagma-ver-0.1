@@ -32,6 +32,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { useState as useReactState } from "react";
 import { FilePreviewDialog } from "@/components/course-learning/FilePreviewDialog";
 import { HomeworkSubmission } from "@/components/course-learning/HomeworkSubmission";
+import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 
 const CourseLearning = () => {
   const { courseId } = useParams();

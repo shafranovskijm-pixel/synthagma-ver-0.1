@@ -11,6 +11,7 @@ import { CompletionsChart } from "./analytics/CompletionsChart";
 import { PaymentsChart } from "./analytics/PaymentsChart";
 import { FeaturesChart } from "./analytics/FeaturesChart";
 import { OverviewCards } from "./analytics/OverviewCards";
+import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 
 export function AdminAnalytics() {
   const {

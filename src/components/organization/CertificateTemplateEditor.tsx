@@ -8,6 +8,7 @@ import { Save, Award, GraduationCap, Eye } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { DocumentPreview } from "./DocumentPreview";
+import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 
 interface DocumentSettings {
   series: string;

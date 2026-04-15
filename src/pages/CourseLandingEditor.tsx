@@ -17,6 +17,7 @@ import { LandingReviewsSection, ReviewItem } from "@/components/course-landing/L
 import { LandingPricingSection, PricingTier } from "@/components/course-landing/LandingPricingSection";
 import { LandingFaqSection, FaqItem } from "@/components/course-landing/LandingFaqSection";
 import { SectionToolbar } from "@/components/course-landing/SectionToolbar";
+import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 
 const ALL_SECTIONS = ["hero", "audience", "learn", "program", "process", "benefits", "teachers", "reviews", "pricing", "faq", "cta"];
 

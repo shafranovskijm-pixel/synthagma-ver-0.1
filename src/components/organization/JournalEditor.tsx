@@ -11,6 +11,7 @@ import { format, startOfWeek } from "date-fns";
 import { ru } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { useJournalEditor } from "@/hooks/useJournalEditor";
+import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 
 interface JournalEditorProps { organizationId: string; journalType: string; journalTitle: string; onClose: () => void; }
 

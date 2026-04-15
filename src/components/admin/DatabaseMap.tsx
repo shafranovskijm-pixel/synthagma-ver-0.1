@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Building2, Users, GraduationCap, Briefcase, FileText, BookOpen, Library, HardHat, ShoppingCart, Settings, MoreHorizontal, ArrowRight, RefreshCw, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
+import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 
 interface TableGroup {
   name: string;

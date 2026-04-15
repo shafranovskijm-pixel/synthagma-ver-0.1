@@ -11,6 +11,7 @@ import { Table, TableBody, TableCell, TableRow } from "@/components/ui/table";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
+import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 
 type CourseGroup = { baseTitle: string; items: any[]; suffix: (item: any) => string };
 

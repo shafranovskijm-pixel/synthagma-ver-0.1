@@ -9,6 +9,7 @@ import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 
 // Helper to normalize option value (can be string or {text: string})
 function normalizeOption(opt: unknown): string {

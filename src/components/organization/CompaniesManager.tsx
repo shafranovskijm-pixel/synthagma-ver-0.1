@@ -22,6 +22,7 @@ import {
 import { ContractGenerator } from "./ContractGenerator";
 import { InvoiceGenerator } from "./InvoiceGenerator";
 import { ActGenerator } from "./ActGenerator";
+import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 
 interface CompaniesManagerProps {
   organizationId: string;

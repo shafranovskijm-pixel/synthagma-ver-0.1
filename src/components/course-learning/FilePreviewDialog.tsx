@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Download, ExternalLink, X, FileText} from "lucide-react";
+import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 
 interface FilePreviewDialogProps {
   open: boolean;

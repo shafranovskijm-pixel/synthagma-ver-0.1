@@ -7,6 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
+import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 
 interface Comment {
   id: string;

@@ -16,6 +16,7 @@ import { ru } from 'date-fns/locale';
 import { supabase } from '@/integrations/supabase/client';
 import { SUBSCRIPTION_PLANS, YEARLY_DISCOUNT, formatStorageSize, type SubscriptionPlan } from '@/constants/subscriptionPlans';
 import { toast } from "sonner";
+import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 
 const STATUS_MAP: Record<string, { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline' }> = {
   draft: { label: 'Черновик', variant: 'secondary' },

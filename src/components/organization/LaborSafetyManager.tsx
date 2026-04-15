@@ -28,6 +28,7 @@ import { format } from "date-fns";
 import { LaborSafetyStudentDetailCard } from "./LaborSafetyStudentDetailCard";
 import { useLaborSafetyManager } from "@/hooks/useLaborSafetyManager";
 import { Progress } from "@/components/ui/progress";
+import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 
 interface LaborSafetyManagerProps {
   organizationId: string;

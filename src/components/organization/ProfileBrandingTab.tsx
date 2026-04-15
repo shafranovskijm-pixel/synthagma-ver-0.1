@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import {
+import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
   Save, Upload, X, Eye, Lock, ArrowUpRight, Image } from "lucide-react";
 
 interface BrandingSettings {

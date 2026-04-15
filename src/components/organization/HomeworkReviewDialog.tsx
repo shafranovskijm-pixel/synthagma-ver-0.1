@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { Send, Paperclip, ExternalLink, Clock, CheckCircle2, AlertCircle, RotateCcw } from "lucide-react";
+import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 
 interface Submission {
   id: string;

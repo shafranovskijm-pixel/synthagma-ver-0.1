@@ -9,6 +9,7 @@ import { MessageSquare, Send, Trash2} from "lucide-react";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import { useAuth } from "@/hooks/useAuth";
+import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 
 interface Comment {
   id: string;

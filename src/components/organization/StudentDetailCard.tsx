@@ -12,6 +12,7 @@ import { ActivityTab } from "./student-detail/ActivityTab";
 import { ChatTab } from "./student-detail/ChatTab";
 import { useSubscriptionLimits } from "@/hooks/useSubscriptionLimits";
 import { useAuth } from "@/hooks/useAuth";
+import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 
 function formatTimeAgo(date: Date): string {
   const diff = Date.now() - date.getTime();

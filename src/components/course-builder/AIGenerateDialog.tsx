@@ -15,6 +15,7 @@ import {
   FileQuestion,
   Sparkles } from "lucide-react";
 import { toast } from "sonner";
+import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 
 export type AIGenerateType = "audio" | "slides" | "video" | "image" | "test";
 

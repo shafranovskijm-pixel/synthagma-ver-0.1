@@ -36,6 +36,7 @@ import {
 import { ContentBlock, jsonToBlocks, BlockRenderer } from "@/components/course-builder/BlockEditor";
 import { cn, getAdminAwareBackPath } from "@/lib/utils";
 import { FilePreviewDialog } from "@/components/course-learning/FilePreviewDialog";
+import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 
 interface Lesson {
   id: string;

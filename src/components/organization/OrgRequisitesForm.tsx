@@ -8,6 +8,7 @@ import { Search, Save, Building2, CheckCircle2, MapPin, User, Landmark } from "l
 import { supabase } from "@/integrations/supabase/client";
 import { safeInvoke } from "@/utils/safeInvoke";
 import { toast } from "sonner";
+import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 
 interface OrgRequisitesFormProps {
   organizationId: string;

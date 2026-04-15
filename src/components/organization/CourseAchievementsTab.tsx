@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Trophy } from "lucide-react";
 import { toast } from "sonner";
+import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 
 const RARITY_STYLES: Record<string, { bg: string; border: string; text: string }> = {
   common: { bg: "bg-muted/50", border: "border-muted-foreground/20", text: "text-muted-foreground" },

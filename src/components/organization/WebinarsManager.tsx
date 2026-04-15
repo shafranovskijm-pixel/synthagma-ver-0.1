@@ -15,6 +15,7 @@ import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { InlinePlayerSettings, buildKinescopeEmbedUrl } from "./WebinarPlayerSettings";
+import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 
 interface Webinar {
   id: string;

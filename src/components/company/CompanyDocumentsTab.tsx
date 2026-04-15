@@ -5,6 +5,7 @@ import { FileText, Receipt, FileCheck, Download, CheckCircle2, Clock, ExternalLi
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { supabase } from "@/integrations/supabase/client";
+import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 
 interface CompanyDoc {
   id: string;

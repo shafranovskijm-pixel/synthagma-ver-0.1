@@ -9,6 +9,7 @@ import { Video, Calendar, Radio, Clock } from "lucide-react";
 import { buildKinescopeEmbedUrl } from "@/components/organization/WebinarPlayerSettings";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
+import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 
 interface Webinar {
   id: string;

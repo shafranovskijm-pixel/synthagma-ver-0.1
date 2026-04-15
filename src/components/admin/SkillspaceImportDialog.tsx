@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { CheckCircle2, AlertTriangle, Download, Info } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 
 interface SkillspaceImportDialogProps {
   open: boolean;

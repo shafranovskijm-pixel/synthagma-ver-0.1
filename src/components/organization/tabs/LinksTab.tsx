@@ -4,6 +4,7 @@ import { Link, Copy, Trash2, Plus } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { getBaseUrl } from "@/utils/getBaseUrl";
+import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 
 interface RegistrationLink {
   id: string;

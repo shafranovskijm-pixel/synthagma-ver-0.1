@@ -29,6 +29,7 @@ import {
   Search,
   Filter } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
+import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 
 interface Student {
   id: string;

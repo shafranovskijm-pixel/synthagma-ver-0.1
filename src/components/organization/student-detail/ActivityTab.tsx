@@ -5,6 +5,7 @@ import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { TestAttemptDetail, type EnrichedTestAttempt, type QuestionData } from "./TestAttemptDetail";
+import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 
 interface LoginRecord {
   id: string;

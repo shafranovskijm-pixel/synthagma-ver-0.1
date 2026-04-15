@@ -11,6 +11,7 @@ import { Upload, FileSpreadsheet, Download, CheckCircle2, FileText } from "lucid
 import { toast } from "sonner";
 import { getXLSX } from "@/utils/xlsxHelper";
 import { parseTxtTestFile } from "@/utils/txtTestParser";
+import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 
 interface ImportedQuestion {
   question: string;

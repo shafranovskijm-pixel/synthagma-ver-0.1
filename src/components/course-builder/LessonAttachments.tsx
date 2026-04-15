@@ -6,6 +6,7 @@ import { FileUp, Trash2, FileText, FileSpreadsheet, Presentation, File, Download
 import { toast } from "sonner";
 import { uploadToStorage } from "@/utils/courseBuilderHelpers";
 import { supabase } from "@/integrations/supabase/client";
+import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 
 export interface LessonAttachment {
   id: string;

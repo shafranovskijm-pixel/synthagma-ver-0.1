@@ -19,6 +19,7 @@ import { Bell, Plus, Trash2, Calendar, Mail, CheckCircle2, Send } from "lucide-r
 import { format, isPast, isToday } from "date-fns";
 import { ru } from "date-fns/locale";
 import { useAuth } from "@/hooks/useAuth";
+import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 
 interface Reminder {
   id: string;

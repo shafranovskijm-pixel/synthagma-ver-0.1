@@ -11,6 +11,7 @@ import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { CalendarIcon, Users, UserPlus, Check, Plus, Link as LinkIcon, Copy } from "lucide-react";
+import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 
 interface StudentGroup {
   id: string;

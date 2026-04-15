@@ -22,6 +22,7 @@ import { StudentProfileBanner } from "@/components/student/StudentProfileBanner"
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import HelpCenter from "@/pages/HelpCenter";
+import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 
 interface StudentProfileContentProps {
   effectiveUserId: string;

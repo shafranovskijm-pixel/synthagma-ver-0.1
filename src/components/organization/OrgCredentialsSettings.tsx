@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { safeInvoke } from "@/utils/safeInvoke";
+import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 
 interface OrgCredentialsSettingsProps {
   organizationId: string;

@@ -5,6 +5,7 @@ import {
   Presentation, Upload, ChevronLeft, ChevronRight, Trash2,
   Image as ImageIcon } from "lucide-react";
 import type { ContentBlock, SliderSlide } from "../types";
+import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 
 export function SliderBlock({ block, onUpdate }: { block: ContentBlock; onUpdate: (updates: Partial<ContentBlock>) => void }) {
   const [isLoading, setIsLoading] = useState(false);

@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent } from "@/components/ui/card";
+import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 
 type ComparisonResult = {
   model: string;

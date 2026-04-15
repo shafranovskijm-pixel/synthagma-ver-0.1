@@ -60,6 +60,7 @@ import {
 import { CourseRemindersTab } from "@/components/organization/CourseRemindersTab";
 import { CourseGroupsTab } from "@/components/organization/CourseGroupsTab";
 import { CoursePageSettingsContent } from "@/components/course-editor/CoursePageSettingsContent";
+import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 
 interface Course {
   id: string;

@@ -5,6 +5,7 @@ import { generateInvoiceHtml, type InvoiceData } from "@/constants/invoiceTempla
 import { SUBSCRIPTION_PLANS } from "@/constants/subscriptionPlans";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Printer} from "lucide-react";
+import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 
 export default function InvoiceView() {
   const { id } = useParams<{ id: string }>();

@@ -29,6 +29,7 @@ import {
   DELIVERY_METHODS } from "@/hooks/useEducationDocumentsJournal";
 import { generateEducationDocumentHtml } from "@/utils/generateEducationDocument";
 import { printHtmlContent } from "@/utils/printHtmlToPdf";
+import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 
 interface EducationDocumentsJournalProps {
   organizationId: string;

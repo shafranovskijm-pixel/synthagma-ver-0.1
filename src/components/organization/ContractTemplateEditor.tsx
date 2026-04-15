@@ -28,6 +28,7 @@ import {
 import { HighlightedTemplateEditor } from "./HighlightedTemplateEditor";
 import { BUILT_IN_TEMPLATES, type ContractTemplate } from "./contract-template/builtInTemplates";
 import { TemplateHistoryDialog, type TemplateHistoryEntry } from "./contract-template/TemplateHistoryDialog";
+import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 
 interface ContractTemplateEditorProps {
   organizationId: string;

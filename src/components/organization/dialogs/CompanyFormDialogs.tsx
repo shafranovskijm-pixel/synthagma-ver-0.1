@@ -9,6 +9,7 @@ import {
   DialogTitle } from "@/components/ui/dialog";
 import { Search, Check } from "lucide-react";
 import type { Company } from "@/hooks/useCompaniesManager";
+import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 
 interface DadataCompanyInfo {
   name: string;

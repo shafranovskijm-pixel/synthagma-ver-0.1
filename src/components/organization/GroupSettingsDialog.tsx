@@ -8,6 +8,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { HelpCircle, Trash2, Settings, BookOpen, Eye, MessageCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 
 interface GroupSettings {
   id: string;

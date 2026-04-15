@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { uploadToStorage } from "@/utils/courseBuilderHelpers";
 import { Badge } from "@/components/ui/badge";
+import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 
 interface HomeworkSubmissionProps {
   lessonId: string;

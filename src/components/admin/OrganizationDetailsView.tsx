@@ -20,6 +20,7 @@ import { SkillspaceImportDialog } from "./SkillspaceImportDialog";
 import { SkillspaceBatchImportDialog } from "./SkillspaceBatchImportDialog";
 import { StudentBulkImportDialog } from "./StudentBulkImportDialog";
 import { supabase } from "@/integrations/supabase/client";
+import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 
 const PLAN_BADGE_COLORS: Record<string, string> = {
   free: "bg-slate-500/10 text-slate-600 border-slate-500/20",

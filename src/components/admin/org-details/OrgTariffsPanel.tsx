@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Crown, Save} from "lucide-react";
 import { toast } from "sonner";
 import { getPlanInfo, type SubscriptionPlan } from "@/constants/subscriptionPlans";
+import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 
 interface OrgTariffsPanelProps {
   organizationId: string;

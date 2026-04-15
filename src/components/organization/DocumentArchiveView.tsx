@@ -22,6 +22,7 @@ import {
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import { OrdersArchive } from "./OrdersArchive";
+import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 
 interface OrgDocument {
   id: string;

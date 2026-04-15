@@ -32,6 +32,7 @@ import { Bell, Plus, Send, Check, X, Calendar, Building2, User, Edit2, Copy, Eye
 import { REMINDER_TEMPLATES, RETRAINING_PERIOD_OPTIONS, ReminderTemplate } from "@/constants/reminderTemplates";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
+import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 
 interface CourseReminder {
   id: string;

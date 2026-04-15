@@ -34,6 +34,7 @@ import {
   UserCheck, ExternalLink, Download, Eye, Shield
 } from "lucide-react";
 import { toast } from "sonner";
+import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 
 interface StorageManagerProps {
   organizationId: string;

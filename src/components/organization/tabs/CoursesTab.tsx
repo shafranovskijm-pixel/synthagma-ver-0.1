@@ -31,6 +31,7 @@ import { SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable"
 import { CoursesEmptyState } from "./courses/CoursesEmptyState";
 import { SortableCourseListRow } from "./courses/CourseListRow";
 import { CategoryDialog, CreateCourseDialog, MoveCourseDialog, BulkDeleteDialog } from "./courses/CourseDialogs";
+import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 
 interface CoursesTabProps {
   organizationId: string;

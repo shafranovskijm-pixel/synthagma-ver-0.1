@@ -9,6 +9,7 @@ import {
   AlertCircle, Lightbulb, CheckCircle, XCircle, Highlighter,
   ChevronDown, ChevronRight, Sparkles, Pencil } from "lucide-react";
 import type { ContentBlock } from "../types";
+import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 
 function AIGenerateButton({ isGenerating, onClick }: { isGenerating: boolean; onClick: () => void }) {
   return (

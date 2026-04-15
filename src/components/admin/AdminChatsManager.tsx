@@ -10,6 +10,7 @@ import { ru } from "date-fns/locale";
 import { toast } from "sonner";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useAuth } from "@/hooks/useAuth";
+import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 
 interface Organization {
   id: string;

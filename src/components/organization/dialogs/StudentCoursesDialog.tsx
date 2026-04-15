@@ -14,6 +14,7 @@ import { Progress } from "@/components/ui/progress";
 import { Input } from "@/components/ui/input";
 import { GraduationCap, Plus, X, Search, RotateCcw } from "lucide-react";
 import { CourseGroupedList } from "./CourseGroupedList";
+import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 interface CourseCategory {
   id: string;
   name: string;

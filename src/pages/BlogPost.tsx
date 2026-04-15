@@ -8,6 +8,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import ReactMarkdown from "react-markdown";
+import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 
 interface BlogPost {
   id: string;

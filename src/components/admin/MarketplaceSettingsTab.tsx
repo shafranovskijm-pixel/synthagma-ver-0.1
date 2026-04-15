@@ -10,6 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { DEFAULT_PROMPTS } from "./MarketplaceSettings";
+import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 
 export interface ValidationRules {
   minLessons: number;

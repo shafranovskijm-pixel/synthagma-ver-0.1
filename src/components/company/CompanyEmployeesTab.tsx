@@ -11,6 +11,7 @@ import {
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { EmployeeImportDialog } from "./EmployeeImportDialog";
+import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 
 interface Enrollment {
   course_id: string;

@@ -2,6 +2,7 @@ import { useState, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Sparkles, Volume2, VolumeX, Heading1, AlignLeft, AlertTriangle, Square } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 
 const DEMO_AUDIO_BASE = `${import.meta.env.VITE_SUPABASE_URL}/storage/v1/object/public/demo-assets`;
 

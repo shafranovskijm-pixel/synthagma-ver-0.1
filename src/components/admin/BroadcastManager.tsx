@@ -11,6 +11,7 @@ import { Megaphone, Send, Trash2, Mail, Clock, MessageSquare, CheckCircle2} from
 import { toast } from "sonner";
 import { format, differenceInDays } from "date-fns";
 import { ru } from "date-fns/locale";
+import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 
 interface Announcement {
   id: string;

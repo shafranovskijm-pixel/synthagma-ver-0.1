@@ -6,6 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Plus, Trash2, Search, Users } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 
 interface Props {
   open: boolean;

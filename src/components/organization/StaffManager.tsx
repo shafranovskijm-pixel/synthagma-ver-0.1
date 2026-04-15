@@ -11,6 +11,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { toast } from "sonner";
 import { Plus, Trash2, Users, Shield, BookOpen, Edit3, Eye, HelpCircle, Settings } from "lucide-react";
 import { useOrgDashboard } from "@/contexts/OrgDashboardContext";
+import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 
 interface StaffMember {
   id: string;

@@ -12,6 +12,7 @@ import { Video, FileText, Image as ImageIcon, Search, FolderOpen, Music, BookOpe
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 
 interface MediaLibraryDialogProps {
   open: boolean;

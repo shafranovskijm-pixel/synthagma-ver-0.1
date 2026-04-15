@@ -26,6 +26,7 @@ import {
 import { extractStyle, describeStyle } from "../utils";
 import { BlockContent } from "./BlockContent";
 import { BlockCategoryGrid } from "./AddBlockButton";
+import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 
 interface SortableBlockItemProps {
   block: ContentBlock;

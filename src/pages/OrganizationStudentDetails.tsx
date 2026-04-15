@@ -26,6 +26,7 @@ import { DocumentsTab } from "@/components/organization/student-detail/Documents
 import { ActivityTab } from "@/components/organization/student-detail/ActivityTab";
 import { ChatTab } from "@/components/organization/student-detail/ChatTab";
 import { FRDOExportDialog } from "@/components/organization/FRDOExportDialog";
+import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 
 function getUserInitials(email?: string | null, name?: string | null): string {
   if (name) {

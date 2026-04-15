@@ -38,6 +38,7 @@ import { ru } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { getXLSX } from "@/utils/xlsxHelper";
 import { Badge } from "@/components/ui/badge";
+import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 
 interface GradeRecord {
   id: string;

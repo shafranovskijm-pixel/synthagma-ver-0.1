@@ -52,6 +52,7 @@ import { getXLSX } from "@/utils/xlsxHelper";
 import { Badge } from "@/components/ui/badge";
 import { downloadHtmlFile } from "@/utils/downloadHtmlFile";
 import { getSignedStorageUrl, extractStoragePath } from "@/utils/storageHelpers";
+import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 
 interface DocumentRecord {
   id: string;

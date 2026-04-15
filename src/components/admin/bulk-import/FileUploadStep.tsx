@@ -5,6 +5,7 @@ import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { parseExcelBulkTests, ParsedSection } from "@/utils/excelTestBulkParser";
 import { toast } from "sonner";
+import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 
 interface Props {
   onParsed: (sections: ParsedSection[]) => void;

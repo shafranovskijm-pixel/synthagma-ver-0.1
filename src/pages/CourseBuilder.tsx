@@ -17,6 +17,7 @@ import { CourseReviewDialog } from "@/components/course-builder/CourseReviewDial
 import { useCourseBuilder } from "@/hooks/useCourseBuilder";
 import { useCourseReview } from "@/hooks/useCourseReview";
 import { LessonType } from "@/components/course-builder/LessonTypeConfig";
+import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 
 export default function CourseBuilder() {
   const navigate = useNavigate();

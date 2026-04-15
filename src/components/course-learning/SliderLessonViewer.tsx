@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Presentation, FileText, ChevronLeft, ChevronRight} from "lucide-react";
 import { cn } from "@/lib/utils";
 import DOMPurify from "dompurify";
+import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 
 interface SliderSlide {
   id: string;

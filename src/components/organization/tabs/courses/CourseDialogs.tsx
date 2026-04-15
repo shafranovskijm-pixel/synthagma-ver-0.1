@@ -8,6 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Plus } from "lucide-react";
 import type { Course, CourseCategory } from "@/types";
+import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 
 interface CategoryDialogProps {
   open: boolean;

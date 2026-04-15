@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { AlertTriangle, Info, AlertCircle, Scale, ClipboardCheck, Bug, Lightbulb, CheckCircle2, X } from "lucide-react";
 import type { ReviewFinding, ReviewResult } from "@/hooks/useCourseReview";
+import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 
 const typeConfig = {
   legislation: { label: "Законодательство", icon: Scale, color: "text-amber-600 dark:text-amber-400", bg: "bg-amber-50 dark:bg-amber-950/30" },

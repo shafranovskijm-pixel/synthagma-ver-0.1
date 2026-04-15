@@ -33,6 +33,7 @@ import { useLessonMedia } from "@/hooks/useLessonMedia";
 import { useSubscriptionLimits } from "@/hooks/useSubscriptionLimits";
 import { useNavigate } from "react-router-dom";
 import type { ParsedAnswer } from "@/utils/testAnswersExport";
+import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 
 interface SortableLessonProps {
   lesson: Lesson;
