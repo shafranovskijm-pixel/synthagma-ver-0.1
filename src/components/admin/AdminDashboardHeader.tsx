@@ -30,6 +30,7 @@ interface AdminDashboardHeaderProps {
   notifications: any[];
   unreadCount: number;
   onMarkAllRead: () => void;
+  onNotificationClick?: (notification: any) => void;
   branding: {
     coverUrl: string | null;
     logoUrl: string | null;

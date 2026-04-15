@@ -452,6 +452,17 @@ export const DocumentsTab = React.memo(function DocumentsTab({ organizationId, o
         .select("id")
         .single();
       if (error) throw error;
+
+      // Notify admin about new invoice
+      const orgDisplayName = d.organizationName || organizationName || "Организация";
+      await supabase.from("admin_notifications").insert({
+        type: "invoice",
+        title: `Новый счёт: ${pendingInvoice.invoiceNum}`,
+        message: `Организация «${orgDisplayName}» сформировала счёт на ${pendingInvoice.amount.toLocaleString("ru-RU")} ₽ (план: ${pendingInvoice.insertData.plan})`,
+        related_entity_id: organizationId,
+        metadata: { invoice_id: (invoice as any).id, organization_id: organizationId, amount: pendingInvoice.amount, plan: pendingInvoice.insertData.plan },
+      } as any);
+
       setInvoices(prev => [{ id: (invoice as any).id, invoice_number: pendingInvoice.invoiceNum, amount: pendingInvoice.amount, status: "pending", plan: pendingInvoice.insertData.plan, period_months: 1, invoice_date: new Date().toISOString(), created_at: new Date().toISOString() }, ...prev]);
       if (action === 'download') {
         const blob = new Blob([pendingInvoice.html], { type: 'application/msword' });
