@@ -36,6 +36,7 @@ import { useOrgDashboard } from "@/contexts/OrgDashboardContext";
 import { getSignedStorageUrl } from "@/utils/storageHelpers";
 import { generateActHtml, saveActDocument, type GeneratedAct } from "@/utils/generateAct";
 import { PayersSection } from "@/components/organization/PayersSection";
+import { ContractLegalFaq } from "@/components/organization/ContractLegalFaq";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
@@ -43,7 +44,7 @@ import { toast } from "sonner";
 import { generateInvoiceHtml, type InvoiceData } from "@/constants/invoiceTemplate";
 import { SUBSCRIPTION_PLANS } from "@/constants/subscriptionPlans";
 
-type DocumentSubTab = "constructor" | "programs" | "org" | "orders" | "protocols" | "certificates" | "diplomas" | "testimonials" | "billing" | "payers" | "journals" | "frdo";
+type DocumentSubTab = "constructor" | "programs" | "org" | "orders" | "protocols" | "certificates" | "diplomas" | "testimonials" | "billing" | "payers" | "journals" | "frdo" | "counterparties";
 
 interface DocumentsTabProps {
   organizationId: string | null;
@@ -70,6 +71,7 @@ const docTypeLabels: Record<string, { label: string; icon: React.ReactNode }> = 
 
 const NAV_ITEMS: { value: DocumentSubTab; label: string; shortLabel?: string; icon: React.ElementType; ordersOnly?: boolean; iconColor?: string; group?: string }[] = [
   { value: "billing", label: "Документы Синтагма", icon: FolderOpen, group: "platform" },
+  { value: "counterparties", label: "Контрагенты", icon: Building2, group: "platform" },
   { value: "payers", label: "Плательщики", icon: Users, group: "platform" },
   { value: "org", label: "Документы орг.", icon: FileText, iconColor: "text-primary/70", group: "docs" },
   { value: "orders", label: "Приказы", icon: ScrollText, ordersOnly: true, iconColor: "text-amber-500", group: "docs" },
@@ -95,10 +97,12 @@ const SECTION_DESCRIPTIONS: Partial<Record<DocumentSubTab, string>> = {
   journals: "Журналы учёта обучения",
   frdo: "Выгрузка данных в ФИС ФРДО",
   billing: "Договоры, счета и закрывающие документы с платформой",
+  counterparties: "Договоры, счета и акты с компаниями-заказчиками",
   payers: "Взаиморасчёты с учениками и компаниями",
 };
 
 type BillingSubTab = "contracts" | "invoices" | "closing";
+type CounterpartySubTab = "contracts" | "invoices" | "acts" | "faq";
 
 interface InvoiceRow {
   id: string;
@@ -124,6 +128,9 @@ export const DocumentsTab = React.memo(function DocumentsTab({ organizationId, o
   const [billingDocs, setBillingDocs] = useState<BillingDoc[]>([]);
   const [invoices, setInvoices] = useState<InvoiceRow[]>([]);
   const [billingSubTab, setBillingSubTab] = useState<BillingSubTab>("contracts");
+  const [counterpartySubTab, setCounterpartySubTab] = useState<CounterpartySubTab>("contracts");
+  const [counterpartyDocs, setCounterpartyDocs] = useState<{ id: string; name: string; type: string; file_url: string | null; amount: number | null; is_paid: boolean | null; uploaded_at: string; contract_number: string | null; contract_date: string | null; company_name?: string }[]>([]);
+  const [counterpartyLoading, setCounterpartyLoading] = useState(false);
   const [showActDialog, setShowActDialog] = useState(false);
   const [actDate, setActDate] = useState<Date>(new Date());
   const [actBasis, setActBasis] = useState("");
@@ -185,6 +192,31 @@ export const DocumentsTab = React.memo(function DocumentsTab({ organizationId, o
       .order("created_at", { ascending: false })
       .then(({ data }) => {
         if (data) setInvoices(data as InvoiceRow[]);
+      });
+
+    // Load counterparty documents (company_documents across all companies of this org)
+    setCounterpartyLoading(true);
+    supabase
+      .from("companies")
+      .select("id, name")
+      .eq("organization_id", organizationId)
+      .then(async ({ data: companies }) => {
+        if (!companies || companies.length === 0) {
+          setCounterpartyDocs([]);
+          setCounterpartyLoading(false);
+          return;
+        }
+        const companyIds = companies.map(c => c.id);
+        const companyMap = Object.fromEntries(companies.map(c => [c.id, c.name]));
+        const { data: docs } = await supabase
+          .from("company_documents")
+          .select("id, name, type, file_url, amount, is_paid, uploaded_at, contract_number, contract_date, company_id")
+          .in("company_id", companyIds)
+          .order("uploaded_at", { ascending: false });
+        setCounterpartyDocs(
+          (docs || []).map((d: any) => ({ ...d, company_name: companyMap[d.company_id] || "—" }))
+        );
+        setCounterpartyLoading(false);
       });
   }, [organizationId]);
 
@@ -625,6 +657,12 @@ export const DocumentsTab = React.memo(function DocumentsTab({ organizationId, o
                   <span className="hidden sm:inline">Сформировать акт</span>
                 </Button>
               )}
+              {activeTab === "counterparties" && counterpartySubTab === "contracts" && (
+                <Button size="sm" className="rounded-xl gap-1.5" onClick={() => navigate("/contract-editor")}>
+                  <FileText className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline">Создать договор</span>
+                </Button>
+              )}
               {onShowBulkUploadDialog && activeTab === "org" && (
                 <Button variant="outline" size="sm" className="rounded-xl gap-1.5" onClick={onShowBulkUploadDialog}>
                   <Upload className="w-3.5 h-3.5" />
@@ -737,154 +775,7 @@ export const DocumentsTab = React.memo(function DocumentsTab({ organizationId, o
                   </TabsContent>
 
                   <TabsContent value="info" className="mt-0">
-                    <div className="space-y-4">
-                      <div className="p-4 rounded-xl border border-destructive/30 bg-destructive/5">
-                        <div className="flex items-start gap-3">
-                          <Info className="w-5 h-5 text-destructive mt-0.5 shrink-0" />
-                          <div>
-                            <h4 className="font-semibold text-sm text-destructive mb-1">Важно: договор без обязательных пунктов считается незаключённым</h4>
-                            <p className="text-xs text-muted-foreground">
-                              Согласно ст. 54 Федерального закона от 29.12.2012 № 273-ФЗ и п. 13 Правил № 1441, отсутствие хотя бы одного существенного условия делает договор незаключённым. Используйте шаблон «273-ФЗ (полный)» для полного соответствия.
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="p-4 rounded-xl border border-amber-500/30 bg-amber-500/5">
-                        <div className="flex items-start gap-3">
-                          <Info className="w-5 h-5 text-amber-600 mt-0.5 shrink-0" />
-                          <div>
-                            <h4 className="font-semibold text-sm text-amber-700 dark:text-amber-400 mb-1">Запрет ухудшения положения обучающихся</h4>
-                            <p className="text-xs text-muted-foreground">
-                              Условия, ограничивающие права обучающихся по сравнению с законодательством об образовании, автоматически признаются недействительными (п. 6 ст. 54 273-ФЗ).
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-
-                      <Accordion type="multiple" className="space-y-2">
-                        <AccordionItem value="required" className="border border-border rounded-xl px-4">
-                          <AccordionTrigger className="text-sm hover:no-underline">
-                            <span className="flex items-center gap-2">
-                              <FileCheck className="w-4 h-4 text-primary" />
-                              Обязательные пункты договора (п. 13 Правил № 1441)
-                            </span>
-                          </AccordionTrigger>
-                          <AccordionContent>
-                            <div className="space-y-1.5 text-xs">
-                              {[
-                                "Полное наименование и фирменное наименование Исполнителя",
-                                "Место нахождения или место жительства Исполнителя",
-                                "Наименование / ФИО Заказчика, телефон",
-                                "Место нахождения или место жительства Заказчика",
-                                "ФИО и реквизиты документа представителя Исполнителя/Заказчика",
-                                "ФИО, место жительства, телефон обучающегося (если не Заказчик)",
-                                "Права, обязанности и ответственность всех сторон",
-                                "Полная стоимость + порядок оплаты",
-                                "Сведения о лицензии (орган, номер, дата)",
-                                "Вид, уровень и направленность программы",
-                                "Форма обучения",
-                                "Сроки освоения программы (продолжительность)",
-                                "Вид выдаваемого документа об образовании",
-                                "Порядок изменения и расторжения договора",
-                                "Другие сведения по специфике (доступ к СДО, требования к оборудованию)",
-                              ].map((item, i) => (
-                                <div key={i} className="flex items-start gap-2 p-2 rounded-lg bg-muted/30">
-                                  <span className="font-mono text-[10px] bg-primary/10 text-primary rounded px-1.5 py-0.5 shrink-0">{i + 1}</span>
-                                  <span>{item}</span>
-                                </div>
-                              ))}
-                            </div>
-                          </AccordionContent>
-                        </AccordionItem>
-
-                        <AccordionItem value="templates" className="border border-border rounded-xl px-4">
-                          <AccordionTrigger className="text-sm hover:no-underline">
-                            <span className="flex items-center gap-2">
-                              <FileText className="w-4 h-4 text-primary" />
-                              Какой шаблон выбрать?
-                            </span>
-                          </AccordionTrigger>
-                          <AccordionContent>
-                            <div className="space-y-3 text-xs">
-                              <div className="p-3 rounded-lg border border-primary/20 bg-primary/5">
-                                <div className="font-semibold text-primary mb-1">273-ФЗ (полный) — рекомендуемый</div>
-                                <p className="text-muted-foreground">Содержит все 15 обязательных пунктов п. 13 Правил № 1441. Включает разделы: предмет, стоимость, права/обязанности, ответственность, особые условия СДО, порядок расторжения, реквизиты. Подходит для юрлиц.</p>
-                              </div>
-                              <div className="p-3 rounded-lg bg-muted/50">
-                                <div className="font-semibold mb-1">Для юр. лица — упрощённый</div>
-                                <p className="text-muted-foreground">Базовый шаблон без расширенных разделов. Требует ручного добавления обязательных пунктов (лицензия, форма обучения, вид документа и др.).</p>
-                              </div>
-                              <div className="p-3 rounded-lg bg-muted/50">
-                                <div className="font-semibold mb-1">Для физ. лица</div>
-                                <p className="text-muted-foreground">Договор с физическим лицом. Заказчик и обучающийся — одно лицо.</p>
-                              </div>
-                              <div className="p-3 rounded-lg bg-muted/50">
-                                <div className="font-semibold mb-1">Для ИП (исполнитель)</div>
-                                <p className="text-muted-foreground">Когда ваша организация — ИП (ОГРНИП вместо ОГРН, без КПП).</p>
-                              </div>
-                            </div>
-                          </AccordionContent>
-                        </AccordionItem>
-
-                        <AccordionItem value="placeholders" className="border border-border rounded-xl px-4">
-                          <AccordionTrigger className="text-sm hover:no-underline">
-                            <span className="flex items-center gap-2">
-                              <Wrench className="w-4 h-4 text-primary" />
-                              Как работает автоподстановка переменных?
-                            </span>
-                          </AccordionTrigger>
-                          <AccordionContent>
-                            <div className="space-y-3 text-xs text-muted-foreground">
-                              <p>В шаблоне используются переменные в формате <code className="bg-muted px-1.5 py-0.5 rounded text-primary font-mono text-[11px]">{"{{переменная}}"}</code>. При формировании договора они автоматически заменяются на реальные данные из реквизитов вашей организации и данных заказчика.</p>
-                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                                {[
-                                  { key: "{{org_name}}", desc: "Название организации" },
-                                  { key: "{{org_inn}}", desc: "ИНН организации" },
-                                  { key: "{{org_license_number}}", desc: "Номер лицензии" },
-                                  { key: "{{org_license_date}}", desc: "Дата лицензии" },
-                                  { key: "{{org_license_issuer}}", desc: "Кем выдана лицензия" },
-                                  { key: "{{education_form}}", desc: "Форма обучения" },
-                                  { key: "{{document_type_name}}", desc: "Вид документа" },
-                                  { key: "{{course_title}}", desc: "Название курса" },
-                                ].map((v) => (
-                                  <div key={v.key} className="flex items-center gap-2 p-1.5 rounded bg-muted/50">
-                                    <code className="text-[10px] font-mono text-primary shrink-0">{v.key}</code>
-                                    <span className="text-[11px]">— {v.desc}</span>
-                                  </div>
-                                ))}
-                              </div>
-                              <p>Полный список переменных доступен в конструкторе договора через ПКМ (правый клик) по тексту.</p>
-                            </div>
-                          </AccordionContent>
-                        </AccordionItem>
-
-                        <AccordionItem value="laws" className="border border-border rounded-xl px-4">
-                          <AccordionTrigger className="text-sm hover:no-underline">
-                            <span className="flex items-center gap-2">
-                              <ScrollText className="w-4 h-4 text-primary" />
-                              Ссылки на нормативные акты
-                            </span>
-                          </AccordionTrigger>
-                          <AccordionContent>
-                            <div className="space-y-2 text-xs">
-                              <div className="p-3 rounded-lg bg-muted/50">
-                                <div className="font-semibold mb-1">Федеральный закон от 29.12.2012 № 273-ФЗ</div>
-                                <p className="text-muted-foreground">«Об образовании в Российской Федерации», статья 54 — «Договор об образовании»</p>
-                              </div>
-                              <div className="p-3 rounded-lg bg-muted/50">
-                                <div className="font-semibold mb-1">Постановление Правительства РФ от 15.09.2020 № 1441</div>
-                                <p className="text-muted-foreground">«Об утверждении Правил оказания платных образовательных услуг» (действует до 31.12.2026)</p>
-                              </div>
-                              <div className="p-3 rounded-lg bg-muted/50">
-                                <div className="font-semibold mb-1">Закон РФ от 07.02.1992 № 2300-1</div>
-                                <p className="text-muted-foreground">«О защите прав потребителей» — применяется к договорам с физическими лицами</p>
-                              </div>
-                            </div>
-                          </AccordionContent>
-                        </AccordionItem>
-                      </Accordion>
-                    </div>
+                    <ContractLegalFaq />
                   </TabsContent>
                 </Tabs>
               </div>
@@ -954,6 +845,150 @@ export const DocumentsTab = React.memo(function DocumentsTab({ organizationId, o
 
             {activeTab === "payers" && (
               <PayersSection organizationId={organizationId} />
+            )}
+
+            {activeTab === "counterparties" && (
+              <div>
+                <Tabs value={counterpartySubTab} onValueChange={(v) => setCounterpartySubTab(v as CounterpartySubTab)}>
+                  <TabsList className="bg-muted/50 rounded-xl mb-4">
+                    <TabsTrigger value="contracts" className="rounded-lg text-xs gap-1.5">
+                      <ScrollText className="w-3.5 h-3.5" />
+                      Договоры
+                    </TabsTrigger>
+                    <TabsTrigger value="invoices" className="rounded-lg text-xs gap-1.5">
+                      <Receipt className="w-3.5 h-3.5" />
+                      Счета
+                    </TabsTrigger>
+                    <TabsTrigger value="acts" className="rounded-lg text-xs gap-1.5">
+                      <FileCheck className="w-3.5 h-3.5" />
+                      Акты
+                    </TabsTrigger>
+                    <TabsTrigger value="faq" className="rounded-lg text-xs gap-1.5">
+                      <Lightbulb className="w-3.5 h-3.5" />
+                      Справка 273-ФЗ
+                    </TabsTrigger>
+                  </TabsList>
+
+                  <TabsContent value="contracts" className="mt-0">
+                    {counterpartyLoading ? (
+                      <div className="text-center py-12 text-muted-foreground text-sm">Загрузка...</div>
+                    ) : counterpartyDocs.filter(d => d.type === "contract").length === 0 ? (
+                      <div className="text-center py-12 text-muted-foreground">
+                        <ScrollText className="w-10 h-10 mx-auto mb-2 opacity-30" />
+                        <p className="text-sm font-medium">Договоры с контрагентами</p>
+                        <p className="text-xs mt-1">Создайте первый договор с помощью конструктора</p>
+                        <Button className="mt-4 rounded-xl gap-1.5" size="sm" onClick={() => navigate("/contract-editor")}>
+                          <FileText className="w-3.5 h-3.5" />
+                          Создать договор
+                        </Button>
+                      </div>
+                    ) : (
+                      <div className="space-y-2">
+                        {counterpartyDocs.filter(d => d.type === "contract").map(doc => (
+                          <div key={doc.id} className="flex items-center justify-between p-3 rounded-lg border border-border hover:bg-muted/30 transition-colors">
+                            <div className="flex items-center gap-3">
+                              <ScrollText className="w-4 h-4 text-primary" />
+                              <div>
+                                <div className="text-sm font-medium">{doc.name}</div>
+                                <div className="text-xs text-muted-foreground">
+                                  {doc.contract_number || "—"} · {doc.contract_date ? new Date(doc.contract_date).toLocaleDateString("ru-RU") : new Date(doc.uploaded_at).toLocaleDateString("ru-RU")} · {doc.company_name}
+                                </div>
+                              </div>
+                            </div>
+                            {doc.file_url && (
+                              <Button variant="ghost" size="icon" asChild>
+                                <a href={doc.file_url} target="_blank" rel="noopener noreferrer">
+                                  <Download className="w-4 h-4" />
+                                </a>
+                              </Button>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </TabsContent>
+
+                  <TabsContent value="invoices" className="mt-0">
+                    {counterpartyLoading ? (
+                      <div className="text-center py-12 text-muted-foreground text-sm">Загрузка...</div>
+                    ) : counterpartyDocs.filter(d => d.type === "invoice").length === 0 ? (
+                      <div className="text-center py-12 text-muted-foreground">
+                        <Receipt className="w-10 h-10 mx-auto mb-2 opacity-30" />
+                        <p className="text-sm">Счетов пока нет</p>
+                      </div>
+                    ) : (
+                      <div className="space-y-2">
+                        {counterpartyDocs.filter(d => d.type === "invoice").map(doc => (
+                          <div key={doc.id} className="flex items-center justify-between p-3 rounded-lg border border-border hover:bg-muted/30 transition-colors">
+                            <div className="flex items-center gap-3">
+                              <Receipt className="w-4 h-4 text-primary" />
+                              <div>
+                                <div className="text-sm font-medium">{doc.name}</div>
+                                <div className="text-xs text-muted-foreground">
+                                  {doc.contract_number || "—"} · {new Date(doc.uploaded_at).toLocaleDateString("ru-RU")} · {doc.company_name}
+                                  {doc.amount ? ` · ${new Intl.NumberFormat("ru-RU").format(doc.amount)} ₽` : ""}
+                                </div>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              {doc.is_paid ? (
+                                <span className="text-xs font-medium text-emerald-600">Оплачен</span>
+                              ) : (
+                                <span className="text-xs font-medium text-amber-600">Не оплачен</span>
+                              )}
+                              {doc.file_url && (
+                                <Button variant="ghost" size="icon" asChild>
+                                  <a href={doc.file_url} target="_blank" rel="noopener noreferrer">
+                                    <Download className="w-4 h-4" />
+                                  </a>
+                                </Button>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </TabsContent>
+
+                  <TabsContent value="acts" className="mt-0">
+                    {counterpartyLoading ? (
+                      <div className="text-center py-12 text-muted-foreground text-sm">Загрузка...</div>
+                    ) : counterpartyDocs.filter(d => d.type === "act").length === 0 ? (
+                      <div className="text-center py-12 text-muted-foreground">
+                        <FileCheck className="w-10 h-10 mx-auto mb-2 opacity-30" />
+                        <p className="text-sm">Актов пока нет</p>
+                      </div>
+                    ) : (
+                      <div className="space-y-2">
+                        {counterpartyDocs.filter(d => d.type === "act").map(doc => (
+                          <div key={doc.id} className="flex items-center justify-between p-3 rounded-lg border border-border hover:bg-muted/30 transition-colors">
+                            <div className="flex items-center gap-3">
+                              <FileCheck className="w-4 h-4 text-primary" />
+                              <div>
+                                <div className="text-sm font-medium">{doc.name}</div>
+                                <div className="text-xs text-muted-foreground">
+                                  {new Date(doc.uploaded_at).toLocaleDateString("ru-RU")} · {doc.company_name}
+                                </div>
+                              </div>
+                            </div>
+                            {doc.file_url && (
+                              <Button variant="ghost" size="icon" asChild>
+                                <a href={doc.file_url} target="_blank" rel="noopener noreferrer">
+                                  <Download className="w-4 h-4" />
+                                </a>
+                              </Button>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </TabsContent>
+
+                  <TabsContent value="faq" className="mt-0">
+                    <ContractLegalFaq />
+                  </TabsContent>
+                </Tabs>
+              </div>
             )}
 
             {activeTab === "billing" && (
