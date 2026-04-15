@@ -3,8 +3,7 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { 
   BookOpen, Users, Settings, LogOut, Upload,
   Building2, HardHat, HardDrive, CreditCard, Lock, MessageCircle, Wallet,
-  BarChart3, Link, ShoppingBag, FileText, ClipboardList, FileSpreadsheet, BookCheck, Radio,
-  User, Sparkles, HelpCircle
+  BarChart3, Link, ShoppingBag, FileText, ClipboardList, FileSpreadsheet, BookCheck, Radio
 } from "lucide-react";
 import { SigmaLogo } from "@/components/ui/SigmaLogo";
 import { useOrgDashboard } from "@/contexts/OrgDashboardContext";
@@ -185,12 +184,6 @@ export function OrgSidebar() {
   
   navItems.push({ id: "chats", icon: MessageCircle, label: "Чаты", badge: d.unreadChatsCount });
 
-  // Settings section - always visible, like in admin panel
-  navItems.push({ id: "profile", icon: User, label: "Профиль" });
-  navItems.push({ id: "settings", icon: Settings, label: "Настройки" });
-  navItems.push({ id: "org-documents", icon: FileText, label: "Документы" });
-  navItems.push({ id: "whats-new", icon: Sparkles, label: "Что нового" });
-  navItems.push({ id: "__help_dialog__" as any, icon: HelpCircle, label: "Помощь" });
 
 
   return (
