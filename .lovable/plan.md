@@ -1,34 +1,26 @@
 
 
-# Плавное открытие курса без исчезновения баннера
+# Применить баннер из темы на всех страницах организации
 
 ## Проблема
 
-Сейчас при клике на курс происходит `navigate("/organization/course/:id")` — это отдельная страница `OrganizationCourseDetails`, которая полностью перерисовывает хедер, баннер и сайдбар. Из-за этого:
-1. Вся страница мигает — исчезает и появляется заново
-2. Баннер организации может не загрузиться (потеря состояния)
-3. Нет плавного перехода
+Баннер из визуальной темы (Офис с зеленью, Природа и т.д.) применяется только на главной странице дашборда (`OrgDashboardHeader`), но не на подстраницах — Профиль, Курс, Настройки и др. Эти подстраницы используют `OrgPageLayout`, в котором отсутствует логика чтения активной темы.
 
 ## Решение
 
-Переделать `OrganizationCourseDetails` — убрать дублированный хедер/баннер и использовать общий `OrgPageLayout`, как это уже делают другие подстраницы (`OrganizationProfile`, `OrganizationSettings`). Добавить CSS-анимацию появления контента.
+Добавить в `OrgPageLayout.tsx` ту же логику отслеживания темы, что уже есть в `OrgDashboardHeader`:
 
-## Что изменится
-
-### 1. `src/pages/OrganizationCourseDetails.tsx`
-- Убрать весь дублированный код хедера, баннера, сайдбара (строки 176–280)
-- Обернуть контент в `<OrgPageLayout title="Курс" icon={BookOpen}>`
-- Оставить только загрузку данных курса и `<CourseDetailsContent />`
-- Добавить `animate-in fade-in` на контейнер контента для плавного появления
-
-### 2. `src/components/organization/OrgPageLayout.tsx`
-- Убедиться что `OrgSidebar` используется (сейчас используется `OrgSettingsSidebar` — нужно проверить, что это правильный сайдбар для курсов)
-
-Файл сократится с ~300 строк до ~100, убрав дублирование. Баннер организации будет браться из `OrgPageLayout` (который берёт данные из `OrgDashboardContext`), поэтому он не исчезнет.
+1. `useState` для `themeBannerUrl` и `themeBannerPosition`, инициализированные из `getStoredThemeId()`
+2. `useEffect` с подпиской на `window "visual-theme-change"` event
+3. `displayCover` = `themeBannerUrl || coverUrl || defaultCoverImg`
+4. `objectPosition` учитывает `themeBannerPosition` (приоритет над `coverPosition`)
+5. Скрыть "Онлайн-обучение" когда есть тема-баннер (как в `OrgDashboardHeader`)
 
 ## Файлы
 
 | Файл | Действие |
 |---|---|
-| `src/pages/OrganizationCourseDetails.tsx` | Рефакторинг — заменить дублированный layout на OrgPageLayout |
+| `src/components/organization/OrgPageLayout.tsx` | Добавить theme banner state + listener, обновить `displayCover` и `objectPosition` в hero banner |
+
+Изменения ~15 строк — только в одном файле. Вся остальная часть компонента остаётся без изменений.
 
