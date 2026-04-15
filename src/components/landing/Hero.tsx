@@ -219,12 +219,6 @@ export function Hero() {
           </Link>
           
           <div className="hidden md:flex items-center gap-10">
-            <a href="#features" className="text-muted-foreground hover:text-foreground transition-colors text-sm tracking-wide">
-              Возможности
-            </a>
-            <Link to="/roadmap" className="text-muted-foreground hover:text-foreground transition-colors text-sm tracking-wide">
-              Развитие
-            </Link>
             <a href="#pricing" className="text-muted-foreground hover:text-foreground transition-colors text-sm tracking-wide">
               Стоимость
             </a>

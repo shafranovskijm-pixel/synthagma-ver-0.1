@@ -67,9 +67,8 @@ export function Footer() {
             <h4 className="font-display font-medium text-base mb-6 text-background">Платформа</h4>
             <ul className="space-y-3">
               {[
-                { label: "Возможности", href: "#features" },
-                { label: "Дорожная карта", to: "/roadmap" },
                 { label: "Стоимость", href: "#calculator" },
+                { label: "Презентация", to: "/presentation" },
                 { label: "Партнёрам", to: "/partner" },
                 { label: "Блог", to: "/blog" },
               ].map((link) => (
