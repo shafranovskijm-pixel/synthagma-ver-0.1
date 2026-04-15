@@ -52,7 +52,7 @@ export default function OrganizationCourseDetails() {
   // Course data
   const [course, setCourse] = useState<any>(null);
   const [courseStudents, setCourseStudents] = useState<any[]>([]);
-  const [activeTab, setActiveTab] = useState<"students" | "materials" | "history" | "tests" | "landing" | "settings" | "reminders" | "groups" | "requests" | "achievements">("students");
+  const [activeTab, setActiveTab] = useState<"students" | "materials" | "history" | "tests" | "landing" | "settings" | "reminders" | "groups" | "requests" | "achievements" | "editor">("students");
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
