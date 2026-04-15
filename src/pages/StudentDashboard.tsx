@@ -29,6 +29,7 @@ import { cn } from "@/lib/utils";
 import { Video } from "lucide-react";
 import { StudentWebinarsList } from "@/components/student/StudentWebinarsList";
 import { Student3DTrainers } from "@/components/student/Student3DTrainers";
+import { StudentProfileContent } from "@/components/student/StudentProfileContent";
 
 function CatalogContent({ catalogCourses, categories, profile, branding, handleCourseClick }: any) {
   const [contentTab, setContentTab] = useState<"courses" | "webinars" | "trainers">("courses");
