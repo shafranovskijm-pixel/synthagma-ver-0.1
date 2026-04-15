@@ -983,6 +983,27 @@ export const DocumentsTab = React.memo(function DocumentsTab({ organizationId, o
         </DialogContent>
       </Dialog>
 
+      {/* Pending Act Actions */}
+      <Dialog open={!!pendingAct} onOpenChange={() => setPendingAct(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Акт сформирован</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            Акт «{pendingAct?.docName}» готов. Выберите действие для сохранения:
+          </p>
+          <DialogFooter className="flex-col sm:flex-row gap-2">
+            <Button variant="outline" onClick={() => setPendingAct(null)}>Закрыть без сохранения</Button>
+            <Button variant="outline" className="gap-1.5" onClick={() => handleSavePendingAct('print')}>
+              <Printer className="w-4 h-4" />Печать
+            </Button>
+            <Button className="gap-1.5" onClick={() => handleSavePendingAct('download')}>
+              <Download className="w-4 h-4" />Скачать
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {/* Invoice Generation Dialog */}
       <Dialog open={showInvoiceDialog} onOpenChange={setShowInvoiceDialog}>
         <DialogContent>
