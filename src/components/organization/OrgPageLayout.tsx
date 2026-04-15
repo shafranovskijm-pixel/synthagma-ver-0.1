@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 import { differenceInDays } from "date-fns";
 import defaultCoverImg from "@/assets/default-org-cover.jpg";
+import { getStoredThemeId, getThemeById } from "@/constants/admin-themes";
 import { HelpCenterDialog, useHelpCenterDialog } from "@/components/shared/HelpCenterDialog";
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
