@@ -5940,9 +5940,8 @@ export type Database = {
         Args: { p_organization_id: string }
         Returns: {
           is_test_mode: boolean
-          merchant_login: string
-          password1: string
-          password2: string
+          password: string
+          terminal_key: string
         }[]
       }
       get_decrypted_student_password: {
