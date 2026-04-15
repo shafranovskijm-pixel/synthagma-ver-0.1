@@ -19,6 +19,7 @@ interface StudentHeaderProps {
   onShowConsent: () => void;
   onShowDocs: () => void;
   onShowAchievements: () => void;
+  onProfileClick?: () => void;
 }
 
 export function StudentHeader({

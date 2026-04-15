@@ -5,7 +5,7 @@ import { SigmaLogo } from "@/components/ui/SigmaLogo";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { getStoredThemeId, getThemeById } from "@/constants/admin-themes";
 
-export type StudentTab = "catalog" | "library" | "chat";
+export type StudentTab = "catalog" | "library" | "chat" | "profile";
 
 interface StudentSidebarProps {
   activeTab: StudentTab;
