@@ -196,14 +196,15 @@ export default function OrgPageLayout({ title, icon: Icon, children }: OrgPageLa
               className="w-full h-full"
               width={1920}
               height={512}
-              style={{
-                objectFit: coverUrl ? (coverPosition === 'contain' ? 'contain' : 'cover') : 'cover',
-                objectPosition:
-                  coverPosition === 'top' ? 'center top'
-                  : coverPosition === 'bottom' ? 'center bottom'
-                  : 'center center',
-                backgroundColor: 'hsl(var(--muted))'
-              }}
+            style={{
+              objectFit: (themeBannerUrl || coverUrl) ? ((coverPosition === 'contain' && !themeBannerUrl) ? 'contain' : 'cover') : 'cover',
+              objectPosition: themeBannerPosition || (
+                coverPosition === 'top' ? 'center top'
+                : coverPosition === 'bottom' ? 'center bottom'
+                : 'center center'
+              ),
+              backgroundColor: 'hsl(var(--muted))'
+            }}
             />
             <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent" />
             <div className="absolute bottom-4 left-6 flex items-end gap-3">
@@ -211,7 +212,7 @@ export default function OrgPageLayout({ title, icon: Icon, children }: OrgPageLa
                 <img src={logoUrl} alt="" className="w-12 h-12 rounded-xl object-contain bg-white/90 p-1 shadow-md" />
               )}
               <div className="text-white">
-                {!coverUrl && <span className="text-xs font-medium opacity-70 block mb-0.5">Онлайн-обучение</span>}
+                {!coverUrl && !themeBannerUrl && <span className="text-xs font-medium opacity-70 block mb-0.5">Онлайн-обучение</span>}
                 <h2 className="text-lg lg:text-2xl font-bold drop-shadow-md leading-tight">{customName || organizationName}</h2>
                 {customSubtitle && <p className="text-xs lg:text-sm opacity-80 mt-0.5">{customSubtitle}</p>}
               </div>
