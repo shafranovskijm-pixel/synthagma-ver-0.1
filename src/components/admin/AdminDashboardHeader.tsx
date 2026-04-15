@@ -1,4 +1,4 @@
-import { useRef, useState, useCallback } from "react";
+import { useRef, useState, useCallback, useEffect } from "react";
 import { Menu, Bell, User, LogOut, Settings, FileText, Sparkles, HelpCircle, ImagePlus, Wand2, Loader2, Users, Check, Gift } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { SigmaLogo } from "@/components/ui/SigmaLogo";
@@ -19,6 +19,7 @@ import { ru } from "date-fns/locale";
 import defaultCoverImg from "@/assets/default-org-cover.jpg";
 import type { AdminTabType } from "./AdminSidebar";
 import { HelpCenterDialog, useHelpCenterDialog } from "@/components/shared/HelpCenterDialog";
+import { getStoredThemeId, getThemeById } from "@/constants/admin-themes";
 
 interface AdminDashboardHeaderProps {
   activeTab: AdminTabType;
@@ -78,6 +79,27 @@ export function AdminDashboardHeader({
   const [isGeneratingCover, setIsGeneratingCover] = useState(false);
   const helpDialog = useHelpCenterDialog();
 
+  // Theme-aware banner
+  const [themeBannerUrl, setThemeBannerUrl] = useState<string | null>(() => {
+    const id = getStoredThemeId();
+    return id ? getThemeById(id)?.bannerUrl || null : null;
+  });
+  const [themeBannerPosition, setThemeBannerPosition] = useState<string | undefined>(() => {
+    const id = getStoredThemeId();
+    return id ? getThemeById(id)?.bannerPosition : undefined;
+  });
+
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const id = (e as CustomEvent).detail;
+      const theme = id ? getThemeById(id) : null;
+      setThemeBannerUrl(theme?.bannerUrl || null);
+      setThemeBannerPosition(theme?.bannerPosition);
+    };
+    window.addEventListener("visual-theme-change", handler);
+    return () => window.removeEventListener("visual-theme-change", handler);
+  }, []);
+
   const handleGenerateAICover = useCallback(async () => {
     if (isGeneratingCover) return;
     setIsGeneratingCover(true);
@@ -98,7 +120,7 @@ export function AdminDashboardHeader({
     }
   }, [isGeneratingCover]);
 
-  const displayCover = branding.coverUrl || defaultCoverImg;
+  const displayCover = themeBannerUrl || branding.coverUrl || defaultCoverImg;
   const displayName = branding.customName || "СИНТАГМА";
   const initials = getInitials(userEmail);
 
