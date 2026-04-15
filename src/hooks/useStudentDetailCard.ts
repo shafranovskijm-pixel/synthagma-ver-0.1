@@ -35,14 +35,14 @@ interface StudentCardEnrollment {
 }
 
 export function useStudentDetailCard() {
-  const navigate = useNavigate();
   const [showStudentDetailCard, setShowStudentDetailCard] = useState(false);
   const [studentDetailCardData, setStudentDetailCardData] = useState<StudentCardData | null>(null);
   const [studentDetailCardEnrollments, setStudentDetailCardEnrollments] = useState<StudentCardEnrollment[]>([]);
 
-  const viewStudent = useCallback(async (student: Student) => {
-    navigate(`/organization/student/${student.user_id}`);
-  }, [navigate]);
+  // viewStudent is now handled at the dashboard level via tabNavigation
+  const viewStudent = useCallback(async (_student: Student) => {
+    // no-op: overridden in useOrganizationDashboard
+  }, []);
 
   return {
     showStudentDetailCard,

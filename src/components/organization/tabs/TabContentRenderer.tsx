@@ -1,6 +1,7 @@
 import { useNavigate } from "react-router-dom";
 import { CoursesTab } from "./CoursesTab";
 import { CourseDetailsTab } from "./CourseDetailsTab";
+import { StudentDetailsTab } from "./StudentDetailsTab";
 import { StatsCards } from "./StatsCards";
 import { DocumentsStatsCards } from "./DocumentsStatsCards";
 import { StudentsTab } from "./StudentsTab";
@@ -55,7 +56,8 @@ export function TabContentRenderer() {
     activeTab !== "org-documents" &&
     !activeTab.startsWith("documents") &&
     activeTab !== "course-details" &&
-    activeTab !== "contract-editor";
+    activeTab !== "contract-editor" &&
+    activeTab !== "student-details";
 
   return (
     <>
@@ -227,6 +229,9 @@ export function TabContentRenderer() {
       {activeTab === "contract-editor" && organizationId && (
         <ContractEditorTab organizationId={organizationId} organizationName={d.organizationName || ""} />
       )}
+
+      {/* Student Details Tab */}
+      {activeTab === "student-details" && <StudentDetailsTab />}
     </>
   );
 }
