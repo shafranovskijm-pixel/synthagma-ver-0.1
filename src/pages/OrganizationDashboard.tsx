@@ -14,7 +14,7 @@ import { organizationOnboardingSteps } from "@/constants/onboardingSteps";
 import { useOrgDashboard } from "@/contexts/OrgDashboardContext";
 import { PlatformAnnouncementsBanner } from "@/components/organization/PlatformAnnouncementsBanner";
 import { getStoredThemeId, getThemeById, type AdminTheme } from "@/constants/admin-themes";
-import { ThemeAnimations } from "@/components/ui/ThemeAnimations";
+import { ThemeAnimations, getStoredAnimationLevel, type AnimationLevel } from "@/components/ui/ThemeAnimations";
 import { AtmosphericBleed } from "@/components/ui/AtmosphericBleed";
 
 export default function OrganizationDashboard() {
@@ -27,14 +27,20 @@ export default function OrganizationDashboard() {
     const id = getStoredThemeId();
     return id ? getThemeById(id) || null : null;
   });
+  const [animLevel, setAnimLevel] = useState<AnimationLevel>(getStoredAnimationLevel);
 
   useEffect(() => {
     const handler = (e: Event) => {
       const id = (e as CustomEvent).detail;
       setActiveTheme(id ? getThemeById(id) || null : null);
     };
+    const animHandler = (e: Event) => setAnimLevel((e as CustomEvent).detail);
     window.addEventListener("visual-theme-change", handler);
-    return () => window.removeEventListener("visual-theme-change", handler);
+    window.addEventListener("visual-animation-change", animHandler);
+    return () => {
+      window.removeEventListener("visual-theme-change", handler);
+      window.removeEventListener("visual-animation-change", animHandler);
+    };
   }, []);
 
   // Handle ?tab= query parameter
@@ -60,7 +66,7 @@ export default function OrganizationDashboard() {
         background: 'linear-gradient(to bottom, #d4f5ef 0%, #8fd8ca 12%, #4db8a8 25%, #2a8a80 40%, #1a5a58 55%, #0f3a3e 70%, #0c2a30 85%, #050e12 100%)',
       } : undefined}
     >
-      {activeTheme && <ThemeAnimations animation={activeTheme.animation} />}
+      {activeTheme && <ThemeAnimations animation={activeTheme.animation} level={animLevel} />}
       {activeTheme && (
         <AtmosphericBleed
           bannerUrl={activeTheme.bannerUrl}
