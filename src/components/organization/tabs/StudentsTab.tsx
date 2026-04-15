@@ -740,7 +740,7 @@ export const StudentsTab = React.memo(function StudentsTab({
         <>
           {/* Mobile view - cards */}
           <div className="lg:hidden divide-y divide-border">
-            {filteredStudents.map(student => {
+            {paginatedStudents.map(student => {
               const isSelected = selectedStudentIds.has(student.user_id);
               const userDocs = studentDocsByUser.get(student.user_id) || [];
               const hasPassport = userDocs.some(t => t === "passport" || t === "birth_certificate");
@@ -829,8 +829,8 @@ export const StudentsTab = React.memo(function StudentsTab({
                   <th className="text-left px-4 py-4 text-sm font-medium text-muted-foreground w-12">
                     <input 
                       type="checkbox" 
-                      checked={filteredStudents.length > 0 && filteredStudents.every(s => selectedStudentIds.has(s.user_id))} 
-                      onChange={() => toggleSelectAll(filteredStudents)} 
+                      checked={paginatedStudents.length > 0 && paginatedStudents.every(s => selectedStudentIds.has(s.user_id))} 
+                      onChange={() => toggleSelectAll(paginatedStudents)} 
                       className="w-4 h-4 rounded border-border" 
                     />
                   </th>
@@ -846,7 +846,7 @@ export const StudentsTab = React.memo(function StudentsTab({
                 </tr>
               </thead>
               <tbody>
-                {filteredStudents.map(student => {
+                {paginatedStudents.map(student => {
                   const isSelected = selectedStudentIds.has(student.user_id);
                   const enrollmentsCount = student.enrollments?.length || 0;
                   
@@ -1003,6 +1003,52 @@ export const StudentsTab = React.memo(function StudentsTab({
               </tbody>
             </table>
           </div>
+
+          {/* Pagination Controls */}
+          {filteredStudents.length > 0 && (
+            <div className="flex items-center justify-between px-4 py-3 border-t border-border">
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <span>Показано {((safePage - 1) * pageSize) + 1}–{Math.min(safePage * pageSize, filteredStudents.length)} из {filteredStudents.length}</span>
+                <Select value={String(pageSize)} onValueChange={v => setPageSize(Number(v))}>
+                  <SelectTrigger className="w-[80px] h-8 rounded-lg text-xs">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="10">10</SelectItem>
+                    <SelectItem value="25">25</SelectItem>
+                    <SelectItem value="50">50</SelectItem>
+                    <SelectItem value="100">100</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="flex items-center gap-1">
+                <Button variant="outline" size="sm" className="h-8 w-8 p-0 rounded-lg" disabled={safePage <= 1} onClick={() => setCurrentPage(safePage - 1)}>
+                  ‹
+                </Button>
+                {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
+                  let page: number;
+                  if (totalPages <= 5) { page = i + 1; }
+                  else if (safePage <= 3) { page = i + 1; }
+                  else if (safePage >= totalPages - 2) { page = totalPages - 4 + i; }
+                  else { page = safePage - 2 + i; }
+                  return (
+                    <Button
+                      key={page}
+                      variant={page === safePage ? "default" : "outline"}
+                      size="sm"
+                      className="h-8 w-8 p-0 rounded-lg text-xs"
+                      onClick={() => setCurrentPage(page)}
+                    >
+                      {page}
+                    </Button>
+                  );
+                })}
+                <Button variant="outline" size="sm" className="h-8 w-8 p-0 rounded-lg" disabled={safePage >= totalPages} onClick={() => setCurrentPage(safePage + 1)}>
+                  ›
+                </Button>
+              </div>
+            </div>
+          )}
         </>
       )}
 
