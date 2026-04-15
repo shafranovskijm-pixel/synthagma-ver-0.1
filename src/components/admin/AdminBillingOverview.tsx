@@ -439,6 +439,33 @@ export const AdminBillingOverview = () => {
     setActInnSearching(false);
   };
 
+  const toggleInvoiceSelection = (id: string) => {
+    setSelectedInvoiceIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+
+  const handleDeleteSelectedInvoices = async () => {
+    if (selectedInvoiceIds.size === 0) return;
+    setDeleting(true);
+    try {
+      const ids = Array.from(selectedInvoiceIds);
+      for (const id of ids) {
+        const { error } = await supabase.from("subscription_invoices").delete().eq("id", id);
+        if (error) throw error;
+      }
+      toast.success(`Удалено счетов: ${ids.length}`);
+      setSelectedInvoiceIds(new Set());
+      setShowDeleteConfirm(false);
+      loadData();
+    } catch (e: any) {
+      toast.error("Ошибка удаления", { description: e.message });
+    }
+    setDeleting(false);
+  };
+
   const handleMarkPaid = async (inv: Invoice) => {
     try {
       // 1. Update invoice status
