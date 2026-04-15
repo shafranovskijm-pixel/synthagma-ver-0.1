@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { User, Settings, FileText, Sparkles, HelpCircle, LogOut, ArrowLeft } from "lucide-react";
 import { SigmaLogo } from "@/components/ui/SigmaLogo";
@@ -6,6 +6,7 @@ import { useOrgDashboard } from "@/contexts/OrgDashboardContext";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import { HelpCenterDialog } from "@/components/shared/HelpCenterDialog";
+import { getStoredThemeId, getThemeById } from "@/constants/admin-themes";
 
 const settingsNavItems = [
   { icon: User, label: "Профиль", path: "/organization/profile" },
@@ -23,6 +24,25 @@ export function OrgSettingsSidebar() {
   const isMobileSidebarOpen = d.isMobileSidebarOpen;
   const setIsMobileSidebarOpen = d.setIsMobileSidebarOpen;
   const [helpOpen, setHelpOpen] = useState(false);
+  const [themeAccent, setThemeAccent] = useState<string | null>(() => {
+    const id = getStoredThemeId();
+    return id ? getThemeById(id)?.accent || null : null;
+  });
+  const [themeSidebarClass, setThemeSidebarClass] = useState<string | null>(() => {
+    const id = getStoredThemeId();
+    return id ? getThemeById(id)?.sidebarClass || null : null;
+  });
+
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const id = (e as CustomEvent).detail;
+      const theme = id ? getThemeById(id) : null;
+      setThemeAccent(theme?.accent || null);
+      setThemeSidebarClass(theme?.sidebarClass || null);
+    };
+    window.addEventListener("visual-theme-change", handler);
+    return () => window.removeEventListener("visual-theme-change", handler);
+  }, []);
 
   return (
     <>
@@ -35,8 +55,10 @@ export function OrgSettingsSidebar() {
         aria-label="Навигация настроек"
         className={cn(
           "fixed inset-y-0 left-0 z-50 w-[88px] shadow-[2px_0_8px_rgba(0,0,0,0.06)] bg-card/50 flex flex-col transition-transform duration-300",
-          isMobileSidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
+          isMobileSidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0",
+          themeSidebarClass
         )}
+        style={themeAccent ? { "--primary": themeAccent } as React.CSSProperties : undefined}
       >
         {/* Logo */}
         <div className="flex justify-center py-4">
