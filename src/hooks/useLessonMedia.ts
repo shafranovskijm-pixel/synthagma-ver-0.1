@@ -72,7 +72,11 @@ export function useLessonMedia(
 
   const handleVideoUpload = useCallback(async (file: File, skipCompression = false) => {
     if (!courseId) { toast.error("Сначала сохраните курс"); return; }
-    if (file.size > SIZE_2GB) { toast.error("Файл слишком большой. Максимум — 2 ГБ."); return; }
+    if (file.size > SIZE_2GB) {
+      toast.error("Файл слишком большой. Максимум — 2 ГБ.");
+      if (videoInputRef.current) videoInputRef.current.value = '';
+      return;
+    }
 
     setVideoUploadProgress(0);
     try {
