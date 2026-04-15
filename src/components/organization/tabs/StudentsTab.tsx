@@ -730,17 +730,9 @@ export const StudentsTab = React.memo(function StudentsTab({
         </div>
       ) : (
         <>
-          {/* Pagination info */}
-          {(() => {
-            const totalPages = Math.ceil(filteredStudents.length / pageSize);
-            const safePage = Math.min(currentPage, totalPages || 1);
-            const startIdx = (safePage - 1) * pageSize;
-            const paginatedStudents = filteredStudents.slice(startIdx, startIdx + pageSize);
-            return null; // computed below
-          })()}
           {/* Mobile view - cards */}
           <div className="lg:hidden divide-y divide-border">
-            {filteredStudents.slice((Math.min(currentPage, Math.ceil(filteredStudents.length / pageSize) || 1) - 1) * pageSize, (Math.min(currentPage, Math.ceil(filteredStudents.length / pageSize) || 1) - 1) * pageSize + pageSize).map(student => {
+            {filteredStudents.map(student => {
               const isSelected = selectedStudentIds.has(student.user_id);
               const userDocs = studentDocsByUser.get(student.user_id) || [];
               const hasPassport = userDocs.some(t => t === "passport" || t === "birth_certificate");
