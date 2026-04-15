@@ -77,8 +77,6 @@ export function AdminDashboardHeader({
   onNotificationClick,
   branding,
   onCoverUpload }: AdminDashboardHeaderProps) {
-  const coverInputRef = useRef<HTMLInputElement>(null);
-  const [isGeneratingCover, setIsGeneratingCover] = useState(false);
   const helpDialog = useHelpCenterDialog();
 
   // Theme-aware banner
