@@ -892,6 +892,11 @@ function AllBillingContent({ search, setSearch, filteredContracts, filteredInvoi
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
+                    {inv.status === "pending" && onMarkPaid && (
+                      <Button variant="ghost" size="sm" className="text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50" onClick={() => onMarkPaid(inv)} title="Отметить как оплаченный">
+                        <CheckCircle2 className="w-4 h-4" />
+                      </Button>
+                    )}
                     {statusBadge(inv.status)}
                     <Button variant="ghost" size="sm" onClick={() => window.open(`/invoice/${inv.id}`, "_blank")}><ExternalLink className="w-4 h-4" /></Button>
                   </div>
