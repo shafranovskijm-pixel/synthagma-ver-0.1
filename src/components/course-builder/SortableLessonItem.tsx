@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
@@ -50,7 +50,13 @@ function UploadProgressBlock({ label, progress, uploadStartTime, uploadedBytes, 
   uploadFileSize: number;
   onCancel: () => void;
 }) {
-  const elapsed = uploadStartTime ? (Date.now() - uploadStartTime) / 1000 : 0;
+  const [now, setNow] = useState(Date.now());
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, []);
+
+  const elapsed = uploadStartTime ? (now - uploadStartTime) / 1000 : 0;
   const speed = elapsed > 1 ? uploadedBytes / elapsed : 0;
   const remaining = speed > 0 && uploadFileSize > uploadedBytes ? (uploadFileSize - uploadedBytes) / speed : 0;
   const speedMB = speed / (1024 * 1024);
