@@ -650,6 +650,9 @@ export const AdminBillingOverview = () => {
               onCreateContract={() => setShowCreateContract(true)}
               orgs={orgs}
               onMarkPaid={handleMarkPaid}
+              selectedInvoiceIds={selectedInvoiceIds}
+              toggleInvoiceSelection={toggleInvoiceSelection}
+              onDeleteSelected={() => setShowDeleteConfirm(true)}
             />}
             {activeSection === "org-contracts" && (
               selectedOrgId ? (
