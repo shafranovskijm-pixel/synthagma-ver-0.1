@@ -295,7 +295,7 @@ export const AdminBillingOverview = () => {
     if (!selectedOrgId || !actBasis || !actAmount) return;
     setActSubmitting(true);
     const org = selectedOrg;
-    const result = await generateAct({
+    const act = await generateActHtml({
       organizationId: selectedOrgId,
       orgName: actOtherCustomer && actCustomerName ? actCustomerName : (org?.name || ""),
       orgInn: actOtherCustomer && actCustomerInn ? actCustomerInn : (org?.inn || null),
@@ -305,17 +305,53 @@ export const AdminBillingOverview = () => {
       basis: actBasis,
       amount: parseFloat(actAmount),
     });
-    if (result) {
-      toast.success("Акт создан");
+    if (act) {
+      setPendingAct(act);
+      // Open preview without saving
+      const printWindow = window.open('', '_blank');
+      if (printWindow) {
+        printWindow.document.write(act.html);
+        printWindow.document.close();
+      }
+      toast.success("Акт сформирован", { description: "Скачайте или распечатайте для сохранения" });
       setShowActDialog(false);
       setActBasis(""); setActAmount(""); setActDate(new Date());
       setActOtherCustomer(false); setActCustomerName(""); setActCustomerInn("");
       setActCustomerKpp(""); setActCustomerDirector(""); setActCustomerPosition("");
-      loadData();
     } else {
       toast.error("Ошибка генерации акта");
     }
     setActSubmitting(false);
+  };
+
+  const handleSavePendingAct = async (action: 'download' | 'print') => {
+    if (!pendingAct) return;
+    // Save to DB
+    await saveActDocument(pendingAct);
+    loadData();
+    if (action === 'download') {
+      const docContent = `<!DOCTYPE html><html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'><head><meta charset="utf-8"></head><body>${pendingAct.html.replace(/<html[^>]*>|<\/html>|<head>[\s\S]*?<\/head>|<body[^>]*>|<\/body>|<!DOCTYPE[^>]*>/gi, '')}</body></html>`;
+      const blob = new Blob([docContent], { type: 'application/msword' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `${pendingAct.docName}.doc`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      toast.success("Акт скачан и сохранён");
+    } else {
+      const printWindow = window.open('', '_blank');
+      if (printWindow) {
+        printWindow.document.write(pendingAct.html);
+        printWindow.document.close();
+        printWindow.focus();
+        setTimeout(() => printWindow.print(), 500);
+      }
+      toast.success("Акт отправлен на печать и сохранён");
+    }
+    setPendingAct(null);
   };
 
   const handleActSearchByInn = async (inn: string) => {
