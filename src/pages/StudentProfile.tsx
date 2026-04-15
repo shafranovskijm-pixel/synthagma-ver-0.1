@@ -312,13 +312,13 @@ export default function StudentProfile() {
 
   // Badge counts for consent and documents
   const { data: consentCount } = useQuery({
-    queryKey: ["consent-badge", user?.id, profile?.organization_id],
+    queryKey: ["consent-badge", effectiveUserId, profile?.organization_id],
     queryFn: async () => {
-      if (!user?.id) return 0;
+      if (!effectiveUserId) return 0;
       const query = supabase
         .from("student_consents")
         .select("id", { count: "exact", head: true })
-        .eq("user_id", user.id)
+        .eq("user_id", effectiveUserId)
         .eq("status", "signed");
       if (profile?.organization_id) {
         query.eq("organization_id", profile.organization_id);
@@ -326,18 +326,18 @@ export default function StudentProfile() {
       const { count } = await query;
       return (count ?? 0) > 0 ? 0 : 1; // 1 = needs consent
     },
-    enabled: !!user?.id,
+    enabled: !!effectiveUserId,
   });
 
   const REQUIRED_DOC_TYPES = ["passport", "snils", "education_document"];
   const { data: docsNeeded } = useQuery({
-    queryKey: ["docs-badge", user?.id, profile?.organization_id],
+    queryKey: ["docs-badge", effectiveUserId, profile?.organization_id],
     queryFn: async () => {
-      if (!user?.id) return REQUIRED_DOC_TYPES.length;
+      if (!effectiveUserId) return REQUIRED_DOC_TYPES.length;
       const query = supabase
         .from("student_identity_documents")
         .select("type")
-        .eq("user_id", user.id);
+        .eq("user_id", effectiveUserId);
       if (profile?.organization_id) {
         query.eq("organization_id", profile.organization_id);
       }
@@ -345,7 +345,7 @@ export default function StudentProfile() {
       const uploadedTypes = new Set(data?.map(d => d.type) || []);
       return REQUIRED_DOC_TYPES.filter(t => !uploadedTypes.has(t)).length;
     },
-    enabled: !!user?.id,
+    enabled: !!effectiveUserId,
   });
 
   const tabs = [
