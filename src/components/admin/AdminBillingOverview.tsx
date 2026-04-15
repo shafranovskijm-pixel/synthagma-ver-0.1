@@ -867,6 +867,22 @@ export const AdminBillingOverview = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Delete invoices confirmation */}
+      <Dialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Удалить счета?</DialogTitle></DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            Вы уверены, что хотите удалить выбранные счета ({selectedInvoiceIds.size} шт.)? Это действие необратимо.
+          </p>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowDeleteConfirm(false)}>Отмена</Button>
+            <Button variant="destructive" onClick={handleDeleteSelectedInvoices} disabled={deleting}>
+              {deleting ? "Удаление..." : `Удалить (${selectedInvoiceIds.size})`}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
