@@ -43,7 +43,7 @@ import { toast } from "sonner";
 import { generateInvoiceHtml, type InvoiceData } from "@/constants/invoiceTemplate";
 import { SUBSCRIPTION_PLANS } from "@/constants/subscriptionPlans";
 
-type DocumentSubTab = "constructor" | "programs" | "org" | "orders" | "protocols" | "certificates" | "diplomas" | "testimonials" | "billing" | "payers" | "journals" | "frdo";
+type DocumentSubTab = "constructor" | "programs" | "org" | "orders" | "protocols" | "certificates" | "diplomas" | "testimonials" | "billing" | "payers" | "journals" | "frdo" | "counterparties";
 
 interface DocumentsTabProps {
   organizationId: string | null;
@@ -70,6 +70,7 @@ const docTypeLabels: Record<string, { label: string; icon: React.ReactNode }> = 
 
 const NAV_ITEMS: { value: DocumentSubTab; label: string; shortLabel?: string; icon: React.ElementType; ordersOnly?: boolean; iconColor?: string; group?: string }[] = [
   { value: "billing", label: "Документы Синтагма", icon: FolderOpen, group: "platform" },
+  { value: "counterparties", label: "Контрагенты", icon: Building2, group: "platform" },
   { value: "payers", label: "Плательщики", icon: Users, group: "platform" },
   { value: "org", label: "Документы орг.", icon: FileText, iconColor: "text-primary/70", group: "docs" },
   { value: "orders", label: "Приказы", icon: ScrollText, ordersOnly: true, iconColor: "text-amber-500", group: "docs" },
@@ -95,6 +96,7 @@ const SECTION_DESCRIPTIONS: Partial<Record<DocumentSubTab, string>> = {
   journals: "Журналы учёта обучения",
   frdo: "Выгрузка данных в ФИС ФРДО",
   billing: "Договоры, счета и закрывающие документы с платформой",
+  counterparties: "Договоры, счета и акты с компаниями-заказчиками",
   payers: "Взаиморасчёты с учениками и компаниями",
 };
 
