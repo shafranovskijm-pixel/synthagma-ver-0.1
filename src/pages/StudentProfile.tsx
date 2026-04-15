@@ -90,12 +90,12 @@ export default function StudentProfile() {
 
   // Load notification preferences from DB
   useEffect(() => {
-    if (!user?.id) return;
+    if (!effectiveUserId) return;
     const load = async () => {
       const { data } = await supabase
         .from("notification_preferences")
         .select("notification_type, channel, enabled")
-        .eq("user_id", user.id);
+        .eq("user_id", effectiveUserId);
       if (data && data.length > 0) {
         setNotifSettings(prev => {
           const next = { ...prev };
@@ -110,7 +110,7 @@ export default function StudentProfile() {
       setNotifLoaded(true);
     };
     load();
-  }, [user?.id]);
+  }, [effectiveUserId]);
 
   const toggleNotif = useCallback(async (type: string, channel: string) => {
     if (!user?.id) return;
