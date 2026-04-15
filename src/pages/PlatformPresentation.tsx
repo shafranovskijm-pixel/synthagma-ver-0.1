@@ -57,7 +57,7 @@ const compData: CompRow[] = [
   { category: "ФИС ФРДО", feature: "Выгрузка данных (ДПО/ПО)", sintagma: "yes", getcourse: "no", ispring: "no", moodle: "no" },
   { category: "ФИС ФРДО", feature: "Автозаполнение из карточки", sintagma: "yes", getcourse: "no", ispring: "no", moodle: "no" },
   { category: "Интеграции", feature: "Платёжные системы", sintagma: "yes", getcourse: "yes", ispring: "partial", moodle: "partial" },
-  { category: "Интеграции", feature: "Email-рассылки (SMTP)", sintagma: "yes", getcourse: "yes", ispring: "yes", moodle: "partial" },
+  { category: "Интеграции", feature: "Email-рассылки (SMTP)", sintagma: "partial", getcourse: "yes", ispring: "yes", moodle: "partial" },
   { category: "Интеграции", feature: "Видеохостинг Kinescope", sintagma: "yes", getcourse: "no", ispring: "no", moodle: "no" },
   { category: "Тарифы", feature: "Бесплатный тариф навсегда", sintagma: "yes", getcourse: "partial", ispring: "no", moodle: "yes" },
   { category: "Тарифы", feature: "Стартовая цена", sintagma: "3 490 ₽/мес", getcourse: "4 990 ₽/мес", ispring: "27 000 ₽/год", moodle: "Бесплатно (self-hosted)" },
