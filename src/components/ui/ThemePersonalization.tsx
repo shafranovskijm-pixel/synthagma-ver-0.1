@@ -134,13 +134,7 @@ export function ThemePersonalization({ isDarkMode, onToggleDark }: ThemePersonal
 
   return (
     <div className="space-y-6">
-      {/* Visual theme selector */}
-      <ThemeSelector onThemeChange={(theme) => {
-        // Theme is persisted in localStorage by ThemeSelector
-        // CSS variable override happens in useThemePersonalization
-      }} />
-
-      {/* Theme mode cards */}
+      {/* Theme mode cards — FIRST */}
       <div>
         <p className="font-medium text-sm mb-1">Режим оформления</p>
         <p className="text-xs text-muted-foreground mb-3">Выберите светлую или тёмную тему</p>
@@ -220,6 +214,9 @@ export function ThemePersonalization({ isDarkMode, onToggleDark }: ThemePersonal
           </button>
         </div>
       </div>
+
+      {/* Visual theme selector — AFTER mode toggle */}
+      <ThemeSelector onThemeChange={() => {}} />
 
       {/* Accent Color */}
       <div>
