@@ -117,6 +117,17 @@ export function OrganizationsManager({ openOrgId, onOpenOrgHandled }: Organizati
     fetchOrganizations();
   }, []);
 
+  // Handle external navigation to specific org (e.g. from notification click)
+  useEffect(() => {
+    if (openOrgId && organizations.length > 0 && !viewingOrg) {
+      const org = organizations.find(o => o.id === openOrgId);
+      if (org) {
+        setViewingOrg(org);
+      }
+      onOpenOrgHandled?.();
+    }
+  }, [openOrgId, organizations]);
+
   const fetchOrganizations = async () => {
     try {
       // Phase 1: Load org list immediately
