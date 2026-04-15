@@ -30,7 +30,7 @@ import { StampSignatureUploader } from "@/components/organization/StampSignature
 import { useSubscriptionLimits } from "@/hooks/useSubscriptionLimits";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { DocumentPreview } from "@/components/organization/DocumentPreview";
-import { Eye } from "lucide-react";
+import { Eye, Printer, Download } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useOrgDashboard } from "@/contexts/OrgDashboardContext";
 import { getSignedStorageUrl } from "@/utils/storageHelpers";
