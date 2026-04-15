@@ -84,6 +84,7 @@ export default function CourseBuilder({ embedded, embeddedCourseId }: CourseBuil
     <TooltipProvider delayDuration={300}>
     <div className={cn(embedded ? "" : "min-h-screen", "bg-background")}>
       <header className="bg-card border-b border-border sticky top-0 z-10">
+      {!embedded && (
         <div className="container mx-auto px-3 sm:px-6 py-3 sm:py-4 flex items-center justify-between backdrop-blur-sm bg-card/80">
           <div className="flex items-center gap-2 sm:gap-4">
             <Tooltip><TooltipTrigger asChild>
@@ -100,7 +101,9 @@ export default function CourseBuilder({ embedded, embeddedCourseId }: CourseBuil
             </TooltipTrigger><TooltipContent>Посмотреть курс глазами ученика</TooltipContent></Tooltip>
           </div>
         </div>
+      )}
       </header>
+      )}
 
       <div className="fixed bottom-0 inset-x-0 z-50 bg-gradient-to-t from-background via-background to-transparent pb-3 sm:pb-4 pt-6 sm:pt-8 pointer-events-none">
         <div className="container mx-auto px-3 sm:px-6 pointer-events-auto flex flex-col items-center gap-2">
