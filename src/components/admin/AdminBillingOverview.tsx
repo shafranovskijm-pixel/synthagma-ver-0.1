@@ -661,7 +661,7 @@ export const AdminBillingOverview = () => {
             )}
             {activeSection === "org-invoices" && (
               selectedOrgId ? (
-                <OrgInvoicesList invoices={orgInvoices} statusBadge={statusBadge} onMarkPaid={handleMarkPaid} />
+                <OrgInvoicesList invoices={orgInvoices} statusBadge={statusBadge} onMarkPaid={handleMarkPaid} selectedInvoiceIds={selectedInvoiceIds} toggleInvoiceSelection={toggleInvoiceSelection} onDeleteSelected={() => setShowDeleteConfirm(true)} />
               ) : <EmptyOrgPrompt />
             )}
             {activeSection === "org-closing" && (
