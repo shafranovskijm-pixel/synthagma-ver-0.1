@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, lazy, Suspense } from "react";
 import { useOrgFeatures } from "@/hooks/useOrgFeatures";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
@@ -66,6 +66,7 @@ import { CourseSettingsTabbed } from "@/components/organization/CourseSettingsTa
 import { EnrollmentRequestsTab } from "@/components/organization/EnrollmentRequestsTab";
 import { CourseAchievementsTab } from "@/components/organization/CourseAchievementsTab";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
+const CourseBuilder = lazy(() => import("@/pages/CourseBuilder"));
 
 interface Course {
   id: string;
@@ -781,6 +782,11 @@ export function CourseDetailsContent({
           )}
           {activeTab === "achievements" && organizationId && (
             <CourseAchievementsTab courseId={course.id} organizationId={organizationId} />
+          )}
+          {activeTab === "editor" && (
+            <Suspense fallback={<div className="flex items-center justify-center py-16"><SigmaSpinner size="lg" /></div>}>
+              <CourseBuilder embedded embeddedCourseId={course.id} />
+            </Suspense>
           )}
         </div>
       </div>
