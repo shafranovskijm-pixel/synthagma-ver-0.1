@@ -109,6 +109,7 @@ export const AdminBillingOverview = () => {
   const [invoiceBuyerInn, setInvoiceBuyerInn] = useState("");
   const [invoiceBuyerKpp, setInvoiceBuyerKpp] = useState("");
   const [innSearching, setInnSearching] = useState(false);
+  const [pendingInvoice, setPendingInvoice] = useState<{ html: string; insertData: any; invoiceNum: string; amount: number; plan: string } | null>(null);
 
   // Create act dialog
   const [showActDialog, setShowActDialog] = useState(false);
