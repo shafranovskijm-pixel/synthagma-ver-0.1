@@ -1,69 +1,72 @@
 
 
-# Встроенное радио в платформу
+# Подключение T-Bank (Тинькофф) вместо Robokassa
 
-## Как это работает
+## Что делаем
 
-RadioAPI.me предоставляет только **метаданные** (название трека, обложка, исполнитель). Само воспроизведение — через прямые URL аудиопотоков (Icecast/Shoutcast) в HTML5 `<audio>`. Это значит:
+Полностью заменяем Robokassa на T-Bank интернет-эквайринг. API T-Bank использует SHA-256 для подписи (вместо MD5 у Robokassa) и endpoint `POST https://securepay.tinkoff.ru/v2/Init`.
 
-- Нужны прямые ссылки на потоки радиостанций (публичные, например Radio Record, Europa Plus и т.д.)
-- RadioAPI опционально — для красивого отображения «сейчас играет». Можно начать без него, просто с набора станций
+## Как работает T-Bank API
 
-## Архитектура
+1. **Init** — `POST /v2/Init` с `TerminalKey`, `Amount` (в копейках!), `OrderId`, `Token` (SHA-256 подпись). Возвращает `PaymentURL` — ссылку на форму оплаты
+2. **Token** — SHA-256 от конкатенации значений всех корневых параметров + Password, отсортированных по ключу
+3. **Webhook** — POST на `NotificationURL`, ответ `OK` (HTTP 200). Подпись проверяется аналогично
 
-### Данные
+## Изменения
 
-Таблица `radio_stations` (seed с популярными станциями):
-- `id`, `name`, `stream_url` (Icecast/Shoutcast URL), `logo_url`, `genre`, `radioapi_stream_id` (nullable), `is_active`, `sort_order`
+### 1. БД: обновить таблицу `organization_payment_settings`
+- Переименовать `merchant_login` → `terminal_key`
+- Убрать `password2_encrypted` (T-Bank использует один пароль)
+- Переименовать `password1_encrypted` → `password_encrypted`
+- Обновить RPC `get_decrypted_payment_settings` — возвращать `terminal_key` и `password`
+- Обновить триггер шифрования
 
-Пользовательские настройки в `profiles` — новое JSON-поле `radio_settings`:
-- `{ favoriteStationId, volume, autoplay }`
+### 2. Edge-функция `tbank-init` (заменяет `robokassa-init`)
+- Принимает `course_id`, `user_id`, `email`
+- Получает курс и настройки платежа организации
+- Создаёт запись в `course_payments`
+- Формирует Token (SHA-256): собирает пары key:value + Password, сортирует по ключу, конкатенирует значения, хеширует
+- POST на `https://securepay.tinkoff.ru/v2/Init`
+- Amount в копейках (`price * 100`)
+- `NotificationURL` → URL edge-функции `tbank-webhook`
+- `SuccessURL` / `FailURL` → `sintagma.com.ru/payment-success` / `payment-fail`
+- Возвращает `PaymentURL` клиенту
 
-### Компоненты
+### 3. Edge-функция `tbank-webhook` (заменяет `robokassa-result`)
+- Принимает POST от T-Bank с данными платежа
+- Проверяет Token (SHA-256 подпись с Password)
+- При статусе `CONFIRMED` — обновляет `course_payments.status = 'paid'`
+- Автоматическое зачисление (enrollment) при наличии `user_id` и `course_id`
+- Ответ: HTTP 200, тело `OK`
 
-1. **RadioPlayer** (глобальный, в header) — маленькая кнопка-иконка `Radio` рядом с колокольчиком:
-   - Клик = play/pause текущей станции
-   - Анимация пульсации когда играет
-   - Мини-попап при hover/клик: название станции + трек (если есть radioapi), кнопка громкости
+### 4. UI: `RobokassaSettings.tsx` → `TBankSettings.tsx`
+- Поле `TerminalKey` (вместо MerchantLogin)
+- Одно поле `Пароль` (вместо двух)
+- Переключатель тестового режима
+- Обновить заголовок и описание
 
-2. **RadioSettings** (в профиле ученика, новая вкладка/секция):
-   - Список станций с preview
-   - Выбор любимой станции (она будет по умолчанию)
-   - Ползунок громкости
-   - Переключатель автозапуска
+### 5. Удалить старые функции
+- `supabase/functions/robokassa-init/`
+- `supabase/functions/robokassa-result/`
 
-3. **useRadioPlayer** (хук):
-   - Синглтон `<audio>` элемент
-   - Состояние: playing, currentStation, volume, currentTrack
-   - Polling RadioAPI каждые 15 сек для метаданных (если есть stream_id)
-   - Persist volume/station в localStorage
-
-### UX-поток
-
-- Ученик заходит → в header видит иконку радио (выключено)
-- Нажимает → играет последняя выбранная станция (или первая из списка)
-- В профиле → выбирает станцию, громкость
-- Радио продолжает играть при навигации между страницами
-
-## Начальные станции (seed)
-
-Популярные русскоязычные интернет-радио с публичными потоками:
-- Radio Record, Europa Plus, Русское Радио, DFM, Retro FM и др.
+### 6. Обновить `AvailablePaidCourses.tsx`
+- Убрать текст «Временно онлайн-касса недоступна»
+- При нажатии «Записаться» вызывать `tbank-init` и редиректить на `PaymentURL`
 
 ## Файлы
 
 | Файл | Действие |
 |---|---|
-| Миграция SQL | Таблица `radio_stations` + seed данные |
-| `src/hooks/useRadioPlayer.ts` | Хук с audio singleton, polling метаданных |
-| `src/components/radio/RadioPlayerButton.tsx` | Кнопка в header с мини-попапом |
-| `src/components/radio/RadioSettings.tsx` | Настройки в профиле |
-| `src/components/student/StudentHeader.tsx` | Добавить RadioPlayerButton |
-| `src/components/organization/OrgDashboardHeader.tsx` | Добавить RadioPlayerButton (для менеджеров) |
+| SQL миграция | ALTER таблицы `organization_payment_settings`, обновить RPC |
+| `supabase/functions/tbank-init/index.ts` | Новая функция инициализации платежа |
+| `supabase/functions/tbank-webhook/index.ts` | Новая функция webhook |
+| `supabase/functions/robokassa-init/` | Удалить |
+| `supabase/functions/robokassa-result/` | Удалить |
+| `src/components/organization/RobokassaSettings.tsx` → `TBankSettings.tsx` | Переделать UI настроек |
+| `src/components/student/AvailablePaidCourses.tsx` | Подключить реальную оплату через T-Bank |
+| Все импорты `RobokassaSettings` | Обновить на `TBankSettings` |
 
-## Ограничения
+## Что потребуется от тебя
 
-- RadioAPI stream_id пока оставим nullable — заполним позже через их дашборд
-- Без stream_id метаданные трека не показываются, но музыка играет
-- Некоторые станции могут блокировать CORS — нужно будет проверить конкретные URL
+У тебя уже есть `TerminalKey` и пароль от T-Bank? Их нужно будет ввести в настройках кассы в кабинете организации.
 
