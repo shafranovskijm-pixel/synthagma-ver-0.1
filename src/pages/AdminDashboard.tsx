@@ -22,6 +22,9 @@ import { AdminBillingOverview } from "@/components/admin/AdminBillingOverview";
 import { AdminStaffTab } from "@/components/admin/AdminStaffTab";
 import { useAdminBranding } from "@/hooks/useAdminBranding";
 import { supabase } from "@/integrations/supabase/client";
+import { getStoredThemeId, getThemeById, type AdminTheme } from "@/constants/admin-themes";
+import { ThemeAnimations } from "@/components/ui/ThemeAnimations";
+import { AtmosphericBleed } from "@/components/ui/AtmosphericBleed";
 
 const AdminDashboard = () => {
   const { user, signOut } = useAuth();
@@ -31,6 +34,21 @@ const AdminDashboard = () => {
   const [notifications, setNotifications] = useState<any[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const adminBranding = useAdminBranding();
+
+  // Visual theme
+  const [activeTheme, setActiveTheme] = useState<AdminTheme | null>(() => {
+    const id = getStoredThemeId();
+    return id ? getThemeById(id) || null : null;
+  });
+
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const id = (e as CustomEvent).detail;
+      setActiveTheme(id ? getThemeById(id) || null : null);
+    };
+    window.addEventListener("visual-theme-change", handler);
+    return () => window.removeEventListener("visual-theme-change", handler);
+  }, []);
 
   const fetchNotifications = useCallback(async () => {
     const { data } = await supabase
@@ -64,7 +82,22 @@ const AdminDashboard = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background flex flex-col">
+    <div
+      className={`min-h-screen bg-background flex flex-col relative ${activeTheme?.bgClass || ''}`}
+      style={activeTheme?.id === 'turquoise' ? {
+        background: 'linear-gradient(to bottom, #d4f5ef 0%, #8fd8ca 12%, #4db8a8 25%, #2a8a80 40%, #1a5a58 55%, #0f3a3e 70%, #0c2a30 85%, #050e12 100%)',
+      } : undefined}
+    >
+      {/* Theme animations */}
+      {activeTheme && <ThemeAnimations animation={activeTheme.animation} />}
+      {activeTheme && (
+        <AtmosphericBleed
+          bannerUrl={activeTheme.bannerUrl}
+          blur={activeTheme.atmosphereBlur}
+          opacity={activeTheme.atmosphereOpacity}
+          sharp={activeTheme.atmosphereSharp}
+        />
+      )}
       {/* Mobile overlay */}
       {isMobileSidebarOpen && (
         <div
