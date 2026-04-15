@@ -139,13 +139,13 @@ export default function StudentProfile() {
   }, [effectiveUserId, isAdminView, notifSettings, toast]);
 
   const { data: profile, isLoading } = useQuery({
-    queryKey: ["student-profile-page", user?.id],
+    queryKey: ["student-profile-page", effectiveUserId],
     queryFn: async () => {
-      if (!user?.id) return null;
+      if (!effectiveUserId) return null;
       const { data: p } = await (supabase
         .from("profiles")
         .select("full_name, organization_id, phone, city, bio, avatar_url")
-        .eq("user_id", user.id)
+        .eq("user_id", effectiveUserId)
         .maybeSingle() as any);
       if (!p) return null;
       let orgName: string | null = null;
@@ -167,7 +167,7 @@ export default function StudentProfile() {
         avatar_url: (p as any).avatar_url || null,
       };
     },
-    enabled: !!user?.id,
+    enabled: !!effectiveUserId,
   });
 
   // Sync profile data to form state
