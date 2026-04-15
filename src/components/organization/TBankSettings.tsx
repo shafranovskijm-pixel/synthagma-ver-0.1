@@ -30,13 +30,13 @@ export function TBankSettings({ organizationId }: Props) {
     try {
       const { data } = await supabase
         .from("organization_payment_settings")
-        .select("terminal_key, is_test_mode")
+        .select("terminal_key, is_test_mode" as any)
         .eq("organization_id", organizationId)
         .maybeSingle();
 
       if (data) {
-        setTerminalKey(data.terminal_key || "");
-        setIsTestMode(data.is_test_mode);
+        setTerminalKey((data as any).terminal_key || "");
+        setIsTestMode((data as any).is_test_mode);
         setHasExisting(true);
       }
     } catch (err) {

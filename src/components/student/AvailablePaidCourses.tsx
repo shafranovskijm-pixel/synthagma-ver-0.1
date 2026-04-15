@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { BookOpen, CreditCard, Eye, Send } from "lucide-react";
+import { BookOpen, CreditCard, Eye } from "lucide-react";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
