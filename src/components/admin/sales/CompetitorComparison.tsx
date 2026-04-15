@@ -83,7 +83,7 @@ export function CompetitorComparison() {
     }
     navigator.clipboard.writeText(lines.join('\n'));
     setCopied(true);
-    toast({ title: 'Скопировано в буфер обмена' });
+    toast.success('Скопировано в буфер обмена');
     setTimeout(() => setCopied(false), 2000);
   };
 
