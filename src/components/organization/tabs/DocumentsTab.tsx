@@ -143,6 +143,7 @@ export const DocumentsTab = React.memo(function DocumentsTab({ organizationId, o
   const [invoiceBuyerKpp, setInvoiceBuyerKpp] = useState("");
   const [innSearching, setInnSearching] = useState(false);
   const [orgDetails, setOrgDetails] = useState<{ inn?: string; director_name?: string; director_position?: string; custom_price?: number; custom_discount?: number; subscription_plan?: string }>({});
+  const [pendingInvoice, setPendingInvoice] = useState<{ html: string; insertData: any; invoiceNum: string; amount: number } | null>(null);
 
   useEffect(() => {
     if (!organizationId) return;
