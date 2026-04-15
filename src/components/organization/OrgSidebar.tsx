@@ -47,7 +47,8 @@ export type TabType =
   | "frdo"
   | "profile"
   | "whats-new"
-  | "org-documents";
+  | "org-documents"
+  | "course-details";
 
 const tabCategoryMap: Record<string, string> = {
   courses: "courses",

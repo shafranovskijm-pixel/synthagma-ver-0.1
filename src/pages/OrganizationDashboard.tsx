@@ -44,10 +44,14 @@ export default function OrganizationDashboard() {
     };
   }, []);
 
-  // Handle ?tab= query parameter
+  // Handle ?tab= and ?courseId= query parameters
   useEffect(() => {
     const tab = searchParams.get('tab');
+    const courseId = searchParams.get('courseId');
     if (tab) {
+      if (tab === 'course-details' && courseId) {
+        d.tabNavigation.setSelectedCourseId(courseId);
+      }
       d.tabNavigation.setActiveTab(tab as any);
       setSearchParams({}, { replace: true });
     }
@@ -57,6 +61,7 @@ export default function OrganizationDashboard() {
 
   const secondaryTabs = ["profile", "settings", "org-documents", "whats-new"];
   const isSecondaryActive = secondaryTabs.includes(d.tabNavigation.activeTab);
+  const isCourseDetails = d.tabNavigation.activeTab === "course-details";
 
   useEffect(() => {
     const handler = () => d.tabNavigation.setActiveTab('subscription' as any);

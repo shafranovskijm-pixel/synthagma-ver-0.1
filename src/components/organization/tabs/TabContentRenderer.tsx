@@ -1,5 +1,6 @@
 import { useNavigate } from "react-router-dom";
 import { CoursesTab } from "./CoursesTab";
+import { CourseDetailsTab } from "./CourseDetailsTab";
 import { StatsCards } from "./StatsCards";
 import { DocumentsStatsCards } from "./DocumentsStatsCards";
 import { StudentsTab } from "./StudentsTab";
@@ -51,7 +52,8 @@ export function TabContentRenderer() {
     activeTab !== "settings" &&
     activeTab !== "whats-new" &&
     activeTab !== "org-documents" &&
-    !activeTab.startsWith("documents");
+    !activeTab.startsWith("documents") &&
+    activeTab !== "course-details";
 
   return (
     <>
@@ -64,11 +66,15 @@ export function TabContentRenderer() {
         <CoursesTab 
           organizationId={organizationId} 
           onOpenCourseDetails={(course) => {
-            navigate(`/organization/course/${course.id}`);
+            d.tabNavigation.setSelectedCourseId(course.id);
+            d.tabNavigation.setActiveTab("course-details");
           }}
           onCoursesDeleted={d.refreshData}
         />
       )}
+
+      {/* Course Details Tab */}
+      {activeTab === "course-details" && <CourseDetailsTab />}
 
       {/* Organizations/Companies Tab */}
       {activeTab === "organizations" && organizationId && (
