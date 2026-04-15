@@ -35,29 +35,6 @@ function getUserInitials(email?: string | null, name?: string | null): string {
 export function OrgDashboardHeader() {
   const navigate = useNavigate();
   const d = useOrgDashboard();
-  const coverInputRef = useRef<HTMLInputElement>(null);
-  const [isGeneratingCover, setIsGeneratingCover] = useState(false);
-
-  // Theme-aware banner
-  const [themeBannerUrl, setThemeBannerUrl] = useState<string | null>(() => {
-    const id = getStoredThemeId();
-    return id ? getThemeById(id)?.bannerUrl || null : null;
-  });
-  const [themeBannerPosition, setThemeBannerPosition] = useState<string | undefined>(() => {
-    const id = getStoredThemeId();
-    return id ? getThemeById(id)?.bannerPosition : undefined;
-  });
-
-  useEffect(() => {
-    const handler = (e: Event) => {
-      const id = (e as CustomEvent).detail;
-      const theme = id ? getThemeById(id) : null;
-      setThemeBannerUrl(theme?.bannerUrl || null);
-      setThemeBannerPosition(theme?.bannerPosition);
-    };
-    window.addEventListener("visual-theme-change", handler);
-    return () => window.removeEventListener("visual-theme-change", handler);
-  }, []);
 
   const activeTab = d.tabNavigation.activeTab;
   const organizationName = d.organizationName;
@@ -65,27 +42,6 @@ export function OrgDashboardHeader() {
   const customName = d.branding.brandingSettings.customName;
   const customSubtitle = d.branding.brandingSettings.customSubtitle;
   const logoUrl = d.branding.brandingSettings.logoUrl;
-  const coverUrl = d.branding.brandingSettings.coverUrl;
-  const coverPosition = d.branding.brandingSettings.coverPosition;
-
-  const handleGenerateAICover = useCallback(async () => {
-    if (!organizationId || isGeneratingCover) return;
-    setIsGeneratingCover(true);
-    toast.info("Генерируем обложку с ИИ...", { duration: 10000 });
-    try {
-      const { data, error } = await supabase.functions.invoke("generate-cover", {
-        body: { organizationId, type: "org" } });
-      if (error) throw error;
-      if (data?.error) throw new Error(data.error);
-      toast.success("Обложка сгенерирована!");
-      window.location.reload();
-    } catch (e: any) {
-      console.error("AI cover generation error:", e);
-      toast.error(e?.message || "Ошибка генерации обложки");
-    } finally {
-      setIsGeneratingCover(false);
-    }
-  }, [organizationId, isGeneratingCover]);
 
   // Tariff info
   const [paidUntil, setPaidUntil] = useState<string | null>(null);
