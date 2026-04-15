@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Sparkles, Image, Type, Loader2 } from "lucide-react";
+import { Sparkles, Image, Type} from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
@@ -23,8 +23,7 @@ const SECTION_PROMPTS: Record<string, string> = {
   benefits: "4 преимущества курса: для каждого объект {icon, title, description}. icon из: shield, clock, award, users, star, check. Верни JSON массив.",
   faq: "5 вопросов и ответов по курсу: для каждого объект {question, answer}. Верни JSON массив.",
   cta: "заголовок и подзаголовок для призыва к действию (записаться на курс). Верни JSON: {title, subtitle}",
-  process: "текст описания процесса обучения: 4-5 пунктов через перенос строки. Верни одну строку с \\n между пунктами.",
-};
+  process: "текст описания процесса обучения: 4-5 пунктов через перенос строки. Верни одну строку с \\n между пунктами." };
 
 export function LandingAIGenerateDialog({
   open,
@@ -34,8 +33,7 @@ export function LandingAIGenerateDialog({
   courseDescription,
   courseId,
   onTextGenerated,
-  onImageGenerated,
-}: Props) {
+  onImageGenerated }: Props) {
   const [generating, setGenerating] = useState<string | null>(null);
 
   const canGenerateImage = sectionId === "hero";
@@ -55,9 +53,7 @@ export function LandingAIGenerateDialog({
           action: "generate_content",
           courseTitle,
           lessonTitle: `landing_${sectionId}`,
-          customSystemPrompt: prompt,
-        },
-      });
+          customSystemPrompt: prompt } });
 
       if (error) throw error;
 
@@ -93,9 +89,7 @@ export function LandingAIGenerateDialog({
         body: {
           action: "generate_image",
           courseTitle,
-          prompt: `Профессиональная фотореалистичная обложка для образовательного курса "${courseTitle}". Качественное оборудование, рабочая обстановка, без текста и надписей.`,
-        },
-      });
+          prompt: `Профессиональная фотореалистичная обложка для образовательного курса "${courseTitle}". Качественное оборудование, рабочая обстановка, без текста и надписей.` } });
 
       if (error) throw error;
 
@@ -152,9 +146,7 @@ icon для benefits: shield, clock, award, users, star, check.
           action: "generate_content",
           courseTitle,
           lessonTitle: "landing_all",
-          customSystemPrompt: prompt,
-        },
-      });
+          customSystemPrompt: prompt } });
 
       if (error) throw error;
 
@@ -215,7 +207,7 @@ icon для benefits: shield, clock, award, users, star, check.
               disabled={!!generating}
             >
               {generating === "all" ? (
-                <Loader2 className="w-5 h-5 animate-spin" />
+                <SigmaSpinner />
               ) : (
                 <Sparkles className="w-5 h-5 text-primary" />
               )}
@@ -234,7 +226,7 @@ icon для benefits: shield, clock, award, users, star, check.
               disabled={!!generating}
             >
               {generating === "text" ? (
-                <Loader2 className="w-5 h-5 animate-spin" />
+                <SigmaSpinner />
               ) : (
                 <Type className="w-5 h-5 text-primary" />
               )}
@@ -253,7 +245,7 @@ icon для benefits: shield, clock, award, users, star, check.
               disabled={!!generating}
             >
               {generating === "image" ? (
-                <Loader2 className="w-5 h-5 animate-spin" />
+                <SigmaSpinner />
               ) : (
                 <Image className="w-5 h-5 text-primary" />
               )}

@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Loader2, Plus, Trash2, Search, Users } from "lucide-react";
+import { Plus, Trash2, Search, Users } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 
 interface Props {
@@ -72,8 +72,7 @@ export function WebinarParticipantsDialog({ open, onOpenChange, webinar, organiz
   const addParticipant = async (userId: string) => {
     const { error } = await supabase.from("webinar_participants").insert({
       webinar_id: webinar.id,
-      user_id: userId,
-    } as any);
+      user_id: userId } as any);
     if (error) {
       if (error.code === "23505") toast.info("Участник уже добавлен");
       else toast.error(error.message);
@@ -153,7 +152,7 @@ export function WebinarParticipantsDialog({ open, onOpenChange, webinar, organiz
 
         <div className="flex-1 overflow-y-auto space-y-1">
           {loading ? (
-            <div className="flex justify-center py-8"><Loader2 className="animate-spin" /></div>
+            <div className="flex justify-center py-8"><SigmaSpinner /></div>
           ) : participants.length === 0 ? (
             <p className="text-center text-muted-foreground py-8 text-sm">Нет участников</p>
           ) : (

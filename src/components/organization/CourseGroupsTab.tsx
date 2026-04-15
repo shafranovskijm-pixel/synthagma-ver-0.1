@@ -10,7 +10,7 @@ import { toast } from "sonner";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import { cn } from "@/lib/utils";
-import { CalendarIcon, Users, UserPlus, Loader2, Check, Plus, Link as LinkIcon, Copy } from "lucide-react";
+import { CalendarIcon, Users, UserPlus, Check, Plus, Link as LinkIcon, Copy } from "lucide-react";
 
 interface StudentGroup {
   id: string;
@@ -146,8 +146,7 @@ export function CourseGroupsTab({ courseId, organizationId, onRefreshStudents }:
           color: newGroupColor,
           organization_id: organizationId,
           start_date: startDate,
-          end_date: endDate,
-        } as any)
+          end_date: endDate } as any)
         .select("id")
         .single();
       if (error) throw error;
@@ -162,8 +161,7 @@ export function CourseGroupsTab({ courseId, organizationId, onRefreshStudents }:
         token,
         name: `Группа: ${newGroupName.trim()}`,
         student_group_id: groupId,
-        expires_at: endDate ? new Date(endDate + "T23:59:59").toISOString() : null,
-      } as any);
+        expires_at: endDate ? new Date(endDate + "T23:59:59").toISOString() : null } as any);
 
       const link = `${window.location.origin}/join/${token}`;
       await navigator.clipboard.writeText(link);
@@ -217,8 +215,7 @@ export function CourseGroupsTab({ courseId, organizationId, onRefreshStudents }:
         course_id: courseId,
         status: "active",
         progress: 0,
-        time_spent: 0,
-      }));
+        time_spent: 0 }));
 
       const { error } = await supabase.from("enrollments").insert(enrollments);
       if (error) throw error;
@@ -270,8 +267,7 @@ export function CourseGroupsTab({ courseId, organizationId, onRefreshStudents }:
       setUnassignedStudents((data as any[] || []).map((p: any) => ({
         user_id: p.user_id,
         full_name: p.full_name,
-        email: p.email,
-      })));
+        email: p.email })));
     } catch {
       toast.error("Ошибка загрузки учеников");
     } finally {
@@ -328,9 +324,7 @@ export function CourseGroupsTab({ courseId, organizationId, onRefreshStudents }:
           full_name: newStudentName.trim(),
           email: newStudentEmail.trim() || undefined,
           organization_id: organizationId,
-          student_group_id: selectedGroupForAdd.id,
-        },
-      });
+          student_group_id: selectedGroupForAdd.id } });
 
       if (error) throw error;
       if (data?.error) { toast.error(data.error); return; }
@@ -381,7 +375,7 @@ export function CourseGroupsTab({ courseId, organizationId, onRefreshStudents }:
                 disabled={!newStudentName.trim() || creatingStudent}
                 onClick={handleCreateStudentInGroup}
               >
-                {creatingStudent ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <Plus className="w-4 h-4 mr-1" />}
+                {creatingStudent ? <SigmaSpinner size="sm" className="mr-1" /> : <Plus className="w-4 h-4 mr-1" />}
                 Создать
               </Button>
               <Button
@@ -408,7 +402,7 @@ export function CourseGroupsTab({ courseId, organizationId, onRefreshStudents }:
 
         <div className="flex-1 overflow-y-auto space-y-1 py-2">
           {loadingStudents ? (
-            <div className="flex justify-center py-8"><Loader2 className="w-5 h-5 animate-spin text-muted-foreground" /></div>
+            <div className="flex justify-center py-8"><SigmaSpinner /></div>
           ) : unassignedStudents.length === 0 ? (
             <p className="text-sm text-muted-foreground text-center py-8">Нет учеников без группы</p>
           ) : (
@@ -432,7 +426,7 @@ export function CourseGroupsTab({ courseId, organizationId, onRefreshStudents }:
             disabled={selectedStudentIds.size === 0 || addingStudents}
             onClick={handleAddStudentsToGroup}
           >
-            {addingStudents ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <UserPlus className="w-4 h-4 mr-2" />}
+            {addingStudents ? <SigmaSpinner size="sm" className="mr-2" /> : <UserPlus className="w-4 h-4 mr-2" />}
             Добавить ({selectedStudentIds.size})
           </Button>
         )}
@@ -501,7 +495,7 @@ export function CourseGroupsTab({ courseId, organizationId, onRefreshStudents }:
             onClick={handleCreateGroup}
             disabled={isCreating || !newGroupName.trim()}
           >
-            {isCreating ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Plus className="w-4 h-4 mr-2" />}
+            {isCreating ? <SigmaSpinner size="sm" className="mr-2" /> : <Plus className="w-4 h-4 mr-2" />}
             Создать группу
           </Button>
         </div>
@@ -512,7 +506,7 @@ export function CourseGroupsTab({ courseId, organizationId, onRefreshStudents }:
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
-        <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+        <SigmaSpinner />
         {createGroupDialog}
       </div>
     );
@@ -622,7 +616,7 @@ export function CourseGroupsTab({ courseId, organizationId, onRefreshStudents }:
                   onClick={() => handleEnrollGroup(group.id)}
                 >
                   {isEnrolling ? (
-                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <SigmaSpinner size="sm" />
                   ) : allEnrolled ? (
                     <Check className="w-4 h-4" />
                   ) : (

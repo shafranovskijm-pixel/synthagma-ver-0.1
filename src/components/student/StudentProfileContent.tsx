@@ -3,7 +3,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useTheme } from "next-themes";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { User, Video, FileCheck, FileText, Trophy, Palette, Users, Sun, Moon, Monitor, Loader2, Bell, Eye, EyeOff, Camera, HelpCircle, AlertCircle } from "lucide-react";
+import { User, Video, FileCheck, FileText, Trophy, Palette, Users, Sun, Moon, Monitor, Bell, Eye, EyeOff, Camera, HelpCircle, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -120,21 +120,18 @@ export function StudentProfileContent({ effectiveUserId, isAdminView = false }: 
     const newValue = !(notifSettings[type]?.[channel] ?? false);
     setNotifSettings(prev => ({
       ...prev,
-      [type]: { ...prev[type], [channel]: newValue },
-    }));
+      [type]: { ...prev[type], [channel]: newValue } }));
     const { error } = await supabase
       .from("notification_preferences")
       .upsert({
         user_id: effectiveUserId,
         notification_type: type,
         channel: channel,
-        enabled: newValue,
-      }, { onConflict: "user_id,notification_type,channel" });
+        enabled: newValue }, { onConflict: "user_id,notification_type,channel" });
     if (error) {
       setNotifSettings(prev => ({
         ...prev,
-        [type]: { ...prev[type], [channel]: !newValue },
-      }));
+        [type]: { ...prev[type], [channel]: !newValue } }));
       toast.error("Ошибка", { description: "Не удалось сохранить настройку" });
     }
   }, [effectiveUserId, isAdminView, notifSettings]);
@@ -165,11 +162,9 @@ export function StudentProfileContent({ effectiveUserId, isAdminView = false }: 
         phone: (p as any).phone || "",
         city: (p as any).city || "",
         bio: (p as any).bio || "",
-        avatar_url: (p as any).avatar_url || null,
-      };
+        avatar_url: (p as any).avatar_url || null };
     },
-    enabled: !!effectiveUserId,
-  });
+    enabled: !!effectiveUserId });
 
   const { data: branding } = useQuery({
     queryKey: ["student-profile-branding", profile?.organization_id],
@@ -183,8 +178,7 @@ export function StudentProfileContent({ effectiveUserId, isAdminView = false }: 
       const b = data?.branding as any;
       return b ? { logoUrl: b.logoUrl, primaryColor: b.primaryColor } : null;
     },
-    enabled: !!profile?.organization_id,
-  });
+    enabled: !!profile?.organization_id });
 
   const { data: orgSettings } = useQuery({
     queryKey: ["student-profile-org-settings", profile?.organization_id],
@@ -198,8 +192,7 @@ export function StudentProfileContent({ effectiveUserId, isAdminView = false }: 
       const s = data?.student_dashboard_settings as any;
       return { showAchievements: s?.showAchievements ?? false };
     },
-    enabled: !!profile?.organization_id,
-  });
+    enabled: !!profile?.organization_id });
 
   useEffect(() => {
     if (profile) {
@@ -375,7 +368,7 @@ export function StudentProfileContent({ effectiveUserId, isAdminView = false }: 
               </div>
               {!isAdminView && (
                 <Button onClick={handleSaveProfile} disabled={profileSaving} className="rounded-xl">
-                  {profileSaving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+                  {profileSaving ? <SigmaSpinner size="sm" className="mr-2" /> : null}
                   Сохранить
                 </Button>
               )}
@@ -389,7 +382,7 @@ export function StudentProfileContent({ effectiveUserId, isAdminView = false }: 
                 <CardContent className="space-y-3">
                   <Input value={newEmail} onChange={e => setNewEmail(e.target.value)} placeholder="Новый email" className="rounded-xl" />
                   <Button onClick={handleChangeEmail} disabled={emailSaving || newEmail === user?.email} size="sm" className="w-full rounded-xl">
-                    {emailSaving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+                    {emailSaving ? <SigmaSpinner size="sm" className="mr-2" /> : null}
                     Сохранить
                   </Button>
                 </CardContent>
@@ -410,7 +403,7 @@ export function StudentProfileContent({ effectiveUserId, isAdminView = false }: 
                     </button>
                   </div>
                   <Button onClick={handleChangePassword} disabled={passwordSaving || !newPassword} size="sm" className="w-full rounded-xl">
-                    {passwordSaving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+                    {passwordSaving ? <SigmaSpinner size="sm" className="mr-2" /> : null}
                     Сменить пароль
                   </Button>
                 </CardContent>

@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Bot, Cpu, Mic, MessageSquare, Store, Layers, Building2, Key, Save, Loader2, ImagePlus, GitCompareArrows, DollarSign, Play, Square, Pencil, Check, X, Eye, EyeOff } from "lucide-react";
+import { Bot, Cpu, Mic, MessageSquare, Store, Layers, Building2, Key, Save, ImagePlus, GitCompareArrows, DollarSign, Play, Square, Pencil, Check, X, Eye, EyeOff } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
@@ -30,8 +30,7 @@ const COST_META: Record<CostLevel, { label: string; emoji: string; color: string
   low: { label: "Низкая", emoji: "💰", color: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300" },
   medium: { label: "Средняя", emoji: "💰💰", color: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300" },
   high: { label: "Высокая", emoji: "💰💰💰", color: "bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-300" },
-  premium: { label: "Премиум", emoji: "💎", color: "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300" },
-};
+  premium: { label: "Премиум", emoji: "💎", color: "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300" } };
 
 const MODEL_PRICING: { provider: string; model: string; label: string; level: string; speed: string; cost: CostLevel }[] = [
   { provider: "Lovable AI", model: "google/gemini-2.5-flash-lite", label: "Gemini 2.5 Flash Lite", level: "Базовый", speed: "⚡⚡⚡ Очень быстрая", cost: "low" },
@@ -112,66 +111,54 @@ const CONTEXT_META: Record<string, { icon: React.ReactNode; title: string; descr
     icon: <Cpu className="w-5 h-5" />,
     title: "Генерация курсов",
     description: "ИИ для создания структуры и контента курсов организаций",
-    color: "bg-blue-100 text-blue-600 dark:bg-blue-900/40 dark:text-blue-400",
-  },
+    color: "bg-blue-100 text-blue-600 dark:bg-blue-900/40 dark:text-blue-400" },
   tts: {
     icon: <Mic className="w-5 h-5" />,
     title: "Озвучка (TTS)",
     description: "Провайдер для синтеза речи в лекциях",
-    color: "bg-purple-100 text-purple-600 dark:bg-purple-900/40 dark:text-purple-400",
-  },
+    color: "bg-purple-100 text-purple-600 dark:bg-purple-900/40 dark:text-purple-400" },
   consultant: {
     icon: <MessageSquare className="w-5 h-5" />,
     title: "ИИ-консультант",
     description: "Чат-бот для помощи студентам",
-    color: "bg-emerald-100 text-emerald-600 dark:bg-emerald-900/40 dark:text-emerald-400",
-  },
+    color: "bg-emerald-100 text-emerald-600 dark:bg-emerald-900/40 dark:text-emerald-400" },
   marketplace: {
     icon: <Store className="w-5 h-5" />,
     title: "Маркетплейс",
     description: "Генерация описаний, SEO-текстов для витрины",
-    color: "bg-orange-100 text-orange-600 dark:bg-orange-900/40 dark:text-orange-400",
-  },
+    color: "bg-orange-100 text-orange-600 dark:bg-orange-900/40 dark:text-orange-400" },
   pipeline: {
     icon: <Layers className="w-5 h-5" />,
     title: "Конвейер (Bulk Pipeline)",
     description: "Массовая генерация вопросов и ответов",
-    color: "bg-indigo-100 text-indigo-600 dark:bg-indigo-900/40 dark:text-indigo-400",
-  },
+    color: "bg-indigo-100 text-indigo-600 dark:bg-indigo-900/40 dark:text-indigo-400" },
   org_default: {
     icon: <Building2 className="w-5 h-5" />,
     title: "Дефолт для организаций",
     description: "Провайдер по умолчанию для новых организаций",
-    color: "bg-slate-100 text-slate-600 dark:bg-slate-900/40 dark:text-slate-400",
-  },
+    color: "bg-slate-100 text-slate-600 dark:bg-slate-900/40 dark:text-slate-400" },
   image_generation: {
     icon: <ImagePlus className="w-5 h-5" />,
     title: "Генерация картинок",
     description: "ИИ для создания и редактирования изображений в курсах",
-    color: "bg-pink-100 text-pink-600 dark:bg-pink-900/40 dark:text-pink-400",
-  },
-};
+    color: "bg-pink-100 text-pink-600 dark:bg-pink-900/40 dark:text-pink-400" } };
 
 const TOOLS_META: Record<string, { icon: React.ReactNode; title: string; description: string; color: string }> = {
   comparison: {
     icon: <GitCompareArrows className="w-5 h-5" />,
     title: "Сравнение провайдеров",
     description: "A/B тест моделей — один промпт, несколько ИИ",
-    color: "bg-cyan-100 text-cyan-600 dark:bg-cyan-900/40 dark:text-cyan-400",
-  },
+    color: "bg-cyan-100 text-cyan-600 dark:bg-cyan-900/40 dark:text-cyan-400" },
   pricing: {
     icon: <DollarSign className="w-5 h-5" />,
     title: "Тарифы моделей",
     description: "Справочник стоимости и скорости всех моделей",
-    color: "bg-amber-100 text-amber-600 dark:bg-amber-900/40 dark:text-amber-400",
-  },
+    color: "bg-amber-100 text-amber-600 dark:bg-amber-900/40 dark:text-amber-400" },
   api_keys: {
     icon: <Key className="w-5 h-5" />,
     title: "API-ключи",
     description: "Статус подключенных ключей",
-    color: "bg-red-100 text-red-600 dark:bg-red-900/40 dark:text-red-400",
-  },
-};
+    color: "bg-red-100 text-red-600 dark:bg-red-900/40 dark:text-red-400" } };
 
 function CostBadge({ model }: { model: string }) {
   const cost = MODEL_COST_MAP[model];
@@ -201,10 +188,8 @@ function SaluteSpeechTestPanel({ voice, onVoiceChange }: { voice: string; onVoic
           headers: {
             "Content-Type": "application/json",
             apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
-            Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
-          },
-          body: JSON.stringify({ text: testText, voice, format: "opus" }),
-        }
+            Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}` },
+          body: JSON.stringify({ text: testText, voice, format: "opus" }) }
       );
 
       if (!response.ok) {
@@ -260,7 +245,7 @@ function SaluteSpeechTestPanel({ voice, onVoiceChange }: { voice: string; onVoic
       </div>
       <div className="flex items-center gap-2">
         <Button size="sm" variant="outline" onClick={handleTest} disabled={testing || !testText.trim()} className="gap-2">
-          {testing ? <Loader2 className="w-3 h-3 animate-spin" /> : <Play className="w-3 h-3" />}
+          {testing ? <SigmaSpinner size="xs" /> : <Play className="w-3 h-3" />}
           Тестировать
         </Button>
         {audioUrl && (
@@ -307,8 +292,7 @@ export function AISettingsManager() {
       setSecretsLoading(true);
       try {
         const { data, error } = await supabase.functions.invoke("check-secrets-status", {
-          body: { names: API_KEYS_LIST.map((k) => k.name) },
-        });
+          body: { names: API_KEYS_LIST.map((k) => k.name) } });
         if (!error && data) {
           setSecretsStatus(data);
         }
@@ -339,8 +323,7 @@ export function AISettingsManager() {
           gigachat_model: row.gigachat_model || "GigaChat-Max",
           lovable_model: row.lovable_model || "google/gemini-2.5-pro",
           concurrency: row.concurrency || 3,
-          extra_config: (row.extra_config as Record<string, any>) || {},
-        };
+          extra_config: (row.extra_config as Record<string, any>) || {} };
       });
       setSettings(map);
     }
@@ -350,8 +333,7 @@ export function AISettingsManager() {
   const updateField = (context: string, field: keyof AISetting, value: any) => {
     setSettings((prev) => ({
       ...prev,
-      [context]: { ...prev[context], [field]: value },
-    }));
+      [context]: { ...prev[context], [field]: value } }));
   };
 
   const updateExtra = (context: string, key: string, value: any) => {
@@ -359,9 +341,7 @@ export function AISettingsManager() {
       ...prev,
       [context]: {
         ...prev[context],
-        extra_config: { ...prev[context].extra_config, [key]: value },
-      },
-    }));
+        extra_config: { ...prev[context].extra_config, [key]: value } } }));
   };
 
   const handleSave = async () => {
@@ -375,8 +355,7 @@ export function AISettingsManager() {
         lovable_model: s.lovable_model,
         concurrency: s.concurrency,
         extra_config: s.extra_config,
-        updated_at: new Date().toISOString(),
-      }));
+        updated_at: new Date().toISOString() }));
 
       for (const row of rows) {
         const { error } = await supabase
@@ -387,8 +366,7 @@ export function AISettingsManager() {
             lovable_model: row.lovable_model,
             concurrency: row.concurrency,
             extra_config: row.extra_config,
-            updated_at: row.updated_at,
-          })
+            updated_at: row.updated_at })
           .eq("id", row.id);
         if (error) throw error;
       }
@@ -403,7 +381,7 @@ export function AISettingsManager() {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
-        <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+        <SigmaSpinner />
       </div>
     );
   }
@@ -585,8 +563,7 @@ export function AISettingsManager() {
     setSavingKey(name);
     try {
       const { data, error } = await supabase.functions.invoke("manage-secret", {
-        body: { action: "set", name, value: editValue.trim() },
-      });
+        body: { action: "set", name, value: editValue.trim() } });
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
       toast.success(`Ключ ${name} сохранён`);
@@ -636,7 +613,7 @@ export function AISettingsManager() {
                   onClick={() => handleSaveKey(k.name)}
                   disabled={isSaving}
                 >
-                  {isSaving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
+                  {isSaving ? <SigmaSpinner size="xs" className=".5 .5" /> : <Check className="w-3.5 h-3.5" />}
                 </Button>
                 <Button
                   size="icon"
@@ -651,7 +628,7 @@ export function AISettingsManager() {
               <>
                 <Input disabled value="••••••••••••" className="max-w-[200px] font-mono text-xs" />
                 {isLoading ? (
-                  <Loader2 className="w-3 h-3 animate-spin text-muted-foreground" />
+                  <SigmaSpinner size="xs" />
                 ) : isConfigured ? (
                   <span className="text-xs text-green-600 dark:text-green-400 font-medium">Настроен ✓</span>
                 ) : (
@@ -763,7 +740,7 @@ export function AISettingsManager() {
           </p>
         </div>
         <Button onClick={handleSave} disabled={saving} className="gap-2">
-          {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+          {saving ? <SigmaSpinner size="sm" /> : <Save className="w-4 h-4" />}
           Сохранить
         </Button>
       </div>

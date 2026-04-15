@@ -1,7 +1,7 @@
 import { useNavigate } from "react-router-dom";
 import { useOrganization } from "@/hooks/useOrganization";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Loader2 } from "lucide-react";
+import { ArrowLeft} from "lucide-react";
 import { ContractTemplateEditor } from "@/components/organization/ContractTemplateEditor";
 import { SigmaLogo } from "@/components/ui/SigmaLogo";
 import { getAdminAwareBackPath } from "@/lib/utils";
@@ -13,7 +13,7 @@ export default function ContractEditor() {
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
-        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        <SigmaSpinner size="lg" />
       </div>
     );
   }

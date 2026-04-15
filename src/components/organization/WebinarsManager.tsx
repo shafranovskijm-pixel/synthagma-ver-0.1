@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
-import { Plus, Radio, Video, Calendar, Users, Copy, ExternalLink, Square, Loader2, Trash2, RefreshCw, Pencil, CopyPlus, Link, Search, Clock } from "lucide-react";
+import { Plus, Radio, Video, Calendar, Users, Copy, ExternalLink, Square, Trash2, RefreshCw, Pencil, CopyPlus, Link, Search, Clock } from "lucide-react";
 import { CreateWebinarDialog } from "./CreateWebinarDialog";
 import { WebinarParticipantsDialog } from "./WebinarParticipantsDialog";
 import { format } from "date-fns";
@@ -87,12 +87,10 @@ export function WebinarsManager({ organizationId }: Props) {
     setActionLoading(w.id);
     try {
       await supabase.functions.invoke("kinescope-proxy", {
-        body: { action: "stop_live", live_id: w.kinescope_live_id },
-      });
+        body: { action: "stop_live", live_id: w.kinescope_live_id } });
       await supabase.from("webinars").update({ status: "ended" } as any).eq("id", w.id);
       const { data: liveData } = await supabase.functions.invoke("kinescope-proxy", {
-        body: { action: "get_live", live_id: w.kinescope_live_id },
-      });
+        body: { action: "get_live", live_id: w.kinescope_live_id } });
       if (liveData?.data?.video_id) {
         await supabase.from("webinars").update({ kinescope_video_id: liveData.data.video_id } as any).eq("id", w.id);
       }
@@ -126,13 +124,11 @@ export function WebinarsManager({ organizationId }: Props) {
     setActionLoading(w.id);
     try {
       const { data } = await supabase.functions.invoke("kinescope-proxy", {
-        body: { action: "get_live", live_id: w.kinescope_live_id },
-      });
+        body: { action: "get_live", live_id: w.kinescope_live_id } });
       if (data?.data?.video_id) {
         await supabase.from("webinars").update({
           kinescope_video_id: data.data.video_id,
-          embed_url: `https://kinescope.io/embed/${data.data.video_id}`,
-        } as any).eq("id", w.id);
+          embed_url: `https://kinescope.io/embed/${data.data.video_id}` } as any).eq("id", w.id);
         toast.success("Запись найдена!");
         fetchWebinars();
       } else {
@@ -159,8 +155,7 @@ export function WebinarsManager({ organizationId }: Props) {
         cover_url: w.cover_url,
         course_id: w.course_id,
         external_url: w.external_url,
-        embed_url: w.source_type === "external" ? w.external_url : null,
-      };
+        embed_url: w.source_type === "external" ? w.external_url : null };
       const { error } = await supabase.from("webinars").insert(newData as any);
       if (error) throw error;
       toast.success("Вебинар дублирован");
@@ -206,7 +201,7 @@ export function WebinarsManager({ organizationId }: Props) {
   };
 
   if (loading) {
-    return <div className="flex justify-center py-12"><Loader2 className="animate-spin w-8 h-8 text-muted-foreground" /></div>;
+    return <div className="flex justify-center py-12"><SigmaSpinner size="lg" /></div>;
   }
 
   return (
@@ -309,13 +304,13 @@ export function WebinarsManager({ organizationId }: Props) {
               <div className="flex flex-wrap gap-1.5 pt-1">
                 {w.status === "planned" && w.source_type === "kinescope" && (
                   <Button size="sm" variant="default" onClick={() => handleGoLive(w)} disabled={actionLoading === w.id}>
-                    {actionLoading === w.id ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : <Radio className="w-3 h-3 mr-1" />}
+                    {actionLoading === w.id ? <SigmaSpinner size="xs" className="mr-1" /> : <Radio className="w-3 h-3 mr-1" />}
                     В эфир
                   </Button>
                 )}
                 {w.status === "live" && w.source_type === "kinescope" && (
                   <Button size="sm" variant="destructive" onClick={() => handleStopLive(w)} disabled={actionLoading === w.id}>
-                    {actionLoading === w.id ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : <Square className="w-3 h-3 mr-1" />}
+                    {actionLoading === w.id ? <SigmaSpinner size="xs" className="mr-1" /> : <Square className="w-3 h-3 mr-1" />}
                     Стоп
                   </Button>
                 )}

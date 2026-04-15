@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Loader2 } from "lucide-react";
+import {} from "lucide-react";
 
 interface Webinar {
   id: string;
@@ -95,8 +95,7 @@ export function CreateWebinarDialog({ open, onOpenChange, organizationId, userId
           scheduled_at: scheduledAt || null,
           duration_minutes: parseInt(durationMinutes) || null,
           cover_url: coverUrl.trim() || null,
-          course_id: courseId === "none" ? null : courseId,
-        };
+          course_id: courseId === "none" ? null : courseId };
         if (editWebinar!.source_type === "external") {
           updateData.external_url = externalUrl.trim() || null;
           updateData.embed_url = externalUrl.trim() || null;
@@ -115,13 +114,11 @@ export function CreateWebinarDialog({ open, onOpenChange, organizationId, userId
           status: "planned",
           created_by: userId,
           cover_url: coverUrl.trim() || null,
-          course_id: courseId === "none" ? null : courseId,
-        };
+          course_id: courseId === "none" ? null : courseId };
 
         if (sourceType === "kinescope") {
           const { data, error } = await supabase.functions.invoke("kinescope-proxy", {
-            body: { action: "create_live", title: title.trim() },
-          });
+            body: { action: "create_live", title: title.trim() } });
           if (error) throw new Error(error.message);
           const stream = data?.data;
           if (stream) {
@@ -232,7 +229,7 @@ export function CreateWebinarDialog({ open, onOpenChange, organizationId, userId
           <div className="flex justify-end gap-2 pt-2">
             <Button variant="outline" onClick={() => onOpenChange(false)}>Отмена</Button>
             <Button onClick={handleSubmit} disabled={saving}>
-              {saving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+              {saving && <SigmaSpinner size="sm" className="mr-2" />}
               {isEdit ? "Сохранить" : "Создать"}
             </Button>
           </div>

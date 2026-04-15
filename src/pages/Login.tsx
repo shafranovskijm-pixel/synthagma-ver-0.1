@@ -4,7 +4,7 @@ import { SigmaLogo } from "@/components/ui/SigmaLogo";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Link, useNavigate } from "react-router-dom";
-import { ArrowLeft, Mail, Lock, Loader2, Shield, Building2, GraduationCap, User, Eye, EyeOff, RefreshCw } from "lucide-react";
+import { ArrowLeft, Mail, Lock, Shield, Building2, GraduationCap, User, Eye, EyeOff, RefreshCw } from "lucide-react";
 import { forceClientRefresh } from "@/utils/forceClientRefresh";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
@@ -17,14 +17,12 @@ import {
   DialogContent,
   DialogDescription,
   DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+  DialogTitle } from "@/components/ui/dialog";
 
 const DEMO_ACCOUNTS = {
   admin: { email: "admin@demo.sigma", password: "demo123456", role: "admin", label: "Админ", icon: Shield, color: "bg-sigma-purple" },
   organization: { email: "org@demo.sigma", password: "demo123456", role: "organization", label: "Организация", icon: Building2, color: "bg-sigma-blue" },
-  student: { email: "student@demo.sigma", password: "demo123456", role: "student", label: "Слушатель", icon: GraduationCap, color: "bg-sigma-green" },
-};
+  student: { email: "student@demo.sigma", password: "demo123456", role: "student", label: "Слушатель", icon: GraduationCap, color: "bg-sigma-green" } };
 
 const Login = () => {
   const [email, setEmail] = useState("");
@@ -116,9 +114,7 @@ const Login = () => {
       const response = await safeInvoke<any>('send-password-reset', {
         body: {
           email: resetEmail,
-          redirectTo: `${getBaseUrl()}/reset-password`,
-        },
-      });
+          redirectTo: `${getBaseUrl()}/reset-password` } });
 
       if (response.error) {
         throw response.error;
@@ -149,8 +145,7 @@ const Login = () => {
         password: account.password,
         options: {
           data: {
-            full_name: account.label + " (Демо)",
-          }
+            full_name: account.label + " (Демо)" }
         }
       });
 
@@ -166,8 +161,7 @@ const Login = () => {
           .from("organizations")
           .insert({
             name: "Демо Организация",
-            email: account.email,
-          })
+            email: account.email })
           .select()
           .single();
 
@@ -223,7 +217,7 @@ const Login = () => {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
-        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        <SigmaSpinner size="lg" />
       </div>
     );
   }
@@ -339,7 +333,7 @@ const Login = () => {
             >
               {isLoading ? (
                 <>
-                  <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                  <SigmaSpinner className="mr-2" />
                   Вход...
                 </>
               ) : (
@@ -381,7 +375,7 @@ const Login = () => {
                 >
                   {isResetting ? (
                     <>
-                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      <SigmaSpinner size="sm" className="mr-2" />
                       Отправка...
                     </>
                   ) : (

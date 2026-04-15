@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
-import { Loader2, CheckCircle, AlertCircle, Info } from "lucide-react";
+import { CheckCircle, AlertCircle, Info } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
 interface TokenInfo {
@@ -36,8 +36,7 @@ const EmailResponse = () => {
       try {
         const { data, error: fnError } = await supabase.functions.invoke("handle-email-action", {
           method: "POST",
-          body: { action: "validate", token },
-        });
+          body: { action: "validate", token } });
         if (fnError) throw fnError;
         if (!data?.ok) {
           if (data?.used) {
@@ -67,8 +66,7 @@ const EmailResponse = () => {
     try {
       const { data, error: fnError } = await supabase.functions.invoke("handle-email-action", {
         method: "POST",
-        body: { token, phone: phone.trim(), comment: comment.trim() },
-      });
+        body: { token, phone: phone.trim(), comment: comment.trim() } });
       if (fnError) throw fnError;
       if (!data?.ok) throw new Error(data?.error || "Ошибка");
       setResult({ status: data.status || "success", message: data.message || "Спасибо!" });
@@ -83,7 +81,7 @@ const EmailResponse = () => {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-orange-50 via-white to-slate-50 p-5">
         <div className="max-w-md w-full rounded-3xl border border-amber-200 bg-white p-10 text-center shadow-xl">
-          <Loader2 className="mx-auto mb-4 h-10 w-10 animate-spin text-orange-500" />
+          <SigmaSpinner size="xl" className="mx-auto mb-4 text-orange-500" />
           <p className="text-slate-500">Загрузка формы…</p>
         </div>
       </div>
@@ -94,8 +92,7 @@ const EmailResponse = () => {
     const config = {
       success: { icon: CheckCircle, color: "text-green-600", bg: "bg-green-50", border: "border-green-200" },
       already: { icon: Info, color: "text-blue-600", bg: "bg-blue-50", border: "border-blue-200" },
-      error: { icon: AlertCircle, color: "text-amber-600", bg: "bg-amber-50", border: "border-amber-200" },
-    }[result.status] || { icon: CheckCircle, color: "text-green-600", bg: "bg-green-50", border: "border-green-200" };
+      error: { icon: AlertCircle, color: "text-amber-600", bg: "bg-amber-50", border: "border-amber-200" } }[result.status] || { icon: CheckCircle, color: "text-green-600", bg: "bg-green-50", border: "border-green-200" };
     const Icon = config.icon;
 
     return (

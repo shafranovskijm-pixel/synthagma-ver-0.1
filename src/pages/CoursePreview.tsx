@@ -20,7 +20,6 @@ import {
   Eye,
   BookOpen,
   Clock,
-  Loader2,
   Edit,
   Headphones,
   Image,
@@ -349,7 +348,7 @@ const SliderPreview = ({ content, title }: { content: string | null; title: stri
             {isLoading && (
               <div className="absolute inset-0 flex items-center justify-center bg-secondary/50 z-10">
                 <div className="flex flex-col items-center gap-3">
-                  <Loader2 className="w-8 h-8 animate-spin text-amber-500" />
+                  <SigmaSpinner size="lg" className="text-amber-500" />
                   <p className="text-sm text-muted-foreground">Загрузка презентации...</p>
                 </div>
               </div>
@@ -595,7 +594,7 @@ const CoursePreview = () => {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
-          <Loader2 className="w-12 h-12 animate-spin text-primary mx-auto mb-4" />
+          <SigmaSpinner size="xl" className="mx-auto mb-4" />
           <p className="text-muted-foreground">Загрузка курса...</p>
         </div>
       </div>

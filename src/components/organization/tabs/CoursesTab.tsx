@@ -12,7 +12,7 @@ import { Label } from "@/components/ui/label";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
 import { 
-  Search, Filter, Tag, Plus, LayoutGrid, List, Loader2, 
+  Search, Filter, Tag, Plus, LayoutGrid, List, 
   BookOpen, Users, Edit, Eye, EyeOff, Trash2, FolderOpen, Folder,
   ChevronDown, ChevronRight, MoreVertical, FolderPlus, 
   MoveRight, Video, VideoOff, Lock, Unlock, FastForward,
@@ -68,12 +68,10 @@ export const CoursesTab = React.memo(function CoursesTab({ organizationId, onCou
     removeCat,
     refresh,
     updateCourseLocally,
-    reorderCourses,
-  } = useCourses(organizationId, {
+    reorderCourses } = useCourses(organizationId, {
     initialCourses: dashboard.courses,
     initialCategories: dashboard.categories as CourseCategory[],
-    parentReady: !dashboard.isLoadingCourses,
-  });
+    parentReady: !dashboard.isLoadingCourses });
 
   const dndSensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
@@ -97,8 +95,7 @@ export const CoursesTab = React.memo(function CoursesTab({ organizationId, onCou
     toast.info("Генерируем обложку с ИИ...", { duration: 10000 });
     try {
       const { data, error } = await supabase.functions.invoke("generate-cover", {
-        body: { courseId, type: "course" },
-      });
+        body: { courseId, type: "course" } });
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
       toast.success("Обложка курса сгенерирована!");
@@ -290,8 +287,7 @@ export const CoursesTab = React.memo(function CoursesTab({ organizationId, onCou
     setCategoryFilter(category.id);
     setViewAndFolder("list", "flat");
     toast.info(`Порядок курсов: ${category.name}`, {
-      description: "Перетаскивайте курс за иконку слева, чтобы изменить порядок внутри категории.",
-    });
+      description: "Перетаскивайте курс за иконку слева, чтобы изменить порядок внутри категории." });
   }, [setCategoryFilter, setViewAndFolder]);
 
   const openEditCategory = (category: CourseCategory) => {
@@ -458,8 +454,7 @@ export const CoursesTab = React.memo(function CoursesTab({ organizationId, onCou
         skip_video_identification: ['Видеоидентификация отключена', 'Видеоидентификация включена'],
         sequential_lessons: ['Последовательность уроков включена', 'Последовательность уроков отключена'],
         allow_video_seek: ['Перемотка видео включена', 'Перемотка видео отключена'],
-        hidden_from_catalog: ['Курс скрыт из витрины', 'Курс показан в витрине'],
-      };
+        hidden_from_catalog: ['Курс скрыт из витрины', 'Курс показан в витрине'] };
       const [onMsg, offMsg] = messages[setting];
       toast.success(newValue ? onMsg : offMsg);
     } else {
@@ -896,7 +891,7 @@ export const CoursesTab = React.memo(function CoursesTab({ organizationId, onCou
                 disabled={generatingCoverForCourse === course.id}
                 onClick={e => { e.stopPropagation(); handleGenerateCourseCover(course.id); }}
               >
-                {generatingCoverForCourse === course.id ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Wand2 className="w-4 h-4 mr-2" />}
+                {generatingCoverForCourse === course.id ? <SigmaSpinner size="sm" className="mr-2" /> : <Wand2 className="w-4 h-4 mr-2" />}
                 {generatingCoverForCourse === course.id ? "Генерация..." : "Сгенерировать с ИИ"}
               </DropdownMenuItem>
             </DropdownMenuContent>
@@ -1239,7 +1234,7 @@ export const CoursesTab = React.memo(function CoursesTab({ organizationId, onCou
       {/* Course List */}
       {isLoading ? (
         <div className="flex items-center justify-center py-12">
-          <Loader2 className="w-8 h-8 animate-spin text-primary" />
+          <SigmaSpinner size="lg" />
         </div>
       ) : loadError ? (
         <div className="py-12 text-center space-y-4">

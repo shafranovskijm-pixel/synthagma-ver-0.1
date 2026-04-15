@@ -116,7 +116,7 @@ export function CourseProgramsList({ organizationId }: CourseProgramsListProps) 
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
-        <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+        <SigmaSpinner />
       </div>
     );
   }
@@ -180,7 +180,7 @@ export function CourseProgramsList({ organizationId }: CourseProgramsListProps) 
                     className="shrink-0 ml-3"
                   >
                     {ordering === course.id ? (
-                      <Loader2 className="w-4 h-4 animate-spin mr-1.5" />
+                      <SigmaSpinner size="sm" className="mr-1.5" />
                     ) : (
                       <ShoppingCart className="w-4 h-4 mr-1.5" />
                     )}

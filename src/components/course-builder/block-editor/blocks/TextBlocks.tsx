@@ -7,14 +7,13 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import {
   AlertCircle, Lightbulb, CheckCircle, XCircle, Highlighter,
-  ChevronDown, ChevronRight, Loader2, Sparkles, Pencil,
-} from "lucide-react";
+  ChevronDown, ChevronRight, Sparkles, Pencil } from "lucide-react";
 import type { ContentBlock } from "../types";
 
 function AIGenerateButton({ isGenerating, onClick }: { isGenerating: boolean; onClick: () => void }) {
   return (
     <Button variant="outline" size="sm" onClick={onClick} disabled={isGenerating} className="gap-2 text-xs">
-      {isGenerating ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
+      {isGenerating ? <SigmaSpinner size="xs" /> : <Sparkles className="w-3 h-3" />}
       {isGenerating ? "Генерация..." : "Сгенерировать с ИИ"}
     </Button>
   );
@@ -41,8 +40,7 @@ export function ParagraphBlock({ block, onUpdate, courseTitle, lessonTitle, exis
     try {
       const { supabase } = await import("@/integrations/supabase/client");
       const { data, error } = await supabase.functions.invoke("generate-course-content", {
-        body: { contentType: "paragraph_text", lessonTitle: lessonTitle || "Общая тема", courseTitle: courseTitle || "Курс", existingContent, customPrompt: prompt || "" },
-      });
+        body: { contentType: "paragraph_text", lessonTitle: lessonTitle || "Общая тема", courseTitle: courseTitle || "Курс", existingContent, customPrompt: prompt || "" } });
       if (error) throw error;
       if (data?.content) { onUpdate({ content: data.content }); await incrementAiLimitGlobal(); }
       setShowPrompt(false);
@@ -68,13 +66,13 @@ export function ParagraphBlock({ block, onUpdate, courseTitle, lessonTitle, exis
         <div className="flex gap-2 items-end">
           <Textarea value={customPrompt} onChange={(e) => setCustomPrompt(e.target.value)} placeholder="Напишите, о чём сгенерировать текст..." className="text-sm min-h-[60px] resize-none flex-1" />
           <Button size="sm" onClick={() => handleGenerate(customPrompt)} disabled={isGenerating || !customPrompt.trim()} className="gap-1">
-            {isGenerating ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}Создать
+            {isGenerating ? <SigmaSpinner size="xs" /> : <Sparkles className="w-3 h-3" />}Создать
           </Button>
         </div>
       )}
       {isGenerating && (
         <div className="flex items-center gap-2 text-sm text-muted-foreground py-4 justify-center">
-          <Loader2 className="w-4 h-4 animate-spin" />Генерация текста...
+          <SigmaSpinner size="sm" />Генерация текста...
         </div>
       )}
       <RichTextEditor value={block.content} onChange={(val) => onUpdate({ content: val })} placeholder="Введите текст..." className={editorStyleClasses} />
@@ -90,8 +88,7 @@ export function QuoteBlock({ block, onUpdate, courseTitle, lessonTitle, existing
     try {
       const { supabase } = await import("@/integrations/supabase/client");
       const { data, error } = await supabase.functions.invoke("generate-course-content", {
-        body: { contentType: "quote", lessonTitle: lessonTitle || "Общая тема", courseTitle: courseTitle || "Курс", existingContent },
-      });
+        body: { contentType: "quote", lessonTitle: lessonTitle || "Общая тема", courseTitle: courseTitle || "Курс", existingContent } });
       if (error) throw error;
       if (data?.content) { onUpdate({ content: data.content }); await incrementAiLimitGlobal(); }
     } catch (e) {
@@ -115,8 +112,7 @@ export function CalloutBlock({ block, onUpdate, courseTitle, lessonTitle, existi
     "callout-warning": { bg: "bg-amber-500/10", border: "border-amber-500/30", icon: AlertCircle, iconColor: "text-amber-500" },
     "callout-tip": { bg: "bg-green-500/10", border: "border-green-500/30", icon: Lightbulb, iconColor: "text-green-500" },
     "callout-success": { bg: "bg-emerald-500/10", border: "border-emerald-500/30", icon: CheckCircle, iconColor: "text-emerald-500" },
-    "callout-danger": { bg: "bg-red-500/10", border: "border-red-500/30", icon: XCircle, iconColor: "text-red-500" },
-  };
+    "callout-danger": { bg: "bg-red-500/10", border: "border-red-500/30", icon: XCircle, iconColor: "text-red-500" } };
   const style = styles[block.type as keyof typeof styles];
   const Icon = style.icon;
 
@@ -126,8 +122,7 @@ export function CalloutBlock({ block, onUpdate, courseTitle, lessonTitle, existi
     try {
       const { supabase } = await import("@/integrations/supabase/client");
       const { data, error } = await supabase.functions.invoke("generate-course-content", {
-        body: { contentType: "callout", calloutType: block.type, lessonTitle: lessonTitle || "Общая тема", courseTitle: courseTitle || "Курс", existingContent },
-      });
+        body: { contentType: "callout", calloutType: block.type, lessonTitle: lessonTitle || "Общая тема", courseTitle: courseTitle || "Курс", existingContent } });
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
       if (data?.content) { onUpdate({ content: data.content }); await incrementAiLimitGlobal(); }
@@ -159,8 +154,7 @@ export function HighlightBlock({ block, onUpdate, courseTitle, lessonTitle, exis
     try {
       const { supabase } = await import("@/integrations/supabase/client");
       const { data, error } = await supabase.functions.invoke("generate-course-content", {
-        body: { contentType: "callout", calloutType: "highlight", lessonTitle: lessonTitle || "Общая тема", courseTitle: courseTitle || "Курс", existingContent },
-      });
+        body: { contentType: "callout", calloutType: "highlight", lessonTitle: lessonTitle || "Общая тема", courseTitle: courseTitle || "Курс", existingContent } });
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
       if (data?.content) { onUpdate({ content: data.content }); await incrementAiLimitGlobal(); }
@@ -196,8 +190,7 @@ export function AccordionBlock({ block, onUpdate, courseTitle, lessonTitle, exis
     try {
       const { supabase } = await import("@/integrations/supabase/client");
       const { data, error } = await supabase.functions.invoke("generate-course-content", {
-        body: { contentType: "accordion", lessonTitle: lessonTitle || "Общая тема", courseTitle: courseTitle || "Курс", existingContent },
-      });
+        body: { contentType: "accordion", lessonTitle: lessonTitle || "Общая тема", courseTitle: courseTitle || "Курс", existingContent } });
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
       if (data?.accordion) {

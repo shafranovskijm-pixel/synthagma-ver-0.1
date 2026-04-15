@@ -7,16 +7,14 @@ import {
   DialogContent,
   DialogDescription,
   DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+  DialogTitle } from "@/components/ui/dialog";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Github, Loader2, FolderTree, FileText, AlertCircle } from "lucide-react";
+  SelectValue } from "@/components/ui/select";
+import { Github, FolderTree, FileText, AlertCircle } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 
 interface GitHubFile {
@@ -39,8 +37,7 @@ interface GitHubImportDialogProps {
 export const GitHubImportDialog = ({
   isOpen,
   onClose,
-  onImport,
-}: GitHubImportDialogProps) => {
+  onImport }: GitHubImportDialogProps) => {
   const [repoUrl, setRepoUrl] = useState("");
   const [branch, setBranch] = useState("main");
   const [isLoading, setIsLoading] = useState(false);
@@ -98,8 +95,7 @@ export const GitHubImportDialog = ({
         .map((item: any) => ({
           name: item.name,
           path: item.path,
-          type: item.type === "dir" ? "dir" : "file",
-        }));
+          type: item.type === "dir" ? "dir" : "file" }));
 
       setFiles(filteredFiles);
       setStep("select");
@@ -150,15 +146,13 @@ export const GitHubImportDialog = ({
         lessons.push({
           title: fileName.replace(/\.md$/, "").replace(/[-_]/g, " "),
           content,
-          type: "text",
-        });
+          type: "text" });
       }
 
       onImport({
         title: parsed.repo.replace(/[-_]/g, " "),
         description: description.slice(0, 500),
-        lessons,
-      });
+        lessons });
 
       // Reset state
       setStep("url");
@@ -235,7 +229,7 @@ export const GitHubImportDialog = ({
                 className="flex-1 btn-gradient"
               >
                 {isLoading ? (
-                  <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                  <SigmaSpinner size="sm" className="mr-2" />
                 ) : (
                   <FolderTree className="w-4 h-4 mr-2" />
                 )}
@@ -293,7 +287,7 @@ export const GitHubImportDialog = ({
                 className="flex-1 btn-gradient"
               >
                 {isLoading ? (
-                  <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                  <SigmaSpinner size="sm" className="mr-2" />
                 ) : null}
                 Импортировать ({selectedFiles.length})
               </Button>

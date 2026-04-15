@@ -6,22 +6,19 @@ import {
   SelectContent,
   SelectItem,
   SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+  SelectValue } from "@/components/ui/select";
 import {
   Table,
   TableBody,
   TableCell,
   TableHead,
   TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+  TableRow } from "@/components/ui/table";
 import { Calendar } from "@/components/ui/calendar";
 import {
   Popover,
   PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
+  PopoverTrigger } from "@/components/ui/popover";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import {
@@ -29,15 +26,13 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogFooter,
-} from "@/components/ui/dialog";
+  DialogFooter } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import {
   ArrowLeft,
   Calendar as CalendarIcon,
   Search,
-  Loader2,
   FileSpreadsheet,
   FileText,
   FileCheck,
@@ -49,8 +44,7 @@ import {
   Pencil,
   Plus,
   Eye,
-  Download,
-} from "lucide-react";
+  Download } from "lucide-react";
 import { format, parseISO, startOfYear, endOfYear, isWithinInterval } from "date-fns";
 import { ru } from "date-fns/locale";
 import { cn } from "@/lib/utils";
@@ -89,8 +83,7 @@ const DOCUMENT_TYPE_LABELS: Record<string, { label: string; icon: typeof FileTex
   protocol: { label: "Протокол", icon: FileText, prefix: "ПРТ" },
   invoice: { label: "Счёт", icon: FileText, prefix: "СЧ" },
   act: { label: "Акт", icon: FileText, prefix: "АКТ" },
-  other: { label: "Прочее", icon: FileText, prefix: "ПР" },
-};
+  other: { label: "Прочее", icon: FileText, prefix: "ПР" } };
 
 // Generate automatic registration number based on year and document type
 const generateRegNumber = (
@@ -122,8 +115,7 @@ const generateRegNumber = (
 
 export function AutoDocumentRegistrationJournal({
   organizationId,
-  onClose,
-}: AutoDocumentRegistrationJournalProps) {
+  onClose }: AutoDocumentRegistrationJournalProps) {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [records, setRecords] = useState<DocumentRecord[]>([]);
@@ -135,8 +127,7 @@ export function AutoDocumentRegistrationJournal({
     to: Date;
   }>({
     from: startOfYear(new Date()),
-    to: endOfYear(new Date()),
-  });
+    to: endOfYear(new Date()) });
   
   // Edit dialog state
   const [editingRecord, setEditingRecord] = useState<DocumentRecord | null>(null);
@@ -151,8 +142,7 @@ export function AutoDocumentRegistrationJournal({
     date: new Date(),
     related_entity: "",
     reg_number: "",
-    notes: "",
-  });
+    notes: "" });
 
   // Fetch all document data
   useEffect(() => {
@@ -193,8 +183,7 @@ export function AutoDocumentRegistrationJournal({
             notes: doc.send_method ? `Отправлено: ${doc.send_method}` : null,
             source: "issuance_log",
             is_editable: true,
-            file_url: doc.file_url || null,
-          });
+            file_url: doc.file_url || null });
         }
 
         // 2. Fetch company documents (contracts - can be incoming or outgoing)
@@ -239,8 +228,7 @@ export function AutoDocumentRegistrationJournal({
             notes: doc.amount ? `Сумма: ${doc.amount} ₽` : null,
             source: "company_document",
             is_editable: true,
-            file_url: doc.file_url || null,
-          });
+            file_url: doc.file_url || null });
         }
 
         // 3. Fetch org_documents for file URLs (orders saved here)
@@ -299,8 +287,7 @@ export function AutoDocumentRegistrationJournal({
               notes: null,
               source: "enrollment",
               is_editable: false,
-              file_url: fileUrl,
-            });
+              file_url: fileUrl });
           } else if (entry.action === "completed" || entry.action === "expelled") {
             const docName = entry.action === "completed" 
               ? `Завершение обучения на курсе "${course.title}"`
@@ -319,8 +306,7 @@ export function AutoDocumentRegistrationJournal({
               notes: null,
               source: "enrollment",
               is_editable: false,
-              file_url: fileUrl,
-            });
+              file_url: fileUrl });
           }
         }
 
@@ -348,8 +334,7 @@ export function AutoDocumentRegistrationJournal({
           
           return {
             ...record,
-            reg_number: autoRegNumber,
-          };
+            reg_number: autoRegNumber };
         });
 
         // Sort back by date descending for display
@@ -392,8 +377,7 @@ export function AutoDocumentRegistrationJournal({
       const recordDate = parseISO(record.date);
       const matchesDate = isWithinInterval(recordDate, {
         start: dateRange.from,
-        end: dateRange.to,
-      });
+        end: dateRange.to });
 
       return matchesSearch && matchesType && matchesDirection && matchesDate;
     });
@@ -560,8 +544,7 @@ export function AutoDocumentRegistrationJournal({
           document_name: newDocument.document_name.trim(),
           reg_number: newDocument.reg_number.trim() || null,
           issued_at: newDocument.date.toISOString(),
-          send_method: newDocument.notes.trim() || null,
-        })
+          send_method: newDocument.notes.trim() || null })
         .select()
         .single();
         
@@ -581,8 +564,7 @@ export function AutoDocumentRegistrationJournal({
         notes: insertedDoc.send_method ? `Примечание: ${insertedDoc.send_method}` : null,
         source: "issuance_log",
         is_editable: true,
-        file_url: null,
-      };
+        file_url: null };
       
       setRecords((prev) => [newRecord, ...prev]);
       
@@ -594,8 +576,7 @@ export function AutoDocumentRegistrationJournal({
         date: new Date(),
         related_entity: "",
         reg_number: "",
-        notes: "",
-      });
+        notes: "" });
       setShowAddDialog(false);
       
       toast.success("Документ добавлен в журнал");
@@ -638,8 +619,7 @@ export function AutoDocumentRegistrationJournal({
       "Направление": record.direction === "incoming" ? "Входящий" : "Исходящий",
       "Дата": format(parseISO(record.date), "dd.MM.yyyy", { locale: ru }),
       "Контрагент/Лицо": record.related_entity || "—",
-      "Примечание": record.notes || "—",
-    }));
+      "Примечание": record.notes || "—" }));
 
     const worksheet = XLSX.utils.json_to_sheet(exportData);
     const workbook = XLSX.utils.book_new();
@@ -666,7 +646,7 @@ export function AutoDocumentRegistrationJournal({
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        <SigmaSpinner size="lg" />
       </div>
     );
   }
@@ -835,8 +815,7 @@ export function AutoDocumentRegistrationJournal({
               const now = new Date();
               setDateRange({
                 from: startOfYear(now),
-                to: endOfYear(now),
-              });
+                to: endOfYear(now) });
             }}
           >
             {new Date().getFullYear()} год
@@ -1070,7 +1049,7 @@ export function AutoDocumentRegistrationJournal({
             <Button onClick={handleSaveRegNumber} disabled={saving}>
               {saving ? (
                 <>
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  <SigmaSpinner size="sm" className="mr-2" />
                   Сохранение...
                 </>
               ) : (
@@ -1229,7 +1208,7 @@ export function AutoDocumentRegistrationJournal({
             <Button onClick={handleAddDocument} disabled={saving}>
               {saving ? (
                 <>
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  <SigmaSpinner size="sm" className="mr-2" />
                   Сохранение...
                 </>
               ) : (

@@ -17,9 +17,7 @@ import {
   FileText,
   Video,
   HelpCircle,
-  Loader2,
-  Github,
-} from "lucide-react";
+  Github } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast as sonnerToast, toast } from "sonner";
 import { getAdminAwareBackPath } from "@/lib/utils";
@@ -30,14 +28,12 @@ import {
   PointerSensor,
   useSensor,
   useSensors,
-  DragEndEvent,
-} from "@dnd-kit/core";
+  DragEndEvent } from "@dnd-kit/core";
 import {
   arrayMove,
   SortableContext,
   sortableKeyboardCoordinates,
-  verticalListSortingStrategy,
-} from "@dnd-kit/sortable";
+  verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { LessonItem } from "@/components/course-editor/LessonItem";
 import { LessonEditor } from "@/components/course-editor/LessonEditor";
 import { GitHubImportDialog } from "@/components/course-editor/GitHubImportDialog";
@@ -47,8 +43,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-  DropdownMenuSeparator,
-} from "@/components/ui/dropdown-menu";
+  DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -57,8 +52,7 @@ import {
   AlertDialogDescription,
   AlertDialogFooter,
   AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
+  AlertDialogTitle } from "@/components/ui/alert-dialog";
 
 interface Course {
   id: string;
@@ -128,8 +122,7 @@ const CourseEditor = () => {
   const sensors = useSensors(
     useSensor(PointerSensor),
     useSensor(KeyboardSensor, {
-      coordinateGetter: sortableKeyboardCoordinates,
-    })
+      coordinateGetter: sortableKeyboardCoordinates })
   );
 
   useEffect(() => {
@@ -181,8 +174,7 @@ const CourseEditor = () => {
         frdo_duration_hours: durationHours,
         sequential_lessons: sequentialLessons,
         allow_video_seek: allowVideoSeek,
-        price: price || 0,
-      })
+        price: price || 0 })
       .eq("id", courseId);
 
     setIsSaving(false);
@@ -224,8 +216,7 @@ const CourseEditor = () => {
         order_index: index,
         course_id: lesson.course_id,
         title: lesson.title,
-        type: lesson.type,
-      }));
+        type: lesson.type }));
 
       for (const update of updates) {
         await supabase
@@ -260,8 +251,7 @@ const CourseEditor = () => {
             options: q.options as string[],
             correct_answer: q.correct_answer,
             order_index: q.order_index,
-            lesson_id: q.lesson_id,
-          }))
+            lesson_id: q.lesson_id }))
         );
       }
     } else {
@@ -288,8 +278,7 @@ const CourseEditor = () => {
           title: data.title,
           type: data.type,
           content: data.content || null,
-          test_questions_count: data.test_questions_count || null,
-        })
+          test_questions_count: data.test_questions_count || null })
         .eq("id", editingLesson.id);
 
       if (!error) {
@@ -309,8 +298,7 @@ const CourseEditor = () => {
                 question: q.question,
                 options: q.options,
                 correct_answer: q.correct_answer,
-                order_index: index,
-              }))
+                order_index: index }))
             );
           }
         }
@@ -334,8 +322,7 @@ const CourseEditor = () => {
           type: data.type,
           content: data.content || null,
           order_index: lessons.length,
-          test_questions_count: data.test_questions_count || null,
-        })
+          test_questions_count: data.test_questions_count || null })
         .select()
         .single();
 
@@ -348,8 +335,7 @@ const CourseEditor = () => {
               question: q.question,
               options: q.options,
               correct_answer: q.correct_answer,
-              order_index: index,
-            }))
+              order_index: index }))
           );
         }
 
@@ -402,8 +388,7 @@ const CourseEditor = () => {
           title: lessonData.title,
           type: lessonData.type,
           content: lessonData.content,
-          order_index: lessons.length + i,
-        })
+          order_index: lessons.length + i })
         .select()
         .single();
 
@@ -420,7 +405,7 @@ const CourseEditor = () => {
   if (isLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        <SigmaSpinner size="lg" />
       </div>
     );
   }
@@ -503,7 +488,7 @@ const CourseEditor = () => {
               className="btn-gradient rounded-2xl gap-3 px-8 py-6 text-lg font-semibold shadow-2xl hover:scale-105 transition-transform"
             >
               {isSaving ? (
-                <Loader2 className="w-5 h-5 animate-spin" />
+                <SigmaSpinner />
               ) : (
                 <Save className="w-5 h-5" />
               )}

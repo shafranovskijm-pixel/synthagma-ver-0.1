@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { getBaseUrl } from '@/utils/getBaseUrl';
-import { Plus, Eye, Trash2, Send, FileText, Link2, Pencil, Loader2, Mail } from 'lucide-react';
+import { Plus, Eye, Trash2, Send, FileText, Link2, Pencil, Mail } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -22,8 +22,7 @@ const STATUS_MAP: Record<string, { label: string; variant: 'default' | 'secondar
   sent: { label: 'Отправлено', variant: 'default' },
   negotiation: { label: 'Переговоры', variant: 'outline' },
   accepted: { label: 'Принято', variant: 'default' },
-  rejected: { label: 'Отклонено', variant: 'destructive' },
-};
+  rejected: { label: 'Отклонено', variant: 'destructive' } };
 
 function generateProposalEmailHtml(proposal: CommercialProposal, services: ProposalServiceItem[], discountPercent: number) {
   const senderName = proposal.sender_name || 'СИНТАГМА';
@@ -176,9 +175,7 @@ export function CommercialProposals() {
           to: sendEmail,
           subject: `Коммерческое предложение — ${sendProposal.company_name}`,
           html,
-          from: sendProposal.sender_email || 'support@sintagma.com.ru',
-        },
-      });
+          from: sendProposal.sender_email || 'support@sintagma.com.ru' } });
       if (error) throw error;
       await updateProposalStatus(sendProposal.id, 'sent');
       toast.success("КП отправлено", { description: `Письмо отправлено на ${sendEmail}` });
@@ -316,7 +313,7 @@ export function CommercialProposals() {
             <Button variant="outline" onClick={() => setSendDialogOpen(false)}>Отмена</Button>
             <Button onClick={handleSendEmail} disabled={isSending}>
               {isSending ? (
-                <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Отправка...</>
+                <><SigmaSpinner size="sm" className="mr-2" />Отправка...</>
               ) : (
                 <><Send className="h-4 w-4 mr-2" />Отправить</>
               )}

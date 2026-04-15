@@ -9,8 +9,7 @@ import {
   SelectContent,
   SelectItem,
   SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+  SelectValue } from "@/components/ui/select";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -19,19 +18,17 @@ import {
   AlertDialogDescription,
   AlertDialogFooter,
   AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
+  AlertDialogTitle } from "@/components/ui/alert-dialog";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogDescription,
-} from "@/components/ui/dialog";
+  DialogDescription } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { safeInvoke } from "@/utils/safeInvoke";
 import {
-  Search, Trash2, Loader2, Upload, Video, FileText,
+  Search, Trash2, Upload, Video, FileText,
   Image as ImageIcon, Music, HardDrive, FolderOpen, RefreshCw, File,
   ChevronDown, ChevronRight, Presentation, Stamp, Receipt, Building2, BookOpen,
   UserCheck, ExternalLink, Download, Eye, Shield
@@ -118,8 +115,7 @@ function formatDate(dateStr: string): string {
   try {
     return new Date(dateStr).toLocaleDateString("ru-RU", {
       day: "2-digit", month: "2-digit", year: "numeric",
-      hour: "2-digit", minute: "2-digit",
-    });
+      hour: "2-digit", minute: "2-digit" });
   } catch { return ""; }
 }
 
@@ -144,8 +140,7 @@ const BUCKET_LABELS: Record<string, string> = {
   "org-branding": "Брендинг",
   "library-files": "Библиотека",
   "billing-documents": "Платёжные документы",
-  "student-documents": "Документы слушателей",
-};
+  "student-documents": "Документы слушателей" };
 
 const BUCKET_ICONS: Record<string, React.ReactNode> = {
   "presentations": <Presentation className="w-4 h-4" />,
@@ -156,8 +151,7 @@ const BUCKET_ICONS: Record<string, React.ReactNode> = {
   "org-branding": <Stamp className="w-4 h-4" />,
   "library-files": <HardDrive className="w-4 h-4" />,
   "billing-documents": <Receipt className="w-4 h-4" />,
-  "student-documents": <UserCheck className="w-4 h-4" />,
-};
+  "student-documents": <UserCheck className="w-4 h-4" /> };
 
 const TYPE_LABELS: Record<string, string> = {
   all: "Все типы",
@@ -166,8 +160,7 @@ const TYPE_LABELS: Record<string, string> = {
   audio: "Аудио",
   presentation: "Презентации",
   document: "Документы",
-  other: "Прочее",
-};
+  other: "Прочее" };
 
 export function StorageManager({ organizationId }: StorageManagerProps) {
   const [files, setFiles] = useState<StorageFile[]>([]);
@@ -239,8 +232,7 @@ export function StorageManager({ organizationId }: StorageManagerProps) {
                 size: fileSize,
                 created_at: (f as any).created_at || "",
                 type: getFileType(f.name),
-                isPrivate: isPrivateBucket,
-              });
+                isPrivate: isPrivateBucket });
             }
           }
         } catch { /* path doesn't exist */ }
@@ -338,8 +330,7 @@ export function StorageManager({ organizationId }: StorageManagerProps) {
         folder: organizationId,
         size: file.size,
         created_at: new Date().toISOString(),
-        type: getFileType(file.name),
-      };
+        type: getFileType(file.name) };
       setFiles(prev => [newFile, ...prev]);
       toast.success("Файл загружен");
     } catch (err) {
@@ -498,7 +489,7 @@ export function StorageManager({ organizationId }: StorageManagerProps) {
           <Button className="btn-gradient rounded-xl gap-2" disabled={uploading} asChild>
             <label>
               <input type="file" className="hidden" onChange={handleUpload} />
-              {uploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
+              {uploading ? <SigmaSpinner size="sm" /> : <Upload className="w-4 h-4" />}
               Загрузить файл
             </label>
           </Button>
@@ -508,7 +499,7 @@ export function StorageManager({ organizationId }: StorageManagerProps) {
       {/* File list grouped by bucket */}
       {loading ? (
         <div className="flex items-center justify-center py-16">
-          <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+          <SigmaSpinner />
           <span className="ml-2 text-muted-foreground">Загрузка файлов...</span>
         </div>
       ) : filtered.length === 0 ? (
@@ -663,7 +654,7 @@ export function StorageManager({ organizationId }: StorageManagerProps) {
 
           <div className="min-h-[200px] flex items-center justify-center">
             {previewLoading ? (
-              <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
+              <SigmaSpinner size="lg" />
             ) : previewUrl && previewType === "image" ? (
               <img
                 src={previewUrl}
@@ -721,7 +712,7 @@ export function StorageManager({ organizationId }: StorageManagerProps) {
           <AlertDialogFooter>
             <AlertDialogCancel>Отмена</AlertDialogCancel>
             <AlertDialogAction onClick={handleDelete} disabled={deleting} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-              {deleting ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+              {deleting ? <SigmaSpinner size="sm" className="mr-2" /> : null}
               Удалить
             </AlertDialogAction>
           </AlertDialogFooter>

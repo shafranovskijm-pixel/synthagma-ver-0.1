@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Upload, FileText, Check, X, AlertTriangle } from "lucide-react";
+import { Upload, FileText, Check, X, AlertTriangle } from "lucide-react";
 import { MARKETPLACE_ORG_ID } from "@/constants/marketplace";
 
 interface ProgramEntry {
@@ -145,8 +145,7 @@ export function ProgramListImporter({ onComplete }: ProgramListImporterProps) {
       formData.append("file", file);
 
       const { data, error } = await safeInvoke<any>("import-course", {
-        body: formData,
-      });
+        body: formData });
 
       if (error) throw error;
 
@@ -226,8 +225,7 @@ export function ProgramListImporter({ onComplete }: ProgramListImporterProps) {
               organization_id: MARKETPLACE_ORG_ID,
               name: catName,
               parent_type: parentType,
-              order_index: catMap.size + 1,
-            } as any)
+              order_index: catMap.size + 1 } as any)
             .select("id, name")
             .single();
 
@@ -303,8 +301,7 @@ export function ProgramListImporter({ onComplete }: ProgramListImporterProps) {
               price_organization: parseInt(defaultPriceOrg) || 3000,
               description_short: prog.title,
               is_active: true,
-              is_validated: false,
-            } as any);
+              is_validated: false } as any);
             if (mktErr) {
               result.errors.push({ title: prog.title, reason: `Marketplace: ${mktErr.message}` });
             }
@@ -325,8 +322,7 @@ export function ProgramListImporter({ onComplete }: ProgramListImporterProps) {
             organization_id: MARKETPLACE_ORG_ID,
             duration: `${prog.hours} часов`,
             category_id: categoryId,
-            is_published: false,
-          })
+            is_published: false })
           .select("id")
           .single();
 
@@ -344,8 +340,7 @@ export function ProgramListImporter({ onComplete }: ProgramListImporterProps) {
           price_organization: parseInt(defaultPriceOrg) || 3000,
           description_short: prog.title,
           is_active: true,
-          is_validated: false,
-        } as any);
+          is_validated: false } as any);
 
         if (mktErr) {
           console.error("Failed to create marketplace entry:", prog.title, mktErr);
@@ -425,7 +420,7 @@ export function ProgramListImporter({ onComplete }: ProgramListImporterProps) {
 
         {isLoading && (
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <Loader2 className="w-4 h-4 animate-spin" />
+            <SigmaSpinner size="sm" />
             Парсинг файла...
           </div>
         )}
@@ -520,7 +515,7 @@ export function ProgramListImporter({ onComplete }: ProgramListImporterProps) {
                 disabled={isCreating}
               >
                 {isCreating ? (
-                  <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Создание...</>
+                  <><SigmaSpinner size="sm" className="mr-2" />Создание...</>
                 ) : (
                   <><Check className="w-4 h-4 mr-2" />Создать {programs.length} курсов</>
                 )}

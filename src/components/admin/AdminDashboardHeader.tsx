@@ -1,5 +1,5 @@
 import { useRef, useState, useCallback, useEffect } from "react";
-import { Menu, Bell, User, LogOut, Settings, FileText, Sparkles, HelpCircle, ImagePlus, Wand2, Loader2, Users, Check, Gift } from "lucide-react";
+import { Menu, Bell, User, LogOut, Settings, FileText, Sparkles, HelpCircle, ImagePlus, Wand2, Users, Check, Gift } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { SigmaLogo } from "@/components/ui/SigmaLogo";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -8,8 +8,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+  DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { supabase } from "@/integrations/supabase/client";
@@ -57,8 +56,7 @@ const TAB_TITLES: Record<AdminTabType, string> = {
   devtools: "Developer Tools",
   updates: "Обновления",
   settings: "Настройки",
-  staff: "Сотрудники",
-};
+  staff: "Сотрудники" };
 
 function getInitials(email?: string): string {
   return (email || "A")[0].toUpperCase();
@@ -75,8 +73,7 @@ export function AdminDashboardHeader({
   onMarkAllRead,
   onNotificationClick,
   branding,
-  onCoverUpload,
-}: AdminDashboardHeaderProps) {
+  onCoverUpload }: AdminDashboardHeaderProps) {
   const coverInputRef = useRef<HTMLInputElement>(null);
   const [isGeneratingCover, setIsGeneratingCover] = useState(false);
   const helpDialog = useHelpCenterDialog();
@@ -108,8 +105,7 @@ export function AdminDashboardHeader({
     toast.info("Генерируем обложку с ИИ...", { duration: 10000 });
     try {
       const { data, error } = await supabase.functions.invoke("generate-cover", {
-        body: { type: "admin" },
-      });
+        body: { type: "admin" } });
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
       toast.success("Обложка сгенерирована!");
@@ -253,8 +249,7 @@ export function AdminDashboardHeader({
               : branding.coverPosition === "bottom" ? "center bottom"
               : "center center"
             ),
-            backgroundColor: "hsl(var(--muted))",
-          }}
+            backgroundColor: "hsl(var(--muted))" }}
         />
         <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent" />
 
@@ -274,7 +269,7 @@ export function AdminDashboardHeader({
             disabled={isGeneratingCover}
             className="flex items-center gap-1.5 px-3 py-1.5 bg-black/40 hover:bg-black/60 backdrop-blur-sm text-white text-xs font-medium rounded-lg transition-colors disabled:opacity-50"
           >
-            {isGeneratingCover ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Wand2 className="w-3.5 h-3.5" />}
+            {isGeneratingCover ? <SigmaSpinner size="xs" className=".5 .5" /> : <Wand2 className="w-3.5 h-3.5" />}
             {isGeneratingCover ? "Генерация..." : "Сгенерировать с ИИ"}
           </button>
           <button

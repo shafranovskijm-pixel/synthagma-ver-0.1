@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { FileText, Eye, Trash2, Loader2, Upload, Save, User, Calendar } from "lucide-react";
+import { FileText, Eye, Trash2, Upload, Save, User, Calendar } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -58,7 +58,7 @@ export function DocumentsTab({ h }: DocumentsTabProps) {
                 onClick={() => h.handleUploadClick(doc.type)}
               >
                 {h.uploadingType === doc.type ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <SigmaSpinner size="sm" />
                 ) : (
                   <Upload className="w-4 h-4" />
                 )}
@@ -91,7 +91,7 @@ export function DocumentsTab({ h }: DocumentsTabProps) {
             <div className="flex gap-2">
               <Input value={lastName} onChange={(e) => setLastName(e.target.value)} placeholder="Иванов" />
               <Button size="sm" variant="ghost" className="shrink-0" disabled={h.savingFrdoField === "last_name"} onClick={() => h.saveFrdoField("last_name", lastName)}>
-                {h.savingFrdoField === "last_name" ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                {h.savingFrdoField === "last_name" ? <SigmaSpinner size="sm" /> : <Save className="w-4 h-4" />}
               </Button>
             </div>
           </div>
@@ -100,7 +100,7 @@ export function DocumentsTab({ h }: DocumentsTabProps) {
             <div className="flex gap-2">
               <Input value={firstName} onChange={(e) => setFirstName(e.target.value)} placeholder="Иван" />
               <Button size="sm" variant="ghost" className="shrink-0" disabled={h.savingFrdoField === "first_name"} onClick={() => h.saveFrdoField("first_name", firstName)}>
-                {h.savingFrdoField === "first_name" ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                {h.savingFrdoField === "first_name" ? <SigmaSpinner size="sm" /> : <Save className="w-4 h-4" />}
               </Button>
             </div>
           </div>
@@ -109,7 +109,7 @@ export function DocumentsTab({ h }: DocumentsTabProps) {
             <div className="flex gap-2">
               <Input value={middleName} onChange={(e) => setMiddleName(e.target.value)} placeholder="Иванович" />
               <Button size="sm" variant="ghost" className="shrink-0" disabled={h.savingFrdoField === "middle_name"} onClick={() => h.saveFrdoField("middle_name", middleName)}>
-                {h.savingFrdoField === "middle_name" ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                {h.savingFrdoField === "middle_name" ? <SigmaSpinner size="sm" /> : <Save className="w-4 h-4" />}
               </Button>
             </div>
           </div>
@@ -118,7 +118,7 @@ export function DocumentsTab({ h }: DocumentsTabProps) {
             <div className="flex gap-2">
               <Input type="date" value={birthDate} onChange={(e) => setBirthDate(e.target.value)} />
               <Button size="sm" variant="ghost" className="shrink-0" disabled={h.savingFrdoField === "birth_date"} onClick={() => h.saveFrdoField("birth_date", birthDate)}>
-                {h.savingFrdoField === "birth_date" ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                {h.savingFrdoField === "birth_date" ? <SigmaSpinner size="sm" /> : <Save className="w-4 h-4" />}
               </Button>
             </div>
           </div>
@@ -127,7 +127,7 @@ export function DocumentsTab({ h }: DocumentsTabProps) {
             <div className="flex gap-2">
               <Input value={snilsValue} onChange={handleSnilsChange} placeholder="XXX-XXX-XXX XX" maxLength={14} className="max-w-xs" />
               <Button size="sm" variant="ghost" className="shrink-0" disabled={h.savingFrdoField === "snils" || (snilsValue && !isValidSnils(snilsValue))} onClick={() => h.saveFrdoField("snils", snilsValue)}>
-                {h.savingFrdoField === "snils" ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                {h.savingFrdoField === "snils" ? <SigmaSpinner size="sm" /> : <Save className="w-4 h-4" />}
               </Button>
             </div>
             {snilsValue && !isValidSnils(snilsValue) && (
@@ -163,7 +163,7 @@ export function DocumentsTab({ h }: DocumentsTabProps) {
                 </div>
                 <div className="flex items-center gap-1">
                   <Button size="sm" variant="ghost" className="rounded-lg" onClick={() => h.handlePreviewDoc(doc)}>
-                    {h.isLoadingPreview ? <Loader2 className="w-4 h-4 animate-spin" /> : <Eye className="w-4 h-4" />}
+                    {h.isLoadingPreview ? <SigmaSpinner size="sm" /> : <Eye className="w-4 h-4" />}
                   </Button>
                   <Button size="sm" variant="ghost" className="rounded-lg text-destructive hover:text-destructive" onClick={() => h.handleDeleteIdentityDoc(doc)}>
                     <Trash2 className="w-4 h-4" />

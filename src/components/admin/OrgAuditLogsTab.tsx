@@ -10,20 +10,17 @@ import {
   SelectContent,
   SelectItem,
   SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+  SelectValue } from "@/components/ui/select";
 import {
   Table,
   TableBody,
   TableCell,
   TableHead,
   TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+  TableRow } from "@/components/ui/table";
 import {
   Search,
   RefreshCw,
-  Loader2,
   Plus,
   Edit,
   Trash2,
@@ -40,8 +37,7 @@ import {
   Building2,
   GraduationCap,
   Link,
-  Settings,
-} from "lucide-react";
+  Settings } from "lucide-react";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 
@@ -69,8 +65,7 @@ const ACTION_ICONS: Record<string, React.ElementType> = {
   view: Eye,
   export: Download,
   login: LogIn,
-  logout: LogOut,
-};
+  logout: LogOut };
 
 const ACTION_LABELS: Record<string, string> = {
   create: "Создание",
@@ -79,8 +74,7 @@ const ACTION_LABELS: Record<string, string> = {
   view: "Просмотр",
   export: "Экспорт",
   login: "Вход",
-  logout: "Выход",
-};
+  logout: "Выход" };
 
 const ACTION_COLORS: Record<string, string> = {
   create: "bg-green-500/10 text-green-600 border-green-500/20",
@@ -89,8 +83,7 @@ const ACTION_COLORS: Record<string, string> = {
   view: "bg-gray-500/10 text-gray-600 border-gray-500/20",
   export: "bg-purple-500/10 text-purple-600 border-purple-500/20",
   login: "bg-green-500/10 text-green-600 border-green-500/20",
-  logout: "bg-orange-500/10 text-orange-600 border-orange-500/20",
-};
+  logout: "bg-orange-500/10 text-orange-600 border-orange-500/20" };
 
 const ENTITY_ICONS: Record<string, React.ElementType> = {
   student: Users,
@@ -100,8 +93,7 @@ const ENTITY_ICONS: Record<string, React.ElementType> = {
   company: Building2,
   link: Link,
   settings: Settings,
-  user: User,
-};
+  user: User };
 
 const ENTITY_LABELS: Record<string, string> = {
   student: "Ученик",
@@ -116,8 +108,7 @@ const ENTITY_LABELS: Record<string, string> = {
   lesson: "Урок",
   journal: "Журнал",
   consent: "Согласие",
-  library: "Библиотека",
-};
+  library: "Библиотека" };
 
 export function OrgAuditLogsTab({ organizationId }: OrgAuditLogsTabProps) {
   const [logs, setLogs] = useState<AuditLogEntry[]>([]);
@@ -292,7 +283,7 @@ export function OrgAuditLogsTab({ organizationId }: OrgAuditLogsTabProps) {
           {/* Logs Table */}
           {loading ? (
             <div className="flex items-center justify-center py-12">
-              <Loader2 className="w-8 h-8 animate-spin text-primary" />
+              <SigmaSpinner size="lg" />
             </div>
           ) : filteredLogs.length === 0 ? (
             <div className="text-center py-12 text-muted-foreground">
@@ -319,8 +310,7 @@ export function OrgAuditLogsTab({ organizationId }: OrgAuditLogsTabProps) {
                         <div className="flex items-center gap-2">
                           <Clock className="w-3 h-3 text-muted-foreground" />
                           {format(new Date(log.created_at), "dd.MM.yyyy HH:mm", {
-                            locale: ru,
-                          })}
+                            locale: ru })}
                         </div>
                       </TableCell>
                       <TableCell>

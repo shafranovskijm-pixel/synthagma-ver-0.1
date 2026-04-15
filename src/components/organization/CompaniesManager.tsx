@@ -3,10 +3,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import {
-  Building2, Plus, Search, Users, FileText, Loader2,
+  Building2, Plus, Search, Users, FileText,
   ChevronRight, CheckCircle2, Clock, LayoutGrid, List,
-  CreditCard, Upload, RefreshCw, ExternalLink, EyeOff,
-} from "lucide-react";
+  CreditCard, Upload, RefreshCw, ExternalLink, EyeOff } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
@@ -18,8 +17,7 @@ import { useCompanyLinksAndGenerators } from "@/hooks/useCompanyLinksAndGenerato
 import {
   CompanyDetailDialog, CreateCompanyDialog, EditCompanyFormDialog,
   DeleteCompanyDialog, ViewStudentsDialog, BulkAssignStudentsDialog,
-  CompanyLinksDialog, BulkEnrollDialog,
-} from "./dialogs";
+  CompanyLinksDialog, BulkEnrollDialog } from "./dialogs";
 
 import { ContractGenerator } from "./ContractGenerator";
 import { InvoiceGenerator } from "./InvoiceGenerator";
@@ -62,8 +60,7 @@ export function CompaniesManager({ organizationId }: CompaniesManagerProps) {
     localStorage.setItem('orgViewAsCompany', JSON.stringify({
       companyId: company.id,
       companyName: company.name,
-      userId: company.user_id,
-    }));
+      userId: company.user_id }));
     navigate('/company');
   };
 
@@ -109,7 +106,7 @@ export function CompaniesManager({ organizationId }: CompaniesManagerProps) {
   };
 
   if (cm.isLoading) {
-    return <div className="flex items-center justify-center py-20"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>;
+    return <div className="flex items-center justify-center py-20"><SigmaSpinner size="lg" /></div>;
   }
 
   return (

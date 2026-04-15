@@ -4,7 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Calendar, Plus, Loader2, ClipboardList, AlertCircle } from "lucide-react";
+import { Calendar, Plus, ClipboardList, AlertCircle } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -47,8 +47,7 @@ const statusConfig: Record<string, { label: string; color: string }> = {
   planned: { label: "Запланировано", color: "bg-blue-500/10 text-blue-500 border-blue-500/20" },
   enrolled: { label: "Зачислен", color: "bg-amber-500/10 text-amber-500 border-amber-500/20" },
   completed: { label: "Завершено", color: "bg-green-500/10 text-green-500 border-green-500/20" },
-  overdue: { label: "Просрочено", color: "bg-destructive/10 text-destructive border-destructive/20" },
-};
+  overdue: { label: "Просрочено", color: "bg-destructive/10 text-destructive border-destructive/20" } };
 
 export function TrainingPlansTab({ companyId, organizationId, employees }: Props) {
   const [plans, setPlans] = useState<TrainingPlan[]>([]);
@@ -102,8 +101,7 @@ export function TrainingPlansTab({ companyId, organizationId, employees }: Props
         course_name: formCourseName || null,
         planned_date: formDate ? format(formDate, "yyyy-MM-dd") : null,
         notes: formNotes || null,
-        status: "planned",
-      });
+        status: "planned" });
       if (error) throw error;
       toast.success("План добавлен");
       setShowAdd(false);
@@ -124,7 +122,7 @@ export function TrainingPlansTab({ companyId, organizationId, employees }: Props
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
-        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        <SigmaSpinner size="lg" />
       </div>
     );
   }
@@ -258,7 +256,7 @@ export function TrainingPlansTab({ companyId, organizationId, employees }: Props
               <Input placeholder="Комментарий" value={formNotes} onChange={(e) => setFormNotes(e.target.value)} />
             </div>
             <Button className="w-full" onClick={handleAdd} disabled={!formUserId || saving}>
-              {saving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
+              {saving ? <SigmaSpinner size="sm" className="mr-2" /> : null}
               Добавить план
             </Button>
           </div>

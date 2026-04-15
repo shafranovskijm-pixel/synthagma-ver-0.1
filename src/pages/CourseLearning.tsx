@@ -8,7 +8,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { 
   ArrowLeft, CheckCircle2, Circle, FileText, Video, ClipboardList, 
-  ChevronLeft, ChevronRight, Trophy, Sparkles, Clock, Loader2, 
+  ChevronLeft, ChevronRight, Trophy, Sparkles, Clock, 
   Volume2, Square, MessageCircle, X, Send, List, Presentation, 
   Lock, RotateCcw, Settings2, Headphones, Download, FileText as FileTextIcon,
   FileSpreadsheet, Presentation as PresentationIcon, File, Eye, ChevronDown,
@@ -17,11 +17,9 @@ import {
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, 
-  AlertDialogTitle, AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
+  AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import {
-  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator, DropdownMenuLabel,
-} from "@/components/ui/dropdown-menu";
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator, DropdownMenuLabel } from "@/components/ui/dropdown-menu";
 import { BlockRenderer } from "@/components/course-builder/BlockEditor";
 import { cn } from "@/lib/utils";
 import { TTSSettingsDialog, SALUTE_VOICES, saveTTSSettings } from "@/components/student/TTSSettingsDialog";
@@ -54,8 +52,7 @@ const CourseLearning = () => {
     goToNextLesson, goToPrevLesson, goToLesson, markLessonComplete, resetCourseProgress,
     submitTest, retryTest,
     getLessonIcon, lessonButtonRefs, lessonAttachments,
-    isOfflineMode, offlineCachedAt,
-  } = useCourseLearning();
+    isOfflineMode, offlineCachedAt } = useCourseLearning();
 
   const [previewFile, setPreviewFile] = useReactState<{ url: string; name: string; type: string | null } | null>(null);
 
@@ -75,14 +72,13 @@ const CourseLearning = () => {
   const swipeRef = useSwipeGesture<HTMLDivElement>({
     onSwipeLeft: isMobile && !isTestActive ? handleSwipeLeft : undefined,
     onSwipeRight: isMobile && !isTestActive ? handleSwipeRight : undefined,
-    threshold: 100, minSwipeDistance: 70,
-  });
+    threshold: 100, minSwipeDistance: 70 });
 
   if (loading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
-          <Loader2 className="w-12 h-12 animate-spin text-primary mx-auto mb-4" />
+          <SigmaSpinner size="xl" className="mx-auto mb-4" />
           <p className="text-muted-foreground">Загрузка курса...</p>
         </div>
       </div>
@@ -157,7 +153,7 @@ const CourseLearning = () => {
             {(currentLesson?.type === 'text' || currentLesson?.type === 'test') && (
               <>
                 <Button variant={isSpeaking ? "default" : "outline"} size="sm" onClick={speakText} disabled={elevenLabsTTS.isLoading} className={cn("rounded-lg", isSpeaking && "bg-primary text-primary-foreground", isMobile && "h-8 w-8 p-0")} title={isSpeaking ? "Стоп" : "Озвучить"}>
-                  {elevenLabsTTS.isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : isSpeaking ? <Square className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
+                  {elevenLabsTTS.isLoading ? <SigmaSpinner size="sm" /> : isSpeaking ? <Square className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
                   {!isMobile && <span className="ml-1">{elevenLabsTTS.isLoading ? '...' : isSpeaking ? 'Стоп' : 'Озвучить'}</span>}
                 </Button>
                 {ttsSettings.provider === 'salutespeech' ? (
@@ -225,7 +221,7 @@ const CourseLearning = () => {
                   <div className="min-w-0"><h1 className={cn("font-bold line-clamp-2", isMobile ? "text-lg" : "text-2xl")}>{currentLesson.title}</h1><p className="text-xs md:text-sm text-muted-foreground">Видеоурок {currentLessonIndex + 1}</p></div>
                 </div>
                 <div className="aspect-video bg-muted rounded-2xl flex items-center justify-center overflow-hidden shadow-lg relative">
-                  {isVideoProgressLoading ? <div className="flex items-center justify-center"><Loader2 className="w-8 h-8 animate-spin text-muted-foreground" /></div> : currentLesson.content ? (
+                  {isVideoProgressLoading ? <div className="flex items-center justify-center"><SigmaSpinner size="lg" /></div> : currentLesson.content ? (
                     <VideoPlayerInline key={`${currentLesson.id}-${course?.allow_video_seek !== false ? "seek" : "no-seek"}`} content={currentLesson.content} allowSeek={course?.allow_video_seek !== false} userId={user?.id} lessonId={currentLesson.id} courseId={course?.id} savedPosition={savedPosition} onSavePosition={saveVideoPosition} onProgressChange={setVideoWatchProgress} onFinishLesson={() => markLessonComplete()} onVideoComplete={async () => { if (!isLessonCompleted(currentLesson.id)) markLessonComplete(); }} />
                   ) : <div className="text-center text-muted-foreground"><Video className="w-16 h-16 mx-auto mb-4" /><p>Видео не загружено</p></div>}
                   {(course as any)?.landing_content?.video_watermark && user?.email && (
@@ -289,7 +285,7 @@ const CourseLearning = () => {
                         disabled={!feedbackAnswer.trim() || feedbackSending}
                         className="btn-gradient rounded-xl gap-2"
                       >
-                        {feedbackSending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+                        {feedbackSending ? <SigmaSpinner size="sm" /> : <Send className="w-4 h-4" />}
                         {feedbackSending ? 'Отправка...' : 'Отправить ответ'}
                       </Button>
                     </div>
@@ -526,7 +522,7 @@ const CourseLearning = () => {
                 <div className={cn("max-w-[80%] rounded-2xl px-4 py-2 text-sm", msg.role === 'user' ? "bg-primary text-primary-foreground rounded-br-md" : "bg-muted rounded-bl-md")}><p className="whitespace-pre-wrap">{msg.content}</p></div>
               </div>
             ))}
-            {isChatLoading && <div className="flex justify-start"><div className="bg-muted rounded-2xl rounded-bl-md px-4 py-3 flex items-center gap-2"><Loader2 className="w-4 h-4 animate-spin" /><span className="text-sm text-muted-foreground">Печатает...</span></div></div>}
+            {isChatLoading && <div className="flex justify-start"><div className="bg-muted rounded-2xl rounded-bl-md px-4 py-3 flex items-center gap-2"><SigmaSpinner size="sm" /><span className="text-sm text-muted-foreground">Печатает...</span></div></div>}
           </div>
           <div className={cn("border-t border-border bg-background", isMobile ? "p-3 pb-safe" : "p-3")}>
             <div className="flex gap-2">

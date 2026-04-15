@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Clock, Monitor, BookOpen, Loader2, ClipboardCheck } from "lucide-react";
+import { Clock, Monitor, BookOpen, ClipboardCheck } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
@@ -115,8 +115,7 @@ export function ActivityTab({ userId, organizationId, studentName }: ActivityTab
           question: q.question,
           options: Array.isArray(q.options) ? q.options.map((o: any) => typeof o === 'object' && o !== null ? o.text : String(o)) : [],
           correct_answer: q.correct_answer,
-          explanation: q.explanation,
-        });
+          explanation: q.explanation });
         questionsByLesson.set(q.lesson_id, list);
       });
 
@@ -159,8 +158,7 @@ export function ActivityTab({ userId, organizationId, studentName }: ActivityTab
             answers: (a.answers as Record<string, number>) || {},
             shown_question_ids: a.shown_question_ids as string[] | null,
             passing_score: lesson.test_passing_score || 60,
-            questions: questionsByLesson.get(a.lesson_id) || [],
-          };
+            questions: questionsByLesson.get(a.lesson_id) || [] };
         });
 
       setTestAttempts(enriched);
@@ -174,7 +172,7 @@ export function ActivityTab({ userId, organizationId, studentName }: ActivityTab
   if (isLoading) {
     return (
       <div className="flex justify-center py-12">
-        <Loader2 className="w-6 h-6 animate-spin text-primary" />
+        <SigmaSpinner />
       </div>
     );
   }

@@ -3,8 +3,7 @@ import {
   Dialog,
   DialogContent,
   DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+  DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
@@ -14,9 +13,7 @@ import {
   Video,
   Image,
   FileQuestion,
-  Loader2,
-  Sparkles,
-} from "lucide-react";
+  Sparkles } from "lucide-react";
 import { toast } from "sonner";
 
 export type AIGenerateType = "audio" | "slides" | "video" | "image" | "test";
@@ -37,40 +34,35 @@ const generateOptions: AIGenerateOption[] = [
     title: "Аудио лекция",
     description: "AI-озвучка (ElevenLabs) — реалистичные голоса читают текст",
     color: "text-green-500",
-    bgColor: "bg-green-500/10 hover:bg-green-500/20",
-  },
+    bgColor: "bg-green-500/10 hover:bg-green-500/20" },
   {
     type: "slides",
     icon: Presentation,
     title: "Слайды",
     description: "Переключение между разделами с визуальным оформлением",
     color: "text-amber-500",
-    bgColor: "bg-amber-500/10 hover:bg-amber-500/20",
-  },
+    bgColor: "bg-amber-500/10 hover:bg-amber-500/20" },
   {
     type: "video",
     icon: Video,
     title: "Короткие видео-вставки",
     description: "Для визуализации концепций и объяснений",
     color: "text-sigma-purple",
-    bgColor: "bg-sigma-purple/10 hover:bg-sigma-purple/20",
-  },
+    bgColor: "bg-sigma-purple/10 hover:bg-sigma-purple/20" },
   {
     type: "image",
     icon: Image,
     title: "Изображение",
     description: "AI-генерация иллюстраций и схем",
     color: "text-sigma-cyan",
-    bgColor: "bg-sigma-cyan/10 hover:bg-sigma-cyan/20",
-  },
+    bgColor: "bg-sigma-cyan/10 hover:bg-sigma-cyan/20" },
   {
     type: "test",
     icon: FileQuestion,
     title: "Тестирование",
     description: "Автоматическая генерация вопросов по теме",
     color: "text-sigma-orange",
-    bgColor: "bg-sigma-orange/10 hover:bg-sigma-orange/20",
-  },
+    bgColor: "bg-sigma-orange/10 hover:bg-sigma-orange/20" },
 ];
 
 interface AIGenerateDialogProps {
@@ -86,8 +78,7 @@ export function AIGenerateDialog({
   onOpenChange,
   onGenerate,
   courseTitle,
-  courseDescription,
-}: AIGenerateDialogProps) {
+  courseDescription }: AIGenerateDialogProps) {
   const [selectedType, setSelectedType] = useState<AIGenerateType | null>(null);
   const [prompt, setPrompt] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
@@ -184,7 +175,7 @@ export function AIGenerateDialog({
               >
                 {isGenerating ? (
                   <>
-                    <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                    <SigmaSpinner size="sm" className="mr-2" />
                     Генерация...
                   </>
                 ) : (

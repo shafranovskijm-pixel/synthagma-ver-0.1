@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import { Sparkles, Loader2, Check, X, AlertCircle, RotateCcw, CheckSquare, Square, Layers, FileText, FileQuestion, Image as ImageIcon } from "lucide-react";
+import { Sparkles, Check, X, AlertCircle, RotateCcw, CheckSquare, Square, Layers, FileText, FileQuestion, Image as ImageIcon } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
@@ -38,8 +38,7 @@ const PHASE_LABELS: Record<Phase, string> = {
   content: "Фаза 2: Генерация контента",
   media: "Фаза 3: Изображения и аудио",
   tests: "Фаза 4: Решение тестов",
-  complete: "Завершено",
-};
+  complete: "Завершено" };
 
 /** Check if lesson content is empty or just a placeholder heading */
 const isContentEmpty = (content: string | null): boolean => {
@@ -82,8 +81,7 @@ const logHistory = async (
       details,
       items_count: itemsCount,
       duration_ms: durationMs,
-      stream_index: streamIndex ?? null,
-    });
+      stream_index: streamIndex ?? null });
   } catch (e) {
   }
 };
@@ -139,8 +137,7 @@ export function BulkContentGenerator({ open, onOpenChange, courseId, courseTitle
       const items: LessonItem[] = (data || []).map((l) => ({
         ...l,
         selected: true,
-        status: "pending" as LessonStatus,
-      }));
+        status: "pending" as LessonStatus }));
 
       setLessons(items);
       setDoneCount(0);
@@ -182,8 +179,7 @@ export function BulkContentGenerator({ open, onOpenChange, courseId, courseTitle
     const structureStart = Date.now();
     try {
       const { data, error } = await supabase.functions.invoke("generate-course-structure", {
-        body: { title: courseTitle, description: courseDescription || "" },
-      });
+        body: { title: courseTitle, description: courseDescription || "" } });
 
       if (error) throw new Error(error.message || "Ошибка генерации структуры");
       if (!data?.success || !data?.lessons?.length) {
@@ -275,9 +271,7 @@ export function BulkContentGenerator({ open, onOpenChange, courseId, courseTitle
               taskIndex,
               lessonIndex: lesson.order_index,
               ai_provider: aiProvider,
-              ...(aiProvider === "gigachat" && gigachatModel ? { gigachat_model: gigachatModel } : {}),
-            },
-          });
+              ...(aiProvider === "gigachat" && gigachatModel ? { gigachat_model: gigachatModel } : {}) } });
           if (textError) throw new Error(textError.message || "Ошибка генерации текста");
           if (!textData?.success || !textData?.blocks?.length) {
             throw new Error(textData?.error || "Пустой ответ от ИИ");
@@ -355,9 +349,7 @@ export function BulkContentGenerator({ open, onOpenChange, courseId, courseTitle
             body: {
               prompt: `Образовательная иллюстрация для урока "${lesson.title}". Профессиональная, чистая, подходящая для онлайн-курса.`,
               provider: "gigachat",
-              slotIndex: taskIndex,
-            },
-          });
+              slotIndex: taskIndex } });
           if (imgError) {
             console.error(`Image generation error for "${lesson.title}":`, imgError);
           } else if (imgData?.url) {
@@ -365,8 +357,7 @@ export function BulkContentGenerator({ open, onOpenChange, courseId, courseTitle
               id: crypto.randomUUID(),
               type: "image",
               content: "",
-              imageSrc: imgData.url,
-            });
+              imageSrc: imgData.url });
             changed = true;
           } else {
             console.error(`Image generation returned no URL for "${lesson.title}":`, JSON.stringify(imgData));
@@ -395,14 +386,11 @@ export function BulkContentGenerator({ open, onOpenChange, courseId, courseTitle
                 headers: {
                   "Content-Type": "application/json",
                   "apikey": import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
-                  "Authorization": `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
-                },
+                  "Authorization": `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}` },
                 body: JSON.stringify({
                   text: ttsText,
                   voice: "natalya",
-                  format: "opus",
-                }),
-              }
+                  format: "opus" }) }
             );
             if (response.ok) {
               const audioBlob = await response.blob();
@@ -412,8 +400,7 @@ export function BulkContentGenerator({ open, onOpenChange, courseId, courseTitle
                 .upload(fileName, audioBlob, {
                   contentType: "audio/ogg",
                   cacheControl: "3600",
-                  upsert: true,
-                });
+                  upsert: true });
               if (!uploadErr) {
                 const { data: urlData } = supabase.storage.from("course-files").getPublicUrl(fileName);
                 if (urlData?.publicUrl) {
@@ -422,8 +409,7 @@ export function BulkContentGenerator({ open, onOpenChange, courseId, courseTitle
                     id: crypto.randomUUID(),
                     type: "audio",
                     content: fullText.slice(0, 200),
-                    audioUrl: urlData.publicUrl,
-                  });
+                    audioUrl: urlData.publicUrl });
                   changed = true;
                 }
               }
@@ -494,8 +480,7 @@ export function BulkContentGenerator({ open, onOpenChange, courseId, courseTitle
 
           const questionsForAI = batch.map((q: any) => ({
             question: q.question,
-            options: Array.isArray(q.options) ? q.options.map((o: any) => typeof o === "string" ? o : o.text || String(o)) : [],
-          }));
+            options: Array.isArray(q.options) ? q.options.map((o: any) => typeof o === "string" ? o : o.text || String(o)) : [] }));
 
           const { data: aiData, error: aiError } = await supabase.functions.invoke("gigachat", {
             body: {
@@ -503,17 +488,14 @@ export function BulkContentGenerator({ open, onOpenChange, courseId, courseTitle
               courseTitle,
               lessonTitle: lesson.title,
               questions: questionsForAI,
-              taskIndex: i,
-            },
-          });
+              taskIndex: i } });
 
           if (aiError) throw new Error(aiError.message || "Ошибка AI");
           if (aiData.parseError) throw new Error("ИИ вернул ответ в неожиданном формате");
 
           const batchAnswers = (aiData.answers || []).map((a: any) => ({
             ...a,
-            questionIndex: a.questionIndex + batchStart,
-          }));
+            questionIndex: a.questionIndex + batchStart }));
           allAnswers.push(...batchAnswers);
 
           if (batchStart + TEST_BATCH_SIZE < questions.length) {
@@ -529,8 +511,7 @@ export function BulkContentGenerator({ open, onOpenChange, courseId, courseTitle
               .from("test_questions")
               .update({
                 correct_answer: answer.correctAnswer ?? 0,
-                explanation: answer.explanation || null,
-              })
+                explanation: answer.explanation || null })
               .eq("id", q.id);
           }
         }
@@ -638,20 +619,17 @@ export function BulkContentGenerator({ open, onOpenChange, courseId, courseTitle
             const batch = questions.slice(batchStart, batchStart + TEST_BATCH_SIZE);
             const questionsForAI = batch.map((q: any) => ({
               question: q.question,
-              options: Array.isArray(q.options) ? q.options.map((o: any) => typeof o === "string" ? o : o.text || String(o)) : [],
-            }));
+              options: Array.isArray(q.options) ? q.options.map((o: any) => typeof o === "string" ? o : o.text || String(o)) : [] }));
 
             const { data: aiData, error: aiError } = await supabase.functions.invoke("gigachat", {
-              body: { action: "generate_answers", courseTitle, lessonTitle: lesson.title, questions: questionsForAI },
-            });
+              body: { action: "generate_answers", courseTitle, lessonTitle: lesson.title, questions: questionsForAI } });
 
             if (aiError) throw new Error(aiError.message);
             if (aiData.parseError) throw new Error("Неожиданный формат ответа AI");
 
             const batchAnswers = (aiData.answers || []).map((a: any) => ({
               ...a,
-              questionIndex: a.questionIndex + batchStart,
-            }));
+              questionIndex: a.questionIndex + batchStart }));
             allAnswers.push(...batchAnswers);
 
             if (batchStart + TEST_BATCH_SIZE < questions.length) {
@@ -681,8 +659,7 @@ export function BulkContentGenerator({ open, onOpenChange, courseId, courseTitle
           const lessonType = isPracticeLesson(lesson) ? "practice" : "text";
 
           const { data: textData, error: textError } = await supabase.functions.invoke("generate-lesson-content", {
-            body: { lessonTitle: lesson.title, lessonType, courseTitle, courseDescription, previousLessons: [], ai_provider: aiProvider, ...(aiProvider === "gigachat" && gigachatModel ? { gigachat_model: gigachatModel } : {}) },
-          });
+            body: { lessonTitle: lesson.title, lessonType, courseTitle, courseDescription, previousLessons: [], ai_provider: aiProvider, ...(aiProvider === "gigachat" && gigachatModel ? { gigachat_model: gigachatModel } : {}) } });
           if (textError) throw new Error(textError.message);
           if (!textData?.success || !textData?.blocks?.length) throw new Error(textData?.error || "Пустой ответ");
 
@@ -690,8 +667,7 @@ export function BulkContentGenerator({ open, onOpenChange, courseId, courseTitle
           let imageUrl: string | null = null;
           try {
             const { data: imgData } = await supabase.functions.invoke("generate-image", {
-              body: { prompt: `Образовательная иллюстрация для урока: ${lesson.title}`, provider: "gigachat", slotIndex: i },
-            });
+              body: { prompt: `Образовательная иллюстрация для урока: ${lesson.title}`, provider: "gigachat", slotIndex: i } });
             if (imgData?.url) imageUrl = imgData.url;
           } catch {}
 
@@ -727,7 +703,7 @@ export function BulkContentGenerator({ open, onOpenChange, courseId, courseTitle
       case "generating_image":
       case "generating_audio":
       case "solving_test":
-        return <Loader2 className="w-4 h-4 animate-spin text-primary" />;
+        return <SigmaSpinner size="sm" />;
       case "done":
         return <Check className="w-4 h-4 text-accent-foreground" />;
       case "error":
@@ -796,7 +772,7 @@ export function BulkContentGenerator({ open, onOpenChange, courseId, courseTitle
 
         {loading ? (
           <div className="flex items-center justify-center py-12">
-            <Loader2 className="w-6 h-6 animate-spin text-primary" />
+            <SigmaSpinner />
           </div>
         ) : !hasLessons ? (
           <div className="text-center py-8 space-y-2">

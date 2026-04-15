@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Loader2, CheckCircle2, AlertTriangle, Download, Info } from "lucide-react";
+import { CheckCircle2, AlertTriangle, Download, Info } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
 interface SkillspaceImportDialogProps {
@@ -67,8 +67,7 @@ export function SkillspaceImportDialog({ open, onOpenChange, organizationId, exi
 
         // Get credentials
         const { data: creds } = await supabase.rpc("get_decrypted_org_credentials", {
-          p_organization_id: organizationId,
-        });
+          p_organization_id: organizationId });
         if (creds && creds.length > 0) {
           setLogin(creds[0].login_email || "");
           setPassword(creds[0].login_password || "");
@@ -99,8 +98,7 @@ export function SkillspaceImportDialog({ open, onOpenChange, organizationId, exi
       const requestHeaders = {
         "Content-Type": "application/json",
         "Authorization": `Bearer ${supabaseKey}`,
-        "apikey": supabaseKey,
-      };
+        "apikey": supabaseKey };
       
       // Retry logic for network errors (antivirus/VPN blocks)
       let response: Response | null = null;
@@ -116,8 +114,7 @@ export function SkillspaceImportDialog({ open, onOpenChange, organizationId, exi
             method: "POST",
             headers: requestHeaders,
             body: requestBody,
-            signal: controller.signal,
-          });
+            signal: controller.signal });
           clearTimeout(timeoutId);
           break; // success
         } catch (fetchErr: any) {
@@ -152,8 +149,7 @@ export function SkillspaceImportDialog({ open, onOpenChange, organizationId, exi
           importMode: data.importMode,
           schoolApiAvailable: data.schoolApiAvailable,
           testQuestionsCreated: data.testQuestionsCreated,
-          updateMode: data.updateMode,
-        });
+          updateMode: data.updateMode });
         onSuccess?.();
       }
     } catch (err) {
@@ -243,7 +239,7 @@ export function SkillspaceImportDialog({ open, onOpenChange, organizationId, exi
 
             {loading && (
               <Alert>
-                <Loader2 className="h-4 w-4 animate-spin" />
+                <SigmaSpinner size="sm" />
                 <AlertDescription>
                   Парсинг курса... Это может занять до минуты.
                 </AlertDescription>
@@ -324,7 +320,7 @@ export function SkillspaceImportDialog({ open, onOpenChange, organizationId, exi
               <Button onClick={handleImport} disabled={loading}>
                 {loading ? (
                   <>
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    <SigmaSpinner size="sm" className="mr-2" />
                     Импорт...
                   </>
                 ) : (

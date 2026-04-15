@@ -8,7 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Copy, Plus, Trash2, Loader2, ExternalLink, Sparkles, Tag, ArrowUp, Globe, FileEdit, BarChart3 } from "lucide-react";
+import { Copy, Plus, Trash2, ExternalLink, Sparkles, Tag, ArrowUp, Globe, FileEdit, BarChart3 } from "lucide-react";
 
 interface Props {
   courseId: string;
@@ -57,8 +57,7 @@ function transliterate(str: string): string {
     а: "a", б: "b", в: "v", г: "g", д: "d", е: "e", ё: "yo", ж: "zh",
     з: "z", и: "i", й: "y", к: "k", л: "l", м: "m", н: "n", о: "o",
     п: "p", р: "r", с: "s", т: "t", у: "u", ф: "f", х: "kh", ц: "ts",
-    ч: "ch", ш: "sh", щ: "shch", ъ: "", ы: "y", ь: "", э: "e", ю: "yu", я: "ya",
-  };
+    ч: "ch", ш: "sh", щ: "shch", ъ: "", ы: "y", ь: "", э: "e", ю: "yu", я: "ya" };
   return str
     .toLowerCase()
     .split("")
@@ -115,8 +114,7 @@ export function CoursePageSettingsContent({ courseId, courseTitle, courseDescrip
         accent_color: accentColor,
         price: price,
         allow_materials_download: allowMaterialsDownload,
-        landing_content: landingContent as any,
-      })
+        landing_content: landingContent as any })
       .eq("id", courseId);
 
     if (error) {
@@ -158,30 +156,26 @@ export function CoursePageSettingsContent({ courseId, courseTitle, courseDescrip
   const updateEnrollmentForm = (key: string, value: any) => {
     setLandingContent((prev) => ({
       ...prev,
-      enrollment_form: { ...prev.enrollment_form, [key]: value },
-    }));
+      enrollment_form: { ...prev.enrollment_form, [key]: value } }));
   };
 
   const updateAnalytics = (key: string, value: string) => {
     setLandingContent((prev) => ({
       ...prev,
-      analytics: { ...prev.analytics, [key]: value },
-    }));
+      analytics: { ...prev.analytics, [key]: value } }));
   };
 
   const updateSeo = (key: string, value: string) => {
     setLandingContent((prev) => ({
       ...prev,
-      seo: { ...prev.seo, [key]: value },
-    }));
+      seo: { ...prev.seo, [key]: value } }));
   };
 
   const handleAiGenerate = async (type: "seo" | "form") => {
     setAiLoading(type);
     try {
       const { data, error } = await supabase.functions.invoke("generate-seo", {
-        body: { courseTitle, courseDescription: courseDescription || "", type },
-      });
+        body: { courseTitle, courseDescription: courseDescription || "", type } });
       if (error) throw error;
       if (!data) throw new Error("Нет данных");
 
@@ -192,9 +186,7 @@ export function CoursePageSettingsContent({ courseId, courseTitle, courseDescrip
             ...prev.seo,
             meta_title: data.meta_title || prev.seo?.meta_title,
             meta_description: data.meta_description || prev.seo?.meta_description,
-            keywords: data.keywords || prev.seo?.keywords,
-          },
-        }));
+            keywords: data.keywords || prev.seo?.keywords } }));
         toast.success("SEO-теги сгенерированы");
       } else if (type === "form") {
         setLandingContent((prev) => ({
@@ -202,9 +194,7 @@ export function CoursePageSettingsContent({ courseId, courseTitle, courseDescrip
           enrollment_form: {
             ...prev.enrollment_form,
             subtitle: data.subtitle || prev.enrollment_form?.subtitle,
-            button_text: data.button_text || prev.enrollment_form?.button_text,
-          },
-        }));
+            button_text: data.button_text || prev.enrollment_form?.button_text } }));
         toast.success("Тексты формы сгенерированы");
       }
     } catch (e: any) {
@@ -225,7 +215,7 @@ export function CoursePageSettingsContent({ courseId, courseTitle, courseDescrip
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
-        <Loader2 className="w-6 h-6 animate-spin text-primary" />
+        <SigmaSpinner />
       </div>
     );
   }
@@ -314,7 +304,7 @@ export function CoursePageSettingsContent({ courseId, courseTitle, courseDescrip
         </div>
 
         <Button onClick={handleSave} disabled={saving} className="w-full gap-2">
-          {saving && <Loader2 className="w-4 h-4 animate-spin" />}
+          {saving && <SigmaSpinner size="sm" />}
           Сохранить настройки
         </Button>
       </TabsContent>
@@ -333,7 +323,7 @@ export function CoursePageSettingsContent({ courseId, courseTitle, courseDescrip
             onClick={() => handleAiGenerate("seo")}
             disabled={aiLoading === "seo"}
           >
-            {aiLoading === "seo" ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
+            {aiLoading === "seo" ? <SigmaSpinner size="sm" /> : <Sparkles className="w-4 h-4" />}
             Заполнить с ИИ
           </Button>
         </div>
@@ -392,7 +382,7 @@ export function CoursePageSettingsContent({ courseId, courseTitle, courseDescrip
         </div>
 
         <Button onClick={handleSave} disabled={saving} className="w-full gap-2">
-          {saving && <Loader2 className="w-4 h-4 animate-spin" />}
+          {saving && <SigmaSpinner size="sm" />}
           Сохранить настройки
         </Button>
       </TabsContent>
@@ -411,7 +401,7 @@ export function CoursePageSettingsContent({ courseId, courseTitle, courseDescrip
             onClick={() => handleAiGenerate("form")}
             disabled={aiLoading === "form"}
           >
-            {aiLoading === "form" ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
+            {aiLoading === "form" ? <SigmaSpinner size="sm" /> : <Sparkles className="w-4 h-4" />}
             Заполнить с ИИ
           </Button>
         </div>
@@ -453,7 +443,7 @@ export function CoursePageSettingsContent({ courseId, courseTitle, courseDescrip
         </div>
 
         <Button onClick={handleSave} disabled={saving} className="w-full gap-2">
-          {saving && <Loader2 className="w-4 h-4 animate-spin" />}
+          {saving && <SigmaSpinner size="sm" />}
           Сохранить настройки
         </Button>
       </TabsContent>
@@ -577,7 +567,7 @@ export function CoursePageSettingsContent({ courseId, courseTitle, courseDescrip
         </div>
 
         <Button onClick={handleSave} disabled={saving} className="w-full gap-2">
-          {saving && <Loader2 className="w-4 h-4 animate-spin" />}
+          {saving && <SigmaSpinner size="sm" />}
           Сохранить настройки
         </Button>
       </TabsContent>

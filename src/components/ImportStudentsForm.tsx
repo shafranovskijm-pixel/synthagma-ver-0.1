@@ -6,12 +6,11 @@ import {
   SelectContent,
   SelectItem,
   SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+  SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { safeInvoke } from "@/utils/safeInvoke";
 import { showLimitToast } from "@/utils/limitToast";
-import { Upload, FileSpreadsheet, Loader2, Download, CheckCircle2, XCircle, AlertCircle } from "lucide-react";
+import { Upload, FileSpreadsheet, Download, CheckCircle2, XCircle, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
 
 interface Course {
@@ -353,7 +352,7 @@ export default function ImportStudentsForm({ organizationId, courses, companies,
       <Button className="w-full btn-gradient rounded-xl gap-2" onClick={handleImport} disabled={!file || isImporting}>
         {isImporting ? (
           <>
-            <Loader2 className="w-4 h-4 animate-spin" />
+            <SigmaSpinner size="sm" />
             Импорт...
           </>
         ) : (

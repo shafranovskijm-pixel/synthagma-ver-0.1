@@ -383,7 +383,7 @@ export function CompanyDetailDialog({
             <TabsContent value="documents" className="m-0">
               {isLoadingDocuments ? (
                 <div className="flex items-center justify-center py-12">
-                  <Loader2 className="w-8 h-8 animate-spin text-primary" />
+                  <SigmaSpinner size="lg" />
                 </div>
               ) : (
                 <div className="grid grid-cols-3 gap-6">
@@ -617,7 +617,7 @@ function DocumentItem({
           disabled={isDeletingDocument === doc.id}
         >
           {isDeletingDocument === doc.id ? (
-            <Loader2 className="w-3 h-3 animate-spin" />
+            <SigmaSpinner size="xs" />
           ) : (
             <X className="w-3 h-3" />
           )}
@@ -856,7 +856,7 @@ function CompanyRequestsOrgView({ companyId }: { companyId: string }) {
   if (loading) {
     return (
       <div className="flex justify-center py-12">
-        <Loader2 className="w-6 h-6 animate-spin text-primary" />
+        <SigmaSpinner />
       </div>
     );
   }
@@ -965,7 +965,7 @@ function RequestCard({
           disabled={isUpdating || (status === request.status && response === (request.org_response || ""))}
           onClick={() => onUpdate(request.id, status, response)}
         >
-          {isUpdating ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <MessageSquare className="w-3.5 h-3.5" />}
+          {isUpdating ? <SigmaSpinner size="xs" className=".5 .5" /> : <MessageSquare className="w-3.5 h-3.5" />}
           Ответить
         </Button>
       </div>

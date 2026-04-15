@@ -6,7 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { ArrowLeft, Plus, Calendar as CalendarIcon, Check, X, Minus, Users, Loader2, Trash2 } from "lucide-react";
+import { ArrowLeft, Plus, Calendar as CalendarIcon, Check, X, Minus, Users, Trash2 } from "lucide-react";
 import { format, startOfWeek } from "date-fns";
 import { ru } from "date-fns/locale";
 import { cn } from "@/lib/utils";
@@ -31,7 +31,7 @@ export function JournalEditor(props: JournalEditorProps) {
     createJournal, updateEntry, getEntryValue, deleteJournal, isAttendanceJournal, addDays
   } = useJournalEditor(props);
 
-  if (loading && existingJournals.length === 0) return <div className="flex items-center justify-center h-64"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>;
+  if (loading && existingJournals.length === 0) return <div className="flex items-center justify-center h-64"><SigmaSpinner size="lg" /></div>;
 
   return (
     <div className="space-y-6">
@@ -95,7 +95,7 @@ export function JournalEditor(props: JournalEditorProps) {
       {journalInstance && students.length === 0 && <div className="bg-card rounded-2xl border border-border p-8 text-center"><Users className="w-12 h-12 mx-auto text-muted-foreground mb-4" /><h3 className="font-semibold mb-2">Нет учеников</h3><p className="text-muted-foreground">{journalInstance.course_id ? "На курс ещё никто не записан" : "В организации нет учеников"}</p></div>}
 
       <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
-        <DialogContent className="sm:max-w-md"><DialogHeader><DialogTitle>Создать журнал</DialogTitle></DialogHeader><div className="space-y-4 py-4"><div className="space-y-2"><label className="text-sm font-medium">Название</label><Input value={newJournalTitle} onChange={e => setNewJournalTitle(e.target.value)} placeholder="Название" className="rounded-xl" /></div><div className="space-y-2"><label className="text-sm font-medium">Курс</label><Select value={selectedCourse} onValueChange={setSelectedCourse}><SelectTrigger className="rounded-xl"><SelectValue placeholder="Все ученики" /></SelectTrigger><SelectContent><SelectItem value="all">Все ученики</SelectItem>{courses.map(c => <SelectItem key={c.id} value={c.id}>{c.title}</SelectItem>)}</SelectContent></Select></div></div><div className="flex justify-end gap-2"><Button variant="outline" onClick={() => setShowCreateDialog(false)} className="rounded-xl">Отмена</Button><Button onClick={createJournal} disabled={saving} className="rounded-xl">{saving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}Создать</Button></div></DialogContent>
+        <DialogContent className="sm:max-w-md"><DialogHeader><DialogTitle>Создать журнал</DialogTitle></DialogHeader><div className="space-y-4 py-4"><div className="space-y-2"><label className="text-sm font-medium">Название</label><Input value={newJournalTitle} onChange={e => setNewJournalTitle(e.target.value)} placeholder="Название" className="rounded-xl" /></div><div className="space-y-2"><label className="text-sm font-medium">Курс</label><Select value={selectedCourse} onValueChange={setSelectedCourse}><SelectTrigger className="rounded-xl"><SelectValue placeholder="Все ученики" /></SelectTrigger><SelectContent><SelectItem value="all">Все ученики</SelectItem>{courses.map(c => <SelectItem key={c.id} value={c.id}>{c.title}</SelectItem>)}</SelectContent></Select></div></div><div className="flex justify-end gap-2"><Button variant="outline" onClick={() => setShowCreateDialog(false)} className="rounded-xl">Отмена</Button><Button onClick={createJournal} disabled={saving} className="rounded-xl">{saving && <SigmaSpinner size="sm" className="mr-2" />}Создать</Button></div></DialogContent>
       </Dialog>
 
       <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>

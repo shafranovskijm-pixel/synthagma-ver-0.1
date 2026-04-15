@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef, useCallback } from "react";
-import { Send, Loader2, MessageCircle, Shield } from "lucide-react";
+import { Send, MessageCircle, Shield } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
@@ -45,8 +45,7 @@ export function AdminChatDialog({ organizationId, currentUserId }: AdminChatDial
         event: "INSERT",
         schema: "public",
         table: "admin_org_messages",
-        filter: `organization_id=eq.${organizationId}`,
-      }, (payload) => {
+        filter: `organization_id=eq.${organizationId}` }, (payload) => {
         const msg = payload.new as AdminMessage;
         setMessages(prev => prev.some(m => m.id === msg.id) ? prev : [...prev, msg]);
         setTimeout(scrollToBottom, 100);
@@ -92,8 +91,7 @@ export function AdminChatDialog({ organizationId, currentUserId }: AdminChatDial
         id: tempId, organization_id: organizationId, sender_user_id: currentUserId,
         sender_role: "organization", content: text, attachment_url: null,
         attachment_name: null, attachment_type: null, is_read: false,
-        created_at: new Date().toISOString(),
-      };
+        created_at: new Date().toISOString() };
       setMessages(prev => [...prev, optimistic]);
       setNewMessage("");
       setTimeout(scrollToBottom, 50);
@@ -102,8 +100,7 @@ export function AdminChatDialog({ organizationId, currentUserId }: AdminChatDial
         organization_id: organizationId,
         sender_user_id: currentUserId,
         sender_role: "organization",
-        content: text,
-      }).select().single();
+        content: text }).select().single();
 
       if (error) throw error;
       if (data) setMessages(prev => prev.map(m => m.id === tempId ? (data as AdminMessage) : m));
@@ -122,7 +119,7 @@ export function AdminChatDialog({ organizationId, currentUserId }: AdminChatDial
   };
 
   if (isLoading) {
-    return <div className="flex justify-center py-12"><Loader2 className="w-6 h-6 animate-spin text-primary" /></div>;
+    return <div className="flex justify-center py-12"><SigmaSpinner /></div>;
   }
 
   return (

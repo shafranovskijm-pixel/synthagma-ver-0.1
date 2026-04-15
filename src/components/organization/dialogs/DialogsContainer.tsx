@@ -19,7 +19,7 @@ import { BulkDocumentUpload } from "@/components/organization/BulkDocumentUpload
 
 import { BulkFRDOExport } from "@/components/organization/BulkFRDOExport";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-import { Loader2 } from "lucide-react";
+import {} from "lucide-react";
 import { useOrgDashboard } from "@/contexts/OrgDashboardContext";
 
 export function DialogsContainer() {
@@ -258,7 +258,7 @@ export function DialogsContainer() {
             >
               {d.enrollmentActions.isBulkDeleting ? (
                 <>
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  <SigmaSpinner size="sm" className="mr-2" />
                   Удаление...
                 </>
               ) : (

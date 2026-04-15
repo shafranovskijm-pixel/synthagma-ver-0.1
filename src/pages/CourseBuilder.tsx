@@ -6,7 +6,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { SigmaLogo } from "@/components/ui/SigmaLogo";
 import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from "@/components/ui/tooltip";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-import { ArrowLeft, Save, Loader2, Eye, Plus, FileUp, Wand2, Check, AlertCircle, FileText, Video, CheckSquare, Sparkles, Presentation, Headphones, BookOpen, Layers, MessageSquare, BookCheck, SearchCheck } from "lucide-react";
+import { ArrowLeft, Save, Eye, Plus, FileUp, Wand2, Check, AlertCircle, FileText, Video, CheckSquare, Sparkles, Presentation, Headphones, BookOpen, Layers, MessageSquare, BookCheck, SearchCheck } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { DndContext, closestCenter, useSensor, useSensors, PointerSensor, KeyboardSensor } from "@dnd-kit/core";
@@ -33,13 +33,11 @@ export default function CourseBuilder() {
     handleSaveAndExit, handleExitWithoutSave, handleBackClick,
     sensors, handleDragEnd, saveCourse, autoSaveStatus,
     courseId: resolvedCourseId,
-    organizationId,
-  } = useCourseBuilder();
+    organizationId } = useCourseBuilder();
 
   const {
     isReviewing, reviewResult, activeFindings, dismissedIds,
-    startReview, dismissFinding, dismissAll, resetReview,
-  } = useCourseReview();
+    startReview, dismissFinding, dismissAll, resetReview } = useCourseReview();
   const [showReviewDialog, setShowReviewDialog] = useState(false);
 
   const handleStartReview = async () => {
@@ -74,7 +72,7 @@ export default function CourseBuilder() {
     }
   };
 
-  if (isLoading) return <div className="min-h-screen bg-background flex items-center justify-center"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>;
+  if (isLoading) return <div className="min-h-screen bg-background flex items-center justify-center"><SigmaSpinner size="lg" /></div>;
 
   return (
     <TooltipProvider delayDuration={300}>
@@ -90,7 +88,7 @@ export default function CourseBuilder() {
           <div className="flex items-center gap-3">
             <Tooltip><TooltipTrigger asChild>
               <Button variant="outline" onClick={handlePreview} disabled={isSavingForPreview} className="rounded-xl gap-2">
-                {isSavingForPreview ? <Loader2 className="w-4 h-4 animate-spin" /> : <Eye className="w-4 h-4" />}
+                {isSavingForPreview ? <SigmaSpinner size="sm" /> : <Eye className="w-4 h-4" />}
                 <span className="hidden sm:inline">{isSavingForPreview ? 'Сохранение...' : 'Предпросмотр'}</span>
               </Button>
             </TooltipTrigger><TooltipContent>Посмотреть курс глазами ученика</TooltipContent></Tooltip>
@@ -102,7 +100,7 @@ export default function CourseBuilder() {
         <div className="container mx-auto px-3 sm:px-6 pointer-events-auto flex flex-col items-center gap-2">
           <Tooltip><TooltipTrigger asChild>
             <Button onClick={() => saveCourse()} disabled={isSaving} size="lg" className="btn-gradient rounded-2xl gap-2 sm:gap-3 px-6 sm:px-8 py-5 sm:py-6 text-base sm:text-lg font-semibold shadow-2xl hover:scale-105 transition-transform w-full sm:w-auto">
-              {isSaving ? <Loader2 className="w-5 h-5 animate-spin" /> : <Save className="w-5 h-5" />}
+              {isSaving ? <SigmaSpinner /> : <Save className="w-5 h-5" />}
               {isSaving ? "Сохранение..." : "Сохранить курс"}
               {hasUnsavedChanges && !isSaving && <span className="ml-1 w-2 h-2 rounded-full bg-white/80 animate-pulse" />}
             </Button>
@@ -114,7 +112,7 @@ export default function CourseBuilder() {
           )}
           {autoSaveStatus === 'saving' && (
             <span className="text-xs text-muted-foreground flex items-center gap-1">
-              <Loader2 className="w-3 h-3 animate-spin" /> Автосохранение...
+              <SigmaSpinner size="xs" /> Автосохранение...
             </span>
           )}
           {autoSaveStatus === 'error' && (

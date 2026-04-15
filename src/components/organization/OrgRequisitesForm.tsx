@@ -4,7 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { Loader2, Search, Save, Building2, CheckCircle2, MapPin, User, Landmark } from "lucide-react";
+import { Search, Save, Building2, CheckCircle2, MapPin, User, Landmark } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { safeInvoke } from "@/utils/safeInvoke";
 import { toast } from "sonner";
@@ -45,8 +45,7 @@ export function OrgRequisitesForm({ organizationId }: OrgRequisitesFormProps) {
     bank_bik: "",
     bank_account: "",
     bank_corr_account: "",
-    director_gender: "male",
-  });
+    director_gender: "male" });
 
   useEffect(() => {
     fetchRequisites();
@@ -75,8 +74,7 @@ export function OrgRequisitesForm({ organizationId }: OrgRequisitesFormProps) {
           bank_bik: data.bank_bik || "",
           bank_account: data.bank_account || "",
           bank_corr_account: data.bank_corr_account || "",
-          director_gender: (data as any).director_gender || "male",
-        });
+          director_gender: (data as any).director_gender || "male" });
       }
     } catch (error) {
       console.error("Error fetching requisites:", error);
@@ -109,8 +107,7 @@ export function OrgRequisitesForm({ organizationId }: OrgRequisitesFormProps) {
           ogrn: data.company.ogrn || prev.ogrn,
           legal_address: data.company.address || prev.legal_address,
           director_name: data.company.management || prev.director_name,
-          director_position: data.company.type === 'INDIVIDUAL' ? 'Индивидуальный предприниматель' : 'Генеральный директор',
-        }));
+          director_position: data.company.type === 'INDIVIDUAL' ? 'Индивидуальный предприниматель' : 'Генеральный директор' }));
 
         toast.success("Данные компании найдены и подставлены");
       } else {
@@ -148,7 +145,7 @@ export function OrgRequisitesForm({ organizationId }: OrgRequisitesFormProps) {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-8">
-        <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+        <SigmaSpinner />
       </div>
     );
   }
@@ -175,7 +172,7 @@ export function OrgRequisitesForm({ organizationId }: OrgRequisitesFormProps) {
             disabled={isSearching || requisites.inn.length < 10}
           >
             {isSearching ? (
-              <Loader2 className="w-4 h-4 animate-spin" />
+              <SigmaSpinner size="sm" />
             ) : (
               <Search className="w-4 h-4" />
             )}
@@ -367,7 +364,7 @@ export function OrgRequisitesForm({ organizationId }: OrgRequisitesFormProps) {
       >
         {isSaving ? (
           <>
-            <Loader2 className="w-4 h-4 animate-spin" />
+            <SigmaSpinner size="sm" />
             Сохранение...
           </>
         ) : (

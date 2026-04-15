@@ -9,8 +9,7 @@ import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import {
-  Save, Loader2, Upload, X, Eye, Lock, ArrowUpRight, Image,
-} from "lucide-react";
+  Save, Upload, X, Eye, Lock, ArrowUpRight, Image } from "lucide-react";
 
 interface BrandingSettings {
   primaryColor: string;
@@ -31,8 +30,7 @@ const DEFAULT_BRANDING: BrandingSettings = {
   coverPosition: 'cover',
   showOrgName: true,
   customName: '',
-  customSubtitle: '',
-};
+  customSubtitle: '' };
 
 interface Props {
   organizationId: string;
@@ -65,8 +63,7 @@ export function ProfileBrandingTab({ organizationId, userId }: Props) {
           coverPosition: b.coverPosition || 'cover',
           showOrgName: b.showOrgName ?? true,
           customName: b.customName || '',
-          customSubtitle: b.customSubtitle || '',
-        });
+          customSubtitle: b.customSubtitle || '' });
       }
     };
     load();
@@ -170,7 +167,7 @@ export function ProfileBrandingTab({ organizationId, userId }: Props) {
                 <label className="cursor-pointer">
                   <input type="file" accept="image/*" className="hidden" onChange={e => handleImageUpload(e, 'cover')} />
                   <div className="border-2 border-dashed border-border rounded-xl h-32 flex flex-col items-center justify-center gap-2 hover:border-primary/50 hover:bg-primary/5 transition-colors">
-                    {isUploadingCover ? <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" /> : <><Upload className="w-6 h-6 text-muted-foreground" /><span className="text-sm text-muted-foreground">Загрузить обложку</span></>}
+                    {isUploadingCover ? <SigmaSpinner /> : <><Upload className="w-6 h-6 text-muted-foreground" /><span className="text-sm text-muted-foreground">Загрузить обложку</span></>}
                   </div>
                 </label>
               )}
@@ -203,7 +200,7 @@ export function ProfileBrandingTab({ organizationId, userId }: Props) {
                 <label className="cursor-pointer">
                   <input type="file" accept="image/*" className="hidden" onChange={e => handleImageUpload(e, 'logo')} />
                   <div className="w-20 h-20 border-2 border-dashed border-border rounded-xl flex flex-col items-center justify-center gap-1 hover:border-primary/50 hover:bg-primary/5 transition-colors">
-                    {isUploadingLogo ? <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" /> : <><Upload className="w-5 h-5 text-muted-foreground" /><span className="text-xs text-muted-foreground">Логотип</span></>}
+                    {isUploadingLogo ? <SigmaSpinner /> : <><Upload className="w-5 h-5 text-muted-foreground" /><span className="text-xs text-muted-foreground">Логотип</span></>}
                   </div>
                 </label>
               )}
@@ -256,7 +253,7 @@ export function ProfileBrandingTab({ organizationId, userId }: Props) {
 
         <div className="mt-6 pt-4 border-t border-border flex gap-3">
           <Button className="btn-gradient rounded-xl gap-2" onClick={handleSave} disabled={isSaving}>
-            {isSaving ? <><Loader2 className="w-4 h-4 animate-spin" /> Сохранение...</> : <><Save className="w-4 h-4" /> Сохранить брендирование</>}
+            {isSaving ? <><SigmaSpinner size="sm" /> Сохранение...</> : <><Save className="w-4 h-4" /> Сохранить брендирование</>}
           </Button>
           <TooltipProvider delayDuration={300}>
             <Tooltip>

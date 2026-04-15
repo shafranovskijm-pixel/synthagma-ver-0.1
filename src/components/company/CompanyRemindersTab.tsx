@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { Badge } from "@/components/ui/badge";
-import { Bell, Loader2, Calendar, AlertCircle, CheckCircle2 } from "lucide-react";
+import { Bell, Calendar, AlertCircle, CheckCircle2 } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
@@ -42,8 +42,7 @@ export function CompanyRemindersTab({ companyId, employees }: Props) {
       return {
         ...r,
         course_title: (r.courses as any)?.title || "Курс",
-        employee_name: emp?.full_name || "—",
-      };
+        employee_name: emp?.full_name || "—" };
     });
 
     setReminders(mapped);
@@ -60,7 +59,7 @@ export function CompanyRemindersTab({ companyId, employees }: Props) {
   });
 
   if (loading) {
-    return <div className="flex items-center justify-center py-12"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>;
+    return <div className="flex items-center justify-center py-12"><SigmaSpinner size="lg" /></div>;
   }
 
   return (

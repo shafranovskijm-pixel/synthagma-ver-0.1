@@ -8,7 +8,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
 import { 
   Users, Search, BookOpen, Filter, FileCheck, FileSpreadsheet, 
-  GraduationCap, Key, Mail, XCircle, X, Loader2, Copy, Trash2, 
+  GraduationCap, Key, Mail, XCircle, X, Copy, Trash2, 
   CheckCircle2, ChevronRight, AlertCircle, FileText, FolderOpen, Plus, Pencil, MessageCircle, Eye, Settings
 } from "lucide-react";
 import { GroupSettingsDialog } from "@/components/organization/GroupSettingsDialog";
@@ -70,8 +70,7 @@ export const StudentsTab = React.memo(function StudentsTab({
   isSendingBulkDocReminders = false,
   onAddStudent,
   onImportStudents,
-  onNavigateToFRDO,
-}: StudentsTabProps) {
+  onNavigateToFRDO }: StudentsTabProps) {
   const courseIds = courses.map(c => c.id);
 
   // Word document generator
@@ -99,8 +98,7 @@ export const StudentsTab = React.memo(function StudentsTab({
     setDocsFilter,
     searchQuery,
     setSearchQuery,
-    removeStudent,
-  } = useStudents(organizationId, courseIds, studentDocsByUser);
+    removeStudent } = useStudents(organizationId, courseIds, studentDocsByUser);
 
   const [showGroupDialog, setShowGroupDialog] = useState(false);
   const [newGroupName, setNewGroupName] = useState("");
@@ -122,8 +120,7 @@ export const StudentsTab = React.memo(function StudentsTab({
         color: newGroupColor,
         organization_id: organizationId,
         start_date: newGroupStartDate || null,
-        end_date: newGroupEndDate || null,
-      } as any);
+        end_date: newGroupEndDate || null } as any);
       if (error) throw error;
       toast.success("Группа создана");
       setNewGroupName("");
@@ -196,9 +193,7 @@ export const StudentsTab = React.memo(function StudentsTab({
     generateDocument({
       templateType: "prikaz",
       persons: studentsToExport.map(s => ({
-        fullName: s.name,
-      })),
-    });
+        fullName: s.name })) });
   }, [filteredStudents, selectedStudentIds, generateDocument]);
 
   const handleGenerateProtokol = useCallback(() => {
@@ -213,9 +208,7 @@ export const StudentsTab = React.memo(function StudentsTab({
       templateType: "protokol",
       persons: studentsToExport.map(s => ({
         fullName: s.name,
-        isPassed: s.status === 'completed',
-      })),
-    });
+        isPassed: s.status === 'completed' })) });
   }, [filteredStudents, selectedStudentIds, generateDocument]);
 
   const renderDocumentStatus = (student: Student) => {
@@ -334,7 +327,7 @@ export const StudentsTab = React.memo(function StudentsTab({
                     className="rounded-xl gap-2 shrink-0 text-xs lg:text-sm" 
                     disabled={isCreatingBulkCredentials}
                   >
-                    {isCreatingBulkCredentials ? <Loader2 className="w-4 h-4 animate-spin" /> : <Key className="w-4 h-4" />}
+                    {isCreatingBulkCredentials ? <SigmaSpinner size="sm" /> : <Key className="w-4 h-4" />}
                     <span className="hidden sm:inline">Логины</span>
                   </Button>
                 </TooltipTrigger>
@@ -348,7 +341,7 @@ export const StudentsTab = React.memo(function StudentsTab({
                     className="rounded-xl gap-2 shrink-0 text-xs lg:text-sm" 
                     disabled={isSendingBulkCredentials}
                   >
-                    {isSendingBulkCredentials ? <Loader2 className="w-4 h-4 animate-spin" /> : <Mail className="w-4 h-4" />}
+                    {isSendingBulkCredentials ? <SigmaSpinner size="sm" /> : <Mail className="w-4 h-4" />}
                     <span className="hidden sm:inline">На почту</span>
                   </Button>
                 </TooltipTrigger>
@@ -403,7 +396,7 @@ export const StudentsTab = React.memo(function StudentsTab({
                     className="rounded-xl gap-2 shrink-0 text-xs lg:text-sm"
                     disabled={isGenerating}
                   >
-                    {isGenerating ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileText className="w-4 h-4" />}
+                    {isGenerating ? <SigmaSpinner size="sm" /> : <FileText className="w-4 h-4" />}
                     <span className="hidden sm:inline">Приказ</span>
                   </Button>
                 </TooltipTrigger>
@@ -417,7 +410,7 @@ export const StudentsTab = React.memo(function StudentsTab({
                     className="rounded-xl gap-2 shrink-0 text-xs lg:text-sm"
                     disabled={isGenerating}
                   >
-                    {isGenerating ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileText className="w-4 h-4" />}
+                    {isGenerating ? <SigmaSpinner size="sm" /> : <FileText className="w-4 h-4" />}
                     <span className="hidden sm:inline">Протокол</span>
                   </Button>
                 </TooltipTrigger>
@@ -433,7 +426,7 @@ export const StudentsTab = React.memo(function StudentsTab({
                 onClick={() => setShowRemindConfirm(true)}
                 disabled={isSendingBulkDocReminders}
               >
-                {isSendingBulkDocReminders ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileText className="w-4 h-4" />}
+                {isSendingBulkDocReminders ? <SigmaSpinner size="sm" /> : <FileText className="w-4 h-4" />}
                 <span className="hidden sm:inline">Напомнить</span>
               </Button>
             </TooltipTrigger>
@@ -595,7 +588,7 @@ export const StudentsTab = React.memo(function StudentsTab({
 
       {isLoading ? (
         <div className="flex items-center justify-center py-12">
-          <Loader2 className="w-8 h-8 animate-spin text-primary" />
+          <SigmaSpinner size="lg" />
         </div>
       ) : filteredStudents.length === 0 ? (
         <div className="py-8">

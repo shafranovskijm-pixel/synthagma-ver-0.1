@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Link } from "react-router-dom";
 import { Helmet } from "react-helmet-async";
-import { ArrowLeft, Calendar, Clock, ArrowRight, BookOpen, TrendingUp, Shield, Lightbulb, Loader2, Mail } from "lucide-react";
+import { ArrowLeft, Calendar, Clock, ArrowRight, BookOpen, TrendingUp, Shield, Lightbulb, Mail } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -32,8 +32,7 @@ const categoryIcons: Record<string, React.ReactNode> = {
   "Технологии": <Lightbulb className="h-4 w-4" />,
   "Интеграции": <BookOpen className="h-4 w-4" />,
   "Методология": <TrendingUp className="h-4 w-4" />,
-  "Новости": <BookOpen className="h-4 w-4" />,
-};
+  "Новости": <BookOpen className="h-4 w-4" /> };
 
 const defaultPosts: BlogPost[] = [
   {
@@ -48,8 +47,7 @@ const defaultPosts: BlogPost[] = [
     is_featured: true,
     read_time: "7 мин",
     created_at: "2026-01-10T10:00:00Z",
-    published_at: "2026-01-10T10:00:00Z",
-  },
+    published_at: "2026-01-10T10:00:00Z" },
   {
     id: "2",
     title: "Автоматизация документооборота: от заявки до диплома",
@@ -62,8 +60,7 @@ const defaultPosts: BlogPost[] = [
     is_featured: true,
     read_time: "12 мин",
     created_at: "2026-01-08T10:00:00Z",
-    published_at: "2026-01-08T10:00:00Z",
-  },
+    published_at: "2026-01-08T10:00:00Z" },
   {
     id: "3",
     title: "Безопасность данных слушателей: чек-лист для образовательных организаций",
@@ -76,8 +73,7 @@ const defaultPosts: BlogPost[] = [
     is_featured: false,
     read_time: "5 мин",
     created_at: "2026-01-05T10:00:00Z",
-    published_at: "2026-01-05T10:00:00Z",
-  },
+    published_at: "2026-01-05T10:00:00Z" },
   {
     id: "4",
     title: "ИИ-помощник в обучении: возможности и ограничения",
@@ -90,8 +86,7 @@ const defaultPosts: BlogPost[] = [
     is_featured: false,
     read_time: "8 мин",
     created_at: "2026-01-02T10:00:00Z",
-    published_at: "2026-01-02T10:00:00Z",
-  },
+    published_at: "2026-01-02T10:00:00Z" },
 ];
 
 const categories = ["Все", "Тренды", "Гайды", "Безопасность", "Технологии", "Интеграции", "Методология", "Новости"];
@@ -181,7 +176,7 @@ const Blog = () => {
   if (isLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <SigmaSpinner size="lg" />
       </div>
     );
   }
@@ -513,7 +508,7 @@ const Blog = () => {
               />
               <Button size="lg" onClick={handleSubscribe} disabled={isSubscribing} className="btn-gradient rounded-xl px-6">
                 {isSubscribing ? (
-                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  <SigmaSpinner size="sm" className="mr-2" />
                 ) : (
                   <Mail className="h-4 w-4 mr-2" />
                 )}

@@ -2,10 +2,8 @@ import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import DOMPurify from "dompurify";
 import {
-  Video, CheckCircle2, Play, Square, Volume2, VolumeX,
-  Loader2, Maximize, Minimize, RotateCcw, Gauge,
-  ChevronRight,
-} from "lucide-react";
+  Video, CheckCircle2, Play, Square, Volume2, VolumeX, Maximize, Minimize, RotateCcw, Gauge,
+  ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 // Helper to check if content is an iframe embed
@@ -333,7 +331,7 @@ export const VideoPlayerInline = ({
       />
       {videoLoading && (
         <div className={cn("absolute inset-0 flex flex-col items-center justify-center bg-black/60 rounded-2xl", loadingTimedOut ? "" : "pointer-events-none")}>
-          <Loader2 className="w-10 h-10 animate-spin text-white mb-2" />
+          <SigmaSpinner size="xl" className="text-white mb-2" />
           {loadingTimedOut ? (
             <div className="text-center px-4">
               <p className="text-white text-sm mb-1">Видео загружается слишком долго</p>

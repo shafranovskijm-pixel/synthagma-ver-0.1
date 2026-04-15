@@ -4,14 +4,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import {
-  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
-} from "@/components/ui/table";
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from "@/components/ui/select";
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
-  ArrowLeft, Search, UserCheck, UserX, Clock, Loader2, Camera, CheckCircle2, XCircle, AlertCircle,
-} from "lucide-react";
+  ArrowLeft, Search, UserCheck, UserX, Clock, Camera, CheckCircle2, XCircle, AlertCircle } from "lucide-react";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import { toast } from "sonner";
@@ -82,8 +79,7 @@ export function IdentificationJournal({ organizationId, onClose }: Identificatio
           photo_url: vid?.photo_url || null,
           created_at: vid?.created_at || "",
           full_name: p.full_name || "Без имени",
-          email: p.email || "",
-        };
+          email: p.email || "" };
       });
 
       setRecords(result);
@@ -138,13 +134,12 @@ export function IdentificationJournal({ organizationId, onClose }: Identificatio
     pending: records.filter((r) => r.status === "pending").length,
     verified: records.filter((r) => r.status === "verified").length,
     rejected: records.filter((r) => r.status === "rejected").length,
-    none: records.filter((r) => r.status === "none").length,
-  };
+    none: records.filter((r) => r.status === "none").length };
 
   if (isLoading) {
     return (
       <div className="flex justify-center py-12">
-        <Loader2 className="w-6 h-6 animate-spin text-primary" />
+        <SigmaSpinner />
       </div>
     );
   }

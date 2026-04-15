@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Presentation, Upload, Loader2, Trash2, Eye, ChevronDown, ImagePlus, Replace, X, FolderOpen, Search } from "lucide-react";
+import { Presentation, Upload, Trash2, Eye, ChevronDown, ImagePlus, Replace, X, FolderOpen, Search } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { parseSliderContent, type SliderSlide, type SliderContent } from "@/utils/courseBuilderHelpers";
@@ -74,8 +74,7 @@ function PptxPickerDialog({ open, onClose, onSelect, onSelectSliderContent, curr
             name: fileName,
             url: `${baseUrl}/storage/v1/object/public/presentations/${filePath}`,
             size: f.file_size || 0,
-            created_at: f.created_at || "",
-          });
+            created_at: f.created_at || "" });
         }
       }
     } catch (err) {
@@ -109,8 +108,7 @@ function PptxPickerDialog({ open, onClose, onSelect, onSelectSliderContent, curr
               courseTitle: (l.courses as any)?.title || '',
               slidesCount: slides.length,
               content: l.content!,
-              created_at: l.created_at,
-            });
+              created_at: l.created_at });
           } catch { continue; }
         }
         setSliderLessons(entries);
@@ -148,7 +146,7 @@ function PptxPickerDialog({ open, onClose, onSelect, onSelectSliderContent, curr
         </div>
         {loading ? (
           <div className="flex items-center justify-center py-12">
-            <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+            <SigmaSpinner />
             <span className="ml-2 text-sm text-muted-foreground">Загрузка...</span>
           </div>
         ) : tab === 'pptx' ? (
@@ -238,7 +236,7 @@ export function SliderLessonEditor({ lesson, courseId, onUpdate }: SliderLessonE
       const safeFileName = file.name
         .replace(/[^\x00-\x7F]/g, '')
         .replace(/\s+/g, '_')
-        .replace(/_{2,}/g, '_')
+        .replace(/_{2 }/g, '_')
         .replace(/^_|_$/g, '')
         || 'presentation.pptx';
       
@@ -394,7 +392,7 @@ export function SliderLessonEditor({ lesson, courseId, onUpdate }: SliderLessonE
           {isLoading && uploadProgress && <p className="text-xs text-amber-500 mb-4">{uploadProgress}</p>}
           <div className="flex items-center justify-center gap-2">
             <label className="inline-flex items-center gap-2 px-4 py-2 border border-border rounded-lg cursor-pointer hover:border-amber-500 hover:bg-amber-500/5 transition-colors">
-              {isLoading ? <Loader2 className="w-4 h-4 animate-spin text-amber-500" /> : <Upload className="w-4 h-4 text-amber-500" />}
+              {isLoading ? <SigmaSpinner size="sm" className="text-amber-500" /> : <Upload className="w-4 h-4 text-amber-500" />}
               <span className="text-sm">{isLoading ? 'Обработка...' : 'Выбрать файл PPTX'}</span>
               <input type="file" accept=".pptx" onChange={handleFileUpload} className="hidden" disabled={isLoading} />
             </label>
@@ -464,7 +462,7 @@ export function SliderLessonEditor({ lesson, courseId, onUpdate }: SliderLessonE
                     <img src={currentSlide.imageUrl} alt={currentSlide.title || 'Слайд'} className="w-full max-h-[400px] object-contain" />
                     <div className="absolute top-2 right-2 flex gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
                       <Button variant="secondary" size="sm" className="h-8 gap-1.5 shadow-md" onClick={() => slideImageInputRef.current?.click()} disabled={isUploadingSlideImage}>
-                        {isUploadingSlideImage ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Replace className="w-3.5 h-3.5" />}
+                        {isUploadingSlideImage ? <SigmaSpinner size="xs" className=".5 .5" /> : <Replace className="w-3.5 h-3.5" />}
                         Заменить
                       </Button>
                       <Button variant="destructive" size="sm" className="h-8 gap-1.5 shadow-md" onClick={removeSlideImage}>
@@ -474,7 +472,7 @@ export function SliderLessonEditor({ lesson, courseId, onUpdate }: SliderLessonE
                   </div>
                 ) : (
                   <label className="flex flex-col items-center justify-center gap-2 p-8 border-2 border-dashed border-border rounded-lg cursor-pointer hover:border-amber-500/50 hover:bg-amber-500/5 transition-colors">
-                    {isUploadingSlideImage ? <Loader2 className="w-6 h-6 animate-spin text-amber-500" /> : <ImagePlus className="w-6 h-6 text-muted-foreground" />}
+                    {isUploadingSlideImage ? <SigmaSpinner className="text-amber-500" /> : <ImagePlus className="w-6 h-6 text-muted-foreground" />}
                     <span className="text-sm text-muted-foreground">{isUploadingSlideImage ? 'Загрузка...' : 'Загрузить изображение для слайда'}</span>
                     <input ref={slideImageInputRef} type="file" accept="image/*" onChange={handleSlideImageUpload} className="hidden" disabled={isUploadingSlideImage} />
                   </label>

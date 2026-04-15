@@ -1,6 +1,6 @@
 import { useRef, useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
-import { Plus, FileSpreadsheet, Menu, CreditCard, HelpCircle, User, LogOut, Handshake, Sparkles, ImagePlus, ShoppingBag, Wand2, Loader2, Settings, FileText } from "lucide-react";
+import { Plus, FileSpreadsheet, Menu, CreditCard, HelpCircle, User, LogOut, Handshake, Sparkles, ImagePlus, ShoppingBag, Wand2, Settings, FileText } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useNavigate } from "react-router-dom";
 import { showLimitToast } from "@/utils/limitToast";
@@ -18,8 +18,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+  DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 
 function getUserInitials(email?: string | null, name?: string | null): string {
   if (name) {
@@ -73,8 +72,7 @@ export function OrgDashboardHeader() {
     toast.info("Генерируем обложку с ИИ...", { duration: 10000 });
     try {
       const { data, error } = await supabase.functions.invoke("generate-cover", {
-        body: { organizationId, type: "org" },
-      });
+        body: { organizationId, type: "org" } });
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
       toast.success("Обложка сгенерирована!");
@@ -292,7 +290,7 @@ export function OrgDashboardHeader() {
             disabled={isGeneratingCover}
             className="flex items-center gap-1.5 px-3 py-1.5 bg-black/40 hover:bg-black/60 backdrop-blur-sm text-white text-xs font-medium rounded-lg transition-colors disabled:opacity-50"
           >
-            {isGeneratingCover ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Wand2 className="w-3.5 h-3.5" />}
+            {isGeneratingCover ? <SigmaSpinner size="xs" className=".5 .5" /> : <Wand2 className="w-3.5 h-3.5" />}
             {isGeneratingCover ? "Генерация..." : "Сгенерировать с ИИ"}
           </button>
           <button

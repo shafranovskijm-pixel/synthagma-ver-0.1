@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Save, ExternalLink, Loader2, Sparkles } from "lucide-react";
+import { ArrowLeft, Save, ExternalLink, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import { LandingHeroSection } from "@/components/course-landing/LandingHeroSection";
 import { LandingAIGenerateDialog } from "@/components/course-landing/LandingAIGenerateDialog";
@@ -31,8 +31,7 @@ const SECTION_LABELS: Record<string, string> = {
   reviews: "Отзывы",
   pricing: "Тарифы",
   faq: "Вопросы и ответы",
-  cta: "Призыв к действию",
-};
+  cta: "Призыв к действию" };
 
 interface LandingData {
   hero: { background_url: string | null; subtitle: string; show_price: boolean };
@@ -58,20 +57,17 @@ const defaultLanding: LandingData = {
       { icon: "users", title: "Руководителям и менеджерам", description: "Освоите современные подходы к управлению" },
       { icon: "graduation-cap", title: "Специалистам", description: "Повысите квалификацию и расширите компетенции" },
       { icon: "lightbulb", title: "Начинающим", description: "Получите фундаментальные знания в области" },
-    ],
-  },
+    ] },
   learn: {
     title: "Что вы узнаете на курсе",
     description: "Программа курса охватывает ключевые темы",
     items: [
       { icon: "book-open", title: "Теоретическая база", description: "Изучите основные концепции и модели" },
       { icon: "target", title: "Практические навыки", description: "Научитесь применять знания на практике" },
-    ],
-  },
+    ] },
   process: {
     title: "Как проходит обучение?",
-    content: "Онлайн формат — учитесь в удобное время\nВидеоуроки и текстовые материалы\nПрактические задания после каждого блока\nОбратная связь от преподавателей",
-  },
+    content: "Онлайн формат — учитесь в удобное время\nВидеоуроки и текстовые материалы\nПрактические задания после каждого блока\nОбратная связь от преподавателей" },
   benefits: [
     { icon: "shield", title: "Сертификат", description: "Документ о прохождении обучения" },
     { icon: "clock", title: "Гибкий график", description: "Учитесь в удобное время" },
@@ -84,8 +80,7 @@ const defaultLanding: LandingData = {
   faq: { title: "Часто задаваемые вопросы", items: [] },
   cta: { title: "Начните обучение сегодня", subtitle: "Заполните форму и мы свяжемся с вами" },
   sections_order: ALL_SECTIONS,
-  sections_hidden: [],
-};
+  sections_hidden: [] };
 
 // Migrate old string[] audience items to AudienceItem[]
 function migrateAudienceItems(items: any[]): AudienceItem[] {
@@ -133,8 +128,7 @@ export function CourseLandingEditorContent({ courseId, embedded = false }: Cours
           audience: {
             ...defaultLanding.audience,
             ...existing.audience,
-            items: migrateAudienceItems(existing.audience?.items),
-          },
+            items: migrateAudienceItems(existing.audience?.items) },
           learn: { ...defaultLanding.learn, ...existing.learn },
           process: { ...defaultLanding.process, ...existing.process },
           benefits: existing.benefits || defaultLanding.benefits,
@@ -144,8 +138,7 @@ export function CourseLandingEditorContent({ courseId, embedded = false }: Cours
           faq: { ...defaultLanding.faq, ...existing.faq },
           cta: { ...defaultLanding.cta, ...existing.cta },
           sections_order: existing.sections_order || ALL_SECTIONS,
-          sections_hidden: existing.sections_hidden || [],
-        });
+          sections_hidden: existing.sections_hidden || [] });
       }
 
       const orgRes = await supabase.from("organizations").select("name").eq("id", courseRes.data.organization_id).single();
@@ -215,14 +208,12 @@ export function CourseLandingEditorContent({ courseId, embedded = false }: Cours
   const addAudienceItem = () => {
     setLanding((l) => ({
       ...l,
-      audience: { ...l.audience, items: [...l.audience.items, { icon: "user", title: "Новый пункт", description: "Описание" }] },
-    }));
+      audience: { ...l.audience, items: [...l.audience.items, { icon: "user", title: "Новый пункт", description: "Описание" }] } }));
   };
   const removeAudienceItem = (index: number) => {
     setLanding((l) => ({
       ...l,
-      audience: { ...l.audience, items: l.audience.items.filter((_, i) => i !== index) },
-    }));
+      audience: { ...l.audience, items: l.audience.items.filter((_, i) => i !== index) } }));
   };
 
   // Learn handlers
@@ -236,14 +227,12 @@ export function CourseLandingEditorContent({ courseId, embedded = false }: Cours
   const addLearnItem = () => {
     setLanding((l) => ({
       ...l,
-      learn: { ...l.learn, items: [...l.learn.items, { icon: "star", title: "Новый пункт", description: "Описание" }] },
-    }));
+      learn: { ...l.learn, items: [...l.learn.items, { icon: "star", title: "Новый пункт", description: "Описание" }] } }));
   };
   const removeLearnItem = (index: number) => {
     setLanding((l) => ({
       ...l,
-      learn: { ...l.learn, items: l.learn.items.filter((_, i) => i !== index) },
-    }));
+      learn: { ...l.learn, items: l.learn.items.filter((_, i) => i !== index) } }));
   };
 
   // Benefits handlers
@@ -272,8 +261,7 @@ export function CourseLandingEditorContent({ courseId, embedded = false }: Cours
   const addTeacher = () => {
     setLanding((l) => ({
       ...l,
-      teachers: { ...l.teachers, items: [...l.teachers.items, { name: "Имя преподавателя", role: "Должность", description: "Описание", photo_url: null }] },
-    }));
+      teachers: { ...l.teachers, items: [...l.teachers.items, { name: "Имя преподавателя", role: "Должность", description: "Описание", photo_url: null }] } }));
   };
   const removeTeacher = (index: number) => {
     setLanding((l) => ({ ...l, teachers: { ...l.teachers, items: l.teachers.items.filter((_, i) => i !== index) } }));
@@ -290,8 +278,7 @@ export function CourseLandingEditorContent({ courseId, embedded = false }: Cours
   const addReview = () => {
     setLanding((l) => ({
       ...l,
-      reviews: { ...l.reviews, items: [...l.reviews.items, { name: "Имя", text: "Текст отзыва", rating: 5 }] },
-    }));
+      reviews: { ...l.reviews, items: [...l.reviews.items, { name: "Имя", text: "Текст отзыва", rating: 5 }] } }));
   };
   const removeReview = (index: number) => {
     setLanding((l) => ({ ...l, reviews: { ...l.reviews, items: l.reviews.items.filter((_, i) => i !== index) } }));
@@ -331,8 +318,7 @@ export function CourseLandingEditorContent({ courseId, embedded = false }: Cours
   const addTier = () => {
     setLanding((l) => ({
       ...l,
-      pricing: { ...l.pricing, tiers: [...l.pricing.tiers, { name: "Тариф", price: 0, features: ["Доступ к курсу"], is_popular: false }] },
-    }));
+      pricing: { ...l.pricing, tiers: [...l.pricing.tiers, { name: "Тариф", price: 0, features: ["Доступ к курсу"], is_popular: false }] } }));
   };
   const removeTier = (index: number) => {
     setLanding((l) => ({ ...l, pricing: { ...l.pricing, tiers: l.pricing.tiers.filter((_, i) => i !== index) } }));
@@ -349,8 +335,7 @@ export function CourseLandingEditorContent({ courseId, embedded = false }: Cours
   const addFaqItem = () => {
     setLanding((l) => ({
       ...l,
-      faq: { ...l.faq, items: [...l.faq.items, { question: "Вопрос?", answer: "Ответ" }] },
-    }));
+      faq: { ...l.faq, items: [...l.faq.items, { question: "Вопрос?", answer: "Ответ" }] } }));
   };
   const removeFaqItem = (index: number) => {
     setLanding((l) => ({ ...l, faq: { ...l.faq, items: l.faq.items.filter((_, i) => i !== index) } }));
@@ -400,7 +385,7 @@ export function CourseLandingEditorContent({ courseId, embedded = false }: Cours
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        <SigmaSpinner size="lg" />
       </div>
     );
   }
@@ -645,7 +630,7 @@ export function CourseLandingEditorContent({ courseId, embedded = false }: Cours
               Просмотр
             </Button>
             <Button size="sm" onClick={handleSave} disabled={saving} className="gap-1.5">
-              {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+              {saving ? <SigmaSpinner size="sm" /> : <Save className="w-4 h-4" />}
               Сохранить
             </Button>
           </div>
@@ -681,7 +666,7 @@ export function CourseLandingEditorContent({ courseId, embedded = false }: Cours
               <span className="hidden sm:inline">Просмотр</span>
             </Button>
             <Button size="sm" onClick={handleSave} disabled={saving} className="gap-1.5">
-              {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+              {saving ? <SigmaSpinner size="sm" /> : <Save className="w-4 h-4" />}
               Сохранить
             </Button>
           </div>

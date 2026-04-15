@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
-import { CreditCard, Loader2, Save, Eye, EyeOff } from "lucide-react";
+import { CreditCard, Save, Eye, EyeOff } from "lucide-react";
 
 interface Props {
   organizationId: string;
@@ -53,8 +53,7 @@ export function RobokassaSettings({ organizationId }: Props) {
       const payload: any = {
         organization_id: organizationId,
         merchant_login: merchantLogin,
-        is_test_mode: isTestMode,
-      };
+        is_test_mode: isTestMode };
       
       // Only send passwords if they were changed (not empty placeholder)
       if (password1) payload.password1_encrypted = password1;
@@ -91,7 +90,7 @@ export function RobokassaSettings({ organizationId }: Props) {
   };
 
   if (loading) {
-    return <div className="flex items-center gap-2 text-muted-foreground"><Loader2 className="w-4 h-4 animate-spin" />Загрузка...</div>;
+    return <div className="flex items-center gap-2 text-muted-foreground"><SigmaSpinner size="sm" />Загрузка...</div>;
   }
 
   return (
@@ -153,7 +152,7 @@ export function RobokassaSettings({ organizationId }: Props) {
         </div>
 
         <Button onClick={handleSave} disabled={saving || !merchantLogin}>
-          {saving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
+          {saving ? <SigmaSpinner size="sm" className="mr-2" /> : <Save className="w-4 h-4 mr-2" />}
           Сохранить
         </Button>
       </div>

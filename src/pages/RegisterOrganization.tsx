@@ -4,7 +4,7 @@ import { SigmaLogo } from "@/components/ui/SigmaLogo";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
-import { ArrowLeft, Mail, Lock, User, Building, Phone, Loader2, Search, CheckCircle2, Tag, Check } from "lucide-react";
+import { ArrowLeft, Mail, Lock, User, Building, Phone, Search, CheckCircle2, Tag, Check } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { safeInvoke } from "@/utils/safeInvoke";
@@ -168,10 +168,7 @@ const RegisterOrganization = () => {
         options: {
           emailRedirectTo: `${window.location.origin}/organization`,
           data: {
-            full_name: contactName,
-          },
-        },
-      });
+            full_name: contactName } } });
 
       if (authError) throw authError;
 
@@ -260,8 +257,7 @@ const RegisterOrganization = () => {
 <b>Тариф:</b> ${planLabel}${promoCode ? `\n<b>Промокод:</b> ${promoCode}` : ""}`;
 
           await supabase.functions.invoke("send-telegram-notification", {
-            body: { message: telegramMessage },
-          });
+            body: { message: telegramMessage } });
         } catch (tgErr) {
           console.error("Telegram notification error:", tgErr);
         }
@@ -269,8 +265,7 @@ const RegisterOrganization = () => {
         // Seed welcome course (non-blocking)
         try {
           await supabase.functions.invoke("seed-welcome-course", {
-            body: { organizationId: orgId },
-          });
+            body: { organizationId: orgId } });
         } catch (seedErr) {
           console.error("Seed welcome course error:", seedErr);
         }
@@ -300,7 +295,7 @@ const RegisterOrganization = () => {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
-        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        <SigmaSpinner size="lg" />
       </div>
     );
   }
@@ -393,7 +388,7 @@ const RegisterOrganization = () => {
                   disabled={isLoading || isCheckingPromo || !promoCode.trim()}
                 >
                   {isCheckingPromo ? (
-                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <SigmaSpinner size="sm" />
                   ) : promoApplied ? (
                     <><Check className="w-4 h-4 mr-1" /> Применён</>
                   ) : (
@@ -439,7 +434,7 @@ const RegisterOrganization = () => {
                   disabled={isLoading || isLoadingInn || inn.length < 10}
                 >
                   {isLoadingInn ? (
-                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <SigmaSpinner size="sm" />
                   ) : innLoaded ? (
                     <>
                       <CheckCircle2 className="w-4 h-4 mr-2" />
@@ -612,7 +607,7 @@ const RegisterOrganization = () => {
             >
               {isLoading ? (
                 <>
-                  <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                  <SigmaSpinner className="mr-2" />
                   Регистрация...
                 </>
               ) : (

@@ -5,7 +5,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { FileCheck, Shield, Loader2, Check, AlertCircle, Download, History } from "lucide-react";
+import { FileCheck, Shield, Check, AlertCircle, Download, History } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 
@@ -86,8 +86,7 @@ export function StudentConsentForm({
   isOpen = false,
   onOpenChange,
   onConsent,
-  embedded = false,
-}: StudentConsentFormProps) {
+  embedded = false }: StudentConsentFormProps) {
   const [organization, setOrganization] = useState<Organization | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isLoadingHistory, setIsLoadingHistory] = useState(true);
@@ -171,8 +170,7 @@ export function StudentConsentForm({
           signed_at: now.toISOString(),
           expires_at: expiresAt.toISOString(),
           ip_address: "", // Would need a service to get real IP
-          user_agent: navigator.userAgent,
-        })
+          user_agent: navigator.userAgent })
         .select()
         .single();
 
@@ -197,8 +195,7 @@ export function StudentConsentForm({
       month: "long",
       year: "numeric",
       hour: "2-digit",
-      minute: "2-digit",
-    });
+      minute: "2-digit" });
   };
 
   const getStatusBadge = (status: string) => {
@@ -241,7 +238,7 @@ _________________________ / ${userName} /
   if (isLoadingHistory) {
     const loadingEl = (
       <div className="flex items-center justify-center py-12">
-        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        <SigmaSpinner size="lg" />
       </div>
     );
     if (embedded) return loadingEl;
@@ -386,7 +383,7 @@ _________________________ / ${userName} /
             >
               {isLoading ? (
                 <>
-                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <SigmaSpinner size="sm" />
                   Сохранение...
                 </>
               ) : (

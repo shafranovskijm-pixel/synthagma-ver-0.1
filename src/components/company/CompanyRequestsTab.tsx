@@ -9,8 +9,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogFooter,
-  DialogDescription,
-} from "@/components/ui/dialog";
+  DialogDescription } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
@@ -19,8 +18,7 @@ import {
   SelectContent,
   SelectItem,
   SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+  SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   Table,
@@ -28,16 +26,13 @@ import {
   TableCell,
   TableHead,
   TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+  TableRow } from "@/components/ui/table";
 import {
   Send,
   Plus,
-  Loader2,
   CalendarDays,
   MessageSquare,
-  Inbox,
-} from "lucide-react";
+  Inbox } from "lucide-react";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import { toast } from "sonner";
@@ -70,16 +65,14 @@ const REQUEST_TYPES: Record<string, string> = {
   training: "Обучение",
   documents: "Документы",
   consultation: "Консультация",
-  other: "Другое",
-};
+  other: "Другое" };
 
 const STATUS_CONFIG: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
   pending: { label: "Ожидает", variant: "secondary" },
   reviewed: { label: "Рассмотрена", variant: "outline" },
   approved: { label: "Одобрена", variant: "default" },
   rejected: { label: "Отклонена", variant: "destructive" },
-  completed: { label: "Выполнена", variant: "outline" },
-};
+  completed: { label: "Выполнена", variant: "outline" } };
 
 export function CompanyRequestsTab({ companyId, organizationId, employees }: CompanyRequestsTabProps) {
   const [requests, setRequests] = useState<CompanyRequest[]>([]);
@@ -155,8 +148,7 @@ export function CompanyRequestsTab({ companyId, organizationId, employees }: Com
         employees: emps,
         course_name: formCourseName.trim() || null,
         desired_date: formDate || null,
-        status: "pending",
-      } as any);
+        status: "pending" } as any);
       if (error) throw error;
 
       // Send notification to organization
@@ -165,8 +157,7 @@ export function CompanyRequestsTab({ companyId, organizationId, employees }: Com
         user_id: (await supabase.auth.getUser()).data.user?.id || "",
         type: "company_request",
         title: "Новая заявка от компании",
-        message: `Тип: ${REQUEST_TYPES[formType]}. Тема: ${formTitle.trim()}`,
-      } as any);
+        message: `Тип: ${REQUEST_TYPES[formType]}. Тема: ${formTitle.trim()}` } as any);
 
       toast.success("Заявка отправлена");
       setShowDialog(false);
@@ -188,7 +179,7 @@ export function CompanyRequestsTab({ companyId, organizationId, employees }: Com
   if (loading) {
     return (
       <div className="flex items-center justify-center py-16">
-        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        <SigmaSpinner size="lg" />
       </div>
     );
   }
@@ -364,7 +355,7 @@ export function CompanyRequestsTab({ companyId, organizationId, employees }: Com
               Отмена
             </Button>
             <Button onClick={handleSubmit} disabled={submitting || !formTitle.trim()} className="gap-2 rounded-xl">
-              {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+              {submitting ? <SigmaSpinner size="sm" /> : <Send className="w-4 h-4" />}
               Отправить
             </Button>
           </DialogFooter>

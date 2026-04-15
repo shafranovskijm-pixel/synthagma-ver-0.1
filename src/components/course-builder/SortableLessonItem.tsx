@@ -6,14 +6,11 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import {
   GripVertical, FileText, Video, Image, FileQuestion,
-  Trash2, Eye, Sparkles, Upload, ChevronDown, ChevronUp,
-  Loader2, Headphones, Volume2, Pause, Play, Square,
+  Trash2, Eye, Sparkles, Upload, ChevronDown, ChevronUp, Headphones, Volume2, Pause, Play, Square,
   Presentation, FileSpreadsheet, FolderOpen, Bot, CheckCircle2,
-  Lock,
-} from "lucide-react";
+  Lock } from "lucide-react";
 import {
-  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator,
-} from "@/components/ui/dropdown-menu";
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { SALUTE_VOICES, getStoredTTSSettings, saveTTSSettings } from "@/components/student/TTSSettingsDialog";
 
 import { toast } from "sonner";
@@ -26,8 +23,7 @@ import { CSS } from "@dnd-kit/utilities";
 import { uploadToStorage } from "@/utils/courseBuilderHelpers";
 import {
   type LessonType, type TestQuestionLocal, type Lesson, type GeneratedQuestion,
-  lessonIcons, lessonColors,
-} from "@/components/course-builder/LessonTypeConfig";
+  lessonIcons, lessonColors } from "@/components/course-builder/LessonTypeConfig";
 import { VideoPreviewInline } from "@/components/course-builder/VideoPreviewInline";
 import { LazyMediaPreview } from "@/components/course-builder/LazyMediaPreview";
 import { SliderLessonEditor } from "@/components/course-builder/SliderLessonEditor";
@@ -56,8 +52,7 @@ export function SortableLessonItem({
   lesson, index, onToggle, onUpdate, onDelete,
   courseId, courseTitle, courseDescription,
   organizationId,
-  generatedQuestions, onQuestionsProcessed,
-}: SortableLessonProps) {
+  generatedQuestions, onQuestionsProcessed }: SortableLessonProps) {
   const [isPreviewMode, setIsPreviewMode] = useState(false);
   const [showMediaLibrary, setShowMediaLibrary] = useState(false);
   const [skipCompression, setSkipCompression] = useState(false);
@@ -115,8 +110,7 @@ export function SortableLessonItem({
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'apikey': import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY, 'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}` },
-          body: JSON.stringify({ text, voice: saluteVoice }),
-        }
+          body: JSON.stringify({ text, voice: saluteVoice }) }
       );
       if (!response.ok) { const err = await response.json().catch(() => ({})); toast.error(err.error || `Ошибка: ${response.status}`); setIsSaluteLoading(false); return; }
       const blob = await response.blob();
@@ -176,7 +170,7 @@ export function SortableLessonItem({
                 </div>
                 <div className="flex items-center gap-1">
                   <Button variant="outline" size="sm" className="rounded-lg text-xs gap-1" onClick={() => handleSaluteTTS(lesson.blocks || [])} disabled={isSaluteLoading}>
-                    {isSaluteLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : isSaluteSpeaking ? <Square className="w-3 h-3" /> : <Volume2 className="w-3 h-3" />}
+                    {isSaluteLoading ? <SigmaSpinner size="xs" /> : isSaluteSpeaking ? <Square className="w-3 h-3" /> : <Volume2 className="w-3 h-3" />}
                     {isSaluteLoading ? '...' : isSaluteSpeaking ? 'Стоп' : 'Озвучить'}
                   </Button>
                   <DropdownMenu>
@@ -199,7 +193,7 @@ export function SortableLessonItem({
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <Button variant="outline" size="sm" className="rounded-lg text-xs gap-1 border-primary text-primary hover:bg-primary/10" disabled={media.isGeneratingContent}>
-                        {media.isGeneratingContent ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
+                        {media.isGeneratingContent ? <SigmaSpinner size="xs" /> : <Sparkles className="w-3 h-3" />}
                         {media.isGeneratingContent ? "Генерация..." : "Написать с AI"}
                         <ChevronDown className="w-3 h-3 ml-0.5" />
                       </Button>
@@ -265,7 +259,7 @@ export function SortableLessonItem({
                   <div className="space-y-4">
                     <Video className="w-10 h-10 mx-auto text-sigma-purple animate-pulse" />
                     <div className="space-y-2">
-                      <div className="flex items-center justify-center gap-2"><Loader2 className="w-4 h-4 animate-spin text-sigma-purple" /><span className="text-sm font-medium">Загрузка в Kinescope...</span></div>
+                      <div className="flex items-center justify-center gap-2"><SigmaSpinner size="sm" className="text-sigma-purple" /><span className="text-sm font-medium">Загрузка в Kinescope...</span></div>
                       <div className="w-full max-w-xs mx-auto">
                         <div className="h-2 bg-secondary rounded-full overflow-hidden"><div className="h-full bg-sigma-purple transition-all duration-300 ease-out" style={{ width: `${media.kinescopeUploadProgress}%` }} /></div>
                         <p className="text-sm text-muted-foreground mt-1">{media.kinescopeUploadProgress}%</p>
@@ -277,7 +271,7 @@ export function SortableLessonItem({
                   <div className="space-y-4">
                     <Video className="w-10 h-10 mx-auto text-sigma-purple animate-pulse" />
                     <div className="space-y-2">
-                      <div className="flex items-center justify-center gap-2"><Loader2 className="w-4 h-4 animate-spin text-sigma-purple" /><span className="text-sm font-medium">Сжатие видео...</span></div>
+                      <div className="flex items-center justify-center gap-2"><SigmaSpinner size="sm" className="text-sigma-purple" /><span className="text-sm font-medium">Сжатие видео...</span></div>
                       <div className="w-full max-w-xs mx-auto">
                         <div className="h-2 bg-secondary rounded-full overflow-hidden"><div className="h-full bg-sigma-orange transition-all duration-300 ease-out" style={{ width: `${media.compressionProgress}%` }} /></div>
                         <p className="text-sm text-muted-foreground mt-1">{media.compressionProgress}%</p>
@@ -288,7 +282,7 @@ export function SortableLessonItem({
                   <div className="space-y-4">
                     <Video className="w-10 h-10 mx-auto text-sigma-purple animate-pulse" />
                     <div className="space-y-2">
-                      <div className="flex items-center justify-center gap-2"><Loader2 className="w-4 h-4 animate-spin text-sigma-purple" /><span className="text-sm font-medium">Загрузка видео...</span></div>
+                      <div className="flex items-center justify-center gap-2"><SigmaSpinner size="sm" className="text-sigma-purple" /><span className="text-sm font-medium">Загрузка видео...</span></div>
                       <div className="w-full max-w-xs mx-auto">
                         <div className="h-2 bg-secondary rounded-full overflow-hidden"><div className="h-full bg-sigma-purple transition-all duration-300 ease-out" style={{ width: `${media.videoUploadProgress}%` }} /></div>
                         <p className="text-sm text-muted-foreground mt-1">{media.videoUploadProgress}%</p>
@@ -478,7 +472,7 @@ export function SortableLessonItem({
                   </Button>
                 </TestAnswersDialog>
                 <Button variant="outline" size="sm" className="rounded-lg text-xs gap-1 border-primary text-primary hover:bg-primary/10" onClick={() => onGenerate("full")} disabled={media.isGeneratingContent}>
-                  {media.isGeneratingContent ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
+                  {media.isGeneratingContent ? <SigmaSpinner size="xs" /> : <Sparkles className="w-3 h-3" />}
                   {media.isGeneratingContent ? "Генерация..." : "Сгенерировать вопросы с AI"}
                 </Button>
               </div>

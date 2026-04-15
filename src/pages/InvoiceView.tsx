@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { generateInvoiceHtml, type InvoiceData } from "@/constants/invoiceTemplate";
 import { SUBSCRIPTION_PLANS } from "@/constants/subscriptionPlans";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Printer, Loader2 } from "lucide-react";
+import { ArrowLeft, Printer} from "lucide-react";
 
 export default function InvoiceView() {
   const { id } = useParams<{ id: string }>();
@@ -48,8 +48,7 @@ export default function InvoiceView() {
         buyerAddress: org?.legal_address,
         planName: planInfo?.name || invoice.plan,
         periodMonths: invoice.period_months,
-        amount: Number(invoice.amount),
-      };
+        amount: Number(invoice.amount) };
 
       setHtml(generateInvoiceHtml(invoiceData));
     } catch (e: any) {
@@ -69,7 +68,7 @@ export default function InvoiceView() {
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
-        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        <SigmaSpinner size="lg" />
       </div>
     );
   }

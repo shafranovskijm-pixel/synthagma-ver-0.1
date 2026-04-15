@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { FileText, Receipt, FileCheck, Loader2, Download, CheckCircle2, Clock, ExternalLink } from "lucide-react";
+import { FileText, Receipt, FileCheck, Download, CheckCircle2, Clock, ExternalLink } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { supabase } from "@/integrations/supabase/client";
@@ -44,7 +44,7 @@ export function CompanyDocumentsTab({ companyId }: Props) {
   const formatAmount = (a: number | null) => a ? new Intl.NumberFormat("ru-RU").format(a) + " ₽" : "—";
 
   if (loading) {
-    return <div className="flex items-center justify-center py-12"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>;
+    return <div className="flex items-center justify-center py-12"><SigmaSpinner size="lg" /></div>;
   }
 
   const DocTable = ({ docs, showPayment }: { docs: CompanyDoc[]; showPayment?: boolean }) => (

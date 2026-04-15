@@ -1,13 +1,12 @@
 import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import {
-  Store, Plus, Search, Eye, Loader2,
+  Store, Plus, Search, Eye,
   Package, ShoppingCart, Building2, Users, Tag, Sparkles, BookOpen, Upload,
   List, LayoutGrid, ChevronDown, FolderPlus, FolderInput, CheckCircle2, AlertTriangle,
   FolderOpen, Library, X, GraduationCap, Award, ShieldCheck,
   Factory, Flame, Droplets, HardHat, Leaf, Zap, Lightbulb, MoveRight, Settings, History,
-  DollarSign, Briefcase, TrendingUp, Edit, Trash2,
-} from "lucide-react";
+  DollarSign, Briefcase, TrendingUp, Edit, Trash2 } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, type DragEndEvent } from "@dnd-kit/core";
 import { SortableContext, verticalListSortingStrategy, arrayMove } from "@dnd-kit/sortable";
@@ -45,15 +44,13 @@ import {
   MarketplaceOrderDialog,
   MarketplaceCategoryDialog,
   MarketplaceMoveCategoryDialog,
-  MarketplaceBulkMoveDialog,
-} from "./marketplace/MarketplaceDialogs";
+  MarketplaceBulkMoveDialog } from "./marketplace/MarketplaceDialogs";
 
 const programTypeMetaAdmin: Record<string, { icon: React.ElementType; color: string; bgColor: string }> = {
   "Повышение квалификации": { icon: GraduationCap, color: "text-blue-600", bgColor: "bg-blue-500/10" },
   "Профессиональная переподготовка": { icon: Award, color: "text-violet-600", bgColor: "bg-violet-500/10" },
   "Охрана труда / Пожарная безопасность": { icon: ShieldCheck, color: "text-amber-600", bgColor: "bg-amber-500/10" },
-  "Рабочие профессии": { icon: Store, color: "text-emerald-600", bgColor: "bg-emerald-500/10" },
-};
+  "Рабочие профессии": { icon: Store, color: "text-emerald-600", bgColor: "bg-emerald-500/10" } };
 
 const subCategoryMetaAdmin: Record<string, { icon: React.ElementType; color: string; bgColor: string }> = {
   "Промышленная безопасность": { icon: Factory, color: "text-orange-500", bgColor: "bg-orange-500/10" },
@@ -61,8 +58,7 @@ const subCategoryMetaAdmin: Record<string, { icon: React.ElementType; color: str
   "Энергетика": { icon: Flame, color: "text-red-500", bgColor: "bg-red-500/10" },
   "Экологическая безопасность": { icon: Leaf, color: "text-green-500", bgColor: "bg-green-500/10" },
   "Гидротехнические сооружения": { icon: Droplets, color: "text-blue-500", bgColor: "bg-blue-500/10" },
-  "Строительный контроль": { icon: HardHat, color: "text-accent", bgColor: "bg-accent/10" },
-};
+  "Строительный контроль": { icon: HardHat, color: "text-accent", bgColor: "bg-accent/10" } };
 
 const ICON_OPTIONS: { name: string; icon: React.ElementType; label: string }[] = [
   { name: "Factory", icon: Factory, label: "Промышленность" },
@@ -84,8 +80,7 @@ const ICON_OPTIONS: { name: string; icon: React.ElementType; label: string }[] =
 
 const iconMap: Record<string, React.ElementType> = {
   Factory, Zap, Flame, Leaf, Droplets, HardHat, ShieldCheck, BookOpen, Award, Lightbulb, Building2, GraduationCap,
-  DollarSign, Briefcase, TrendingUp,
-};
+  DollarSign, Briefcase, TrendingUp };
 
 export function AdminMarketplaceManager() {
   const navigate = useNavigate();
@@ -144,8 +139,7 @@ export function AdminMarketplaceManager() {
     aiProvider,
     gigachatModel,
     aiPrompts,
-    valRules,
-  });
+    valRules });
 
   const handleBulkGenerate = (item: any) => {
     setBulkGenCourse({ id: item.course_id, title: item.course?.title || "", description: item.course?.description || "" });
@@ -154,7 +148,7 @@ export function AdminMarketplaceManager() {
   if (h.isLoading && h.courses.length === 0) {
     return (
       <div className="flex items-center justify-center py-12">
-        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        <SigmaSpinner size="lg" />
       </div>
     );
   }
@@ -246,7 +240,7 @@ export function AdminMarketplaceManager() {
                       }
                     }}
                   >
-                    {converting ? <Loader2 className="w-4 h-4 mr-1.5 animate-spin" /> : <BookOpen className="w-4 h-4 mr-1.5" />}
+                    {converting ? <SigmaSpinner size="sm" className="mr-1.5" /> : <BookOpen className="w-4 h-4 mr-1.5" />}
                     Конвертировать MD→JSON
                   </Button>
                 </CollapsibleContent>
@@ -365,7 +359,7 @@ export function AdminMarketplaceManager() {
                                 onClick={(e) => { e.stopPropagation(); validation.handleBulkValidate(group); }}
                               >
                                 {validation.bulkValidatingGroup === group.category
-                                  ? <><Loader2 className="w-3 h-3 animate-spin mr-1" />{validation.bulkValidateProgress}</>
+                                  ? <><SigmaSpinner size="xs" className="mr-1" />{validation.bulkValidateProgress}</>
                                   : <><CheckCircle2 className="w-3 h-3 mr-1" />Проверить все</>}
                               </Button>
                             </>

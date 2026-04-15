@@ -3,8 +3,7 @@ import {
   Dialog,
   DialogContent,
   DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+  DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import {
@@ -12,19 +11,17 @@ import {
   SelectContent,
   SelectItem,
   SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+  SelectValue } from "@/components/ui/select";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Download, Loader2, FileSpreadsheet, AlertCircle, CheckCircle2 } from "lucide-react";
+import { Download, FileSpreadsheet, AlertCircle, CheckCircle2 } from "lucide-react";
 import { format } from "date-fns";
 import {
   buildDPORow,
   buildPORow,
   exportFRDOExcel,
-  formatDateForFRDO,
-} from "@/utils/frdoExcelExport";
+  formatDateForFRDO } from "@/utils/frdoExcelExport";
 
 interface Student {
   id: string;
@@ -83,8 +80,7 @@ interface EnrollmentData {
 }
 
 export function BulkFRDOExport({
-  isOpen, onOpenChange, organizationId, selectedStudentIds, students,
-}: BulkFRDOExportProps) {
+  isOpen, onOpenChange, organizationId, selectedStudentIds, students }: BulkFRDOExportProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const [exportType, setExportType] = useState<"dpo" | "po">("dpo");
@@ -129,8 +125,7 @@ export function BulkFRDOExport({
             specialty_group: data.specialty_group || "",
             qualification_name: data.qualification_name || "",
             profession_name: data.profession_name || "",
-            qualification_rank: data.qualification_rank || "",
-          });
+            qualification_rank: data.qualification_rank || "" });
         } else {
           const nameParts = student.name.split(" ");
           dataMap.set(student.user_id, {
@@ -142,8 +137,7 @@ export function BulkFRDOExport({
             training_form: "Очная", financing_source: "Платное обучение",
             education_form: "в образовательной организации",
             professional_area: "", specialty_group: "",
-            qualification_name: "", profession_name: "", qualification_rank: "",
-          });
+            qualification_name: "", profession_name: "", qualification_rank: "" });
           missing.push(student.name);
         }
       }
@@ -166,8 +160,7 @@ export function BulkFRDOExport({
           user_id: e.user_id, course_id: e.course_id,
           course_title: courseData?.title || "Неизвестный курс",
           started_at: e.started_at, completed_at: e.completed_at,
-          time_spent: e.time_spent || 0, duration: courseData?.duration || null,
-        };
+          time_spent: e.time_spent || 0, duration: courseData?.duration || null };
         if (!enrollMap.has(e.user_id)) enrollMap.set(e.user_id, []);
         enrollMap.get(e.user_id)!.push(enrollment);
         if (!courseSet.has(e.course_id)) {
@@ -224,8 +217,7 @@ export function BulkFRDOExport({
               birthDate: formatDateForFRDO(frdoData.birth_date),
               gender: frdoData.gender, snils: frdoData.snils,
               trainingForm: frdoData.training_form, financingSource: frdoData.financing_source,
-              educationForm: frdoData.education_form, citizenshipCode: frdoData.citizenship_code,
-            }));
+              educationForm: frdoData.education_form, citizenshipCode: frdoData.citizenship_code }));
           } else {
             rows.push(buildPORow({
               documentType: "Свидетельство о профессии рабочего, должности служащего",
@@ -240,8 +232,7 @@ export function BulkFRDOExport({
               birthDate: formatDateForFRDO(frdoData.birth_date),
               gender: frdoData.gender, snils: frdoData.snils, citizenshipCode: frdoData.citizenship_code,
               trainingForm: frdoData.training_form, financingSource: frdoData.financing_source,
-              educationForm: frdoData.education_form,
-            }));
+              educationForm: frdoData.education_form }));
           }
         }
       }
@@ -280,7 +271,7 @@ export function BulkFRDOExport({
 
         {isLoading ? (
           <div className="flex items-center justify-center py-12">
-            <Loader2 className="w-8 h-8 animate-spin text-primary" />
+            <SigmaSpinner size="lg" />
           </div>
         ) : (
           <div className="space-y-6">
@@ -347,7 +338,7 @@ export function BulkFRDOExport({
             <div className="flex justify-end gap-3">
               <Button variant="outline" className="rounded-xl" onClick={() => onOpenChange(false)}>Отмена</Button>
               <Button className="rounded-xl gap-2" onClick={handleExport} disabled={isExporting || selectedStudents.length === 0}>
-                {isExporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+                {isExporting ? <SigmaSpinner size="sm" /> : <Download className="w-4 h-4" />}
                 Экспортировать ({selectedStudents.length})
               </Button>
             </div>

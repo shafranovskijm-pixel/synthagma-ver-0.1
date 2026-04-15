@@ -2,7 +2,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Loader2 } from "lucide-react";
+import {} from "lucide-react";
 
 interface AddCompanyDialogProps {
   open: boolean;
@@ -35,8 +35,7 @@ export function AddCompanyDialog({
   phone,
   onPhoneChange,
   isCreating,
-  onCreate,
-}: AddCompanyDialogProps) {
+  onCreate }: AddCompanyDialogProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="rounded-2xl">
@@ -93,7 +92,7 @@ export function AddCompanyDialog({
           <Button className="w-full btn-gradient rounded-xl" onClick={onCreate} disabled={isCreating}>
             {isCreating ? (
               <>
-                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                <SigmaSpinner size="sm" className="mr-2" />
                 Создание...
               </>
             ) : (
@@ -137,8 +136,7 @@ export function EditCompanyDialog({
   phone,
   onPhoneChange,
   isSaving,
-  onSave,
-}: EditCompanyDialogProps) {
+  onSave }: EditCompanyDialogProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="rounded-2xl">
@@ -169,7 +167,7 @@ export function EditCompanyDialog({
           <Button className="w-full btn-gradient rounded-xl" onClick={onSave} disabled={isSaving}>
             {isSaving ? (
               <>
-                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                <SigmaSpinner size="sm" className="mr-2" />
                 Сохранение...
               </>
             ) : (

@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { StudentProfileSidebar } from "@/components/student/StudentProfileSidebar";
 import { useAuth } from "@/hooks/useAuth";
 import { useQuery } from "@tanstack/react-query";
-import { Loader2 } from "lucide-react";
+import {} from "lucide-react";
 
 interface PlatformUpdate {
   id: string;
@@ -37,8 +37,7 @@ export default function StudentWhatsNew() {
         .maybeSingle() as any);
       return p;
     },
-    enabled: !!effectiveUserId,
-  });
+    enabled: !!effectiveUserId });
 
   const { data: branding } = useQuery({
     queryKey: ["student-profile-branding", profile?.organization_id],
@@ -52,8 +51,7 @@ export default function StudentWhatsNew() {
       const b = data?.branding as any;
       return b ? { logoUrl: b.logoUrl } : null;
     },
-    enabled: !!profile?.organization_id,
-  });
+    enabled: !!profile?.organization_id });
 
   useEffect(() => {
     supabase
@@ -92,7 +90,7 @@ export default function StudentWhatsNew() {
 
           {loading ? (
             <div className="flex justify-center py-20">
-              <Loader2 className="w-8 h-8 animate-spin text-primary" />
+              <SigmaSpinner size="lg" />
             </div>
           ) : updates.length === 0 ? (
             <p className="text-center text-muted-foreground py-20">Пока нет обновлений</p>

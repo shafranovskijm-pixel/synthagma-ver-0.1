@@ -9,15 +9,13 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
+  DialogTrigger } from "@/components/ui/dialog";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+  SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import {
@@ -25,14 +23,12 @@ import {
   FileText,
   Download,
   Trash2,
-  Loader2,
   Upload,
   BookOpen,
   Video,
   Link as LinkIcon,
   Eye,
-  File,
-} from "lucide-react";
+  File } from "lucide-react";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 
@@ -68,8 +64,7 @@ export function CourseDocumentsManager({
   courseName,
   isOpen = true,
   onClose = () => {},
-  embedded = false,
-}: CourseDocumentsManagerProps) {
+  embedded = false }: CourseDocumentsManagerProps) {
   const [documents, setDocuments] = useState<CourseDocument[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showAddDialog, setShowAddDialog] = useState(false);
@@ -157,8 +152,7 @@ export function CourseDocumentsManager({
           name: docName.trim(),
           type: docType,
           description: docDescription.trim() || null,
-          file_url: fileUrl,
-        });
+          file_url: fileUrl });
 
       if (error) throw error;
 
@@ -347,7 +341,7 @@ export function CourseDocumentsManager({
               >
                 {isUploading ? (
                   <>
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    <SigmaSpinner size="sm" className="mr-2" />
                     Загрузка...
                   </>
                 ) : (
@@ -361,7 +355,7 @@ export function CourseDocumentsManager({
 
       {isLoading ? (
         <div className="flex items-center justify-center py-12">
-          <Loader2 className="w-8 h-8 animate-spin text-primary" />
+          <SigmaSpinner size="lg" />
         </div>
       ) : documents.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-16 px-6">

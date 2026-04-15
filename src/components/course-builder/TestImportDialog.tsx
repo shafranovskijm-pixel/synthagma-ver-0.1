@@ -6,9 +6,8 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
-import { Upload, FileSpreadsheet, Loader2, Download, CheckCircle2, FileText } from "lucide-react";
+  DialogTrigger } from "@/components/ui/dialog";
+import { Upload, FileSpreadsheet, Download, CheckCircle2, FileText } from "lucide-react";
 import { toast } from "sonner";
 import { getXLSX } from "@/utils/xlsxHelper";
 import { parseTxtTestFile } from "@/utils/txtTestParser";
@@ -233,7 +232,7 @@ export function TestImportDialog({ onImport, children }: TestImportDialogProps) 
               <label className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg cursor-pointer hover:bg-primary/90 transition-colors">
                 {isLoading ? (
                   <>
-                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <SigmaSpinner size="sm" />
                     Обработка...
                   </>
                 ) : (

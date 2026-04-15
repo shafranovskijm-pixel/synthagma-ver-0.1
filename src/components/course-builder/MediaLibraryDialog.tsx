@@ -3,13 +3,12 @@ import {
   Dialog,
   DialogContent,
   DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+  DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { supabase } from "@/integrations/supabase/client";
-import { Loader2, Video, FileText, Image as ImageIcon, Search, FolderOpen, Music, BookOpen, User, CheckCircle2, XCircle } from "lucide-react";
+import { Video, FileText, Image as ImageIcon, Search, FolderOpen, Music, BookOpen, User, CheckCircle2, XCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
@@ -261,8 +260,7 @@ export function MediaLibraryDialog({ open, onClose, onSelect, filter = "all", or
               folder,
               size: f.file_size || 0,
               created_at: f.created_at || "",
-              type: getFileType(fileName),
-            });
+              type: getFileType(fileName) });
           }
         }
       }
@@ -290,8 +288,7 @@ export function MediaLibraryDialog({ open, onClose, onSelect, filter = "all", or
                     folder: courseId,
                     size: (f.metadata as any)?.size || 0,
                     created_at: (f as any).created_at || "",
-                    type: getFileType(f.name),
-                  });
+                    type: getFileType(f.name) });
                 }
               }
             } catch { /* folder doesn't exist */ }
@@ -405,7 +402,7 @@ export function MediaLibraryDialog({ open, onClose, onSelect, filter = "all", or
 
         {loading ? (
           <div className="flex items-center justify-center py-16">
-            <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+            <SigmaSpinner />
             <span className="ml-2 text-sm text-muted-foreground">Загрузка файлов...</span>
           </div>
         ) : filteredFiles.length === 0 ? (

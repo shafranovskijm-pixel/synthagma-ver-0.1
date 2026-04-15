@@ -1,9 +1,8 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
 import {
-  Eye, Edit, Trash2, Loader2, ChevronDown, FolderInput, FolderOpen,
-  CheckCircle2, AlertTriangle, GripVertical, BookOpen,
-} from "lucide-react";
+  Eye, Edit, Trash2, ChevronDown, FolderInput, FolderOpen,
+  CheckCircle2, AlertTriangle, GripVertical, BookOpen } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -39,8 +38,7 @@ function groupSimilarCourses(courses: any[]): (any | CourseGroup)[] {
           const title: string = item.course?.title || "";
           const dashIdx = title.indexOf(" — ");
           return dashIdx > 0 ? title.substring(dashIdx) : "";
-        },
-      });
+        } });
     } else {
       result.push(items[0]);
     }
@@ -66,8 +64,7 @@ interface CourseRowProps {
 
 function CourseRowContent({
   item, h, onBulkGenerate, validatedCourses, onValidate, validatingId,
-  selectedCourses, onToggleSelect, suffix,
-}: CourseRowProps) {
+  selectedCourses, onToggleSelect, suffix }: CourseRowProps) {
   const navigate = useNavigate();
   const status = validatedCourses[item.course_id];
   const displayTitle = suffix !== undefined ? (suffix || item.course?.title || "") : (item.course?.title || "");
@@ -88,7 +85,7 @@ function CourseRowContent({
           onClick={() => onValidate(item.course_id)}
           disabled={validatingId === item.course_id}
         >
-          {validatingId === item.course_id && <Loader2 className="w-3 h-3 animate-spin" />}
+          {validatingId === item.course_id && <SigmaSpinner size="xs" />}
           {status === 'ok' && <CheckCircle2 className="w-3.5 h-3.5 text-green-500 shrink-0" />}
           {status === 'error' && <AlertTriangle className="w-3.5 h-3.5 text-red-500 shrink-0" />}
           {displayTitle}
@@ -183,8 +180,7 @@ export function SortableCategoryItem({ group, children }: { group: { category: s
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
-    opacity: isDragging ? 0.5 : 1,
-  };
+    opacity: isDragging ? 0.5 : 1 };
   return (
     <div ref={setNodeRef} style={style}>
       <div className="flex items-center">

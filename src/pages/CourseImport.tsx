@@ -1,7 +1,7 @@
 import { useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { 
-  Upload, FileText, Loader2, CheckCircle2, 
+  Upload, FileText, CheckCircle2, 
   AlertCircle, ArrowLeft, BookOpen, Sparkles,
   File, Presentation
 } from "lucide-react";
@@ -135,8 +135,7 @@ export default function CourseImport() {
       setProgress(30);
       
       const { data, error } = await safeInvoke<any>('import-course', {
-        body: formData,
-      });
+        body: formData });
       
       setProgress(80);
       
@@ -186,8 +185,7 @@ export default function CourseImport() {
           title: courseTitle,
           description: `Импортирован из ${selectedFile?.name}`,
           organization_id: profile.organization_id,
-          is_published: false,
-        })
+          is_published: false })
         .select('id')
         .single();
       
@@ -199,8 +197,7 @@ export default function CourseImport() {
         title: lesson.title,
         content: lesson.content,
         type: 'text',
-        order_index: index,
-      }));
+        order_index: index }));
       
       const { error: lessonsError } = await supabase
         .from('lessons')
@@ -480,7 +477,7 @@ export default function CourseImport() {
         {step === 'creating' && (
           <div className="text-center space-y-6 py-12">
             <div className="w-20 h-20 mx-auto rounded-2xl bg-primary/10 flex items-center justify-center">
-              <Loader2 className="w-10 h-10 text-primary animate-spin" />
+              <SigmaSpinner size="xl" />
             </div>
             <div>
               <h2 className="font-display text-xl font-bold mb-2">Создаём курс...</h2>

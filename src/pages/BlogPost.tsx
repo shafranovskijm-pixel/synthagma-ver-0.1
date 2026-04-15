@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
 import { motion } from "framer-motion";
-import { ArrowLeft, Calendar, Clock, User, Loader2 } from "lucide-react";
+import { ArrowLeft, Calendar, Clock, User} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
@@ -77,7 +77,7 @@ const BlogPostPage = () => {
   if (isLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <SigmaSpinner size="lg" />
       </div>
     );
   }
@@ -214,8 +214,7 @@ const BlogPostPage = () => {
                 ),
                 td: ({ children }) => (
                   <td className="border border-border px-4 py-2">{children}</td>
-                ),
-              }}
+                ) }}
             >
               {post.content || ""}
             </ReactMarkdown>

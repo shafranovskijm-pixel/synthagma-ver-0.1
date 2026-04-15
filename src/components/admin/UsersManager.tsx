@@ -9,15 +9,13 @@ import {
   TableCell,
   TableHead,
   TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+  TableRow } from "@/components/ui/table";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+  SelectValue } from "@/components/ui/select";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -26,12 +24,11 @@ import {
   AlertDialogDescription,
   AlertDialogFooter,
   AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
+  AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Trash2, Search, Loader2, Users, Shield, Building2, GraduationCap, Copy, Eye, EyeOff, ExternalLink } from "lucide-react";
+import { Trash2, Search, Users, Shield, Building2, GraduationCap, Copy, Eye, EyeOff, ExternalLink } from "lucide-react";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import { toast } from "sonner";
@@ -53,8 +50,7 @@ interface UserWithRole {
 const ROLE_LABELS: Record<string, { label: string; icon: React.ReactNode; color: string }> = {
   admin: { label: "Админ", icon: <Shield className="w-3 h-3" />, color: "bg-purple-100 text-purple-700" },
   organization: { label: "Организация", icon: <Building2 className="w-3 h-3" />, color: "bg-blue-100 text-blue-700" },
-  student: { label: "Слушатель", icon: <GraduationCap className="w-3 h-3" />, color: "bg-green-100 text-green-700" },
-};
+  student: { label: "Слушатель", icon: <GraduationCap className="w-3 h-3" />, color: "bg-green-100 text-green-700" } };
 
 export function UsersManager() {
   const [users, setUsers] = useState<UserWithRole[]>([]);
@@ -71,8 +67,7 @@ export function UsersManager() {
     localStorage.setItem('adminViewAsStudent', JSON.stringify({
       userId: user.user_id,
       name: user.full_name || user.email || 'Ученик',
-      orgName: user.organization_name || '',
-    }));
+      orgName: user.organization_name || '' }));
     navigate('/student');
   };
 
@@ -138,8 +133,7 @@ export function UsersManager() {
           ...profile,
           generated_password: passwordMap.get(profile.user_id) || null,
           role: userRole?.role || null,
-          organization_name: org?.name || null,
-        };
+          organization_name: org?.name || null };
       });
 
       setUsers(usersWithRoles);
@@ -246,13 +240,12 @@ export function UsersManager() {
     total: users.length,
     admins: users.filter((u) => u.role === "admin").length,
     organizations: users.filter((u) => u.role === "organization").length,
-    students: users.filter((u) => u.role === "student").length,
-  };
+    students: users.filter((u) => u.role === "student").length };
 
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
-        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        <SigmaSpinner size="lg" />
       </div>
     );
   }

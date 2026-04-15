@@ -10,8 +10,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
+  DialogTrigger } from "@/components/ui/dialog";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -20,11 +19,10 @@ import {
   AlertDialogDescription,
   AlertDialogFooter,
   AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
+  AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Pencil, Trash2, Building2, Loader2, Users, BookOpen, Key, Eye, EyeOff, Copy, Check, Download, ExternalLink, Search, X, FolderOpen, DollarSign, Calendar, RefreshCw, Mail, Phone, Crown, LayoutGrid, List, ChevronDown } from "lucide-react";
+import { Plus, Pencil, Trash2, Building2, Users, BookOpen, Key, Eye, EyeOff, Copy, Check, Download, ExternalLink, Search, X, FolderOpen, DollarSign, Calendar, RefreshCw, Mail, Phone, Crown, LayoutGrid, List, ChevronDown } from "lucide-react";
 import { getPlanInfo, type SubscriptionPlan } from "@/constants/subscriptionPlans";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
@@ -87,8 +85,7 @@ export function OrganizationsManager({ openOrgId, onOpenOrgHandled }: Organizati
     inn: "",
     contact_name: "",
     login_email: "",
-    login_password: "",
-  });
+    login_password: "" });
   const [saving, setSaving] = useState(false);
   // Filter organizations based on search query
   const filteredOrganizations = organizations.filter((org) => {
@@ -108,8 +105,7 @@ export function OrganizationsManager({ openOrgId, onOpenOrgHandled }: Organizati
     // Store admin view context in localStorage
     localStorage.setItem("adminViewAsOrg", JSON.stringify({
       id: org.id,
-      name: org.name,
-    }));
+      name: org.name }));
     navigate("/organization");
   };
 
@@ -142,8 +138,7 @@ export function OrganizationsManager({ openOrgId, onOpenOrgHandled }: Organizati
         ...org,
         users_count: undefined as number | undefined,
         courses_count: undefined as number | undefined,
-        credentials: undefined as Organization["credentials"] | undefined,
-      }));
+        credentials: undefined as Organization["credentials"] | undefined }));
 
       setOrganizations(orgs);
       setLoading(false);
@@ -186,8 +181,7 @@ export function OrganizationsManager({ openOrgId, onOpenOrgHandled }: Organizati
           ...org,
           users_count: userCounts[org.id] || 0,
           courses_count: courseCounts[org.id] || 0,
-          credentials: credMap[org.id] || null,
-        }))
+          credentials: credMap[org.id] || null }))
       );
       setDetailsLoading(false);
     } catch (error) {
@@ -215,8 +209,7 @@ export function OrganizationsManager({ openOrgId, onOpenOrgHandled }: Organizati
         email: formData.email,
         phone: formData.phone || null,
         inn: formData.inn || null,
-        contact_name: formData.contact_name || null,
-      }).select().single();
+        contact_name: formData.contact_name || null }).select().single();
 
       if (error) throw error;
 
@@ -240,16 +233,14 @@ export function OrganizationsManager({ openOrgId, onOpenOrgHandled }: Organizati
           await supabase.from("organization_credentials").insert({
             organization_id: newOrg.id,
             login_email: formData.login_email,
-            login_password: formData.login_password,
-          });
+            login_password: formData.login_password });
         }
       }
 
       // Seed welcome course (non-blocking)
       try {
         await supabase.functions.invoke("seed-welcome-course", {
-          body: { organizationId: newOrg.id },
-        });
+          body: { organizationId: newOrg.id } });
       } catch (seedErr) {
         console.error("Seed welcome course error:", seedErr);
       }
@@ -281,8 +272,7 @@ export function OrganizationsManager({ openOrgId, onOpenOrgHandled }: Organizati
           email: formData.email,
           phone: formData.phone || null,
           inn: formData.inn || null,
-          contact_name: formData.contact_name || null,
-        })
+          contact_name: formData.contact_name || null })
         .eq("id", editOrg.id);
 
       if (error) throw error;
@@ -414,8 +404,7 @@ export function OrganizationsManager({ openOrgId, onOpenOrgHandled }: Organizati
       inn: org.inn || "",
       contact_name: org.contact_name || "",
       login_email: org.credentials?.login_email || "",
-      login_password: org.credentials?.login_password || "",
-    });
+      login_password: org.credentials?.login_password || "" });
     setIsEditOpen(true);
   };
 
@@ -454,8 +443,7 @@ export function OrganizationsManager({ openOrgId, onOpenOrgHandled }: Organizati
       const { data, error } = await supabase.functions.invoke("reset-org-password", {
         body: {
           organization_id: resetPasswordOrg.id,
-          new_password: newPassword,
-        }
+          new_password: newPassword }
       });
 
       if (error) throw error;
@@ -505,8 +493,7 @@ export function OrganizationsManager({ openOrgId, onOpenOrgHandled }: Organizati
       "Пароль": org.credentials?.login_password || "",
       "Сотрудников": org.users_count || 0,
       "Курсов": org.courses_count || 0,
-      "Дата создания": format(new Date(org.created_at), "dd.MM.yyyy", { locale: ru }),
-    }));
+      "Дата создания": format(new Date(org.created_at), "dd.MM.yyyy", { locale: ru }) }));
 
     const worksheet = XLSX.utils.json_to_sheet(data);
     
@@ -537,7 +524,7 @@ export function OrganizationsManager({ openOrgId, onOpenOrgHandled }: Organizati
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
-        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        <SigmaSpinner size="lg" />
       </div>
     );
   }
@@ -652,7 +639,7 @@ export function OrganizationsManager({ openOrgId, onOpenOrgHandled }: Organizati
                 </div>
               </div>
               <Button onClick={handleCreate} disabled={saving} className="w-full">
-                {saving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+                {saving ? <SigmaSpinner size="sm" className="mr-2" /> : null}
                 Создать
               </Button>
             </div>
@@ -1002,7 +989,7 @@ export function OrganizationsManager({ openOrgId, onOpenOrgHandled }: Organizati
                       className="text-xs w-full"
                     >
                       {generatingCredentials === org.id ? (
-                        <Loader2 className="w-3 h-3 animate-spin mr-1" />
+                        <SigmaSpinner size="xs" className="mr-1" />
                       ) : (
                         <Key className="w-3 h-3 mr-1" />
                       )}
@@ -1104,7 +1091,7 @@ export function OrganizationsManager({ openOrgId, onOpenOrgHandled }: Organizati
               />
             </div>
             <Button onClick={handleUpdate} disabled={saving} className="w-full">
-              {saving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+              {saving ? <SigmaSpinner size="sm" className="mr-2" /> : null}
               Сохранить
             </Button>
           </div>
@@ -1179,7 +1166,7 @@ export function OrganizationsManager({ openOrgId, onOpenOrgHandled }: Organizati
               </div>
             </div>
             <Button onClick={handleResetPassword} disabled={resettingPassword} className="w-full">
-              {resettingPassword ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+              {resettingPassword ? <SigmaSpinner size="sm" className="mr-2" /> : null}
               Сохранить и синхронизировать пароль
             </Button>
           </div>

@@ -19,7 +19,6 @@
    Video,
    BookOpen,
    CheckCircle2,
-   Loader2,
    Camera,
    GraduationCap,
    Upload,
@@ -36,8 +35,7 @@
    RotateCcw,
    Plus,
    Mail,
-   RefreshCw,
- } from "lucide-react";
+   RefreshCw } from "lucide-react";
  import { format } from "date-fns";
  import { ru } from "date-fns/locale";
  
@@ -112,8 +110,7 @@
    onOpenChange,
    record,
    organizationId,
-   onRecordUpdated,
- }: LaborSafetyStudentDetailCardProps) {
+   onRecordUpdated }: LaborSafetyStudentDetailCardProps) {
    const [activeTab, setActiveTab] = useState("profile");
    const [isLoading, setIsLoading] = useState(true);
    const [profile, setProfile] = useState<LaborSafetyProfile | null>(null);
@@ -188,15 +185,13 @@
               profileData = {
                 ...existingProfile,
                 generated_password: decryptedPw,
-                login: existingProfile.login || mainProfile?.login,
-              };
+                login: existingProfile.login || mainProfile?.login };
               // Update labor_safety_profiles with the password for future
               await supabase
                 .from("labor_safety_profiles")
                 .update({
                   generated_password: decryptedPw,
-                  login: existingProfile.login || mainProfile?.login,
-                })
+                  login: existingProfile.login || mainProfile?.login })
                 .eq("id", existingProfile.id);
             }
           } else if (existingProfile.generated_password) {
@@ -223,8 +218,7 @@
              progress: e.progress,
              status: e.status,
              started_at: e.started_at,
-             completed_at: e.completed_at,
-           })));
+             completed_at: e.completed_at })));
          }
          
          // Load verifications
@@ -294,8 +288,7 @@
        const { data, error } = await safeInvoke<any>("register-student", {
          body: {
            organization_id: organizationId,
-           full_name: record.full_name,
-         }
+           full_name: record.full_name }
        });
        
        if (error) throw error;
@@ -312,8 +305,7 @@
              generated_password: data.password || data.generated_password,
              email: data.email,
              organization_id: organizationId,
-             record_id: record.id,
-           }, { onConflict: 'record_id' });
+             record_id: record.id }, { onConflict: 'record_id' });
          
          if (linkError) throw linkError;
          
@@ -340,8 +332,7 @@
        const { error } = await safeInvoke<any>("send-credentials", {
          body: {
            user_id: profile.user_id,
-           organization_id: organizationId,
-         }
+           organization_id: organizationId }
        });
 
        if (error) throw error;
@@ -379,8 +370,7 @@
          body: {
            user_id: profile.user_id,
            new_login: newLogin || undefined,
-           new_password: newPassword || undefined,
-         }
+           new_password: newPassword || undefined }
        });
  
        if (error) throw error;
@@ -418,8 +408,7 @@
                user_id: profile.user_id,
                organization_id: organizationId,
                status: "verified",
-               verified_at: new Date().toISOString(),
-             });
+               verified_at: new Date().toISOString() });
          }
          toast.success("Видеоидентификация отмечена как пройденная");
        } else {
@@ -465,8 +454,7 @@
          passport: "Паспорт",
          birth_certificate: "Свидетельство о рождении",
          snils: "СНИЛС",
-         education_document: "Документ об образовании",
-       };
+         education_document: "Документ об образовании" };
  
        await supabase.from("student_identity_documents").insert({
          user_id: profile.user_id,
@@ -474,8 +462,7 @@
          type: selectedDocType,
          name: docNames[selectedDocType] || file.name,
          file_url: fileName,
-         file_path: fileName,
-       });
+         file_path: fileName });
  
        toast.success("Документ загружен");
        loadData();
@@ -532,8 +519,7 @@
           await supabase.from("enrollments").insert({
             user_id: profile.user_id,
             course_id: courseId,
-            status: "active",
-          });
+            status: "active" });
           enrolledCount++;
        }
        
@@ -648,24 +634,21 @@
        icon: FileText,
        completed: identityDocs.some(d => d.type === "contract" || d.type === "agreement"),
        uploadable: true,
-       uploadType: "contract",
-     },
+       uploadType: "contract" },
      {
        id: "passport",
        label: "Паспорт / Св-во о рождении",
        icon: User,
        completed: identityDocs.some(d => d.type === "passport" || d.type === "birth_certificate"),
        uploadable: true,
-       uploadType: "passport",
-     },
+       uploadType: "passport" },
      {
        id: "snils",
        label: "СНИЛС",
        icon: Shield,
        completed: identityDocs.some(d => d.type === "snils"),
        uploadable: true,
-       uploadType: "snils",
-     },
+       uploadType: "snils" },
    ];
  
    if (!record) return null;
@@ -711,7 +694,7 @@
              <div className="p-6">
                {isLoading ? (
                  <div className="flex items-center justify-center py-12">
-                   <Loader2 className="w-8 h-8 animate-spin text-primary" />
+                   <SigmaSpinner size="lg" />
                  </div>
                ) : (
                  <>
@@ -752,7 +735,7 @@
                            </p>
                           <Button onClick={createProfileForRecord} disabled={isCreatingProfile}>
                             {isCreatingProfile ? (
-                              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                              <SigmaSpinner size="sm" className="mr-2" />
                             ) : (
                               <Plus className="w-4 h-4 mr-2" />
                             )}
@@ -811,7 +794,7 @@
                                  onClick={handleUpdateCredentials}
                                  disabled={isUpdatingCredentials}
                                >
-                                 {isUpdatingCredentials ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
+                                 {isUpdatingCredentials ? <SigmaSpinner size="sm" /> : <Check className="w-4 h-4" />}
                                  Сохранить
                                </Button>
                                <Button
@@ -893,7 +876,7 @@
                                className="w-full gap-2"
                              >
                                {isSendingCredentials ? (
-                                 <Loader2 className="w-4 h-4 animate-spin" />
+                                 <SigmaSpinner size="sm" />
                                ) : (
                                  <Mail className="w-4 h-4" />
                                )}
@@ -942,7 +925,7 @@
                                }
                              }}
                            >
-                             {isSendingReminder ? <Loader2 className="w-4 h-4 animate-spin" /> : <Bell className="w-4 h-4" />}
+                             {isSendingReminder ? <SigmaSpinner size="sm" /> : <Bell className="w-4 h-4" />}
                              Напомнить о документах
                            </Button>
                          </div>
@@ -979,7 +962,7 @@
                                        disabled={isUploading}
                                      >
                                        {isUploading ? (
-                                         <Loader2 className="w-4 h-4 animate-spin" />
+                                         <SigmaSpinner size="sm" />
                                        ) : (
                                           <>
                                             <Upload className="w-3 h-3" />
@@ -1158,7 +1141,7 @@
                                 disabled={selectedCourseIds.length === 0 || isEnrolling}
                              >
                                 {isEnrolling ? (
-                                  <Loader2 className="w-4 h-4 animate-spin mr-1" />
+                                  <SigmaSpinner size="sm" className="mr-1" />
                                 ) : (
                                   <GraduationCap className="w-4 h-4 mr-1" />
                                 )}

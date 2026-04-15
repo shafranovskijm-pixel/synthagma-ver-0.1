@@ -5,7 +5,7 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Video, Calendar, Radio, Loader2, Clock } from "lucide-react";
+import { Video, Calendar, Radio, Clock } from "lucide-react";
 import { buildKinescopeEmbedUrl } from "@/components/organization/WebinarPlayerSettings";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
@@ -89,7 +89,7 @@ export function StudentWebinarsList() {
   };
 
   if (loading) {
-    return <div className="flex justify-center py-12"><Loader2 className="animate-spin w-8 h-8 text-muted-foreground" /></div>;
+    return <div className="flex justify-center py-12"><SigmaSpinner size="lg" /></div>;
   }
 
   if (webinars.length === 0) {

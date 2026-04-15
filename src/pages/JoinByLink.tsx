@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useAuth } from "@/hooks/useAuth";
-import { ArrowLeft, Mail, Lock, User, Loader2, Building2, AlertTriangle, BookOpen, Users } from "lucide-react";
+import { ArrowLeft, Mail, Lock, User, Building2, AlertTriangle, BookOpen, Users } from "lucide-react";
 import { toast } from "sonner";
 
 interface LinkData {
@@ -238,7 +238,7 @@ const JoinByLink = () => {
   if (loading || authLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
-        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        <SigmaSpinner size="lg" />
       </div>
     );
   }
@@ -401,7 +401,7 @@ const JoinByLink = () => {
             >
               {isSubmitting ? (
                 <>
-                  <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                  <SigmaSpinner className="mr-2" />
                   Создание аккаунта...
                 </>
               ) : (

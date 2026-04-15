@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { 
-  Image, Save, Upload, Loader2, X, ExternalLink, Eye, 
+  Image, Save, Upload, X, ExternalLink, Eye, 
   Globe, Palette, Type, Link as LinkIcon, Copy, Check
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -208,7 +208,7 @@ export function LoginBrandingSettings({
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-8">
-        <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+        <SigmaSpinner />
       </div>
     );
   }
@@ -307,7 +307,7 @@ export function LoginBrandingSettings({
             <input type="file" accept="image/*" className="hidden" onChange={handleBackgroundUpload} />
             <div className="border-2 border-dashed border-border rounded-xl p-8 flex flex-col items-center justify-center hover:border-primary/50 transition-colors">
               {isUploadingBg ? (
-                <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
+                <SigmaSpinner size="lg" />
               ) : (
                 <>
                   <Upload className="w-8 h-8 text-muted-foreground mb-2" />
@@ -347,7 +347,7 @@ export function LoginBrandingSettings({
             <input type="file" accept="image/*" className="hidden" onChange={handleLogoUpload} />
             <div className="w-32 h-32 border-2 border-dashed border-border rounded-xl flex flex-col items-center justify-center hover:border-primary/50 transition-colors">
               {isUploadingLogo ? (
-                <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+                <SigmaSpinner />
               ) : (
                 <>
                   <Upload className="w-6 h-6 text-muted-foreground mb-1" />
@@ -444,7 +444,7 @@ export function LoginBrandingSettings({
           disabled={isSaving}
         >
           {isSaving ? (
-            <Loader2 className="w-4 h-4 animate-spin" />
+            <SigmaSpinner size="sm" />
           ) : (
             <Save className="w-4 h-4" />
           )}

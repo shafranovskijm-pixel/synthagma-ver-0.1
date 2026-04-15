@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Send, Loader2, Paperclip, ExternalLink, Clock, CheckCircle2, AlertCircle, RotateCcw } from "lucide-react";
+import { Send, Paperclip, ExternalLink, Clock, CheckCircle2, AlertCircle, RotateCcw } from "lucide-react";
 
 interface Submission {
   id: string;
@@ -35,8 +35,7 @@ const statusConfig: Record<string, { label: string; color: string }> = {
   pending: { label: "Ждёт проверки", color: "bg-amber-500/10 text-amber-600 border-amber-500/20" },
   revision: { label: "На доработке", color: "bg-orange-500/10 text-orange-600 border-orange-500/20" },
   approved: { label: "Выполнено", color: "bg-green-500/10 text-green-600 border-green-500/20" },
-  rejected: { label: "Незачёт", color: "bg-destructive/10 text-destructive border-destructive/20" },
-};
+  rejected: { label: "Незачёт", color: "bg-destructive/10 text-destructive border-destructive/20" } };
 
 export function HomeworkReviewDialog({ submission, open, onOpenChange, onUpdated }: Props) {
   const [comment, setComment] = useState(submission.reviewer_comment || "");
@@ -53,8 +52,7 @@ export function HomeworkReviewDialog({ submission, open, onOpenChange, onUpdated
         reviewer_comment: comment.trim() || null,
         score: score ? parseInt(score) : null,
         reviewer_id: (await supabase.auth.getUser()).data.user?.id,
-        reviewed_at: new Date().toISOString(),
-      } as any)
+        reviewed_at: new Date().toISOString() } as any)
       .eq("id", submission.id);
 
     if (error) {
@@ -160,7 +158,7 @@ export function HomeworkReviewDialog({ submission, open, onOpenChange, onUpdated
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>Отмена</Button>
           <Button onClick={handleSubmit} disabled={saving} className="btn-gradient gap-2">
-            {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+            {saving ? <SigmaSpinner size="sm" /> : <Send className="w-4 h-4" />}
             Отправить
           </Button>
         </DialogFooter>

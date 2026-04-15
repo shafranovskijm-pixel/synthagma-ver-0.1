@@ -3,7 +3,7 @@ import { checkAiLimitGlobal, incrementAiLimitGlobal } from "@/hooks/useAiGenerat
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
-import { HelpCircle, Plus, Trash2, Loader2, Sparkles } from "lucide-react";
+import { HelpCircle, Plus, Trash2, Sparkles } from "lucide-react";
 import type { ContentBlock } from "../types";
 
 export function QuizBlock({ block, onUpdate, courseTitle, lessonTitle, existingContent }: { block: ContentBlock; onUpdate: (updates: Partial<ContentBlock>) => void; courseTitle?: string; lessonTitle?: string; existingContent?: string }) {
@@ -36,15 +36,13 @@ export function QuizBlock({ block, onUpdate, courseTitle, lessonTitle, existingC
     try {
       const { supabase } = await import("@/integrations/supabase/client");
       const { data, error } = await supabase.functions.invoke("generate-course-content", {
-        body: { contentType: "quiz", lessonTitle: lessonTitle || "Общая тема", courseTitle: courseTitle || "Курс", existingContent },
-      });
+        body: { contentType: "quiz", lessonTitle: lessonTitle || "Общая тема", courseTitle: courseTitle || "Курс", existingContent } });
       if (error) throw error;
       if (data?.quiz) {
         onUpdate({
           quizQuestion: data.quiz.question,
           quizOptions: data.quiz.options.map((o: any, i: number) => ({ text: o, isCorrect: i === data.quiz.correctIndex })),
-          quizExplanation: data.quiz.explanation || "",
-        });
+          quizExplanation: data.quiz.explanation || "" });
         await incrementAiLimitGlobal();
       }
     } catch (e) {
@@ -59,7 +57,7 @@ export function QuizBlock({ block, onUpdate, courseTitle, lessonTitle, existingC
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2 text-primary"><HelpCircle className="w-5 h-5" /><span className="font-medium">Мини-квиз</span></div>
         <Button variant="outline" size="sm" onClick={handleGenerateWithAI} disabled={isGenerating} className="gap-2 text-xs">
-          {isGenerating ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
+          {isGenerating ? <SigmaSpinner size="xs" /> : <Sparkles className="w-3 h-3" />}
           {isGenerating ? "Генерация..." : "Сгенерировать с ИИ"}
         </Button>
       </div>

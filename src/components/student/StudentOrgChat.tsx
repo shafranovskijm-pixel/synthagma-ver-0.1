@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef, useCallback } from "react";
-import { Send, Paperclip, FileText, Loader2, MessageCircle } from "lucide-react";
+import { Send, Paperclip, FileText, MessageCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
@@ -47,8 +47,7 @@ export function StudentOrgChat({ studentUserId, organizationId, organizationName
         event: "INSERT",
         schema: "public",
         table: "org_student_messages",
-        filter: `student_user_id=eq.${studentUserId}`,
-      }, (payload) => {
+        filter: `student_user_id=eq.${studentUserId}` }, (payload) => {
         const newMsg = payload.new as Message;
         if ((newMsg as any).organization_id !== organizationId) return;
         setMessages((prev) => prev.some(m => m.id === newMsg.id) ? prev : [...prev, newMsg]);
@@ -98,8 +97,7 @@ export function StudentOrgChat({ studentUserId, organizationId, organizationName
       const optimisticMsg: Message = {
         id: tempId, sender_user_id: studentUserId, content: text,
         attachment_url: null, attachment_name: null, attachment_type: null,
-        is_read: false, created_at: new Date().toISOString(),
-      };
+        is_read: false, created_at: new Date().toISOString() };
       setMessages(prev => [...prev, optimisticMsg]);
       setNewMessage("");
       setTimeout(scrollToBottom, 50);
@@ -107,8 +105,7 @@ export function StudentOrgChat({ studentUserId, organizationId, organizationName
         organization_id: organizationId,
         student_user_id: studentUserId,
         sender_user_id: studentUserId,
-        content: text,
-      }).select().single();
+        content: text }).select().single();
       if (error) throw error;
       if (data) setMessages(prev => prev.map(m => m.id === tempId ? (data as Message) : m));
     } catch {
@@ -131,8 +128,7 @@ export function StudentOrgChat({ studentUserId, organizationId, organizationName
       const isImage = file.type.startsWith("image/");
       const { error } = await supabase.from("org_student_messages").insert({
         organization_id: organizationId, student_user_id: studentUserId, sender_user_id: studentUserId,
-        content: null, attachment_url: path, attachment_name: file.name, attachment_type: isImage ? "image" : "file",
-      });
+        content: null, attachment_url: path, attachment_name: file.name, attachment_type: isImage ? "image" : "file" });
       if (error) throw error;
     } catch {
       toast.error("Ошибка загрузки файла");
@@ -152,7 +148,7 @@ export function StudentOrgChat({ studentUserId, organizationId, organizationName
     if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSend(); }
   };
 
-  if (isLoading) return <div className="flex justify-center py-12"><Loader2 className="w-6 h-6 animate-spin text-primary" /></div>;
+  if (isLoading) return <div className="flex justify-center py-12"><SigmaSpinner /></div>;
 
   return (
     <div className="flex flex-col h-full">
@@ -191,7 +187,7 @@ export function StudentOrgChat({ studentUserId, organizationId, organizationName
       <div className="border-t border-border p-3 flex items-end gap-2 bg-card">
         <input ref={fileInputRef} type="file" className="hidden" accept="image/*,.pdf,.doc,.docx,.xls,.xlsx" onChange={handleFileUpload} />
         <Button variant="ghost" size="icon" className="shrink-0 rounded-xl" onClick={() => fileInputRef.current?.click()} disabled={isUploading}>
-          {isUploading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Paperclip className="w-5 h-5" />}
+          {isUploading ? <SigmaSpinner /> : <Paperclip className="w-5 h-5" />}
         </Button>
         <Textarea value={newMessage} onChange={(e) => setNewMessage(e.target.value)} onKeyDown={handleKeyDown} placeholder="Написать сообщение..." className="min-h-[40px] max-h-[120px] rounded-xl resize-none" rows={1} />
         <Button size="icon" className="shrink-0 rounded-xl" onClick={handleSend} disabled={isSending || !newMessage.trim()}>

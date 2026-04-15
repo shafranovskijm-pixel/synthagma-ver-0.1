@@ -6,9 +6,8 @@ import {
   DialogContent,
   DialogDescription,
   DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { Loader2, Search, Check } from "lucide-react";
+  DialogTitle } from "@/components/ui/dialog";
+import { Search, Check } from "lucide-react";
 import type { Company } from "@/hooks/useCompaniesManager";
 
 interface DadataCompanyInfo {
@@ -56,8 +55,7 @@ export function CreateCompanyDialog({
   dadataCompanyInfo,
   onSearchByInn,
   onCreate,
-  onClose,
-}: CreateCompanyDialogProps) {
+  onClose }: CreateCompanyDialogProps) {
   return (
     <Dialog open={open} onOpenChange={(o) => {
       onOpenChange(o);
@@ -92,7 +90,7 @@ export function CreateCompanyDialog({
                 disabled={isSearchingDadata || companyInn.length < 10}
               >
                 {isSearchingDadata ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <SigmaSpinner size="sm" />
                 ) : (
                   <Search className="w-4 h-4" />
                 )}
@@ -133,7 +131,7 @@ export function CreateCompanyDialog({
           >
             {isCreating ? (
               <>
-                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                <SigmaSpinner size="sm" className="mr-2" />
                 Создание...
               </>
             ) : (
@@ -179,8 +177,7 @@ export function EditCompanyDialog({
   dadataCompanyInfo,
   onSearchByInn,
   onSave,
-  onClose,
-}: EditCompanyDialogProps) {
+  onClose }: EditCompanyDialogProps) {
   return (
     <Dialog open={open} onOpenChange={(o) => {
       onOpenChange(o);
@@ -215,7 +212,7 @@ export function EditCompanyDialog({
                 disabled={isSearchingDadata || companyInn.length < 10}
               >
                 {isSearchingDadata ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <SigmaSpinner size="sm" />
                 ) : (
                   <Search className="w-4 h-4" />
                 )}
@@ -257,7 +254,7 @@ export function EditCompanyDialog({
           >
             {isSaving ? (
               <>
-                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                <SigmaSpinner size="sm" className="mr-2" />
                 Сохранение...
               </>
             ) : (
@@ -283,8 +280,7 @@ export function DeleteCompanyDialog({
   onOpenChange,
   company,
   isDeleting,
-  onDelete,
-}: DeleteCompanyDialogProps) {
+  onDelete }: DeleteCompanyDialogProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="rounded-2xl max-w-md">
@@ -313,7 +309,7 @@ export function DeleteCompanyDialog({
           >
             {isDeleting ? (
               <>
-                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                <SigmaSpinner size="sm" className="mr-2" />
                 Удаление...
               </>
             ) : (

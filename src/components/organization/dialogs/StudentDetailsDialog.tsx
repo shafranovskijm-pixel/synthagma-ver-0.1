@@ -3,7 +3,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Loader2, Copy, Building2, Save, Key, Send, Mail, Trash2, FileSpreadsheet } from "lucide-react";
+import { Copy, Building2, Save, Key, Send, Mail, Trash2, FileSpreadsheet } from "lucide-react";
 
 interface Student {
   id: string;
@@ -88,8 +88,7 @@ export function StudentDetailsDialog({
   onSendCredentialsEmail,
   isDeletingStudent,
   onDeleteStudent,
-  onCopyCredentials,
-}: StudentDetailsDialogProps) {
+  onCopyCredentials }: StudentDetailsDialogProps) {
   const handleExportTests = () => {
     if (!studentDetails) return;
     
@@ -117,7 +116,7 @@ export function StudentDetailsDialog({
         </DialogHeader>
         {isLoading ? (
           <div className="flex items-center justify-center py-12">
-            <Loader2 className="w-8 h-8 animate-spin text-primary" />
+            <SigmaSpinner size="lg" />
           </div>
         ) : studentDetails && (
           <div className="space-y-6">
@@ -191,7 +190,7 @@ export function StudentDetailsDialog({
                     onClick={onAttachToCompany}
                     disabled={!studentCompanyId || isSavingStudentCompany}
                   >
-                    {isSavingStudentCompany ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                    {isSavingStudentCompany ? <SigmaSpinner size="sm" /> : <Save className="w-4 h-4" />}
                   </Button>
                 </div>
               </div>
@@ -211,7 +210,7 @@ export function StudentDetailsDialog({
                     onClick={onCreateCredentials}
                     disabled={isCreatingCredentials}
                   >
-                    {isCreatingCredentials ? <Loader2 className="w-4 h-4 animate-spin" /> : <Key className="w-4 h-4" />}
+                    {isCreatingCredentials ? <SigmaSpinner size="sm" /> : <Key className="w-4 h-4" />}
                     Создать логин и пароль
                   </Button>
                 </div>
@@ -231,7 +230,7 @@ export function StudentDetailsDialog({
                       onClick={onSendCredentials}
                       disabled={isSendingCredentials}
                     >
-                      {isSendingCredentials ? <Loader2 className="w-4 h-4 animate-spin" /> : <Copy className="w-4 h-4" />}
+                      {isSendingCredentials ? <SigmaSpinner size="sm" /> : <Copy className="w-4 h-4" />}
                       Скопировать сообщение
                     </Button>
                     <Button
@@ -239,7 +238,7 @@ export function StudentDetailsDialog({
                       onClick={onSendCredentialsEmail}
                       disabled={isSendingCredentialsEmail || !studentDetails.student.email}
                     >
-                      {isSendingCredentialsEmail ? <Loader2 className="w-4 h-4 animate-spin" /> : <Mail className="w-4 h-4" />}
+                      {isSendingCredentialsEmail ? <SigmaSpinner size="sm" /> : <Mail className="w-4 h-4" />}
                       {studentDetails.student.email ? "Отправить на почту" : "Email не указан"}
                     </Button>
                   </div>
@@ -261,7 +260,7 @@ export function StudentDetailsDialog({
                   onClick={onDeleteStudent}
                   disabled={isDeletingStudent}
                 >
-                  {isDeletingStudent ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+                  {isDeletingStudent ? <SigmaSpinner size="sm" /> : <Trash2 className="w-4 h-4" />}
                   Удалить ученика
                 </Button>
               </div>

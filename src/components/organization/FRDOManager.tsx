@@ -1,7 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Loader2, Download, Search, Users, CheckCircle2, AlertCircle, XCircle, Filter, FileSpreadsheet, Shield, BarChart3, Upload, ClipboardCheck, BookOpen } from "lucide-react";
+import { Download, Search, Users, CheckCircle2, AlertCircle, XCircle, Filter, FileSpreadsheet, Shield, BarChart3, Upload, ClipboardCheck, BookOpen } from "lucide-react";
 import { FRDOExportDialog } from "./FRDOExportDialog";
 import { useFRDOManager } from "@/hooks/useFRDOManager";
 
@@ -15,15 +15,15 @@ export function FRDOManager({ organizationId }: { organizationId: string }) {
     handleBulkExport, openStudentExport, hasPOCourses, stats, missingFieldsStats
   } = useFRDOManager(organizationId);
 
-  if (isLoading) return <div className="flex items-center justify-center py-12"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>;
+  if (isLoading) return <div className="flex items-center justify-center py-12"><SigmaSpinner size="lg" /></div>;
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div><h2 className="text-2xl font-display font-semibold">ФИС ФРДО</h2><p className="text-muted-foreground">Управление данными</p></div>
         <div className="flex items-center gap-2">
-          <Button onClick={() => handleBulkExport("dpo")} className="rounded-xl gap-2" disabled={isExporting || students.length === 0}>{isExporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}Выгрузить ДПО</Button>
-          {hasPOCourses && <Button variant="secondary" onClick={() => handleBulkExport("po")} className="rounded-xl gap-2" disabled={isExporting || students.length === 0}>{isExporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}Выгрузить ПО</Button>}
+          <Button onClick={() => handleBulkExport("dpo")} className="rounded-xl gap-2" disabled={isExporting || students.length === 0}>{isExporting ? <SigmaSpinner size="sm" /> : <Download className="w-4 h-4" />}Выгрузить ДПО</Button>
+          {hasPOCourses && <Button variant="secondary" onClick={() => handleBulkExport("po")} className="rounded-xl gap-2" disabled={isExporting || students.length === 0}>{isExporting ? <SigmaSpinner size="sm" /> : <Download className="w-4 h-4" />}Выгрузить ПО</Button>}
         </div>
       </div>
 

@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Upload, BookOpen, Trash2, Search, FileText } from "lucide-react";
+import { Upload, BookOpen, Trash2, Search, FileText } from "lucide-react";
 
 interface KnowledgeBankEntry {
   id: string;
@@ -61,8 +61,7 @@ export function KnowledgeBankTab() {
         formData.append("file", file);
 
         const { data, error } = await supabase.functions.invoke("import-course", {
-          body: formData,
-        });
+          body: formData });
 
         if (error) throw error;
 
@@ -77,8 +76,7 @@ export function KnowledgeBankTab() {
           title,
           content,
           source_filename: file.name,
-          tags,
-        });
+          tags });
 
         if (insertErr) throw insertErr;
         uploaded++;
@@ -155,7 +153,7 @@ export function KnowledgeBankTab() {
             />
             {isUploading ? (
               <div className="flex flex-col items-center gap-2">
-                <Loader2 className="w-8 h-8 animate-spin text-primary" />
+                <SigmaSpinner size="lg" />
                 <p className="text-sm text-muted-foreground">{uploadProgress}</p>
               </div>
             ) : (
@@ -185,7 +183,7 @@ export function KnowledgeBankTab() {
           {/* List */}
           {isLoading ? (
             <div className="flex justify-center py-8">
-              <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+              <SigmaSpinner />
             </div>
           ) : filtered.length === 0 ? (
             <div className="text-center py-8">

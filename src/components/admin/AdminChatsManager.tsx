@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import { MessageCircle, Search, Send, Paperclip, Loader2, FileText, Building2, ArrowLeft } from "lucide-react";
+import { MessageCircle, Search, Send, Paperclip, FileText, Building2, ArrowLeft } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -96,8 +96,7 @@ export function AdminChatsManager() {
         org,
         lastMessage: latest.content,
         lastMessageAt: latest.created_at,
-        unreadCount: orgMsgs.filter(m => !m.is_read && m.sender_role === "organization").length,
-      });
+        unreadCount: orgMsgs.filter(m => !m.is_read && m.sender_role === "organization").length });
       orgMap.delete(orgId);
     }
 
@@ -121,8 +120,7 @@ export function AdminChatsManager() {
         event: "INSERT",
         schema: "public",
         table: "admin_org_messages",
-        filter: `organization_id=eq.${selectedOrgId}`,
-      }, (payload) => {
+        filter: `organization_id=eq.${selectedOrgId}` }, (payload) => {
         const msg = payload.new as AdminMessage;
         setMessages(prev => prev.some(m => m.id === msg.id) ? prev : [...prev, msg]);
         setTimeout(scrollToBottom, 100);
@@ -167,8 +165,7 @@ export function AdminChatsManager() {
         id: tempId, organization_id: selectedOrgId, sender_user_id: user.id,
         sender_role: "admin", content: text, attachment_url: null,
         attachment_name: null, attachment_type: null, is_read: false,
-        created_at: new Date().toISOString(),
-      };
+        created_at: new Date().toISOString() };
       setMessages(prev => [...prev, optimistic]);
       setNewMessage("");
       setTimeout(scrollToBottom, 50);
@@ -177,8 +174,7 @@ export function AdminChatsManager() {
         organization_id: selectedOrgId,
         sender_user_id: user.id,
         sender_role: "admin",
-        content: text,
-      }).select().single();
+        content: text }).select().single();
 
       if (error) throw error;
       if (data) setMessages(prev => prev.map(m => m.id === tempId ? (data as AdminMessage) : m));
@@ -229,7 +225,7 @@ export function AdminChatsManager() {
       });
 
   if (isLoadingOrgs) {
-    return <div className="flex justify-center py-12"><Loader2 className="w-6 h-6 animate-spin text-primary" /></div>;
+    return <div className="flex justify-center py-12"><SigmaSpinner /></div>;
   }
 
   // Mobile: show chat if selected
@@ -247,7 +243,7 @@ export function AdminChatsManager() {
 
   function renderChat() {
     if (isLoadingMessages) {
-      return <div className="flex justify-center py-12"><Loader2 className="w-6 h-6 animate-spin text-primary" /></div>;
+      return <div className="flex justify-center py-12"><SigmaSpinner /></div>;
     }
 
     return (

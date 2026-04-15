@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
-import { Plus, ChevronRight, Highlighter, Loader2, Sparkles } from "lucide-react";
+import { Plus, ChevronRight, Highlighter, Sparkles } from "lucide-react";
 import type { BlockType } from "../types";
 import { blockCategories, calloutItems } from "../types";
 
@@ -67,7 +67,7 @@ export function AddBlockButton({ onAdd }: { onAdd: (type: BlockType) => void }) 
 export function AIGenerateButton({ isGenerating, onClick }: { isGenerating: boolean; onClick: () => void }) {
   return (
     <Button variant="outline" size="sm" onClick={onClick} disabled={isGenerating} className="gap-2 text-xs">
-      {isGenerating ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
+      {isGenerating ? <SigmaSpinner size="xs" /> : <Sparkles className="w-3 h-3" />}
       {isGenerating ? "Генерация..." : "Сгенерировать с ИИ"}
     </Button>
   );

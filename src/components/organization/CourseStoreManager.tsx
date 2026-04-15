@@ -1,14 +1,13 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
-  Store, ShoppingCart, GraduationCap, Loader2, CheckCircle,
+  Store, ShoppingCart, GraduationCap, CheckCircle,
   Eye, Edit, Trash2, Plus, Users, Building2, Search,
   Tag, Package, MessageSquarePlus, Megaphone, Send,
   Clock, ChevronDown, ArrowLeft, Info,
   List, LayoutGrid, Gift, Award, Zap, BookOpen, ShieldCheck, Lightbulb,
   Factory, Flame, Droplets, HardHat, Leaf,
-  Wrench,
-} from "lucide-react";
+  Wrench } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -32,8 +31,7 @@ const statusLabels: Record<string, { label: string; color: string }> = {
   approved: { label: "Одобрена", color: "bg-blue-500/10 text-blue-600 border-blue-500/20" },
   paid: { label: "Оплачена", color: "bg-green-500/10 text-green-600 border-green-500/20" },
   completed: { label: "Завершена", color: "bg-emerald-500/10 text-emerald-600 border-emerald-500/20" },
-  cancelled: { label: "Отменена", color: "bg-red-500/10 text-red-600 border-red-500/20" },
-};
+  cancelled: { label: "Отменена", color: "bg-red-500/10 text-red-600 border-red-500/20" } };
 
 interface CourseStoreManagerProps {
   organizationId: string;
@@ -49,8 +47,7 @@ const programTypeMeta: Record<string, { icon: React.ElementType; color: string; 
   "Повышение квалификации": { icon: GraduationCap, color: "text-blue-600", bgColor: "bg-blue-500/10" },
   "Профессиональная переподготовка": { icon: Award, color: "text-violet-600", bgColor: "bg-violet-500/10" },
   "Охрана труда / Пожарная безопасность": { icon: ShieldCheck, color: "text-amber-600", bgColor: "bg-amber-500/10" },
-  "Рабочие профессии": { icon: Store, color: "text-emerald-600", bgColor: "bg-emerald-500/10" },
-};
+  "Рабочие профессии": { icon: Store, color: "text-emerald-600", bgColor: "bg-emerald-500/10" } };
 
 const subCategoryMeta: Record<string, { icon: React.ElementType; color: string; bgColor: string }> = {
   "Промышленная безопасность": { icon: Factory, color: "text-orange-500", bgColor: "bg-orange-500/10" },
@@ -58,8 +55,7 @@ const subCategoryMeta: Record<string, { icon: React.ElementType; color: string; 
   "Энергетика": { icon: Flame, color: "text-red-500", bgColor: "bg-red-500/10" },
   "Экологическая безопасность": { icon: Leaf, color: "text-green-500", bgColor: "bg-green-500/10" },
   "Гидротехнические сооружения": { icon: Droplets, color: "text-blue-500", bgColor: "bg-blue-500/10" },
-  "Строительный контроль": { icon: HardHat, color: "text-accent", bgColor: "bg-accent/10" },
-};
+  "Строительный контроль": { icon: HardHat, color: "text-accent", bgColor: "bg-accent/10" } };
 
 const getProgramTypeMeta = (category: string) =>
   programTypeMeta[category] || { icon: BookOpen, color: "text-primary", bgColor: "bg-primary/10" };
@@ -77,7 +73,7 @@ export function CourseStoreManager({ organizationId, userRole = 'organization', 
   if (h.isLoading) {
     return (
       <div className="flex items-center justify-center py-12">
-        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        <SigmaSpinner size="lg" />
       </div>
     );
   }
@@ -517,7 +513,7 @@ export function CourseStoreManager({ organizationId, userRole = 'organization', 
             </div>
             <p className="text-xs text-muted-foreground">Оставьте 0 для бесплатного доступа</p>
           </div>
-          <DialogFooter><Button className="w-full btn-gradient rounded-xl" onClick={h.handleAddToMarketplace} disabled={h.isAdding || !h.selectedCourseToAdd}>{h.isAdding ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Добавление...</> : 'Добавить в магазин'}</Button></DialogFooter>
+          <DialogFooter><Button className="w-full btn-gradient rounded-xl" onClick={h.handleAddToMarketplace} disabled={h.isAdding || !h.selectedCourseToAdd}>{h.isAdding ? <><SigmaSpinner size="sm" className="mr-2" />Добавление...</> : 'Добавить в магазин'}</Button></DialogFooter>
         </DialogContent>
       </Dialog>
 
@@ -553,7 +549,7 @@ export function CourseStoreManager({ organizationId, userRole = 'organization', 
                   )}
                   <div className="space-y-2"><Label>Комментарий</Label><Textarea value={h.orderNotes} onChange={(e) => h.setOrderNotes(e.target.value)} placeholder="Дополнительная информация..." className="rounded-xl" /></div>
                 </div>
-                <DialogFooter><Button className="w-full rounded-xl gap-2 bg-green-600 hover:bg-green-700 text-white" onClick={h.handleOrder} disabled={h.isOrdering}>{h.isOrdering ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Оформление...</> : <><Plus className="w-4 h-4" />Получить курс</>}</Button></DialogFooter>
+                <DialogFooter><Button className="w-full rounded-xl gap-2 bg-green-600 hover:bg-green-700 text-white" onClick={h.handleOrder} disabled={h.isOrdering}>{h.isOrdering ? <><SigmaSpinner size="sm" className="mr-2" />Оформление...</> : <><Plus className="w-4 h-4" />Получить курс</>}</Button></DialogFooter>
               </>
             );
           })()}
@@ -627,7 +623,7 @@ export function CourseStoreManager({ organizationId, userRole = 'organization', 
             <div className="space-y-2"><Label>Описание</Label><Textarea value={h.requestDescription} onChange={(e) => h.setRequestDescription(e.target.value)} placeholder="Подробности..." className="rounded-xl" /></div>
             <div className="space-y-2"><Label>Количество учеников</Label><Input type="number" min={1} value={h.requestStudentsCount} onChange={(e) => h.setRequestStudentsCount(e.target.value)} className="rounded-xl" /></div>
           </div>
-          <DialogFooter><Button className="w-full btn-gradient rounded-xl" onClick={h.handleSubmitRequest} disabled={h.isSubmittingRequest || !h.requestTitle.trim()}>{h.isSubmittingRequest ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Публикация...</> : 'Опубликовать'}</Button></DialogFooter>
+          <DialogFooter><Button className="w-full btn-gradient rounded-xl" onClick={h.handleSubmitRequest} disabled={h.isSubmittingRequest || !h.requestTitle.trim()}>{h.isSubmittingRequest ? <><SigmaSpinner size="sm" className="mr-2" />Публикация...</> : 'Опубликовать'}</Button></DialogFooter>
         </DialogContent>
       </Dialog>
 
@@ -645,7 +641,7 @@ export function CourseStoreManager({ organizationId, userRole = 'organization', 
             </div>
             <div className="space-y-2"><Label>Сообщение</Label><Textarea value={h.proposeMessage} onChange={(e) => h.setProposeMessage(e.target.value)} placeholder="Дополнительная информация..." className="rounded-xl" /></div>
           </div>
-          <DialogFooter><Button className="w-full btn-gradient rounded-xl" onClick={h.handleProposeCourse} disabled={h.isProposing || !h.selectedCourseToPropose}>{h.isProposing ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Отправка...</> : 'Отправить предложение'}</Button></DialogFooter>
+          <DialogFooter><Button className="w-full btn-gradient rounded-xl" onClick={h.handleProposeCourse} disabled={h.isProposing || !h.selectedCourseToPropose}>{h.isProposing ? <><SigmaSpinner size="sm" className="mr-2" />Отправка...</> : 'Отправить предложение'}</Button></DialogFooter>
         </DialogContent>
       </Dialog>
 

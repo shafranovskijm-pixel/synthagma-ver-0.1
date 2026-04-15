@@ -1,14 +1,12 @@
 import { useState, useCallback, useEffect, useRef } from "react";
 import { checkAiLimitGlobal, incrementAiLimitGlobal } from "@/hooks/useAiGenerationLimit";
 import { safeInvoke } from "@/utils/safeInvoke";
-import { Type, Wand2, Undo2, Redo2, Loader2 } from "lucide-react";
+import { Type, Wand2, Undo2, Redo2} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
-  DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent,
-} from "@dnd-kit/core";
+  DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent } from "@dnd-kit/core";
 import {
-  arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy,
-} from "@dnd-kit/sortable";
+  arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy } from "@dnd-kit/sortable";
 
 import type { BlockType, ContentBlock, BlockEditorProps } from "./types";
 import { createBlock } from "./types";
@@ -127,7 +125,7 @@ export function BlockEditor({ blocks, onChange, readOnly = false, courseTitle, l
         <div className="inline-flex items-center gap-1 bg-background/90 backdrop-blur-sm border border-border rounded-lg p-1.5 shadow-md">
           {blocks.length > 0 && (
             <Button variant="ghost" size="sm" onClick={handleFormatWithAI} disabled={isFormatting} title="Оформить текст с помощью ИИ" className="h-10 px-3 gap-1.5 text-xs font-medium">
-              {isFormatting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Wand2 className="w-4 h-4" />}Оформить с ИИ
+              {isFormatting ? <SigmaSpinner size="sm" /> : <Wand2 className="w-4 h-4" />}Оформить с ИИ
             </Button>
           )}
           <div className="w-px h-6 bg-border" />

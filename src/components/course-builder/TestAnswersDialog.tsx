@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
-import { Download, Upload, Bot, CheckCircle2, AlertTriangle, Loader2, Sparkles } from "lucide-react";
+import { Download, Upload, Bot, CheckCircle2, AlertTriangle, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import {
@@ -12,8 +12,7 @@ import {
   parseAnswersFile,
   downloadTextFile,
   type QuestionForExport,
-  type ParsedAnswer,
-} from "@/utils/testAnswersExport";
+  type ParsedAnswer } from "@/utils/testAnswersExport";
 
 interface TestAnswersDialogProps {
   questions: QuestionForExport[];
@@ -86,8 +85,7 @@ export function TestAnswersDialog({ questions, courseTitle, lessonTitle, onApply
     try {
       const questionsForAI = questions.map(q => ({
         question: q.question,
-        options: q.options,
-      }));
+        options: q.options }));
 
       const { data, error } = await supabase.functions.invoke("gigachat", {
         body: {
@@ -96,9 +94,7 @@ export function TestAnswersDialog({ questions, courseTitle, lessonTitle, onApply
           lessonTitle: lessonTitle || courseTitle,
           questions: questionsForAI,
           ai_provider: "lovable_ai",
-          lovable_model: "google/gemini-2.5-pro",
-        },
-      });
+          lovable_model: "google/gemini-2.5-pro" } });
 
       if (error) throw error;
 
@@ -114,8 +110,7 @@ export function TestAnswersDialog({ questions, courseTitle, lessonTitle, onApply
         questionNumber: a.questionIndex + 1,
         answerIndex: a.correctAnswer,
         answerLetter: String.fromCharCode(65 + (a.correctAnswer || 0)),
-        explanation: a.explanation,
-      }));
+        explanation: a.explanation }));
 
       setAutoResult(answers);
     } catch (err: any) {
@@ -192,7 +187,7 @@ export function TestAnswersDialog({ questions, courseTitle, lessonTitle, onApply
                 disabled={isAutoGenerating || questions.length === 0}
               >
                 {isAutoGenerating ? (
-                  <><Loader2 className="w-4 h-4 animate-spin" />Анализ вопросов...</>
+                  <><SigmaSpinner size="sm" />Анализ вопросов...</>
                 ) : (
                   <><Sparkles className="w-4 h-4" />Определить ответы ({questions.length} вопросов)</>
                 )}

@@ -3,7 +3,7 @@ import { CSS } from "@dnd-kit/utilities";
 import { TableRow, TableCell } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { BookOpen, ExternalLink, HardDrive, Loader2, CheckCircle2, XCircle, RefreshCw, Trash2, GripVertical } from "lucide-react";
+import { BookOpen, ExternalLink, HardDrive, CheckCircle2, XCircle, RefreshCw, Trash2, GripVertical } from "lucide-react";
 
 interface SortableCourseRowProps {
   course: {
@@ -26,8 +26,7 @@ export function SortableCourseRow({ course, migratingCourseId, migrationResult, 
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
-    opacity: isDragging ? 0.5 : 1,
-  };
+    opacity: isDragging ? 0.5 : 1 };
 
   const needsReview = course.lessons_count === 0;
 
@@ -77,7 +76,7 @@ export function SortableCourseRow({ course, migratingCourseId, migrationResult, 
           onClick={onMigrate}
         >
           {migratingCourseId === course.id ? (
-            <Loader2 className="w-4 h-4 animate-spin" />
+            <SigmaSpinner size="sm" />
           ) : migrationResult[course.id]?.status === 'success' ? (
             <CheckCircle2 className="w-4 h-4" />
           ) : migrationResult[course.id]?.status === 'error' ? (

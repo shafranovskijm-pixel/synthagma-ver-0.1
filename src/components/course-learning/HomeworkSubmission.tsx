@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { BookCheck, Send, Loader2, CheckCircle2, AlertCircle, RotateCcw, Paperclip, Clock } from "lucide-react";
+import { BookCheck, Send, CheckCircle2, AlertCircle, RotateCcw, Paperclip, Clock } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { uploadToStorage } from "@/utils/courseBuilderHelpers";
@@ -32,8 +32,7 @@ const statusConfig: Record<string, { label: string; color: string; icon: typeof 
   pending: { label: "Ждёт проверки", color: "bg-amber-500/10 text-amber-600 border-amber-500/20", icon: Clock },
   revision: { label: "На доработке", color: "bg-orange-500/10 text-orange-600 border-orange-500/20", icon: RotateCcw },
   approved: { label: "Выполнено", color: "bg-green-500/10 text-green-600 border-green-500/20", icon: CheckCircle2 },
-  rejected: { label: "Незачёт", color: "bg-destructive/10 text-destructive border-destructive/20", icon: AlertCircle },
-};
+  rejected: { label: "Незачёт", color: "bg-destructive/10 text-destructive border-destructive/20", icon: AlertCircle } };
 
 export function HomeworkSubmission({ lessonId, courseId, userId, taskDescription, isMobile, onComplete }: HomeworkSubmissionProps) {
   const [submissions, setSubmissions] = useState<Submission[]>([]);
@@ -100,8 +99,7 @@ export function HomeworkSubmission({ lessonId, courseId, userId, taskDescription
       organization_id: courseData?.organization_id || "",
       content: content.trim(),
       attachments: attachments as any,
-      status: "pending",
-    } as any);
+      status: "pending" } as any);
 
     if (error) {
       toast.error("Ошибка отправки");
@@ -114,7 +112,7 @@ export function HomeworkSubmission({ lessonId, courseId, userId, taskDescription
     setSending(false);
   };
 
-  if (loading) return <div className="flex justify-center py-8"><Loader2 className="w-6 h-6 animate-spin text-muted-foreground" /></div>;
+  if (loading) return <div className="flex justify-center py-8"><SigmaSpinner /></div>;
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -168,7 +166,7 @@ export function HomeworkSubmission({ lessonId, courseId, userId, taskDescription
           />
           <div className="flex items-center gap-3 flex-wrap">
             <label className="inline-flex items-center gap-2 px-3 py-2 border border-border rounded-xl cursor-pointer hover:bg-secondary/50 transition-colors text-sm">
-              {uploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Paperclip className="w-4 h-4" />}
+              {uploading ? <SigmaSpinner size="sm" /> : <Paperclip className="w-4 h-4" />}
               Прикрепить файл
               <input type="file" className="hidden" onChange={handleFileUpload} disabled={uploading} />
             </label>
@@ -184,7 +182,7 @@ export function HomeworkSubmission({ lessonId, courseId, userId, taskDescription
             disabled={sending || (!content.trim() && attachments.length === 0)}
             className="btn-gradient rounded-xl gap-2"
           >
-            {sending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+            {sending ? <SigmaSpinner size="sm" /> : <Send className="w-4 h-4" />}
             {sending ? "Отправка..." : "Отправить"}
           </Button>
         </div>

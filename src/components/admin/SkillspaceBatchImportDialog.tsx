@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, CheckCircle2, AlertTriangle, Download, XCircle, Clock, RefreshCw } from "lucide-react";
+import { CheckCircle2, AlertTriangle, Download, XCircle, Clock, RefreshCw } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
 interface SkillspaceBatchImportDialogProps {
@@ -29,8 +29,7 @@ export function SkillspaceBatchImportDialog({
   open,
   onOpenChange,
   organizationId,
-  onSuccess,
-}: SkillspaceBatchImportDialogProps) {
+  onSuccess }: SkillspaceBatchImportDialogProps) {
   const [urls, setUrls] = useState("");
   const [login, setLogin] = useState("");
   const [password, setPassword] = useState("");
@@ -117,15 +116,12 @@ export function SkillspaceBatchImportDialog({
           headers: {
             "Content-Type": "application/json",
             Authorization: `Bearer ${accessToken}`,
-            apikey: supabaseKey,
-          },
+            apikey: supabaseKey },
           body: JSON.stringify({
             urls: urlList,
             login,
             password,
-            organizationId,
-          }),
-        }
+            organizationId }) }
       );
 
       const data = await response.json();
@@ -172,16 +168,13 @@ export function SkillspaceBatchImportDialog({
           headers: {
             "Content-Type": "application/json",
             Authorization: `Bearer ${accessToken}`,
-            apikey: supabaseKey,
-          },
+            apikey: supabaseKey },
           body: JSON.stringify({
             url: job.url,
             login,
             password,
             organizationId,
-            existingCourseId: job.result.courseId,
-          }),
-        }
+            existingCourseId: job.result.courseId }) }
       );
 
       const data = await response.json();
@@ -211,7 +204,7 @@ export function SkillspaceBatchImportDialog({
       case "error":
         return <XCircle className="w-4 h-4 text-destructive shrink-0" />;
       case "processing":
-        return <Loader2 className="w-4 h-4 animate-spin text-primary shrink-0" />;
+        return <SigmaSpinner size="sm" className="shrink-0" />;
       default:
         return <Clock className="w-4 h-4 text-muted-foreground shrink-0" />;
     }
@@ -289,7 +282,7 @@ export function SkillspaceBatchImportDialog({
               {allDone ? (
                 <CheckCircle2 className="w-4 h-4 text-green-500" />
               ) : (
-                <Loader2 className="w-4 h-4 animate-spin" />
+                <SigmaSpinner size="sm" />
               )}
               <span>
                 {allDone
@@ -323,7 +316,7 @@ export function SkillspaceBatchImportDialog({
                             title="Перепарсить контент уроков"
                           >
                             {reparsingJobId === job.id ? (
-                              <Loader2 className="w-3 h-3 animate-spin" />
+                              <SigmaSpinner size="xs" />
                             ) : (
                               <RefreshCw className="w-3 h-3" />
                             )}
@@ -353,7 +346,7 @@ export function SkillspaceBatchImportDialog({
               <Button onClick={handleSubmit} disabled={loading}>
                 {loading ? (
                   <>
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    <SigmaSpinner size="sm" className="mr-2" />
                     Отправка...
                   </>
                 ) : (

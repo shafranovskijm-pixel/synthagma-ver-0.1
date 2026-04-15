@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Loader2, Link, Copy, Trash2, Plus } from "lucide-react";
+import { Link, Copy, Trash2, Plus } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { getBaseUrl } from "@/utils/getBaseUrl";
@@ -76,7 +76,7 @@ export function LinksTab({ organizationId, onCreateLinkClick }: LinksTabProps) {
           </p>
         </div>
         <div className="flex items-center justify-center py-12">
-          <Loader2 className="w-8 h-8 animate-spin text-primary" />
+          <SigmaSpinner size="lg" />
         </div>
       </div>
     );

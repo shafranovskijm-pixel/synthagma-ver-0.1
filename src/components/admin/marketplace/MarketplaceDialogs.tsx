@@ -1,7 +1,6 @@
 import { useState } from "react";
 import {
-  Edit, Sparkles, Loader2, FolderPlus, FolderInput,
-} from "lucide-react";
+  Edit, Sparkles, FolderPlus, FolderInput } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -18,8 +17,7 @@ const statusLabels: Record<string, { label: string; color: string }> = {
   approved: { label: "Одобрена", color: "bg-blue-500/10 text-blue-600 border-blue-500/20" },
   paid: { label: "Оплачена", color: "bg-green-500/10 text-green-600 border-green-500/20" },
   completed: { label: "Завершена", color: "bg-emerald-500/10 text-emerald-600 border-emerald-500/20" },
-  cancelled: { label: "Отменена", color: "bg-red-500/10 text-red-600 border-red-500/20" },
-};
+  cancelled: { label: "Отменена", color: "bg-red-500/10 text-red-600 border-red-500/20" } };
 
 interface EditDialogProps {
   open: boolean;
@@ -77,13 +75,12 @@ export function MarketplaceEditDialog({ open, onOpenChange, editingCourse, setEd
                   setIsGeneratingShortDesc(true);
                   try {
                     const { data, error } = await safeInvoke<any>("generate-course-content", {
-                      body: { contentType: "short_description", courseTitle: editingCourse.course.title, courseDescription: editingCourse.course.description },
-                    });
+                      body: { contentType: "short_description", courseTitle: editingCourse.course.title, courseDescription: editingCourse.course.description } });
                     if (error) throw error;
                     if (data?.content) setEditingCourse({ ...editingCourse, description_short: data.content });
                   } catch { toast.error("Ошибка генерации"); } finally { setIsGeneratingShortDesc(false); }
                 }} disabled={isGeneratingShortDesc}>
-                  {isGeneratingShortDesc ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-1" /> : <Sparkles className="w-3.5 h-3.5 mr-1" />}
+                  {isGeneratingShortDesc ? <SigmaSpinner size="xs" className=".5 .5 mr-1" /> : <Sparkles className="w-3.5 h-3.5 mr-1" />}
                   Сгенерировать с ИИ
                 </Button>
               </div>

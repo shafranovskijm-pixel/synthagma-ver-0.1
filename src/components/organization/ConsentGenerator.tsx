@@ -6,7 +6,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { supabase } from "@/integrations/supabase/client";
 import { safeInvoke } from "@/utils/safeInvoke";
 import { toast } from "sonner";
-import { FileCheck, Eye, Download, Loader2, User, Building2, Search, CheckCircle2, Save, History, Trash2, FileText, UserCheck } from "lucide-react";
+import { FileCheck, Eye, Download, User, Building2, Search, CheckCircle2, Save, History, Trash2, FileText, UserCheck } from "lucide-react";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { DocumentPreview } from "./DocumentPreview";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -101,8 +101,7 @@ _________________________ / {{full_name}} /
 export function ConsentGenerator({
   organizationId,
   organizationName,
-  onGenerated,
-}: ConsentGeneratorProps) {
+  onGenerated }: ConsentGeneratorProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [organization, setOrganization] = useState<Organization | null>(null);
@@ -251,8 +250,7 @@ export function ConsentGenerator({
     return now.toLocaleDateString("ru-RU", {
       day: "2-digit",
       month: "long",
-      year: "numeric",
-    });
+      year: "numeric" });
   };
 
   const generateConsentContent = () => {
@@ -386,8 +384,7 @@ export function ConsentGenerator({
         company_address: consentType === "organization" ? companyAddress || null : null,
         content_html: html,
         created_by: user?.id || null,
-        student_user_id: selectedStudentId || null,
-      };
+        student_user_id: selectedStudentId || null };
 
       const { error } = await supabase
         .from("consent_documents")
@@ -447,8 +444,7 @@ export function ConsentGenerator({
       month: "long",
       year: "numeric",
       hour: "2-digit",
-      minute: "2-digit",
-    });
+      minute: "2-digit" });
   };
 
   return (
@@ -574,7 +570,7 @@ export function ConsentGenerator({
                 disabled={isSearchingDadata || companyInn.length < 10}
               >
                 {isSearchingDadata ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <SigmaSpinner size="sm" />
                 ) : (
                   <Search className="w-4 h-4" />
                 )}
@@ -635,8 +631,7 @@ export function ConsentGenerator({
                 orgName: organization?.name || undefined,
                 inn: organization?.inn || undefined,
                 ogrn: organization?.ogrn || undefined,
-                address: organization?.legal_address || undefined,
-              }}
+                address: organization?.legal_address || undefined }}
             />
           </AccordionContent>
         </AccordionItem>
@@ -665,7 +660,7 @@ export function ConsentGenerator({
           disabled={isSaving}
         >
           {isSaving ? (
-            <Loader2 className="w-4 h-4 animate-spin" />
+            <SigmaSpinner size="sm" />
           ) : (
             <Save className="w-4 h-4" />
           )}

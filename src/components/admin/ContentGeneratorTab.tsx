@@ -1,8 +1,7 @@
 import { useState, useCallback, useEffect } from "react";
 import {
-  ArrowLeft, Sparkles, Loader2, CheckCircle2, AlertTriangle,
-  FolderOpen, Plus, Play, BookOpen, FileText, HelpCircle,
-} from "lucide-react";
+  ArrowLeft, Sparkles, CheckCircle2, AlertTriangle,
+  FolderOpen, Plus, Play, BookOpen, FileText, HelpCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { safeInvoke } from "@/utils/safeInvoke";
 import { toast } from "sonner";
@@ -57,8 +56,7 @@ const PHASE_LABELS: Record<GeneratingPhase, string> = {
   idle: "",
   structure: "Генерация структуры...",
   streaming: "Параллельная генерация (контент → вопросы → ответы)...",
-  enriching: "Обогащение медиа (анализ + изображения + слайды)...",
-};
+  enriching: "Обогащение медиа (анализ + изображения + слайды)..." };
 
 const programTypes = [
   "Повышение квалификации",
@@ -108,8 +106,7 @@ export function ContentGeneratorTab({ courses, dbCategories, onComplete }: Props
   // Group categories by parent_type
   const categoryGroups = programTypes.map(pt => ({
     type: pt,
-    categories: dbCategories.filter(c => (c.parent_type || "Повышение квалификации") === pt),
-  })).filter(g => g.categories.length > 0);
+    categories: dbCategories.filter(c => (c.parent_type || "Повышение квалификации") === pt) })).filter(g => g.categories.length > 0);
 
   // Count courses per category
   const coursesPerCategory = (catId: string) =>
@@ -151,8 +148,7 @@ export function ContentGeneratorTab({ courses, dbCategories, onComplete }: Props
           totalLessons: (lessons || []).length,
           emptyLessons: emptyLessons.length,
           totalTests: testLessons.length,
-          unansweredQuestions,
-        };
+          unansweredQuestions };
       } catch (e) {
         console.error("Analysis error for", mc.course_id, e);
       }
@@ -181,8 +177,7 @@ export function ContentGeneratorTab({ courses, dbCategories, onComplete }: Props
     try {
       const prompt = `Educational illustration for lesson "${lessonTitle}". ${contentSnippet.slice(0, 200)}. Professional, clean, suitable for online course.`;
       const { data, error } = await safeInvoke<any>("generate-image", {
-        body: { prompt, provider: "gigachat" },
-      });
+        body: { prompt, provider: "gigachat" } });
       if (error || !data?.url) {
         return null;
       }
@@ -203,10 +198,8 @@ export function ContentGeneratorTab({ courses, dbCategories, onComplete }: Props
           headers: {
             "Content-Type": "application/json",
             "apikey": import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
-            "Authorization": `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
-          },
-          body: JSON.stringify({ text: truncated, voice: "natalya", format: "opus" }),
-        }
+            "Authorization": `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}` },
+          body: JSON.stringify({ text: truncated, voice: "natalya", format: "opus" }) }
       );
       if (!response.ok) {
         return null;
@@ -252,9 +245,7 @@ export function ContentGeneratorTab({ courses, dbCategories, onComplete }: Props
           lessonType: lesson.type,
           ai_provider: aiProvider,
           stream_index: streamIndex,
-          ...(aiProvider === "gigachat" ? { gigachat_model: gigachatModel } : { lovable_model: lovableModel }),
-        },
-      });
+          ...(aiProvider === "gigachat" ? { gigachat_model: gigachatModel } : { lovable_model: lovableModel }) } });
       const contentDuration = Date.now() - contentStart;
       if (contentError || !contentData?.content) {
         const errMsg = contentError?.message || contentData?.error || "Пустой ответ от ИИ";
@@ -262,8 +253,7 @@ export function ContentGeneratorTab({ courses, dbCategories, onComplete }: Props
         await supabase.from("generation_history").insert({
           course_id: courseId, course_title: courseTitle,
           action: "content", details: `❌ Поток ${streamIndex}: ошибка «${lesson.title}» — ${errMsg}`, items_count: 0,
-          stream_index: streamIndex, duration_ms: contentDuration,
-        }).then(({ error: h }) => { if (h) { /* history insert failed silently */ } });
+          stream_index: streamIndex, duration_ms: contentDuration }).then(({ error: h }) => { if (h) { /* history insert failed silently */ } });
       }
       if (!contentError && contentData?.content) {
         // Clean AI intro and convert to blocks
@@ -277,8 +267,7 @@ export function ContentGeneratorTab({ courses, dbCategories, onComplete }: Props
             id: crypto.randomUUID(),
             type: "image",
             content: "",
-            imageSrc: heroImageUrl,
-          } as ContentBlock);
+            imageSrc: heroImageUrl } as ContentBlock);
         }
 
         // 1c. Generate intro audio from first paragraph (optional)
@@ -291,8 +280,7 @@ export function ContentGeneratorTab({ courses, dbCategories, onComplete }: Props
               id: crypto.randomUUID(),
               type: "audio",
               content: firstPara.content.slice(0, 200),
-              audioUrl,
-            } as ContentBlock);
+              audioUrl } as ContentBlock);
           }
         }
 
@@ -301,8 +289,7 @@ export function ContentGeneratorTab({ courses, dbCategories, onComplete }: Props
         const { error: histErr } = await supabase.from("generation_history").insert({
           course_id: courseId, course_title: courseTitle,
           action: "content", details: `Поток ${streamIndex}: контент «${lesson.title}»${heroImageUrl ? ' + изображение' : ''}${firstPara ? ' + аудио' : ''}`, items_count: 1,
-          stream_index: streamIndex, duration_ms: contentDuration,
-        });
+          stream_index: streamIndex, duration_ms: contentDuration });
         if (histErr) { /* history insert failed silently */ }
       }
       await delay(500);
@@ -323,17 +310,14 @@ export function ContentGeneratorTab({ courses, dbCategories, onComplete }: Props
             questionsCount: 10,
             ai_provider: aiProvider,
             stream_index: streamIndex,
-            ...(aiProvider === "gigachat" ? { gigachat_model: gigachatModel } : { lovable_model: lovableModel }),
-          },
-        });
+            ...(aiProvider === "gigachat" ? { gigachat_model: gigachatModel } : { lovable_model: lovableModel }) } });
         if (qError || !qData?.questions) {
           const errMsg = qError?.message || qData?.error || "Пустой ответ";
           console.error(`Questions generation failed for "${lesson.title}" (stream ${streamIndex}):`, errMsg);
           await supabase.from("generation_history").insert({
             course_id: courseId, course_title: courseTitle,
             action: "questions", details: `❌ Поток ${streamIndex}: ошибка вопросов «${lesson.title}» — ${errMsg}`, items_count: 0,
-            stream_index: streamIndex, duration_ms: Date.now() - qStart,
-           }).then(({ error: h }) => { if (h) { /* history insert failed silently */ } });
+            stream_index: streamIndex, duration_ms: Date.now() - qStart }).then(({ error: h }) => { if (h) { /* history insert failed silently */ } });
         }
         if (!qError && qData?.questions) {
           for (const q of qData.questions) {
@@ -341,15 +325,13 @@ export function ContentGeneratorTab({ courses, dbCategories, onComplete }: Props
               lesson_id: lesson.id,
               question: q.question,
               options: q.options,
-              correct_answer: q.correctAnswer ?? q.correct_answer ?? null,
-            });
+              correct_answer: q.correctAnswer ?? q.correct_answer ?? null });
           }
           const qDuration = Date.now() - qStart;
           const { error: histErr } = await supabase.from("generation_history").insert({
             course_id: courseId, course_title: courseTitle,
             action: "questions", details: `Поток ${streamIndex}: вопросы «${lesson.title}»`, items_count: qData.questions.length,
-            stream_index: streamIndex, duration_ms: qDuration,
-          });
+            stream_index: streamIndex, duration_ms: qDuration });
           if (histErr) { /* history insert failed silently */ }
         }
         await delay(500);
@@ -372,17 +354,14 @@ export function ContentGeneratorTab({ courses, dbCategories, onComplete }: Props
             questions: unanswered.map(q => ({ id: q.id, question: q.question, options: q.options })),
             ai_provider: aiProvider,
             stream_index: streamIndex,
-            ...(aiProvider === "gigachat" ? { gigachat_model: gigachatModel } : { lovable_model: lovableModel }),
-          },
-        });
+            ...(aiProvider === "gigachat" ? { gigachat_model: gigachatModel } : { lovable_model: lovableModel }) } });
         if (ansError || !ansData?.answers) {
           const errMsg = ansError?.message || ansData?.error || "Пустой ответ";
           console.error(`Answers generation failed for "${lesson.title}" (stream ${streamIndex}):`, errMsg);
           await supabase.from("generation_history").insert({
             course_id: courseId, course_title: courseTitle,
             action: "answers", details: `❌ Поток ${streamIndex}: ошибка ответов «${lesson.title}» — ${errMsg}`, items_count: 0,
-            stream_index: streamIndex, duration_ms: Date.now() - ansStart,
-           }).then(({ error: h }) => { if (h) { /* history insert failed silently */ } });
+            stream_index: streamIndex, duration_ms: Date.now() - ansStart }).then(({ error: h }) => { if (h) { /* history insert failed silently */ } });
         }
         if (!ansError && ansData?.answers) {
           let solved = 0;
@@ -397,8 +376,7 @@ export function ContentGeneratorTab({ courses, dbCategories, onComplete }: Props
             const { error: histErr } = await supabase.from("generation_history").insert({
               course_id: courseId, course_title: courseTitle,
               action: "answers", details: `Поток ${streamIndex}: решено ${solved} вопросов (${lesson.title})`, items_count: solved,
-              stream_index: streamIndex, duration_ms: ansDuration,
-            });
+              stream_index: streamIndex, duration_ms: ansDuration });
             if (histErr) { /* history insert failed silently */ }
           }
         }
@@ -448,9 +426,7 @@ export function ContentGeneratorTab({ courses, dbCategories, onComplete }: Props
             action: "generate_structure",
             courseTitle,
             ai_provider: aiProvider,
-            ...(aiProvider === "gigachat" ? { gigachat_model: gigachatModel } : { lovable_model: lovableModel }),
-          },
-        });
+            ...(aiProvider === "gigachat" ? { gigachat_model: gigachatModel } : { lovable_model: lovableModel }) } });
         if (structError) throw structError;
 
         // Deduplicate: re-check DB for lessons that may have been created concurrently
@@ -467,16 +443,14 @@ export function ContentGeneratorTab({ courses, dbCategories, onComplete }: Props
             course_id: courseId,
             title: lessons[i].title,
             type: lessons[i].type || "text",
-            order_index: startIndex + i,
-          });
+            order_index: startIndex + i });
         }
 
         if (lessons.length > 0) {
           const { error: histErr } = await supabase.from("generation_history").insert({
             course_id: courseId, course_title: courseTitle,
             action: "structure", details: `Создано ${lessons.length} уроков`, items_count: lessons.length,
-            stream_index: 0, duration_ms: null,
-          });
+            stream_index: 0, duration_ms: null });
           if (histErr) console.warn("⚠️ History insert error (structure):", histErr, { courseId, courseTitle });
         }
 
@@ -556,9 +530,7 @@ export function ContentGeneratorTab({ courses, dbCategories, onComplete }: Props
                 blocksCount: blocks.length,
                 ai_provider: aiProvider,
                 stream_index: streamIdx,
-                ...(aiProvider === "gigachat" ? { gigachat_model: gigachatModel } : { lovable_model: lovableModel }),
-              },
-            });
+                ...(aiProvider === "gigachat" ? { gigachat_model: gigachatModel } : { lovable_model: lovableModel }) } });
 
             if (analysisErr || !analysisData?.visuals || analysisData.visuals.length === 0) {
               console.warn(`[Enrichment] Skip "${lesson.title}": err=${analysisErr?.message || "none"}, visuals=${JSON.stringify(analysisData?.visuals || null)}, raw=${analysisData?.raw?.slice(0, 200) || "none"}, parseError=${analysisData?.parseError}`);
@@ -581,8 +553,7 @@ export function ContentGeneratorTab({ courses, dbCategories, onComplete }: Props
             const imageResults = await Promise.allSettled(
               sortedVisuals.map((visual, vIdx) =>
                 safeInvoke<any>("generate-image", {
-                  body: { prompt: visual.prompt, provider: "gigachat", slotIndex: streamIdx * 10 + vIdx },
-                }).then(res => ({ ...res, visual }))
+                  body: { prompt: visual.prompt, provider: "gigachat", slotIndex: streamIdx * 10 + vIdx } }).then(res => ({ ...res, visual }))
               )
             );
 
@@ -596,8 +567,7 @@ export function ContentGeneratorTab({ courses, dbCategories, onComplete }: Props
                 id: crypto.randomUUID(),
                 type: "image",
                 content: visual.prompt,
-                imageSrc: imgData.url,
-              } as ContentBlock);
+                imageSrc: imgData.url } as ContentBlock);
               insertedCount++;
             }
 
@@ -610,8 +580,7 @@ export function ContentGeneratorTab({ courses, dbCategories, onComplete }: Props
                   slideTitles.map(slideTitle => {
                     const slidePrompt = `${sv.prompt}: ${slideTitle}. Образовательная инфографика, чистый стиль.`;
                     return safeInvoke<any>("generate-image", {
-                      body: { prompt: slidePrompt, provider: "gigachat" },
-                    }).then(res => ({ ...res, slideTitle }));
+                      body: { prompt: slidePrompt, provider: "gigachat" } }).then(res => ({ ...res, slideTitle }));
                   })
                 );
                 const slides = slideResults
@@ -620,16 +589,14 @@ export function ContentGeneratorTab({ courses, dbCategories, onComplete }: Props
                     id: crypto.randomUUID(),
                     title: r.value.slideTitle,
                     content: "",
-                    imageUrl: r.value.data?.url || "",
-                  }));
+                    imageUrl: r.value.data?.url || "" }));
 
                 if (slides.length > 0) {
                   // Insert slider as a new block in the lesson content
                   const sliderBlock = {
                     id: crypto.randomUUID(),
                     type: "slider",
-                    content: JSON.stringify({ slides }),
-                  } as ContentBlock;
+                    content: JSON.stringify({ slides }) } as ContentBlock;
 
                   const insertIdx = Math.min(sv.after_block_index + 1 + insertedCount, blocks.length);
                   blocks.splice(insertIdx, 0, sliderBlock);
@@ -650,8 +617,7 @@ export function ContentGeneratorTab({ courses, dbCategories, onComplete }: Props
                 action: "enrichment",
                 details: `Поток ${streamIdx}: обогащение «${lesson.title}» — ${insertedCount} визуализаций`,
                 items_count: insertedCount,
-                stream_index: streamIdx,
-              }).then(({ error: h }) => h && console.warn("History insert error:", h));
+                stream_index: streamIdx }).then(({ error: h }) => h && console.warn("History insert error:", h));
             }
           } catch (e) {
           }
@@ -717,8 +683,7 @@ export function ContentGeneratorTab({ courses, dbCategories, onComplete }: Props
           title: newCourseName.trim(),
           organization_id: orgId,
           category_id: selectedCategoryId,
-          is_published: true,
-        })
+          is_published: true })
         .select("id")
         .single();
       if (courseError) throw courseError;
@@ -728,8 +693,7 @@ export function ContentGeneratorTab({ courses, dbCategories, onComplete }: Props
         organization_id: orgId,
         price_student: 0,
         price_organization: 0,
-        is_active: true,
-      });
+        is_active: true });
 
       toast.success("Курс создан!");
       setNewCourseName("");
@@ -859,7 +823,7 @@ export function ContentGeneratorTab({ courses, dbCategories, onComplete }: Props
                 onClick={analyzeCategory}
                 disabled={analyzing}
               >
-                {analyzing ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-1" /> : null}
+                {analyzing ? <SigmaSpinner size="xs" className=".5 .5 mr-1" /> : null}
                 Обновить
               </Button>
               <Button
@@ -882,7 +846,7 @@ export function ContentGeneratorTab({ courses, dbCategories, onComplete }: Props
           <CardContent className="p-4 space-y-2">
             <div className="flex items-center justify-between text-sm">
               <span className="flex items-center gap-2">
-                <Loader2 className="w-4 h-4 animate-spin" />
+                <SigmaSpinner size="sm" />
                 {PHASE_LABELS[generatingPhase]}
               </span>
               <span className="font-medium">{generatingProgress}%</span>
@@ -897,7 +861,7 @@ export function ContentGeneratorTab({ courses, dbCategories, onComplete }: Props
         <CardContent className="p-0">
           {analyzing ? (
             <div className="flex items-center justify-center py-8 text-sm text-muted-foreground gap-2">
-              <Loader2 className="w-4 h-4 animate-spin" />
+              <SigmaSpinner size="sm" />
               Анализ курсов...
             </div>
           ) : categoryCourses.length === 0 ? (
@@ -965,7 +929,7 @@ export function ContentGeneratorTab({ courses, dbCategories, onComplete }: Props
                           className="gap-1 h-7 text-xs"
                         >
                           {isGenerating ? (
-                            <Loader2 className="w-3 h-3 animate-spin" />
+                            <SigmaSpinner size="xs" />
                           ) : (
                             <Sparkles className="w-3 h-3" />
                           )}
@@ -999,7 +963,7 @@ export function ContentGeneratorTab({ courses, dbCategories, onComplete }: Props
               disabled={!newCourseName.trim() || creatingCourse}
               className="gap-1 shrink-0"
             >
-              {creatingCourse ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5" />}
+              {creatingCourse ? <SigmaSpinner size="xs" className=".5 .5" /> : <Plus className="w-3.5 h-3.5" />}
               Создать
             </Button>
           </div>

@@ -1,5 +1,5 @@
 import { useRef, useState } from "react";
-import { Upload, FileSpreadsheet, Loader2, CheckCircle2 } from "lucide-react";
+import { Upload, FileSpreadsheet, CheckCircle2 } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
@@ -75,8 +75,7 @@ export function FileUploadStep({ onParsed }: Props) {
     idle: "",
     reading: "Чтение файла...",
     parsing: "Разбор разделов и вопросов...",
-    done: "Готово!",
-  };
+    done: "Готово!" };
 
   return (
     <Card>
@@ -118,7 +117,7 @@ export function FileUploadStep({ onParsed }: Props) {
                 {phase === "done" ? (
                   <CheckCircle2 className="w-8 h-8 text-green-500" />
                 ) : (
-                  <Loader2 className="w-8 h-8 animate-spin text-primary" />
+                  <SigmaSpinner size="lg" />
                 )}
                 <span className="text-lg font-medium">{phaseLabels[phase]}</span>
               </div>

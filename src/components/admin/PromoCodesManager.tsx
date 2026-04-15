@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Plus, Trash2, Loader2, Calendar, Tag } from "lucide-react";
+import { Plus, Trash2, Calendar, Tag } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -57,8 +57,7 @@ export function PromoCodesManager() {
       code: newCode.trim().toUpperCase(),
       discount_percent: newDiscount,
       max_uses: newMaxUses ? parseInt(newMaxUses) : null,
-      valid_until: newValidUntil || null,
-    } as any);
+      valid_until: newValidUntil || null } as any);
     if (error) {
       toast.error(error.message.includes("duplicate") ? "Такой код уже существует" : "Ошибка создания");
     } else {
@@ -108,7 +107,7 @@ export function PromoCodesManager() {
   };
 
   if (isLoading) {
-    return <div className="flex justify-center py-8"><Loader2 className="w-6 h-6 animate-spin text-primary" /></div>;
+    return <div className="flex justify-center py-8"><SigmaSpinner /></div>;
   }
 
   return (
@@ -168,7 +167,7 @@ export function PromoCodesManager() {
           </div>
           <div className="flex gap-2">
             <Button size="sm" className="rounded-xl gap-2" onClick={handleAdd} disabled={isSaving}>
-              {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
+              {isSaving ? <SigmaSpinner size="sm" /> : <Plus className="w-4 h-4" />}
               Создать
             </Button>
             <Button size="sm" variant="outline" className="rounded-xl" onClick={() => setShowForm(false)}>

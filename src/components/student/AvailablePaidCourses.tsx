@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { BookOpen, CreditCard, Loader2, Eye, Send } from "lucide-react";
+import { BookOpen, CreditCard, Eye, Send } from "lucide-react";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
 import {
@@ -13,8 +13,7 @@ import {
   AlertDialogDescription,
   AlertDialogFooter,
   AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
+  AlertDialogTitle } from "@/components/ui/alert-dialog";
 
 interface PaidCourse {
   id: string;
@@ -88,8 +87,7 @@ export function AvailablePaidCourses({ userId, organizationId, userEmail }: Prop
         user_id: userId,
         course_id: course.id,
         role: "user",
-        content: `📌 Заявка на приобретение курса\n\nКурс: ${course.title}\nСтоимость: ${Number(course.price).toLocaleString("ru-RU")} ₽\nУченик: ${studentName}\nEmail: ${userEmail || profile?.email || "—"}\n\nПрошу рассмотреть мою заявку на приобретение данного курса.`,
-      });
+        content: `📌 Заявка на приобретение курса\n\nКурс: ${course.title}\nСтоимость: ${Number(course.price).toLocaleString("ru-RU")} ₽\nУченик: ${studentName}\nEmail: ${userEmail || profile?.email || "—"}\n\nПрошу рассмотреть мою заявку на приобретение данного курса.` });
 
       // Send notification to organization
       await supabase.from("org_notifications").insert({
@@ -98,8 +96,7 @@ export function AvailablePaidCourses({ userId, organizationId, userEmail }: Prop
         type: "order",
         title: `Заявка на курс: ${course.title}`,
         message: `${studentName} хочет приобрести курс «${course.title}» (${Number(course.price).toLocaleString("ru-RU")} ₽)`,
-        is_read: false,
-      });
+        is_read: false });
 
       toast.success("Заявка отправлена в учебный центр");
       setConfirmCourse(null);
@@ -165,7 +162,7 @@ export function AvailablePaidCourses({ userId, organizationId, userEmail }: Prop
                   disabled={sendingCourseId === course.id}
                 >
                   {sendingCourseId === course.id ? (
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    <SigmaSpinner size="sm" className="mr-2" />
                   ) : (
                     <Send className="w-4 h-4 mr-2" />
                   )}
@@ -194,7 +191,7 @@ export function AvailablePaidCourses({ userId, organizationId, userEmail }: Prop
               disabled={sendingCourseId === confirmCourse?.id}
             >
               {sendingCourseId === confirmCourse?.id ? (
-                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                <SigmaSpinner size="sm" className="mr-2" />
               ) : (
                 <Send className="w-4 h-4 mr-2" />
               )}

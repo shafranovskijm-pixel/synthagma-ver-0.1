@@ -6,7 +6,7 @@ import { Switch } from "@/components/ui/switch";
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { HelpCircle, Loader2, Trash2, Settings, BookOpen, Eye, MessageCircle } from "lucide-react";
+import { HelpCircle, Trash2, Settings, BookOpen, Eye, MessageCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface GroupSettings {
@@ -130,8 +130,7 @@ export function GroupSettingsDialog({ open, onOpenChange, groupId, organizationI
           show_locked_lessons: settings.show_locked_lessons,
           enable_channel: settings.enable_channel,
           enable_group_chat: settings.enable_group_chat,
-          block_student_dialogs: settings.block_student_dialogs,
-        } as any)
+          block_student_dialogs: settings.block_student_dialogs } as any)
         .eq("id", groupId);
       if (error) throw error;
       toast.success("Настройки сохранены");
@@ -173,7 +172,7 @@ export function GroupSettingsDialog({ open, onOpenChange, groupId, organizationI
 
           {loading || !settings ? (
             <div className="flex items-center justify-center py-16">
-              <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+              <SigmaSpinner />
             </div>
           ) : (
             <div className="flex min-h-[400px]">
@@ -340,7 +339,7 @@ export function GroupSettingsDialog({ open, onOpenChange, groupId, organizationI
 
                 <div className="pt-4 mt-4 border-t border-border flex justify-end">
                   <Button onClick={handleSave} disabled={saving} className="rounded-xl gap-2">
-                    {saving && <Loader2 className="w-4 h-4 animate-spin" />}
+                    {saving && <SigmaSpinner size="sm" />}
                     Сохранить
                   </Button>
                 </div>

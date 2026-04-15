@@ -1,13 +1,11 @@
 import { useState, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
-import { Upload, FileSpreadsheet, Loader2, CheckCircle2, AlertCircle } from "lucide-react";
+import { Upload, FileSpreadsheet, CheckCircle2, AlertCircle } from "lucide-react";
 import {
-  Dialog, DialogContent, DialogHeader, DialogTitle,
-} from "@/components/ui/dialog";
+  Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import {
-  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
-} from "@/components/ui/table";
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { supabase } from "@/integrations/supabase/client";
 import { safeInvoke } from "@/utils/safeInvoke";
 import { showLimitToast } from "@/utils/limitToast";
@@ -94,9 +92,7 @@ export function EmployeeImportDialog({ open, onOpenChange, companyId, organizati
             full_name: updated[i].full_name,
             email: updated[i].email || undefined,
             organization_id: organizationId,
-            company_id: companyId,
-          },
-        });
+            company_id: companyId } });
         if (error) throw error;
         updated[i].status = "success";
       } catch (err: any) {
@@ -193,7 +189,7 @@ export function EmployeeImportDialog({ open, onOpenChange, companyId, organizati
               <p className="text-sm text-muted-foreground">Найдено: {rows.length} записей</p>
               {!done ? (
                 <Button onClick={handleImport} disabled={importing} className="gap-2">
-                  {importing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
+                  {importing ? <SigmaSpinner size="sm" /> : <Upload className="w-4 h-4" />}
                   {importing ? "Импорт..." : "Начать импорт"}
                 </Button>
               ) : (

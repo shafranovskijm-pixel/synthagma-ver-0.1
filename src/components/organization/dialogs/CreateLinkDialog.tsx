@@ -2,7 +2,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Loader2 } from "lucide-react";
+import {} from "lucide-react";
 
 interface CreateLinkDialogProps {
   open: boolean;
@@ -23,8 +23,7 @@ export function CreateLinkDialog({
   inn,
   onInnChange,
   isCreating,
-  onCreate,
-}: CreateLinkDialogProps) {
+  onCreate }: CreateLinkDialogProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="rounded-2xl">
@@ -56,7 +55,7 @@ export function CreateLinkDialog({
           <Button className="w-full btn-gradient rounded-xl" onClick={onCreate} disabled={isCreating}>
             {isCreating ? (
               <>
-                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                <SigmaSpinner size="sm" className="mr-2" />
                 Создание...
               </>
             ) : (
