@@ -1,6 +1,6 @@
 import { useRef, useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
-import { Plus, FileSpreadsheet, Menu, CreditCard, HelpCircle, User, LogOut, Handshake, Sparkles, ImagePlus, ShoppingBag, Wand2, Settings, FileText } from "lucide-react";
+import { Plus, FileSpreadsheet, Menu, CreditCard, HelpCircle, User, LogOut, Handshake, Sparkles, ShoppingBag, Settings, FileText } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useNavigate } from "react-router-dom";
 import { showLimitToast } from "@/utils/limitToast";
@@ -13,7 +13,7 @@ import { differenceInDays } from "date-fns";
 import { useAuth } from "@/hooks/useAuth";
 import defaultCoverImg from "@/assets/default-org-cover.jpg";
 import { getStoredThemeId, getThemeById } from "@/constants/admin-themes";
-import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
+import { HeroBannerSwiper } from "@/components/shared/HeroBannerSwiper";
 import {
   DropdownMenu,
   DropdownMenuContent,
