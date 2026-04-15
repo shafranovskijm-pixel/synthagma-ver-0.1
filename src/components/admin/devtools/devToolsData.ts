@@ -122,8 +122,8 @@ export interface LargeFile {
 
 export const LARGEST_FILES: LargeFile[] = [
   { path: "src/components/organization/tabs/CoursesTab.tsx", lines: 1383, status: "optimized", note: "Было 1747. Извлечены диалоги и SortableCourseListRow." },
-  { path: "src/components/organization/dialogs/CourseDetailsModal.tsx", lines: 1416, status: "needs-work", note: "Разбить на табы-компоненты." },
-  { path: "src/components/organization/LaborSafetyStudentDetailCard.tsx", lines: 1295, status: "needs-work", note: "Декомпозиция на секции." },
+  { path: "src/components/organization/dialogs/CourseDetailsModal.tsx", lines: 250, status: "optimized", note: "Было 1416. Логика → useCourseDetailsLogic + CourseStudentsTab + CourseSettingsTab." },
+  { path: "src/components/organization/LaborSafetyStudentDetailCard.tsx", lines: 140, status: "optimized", note: "Было 1295. Логика → useLaborSafetyStudent + 4 таб-компонента." },
   { path: "src/components/organization/SelfExaminationQuiz.tsx", lines: 1250, status: "needs-work", note: "Вынести логику в хук." },
   { path: "src/pages/CoursePreview.tsx", lines: 1248, status: "needs-work", note: "Разбить на preview-компоненты." },
   { path: "src/components/organization/AutoDocumentRegistrationJournal.tsx", lines: 1246, status: "needs-work", note: "Логика в хук, UI в подкомпоненты." },
@@ -303,8 +303,8 @@ export const CODE_RECOMMENDATIONS: Recommendation[] = [
     id: "large-files-count",
     severity: "warn",
     category: "architecture",
-    title: "⚠️ 23 файла > 800 строк",
-    detail: "Было 28. Снижено на 5 за счёт декомпозиции AdminAnalytics, BlockEditorMain, OrganizationDetailsView. Следующие кандидаты: CourseDetailsModal (1416), LaborSafetyStudentDetailCard (1295).",
+    title: "⚠️ 21 файл > 800 строк",
+    detail: "Было 23. Снижено на 2 за счёт декомпозиции CourseDetailsModal (1416→250), LaborSafetyStudentDetailCard (1295→140). Следующие кандидаты: SelfExaminationQuiz (1250), CoursePreview (1248).",
     actionable: true,
     status: "checked",
   },
@@ -327,6 +327,24 @@ export const CODE_RECOMMENDATIONS: Recommendation[] = [
     status: "unchecked",
   },
   // ── Выполненные оптимизации ──
+  {
+    id: "course-details-modal-decomposed",
+    severity: "info",
+    category: "architecture",
+    title: "✅ CourseDetailsModal декомпозирован (1416 → 250)",
+    detail: "Логика → useCourseDetailsLogic. Табы: CourseStudentsTab, CourseSettingsTab. Настройки FRDO, enrollment, reset — в хуке.",
+    actionable: false,
+    status: "applied",
+  },
+  {
+    id: "labor-safety-card-decomposed",
+    severity: "info",
+    category: "architecture",
+    title: "✅ LaborSafetyStudentDetailCard декомпозирован (1295 → 140)",
+    detail: "Логика → useLaborSafetyStudent. 4 таба: LSProfileTab, LSIdentificationTab, LSCoursesTab, LSDocumentsTab.",
+    actionable: false,
+    status: "applied",
+  },
   {
     id: "org-details-decomposed",
     severity: "info",
