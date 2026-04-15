@@ -1,39 +1,35 @@
 
 
-# Применить визуальную тему на всех страницах организации
+# Исправление загрузки видео — кнопка «Выбрать файл» не реагирует
 
 ## Проблема
 
-Главная страница дашборда (`OrganizationDashboard.tsx`) применяет полную визуальную тему:
-- `activeTheme.bgClass` — градиентный фон
-- `ThemeAnimations` — анимированные частицы/листья
-- `AtmosphericBleed` — размытый фоновый эффект
+При нажатии «Выбрать файл» в видеоуроке (embedded-режим редактора на странице курса) ничего не происходит — файловый диалог не открывается.
 
-Подстраницы (Профиль, Курс, Настройки, Документы) используют `OrgPageLayout`, который применяет только баннер-картинку темы, но **не применяет фон, анимации и атмосферу**. Поэтому при переходе на подстраницу фон становится белым/стандартным.
+## Анализ
+
+Текущая реализация использует паттерн `<label>` + скрытый `<input type="file">`. Этот паттерн может не срабатывать в некоторых случаях:
+- Внутри `Suspense` + lazy-loaded компонентов ref на input может сброситься
+- `useSortable` (DnD) может перехватывать pointer-events на уровне карточки
+- `overflow-hidden` на карточке (строка 141) может влиять на фокус input
 
 ## Решение
 
-Добавить в `OrgPageLayout.tsx` те же визуальные эффекты темы, что есть на главной:
+Заменить паттерн `<label>` → `<Button onClick>` + `inputRef.click()` для обоих вариантов загрузки (Kinescope и сервер). Это более надёжный способ, не зависящий от CSS-контекста и DnD-обработчиков.
 
-1. Загрузить полный объект `activeTheme` (не только `bannerUrl`)
-2. Применить `activeTheme.bgClass` на корневой `<div>`
-3. Добавить `<ThemeAnimations>` и `<AtmosphericBleed>` компоненты
-4. Обработать специальный кейс для темы `turquoise` (inline gradient)
+### `src/components/course-builder/SortableLessonItem.tsx`
+
+**Kinescope upload (строки 315-318):**
+- Заменить `<label>` с вложенным `<input>` на `<Button onClick={() => media.kinescopeInputRef.current?.click()}>` + отдельный `<input>` вне label
+
+**Server upload (строки 325-328):**
+- Аналогично — `<Button onClick={() => media.videoInputRef.current?.click()}>` + отдельный `<input>`
+
+Также добавить `console.log` в onChange хэндлеры для диагностики (на случай повторения).
 
 ## Файлы
 
 | Файл | Действие |
 |---|---|
-| `src/components/organization/OrgPageLayout.tsx` | Заменить раздельные `themeBannerUrl`/`themeBannerPosition` на полный `activeTheme` объект. Добавить `ThemeAnimations`, `AtmosphericBleed`, `bgClass` на корневой div |
-
-## Детали изменений
-
-В `OrgPageLayout.tsx`:
-- Заменить два `useState` (`themeBannerUrl`, `themeBannerPosition`) на один `useState<AdminTheme | null>` для `activeTheme`
-- Вычислять `themeBannerUrl` и `themeBannerPosition` из `activeTheme`
-- На корневой `<div>` добавить `activeTheme?.bgClass` и inline style для turquoise
-- Перед `<main>` вставить `<ThemeAnimations>` и `<AtmosphericBleed>` (условно, если activeTheme)
-- Импортировать `ThemeAnimations`, `getStoredAnimationLevel`, `AtmosphericBleed`
-
-Изменения ~20 строк в одном файле.
+| `src/components/course-builder/SortableLessonItem.tsx` | Заменить `<label>` на `<Button>` + programmatic `click()` для file inputs (~6 строк) |
 
