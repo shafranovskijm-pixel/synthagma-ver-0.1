@@ -19,9 +19,13 @@ import { useCourseReview } from "@/hooks/useCourseReview";
 import { LessonType } from "@/components/course-builder/LessonTypeConfig";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 
-export default function CourseBuilder() {
+interface CourseBuilderProps {
+  embedded?: boolean;
+  embeddedCourseId?: string;
+}
+
+export default function CourseBuilder({ embedded, embeddedCourseId }: CourseBuilderProps = {}) {
   const navigate = useNavigate();
-  const { courseId } = useParams();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isSavingForPreview, setIsSavingForPreview] = useState(false);
 
@@ -34,7 +38,7 @@ export default function CourseBuilder() {
     handleSaveAndExit, handleExitWithoutSave, handleBackClick,
     sensors, handleDragEnd, saveCourse, autoSaveStatus,
     courseId: resolvedCourseId,
-    organizationId } = useCourseBuilder();
+    organizationId } = useCourseBuilder(embeddedCourseId);
 
   const {
     isReviewing, reviewResult, activeFindings, dismissedIds,
