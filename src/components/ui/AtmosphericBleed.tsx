@@ -24,8 +24,8 @@ export function AtmosphericBleed({ bannerUrl, blur = "40px", opacity = 0.25, sha
           ...common,
           bottom: 0,
           right: 0,
-          width: "45%",
-          height: "40%",
+          width: "60%",
+          height: "55%",
           filter: `blur(${blur}) saturate(1.3)`,
           opacity,
           maskImage: "radial-gradient(ellipse at bottom right, black 0%, transparent 70%)",
@@ -40,7 +40,7 @@ export function AtmosphericBleed({ bannerUrl, blur = "40px", opacity = 0.25, sha
             bottom: 0,
             right: 0,
             width: "100%",
-            height: "30%",
+            height: "40%",
             opacity: opacity * 0.6,
             maskImage: "linear-gradient(to top, rgba(0,0,0,0.3) 0%, transparent 100%)",
             WebkitMaskImage: "linear-gradient(to top, rgba(0,0,0,0.3) 0%, transparent 100%)",
@@ -53,12 +53,26 @@ export function AtmosphericBleed({ bannerUrl, blur = "40px", opacity = 0.25, sha
           ...common,
           bottom: 0,
           left: 0,
-          width: "30%",
-          height: "25%",
+          width: "45%",
+          height: "40%",
           filter: `blur(${blur}) saturate(1.2)`,
-          opacity: opacity * 0.5,
+          opacity: opacity * 0.6,
           maskImage: "radial-gradient(ellipse at bottom left, black 0%, transparent 70%)",
           WebkitMaskImage: "radial-gradient(ellipse at bottom left, black 0%, transparent 70%)",
+        }}
+      />
+      {/* Top-left subtle bleed */}
+      <div
+        style={{
+          ...common,
+          top: 0,
+          left: 0,
+          width: "35%",
+          height: "30%",
+          filter: `blur(${blur}) saturate(1.1)`,
+          opacity: opacity * 0.3,
+          maskImage: "radial-gradient(ellipse at top left, black 0%, transparent 70%)",
+          WebkitMaskImage: "radial-gradient(ellipse at top left, black 0%, transparent 70%)",
         }}
       />
     </>
