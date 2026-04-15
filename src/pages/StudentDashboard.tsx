@@ -29,6 +29,7 @@ import { cn } from "@/lib/utils";
 import { Video } from "lucide-react";
 import { StudentWebinarsList } from "@/components/student/StudentWebinarsList";
 import { Student3DTrainers } from "@/components/student/Student3DTrainers";
+import { StudentProfileContent } from "@/components/student/StudentProfileContent";
 
 function CatalogContent({ catalogCourses, categories, profile, branding, handleCourseClick }: any) {
   const [contentTab, setContentTab] = useState<"courses" | "webinars" | "trainers">("courses");
@@ -233,6 +234,7 @@ export default function StudentDashboard() {
             onShowConsent={() => setShowConsentForm(true)}
             onShowDocs={() => setShowDocumentsUpload(true)}
             onShowAchievements={() => setShowAchievements(true)}
+            onProfileClick={() => setActiveTab("profile" as any)}
           />
         </div>
 
@@ -328,8 +330,18 @@ export default function StudentDashboard() {
             </div>
           )}
 
-          {/* Footer — show on catalog and library tabs */}
-          {(currentTab === "catalog" || currentTab === "library") && (
+          {/* Profile tab */}
+          {currentTab === ("profile" as any) && user && (
+            <div className="flex-1">
+              <StudentProfileContent
+                effectiveUserId={user.id}
+                isAdminView={isAdminView}
+              />
+            </div>
+          )}
+
+          {/* Footer — show on catalog, library, and profile tabs */}
+          {(currentTab === "catalog" || currentTab === "library" || currentTab === ("profile" as any)) && (
             <StudentFooter
               orgName={profile?.organization_name || null}
               logoUrl={branding?.logoUrl}

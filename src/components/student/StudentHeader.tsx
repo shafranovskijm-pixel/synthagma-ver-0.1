@@ -19,12 +19,14 @@ interface StudentHeaderProps {
   onShowConsent: () => void;
   onShowDocs: () => void;
   onShowAchievements: () => void;
+  onProfileClick?: () => void;
 }
 
 export function StudentHeader({
   fullName, orgName, logoUrl, onLogout, setTheme,
   pendingCount, isVideoIdentified, showAchievements,
   onShowVideoId, onShowConsent, onShowDocs, onShowAchievements,
+  onProfileClick,
 }: StudentHeaderProps) {
   const navigate = useNavigate();
   const initials = fullName
@@ -46,7 +48,7 @@ export function StudentHeader({
         {/* Help */}
         <Tooltip>
           <TooltipTrigger asChild>
-            <Button variant="ghost" size="icon" className="rounded-xl w-10 h-10 hover:scale-105 transition-transform" onClick={() => navigate('/help')}>
+            <Button variant="ghost" size="icon" className="rounded-xl w-10 h-10 hover:scale-105 transition-transform" onClick={onProfileClick ? () => { onProfileClick(); /* switch to help tab handled inside */ } : () => navigate('/help')}>
               <HelpCircle className="w-6 h-6 text-muted-foreground" />
             </Button>
           </TooltipTrigger>
@@ -85,7 +87,7 @@ export function StudentHeader({
             </div>
             <DropdownMenuSeparator />
 
-            <DropdownMenuItem onClick={() => navigate("/student/profile")}>
+            <DropdownMenuItem onClick={onProfileClick || (() => navigate("/student/profile"))}>
               <User className="w-4 h-4 mr-2" />
               Мой профиль
               {pendingCount > 0 && (
