@@ -37,6 +37,8 @@ import { getSignedStorageUrl } from "@/utils/storageHelpers";
 import { generateActHtml, saveActDocument, type GeneratedAct } from "@/utils/generateAct";
 import { PayersSection } from "@/components/organization/PayersSection";
 import { ContractLegalFaq } from "@/components/organization/ContractLegalFaq";
+import { ContractGenerator } from "@/components/organization/ContractGenerator";
+import { type OrgRequisites } from "@/hooks/useCompanyLinksAndGenerators";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
