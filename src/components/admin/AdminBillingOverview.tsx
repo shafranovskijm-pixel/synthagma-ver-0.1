@@ -440,6 +440,7 @@ export const AdminBillingOverview = () => {
   };
 
   const toggleInvoiceSelection = (id: string) => {
+    if (id === '__clear__') { setSelectedInvoiceIds(new Set()); return; }
     setSelectedInvoiceIds(prev => {
       const next = new Set(prev);
       if (next.has(id)) next.delete(id); else next.add(id);
