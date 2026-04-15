@@ -3,6 +3,7 @@ import { Check, Sun, Moon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ThemeSelector } from "@/components/ui/ThemeSelector";
 import { getStoredThemeId, getThemeById } from "@/constants/admin-themes";
+import { getStoredAnimationLevel, storeAnimationLevel, type AnimationLevel } from "@/components/ui/ThemeAnimations";
 
 const ACCENT_COLORS = [
   { name: "Золотой", hsl: "38 75% 55%" },
@@ -217,6 +218,9 @@ export function ThemePersonalization({ isDarkMode, onToggleDark }: ThemePersonal
 
       {/* Visual theme selector — AFTER mode toggle */}
       <ThemeSelector onThemeChange={() => {}} />
+
+      {/* Animation level */}
+      <AnimationLevelSelector />
 
       {/* Accent Color */}
       <div>
