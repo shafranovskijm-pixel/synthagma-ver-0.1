@@ -17,6 +17,32 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 import { FloatingParticles } from "@/components/landing/FloatingParticles";
 import { toast } from "sonner";
 import { getPartnerRef } from "@/utils/referralCookie";
+import { InfiniteMarquee } from "@/components/partner/InfiniteMarquee";
+
+// Case study images
+import caseBeginner from "@/assets/partner/case-beginner.jpg";
+import caseActive from "@/assets/partner/case-active.jpg";
+import caseLeader from "@/assets/partner/case-leader.jpg";
+
+// Benefit banners
+import benefitIncome from "@/assets/partner/benefit-income.jpg";
+import benefitDuration from "@/assets/partner/benefit-duration.jpg";
+import benefitLeader from "@/assets/partner/benefit-leader.jpg";
+import benefitTurnover from "@/assets/partner/benefit-turnover.jpg";
+
+// How it works step banners
+import stepRegister from "@/assets/partner/step-register.jpg";
+import stepShare from "@/assets/partner/step-share.jpg";
+import stepNetwork from "@/assets/partner/step-network.jpg";
+import stepEarn from "@/assets/partner/step-earn.jpg";
+
+// Comic images
+import comicFree from "@/assets/partner/comic-free.jpg";
+import comicUnlimited from "@/assets/partner/comic-unlimited.jpg";
+import comicAi from "@/assets/partner/comic-ai.jpg";
+import comicDocs from "@/assets/partner/comic-docs.jpg";
+import comicPayment from "@/assets/partner/comic-payment.jpg";
+import comicProctoring from "@/assets/partner/comic-proctoring.jpg";
 
 const PartnerLanding = () => {
   const { user } = useAuth();
@@ -75,17 +101,17 @@ const PartnerLanding = () => {
   const partnerRefLink = partnerCode ? `${getBaseUrl()}/partner?partner_ref=${partnerCode}` : "";
 
   const steps = [
-    { icon: Users, title: "Зарегистрируйтесь", desc: "Станьте партнёром за 1 клик — нужен только аккаунт на платформе" },
-    { icon: ExternalLink, title: "Делитесь ссылкой", desc: "Отправьте персональную ссылку вашим контактам и аудитории" },
-    { icon: Network, title: "Стройте сеть", desc: "Привлекайте партнёров и получайте комиссию с 3 уровней" },
-    { icon: DollarSign, title: "Получайте доход", desc: "До 45% от каждого платежа по всей вашей сети" },
+    { icon: Users, title: "Зарегистрируйтесь", desc: "Станьте партнёром за 1 клик — нужен только аккаунт на платформе", image: stepRegister },
+    { icon: ExternalLink, title: "Делитесь ссылкой", desc: "Отправьте персональную ссылку вашим контактам и аудитории", image: stepShare },
+    { icon: Network, title: "Стройте сеть", desc: "Привлекайте партнёров и получайте комиссию с 3 уровней", image: stepNetwork },
+    { icon: DollarSign, title: "Получайте доход", desc: "До 45% от каждого платежа по всей вашей сети", image: stepEarn },
   ];
 
   const benefits = [
-    { icon: TrendingUp, title: "До 45% дохода", desc: "20% прямых + 10% уровень 2 + 5% уровень 3 + бонусы" },
-    { icon: Clock, title: "2 года выплат", desc: "Получайте комиссию в течение 24 месяцев после регистрации клиента" },
-    { icon: Crown, title: "Лидерский бонус", desc: "Топ-10 партнёров месяца получают дополнительно +3% со всей сети" },
-    { icon: Award, title: "Бонус за оборот", desc: "При обороте сети > 100 000 ₽/мес — дополнительно +5%" },
+    { icon: TrendingUp, title: "До 45% дохода", desc: "20% прямых + 10% уровень 2 + 5% уровень 3 + бонусы", image: benefitIncome },
+    { icon: Clock, title: "2 года выплат", desc: "Получайте комиссию в течение 24 месяцев после регистрации клиента", image: benefitDuration },
+    { icon: Crown, title: "Лидерский бонус", desc: "Топ-10 партнёров месяца получают дополнительно +3% со всей сети", image: benefitLeader },
+    { icon: Award, title: "Бонус за оборот", desc: "При обороте сети > 100 000 ₽/мес — дополнительно +5%", image: benefitTurnover },
   ];
 
   const networkLevels = [
@@ -100,12 +126,12 @@ const PartnerLanding = () => {
   ];
 
   const whyEasyToSell = [
-    { icon: Gift, title: "Бесплатный тариф навсегда", desc: "Клиент ничем не рискует — может попробовать все функции бесплатно и перейти на платный тариф, когда будет готов" },
-    { icon: Users, title: "Безлимит учеников", desc: "На всех тарифах — нет скрытых платежей за количество пользователей. Платите только за функционал" },
-    { icon: Brain, title: "ИИ-генерация курсов", desc: "Курс из 30 уроков с тестами создаётся за 5 минут — WOW-эффект при демонстрации клиенту" },
-    { icon: FileCheck, title: "Документооборот + ФИС ФРДО", desc: "Договоры, акты, согласия + передача данных в ФРДО — заменяет 3-4 отдельные системы" },
-    { icon: CreditCard, title: "Онлайн-касса и платежи", desc: "Встроенный приём платежей от учеников — клиент сразу начинает монетизировать обучение" },
-    { icon: ShieldCheck, title: "Видеоидентификация и прокторинг", desc: "Требование закона для ДПО — у нас уже встроено, конкуренты этого не предлагают" },
+    { icon: Gift, title: "Бесплатный тариф навсегда", desc: "Клиент ничем не рискует — может попробовать все функции бесплатно", image: comicFree, rotate: "-2deg", accent: "WOW!" },
+    { icon: Users, title: "Безлимит учеников", desc: "На всех тарифах — нет скрытых платежей за количество пользователей", image: comicUnlimited, rotate: "1deg", accent: "∞" },
+    { icon: Brain, title: "ИИ-генерация курсов", desc: "Курс из 30 уроков с тестами создаётся за 5 минут", image: comicAi, rotate: "-1deg", accent: "5 мин!" },
+    { icon: FileCheck, title: "Документооборот + ФИС ФРДО", desc: "Заменяет 3-4 отдельные системы", image: comicDocs, rotate: "2deg", accent: "4 в 1" },
+    { icon: CreditCard, title: "Онлайн-касса и платежи", desc: "Клиент сразу начинает монетизировать обучение", image: comicPayment, rotate: "-1.5deg", accent: "₽₽₽" },
+    { icon: ShieldCheck, title: "Видеоидентификация", desc: "Требование закона — у нас уже встроено", image: comicProctoring, rotate: "1.5deg", accent: "ЗАКОН" },
   ];
 
   const casStudies = [
@@ -116,6 +142,7 @@ const PartnerLanding = () => {
       color: "from-teal-500/20 to-teal-500/5 border-teal-500/25",
       iconBg: "bg-teal-500/15",
       iconColor: "text-teal-500",
+      image: caseBeginner,
       rows: [
         { label: "Уровень 1: 3 организации × 3 490 ₽ × 20%", value: "2 094 ₽" },
       ],
@@ -129,6 +156,7 @@ const PartnerLanding = () => {
       color: "from-cyan-500/15 to-cyan-500/5 border-cyan-500/25",
       iconBg: "bg-cyan-500/15",
       iconColor: "text-cyan-500",
+      image: caseActive,
       rows: [
         { label: "Уровень 1: 5 организаций × 6 990 ₽ × 20%", value: "6 990 ₽" },
         { label: "Уровень 2: 10 организаций × 3 490 ₽ × 10%", value: "3 490 ₽" },
@@ -143,6 +171,7 @@ const PartnerLanding = () => {
       color: "from-amber-500/10 to-amber-500/5 border-amber-500/20",
       iconBg: "bg-amber-500/15",
       iconColor: "text-amber-500",
+      image: caseLeader,
       rows: [
         { label: "Уровень 1: 10 организаций × 10 000 ₽ × 20%", value: "20 000 ₽" },
         { label: "Уровень 2: 30 организаций × 5 000 ₽ × 10%", value: "15 000 ₽" },
@@ -291,9 +320,10 @@ const PartnerLanding = () => {
           </div>
         </section>
 
-        {/* === NEW: Why easy to sell === */}
+        {/* === COMIC: Why easy to sell === */}
         <section className="py-24 relative overflow-hidden bg-gradient-to-b from-secondary/30 via-background to-secondary/30 section-padding">
-          <div className="absolute inset-0 opacity-[0.02] bg-[radial-gradient(hsl(var(--foreground))_1px,transparent_1px)] [background-size:24px_24px]" />
+          {/* Dot-pattern overlay (Ben-Day dots) */}
+          <div className="absolute inset-0 opacity-[0.04] bg-[radial-gradient(circle_1.5px_at_8px_8px,hsl(var(--foreground))_1px,transparent_0)] [background-size:16px_16px]" />
           <div className="container mx-auto px-6 relative">
             <motion.div className="text-center mb-4" initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}>
               <Badge className="mb-4 px-3 py-1 bg-teal-500/10 text-teal-600 border-teal-500/20">
@@ -302,81 +332,106 @@ const PartnerLanding = () => {
               <h2 className="font-display text-3xl lg:text-4xl font-bold">Почему легко привлекать клиентов</h2>
             </motion.div>
             <motion.p className="text-muted-foreground text-center mb-14 max-w-2xl mx-auto" initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} viewport={{ once: true }} transition={{ delay: 0.2 }}>
-              Платформа продаёт себя сама — вам достаточно показать возможности. Вот почему клиенты остаются:
+              Платформа продаёт себя сама — вам достаточно показать возможности
             </motion.p>
-            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-5xl mx-auto">
+
+            {/* Comic-style grid */}
+            <div className="max-w-5xl mx-auto grid grid-cols-2 lg:grid-cols-3 gap-4 lg:gap-5">
               {whyEasyToSell.map((item, i) => (
-                <motion.div key={item.title} initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.1 }} whileHover={{ y: -4 }}>
-                  <Card className="h-full border border-teal-500/10 shadow-lg hover:shadow-xl hover:shadow-teal-500/5 transition-all bg-card/80 backdrop-blur-sm group">
-                    <CardContent className="pt-6 pb-5">
-                      <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-teal-500/20 to-cyan-400/10 flex items-center justify-center mb-4 group-hover:shadow-[0_0_15px_rgba(20,184,166,0.2)] transition-shadow">
-                        <item.icon className="w-6 h-6 text-teal-600" />
+                <motion.div
+                  key={item.title}
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  whileInView={{ opacity: 1, scale: 1 }}
+                  viewport={{ once: true }}
+                  transition={{ delay: i * 0.08 }}
+                  whileHover={{ scale: 1.03, rotate: 0 }}
+                  style={{ rotate: item.rotate }}
+                  className="relative"
+                >
+                  <div className="border-[3px] border-foreground/80 rounded-lg overflow-hidden bg-card shadow-[4px_4px_0px_0px_hsl(var(--foreground)/0.15)] hover:shadow-[6px_6px_0px_0px_hsl(var(--foreground)/0.2)] transition-shadow">
+                    {/* Comic image */}
+                    <div className="relative h-36 lg:h-44 overflow-hidden">
+                      <img src={item.image} alt={item.title} loading="lazy" className="w-full h-full object-cover" />
+                      {/* Accent bubble */}
+                      <div className="absolute top-2 right-2 bg-amber-400 text-foreground font-extrabold text-xs px-2 py-1 rounded-full border-2 border-foreground/60 shadow-lg" style={{ transform: "rotate(8deg)" }}>
+                        {item.accent}
                       </div>
-                      <h3 className="font-semibold mb-2">{item.title}</h3>
-                      <p className="text-sm text-muted-foreground leading-relaxed">{item.desc}</p>
-                    </CardContent>
-                  </Card>
+                    </div>
+                    {/* Speech bubble style text */}
+                    <div className="p-3 lg:p-4 relative">
+                      <div className="absolute -top-3 left-4 w-4 h-4 bg-card border-t-[3px] border-l-[3px] border-foreground/80" style={{ transform: "rotate(45deg)" }} />
+                      <h3 className="font-bold text-sm lg:text-base mb-1">{item.title}</h3>
+                      <p className="text-xs lg:text-sm text-muted-foreground leading-snug">{item.desc}</p>
+                    </div>
+                  </div>
                 </motion.div>
               ))}
             </div>
           </div>
         </section>
 
-        {/* How it works */}
+        {/* How it works — reverse marquee */}
         <section className="py-24 relative overflow-hidden section-padding">
           <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_50%_0%,rgba(20,184,166,0.06),transparent_60%)]" />
-          <div className="container mx-auto px-6 relative">
+          <div className="container mx-auto px-6 relative mb-10">
             <motion.h2 className="font-display text-3xl lg:text-4xl font-bold text-center mb-4" initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}>
               Как это работает
             </motion.h2>
-            <motion.p className="text-muted-foreground text-center mb-14 max-w-lg mx-auto" initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} viewport={{ once: true }} transition={{ delay: 0.2 }}>
+            <motion.p className="text-muted-foreground text-center max-w-lg mx-auto" initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} viewport={{ once: true }} transition={{ delay: 0.2 }}>
               Четыре шага до многоуровневого пассивного дохода
             </motion.p>
-            <div className="grid md:grid-cols-4 gap-6 max-w-5xl mx-auto">
-              {steps.map((step, i) => (
-                <motion.div key={step.title} initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.15, type: "spring", damping: 20 }}>
-                  <Card className="text-center h-full border border-teal-500/10 shadow-lg hover:shadow-xl hover:shadow-teal-500/5 transition-all bg-card/80 backdrop-blur-sm group">
-                    <CardContent className="pt-8 pb-6">
-                      <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-teal-500/20 to-cyan-400/10 flex items-center justify-center mx-auto mb-5 relative group-hover:shadow-[0_0_20px_rgba(20,184,166,0.15)] transition-shadow">
-                        <step.icon className="w-7 h-7 text-teal-600" />
-                        <div className="absolute -top-2 -right-2 w-7 h-7 rounded-full bg-teal-500 text-white text-xs font-bold flex items-center justify-center shadow-lg shadow-teal-500/30">
-                          {i + 1}
-                        </div>
-                      </div>
-                      <h3 className="font-display text-lg font-semibold mb-2">{step.title}</h3>
-                      <p className="text-sm text-muted-foreground leading-relaxed">{step.desc}</p>
-                    </CardContent>
-                  </Card>
-                </motion.div>
-              ))}
-            </div>
           </div>
+
+          <InfiniteMarquee direction="right" speed={50}>
+            {steps.map((step, i) => (
+              <div key={step.title} className="w-72 shrink-0">
+                <Card className="h-full border border-teal-500/10 shadow-lg hover:shadow-xl hover:shadow-teal-500/5 transition-all bg-card/80 backdrop-blur-sm group overflow-hidden">
+                  <div className="relative h-40 overflow-hidden">
+                    <img src={step.image} alt={step.title} loading="lazy" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                    <div className="absolute top-3 left-3 w-8 h-8 rounded-full bg-teal-500 text-white text-sm font-bold flex items-center justify-center shadow-lg shadow-teal-500/30">
+                      {i + 1}
+                    </div>
+                  </div>
+                  <CardContent className="pt-4 pb-5">
+                    <h3 className="font-display text-lg font-semibold mb-2">{step.title}</h3>
+                    <p className="text-sm text-muted-foreground leading-relaxed">{step.desc}</p>
+                  </CardContent>
+                </Card>
+              </div>
+            ))}
+          </InfiniteMarquee>
         </section>
 
-        {/* Benefits */}
+        {/* Benefits — left marquee */}
         <section className="py-24 relative overflow-hidden bg-gradient-to-b from-secondary/30 via-background to-secondary/30 section-padding">
           <div className="absolute inset-0 opacity-[0.02] bg-[radial-gradient(hsl(var(--foreground))_1px,transparent_1px)] [background-size:24px_24px]" />
           <FloatingParticles count={10} mode="dots" />
-          <div className="container mx-auto px-6 relative">
-            <motion.h2 className="font-display text-3xl lg:text-4xl font-bold text-center mb-14" initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}>
+          <div className="container mx-auto px-6 relative mb-10">
+            <motion.h2 className="font-display text-3xl lg:text-4xl font-bold text-center" initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}>
               Преимущества программы
             </motion.h2>
-            <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 max-w-5xl mx-auto">
-              {benefits.map((b, i) => (
-                <motion.div key={b.title} initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.1 }} whileHover={{ y: -6 }}>
-                  <Card className="h-full border border-teal-500/10 shadow-lg hover:shadow-xl hover:shadow-teal-500/10 transition-all bg-card/80 backdrop-blur-sm group">
-                    <CardContent className="pt-6">
-                      <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-teal-500/20 to-cyan-400/10 flex items-center justify-center mb-4 group-hover:shadow-[0_0_15px_rgba(20,184,166,0.2)] transition-shadow">
-                        <b.icon className="w-6 h-6 text-teal-600" />
-                      </div>
-                      <h3 className="font-semibold mb-2">{b.title}</h3>
-                      <p className="text-sm text-muted-foreground leading-relaxed">{b.desc}</p>
-                    </CardContent>
-                  </Card>
-                </motion.div>
-              ))}
-            </div>
           </div>
+
+          <InfiniteMarquee direction="left" speed={45}>
+            {benefits.map((b) => (
+              <div key={b.title} className="w-80 shrink-0">
+                <Card className="h-full border border-teal-500/10 shadow-lg hover:shadow-xl hover:shadow-teal-500/10 transition-all bg-card/80 backdrop-blur-sm group overflow-hidden">
+                  <div className="relative h-44 overflow-hidden">
+                    <img src={b.image} alt={b.title} loading="lazy" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                  </div>
+                  <CardContent className="pt-4 pb-5">
+                    <div className="flex items-center gap-3 mb-2">
+                      <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-teal-500/20 to-cyan-400/10 flex items-center justify-center group-hover:shadow-[0_0_15px_rgba(20,184,166,0.2)] transition-shadow shrink-0">
+                        <b.icon className="w-5 h-5 text-teal-600" />
+                      </div>
+                      <h3 className="font-semibold">{b.title}</h3>
+                    </div>
+                    <p className="text-sm text-muted-foreground leading-relaxed">{b.desc}</p>
+                  </CardContent>
+                </Card>
+              </div>
+            ))}
+          </InfiniteMarquee>
         </section>
 
         {/* Network Levels */}
@@ -425,7 +480,7 @@ const PartnerLanding = () => {
           </div>
         </section>
 
-        {/* === NEW: Case Studies — 3 кейса расчёта === */}
+        {/* === Case Studies with AI banners === */}
         <section className="py-24 relative overflow-hidden bg-foreground section-padding">
           <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_30%_30%,rgba(20,184,166,0.12),transparent_60%)]" />
           <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_70%_70%,rgba(6,182,212,0.08),transparent_60%)]" />
@@ -443,17 +498,22 @@ const PartnerLanding = () => {
             <div className="grid md:grid-cols-3 gap-6 max-w-5xl mx-auto mb-16">
               {casStudies.map((cs, i) => (
                 <motion.div key={cs.title} initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.15 }}>
-                  <Card className={`h-full border bg-gradient-to-b ${cs.color} backdrop-blur-sm hover:scale-[1.02] transition-all duration-300`}>
-                    <CardContent className="pt-6 pb-5">
-                      <div className="flex items-center gap-3 mb-5">
-                        <div className={`w-12 h-12 rounded-xl ${cs.iconBg} flex items-center justify-center`}>
-                          <cs.icon className={`w-6 h-6 ${cs.iconColor}`} />
+                  <Card className={`h-full border bg-gradient-to-b ${cs.color} backdrop-blur-sm hover:scale-[1.02] transition-all duration-300 overflow-hidden`}>
+                    {/* AI Banner */}
+                    <div className="relative h-40 overflow-hidden">
+                      <img src={cs.image} alt={cs.title} loading="lazy" className="w-full h-full object-cover" />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+                      <div className="absolute bottom-3 left-4 flex items-center gap-3">
+                        <div className={`w-10 h-10 rounded-xl ${cs.iconBg} flex items-center justify-center backdrop-blur-sm`}>
+                          <cs.icon className={`w-5 h-5 ${cs.iconColor}`} />
                         </div>
                         <div>
-                          <h3 className="font-semibold text-white text-lg">{cs.title}</h3>
-                          <p className="text-xs text-white/40">{cs.subtitle}</p>
+                          <h3 className="font-semibold text-white text-lg leading-tight">{cs.title}</h3>
+                          <p className="text-xs text-white/50">{cs.subtitle}</p>
                         </div>
                       </div>
+                    </div>
+                    <CardContent className="pt-5 pb-5">
                       <div className="space-y-2 mb-5">
                         {cs.rows.map((row, ri) => (
                           <div key={ri} className="flex justify-between items-start gap-2 text-sm">
@@ -484,7 +544,6 @@ const PartnerLanding = () => {
                   </h3>
 
                   <div className="space-y-6 mb-8">
-                    {/* Average price selector */}
                     <div>
                       <label className="text-sm text-white/60 mb-3 block">Средний тариф клиентов</label>
                       <div className="flex flex-wrap gap-2">
@@ -504,7 +563,6 @@ const PartnerLanding = () => {
                       </div>
                     </div>
 
-                    {/* Level 1 slider */}
                     <div>
                       <div className="flex justify-between text-sm mb-2">
                         <span className="text-white/60">Уровень 1 — ваши прямые клиенты</span>
@@ -513,7 +571,6 @@ const PartnerLanding = () => {
                       <Slider value={[calcLevel1]} onValueChange={v => setCalcLevel1(v[0])} min={1} max={30} step={1} className="[&_[role=slider]]:bg-teal-500 [&_[role=slider]]:border-teal-500 [&_.bg-primary]:bg-teal-500" />
                     </div>
 
-                    {/* Level 2 slider */}
                     <div>
                       <div className="flex justify-between text-sm mb-2">
                         <span className="text-white/60">Уровень 2 — клиенты ваших партнёров</span>
@@ -522,7 +579,6 @@ const PartnerLanding = () => {
                       <Slider value={[calcLevel2]} onValueChange={v => setCalcLevel2(v[0])} min={0} max={100} step={1} className="[&_[role=slider]]:bg-cyan-500 [&_[role=slider]]:border-cyan-500 [&_.bg-primary]:bg-cyan-500" />
                     </div>
 
-                    {/* Level 3 slider */}
                     <div>
                       <div className="flex justify-between text-sm mb-2">
                         <span className="text-white/60">Уровень 3 — третье поколение сети</span>
@@ -566,7 +622,7 @@ const PartnerLanding = () => {
           </div>
         </section>
 
-        {/* === NEW: Platform sells itself === */}
+        {/* Platform sells itself */}
         <section className="py-20 relative overflow-hidden bg-gradient-to-b from-secondary/30 via-background to-secondary/30 section-padding">
           <div className="container mx-auto px-6 relative">
             <motion.h2 className="font-display text-3xl lg:text-4xl font-bold text-center mb-4" initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} viewport={{ once: true }}>
@@ -743,18 +799,15 @@ const PartnerLanding = () => {
                         className="border-teal-500/50 data-[state=checked]:bg-teal-500 data-[state=checked]:border-teal-500" />
                       <label htmlFor="cta-agree" className="text-sm text-white/50 cursor-pointer">
                         Я согласен с{" "}
-                        <Link to="/partner/offer" className="text-teal-400 underline underline-offset-2 hover:text-teal-300">условиями партнёрской программы</Link>
+                        <Link to="/partner/offer" className="text-teal-400 underline underline-offset-2 hover:text-teal-300">условиями</Link>
                       </label>
                     </div>
                     <Button size="lg" onClick={handleBecomePartner} disabled={isBecoming || !agreedToTerms}
-                      className="text-lg px-8 py-6 bg-teal-500 hover:bg-teal-400 text-white shadow-[0_0_30px_rgba(20,184,166,0.4)] disabled:opacity-50">
-                      Стать партнёром <ArrowRight className="w-5 h-5 ml-2" />
+                      className="text-lg px-10 py-7 bg-teal-500 hover:bg-teal-400 text-white shadow-[0_0_40px_rgba(20,184,166,0.4)]">
+                      <Sparkles className="w-5 h-5 mr-2" /> Стать партнёром <ArrowRight className="w-5 h-5 ml-2" />
                     </Button>
                   </div>
                 )}
-                <Button size="lg" variant="outline" asChild className="text-lg px-8 py-6 border-teal-500/25 text-teal-400 hover:bg-teal-500/10 hover:text-teal-300">
-                  <Link to="/partner/offer">Условия программы</Link>
-                </Button>
               </div>
             </motion.div>
           </div>
