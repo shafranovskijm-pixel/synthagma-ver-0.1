@@ -183,7 +183,7 @@ export const ADMIN_THEMES: AdminTheme[] = [
     label: "Тропики",
     emoji: "🌴",
     group: "sunset",
-    bannerUrl: new URL("@/assets/beach-palms-sunset.jpg", import.meta.url).href,
+    bannerUrl: beachPalmsSunset,
     bgClass: "bg-gradient-to-b from-rose-50/80 via-amber-50/50 to-orange-50/30",
     headerClass: "bg-gradient-to-r from-rose-100/80 to-amber-50/60",
     cardClass: "border-rose-200/60 bg-white/90",
