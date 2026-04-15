@@ -931,11 +931,21 @@ function AllBillingContent({ search, setSearch, filteredContracts, filteredInvoi
         </TabsContent>
 
         <TabsContent value="invoices" className="mt-4">
+          {selectedInvoiceIds.size > 0 && (
+            <div className="flex items-center gap-2 mb-3">
+              <span className="text-sm text-muted-foreground">Выбрано: {selectedInvoiceIds.size}</span>
+              <Button variant="destructive" size="sm" className="rounded-xl gap-1.5" onClick={onDeleteSelected}>
+                <Trash2 className="w-3.5 h-3.5" />Удалить
+              </Button>
+              <Button variant="ghost" size="sm" onClick={() => selectedInvoiceIds.size && toggleInvoiceSelection('__clear__')}>Снять выделение</Button>
+            </div>
+          )}
           {filteredInvoices.length === 0 ? <EmptyState text="Счетов не найдено" /> : (
             <div className="space-y-2">
               {filteredInvoices.map((inv: Invoice) => (
-                <div key={inv.id} className="flex items-center justify-between p-3 rounded-lg border border-border hover:bg-muted/30 transition-colors">
+                <div key={inv.id} className={cn("flex items-center justify-between p-3 rounded-lg border transition-colors", selectedInvoiceIds.has(inv.id) ? "border-primary bg-primary/5" : "border-border hover:bg-muted/30")}>
                   <div className="flex items-center gap-3">
+                    <Checkbox checked={selectedInvoiceIds.has(inv.id)} onCheckedChange={() => toggleInvoiceSelection(inv.id)} />
                     <Receipt className="w-4 h-4 text-blue-500" />
                     <div>
                       <div className="text-sm font-medium">Счёт {inv.invoice_number}</div>
