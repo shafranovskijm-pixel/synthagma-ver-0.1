@@ -36,6 +36,7 @@ export function useTabNavigation({
     return state?.tab || "courses";
   });
   const [swipeDirection, setSwipeDirection] = useState(0);
+  const [selectedCourseId, setSelectedCourseId] = useState<string | null>(null);
 
   // Handle navigation state changes (e.g. from Profile settings)
   useEffect(() => {
@@ -131,5 +132,7 @@ export function useTabNavigation({
     handleTabClick,
     triggerHapticFeedback,
     tabAnimationVariants,
+    selectedCourseId,
+    setSelectedCourseId,
   };
 }
