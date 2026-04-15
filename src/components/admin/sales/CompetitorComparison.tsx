@@ -72,7 +72,6 @@ function StatusBadge({ value, isUs }: { value: Status; isUs?: boolean }) {
 export function CompetitorComparison() {
   const [competitor, setCompetitor] = useState<Competitor>('getcourse');
   const [copied, setCopied] = useState(false);
-  const { toast } = useToast();
 
   const categories = [...new Set(data.map(r => r.category))];
 
