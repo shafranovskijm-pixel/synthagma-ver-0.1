@@ -53,7 +53,28 @@ export default function OrgPageLayout({ title, icon: Icon, children }: OrgPageLa
   const logoUrl = d.branding.brandingSettings.logoUrl;
   const coverUrl = d.branding.brandingSettings.coverUrl;
   const coverPosition = d.branding.brandingSettings.coverPosition;
-  const displayCover = coverUrl || defaultCoverImg;
+
+  // Theme-aware banner
+  const [themeBannerUrl, setThemeBannerUrl] = useState<string | null>(() => {
+    const id = getStoredThemeId();
+    return id ? getThemeById(id)?.bannerUrl || null : null;
+  });
+  const [themeBannerPosition, setThemeBannerPosition] = useState<string | undefined>(() => {
+    const id = getStoredThemeId();
+    return id ? getThemeById(id)?.bannerPosition : undefined;
+  });
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const id = (e as CustomEvent).detail;
+      const theme = id ? getThemeById(id) : null;
+      setThemeBannerUrl(theme?.bannerUrl || null);
+      setThemeBannerPosition(theme?.bannerPosition);
+    };
+    window.addEventListener("visual-theme-change", handler);
+    return () => window.removeEventListener("visual-theme-change", handler);
+  }, []);
+
+  const displayCover = themeBannerUrl || coverUrl || defaultCoverImg;
 
   const [paidUntil, setPaidUntil] = useState<string | null>(null);
   const planName = d.subscriptionLimits?.plan;
