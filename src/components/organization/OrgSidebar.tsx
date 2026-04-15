@@ -1,7 +1,7 @@
 import { useState, useCallback, useRef, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { 
-  BookOpen, Users, Settings, LogOut, Upload, User,
+  BookOpen, Users, Settings, LogOut, Upload,
   Building2, HardHat, HardDrive, CreditCard, Lock, MessageCircle, Wallet,
   BarChart3, Link, ShoppingBag, FileText, ClipboardList, FileSpreadsheet, BookCheck, Radio
 } from "lucide-react";
@@ -173,7 +173,7 @@ export function OrgSidebar() {
   
   navItems.push({ id: "chats", icon: MessageCircle, label: "Чаты", badge: d.unreadChatsCount });
 
-  navItems.push({ id: "profile", icon: User, label: "Профиль" });
+  
 
   return (
     <>
