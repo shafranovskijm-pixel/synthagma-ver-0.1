@@ -693,7 +693,7 @@ export const DocumentsTab = React.memo(function DocumentsTab({ organizationId, o
                 </Button>
               )}
               {activeTab === "counterparties" && counterpartySubTab === "contracts" && (
-                <Button size="sm" className="rounded-xl gap-1.5" onClick={() => navigate("/contract-editor")}>
+                <Button size="sm" className="rounded-xl gap-1.5" onClick={() => setShowContractGenerator(true)}>
                   <FileText className="w-3.5 h-3.5" />
                   <span className="hidden sm:inline">Создать договор</span>
                 </Button>
@@ -758,7 +758,7 @@ export const DocumentsTab = React.memo(function DocumentsTab({ organizationId, o
                           Полноэкранный редактор с подсветкой переменных, панелью вставки и предпросмотром
                         </p>
                       </div>
-                      <Button className="rounded-xl gap-2" onClick={() => navigate("/contract-editor")}>
+                      <Button className="rounded-xl gap-2" onClick={() => d.tabNavigation.setActiveTab("contract-editor" as any)}>
                         <ExternalLink className="w-4 h-4" />
                         Открыть конструктор
                       </Button>
@@ -912,7 +912,7 @@ export const DocumentsTab = React.memo(function DocumentsTab({ organizationId, o
                         <ScrollText className="w-10 h-10 mx-auto mb-2 opacity-30" />
                         <p className="text-sm font-medium">Договоры с контрагентами</p>
                         <p className="text-xs mt-1">Создайте первый договор с помощью конструктора</p>
-                        <Button className="mt-4 rounded-xl gap-1.5" size="sm" onClick={() => navigate("/contract-editor")}>
+                        <Button className="mt-4 rounded-xl gap-1.5" size="sm" onClick={() => setShowContractGenerator(true)}>
                           <FileText className="w-3.5 h-3.5" />
                           Создать договор
                         </Button>
