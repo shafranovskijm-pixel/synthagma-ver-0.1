@@ -152,19 +152,39 @@ function SandAnimation() {
   );
 }
 
-interface ThemeAnimationsProps {
-  animation: string;
+export type AnimationLevel = "full" | "reduced" | "none";
+
+export function getStoredAnimationLevel(): AnimationLevel {
+  return (localStorage.getItem("theme-animation-level") as AnimationLevel) || "full";
 }
 
-export function ThemeAnimations({ animation }: ThemeAnimationsProps) {
+export function storeAnimationLevel(level: AnimationLevel) {
+  localStorage.setItem("theme-animation-level", level);
+  window.dispatchEvent(new CustomEvent("visual-animation-change", { detail: level }));
+}
+
+function scaleCount(original: number, level: AnimationLevel): number {
+  if (level === "none") return 0;
+  if (level === "reduced") return Math.max(1, Math.floor(original / 3));
+  return original;
+}
+
+interface ThemeAnimationsProps {
+  animation: string;
+  level?: AnimationLevel;
+}
+
+export function ThemeAnimations({ animation, level = "full" }: ThemeAnimationsProps) {
+  if (level === "none") return null;
+
   switch (animation) {
-    case "leaves": return <LeavesAnimation />;
+    case "leaves": return <LeavesAnimation count={scaleCount(12, level)} />;
     case "fade": return <FadeAnimation />;
-    case "lights": return <LightsAnimation />;
+    case "lights": return <LightsAnimation count={scaleCount(20, level)} />;
     case "gradient": return <GradientAnimation />;
     case "glow": return <GlowAnimation />;
-    case "particles": return <ParticlesAnimation />;
-    case "sand": return <SandAnimation />;
+    case "particles": return <ParticlesAnimation count={scaleCount(45, level)} />;
+    case "sand": return <SandAnimation count={scaleCount(30, level)} />;
     default: return null;
   }
 }
