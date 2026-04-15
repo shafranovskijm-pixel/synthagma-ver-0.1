@@ -39,7 +39,7 @@ interface AdminDashboardHeaderProps {
     customSubtitle: string;
     coverPosition: string;
   };
-  onCoverUpload: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  onCoverUpload?: (e: React.ChangeEvent<HTMLInputElement>) => void;
 }
 
 const TAB_TITLES: Record<AdminTabType, string> = {
