@@ -30,16 +30,18 @@ import { StampSignatureUploader } from "@/components/organization/StampSignature
 import { useSubscriptionLimits } from "@/hooks/useSubscriptionLimits";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { DocumentPreview } from "@/components/organization/DocumentPreview";
-import { Eye } from "lucide-react";
+import { Eye, Printer } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useOrgDashboard } from "@/contexts/OrgDashboardContext";
 import { getSignedStorageUrl } from "@/utils/storageHelpers";
-import { generateAct } from "@/utils/generateAct";
+import { generateActHtml, saveActDocument, type GeneratedAct } from "@/utils/generateAct";
 import { PayersSection } from "@/components/organization/PayersSection";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import { toast } from "sonner";
+import { generateInvoiceHtml, type InvoiceData } from "@/constants/invoiceTemplate";
+import { SUBSCRIPTION_PLANS } from "@/constants/subscriptionPlans";
 
 type DocumentSubTab = "constructor" | "programs" | "org" | "orders" | "protocols" | "certificates" | "diplomas" | "testimonials" | "billing" | "payers" | "journals" | "frdo";
 
@@ -134,6 +136,7 @@ export const DocumentsTab = React.memo(function DocumentsTab({ organizationId, o
   const [actCustomerDirector, setActCustomerDirector] = useState("");
   const [actCustomerPosition, setActCustomerPosition] = useState("");
   const [actInnSearching, setActInnSearching] = useState(false);
+  const [pendingAct, setPendingAct] = useState<GeneratedAct | null>(null);
   const [generatingInvoice, setGeneratingInvoice] = useState(false);
   const [showInvoiceDialog, setShowInvoiceDialog] = useState(false);
   const [invoiceOtherPayer, setInvoiceOtherPayer] = useState(false);
@@ -142,6 +145,7 @@ export const DocumentsTab = React.memo(function DocumentsTab({ organizationId, o
   const [invoiceBuyerKpp, setInvoiceBuyerKpp] = useState("");
   const [innSearching, setInnSearching] = useState(false);
   const [orgDetails, setOrgDetails] = useState<{ inn?: string; director_name?: string; director_position?: string; custom_price?: number; custom_discount?: number; subscription_plan?: string }>({});
+  const [pendingInvoice, setPendingInvoice] = useState<{ html: string; insertData: any; invoiceNum: string; amount: number } | null>(null);
 
   useEffect(() => {
     if (!organizationId) return;
@@ -251,7 +255,7 @@ export const DocumentsTab = React.memo(function DocumentsTab({ organizationId, o
   const handleGenerateAct = async () => {
     if (!organizationId || !actBasis || !actAmount) return;
     setActSubmitting(true);
-    const result = await generateAct({
+    const act = await generateActHtml({
       organizationId,
       orgName: actOtherCustomer && actCustomerName ? actCustomerName : (d.organizationName || organizationName || ""),
       orgInn: actOtherCustomer && actCustomerInn ? actCustomerInn : (orgDetails.inn || null),
@@ -261,25 +265,50 @@ export const DocumentsTab = React.memo(function DocumentsTab({ organizationId, o
       basis: actBasis,
       amount: parseFloat(actAmount),
     });
-    if (result) {
-      toast.success("Акт создан", { description: "result" });
-      const { data } = await supabase.from("org_billing_documents" as any)
-        .select("*").eq("organization_id", organizationId).order("created_at", { ascending: false });
-      if (data) setBillingDocs(data as any[]);
+    if (act) {
+      setPendingAct(act);
+      const printWindow = window.open('', '_blank');
+      if (printWindow) {
+        printWindow.document.write(act.html);
+        printWindow.document.close();
+      }
+      toast.success("Акт сформирован", { description: "Скачайте или распечатайте для сохранения" });
       setShowActDialog(false);
-      setActBasis("");
-      setActAmount("");
-      setActDate(new Date());
-      setActOtherCustomer(false);
-      setActCustomerName("");
-      setActCustomerInn("");
-      setActCustomerKpp("");
-      setActCustomerDirector("");
-      setActCustomerPosition("");
+      setActBasis(""); setActAmount(""); setActDate(new Date());
+      setActOtherCustomer(false); setActCustomerName(""); setActCustomerInn("");
+      setActCustomerKpp(""); setActCustomerDirector(""); setActCustomerPosition("");
     } else {
       toast.error("Ошибка", { description: "Не удалось сгенерировать акт" });
     }
     setActSubmitting(false);
+  };
+
+  const handleSavePendingAct = async (action: 'download' | 'print') => {
+    if (!pendingAct) return;
+    await saveActDocument(pendingAct);
+    const { data } = await supabase.from("org_billing_documents" as any)
+      .select("*").eq("organization_id", organizationId).order("created_at", { ascending: false });
+    if (data) setBillingDocs(data as any[]);
+    if (action === 'download') {
+      const docContent = `<!DOCTYPE html><html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'><head><meta charset="utf-8"></head><body>${pendingAct.html.replace(/<html[^>]*>|<\/html>|<head>[\s\S]*?<\/head>|<body[^>]*>|<\/body>|<!DOCTYPE[^>]*>/gi, '')}</body></html>`;
+      const blob = new Blob([docContent], { type: 'application/msword' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url; link.download = `${pendingAct.docName}.doc`;
+      document.body.appendChild(link); link.click(); document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      toast.success("Акт скачан и сохранён");
+    } else {
+      const printWindow = window.open('', '_blank');
+      if (printWindow) {
+        printWindow.document.write(pendingAct.html);
+        printWindow.document.close();
+        printWindow.focus();
+        setTimeout(() => printWindow.print(), 500);
+      }
+      toast.success("Акт отправлен на печать и сохранён");
+    }
+    setPendingAct(null);
   };
 
   const handleActSearchByInn = async (inn: string) => {
@@ -380,15 +409,28 @@ export const DocumentsTab = React.memo(function DocumentsTab({ organizationId, o
         insertData.buyer_kpp = invoiceBuyerKpp || null;
       }
 
-      const { data: invoice, error: err } = await supabase
-        .from("subscription_invoices")
-        .insert(insertData)
-        .select("id")
-        .single();
+      // Generate HTML preview without saving
+      const planInfo = SUBSCRIPTION_PLANS[plan as keyof typeof SUBSCRIPTION_PLANS];
+      const invoiceData: InvoiceData = {
+        invoiceNumber: invoiceNum,
+        invoiceDate: new Date().toLocaleDateString("ru-RU"),
+        buyerName: insertData.buyer_name || d.organizationName || organizationName || "Организация",
+        buyerInn: insertData.buyer_inn || orgDetails.inn,
+        buyerKpp: insertData.buyer_kpp,
+        planName: planInfo?.name || plan,
+        periodMonths: 1,
+        amount,
+      };
+      const html = generateInvoiceHtml(invoiceData);
 
-      if (err) throw err;
-      setInvoices(prev => [{ id: (invoice as any).id, invoice_number: invoiceNum, amount, status: "pending", plan, period_months: 1, invoice_date: new Date().toISOString(), created_at: new Date().toISOString() }, ...prev]);
-      toast.success("Счёт создан", { description: `Счёт ${invoiceNum} на ${amount.toLocaleString("ru-RU")} ₽` });
+      const printWindow = window.open('', '_blank');
+      if (printWindow) {
+        printWindow.document.write(html);
+        printWindow.document.close();
+      }
+
+      setPendingInvoice({ html, insertData, invoiceNum, amount });
+      toast.success("Счёт сформирован", { description: "Скачайте или распечатайте для сохранения" });
       setShowInvoiceDialog(false);
       setInvoiceOtherPayer(false);
       setInvoiceBuyerName("");
@@ -399,6 +441,40 @@ export const DocumentsTab = React.memo(function DocumentsTab({ organizationId, o
     } finally {
       setGeneratingInvoice(false);
     }
+  };
+
+  const handleSavePendingInvoice = async (action: 'download' | 'print') => {
+    if (!pendingInvoice) return;
+    try {
+      const { data: invoice, error } = await supabase
+        .from("subscription_invoices")
+        .insert(pendingInvoice.insertData)
+        .select("id")
+        .single();
+      if (error) throw error;
+      setInvoices(prev => [{ id: (invoice as any).id, invoice_number: pendingInvoice.invoiceNum, amount: pendingInvoice.amount, status: "pending", plan: pendingInvoice.insertData.plan, period_months: 1, invoice_date: new Date().toISOString(), created_at: new Date().toISOString() }, ...prev]);
+      if (action === 'download') {
+        const blob = new Blob([pendingInvoice.html], { type: 'application/msword' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url; link.download = `Счёт_${pendingInvoice.invoiceNum}.doc`;
+        document.body.appendChild(link); link.click(); document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+        toast.success("Счёт скачан и сохранён");
+      } else {
+        const printWindow = window.open('', '_blank');
+        if (printWindow) {
+          printWindow.document.write(pendingInvoice.html);
+          printWindow.document.close();
+          printWindow.focus();
+          setTimeout(() => printWindow.print(), 500);
+        }
+        toast.success("Счёт отправлен на печать и сохранён");
+      }
+    } catch (e: any) {
+      toast.error("Ошибка сохранения", { description: e.message });
+    }
+    setPendingInvoice(null);
   };
 
   if (!organizationId) {
@@ -957,6 +1033,27 @@ export const DocumentsTab = React.memo(function DocumentsTab({ organizationId, o
         </DialogContent>
       </Dialog>
 
+      {/* Pending Act Actions */}
+      <Dialog open={!!pendingAct} onOpenChange={() => setPendingAct(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Акт сформирован</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            Акт «{pendingAct?.docName}» готов. Выберите действие для сохранения:
+          </p>
+          <DialogFooter className="flex-col sm:flex-row gap-2">
+            <Button variant="outline" onClick={() => setPendingAct(null)}>Закрыть без сохранения</Button>
+            <Button variant="outline" className="gap-1.5" onClick={() => handleSavePendingAct('print')}>
+              <Printer className="w-4 h-4" />Печать
+            </Button>
+            <Button className="gap-1.5" onClick={() => handleSavePendingAct('download')}>
+              <Download className="w-4 h-4" />Скачать
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {/* Invoice Generation Dialog */}
       <Dialog open={showInvoiceDialog} onOpenChange={setShowInvoiceDialog}>
         <DialogContent>
@@ -1030,6 +1127,27 @@ export const DocumentsTab = React.memo(function DocumentsTab({ organizationId, o
               disabled={generatingInvoice || (invoiceOtherPayer && !invoiceBuyerName)}
             >
               {generatingInvoice ? "Создание..." : "Создать счёт"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Pending Invoice Actions */}
+      <Dialog open={!!pendingInvoice} onOpenChange={() => setPendingInvoice(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Счёт сформирован</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            Счёт «{pendingInvoice?.invoiceNum}» на {pendingInvoice?.amount?.toLocaleString("ru-RU")} ₽ готов. Выберите действие для сохранения:
+          </p>
+          <DialogFooter className="flex-col sm:flex-row gap-2">
+            <Button variant="outline" onClick={() => setPendingInvoice(null)}>Закрыть без сохранения</Button>
+            <Button variant="outline" className="gap-1.5" onClick={() => handleSavePendingInvoice('print')}>
+              <Printer className="w-4 h-4" />Печать
+            </Button>
+            <Button className="gap-1.5" onClick={() => handleSavePendingInvoice('download')}>
+              <Download className="w-4 h-4" />Скачать
             </Button>
           </DialogFooter>
         </DialogContent>
