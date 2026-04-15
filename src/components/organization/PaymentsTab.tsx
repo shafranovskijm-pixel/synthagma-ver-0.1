@@ -4,6 +4,7 @@ import { CreditCard, Wallet, ArrowDownCircle, ArrowUpCircle, RefreshCw } from "l
 import { supabase } from "@/integrations/supabase/client";
 import { useOrgDashboard } from "@/contexts/OrgDashboardContext";
 import { TBankSettings } from "./TBankSettings";
+import { PaymentInstructions } from "./PaymentInstructions";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
@@ -146,6 +147,7 @@ export function PaymentsTab() {
           <TabsTrigger value="payments">Оплаты за курсы</TabsTrigger>
           <TabsTrigger value="transactions">Транзакции баланса</TabsTrigger>
           <TabsTrigger value="settings">Настройки кассы</TabsTrigger>
+          <TabsTrigger value="instructions">Инструкция</TabsTrigger>
         </TabsList>
 
         <TabsContent value="payments">
@@ -233,6 +235,10 @@ export function PaymentsTab() {
 
         <TabsContent value="settings">
           <TBankSettings organizationId={organizationId} />
+        </TabsContent>
+
+        <TabsContent value="instructions">
+          <PaymentInstructions />
         </TabsContent>
       </Tabs>
     </div>
