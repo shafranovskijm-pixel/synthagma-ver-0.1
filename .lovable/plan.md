@@ -1,49 +1,41 @@
 
-# Исправить «Выбрать файл», когда после первой попытки дальше кажется, что ничего не происходит
 
-## Что уже видно по коду и логам
-- Кнопка не полностью сломана: в консоли есть `[VideoUpload] Server file selected ...`
-- В replay видно, что файл на серверной вкладке выбирается, после чего сразу приходит ошибка `Файл слишком большой. Максимум — 2 ГБ.`
-- После переключения на Kinescope повторный выбор уже не запускает обработчик
+# Расчётное время загрузки + Сравнение скорости с конкурентами
 
-## Вероятная причина
-Проблема не в баннере и не в клике по кнопке как таковом, а в состоянии `input[type="file"]`:
+## Задача 1: ETA при загрузке видео
 
-1. В `handleVideoUpload()` при `file.size > 2GB` идёт `return`, но `videoInputRef.current.value` не очищается
-2. В `SortableLessonItem.tsx` ветки `server` и `kinescope` очень похожи, и React может переиспользовать один и тот же DOM input при переключении вкладки
-3. Если пользователь снова выбирает тот же файл, `onChange` не срабатывает — визуально это выглядит как «ничего не произошло»
+Сейчас при загрузке видео отображается только процент. Нужно добавить расчётное время до завершения (ETA), скорость загрузки и итоговое время после завершения.
 
-## Что нужно сделать
+### Подход
 
-### 1) Жёстко сбрасывать file input
-В `src/hooks/useLessonMedia.ts`:
-- очищать `videoInputRef.current.value = ''` перед ранним `return` в проверке `> 2GB`
-- аналогично оставить единообразный сброс input во всех ошибочных/отменённых сценариях
+Трекать `uploadStartTime` и текущий `offset` — из этого вычислять:
+- Скорость: `bytesUploaded / elapsedSeconds` → форматировать как МБ/с
+- ETA: `(fileSize - bytesUploaded) / speed` → форматировать как «~2 мин 15 сек»
 
-### 2) Не давать React переиспользовать один и тот же file input между вкладками
-В `src/components/course-builder/SortableLessonItem.tsx`:
-- обернуть UI для `server` и `kinescope` в разные keyed-блоки (`key="server-upload"` / `key="kinescope-upload"`)
-- это принудительно размонтирует старый input при смене вкладки и уберёт перенос значения файла между режимами
+### Изменения
 
-### 3) Перед открытием диалога всегда очищать текущее значение input
-В `SortableLessonItem.tsx`:
-- перед `media.videoInputRef.current?.click()` делать:
-  - `if (media.videoInputRef.current) media.videoInputRef.current.value = ''`
-- то же самое для `media.kinescopeInputRef`
-- тогда выбор одного и того же файла подряд всегда вызовет `onChange`
+**`src/hooks/useLessonMedia.ts`**:
+- Добавить состояния: `uploadStartTime`, `uploadFileSize`, `uploadedBytes` (для обоих: server и Kinescope)
+- При старте загрузки (`setKinescopeUploadProgress(0)` / `setVideoUploadProgress(0)`) записывать `Date.now()` и `file.size`
+- При каждом обновлении прогресса обновлять `uploadedBytes`
+- При завершении сохранять финальное время (для показа «Загружено за X мин»)
+- Экспортировать `uploadStartTime`, `uploadFileSize`, `uploadedBytes`
 
-### 4) Оставить защитную диагностику
-- если `ref.current` отсутствует, показать понятный `toast.error("Не удалось открыть выбор файла")`
-- сохранить текущие `console.log` для проверки повторного сценария
+**`src/components/course-builder/SortableLessonItem.tsx`**:
+- Вычислять ETA и скорость из `media.uploadStartTime`, `media.uploadedBytes`, `media.uploadFileSize`
+- Показывать под прогресс-баром: `12 МБ/с · ~1 мин 30 сек`
+- Работает одинаково для Kinescope и серверной загрузки
+
+## Задача 2: Скорость загрузки в таблице сравнения
+
+**`src/components/admin/sales/CompetitorComparison.tsx`**:
+- Добавить строку в категорию «LMS»: `{ category: 'LMS', feature: 'Скорость загрузки видео', sintagma: 'До 100 МБ/с (CDN)', getcourse: 'Медленная', ispring: 'Средняя', moodle: 'Зависит от сервера' }`
 
 ## Файлы
+
 | Файл | Действие |
 |---|---|
-| `src/hooks/useLessonMedia.ts` | Добавить сброс input при раннем выходе и выровнять очистку |
-| `src/components/course-builder/SortableLessonItem.tsx` | Сбрасывать `input.value` перед `click()` и разделить ветки keyed-обёртками |
+| `src/hooks/useLessonMedia.ts` | Добавить трекинг времени и байтов загрузки |
+| `src/components/course-builder/SortableLessonItem.tsx` | Отобразить ETA, скорость, итоговое время |
+| `src/components/admin/sales/CompetitorComparison.tsx` | Добавить строку сравнения скорости загрузки |
 
-## Что проверить после внедрения
-1. Выбрать слишком большой файл на вкладке «На сервер»
-2. Сразу переключиться на Kinescope и выбрать тот же файл
-3. Выбрать один и тот же файл два раза подряд в одном и том же режиме
-4. Убедиться, что в каждом случае либо открывается загрузка, либо сразу показывается понятная ошибка/прогресс
