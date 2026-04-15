@@ -193,6 +193,31 @@ export const DocumentsTab = React.memo(function DocumentsTab({ organizationId, o
       .then(({ data }) => {
         if (data) setInvoices(data as InvoiceRow[]);
       });
+
+    // Load counterparty documents (company_documents across all companies of this org)
+    setCounterpartyLoading(true);
+    supabase
+      .from("companies")
+      .select("id, name")
+      .eq("organization_id", organizationId)
+      .then(async ({ data: companies }) => {
+        if (!companies || companies.length === 0) {
+          setCounterpartyDocs([]);
+          setCounterpartyLoading(false);
+          return;
+        }
+        const companyIds = companies.map(c => c.id);
+        const companyMap = Object.fromEntries(companies.map(c => [c.id, c.name]));
+        const { data: docs } = await supabase
+          .from("company_documents")
+          .select("id, name, type, file_url, amount, is_paid, uploaded_at, contract_number, contract_date, company_id")
+          .in("company_id", companyIds)
+          .order("uploaded_at", { ascending: false });
+        setCounterpartyDocs(
+          (docs || []).map((d: any) => ({ ...d, company_name: companyMap[d.company_id] || "—" }))
+        );
+        setCounterpartyLoading(false);
+      });
   }, [organizationId]);
 
   const handleStampUpload = async (url: string) => {
