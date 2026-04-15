@@ -134,6 +134,7 @@ export const DocumentsTab = React.memo(function DocumentsTab({ organizationId, o
   const [actCustomerDirector, setActCustomerDirector] = useState("");
   const [actCustomerPosition, setActCustomerPosition] = useState("");
   const [actInnSearching, setActInnSearching] = useState(false);
+  const [pendingAct, setPendingAct] = useState<GeneratedAct | null>(null);
   const [generatingInvoice, setGeneratingInvoice] = useState(false);
   const [showInvoiceDialog, setShowInvoiceDialog] = useState(false);
   const [invoiceOtherPayer, setInvoiceOtherPayer] = useState(false);
