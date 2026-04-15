@@ -24,6 +24,12 @@ import ctaBg from "@/assets/presentation/cta-bg.jpg";
 import screenshotMarketplace from "@/assets/presentation/screenshot-marketplace.png";
 import screenshotCatalog from "@/assets/presentation/screenshot-catalog.png";
 
+// Cabinet screenshots
+import screenshotStudent from "@/assets/presentation/screenshot-student.png";
+import screenshotOrg from "@/assets/presentation/screenshot-org.png";
+import screenshotCompany from "@/assets/presentation/screenshot-company.png";
+import screenshotTeacher from "@/assets/presentation/screenshot-teacher.png";
+
 const PRESENTATION_VERSION = "v3";
 
 /* ─── Animated Section Wrapper ─── */
