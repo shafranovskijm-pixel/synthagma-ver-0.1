@@ -1,5 +1,6 @@
 import { useEffect, useState, useMemo } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
+import { cn } from "@/lib/utils";
 import { AnimatedTabContent } from "@/components/ui/AnimatedTabContent";
 import { OrgSidebar } from "@/components/organization/OrgSidebar";
 import { OrgSettingsSidebar } from "@/components/organization/OrgSettingsSidebar";
@@ -66,6 +67,7 @@ export default function OrganizationDashboard() {
   const secondaryTabs = ["profile", "settings", "org-documents", "whats-new"];
   const isSecondaryActive = secondaryTabs.includes(d.tabNavigation.activeTab);
   const isCourseDetails = d.tabNavigation.activeTab === "course-details";
+  const [mainSidebarHovered, setMainSidebarHovered] = useState(false);
 
   useEffect(() => {
     const handler = () => d.tabNavigation.setActiveTab('subscription' as any);
@@ -102,8 +104,22 @@ export default function OrganizationDashboard() {
         </div>
       )}
       
-      {/* Sidebar - 88px icon style */}
-      <OrgSidebar />
+      {/* Sidebar - 88px icon style, hidden when secondary is active (revealed on hover) */}
+      {isSecondaryActive && (
+        <div
+          className="fixed inset-y-0 left-0 w-3 z-[60] hidden lg:block"
+          onMouseEnter={() => setMainSidebarHovered(true)}
+        />
+      )}
+      <div
+        className={cn(
+          "transition-all duration-300",
+          isSecondaryActive ? (mainSidebarHovered ? "z-[61]" : "hidden lg:block lg:pointer-events-none lg:opacity-0 lg:-translate-x-full") : ""
+        )}
+        onMouseLeave={() => isSecondaryActive && setMainSidebarHovered(false)}
+      >
+        <OrgSidebar />
+      </div>
 
       {/* Secondary sidebar for profile/settings/docs/whats-new */}
       {isSecondaryActive && <OrgSettingsSidebar embedded />}
@@ -111,7 +127,7 @@ export default function OrganizationDashboard() {
       {/* Main content */}
       <main 
         ref={d.swipeRef} 
-        className={`flex-1 flex flex-col min-w-0 transition-all duration-300 ${isSecondaryActive ? 'lg:ml-[176px]' : 'lg:ml-[88px]'} ${d.isAdminView ? 'mt-10' : ''}`}
+        className={`flex-1 flex flex-col min-w-0 transition-all duration-300 ${isSecondaryActive ? 'lg:ml-[88px]' : 'lg:ml-[88px]'} ${d.isAdminView ? 'mt-10' : ''}`}
       >
         {/* Header with hero banner */}
         <OrgDashboardHeader />
