@@ -241,11 +241,12 @@ export function AdminDashboardHeader({
           alt="Обложка"
           className="w-full h-full"
           style={{
-            objectFit: branding.coverUrl ? (branding.coverPosition === "contain" ? "contain" : "cover") : "cover",
-            objectPosition:
+            objectFit: (themeBannerUrl || branding.coverUrl) ? ((branding.coverPosition === "contain" && !themeBannerUrl) ? "contain" : "cover") : "cover",
+            objectPosition: themeBannerPosition || (
               branding.coverPosition === "top" ? "center top"
               : branding.coverPosition === "bottom" ? "center bottom"
-              : "center center",
+              : "center center"
+            ),
             backgroundColor: "hsl(var(--muted))",
           }}
         />
