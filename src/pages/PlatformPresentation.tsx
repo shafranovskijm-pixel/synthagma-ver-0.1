@@ -473,31 +473,39 @@ export default function PlatformPresentation() {
           <p className="text-base md:text-xl text-white/60 mb-10 text-center">Все функции доступны на каждом тарифе. Разница только в лимитах.</p>
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 md:gap-4">
             {[
-              { name: "Бесплатный", price: "0", students: "10", courses: "3", storage: "100 МБ" },
-              { name: "Старт", price: "3 490", students: "100", courses: "15", storage: "3 ГБ" },
-              { name: "Стандарт", price: "6 990", students: "200", courses: "30", storage: "10 ГБ", popular: true },
-              { name: "Профессиональный", price: "16 990", students: "1 000", courses: "50", storage: "50 ГБ" },
-              { name: "Максимальный", price: "24 990", students: "∞", courses: "∞", storage: "100 ГБ" },
+              { name: "Бесплатный", desc: "Для знакомства с платформой", price: "0", students: "10", courses: "3", storage: "100 МБ", features: ["Настройки курсов", "Магазин курсов", "Чек-лист документов", "Видеоидентификация", "Брендирование", "Документы для ЛОО", "Охрана труда", "ФИС ФРДО", "Отчёты 1-ПК / 1-ПО", "ИИ-генерация", "ИИ-озвучка"] },
+              { name: "Старт", desc: "Для начинающих организаций", price: "3 490", students: "100", courses: "15", storage: "3 ГБ", features: ["Настройки курсов", "Магазин курсов", "Чек-лист документов", "Видеоидентификация", "Брендирование", "Документы для ЛОО", "Охрана труда", "ФИС ФРДО", "Отчёты 1-ПК / 1-ПО", "ИИ-генерация", "ИИ-озвучка"] },
+              { name: "Стандарт", desc: "Для активных организаций", price: "6 990", students: "200", courses: "30", storage: "10 ГБ", popular: true, features: ["Настройки курсов", "Магазин курсов", "Чек-лист документов", "Видеоидентификация", "Брендирование", "Документы для ЛОО", "Охрана труда", "ФИС ФРДО", "Отчёты 1-ПК / 1-ПО", "ИИ-генерация", "ИИ-озвучка"] },
+              { name: "Профессиональный", desc: "Для крупных организаций", price: "16 990", students: "1 000", courses: "50", storage: "50 ГБ", features: ["Настройки курсов", "Магазин курсов", "Чек-лист документов", "Видеоидентификация", "Брендирование", "Документы для ЛОО", "Охрана труда", "ФИС ФРДО+", "Отчёты 1-ПК / 1-ПО", "API для CRM", "ИИ-генерация", "ИИ-озвучка"] },
+              { name: "Максимальный", desc: "Полный доступ ко всем функциям", price: "24 990", students: "∞", courses: "∞", storage: "100 ГБ", features: ["Настройки курсов", "Магазин курсов", "Чек-лист документов", "Видеоидентификация", "Брендирование", "Документы для ЛОО", "Охрана труда", "ФИС ФРДО+", "Отчёты 1-ПК / 1-ПО", "API для CRM", "ИИ-генерация", "ИИ-озвучка"] },
             ].map((p, i) => (
               <div key={i} className={`rounded-2xl p-4 md:p-5 border flex flex-col relative ${p.popular ? "bg-[hsl(174_72%_46%/0.1)] border-[hsl(174_72%_46%)] ring-1 ring-[hsl(174_72%_46%/0.3)]" : "bg-white/5 border-white/10"}`}>
-                {p.popular && <span className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-0.5 rounded-full bg-[hsl(174_72%_46%)] text-xs font-medium text-white whitespace-nowrap">Популярный</span>}
-                <h3 className="text-sm md:text-base font-bold mb-2">{p.name}</h3>
+                {p.popular && <span className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-0.5 rounded-full bg-[hsl(174_72%_46%)] text-xs font-medium text-white whitespace-nowrap">Рекомендуем</span>}
+                <h3 className="text-sm md:text-base font-bold mb-0.5">{p.name}</h3>
+                <p className="text-[10px] text-white/40 mb-2">{p.desc}</p>
                 <div className="mb-3">
                   <span className="text-xl md:text-2xl font-bold">{p.price}</span>
                   <span className="text-xs text-white/60">{p.price === "0" ? " ₽" : " ₽/мес"}</span>
                 </div>
-                <div className="space-y-1.5 text-xs text-white/70 flex-1">
-                  <div>👥 до {p.students} учеников</div>
-                  <div>📚 {p.courses} курсов</div>
-                  <div>💾 {p.storage}</div>
+                <div className="space-y-1.5 text-xs text-white/70 mb-3">
+                  <div className="font-semibold text-white/90">📚 {p.courses} Курсов</div>
+                  <div className="font-semibold text-white/90">👥 {p.students} Учеников</div>
                 </div>
-                <div className="flex items-center gap-1.5 mt-3 pt-3 border-t border-white/10">
-                  <CheckCircle2 className="w-3.5 h-3.5 text-[hsl(174_72%_46%)]" />
-                  <span className="text-[11px] text-white/60">Все функции</span>
+                <div className="space-y-1 text-[11px] text-white/60 flex-1">
+                  {p.features.map((f, j) => (
+                    <div key={j} className="flex items-center gap-1.5">
+                      <CheckCircle2 className={`w-3 h-3 flex-shrink-0 ${f.includes("ФРДО+") ? "text-[hsl(38_92%_50%)]" : "text-[hsl(174_72%_46%/0.7)]"}`} />
+                      <span className={f.includes("ФРДО+") ? "text-[hsl(38_92%_50%)] font-semibold" : ""}>{f}</span>
+                    </div>
+                  ))}
+                </div>
+                <div className="mt-3 pt-3 border-t border-white/10 text-center">
+                  <span className="text-[10px] text-white/40">{p.price === "0" ? "Начать бесплатно" : "Подключить"}</span>
                 </div>
               </div>
             ))}
           </div>
+          <p className="text-xs text-white/30 text-center mt-6">ФИС ФРДО+ — выгрузка данных в реестр выполняется нами за вас</p>
         </div>
       </Section>
 
