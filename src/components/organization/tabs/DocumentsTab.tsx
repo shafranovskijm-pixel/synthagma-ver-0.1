@@ -409,15 +409,28 @@ export const DocumentsTab = React.memo(function DocumentsTab({ organizationId, o
         insertData.buyer_kpp = invoiceBuyerKpp || null;
       }
 
-      const { data: invoice, error: err } = await supabase
-        .from("subscription_invoices")
-        .insert(insertData)
-        .select("id")
-        .single();
+      // Generate HTML preview without saving
+      const planInfo = SUBSCRIPTION_PLANS[plan as keyof typeof SUBSCRIPTION_PLANS];
+      const invoiceData: InvoiceData = {
+        invoiceNumber: invoiceNum,
+        invoiceDate: new Date().toLocaleDateString("ru-RU"),
+        buyerName: insertData.buyer_name || d.organizationName || organizationName || "Организация",
+        buyerInn: insertData.buyer_inn || orgDetails.inn,
+        buyerKpp: insertData.buyer_kpp,
+        planName: planInfo?.name || plan,
+        periodMonths: 1,
+        amount,
+      };
+      const html = generateInvoiceHtml(invoiceData);
 
-      if (err) throw err;
-      setInvoices(prev => [{ id: (invoice as any).id, invoice_number: invoiceNum, amount, status: "pending", plan, period_months: 1, invoice_date: new Date().toISOString(), created_at: new Date().toISOString() }, ...prev]);
-      toast.success("Счёт создан", { description: `Счёт ${invoiceNum} на ${amount.toLocaleString("ru-RU")} ₽` });
+      const printWindow = window.open('', '_blank');
+      if (printWindow) {
+        printWindow.document.write(html);
+        printWindow.document.close();
+      }
+
+      setPendingInvoice({ html, insertData, invoiceNum, amount });
+      toast.success("Счёт сформирован", { description: "Скачайте или распечатайте для сохранения" });
       setShowInvoiceDialog(false);
       setInvoiceOtherPayer(false);
       setInvoiceBuyerName("");
@@ -428,6 +441,40 @@ export const DocumentsTab = React.memo(function DocumentsTab({ organizationId, o
     } finally {
       setGeneratingInvoice(false);
     }
+  };
+
+  const handleSavePendingInvoice = async (action: 'download' | 'print') => {
+    if (!pendingInvoice) return;
+    try {
+      const { data: invoice, error } = await supabase
+        .from("subscription_invoices")
+        .insert(pendingInvoice.insertData)
+        .select("id")
+        .single();
+      if (error) throw error;
+      setInvoices(prev => [{ id: (invoice as any).id, invoice_number: pendingInvoice.invoiceNum, amount: pendingInvoice.amount, status: "pending", plan: pendingInvoice.insertData.plan, period_months: 1, invoice_date: new Date().toISOString(), created_at: new Date().toISOString() }, ...prev]);
+      if (action === 'download') {
+        const blob = new Blob([pendingInvoice.html], { type: 'application/msword' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url; link.download = `Счёт_${pendingInvoice.invoiceNum}.doc`;
+        document.body.appendChild(link); link.click(); document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+        toast.success("Счёт скачан и сохранён");
+      } else {
+        const printWindow = window.open('', '_blank');
+        if (printWindow) {
+          printWindow.document.write(pendingInvoice.html);
+          printWindow.document.close();
+          printWindow.focus();
+          setTimeout(() => printWindow.print(), 500);
+        }
+        toast.success("Счёт отправлен на печать и сохранён");
+      }
+    } catch (e: any) {
+      toast.error("Ошибка сохранения", { description: e.message });
+    }
+    setPendingInvoice(null);
   };
 
   if (!organizationId) {
