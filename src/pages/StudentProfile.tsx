@@ -1,13 +1,11 @@
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { useTheme } from "next-themes";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, User, Video, FileCheck, FileText, Trophy, Palette, Users, LogOut, Sun, Moon, Monitor, Loader2, Bell, Eye, EyeOff, Camera } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
+import { User, Video, FileCheck, FileText, Trophy, Palette, Users, Sun, Moon, Monitor, Loader2, Bell, Eye, EyeOff, Camera } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Switch } from "@/components/ui/switch";
@@ -20,9 +18,11 @@ import { VideoIdentification } from "@/components/student/VideoIdentification";
 import { StudentConsentForm } from "@/components/student/StudentConsentForm";
 import { StudentDocumentsUpload } from "@/components/student/StudentDocumentsUpload";
 import { AchievementsPanel } from "@/components/student/AchievementsPanel";
+import { StudentProfileSidebar } from "@/components/student/StudentProfileSidebar";
 import { cn } from "@/lib/utils";
 import { ThemeSelector } from "@/components/ui/ThemeSelector";
 import { toast } from "sonner";
+
 export default function StudentProfile() {
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -88,7 +88,6 @@ export default function StudentProfile() {
 
   const [notifLoaded, setNotifLoaded] = useState(false);
 
-  // Load notification preferences from DB
   useEffect(() => {
     if (!effectiveUserId) return;
     const load = async () => {
@@ -119,7 +118,6 @@ export default function StudentProfile() {
       ...prev,
       [type]: { ...prev[type], [channel]: newValue },
     }));
-
     const { error } = await supabase
       .from("notification_preferences")
       .upsert({
@@ -128,7 +126,6 @@ export default function StudentProfile() {
         channel: channel,
         enabled: newValue,
       }, { onConflict: "user_id,notification_type,channel" });
-
     if (error) {
       setNotifSettings(prev => ({
         ...prev,
@@ -136,7 +133,7 @@ export default function StudentProfile() {
       }));
       toast.error("Ошибка", { description: "Не удалось сохранить настройку" });
     }
-  }, [effectiveUserId, isAdminView, notifSettings, toast]);
+  }, [effectiveUserId, isAdminView, notifSettings]);
 
   const { data: profile, isLoading } = useQuery({
     queryKey: ["student-profile-page", effectiveUserId],
@@ -170,7 +167,6 @@ export default function StudentProfile() {
     enabled: !!effectiveUserId,
   });
 
-  // Sync profile data to form state
   useEffect(() => {
     if (profile) {
       setFullName(profile.full_name || "");
@@ -209,6 +205,43 @@ export default function StudentProfile() {
       return { showAchievements: s?.showAchievements ?? false };
     },
     enabled: !!profile?.organization_id,
+  });
+
+  const { data: consentCount } = useQuery({
+    queryKey: ["consent-badge", effectiveUserId, profile?.organization_id],
+    queryFn: async () => {
+      if (!effectiveUserId) return 0;
+      const query = supabase
+        .from("student_consents")
+        .select("id", { count: "exact", head: true })
+        .eq("user_id", effectiveUserId)
+        .eq("status", "signed");
+      if (profile?.organization_id) {
+        query.eq("organization_id", profile.organization_id);
+      }
+      const { count } = await query;
+      return (count ?? 0) > 0 ? 0 : 1;
+    },
+    enabled: !!effectiveUserId,
+  });
+
+  const REQUIRED_DOC_TYPES = ["passport", "snils", "education_document"];
+  const { data: docsNeeded } = useQuery({
+    queryKey: ["docs-badge", effectiveUserId, profile?.organization_id],
+    queryFn: async () => {
+      if (!effectiveUserId) return REQUIRED_DOC_TYPES.length;
+      const query = supabase
+        .from("student_identity_documents")
+        .select("type")
+        .eq("user_id", effectiveUserId);
+      if (profile?.organization_id) {
+        query.eq("organization_id", profile.organization_id);
+      }
+      const { data } = await query;
+      const uploadedTypes = new Set(data?.map(d => d.type) || []);
+      return REQUIRED_DOC_TYPES.filter(t => !uploadedTypes.has(t)).length;
+    },
+    enabled: !!effectiveUserId,
   });
 
   const handleSaveProfile = async () => {
@@ -285,47 +318,14 @@ export default function StudentProfile() {
     }
   };
 
-  // Badge counts for consent and documents — MUST be before any early return
-  const { data: consentCount } = useQuery({
-    queryKey: ["consent-badge", effectiveUserId, profile?.organization_id],
-    queryFn: async () => {
-      if (!effectiveUserId) return 0;
-      const query = supabase
-        .from("student_consents")
-        .select("id", { count: "exact", head: true })
-        .eq("user_id", effectiveUserId)
-        .eq("status", "signed");
-      if (profile?.organization_id) {
-        query.eq("organization_id", profile.organization_id);
-      }
-      const { count } = await query;
-      return (count ?? 0) > 0 ? 0 : 1;
-    },
-    enabled: !!effectiveUserId,
-  });
-
-  const REQUIRED_DOC_TYPES = ["passport", "snils", "education_document"];
-  const { data: docsNeeded } = useQuery({
-    queryKey: ["docs-badge", effectiveUserId, profile?.organization_id],
-    queryFn: async () => {
-      if (!effectiveUserId) return REQUIRED_DOC_TYPES.length;
-      const query = supabase
-        .from("student_identity_documents")
-        .select("type")
-        .eq("user_id", effectiveUserId);
-      if (profile?.organization_id) {
-        query.eq("organization_id", profile.organization_id);
-      }
-      const { data } = await query;
-      const uploadedTypes = new Set(data?.map(d => d.type) || []);
-      return REQUIRED_DOC_TYPES.filter(t => !uploadedTypes.has(t)).length;
-    },
-    enabled: !!effectiveUserId,
-  });
-
   const handleLogout = async () => {
     await supabase.auth.signOut();
     navigate("/login");
+  };
+
+  const handleAdminBack = () => {
+    localStorage.removeItem('adminViewAsStudent');
+    navigate(adminViewData?.orgReturn || '/admin');
   };
 
   if (isLoading) {
@@ -348,219 +348,160 @@ export default function StudentProfile() {
     </div>
   );
 
-  const tabs = [
-    { id: "profile", label: "Профиль", icon: User, badge: 0 },
-    { id: "notifications", label: "Уведомления", icon: Bell, badge: 0 },
-    { id: "identification", label: "Идентификация", icon: Video, badge: 0 },
-    { id: "consent", label: "Согласие на ПД", icon: FileCheck, badge: consentCount ?? 0 },
-    { id: "documents", label: "Документы", icon: FileText, badge: docsNeeded ?? 0 },
-    ...(orgSettings?.showAchievements ? [{ id: "achievements", label: "Достижения", icon: Trophy, badge: 0 }] : []),
-    { id: "theme", label: "Тема", icon: Palette, badge: 0 },
-    { id: "partner", label: "Партнёрская программа", icon: Users, badge: 0 },
-  ];
-
   return (
     <div className="min-h-screen bg-background">
-      {/* Top banner */}
-      <div className="relative h-28 bg-gradient-to-r from-primary/80 to-primary overflow-hidden">
-        {branding?.logoUrl && (
-          <img src={branding.logoUrl} alt="" className="absolute right-6 top-1/2 -translate-y-1/2 h-16 opacity-30" />
-        )}
-        <div className="absolute bottom-4 left-6 flex items-center gap-4">
-          <div className="relative group">
-            <Avatar className="w-16 h-16 border-2 border-background shadow-lg">
-              {avatarUrl ? (
-                <AvatarImage src={avatarUrl} alt={fullName} />
-              ) : null}
-              <AvatarFallback className="bg-background text-primary text-xl font-semibold">
-                {initials}
-              </AvatarFallback>
-            </Avatar>
-            <label className="absolute inset-0 flex items-center justify-center bg-black/40 rounded-full opacity-0 group-hover:opacity-100 cursor-pointer transition-opacity">
-              <Camera className="w-5 h-5 text-white" />
-              <input type="file" accept="image/*" className="hidden" onChange={handleAvatarUpload} />
-            </label>
-          </div>
-          <div>
-            <p className="text-lg font-semibold text-primary-foreground">{profile?.full_name || "Ученик"}</p>
-            {profile?.organization_name && (
-              <p className="text-sm text-primary-foreground/80">{profile.organization_name}</p>
-            )}
-          </div>
-        </div>
-        {isAdminView ? (
-          <Button variant="outline" size="sm" onClick={() => {
-            localStorage.removeItem('adminViewAsStudent');
-            navigate(adminViewData?.orgReturn || '/admin');
-          }} className="absolute top-4 right-6 gap-2 bg-background/80 hover:bg-background">
-            <ArrowLeft className="w-4 h-4" />
-            Вернуться в панель
-          </Button>
-        ) : (
-          <Button variant="outline" size="sm" onClick={handleLogout} className="absolute top-4 right-6 gap-2 bg-background/80 hover:bg-background">
-            <LogOut className="w-4 h-4" />
-            Выйти
-          </Button>
-        )}
-      </div>
+      <StudentProfileSidebar
+        activeTab={activeTab}
+        onTabChange={setActiveTab}
+        logoUrl={branding?.logoUrl}
+        consentBadge={consentCount ?? 0}
+        docsBadge={docsNeeded ?? 0}
+        showAchievements={orgSettings?.showAchievements ?? false}
+        isAdminView={isAdminView}
+        onLogout={handleLogout}
+        onBack={handleAdminBack}
+      />
 
-      {/* Back button */}
-      <div className="px-6 py-3">
-        <Button variant="ghost" size="sm" onClick={() => navigate("/student")} className="gap-2">
-          <ArrowLeft className="w-4 h-4" />
-          Назад
-        </Button>
-      </div>
+      <div className="lg:pl-[88px] min-h-screen">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 py-8 space-y-6">
 
-      <div className="max-w-5xl mx-auto px-6 pb-12">
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="flex flex-wrap h-auto gap-1 bg-muted/50 p-1">
-            {tabs.map(tab => (
-              <TabsTrigger key={tab.id} value={tab.id} className="gap-2 text-xs sm:text-sm relative">
-                <tab.icon className="w-4 h-4" />
-                <span className="hidden sm:inline">{tab.label}</span>
-                {tab.badge > 0 && (
-                  <Badge variant="destructive" className="ml-1 px-1.5 py-0 text-[10px] min-w-[18px] h-[18px] flex items-center justify-center">
-                    {tab.badge}
-                  </Badge>
-                )}
-              </TabsTrigger>
-            ))}
-          </TabsList>
-
-          {/* Profile tab */}
-          <TabsContent value="profile">
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              {/* Left column — profile settings */}
-              <div className="lg:col-span-2">
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Настройки профиля</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-5">
-                    <div className="space-y-2">
-                      <Label>Email</Label>
-                      <Input value={user?.email || ""} disabled className="bg-muted/50" />
+          {/* Profile section */}
+          {activeTab === "profile" && (
+            <div className="space-y-6">
+              {/* Avatar card */}
+              <Card className="rounded-2xl border-border/60 shadow-sm overflow-hidden">
+                <div className="relative h-24 bg-gradient-to-r from-primary/80 to-primary">
+                  {branding?.logoUrl && (
+                    <img src={branding.logoUrl} alt="" className="absolute right-6 top-1/2 -translate-y-1/2 h-12 opacity-20" />
+                  )}
+                </div>
+                <div className="px-6 pb-6 -mt-10">
+                  <div className="flex items-end gap-4">
+                    <div className="relative group">
+                      <Avatar className="w-20 h-20 border-4 border-background shadow-lg">
+                        {avatarUrl ? <AvatarImage src={avatarUrl} alt={fullName} /> : null}
+                        <AvatarFallback className="bg-primary/10 text-primary text-2xl font-semibold">{initials}</AvatarFallback>
+                      </Avatar>
+                      {!isAdminView && (
+                        <label className="absolute inset-0 flex items-center justify-center bg-black/40 rounded-full opacity-0 group-hover:opacity-100 cursor-pointer transition-opacity">
+                          <Camera className="w-5 h-5 text-white" />
+                          <input type="file" accept="image/*" className="hidden" onChange={handleAvatarUpload} />
+                        </label>
+                      )}
                     </div>
-
-                    {!isAdminView && (
-                      <div className="space-y-2">
-                        <Label>Аватар</Label>
-                        <div className="flex items-center gap-4">
-                          <div className="relative group">
-                            <Avatar className="w-16 h-16">
-                              {avatarUrl ? <AvatarImage src={avatarUrl} alt={fullName} /> : null}
-                              <AvatarFallback className="bg-primary/10 text-primary text-xl font-semibold">{initials}</AvatarFallback>
-                            </Avatar>
-                            <label className="absolute inset-0 flex items-center justify-center bg-black/40 rounded-full opacity-0 group-hover:opacity-100 cursor-pointer transition-opacity">
-                              <Camera className="w-5 h-5 text-white" />
-                              <input type="file" accept="image/*" className="hidden" onChange={handleAvatarUpload} />
-                            </label>
-                          </div>
-                          <p className="text-sm text-muted-foreground">Нажмите на аватар, чтобы загрузить фото</p>
-                        </div>
-                      </div>
-                    )}
-
-                    <div className="space-y-2">
-                      <Label>Имя и Фамилия</Label>
-                      <Input value={fullName} onChange={e => setFullName(e.target.value)} placeholder="Введите имя" disabled={isAdminView} />
+                    <div className="pb-1">
+                      <p className="text-lg font-semibold">{profile?.full_name || "Ученик"}</p>
+                      {profile?.organization_name && (
+                        <p className="text-sm text-muted-foreground">{profile.organization_name}</p>
+                      )}
                     </div>
+                  </div>
+                </div>
+              </Card>
 
+              {/* Profile form */}
+              <Card className="rounded-2xl border-border/60 shadow-sm">
+                <CardHeader>
+                  <CardTitle>Настройки профиля</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-5">
+                  <div className="space-y-2">
+                    <Label>Email</Label>
+                    <Input value={user?.email || ""} disabled className="rounded-xl bg-muted/50" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Имя и Фамилия</Label>
+                    <Input value={fullName} onChange={e => setFullName(e.target.value)} placeholder="Введите имя" disabled={isAdminView} className="rounded-xl" />
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label>Телефон</Label>
-                      <Input value={phone} onChange={e => setPhone(e.target.value)} placeholder="+7 999 123-45-67" disabled={isAdminView} />
+                      <Input value={phone} onChange={e => setPhone(e.target.value)} placeholder="+7 999 123-45-67" disabled={isAdminView} className="rounded-xl" />
                     </div>
-
                     <div className="space-y-2">
                       <Label>Город</Label>
-                      <Input value={city} onChange={e => setCity(e.target.value)} placeholder="Введите город" disabled={isAdminView} />
+                      <Input value={city} onChange={e => setCity(e.target.value)} placeholder="Введите город" disabled={isAdminView} className="rounded-xl" />
                     </div>
-
-                    <div className="space-y-2">
-                      <Label>О себе</Label>
-                      <Textarea
-                        value={bio}
-                        onChange={e => setBio(e.target.value)}
-                        placeholder="Опишите карьеру и достижения"
-                        rows={4}
-                        disabled={isAdminView}
-                      />
-                    </div>
-
-                    {!isAdminView && (
-                      <Button onClick={handleSaveProfile} disabled={profileSaving}>
-                        {profileSaving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
-                        Сохранить
-                      </Button>
-                    )}
-                  </CardContent>
-                </Card>
-              </div>
-
-              {/* Right column — email & password */}
-              {!isAdminView && <div className="space-y-6">
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-base">Изменить email</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-3">
-                    <Input value={newEmail} onChange={e => setNewEmail(e.target.value)} placeholder="Новый email" />
-                    <Button onClick={handleChangeEmail} disabled={emailSaving || newEmail === user?.email} size="sm" className="w-full">
-                      {emailSaving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+                  </div>
+                  <div className="space-y-2">
+                    <Label>О себе</Label>
+                    <Textarea
+                      value={bio}
+                      onChange={e => setBio(e.target.value)}
+                      placeholder="Опишите карьеру и достижения"
+                      rows={4}
+                      disabled={isAdminView}
+                      className="rounded-xl"
+                    />
+                  </div>
+                  {!isAdminView && (
+                    <Button onClick={handleSaveProfile} disabled={profileSaving} className="rounded-xl">
+                      {profileSaving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
                       Сохранить
                     </Button>
-                  </CardContent>
-                </Card>
+                  )}
+                </CardContent>
+              </Card>
 
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-base">Смена пароля</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-3">
-                    <div className="relative">
-                      <Input
-                        type={showPassword ? "text" : "password"}
-                        value={newPassword}
-                        onChange={e => setNewPassword(e.target.value)}
-                        placeholder="Новый пароль"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowPassword(!showPassword)}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                      >
-                        {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                      </button>
-                    </div>
-                    <div className="relative">
-                      <Input
-                        type={showConfirm ? "text" : "password"}
-                        value={confirmPassword}
-                        onChange={e => setConfirmPassword(e.target.value)}
-                        placeholder="Повторите пароль"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowConfirm(!showConfirm)}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                      >
-                        {showConfirm ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                      </button>
-                    </div>
-                    <Button onClick={handleChangePassword} disabled={passwordSaving || !newPassword} size="sm" className="w-full">
-                      {passwordSaving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
-                      Сменить пароль
-                    </Button>
-                  </CardContent>
-                </Card>
-              </div>}
+              {/* Email & password cards */}
+              {!isAdminView && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                  <Card className="rounded-2xl border-border/60 shadow-sm">
+                    <CardHeader>
+                      <CardTitle className="text-base">Изменить email</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                      <Input value={newEmail} onChange={e => setNewEmail(e.target.value)} placeholder="Новый email" className="rounded-xl" />
+                      <Button onClick={handleChangeEmail} disabled={emailSaving || newEmail === user?.email} size="sm" className="w-full rounded-xl">
+                        {emailSaving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+                        Сохранить
+                      </Button>
+                    </CardContent>
+                  </Card>
+
+                  <Card className="rounded-2xl border-border/60 shadow-sm">
+                    <CardHeader>
+                      <CardTitle className="text-base">Смена пароля</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                      <div className="relative">
+                        <Input
+                          type={showPassword ? "text" : "password"}
+                          value={newPassword}
+                          onChange={e => setNewPassword(e.target.value)}
+                          placeholder="Новый пароль"
+                          className="rounded-xl"
+                        />
+                        <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
+                          {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                        </button>
+                      </div>
+                      <div className="relative">
+                        <Input
+                          type={showConfirm ? "text" : "password"}
+                          value={confirmPassword}
+                          onChange={e => setConfirmPassword(e.target.value)}
+                          placeholder="Повторите пароль"
+                          className="rounded-xl"
+                        />
+                        <button type="button" onClick={() => setShowConfirm(!showConfirm)} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
+                          {showConfirm ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                        </button>
+                      </div>
+                      <Button onClick={handleChangePassword} disabled={passwordSaving || !newPassword} size="sm" className="w-full rounded-xl">
+                        {passwordSaving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+                        Сменить пароль
+                      </Button>
+                    </CardContent>
+                  </Card>
+                </div>
+              )}
             </div>
-          </TabsContent>
+          )}
 
-          {/* Notifications tab */}
-          <TabsContent value="notifications">
-            <Card>
+          {/* Notifications */}
+          {activeTab === "notifications" && (
+            <Card className="rounded-2xl border-border/60 shadow-sm">
               <CardHeader>
                 <CardTitle>Настройки уведомлений</CardTitle>
               </CardHeader>
@@ -612,11 +553,11 @@ export default function StudentProfile() {
                 </TooltipProvider>
               </CardContent>
             </Card>
-          </TabsContent>
+          )}
 
-          {/* Identification tab */}
-          <TabsContent value="identification">
-            <Card>
+          {/* Identification */}
+          {activeTab === "identification" && (
+            <Card className="rounded-2xl border-border/60 shadow-sm">
               <CardContent className="pt-6">
                 {effectiveUserId && (
                   <VideoIdentification
@@ -628,11 +569,11 @@ export default function StudentProfile() {
                 )}
               </CardContent>
             </Card>
-          </TabsContent>
+          )}
 
-          {/* Consent tab */}
-          <TabsContent value="consent">
-            <Card>
+          {/* Consent */}
+          {activeTab === "consent" && (
+            <Card className="rounded-2xl border-border/60 shadow-sm">
               <CardContent className="pt-6">
                 {effectiveUserId && (
                   <StudentConsentForm
@@ -644,11 +585,11 @@ export default function StudentProfile() {
                 )}
               </CardContent>
             </Card>
-          </TabsContent>
+          )}
 
-          {/* Documents tab */}
-          <TabsContent value="documents">
-            <Card>
+          {/* Documents */}
+          {activeTab === "documents" && (
+            <Card className="rounded-2xl border-border/60 shadow-sm">
               <CardContent className="pt-6">
                 {effectiveUserId && (
                   <StudentDocumentsUpload
@@ -661,37 +602,32 @@ export default function StudentProfile() {
                 )}
               </CardContent>
             </Card>
-          </TabsContent>
-
-          {/* Achievements tab */}
-          {orgSettings?.showAchievements && (
-            <TabsContent value="achievements">
-              <Card>
-                <CardContent className="pt-6">
-                  {effectiveUserId && (
-                    <AchievementsPanel
-                      userId={effectiveUserId}
-                      isOpen={false}
-                      onOpenChange={() => {}}
-                      embedded={true}
-                    />
-                  )}
-                </CardContent>
-              </Card>
-            </TabsContent>
           )}
 
-          {/* Theme tab */}
-          <TabsContent value="theme">
-            <Card>
+          {/* Achievements */}
+          {activeTab === "achievements" && orgSettings?.showAchievements && (
+            <Card className="rounded-2xl border-border/60 shadow-sm">
+              <CardContent className="pt-6">
+                {effectiveUserId && (
+                  <AchievementsPanel
+                    userId={effectiveUserId}
+                    isOpen={false}
+                    onOpenChange={() => {}}
+                    embedded={true}
+                  />
+                )}
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Theme */}
+          {activeTab === "theme" && (
+            <Card className="rounded-2xl border-border/60 shadow-sm">
               <CardHeader>
                 <CardTitle>Тема оформления</CardTitle>
               </CardHeader>
               <CardContent className="space-y-6">
-                {/* Visual theme selector */}
                 <ThemeSelector />
-
-                {/* Light/Dark/System mode */}
                 <div>
                   <p className="font-medium text-sm mb-1">Режим оформления</p>
                   <p className="text-xs text-muted-foreground mb-3">Светлая или тёмная тема</p>
@@ -720,11 +656,11 @@ export default function StudentProfile() {
                 </div>
               </CardContent>
             </Card>
-          </TabsContent>
+          )}
 
-          {/* Partner program tab */}
-          <TabsContent value="partner">
-            <Card>
+          {/* Partner program */}
+          {activeTab === "partner" && (
+            <Card className="rounded-2xl border-border/60 shadow-sm">
               <CardHeader>
                 <CardTitle>Партнёрская программа</CardTitle>
               </CardHeader>
@@ -732,14 +668,15 @@ export default function StudentProfile() {
                 <p className="text-muted-foreground">
                   Приглашайте организации на платформу и получайте от 10% до 25% комиссии с их оплат подписки в течение 2 лет.
                 </p>
-                <Button onClick={() => navigate("/partner")} className="gap-2">
+                <Button onClick={() => navigate("/partner")} className="gap-2 rounded-xl">
                   <Users className="w-4 h-4" />
                   Перейти к партнёрской программе
                 </Button>
               </CardContent>
             </Card>
-          </TabsContent>
-        </Tabs>
+          )}
+
+        </div>
       </div>
     </div>
   );
