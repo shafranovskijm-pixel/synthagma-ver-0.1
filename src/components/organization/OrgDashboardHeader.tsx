@@ -6,12 +6,10 @@ import { useNavigate } from "react-router-dom";
 import { showLimitToast } from "@/utils/limitToast";
 import { useOrgDashboard } from "@/contexts/OrgDashboardContext";
 import { SigmaLogo } from "@/components/ui/SigmaLogo";
-import { OrgNotifications } from "./OrgNotifications";
-import { differenceInDays } from "date-fns";
+import { supabase } from "@/integrations/supabase/client";
 import { differenceInDays } from "date-fns";
 import { useAuth } from "@/hooks/useAuth";
-import defaultCoverImg from "@/assets/default-org-cover.jpg";
-import { getStoredThemeId, getThemeById } from "@/constants/admin-themes";
+import { HeroBannerSwiper } from "@/components/shared/HeroBannerSwiper";
 import { HeroBannerSwiper } from "@/components/shared/HeroBannerSwiper";
 import {
   DropdownMenu,
