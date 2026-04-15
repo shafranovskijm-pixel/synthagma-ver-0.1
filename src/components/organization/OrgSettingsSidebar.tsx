@@ -89,7 +89,7 @@ export function OrgSettingsSidebar({ embedded }: OrgSettingsSidebarProps) {
         className={cn(
           "z-50 w-[88px] shadow-[2px_0_8px_rgba(0,0,0,0.06)] bg-card/50 flex flex-col transition-all duration-300",
           embedded
-            ? "fixed inset-y-0 left-[88px] lg:translate-x-0"
+            ? "fixed inset-y-0 left-0 lg:translate-x-0"
             : cn(
                 "fixed inset-y-0 left-0",
                 isMobileSidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"

@@ -127,7 +127,7 @@ export default function OrganizationDashboard() {
       {/* Main content */}
       <main 
         ref={d.swipeRef} 
-        className={`flex-1 flex flex-col min-w-0 transition-all duration-300 ${isSecondaryActive ? 'lg:ml-[176px]' : 'lg:ml-[88px]'} ${d.isAdminView ? 'mt-10' : ''}`}
+        className={`flex-1 flex flex-col min-w-0 transition-all duration-300 ${isSecondaryActive ? 'lg:ml-[88px]' : 'lg:ml-[88px]'} ${d.isAdminView ? 'mt-10' : ''}`}
       >
         {/* Header with hero banner */}
         <OrgDashboardHeader />
