@@ -141,7 +141,7 @@ export function PartnerCabinet() {
             </p>
             <ul className="text-sm text-muted-foreground space-y-1 list-disc pl-5">
               <li>Комиссия от 10% до 25% в зависимости от количества привлечённых клиентов</li>
-              <li>Реферальная ссылка с cookie на 90 дней</li>
+              <li>Привязка клиента на 90 дней после перехода по ссылке</li>
               <li>Готовые промо-материалы и тексты</li>
               <li>Вывод средств от 1 000 ₽</li>
             </ul>
@@ -223,7 +223,10 @@ export function PartnerCabinet() {
               <Copy className="w-4 h-4 mr-2" /> Копировать
             </Button>
           </div>
-          <p className="text-xs text-muted-foreground mt-2">Cookie сохраняется на 90 дней после перехода по ссылке.</p>
+          <div className="mt-3 p-3 bg-muted/50 rounded-xl text-xs text-muted-foreground space-y-1">
+            <p className="font-medium text-foreground">Как работает привязка клиента?</p>
+            <p>Когда человек переходит по вашей ссылке, система запоминает его на 90 дней. Если он зарегистрирует организацию в течение этого срока — она автоматически закрепится за вами, и вы будете получать комиссию с её оплат.</p>
+          </div>
         </CardContent>
       </Card>
 
