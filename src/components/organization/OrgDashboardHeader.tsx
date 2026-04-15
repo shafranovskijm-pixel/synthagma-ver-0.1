@@ -88,6 +88,7 @@ export function OrgDashboardHeader() {
       case "subscription": return "Тариф";
       case "chats": return "Чаты";
       case "frdo": return "ФИС ФРДО";
+      case "profile": return "Профиль";
       default: return "";
     }
   };
@@ -140,7 +141,7 @@ export function OrgDashboardHeader() {
           <Tooltip>
             <TooltipTrigger asChild>
               <button
-                onClick={() => navigate("/organization/profile?tab=partner")}
+                onClick={() => d.tabNavigation.setActiveTab("profile" as any)}
                 className="flex h-9 w-9 items-center justify-center rounded-full text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
               >
                 <Handshake className="w-4.5 h-4.5" />
@@ -178,7 +179,7 @@ export function OrgDashboardHeader() {
               <TooltipContent>Профиль</TooltipContent>
             </Tooltip>
             <DropdownMenuContent align="end" className="w-52 rounded-xl">
-              <DropdownMenuItem onClick={() => navigate("/organization/profile")} className="rounded-lg gap-2.5 py-2.5 focus:bg-primary/10 focus:text-primary">
+              <DropdownMenuItem onClick={() => d.tabNavigation.setActiveTab("profile" as any)} className="rounded-lg gap-2.5 py-2.5 focus:bg-primary/10 focus:text-primary">
                 <User className="w-4 h-4" />
                 Профиль
               </DropdownMenuItem>

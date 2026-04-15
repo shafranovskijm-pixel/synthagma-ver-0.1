@@ -1,7 +1,7 @@
 import { useState, useCallback, useRef, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { 
-  BookOpen, Users, Settings, LogOut, Upload,
+  BookOpen, Users, Settings, LogOut, Upload, User,
   Building2, HardHat, HardDrive, CreditCard, Lock, MessageCircle, Wallet,
   BarChart3, Link, ShoppingBag, FileText, ClipboardList, FileSpreadsheet, BookCheck, Radio
 } from "lucide-react";
@@ -44,7 +44,8 @@ export type TabType =
   | "settings" 
   | "staff"
   | "webinars"
-  | "frdo";
+  | "frdo"
+  | "profile";
 
 const tabCategoryMap: Record<string, string> = {
   courses: "courses",
@@ -171,6 +172,8 @@ export function OrgSidebar() {
   navItems.push({ id: "homework-review", icon: BookCheck, label: "Задания" });
   
   navItems.push({ id: "chats", icon: MessageCircle, label: "Чаты", badge: d.unreadChatsCount });
+
+  navItems.push({ id: "profile", icon: User, label: "Профиль" });
 
   return (
     <>
