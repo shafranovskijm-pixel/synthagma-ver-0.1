@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { FileText, Receipt, Search, Eye, ExternalLink, ScrollText, Plus, FolderOpen, Building2, FileCheck, Download, Trash2 } from "lucide-react";
+import { FileText, Receipt, Search, Eye, ExternalLink, ScrollText, Plus, FolderOpen, Building2, FileCheck, Download, Trash2, CheckCircle2 } from "lucide-react";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import { getSignedStorageUrl } from "@/utils/storageHelpers";
