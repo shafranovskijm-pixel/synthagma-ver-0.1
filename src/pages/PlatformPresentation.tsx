@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef, useEffect } from "react";
+import { useState, useCallback, useRef } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { motion, useInView } from "framer-motion";
 import {
@@ -12,7 +12,18 @@ import {
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 
-const CACHED_PDF_PATH = "sintagma-presentation.pdf";
+// AI-generated illustrations
+import heroBg from "@/assets/presentation/hero-bg.jpg";
+import aiBg from "@/assets/presentation/ai-assistant-bg.jpg";
+import docsBg from "@/assets/presentation/documents-bg.jpg";
+import safetyBg from "@/assets/presentation/safety-bg.jpg";
+import mobileBg from "@/assets/presentation/mobile-bg.jpg";
+import ctaBg from "@/assets/presentation/cta-bg.jpg";
+
+// Platform screenshots
+import screenshotMarketplace from "@/assets/presentation/screenshot-marketplace.png";
+import screenshotCatalog from "@/assets/presentation/screenshot-catalog.png";
+
 const PRESENTATION_VERSION = "v3";
 
 /* ─── Animated Section Wrapper ─── */
@@ -148,10 +159,12 @@ export default function PlatformPresentation() {
       </header>
 
       {/* ═══ HERO ═══ */}
-      <Section className="relative bg-gradient-to-br from-[hsl(0_0%_6%)] to-[hsl(0_0%_14%)] text-white overflow-hidden">
-        <div className="max-w-7xl mx-auto px-4 md:px-8 py-20 md:py-32 text-center">
+      <Section className="relative text-white overflow-hidden">
+        <img src={heroBg} alt="" className="absolute inset-0 w-full h-full object-cover" width={1920} height={1080} />
+        <div className="absolute inset-0 bg-[hsl(0_0%_6%/0.75)]" />
+        <div className="relative max-w-7xl mx-auto px-4 md:px-8 py-20 md:py-32 text-center">
           <motion.div initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ duration: 0.7 }}>
-            <div className="w-20 h-20 md:w-28 md:h-28 rounded-3xl bg-gradient-to-br from-[hsl(174_72%_46%)] to-[hsl(174_65%_30%)] flex items-center justify-center mx-auto mb-8">
+            <div className="w-20 h-20 md:w-28 md:h-28 rounded-3xl bg-gradient-to-br from-[hsl(174_72%_46%)] to-[hsl(174_65%_30%)] flex items-center justify-center mx-auto mb-8 shadow-[0_0_60px_hsl(174_72%_46%/0.4)]">
               <GraduationCap className="w-10 h-10 md:w-16 md:h-16 text-white" />
             </div>
           </motion.div>
@@ -164,7 +177,7 @@ export default function PlatformPresentation() {
               { icon: Brain, label: "ИИ-ассистент" },
               { icon: Landmark, label: "ФИС ФРДО" },
             ].map(t => (
-              <span key={t.label} className="flex items-center gap-2 px-4 py-2 rounded-full border border-white/20 text-sm md:text-base text-white/70">
+              <span key={t.label} className="flex items-center gap-2 px-4 py-2 rounded-full border border-white/20 text-sm md:text-base text-white/70 backdrop-blur-sm bg-white/5">
                 <t.icon className="w-4 h-4" />{t.label}
               </span>
             ))}
@@ -250,8 +263,10 @@ export default function PlatformPresentation() {
       </Section>
 
       {/* ═══ ИИ-АССИСТЕНТ ═══ */}
-      <Section className="bg-gradient-to-br from-[hsl(262_80%_18%)] to-[hsl(262_60%_30%)] text-white">
-        <div className="max-w-7xl mx-auto px-4 md:px-8 py-16 md:py-24">
+      <Section className="relative text-white overflow-hidden">
+        <img src={aiBg} alt="" className="absolute inset-0 w-full h-full object-cover" loading="lazy" width={1920} height={1080} />
+        <div className="absolute inset-0 bg-[hsl(262_80%_18%/0.7)]" />
+        <div className="relative max-w-7xl mx-auto px-4 md:px-8 py-16 md:py-24">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-10 items-center">
             <div>
               <Brain className="w-12 h-12 mb-6 text-[hsl(262_80%_70%)]" />
@@ -272,7 +287,7 @@ export default function PlatformPresentation() {
                 ))}
               </div>
             </div>
-            <div className="bg-white/10 backdrop-blur rounded-2xl p-6 border border-white/20">
+            <div className="bg-white/10 backdrop-blur rounded-2xl p-6 border border-white/20 shadow-[0_0_40px_hsl(262_80%_50%/0.2)]">
               <div className="space-y-4">
                 <div className="flex justify-end"><div className="bg-[hsl(174_72%_46%)] rounded-2xl rounded-tr-sm px-4 py-2.5 text-sm max-w-[80%]">Сгенерируй курс «Охрана труда» на 10 уроков</div></div>
                 <div className="flex justify-start"><div className="bg-white/10 rounded-2xl rounded-tl-sm px-4 py-2.5 text-sm max-w-[90%] text-white/90">Создаю курс «Охрана труда»: 10 уроков с тестами, контент по актуальным НПА 2026 года. Генерация займёт ~2 минуты...</div></div>
@@ -283,8 +298,10 @@ export default function PlatformPresentation() {
       </Section>
 
       {/* ═══ ДОКУМЕНТООБОРОТ ═══ */}
-      <Section className="bg-[hsl(0_0%_6%)] text-white">
-        <div className="max-w-7xl mx-auto px-4 md:px-8 py-16 md:py-24">
+      <Section className="relative text-white overflow-hidden">
+        <img src={docsBg} alt="" className="absolute inset-0 w-full h-full object-cover" loading="lazy" width={1920} height={1080} />
+        <div className="absolute inset-0 bg-[hsl(0_0%_6%/0.8)]" />
+        <div className="relative max-w-7xl mx-auto px-4 md:px-8 py-16 md:py-24">
           <h2 className="text-3xl md:text-5xl font-bold mb-3">Документооборот</h2>
           <p className="text-base md:text-xl text-white/60 mb-10">Автоматическая генерация всех документов из шаблонов</p>
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 md:gap-4">
@@ -293,7 +310,7 @@ export default function PlatformPresentation() {
               "Акт выполненных работ", "Удостоверение", "Согласие на обработку ПД",
               "Счёт на оплату", "Диплом о переподготовке", "Свидетельство о профессии",
             ].map((d, i) => (
-              <div key={i} className="bg-white/5 rounded-xl border border-white/10 p-4 flex items-center gap-3">
+              <div key={i} className="bg-white/5 backdrop-blur-sm rounded-xl border border-white/10 p-4 flex items-center gap-3">
                 <FileText className="w-5 h-5 text-[hsl(174_72%_46%)] flex-shrink-0" />
                 <span className="text-sm font-medium">{d}</span>
               </div>
@@ -316,7 +333,7 @@ export default function PlatformPresentation() {
               { step: "3", label: "Выгрузка в реестр", desc: "Один клик — данные в ФИС ФРДО" },
             ].map((s, i) => (
               <div key={i} className="flex flex-col items-center flex-1">
-                <div className="w-14 h-14 md:w-16 md:h-16 rounded-full bg-[hsl(174_72%_46%)] text-white flex items-center justify-center text-xl md:text-2xl font-bold mb-4">{s.step}</div>
+                <div className="w-14 h-14 md:w-16 md:h-16 rounded-full bg-[hsl(174_72%_46%)] text-white flex items-center justify-center text-xl md:text-2xl font-bold mb-4 shadow-[0_0_30px_hsl(174_72%_46%/0.3)]">{s.step}</div>
                 <h3 className="text-base md:text-lg font-semibold text-[hsl(0_0%_8%)] dark:text-white mb-1">{s.label}</h3>
                 <p className="text-sm text-[hsl(0_0%_45%)] dark:text-white/60">{s.desc}</p>
               </div>
@@ -326,8 +343,10 @@ export default function PlatformPresentation() {
       </Section>
 
       {/* ═══ ОХРАНА ТРУДА ═══ */}
-      <Section className="bg-[hsl(0_0%_6%)] text-white">
-        <div className="max-w-7xl mx-auto px-4 md:px-8 py-16 md:py-24">
+      <Section className="relative text-white overflow-hidden">
+        <img src={safetyBg} alt="" className="absolute inset-0 w-full h-full object-cover" loading="lazy" width={1920} height={1080} />
+        <div className="absolute inset-0 bg-[hsl(0_0%_6%/0.75)]" />
+        <div className="relative max-w-7xl mx-auto px-4 md:px-8 py-16 md:py-24">
           <div className="flex items-center gap-3 mb-3">
             <HardHat className="w-8 h-8 text-[hsl(38_92%_50%)]" />
             <h2 className="text-3xl md:text-5xl font-bold">Охрана труда</h2>
@@ -340,7 +359,7 @@ export default function PlatformPresentation() {
               { icon: FileText, title: "Журналы", desc: "Электронные журналы всех видов инструктажей" },
               { icon: Award, title: "Удостоверения", desc: "Автоматическая генерация и печать" },
             ].map((item, i) => (
-              <div key={i} className="bg-white/5 rounded-2xl border border-white/10 p-6 flex items-start gap-4">
+              <div key={i} className="bg-white/5 backdrop-blur-sm rounded-2xl border border-white/10 p-6 flex items-start gap-4">
                 <div className="w-10 h-10 rounded-xl bg-[hsl(38_92%_50%/0.2)] flex items-center justify-center flex-shrink-0">
                   <item.icon className="w-5 h-5 text-[hsl(38_92%_50%)]" />
                 </div>
@@ -386,14 +405,25 @@ export default function PlatformPresentation() {
       {/* ═══ МАГАЗИН КУРСОВ ═══ */}
       <Section className="bg-gradient-to-br from-[hsl(174_72%_46%)] to-[hsl(174_60%_28%)] text-white">
         <div className="max-w-7xl mx-auto px-4 md:px-8 py-16 md:py-24">
-          <h2 className="text-3xl md:text-5xl font-bold mb-3">200+ готовых курсов</h2>
+          <h2 className="text-3xl md:text-5xl font-bold mb-3">300+ готовых курсов</h2>
           <p className="text-base md:text-xl text-white/80 mb-10">Программы по Ростехнадзору с актуальными тестами 2026 года</p>
+          
+          {/* Screenshots from the platform */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-10">
+            <div className="rounded-2xl overflow-hidden border-2 border-white/20 shadow-2xl">
+              <img src={screenshotMarketplace} alt="Магазин курсов Синтагма — 303 курса по 14 направлениям" loading="lazy" className="w-full h-auto" />
+            </div>
+            <div className="rounded-2xl overflow-hidden border-2 border-white/20 shadow-2xl">
+              <img src={screenshotCatalog} alt="Каталог курсов — охрана труда, пожарная безопасность, строительство" loading="lazy" className="w-full h-auto" />
+            </div>
+          </div>
+
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-6 mb-8">
             {[
               { icon: Factory, name: "Промышленная безопасность", count: "80+" },
-              { icon: Zap, name: "Электробезопасность", count: "50+" },
+              { icon: Zap, name: "Электробезопасность", count: "120+" },
               { icon: Flame, name: "Энергетическая безопасность", count: "40+" },
-              { icon: Waves, name: "Гидротехнические сооружения", count: "30+" },
+              { icon: Waves, name: "Охрана труда и другие", count: "60+" },
             ].map((c, i) => (
               <div key={i} className="bg-white/15 backdrop-blur-sm rounded-2xl p-5 md:p-6 border border-white/20 flex items-center gap-4">
                 <div className="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center flex-shrink-0">
@@ -510,13 +540,15 @@ export default function PlatformPresentation() {
       </Section>
 
       {/* ═══ МОБИЛЬНОЕ ПРИЛОЖЕНИЕ ═══ */}
-      <Section className="bg-[hsl(40_20%_98%)] dark:bg-[hsl(0_0%_10%)]">
-        <div className="max-w-7xl mx-auto px-4 md:px-8 py-16 md:py-24">
+      <Section className="relative overflow-hidden">
+        <img src={mobileBg} alt="" className="absolute inset-0 w-full h-full object-cover" loading="lazy" width={1920} height={1080} />
+        <div className="absolute inset-0 bg-[hsl(0_0%_6%/0.8)]" />
+        <div className="relative max-w-7xl mx-auto px-4 md:px-8 py-16 md:py-24">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-10 items-center">
             <div>
               <Smartphone className="w-12 h-12 mb-6 text-[hsl(174_72%_46%)]" />
-              <h2 className="text-3xl md:text-5xl font-bold text-[hsl(0_0%_8%)] dark:text-white mb-4">Мобильное приложение</h2>
-              <p className="text-base md:text-xl text-[hsl(0_0%_45%)] dark:text-white/60 mb-8">Учитесь где угодно — с телефона или планшета</p>
+              <h2 className="text-3xl md:text-5xl font-bold text-white mb-4">Мобильное приложение</h2>
+              <p className="text-base md:text-xl text-white/60 mb-8">Учитесь где угодно — с телефона или планшета</p>
               <div className="space-y-4">
                 {[
                   { icon: Globe, text: "PWA — работает как нативное приложение" },
@@ -526,13 +558,13 @@ export default function PlatformPresentation() {
                 ].map((t, i) => (
                   <div key={i} className="flex items-center gap-3">
                     <t.icon className="w-5 h-5 text-[hsl(174_72%_46%)]" />
-                    <span className="text-sm md:text-base text-[hsl(0_0%_20%)] dark:text-white/80">{t.text}</span>
+                    <span className="text-sm md:text-base text-white/80">{t.text}</span>
                   </div>
                 ))}
               </div>
             </div>
             <div className="flex justify-center">
-              <div className="w-[200px] h-[400px] md:w-[240px] md:h-[480px] rounded-[36px] bg-[hsl(0_0%_12%)] border-4 border-[hsl(0_0%_20%)] p-2.5 shadow-2xl">
+              <div className="w-[200px] h-[400px] md:w-[240px] md:h-[480px] rounded-[36px] bg-[hsl(0_0%_12%)] border-4 border-[hsl(0_0%_20%)] p-2.5 shadow-[0_0_60px_hsl(174_72%_46%/0.2)]">
                 <div className="w-full h-full rounded-[28px] bg-[hsl(40_20%_98%)] overflow-hidden">
                   <div className="h-6 bg-[hsl(0_0%_8%)] flex items-center justify-center"><div className="w-12 h-1 rounded-full bg-white/20" /></div>
                   <div className="p-3 space-y-2">
@@ -547,9 +579,11 @@ export default function PlatformPresentation() {
       </Section>
 
       {/* ═══ CTA ═══ */}
-      <Section className="bg-gradient-to-br from-[hsl(0_0%_6%)] to-[hsl(0_0%_14%)] text-white">
-        <div className="max-w-7xl mx-auto px-4 md:px-8 py-20 md:py-32 text-center">
-          <div className="w-16 h-16 md:w-20 md:h-20 rounded-2xl bg-gradient-to-br from-[hsl(174_72%_46%)] to-[hsl(174_65%_30%)] flex items-center justify-center mx-auto mb-8">
+      <Section className="relative text-white overflow-hidden">
+        <img src={ctaBg} alt="" className="absolute inset-0 w-full h-full object-cover" loading="lazy" width={1920} height={1080} />
+        <div className="absolute inset-0 bg-[hsl(0_0%_6%/0.7)]" />
+        <div className="relative max-w-7xl mx-auto px-4 md:px-8 py-20 md:py-32 text-center">
+          <div className="w-16 h-16 md:w-20 md:h-20 rounded-2xl bg-gradient-to-br from-[hsl(174_72%_46%)] to-[hsl(174_65%_30%)] flex items-center justify-center mx-auto mb-8 shadow-[0_0_60px_hsl(174_72%_46%/0.4)]">
             <GraduationCap className="w-8 h-8 md:w-12 md:h-12 text-white" />
           </div>
           <h2 className="text-3xl md:text-6xl font-bold mb-4">Начните уже сегодня</h2>
