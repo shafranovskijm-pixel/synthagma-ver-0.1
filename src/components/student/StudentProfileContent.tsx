@@ -559,6 +559,15 @@ export function StudentProfileContent({ effectiveUserId, isAdminView = false }: 
         </Card>
       )}
 
+      {/* Radio */}
+      {activeTab === "radio" && (
+        <Card className="rounded-2xl border-border/60 shadow-sm">
+          <CardContent className="pt-6">
+            <RadioSettings />
+          </CardContent>
+        </Card>
+      )}
+
       {/* Partner program */}
       {activeTab === "partner" && (
         <StudentPartnerTab
