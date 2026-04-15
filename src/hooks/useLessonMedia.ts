@@ -62,6 +62,12 @@ export function useLessonMedia(
   const kinescopeInputRef = useRef<HTMLInputElement | null>(null);
   const tusAbortRef = useRef<AbortController | null>(null);
 
+  // Upload tracking for ETA
+  const [uploadStartTime, setUploadStartTime] = useState<number | null>(null);
+  const [uploadFileSize, setUploadFileSize] = useState<number>(0);
+  const [uploadedBytes, setUploadedBytes] = useState<number>(0);
+  const [uploadFinishTime, setUploadFinishTime] = useState<number | null>(null);
+
   const getStorageConfig = useCallback(async () => {
     const baseUrl = import.meta.env.VITE_SUPABASE_URL;
     const apiKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
@@ -79,6 +85,10 @@ export function useLessonMedia(
     }
 
     setVideoUploadProgress(0);
+    setUploadStartTime(Date.now());
+    setUploadFileSize(file.size);
+    setUploadedBytes(0);
+    setUploadFinishTime(null);
     try {
       let fileToUpload: File = file;
       toast.info(`Загрузка: ${file.name} (${(file.size / 1024 / 1024).toFixed(0)} МБ)`, { duration: 3000 });
@@ -140,7 +150,10 @@ export function useLessonMedia(
       baseUrl: config.baseUrl,
       apiKey: config.apiKey,
       authToken: config.authToken,
-      onProgress: (percent) => setVideoUploadProgress(percent),
+      onProgress: (percent) => {
+        setVideoUploadProgress(percent);
+        setUploadedBytes(Math.round((percent / 100) * fileToUpload.size));
+      },
       onStall: () => {
         toast.warning("Загрузка замедлилась. Проверьте интернет-соединение.", { duration: 5000 });
       },
@@ -149,6 +162,7 @@ export function useLessonMedia(
 
     tusAbortRef.current = null;
     onUpdate({ content: result.url });
+    setUploadFinishTime(Date.now());
     toast.success("Видео загружено!");
     setVideoUploadProgress(null);
     if (videoInputRef.current) videoInputRef.current.value = '';
@@ -165,13 +179,17 @@ export function useLessonMedia(
 
     return new Promise<void>((resolve, reject) => {
       xhr.upload.addEventListener('progress', (event) => {
-        if (event.lengthComputable) setVideoUploadProgress(Math.round((event.loaded / event.total) * 100));
+        if (event.lengthComputable) {
+          setVideoUploadProgress(Math.round((event.loaded / event.total) * 100));
+          setUploadedBytes(event.loaded);
+        }
       });
       xhr.addEventListener('load', () => {
         videoUploadXhrRef.current = null;
         if (xhr.status >= 200 && xhr.status < 300) {
           const publicUrl = `${config.baseUrl}/storage/v1/object/public/${config.bucketName}/${filePath}`;
           onUpdate({ content: publicUrl });
+          setUploadFinishTime(Date.now());
           toast.success("Видео загружено!");
           resolve();
         } else {
@@ -216,6 +234,10 @@ export function useLessonMedia(
     if (!courseId) { toast.error("Сначала сохраните курс"); return; }
 
     setKinescopeUploadProgress(0);
+    setUploadStartTime(Date.now());
+    setUploadFileSize(file.size);
+    setUploadedBytes(0);
+    setUploadFinishTime(null);
     try {
       toast.info(`Загрузка в Kinescope: ${file.name} (${(file.size / 1024 / 1024).toFixed(0)} МБ)`, { duration: 3000 });
 
@@ -266,12 +288,14 @@ export function useLessonMedia(
         const newOffset = patchRes.headers.get("Upload-Offset");
         offset = newOffset ? parseInt(newOffset, 10) : end;
         setKinescopeUploadProgress(Math.round((offset / fileSize) * 100));
+        setUploadedBytes(offset);
       }
 
       tusAbortRef.current = null;
 
       // 3. Save kinescope:{videoId} as content
       onUpdate({ content: `kinescope:${video_id}` });
+      setUploadFinishTime(Date.now());
       toast.success("Видео загружено в Kinescope!");
       setKinescopeUploadProgress(null);
       if (kinescopeInputRef.current) kinescopeInputRef.current.value = '';
@@ -414,6 +438,8 @@ export function useLessonMedia(
     videoUploadProgress, compressionProgress, videoInputRef, handleVideoUpload, cancelVideoUpload,
     // Kinescope
     kinescopeUploadProgress, kinescopeInputRef, handleKinescopeUpload,
+    // Upload tracking
+    uploadStartTime, uploadFileSize, uploadedBytes, uploadFinishTime,
     // AI
     isGeneratingContent, handleGenerateContent,
   };
