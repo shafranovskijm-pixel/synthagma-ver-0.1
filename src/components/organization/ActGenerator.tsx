@@ -348,10 +348,13 @@ export function ActGenerator({
     .items-table th, .items-table td { border: 1px solid #000; padding: 8px; }
     .items-table th { background: #f5f5f5; font-weight: bold; text-align: center; }
     .total-section { margin: 20px 0; }
-    .signatures { display: flex; justify-content: space-between; margin-top: 50px; }
-    .signature-block { width: 45%; }
-    .signature-title { font-weight: bold; margin-bottom: 30px; }
-    .signature-line { border-bottom: 1px solid #000; margin-top: 30px; }
+    .signatures-table { width: 100%; margin-top: 50px; page-break-inside: avoid; break-inside: avoid; border: none; border-collapse: collapse; }
+    .signatures-table td { width: 50%; vertical-align: top; padding: 0 10px; border: none; }
+    .signature-title { font-weight: bold; margin-bottom: 10px; }
+    .sig-facsimile { position: relative; height: 120px; margin: 10px 0; }
+    .sig-facsimile img { position: absolute; }
+    .signature-line { border-bottom: 1px solid #000; margin-top: 0; }
+    @media print { .signatures-table { page-break-inside: avoid; break-inside: avoid; } }
   </style>
 </head>
 <body>
@@ -418,24 +421,27 @@ export function ActGenerator({
     <p>Вышеперечисленные услуги выполнены полностью и в срок. Заказчик претензий по объёму, качеству и срокам оказания услуг не имеет.</p>
   </div>
 
-  <div class="signatures">
-    <div class="signature-block">
-      <div class="signature-title">ИСПОЛНИТЕЛЬ:</div>
-      <div>${orgRequisites.name}</div>
-      <div style="position: relative; margin-top: 20px;">
-        ${orgRequisites.signature_url ? `<img src="${orgRequisites.signature_url}" alt="Подпись" style="max-height: 50px; max-width: 120px; position: absolute; left: 0; top: 0;">` : ''}
-        ${orgRequisites.stamp_url ? `<img src="${orgRequisites.stamp_url}" alt="Печать" style="max-height: 70px; max-width: 70px; position: absolute; left: 80px; top: -10px; opacity: 0.85;">` : ''}
-      </div>
-      <div class="signature-line"></div>
-      <div style="margin-top: 5px;">${orgRequisites.director_position} / ${orgRequisites.director_name} /</div>
-    </div>
-    <div class="signature-block">
-      <div class="signature-title">ЗАКАЗЧИК:</div>
-      <div>${selectedCompany.name}</div>
-      <div class="signature-line" style="margin-top: 50px;"></div>
-      <div style="margin-top: 5px;">${selectedCompany.director || '_______________'} / _________________ /</div>
-    </div>
-  </div>
+  <table class="signatures-table">
+    <tr>
+      <td>
+        <div class="signature-title">ИСПОЛНИТЕЛЬ:</div>
+        <div>${orgRequisites.name}</div>
+        <div class="sig-facsimile">
+          ${orgRequisites.signature_url ? `<img src="${orgRequisites.signature_url}" alt="Подпись" style="width: 140px; height: auto; left: 0; top: 0;">` : ''}
+          ${orgRequisites.stamp_url ? `<img src="${orgRequisites.stamp_url}" alt="Печать" style="width: 110px; height: auto; left: 90px; top: -10px; opacity: 0.85;">` : ''}
+        </div>
+        <div class="signature-line"></div>
+        <div style="margin-top: 5px;">${orgRequisites.director_position} / ${orgRequisites.director_name} /</div>
+      </td>
+      <td>
+        <div class="signature-title">ЗАКАЗЧИК:</div>
+        <div>${selectedCompany.name}</div>
+        <div style="height: 120px;"></div>
+        <div class="signature-line"></div>
+        <div style="margin-top: 5px;">${selectedCompany.director || '_______________'} / _________________ /</div>
+      </td>
+    </tr>
+  </table>
 </body>
 </html>`;
   };

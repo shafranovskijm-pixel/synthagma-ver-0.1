@@ -83,14 +83,14 @@ export async function generateAct({
     table.act-table th { background: #f0f0f0; text-align: center; }
     .total { text-align: right; font-weight: bold; margin: 10px 0; font-size: 12pt; }
     .total-words { margin: 10px 0 30px; }
-    .signatures { display: flex; justify-content: space-between; margin-top: 40px; page-break-inside: avoid; break-inside: avoid; }
-    .sig-block { width: 45%; }
-    .sig-block h4 { font-size: 12pt; margin-bottom: 15px; border-bottom: 1px solid #000; padding-bottom: 5px; }
-    .sig-line { display: flex; align-items: flex-end; gap: 10px; margin-top: 30px; position: relative; min-height: 100px; }
-    .sig-images { position: relative; width: 280px; height: 150px; overflow: visible; }
-    .sig-images img { position: absolute; }
+    .signatures-table { width: 100%; margin-top: 40px; page-break-inside: avoid; break-inside: avoid; border: none; border-collapse: collapse; }
+    .signatures-table td { width: 50%; vertical-align: top; padding: 0 10px; border: none; }
+    .sig-title { font-size: 12pt; font-weight: bold; margin-bottom: 10px; border-bottom: 1px solid #000; padding-bottom: 5px; }
+    .sig-facsimile { position: relative; height: 160px; margin: 10px 0; }
+    .sig-facsimile img { position: absolute; }
     .sig-stamp { left: 0; top: 0; width: 150px; height: auto; opacity: 0.9; }
-    .sig-sign { left: 60px; top: 20px; width: 180px; height: auto; opacity: 0.9; }
+    .sig-sign { left: 70px; top: 30px; width: 170px; height: auto; opacity: 0.9; }
+    .sig-name { border-top: 1px solid #000; padding-top: 5px; margin-top: 0; }
     .no-print { display: none; }
   </style>
 </head>
@@ -132,27 +132,26 @@ export async function generateAct({
 
   <p>Вышеперечисленные услуги выполнены полностью и в срок. Заказчик претензий по объёму, качеству и срокам оказания услуг не имеет.</p>
 
-  <div class="signatures">
-    <div class="sig-block">
-      <h4>Исполнитель</h4>
-      <p>ИП Шафрановский М.М.</p>
-      <div class="sig-line">
-        <div class="sig-images">
+  <table class="signatures-table">
+    <tr>
+      <td>
+        <div class="sig-title">Исполнитель</div>
+        <p>ИП Шафрановский М.М.</p>
+        <div class="sig-facsimile">
           <img class="sig-stamp" src="${stampBase64}" alt="Печать" />
           <img class="sig-sign" src="${signatureBase64}" alt="Подпись" />
         </div>
-        <span>/ Шафрановский М.М. /</span>
-      </div>
-    </div>
-    <div class="sig-block">
-      <h4>Заказчик</h4>
-      <p>${customerName}</p>
-      <div class="sig-line">
-        <span>_________________ / ${customerDirector} /</span>
-      </div>
-      <p style="font-size:10pt; color:#666; margin-top:5px">${customerPosition}</p>
-    </div>
-  </div>
+        <div class="sig-name">/ Шафрановский М.М. /</div>
+      </td>
+      <td>
+        <div class="sig-title">Заказчик</div>
+        <p>${customerName}</p>
+        <div style="height: 160px;"></div>
+        <div class="sig-name">_________________ / ${customerDirector} /</div>
+        <p style="font-size:10pt; color:#666; margin-top:5px">${customerPosition}</p>
+      </td>
+    </tr>
+  </table>
 </body>
 </html>`.trim();
 
