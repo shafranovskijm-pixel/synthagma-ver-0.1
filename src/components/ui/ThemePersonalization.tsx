@@ -106,12 +106,16 @@ function applyVisualTheme(themeId: string | null) {
   if (!themeId) {
     document.documentElement.style.removeProperty('--primary');
     document.documentElement.style.removeProperty('--primary-foreground');
+    document.documentElement.style.removeProperty('--accent');
+    document.documentElement.style.removeProperty('--accent-foreground');
     return;
   }
   const theme = getThemeById(themeId);
   if (theme) {
     document.documentElement.style.setProperty('--primary', theme.accent);
     document.documentElement.style.setProperty('--primary-foreground', theme.accentForeground);
+    document.documentElement.style.setProperty('--accent', theme.accent);
+    document.documentElement.style.setProperty('--accent-foreground', theme.accentForeground);
   }
 }
 
