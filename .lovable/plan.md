@@ -1,67 +1,34 @@
 
 
-# Исправление сборки + открытие редактора курсов в текущем окне
+# Плавное открытие курса без исчезновения баннера
 
-## Проблема 1: Ошибка сборки (критическая)
+## Проблема
 
-При массовой замене Loader2 → SigmaSpinner скрипт вставил `import { SigmaSpinner }` внутрь существующих многострочных import-блоков в **14 файлах**, сломав синтаксис.
+Сейчас при клике на курс происходит `navigate("/organization/course/:id")` — это отдельная страница `OrganizationCourseDetails`, которая полностью перерисовывает хедер, баннер и сайдбар. Из-за этого:
+1. Вся страница мигает — исчезает и появляется заново
+2. Баннер организации может не загрузиться (потеря состояния)
+3. Нет плавного перехода
 
-### Файлы с битыми импортами:
-1. `src/pages/Login.tsx` (строка 16)
-2. `src/pages/CourseEditor.tsx` (строка 48)
-3. `src/components/admin/AdminMarketplaceManager.tsx` (строка 43)
-4. `src/components/course-builder/TestAnswersDialog.tsx` (строка 11)
-5. `src/components/organization/AchievementsManager.tsx` (строка 10)
-6. `src/components/organization/BulkFRDOExport.tsx` (строка 21)
-7. `src/components/organization/EnrollmentHistory.tsx` (строка 20)
-8. `src/components/organization/FRDOExportDialog.tsx` (строка 32)
-9. `src/components/organization/OrgChatsTab.tsx` (строка 15)
-10. `src/components/organization/OrgDashboardHeader.tsx` (строка 17)
-11. `src/components/organization/OrgNotifications.tsx` (строка 17)
-12. `src/components/organization/ProfileBrandingTab.tsx` (строка 12)
-13. `src/components/student/AvailablePaidCourses.tsx` (строка 9)
-14. `src/components/student/StudentDocumentsUpload.tsx` (строка 9)
+## Решение
 
-**Действие:** В каждом файле удалить строку `import { SigmaSpinner }...` из середины другого import-блока и перенести её на отдельную строку после закрывающего import-блока. Автоматизируется скриптом.
+Переделать `OrganizationCourseDetails` — убрать дублированный хедер/баннер и использовать общий `OrgPageLayout`, как это уже делают другие подстраницы (`OrganizationProfile`, `OrganizationSettings`). Добавить CSS-анимацию появления контента.
 
----
+## Что изменится
 
-## Проблема 2: Редактор курсов в том же окне
+### 1. `src/pages/OrganizationCourseDetails.tsx`
+- Убрать весь дублированный код хедера, баннера, сайдбара (строки 176–280)
+- Обернуть контент в `<OrgPageLayout title="Курс" icon={BookOpen}>`
+- Оставить только загрузку данных курса и `<CourseDetailsContent />`
+- Добавить `animate-in fade-in` на контейнер контента для плавного появления
 
-Сейчас кнопка «Редактировать» делает `navigate(/course-builder/...)`, что открывает отдельную страницу. Пользователь хочет, чтобы редактор открывался в рамках текущей карточки курса.
+### 2. `src/components/organization/OrgPageLayout.tsx`
+- Убедиться что `OrgSidebar` используется (сейчас используется `OrgSettingsSidebar` — нужно проверить, что это правильный сайдбар для курсов)
 
-**Подход:** Добавить новую вкладку `"editor"` в боковое меню `CourseDetailsContent`, которая встраивает компонент `CourseBuilder` (из `src/pages/CourseBuilder.tsx`) прямо внутри панели контента. Кнопка «Редактировать» вместо навигации будет переключать на эту вкладку.
-
-### Изменения:
-1. **`src/components/organization/CourseDetailsContent.tsx`:**
-   - Добавить `"editor"` в тип `activeTab`
-   - Добавить пункт «Редактор» (иконка `Edit`) в сайдбар-меню, секция «Настройки»
-   - Кнопка «Редактировать» → `onTabChange("editor")` вместо `navigate`
-   - В content panel при `activeTab === "editor"` рендерить `<CourseBuilder courseId={course.id} embedded />`
-
-2. **`src/pages/CourseBuilder.tsx`:**
-   - Добавить prop `embedded?: boolean` и `courseId?: string`
-   - Если `embedded` — не рендерить шапку с навигацией (кнопка «Назад», логотип), убрать внешние отступы
-   - Использовать переданный `courseId` вместо `useParams`
-
-### Технические детали
-
-Тип таба расширяется:
-```text
-activeTab: "students" | "materials" | ... | "editor"
-```
-
-Курс-билдер получает два режима работы:
-```text
-<CourseBuilder />               — полноэкранная страница (как сейчас)
-<CourseBuilder embedded courseId="..." />  — встроенный режим без шапки
-```
+Файл сократится с ~300 строк до ~100, убрав дублирование. Баннер организации будет браться из `OrgPageLayout` (который берёт данные из `OrgDashboardContext`), поэтому он не исчезнет.
 
 ## Файлы
 
 | Файл | Действие |
 |---|---|
-| 14 файлов с битыми импортами | Починить расположение import SigmaSpinner |
-| `src/components/organization/CourseDetailsContent.tsx` | Добавить вкладку «Редактор», изменить кнопку |
-| `src/pages/CourseBuilder.tsx` | Добавить embedded-режим |
+| `src/pages/OrganizationCourseDetails.tsx` | Рефакторинг — заменить дублированный layout на OrgPageLayout |
 
