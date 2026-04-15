@@ -1,5 +1,6 @@
 import { useRef, useState, useCallback, useEffect } from "react";
 import { Menu, Bell, User, LogOut, Settings, FileText, Sparkles, HelpCircle, ImagePlus, Wand2, Users, Check, Gift } from "lucide-react";
+import { RadioPlayerButton } from "@/components/radio/RadioPlayerButton";
 import { Button } from "@/components/ui/button";
 import { SigmaLogo } from "@/components/ui/SigmaLogo";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -146,6 +147,9 @@ export function AdminDashboardHeader({
         </div>
 
         <div className="flex items-center gap-1.5 sm:gap-2.5">
+          {/* Radio */}
+          <RadioPlayerButton />
+
           {/* Notifications */}
           <Popover>
             <PopoverTrigger asChild>
