@@ -151,7 +151,7 @@ export function AvailablePaidCourses({ userId, organizationId, userEmail }: Prop
                   {sendingCourseId === course.id ? (
                     <SigmaSpinner size="sm" className="mr-2" />
                   ) : (
-                    <Send className="w-4 h-4 mr-2" />
+                    <CreditCard className="w-4 h-4 mr-2" />
                   )}
                   Записаться
                 </Button>
