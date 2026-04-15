@@ -1,52 +1,41 @@
 
 
-# «Создать договор» — генерация готового договора + конструктор внутри дашборда
+# Карточка ученика внутри дашборда + пагинация + «Войти как ученик»
 
-## Суть
-Две задачи:
+## 3 задачи
 
-1. **«Создать договор»** (в разделе Контрагенты → Договоры) должна открывать **диалог создания готового договора**, а не конструктор шаблона. Диалог:
-   - Автоматически подставляет реквизиты организации (из БД)
-   - Предлагает выбрать контрагента: из существующих учеников, из компаний, или найти по ИНН (DaData)
-   - Предлагает выбрать шаблон договора (из сохранённых)
-   - Предлагает выбрать курс(ы) для подстановки
-   - Генерирует готовый договор с подставленными данными
+### 1. Карточка ученика — вкладка в дашборде (как курс)
+Сейчас `onViewStudent` → `navigate("/organization/student/:id")` — отдельная страница с собственным хедером/сайдбаром. Нужно открывать как вкладку `"student-details"` внутри основного дашборда, аналогично `"course-details"`.
 
-2. **Конструктор шаблона договора** (в Инструменты → Конструктор → Договор) должен открываться **внутри дашборда** как вкладка, а не переходить на `/contract-editor`.
+**Изменения:**
+- `OrgSidebar.tsx` — добавить `"student-details"` в `TabType`
+- `useTabNavigation.ts` — добавить `selectedStudentId` / `setSelectedStudentId`
+- `useStudentDetailCard.ts` — вместо `navigate(...)` → вызывать `setSelectedStudentId` + `setActiveTab("student-details")`
+- Новый `StudentDetailsTab.tsx` — обёртка, берёт `selectedStudentId` из контекста, рендерит содержимое карточки (логика из `OrganizationStudentDetails.tsx`): вертикальное меню + контент (Личное дело, Идентификация, Курсы, Документы, Активность, Чат). Кнопка «Назад» → `setActiveTab("students")`
+- `TabContentRenderer.tsx` — рендер `StudentDetailsTab` при `activeTab === "student-details"`, добавить в `shouldShowStatsCards` исключение
+- `OrganizationStudentDetails.tsx` — редирект → `/organization?tab=student-details&studentId=...`
+- `OrganizationDashboard.tsx` — обработка `?studentId=` query param
 
-## Изменения
+### 2. «Войти как ученик» в хедере карточки
+Кнопка уже есть в `OrganizationStudentDetails.tsx`. Перенести её в `StudentDetailsTab.tsx` — показывать вверху рядом с кнопкой «Назад». Использует тот же `adminViewAsStudent` localStorage механизм с `orgReturn: '/organization'`.
 
-### 1. Новый компонент `CreateContractDialog.tsx`
-Диалог с шагами:
-- **Шаг 1**: Выбор шаблона договора (из сохранённых в `organization_settings`)
-- **Шаг 2**: Выбор контрагента — 3 варианта:
-  - Из учеников (поиск по `enrollments` + `profiles`)
-  - Из компаний (поиск по `company_clients`)
-  - По ИНН (DaData lookup, как уже реализовано в `ExternalInvoiceForm`)
-- **Шаг 3**: Выбор курса (подтягивает `course_title`, `course_hours`, `course_duration`, цену)
-- **Шаг 4**: Заполнение оставшихся полей (номер договора, даты, количество, сумма)
-- **Шаг 5**: Предпросмотр заполненного договора → сохранение
-
-### 2. `DocumentsTab.tsx` — кнопка «Создать договор»
-Заменить `navigate("/contract-editor")` на открытие `CreateContractDialog` во всех 3 местах (строки 661, 727, 880).
-
-### 3. Конструктор договора внутри дашборда
-- Добавить `"contract-editor"` в `TabType` (`OrgSidebar.tsx`)
-- В `DocumentsTab.tsx` строка 726 («Открыть конструктор») — вместо `navigate("/contract-editor")` → `setActiveTab("contract-editor")` (через контекст `useOrgDashboard`)
-- В `TabContentRenderer.tsx` — рендерить `ContractTemplateEditor` при `activeTab === "contract-editor"`
-- Добавить `"contract-editor"` в список вкладок, скрывающих stats/banner
-
-### 4. Маршрут `/contract-editor`
-Оставить как редирект → `/organization?tab=contract-editor` для обратной совместимости.
+### 3. Пагинация списка учеников (10 по умолчанию)
+В `StudentsTab.tsx` сейчас все ученики показываются сразу. Добавить:
+- Состояние `pageSize` (по умолчанию 10) с выбором 10 / 25 / 50 / 100
+- Состояние `currentPage`
+- Применять `slice()` к отфильтрованному списку
+- UI: внизу таблицы — навигация по страницам + выбор количества на странице
 
 ## Файлы
 
 | Файл | Действие |
 |---|---|
-| `src/components/organization/CreateContractDialog.tsx` | Новый — диалог генерации готового договора |
-| `src/components/organization/tabs/DocumentsTab.tsx` | Кнопки «Создать договор» → открывают диалог; «Открыть конструктор» → `setActiveTab` |
-| `src/components/organization/OrgSidebar.tsx` | Добавить `"contract-editor"` в `TabType` |
-| `src/components/organization/tabs/TabContentRenderer.tsx` | Рендер `ContractTemplateEditor` при `contract-editor` |
-| `src/pages/OrganizationDashboard.tsx` | Обработка `?tab=contract-editor` |
-| `src/pages/ContractEditor.tsx` | Редирект → `/organization?tab=contract-editor` |
+| `src/components/organization/OrgSidebar.tsx` | Добавить `"student-details"` в `TabType` |
+| `src/hooks/useTabNavigation.ts` | Добавить `selectedStudentId` / `setSelectedStudentId` |
+| `src/hooks/useStudentDetailCard.ts` | Переключать на вкладку вместо навигации |
+| `src/components/organization/tabs/StudentDetailsTab.tsx` | Новый — обёртка карточки ученика |
+| `src/components/organization/tabs/TabContentRenderer.tsx` | Рендер `StudentDetailsTab` |
+| `src/components/organization/tabs/StudentsTab.tsx` | Пагинация (10/25/50/100) |
+| `src/pages/OrganizationStudentDetails.tsx` | Редирект в дашборд |
+| `src/pages/OrganizationDashboard.tsx` | Обработка `?studentId=` |
 
