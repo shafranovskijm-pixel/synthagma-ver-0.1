@@ -33,6 +33,7 @@ const AdminDashboard = () => {
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [notifications, setNotifications] = useState<any[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [openOrgId, setOpenOrgId] = useState<string | null>(null);
   const adminBranding = useAdminBranding();
 
   // Visual theme
@@ -87,6 +88,19 @@ const AdminDashboard = () => {
     navigate("/login");
   };
 
+  const handleNotificationClick = async (n: any) => {
+    // Mark as read
+    if (!n.is_read) {
+      await supabase.from("admin_notifications").update({ is_read: true }).eq("id", n.id);
+      fetchNotifications();
+    }
+    // Navigate based on type
+    if (n.type === "invoice" && n.related_entity_id) {
+      setOpenOrgId(n.related_entity_id);
+      setActiveTab("organizations");
+    }
+  };
+
   return (
     <div
       className={`min-h-screen bg-background flex flex-col relative ${activeTheme?.bgClass || ''}`}
@@ -134,6 +148,7 @@ const AdminDashboard = () => {
           notifications={notifications}
           unreadCount={unreadCount}
           onMarkAllRead={markAllRead}
+          onNotificationClick={handleNotificationClick}
           branding={adminBranding.branding}
           onCoverUpload={adminBranding.handleCoverUpload}
         />
@@ -141,7 +156,7 @@ const AdminDashboard = () => {
         {/* Content */}
         <div className="p-4 lg:p-8 flex-1">
           {activeTab === "analytics" && <AdminAnalytics />}
-          {activeTab === "organizations" && <OrganizationsManager />}
+          {activeTab === "organizations" && <OrganizationsManager openOrgId={openOrgId} onOpenOrgHandled={() => setOpenOrgId(null)} />}
           {activeTab === "marketplace" && <AdminMarketplaceManager />}
           {activeTab === "sales" && <SalesManager />}
           {activeTab === "billing" && <AdminBillingOverview />}

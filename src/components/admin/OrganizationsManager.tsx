@@ -56,7 +56,12 @@ interface Organization {
   } | null;
 }
 
-export function OrganizationsManager() {
+interface OrganizationsManagerProps {
+  openOrgId?: string | null;
+  onOpenOrgHandled?: () => void;
+}
+
+export function OrganizationsManager({ openOrgId, onOpenOrgHandled }: OrganizationsManagerProps = {}) {
   const navigate = useNavigate();
   const [organizations, setOrganizations] = useState<Organization[]>([]);
   const [loading, setLoading] = useState(true);
@@ -111,6 +116,17 @@ export function OrganizationsManager() {
   useEffect(() => {
     fetchOrganizations();
   }, []);
+
+  // Handle external navigation to specific org (e.g. from notification click)
+  useEffect(() => {
+    if (openOrgId && organizations.length > 0 && !viewingOrg) {
+      const org = organizations.find(o => o.id === openOrgId);
+      if (org) {
+        setViewingOrg(org);
+      }
+      onOpenOrgHandled?.();
+    }
+  }, [openOrgId, organizations]);
 
   const fetchOrganizations = async () => {
     try {

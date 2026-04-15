@@ -231,6 +231,16 @@ export function SubscriptionTab() {
         .single();
 
       if (err) throw err;
+
+      // Notify admin about new invoice
+      await supabase.from("admin_notifications").insert({
+        type: "invoice",
+        title: `Новый счёт: ${invoiceNum}`,
+        message: `Организация «${d.organizationName || "—"}» сформировала счёт на ${amount.toLocaleString("ru-RU")} ₽ (план: ${currentPlanInfo.name})`,
+        related_entity_id: organizationId,
+        metadata: { invoice_id: (invoice as any).id, organization_id: organizationId, amount, plan: currentPlan },
+      } as any);
+
       nav(`/invoice/${(invoice as any).id}`);
     } catch (e: any) {
       toast.error("Ошибка", { description: e.message });
