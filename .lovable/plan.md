@@ -1,39 +1,67 @@
 
 
-# Брендированный загрузчик — логотип Σ вместо кругляшка
+# Исправление сборки + открытие редактора курсов в текущем окне
 
-## Что будет сделано
+## Проблема 1: Ошибка сборки (критическая)
 
-Создаём компонент `SigmaSpinner` — квадратная иконка с Σ (как в логотипе, с острыми углами `rounded-lg`), которая плавно вращается. Затем заменяем все `Loader2 className="... animate-spin text-primary"` на этот компонент по всему проекту.
+При массовой замене Loader2 → SigmaSpinner скрипт вставил `import { SigmaSpinner }` внутрь существующих многострочных import-блоков в **14 файлах**, сломав синтаксис.
 
-## Технические детали
+### Файлы с битыми импортами:
+1. `src/pages/Login.tsx` (строка 16)
+2. `src/pages/CourseEditor.tsx` (строка 48)
+3. `src/components/admin/AdminMarketplaceManager.tsx` (строка 43)
+4. `src/components/course-builder/TestAnswersDialog.tsx` (строка 11)
+5. `src/components/organization/AchievementsManager.tsx` (строка 10)
+6. `src/components/organization/BulkFRDOExport.tsx` (строка 21)
+7. `src/components/organization/EnrollmentHistory.tsx` (строка 20)
+8. `src/components/organization/FRDOExportDialog.tsx` (строка 32)
+9. `src/components/organization/OrgChatsTab.tsx` (строка 15)
+10. `src/components/organization/OrgDashboardHeader.tsx` (строка 17)
+11. `src/components/organization/OrgNotifications.tsx` (строка 17)
+12. `src/components/organization/ProfileBrandingTab.tsx` (строка 12)
+13. `src/components/student/AvailablePaidCourses.tsx` (строка 9)
+14. `src/components/student/StudentDocumentsUpload.tsx` (строка 9)
 
-### 1. Новый компонент `src/components/ui/SigmaSpinner.tsx`
+**Действие:** В каждом файле удалить строку `import { SigmaSpinner }...` из середины другого import-блока и перенести её на отдельную строку после закрывающего import-блока. Автоматизируется скриптом.
 
-- Квадрат с `rounded-lg` (как в `SigmaLogo`), внутри символ Σ
-- CSS-анимация: плавное вращение (`animate-spin`) или пульсация + вращение для более интересного эффекта
-- Пропсы `size` (sm/md/lg) и `className` для гибкости
-- Цвета: фон `bg-primary`, текст `text-primary-foreground` (Teal/Cyan стиль)
+---
 
-### 2. Глобальная замена Loader2 → SigmaSpinner
+## Проблема 2: Редактор курсов в том же окне
 
-Заменить паттерн `<Loader2 className="w-6 h-6 animate-spin text-primary" />` (и аналогичные w-8 h-8) на `<SigmaSpinner />` во всех ~106 файлах. Также обновить `LazyLoadFallback.tsx`.
+Сейчас кнопка «Редактировать» делает `navigate(/course-builder/...)`, что открывает отдельную страницу. Пользователь хочет, чтобы редактор открывался в рамках текущей карточки курса.
 
-Исключения: кнопки, где Loader2 стоит рядом с текстом (например «Обработка...») — там оставить маленький SigmaSpinner size="sm".
+**Подход:** Добавить новую вкладку `"editor"` в боковое меню `CourseDetailsContent`, которая встраивает компонент `CourseBuilder` (из `src/pages/CourseBuilder.tsx`) прямо внутри панели контента. Кнопка «Редактировать» вместо навигации будет переключать на эту вкладку.
 
-### 3. Анимация
+### Изменения:
+1. **`src/components/organization/CourseDetailsContent.tsx`:**
+   - Добавить `"editor"` в тип `activeTab`
+   - Добавить пункт «Редактор» (иконка `Edit`) в сайдбар-меню, секция «Настройки»
+   - Кнопка «Редактировать» → `onTabChange("editor")` вместо `navigate`
+   - В content panel при `activeTab === "editor"` рендерить `<CourseBuilder courseId={course.id} embedded />`
 
-Два варианта эффекта (оба с острыми углами):
-- **Вращение**: квадрат с Σ плавно крутится (как сейчас Loader2, но квадратный)
-- **Отрисовка**: SVG stroke-dashoffset анимация, буква Σ «вырисовывается»
+2. **`src/pages/CourseBuilder.tsx`:**
+   - Добавить prop `embedded?: boolean` и `courseId?: string`
+   - Если `embedded` — не рендерить шапку с навигацией (кнопка «Назад», логотип), убрать внешние отступы
+   - Использовать переданный `courseId` вместо `useParams`
 
-Реализую вращение как основной вариант — оно проще и узнаваемее в контексте загрузки.
+### Технические детали
+
+Тип таба расширяется:
+```text
+activeTab: "students" | "materials" | ... | "editor"
+```
+
+Курс-билдер получает два режима работы:
+```text
+<CourseBuilder />               — полноэкранная страница (как сейчас)
+<CourseBuilder embedded courseId="..." />  — встроенный режим без шапки
+```
 
 ## Файлы
 
 | Файл | Действие |
 |---|---|
-| `src/components/ui/SigmaSpinner.tsx` | Новый компонент — брендированный спиннер |
-| ~106 файлов с `Loader2 animate-spin` | Замена на `SigmaSpinner` |
-| `src/components/LazyLoadFallback.tsx` | Добавить SigmaSpinner вместо Progress bar |
+| 14 файлов с битыми импортами | Починить расположение import SigmaSpinner |
+| `src/components/organization/CourseDetailsContent.tsx` | Добавить вкладку «Редактор», изменить кнопку |
+| `src/pages/CourseBuilder.tsx` | Добавить embedded-режим |
 
