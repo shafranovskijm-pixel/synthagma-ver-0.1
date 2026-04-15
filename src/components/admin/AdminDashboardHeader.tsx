@@ -73,6 +73,7 @@ export function AdminDashboardHeader({
   notifications,
   unreadCount,
   onMarkAllRead,
+  onNotificationClick,
   branding,
   onCoverUpload,
 }: AdminDashboardHeaderProps) {
@@ -175,7 +176,11 @@ export function AdminDashboardHeader({
                   <p className="text-sm text-muted-foreground text-center py-8">Нет уведомлений</p>
                 ) : (
                   notifications.map(n => (
-                    <div key={n.id} className={`px-4 py-3 border-b border-border last:border-0 ${!n.is_read ? "bg-primary/5" : ""}`}>
+                    <div
+                      key={n.id}
+                      className={`px-4 py-3 border-b border-border last:border-0 ${!n.is_read ? "bg-primary/5" : ""} ${onNotificationClick ? "cursor-pointer hover:bg-muted/50 transition-colors" : ""}`}
+                      onClick={() => onNotificationClick?.(n)}
+                    >
                       <p className="text-sm font-medium">{n.title}</p>
                       {n.message && <p className="text-xs text-muted-foreground mt-0.5 whitespace-pre-line">{n.message}</p>}
                       <p className="text-[10px] text-muted-foreground mt-1">
