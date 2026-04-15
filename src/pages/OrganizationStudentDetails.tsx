@@ -252,7 +252,7 @@ function StudentPageInner({ studentId }: { studentId: string }) {
                 className="hidden sm:flex gap-1.5 rounded-full text-xs hover:text-primary hover:bg-primary/10 hover:border-primary/30 transition-all duration-200"
                 onClick={() => {
                   localStorage.setItem('adminViewAsStudent', JSON.stringify({
-                    odlUsr: student.user_id,
+                    userId: student.user_id,
                     name: student.name,
                     orgReturn: '/organization'
                   }));

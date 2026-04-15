@@ -62,6 +62,7 @@ export function UsersManager() {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [roleFilter, setRoleFilter] = useState<string>("all");
+  const [visibleCount, setVisibleCount] = useState(10);
   const [deleteUser, setDeleteUser] = useState<UserWithRole | null>(null);
   const [visiblePasswords, setVisiblePasswords] = useState<Set<string>>(new Set());
   const navigate = useNavigate();
@@ -234,6 +235,13 @@ export function UsersManager() {
     return matchesSearch && matchesRole;
   });
 
+  const displayedUsers = filteredUsers.slice(0, visibleCount);
+
+  // Reset visible count when filters change
+  useEffect(() => {
+    setVisibleCount(10);
+  }, [searchQuery, roleFilter]);
+
   const stats = {
     total: users.length,
     admins: users.filter((u) => u.role === "admin").length,
@@ -337,7 +345,7 @@ export function UsersManager() {
                   </TableCell>
                 </TableRow>
               ) : (
-                filteredUsers.map((user) => (
+                displayedUsers.map((user) => (
                   <TableRow key={user.id} className="cursor-pointer hover:bg-secondary/50" onClick={() => navigate(`/admin/user/${user.user_id}`)}>
                     <TableCell>
                       <div className="flex items-center gap-3">
@@ -477,6 +485,26 @@ export function UsersManager() {
         </CardContent>
       </Card>
 
+      {filteredUsers.length > visibleCount && (
+        <div className="flex items-center justify-between">
+          <span className="text-sm text-muted-foreground">
+            Показано {Math.min(visibleCount, filteredUsers.length)} из {filteredUsers.length}
+          </span>
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-muted-foreground">Показать ещё:</span>
+            {[10, 25, 50, 100].map((n) => (
+              <Button key={n} variant="outline" size="sm" onClick={() => setVisibleCount((prev) => prev + n)}>
+                +{n}
+              </Button>
+            ))}
+          </div>
+        </div>
+      )}
+      {filteredUsers.length > 0 && filteredUsers.length <= visibleCount && (
+        <div className="text-sm text-muted-foreground">
+          Показано {filteredUsers.length} из {filteredUsers.length}
+        </div>
+      )}
 
       {/* Delete Confirmation */}
       <AlertDialog open={!!deleteUser} onOpenChange={() => setDeleteUser(null)}>
