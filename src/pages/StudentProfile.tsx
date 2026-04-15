@@ -25,6 +25,7 @@ import { toast } from "sonner";
 import { StudentHeader } from "@/components/student/StudentHeader";
 import { StudentFooter } from "@/components/student/StudentFooter";
 import { StudentPartnerTab } from "@/components/student/StudentPartnerTab";
+import { StudentProfileBanner } from "@/components/student/StudentProfileBanner";
 
 export default function StudentProfile() {
   const { user } = useAuth();
