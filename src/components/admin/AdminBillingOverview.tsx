@@ -434,6 +434,43 @@ export const AdminBillingOverview = () => {
     setActInnSearching(false);
   };
 
+  const handleMarkPaid = async (inv: Invoice) => {
+    try {
+      // 1. Update invoice status
+      const { error: invErr } = await supabase
+        .from("subscription_invoices")
+        .update({ status: "paid" } as any)
+        .eq("id", inv.id);
+      if (invErr) throw invErr;
+
+      // 2. Get current paid_until
+      const { data: orgData, error: orgErr } = await supabase
+        .from("organizations")
+        .select("paid_until")
+        .eq("id", inv.organization_id)
+        .single();
+      if (orgErr) throw orgErr;
+
+      const now = new Date();
+      const currentPaidUntil = orgData?.paid_until ? new Date(orgData.paid_until) : null;
+      const base = currentPaidUntil && currentPaidUntil > now ? currentPaidUntil : now;
+      const newPaidUntil = new Date(base);
+      newPaidUntil.setMonth(newPaidUntil.getMonth() + (inv.period_months || 1));
+
+      // 3. Update organization paid_until
+      const { error: updErr } = await supabase
+        .from("organizations")
+        .update({ paid_until: newPaidUntil.toISOString() } as any)
+        .eq("id", inv.organization_id);
+      if (updErr) throw updErr;
+
+      toast.success("Оплата подтверждена", { description: `Тариф продлён до ${format(newPaidUntil, "d MMMM yyyy", { locale: ru })}` });
+      loadData();
+    } catch (e: any) {
+      toast.error("Ошибка", { description: e.message });
+    }
+  };
+
   if (loading) return <div className="text-center py-8 text-muted-foreground text-sm">Загрузка...</div>;
 
   const activeNavItem = NAV_SECTIONS.find(n => n.value === activeSection) || NAV_SECTIONS[0];
