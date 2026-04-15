@@ -163,7 +163,7 @@ export const ADMIN_THEMES: AdminTheme[] = [
     label: "Пляж",
     emoji: "🏖️",
     group: "sunset",
-    bannerUrl: "https://images.unsplash.com/photo-1520454974749-611b7248ffdb?w=1920&q=85",
+    bannerUrl: "https://images.unsplash.com/photo-1506953823976-52e1fdc0149a?w=1920&q=85",
     bgClass: "bg-gradient-to-b from-amber-50/80 via-orange-50/50 to-rose-50/30",
     headerClass: "bg-gradient-to-r from-amber-100/80 to-orange-50/60",
     cardClass: "border-amber-200/60 bg-white/90",
