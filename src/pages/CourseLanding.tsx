@@ -366,7 +366,15 @@ export default function CourseLanding() {
   };
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background relative">
+      {/* Back button */}
+      <button
+        onClick={() => navigate(-1)}
+        className="fixed top-4 left-4 z-50 flex items-center gap-2 bg-background/80 backdrop-blur-sm border border-border rounded-xl px-4 py-2 text-sm font-medium hover:bg-accent transition-colors shadow-sm"
+      >
+        <ArrowLeft className="w-4 h-4" />
+        Назад
+      </button>
       <Helmet>
         <title>{metaTitle}</title>
         <meta name="description" content={metaDescription} />

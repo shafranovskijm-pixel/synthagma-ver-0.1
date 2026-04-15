@@ -3458,6 +3458,56 @@ export type Database = {
         }
         Relationships: []
       }
+      partner_applications: {
+        Row: {
+          comment: string | null
+          created_at: string
+          email: string | null
+          full_name: string
+          id: string
+          inn: string | null
+          organization_id: string | null
+          phone: string | null
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          comment?: string | null
+          created_at?: string
+          email?: string | null
+          full_name: string
+          id?: string
+          inn?: string | null
+          organization_id?: string | null
+          phone?: string | null
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          comment?: string | null
+          created_at?: string
+          email?: string | null
+          full_name?: string
+          id?: string
+          inn?: string | null
+          organization_id?: string | null
+          phone?: string | null
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "partner_applications_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       pending_enrollments: {
         Row: {
           course_id: string | null

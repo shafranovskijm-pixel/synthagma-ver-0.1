@@ -22,6 +22,9 @@ import { StudentProfileSidebar } from "@/components/student/StudentProfileSideba
 import { cn } from "@/lib/utils";
 import { ThemeSelector } from "@/components/ui/ThemeSelector";
 import { toast } from "sonner";
+import { StudentHeader } from "@/components/student/StudentHeader";
+import { StudentFooter } from "@/components/student/StudentFooter";
+import { StudentPartnerTab } from "@/components/student/StudentPartnerTab";
 
 export default function StudentProfile() {
   const { user } = useAuth();
@@ -349,7 +352,25 @@ export default function StudentProfile() {
   );
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background flex flex-col">
+      {/* Header */}
+      <div className="lg:pl-[88px]">
+        <StudentHeader
+          fullName={profile?.full_name || null}
+          orgName={profile?.organization_name || null}
+          logoUrl={branding?.logoUrl}
+          onLogout={handleLogout}
+          setTheme={setTheme}
+          pendingCount={(consentCount ?? 0) + (docsNeeded ?? 0)}
+          isVideoIdentified={false}
+          showAchievements={orgSettings?.showAchievements ?? false}
+          onShowVideoId={() => setActiveTab("identification")}
+          onShowConsent={() => setActiveTab("consent")}
+          onShowDocs={() => setActiveTab("documents")}
+          onShowAchievements={() => setActiveTab("achievements")}
+        />
+      </div>
+
       <StudentProfileSidebar
         activeTab={activeTab}
         onTabChange={setActiveTab}
@@ -362,7 +383,7 @@ export default function StudentProfile() {
         onBack={handleAdminBack}
       />
 
-      <div className="lg:pl-[88px] min-h-screen">
+      <div className="lg:pl-[88px] min-h-screen flex-1">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 py-8 space-y-6">
 
           {/* Profile section */}
@@ -660,23 +681,22 @@ export default function StudentProfile() {
 
           {/* Partner program */}
           {activeTab === "partner" && (
-            <Card className="rounded-2xl border-border/60 shadow-sm">
-              <CardHeader>
-                <CardTitle>Партнёрская программа</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <p className="text-muted-foreground">
-                  Приглашайте организации на платформу и получайте от 10% до 25% комиссии с их оплат подписки в течение 2 лет.
-                </p>
-                <Button onClick={() => navigate("/partner")} className="gap-2 rounded-xl">
-                  <Users className="w-4 h-4" />
-                  Перейти к партнёрской программе
-                </Button>
-              </CardContent>
-            </Card>
+            <StudentPartnerTab
+              userId={effectiveUserId!}
+              userEmail={user?.email}
+              userName={profile?.full_name || ""}
+            />
           )}
 
         </div>
+      </div>
+
+      {/* Footer */}
+      <div className="lg:pl-[88px]">
+        <StudentFooter
+          orgName={profile?.organization_name || null}
+          logoUrl={branding?.logoUrl}
+        />
       </div>
     </div>
   );
