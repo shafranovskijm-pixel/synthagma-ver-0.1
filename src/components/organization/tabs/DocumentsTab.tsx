@@ -1388,6 +1388,53 @@ export const DocumentsTab = React.memo(function DocumentsTab({ organizationId, o
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      {/* Contract Generator Dialog */}
+      {orgRequisites && organizationId && (
+        <ContractGenerator
+          organizationId={organizationId}
+          isOpen={showContractGenerator}
+          onClose={() => setShowContractGenerator(false)}
+          orgRequisites={orgRequisites}
+          onSave={async (html, contractNumber, companyName, courseId, amount, studentsCount, contractDate) => {
+            // Find company by name to save the document
+            const { data: companies } = await supabase
+              .from("companies")
+              .select("id")
+              .eq("organization_id", organizationId)
+              .ilike("name", companyName)
+              .limit(1);
+            const companyId = companies?.[0]?.id;
+            if (companyId) {
+              await supabase.from("company_documents").insert({
+                company_id: companyId,
+                name: `Договор №${contractNumber} — ${companyName}`,
+                type: "contract",
+                contract_number: contractNumber,
+                contract_date: contractDate,
+                amount,
+                students_count: studentsCount,
+                course_id: courseId || null,
+              });
+              // Refresh counterparty docs
+              const { data: allCompanies } = await supabase.from("companies").select("id, name").eq("organization_id", organizationId);
+              if (allCompanies) {
+                const companyIds = allCompanies.map(c => c.id);
+                const companyMap = Object.fromEntries(allCompanies.map(c => [c.id, c.name]));
+                const { data: docs } = await supabase
+                  .from("company_documents")
+                  .select("id, name, type, file_url, amount, is_paid, uploaded_at, contract_number, contract_date, company_id")
+                  .in("company_id", companyIds)
+                  .order("uploaded_at", { ascending: false });
+                setCounterpartyDocs(
+                  (docs || []).map((doc: any) => ({ ...doc, company_name: companyMap[doc.company_id] || "—" }))
+                );
+              }
+              toast.success("Договор сохранён");
+            }
+            setShowContractGenerator(false);
+          }}
+        />
+      )}
     </div>
   );
 });
