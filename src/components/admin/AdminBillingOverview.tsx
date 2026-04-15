@@ -253,20 +253,68 @@ export const AdminBillingOverview = () => {
         insertData.buyer_kpp = invoiceBuyerKpp || null;
       }
 
-      const { data, error } = await supabase.from("subscription_invoices").insert(insertData).select().single();
-      if (error) throw error;
-      toast.success("Счёт сформирован", { description: invoiceNum });
-      window.open(`/invoice/${data.id}`, "_blank");
+      // Generate HTML preview without saving
+      const planInfo = SUBSCRIPTION_PLANS[plan as keyof typeof SUBSCRIPTION_PLANS];
+      const invoiceData: InvoiceData = {
+        invoiceNumber: invoiceNum,
+        invoiceDate: new Date().toLocaleDateString("ru-RU"),
+        buyerName: insertData.buyer_name || org?.name || "Организация",
+        buyerInn: insertData.buyer_inn || org?.inn,
+        buyerKpp: insertData.buyer_kpp || org?.kpp,
+        planName: planInfo?.name || plan,
+        periodMonths: 1,
+        amount,
+      };
+      const html = generateInvoiceHtml(invoiceData);
+
+      // Show preview
+      const printWindow = window.open('', '_blank');
+      if (printWindow) {
+        printWindow.document.write(html);
+        printWindow.document.close();
+      }
+
+      setPendingInvoice({ html, insertData, invoiceNum, amount, plan });
+      toast.success("Счёт сформирован", { description: "Скачайте или распечатайте для сохранения" });
       setShowInvoiceDialog(false);
       setInvoiceOtherPayer(false);
       setInvoiceBuyerName("");
       setInvoiceBuyerInn("");
       setInvoiceBuyerKpp("");
-      loadData();
     } catch (e: any) {
       toast.error("Ошибка", { description: e.message });
     }
     setGeneratingInvoice(false);
+  };
+
+  const handleSavePendingInvoice = async (action: 'download' | 'print') => {
+    if (!pendingInvoice) return;
+    try {
+      const { error } = await supabase.from("subscription_invoices").insert(pendingInvoice.insertData);
+      if (error) throw error;
+      loadData();
+      if (action === 'download') {
+        const blob = new Blob([pendingInvoice.html], { type: 'application/msword' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url; link.download = `Счёт_${pendingInvoice.invoiceNum}.doc`;
+        document.body.appendChild(link); link.click(); document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+        toast.success("Счёт скачан и сохранён");
+      } else {
+        const printWindow = window.open('', '_blank');
+        if (printWindow) {
+          printWindow.document.write(pendingInvoice.html);
+          printWindow.document.close();
+          printWindow.focus();
+          setTimeout(() => printWindow.print(), 500);
+        }
+        toast.success("Счёт отправлен на печать и сохранён");
+      }
+    } catch (e: any) {
+      toast.error("Ошибка сохранения", { description: e.message });
+    }
+    setPendingInvoice(null);
   };
 
   const handleSearchByInn = async (inn: string) => {
