@@ -20,7 +20,7 @@ import { HomeworkReviewTab } from "@/components/organization/HomeworkReviewTab";
 import { StaffManager } from "@/components/organization/StaffManager";
 import { WebinarsManager } from "@/components/organization/WebinarsManager";
 import { ProfileTab } from "@/components/organization/tabs/ProfileTab";
-import { SettingsTab } from "@/components/organization/tabs/SettingsTab";
+import { OrgSettingsContent } from "@/components/organization/tabs/OrgSettingsContent";
 import { WhatsNewTab } from "@/components/organization/tabs/WhatsNewTab";
 import { OrgDocumentsTab } from "@/components/organization/tabs/OrgDocumentsTab";
 
@@ -205,7 +205,7 @@ export function TabContentRenderer() {
       )}
 
       {/* Settings Tab */}
-      {activeTab === "settings" && <SettingsTab />}
+      {activeTab === "settings" && <OrgSettingsContent />}
 
       {/* What's New Tab */}
       {activeTab === "whats-new" && <WhatsNewTab />}
