@@ -603,9 +603,9 @@ export default function StudentProfile() {
           <TabsContent value="identification">
             <Card>
               <CardContent className="pt-6">
-                {user && (
+                {effectiveUserId && (
                   <VideoIdentification
-                    userId={user.id}
+                    userId={effectiveUserId}
                     userName={profile?.full_name || "Ученик"}
                     organizationId={profile?.organization_id || undefined}
                     embedded={true}
@@ -619,9 +619,9 @@ export default function StudentProfile() {
           <TabsContent value="consent">
             <Card>
               <CardContent className="pt-6">
-                {user && (
+                {effectiveUserId && (
                   <StudentConsentForm
-                    userId={user.id}
+                    userId={effectiveUserId}
                     userName={profile?.full_name || "Ученик"}
                     organizationId={profile?.organization_id || ""}
                     embedded={true}
@@ -635,9 +635,9 @@ export default function StudentProfile() {
           <TabsContent value="documents">
             <Card>
               <CardContent className="pt-6">
-                {user && (
+                {effectiveUserId && (
                   <StudentDocumentsUpload
-                    userId={user.id}
+                    userId={effectiveUserId}
                     organizationId={profile?.organization_id || ""}
                     isOpen={false}
                     onOpenChange={() => {}}
@@ -653,9 +653,9 @@ export default function StudentProfile() {
             <TabsContent value="achievements">
               <Card>
                 <CardContent className="pt-6">
-                  {user && (
+                  {effectiveUserId && (
                     <AchievementsPanel
-                      userId={user.id}
+                      userId={effectiveUserId}
                       isOpen={false}
                       onOpenChange={() => {}}
                       embedded={true}
