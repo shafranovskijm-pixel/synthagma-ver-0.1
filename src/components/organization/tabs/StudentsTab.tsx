@@ -113,6 +113,10 @@ export const StudentsTab = React.memo(function StudentsTab({
   const [showRemindConfirm, setShowRemindConfirm] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
+  // Pagination
+  const [pageSize, setPageSize] = useState(10);
+  const [currentPage, setCurrentPage] = useState(1);
+
   const handleCreateGroup = async () => {
     if (!newGroupName.trim()) return;
     try {
