@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { BookOpen, Library, MessageCircle, User } from "lucide-react";
+import { BookOpen, Library, MessageCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { SigmaLogo } from "@/components/ui/SigmaLogo";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
