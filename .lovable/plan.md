@@ -1,41 +1,69 @@
 
 
-# Расчётное время загрузки + Сравнение скорости с конкурентами
+# Встроенное радио в платформу
 
-## Задача 1: ETA при загрузке видео
+## Как это работает
 
-Сейчас при загрузке видео отображается только процент. Нужно добавить расчётное время до завершения (ETA), скорость загрузки и итоговое время после завершения.
+RadioAPI.me предоставляет только **метаданные** (название трека, обложка, исполнитель). Само воспроизведение — через прямые URL аудиопотоков (Icecast/Shoutcast) в HTML5 `<audio>`. Это значит:
 
-### Подход
+- Нужны прямые ссылки на потоки радиостанций (публичные, например Radio Record, Europa Plus и т.д.)
+- RadioAPI опционально — для красивого отображения «сейчас играет». Можно начать без него, просто с набора станций
 
-Трекать `uploadStartTime` и текущий `offset` — из этого вычислять:
-- Скорость: `bytesUploaded / elapsedSeconds` → форматировать как МБ/с
-- ETA: `(fileSize - bytesUploaded) / speed` → форматировать как «~2 мин 15 сек»
+## Архитектура
 
-### Изменения
+### Данные
 
-**`src/hooks/useLessonMedia.ts`**:
-- Добавить состояния: `uploadStartTime`, `uploadFileSize`, `uploadedBytes` (для обоих: server и Kinescope)
-- При старте загрузки (`setKinescopeUploadProgress(0)` / `setVideoUploadProgress(0)`) записывать `Date.now()` и `file.size`
-- При каждом обновлении прогресса обновлять `uploadedBytes`
-- При завершении сохранять финальное время (для показа «Загружено за X мин»)
-- Экспортировать `uploadStartTime`, `uploadFileSize`, `uploadedBytes`
+Таблица `radio_stations` (seed с популярными станциями):
+- `id`, `name`, `stream_url` (Icecast/Shoutcast URL), `logo_url`, `genre`, `radioapi_stream_id` (nullable), `is_active`, `sort_order`
 
-**`src/components/course-builder/SortableLessonItem.tsx`**:
-- Вычислять ETA и скорость из `media.uploadStartTime`, `media.uploadedBytes`, `media.uploadFileSize`
-- Показывать под прогресс-баром: `12 МБ/с · ~1 мин 30 сек`
-- Работает одинаково для Kinescope и серверной загрузки
+Пользовательские настройки в `profiles` — новое JSON-поле `radio_settings`:
+- `{ favoriteStationId, volume, autoplay }`
 
-## Задача 2: Скорость загрузки в таблице сравнения
+### Компоненты
 
-**`src/components/admin/sales/CompetitorComparison.tsx`**:
-- Добавить строку в категорию «LMS»: `{ category: 'LMS', feature: 'Скорость загрузки видео', sintagma: 'До 100 МБ/с (CDN)', getcourse: 'Медленная', ispring: 'Средняя', moodle: 'Зависит от сервера' }`
+1. **RadioPlayer** (глобальный, в header) — маленькая кнопка-иконка `Radio` рядом с колокольчиком:
+   - Клик = play/pause текущей станции
+   - Анимация пульсации когда играет
+   - Мини-попап при hover/клик: название станции + трек (если есть radioapi), кнопка громкости
+
+2. **RadioSettings** (в профиле ученика, новая вкладка/секция):
+   - Список станций с preview
+   - Выбор любимой станции (она будет по умолчанию)
+   - Ползунок громкости
+   - Переключатель автозапуска
+
+3. **useRadioPlayer** (хук):
+   - Синглтон `<audio>` элемент
+   - Состояние: playing, currentStation, volume, currentTrack
+   - Polling RadioAPI каждые 15 сек для метаданных (если есть stream_id)
+   - Persist volume/station в localStorage
+
+### UX-поток
+
+- Ученик заходит → в header видит иконку радио (выключено)
+- Нажимает → играет последняя выбранная станция (или первая из списка)
+- В профиле → выбирает станцию, громкость
+- Радио продолжает играть при навигации между страницами
+
+## Начальные станции (seed)
+
+Популярные русскоязычные интернет-радио с публичными потоками:
+- Radio Record, Europa Plus, Русское Радио, DFM, Retro FM и др.
 
 ## Файлы
 
 | Файл | Действие |
 |---|---|
-| `src/hooks/useLessonMedia.ts` | Добавить трекинг времени и байтов загрузки |
-| `src/components/course-builder/SortableLessonItem.tsx` | Отобразить ETA, скорость, итоговое время |
-| `src/components/admin/sales/CompetitorComparison.tsx` | Добавить строку сравнения скорости загрузки |
+| Миграция SQL | Таблица `radio_stations` + seed данные |
+| `src/hooks/useRadioPlayer.ts` | Хук с audio singleton, polling метаданных |
+| `src/components/radio/RadioPlayerButton.tsx` | Кнопка в header с мини-попапом |
+| `src/components/radio/RadioSettings.tsx` | Настройки в профиле |
+| `src/components/student/StudentHeader.tsx` | Добавить RadioPlayerButton |
+| `src/components/organization/OrgDashboardHeader.tsx` | Добавить RadioPlayerButton (для менеджеров) |
+
+## Ограничения
+
+- RadioAPI stream_id пока оставим nullable — заполним позже через их дашборд
+- Без stream_id метаданные трека не показываются, но музыка играет
+- Некоторые станции могут блокировать CORS — нужно будет проверить конкретные URL
 
