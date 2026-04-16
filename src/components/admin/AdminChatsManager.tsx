@@ -13,6 +13,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 import { AiChatPanel } from "@/components/chat/AiChatPanel";
 import { ColleagueChatPanel } from "@/components/chat/ColleagueChatPanel";
+import { ChatAvatar } from "@/components/chat/ChatAvatar";
 
 type AdminChatMode = "organizations" | "ai" | "colleagues";
 
@@ -386,7 +387,8 @@ export function AdminChatsManager() {
                   selectedOrgId === convo.org.id ? "bg-primary/5" : ""
                 }`}
               >
-                <div className="flex items-start justify-between gap-2">
+                <div className="flex items-center gap-3">
+                  <ChatAvatar name={convo.org.name} size="sm" />
                   <div className="min-w-0 flex-1">
                     <span className={`font-medium text-sm truncate block ${convo.unreadCount > 0 ? "text-foreground" : "text-muted-foreground"}`}>
                       {convo.org.name}
@@ -419,11 +421,14 @@ export function AdminChatsManager() {
         <div className="flex-1 border border-border rounded-xl bg-card overflow-hidden flex flex-col">
           {selectedOrgId ? (
             <div className="flex flex-col h-full">
-              <div className="px-4 py-3 border-b border-border">
-                <h3 className="font-semibold">{selectedOrg?.org.name}</h3>
-                {selectedOrg?.org.email && (
-                  <p className="text-xs text-muted-foreground">{selectedOrg.org.email}</p>
-                )}
+              <div className="px-4 py-3 border-b border-border flex items-center gap-3">
+                <ChatAvatar name={selectedOrg?.org.name || ""} size="sm" />
+                <div>
+                  <h3 className="font-semibold">{selectedOrg?.org.name}</h3>
+                  {selectedOrg?.org.email && (
+                    <p className="text-xs text-muted-foreground">{selectedOrg.org.email}</p>
+                  )}
+                </div>
               </div>
               <div className="flex-1 p-4 overflow-hidden">
                 {renderChat()}

@@ -15,6 +15,7 @@ import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 import { AiChatPanel } from "@/components/chat/AiChatPanel";
 import { ColleagueChatPanel } from "@/components/chat/ColleagueChatPanel";
 import { ChatNotificationToggle } from "@/components/chat/ChatNotificationToggle";
+import { ChatAvatar } from "@/components/chat/ChatAvatar";
 import {
   Dialog,
   DialogContent,
@@ -272,10 +273,10 @@ export function OrgChatsTab() {
                 selectedAdminChat ? "bg-primary/5" : ""
               }`}
             >
-              <div className="flex items-start justify-between gap-2">
+              <div className="flex items-center gap-3">
+                <ChatAvatar name="Администрация" size="sm" isAdmin />
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2">
-                    <Shield className="w-4 h-4 text-primary shrink-0" />
                     <span className={`font-medium text-sm truncate ${adminUnreadCount > 0 ? "text-foreground" : "text-muted-foreground"}`}>
                       Администрация платформы
                     </span>
@@ -307,7 +308,8 @@ export function OrgChatsTab() {
                     selectedStudentId === convo.studentUserId ? "bg-primary/5" : ""
                   }`}
                 >
-                  <div className="flex items-start justify-between gap-2">
+                  <div className="flex items-center gap-3">
+                    <ChatAvatar name={convo.studentName} size="sm" />
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2">
                         <span className={`font-medium text-sm truncate ${convo.unreadCount > 0 ? "text-foreground" : "text-muted-foreground"}`}>
@@ -340,7 +342,7 @@ export function OrgChatsTab() {
             {selectedAdminChat && organizationId && currentUserId ? (
               <div className="flex flex-col h-full">
                 <div className="px-4 py-3 border-b border-border flex items-center gap-2">
-                  <Shield className="w-5 h-5 text-primary" />
+                  <ChatAvatar name="Администрация" size="sm" isAdmin />
                   <h3 className="font-semibold">Администрация платформы</h3>
                 </div>
                 <div className="flex-1 p-4 overflow-hidden">
@@ -349,7 +351,8 @@ export function OrgChatsTab() {
               </div>
             ) : selectedStudentId && organizationId && currentUserId ? (
               <div className="flex flex-col h-full">
-                <div className="px-4 py-3 border-b border-border">
+                <div className="px-4 py-3 border-b border-border flex items-center gap-3">
+                  <ChatAvatar name={selectedConvo?.studentName || selectedStudentName} size="sm" />
                   <h3 className="font-semibold">{selectedConvo?.studentName || selectedStudentName}</h3>
                 </div>
                 <div className="flex-1 p-4 overflow-hidden">
