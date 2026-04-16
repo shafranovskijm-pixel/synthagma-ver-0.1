@@ -29,6 +29,20 @@ export function Hero({ showStars = true }: { showStars?: boolean }) {
     <section className={`relative overflow-hidden ${dark ? 'bg-[#0a0e1a]' : 'bg-background'}`}>
       {dark && <StarfieldCanvas />}
 
+      {/* Decorative glows */}
+      <div className={`absolute top-[10%] right-[8%] w-80 h-80 rounded-full blur-3xl pointer-events-none ${dark ? 'bg-cyan-500/5' : 'bg-accent/5'}`} />
+      <div className={`absolute bottom-[5%] left-[5%] w-64 h-64 rounded-full blur-3xl pointer-events-none ${dark ? 'bg-purple-500/5' : 'bg-accent/4'}`} />
+
+      {/* Decorative corners */}
+      <motion.div
+        className={`absolute top-12 left-8 w-14 h-14 border-l border-t rounded-tl-2xl ${dark ? 'border-white/10' : 'border-accent/15'}`}
+        initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 1, delay: 0.8 }}
+      />
+      <motion.div
+        className={`absolute bottom-12 right-8 w-14 h-14 border-r border-b rounded-br-2xl ${dark ? 'border-white/10' : 'border-accent/15'}`}
+        initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 1, delay: 0.9 }}
+      />
+
       {/* Hero content */}
       <div className="relative z-10 container mx-auto px-6 pt-12 pb-12 md:pt-16 md:pb-16">
         <div className="max-w-4xl mx-auto text-center">
