@@ -373,6 +373,11 @@ export function CounterpartiesSection({
     </button>
   );
 
+  const visibleClients = companyItems.filter(c => visibleClientIds.has(c.id));
+  const visiblePayers = payerItems.filter(p => visiblePayerIds.has(p.id));
+  const searchableClients = companyItems.filter(c => !visibleClientIds.has(c.id) && c.name.toLowerCase().includes(clientSearch.toLowerCase()));
+  const searchablePayers = payerItems.filter(p => !visiblePayerIds.has(p.id) && p.name.toLowerCase().includes(payerSearch.toLowerCase()));
+
   return (
     <div className="space-y-4">
       {/* Header */}
@@ -385,7 +390,7 @@ export function CounterpartiesSection({
           <div className="h-5 w-px bg-border mx-1" />
           <span className="text-[10px] uppercase tracking-wider text-muted-foreground/60 font-semibold mr-0.5">Клиенты</span>
 
-          {/* Client groups */}
+          {/* Client groups (collapsed by default) */}
           {clientGroups.map(group => (
             <div key={group.id} className="flex items-center">
               <button
@@ -400,22 +405,117 @@ export function CounterpartiesSection({
             </div>
           ))}
 
-          {/* Ungrouped clients */}
-          {ungroupedClients.map(renderChip)}
+          {/* Visible (selected) client chips */}
+          {visibleClients.map(cp => (
+            <div key={cp.id} className="inline-flex items-center">
+              {renderChip(cp)}
+              <button
+                onClick={() => removeVisibleClient(cp.id)}
+                className="ml-0.5 w-4 h-4 flex items-center justify-center rounded-full hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors"
+                title="Скрыть"
+              >
+                <X className="w-3 h-3" />
+              </button>
+            </div>
+          ))}
 
-          {/* If no clients at all */}
-          {companyItems.length === 0 && (
-            <span className="text-xs text-muted-foreground/50 italic">нет клиентов</span>
-          )}
+          {/* Add client popover */}
+          <Popover open={clientPopoverOpen} onOpenChange={setClientPopoverOpen}>
+            <PopoverTrigger asChild>
+              <button
+                className="w-6 h-6 flex items-center justify-center rounded-full bg-muted/50 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+                title="Добавить клиента"
+              >
+                <Plus className="w-3.5 h-3.5" />
+              </button>
+            </PopoverTrigger>
+            <PopoverContent className="w-60 p-2" align="start">
+              <div className="relative mb-2">
+                <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+                <Input
+                  value={clientSearch}
+                  onChange={e => setClientSearch(e.target.value)}
+                  placeholder="Поиск компании..."
+                  className="h-8 pl-7 text-xs rounded-lg"
+                  autoFocus
+                />
+              </div>
+              <div className="max-h-48 overflow-y-auto space-y-0.5">
+                {searchableClients.length === 0 ? (
+                  <p className="text-xs text-muted-foreground text-center py-3">
+                    {companyItems.length === 0 ? "Нет клиентов" : "Все добавлены"}
+                  </p>
+                ) : searchableClients.map(c => (
+                  <button
+                    key={c.id}
+                    onClick={() => addVisibleClient(c.id)}
+                    className="w-full flex items-center gap-2 px-2 py-1.5 text-xs hover:bg-muted rounded-md transition-colors text-left"
+                  >
+                    <Building2 className="w-3 h-3 text-muted-foreground shrink-0" />
+                    <span className="truncate">{c.name}</span>
+                  </button>
+                ))}
+              </div>
+            </PopoverContent>
+          </Popover>
 
           {/* Divider + Payers */}
-          {payerItems.length > 0 && (
-            <>
-              <div className="h-5 w-px bg-border mx-1" />
-              <span className="text-[10px] uppercase tracking-wider text-muted-foreground/60 font-semibold mr-0.5">Плательщики</span>
-              {payerItems.map(renderChip)}
-            </>
-          )}
+          <div className="h-5 w-px bg-border mx-1" />
+          <span className="text-[10px] uppercase tracking-wider text-muted-foreground/60 font-semibold mr-0.5">Плательщики</span>
+
+          {/* Visible payer chips */}
+          {visiblePayers.map(cp => (
+            <div key={cp.id} className="inline-flex items-center">
+              {renderChip(cp)}
+              <button
+                onClick={() => removeVisiblePayer(cp.id)}
+                className="ml-0.5 w-4 h-4 flex items-center justify-center rounded-full hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors"
+                title="Скрыть"
+              >
+                <X className="w-3 h-3" />
+              </button>
+            </div>
+          ))}
+
+          {/* Add payer popover */}
+          <Popover open={payerPopoverOpen} onOpenChange={setPayerPopoverOpen}>
+            <PopoverTrigger asChild>
+              <button
+                className="w-6 h-6 flex items-center justify-center rounded-full bg-muted/50 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+                title="Добавить плательщика"
+              >
+                <Plus className="w-3.5 h-3.5" />
+              </button>
+            </PopoverTrigger>
+            <PopoverContent className="w-60 p-2" align="start">
+              <div className="relative mb-2">
+                <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+                <Input
+                  value={payerSearch}
+                  onChange={e => setPayerSearch(e.target.value)}
+                  placeholder="Поиск плательщика..."
+                  className="h-8 pl-7 text-xs rounded-lg"
+                  autoFocus
+                />
+              </div>
+              <div className="max-h-48 overflow-y-auto space-y-0.5">
+                {searchablePayers.length === 0 ? (
+                  <p className="text-xs text-muted-foreground text-center py-3">
+                    {payerItems.length === 0 ? "Нет плательщиков" : "Все добавлены"}
+                  </p>
+                ) : searchablePayers.map(p => (
+                  <button
+                    key={p.id}
+                    onClick={() => addVisiblePayer(p.id)}
+                    className="w-full flex items-center gap-2 px-2 py-1.5 text-xs hover:bg-muted rounded-md transition-colors text-left"
+                  >
+                    <User className="w-3 h-3 text-muted-foreground shrink-0" />
+                    <span className="truncate">{p.name}</span>
+                  </button>
+                ))}
+              </div>
+            </PopoverContent>
+          </Popover>
         </div>
 
         {/* Actions */}
@@ -426,7 +526,7 @@ export function CounterpartiesSection({
               className="w-7 h-7 flex items-center justify-center rounded-full bg-muted/50 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
               title="Создать группу клиентов"
             >
-              <Plus className="w-3.5 h-3.5" />
+              <FolderOpen className="w-3.5 h-3.5" />
             </button>
           )}
           {/* Pulsing FAQ button */}
