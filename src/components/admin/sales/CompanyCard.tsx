@@ -95,19 +95,26 @@ export function CompanyCard() {
         body: { format, companyData: { ...KNOWN_DATA, address: company?.address, opf: company?.opf, ogrn: company?.ogrn || KNOWN_DATA.ogrnip } },
       });
       if (fnError) throw fnError;
-      if (data?.fileUrl) {
-        window.open(data.fileUrl, '_blank');
-      } else if (data?.base64) {
-        const mime = format === 'pdf' ? 'application/pdf' : 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
-        const blob = await fetch(`data:${mime};base64,${data.base64}`).then(r => r.blob());
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `Карточка_компании.${format}`;
-        a.click();
-        URL.revokeObjectURL(url);
+      if (data?.base64) {
+        const html = decodeURIComponent(escape(atob(data.base64)));
+        if (format === 'pdf') {
+          const w = window.open('', '_blank');
+          if (w) {
+            w.document.write(html);
+            w.document.close();
+            setTimeout(() => w.print(), 500);
+          }
+        } else {
+          const blob = new Blob([html], { type: 'application/msword' });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = 'Карточка_компании.doc';
+          a.click();
+          URL.revokeObjectURL(url);
+        }
       }
-      toast.success(`Файл ${format.toUpperCase()} скачан`);
+      toast.success(format === 'pdf' ? 'Откройте печать для сохранения в PDF' : 'Файл Word скачан');
     } catch (e: any) {
       console.error('Export error:', e);
       toast.error('Ошибка экспорта: ' + (e.message || 'Неизвестная ошибка'));
