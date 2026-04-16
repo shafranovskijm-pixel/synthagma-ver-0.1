@@ -80,15 +80,34 @@ Deno.serve(async (req) => {
     let password: string;
 
     if (isSubscription) {
-      // Get invoice to find organization
-      const { data: invoice } = await supabaseAdmin
-        .from("subscription_invoices")
-        .select("id, organization_id, plan, period_months")
-        .eq("id", realId)
-        .single();
+      // Try to find invoice by payment_id first (most reliable), then by truncated id
+      let invoice: any = null;
+      
+      if (PaymentId) {
+        const { data } = await supabaseAdmin
+          .from("subscription_invoices")
+          .select("id, organization_id, plan, period_months")
+          .eq("payment_id", String(PaymentId))
+          .single();
+        invoice = data;
+      }
+      
+      if (!invoice) {
+        // Fallback: try matching by id prefix (realId is truncated UUID without dashes)
+        const { data: allInvoices } = await supabaseAdmin
+          .from("subscription_invoices")
+          .select("id, organization_id, plan, period_months")
+          .eq("status", "pending")
+          .order("created_at", { ascending: false })
+          .limit(50);
+        
+        invoice = (allInvoices || []).find((inv: any) => 
+          inv.id.replace(/-/g, "").startsWith(realId)
+        );
+      }
 
       if (!invoice) {
-        console.error("Subscription invoice not found:", realId);
+        console.error("Subscription invoice not found:", realId, "PaymentId:", PaymentId);
         return new Response("OK", { status: 200 });
       }
 
@@ -133,7 +152,7 @@ Deno.serve(async (req) => {
             paid_at: now.toISOString(),
             payment_id: String(PaymentId),
           } as any)
-          .eq("id", realId);
+          .eq("id", (invoice as any).id);
 
         // Update organization plan
         await supabaseAdmin
@@ -159,7 +178,7 @@ Deno.serve(async (req) => {
         await supabaseAdmin
           .from("subscription_invoices")
           .update({ status: "failed" } as any)
-          .eq("id", realId);
+          .eq("id", (invoice as any).id);
       }
 
       return new Response("OK", { status: 200 });

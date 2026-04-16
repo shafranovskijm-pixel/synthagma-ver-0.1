@@ -150,9 +150,12 @@ Deno.serve(async (req) => {
 
     const token = await generateToken(initParams, password);
 
+    const connectionType = req.headers.get("x-connection-type") || "redirect";
+
     const requestBody: Record<string, any> = {
       ...initParams,
       Token: token,
+      DATA: { connection_type: connectionType === "Widget" ? "Widget" : "redirect" },
     };
 
     if (email) {
