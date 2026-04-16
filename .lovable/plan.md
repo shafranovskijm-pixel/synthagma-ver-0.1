@@ -1,30 +1,43 @@
 
 
-# Исправления: логотип + переход шапка→контент
+# Звёзды в шапке + единый тёмный Hero со звёздами на всех страницах
 
-## Проблемы
-1. **Логотип**: CSS селектор `.group:hover span[style]` применяет одну анимацию ко всем буквам одновременно, игнорируя stagger-задержку. Буквы просто мигают вместо последовательного слёта.
-2. **Переход**: Gradient blur выглядит как артефакт. Нужно убрать размытие и заменить на звёзды, которые летят от тёмного края вниз в светлый контент, меняя цвет с белых на тёмные.
+## Суть
+Вернуть `StarfieldCanvas` в шапку и сделать все Hero-секции на 4 страницах (Главная, О нас, Блог, Презентация) тёмными (`bg-[#0a0e1a]`) со звёздами, чтобы шапка и Hero визуально сливались в единое звёздное пространство.
 
-## Решение
+## Изменения
 
-### 1. Логотип — буквы слетаются по одной (`LandingHeader.tsx`)
-- Убрать `<style>` блок с `.group:hover span[style]` — он перезаписывает inline стили
-- Вместо CSS keyframes использовать inline стили с `group-hover` через состояние React: при hover на группу каждая буква получает `translateX(0)` с уникальной `transition-delay`, а в покое буквы стоят на `translateX(30px)` с `opacity: 0`
-- Реализация: `useState` для `hovered`, `onMouseEnter`/`onMouseLeave` на `<Link>`. При `hovered=true` буквы плавно появляются одна за другой справа
+### 1. Шапка — вернуть звёзды (`LandingHeader.tsx`)
+- Добавить `StarfieldCanvas` обратно в header
+- Убрать `overflow-hidden` чтобы звёзды плавно переходили
 
-### 2. Переход шапка→контент — звёзды вместо blur (`Hero.tsx`)
-- **Удалить**: sticky gradient div (строка 212) и framer-motion частицы (строки 213-223)
-- **Добавить**: Canvas-элемент высотой ~40px между шапкой и контентом с маленькими звёздами/точками, которые:
-  - Начинают сверху как белые (на тёмном фоне шапки)
-  - Летят вниз и постепенно темнеют, становясь `rgba(10,14,26, opacity)` — цвета фона шапки
-  - Создают эффект "звёзды вытекают из шапки в контент"
-- Реализация: простой CSS с `absolute` positioned dots анимированных через `@keyframes` (без Canvas для простоты) — ~12 точек разного размера, летящих вниз с `color` переходом от `white/30` к `currentColor/10`
+### 2. Главная — Hero со звёздами (`Hero.tsx`)
+- Заменить текущий светлый фон (`bg-background` + градиенты) на `bg-[#0a0e1a]`
+- Добавить `StarfieldCanvas` в Hero
+- Текст сделать белым (`text-white`), бейдж и кнопки адаптировать под тёмный фон
+- Убрать `FloatingParticles` и декоративные линии — их заменяют звёзды
+- Убрать `star-fall` переход (больше не нужен)
+
+### 3. О нас — уже готово (`About.tsx`)
+- Hero уже имеет `bg-[#0a0e1a]` + `StarfieldCanvas` ✓
+- Оставить как есть
+
+### 4. Блог — Hero со звёздами (`Blog.tsx`)
+- Заменить текущий светлый Hero (градиент `from-accent/5`) на `bg-[#0a0e1a]`
+- Добавить `StarfieldCanvas`
+- Текст сделать белым, декоративные линии убрать
+
+### 5. Презентация — Hero со звёздами (`PlatformPresentation.tsx`)
+- Hero уже имеет тёмный фон (картинка `heroBg`), но нет `StarfieldCanvas`
+- Добавить `StarfieldCanvas` поверх фоновой картинки
+- Убрать upward-stars transition (строки 148-158) — звёзды теперь из StarfieldCanvas непрерывно
 
 ## Файлы
 
-| Файл | Изменения |
-|------|-----------|
-| `src/components/landing/LandingHeader.tsx` | Убрать `<style>`, добавить React state для hover, буквы слетаются по одной |
-| `src/components/landing/Hero.tsx` | Убрать sticky gradient + motion particles, добавить падающие затемняющиеся звёзды |
+| Файл | Действие |
+|------|----------|
+| `src/components/landing/LandingHeader.tsx` | Вернуть `StarfieldCanvas` |
+| `src/components/landing/Hero.tsx` | Тёмный фон + StarfieldCanvas, белый текст |
+| `src/pages/Blog.tsx` | Тёмный Hero + StarfieldCanvas |
+| `src/pages/PlatformPresentation.tsx` | Добавить StarfieldCanvas в Hero, убрать upward-stars |
 
