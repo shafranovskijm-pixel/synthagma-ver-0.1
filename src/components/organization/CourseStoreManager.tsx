@@ -24,6 +24,7 @@ import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import { useCourseStoreManager } from "@/hooks/useCourseStoreManager";
 import { CourseComments } from "./CourseComments";
+import { CourseStoreDetailView } from "./CourseStoreDetailView";
 import { MarketplaceHeroCards } from "@/components/admin/marketplace/MarketplaceHeroCards";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 
