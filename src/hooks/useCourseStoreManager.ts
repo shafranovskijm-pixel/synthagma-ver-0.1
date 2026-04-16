@@ -155,12 +155,12 @@ export function useCourseStoreManager({ organizationId, userRole = 'organization
     setIsLoading(true);
     try {
       await Promise.all([
-        fetchCatalog(),
-        fetchMyCourses(),
-        fetchOrders(),
-        fetchAvailableCourses(),
-        fetchCourseRequests(),
-        fetchDbCategories(),
+        _fetchCatalog(organizationId, setCatalogCourses),
+        _fetchMyCourses(organizationId, setMyCourses),
+        _fetchOrders(organizationId, userId, setReceivedOrders, setMyOrders),
+        _fetchAvailableCourses(organizationId, setAvailableCourses),
+        _fetchCourseRequests(setCourseRequests),
+        _fetchDbCategories(setDbCategories),
       ]);
     } catch (error) {
       console.error('Error fetching data:', error);
