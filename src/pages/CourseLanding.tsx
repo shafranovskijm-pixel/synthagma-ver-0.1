@@ -179,6 +179,27 @@ export default function CourseLanding() {
         const studentEmail = formData?.email || profile?.email || "";
         const studentPhone = formData?.phone || "";
 
+        const { data: existingRequest } = await supabase
+          .from("enrollment_requests")
+          .select("id")
+          .eq("user_id", user.id)
+          .eq("course_id", course.id)
+          .eq("status", "pending")
+          .maybeSingle();
+
+        if (existingRequest) {
+          toast.info("Вы уже отправляли заявку на этот курс");
+          setHasPendingRequest(true);
+          return;
+        }
+
+        const { error: requestError } = await supabase.from("enrollment_requests").insert({
+          user_id: user.id,
+          course_id: course.id,
+          status: "pending"
+        } as any);
+        if (requestError) throw requestError;
+
         const contactLines = [
           `Курс: ${course.title}`,
           `Стоимость: ${finalPrice.toLocaleString("ru-RU")} ₽`,
@@ -187,31 +208,30 @@ export default function CourseLanding() {
           studentPhone ? `Телефон: ${studentPhone}` : null,
         ].filter(Boolean).join("\n");
 
-        // Send chat message to organization
-        await supabase.from("chat_messages").insert({
+        const chatResult = await supabase.from("chat_messages").insert({
           user_id: user.id,
           course_id: course.id,
           role: "user",
-          content: `📌 Заявка на приобретение курса\n\n${contactLines}\n\nПрошу рассмотреть мою заявку на приобретение данного курса.` });
+          content: `📌 Заявка на приобретение курса\n\n${contactLines}\n\nПрошу рассмотреть мою заявку на приобретение данного курса.`
+        });
+        if (chatResult.error) {
+          console.error("Purchase request chat error:", chatResult.error);
+        }
 
-        // Send notification to organization bell
-        await supabase.from("org_notifications").insert({
+        const notificationResult = await supabase.from("org_notifications").insert({
           organization_id: course.organization_id,
           user_id: user.id,
-          type: "order",
-          title: `Заявка на курс: ${course.title}`,
-          message: `${studentName} хочет приобрести курс «${course.title}» (${finalPrice.toLocaleString("ru-RU")} ₽)`,
-          is_read: false });
-
-        // Also create enrollment_request so it appears in org requests panel
-        await supabase.from("enrollment_requests").insert({
-          user_id: user.id,
-          course_id: course.id,
-          status: "pending"
-        } as any);
+          type: "enrollment_request",
+          title: `Новая заявка на курс: ${course.title}`,
+          message: `${studentName} хочет записаться на курс «${course.title}»`,
+          is_read: false
+        });
+        if (notificationResult.error) {
+          console.error("Purchase request notification error:", notificationResult.error);
+        }
 
         setHasPendingRequest(true);
-        toast.success("Заявка отправлена!", { description: "Учебный центр свяжется с вами" });
+        toast.success("Заявка отправлена! Она появится в заявках и в чате организации");
       } catch (e: any) {
         console.error("Purchase request error:", e);
         toast.error("Ошибка отправки заявки", { description: e.message });
