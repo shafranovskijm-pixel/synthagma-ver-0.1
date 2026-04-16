@@ -1,39 +1,39 @@
 
 
-# Пагинация в ФРДО + скачивание/загрузка файлов для подписи
+# Исправление заявок на запись + баннер с прогрессом
 
-## Что будет сделано
+## Проблемы
 
-### 1. Пагинация таблицы ФРДО
-Показывать первые 5 студентов, внизу кнопки «Ещё 10 / 25 / 50 / Все» — аналогично существующему компоненту `LoadMoreControls`.
+### 1. Заявки не приходят
+При записи на курс (платный или бесплатный) запись в `enrollment_requests` **не создаётся** для платных курсов. В `CourseLanding.tsx` и `AvailablePaidCourses.tsx` при `price > 0` отправляется только чат-сообщение и уведомление в `org_notifications`, но **не** запись в `enrollment_requests`. Панель «Заявки» (`ChatRequestsPanel`) читает только из `enrollment_requests` — поэтому заявки не видны.
 
-### 2. Генерация файла для подписи + загрузка обратно
-В таблице ФРДО у каждого студента (или пакетно) добавить:
-- **«Сформировать файл»** — генерирует Excel, скачивает на компьютер для подписи
-- **«Прикрепить подписанный»** — загружает подписанный файл в хранилище
-- **«Отправить администратору»** — отправляет файл в чат/уведомление администратору платформы
+### 2. Баннер «Общий прогресс» не переключается
+Баннер в `StudentLibrary.tsx` — обычный `<div>` со стилями, **не** использует `HeroBannerSwiper`. У него нет стрелок и свайпа. Нужно обернуть его в `HeroBannerSwiper`, чтобы фон переключался так же, как в организации.
 
-Подписанные файлы хранятся в бакете `frdo-documents`. При отправке создаётся уведомление в `org_notifications` и сообщение в чат администрации.
+## Решение
 
-## Технические детали
+### Заявки
+В **обоих** местах (`CourseLanding.tsx` и `AvailablePaidCourses.tsx`) для платных курсов добавить создание записи в `enrollment_requests` (вместе с существующим chat + notification):
 
-### Пагинация
-- В `FRDOManager.tsx` добавить `visibleCount` state (начальное значение 5)
-- Отображать `filteredStudents.slice(0, visibleCount)`
-- Под таблицей вставить `LoadMoreControls` с опциями загрузки
+```typescript
+// Для платных курсов тоже создаём enrollment_request
+await supabase.from("enrollment_requests").insert({
+  user_id: user.id,
+  course_id: course.id,
+  status: "pending"
+});
+```
 
-### Файлы для подписи
-**Миграция**: Таблица `frdo_signed_documents` (id, organization_id, uploaded_by, file_url, file_name, status enum ['uploaded','sent'], sent_to_admin_at, created_at) + RLS
+Это гарантирует, что заявка появится в панели «Заявки» организации.
 
-**Хранилище**: Бакет `frdo-documents` для подписанных файлов
-
-**UI**: Новые кнопки в шапке ФРДО — «Сформировать для подписи» (использует текущий экспорт), «Загрузить подписанный» (file input → upload в бакет), «Отправить в ФРДО» (создаёт уведомление + сообщение в чат администрации)
+### Баннер
+В `StudentLibrary.tsx` заменить статичный градиентный `<div>` на `HeroBannerSwiper` с тем же содержимым (прогресс, время, уроки) в качестве `children`. Фон будет переключаться стрелками и свайпом.
 
 ## Файлы
 
 | Действие | Файл |
 |----------|------|
-| Миграция | `frdo_signed_documents` таблица + RLS, бакет `frdo-documents` |
-| Изменить | `src/components/organization/FRDOManager.tsx` — пагинация + кнопки загрузки/отправки |
-| Изменить | `src/hooks/useFRDOManager.ts` — visibleCount state, функции upload/send |
+| Изменить | `src/pages/CourseLanding.tsx` — добавить `enrollment_requests.insert` для платных курсов |
+| Изменить | `src/components/student/AvailablePaidCourses.tsx` — добавить `enrollment_requests.insert` |
+| Изменить | `src/components/student/StudentLibrary.tsx` — обернуть баннер в `HeroBannerSwiper` |
 
