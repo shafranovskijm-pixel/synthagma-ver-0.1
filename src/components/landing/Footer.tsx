@@ -1,23 +1,16 @@
 import { Link } from "react-router-dom";
 import { Mail, Phone, ArrowUpRight, Download } from "lucide-react";
-import { motion } from "framer-motion";
-
+import { StarfieldCanvas } from "./StarfieldCanvas";
 
 export function Footer() {
   return (
     <footer className="bg-foreground text-background py-20 relative overflow-hidden">
-      {/* Gradient overlays */}
-      <div className="absolute inset-0 bg-gradient-to-br from-accent/10 via-transparent to-accent/5" />
-      <div className="absolute inset-0 bg-gradient-to-tl from-background/5 via-transparent to-transparent" />
+      <StarfieldCanvas />
       
-      {/* Radial glows */}
-      <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-accent/8 rounded-full blur-[150px] translate-x-1/4 -translate-y-1/4" />
-      <div className="absolute bottom-0 left-0 w-[400px] h-[400px] bg-accent/5 rounded-full blur-[120px] -translate-x-1/4 translate-y-1/4" />
-      
-      {/* Subtle accent glow */}
-      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[600px] h-px bg-gradient-to-r from-transparent via-accent/30 to-transparent" />
+      {/* Subtle accent glow line */}
+      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[600px] h-px bg-gradient-to-r from-transparent via-accent/30 to-transparent z-[1]" />
 
-      <div className="container mx-auto px-6 relative">
+      <div className="container mx-auto px-6 relative z-10">
         <div className="grid md:grid-cols-4 gap-12 mb-16">
           {/* Brand */}
           <div className="md:col-span-2">
@@ -29,7 +22,6 @@ export function Footer() {
             </Link>
             <p className="text-background/60 max-w-sm mb-8 leading-relaxed">Современная система дистанционного обучения и документооборота для организаций.</p>
             
-            {/* Install App Button */}
             <div className="mb-8">
               <Link 
                 to="/install" 
@@ -116,10 +108,8 @@ export function Footer() {
           </div>
         </div>
 
-        {/* Divider */}
         <div className="h-px bg-background/10 mb-8" />
 
-        {/* Bottom */}
         <div className="flex flex-col md:flex-row items-center justify-between gap-4">
           <div className="flex flex-col items-center md:items-start gap-1">
             <p className="text-background/40 text-xs">
