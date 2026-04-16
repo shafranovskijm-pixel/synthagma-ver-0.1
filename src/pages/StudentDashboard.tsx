@@ -401,7 +401,12 @@ export default function StudentDashboard() {
 
           {/* Chat tab */}
           {currentTab === "chat" && (
-            <div className="flex-1">
+            <div className="flex-1 flex flex-col">
+              {/* Mobile header for chat */}
+              <div className="md:hidden px-4 pt-3 pb-2 flex items-center gap-3 border-b border-border bg-card">
+                {branding?.logoUrl && <img src={branding.logoUrl} alt="" className="w-8 h-8 rounded-full object-cover" />}
+                <span className="font-semibold text-sm truncate">{profile?.organization_name || "Чат"}</span>
+              </div>
               <StudentChatsTab
                 organizationId={profile?.organization_id}
                 organizationName={profile?.organization_name || "Организация"}

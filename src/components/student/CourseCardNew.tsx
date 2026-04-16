@@ -1,4 +1,4 @@
-import { BookOpen, Clock, Lock, CheckCircle2, ShoppingCart, Play, ClipboardCheck, CreditCard } from "lucide-react";
+import { BookOpen, Clock, Lock, CheckCircle2, ShoppingCart, Play, ClipboardCheck, CreditCard, Eye } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -112,24 +112,35 @@ export function CourseCardNew({
               {status === "completed" ? "Пройти заново" : "Продолжить"}
             </Button>
           ) : isPaid && onBuy && onEnroll ? (
-            <div className="flex gap-2">
+            <div className="space-y-1.5">
               <Button
                 size="sm"
-                className="flex-1 gap-1.5"
-                onClick={(e) => { e.stopPropagation(); onBuy(); }}
-              >
-                <CreditCard className="w-3.5 h-3.5" />
-                Купить
-              </Button>
-              <Button
-                size="sm"
-                className="flex-1 gap-1.5"
+                className="w-full gap-1.5"
                 variant="outline"
-                onClick={(e) => { e.stopPropagation(); onEnroll(); }}
+                onClick={(e) => { e.stopPropagation(); onClick(); }}
               >
-                <ClipboardCheck className="w-3.5 h-3.5" />
-                Оставить заявку
+                <Eye className="w-3.5 h-3.5" />
+                Посмотреть
               </Button>
+              <div className="flex gap-1.5">
+                <Button
+                  size="sm"
+                  className="flex-1 gap-1.5"
+                  onClick={(e) => { e.stopPropagation(); onBuy(); }}
+                >
+                  <CreditCard className="w-3.5 h-3.5" />
+                  Купить
+                </Button>
+                <Button
+                  size="sm"
+                  className="flex-1 gap-1.5"
+                  variant="outline"
+                  onClick={(e) => { e.stopPropagation(); onEnroll(); }}
+                >
+                  <ClipboardCheck className="w-3.5 h-3.5" />
+                  Заявка
+                </Button>
+              </div>
             </div>
           ) : (
             <Button size="sm" className="w-full gap-1.5" variant="outline">
