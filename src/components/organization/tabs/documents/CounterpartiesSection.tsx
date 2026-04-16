@@ -388,7 +388,7 @@ export function CounterpartiesSection({
 
           {/* Divider + Clients section */}
           <div className="h-5 w-px bg-border mx-1" />
-          <span className="text-[10px] uppercase tracking-wider text-muted-foreground/60 font-semibold mr-0.5">Клиенты</span>
+          <span className="text-[10px] uppercase tracking-wider text-muted-foreground/60 font-semibold mr-0.5">Компании</span>
 
           {/* Client groups (collapsed by default) */}
           {clientGroups.map(group => (
@@ -424,7 +424,7 @@ export function CounterpartiesSection({
             <PopoverTrigger asChild>
               <button
                 className="w-6 h-6 flex items-center justify-center rounded-full bg-muted/50 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
-                title="Добавить клиента"
+                title="Добавить компанию"
               >
                 <Plus className="w-3.5 h-3.5" />
               </button>
@@ -443,7 +443,7 @@ export function CounterpartiesSection({
               <div className="max-h-48 overflow-y-auto space-y-0.5">
                 {searchableClients.length === 0 ? (
                   <p className="text-xs text-muted-foreground text-center py-3">
-                    {companyItems.length === 0 ? "Нет клиентов" : "Все добавлены"}
+                    {companyItems.length === 0 ? "Нет компаний" : "Все добавлены"}
                   </p>
                 ) : searchableClients.map(c => (
                   <button
@@ -461,7 +461,7 @@ export function CounterpartiesSection({
 
           {/* Divider + Payers */}
           <div className="h-5 w-px bg-border mx-1" />
-          <span className="text-[10px] uppercase tracking-wider text-muted-foreground/60 font-semibold mr-0.5">Плательщики</span>
+          <span className="text-[10px] uppercase tracking-wider text-muted-foreground/60 font-semibold mr-0.5">Ученики</span>
 
           {/* Visible payer chips */}
           {visiblePayers.map(cp => (
