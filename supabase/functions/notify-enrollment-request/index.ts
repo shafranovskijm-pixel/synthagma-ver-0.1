@@ -20,7 +20,7 @@ serve(async (req) => {
       });
     }
 
-    const { course_id } = await req.json();
+    const { course_id, student_name: providedName } = await req.json();
     if (!course_id) {
       return new Response(JSON.stringify({ error: "course_id is required" }), {
         status: 400,
@@ -71,11 +71,12 @@ serve(async (req) => {
       .eq("user_id", user.id)
       .maybeSingle();
 
-    const studentName = profile?.full_name || profile?.email || "Ученик";
+    // Use provided name from CTA form, then profile name, then email, then fallback
+    const studentName = providedName || profile?.full_name || profile?.email || user.email || "Ученик";
     const formattedPrice = Number(course.price || 0).toLocaleString("ru-RU");
     const chatContent = course.price > 0
-      ? `Заявка на запись: ${studentName} хочет записаться на курс «${course.title}» (${formattedPrice} ₽)`
-      : `Заявка на запись: ${studentName} хочет записаться на курс «${course.title}»`;
+      ? `📋 Заявка на запись: ${studentName} хочет записаться на курс «${course.title}» (${formattedPrice} ₽)`
+      : `📋 Заявка на запись: ${studentName} хочет записаться на курс «${course.title}»`;
 
     const [chatResult, notificationResult] = await Promise.all([
       supabaseAdmin.from("org_general_messages").insert({
