@@ -284,16 +284,7 @@ export function ContractTemplateEditor({
       } else { toast.error("Не удалось добавить переменные"); }
     } catch {
       let processedText = template;
-      const patterns = [
-        { regex: /ИНН:\s*\d{10,12}/gi, replacement: "ИНН: {{org_inn}}" },
-        { regex: /КПП:\s*\d{9}/gi, replacement: "КПП: {{org_kpp}}" },
-        { regex: /ОГРН:\s*\d{13,15}/gi, replacement: "ОГРН: {{org_ogrn}}" },
-        { regex: /БИК:\s*\d{9}/gi, replacement: "БИК: {{org_bank_bik}}" },
-        { regex: /Р\/с:?\s*\d{20}/gi, replacement: "Р/с: {{org_bank_account}}" },
-        { regex: /К\/с:?\s*\d{20}/gi, replacement: "К/с: {{org_bank_corr_account}}" },
-        { regex: /№\s*[\d\-\/]+\s+от/gi, replacement: "№ {{contract_number}} от" },
-      ];
-      patterns.forEach(({ regex, replacement }) => { processedText = processedText.replace(regex, replacement); });
+      FALLBACK_VARIABLE_PATTERNS.forEach(({ regex, replacement }) => { processedText = processedText.replace(regex, replacement); });
       setTemplate(processedText);
       toast.success("Базовые переменные добавлены.");
     } finally { setIsAddingVariables(false); }
