@@ -1,5 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
+import { RadioPlayerButton } from "@/components/radio/RadioPlayerButton";
+import { TooltipProvider } from "@/components/ui/tooltip";
 import { ArrowRight, Sparkles, Shield, FileCheck, GraduationCap, BookOpen } from "lucide-react";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
@@ -208,43 +210,51 @@ export function Hero() {
         </motion.div>
       </div>
 
+      {/* Decorative top accent bar */}
+      <div className="relative z-10 h-[3px] bg-gradient-to-r from-accent via-primary to-accent" />
+
       {/* Navigation */}
-      <nav className="relative z-10 container mx-auto px-6 py-8">
-        <div className="flex items-center justify-between">
-          <Link to="/" className="flex items-center gap-3 group">
-            <div className="w-10 h-10 rounded-lg bg-foreground flex items-center justify-center group-hover:scale-105 transition-transform duration-300">
-              <span className="font-display font-bold text-xl text-background">Σ</span>
+      <nav className="relative z-10 bg-card/80 backdrop-blur-md border-b border-border/30">
+        <div className="container mx-auto px-6 py-4">
+          <div className="flex items-center justify-between">
+            <Link to="/" className="flex items-center gap-3 group">
+              <div className="w-10 h-10 rounded-lg bg-foreground flex items-center justify-center group-hover:scale-105 transition-transform duration-300">
+                <span className="font-display font-bold text-xl text-background">Σ</span>
+              </div>
+              <span className="font-display font-medium text-xl tracking-tight">СИНТАГМА</span>
+            </Link>
+            
+            <div className="hidden md:flex items-center gap-10">
+              <a href="#pricing" className="text-muted-foreground hover:text-foreground transition-colors text-sm tracking-wide">
+                Стоимость
+              </a>
+              <Link to="/about" className="text-muted-foreground hover:text-foreground transition-colors text-sm tracking-wide">
+                О нас
+              </Link>
+              <Link to="/blog" className="text-muted-foreground hover:text-foreground transition-colors text-sm tracking-wide">
+                Блог
+              </Link>
+              <Link to="/presentation" className="text-muted-foreground hover:text-foreground transition-colors text-sm tracking-wide">
+                Презентация
+              </Link>
             </div>
-            <span className="font-display font-medium text-xl tracking-tight">СИНТАГМА</span>
-          </Link>
-          
-          <div className="hidden md:flex items-center gap-10">
-            <a href="#pricing" className="text-muted-foreground hover:text-foreground transition-colors text-sm tracking-wide">
-              Стоимость
-            </a>
-            <Link to="/about" className="text-muted-foreground hover:text-foreground transition-colors text-sm tracking-wide">
-              О нас
-            </Link>
-            <Link to="/blog" className="text-muted-foreground hover:text-foreground transition-colors text-sm tracking-wide">
-              Блог
-            </Link>
-            <Link to="/presentation" className="text-muted-foreground hover:text-foreground transition-colors text-sm tracking-wide">
-              Презентация
-            </Link>
-          </div>
-          
-          <div className="flex items-center gap-4">
-            <ThemeToggle />
-            <Link to="/login">
-              <Button variant="ghost" className="text-sm font-medium">
-                Войти
-              </Button>
-            </Link>
-            <Link to="/register-organization" className="hidden sm:block">
-              <Button className="btn-gradient rounded-lg px-5 text-sm">
-                Начать
-              </Button>
-            </Link>
+            
+            <div className="flex items-center gap-3">
+              <TooltipProvider>
+                <RadioPlayerButton />
+              </TooltipProvider>
+              <ThemeToggle />
+              <Link to="/login">
+                <Button variant="ghost" className="text-sm font-medium">
+                  Войти
+                </Button>
+              </Link>
+              <Link to="/register-organization" className="hidden sm:block">
+                <Button className="btn-gradient rounded-lg px-5 text-sm">
+                  Начать
+                </Button>
+              </Link>
+            </div>
           </div>
         </div>
       </nav>
