@@ -3,7 +3,7 @@ import { cn } from "@/lib/utils";
 import { ChatAvatar } from "./ChatAvatar";
 import { Badge } from "@/components/ui/badge";
 
-export type ChatSection = "chats" | "ai" | "colleagues" | "requests" | "contacts" | "settings";
+export type ChatSection = "chats" | "general" | "ai" | "colleagues" | "requests" | "contacts" | "settings";
 
 interface ChatSidebarItem {
   id: ChatSection;
