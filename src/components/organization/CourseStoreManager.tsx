@@ -29,6 +29,12 @@ import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 
 import { statusLabels, getProgramTypeMeta, getSubCategoryMeta } from "@/components/admin/marketplace/marketplaceConstants";
 
+interface CourseStoreManagerProps {
+  organizationId: string;
+  userRole?: 'organization' | 'student';
+  userId?: string;
+}
+
 export function CourseStoreManager({ organizationId, userRole = 'organization', userId }: CourseStoreManagerProps) {
   const navigate = useNavigate();
   const h = useCourseStoreManager({ organizationId, userRole, userId });
