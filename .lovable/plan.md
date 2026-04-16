@@ -1,32 +1,43 @@
 
 
-# Единый тёмный стиль шапки + подвал на всех страницах
+# Единая тёмная шапка со звёздами + подвал на всех публичных страницах
 
-## Что будет сделано
+## Проблема
+Сейчас каждая страница (главная, презентация, партнёры, о нас) имеет свою отдельную шапку с разным стилем. Нет единообразия. Шапка должна выглядеть как подвал — тёмная с анимацией звёзд (`StarfieldCanvas`).
 
-1. **Шапка главной страницы** (`Hero.tsx`, строка 225) — сделать всегда тёмной как подвал:
-   - `bg-card/80 backdrop-blur-md` → `bg-[#0a0e1a]/95 backdrop-blur-lg`
-   - `border-border/30` → `border-white/10`
-   - `bg-foreground` (логотип) → `bg-white`
-   - `text-background` → `text-[#0a0e1a]`
-   - Текст навигации и название: `text-muted-foreground` → `text-white/60`, `hover:text-foreground` → `hover:text-white`
-   - Кнопки «Войти»/«Начать»: белый текст
+## Решение
 
-2. **Шапка страницы Презентации** (`PlatformPresentation.tsx`, строка 143) — уже тёмная, без изменений.
+### 1. Создать общий компонент `LandingHeader`
+Новый файл `src/components/landing/LandingHeader.tsx` — шапка в стиле подвала:
+- Фон `bg-[#0a0e1a]` с `StarfieldCanvas` внутри (как в Footer)
+- Sticky, `z-50`
+- Логотип Σ СИНТАГМА, навигация (Стоимость, О нас, Блог, Презентация)
+- Кнопки: RadioPlayerButton, ThemeToggle, Войти, Начать
+- Все тексты `text-white/60`, кнопки `text-white`
 
-3. **Подвал страницы Презентации** (`PlatformPresentation.tsx`) — добавить `<Footer />` после последней секции (перед закрывающим `</div>`). Сейчас подвала нет.
+### 2. Удалить встроенные шапки из страниц
+- **`Hero.tsx`** (строки 225-268) — убрать `<nav>` целиком, оставить только hero-контент
+- **`PlatformPresentation.tsx`** (строки 143-167) — убрать `<header>` 
+- **`PartnerLanding.tsx`** (строки 222-239) — убрать `<header>`
+- **`About.tsx`** (строки 22-34) — убрать `<header>`
 
-4. **Шапка страницы Партнёров** (`PartnerLanding.tsx`, строка 222) — сделать тёмной:
-   - `bg-background/95 backdrop-blur-sm border-border` → `bg-[#0a0e1a]/95 backdrop-blur-lg border-white/10`
-   - Логотип и кнопки — белый текст
+### 3. Добавить `LandingHeader` + `Footer` на каждую страницу
+- **Index.tsx** — добавить `<LandingHeader />` перед `<Hero />` 
+- **PlatformPresentation.tsx** — добавить `<LandingHeader />` вверху (Footer уже добавлен)
+- **PartnerLanding.tsx** — добавить `<LandingHeader />` вверху (Footer уже есть)
+- **About.tsx** — добавить `<LandingHeader />` + `<Footer />`
 
-5. **Подвал страницы Партнёров** — уже использует `<Footer />`, без изменений.
+### 4. Радио
+Радио уже работает через SPA-навигацию — `useRadioPlayer` использует глобальный `Audio` объект. При переходе между страницами через `<Link>` радио не прерывается.
 
 ## Файлы
 
-| Файл | Изменения |
-|------|-----------|
-| `src/components/landing/Hero.tsx` | Тёмная шапка (навигация, строки 225-268) |
-| `src/pages/PlatformPresentation.tsx` | Добавить `<Footer />` в конец |
-| `src/pages/PartnerLanding.tsx` | Тёмная шапка (строки 222-239) |
+| Файл | Действие |
+|------|----------|
+| `src/components/landing/LandingHeader.tsx` | **Создать** — общая тёмная шапка со StarfieldCanvas |
+| `src/components/landing/Hero.tsx` | Удалить `<nav>` (строки 225-268) |
+| `src/pages/Index.tsx` | Добавить `<LandingHeader />` |
+| `src/pages/PlatformPresentation.tsx` | Заменить header на `<LandingHeader />` |
+| `src/pages/PartnerLanding.tsx` | Заменить header на `<LandingHeader />` |
+| `src/pages/About.tsx` | Заменить header на `<LandingHeader />` + добавить `<Footer />` |
 
