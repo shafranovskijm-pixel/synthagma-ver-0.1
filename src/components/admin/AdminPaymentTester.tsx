@@ -1,5 +1,6 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { TBankSpeedPay } from "@/components/payments/TBankSpeedPay";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -354,10 +355,36 @@ export function AdminPaymentTester() {
                   <Input value={email} onChange={e => setEmail(e.target.value)} placeholder="test@example.com" />
                 </div>
 
-                <Button onClick={handleInitPayment} disabled={initiating || !selectedPlan} size="sm">
-                  {initiating ? <SigmaSpinner size="sm" className="mr-2" /> : <Play className="w-4 h-4 mr-2" />}
-                  Оплатить подписку
-                </Button>
+                <div className="flex flex-col gap-3">
+                  <Button onClick={handleInitPayment} disabled={initiating || !selectedPlan} size="sm">
+                    {initiating ? <SigmaSpinner size="sm" className="mr-2" /> : <Play className="w-4 h-4 mr-2" />}
+                    Оплатить подписку
+                  </Button>
+
+                  {selectedPlan && terminalKey && (
+                    <TBankSpeedPay
+                      terminalKey={terminalKey}
+                      onInitPayment={async () => {
+                        if (!selectedOrg || !selectedPlan) return null;
+                        try {
+                          const { data, error } = await supabase.functions.invoke("tbank-init-subscription", {
+                            body: { organization_id: selectedOrg, plan: selectedPlan, period_months: periodMonths, email: email || undefined },
+                            headers: { "x-connection-type": "Widget" },
+                          });
+                          if (error || data?.error) return null;
+                          if (data?.invoice_id) {
+                            setInvoiceId(data.invoice_id);
+                            setInvoiceStatus("pending");
+                            startPolling(data.invoice_id);
+                          }
+                          return data?.url || null;
+                        } catch {
+                          return null;
+                        }
+                      }}
+                    />
+                  )}
+                </div>
 
                 {paymentUrl && (
                   <div className="p-3 rounded-lg border border-border bg-muted/30 space-y-2">
