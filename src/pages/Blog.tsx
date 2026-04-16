@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { StarfieldCanvas } from "@/components/landing/StarfieldCanvas";
 import { motion } from "framer-motion";
 import { Link } from "react-router-dom";
 import { Helmet } from "react-helmet-async";
@@ -201,61 +202,8 @@ const Blog = () => {
       <LandingHeader />
 
       {/* Hero Section */}
-      <section className="relative py-20 md:py-28 overflow-hidden">
-        {/* Background */}
-        <div className="absolute inset-0 bg-gradient-to-b from-accent/5 via-background to-background" />
-        <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-accent/8 rounded-full blur-[100px] translate-x-1/4 -translate-y-1/4" />
-        <div className="absolute bottom-0 left-0 w-[400px] h-[400px] bg-primary/5 rounded-full blur-[80px] -translate-x-1/4 translate-y-1/4" />
-        
-        {/* Decorative elements */}
-        <div className="absolute inset-0 overflow-hidden pointer-events-none">
-          <div className="absolute inset-0 opacity-[0.015]" style={{
-            backgroundImage: `radial-gradient(circle at 1px 1px, currentColor 1px, transparent 0)`,
-            backgroundSize: '40px 40px'
-          }} />
-          <motion.div
-            className="absolute top-20 right-[15%] w-px h-32 bg-gradient-to-b from-transparent via-accent/30 to-transparent"
-            initial={{ scaleY: 0 }}
-            animate={{ scaleY: 1 }}
-            transition={{ duration: 1.5, delay: 0.3 }}
-          />
-          <motion.div
-            className="absolute bottom-16 left-[10%] w-px h-24 bg-gradient-to-b from-transparent via-border to-transparent"
-            initial={{ scaleY: 0 }}
-            animate={{ scaleY: 1 }}
-            transition={{ duration: 1.5, delay: 0.5 }}
-          />
-          <motion.div
-            className="absolute top-16 left-8 w-12 h-12 border-l border-t border-accent/15 rounded-tl-2xl"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ duration: 1, delay: 0.7 }}
-          />
-          <motion.div
-            className="absolute bottom-16 right-8 w-12 h-12 border-r border-b border-accent/15 rounded-br-2xl"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ duration: 1, delay: 0.8 }}
-          />
-          <motion.div
-            className="absolute top-1/3 left-[20%] w-2 h-2 rounded-full bg-accent/30"
-            initial={{ scale: 0 }}
-            animate={{ scale: 1 }}
-            transition={{ duration: 0.8, delay: 1 }}
-          />
-          <motion.div
-            className="absolute top-1/2 right-[25%] w-3 h-3 rounded-full border border-accent/25"
-            initial={{ scale: 0 }}
-            animate={{ scale: 1 }}
-            transition={{ duration: 0.8, delay: 1.1 }}
-          />
-          <motion.div
-            className="absolute bottom-1/3 right-[35%] w-1.5 h-1.5 rounded-full bg-accent/35"
-            initial={{ scale: 0 }}
-            animate={{ scale: 1 }}
-            transition={{ duration: 0.8, delay: 1.2 }}
-          />
-        </div>
+      <section className="relative py-20 md:py-28 overflow-hidden bg-[#0a0e1a]">
+        <StarfieldCanvas />
 
         <div className="container mx-auto px-6 relative z-10">
           <motion.div
@@ -264,12 +212,12 @@ const Blog = () => {
             transition={{ duration: 0.6 }}
             className="text-center max-w-3xl mx-auto"
           >
-            <span className="text-sm text-accent font-medium tracking-widest uppercase mb-4 block">
+            <span className="text-sm text-[hsl(174,72%,46%)] font-medium tracking-widest uppercase mb-4 block">
               Блог
             </span>
-            <h1 className="font-display text-4xl md:text-5xl lg:text-6xl font-medium mb-6 tracking-tight">
+            <h1 className="font-display text-4xl md:text-5xl lg:text-6xl font-medium mb-6 tracking-tight text-white">
               <TypewriterText text="Знания для " speed={60} delay={300} />
-              <span className="text-muted-foreground">
+              <span className="text-white/50">
                 <TypewriterText text="профессионалов" speed={60} delay={1000} />
               </span>
             </h1>
@@ -279,11 +227,11 @@ const Blog = () => {
               transition={{ duration: 1, delay: 0.3 }}
               className="flex items-center justify-center gap-2 mb-6"
             >
-              <div className="w-2 h-2 rounded-full bg-accent/40" />
-              <div className="w-16 h-px bg-accent" />
-              <div className="w-2 h-2 rounded-full bg-accent/40" />
+              <div className="w-2 h-2 rounded-full bg-[hsl(174,72%,46%)]/40" />
+              <div className="w-16 h-px bg-[hsl(174,72%,46%)]" />
+              <div className="w-2 h-2 rounded-full bg-[hsl(174,72%,46%)]/40" />
             </motion.div>
-            <p className="text-lg text-muted-foreground max-w-2xl mx-auto leading-relaxed">
+            <p className="text-lg text-white/50 max-w-2xl mx-auto leading-relaxed">
               Статьи, гайды и новости о дистанционном обучении, автоматизации образовательных процессов и современных EdTech-технологиях
             </p>
           </motion.div>
