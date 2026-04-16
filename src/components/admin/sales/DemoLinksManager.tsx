@@ -104,8 +104,24 @@ export function DemoLinksManager() {
     setEditingKinescope(prev => ({ ...prev, [link.id]: link.kinescope_live_id || '' }));
   };
 
+  const extractKinescopeId = (input: string): string | null => {
+    const trimmed = input.trim();
+    if (!trimmed) return null;
+    // Extract ID from RTMP URL: rtmp://rtmp.kinescope.io/live/{id}
+    const rtmpMatch = trimmed.match(/rtmp:\/\/[^/]+\/live\/([a-f0-9]+)/i);
+    if (rtmpMatch) return rtmpMatch[1];
+    // Extract ID from player URL: https://player.kinescope.io/live/{id}
+    const playerMatch = trimmed.match(/player\.kinescope\.io\/live\/([a-f0-9-]+)/i);
+    if (playerMatch) return playerMatch[1];
+    // Extract ID from embed URL: https://kinescope.io/embed/{id}
+    const embedMatch = trimmed.match(/kinescope\.io\/embed\/([a-f0-9-]+)/i);
+    if (embedMatch) return embedMatch[1];
+    // Assume raw ID
+    return trimmed;
+  };
+
   const saveKinescopeId = async (linkId: string) => {
-    const newId = editingKinescope[linkId]?.trim() || null;
+    const newId = extractKinescopeId(editingKinescope[linkId] || '');
     await supabase.from('sales_demo_links').update({ kinescope_live_id: newId }).eq('id', linkId);
     setEditingKinescope(prev => {
       const copy = { ...prev };
