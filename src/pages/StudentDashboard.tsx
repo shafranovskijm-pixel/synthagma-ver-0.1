@@ -228,7 +228,6 @@ function CatalogContent({
 }
 
 export default function StudentDashboard() {
-  const [contentTab, setContentTab] = useState<"courses" | "webinars" | "trainers" | "chat">("courses");
   const { userRole } = useAuth();
   const isMobile = useIsMobile();
 
@@ -280,26 +279,9 @@ export default function StudentDashboard() {
     }
   };
 
-  const topTabs = [
-    { id: "courses" as const, label: "Курсы" },
-    { id: "webinars" as const, label: "Вебинары" },
-    { id: "trainers" as const, label: "3D-тренажёры" },
-    ...(dashboardSettings.showAiChat ? [{ id: "chat" as const, label: "Чат" }] : []),
-  ];
-
-  const handleTopTabChange = (tabId: "courses" | "webinars" | "trainers" | "chat") => {
-    if (tabId === "chat") {
-      setActiveTab("chat" as any);
-      setContentTab("chat");
-      return;
-    }
-    setActiveTab("catalog");
-    setContentTab(tabId);
-  };
-
   // Bottom navigation items for mobile
   const bottomNavItems: { id: StudentTab; icon: typeof BookOpen; label: string }[] = [
-    { id: "catalog", icon: BookOpen, label: "Каталог" },
+    { id: "catalog", icon: BookOpen, label: "Курсы" },
     ...(dashboardSettings.showAiChat ? [{ id: "chat" as StudentTab, icon: MessageCircle, label: "Чат" }] : []),
     { id: "profile" as StudentTab, icon: User, label: "Профиль" },
   ];
