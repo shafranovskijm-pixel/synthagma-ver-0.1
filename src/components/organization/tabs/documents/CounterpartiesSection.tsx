@@ -664,3 +664,4 @@ export function CounterpartiesSection({
     </div>
   );
 }
+
