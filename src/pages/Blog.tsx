@@ -12,6 +12,7 @@ import { ru } from "date-fns/locale";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 import { LandingHeader } from "@/components/landing/LandingHeader";
 import { Footer } from "@/components/landing/Footer";
+import { TypewriterText } from "@/components/ui/TypewriterText";
 
 interface BlogPost {
   id: string;
@@ -267,8 +268,10 @@ const Blog = () => {
               Блог
             </span>
             <h1 className="font-display text-4xl md:text-5xl lg:text-6xl font-medium mb-6 tracking-tight">
-              Знания для{" "}
-              <span className="text-muted-foreground">профессионалов</span>
+              <TypewriterText text="Знания для " speed={60} delay={300} />
+              <span className="text-muted-foreground">
+                <TypewriterText text="профессионалов" speed={60} delay={1000} />
+              </span>
             </h1>
             <motion.div
               initial={{ scaleX: 0 }}
