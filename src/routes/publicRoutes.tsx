@@ -36,6 +36,7 @@ const JoinByLink = lazyWithRetry(() => import("@/pages/JoinByLink"));
 const CourseLanding = lazyWithRetry(() => import("@/pages/CourseLanding"));
 const DemoJoin = lazyWithRetry(() => import("@/pages/DemoJoin"));
 const DemoDashboard = lazyWithRetry(() => import("@/components/demo/DemoDashboard"));
+const PublicCompanyCard = lazyWithRetry(() => import("@/pages/PublicCompanyCard"));
 const NotFound = lazyWithRetry(() => import("@/pages/NotFound"));
 
 export const publicRoutes = (
