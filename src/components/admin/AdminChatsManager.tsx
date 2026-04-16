@@ -18,6 +18,7 @@ import { ChatSidebar, type ChatSection } from "@/components/chat/ChatSidebar";
 import { ChatSettingsPanel } from "@/components/chat/ChatSettingsPanel";
 import { ChatRequestsPanel } from "@/components/chat/ChatRequestsPanel";
 import { ChatContactsPanel } from "@/components/chat/ChatContactsPanel";
+import { ChatNotificationToggle } from "@/components/chat/ChatNotificationToggle";
 
 interface Organization {
   id: string;
@@ -307,10 +308,11 @@ export function AdminChatsManager() {
               <div className="flex flex-col h-full">
                 <div className="px-4 py-3 border-b border-border flex items-center gap-3">
                   <ChatAvatar name={selectedOrg?.org.name || ""} size="sm" />
-                  <div>
+                  <div className="flex-1">
                     <h3 className="font-semibold">{selectedOrg?.org.name}</h3>
                     {selectedOrg?.org.email && <p className="text-xs text-muted-foreground">{selectedOrg.org.email}</p>}
                   </div>
+                  <ChatNotificationToggle chatType="org" chatPartnerId={selectedOrgId || undefined} />
                 </div>
                 <div className="flex-1 p-4 overflow-hidden">{renderChat()}</div>
               </div>

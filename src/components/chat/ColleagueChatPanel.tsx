@@ -12,6 +12,7 @@ import { toast } from "sonner";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { ChatAvatar } from "@/components/chat/ChatAvatar";
+import { ChatNotificationToggle } from "@/components/chat/ChatNotificationToggle";
 
 interface ColleagueContact {
   user_id: string;
@@ -417,7 +418,8 @@ export function ColleagueChatPanel({ role, organizationId }: ColleagueChatPanelP
             <div className="flex flex-col h-full">
               <div className="px-4 py-3 border-b border-border flex items-center gap-3">
                 <ChatAvatar name={selectedContact?.full_name || ""} size="sm" />
-                <h3 className="font-semibold">{selectedContact?.full_name}</h3>
+                <h3 className="font-semibold flex-1">{selectedContact?.full_name}</h3>
+                <ChatNotificationToggle chatType="colleague" chatPartnerId={selectedContactId || undefined} />
               </div>
               <div className="flex-1 p-4 overflow-hidden">
                 {renderMessages()}
