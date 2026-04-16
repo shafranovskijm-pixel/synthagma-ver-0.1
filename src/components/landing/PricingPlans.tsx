@@ -43,7 +43,10 @@ const featureRows: { label: string; link?: string; getValue: (p: SubscriptionPla
   { label: "Журналы", getValue: (p) => SUBSCRIPTION_PLANS[p].enabledCategories.includes('journals') },
   { label: "Документы для ЛОО", link: "/feature/documents", getValue: (p) => SUBSCRIPTION_PLANS[p].enabledCategories.includes('documents') },
   { label: "Охрана труда", link: "/feature/labor-safety", getValue: (p) => SUBSCRIPTION_PLANS[p].enabledCategories.includes('labor_safety') },
-  { label: "ФИС ФРДО", link: "/feature/frdo", getValue: (p) => SUBSCRIPTION_PLANS[p].enabledCategories.includes('frdo') },
+  { label: "ФИС ФРДО", link: "/feature/frdo", getValue: (p) => {
+    if (!SUBSCRIPTION_PLANS[p].enabledCategories.includes('frdo')) return false;
+    return (p === 'professional' || p === 'maximum') ? 'ФРДО+' : true;
+  }},
   { label: "Вебинары", getValue: (p) => SUBSCRIPTION_PLANS[p].limits.webinarsEnabled },
   { label: "Видеосервис+", getValue: (p) => SUBSCRIPTION_PLANS[p].limits.videoServicePlus },
   { label: "3D-тренажёры", getValue: (p) => SUBSCRIPTION_PLANS[p].limits.trainersEnabled },
@@ -295,14 +298,19 @@ export function PricingPlans() {
                       {featureRows.map((row) => {
                         const val = row.getValue(planId);
                         const isBool = typeof val === 'boolean';
+                        const isAccent = typeof val === 'string' && val === 'ФРДО+' || row.label === 'Вебинары' || row.label === 'Видеосервис+' || row.label === '3D-тренажёры';
+                        const displayLabel = val === 'ФРДО+' ? 'ФИС ФРДО+' : row.label;
+                        const isEnabled = isBool ? val : true;
                         return (
                           <div key={row.label} className="flex items-center gap-2 text-sm">
                             {isBool ? (
                               val ? (
-                                <Check className="w-4 h-4 text-accent shrink-0" />
+                                <Check className={`w-4 h-4 shrink-0 ${isAccent && val ? 'text-[hsl(38,92%,50%)]' : 'text-accent'}`} />
                               ) : (
                                 <X className="w-4 h-4 text-muted-foreground/40 shrink-0" />
                               )
+                            ) : typeof val === 'string' && (val === 'ФРДО+') ? (
+                              <Check className="w-4 h-4 text-[hsl(38,92%,50%)] shrink-0" />
                             ) : (
                               <span className="min-w-5 text-center text-xs font-semibold text-accent shrink-0">
                                 {val === 'Безлимит' ? '∞' : val}
@@ -311,14 +319,14 @@ export function PricingPlans() {
                             {featureDescriptions[row.label] ? (
                               <Popover>
                                 <PopoverTrigger asChild>
-                                  <button className={`inline-flex items-center gap-1 text-left decoration-dotted underline-offset-2 hover:underline hover:text-accent transition-colors ${isBool && !val ? 'text-muted-foreground/50' : 'text-foreground/80'}`}>
-                                    {row.label}
+                                  <button className={`inline-flex items-center gap-1 text-left decoration-dotted underline-offset-2 hover:underline hover:text-accent transition-colors ${!isEnabled ? 'text-muted-foreground/50' : isAccent && isEnabled ? 'text-[hsl(38,92%,50%)] font-semibold' : 'text-foreground/80'}`}>
+                                    {displayLabel}
                                     <Info className="w-3 h-3 text-muted-foreground shrink-0" />
                                   </button>
                                 </PopoverTrigger>
                                 <PopoverContent side="top" className="w-72 text-sm">
                                   <div className="space-y-2">
-                                    <p className="font-semibold">{row.label}</p>
+                                    <p className="font-semibold">{displayLabel}</p>
                                     <p className="text-muted-foreground text-xs leading-relaxed">{featureDescriptions[row.label].description}</p>
                                     <span className="inline-block text-[10px] font-medium px-2 py-0.5 rounded-full bg-accent/10 text-accent">
                                       от тарифа «{featureDescriptions[row.label].minPlan}»
@@ -332,8 +340,8 @@ export function PricingPlans() {
                                 </PopoverContent>
                               </Popover>
                             ) : (
-                              <span className={isBool && !val ? 'text-muted-foreground/50' : 'text-foreground/80'}>
-                                {row.label}
+                              <span className={!isEnabled ? 'text-muted-foreground/50' : isAccent && isEnabled ? 'text-[hsl(38,92%,50%)] font-semibold' : 'text-foreground/80'}>
+                                {displayLabel}
                               </span>
                             )}
                           </div>
@@ -367,10 +375,15 @@ export function PricingPlans() {
           whileInView={{ opacity: 1 }}
           viewport={{ once: true }}
           transition={{ delay: 0.6 }}
-          className="text-center text-sm text-muted-foreground mt-4 flex items-center justify-center gap-1.5"
+          className="text-center text-sm text-muted-foreground mt-4 flex flex-col items-center gap-2"
         >
-          <Sparkles className="w-4 h-4 text-accent" />
-          Все тарифы включают бесплатную техническую поддержку
+          <span className="flex items-center gap-1.5">
+            <Sparkles className="w-4 h-4 text-accent" />
+            Все тарифы включают бесплатную техническую поддержку
+          </span>
+          <span className="text-xs text-[hsl(38,92%,50%)]/80">
+            ФИС ФРДО+ — выгрузка данных в реестр выполняется нами за вас
+          </span>
         </motion.p>
       </div>
     </section>
