@@ -1,7 +1,7 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { PDFDocument } from 'pdf-lib';
 import * as pdfjsLib from 'pdfjs-dist';
-import { Upload, FileText, Download, Trash2, ChevronLeft, ChevronRight, Move } from 'lucide-react';
+import { Upload, FileText, Download, Trash2, ChevronLeft, ChevronRight, Move, Stamp, PenTool } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -23,7 +23,8 @@ interface Overlay {
   type: 'stamp' | 'signature';
   x: number;
   y: number;
-  scale: number;
+  scaleX: number;
+  scaleY: number;
 }
 
 const BASE_STAMP = { w: 120, h: 120 };
@@ -35,14 +36,22 @@ function makeId() {
 
 function defaultOverlays(): Overlay[] {
   return [
-    { id: makeId(), type: 'stamp', x: 0.75, y: 0.85, scale: 1 },
-    { id: makeId(), type: 'signature', x: 0.72, y: 0.88, scale: 1 },
+    { id: makeId(), type: 'stamp', x: 0.75, y: 0.85, scaleX: 1, scaleY: 1 },
+    { id: makeId(), type: 'signature', x: 0.72, y: 0.88, scaleX: 1, scaleY: 1 },
   ];
 }
 
 function overlaySize(o: Overlay) {
   const base = o.type === 'stamp' ? BASE_STAMP : BASE_SIG;
-  return { w: base.w * o.scale, h: base.h * o.scale };
+  return { w: base.w * o.scaleX, h: base.h * o.scaleY };
+}
+
+interface ContextMenuState {
+  visible: boolean;
+  x: number;
+  y: number;
+  rx: number;
+  ry: number;
 }
 
 export function DocumentSigning() {
@@ -58,11 +67,20 @@ export function DocumentSigning() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isDragOver, setIsDragOver] = useState(false);
+  const [ctxMenu, setCtxMenu] = useState<ContextMenuState>({ visible: false, x: 0, y: 0, rx: 0, ry: 0 });
 
   useEffect(() => {
     const s = new Image(); s.src = stampUrl; s.onload = () => setStampImg(s);
     const g = new Image(); g.src = signatureUrl; g.onload = () => setSigImg(g);
   }, []);
+
+  // Close context menu on any click
+  useEffect(() => {
+    if (!ctxMenu.visible) return;
+    const close = () => setCtxMenu(prev => ({ ...prev, visible: false }));
+    window.addEventListener('click', close);
+    return () => window.removeEventListener('click', close);
+  }, [ctxMenu.visible]);
 
   const loadPdf = useCallback(async (file: File) => {
     const buf = await file.arrayBuffer();
@@ -143,6 +161,7 @@ export function DocumentSigning() {
   };
 
   const handleCanvasMouseDown = (e: React.MouseEvent) => {
+    if (e.button !== 0) return;
     const c = getRelCoords(e);
     if (!c) return;
     const hit = findClosestOverlay(c.rx, c.ry);
@@ -168,10 +187,15 @@ export function DocumentSigning() {
     e.preventDefault();
     const c = getRelCoords(e);
     if (!c) return;
-    const newSig: Overlay = { id: makeId(), type: 'signature', x: c.rx, y: c.ry, scale: 1 };
-    setOverlays(prev => [...prev, newSig]);
-    setSelectedId(newSig.id);
-    toast.success('Подпись добавлена');
+    setCtxMenu({ visible: true, x: e.clientX, y: e.clientY, rx: c.rx, ry: c.ry });
+  };
+
+  const addOverlayFromMenu = (type: 'stamp' | 'signature') => {
+    const newO: Overlay = { id: makeId(), type, x: ctxMenu.rx, y: ctxMenu.ry, scaleX: 1, scaleY: 1 };
+    setOverlays(prev => [...prev, newO]);
+    setSelectedId(newO.id);
+    setCtxMenu(prev => ({ ...prev, visible: false }));
+    toast.success(type === 'stamp' ? 'Печать добавлена' : 'Подпись добавлена');
   };
 
   const removeOverlay = (id: string) => {
@@ -179,8 +203,11 @@ export function DocumentSigning() {
     if (selectedId === id) setSelectedId(null);
   };
 
-  const updateScale = (id: string, scale: number) => {
-    setOverlays(prev => prev.map(o => o.id === id ? { ...o, scale } : o));
+  const updateScaleX = (id: string, v: number) => {
+    setOverlays(prev => prev.map(o => o.id === id ? { ...o, scaleX: v } : o));
+  };
+  const updateScaleY = (id: string, v: number) => {
+    setOverlays(prev => prev.map(o => o.id === id ? { ...o, scaleY: v } : o));
   };
 
   const handleSign = async () => {
@@ -297,7 +324,7 @@ export function DocumentSigning() {
             </div>
 
             <p className="text-xs text-muted-foreground flex items-center gap-1">
-              <Move className="w-3 h-3" /> ЛКМ — перетащить, ПКМ — добавить подпись
+              <Move className="w-3 h-3" /> ЛКМ — перетащить, ПКМ — добавить печать или подпись
             </p>
 
             {/* Overlay controls */}
@@ -307,16 +334,27 @@ export function DocumentSigning() {
                   <span className="text-xs font-medium">
                     {selectedOverlay.type === 'stamp' ? '🔴 Печать' : '✍️ Подпись'}
                   </span>
-                  <div className="flex items-center gap-2 flex-1 max-w-[200px]">
-                    <span className="text-xs text-muted-foreground whitespace-nowrap">Размер</span>
+                  <div className="flex items-center gap-2 flex-1 max-w-[180px]">
+                    <span className="text-xs text-muted-foreground whitespace-nowrap">Шир.</span>
                     <Slider
-                      value={[selectedOverlay.scale]}
-                      min={0.5}
-                      max={2}
+                      value={[selectedOverlay.scaleX]}
+                      min={0.3}
+                      max={3}
                       step={0.05}
-                      onValueChange={([v]) => updateScale(selectedOverlay.id, v)}
+                      onValueChange={([v]) => updateScaleX(selectedOverlay.id, v)}
                     />
-                    <span className="text-xs text-muted-foreground w-8">{selectedOverlay.scale.toFixed(1)}x</span>
+                    <span className="text-xs text-muted-foreground w-8">{selectedOverlay.scaleX.toFixed(1)}</span>
+                  </div>
+                  <div className="flex items-center gap-2 flex-1 max-w-[180px]">
+                    <span className="text-xs text-muted-foreground whitespace-nowrap">Выс.</span>
+                    <Slider
+                      value={[selectedOverlay.scaleY]}
+                      min={0.3}
+                      max={3}
+                      step={0.05}
+                      onValueChange={([v]) => updateScaleY(selectedOverlay.id, v)}
+                    />
+                    <span className="text-xs text-muted-foreground w-8">{selectedOverlay.scaleY.toFixed(1)}</span>
                   </div>
                   <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive hover:text-destructive" onClick={() => removeOverlay(selectedOverlay.id)}>
                     <Trash2 className="w-3.5 h-3.5" />
@@ -327,7 +365,7 @@ export function DocumentSigning() {
               )}
             </div>
 
-            <div className="overflow-auto max-h-[70vh] border rounded-lg bg-muted/30 flex justify-center">
+            <div className="overflow-auto max-h-[70vh] border rounded-lg bg-muted/30 flex justify-center relative">
               <canvas
                 ref={canvasRef}
                 className="max-w-full cursor-grab"
@@ -338,6 +376,28 @@ export function DocumentSigning() {
                 onContextMenu={handleContextMenu}
               />
             </div>
+
+            {/* Custom context menu */}
+            {ctxMenu.visible && (
+              <div
+                className="fixed z-50 bg-popover border rounded-lg shadow-lg py-1 min-w-[180px]"
+                style={{ left: ctxMenu.x, top: ctxMenu.y }}
+                onClick={e => e.stopPropagation()}
+              >
+                <button
+                  className="w-full px-3 py-2 text-sm text-left hover:bg-accent flex items-center gap-2"
+                  onClick={() => addOverlayFromMenu('stamp')}
+                >
+                  <Stamp className="w-4 h-4" /> Добавить печать
+                </button>
+                <button
+                  className="w-full px-3 py-2 text-sm text-left hover:bg-accent flex items-center gap-2"
+                  onClick={() => addOverlayFromMenu('signature')}
+                >
+                  <PenTool className="w-4 h-4" /> Добавить подпись
+                </button>
+              </div>
+            )}
           </CardContent>
         </Card>
       )}
