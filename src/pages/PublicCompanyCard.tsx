@@ -78,6 +78,36 @@ export default function PublicCompanyCard() {
     })();
   }, [token]);
 
+  const handleExport = async (format: 'pdf' | 'docx') => {
+    setExporting(format);
+    try {
+      const { data, error: fnError } = await supabase.functions.invoke('generate-company-card', {
+        body: { format, companyData: { ...KNOWN_DATA, address, opf: null, ogrn: KNOWN_DATA.ogrnip } },
+      });
+      if (fnError) throw fnError;
+      if (data?.base64) {
+        const html = decodeURIComponent(escape(atob(data.base64)));
+        if (format === 'pdf') {
+          const w = window.open('', '_blank');
+          if (w) { w.document.write(html); w.document.close(); setTimeout(() => w.print(), 500); }
+        } else {
+          const blob = new Blob([html], { type: 'application/msword' });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url; a.download = 'Карточка_компании.doc'; a.click();
+          URL.revokeObjectURL(url);
+        }
+      }
+      toast.success(format === 'pdf' ? 'Откройте печать для сохранения в PDF' : 'Файл Word скачан');
+    } catch (e: any) {
+      console.error('Export error:', e);
+      toast.error('Ошибка экспорта');
+    } finally {
+      setExporting(null);
+    }
+  };
+
+
   if (valid === null) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#0a1628]">
