@@ -1,20 +1,16 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { BookOpen, CreditCard, Eye } from "lucide-react";
+import { BookOpen, CreditCard, Eye, ClipboardCheck } from "lucide-react";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle } from "@/components/ui/alert-dialog";
+  AlertDialog, AlertDialogAction, AlertDialogCancel,
+  AlertDialogContent, AlertDialogDescription, AlertDialogFooter,
+  AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 interface PaidCourse {
   id: string;
@@ -32,7 +28,6 @@ interface Props {
   userEmail?: string;
 }
 
-// Load T-Bank widget SDK
 let tbankSdkPromise: Promise<void> | null = null;
 function loadTBankSdk(): Promise<void> {
   if (tbankSdkPromise) return tbankSdkPromise;
@@ -52,7 +47,9 @@ export function AvailablePaidCourses({ userId, organizationId, userEmail }: Prop
   const [courses, setCourses] = useState<PaidCourse[]>([]);
   const [loading, setLoading] = useState(true);
   const [sendingCourseId, setSendingCourseId] = useState<string | null>(null);
+  const [enrollingCourseId, setEnrollingCourseId] = useState<string | null>(null);
   const [confirmCourse, setConfirmCourse] = useState<PaidCourse | null>(null);
+  const [enrollCourse, setEnrollCourse] = useState<PaidCourse | null>(null);
   const [paymentMode, setPaymentMode] = useState<"redirect" | "widget">("redirect");
 
   useEffect(() => {
@@ -68,9 +65,7 @@ export function AvailablePaidCourses({ userId, organizationId, userEmail }: Prop
       .select("payment_mode" as any)
       .eq("organization_id", organizationId)
       .maybeSingle();
-    if (data) {
-      setPaymentMode((data as any).payment_mode || "redirect");
-    }
+    if (data) setPaymentMode((data as any).payment_mode || "redirect");
   };
 
   const fetchAvailableCourses = async () => {
@@ -83,7 +78,6 @@ export function AvailablePaidCourses({ userId, organizationId, userEmail }: Prop
         .eq("organization_id", organizationId)
         .eq("is_published", true)
         .gt("price", 0);
-
       if (coursesErr) throw coursesErr;
 
       const { data: enrollments } = await supabase
@@ -104,49 +98,25 @@ export function AvailablePaidCourses({ userId, organizationId, userEmail }: Prop
     setSendingCourseId(course.id);
     try {
       const { data, error } = await supabase.functions.invoke("tbank-init", {
-        body: {
-          course_id: course.id,
-          user_id: userId,
-          email: userEmail,
-        },
+        body: { course_id: course.id, user_id: userId, email: userEmail },
       });
-
-      if (error || !data?.url) {
-        throw new Error(data?.error || "Ошибка инициализации оплаты");
-      }
+      if (error || !data?.url) throw new Error(data?.error || "Ошибка инициализации оплаты");
 
       if (paymentMode === "widget" && data.paymentId) {
-        // Use embedded T-Bank widget
         try {
           await loadTBankSdk();
           const pay = (window as any).pay;
           if (pay) {
             pay({
               paymentId: data.paymentId,
-              onSuccess: () => {
-                toast.success("Оплата прошла успешно!");
-                setSendingCourseId(null);
-                setConfirmCourse(null);
-                // Refresh courses list
-                fetchAvailableCourses();
-              },
-              onClose: () => {
-                setSendingCourseId(null);
-              },
-              onFail: () => {
-                toast.error("Оплата не прошла");
-                setSendingCourseId(null);
-              },
+              onSuccess: () => { toast.success("Оплата прошла успешно!"); setSendingCourseId(null); setConfirmCourse(null); fetchAvailableCourses(); },
+              onClose: () => setSendingCourseId(null),
+              onFail: () => { toast.error("Оплата не прошла"); setSendingCourseId(null); },
             });
             return;
           }
-        } catch {
-          // Fallback to redirect
-          console.warn("T-Bank SDK unavailable, falling back to redirect");
-        }
+        } catch { console.warn("T-Bank SDK unavailable, falling back to redirect"); }
       }
-
-      // Redirect to T-Bank payment page
       window.location.href = data.url;
     } catch (err: any) {
       console.error("Payment error:", err);
@@ -155,16 +125,52 @@ export function AvailablePaidCourses({ userId, organizationId, userEmail }: Prop
     }
   };
 
-  const handleViewCourse = (course: PaidCourse) => {
-    if (course.slug) {
-      navigate(`/c/${course.slug}`);
-    } else {
-      navigate(`/course/${course.id}/landing`);
+  const handleEnrollRequest = async (course: PaidCourse) => {
+    setEnrollingCourseId(course.id);
+    try {
+      // Get student name
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("full_name, email")
+        .eq("user_id", userId)
+        .maybeSingle();
+      const studentName = profile?.full_name || profile?.email || "Ученик";
+
+      // Send chat message to organization
+      await supabase.from("chat_messages").insert({
+        user_id: userId,
+        course_id: course.id,
+        role: "user",
+        content: `Заявка на запись: ${studentName} хочет записаться на курс «${course.title}» (${Number(course.price).toLocaleString("ru-RU")} ₽)`,
+      });
+
+      // Create org notification
+      await supabase.from("org_notifications" as any).insert({
+        organization_id: course.organization_id,
+        user_id: userId,
+        type: "enrollment_request",
+        title: "Заявка на запись",
+        message: `${studentName} хочет записаться на курс «${course.title}»`,
+        related_id: course.id,
+        is_read: false,
+      } as any);
+
+      toast.success("Заявка отправлена! Учебный центр свяжется с вами");
+      setEnrollCourse(null);
+    } catch (err: any) {
+      console.error("Enrollment request error:", err);
+      toast.error("Ошибка при отправке заявки");
+    } finally {
+      setEnrollingCourseId(null);
     }
   };
 
-  if (loading) return null;
-  if (courses.length === 0) return null;
+  const handleViewCourse = (course: PaidCourse) => {
+    if (course.slug) navigate(`/c/${course.slug}`);
+    else navigate(`/course/${course.id}/landing`);
+  };
+
+  if (loading || courses.length === 0) return null;
 
   return (
     <>
@@ -195,11 +201,7 @@ export function AvailablePaidCourses({ userId, organizationId, userEmail }: Prop
                 <p className="text-xs text-muted-foreground mb-4">{course.duration}</p>
               )}
               <div className="flex flex-col gap-2">
-                <Button
-                  variant="outline"
-                  className="w-full"
-                  onClick={() => handleViewCourse(course)}
-                >
+                <Button variant="outline" className="w-full" onClick={() => handleViewCourse(course)}>
                   <Eye className="w-4 h-4 mr-2" />
                   Посмотреть курс
                 </Button>
@@ -208,11 +210,16 @@ export function AvailablePaidCourses({ userId, organizationId, userEmail }: Prop
                   onClick={() => setConfirmCourse(course)}
                   disabled={sendingCourseId === course.id}
                 >
-                  {sendingCourseId === course.id ? (
-                    <SigmaSpinner size="sm" className="mr-2" />
-                  ) : (
-                    <CreditCard className="w-4 h-4 mr-2" />
-                  )}
+                  {sendingCourseId === course.id ? <SigmaSpinner size="sm" className="mr-2" /> : <CreditCard className="w-4 h-4 mr-2" />}
+                  Купить
+                </Button>
+                <Button
+                  variant="outline"
+                  className="w-full"
+                  onClick={() => setEnrollCourse(course)}
+                  disabled={enrollingCourseId === course.id}
+                >
+                  {enrollingCourseId === course.id ? <SigmaSpinner size="sm" className="mr-2" /> : <ClipboardCheck className="w-4 h-4 mr-2" />}
                   Записаться
                 </Button>
               </div>
@@ -221,6 +228,7 @@ export function AvailablePaidCourses({ userId, organizationId, userEmail }: Prop
         </div>
       </div>
 
+      {/* Payment confirmation dialog */}
       <AlertDialog open={!!confirmCourse} onOpenChange={(open) => !open && setConfirmCourse(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -237,12 +245,31 @@ export function AvailablePaidCourses({ userId, organizationId, userEmail }: Prop
               onClick={() => confirmCourse && handlePayment(confirmCourse)}
               disabled={sendingCourseId === confirmCourse?.id}
             >
-              {sendingCourseId === confirmCourse?.id ? (
-                <SigmaSpinner size="sm" className="mr-2" />
-              ) : (
-                <CreditCard className="w-4 h-4 mr-2" />
-              )}
+              {sendingCourseId === confirmCourse?.id ? <SigmaSpinner size="sm" className="mr-2" /> : <CreditCard className="w-4 h-4 mr-2" />}
               Перейти к оплате
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Enrollment request dialog */}
+      <AlertDialog open={!!enrollCourse} onOpenChange={(open) => !open && setEnrollCourse(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Заявка на запись</AlertDialogTitle>
+            <AlertDialogDescription>
+              Ваша заявка на курс «{enrollCourse?.title}» будет отправлена в учебный центр.
+              Сотрудники свяжутся с вами для уточнения деталей.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Отмена</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => enrollCourse && handleEnrollRequest(enrollCourse)}
+              disabled={enrollingCourseId === enrollCourse?.id}
+            >
+              {enrollingCourseId === enrollCourse?.id ? <SigmaSpinner size="sm" className="mr-2" /> : <ClipboardCheck className="w-4 h-4 mr-2" />}
+              Отправить заявку
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
