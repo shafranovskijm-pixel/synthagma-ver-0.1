@@ -187,9 +187,61 @@ export function OrgChatsTab() {
     );
   }
 
+  const modeButtons = (
+    <div className="flex gap-1 mb-4 bg-muted/50 p-1 rounded-xl w-fit">
+      <Button
+        variant={chatMode === "students" ? "default" : "ghost"}
+        size="sm"
+        onClick={() => setChatMode("students")}
+        className="gap-1.5 rounded-lg text-xs"
+      >
+        <MessageCircle className="w-3.5 h-3.5" /> Чаты
+      </Button>
+      <Button
+        variant={chatMode === "ai" ? "default" : "ghost"}
+        size="sm"
+        onClick={() => setChatMode("ai")}
+        className="gap-1.5 rounded-lg text-xs"
+      >
+        <Bot className="w-3.5 h-3.5" /> ИИ-помощник
+      </Button>
+      <Button
+        variant={chatMode === "colleagues" ? "default" : "ghost"}
+        size="sm"
+        onClick={() => setChatMode("colleagues")}
+        className="gap-1.5 rounded-lg text-xs"
+      >
+        <Users className="w-3.5 h-3.5" /> Коллеги
+      </Button>
+    </div>
+  );
+
+  if (chatMode === "ai") {
+    return (
+      <>
+        {modeButtons}
+        <div className="border border-border rounded-xl bg-card p-4 h-[calc(100vh-280px)] min-h-[400px]">
+          <AiChatPanel />
+        </div>
+      </>
+    );
+  }
+
+  if (chatMode === "colleagues") {
+    return (
+      <>
+        {modeButtons}
+        <div className="h-[calc(100vh-280px)] min-h-[400px]">
+          <ColleagueChatPanel role="organization" organizationId={organizationId} />
+        </div>
+      </>
+    );
+  }
+
   return (
     <>
-      <div className={`flex gap-4 ${hasActiveChat ? "h-[calc(100vh-220px)] min-h-[400px]" : ""}`}>
+      {modeButtons}
+      <div className={`flex gap-4 ${hasActiveChat ? "h-[calc(100vh-280px)] min-h-[400px]" : ""}`}>
         {/* Conversations list */}
         <div className={`flex flex-col ${hasActiveChat && !isMobile ? "w-80 shrink-0" : "flex-1 max-w-md"} border border-border rounded-xl bg-card overflow-hidden`}>
           <div className="p-3 border-b border-border flex gap-2">
