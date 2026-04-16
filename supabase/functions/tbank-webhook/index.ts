@@ -11,6 +11,40 @@ async function generateToken(params: Record<string, string>, password: string): 
   return hashArray.map(b => b.toString(16).padStart(2, "0")).join("");
 }
 
+async function recordBalanceTransaction(
+  supabaseAdmin: ReturnType<typeof createClient>,
+  organizationId: string,
+  amount: number,
+  type: string,
+  description: string,
+  relatedOrderId?: string,
+) {
+  // Insert balance transaction
+  await supabaseAdmin.from("balance_transactions").insert({
+    organization_id: organizationId,
+    amount,
+    type,
+    description,
+    related_order_id: relatedOrderId || null,
+    performed_by: null,
+  });
+
+  // Update organization balance by summing all transactions
+  const { data: txSum } = await supabaseAdmin
+    .from("balance_transactions")
+    .select("amount")
+    .eq("organization_id", organizationId);
+
+  const newBalance = (txSum || []).reduce((sum: number, t: { amount: number }) => sum + t.amount, 0);
+
+  await supabaseAdmin
+    .from("organizations")
+    .update({ balance: newBalance })
+    .eq("id", organizationId);
+
+  console.log("Balance transaction recorded:", { organizationId, amount, type, newBalance });
+}
+
 Deno.serve(async (req) => {
   if (req.method !== "POST") {
     return new Response("Method not allowed", { status: 405 });
@@ -65,7 +99,6 @@ Deno.serve(async (req) => {
       if (settings && settings.length > 0 && settings[0].password) {
         password = settings[0].password;
       } else {
-        // Try platform-level settings
         const { data: appSettings } = await supabaseAdmin
           .from("app_settings")
           .select("setting_key, setting_value")
@@ -111,6 +144,16 @@ Deno.serve(async (req) => {
           })
           .eq("id", (invoice as any).organization_id);
 
+        // Record balance transaction for subscription
+        const amountRub = Number(Amount) / 100;
+        await recordBalanceTransaction(
+          supabaseAdmin,
+          (invoice as any).organization_id,
+          amountRub,
+          "subscription",
+          `Оплата подписки "${(invoice as any).plan}" на ${(invoice as any).period_months} мес.`,
+        );
+
         console.log("Subscription activated:", { org: (invoice as any).organization_id, plan: (invoice as any).plan, until: paidUntil.toISOString() });
       } else if (Status === "REJECTED" || Status === "CANCELED") {
         await supabaseAdmin
@@ -122,7 +165,7 @@ Deno.serve(async (req) => {
       return new Response("OK", { status: 200 });
     }
 
-    // --- Original course payment logic ---
+    // --- Course payment logic ---
     const { data: payment } = await supabaseAdmin
       .from("course_payments")
       .select("id, organization_id, course_id, user_id")
@@ -189,6 +232,28 @@ Deno.serve(async (req) => {
             });
         }
       }
+
+      // Record balance transaction for course payment
+      const amountRub = Number(Amount) / 100;
+      // Get course title for description
+      let courseTitle = "Курс";
+      if (payment.course_id) {
+        const { data: course } = await supabaseAdmin
+          .from("courses")
+          .select("title")
+          .eq("id", payment.course_id)
+          .single();
+        if (course) courseTitle = course.title;
+      }
+
+      await recordBalanceTransaction(
+        supabaseAdmin,
+        payment.organization_id,
+        amountRub,
+        "payment",
+        `Оплата курса "${courseTitle}"`,
+        OrderId,
+      );
     } else if (Status === "REJECTED" || Status === "CANCELED") {
       await supabaseAdmin
         .from("course_payments")
