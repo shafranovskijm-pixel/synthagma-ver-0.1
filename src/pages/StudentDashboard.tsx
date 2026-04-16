@@ -280,6 +280,23 @@ export default function StudentDashboard() {
     }
   };
 
+  const topTabs = [
+    { id: "courses" as const, label: "Курсы" },
+    { id: "webinars" as const, label: "Вебинары" },
+    { id: "trainers" as const, label: "3D-тренажёры" },
+    ...(dashboardSettings.showAiChat ? [{ id: "chat" as const, label: "Чат" }] : []),
+  ];
+
+  const handleTopTabChange = (tabId: "courses" | "webinars" | "trainers" | "chat") => {
+    if (tabId === "chat") {
+      setActiveTab("chat" as any);
+      setContentTab("chat");
+      return;
+    }
+    setActiveTab("catalog");
+    setContentTab(tabId);
+  };
+
   // Bottom navigation items for mobile
   const bottomNavItems: { id: StudentTab; icon: typeof BookOpen; label: string }[] = [
     { id: "catalog", icon: BookOpen, label: "Каталог" },
@@ -352,36 +369,59 @@ export default function StudentDashboard() {
         >
           {isMobile && <PullToRefreshIndicator pullDistance={pullDistance} isRefreshing={isRefreshing} canRefresh={canRefresh} threshold={80} />}
 
-          {/* Catalog tab */}
-          {currentTab === "catalog" && (
-            <CatalogContent
-              catalogCourses={catalogCourses}
-              categories={categories}
-              profile={profile}
-              branding={branding}
-              handleCourseClick={handleCourseClick}
-              enrolledCourses={courses}
-              isVideoIdentified={isVideoIdentified}
-              totalProgress={totalProgress}
-              totalTimeSpent={totalTimeSpent}
-              totalCompletedLessons={totalCompletedLessons}
-              formatTime={formatTime}
-              user={user}
-            />
-          )}
-
-          {/* Chat tab */}
-          {currentTab === "chat" && (
-            <div className="flex-1 flex flex-col">
-              {/* Mobile header for chat */}
-              <div className="md:hidden px-4 pt-3 pb-2 flex items-center gap-3 border-b border-border bg-card">
-                {branding?.logoUrl && <img src={branding.logoUrl} alt="" className="w-8 h-8 rounded-full object-cover" />}
-                <span className="font-semibold text-sm truncate">{profile?.organization_name || "Чат"}</span>
-              </div>
-              <StudentChatsTab
-                organizationId={profile?.organization_id}
-                organizationName={profile?.organization_name || "Организация"}
+          {(currentTab === "catalog" || currentTab === "chat") && (
+            <div className="p-4 md:p-6 space-y-4 md:space-y-6 max-w-[1400px] mx-auto w-full flex-1">
+              <OrgBanner
+                orgName={profile?.organization_name || null}
+                orgDescription={profile?.org_description}
+                coverUrl={branding?.coverUrl}
+                logoUrl={branding?.logoUrl}
+                primaryColor={branding?.primaryColor}
+                secondaryColor={branding?.secondaryColor}
               />
+
+              <div className="flex gap-1 bg-muted rounded-lg p-1 w-fit overflow-x-auto">
+                {topTabs.map((t) => {
+                  const isActive = t.id === "chat" ? currentTab === "chat" : currentTab === "catalog" && contentTab === t.id;
+                  return (
+                    <button
+                      key={t.id}
+                      onClick={() => handleTopTabChange(t.id)}
+                      className={cn(
+                        "px-4 md:px-5 py-2 rounded-md text-sm font-medium transition-all shrink-0",
+                        isActive ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
+                      )}
+                    >
+                      {t.label}
+                    </button>
+                  );
+                })}
+              </div>
+
+              {currentTab === "catalog" && (
+                <CatalogContent
+                  catalogCourses={catalogCourses}
+                  categories={categories}
+                  handleCourseClick={handleCourseClick}
+                  enrolledCourses={courses}
+                  isVideoIdentified={isVideoIdentified}
+                  totalProgress={totalProgress}
+                  totalTimeSpent={totalTimeSpent}
+                  totalCompletedLessons={totalCompletedLessons}
+                  formatTime={formatTime}
+                  user={user}
+                  contentTab={contentTab}
+                />
+              )}
+
+              {currentTab === "chat" && (
+                <div className="flex-1">
+                  <StudentChatsTab
+                    organizationId={profile?.organization_id}
+                    organizationName={profile?.organization_name || "Организация"}
+                  />
+                </div>
+              )}
             </div>
           )}
 
