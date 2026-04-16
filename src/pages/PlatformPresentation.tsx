@@ -532,8 +532,8 @@ export default function PlatformPresentation() {
                 <div className="space-y-1 text-[11px] text-white/60 flex-1">
                   {p.features.map((f, j) => (
                     <div key={j} className="flex items-center gap-1.5">
-                      <CheckCircle2 className={`w-3 h-3 flex-shrink-0 ${f.includes("ФРДО+") ? "text-[hsl(38_92%_50%)]" : "text-[hsl(174_72%_46%/0.7)]"}`} />
-                      <span className={f.includes("ФРДО+") ? "text-[hsl(38_92%_50%)] font-semibold" : ""}>{f}</span>
+                      <CheckCircle2 className={`w-3 h-3 flex-shrink-0 ${f.includes("ФРДО+") || f === "Видеосервис+" || f === "3D-тренажёры" ? "text-[hsl(38_92%_50%)]" : "text-[hsl(174_72%_46%/0.7)]"}`} />
+                      <span className={f.includes("ФРДО+") || f === "Видеосервис+" || f === "3D-тренажёры" ? "text-[hsl(38_92%_50%)] font-semibold" : ""}>{f}</span>
                     </div>
                   ))}
                 </div>
