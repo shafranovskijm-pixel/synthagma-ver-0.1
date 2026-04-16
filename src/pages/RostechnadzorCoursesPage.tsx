@@ -2,11 +2,11 @@ import { Link } from "react-router-dom";
 import { Helmet } from "react-helmet-async";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { SigmaLogo } from "@/components/ui/SigmaLogo";
-import { FloatingParticles } from "@/components/landing/FloatingParticles";
+import { LandingHeader } from "@/components/landing/LandingHeader";
+import { StarfieldCanvas } from "@/components/landing/StarfieldCanvas";
 import { Footer } from "@/components/landing/Footer";
 import {
-  ArrowLeft, Shield, Zap, BookOpen, CheckCircle2, Factory, Flame,
+  Shield, Zap, BookOpen, CheckCircle2, Factory, Flame,
   HardHat, Leaf, ArrowRight, Clock, FileCheck, RefreshCw,
   Heart, Wrench, Car, Layers, GraduationCap, Briefcase, Settings, Building2
 } from "lucide-react";
@@ -250,55 +250,24 @@ const RostechnadzorCoursesPage = () => {
         })}</script>
       </Helmet>
 
-      {/* Header */}
-      <header className="sticky top-0 z-50 bg-background/80 backdrop-blur-xl border-b border-border">
-        <div className="container mx-auto px-6 py-4 flex items-center justify-between">
-          <Link to="/" className="flex items-center gap-2">
-            <SigmaLogo size="sm" />
-          </Link>
-          <Link to="/">
-            <Button variant="ghost" className="gap-2">
-              <ArrowLeft className="w-4 h-4" />
-              На главную
-            </Button>
-          </Link>
-        </div>
-      </header>
+      <LandingHeader showStars />
 
-      {/* Hero — dark style */}
-      <section className="relative py-20 md:py-28 overflow-hidden bg-gradient-to-b from-background via-background to-secondary/20">
-        <FloatingParticles mode="mixed" count={10} />
-        <div className="absolute inset-0 opacity-[0.012]" style={{
-          backgroundImage: `radial-gradient(circle at 1px 1px, currentColor 1px, transparent 0)`,
-          backgroundSize: '32px 32px'
-        }} />
-
-        {/* Decorative glows */}
-        <div className="absolute top-[10%] right-[8%] w-80 h-80 bg-accent/5 rounded-full blur-3xl pointer-events-none" />
-        <div className="absolute bottom-[5%] left-[5%] w-64 h-64 bg-accent/4 rounded-full blur-3xl pointer-events-none" />
-
-        {/* Decorative corners */}
-        <motion.div
-          className="absolute top-12 left-8 w-14 h-14 border-l border-t border-accent/15 rounded-tl-2xl"
-          initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} viewport={{ once: true }} transition={{ duration: 1, delay: 0.5 }}
-        />
-        <motion.div
-          className="absolute bottom-12 right-8 w-14 h-14 border-r border-b border-accent/15 rounded-br-2xl"
-          initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} viewport={{ once: true }} transition={{ duration: 1, delay: 0.6 }}
-        />
+      {/* Hero — dark style with starfield */}
+      <section className="relative py-20 md:py-28 overflow-hidden bg-[#0a0e1a]">
+        <StarfieldCanvas />
 
         <div className="container mx-auto px-6 relative z-10">
           <motion.div initial="hidden" animate="visible" variants={stagger} className="max-w-4xl mx-auto text-center">
-            <motion.div variants={fadeUp} className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-accent/10 border border-accent/20 mb-6">
+            <motion.div variants={fadeUp} className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/5 border border-white/20 mb-6">
               <BookOpen className="w-4 h-4 text-accent" />
-              <span className="text-sm font-medium text-accent">Библиотека · 303 курса · 14 направлений</span>
+              <span className="text-sm font-medium text-white/80">Библиотека · 303 курса · 14 направлений</span>
             </motion.div>
-            <motion.h1 variants={fadeUp} className="font-display text-4xl md:text-5xl lg:text-6xl font-medium mb-6 tracking-tight">
+            <motion.h1 variants={fadeUp} className="font-display text-4xl md:text-5xl lg:text-6xl font-medium mb-6 tracking-tight text-white">
               300+ готовых курсов{" "}
               <br className="hidden sm:block" />
-              <span className="text-accent">для вашей организации</span>
+              <span className="text-white/50">для вашей организации</span>
             </motion.h1>
-            <motion.p variants={fadeUp} className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto mb-10 leading-relaxed">
+            <motion.p variants={fadeUp} className="text-lg md:text-xl text-white/50 max-w-2xl mx-auto mb-10 leading-relaxed">
               Ваши клиенты хотят обучение, но разработка программ занимает месяцы? 
               У нас уже всё готово — подключите библиотеку курсов по 14 направлениям 
               и начните обучение прямо сейчас.
@@ -432,7 +401,6 @@ const RostechnadzorCoursesPage = () => {
 
       {/* CTA */}
       <section className="py-16 md:py-20 relative overflow-hidden">
-        <FloatingParticles mode="mixed" count={6} />
         <div className="absolute top-[15%] left-[10%] w-72 h-72 bg-accent/5 rounded-full blur-3xl pointer-events-none" />
         <div className="absolute bottom-[10%] right-[8%] w-64 h-64 bg-accent/4 rounded-full blur-3xl pointer-events-none" />
         <div className="container mx-auto px-6 text-center relative z-10">
