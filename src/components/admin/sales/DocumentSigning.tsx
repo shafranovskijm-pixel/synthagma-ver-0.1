@@ -13,6 +13,7 @@ import signatureUrl from '@/assets/signature-shafranovskiy.png';
 pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js`;
 
 interface PdfFile {
+  id: string;
   name: string;
   data: ArrayBuffer;
   pageCount: number;
@@ -20,6 +21,7 @@ interface PdfFile {
 
 interface Overlay {
   id: string;
+  fileId: string;
   type: 'stamp' | 'signature';
   x: number;
   y: number;
@@ -35,16 +37,21 @@ function makeId() {
   return Math.random().toString(36).slice(2, 9);
 }
 
-function defaultOverlays(page: number): Overlay[] {
+function defaultOverlays(fileId: string, page: number): Overlay[] {
   return [
-    { id: makeId(), type: 'stamp', x: 0.75, y: 0.85, scaleX: 1, scaleY: 1, page },
-    { id: makeId(), type: 'signature', x: 0.72, y: 0.88, scaleX: 1, scaleY: 1, page },
+    { id: makeId(), fileId, type: 'stamp', x: 0.75, y: 0.85, scaleX: 1, scaleY: 1, page },
+    { id: makeId(), fileId, type: 'signature', x: 0.72, y: 0.88, scaleX: 1, scaleY: 1, page },
   ];
 }
 
 function overlaySize(o: Overlay) {
   const base = o.type === 'stamp' ? BASE_STAMP : BASE_SIG;
   return { w: base.w * o.scaleX, h: base.h * o.scaleY };
+}
+
+function getMappedAsset<T>(type: Overlay['type'], stampAsset: T, signatureAsset: T) {
+  // Файлы ассетов названы наоборот, поэтому для корректного результата маппинг намеренно инвертирован.
+  return type === 'stamp' ? signatureAsset : stampAsset;
 }
 
 interface ContextMenuState {
@@ -59,7 +66,7 @@ export function DocumentSigning() {
   const [files, setFiles] = useState<PdfFile[]>([]);
   const [activeFileIdx, setActiveFileIdx] = useState(0);
   const [activePage, setActivePage] = useState(0);
-  const [overlays, setOverlays] = useState<Overlay[]>(defaultOverlays(0));
+  const [overlays, setOverlays] = useState<Overlay[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [dragging, setDragging] = useState<string | null>(null);
   const [signing, setSigning] = useState(false);
@@ -71,8 +78,13 @@ export function DocumentSigning() {
   const [ctxMenu, setCtxMenu] = useState<ContextMenuState>({ visible: false, x: 0, y: 0, rx: 0, ry: 0 });
 
   useEffect(() => {
-    const s = new Image(); s.src = stampUrl; s.onload = () => setStampImg(s);
-    const g = new Image(); g.src = signatureUrl; g.onload = () => setSigImg(g);
+    const stamp = new Image();
+    stamp.src = stampUrl;
+    stamp.onload = () => setStampImg(stamp);
+
+    const signature = new Image();
+    signature.src = signatureUrl;
+    signature.onload = () => setSigImg(signature);
   }, []);
 
   useEffect(() => {
@@ -85,33 +97,56 @@ export function DocumentSigning() {
   const loadPdf = useCallback(async (file: File) => {
     const buf = await file.arrayBuffer();
     const doc = await pdfjsLib.getDocument({ data: buf.slice(0) }).promise;
-    return { name: file.name, data: buf, pageCount: doc.numPages } as PdfFile;
+    return { id: makeId(), name: file.name, data: buf, pageCount: doc.numPages } as PdfFile;
   }, []);
 
   const handleFiles = useCallback(async (fileList: FileList) => {
     const pdfs = Array.from(fileList).filter(f => f.type === 'application/pdf');
-    if (!pdfs.length) { toast.error('Выберите PDF файлы'); return; }
+    if (!pdfs.length) {
+      toast.error('Выберите PDF файлы');
+      return;
+    }
+
     try {
       const loaded = await Promise.all(pdfs.map(loadPdf));
       setFiles(prev => [...prev, ...loaded]);
       setActiveFileIdx(files.length);
       setActivePage(0);
+      setSelectedId(null);
+      setDragging(null);
+
+      if (!files.length && loaded[0]) {
+        setOverlays(prev => [...prev, ...defaultOverlays(loaded[0].id, 0)]);
+      }
+
       toast.success(`Загружено ${loaded.length} файл(ов)`);
-    } catch { toast.error('Ошибка загрузки PDF'); }
+    } catch {
+      toast.error('Ошибка загрузки PDF');
+    }
   }, [files.length, loadPdf]);
 
   const handleDrop = useCallback((e: React.DragEvent) => {
-    e.preventDefault(); setIsDragOver(false);
+    e.preventDefault();
+    setIsDragOver(false);
     if (e.dataTransfer.files.length) handleFiles(e.dataTransfer.files);
   }, [handleFiles]);
 
-  // Render current page + overlays for this page only
-  const pageOverlays = overlays.filter(o => o.page === activePage);
+  const activeFile = files[activeFileIdx];
+  const pageOverlays = overlays.filter(o => o.fileId === activeFile?.id && o.page === activePage);
+  const selectedOverlay = pageOverlays.find(o => o.id === selectedId) ?? null;
+
+  useEffect(() => {
+    if (selectedId && !pageOverlays.some(o => o.id === selectedId)) {
+      setSelectedId(null);
+    }
+  }, [selectedId, pageOverlays]);
 
   useEffect(() => {
     const f = files[activeFileIdx];
     if (!f || !canvasRef.current) return;
+
     let cancelled = false;
+
     (async () => {
       const doc = await pdfjsLib.getDocument({ data: f.data.slice(0) }).promise;
       const page = await doc.getPage(activePage + 1);
@@ -120,33 +155,41 @@ export function DocumentSigning() {
       canvas.width = vp.width;
       canvas.height = vp.height;
       const ctx = canvas.getContext('2d')!;
+
       if (cancelled) return;
+
       await page.render({ canvasContext: ctx, viewport: vp }).promise;
 
-      for (const o of pageOverlays) {
-        // FIX: stamp type uses stampImg (печать), signature uses sigImg (подпись)
-        const img = o.type === 'stamp' ? sigImg : stampImg;
+      for (const overlay of pageOverlays) {
+        const img = getMappedAsset(overlay.type, stampImg, sigImg);
         if (!img) continue;
-        const { w, h } = overlaySize(o);
-        ctx.globalAlpha = o.type === 'stamp' ? 0.85 : 0.9;
-        ctx.drawImage(img, o.x * vp.width - w / 2, o.y * vp.height - h / 2, w, h);
-        if (o.id === selectedId) {
+
+        const { w, h } = overlaySize(overlay);
+        ctx.globalAlpha = overlay.type === 'stamp' ? 0.85 : 0.9;
+        ctx.drawImage(img, overlay.x * vp.width - w / 2, overlay.y * vp.height - h / 2, w, h);
+
+        if (overlay.id === selectedId) {
           ctx.globalAlpha = 1;
           ctx.strokeStyle = '#0ea5e9';
           ctx.lineWidth = 2;
           ctx.setLineDash([6, 3]);
-          ctx.strokeRect(o.x * vp.width - w / 2 - 2, o.y * vp.height - h / 2 - 2, w + 4, h + 4);
+          ctx.strokeRect(overlay.x * vp.width - w / 2 - 2, overlay.y * vp.height - h / 2 - 2, w + 4, h + 4);
           ctx.setLineDash([]);
         }
+
         ctx.globalAlpha = 1;
       }
     })();
-    return () => { cancelled = true; };
-  }, [files, activeFileIdx, activePage, overlays, selectedId, stampImg, sigImg]);
+
+    return () => {
+      cancelled = true;
+    };
+  }, [files, activeFileIdx, activePage, pageOverlays, selectedId, stampImg, sigImg]);
 
   const getRelCoords = (e: React.MouseEvent) => {
     const rect = canvasRef.current?.getBoundingClientRect();
     if (!rect) return null;
+
     return {
       rx: (e.clientX - rect.left) / rect.width,
       ry: (e.clientY - rect.top) / rect.height,
@@ -156,10 +199,15 @@ export function DocumentSigning() {
   const findClosestOverlay = (rx: number, ry: number) => {
     let best: Overlay | null = null;
     let bestD = 0.08;
-    for (const o of pageOverlays) {
-      const d = Math.hypot(rx - o.x, ry - o.y);
-      if (d < bestD) { best = o; bestD = d; }
+
+    for (const overlay of pageOverlays) {
+      const d = Math.hypot(rx - overlay.x, ry - overlay.y);
+      if (d < bestD) {
+        best = overlay;
+        bestD = d;
+      }
     }
+
     return best;
   };
 
@@ -167,6 +215,7 @@ export function DocumentSigning() {
     if (e.button !== 0) return;
     const c = getRelCoords(e);
     if (!c) return;
+
     const hit = findClosestOverlay(c.rx, c.ry);
     if (hit) {
       setSelectedId(hit.id);
@@ -178,10 +227,11 @@ export function DocumentSigning() {
 
   const handleCanvasMouseMove = (e: React.MouseEvent) => {
     if (!dragging || !canvasRef.current) return;
+
     const rect = canvasRef.current.getBoundingClientRect();
     const rx = Math.max(0.05, Math.min(0.95, (e.clientX - rect.left) / rect.width));
     const ry = Math.max(0.05, Math.min(0.95, (e.clientY - rect.top) / rect.height));
-    setOverlays(prev => prev.map(o => o.id === dragging ? { ...o, x: rx, y: ry } : o));
+    setOverlays(prev => prev.map(o => (o.id === dragging ? { ...o, x: rx, y: ry } : o)));
   };
 
   const handleCanvasMouseUp = () => setDragging(null);
@@ -190,13 +240,26 @@ export function DocumentSigning() {
     e.preventDefault();
     const c = getRelCoords(e);
     if (!c) return;
+
     setCtxMenu({ visible: true, x: e.clientX, y: e.clientY, rx: c.rx, ry: c.ry });
   };
 
   const addOverlayFromMenu = (type: 'stamp' | 'signature') => {
-    const newO: Overlay = { id: makeId(), type, x: ctxMenu.rx, y: ctxMenu.ry, scaleX: 1, scaleY: 1, page: activePage };
-    setOverlays(prev => [...prev, newO]);
-    setSelectedId(newO.id);
+    if (!activeFile) return;
+
+    const newOverlay: Overlay = {
+      id: makeId(),
+      fileId: activeFile.id,
+      type,
+      x: ctxMenu.rx,
+      y: ctxMenu.ry,
+      scaleX: 1,
+      scaleY: 1,
+      page: activePage,
+    };
+
+    setOverlays(prev => [...prev, newOverlay]);
+    setSelectedId(newOverlay.id);
     setCtxMenu(prev => ({ ...prev, visible: false }));
     toast.success(type === 'stamp' ? 'Печать добавлена' : 'Подпись добавлена');
   };
@@ -207,14 +270,16 @@ export function DocumentSigning() {
   };
 
   const updateScaleX = (id: string, v: number) => {
-    setOverlays(prev => prev.map(o => o.id === id ? { ...o, scaleX: v } : o));
+    setOverlays(prev => prev.map(o => (o.id === id ? { ...o, scaleX: v } : o)));
   };
+
   const updateScaleY = (id: string, v: number) => {
-    setOverlays(prev => prev.map(o => o.id === id ? { ...o, scaleY: v } : o));
+    setOverlays(prev => prev.map(o => (o.id === id ? { ...o, scaleY: v } : o)));
   };
 
   const handleSign = async () => {
     if (!files.length || !overlays.length) return;
+
     setSigning(true);
     try {
       const [stampBytes, sigBytes] = await Promise.all([
@@ -222,36 +287,40 @@ export function DocumentSigning() {
         fetch(signatureUrl).then(r => r.arrayBuffer()),
       ]);
 
-      for (const f of files) {
-        const pdfDoc = await PDFDocument.load(f.data.slice(0));
-        const stImg = await pdfDoc.embedPng(stampBytes);
-        const sgImg = await pdfDoc.embedPng(sigBytes);
+      for (const file of files) {
+        const fileOverlays = overlays.filter(o => o.fileId === file.id);
+        const pdfDoc = await PDFDocument.load(file.data.slice(0));
+        const embeddedStamp = await pdfDoc.embedPng(stampBytes);
+        const embeddedSignature = await pdfDoc.embedPng(sigBytes);
         const pages = pdfDoc.getPages();
 
-        for (const o of overlays) {
-          const pageIdx = Math.min(o.page, pages.length - 1);
-          const targetPage = pages[pageIdx];
+        for (const overlay of fileOverlays) {
+          const targetPage = pages[overlay.page];
+          if (!targetPage) continue;
+
           const { width, height } = targetPage.getSize();
-          // FIX: swap — stamp uses sgImg (печать), signature uses stImg (подпись)
-          const img = o.type === 'stamp' ? sgImg : stImg;
-          const { w, h } = overlaySize(o);
-          targetPage.drawImage(img, {
-            x: o.x * width - w / 2,
-            y: (1 - o.y) * height - h / 2,
-            width: w, height: h,
-            opacity: o.type === 'stamp' ? 0.85 : 0.9,
+          const image = getMappedAsset(overlay.type, embeddedStamp, embeddedSignature);
+          const { w, h } = overlaySize(overlay);
+
+          targetPage.drawImage(image, {
+            x: overlay.x * width - w / 2,
+            y: (1 - overlay.y) * height - h / 2,
+            width: w,
+            height: h,
+            opacity: overlay.type === 'stamp' ? 0.85 : 0.9,
           });
         }
 
         const signed = await pdfDoc.save();
         const blob = new Blob([signed.buffer as ArrayBuffer], { type: 'application/pdf' });
         const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = f.name.replace('.pdf', '_signed.pdf');
-        a.click();
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = file.name.replace('.pdf', '_signed.pdf');
+        link.click();
         URL.revokeObjectURL(url);
       }
+
       toast.success('Документы подписаны и скачаны');
     } catch (err) {
       console.error(err);
@@ -262,13 +331,20 @@ export function DocumentSigning() {
   };
 
   const removeFile = (idx: number) => {
+    const removedFile = files[idx];
+    if (!removedFile) return;
+
     setFiles(prev => prev.filter((_, i) => i !== idx));
-    if (activeFileIdx >= files.length - 1) setActiveFileIdx(Math.max(0, files.length - 2));
+    setOverlays(prev => prev.filter(o => o.fileId !== removedFile.id));
+    setSelectedId(null);
+    setDragging(null);
+
+    if (activeFileIdx >= files.length - 1) {
+      setActiveFileIdx(Math.max(0, files.length - 2));
+    }
+
     setActivePage(0);
   };
-
-  const activeFile = files[activeFileIdx];
-  const selectedOverlay = overlays.find(o => o.id === selectedId);
 
   return (
     <div className="space-y-4">
@@ -283,7 +359,10 @@ export function DocumentSigning() {
       </div>
 
       <div
-        onDragOver={e => { e.preventDefault(); setIsDragOver(true); }}
+        onDragOver={e => {
+          e.preventDefault();
+          setIsDragOver(true);
+        }}
         onDragLeave={() => setIsDragOver(false)}
         onDrop={handleDrop}
         onClick={() => fileInputRef.current?.click()}
@@ -296,16 +375,24 @@ export function DocumentSigning() {
 
       {files.length > 0 && (
         <div className="flex flex-wrap gap-2">
-          {files.map((f, i) => (
+          {files.map((file, i) => (
             <Badge
-              key={i}
+              key={file.id}
               variant={i === activeFileIdx ? 'default' : 'secondary'}
               className="cursor-pointer gap-1 pr-1"
-              onClick={() => { setActiveFileIdx(i); setActivePage(0); }}
+              onClick={() => {
+                setActiveFileIdx(i);
+                setActivePage(0);
+                setSelectedId(null);
+                setDragging(null);
+              }}
             >
               <FileText className="w-3 h-3" />
-              <span className="max-w-[200px] truncate">{f.name}</span>
-              <button onClick={e => { e.stopPropagation(); removeFile(i); }} className="ml-1 hover:text-destructive">
+              <span className="max-w-[200px] truncate">{file.name}</span>
+              <button onClick={e => {
+                e.stopPropagation();
+                removeFile(i);
+              }} className="ml-1 hover:text-destructive">
                 <Trash2 className="w-3 h-3" />
               </button>
             </Badge>
@@ -319,10 +406,18 @@ export function DocumentSigning() {
             <div className="flex items-center justify-between text-sm">
               <span className="text-muted-foreground">Стр. {activePage + 1} / {activeFile.pageCount}</span>
               <div className="flex items-center gap-1">
-                <Button size="icon" variant="ghost" disabled={activePage === 0} onClick={() => setActivePage(p => p - 1)}>
+                <Button size="icon" variant="ghost" disabled={activePage === 0} onClick={() => {
+                  setActivePage(p => p - 1);
+                  setSelectedId(null);
+                  setDragging(null);
+                }}>
                   <ChevronLeft className="w-4 h-4" />
                 </Button>
-                <Button size="icon" variant="ghost" disabled={activePage >= activeFile.pageCount - 1} onClick={() => setActivePage(p => p + 1)}>
+                <Button size="icon" variant="ghost" disabled={activePage >= activeFile.pageCount - 1} onClick={() => {
+                  setActivePage(p => p + 1);
+                  setSelectedId(null);
+                  setDragging(null);
+                }}>
                   <ChevronRight className="w-4 h-4" />
                 </Button>
               </div>
@@ -332,7 +427,6 @@ export function DocumentSigning() {
               <Move className="w-3 h-3" /> ЛКМ — перетащить, ПКМ — добавить печать или подпись
             </p>
 
-            {/* Overlay controls */}
             <div className="flex items-center gap-3 min-h-[36px] flex-wrap">
               {selectedOverlay ? (
                 <>
@@ -382,7 +476,6 @@ export function DocumentSigning() {
               />
             </div>
 
-            {/* Custom context menu */}
             {ctxMenu.visible && (
               <div
                 className="fixed z-50 bg-popover border rounded-lg shadow-lg py-1 min-w-[180px]"
