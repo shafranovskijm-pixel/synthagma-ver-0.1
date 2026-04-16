@@ -1,55 +1,64 @@
 
 
-# Исправление предупреждений здоровья проекта
+# Привязка балансов к реальным кассам T-Bank
 
-## Текущее состояние
-- **22 файла > 800 строк** (без архивных и types.ts)
-- **organization/ — 47K строк в 131 файле**
-- Топ-3 кандидата на декомпозицию: `DocumentsTab` (1440), `CourseDetailsModal` (1412), `LaborSafetyStudentDetailCard` (1279)
+## Что сейчас
+- `balance_transactions` заполняется вручную через `topUpBalance`/`deductBalance` в `useOrgBalance.ts`
+- Админ может пополнять баланс через `OrgBalanceManager.tsx`
+- Организация видит баланс и транзакции в `PaymentsTab.tsx`
+- `CourseStoreManager` принимает `deductBalance`/`topUpBalance` для покупок из магазина
+- `tbank-webhook` НЕ создаёт записей в `balance_transactions`
 
-## План: декомпозиция 3 крупнейших файлов
+## Что нужно сделать
 
-### 1. DocumentsTab.tsx (1440 → ~300)
-Извлечь логику и подразделы:
-- `useDocumentsTab.ts` — хук с состоянием, загрузкой billing-документов, requisites
-- `DocumentsNavSidebar.tsx` — боковое меню навигации по разделам
-- `BillingDocumentsSection.tsx` — раздел «Синтагма» (счета, акты)
-- `CounterpartiesSection.tsx` — раздел «Контрагенты»
-- `ConstructorSection.tsx` — раздел конструктора (договоры, протоколы, сертификаты, дипломы)
-- `OrdersSection.tsx` — раздел приказов
-- Основной `DocumentsTab.tsx` остаётся оркестратором (~300 строк)
+### 1. Обнулить данные (миграция)
+- `DELETE FROM balance_transactions;`
+- `UPDATE organizations SET balance = 0;`
 
-### 2. CourseDetailsModal.tsx (1412 → ~200)
-Извлечь вкладки модального окна в подкомпоненты:
-- `useCourseDetailsModal.ts` — хук с загрузкой курса, учеников, настроек
-- `CourseOverviewTab.tsx` — обзор курса (статистика, прогресс)
-- `CourseStudentsTab.tsx` — список учеников курса
-- `CourseSettingsTab.tsx` — настройки курса (ФРДО, видео, доступ)
-- `CourseDocumentsTab.tsx` — документы и отчёты курса
-- `CourseRemindersGroupsTab.tsx` — напоминания и группы
-- Основной `CourseDetailsModal.tsx` — Dialog + Tabs оркестрация (~200 строк)
+### 2. Привязать tbank-webhook к balance_transactions
+В `supabase/functions/tbank-webhook/index.ts`:
+- При статусе `CONFIRMED` для оплаты курса — вставлять запись в `balance_transactions` с типом `payment` и `related_order_id`
+- При статусе `CONFIRMED` для подписки — вставлять запись с типом `subscription`
+- Обновлять `organizations.balance` (суммировать из подтверждённых платежей)
 
-### 3. LaborSafetyStudentDetailCard.tsx (1279 → ~200)
-Извлечь секции карточки:
-- `useLaborSafetyStudent.ts` — хук с загрузкой данных студента, курсов, идентификации
-- `LSStudentPersonalTab.tsx` — личные данные, СНИЛС, ИНН
-- `LSStudentCoursesTab.tsx` — курсы и прогресс
-- `LSStudentIdentificationTab.tsx` — видео-идентификация
-- `LSStudentCredentialsTab.tsx` — логин/пароль
-- Основной файл — Dialog + Tabs (~200 строк)
+### 3. Убрать ручное пополнение
+**`useOrgBalance.ts`:**
+- Удалить функцию `topUpBalance` (ручное пополнение)
+- Удалить функцию `deductBalance` (ручное списание)
+- Оставить только `fetchBalance`, `fetchTransactions`, `refresh`
 
-### 4. Обновить devToolsData.ts
-- Обновить счётчики и рекомендации: отметить 3 новых декомпозиции как «Применено»
-- Обновить `large-files-count`: «20 файлов > 800 строк» (снижено с 22)
-- Обновить `org-components-size`: отразить уменьшение
+**`OrgBalanceManager.tsx`:**
+- Убрать кнопку «Пополнить» и диалог пополнения
+- Оставить только отображение баланса и историю операций (read-only)
+
+**`CourseStoreManager.tsx`:**
+- Убрать пропсы `deductBalance`, `topUpBalance`, `refreshBalance`, `orgBalance`
+- Покупки в магазине должны идти через T-Bank (оплата онлайн), а не через вычитание из баланса
+
+**`TabContentRenderer.tsx`:**
+- Убрать передачу `orgBalance`, `deductBalance`, `topUpBalance`, `refreshBalance` в `CourseStoreManager`
+
+**`useOrganizationDashboard.ts`:**
+- Упростить `orgBalance` — убрать `topUpBalance`/`deductBalance` из возвращаемого объекта
+
+### 4. Обновить AdminFinanceOverview
+- Вкладка «Транзакции баланса» теперь показывает только реальные платежи от кассы
+- Убрать возможность ручного пополнения из admin-интерфейса
+
+### 5. Обновить PaymentsTab (организация)
+- Вкладка «Транзакции баланса» — read-only, данные приходят только из webhook
+- Баланс считается автоматически из `organizations.balance`, который обновляет webhook
 
 ## Файлы
 
-| Действие | Файлы |
-|---|---|
-| Новые (DocumentsTab) | `useDocumentsTab.ts`, `DocumentsNavSidebar.tsx`, `BillingDocumentsSection.tsx`, `CounterpartiesSection.tsx`, `ConstructorSection.tsx`, `OrdersSection.tsx` |
-| Новые (CourseDetailsModal) | `useCourseDetailsModal.ts`, `CourseOverviewTab.tsx`, `CourseStudentsTab.tsx`, `CourseSettingsTab.tsx`, `CourseDocumentsTab.tsx` |
-| Новые (LaborSafety) | `useLaborSafetyStudent.ts`, `LSStudentPersonalTab.tsx`, `LSStudentCoursesTab.tsx`, `LSStudentIdentificationTab.tsx`, `LSStudentCredentialsTab.tsx` |
-| Рефакторинг | `DocumentsTab.tsx`, `CourseDetailsModal.tsx`, `LaborSafetyStudentDetailCard.tsx` |
-| Обновление | `devToolsData.ts` |
+| Действие | Файл |
+|----------|------|
+| Миграция | DELETE balance_transactions + UPDATE organizations SET balance=0 |
+| Изменить | `supabase/functions/tbank-webhook/index.ts` — добавить запись в balance_transactions |
+| Изменить | `src/hooks/useOrgBalance.ts` — убрать topUp/deduct |
+| Изменить | `src/components/admin/OrgBalanceManager.tsx` — убрать кнопку пополнения |
+| Изменить | `src/components/organization/CourseStoreManager.tsx` — убрать balance пропсы |
+| Изменить | `src/hooks/useCourseStoreManager.ts` — убрать balance интерфейс |
+| Изменить | `src/components/organization/tabs/TabContentRenderer.tsx` — убрать balance пропсы |
+| Изменить | `src/hooks/useOrganizationDashboard.ts` — упростить orgBalance |
 
