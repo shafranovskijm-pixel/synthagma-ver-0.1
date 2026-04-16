@@ -4,6 +4,18 @@ import { safeInvoke } from "@/utils/safeInvoke";
 import { toast } from "sonner";
 import { useSubscriptionLimits } from "@/hooks/useSubscriptionLimits";
 import { MARKETPLACE_ORG_ID } from "@/constants/marketplace";
+import {
+  fetchCatalog as _fetchCatalog,
+  fetchMyCourses as _fetchMyCourses,
+  fetchOrders as _fetchOrders,
+  fetchAvailableCourses as _fetchAvailableCourses,
+  fetchCourseRequests as _fetchCourseRequests,
+  fetchDbCategories as _fetchDbCategories,
+  handleAddToMarketplace as _handleAddToMarketplace,
+  handleToggleActive as _handleToggleActive,
+  handleDeleteFromMarketplace as _handleDeleteFromMarketplace,
+  handleEditCourse as _handleEditCourse,
+} from "./useCourseStoreFetch";
 
 interface Course {
   id: string;
@@ -143,12 +155,12 @@ export function useCourseStoreManager({ organizationId, userRole = 'organization
     setIsLoading(true);
     try {
       await Promise.all([
-        fetchCatalog(),
-        fetchMyCourses(),
-        fetchOrders(),
-        fetchAvailableCourses(),
-        fetchCourseRequests(),
-        fetchDbCategories(),
+        _fetchCatalog(organizationId, setCatalogCourses),
+        _fetchMyCourses(organizationId, setMyCourses),
+        _fetchOrders(organizationId, userId, setReceivedOrders, setMyOrders),
+        _fetchAvailableCourses(organizationId, setAvailableCourses),
+        _fetchCourseRequests(setCourseRequests),
+        _fetchDbCategories(setDbCategories),
       ]);
     } catch (error) {
       console.error('Error fetching data:', error);
@@ -157,16 +169,7 @@ export function useCourseStoreManager({ organizationId, userRole = 'organization
     }
   };
 
-  const fetchCourseRequests = async () => {
-    const { data, error } = await supabase
-      .from('course_requests')
-      .select('*')
-      .eq('status', 'active')
-      .order('created_at', { ascending: false })
-      .limit(10);
-    if (error) { console.error('Error fetching course requests:', error); return; }
-    setCourseRequests(data || []);
-  };
+  const fetchCourseRequestsLocal = async () => _fetchCourseRequests(setCourseRequests);
 
   const handleSubmitRequest = async () => {
     if (!requestTitle.trim()) { toast.error('Введите заголовок объявления'); return; }
@@ -185,7 +188,7 @@ export function useCourseStoreManager({ organizationId, userRole = 'organization
       toast.success('Объявление опубликовано!');
       setShowRequestDialog(false);
       setRequestTitle(""); setRequestDescription(""); setRequestBudgetMin(""); setRequestBudgetMax(""); setRequestStudentsCount("1");
-      fetchCourseRequests();
+      fetchCourseRequestsLocal();
     } catch (error: any) {
       console.error('Error creating request:', error);
       toast.error('Ошибка при публикации объявления');
@@ -206,87 +209,20 @@ export function useCourseStoreManager({ organizationId, userRole = 'organization
     } finally { setIsProposing(false); }
   };
 
-  const fetchDbCategories = async () => {
-    const { data, error } = await supabase
-      .from('course_categories')
-      .select('id, name, order_index, parent_type')
-      .eq('organization_id', MARKETPLACE_ORG_ID)
-      .order('order_index', { ascending: true });
-    if (error) { console.error('Error fetching categories:', error); return; }
-    setDbCategories(data || []);
-  };
-
-  const fetchCatalog = async () => {
-    const { data, error } = await supabase
-      .from('marketplace_courses')
-      .select(`*, course:courses(id, title, description, duration, category_id, cover_image_url), organization:organizations(name)`)
-      .eq('is_active', true).neq('organization_id', organizationId);
-    if (error) { console.error('Error fetching catalog:', error); return; }
-    setCatalogCourses(data || []);
-  };
-
-  const fetchMyCourses = async () => {
-    const { data, error } = await supabase
-      .from('marketplace_courses')
-      .select(`*, course:courses(id, title, description, duration, cover_image_url)`)
-      .eq('organization_id', organizationId);
-    if (error) { console.error('Error fetching my courses:', error); return; }
-    setMyCourses(data || []);
-  };
-
-  const fetchOrders = async () => {
-    const { data: received, error: receivedError } = await supabase
-      .from('marketplace_orders')
-      .select(`*, marketplace_course:marketplace_courses(*, course:courses(id, title), organization:organizations(name))`)
-      .order('created_at', { ascending: false });
-    if (receivedError) { console.error('Error fetching received orders:', receivedError); } else {
-      setReceivedOrders((received || []).filter(order => order.marketplace_course?.organization_id === organizationId));
-      setMyOrders((received || []).filter(order => order.buyer_organization_id === organizationId || order.buyer_user_id === userId));
-    }
-  };
-
-  const fetchAvailableCourses = async () => {
-    const { data: existing } = await supabase.from('marketplace_courses').select('course_id').eq('organization_id', organizationId);
-    const existingIds = new Set((existing || []).map(e => e.course_id));
-    const { data: courses, error } = await supabase.from('courses').select('id, title, description, duration').eq('organization_id', organizationId).eq('is_published', true);
-    if (error) { console.error('Error fetching available courses:', error); return; }
-    setAvailableCourses((courses || []).filter(c => !existingIds.has(c.id)));
-  };
-
   const resetAddForm = () => { setSelectedCourseToAdd(""); setShortDescription(""); setPriceStudent(0); setPriceOrganization(0); };
 
   const handleAddToMarketplace = async () => {
-    if (!selectedCourseToAdd) { toast.error('Выберите курс'); return; }
-    setIsAdding(true);
-    try {
-      const { error } = await supabase.from('marketplace_courses').insert({
-        course_id: selectedCourseToAdd, organization_id: organizationId,
-        price_student: priceStudent, price_organization: priceOrganization,
-        description_short: shortDescription || null, is_active: true,
-      });
-      if (error) throw error;
-      toast.success('Курс добавлен в магазин!');
-      setShowAddDialog(false); resetAddForm(); fetchData();
-    } catch (error: any) {
-      console.error('Error adding course:', error); toast.error('Ошибка при добавлении курса');
-    } finally { setIsAdding(false); }
+    await _handleAddToMarketplace(selectedCourseToAdd, organizationId, priceStudent, priceOrganization, shortDescription, {
+      setIsAdding, onSuccess: () => { setShowAddDialog(false); resetAddForm(); fetchData(); }
+    });
   };
 
   const handleToggleActive = async (course: MarketplaceCourse) => {
-    try {
-      const { error } = await supabase.from('marketplace_courses').update({ is_active: !course.is_active }).eq('id', course.id);
-      if (error) throw error;
-      toast.success(course.is_active ? 'Курс скрыт из каталога' : 'Курс опубликован в каталоге');
-      fetchMyCourses();
-    } catch (error) { console.error('Error toggling course:', error); toast.error('Ошибка при изменении статуса'); }
+    await _handleToggleActive(course, () => _fetchMyCourses(organizationId, setMyCourses));
   };
 
   const handleDeleteFromMarketplace = async (courseId: string) => {
-    try {
-      const { error } = await supabase.from('marketplace_courses').delete().eq('id', courseId);
-      if (error) throw error;
-      toast.success('Курс удалён из магазина'); fetchData();
-    } catch (error) { console.error('Error deleting course:', error); toast.error('Ошибка при удалении курса'); }
+    await _handleDeleteFromMarketplace(courseId, fetchData);
   };
 
   const handleOrder = async () => {
@@ -402,7 +338,7 @@ export function useCourseStoreManager({ organizationId, userRole = 'organization
         });
       } catch (notifyError) { console.error('Failed to send notification:', notifyError); }
 
-      setShowOrderDialog(false); setShowSuccessDialog(true); setOrderNotes(""); setStudentsCount(1); fetchOrders();
+      setShowOrderDialog(false); setShowSuccessDialog(true); setOrderNotes(""); setStudentsCount(1); _fetchOrders(organizationId, userId, setReceivedOrders, setMyOrders);
     } catch (error: any) {
       console.error('Error creating order:', error); toast.error('Ошибка при добавлении курса');
     } finally { setIsOrdering(false); }
@@ -430,7 +366,7 @@ export function useCourseStoreManager({ organizationId, userRole = 'organization
         } catch (notifyError) { console.error('Failed to send status notification:', notifyError); }
       }
 
-      toast.success('Статус заявки обновлён'); fetchOrders(); setShowOrderDetailsDialog(false);
+      toast.success('Статус заявки обновлён'); _fetchOrders(organizationId, userId, setReceivedOrders, setMyOrders); setShowOrderDetailsDialog(false);
     } catch (error) { console.error('Error updating order:', error); toast.error('Ошибка при обновлении статуса'); }
   };
 
@@ -443,7 +379,7 @@ export function useCourseStoreManager({ organizationId, userRole = 'organization
         description_short: editingCourse.description_short,
       }).eq('id', editingCourse.id);
       if (error) throw error;
-      toast.success('Курс обновлён'); setShowEditDialog(false); fetchMyCourses();
+      toast.success('Курс обновлён'); setShowEditDialog(false); _fetchMyCourses(organizationId, setMyCourses);
     } catch (error) { console.error('Error updating course:', error); toast.error('Ошибка при обновлении'); }
   };
 
