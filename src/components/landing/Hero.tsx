@@ -16,6 +16,7 @@ const subtitles = [
 
 export function Hero({ showStars = true }: { showStars?: boolean }) {
   const [activeIndex, setActiveIndex] = useState(0);
+  const dark = showStars; // when stars are shown, always use white text; otherwise use theme tokens
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -25,8 +26,8 @@ export function Hero({ showStars = true }: { showStars?: boolean }) {
   }, []);
 
   return (
-    <section className="relative overflow-hidden bg-[#0a0e1a]">
-      {showStars && <StarfieldCanvas />}
+    <section className={`relative overflow-hidden ${dark ? 'bg-[#0a0e1a]' : 'bg-background'}`}>
+      {dark && <StarfieldCanvas />}
 
       {/* Hero content */}
       <div className="relative z-10 container mx-auto px-6 pt-12 pb-12 md:pt-16 md:pb-16">
@@ -36,10 +37,10 @@ export function Hero({ showStars = true }: { showStars?: boolean }) {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6 }}
-            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full border border-white/20 bg-white/5 backdrop-blur-sm mb-10"
+            className={`inline-flex items-center gap-2 px-5 py-2.5 rounded-full border backdrop-blur-sm mb-10 ${dark ? 'border-white/20 bg-white/5' : 'border-border bg-secondary/50'}`}
           >
-            <Sparkles className="w-4 h-4 text-[hsl(174,72%,46%)]" />
-            <span className="text-sm text-white/80 font-medium">Система дистанционного обучения</span>
+            <Sparkles className="w-4 h-4 text-accent" />
+            <span className={`text-sm font-medium ${dark ? 'text-white/80' : 'text-foreground/80'}`}>Система дистанционного обучения</span>
           </motion.div>
 
           {/* Main headline */}
@@ -48,10 +49,10 @@ export function Hero({ showStars = true }: { showStars?: boolean }) {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, delay: 0.1 }}
           >
-            <h1 className="font-display text-5xl md:text-6xl lg:text-7xl font-medium leading-[1.1] mb-8 tracking-tight text-white">
+            <h1 className={`font-display text-5xl md:text-6xl lg:text-7xl font-medium leading-[1.1] mb-8 tracking-tight ${dark ? 'text-white' : 'text-foreground'}`}>
               <TypewriterText text="Обучение и документы" speed={60} delay={400} />
               <br />
-              <span className="text-white/50">
+              <span className={dark ? 'text-white/50' : 'text-muted-foreground'}>
                 <TypewriterText text="в одной системе" speed={60} delay={1700} />
               </span>
             </h1>
@@ -70,8 +71,8 @@ export function Hero({ showStars = true }: { showStars?: boolean }) {
                 onClick={() => setActiveIndex(i)}
                 className={`transition-all duration-500 rounded-full ${
                   i === activeIndex
-                    ? 'w-8 h-2 bg-[hsl(174,72%,46%)]'
-                    : 'w-2 h-2 bg-white/20 hover:bg-white/40'
+                    ? 'w-8 h-2 bg-accent'
+                    : dark ? 'w-2 h-2 bg-white/20 hover:bg-white/40' : 'w-2 h-2 bg-foreground/20 hover:bg-foreground/40'
                 }`}
               />
             ))}
@@ -91,7 +92,7 @@ export function Hero({ showStars = true }: { showStars?: boolean }) {
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -12 }}
                 transition={{ duration: 0.4 }}
-                className="text-lg md:text-xl text-white/50 max-w-2xl mx-auto leading-relaxed"
+                className={`text-lg md:text-xl max-w-2xl mx-auto leading-relaxed ${dark ? 'text-white/50' : 'text-muted-foreground'}`}
               >
                 {subtitles[activeIndex]}
               </motion.p>
@@ -106,7 +107,7 @@ export function Hero({ showStars = true }: { showStars?: boolean }) {
             className="flex justify-center"
           >
             <Link to="/register-organization">
-              <Button size="lg" className="btn-gradient rounded-xl px-10 h-14 text-base gap-2 group shadow-lg shadow-[hsl(174,72%,46%)]/20">
+              <Button size="lg" className="btn-gradient rounded-xl px-10 h-14 text-base gap-2 group shadow-lg shadow-accent/20">
                 Начать бесплатно
                 <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
               </Button>
