@@ -1,43 +1,32 @@
 
 
-# Единая тёмная шапка со звёздами + подвал на всех публичных страницах
+# Изменения: блог + анимации + убрать линию
 
-## Проблема
-Сейчас каждая страница (главная, презентация, партнёры, о нас) имеет свою отдельную шапку с разным стилем. Нет единообразия. Шапка должна выглядеть как подвал — тёмная с анимацией звёзд (`StarfieldCanvas`).
+## 1. Блог — добавить `LandingHeader` + `Footer`
+Страница `/blog` (`src/pages/Blog.tsx`) до сих пор использует свою кастомную шапку. Заменить её на `<LandingHeader />` и добавить `<Footer />` в конец.
 
-## Решение
+## 2. Анимация логотипа «СИНТАГМА» — буквы слетаются при наведении
+В `LandingHeader.tsx` текст «СИНТАГМА» разбить на отдельные `<span>` для каждой буквы. При наведении (`group-hover`) буквы анимированно слетаются справа налево с небольшой задержкой (`stagger`). Реализация через CSS `@keyframes` + `transition-delay` на каждой букве без дополнительных библиотек.
 
-### 1. Создать общий компонент `LandingHeader`
-Новый файл `src/components/landing/LandingHeader.tsx` — шапка в стиле подвала:
-- Фон `bg-[#0a0e1a]` с `StarfieldCanvas` внутри (как в Footer)
-- Sticky, `z-50`
-- Логотип Σ СИНТАГМА, навигация (Стоимость, О нас, Блог, Презентация)
-- Кнопки: RadioPlayerButton, ThemeToggle, Войти, Начать
-- Все тексты `text-white/60`, кнопки `text-white`
+## 3. Typewriter-анимация заголовков
+- **Hero** (`Hero.tsx`, строка 241): «Обучение и документы / в одной системе» — эффект печатной машинки (текст появляется посимвольно).
+- **Blog** (`Blog.tsx`, строка 288): «Знания для профессионалов» — тот же эффект.
+Реализация: компонент `TypewriterText` с `useState` + `useEffect` + `setInterval`, печатающий по одному символу.
 
-### 2. Удалить встроенные шапки из страниц
-- **`Hero.tsx`** (строки 225-268) — убрать `<nav>` целиком, оставить только hero-контент
-- **`PlatformPresentation.tsx`** (строки 143-167) — убрать `<header>` 
-- **`PartnerLanding.tsx`** (строки 222-239) — убрать `<header>`
-- **`About.tsx`** (строки 22-34) — убрать `<header>`
+## 4. Убрать разделительную линию
+Удалить анимированную акцентную полоску (3px gradient bar) в `Hero.tsx` (строки 210-219).
 
-### 3. Добавить `LandingHeader` + `Footer` на каждую страницу
-- **Index.tsx** — добавить `<LandingHeader />` перед `<Hero />` 
-- **PlatformPresentation.tsx** — добавить `<LandingHeader />` вверху (Footer уже добавлен)
-- **PartnerLanding.tsx** — добавить `<LandingHeader />` вверху (Footer уже есть)
-- **About.tsx** — добавить `<LandingHeader />` + `<Footer />`
-
-### 4. Радио
-Радио уже работает через SPA-навигацию — `useRadioPlayer` использует глобальный `Audio` объект. При переходе между страницами через `<Link>` радио не прерывается.
+## 5. Плавный переход вместо линии
+Заменить линию на gradient-fade + плавающие частицы. Между `LandingHeader` (тёмный `#0a0e1a`) и Hero (тематический `bg-background`) добавить:
+- CSS-градиент от `#0a0e1a` к `transparent` (16-24px высотой)
+- Несколько мелких анимированных частиц (точки), которые медленно «уплывают» вниз из зоны шапки, создавая ощущение перетекания звёздного неба в контент.
 
 ## Файлы
 
 | Файл | Действие |
 |------|----------|
-| `src/components/landing/LandingHeader.tsx` | **Создать** — общая тёмная шапка со StarfieldCanvas |
-| `src/components/landing/Hero.tsx` | Удалить `<nav>` (строки 225-268) |
-| `src/pages/Index.tsx` | Добавить `<LandingHeader />` |
-| `src/pages/PlatformPresentation.tsx` | Заменить header на `<LandingHeader />` |
-| `src/pages/PartnerLanding.tsx` | Заменить header на `<LandingHeader />` |
-| `src/pages/About.tsx` | Заменить header на `<LandingHeader />` + добавить `<Footer />` |
+| `src/pages/Blog.tsx` | Заменить header на `<LandingHeader />`, добавить `<Footer />` |
+| `src/components/landing/LandingHeader.tsx` | Анимация букв «СИНТАГМА» при hover |
+| `src/components/landing/Hero.tsx` | Убрать accent bar (стр. 210-219), добавить typewriter для заголовка, добавить particle transition |
+| `src/pages/Blog.tsx` | Typewriter для «Знания для профессионалов» |
 
