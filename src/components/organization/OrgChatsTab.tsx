@@ -172,9 +172,24 @@ export function OrgChatsTab() {
       );
     }
 
-    // Groups tab
+    // Groups tab — show tabs + groups panel
     if (chatSubTab === "groups" && organizationId && currentUserId) {
-      return <ChatGroupsPanel organizationId={organizationId} currentUserId={currentUserId} />;
+      return (
+        <div className="flex gap-4">
+          <div className="flex flex-col w-full max-w-md border border-border rounded-xl bg-card overflow-hidden">
+            <div className="p-2 border-b border-border">
+              <Tabs value={chatSubTab} onValueChange={(v) => setChatSubTab(v as "personal" | "service" | "groups")}>
+                <TabsList className="w-full h-8">
+                  <TabsTrigger value="personal" className="flex-1 text-xs h-7">Личные</TabsTrigger>
+                  <TabsTrigger value="service" className="flex-1 text-xs h-7">Служебные</TabsTrigger>
+                  <TabsTrigger value="groups" className="flex-1 text-xs h-7">Группы</TabsTrigger>
+                </TabsList>
+              </Tabs>
+            </div>
+            <ChatGroupsPanel organizationId={organizationId} currentUserId={currentUserId} />
+          </div>
+        </div>
+      );
     }
 
     return (
