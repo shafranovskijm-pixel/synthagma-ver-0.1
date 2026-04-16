@@ -4,83 +4,23 @@ import { parseISO, startOfYear, endOfYear, isWithinInterval, format } from "date
 import { ru } from "date-fns/locale";
 import { supabase } from "@/integrations/supabase/client";
 import { getXLSX } from "@/utils/xlsxHelper";
+import {
+  type EducationDocumentRecord,
+  type CompletedStudent,
+  PROGRAM_TYPE_TO_DOC_TYPE,
+  DOCUMENT_TYPES,
+  DELIVERY_METHODS,
+  mapDbRecord,
+  getDefaultFormData,
+  getJournalTitle,
+  getJournalSubtitle,
+  buildExportData,
+  buildInsertRecord,
+  EXCEL_COL_WIDTHS,
+} from "./educationDocumentsHelpers";
 
-export interface EducationDocumentRecord {
-  id: string;
-  reg_number: string;
-  full_name: string;
-  birth_date: string;
-  document_type: "certificate" | "diploma" | "qualification";
-  document_series: string;
-  document_number: string;
-  issue_date: string;
-  specialty_name: string;
-  qualification_name: string;
-  protocol_number: string;
-  protocol_date: string;
-  order_number: string;
-  order_date: string;
-  document_status: "original" | "duplicate";
-  original_document_data: string | null;
-  delivery_method: "personal" | "representative" | "postal";
-  delivery_details: string | null;
-  notes: string | null;
-  enrollment_id?: string;
-}
-
-export interface CompletedStudent {
-  enrollment_id: string;
-  user_id: string;
-  full_name: string;
-  birth_date: string | null;
-  course_title: string;
-  completed_at: string;
-  already_added: boolean;
-  frdo_program_type: string | null;
-}
-
-const PROGRAM_TYPE_TO_DOC_TYPE: Record<string, string> = {
-  qualification_upgrade: "certificate",
-  professional_retraining: "diploma",
-  professional_training: "qualification",
-};
-
-export const DOCUMENT_TYPES = [
-  { value: "certificate", label: "Удостоверение" },
-  { value: "diploma", label: "Диплом" },
-  { value: "qualification", label: "Свидетельство о квалификации" },
-];
-
-export const DELIVERY_METHODS = [
-  { value: "personal", label: "Лично" },
-  { value: "representative", label: "Через представителя" },
-  { value: "postal", label: "Почтовое отправление" },
-];
-
-function mapDbRecord(r: any): EducationDocumentRecord {
-  return {
-    id: r.id,
-    reg_number: r.reg_number,
-    full_name: r.full_name,
-    birth_date: r.birth_date || "",
-    document_type: r.document_type as "certificate" | "diploma" | "qualification",
-    document_series: r.document_series || "",
-    document_number: r.document_number,
-    issue_date: r.issue_date,
-    specialty_name: r.specialty_name,
-    qualification_name: r.qualification_name || "",
-    protocol_number: r.protocol_number || "",
-    protocol_date: r.protocol_date || "",
-    order_number: r.order_number || "",
-    order_date: r.order_date || "",
-    document_status: r.document_status as "original" | "duplicate",
-    original_document_data: r.original_document_data,
-    delivery_method: r.delivery_method as "personal" | "representative" | "postal",
-    delivery_details: r.delivery_details,
-    notes: r.notes,
-    enrollment_id: r.enrollment_id || undefined,
-  };
-}
+export type { EducationDocumentRecord, CompletedStudent };
+export { DOCUMENT_TYPES, DELIVERY_METHODS };
 
 interface UseEducationDocumentsJournalProps {
   organizationId: string;
