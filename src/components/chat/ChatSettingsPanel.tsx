@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { Camera, Loader2, Volume2, Play } from "lucide-react";
+import { Camera, Loader2, Volume2, Play, Eye, EyeOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
@@ -16,6 +16,13 @@ interface ChatSettingsPanelProps {
   onAvatarUpdated?: (url: string) => void;
 }
 
+interface ChatPrivacy {
+  hide_phone?: boolean;
+  hide_name?: boolean;
+  hide_city?: boolean;
+  hide_bio?: boolean;
+}
+
 const SOUND_OPTIONS = [
   { id: "message-1", label: "Стандарт" },
   { id: "message-2", label: "Мягкий" },
@@ -24,28 +31,51 @@ const SOUND_OPTIONS = [
   { id: "message-5", label: "Нейтральный" },
 ];
 
+const PRIVACY_FIELDS = [
+  { key: "hide_name" as const, label: "ФИО" },
+  { key: "hide_phone" as const, label: "Телефон" },
+  { key: "hide_city" as const, label: "Город" },
+  { key: "hide_bio" as const, label: "О себе" },
+];
+
 export function ChatSettingsPanel({ userName, email, avatarUrl, onAvatarUpdated }: ChatSettingsPanelProps) {
   const { user } = useAuth();
   const [uploading, setUploading] = useState(false);
   const [currentAvatar, setCurrentAvatar] = useState(avatarUrl);
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [selectedSound, setSelectedSound] = useState("message-1");
+  const [privacy, setPrivacy] = useState<ChatPrivacy>({});
+  const [profileData, setProfileData] = useState<{ phone?: string; city?: string; bio?: string; full_name?: string }>({});
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Load sound settings
+  // Load profile data, sound settings and privacy
   useEffect(() => {
     if (!user) return;
     (async () => {
-      const { data } = await (supabase as any)
-        .from("chat_notification_settings")
-        .select("muted, notification_sound")
-        .eq("user_id", user.id)
-        .eq("chat_type", "global")
-        .is("chat_partner_id", null)
-        .maybeSingle();
-      if (data) {
-        setSoundEnabled(!data.muted);
-        setSelectedSound(data.notification_sound || "message-1");
+      const [soundRes, profileRes] = await Promise.all([
+        (supabase as any)
+          .from("chat_notification_settings")
+          .select("muted, notification_sound")
+          .eq("user_id", user.id)
+          .eq("chat_type", "global")
+          .is("chat_partner_id", null)
+          .maybeSingle(),
+        supabase.from("profiles").select("full_name, phone, city, bio, chat_privacy, avatar_url").eq("user_id", user.id).maybeSingle(),
+      ]);
+      if (soundRes.data) {
+        setSoundEnabled(!soundRes.data.muted);
+        setSelectedSound(soundRes.data.notification_sound || "message-1");
+      }
+      if (profileRes.data) {
+        setProfileData({
+          full_name: profileRes.data.full_name || undefined,
+          phone: profileRes.data.phone || undefined,
+          city: profileRes.data.city || undefined,
+          bio: profileRes.data.bio || undefined,
+        });
+        const p = (profileRes.data as any).chat_privacy;
+        if (p && typeof p === "object") setPrivacy(p as ChatPrivacy);
+        if (profileRes.data.avatar_url) setCurrentAvatar(profileRes.data.avatar_url);
       }
     })();
   }, [user]);
@@ -71,6 +101,13 @@ export function ChatSettingsPanel({ userName, email, avatarUrl, onAvatarUpdated 
     setSelectedSound(sound);
     previewSound(sound);
     await saveSoundSettings(!soundEnabled, sound);
+  };
+
+  const handleTogglePrivacy = async (key: keyof ChatPrivacy) => {
+    if (!user) return;
+    const updated = { ...privacy, [key]: !privacy[key] };
+    setPrivacy(updated);
+    await (supabase as any).from("profiles").update({ chat_privacy: updated }).eq("user_id", user.id);
   };
 
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -115,7 +152,7 @@ export function ChatSettingsPanel({ userName, email, avatarUrl, onAvatarUpdated 
   };
 
   return (
-    <div className="p-6 max-w-md mx-auto space-y-8">
+    <div className="p-6 max-w-md mx-auto space-y-6">
       <h2 className="text-lg font-semibold">Настройки профиля</h2>
 
       {/* Avatar section */}
@@ -141,25 +178,62 @@ export function ChatSettingsPanel({ userName, email, avatarUrl, onAvatarUpdated 
             className="hidden"
           />
         </div>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => fileInputRef.current?.click()}
-          disabled={uploading}
-        >
+        <Button variant="outline" size="sm" onClick={() => fileInputRef.current?.click()} disabled={uploading}>
           {uploading ? "Загрузка..." : "Загрузить фото"}
         </Button>
       </div>
 
-      {/* Info */}
-      <div className="space-y-4">
+      {/* Profile info (read-only) */}
+      <div className="space-y-3">
         <div>
           <Label className="text-muted-foreground text-xs">Имя</Label>
-          <p className="text-sm font-medium mt-1">{userName || "—"}</p>
+          <p className="text-sm font-medium mt-1">{profileData.full_name || userName || "—"}</p>
         </div>
         <div>
           <Label className="text-muted-foreground text-xs">Email</Label>
           <p className="text-sm font-medium mt-1">{email || "—"}</p>
+        </div>
+        {profileData.phone && (
+          <div>
+            <Label className="text-muted-foreground text-xs">Телефон</Label>
+            <p className="text-sm font-medium mt-1">{profileData.phone}</p>
+          </div>
+        )}
+        {profileData.city && (
+          <div>
+            <Label className="text-muted-foreground text-xs">Город</Label>
+            <p className="text-sm font-medium mt-1">{profileData.city}</p>
+          </div>
+        )}
+        {profileData.bio && (
+          <div>
+            <Label className="text-muted-foreground text-xs">О себе</Label>
+            <p className="text-sm font-medium mt-1">{profileData.bio}</p>
+          </div>
+        )}
+      </div>
+
+      {/* Privacy settings */}
+      <div className="space-y-3">
+        <h3 className="text-sm font-semibold flex items-center gap-2">
+          <EyeOff className="w-4 h-4" />
+          Видимость в чате
+        </h3>
+        <p className="text-xs text-muted-foreground">Выберите, что скрыть от других участников</p>
+        <div className="space-y-2">
+          {PRIVACY_FIELDS.map((f) => (
+            <div key={f.key} className="flex items-center justify-between py-1">
+              <Label className="text-sm">{f.label}</Label>
+              <div className="flex items-center gap-2">
+                {privacy[f.key] ? (
+                  <EyeOff className="w-3.5 h-3.5 text-muted-foreground" />
+                ) : (
+                  <Eye className="w-3.5 h-3.5 text-primary" />
+                )}
+                <Switch checked={!privacy[f.key]} onCheckedChange={() => handleTogglePrivacy(f.key)} />
+              </div>
+            </div>
+          ))}
         </div>
       </div>
 

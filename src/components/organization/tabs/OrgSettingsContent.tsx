@@ -25,7 +25,7 @@ const DEFAULT_MENU: MenuSettings = {
 
 const settingsTabs = [
   { key: "menu", label: "Разделы меню", icon: LayoutGrid },
-  { key: "student", label: "Настройки ЛК", icon: GraduationCap },
+  { key: "student", label: "ЛК ученика", icon: GraduationCap },
   { key: "staff", label: "Сотрудники", icon: Users },
 ];
 
