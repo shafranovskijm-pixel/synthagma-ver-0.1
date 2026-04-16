@@ -7,11 +7,12 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Megaphone, Send, Trash2, Mail, Clock, MessageSquare, CheckCircle2} from "lucide-react";
+import { Megaphone, Send, Trash2, Mail, Clock, MessageSquare, CheckCircle2 } from "lucide-react";
 import { toast } from "sonner";
 import { format, differenceInDays } from "date-fns";
 import { ru } from "date-fns/locale";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
+import { getEmailHtml, getEmailSubject } from "./broadcast/emailTemplates";
 
 interface Announcement {
   id: string;
@@ -166,55 +167,7 @@ export function BroadcastManager() {
     }
   };
 
-  const getEmailHtml = (orgName: string, actionUrl: string) => {
-    if (selectedTemplate === "inactive") {
-      return `
-        <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 40px 20px;">
-          <div style="background: white; border-radius: 16px; padding: 40px; box-shadow: 0 2px 12px rgba(0,0,0,0.06);">
-            <h1 style="font-size: 22px; color: #1a1a1a; margin: 0 0 20px;">Здравствуйте!</h1>
-            <p style="font-size: 15px; color: #555; line-height: 1.7; margin: 0 0 16px;">
-              Мы заметили, что вы давно не заходили на платформу <strong>Sintagma</strong>.
-            </p>
-            <p style="font-size: 15px; color: #555; line-height: 1.7; margin: 0 0 16px;">
-              Если вам нужна помощь в настройке или консультация по работе с платформой — мы с радостью поможем! Нажмите кнопку ниже, и мы свяжемся с вами.
-            </p>
-            <p style="font-size: 14px; color: #888; line-height: 1.6; margin: 0 0 28px;">
-              Если платформа вам больше не нужна, ваш аккаунт может быть деактивирован через 30 дней.
-            </p>
-            <div style="text-align: center;">
-              <a href="${actionUrl}" style="display: inline-block; background: #6366f1; color: white; padding: 14px 32px; border-radius: 10px; text-decoration: none; font-weight: 600; font-size: 15px;">
-                Мне нужна помощь
-              </a>
-            </div>
-            <p style="font-size: 12px; color: #aaa; margin: 28px 0 0; text-align: center;">
-              Платформа Sintagma — sintagma.com.ru
-            </p>
-          </div>
-        </div>
-      `;
-    }
-    return `
-      <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 40px 20px;">
-        <div style="background: white; border-radius: 16px; padding: 40px; box-shadow: 0 2px 12px rgba(0,0,0,0.06);">
-          <h1 style="font-size: 22px; color: #1a1a1a; margin: 0 0 20px;">Добро пожаловать!</h1>
-          <p style="font-size: 15px; color: #555; line-height: 1.7; margin: 0 0 16px;">
-            Спасибо за регистрацию на платформе <strong>Sintagma</strong>!
-          </p>
-          <p style="font-size: 15px; color: #555; line-height: 1.7; margin: 0 0 28px;">
-            Если вам нужна консультация по настройке платформы или у вас есть вопросы — нажмите кнопку ниже, и мы свяжемся с вами.
-          </p>
-          <div style="text-align: center;">
-            <a href="${actionUrl}" style="display: inline-block; background: #6366f1; color: white; padding: 14px 32px; border-radius: 10px; text-decoration: none; font-weight: 600; font-size: 15px;">
-              Запросить консультацию
-            </a>
-          </div>
-          <p style="font-size: 12px; color: #aaa; margin: 28px 0 0; text-align: center;">
-            Платформа Sintagma — sintagma.com.ru
-          </p>
-        </div>
-      </div>
-    `;
-  };
+  // Email templates extracted to broadcast/emailTemplates.ts
 
   const handleSendEmails = async () => {
     if (selectedOrgIds.size === 0) {
