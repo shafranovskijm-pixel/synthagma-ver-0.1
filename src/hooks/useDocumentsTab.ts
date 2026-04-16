@@ -459,7 +459,7 @@ export function useDocumentsTab(organizationId: string | null, organizationName?
     stampUrl, signatureUrl,
     handleStampUpload, handleSignatureUpload, handleStampRemove, handleSignatureRemove,
     billingDocs, invoices,
-    billingSubTab, setBillingSubTab,
+    
     counterpartySubTab, setCounterpartySubTab,
     counterpartyDocs, counterpartyLoading,
     // Act
