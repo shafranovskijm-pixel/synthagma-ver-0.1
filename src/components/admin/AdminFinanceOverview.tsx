@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { AdminPaymentTester } from "./AdminPaymentTester";
 
 interface PaymentRow {
   id: string;
