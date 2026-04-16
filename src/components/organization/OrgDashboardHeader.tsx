@@ -8,6 +8,7 @@ import { useOrgDashboard } from "@/contexts/OrgDashboardContext";
 import { SigmaLogo } from "@/components/ui/SigmaLogo";
 import { supabase } from "@/integrations/supabase/client";
 import { differenceInDays } from "date-fns";
+import { useTheme } from "next-themes";
 import { useAuth } from "@/hooks/useAuth";
 import { OrgNotifications } from "./OrgNotifications";
 import { HeroBannerSwiper } from "@/components/shared/HeroBannerSwiper";
@@ -32,6 +33,8 @@ function getUserInitials(email?: string | null, name?: string | null): string {
 export function OrgDashboardHeader() {
   const navigate = useNavigate();
   const d = useOrgDashboard();
+  const { theme, setTheme } = useTheme();
+  const toggleTheme = () => setTheme(theme === "dark" ? "light" : "dark");
 
   const activeTab = d.tabNavigation.activeTab;
   const organizationName = d.organizationName;
@@ -112,7 +115,14 @@ export function OrgDashboardHeader() {
             {logoUrl ? (
               <img src={logoUrl} alt="Logo" className="w-8 h-8 object-contain rounded-lg" />
             ) : (
-              <SigmaLogo size="sm" showText={false} />
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button onClick={toggleTheme} className="hover:opacity-80 transition-opacity">
+                    <SigmaLogo size="sm" showText={false} />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent>Сменить тему</TooltipContent>
+              </Tooltip>
             )}
             <span className="font-display font-bold text-sm hidden sm:inline">{customName || organizationName || "СИНТАГМА"}</span>
           </div>

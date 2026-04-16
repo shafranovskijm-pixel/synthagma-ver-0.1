@@ -13,6 +13,7 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { supabase } from "@/integrations/supabase/client";
+import { useTheme } from "next-themes";
 import { toast } from "sonner";
 import { formatDistanceToNow } from "date-fns";
 import { ru } from "date-fns/locale";
@@ -77,6 +78,8 @@ export function AdminDashboardHeader({
   onNotificationClick,
   branding,
   onCoverUpload }: AdminDashboardHeaderProps) {
+  const { theme, setTheme } = useTheme();
+  const toggleTheme = () => setTheme(theme === "dark" ? "light" : "dark");
   const helpDialog = useHelpCenterDialog();
 
   const displayName = branding.customName || "СИНТАГМА";
@@ -95,7 +98,14 @@ export function AdminDashboardHeader({
             {branding.logoUrl ? (
               <img src={branding.logoUrl} alt="Logo" className="w-8 h-8 object-contain rounded-lg" />
             ) : (
-              <SigmaLogo size="sm" showText={false} />
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button onClick={toggleTheme} className="hover:opacity-80 transition-opacity">
+                    <SigmaLogo size="sm" showText={false} />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent>Сменить тему</TooltipContent>
+              </Tooltip>
             )}
             <div className="hidden sm:block">
               <span className="font-display font-bold text-sm">{displayName}</span>
