@@ -21,9 +21,10 @@ interface GeneralMessage {
 interface OrgGeneralChatProps {
   organizationId: string;
   currentUserId: string;
+  onStartPrivateChat?: (userId: string, name: string) => void;
 }
 
-export function OrgGeneralChat({ organizationId, currentUserId }: OrgGeneralChatProps) {
+export function OrgGeneralChat({ organizationId, currentUserId, onStartPrivateChat }: OrgGeneralChatProps) {
   const [messages, setMessages] = useState<GeneralMessage[]>([]);
   const [newMessage, setNewMessage] = useState("");
   const [isLoading, setIsLoading] = useState(true);
@@ -62,7 +63,7 @@ export function OrgGeneralChat({ organizationId, currentUserId }: OrgGeneralChat
     return () => { supabase.removeChannel(channel); };
   }, [organizationId]);
 
-  useEffect(() => { scrollToBottom(); }, [messages]);
+  // Only scroll on initial load, not on every messages change
 
   const loadMessages = async () => {
     setIsLoading(true);
@@ -152,7 +153,9 @@ export function OrgGeneralChat({ organizationId, currentUserId }: OrgGeneralChat
             return (
               <div key={msg.id} className={`flex ${isMine ? "justify-end" : "justify-start"}`}>
                 {!isMine && (
-                  <div className="mr-2 mt-1 shrink-0">
+                  <div className={`mr-2 mt-1 shrink-0 ${onStartPrivateChat ? "cursor-pointer" : ""}`}
+                    onClick={() => onStartPrivateChat?.(msg.sender_user_id, senderName)}
+                    title={onStartPrivateChat ? `Написать ${senderName}` : undefined}>
                     <ChatAvatar name={senderName} size="sm" />
                   </div>
                 )}
@@ -162,7 +165,8 @@ export function OrgGeneralChat({ organizationId, currentUserId }: OrgGeneralChat
                     : "bg-muted rounded-bl-md"
                 }`}>
                   {!isMine && (
-                    <div className="text-[10px] font-medium mb-1 opacity-70">
+                    <div className={`text-[10px] font-medium mb-1 opacity-70 ${onStartPrivateChat ? "cursor-pointer hover:underline" : ""}`}
+                      onClick={() => onStartPrivateChat?.(msg.sender_user_id, senderName)}>
                       {senderName}
                     </div>
                   )}

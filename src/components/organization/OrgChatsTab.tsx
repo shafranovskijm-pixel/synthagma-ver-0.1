@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
-import { MessageCircle, Search, ArrowLeft, Shield, Plus, UserPlus, X } from "lucide-react";
+import { MessageCircle, Search, ArrowLeft, Shield, Plus, UserPlus, X, Users } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -20,6 +20,8 @@ import { ChatRequestsPanel } from "@/components/chat/ChatRequestsPanel";
 import { ChatContactsPanel } from "@/components/chat/ChatContactsPanel";
 import { OrgGeneralChat } from "@/components/chat/OrgGeneralChat";
 import { ChatNotificationToggle } from "@/components/chat/ChatNotificationToggle";
+import { ChatGroupsPanel } from "@/components/chat/ChatGroupsPanel";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Dialog,
   DialogContent,
@@ -35,6 +37,7 @@ export function OrgChatsTab() {
   const [selectedStudentName, setSelectedStudentName] = useState<string>("");
   const [selectedAdminChat, setSelectedAdminChat] = useState(false);
   const [selectedGeneralChat, setSelectedGeneralChat] = useState(false);
+  const [chatSubTab, setChatSubTab] = useState<"personal" | "service" | "groups">("personal");
   const [searchQuery, setSearchQuery] = useState("");
   const [adminUnreadCount, setAdminUnreadCount] = useState(0);
   const [showNewChatDialog, setShowNewChatDialog] = useState(false);
@@ -150,7 +153,7 @@ export function OrgChatsTab() {
             <h3 className="font-semibold text-lg flex-1">Общий чат</h3>
             <ChatNotificationToggle chatType="general" />
           </div>
-          <OrgGeneralChat organizationId={organizationId} currentUserId={currentUserId} />
+          <OrgGeneralChat organizationId={organizationId} currentUserId={currentUserId} onStartPrivateChat={(userId, name) => { setSelectedGeneralChat(false); setChatSubTab("personal"); handleSelectStudent(userId, name); }} />
         </div>
       );
     }
@@ -169,69 +172,93 @@ export function OrgChatsTab() {
       );
     }
 
+    // Groups tab
+    if (chatSubTab === "groups" && organizationId && currentUserId) {
+      return <ChatGroupsPanel organizationId={organizationId} currentUserId={currentUserId} />;
+    }
+
     return (
       <div className={`flex gap-4 ${hasActiveChat ? "h-full" : ""}`}>
         <div className={`flex flex-col ${hasActiveChat && !isMobile ? "w-80 shrink-0" : "flex-1 max-w-md"} border border-border rounded-xl bg-card overflow-hidden`}>
-          <div className="p-3 border-b border-border flex gap-2">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-              <Input value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder="Поиск по имени..." className="pl-9" />
-            </div>
-            <Button variant="outline" size="icon" onClick={handleOpenNewChat} title="Новый чат"><Plus className="w-4 h-4" /></Button>
+          {/* Sub-tabs */}
+          <div className="p-2 border-b border-border">
+            <Tabs value={chatSubTab} onValueChange={(v) => setChatSubTab(v as "personal" | "service" | "groups")}>
+              <TabsList className="w-full h-8">
+                <TabsTrigger value="personal" className="flex-1 text-xs h-7">Личные</TabsTrigger>
+                <TabsTrigger value="service" className="flex-1 text-xs h-7">Служебные</TabsTrigger>
+                <TabsTrigger value="groups" className="flex-1 text-xs h-7">Группы</TabsTrigger>
+              </TabsList>
+            </Tabs>
           </div>
-          <div className="flex-1 overflow-y-auto">
-            {/* Admin platform chat */}
-            <button onClick={handleSelectAdminChat}
-              className={`w-full text-left px-4 py-3 border-b border-border/50 hover:bg-secondary/50 transition-colors ${selectedAdminChat ? "bg-primary/5" : ""}`}>
-              <div className="flex items-center gap-3">
-                <ChatAvatar name="Администрация" size="sm" isAdmin />
-                <div className="min-w-0 flex-1">
-                  <span className={`font-medium text-sm truncate block ${adminUnreadCount > 0 ? "text-foreground" : "text-muted-foreground"}`}>Администрация платформы</span>
-                  <p className="text-xs truncate mt-0.5 text-muted-foreground">Чат с поддержкой платформы</p>
+
+          {chatSubTab === "personal" && (
+            <>
+              <div className="p-3 border-b border-border flex gap-2">
+                <div className="relative flex-1">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                  <Input value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder="Поиск по имени..." className="pl-9" />
                 </div>
-                {adminUnreadCount > 0 && (
-                  <Badge variant="destructive" className="text-[10px] px-1.5 py-0 h-4 min-w-[16px]">{adminUnreadCount}</Badge>
+                <Button variant="outline" size="icon" onClick={handleOpenNewChat} title="Новый чат"><Plus className="w-4 h-4" /></Button>
+              </div>
+              <div className="flex-1 overflow-y-auto">
+                {filtered.length === 0 && searchQuery ? (
+                  <div className="text-center py-8 text-muted-foreground"><p className="text-sm">Ничего не найдено</p></div>
+                ) : filtered.length === 0 ? (
+                  <div className="text-center py-8 text-muted-foreground"><p className="text-sm">Нет переписок</p></div>
+                ) : (
+                  filtered.map((convo) => (
+                    <button key={convo.studentUserId} onClick={() => handleSelectStudent(convo.studentUserId, convo.studentName)}
+                      className={`w-full text-left px-4 py-3 border-b border-border/50 hover:bg-secondary/50 transition-colors ${selectedStudentId === convo.studentUserId ? "bg-primary/5" : ""}`}>
+                      <div className="flex items-center gap-3">
+                        <ChatAvatar name={convo.studentName} size="sm" />
+                        <div className="min-w-0 flex-1">
+                          <span className={`font-medium text-sm truncate block ${convo.unreadCount > 0 ? "text-foreground" : "text-muted-foreground"}`}>{convo.studentName}</span>
+                          <p className={`text-xs truncate mt-0.5 ${convo.unreadCount > 0 ? "text-foreground font-medium" : "text-muted-foreground"}`}>
+                            {convo.lastSenderIsOrg && <span className="text-muted-foreground">Вы: </span>}
+                            {convo.lastMessage || "Вложение"}
+                          </p>
+                        </div>
+                        <div className="flex flex-col items-end gap-1 shrink-0">
+                          <span className="text-[10px] text-muted-foreground">{formatTime(convo.lastMessageAt)}</span>
+                          {convo.unreadCount > 0 && (
+                            <Badge variant="destructive" className="text-[10px] px-1.5 py-0 h-4 min-w-[16px]">{convo.unreadCount}</Badge>
+                          )}
+                        </div>
+                      </div>
+                    </button>
+                  ))
                 )}
               </div>
-            </button>
+            </>
+          )}
 
-            {/* General org chat */}
-            <button onClick={handleSelectGeneralChat}
-              className={`w-full text-left px-4 py-3 border-b border-border/50 hover:bg-secondary/50 transition-colors ${selectedGeneralChat ? "bg-primary/5" : ""}`}>
-              <div className="flex items-center gap-3">
-                <ChatAvatar name="Общий чат" size="sm" />
-                <div className="min-w-0 flex-1">
-                  <span className="font-medium text-sm truncate block text-muted-foreground">Общий чат</span>
-                  <p className="text-xs truncate mt-0.5 text-muted-foreground">Чат для всей организации</p>
-                </div>
-              </div>
-            </button>
-            {filtered.length === 0 && searchQuery ? (
-              <div className="text-center py-8 text-muted-foreground"><p className="text-sm">Ничего не найдено</p></div>
-            ) : (
-              filtered.map((convo) => (
-                <button key={convo.studentUserId} onClick={() => handleSelectStudent(convo.studentUserId, convo.studentName)}
-                  className={`w-full text-left px-4 py-3 border-b border-border/50 hover:bg-secondary/50 transition-colors ${selectedStudentId === convo.studentUserId ? "bg-primary/5" : ""}`}>
-                  <div className="flex items-center gap-3">
-                    <ChatAvatar name={convo.studentName} size="sm" />
-                    <div className="min-w-0 flex-1">
-                      <span className={`font-medium text-sm truncate block ${convo.unreadCount > 0 ? "text-foreground" : "text-muted-foreground"}`}>{convo.studentName}</span>
-                      <p className={`text-xs truncate mt-0.5 ${convo.unreadCount > 0 ? "text-foreground font-medium" : "text-muted-foreground"}`}>
-                        {convo.lastSenderIsOrg && <span className="text-muted-foreground">Вы: </span>}
-                        {convo.lastMessage || "Вложение"}
-                      </p>
-                    </div>
-                    <div className="flex flex-col items-end gap-1 shrink-0">
-                      <span className="text-[10px] text-muted-foreground">{formatTime(convo.lastMessageAt)}</span>
-                      {convo.unreadCount > 0 && (
-                        <Badge variant="destructive" className="text-[10px] px-1.5 py-0 h-4 min-w-[16px]">{convo.unreadCount}</Badge>
-                      )}
-                    </div>
+          {chatSubTab === "service" && (
+            <div className="flex-1 overflow-y-auto">
+              <button onClick={handleSelectAdminChat}
+                className={`w-full text-left px-4 py-3 border-b border-border/50 hover:bg-secondary/50 transition-colors ${selectedAdminChat ? "bg-primary/5" : ""}`}>
+                <div className="flex items-center gap-3">
+                  <ChatAvatar name="Администрация" size="sm" isAdmin />
+                  <div className="min-w-0 flex-1">
+                    <span className={`font-medium text-sm truncate block ${adminUnreadCount > 0 ? "text-foreground" : "text-muted-foreground"}`}>Администрация платформы</span>
+                    <p className="text-xs truncate mt-0.5 text-muted-foreground">Чат с поддержкой платформы</p>
                   </div>
-                </button>
-              ))
-            )}
-          </div>
+                  {adminUnreadCount > 0 && (
+                    <Badge variant="destructive" className="text-[10px] px-1.5 py-0 h-4 min-w-[16px]">{adminUnreadCount}</Badge>
+                  )}
+                </div>
+              </button>
+              <button onClick={handleSelectGeneralChat}
+                className={`w-full text-left px-4 py-3 border-b border-border/50 hover:bg-secondary/50 transition-colors ${selectedGeneralChat ? "bg-primary/5" : ""}`}>
+                <div className="flex items-center gap-3">
+                  <ChatAvatar name="Общий чат" size="sm" />
+                  <div className="min-w-0 flex-1">
+                    <span className="font-medium text-sm truncate block text-muted-foreground">Общий чат</span>
+                    <p className="text-xs truncate mt-0.5 text-muted-foreground">Чат для всей организации</p>
+                  </div>
+                </div>
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Chat detail - desktop */}
@@ -256,7 +283,7 @@ export function OrgChatsTab() {
                   <ChatNotificationToggle chatType="general" />
                 </div>
                 <div className="flex-1 p-4 overflow-hidden">
-                  <OrgGeneralChat organizationId={organizationId} currentUserId={currentUserId} />
+                  <OrgGeneralChat organizationId={organizationId} currentUserId={currentUserId} onStartPrivateChat={(userId, name) => { setSelectedGeneralChat(false); setChatSubTab("personal"); handleSelectStudent(userId, name); }} />
                 </div>
               </div>
             ) : selectedStudentId && organizationId && currentUserId ? (
@@ -337,7 +364,7 @@ export function OrgChatsTab() {
 
   return (
     <>
-      <div className="flex h-[calc(100vh-200px)] min-h-[500px] border border-border rounded-xl overflow-hidden bg-card">
+      <div className="flex min-h-[300px] border border-border rounded-xl overflow-hidden bg-card">
         <ChatSidebar activeSection={activeSection} onSectionChange={setActiveSection} userName={userName} avatarUrl={userAvatar} />
         <div className="flex-1 overflow-hidden p-4">{renderContent()}</div>
       </div>
