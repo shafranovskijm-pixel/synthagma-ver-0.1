@@ -373,7 +373,7 @@ const CourseLearning = () => {
       {isChatOpen && <AiChatPanel isMobile={!!isMobile} chatMessages={chatMessages} chatInput={chatInput} setChatInput={setChatInput} isChatLoading={isChatLoading} chatScrollRef={chatScrollRef} sendChatMessage={sendChatMessage} onClose={() => setIsChatOpen(false)} />}
 
       <TTSSettingsDialog open={ttsSettingsOpen} onOpenChange={setTtsSettingsOpen} settings={ttsSettings} onSettingsChange={setTtsSettings} />
-      {previewFile && <FilePreviewDialog file={previewFile} onClose={() => setPreviewFile(null)} allowDownload={(course as any)?.allow_materials_download !== false} />}
+      {previewFile && <FilePreviewDialog open={!!previewFile} onOpenChange={(o) => { if (!o) setPreviewFile(null); }} fileUrl={previewFile.url} fileName={previewFile.name} fileType={previewFile.type} allowDownload={(course as any)?.allow_materials_download !== false} />}
     </div>
   );
 };
