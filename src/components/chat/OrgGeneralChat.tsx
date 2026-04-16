@@ -63,7 +63,7 @@ export function OrgGeneralChat({ organizationId, currentUserId, onStartPrivateCh
     return () => { supabase.removeChannel(channel); };
   }, [organizationId]);
 
-  useEffect(() => { scrollToBottom(); }, [messages]);
+  // Only scroll on initial load, not on every messages change
 
   const loadMessages = async () => {
     setIsLoading(true);
