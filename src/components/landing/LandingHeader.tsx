@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
@@ -8,27 +9,33 @@ import { StarfieldCanvas } from "./StarfieldCanvas";
 const logoLetters = "СИНТАГМА".split("");
 
 export function LandingHeader() {
+  const [hovered, setHovered] = useState(false);
+
   return (
     <header className="sticky top-0 z-50 bg-[#0a0e1a] relative overflow-hidden">
       <StarfieldCanvas />
 
       <div className="container mx-auto px-6 py-4 relative z-10">
         <div className="flex items-center justify-between">
-          <Link to="/" className="flex items-center gap-3 group">
-            <div className="w-10 h-10 rounded-lg bg-white flex items-center justify-center group-hover:scale-105 transition-transform duration-300">
+          <Link
+            to="/"
+            className="flex items-center gap-3"
+            onMouseEnter={() => setHovered(true)}
+            onMouseLeave={() => setHovered(false)}
+          >
+            <div className="w-10 h-10 rounded-lg bg-white flex items-center justify-center hover:scale-105 transition-transform duration-300">
               <span className="font-display font-bold text-xl text-[#0a0e1a]">Σ</span>
             </div>
-            <span className="font-display font-medium text-xl tracking-tight text-white flex">
+            <span className="font-display font-medium text-xl tracking-tight text-white flex overflow-hidden">
               {logoLetters.map((letter, i) => (
                 <span
                   key={i}
-                  className="inline-block transition-all duration-300 group-hover:animate-none"
-                    style={{
-                      opacity: 1,
-                      transform: "translateX(0)",
-                      transition: `transform 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) ${i * 0.08}s, opacity 0.4s ease ${i * 0.08}s`,
-                    }}
-                  onMouseEnter={() => {}}
+                  className="inline-block"
+                  style={{
+                    opacity: hovered ? 0 : 1,
+                    transform: hovered ? "translateX(30px)" : "translateX(0)",
+                    transition: `transform 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) ${i * 0.08}s, opacity 0.4s ease ${i * 0.08}s`,
+                  }}
                 >
                   {letter}
                 </span>
@@ -69,17 +76,6 @@ export function LandingHeader() {
           </div>
         </div>
       </div>
-
-      {/* CSS for logo hover animation */}
-      <style>{`
-        .group:hover span[style] {
-          animation: letterFlyIn 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
-        }
-        @keyframes letterFlyIn {
-          0% { transform: translateX(30px); opacity: 0; }
-          100% { transform: translateX(0); opacity: 1; }
-        }
-      `}</style>
     </header>
   );
 }
