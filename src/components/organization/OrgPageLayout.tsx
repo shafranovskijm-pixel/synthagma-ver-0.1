@@ -15,7 +15,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import {
-  ArrowLeft, CreditCard, Handshake, HelpCircle, User, LogOut,
+  ArrowLeft, CreditCard, HelpCircle, User, LogOut,
   Sparkles, Settings, FileText, LucideIcon,
 } from "lucide-react";
 import { differenceInDays } from "date-fns";
@@ -148,15 +148,6 @@ export default function OrgPageLayout({ title, icon: Icon, children }: OrgPageLa
                 </span>
               </button>
 
-              <Button
-                variant="ghost"
-                size="sm"
-                className="hidden lg:flex rounded-full gap-1.5 text-xs text-muted-foreground hover:text-primary hover:bg-primary/10 h-9 px-3 transition-all duration-200"
-                onClick={() => navigate("/partner")}
-              >
-                <Handshake className="w-4.5 h-4.5" />
-                Партнёрам
-              </Button>
 
               {organizationId && (
                 <Tooltip>

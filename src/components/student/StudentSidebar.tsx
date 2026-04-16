@@ -4,6 +4,7 @@ import { cn } from "@/lib/utils";
 import { SigmaLogo } from "@/components/ui/SigmaLogo";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { getStoredThemeId, getThemeById } from "@/constants/admin-themes";
+import { useTheme } from "next-themes";
 
 export type StudentTab = "catalog" | "library" | "chat" | "profile";
 
@@ -75,6 +76,9 @@ export function StudentSidebar({
   activeTab, setActiveTab, branding, orgName, showAiChat,
   isPreviewMode, isAdminView,
 }: StudentSidebarProps) {
+  const { theme: currentTheme, setTheme } = useTheme();
+  const toggleTheme = () => setTheme(currentTheme === "dark" ? "light" : "dark");
+
   // Theme-aware accent
   const [themeAccent, setThemeAccent] = useState<string | null>(() => {
     const id = getStoredThemeId();
@@ -101,17 +105,30 @@ export function StudentSidebar({
       style={{ backgroundColor: `hsl(${brandHsl} / 0.07)` }}
     >
       <div className="flex h-full flex-col items-center px-2 py-4">
-        <div className="mb-4 flex h-12 w-12 items-center justify-center overflow-hidden rounded-xl bg-card/80 shadow-sm">
-          {branding?.logoUrl ? (
-            <img
-              src={branding.logoUrl}
-              alt={orgName ? `Логотип ${orgName}` : "Логотип"}
-              className="h-10 w-10 object-contain"
-            />
-          ) : (
-            <SigmaLogo size="sm" />
-          )}
-        </div>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button
+              onClick={() => {
+                if (!branding?.logoUrl) toggleTheme();
+              }}
+              className={cn(
+                "mb-4 flex h-12 w-12 items-center justify-center overflow-hidden rounded-xl bg-card/80 shadow-sm transition-all",
+                !branding?.logoUrl && "hover:ring-2 hover:ring-primary/40 cursor-pointer"
+              )}
+            >
+              {branding?.logoUrl ? (
+                <img
+                  src={branding.logoUrl}
+                  alt={orgName ? `Логотип ${orgName}` : "Логотип"}
+                  className="h-10 w-10 object-contain"
+                />
+              ) : (
+                <SigmaLogo size="sm" />
+              )}
+            </button>
+          </TooltipTrigger>
+          {!branding?.logoUrl && <TooltipContent side="right">Сменить тему</TooltipContent>}
+        </Tooltip>
 
         <div className="flex flex-1 items-center justify-center w-full">
           <div

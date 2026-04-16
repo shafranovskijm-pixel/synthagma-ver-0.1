@@ -5,6 +5,7 @@ import {
 import { SigmaLogo } from "@/components/ui/SigmaLogo";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useAdminUnreadChats } from "@/hooks/useAdminUnreadChats";
+import { useTheme } from "next-themes";
 import { cn } from "@/lib/utils";
 import { getStoredThemeId, getThemeById } from "@/constants/admin-themes";
 
@@ -51,6 +52,8 @@ export function AdminSidebar({
   onLogout
 }: AdminSidebarProps) {
   const unreadChats = useAdminUnreadChats();
+  const { theme, setTheme } = useTheme();
+  const toggleTheme = () => setTheme(theme === "dark" ? "light" : "dark");
 
   // Theme-aware accent
   const [themeAccent, setThemeAccent] = useState<string | null>(() => {
@@ -100,9 +103,17 @@ export function AdminSidebar({
       >
         {/* Logo */}
         <div className="flex justify-center py-4">
-          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-card/80 shadow-sm">
-            <SigmaLogo size="sm" showText={false} />
-          </div>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                onClick={toggleTheme}
+                className="flex h-12 w-12 items-center justify-center rounded-xl bg-card/80 shadow-sm hover:ring-2 hover:ring-primary/40 transition-all"
+              >
+                <SigmaLogo size="sm" showText={false} />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="right">Сменить тему</TooltipContent>
+          </Tooltip>
         </div>
 
         {/* Navigation pill */}
