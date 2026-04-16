@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { User, Bell, Video, FileCheck, FileText, Trophy, Palette, Users, LogOut, ArrowLeft, Radio } from "lucide-react";
+import { User, Bell, FileText, Trophy, Users, LogOut, ArrowLeft, Radio } from "lucide-react";
 import { SigmaLogo } from "@/components/ui/SigmaLogo";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Badge } from "@/components/ui/badge";
