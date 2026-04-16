@@ -47,41 +47,7 @@ import {
   MarketplaceMoveCategoryDialog,
   MarketplaceBulkMoveDialog } from "./marketplace/MarketplaceDialogs";
 
-const programTypeMetaAdmin: Record<string, { icon: React.ElementType; color: string; bgColor: string }> = {
-  "Повышение квалификации": { icon: GraduationCap, color: "text-blue-600", bgColor: "bg-blue-500/10" },
-  "Профессиональная переподготовка": { icon: Award, color: "text-violet-600", bgColor: "bg-violet-500/10" },
-  "Охрана труда / Пожарная безопасность": { icon: ShieldCheck, color: "text-amber-600", bgColor: "bg-amber-500/10" },
-  "Рабочие профессии": { icon: Store, color: "text-emerald-600", bgColor: "bg-emerald-500/10" } };
-
-const subCategoryMetaAdmin: Record<string, { icon: React.ElementType; color: string; bgColor: string }> = {
-  "Промышленная безопасность": { icon: Factory, color: "text-orange-500", bgColor: "bg-orange-500/10" },
-  "Электробезопасность": { icon: Zap, color: "text-yellow-500", bgColor: "bg-yellow-500/10" },
-  "Энергетика": { icon: Flame, color: "text-red-500", bgColor: "bg-red-500/10" },
-  "Экологическая безопасность": { icon: Leaf, color: "text-green-500", bgColor: "bg-green-500/10" },
-  "Гидротехнические сооружения": { icon: Droplets, color: "text-blue-500", bgColor: "bg-blue-500/10" },
-  "Строительный контроль": { icon: HardHat, color: "text-accent", bgColor: "bg-accent/10" } };
-
-const ICON_OPTIONS: { name: string; icon: React.ElementType; label: string }[] = [
-  { name: "Factory", icon: Factory, label: "Промышленность" },
-  { name: "Zap", icon: Zap, label: "Электричество" },
-  { name: "Flame", icon: Flame, label: "Огонь" },
-  { name: "Leaf", icon: Leaf, label: "Экология" },
-  { name: "Droplets", icon: Droplets, label: "Вода" },
-  { name: "HardHat", icon: HardHat, label: "Стройка" },
-  { name: "ShieldCheck", icon: ShieldCheck, label: "Защита" },
-  { name: "BookOpen", icon: BookOpen, label: "Книга" },
-  { name: "Award", icon: Award, label: "Награда" },
-  { name: "Lightbulb", icon: Lightbulb, label: "Идея" },
-  { name: "Building2", icon: Building2, label: "Здание" },
-  { name: "GraduationCap", icon: GraduationCap, label: "Учёба" },
-  { name: "DollarSign", icon: DollarSign, label: "Финансы" },
-  { name: "Briefcase", icon: Briefcase, label: "Бизнес" },
-  { name: "TrendingUp", icon: TrendingUp, label: "Рост" },
-];
-
-const iconMap: Record<string, React.ElementType> = {
-  Factory, Zap, Flame, Leaf, Droplets, HardHat, ShieldCheck, BookOpen, Award, Lightbulb, Building2, GraduationCap,
-  DollarSign, Briefcase, TrendingUp };
+import { programTypeMetaAdmin, subCategoryMetaAdmin, ICON_OPTIONS, iconMap } from "./marketplace/marketplaceConstants";
 
 export function AdminMarketplaceManager() {
   const navigate = useNavigate();

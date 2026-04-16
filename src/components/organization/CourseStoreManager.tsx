@@ -27,38 +27,7 @@ import { CourseComments } from "./CourseComments";
 import { MarketplaceHeroCards } from "@/components/admin/marketplace/MarketplaceHeroCards";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 
-const statusLabels: Record<string, { label: string; color: string }> = {
-  pending: { label: "Ожидает", color: "bg-yellow-500/10 text-yellow-600 border-yellow-500/20" },
-  approved: { label: "Одобрена", color: "bg-blue-500/10 text-blue-600 border-blue-500/20" },
-  paid: { label: "Оплачена", color: "bg-green-500/10 text-green-600 border-green-500/20" },
-  completed: { label: "Завершена", color: "bg-emerald-500/10 text-emerald-600 border-emerald-500/20" },
-  cancelled: { label: "Отменена", color: "bg-red-500/10 text-red-600 border-red-500/20" } };
-
-interface CourseStoreManagerProps {
-  organizationId: string;
-  userRole?: 'organization' | 'student';
-  userId?: string;
-}
-
-const programTypeMeta: Record<string, { icon: React.ElementType; color: string; bgColor: string }> = {
-  "Повышение квалификации": { icon: GraduationCap, color: "text-blue-600", bgColor: "bg-blue-500/10" },
-  "Профессиональная переподготовка": { icon: Award, color: "text-violet-600", bgColor: "bg-violet-500/10" },
-  "Охрана труда / Пожарная безопасность": { icon: ShieldCheck, color: "text-amber-600", bgColor: "bg-amber-500/10" },
-  "Рабочие профессии": { icon: Store, color: "text-emerald-600", bgColor: "bg-emerald-500/10" } };
-
-const subCategoryMeta: Record<string, { icon: React.ElementType; color: string; bgColor: string }> = {
-  "Промышленная безопасность": { icon: Factory, color: "text-orange-500", bgColor: "bg-orange-500/10" },
-  "Электробезопасность": { icon: Zap, color: "text-yellow-500", bgColor: "bg-yellow-500/10" },
-  "Энергетика": { icon: Flame, color: "text-red-500", bgColor: "bg-red-500/10" },
-  "Экологическая безопасность": { icon: Leaf, color: "text-green-500", bgColor: "bg-green-500/10" },
-  "Гидротехнические сооружения": { icon: Droplets, color: "text-blue-500", bgColor: "bg-blue-500/10" },
-  "Строительный контроль": { icon: HardHat, color: "text-accent", bgColor: "bg-accent/10" } };
-
-const getProgramTypeMeta = (category: string) =>
-  programTypeMeta[category] || { icon: BookOpen, color: "text-primary", bgColor: "bg-primary/10" };
-
-const getSubCategoryMeta = (category: string) =>
-  subCategoryMeta[category] || { icon: BookOpen, color: "text-primary", bgColor: "bg-primary/10" };
+import { statusLabels, getProgramTypeMeta, getSubCategoryMeta } from "@/components/admin/marketplace/marketplaceConstants";
 
 export function CourseStoreManager({ organizationId, userRole = 'organization', userId }: CourseStoreManagerProps) {
   const navigate = useNavigate();
