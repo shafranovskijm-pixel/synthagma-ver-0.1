@@ -9,7 +9,8 @@ import { StarfieldCanvas } from "./StarfieldCanvas";
 const logoLetters = "СИНТАГМА".split("");
 
 export function LandingHeader() {
-  const [hovered, setHovered] = useState(false);
+  const [animKey, setAnimKey] = useState(0);
+  const triggerAnim = useCallback(() => setAnimKey((k) => k + 1), []);
 
   return (
     <header className="sticky top-0 z-50 bg-[#0a0e1a] relative overflow-hidden">
@@ -20,8 +21,7 @@ export function LandingHeader() {
           <Link
             to="/"
             className="flex items-center gap-3"
-            onMouseEnter={() => setHovered(true)}
-            onMouseLeave={() => setHovered(false)}
+            onMouseEnter={triggerAnim}
           >
             <div className="w-10 h-10 rounded-lg bg-white flex items-center justify-center hover:scale-105 transition-transform duration-300">
               <span className="font-display font-bold text-xl text-[#0a0e1a]">Σ</span>
@@ -29,12 +29,12 @@ export function LandingHeader() {
             <span className="font-display font-medium text-xl tracking-tight text-white flex">
               {logoLetters.map((letter, i) => (
                 <span
-                  key={i}
-                  className="inline-block"
+                  key={`${i}-${animKey}`}
+                  className="inline-block animate-[letterFlyIn_0.5s_cubic-bezier(0.34,1.56,0.64,1)_forwards]"
                   style={{
-                    opacity: hovered ? 0 : 1,
-                    transform: hovered ? "translateX(30px)" : "translateX(0)",
-                    transition: `transform 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) ${i * 0.08}s, opacity 0.4s ease ${i * 0.08}s`,
+                    animationDelay: `${i * 0.07}s`,
+                    opacity: 0,
+                    transform: "translateX(24px)",
                   }}
                 >
                   {letter}
