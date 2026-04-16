@@ -111,6 +111,9 @@ export function CodeMapTab() {
     { name: "CoursesTab", migrated: false },
     { name: "StudentsTab", migrated: false },
     { name: "DocumentsTab", migrated: false },
+    { name: "JournalsManager", migrated: false },
+    { name: "CompanyDetailDialog", migrated: false },
+    { name: "InvoiceGenerator", migrated: false },
   ];
   const contextCoverage = Math.round((contextComponents.filter(c => c.migrated).length / contextComponents.length) * 100);
 

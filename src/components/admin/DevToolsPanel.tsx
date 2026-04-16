@@ -20,7 +20,7 @@ export function DevToolsPanel() {
 
   const metricCards = [
     { label: "Таблиц", value: "65", icon: <Database className="w-5 h-5" />, colorClass: "bg-violet-500", bgClass: "bg-violet-500" },
-    { label: "Edge-функций", value: "32", icon: <Zap className="w-5 h-5" />, colorClass: "bg-emerald-500", bgClass: "bg-emerald-500" },
+    { label: "Edge-функций", value: "63", icon: <Zap className="w-5 h-5" />, colorClass: "bg-emerald-500", bgClass: "bg-emerald-500" },
     { label: "Компонентов", value: `~${TOTAL_FILES}`, icon: <Code2 className="w-5 h-5" />, colorClass: "bg-sky-500", bgClass: "bg-sky-500" },
     { label: "Строк кода", value: `~${(TOTAL_LINES / 1000).toFixed(1)}k`, icon: <FileCode className="w-5 h-5" />, colorClass: "bg-amber-500", bgClass: "bg-amber-500" },
   ];
