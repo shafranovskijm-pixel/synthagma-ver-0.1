@@ -1,12 +1,7 @@
 import { useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { 
-  Upload, FileText, CheckCircle2, 
-  AlertCircle, ArrowLeft, BookOpen, Sparkles,
-  File, Presentation
-} from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -15,6 +10,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { SigmaLogo } from "@/components/ui/SigmaLogo";
 import { getAdminAwareBackPath } from "@/lib/utils";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
+import { UploadStep, PreviewStep, CreatingStep, DoneStep, StepIndicator } from "@/components/course-import/CourseImportSteps";
 
 interface ParsedLesson {
   id: string;
@@ -251,273 +247,53 @@ export default function CourseImport() {
       </header>
 
       <main className="container mx-auto px-4 py-8 max-w-3xl">
-        {/* Steps indicator */}
-        <div className="flex items-center justify-center gap-2 mb-8">
-          {['upload', 'processing', 'preview', 'done'].map((s, i) => (
-            <div key={s} className="flex items-center">
-              <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium transition-colors ${
-                step === s || (step === 'creating' && s === 'preview')
-                  ? 'bg-primary text-primary-foreground' 
-                  : ['upload', 'processing', 'preview', 'creating', 'done'].indexOf(step) > i
-                    ? 'bg-primary/20 text-primary'
-                    : 'bg-muted text-muted-foreground'
-              }`}>
-                {i + 1}
-              </div>
-              {i < 3 && (
-                <div className={`w-12 h-0.5 mx-1 ${
-                  ['upload', 'processing', 'preview', 'creating', 'done'].indexOf(step) > i
-                    ? 'bg-primary/50'
-                    : 'bg-muted'
-                }`} />
-              )}
-            </div>
-          ))}
-        </div>
+        <StepIndicator currentStep={step} />
 
-        {/* Upload step */}
         {step === 'upload' && (
-          <div className="space-y-6">
-            <div className="text-center">
-              <h1 className="font-display text-2xl font-bold mb-2">Загрузите учебные материалы</h1>
-              <p className="text-muted-foreground">
-                Загрузите презентацию или документ для создания курса
-              </p>
-            </div>
-
-            {/* Drop zone */}
-            <div
-              onDragOver={handleDragOver}
-              onDragLeave={handleDragLeave}
-              onDrop={handleDrop}
-              className={`
-                border-2 border-dashed rounded-2xl p-12 text-center transition-all cursor-pointer
-                ${isDragging 
-                  ? 'border-primary bg-primary/5 scale-[1.02]' 
-                  : selectedFile 
-                    ? 'border-green-500 bg-green-500/5' 
-                    : 'border-border hover:border-primary/50 hover:bg-secondary/50'
-                }
-              `}
-              onClick={() => document.getElementById('file-input')?.click()}
-            >
-              <input
-                id="file-input"
-                type="file"
-                accept=".pptx,.doc,.docx,.txt,.html,.htm"
-                onChange={handleFileSelect}
-                className="hidden"
-              />
-              
-              {selectedFile ? (
-                <div className="space-y-4">
-                  <div className="w-16 h-16 mx-auto rounded-2xl bg-green-500/10 flex items-center justify-center">
-                    {selectedFile.name.endsWith('.pptx') ? (
-                      <Presentation className="w-8 h-8 text-green-500" />
-                    ) : (
-                      <FileText className="w-8 h-8 text-green-500" />
-                    )}
-                  </div>
-                  <div>
-                    <p className="font-medium text-lg">{selectedFile.name}</p>
-                    <p className="text-sm text-muted-foreground">
-                      {(selectedFile.size / 1024 / 1024).toFixed(2)} МБ
-                    </p>
-                  </div>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setSelectedFile(null);
-                    }}
-                  >
-                    Выбрать другой файл
-                  </Button>
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  <div className="w-16 h-16 mx-auto rounded-2xl bg-primary/10 flex items-center justify-center">
-                    <Upload className="w-8 h-8 text-primary" />
-                  </div>
-                  <div>
-                    <p className="font-medium text-lg">
-                      Перетащите файл сюда или нажмите для выбора
-                    </p>
-                    <p className="text-sm text-muted-foreground mt-1">
-                      Поддерживаются: PPTX, DOC, DOCX, TXT, HTML (до 50 МБ)
-                    </p>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Supported formats */}
-            <div className="bg-card rounded-2xl border border-border p-6">
-              <h3 className="font-semibold mb-4 flex items-center gap-2">
-                <BookOpen className="w-5 h-5 text-primary" />
-                Как работает импорт
-              </h3>
-              <div className="grid gap-4 text-sm">
-                <div className="flex items-start gap-3">
-                  <Presentation className="w-5 h-5 text-muted-foreground mt-0.5" />
-                  <div>
-                    <p className="font-medium">PPTX (презентации)</p>
-                    <p className="text-muted-foreground">
-                      Каждый слайд станет отдельным уроком
-                    </p>
-                  </div>
-                </div>
-                <div className="flex items-start gap-3">
-                  <FileText className="w-5 h-5 text-muted-foreground mt-0.5" />
-                  <div>
-                    <p className="font-medium">DOC / DOCX / TXT / HTML</p>
-                    <p className="text-muted-foreground">
-                      Документ будет разбит на уроки по заголовкам
-                    </p>
-                  </div>
-                </div>
-                <div className="flex items-start gap-3">
-                  <Sparkles className="w-5 h-5 text-muted-foreground mt-0.5" />
-                  <div>
-                    <p className="font-medium">Автоматическая обработка</p>
-                    <p className="text-muted-foreground">
-                      Форматирование, таблицы и изображения сохраняются
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {selectedFile && (
-              <Button 
-                className="w-full btn-gradient rounded-xl h-12 text-base"
-                onClick={processFile}
-              >
-                <Sparkles className="w-5 h-5 mr-2" />
-                Обработать файл
-              </Button>
-            )}
-          </div>
+          <UploadStep
+            isDragging={isDragging}
+            selectedFile={selectedFile}
+            onDragOver={handleDragOver}
+            onDragLeave={handleDragLeave}
+            onDrop={handleDrop}
+            onFileSelect={handleFileSelect}
+            onClearFile={() => setSelectedFile(null)}
+            onProcess={processFile}
+          />
         )}
 
-        {/* Preview step */}
-        {step === 'preview' && importResult && (
-          <div className="space-y-6">
-            <div className="text-center">
-              <div className="w-16 h-16 mx-auto rounded-2xl bg-green-500/10 flex items-center justify-center mb-4">
-                <CheckCircle2 className="w-8 h-8 text-green-500" />
-              </div>
-              <h2 className="font-display text-xl font-bold mb-2">Файл обработан!</h2>
-              <p className="text-muted-foreground">
-                Найдено {importResult.lessons.length} уроков из {importResult.filesCount} файлов
-              </p>
-            </div>
-
-            {/* Course title */}
-            <div className="bg-card rounded-2xl border border-border p-6">
-              <label className="block text-sm font-medium mb-2">Название курса</label>
-              <Input
-                value={courseTitle}
-                onChange={(e) => setCourseTitle(e.target.value)}
-                placeholder="Введите название курса"
-                className="rounded-xl"
-              />
-            </div>
-
-            {/* Lessons preview */}
-            <div className="bg-card rounded-2xl border border-border p-6">
-              <h3 className="font-semibold mb-4 flex items-center gap-2">
-                <BookOpen className="w-5 h-5 text-primary" />
-                Структура курса ({importResult.lessons.length} уроков)
-              </h3>
-              <div className="space-y-2 max-h-64 overflow-y-auto">
-                {importResult.lessons.map((lesson, index) => (
-                  <div 
-                    key={lesson.id}
-                    className="flex items-center gap-3 p-3 rounded-xl bg-secondary/50 hover:bg-secondary transition-colors"
-                  >
-                    <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-sm font-medium text-primary">
-                      {index + 1}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="font-medium truncate">{lesson.title}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {lesson.metadata?.wordCount || 0} слов
-                        {lesson.metadata?.hasImages && ' • изображения'}
-                        {lesson.metadata?.hasTables && ' • таблицы'}
-                      </p>
-                    </div>
-                    <File className="w-4 h-4 text-muted-foreground" />
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <div className="flex gap-3">
-              <Button 
-                variant="outline" 
-                className="flex-1 rounded-xl"
-                onClick={resetImport}
-              >
-                Отмена
-              </Button>
-              <Button 
-                className="flex-1 btn-gradient rounded-xl"
-                onClick={createCourse}
-                disabled={!courseTitle.trim()}
-              >
-                <BookOpen className="w-4 h-4 mr-2" />
-                Создать курс
-              </Button>
-            </div>
-          </div>
-        )}
-
-        {/* Creating step */}
-        {step === 'creating' && (
+        {step === 'processing' && (
           <div className="text-center space-y-6 py-12">
             <div className="w-20 h-20 mx-auto rounded-2xl bg-primary/10 flex items-center justify-center">
               <SigmaSpinner size="xl" />
             </div>
             <div>
-              <h2 className="font-display text-xl font-bold mb-2">Создаём курс...</h2>
-              <p className="text-muted-foreground">
-                Сохраняем уроки в базу данных
-              </p>
+              <h2 className="font-display text-xl font-bold mb-2">Обработка файла...</h2>
+              <Progress value={progress} className="w-64 mx-auto" />
             </div>
           </div>
         )}
 
-        {/* Done step */}
+        {step === 'preview' && importResult && (
+          <PreviewStep
+            importResult={importResult}
+            courseTitle={courseTitle}
+            onTitleChange={setCourseTitle}
+            onReset={resetImport}
+            onCreate={createCourse}
+          />
+        )}
+
+        {step === 'creating' && <CreatingStep />}
+
         {step === 'done' && createdCourseId && (
-          <div className="text-center space-y-6 py-12">
-            <div className="w-20 h-20 mx-auto rounded-2xl bg-green-500/10 flex items-center justify-center">
-              <CheckCircle2 className="w-10 h-10 text-green-500" />
-            </div>
-            <div>
-              <h2 className="font-display text-xl font-bold mb-2">Курс создан!</h2>
-              <p className="text-muted-foreground">
-                {importResult?.lessons.length} уроков успешно импортированы
-              </p>
-            </div>
-            <div className="flex flex-col sm:flex-row gap-3 justify-center">
-              <Button 
-                variant="outline" 
-                className="rounded-xl"
-                onClick={() => navigate(getAdminAwareBackPath())}
-              >
-                <ArrowLeft className="w-4 h-4 mr-2" />
-                К списку курсов
-              </Button>
-              <Button 
-                className="btn-gradient rounded-xl"
-                onClick={() => navigate(`/course-builder/${createdCourseId}`)}
-              >
-                Редактировать курс
-              </Button>
-            </div>
-          </div>
+          <DoneStep
+            lessonsCount={importResult?.lessons.length || 0}
+            courseId={createdCourseId}
+            onReset={resetImport}
+            onNavigate={navigate}
+            backPath={getAdminAwareBackPath()}
+          />
         )}
       </main>
     </div>
