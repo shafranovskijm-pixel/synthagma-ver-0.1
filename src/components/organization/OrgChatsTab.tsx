@@ -131,8 +131,26 @@ export function OrgChatsTab() {
       return (
         <div className="space-y-3">
           <Button variant="ghost" size="sm" onClick={() => setSelectedAdminChat(false)} className="gap-2"><ArrowLeft className="w-4 h-4" /> Назад</Button>
-          <h3 className="font-semibold text-lg px-1 flex items-center gap-2"><ChatAvatar name="Администрация" size="sm" isAdmin /> Администрация платформы</h3>
+          <div className="flex items-center gap-2 px-1">
+            <ChatAvatar name="Администрация" size="sm" isAdmin />
+            <h3 className="font-semibold text-lg flex-1">Администрация платформы</h3>
+            <ChatNotificationToggle chatType="admin" />
+          </div>
           <AdminChatDialog organizationId={organizationId} currentUserId={currentUserId} />
+        </div>
+      );
+    }
+    // Mobile general chat
+    if (isMobile && selectedGeneralChat && organizationId && currentUserId) {
+      return (
+        <div className="space-y-3">
+          <Button variant="ghost" size="sm" onClick={() => setSelectedGeneralChat(false)} className="gap-2"><ArrowLeft className="w-4 h-4" /> Назад</Button>
+          <div className="flex items-center gap-2 px-1">
+            <ChatAvatar name="Общий чат" size="sm" />
+            <h3 className="font-semibold text-lg flex-1">Общий чат</h3>
+            <ChatNotificationToggle chatType="general" />
+          </div>
+          <OrgGeneralChat organizationId={organizationId} currentUserId={currentUserId} />
         </div>
       );
     }
@@ -141,7 +159,11 @@ export function OrgChatsTab() {
       return (
         <div className="space-y-3">
           <Button variant="ghost" size="sm" onClick={() => setSelectedStudentId(null)} className="gap-2"><ArrowLeft className="w-4 h-4" /> Назад</Button>
-          <h3 className="font-semibold text-lg px-1">{selectedConvo?.studentName || selectedStudentName}</h3>
+          <div className="flex items-center gap-2 px-1">
+            <ChatAvatar name={selectedConvo?.studentName || selectedStudentName} size="sm" />
+            <h3 className="font-semibold text-lg flex-1">{selectedConvo?.studentName || selectedStudentName}</h3>
+            <ChatNotificationToggle chatType="student" chatPartnerId={selectedStudentId} />
+          </div>
           <ChatTab studentUserId={selectedStudentId} organizationId={organizationId} currentUserId={currentUserId} studentName={selectedConvo?.studentName || selectedStudentName} />
         </div>
       );
