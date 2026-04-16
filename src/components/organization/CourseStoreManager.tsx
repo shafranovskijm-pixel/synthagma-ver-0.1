@@ -12,11 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Switch } from "@/components/ui/switch";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
@@ -27,8 +23,11 @@ import { CourseComments } from "./CourseComments";
 import { CourseStoreDetailView } from "./CourseStoreDetailView";
 import { MarketplaceHeroCards } from "@/components/admin/marketplace/MarketplaceHeroCards";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
-
 import { statusLabels, getProgramTypeMeta, getSubCategoryMeta } from "@/components/admin/marketplace/marketplaceConstants";
+import {
+  AddCourseDialog, OrderDialog, SuccessDialog, EditCourseStoreDialog,
+  OrderDetailsDialog, RequestDialog, ProposeDialog
+} from "./CourseStoreDialogs";
 
 interface CourseStoreManagerProps {
   organizationId: string;
