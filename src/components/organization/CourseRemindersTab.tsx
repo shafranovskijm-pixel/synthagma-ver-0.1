@@ -28,12 +28,12 @@ import {
 import { Checkbox } from "@/components/ui/checkbox";
 import { Switch } from "@/components/ui/switch";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Bell, Plus, Send, Check, X, Calendar, Building2, User, Edit2, Copy, Eye, Pencil } from "lucide-react";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Bell, Plus, Send, Check, X, Calendar, Building2, User, Edit2, Copy, Eye, Pencil, MessageSquare, Clock } from "lucide-react";
 import { REMINDER_TEMPLATES, RETRAINING_PERIOD_OPTIONS, ReminderTemplate } from "@/constants/reminderTemplates";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
-
 interface CourseReminder {
   id: string;
   course_id: string;
