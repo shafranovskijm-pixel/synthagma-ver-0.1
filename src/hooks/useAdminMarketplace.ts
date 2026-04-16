@@ -350,7 +350,7 @@ export function useAdminMarketplace() {
   });
 
   // Group courses by DB category_id, ordered by dbCategories order_index
-  const groupedCourses: { category: string; badge: string; courses: MarketplaceCourseWithDetails[]; uncategorized: MarketplaceCourseWithDetails[]; subGroups?: { category: string; categoryId?: string; icon?: string | null; courses: MarketplaceCourseWithDetails[] }[] }[] = (() => {
+  const groupedCourses = (() => {
     const byCatId = new Map<string, MarketplaceCourseWithDetails[]>();
     const uncategorized: MarketplaceCourseWithDetails[] = [];
 
@@ -364,14 +364,7 @@ export function useAdminMarketplace() {
       }
     }
 
-    const programTypes = [
-      { category: "Повышение квалификации", badge: "ДПО" },
-      { category: "Профессиональная переподготовка", badge: "ДПО" },
-      { category: "Охрана труда / Пожарная безопасность", badge: "ОТ / ПБ" },
-      { category: "Рабочие профессии", badge: "ПО" },
-    ];
-
-    return programTypes.map(pt => {
+    return PROGRAM_TYPE_GROUPS.map(pt => {
       const subGroups = dbCategories
         .filter(cat => (cat.parent_type || "Повышение квалификации") === pt.category)
         .map(cat => ({
@@ -382,7 +375,6 @@ export function useAdminMarketplace() {
         }));
 
       const subCourses = subGroups.flatMap(g => g.courses);
-      // Uncategorized courses go to first program type
       const groupUncategorized = pt.category === "Повышение квалификации" ? uncategorized : [];
       const courses = [...subCourses, ...groupUncategorized];
 
