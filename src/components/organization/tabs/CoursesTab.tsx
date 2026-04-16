@@ -1,19 +1,12 @@
-import React, { useState, useMemo, useCallback, Suspense, lazy } from "react";
-const Student3DTrainers = lazy(() => import("@/components/student/Student3DTrainers").then(m => ({ default: m.Student3DTrainers })));
-import { WebinarsManager } from "@/components/organization/WebinarsManager";
+import React, { useState, useMemo, useCallback } from "react";
 import { useOrgDashboard } from "@/contexts/OrgDashboardContext";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
 import { 
-  Search, Filter, Tag, Plus, LayoutGrid, List, 
-  BookOpen, Users, Trash2, FolderPlus, Folder,
-  GripVertical, Radio, Box, Play, Crown, ArrowRight, Calendar, Video
+  BookOpen, Trash2,
+  GripVertical, Radio, Box
 } from "lucide-react";
-import { Card } from "@/components/ui/card";
 import { useCourses } from "@/hooks/useCourses";
 import { useSubscriptionLimits } from "@/hooks/useSubscriptionLimits";
 import { supabase } from "@/integrations/supabase/client";

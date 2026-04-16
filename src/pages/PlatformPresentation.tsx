@@ -24,7 +24,7 @@ import {
   PresentationLMS,
   PresentationAI,
   PresentationDocuments,
-  PresentationFRDO,
+  
   PresentationSafety,
   PresentationCabinets,
   PresentationMarketplace,
