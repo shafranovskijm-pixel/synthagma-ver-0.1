@@ -23,11 +23,11 @@ export function LandingHeader() {
                 <span
                   key={i}
                   className="inline-block transition-all duration-300 group-hover:animate-none"
-                  style={{
-                    opacity: 1,
-                    transform: "translateX(0)",
-                    transition: `transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) ${i * 0.04}s, opacity 0.3s ease ${i * 0.04}s`,
-                  }}
+                    style={{
+                      opacity: 1,
+                      transform: "translateX(0)",
+                      transition: `transform 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) ${i * 0.08}s, opacity 0.4s ease ${i * 0.08}s`,
+                    }}
                   onMouseEnter={() => {}}
                 >
                   {letter}
@@ -73,10 +73,10 @@ export function LandingHeader() {
       {/* CSS for logo hover animation */}
       <style>{`
         .group:hover span[style] {
-          animation: letterFlyIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+          animation: letterFlyIn 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
         }
         @keyframes letterFlyIn {
-          0% { transform: translateX(20px); opacity: 0; }
+          0% { transform: translateX(30px); opacity: 0; }
           100% { transform: translateX(0); opacity: 1; }
         }
       `}</style>
