@@ -54,40 +54,7 @@ function Section({ children, className = "" }: { children: React.ReactNode; clas
   );
 }
 
-/* ─── Comparison Data ─── */
-type Status = "yes" | "no" | "partial" | string;
-interface CompRow { category: string; feature: string; sintagma: Status; getcourse: Status; ispring: Status; moodle: Status; }
-
-const compData: CompRow[] = [
-  { category: "LMS", feature: "Конструктор курсов", sintagma: "yes", getcourse: "yes", ispring: "yes", moodle: "yes" },
-  { category: "LMS", feature: "ИИ-генерация курсов", sintagma: "yes", getcourse: "no", ispring: "no", moodle: "no" },
-  { category: "LMS", feature: "Тесты с банком вопросов", sintagma: "yes", getcourse: "yes", ispring: "yes", moodle: "yes" },
-  { category: "LMS", feature: "Вебинары (Kinescope Live)", sintagma: "yes", getcourse: "yes", ispring: "partial", moodle: "partial" },
-  { category: "LMS", feature: "Домашние задания", sintagma: "yes", getcourse: "yes", ispring: "yes", moodle: "yes" },
-  { category: "LMS", feature: "Сертификаты и удостоверения", sintagma: "yes", getcourse: "partial", ispring: "yes", moodle: "partial" },
-  { category: "LMS", feature: "Видеоидентификация (273-ФЗ)", sintagma: "yes", getcourse: "no", ispring: "no", moodle: "no" },
-  { category: "Документооборот", feature: "Договоры", sintagma: "yes", getcourse: "no", ispring: "no", moodle: "no" },
-  { category: "Документооборот", feature: "Акты выполненных работ", sintagma: "yes", getcourse: "no", ispring: "no", moodle: "no" },
-  { category: "Документооборот", feature: "Счета", sintagma: "yes", getcourse: "no", ispring: "no", moodle: "no" },
-  { category: "Документооборот", feature: "Протоколы проверки знаний", sintagma: "yes", getcourse: "no", ispring: "no", moodle: "no" },
-  { category: "Документооборот", feature: "Приказы о зачислении", sintagma: "yes", getcourse: "no", ispring: "no", moodle: "no" },
-  { category: "ИИ", feature: "Генерация курсов (до 35 уроков)", sintagma: "yes", getcourse: "no", ispring: "no", moodle: "no" },
-  { category: "ИИ", feature: "Генерация тестов (15 вопросов)", sintagma: "yes", getcourse: "no", ispring: "partial", moodle: "no" },
-  { category: "ИИ", feature: "Озвучка лекций (SaluteSpeech)", sintagma: "yes", getcourse: "no", ispring: "no", moodle: "no" },
-  { category: "ИИ", feature: "Генерация обложек", sintagma: "yes", getcourse: "no", ispring: "no", moodle: "no" },
-  { category: "ИИ", feature: "ИИ-чат для учеников", sintagma: "yes", getcourse: "no", ispring: "no", moodle: "no" },
-  { category: "ФИС ФРДО", feature: "Выгрузка данных (ДПО/ПО)", sintagma: "yes", getcourse: "no", ispring: "no", moodle: "no" },
-  { category: "ФИС ФРДО", feature: "Автозаполнение из карточки", sintagma: "yes", getcourse: "no", ispring: "no", moodle: "no" },
-  { category: "Интеграции", feature: "Платёжные системы", sintagma: "yes", getcourse: "yes", ispring: "partial", moodle: "partial" },
-  { category: "Интеграции", feature: "Email-рассылки (SMTP)", sintagma: "partial", getcourse: "yes", ispring: "yes", moodle: "partial" },
-  { category: "Интеграции", feature: "Видеохостинг Kinescope", sintagma: "yes", getcourse: "no", ispring: "no", moodle: "no" },
-  { category: "Тарифы", feature: "Бесплатный тариф навсегда", sintagma: "yes", getcourse: "partial", ispring: "no", moodle: "yes" },
-  { category: "Тарифы", feature: "Стартовая цена", sintagma: "4 490 ₽/мес", getcourse: "4 990 ₽/мес", ispring: "27 000 ₽/год", moodle: "Бесплатно (self-hosted)" },
-  { category: "Тарифы", feature: "Макс. учеников", sintagma: "Без ограничений", getcourse: "По тарифу", ispring: "По тарифу", moodle: "Без ограничений" },
-  { category: "Поддержка", feature: "Техподдержка", sintagma: "yes", getcourse: "yes", ispring: "yes", moodle: "Сообщество" },
-  { category: "Поддержка", feature: "Обучение работе", sintagma: "yes", getcourse: "partial", ispring: "yes", moodle: "no" },
-  { category: "Поддержка", feature: "Документация", sintagma: "yes", getcourse: "yes", ispring: "yes", moodle: "yes" },
-];
+import { compData, type Status, type CompRow } from "./presentationData";
 
 type Competitor = "getcourse" | "ispring" | "moodle";
 const competitorLabels: Record<Competitor, string> = { getcourse: "GetCourse", ispring: "iSpring", moodle: "Moodle" };
