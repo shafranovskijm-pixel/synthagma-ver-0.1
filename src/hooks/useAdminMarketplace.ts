@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { MARKETPLACE_ORG_ID } from "@/constants/marketplace";
+import { PROGRAM_TYPE_GROUPS, AUTO_CATEGORIZE_MAPPINGS } from "./adminMarketplaceHelpers";
 
 interface MarketplaceCourseWithDetails {
   id: string;
@@ -350,7 +351,7 @@ export function useAdminMarketplace() {
   });
 
   // Group courses by DB category_id, ordered by dbCategories order_index
-  const groupedCourses: { category: string; badge: string; courses: MarketplaceCourseWithDetails[]; uncategorized: MarketplaceCourseWithDetails[]; subGroups?: { category: string; categoryId?: string; icon?: string | null; courses: MarketplaceCourseWithDetails[] }[] }[] = (() => {
+  const groupedCourses = (() => {
     const byCatId = new Map<string, MarketplaceCourseWithDetails[]>();
     const uncategorized: MarketplaceCourseWithDetails[] = [];
 
@@ -364,14 +365,7 @@ export function useAdminMarketplace() {
       }
     }
 
-    const programTypes = [
-      { category: "Повышение квалификации", badge: "ДПО" },
-      { category: "Профессиональная переподготовка", badge: "ДПО" },
-      { category: "Охрана труда / Пожарная безопасность", badge: "ОТ / ПБ" },
-      { category: "Рабочие профессии", badge: "ПО" },
-    ];
-
-    return programTypes.map(pt => {
+    return PROGRAM_TYPE_GROUPS.map(pt => {
       const subGroups = dbCategories
         .filter(cat => (cat.parent_type || "Повышение квалификации") === pt.category)
         .map(cat => ({
@@ -382,7 +376,6 @@ export function useAdminMarketplace() {
         }));
 
       const subCourses = subGroups.flatMap(g => g.courses);
-      // Uncategorized courses go to first program type
       const groupUncategorized = pt.category === "Повышение квалификации" ? uncategorized : [];
       const courses = [...subCourses, ...groupUncategorized];
 
@@ -503,17 +496,7 @@ export function useAdminMarketplace() {
 
   // Auto-categorize courses by keyword matching
   const handleAutoCategorize = async () => {
-    const keywordMappings: { keywords: string[]; categoryName: string; parentType: string; icon: string }[] = [
-      { keywords: ["первая помощь", "медицин", "оказание помощи", "оказание первой помощи", "мероприятия по оказанию", "санитарн"], categoryName: "Медицина", parentType: "Охрана труда / Пожарная безопасность", icon: "Lightbulb" },
-      { keywords: ["охрана труда", "безопасные условия", "правила по охране труда", "техники безопасности", "правила техники безопасности"], categoryName: "Охрана труда", parentType: "Охрана труда / Пожарная безопасность", icon: "ShieldCheck" },
-      { keywords: ["пожарная безопасность", "пожарно-технический", "пожарн", "противопожарн"], categoryName: "Пожарная безопасность", parentType: "Охрана труда / Пожарная безопасность", icon: "Flame" },
-      { keywords: ["промышленная безопасность", "ростехнадзор"], categoryName: "Промышленная безопасность", parentType: "Повышение квалификации", icon: "Factory" },
-      { keywords: ["электробезопасность", "электроустановк", "электроустановок", "электроустановки", "эксплуатации электроуст"], categoryName: "Электробезопасность", parentType: "Повышение квалификации", icon: "Zap" },
-      { keywords: ["энергетик", "теплоснабж", "котельн", "электрических станций", "электростанций", "электроэнергетич", "тепломеханич", "тепловых энерго"], categoryName: "Энергетика", parentType: "Повышение квалификации", icon: "Flame" },
-      { keywords: ["экологич", "отходы"], categoryName: "Экологическая безопасность", parentType: "Повышение квалификации", icon: "Leaf" },
-      { keywords: ["гидротехнич", "ГТС"], categoryName: "Гидротехнические сооружения", parentType: "Повышение квалификации", icon: "Droplets" },
-      { keywords: ["строительный контроль", "строительн"], categoryName: "Строительный контроль", parentType: "Повышение квалификации", icon: "HardHat" },
-    ];
+    const keywordMappings = AUTO_CATEGORIZE_MAPPINGS;
 
     try {
       // 1. Ensure all target categories exist
