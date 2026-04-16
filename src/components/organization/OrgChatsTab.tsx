@@ -195,6 +195,17 @@ export function OrgChatsTab() {
               </div>
             </button>
 
+            {/* General org chat */}
+            <button onClick={handleSelectGeneralChat}
+              className={`w-full text-left px-4 py-3 border-b border-border/50 hover:bg-secondary/50 transition-colors ${selectedGeneralChat ? "bg-primary/5" : ""}`}>
+              <div className="flex items-center gap-3">
+                <ChatAvatar name="Общий чат" size="sm" />
+                <div className="min-w-0 flex-1">
+                  <span className="font-medium text-sm truncate block text-muted-foreground">Общий чат</span>
+                  <p className="text-xs truncate mt-0.5 text-muted-foreground">Чат для всей организации</p>
+                </div>
+              </div>
+            </button>
             {filtered.length === 0 && searchQuery ? (
               <div className="text-center py-8 text-muted-foreground"><p className="text-sm">Ничего не найдено</p></div>
             ) : (
