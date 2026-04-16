@@ -1,46 +1,48 @@
 
 
-# Добавление тестов для бизнес-логики
+# Тестирование платежей: интерфейс в админке
 
-## Цель
-Увеличить покрытие тестами с ~9 файлов до ~25+, фокусируясь на чистых утилитах и критичной бизнес-логике.
+## Что делаем
 
-## Что добавляем
+Добавляем в раздел «Финансы» админки новую вкладку **«Тест платежей»** — интерфейс для:
+1. Быстрой настройки кассы организации (TerminalKey + пароль) прямо из админки
+2. Отправки тестового платежа через `tbank-init` и отслеживания результата
+3. Проверки webhook-ответа от T-Bank
 
-### 1. Настройка инфраструктуры
-- Создать `vitest.config.ts` и `src/test/setup.ts` (отсутствуют)
-- Обновить `tsconfig.app.json` — добавить `"vitest/globals"` в types
+## Изменения
 
-### 2. Тесты для утилит (чистые функции — без моков)
+### 1. Новый компонент `AdminPaymentTester.tsx`
 
-| Файл теста | Что тестируем |
-|---|---|
-| `src/utils/__tests__/formatSnils.test.ts` | `formatSnils`, `isValidSnils` — форматирование и валидация СНИЛС |
-| `src/utils/__tests__/txtTestParser.test.ts` | `parseTxtTestFile` — парсинг вопросов из TXT формата |
-| `src/utils/__tests__/testAnswersExport.test.ts` | `parseAnswersFile`, `exportQuestionsForAI` — экспорт/импорт ответов |
-| `src/utils/__tests__/frdoExcelExport.test.ts` | `buildDPORow`, `buildPORow`, `formatDateForFRDO` — формирование строк ФРДО |
-| `src/utils/__tests__/networkErrorDetector.test.ts` | `isBlockedBySecuritySoftware` — детект блокировок антивирусом |
-| `src/utils/__tests__/referralCookie.test.ts` | `saveRefCode`, `getRefCode`, `clearRefCode` — работа с реферальными куки |
+Компонент внутри вкладки «Тест платежей» с тремя шагами:
 
-### 3. Тесты для констант
+**Шаг 1 — Настройка кассы:**
+- Выбор организации (dropdown из списка)
+- Поля TerminalKey, Пароль, тестовый режим (вкл по умолчанию)
+- Кнопка «Сохранить настройки» → upsert в `organization_payment_settings`
+- Статус: подключено/не подключено
 
-| Файл теста | Что тестируем |
-|---|---|
-| `src/constants/__tests__/subscriptionPlans.test.ts` | `getPlanInfo`, `formatStorageSize`, `getMinPlanForCategory` — логика тарифов |
+**Шаг 2 — Тестовый платёж:**
+- Выбор курса с ценой из выбранной организации
+- Поле email (для чека 54-ФЗ)
+- Кнопка «Создать тестовый платёж» → вызов `tbank-init` edge function
+- Отображение ссылки на оплату + открытие в новом окне
+- Тестовые данные карты (4300 0000 0000 0777, 12/25, 000)
 
-### 4. Тесты для хуков (с моками Supabase)
+**Шаг 3 — Результат:**
+- Автообновление статуса платежа из `course_payments` (polling каждые 5 сек)
+- Лог webhook-ответа
+- Статус: pending → CONFIRMED / failed
 
-| Файл теста | Что тестируем |
-|---|---|
-| `src/hooks/__tests__/useAiGenerationLimit.test.ts` | `checkAiGenerationLimit`, `setAiLimitContext` — лимиты AI-генераций |
-| `src/hooks/__tests__/useSubscriptionLimits.test.ts` | `checkLimit` — проверка лимитов по тарифу |
-| `src/hooks/__tests__/useEnrollmentActions.test.ts` | `toggleStudentSelection`, `toggleSelectAll` — выбор студентов |
+### 2. Обновление `AdminFinanceOverview.tsx`
 
-### 5. Обновление devToolsData.ts
-- `test-coverage`: статус → `applied`, текст → «~25 файлов покрыто тестами. Утилиты и бизнес-логика.»
+- Добавить вкладку «Тест платежей» в `TabsList`
+- Внутри `TabsContent` — рендер `AdminPaymentTester`
 
-## Итого
-- **~16 новых тестовых файлов** (6 утилит + 1 константы + 3 хука + 6 существующих)
-- Покрытие: с ~2% до ~5-6% по файлам, но **100% критичных утилит**
-- Приоритет: чистые функции без побочных эффектов → максимум пользы при минимуме моков
+## Технические детали
+
+- Тестовый платёж вызывает существующую edge-функцию `tbank-init` через `supabase.functions.invoke`
+- Пароль шифруется триггером `trigger_encrypt_payment_passwords` при insert/update
+- Webhook `tbank-webhook` уже обрабатывает ответ и обновляет статус в `course_payments`
+- Никаких миграций не требуется — все таблицы уже есть
+- Polling статуса через `setInterval` с автоочисткой
 
