@@ -48,6 +48,7 @@ import {
   MarketplaceBulkMoveDialog } from "./marketplace/MarketplaceDialogs";
 
 import { programTypeMetaAdmin, subCategoryMetaAdmin, ICON_OPTIONS, iconMap } from "./marketplace/marketplaceConstants";
+import { AdminMarketplaceGridView } from "./marketplace/AdminMarketplaceCatalogView";
 
 export function AdminMarketplaceManager() {
   const navigate = useNavigate();
