@@ -482,7 +482,7 @@ export function CounterpartiesSection({
             <PopoverTrigger asChild>
               <button
                 className="w-6 h-6 flex items-center justify-center rounded-full bg-muted/50 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
-                title="Добавить плательщика"
+                title="Добавить ученика"
               >
                 <Plus className="w-3.5 h-3.5" />
               </button>
@@ -493,7 +493,7 @@ export function CounterpartiesSection({
                 <Input
                   value={payerSearch}
                   onChange={e => setPayerSearch(e.target.value)}
-                  placeholder="Поиск плательщика..."
+                  placeholder="Поиск ученика..."
                   className="h-8 pl-7 text-xs rounded-lg"
                   autoFocus
                 />
@@ -501,7 +501,7 @@ export function CounterpartiesSection({
               <div className="max-h-48 overflow-y-auto space-y-0.5">
                 {searchablePayers.length === 0 ? (
                   <p className="text-xs text-muted-foreground text-center py-3">
-                    {payerItems.length === 0 ? "Нет плательщиков" : "Все добавлены"}
+                    {payerItems.length === 0 ? "Нет учеников" : "Все добавлены"}
                   </p>
                 ) : searchablePayers.map(p => (
                   <button
