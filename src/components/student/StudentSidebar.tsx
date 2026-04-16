@@ -109,10 +109,7 @@ export function StudentSidebar({
           <TooltipTrigger asChild>
             <button
               onClick={() => {
-                if (!branding?.logoUrl) {
-                  const { theme, setTheme } = themeToggle;
-                  setTheme(theme === "dark" ? "light" : "dark");
-                }
+                if (!branding?.logoUrl) toggleTheme();
               }}
               className={cn(
                 "mb-4 flex h-12 w-12 items-center justify-center overflow-hidden rounded-xl bg-card/80 shadow-sm transition-all",
