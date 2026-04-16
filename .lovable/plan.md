@@ -1,90 +1,47 @@
 
 
-# Массовое улучшение кода — 5 этапов до полной оптимизации
+# Рефакторинг по рекомендациям DevTools
 
-## Текущий прогресс
+## Что делаем
 
-Уже оптимизировано в этой сессии:
-- SelfExaminationQuiz: 1244 → 131 строк ✅
-- AutoDocumentRegistrationJournal: 1226 → 217 ✅
-- StudentsTab: 1196 → 248 ✅
-- CoursesTab: 1379 → 554 ✅
+Работаем с двумя предупреждениями из DevTools:
 
-Данные в devToolsData.ts **устарели** — не отражают выполненный рефакторинг.
+1. **parse-skillspace-course — 1146 строк** → разбиение на модули
+2. **Обновление статусов рекомендаций** в devToolsData.ts
 
-## Этап 1: Оставшиеся файлы > 1000 строк (3 файла)
+---
 
-| Файл | Строк | Действие |
-|------|-------|----------|
-| CoursePreview.tsx (pages) | 1248 | Хук useCoursePreview + секции Hero/Content/Sidebar/Modules |
-| OrganizationsManager.tsx | 1178 | Подключить useOrganizationsManager + OrgFormDialog + OrgStatsCards (уже созданы) |
-| AdminBillingOverview.tsx | 1076 | Подключить useAdminBilling + BillingTable + BillingFilters |
+## Задача 1: Разбиение parse-skillspace-course (1146 → ~350 строк)
 
-**Обновить devToolsData.ts:** пометить SelfExamination, AutoDoc, StudentsTab как "applied", обновить line counts.
+Edge-функция содержит 5 логических блоков, которые можно вынести в `_shared`:
 
-## Этап 2: Файлы 900–1075 строк (3 файла)
+### Новые файлы:
 
-| Файл | Строк | Действие |
-|------|-------|----------|
-| OrgDocumentsManager.tsx | 1075 | Хук + подкомпоненты по типам документов |
-| CompanyDetailDialog.tsx | 975 | Разбить на табы-компоненты |
-| ContentGeneratorTab.tsx | 975 | Вынести форму генерации и результат |
+| Файл | Содержимое | ~Строк |
+|------|-----------|--------|
+| `supabase/functions/_shared/editorjs-converter.ts` | `cleanHtml`, `editorBlocksToJsonBlocks`, `convertBlock`, `flattenListItems`, `renderTableHtml`, `makeId` | ~160 |
+| `supabase/functions/_shared/skillspace-auth.ts` | `mergeCookiesFromResponse`, `getCookieHeader`, `getAuthToken`, `apiFetch` factory | ~100 |
+| `supabase/functions/_shared/skillspace-media.ts` | `downloadAndReupload`, `extFromContentType`, `extFromUrl`, обработка блоков медиа | ~140 |
+| `supabase/functions/_shared/skillspace-lessons.ts` | Извлечение уроков (Strategy A/B), парсинг тестов (3 стратегии), парсинг контента | ~250 |
 
-**Обновить devToolsData.ts:** пометить этап 1 как "applied".
+### Итоговый index.ts (~300 строк):
+- CORS + входная валидация
+- Вызов auth → получение уроков → парсинг контента → медиа → сохранение в БД
+- Два режима (create/update) остаются в index.ts как оркестратор
 
-## Этап 3: Файлы 827–874 строк (5 файлов)
+---
 
-| Файл | Строк | Действие |
-|------|-------|----------|
-| AISettingsManager.tsx | 874 | Секции настроек в подкомпоненты |
-| BulkContentGenerator.tsx | 867 | UI разбить (логика уже в хуке) |
-| InvoiceGenerator.tsx | 846 | Preview + форма в подкомпоненты |
-| JournalsManager.tsx | 841 | Декомпозиция по типам журналов |
-| ConsentGenerator.tsx | 834 | Шаблоны + preview |
+## Задача 2: Обновление devToolsData.ts
 
-**Обновить devToolsData.ts:** пометить этап 2 как "applied".
+- Рекомендация `parse-skillspace-size` → статус `applied`, обновить текст
+- Рекомендация `test-coverage` — оставить как есть (не решаем сейчас)
 
-## Этап 4: Файлы 791–827 строк (4 файла)
+---
 
-| Файл | Строк | Действие |
-|------|-------|----------|
-| CourseDetailsContent.tsx | 827 | Разбить на секции |
-| ActGenerator.tsx | 827 | Preview + форма |
-| CopiesDuplicatesJournal.tsx | 805 | Логика в хук |
-| AutoFinalAttestationJournal.tsx | 791 | Логика в хук |
+## Технические детали
 
-**Обновить devToolsData.ts:** пометить этап 3 как "applied".
-
-## Этап 5: Финальное обновление + страницы > 700 строк
-
-| Файл | Строк | Действие |
-|------|-------|----------|
-| LessonEditor.tsx | 726 | Секции редактора |
-| StorageManager.tsx | 724 | Подкомпоненты хранилища |
-| CourseGroupsTab.tsx | 666 | Подкомпоненты |
-| CourseRemindersTab.tsx | 660 | Подкомпоненты |
-
-**Финальное обновление devToolsData.ts:**
-- Все метрики (файлы, строки, процент)
-- Все recommendations → "applied"
-- QUALITY_METRICS: крупнейший файл < 600, файлов > 800 = 0
-- Context coverage пересчитать
-
-## Стратегия для каждого файла
-
-1. Хук `use{Name}.ts` — стейт, запросы, handlers
-2. Подкомпоненты — таблицы, формы, диалоги
-3. Главный файл — только layout (~100–200 строк)
-
-## Создаваемые файлы
-
-| Этап | Новых хуков | Новых компонентов | Рефакторинг |
-|------|-------------|-------------------|-------------|
-| 1 | 1 (useCoursePreview) | ~6 | 3 + devToolsData |
-| 2 | 3 | ~9 | 3 + devToolsData |
-| 3 | 2 | ~10 | 5 + devToolsData |
-| 4 | 2 | ~8 | 4 + devToolsData |
-| 5 | 0 | ~8 | 4 + devToolsData |
-
-После каждого этапа — проверка TypeScript build и автоматический переход к следующему этапу без ожидания подтверждения.
+- Edge functions поддерживают `import` из `../_shared/` — уже используется для `gigachat-client.ts` и `rate-limiter.ts`
+- Все экспортируемые функции будут типизированы
+- Логика `Deno.serve` и Supabase client остаётся в `index.ts`
+- Функция будет автоматически переразвёрнута после изменений
 
