@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import { MessageCircle, Search, Send, Paperclip, FileText, Building2, ArrowLeft } from "lucide-react";
+import { MessageCircle, Search, Send, Paperclip, FileText, Building2, ArrowLeft, Bot, Users } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -11,6 +11,10 @@ import { toast } from "sonner";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useAuth } from "@/hooks/useAuth";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
+import { AiChatPanel } from "@/components/chat/AiChatPanel";
+import { ColleagueChatPanel } from "@/components/chat/ColleagueChatPanel";
+
+type AdminChatMode = "organizations" | "ai" | "colleagues";
 
 interface Organization {
   id: string;
@@ -41,6 +45,7 @@ interface OrgConversation {
 export function AdminChatsManager() {
   const { user } = useAuth();
   const isMobile = useIsMobile();
+  const [chatMode, setChatMode] = useState<AdminChatMode>("organizations");
   const [organizations, setOrganizations] = useState<Organization[]>([]);
   const [conversations, setConversations] = useState<OrgConversation[]>([]);
   const [selectedOrgId, setSelectedOrgId] = useState<string | null>(null);
@@ -297,8 +302,61 @@ export function AdminChatsManager() {
     );
   }
 
+  const modeButtons = (
+    <div className="flex gap-1 mb-4 bg-muted/50 p-1 rounded-xl w-fit">
+      <Button
+        variant={chatMode === "organizations" ? "default" : "ghost"}
+        size="sm"
+        onClick={() => setChatMode("organizations")}
+        className="gap-1.5 rounded-lg text-xs"
+      >
+        <Building2 className="w-3.5 h-3.5" /> Организации
+      </Button>
+      <Button
+        variant={chatMode === "ai" ? "default" : "ghost"}
+        size="sm"
+        onClick={() => setChatMode("ai")}
+        className="gap-1.5 rounded-lg text-xs"
+      >
+        <Bot className="w-3.5 h-3.5" /> ИИ-помощник
+      </Button>
+      <Button
+        variant={chatMode === "colleagues" ? "default" : "ghost"}
+        size="sm"
+        onClick={() => setChatMode("colleagues")}
+        className="gap-1.5 rounded-lg text-xs"
+      >
+        <Users className="w-3.5 h-3.5" /> Коллеги
+      </Button>
+    </div>
+  );
+
+  if (chatMode === "ai") {
+    return (
+      <>
+        {modeButtons}
+        <div className="border border-border rounded-xl bg-card p-4 h-[calc(100vh-280px)] min-h-[400px]">
+          <AiChatPanel />
+        </div>
+      </>
+    );
+  }
+
+  if (chatMode === "colleagues") {
+    return (
+      <>
+        {modeButtons}
+        <div className="h-[calc(100vh-280px)] min-h-[400px]">
+          <ColleagueChatPanel role="admin" />
+        </div>
+      </>
+    );
+  }
+
   return (
-    <div className="flex gap-4 h-[calc(100vh-220px)] min-h-[400px]">
+    <>
+    {modeButtons}
+    <div className="flex gap-4 h-[calc(100vh-280px)] min-h-[400px]">
       {/* Org list */}
       <div className={`flex flex-col ${selectedOrgId && !isMobile ? "w-80 shrink-0" : "flex-1"} border border-border rounded-xl bg-card overflow-hidden`}>
         <div className="p-3 border-b border-border">
@@ -385,5 +443,6 @@ export function AdminChatsManager() {
         </div>
       )}
     </div>
+    </>
   );
 }
