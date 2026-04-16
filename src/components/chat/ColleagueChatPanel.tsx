@@ -34,7 +34,7 @@ interface ColleagueMessage {
   created_at: string;
 }
 
-type UserRole = "admin" | "organization";
+type UserRole = "admin" | "organization" | "student";
 
 interface ColleagueChatPanelProps {
   role: UserRole;
