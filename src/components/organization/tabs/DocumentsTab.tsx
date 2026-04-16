@@ -12,20 +12,16 @@ import { DocumentArchiveView } from "@/components/organization/DocumentArchiveVi
 import { EducationDocumentsJournal } from "@/components/organization/EducationDocumentsJournal";
 import { CourseProgramsList } from "@/components/organization/CourseProgramsList";
 import { ContractGenerator } from "@/components/organization/ContractGenerator";
-import { PayersSection } from "@/components/organization/PayersSection";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { useDocumentsTab, type DocumentSubTab } from "@/hooks/useDocumentsTab";
-import { BillingDocumentsSection } from "./documents/BillingDocumentsSection";
 import { CounterpartiesSection } from "./documents/CounterpartiesSection";
 import { ConstructorSection } from "./documents/ConstructorSection";
 import { DocumentDialogs } from "./documents/DocumentDialogs";
 
 const NAV_ITEMS: { value: DocumentSubTab; label: string; icon: React.ElementType; ordersOnly?: boolean; iconColor?: string; group?: string }[] = [
-  { value: "billing", label: "Синтагма", icon: FolderOpen, group: "platform" },
   { value: "counterparties", label: "Контрагенты", icon: Building2, group: "platform" },
-  { value: "payers", label: "Плательщики", icon: Users, group: "platform" },
   { value: "org", label: "Документы орг.", icon: FileText, iconColor: "text-primary/70", group: "docs" },
   { value: "orders", label: "Приказы", icon: ScrollText, ordersOnly: true, iconColor: "text-amber-500", group: "docs" },
   { value: "protocols", label: "Протоколы АК", icon: ClipboardList, iconColor: "text-violet-500", group: "docs" },
@@ -49,9 +45,7 @@ const SECTION_DESCRIPTIONS: Partial<Record<DocumentSubTab, string>> = {
   programs: "Управление образовательными программами",
   journals: "Журналы учёта обучения",
   frdo: "Выгрузка данных в ФИС ФРДО",
-  billing: "Договоры, счета и закрывающие документы с платформой",
-  counterparties: "Договоры, счета и акты с компаниями-заказчиками",
-  payers: "Взаиморасчёты с учениками и компаниями",
+  counterparties: "Договоры, счета и закрывающие документы с контрагентами",
 };
 
 interface DocumentsTabProps {
@@ -134,21 +128,6 @@ export const DocumentsTab = React.memo(function DocumentsTab({ organizationId, o
               {SECTION_DESCRIPTIONS[h.activeTab] && <p className="text-xs text-muted-foreground mt-0.5">{SECTION_DESCRIPTIONS[h.activeTab]}</p>}
             </div>
             <div className="flex items-center gap-2">
-              {h.activeTab === "billing" && h.billingSubTab === "invoices" && (
-                <Button variant="outline" size="sm" className="rounded-xl gap-1.5" onClick={() => h.setShowInvoiceDialog(true)}>
-                  <Receipt className="w-3.5 h-3.5" /><span className="hidden sm:inline">Сформировать счёт</span>
-                </Button>
-              )}
-              {h.activeTab === "billing" && h.billingSubTab === "closing" && (
-                <Button variant="outline" size="sm" className="rounded-xl gap-1.5" onClick={() => h.setShowActDialog(true)}>
-                  <FileText className="w-3.5 h-3.5" /><span className="hidden sm:inline">Сформировать акт</span>
-                </Button>
-              )}
-              {h.activeTab === "counterparties" && h.counterpartySubTab === "contracts" && (
-                <Button size="sm" className="rounded-xl gap-1.5" onClick={() => h.setShowContractGenerator(true)}>
-                  <FileText className="w-3.5 h-3.5" /><span className="hidden sm:inline">Создать договор</span>
-                </Button>
-              )}
               {onShowBulkUploadDialog && h.activeTab === "org" && (
                 <Button variant="outline" size="sm" className="rounded-xl gap-1.5" onClick={onShowBulkUploadDialog}>
                   <Upload className="w-3.5 h-3.5" /><span className="hidden sm:inline">Массовая загрузка</span>
@@ -182,25 +161,21 @@ export const DocumentsTab = React.memo(function DocumentsTab({ organizationId, o
             {h.activeTab === "programs" && <CourseProgramsList organizationId={organizationId} />}
             {h.activeTab === "journals" && <div className="bg-card rounded-xl lg:rounded-2xl border border-border p-4 lg:p-6"><JournalsManager organizationId={organizationId!} /></div>}
             {h.activeTab === "frdo" && <div className="bg-card rounded-xl lg:rounded-2xl border border-border p-4 lg:p-6"><FRDOManager organizationId={organizationId!} /></div>}
-            {h.activeTab === "payers" && <PayersSection organizationId={organizationId} />}
             {h.activeTab === "counterparties" && (
               <CounterpartiesSection
+                organizationId={organizationId}
                 counterpartySubTab={h.counterpartySubTab}
                 setCounterpartySubTab={h.setCounterpartySubTab}
                 counterpartyDocs={h.counterpartyDocs}
                 counterpartyLoading={h.counterpartyLoading}
                 onCreateContract={() => h.setShowContractGenerator(true)}
-              />
-            )}
-            {h.activeTab === "billing" && (
-              <BillingDocumentsSection
-                billingSubTab={h.billingSubTab}
-                setBillingSubTab={h.setBillingSubTab}
                 invoices={h.invoices}
                 billingDocs={h.billingDocs}
                 onViewDoc={h.handleViewDoc}
                 onDownloadDoc={h.handleDownloadDoc}
                 onDeleteDoc={h.handleDeleteBillingDoc}
+                onShowInvoiceDialog={() => h.setShowInvoiceDialog(true)}
+                onShowActDialog={() => h.setShowActDialog(true)}
               />
             )}
           </div>

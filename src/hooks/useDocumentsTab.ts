@@ -9,9 +9,15 @@ import { SUBSCRIPTION_PLANS } from "@/constants/subscriptionPlans";
 import { type OrgRequisites } from "@/hooks/useCompanyLinksAndGenerators";
 import { toast } from "sonner";
 
-export type DocumentSubTab = "constructor" | "programs" | "org" | "orders" | "protocols" | "certificates" | "diplomas" | "testimonials" | "billing" | "payers" | "journals" | "frdo" | "counterparties";
-export type BillingSubTab = "contracts" | "invoices" | "closing";
-export type CounterpartySubTab = "contracts" | "invoices" | "acts" | "faq";
+export type DocumentSubTab = "constructor" | "programs" | "org" | "orders" | "protocols" | "certificates" | "diplomas" | "testimonials" | "journals" | "frdo" | "counterparties";
+export type CounterpartySubTab = "contracts" | "invoices" | "closing" | "faq";
+export type CounterpartyType = "platform" | "company" | "payer";
+
+export interface CounterpartyOption {
+  id: string;
+  name: string;
+  type: CounterpartyType;
+}
 
 export interface BillingDoc {
   id: string;
@@ -50,13 +56,12 @@ export function useDocumentsTab(organizationId: string | null, organizationName?
   const { plan } = useSubscriptionLimits(organizationId);
   const isFreePlan = plan === 'free';
 
-  const [activeTab, setActiveTab] = useState<DocumentSubTab>("billing");
+  const [activeTab, setActiveTab] = useState<DocumentSubTab>("counterparties");
   const [constructorTab, setConstructorTab] = useState("requisites");
   const [stampUrl, setStampUrl] = useState<string | null>(null);
   const [signatureUrl, setSignatureUrl] = useState<string | null>(null);
   const [billingDocs, setBillingDocs] = useState<BillingDoc[]>([]);
   const [invoices, setInvoices] = useState<InvoiceRow[]>([]);
-  const [billingSubTab, setBillingSubTab] = useState<BillingSubTab>("contracts");
   const [counterpartySubTab, setCounterpartySubTab] = useState<CounterpartySubTab>("contracts");
   const [counterpartyDocs, setCounterpartyDocs] = useState<CounterpartyDoc[]>([]);
   const [counterpartyLoading, setCounterpartyLoading] = useState(false);
@@ -454,7 +459,7 @@ export function useDocumentsTab(organizationId: string | null, organizationName?
     stampUrl, signatureUrl,
     handleStampUpload, handleSignatureUpload, handleStampRemove, handleSignatureRemove,
     billingDocs, invoices,
-    billingSubTab, setBillingSubTab,
+    
     counterpartySubTab, setCounterpartySubTab,
     counterpartyDocs, counterpartyLoading,
     // Act
