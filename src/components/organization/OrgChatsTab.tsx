@@ -364,7 +364,7 @@ export function OrgChatsTab() {
 
   return (
     <>
-      <div className="flex h-[calc(100vh-200px)] min-h-[500px] border border-border rounded-xl overflow-hidden bg-card">
+      <div className="flex min-h-[300px] border border-border rounded-xl overflow-hidden bg-card">
         <ChatSidebar activeSection={activeSection} onSectionChange={setActiveSection} userName={userName} avatarUrl={userAvatar} />
         <div className="flex-1 overflow-hidden p-4">{renderContent()}</div>
       </div>
