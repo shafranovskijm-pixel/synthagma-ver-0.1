@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { MARKETPLACE_ORG_ID } from "@/constants/marketplace";
+import { PROGRAM_TYPE_GROUPS, AUTO_CATEGORIZE_MAPPINGS } from "./adminMarketplaceHelpers";
 
 interface MarketplaceCourseWithDetails {
   id: string;
