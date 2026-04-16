@@ -411,7 +411,7 @@ export function ContractTemplateEditor({
           </DialogHeader>
           <div className="bg-white text-black p-8 rounded-xl border shadow-inner">
             <pre className="whitespace-pre-wrap font-serif text-sm leading-relaxed">
-              {getPreviewText()}
+              {getPreviewText(template)}
             </pre>
           </div>
           <div className="flex justify-end gap-2">
@@ -419,7 +419,7 @@ export function ContractTemplateEditor({
             <Button className="rounded-xl gap-2" onClick={() => {
               const printWindow = window.open("", "_blank");
               if (printWindow) {
-                printWindow.document.write(`<!DOCTYPE html><html><head><title>Предпросмотр договора</title><style>body{font-family:'Times New Roman',serif;padding:2cm;line-height:1.6;}pre{white-space:pre-wrap;font-family:inherit;}</style></head><body><pre>${getPreviewText()}</pre></body></html>`);
+                printWindow.document.write(`<!DOCTYPE html><html><head><title>Предпросмотр договора</title><style>body{font-family:'Times New Roman',serif;padding:2cm;line-height:1.6;}pre{white-space:pre-wrap;font-family:inherit;}</style></head><body><pre>${getPreviewText(template)}</pre></body></html>`);
                 printWindow.document.close();
                 printWindow.print();
               }
