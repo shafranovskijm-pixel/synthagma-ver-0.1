@@ -155,7 +155,7 @@ export function CounterpartiesSection({
     localStorage.setItem(`client_groups_${organizationId}`, JSON.stringify(groups));
   };
 
-
+  const handleCreateGroup = () => {
     if (!newGroupName.trim()) return;
     const group: ClientGroup = { id: crypto.randomUUID(), name: newGroupName.trim(), clients: [] };
     saveGroups([...clientGroups, group]);
