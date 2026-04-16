@@ -21,9 +21,10 @@ interface GeneralMessage {
 interface OrgGeneralChatProps {
   organizationId: string;
   currentUserId: string;
+  onStartPrivateChat?: (userId: string, name: string) => void;
 }
 
-export function OrgGeneralChat({ organizationId, currentUserId }: OrgGeneralChatProps) {
+export function OrgGeneralChat({ organizationId, currentUserId, onStartPrivateChat }: OrgGeneralChatProps) {
   const [messages, setMessages] = useState<GeneralMessage[]>([]);
   const [newMessage, setNewMessage] = useState("");
   const [isLoading, setIsLoading] = useState(true);
