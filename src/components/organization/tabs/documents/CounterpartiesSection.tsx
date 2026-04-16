@@ -149,8 +149,13 @@ export function CounterpartiesSection({
     persistVisiblePayers(next);
     if (selectedId === id) setSelectedId("platform");
   };
+  // Persist groups
+  const saveGroups = (groups: ClientGroup[]) => {
+    setClientGroups(groups);
+    localStorage.setItem(`client_groups_${organizationId}`, JSON.stringify(groups));
+  };
 
-  const handleCreateGroup = () => {
+
     if (!newGroupName.trim()) return;
     const group: ClientGroup = { id: crypto.randomUUID(), name: newGroupName.trim(), clients: [] };
     saveGroups([...clientGroups, group]);
