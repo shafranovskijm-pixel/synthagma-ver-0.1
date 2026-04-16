@@ -44,7 +44,7 @@ export function StudentProfileContent({ effectiveUserId, isAdminView = false }: 
   const sp = useStudentProfile(effectiveUserId, isAdminView, user?.id);
 
   const visibleTabs = PROFILE_TABS.filter(t => {
-    if (t.id === "achievements") return sp.orgSettings?.showAchievements;
+    if ((t.id as string) === "achievements") return sp.orgSettings?.showAchievements;
     return true;
   });
 
