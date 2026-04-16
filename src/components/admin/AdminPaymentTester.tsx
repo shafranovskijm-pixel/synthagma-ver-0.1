@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { TBankSpeedPay } from "@/components/payments/TBankSpeedPay";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
