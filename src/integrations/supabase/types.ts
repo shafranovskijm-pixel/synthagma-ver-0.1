@@ -499,6 +499,7 @@ export type Database = {
           created_at: string | null
           id: string
           muted: boolean | null
+          notification_sound: string
           user_id: string
         }
         Insert: {
@@ -507,6 +508,7 @@ export type Database = {
           created_at?: string | null
           id?: string
           muted?: boolean | null
+          notification_sound?: string
           user_id: string
         }
         Update: {
@@ -515,6 +517,7 @@ export type Database = {
           created_at?: string | null
           id?: string
           muted?: boolean | null
+          notification_sound?: string
           user_id?: string
         }
         Relationships: []
@@ -2774,6 +2777,47 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "org_documents_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      org_general_messages: {
+        Row: {
+          attachment_name: string | null
+          attachment_type: string | null
+          attachment_url: string | null
+          content: string | null
+          created_at: string
+          id: string
+          organization_id: string
+          sender_user_id: string
+        }
+        Insert: {
+          attachment_name?: string | null
+          attachment_type?: string | null
+          attachment_url?: string | null
+          content?: string | null
+          created_at?: string
+          id?: string
+          organization_id: string
+          sender_user_id: string
+        }
+        Update: {
+          attachment_name?: string | null
+          attachment_type?: string | null
+          attachment_url?: string | null
+          content?: string | null
+          created_at?: string
+          id?: string
+          organization_id?: string
+          sender_user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "org_general_messages_organization_id_fkey"
             columns: ["organization_id"]
             isOneToOne: false
             referencedRelation: "organizations"
