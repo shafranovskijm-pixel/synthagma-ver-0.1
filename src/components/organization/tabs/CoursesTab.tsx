@@ -3,10 +3,9 @@ import { useOrgDashboard } from "@/contexts/OrgDashboardContext";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { 
-  BookOpen, Trash2,
-  GripVertical, Radio, Box
-} from "lucide-react";
+import { BookOpen, Trash2, GripVertical, Radio, Box } from "lucide-react";
+import { WebinarsContent, ThreeDContent } from "./courses/ContentTabPlaceholders";
+import { CoursesToolbar } from "./courses/CoursesToolbar";
 import { useCourses } from "@/hooks/useCourses";
 import { useSubscriptionLimits } from "@/hooks/useSubscriptionLimits";
 import { supabase } from "@/integrations/supabase/client";
@@ -332,46 +331,14 @@ export const CoursesTab = React.memo(function CoursesTab({ organizationId, onCou
       {/* Courses content */}
       {contentTab === "courses" && <>
       {/* Filters */}
-      <div className="bg-card rounded-xl lg:rounded-2xl border border-border p-3 lg:p-4">
-        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3 lg:gap-4">
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 lg:gap-3">
-            <div className="relative flex-1 sm:flex-none">
-              <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-              <Input placeholder="Поиск..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="pl-10 w-full sm:w-48 lg:w-64 rounded-xl text-sm" />
-            </div>
-            <div className="flex items-center gap-2 overflow-x-auto pb-1 lg:pb-0">
-              <Select value={filter} onValueChange={v => setFilter(v as CourseFilter)}>
-                <SelectTrigger className="w-32 lg:w-40 rounded-xl text-xs lg:text-sm shrink-0"><Filter className="w-4 h-4 mr-1 lg:mr-2" /><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Все курсы</SelectItem>
-                  <SelectItem value="published">Опубликованные</SelectItem>
-                  <SelectItem value="draft">Черновики</SelectItem>
-                </SelectContent>
-              </Select>
-              <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-                <SelectTrigger className="w-36 lg:w-48 rounded-xl text-xs lg:text-sm shrink-0"><Tag className="w-4 h-4 mr-1 lg:mr-2" /><SelectValue placeholder="Категория" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Все категории</SelectItem>
-                  <SelectItem value="none">Без категории</SelectItem>
-                  {categories.map(cat => (<SelectItem key={cat.id} value={cat.id}><div className="flex items-center gap-2"><div className="w-3 h-3 rounded-full" style={{ backgroundColor: cat.color }} />{cat.name}</div></SelectItem>))}
-                </SelectContent>
-              </Select>
-              <TooltipProvider delayDuration={300}><Tooltip><TooltipTrigger asChild>
-                <Button variant="outline" size="sm" className="rounded-lg gap-1 text-xs shrink-0" onClick={() => { setEditingCategory(null); setNewCategoryName(""); setNewCategoryColor("#6366f1"); setShowCategoryDialog(true); }}>
-                  <FolderPlus className="w-4 h-4" /><span className="hidden sm:inline">Категория</span>
-                </Button>
-              </TooltipTrigger><TooltipContent>Создать новую категорию курсов</TooltipContent></Tooltip></TooltipProvider>
-            </div>
-          </div>
-          <div className="flex items-center gap-2 self-end lg:self-auto">
-            <TooltipProvider delayDuration={300}>
-              <Tooltip><TooltipTrigger asChild><Button variant={folderViewMode === "folders" ? "secondary" : "ghost"} size="icon" className="h-8 w-8" onClick={() => setViewAndFolder(viewMode, "folders")}><Folder className="w-4 h-4" /></Button></TooltipTrigger><TooltipContent>Вид папками</TooltipContent></Tooltip>
-              <Tooltip><TooltipTrigger asChild><Button variant={folderViewMode === "flat" && viewMode === "grid" ? "secondary" : "ghost"} size="icon" className="h-8 w-8" onClick={() => setViewAndFolder("grid", "flat")}><LayoutGrid className="w-4 h-4" /></Button></TooltipTrigger><TooltipContent>Вид сеткой</TooltipContent></Tooltip>
-              <Tooltip><TooltipTrigger asChild><Button variant={folderViewMode === "flat" && viewMode === "list" ? "secondary" : "ghost"} size="icon" className="h-8 w-8" onClick={() => setViewAndFolder("list", "flat")}><List className="w-4 h-4" /></Button></TooltipTrigger><TooltipContent>Вид списком</TooltipContent></Tooltip>
-            </TooltipProvider>
-          </div>
-        </div>
-      </div>
+      <CoursesToolbar
+        searchQuery={searchQuery} setSearchQuery={setSearchQuery}
+        filter={filter} setFilter={setFilter}
+        categoryFilter={categoryFilter} setCategoryFilter={setCategoryFilter}
+        categories={categories} viewMode={viewMode} folderViewMode={folderViewMode}
+        setViewAndFolder={setViewAndFolder}
+        onNewCategory={() => { setEditingCategory(null); setNewCategoryName(""); setNewCategoryColor("#6366f1"); setShowCategoryDialog(true); }}
+      />
 
       {/* Bulk Actions */}
       {selectedCourseIds.size > 0 && (
