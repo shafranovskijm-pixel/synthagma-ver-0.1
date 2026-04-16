@@ -13,6 +13,7 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { Footer } from "@/components/landing/Footer";
 import { LandingHeader } from "@/components/landing/LandingHeader";
+import { TypewriterText, InViewTypewriterText } from "@/components/ui/TypewriterText";
 
 // AI-generated illustrations
 import heroBg from "@/assets/presentation/hero-bg.jpg";
@@ -143,6 +144,19 @@ export default function PlatformPresentation() {
     <div className="min-h-screen bg-background">
       <LandingHeader />
 
+      {/* ═══ Upward stars transition ═══ */}
+      <div className="relative h-0 overflow-visible pointer-events-none z-30">
+        {[...Array(12)].map((_, i) => (
+          <motion.div
+            key={i}
+            className="absolute w-1 h-1 rounded-full bg-white/40"
+            style={{ left: `${8 + i * 7.5}%`, top: 0 }}
+            animate={{ y: [60, -30], opacity: [0.5, 0] }}
+            transition={{ duration: 2.5 + i * 0.2, repeat: Infinity, delay: i * 0.35, ease: "easeOut" }}
+          />
+        ))}
+      </div>
+
       {/* ═══ HERO ═══ */}
       <Section className="relative text-white overflow-hidden">
         <img src={heroBg} alt="" className="absolute inset-0 w-full h-full object-cover" width={1920} height={1080} />
@@ -153,8 +167,12 @@ export default function PlatformPresentation() {
               <GraduationCap className="w-10 h-10 md:w-16 md:h-16 text-white" />
             </div>
           </motion.div>
-          <h1 className="text-5xl md:text-8xl font-bold tracking-tight mb-4 bg-gradient-to-r from-white to-white/80 bg-clip-text text-transparent">СИНТАГМА</h1>
-          <p className="text-lg md:text-2xl text-white/60 font-light mb-10">Платформа для образовательных организаций</p>
+          <h1 className="text-5xl md:text-8xl font-bold tracking-tight mb-4 bg-gradient-to-r from-white to-white/80 bg-clip-text text-transparent">
+            <TypewriterText text="СИНТАГМА" speed={80} delay={500} />
+          </h1>
+          <p className="text-lg md:text-2xl text-white/60 font-light mb-10">
+            <TypewriterText text="Платформа для образовательных организаций" speed={40} delay={1200} />
+          </p>
           <div className="flex flex-wrap justify-center gap-3">
             {[
               { icon: BookOpen, label: "LMS" },
@@ -173,7 +191,7 @@ export default function PlatformPresentation() {
       {/* ═══ ПРОБЛЕМА ═══ */}
       <Section className="bg-[hsl(40_20%_98%)] dark:bg-[hsl(0_0%_8%)]">
         <div className="max-w-7xl mx-auto px-4 md:px-8 py-16 md:py-24">
-          <h2 className="text-3xl md:text-5xl font-bold text-[hsl(0_0%_8%)] dark:text-white mb-3">Проблема</h2>
+          <h2 className="text-3xl md:text-5xl font-bold text-[hsl(0_0%_8%)] dark:text-white mb-3"><InViewTypewriterText text="Проблема" speed={60} delay={200} /></h2>
           <p className="text-base md:text-xl text-[hsl(0_0%_45%)] dark:text-white/60 mb-10">С чем сталкиваются образовательные организации каждый день</p>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-6">
             {[
@@ -199,22 +217,30 @@ export default function PlatformPresentation() {
       {/* ═══ РЕШЕНИЕ ═══ */}
       <Section className="bg-gradient-to-br from-[hsl(174_72%_46%)] to-[hsl(174_60%_28%)] text-white">
         <div className="max-w-7xl mx-auto px-4 md:px-8 py-16 md:py-24 text-center">
-          <h2 className="text-3xl md:text-5xl font-bold mb-4">Единая платформа</h2>
+          <h2 className="text-3xl md:text-5xl font-bold mb-4"><InViewTypewriterText text="Единая платформа" speed={50} delay={200} /></h2>
           <p className="text-base md:text-xl text-white/80 mb-12 max-w-3xl mx-auto">Всё для образовательной организации — от создания курсов до выгрузки в ФИС ФРДО</p>
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-4 md:gap-6 max-w-4xl mx-auto">
-            {[
-              { icon: BookOpen, label: "Курсы и обучение" },
-              { icon: FileText, label: "Документооборот" },
-              { icon: Brain, label: "ИИ-ассистент" },
-              { icon: Video, label: "Видеоидентификация" },
-              { icon: Database, label: "ФИС ФРДО" },
-              { icon: Shield, label: "Охрана труда" },
-            ].map((f, i) => (
-              <div key={i} className="bg-white/15 backdrop-blur-sm rounded-2xl p-5 md:p-8 flex flex-col items-center gap-3">
-                <f.icon className="w-8 h-8 md:w-10 md:h-10" />
-                <span className="text-sm md:text-base font-medium">{f.label}</span>
-              </div>
-            ))}
+          <div className="overflow-hidden [mask-image:linear-gradient(to_right,transparent,black_10%,black_90%,transparent)]">
+            <div className="flex gap-4 md:gap-6 animate-marquee hover:[animation-play-state:paused] w-max">
+              {[
+                { icon: BookOpen, label: "Курсы и обучение" },
+                { icon: FileText, label: "Документооборот" },
+                { icon: Brain, label: "ИИ-ассистент" },
+                { icon: Video, label: "Видеоидентификация" },
+                { icon: Database, label: "ФИС ФРДО" },
+                { icon: Shield, label: "Охрана труда" },
+                { icon: BookOpen, label: "Курсы и обучение" },
+                { icon: FileText, label: "Документооборот" },
+                { icon: Brain, label: "ИИ-ассистент" },
+                { icon: Video, label: "Видеоидентификация" },
+                { icon: Database, label: "ФИС ФРДО" },
+                { icon: Shield, label: "Охрана труда" },
+              ].map((f, i) => (
+                <div key={i} className="bg-white/15 backdrop-blur-sm rounded-2xl p-6 md:p-8 flex flex-col items-center gap-3 min-w-[160px] md:min-w-[200px] hover:scale-105 transition-transform">
+                  <f.icon className="w-8 h-8 md:w-10 md:h-10" />
+                  <span className="text-sm md:text-base font-medium whitespace-nowrap">{f.label}</span>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       </Section>
@@ -222,7 +248,7 @@ export default function PlatformPresentation() {
       {/* ═══ LMS ═══ */}
       <Section className="bg-[hsl(40_20%_98%)] dark:bg-[hsl(0_0%_8%)]">
         <div className="max-w-7xl mx-auto px-4 md:px-8 py-16 md:py-24">
-          <h2 className="text-3xl md:text-5xl font-bold text-[hsl(0_0%_8%)] dark:text-white mb-3">Управление курсами</h2>
+          <h2 className="text-3xl md:text-5xl font-bold text-[hsl(0_0%_8%)] dark:text-white mb-3"><InViewTypewriterText text="Управление курсами" speed={40} delay={200} /></h2>
           <p className="text-base md:text-xl text-[hsl(0_0%_45%)] dark:text-white/60 mb-10">Создавайте, импортируйте или генерируйте курсы с ИИ</p>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
             {[
@@ -255,7 +281,7 @@ export default function PlatformPresentation() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-10 items-center">
             <div>
               <Brain className="w-12 h-12 mb-6 text-[hsl(262_80%_70%)]" />
-              <h2 className="text-3xl md:text-5xl font-bold mb-4">ИИ-ассистент</h2>
+              <h2 className="text-3xl md:text-5xl font-bold mb-4"><InViewTypewriterText text="ИИ-ассистент" speed={50} delay={200} /></h2>
               <p className="text-base md:text-xl text-white/70 mb-8">Искусственный интеллект, встроенный в каждый этап работы</p>
               <div className="space-y-4">
                 {[
@@ -287,7 +313,7 @@ export default function PlatformPresentation() {
         <img src={docsBg} alt="" className="absolute inset-0 w-full h-full object-cover" loading="lazy" width={1920} height={1080} />
         <div className="absolute inset-0 bg-[hsl(0_0%_6%/0.8)]" />
         <div className="relative max-w-7xl mx-auto px-4 md:px-8 py-16 md:py-24">
-          <h2 className="text-3xl md:text-5xl font-bold mb-3">Документооборот</h2>
+          <h2 className="text-3xl md:text-5xl font-bold mb-3"><InViewTypewriterText text="Документооборот" speed={50} delay={200} /></h2>
           <p className="text-base md:text-xl text-white/60 mb-10">Автоматическая генерация всех документов из шаблонов</p>
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 md:gap-4">
             {[
@@ -309,7 +335,7 @@ export default function PlatformPresentation() {
       <Section className="bg-[hsl(40_20%_98%)] dark:bg-[hsl(0_0%_10%)]">
         <div className="max-w-7xl mx-auto px-4 md:px-8 py-16 md:py-24 text-center">
           <Landmark className="w-12 h-12 text-[hsl(174_72%_46%)] mx-auto mb-6" />
-          <h2 className="text-3xl md:text-5xl font-bold text-[hsl(0_0%_8%)] dark:text-white mb-3">ФИС ФРДО</h2>
+          <h2 className="text-3xl md:text-5xl font-bold text-[hsl(0_0%_8%)] dark:text-white mb-3"><InViewTypewriterText text="ФИС ФРДО" speed={60} delay={200} /></h2>
           <p className="text-base md:text-xl text-[hsl(0_0%_45%)] dark:text-white/60 mb-12 max-w-2xl mx-auto">Автоматическая выгрузка данных о выданных документах в федеральный реестр</p>
           <div className="flex flex-col md:flex-row gap-6 md:gap-8 justify-center max-w-4xl mx-auto">
             {[
@@ -334,7 +360,7 @@ export default function PlatformPresentation() {
         <div className="relative max-w-7xl mx-auto px-4 md:px-8 py-16 md:py-24">
           <div className="flex items-center gap-3 mb-3">
             <HardHat className="w-8 h-8 text-[hsl(38_92%_50%)]" />
-            <h2 className="text-3xl md:text-5xl font-bold">Охрана труда</h2>
+            <h2 className="text-3xl md:text-5xl font-bold"><InViewTypewriterText text="Охрана труда" speed={50} delay={200} /></h2>
           </div>
           <p className="text-base md:text-xl text-white/60 mb-10">Полный модуль для обучения по охране труда и проверке знаний</p>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -361,7 +387,7 @@ export default function PlatformPresentation() {
       {/* ═══ КАБИНЕТЫ ═══ */}
       <Section className="bg-[hsl(40_20%_98%)] dark:bg-[hsl(0_0%_8%)]">
         <div className="max-w-7xl mx-auto px-4 md:px-8 py-16 md:py-24">
-          <h2 className="text-3xl md:text-5xl font-bold text-[hsl(0_0%_8%)] dark:text-white mb-3">Четыре кабинета</h2>
+          <h2 className="text-3xl md:text-5xl font-bold text-[hsl(0_0%_8%)] dark:text-white mb-3"><InViewTypewriterText text="Четыре кабинета" speed={50} delay={200} /></h2>
           <p className="text-base md:text-xl text-[hsl(0_0%_45%)] dark:text-white/60 mb-10">Отдельный интерфейс для каждой роли</p>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
             {[
@@ -399,7 +425,7 @@ export default function PlatformPresentation() {
       {/* ═══ МАГАЗИН КУРСОВ ═══ */}
       <Section className="bg-gradient-to-br from-[hsl(174_72%_46%)] to-[hsl(174_60%_28%)] text-white">
         <div className="max-w-7xl mx-auto px-4 md:px-8 py-16 md:py-24">
-          <h2 className="text-3xl md:text-5xl font-bold mb-3">300+ готовых курсов</h2>
+          <h2 className="text-3xl md:text-5xl font-bold mb-3"><InViewTypewriterText text="300+ готовых курсов" speed={40} delay={200} /></h2>
           <p className="text-base md:text-xl text-white/80 mb-10">Программы по Ростехнадзору с актуальными тестами 2026 года</p>
           
           {/* Screenshots from the platform */}
@@ -442,7 +468,7 @@ export default function PlatformPresentation() {
       {/* ═══ СРАВНЕНИЕ С КОНКУРЕНТАМИ ═══ */}
       <Section className="bg-[hsl(40_20%_98%)] dark:bg-[hsl(0_0%_8%)]">
         <div className="max-w-7xl mx-auto px-4 md:px-8 py-16 md:py-24">
-          <h2 className="text-3xl md:text-5xl font-bold text-[hsl(0_0%_8%)] dark:text-white mb-3">Сравнение с конкурентами</h2>
+          <h2 className="text-3xl md:text-5xl font-bold text-[hsl(0_0%_8%)] dark:text-white mb-3"><InViewTypewriterText text="Сравнение с конкурентами" speed={35} delay={200} /></h2>
           <p className="text-base md:text-xl text-[hsl(0_0%_45%)] dark:text-white/60 mb-8">Почему организации выбирают Синтагму</p>
 
           <div className="flex items-center gap-2 mb-6">
@@ -493,7 +519,7 @@ export default function PlatformPresentation() {
       {/* ═══ ТАРИФЫ ═══ */}
       <Section className="bg-[hsl(0_0%_6%)] text-white">
         <div className="max-w-7xl mx-auto px-4 md:px-8 py-16 md:py-24">
-          <h2 className="text-3xl md:text-5xl font-bold mb-3 text-center">Тарифы</h2>
+          <h2 className="text-3xl md:text-5xl font-bold mb-3 text-center"><InViewTypewriterText text="Тарифы" speed={60} delay={200} /></h2>
           <p className="text-base md:text-xl text-white/60 mb-10 text-center">Все функции доступны на каждом тарифе. Разница только в лимитах.</p>
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 md:gap-4">
             {[
@@ -541,7 +567,7 @@ export default function PlatformPresentation() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-10 items-center">
             <div>
               <Smartphone className="w-12 h-12 mb-6 text-[hsl(174_72%_46%)]" />
-              <h2 className="text-3xl md:text-5xl font-bold text-white mb-4">Мобильное приложение</h2>
+              <h2 className="text-3xl md:text-5xl font-bold text-white mb-4"><InViewTypewriterText text="Мобильное приложение" speed={40} delay={200} /></h2>
               <p className="text-base md:text-xl text-white/60 mb-8">Учитесь где угодно — с телефона или планшета</p>
               <div className="space-y-4">
                 {[
@@ -580,7 +606,7 @@ export default function PlatformPresentation() {
           <div className="w-16 h-16 md:w-20 md:h-20 rounded-2xl bg-gradient-to-br from-[hsl(174_72%_46%)] to-[hsl(174_65%_30%)] flex items-center justify-center mx-auto mb-8 shadow-[0_0_60px_hsl(174_72%_46%/0.4)]">
             <GraduationCap className="w-8 h-8 md:w-12 md:h-12 text-white" />
           </div>
-          <h2 className="text-3xl md:text-6xl font-bold mb-4">Начните уже сегодня</h2>
+          <h2 className="text-3xl md:text-6xl font-bold mb-4"><InViewTypewriterText text="Начните уже сегодня" speed={40} delay={200} /></h2>
           <p className="text-base md:text-xl text-white/60 mb-10 max-w-xl mx-auto">Бесплатный тариф — навсегда. Все функции доступны.</p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center mb-12">
             <Link to="/register-organization" className="px-8 py-3 md:px-10 md:py-4 rounded-2xl bg-[hsl(174_72%_46%)] text-base md:text-lg font-semibold hover:opacity-90 transition-opacity text-center">Начать бесплатно</Link>

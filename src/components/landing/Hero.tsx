@@ -209,7 +209,7 @@ export function Hero() {
       </div>
 
       {/* Gradient fade from header to hero */}
-      <div className="relative z-10 h-6 bg-gradient-to-b from-[#0a0e1a] to-transparent" />
+      <div className="sticky top-[64px] z-20 h-12 bg-gradient-to-b from-[#0a0e1a] to-transparent pointer-events-none" />
       <div className="absolute top-0 left-0 right-0 h-16 z-10 overflow-hidden pointer-events-none">
         {[...Array(8)].map((_, i) => (
           <motion.div
