@@ -190,6 +190,21 @@ export const QUALITY_METRICS: QualityMetric[] = [
   { label: "Таблиц в БД", value: 118, max: 150, unit: "штук", status: "good" },
 ];
 
+// ─── Context Coverage ──────────────────────────────────────────
+export const CONTEXT_COMPONENTS = [
+  { name: "OrgSidebar", migrated: true },
+  { name: "OrgDashboardHeader", migrated: true },
+  { name: "TabContentRenderer", migrated: true },
+  { name: "SettingsTab", migrated: true },
+  { name: "DialogsContainer", migrated: true },
+  { name: "CoursesTab", migrated: true },
+  { name: "StudentsTab", migrated: true },
+  { name: "DocumentsTab", migrated: false },
+  { name: "JournalsManager", migrated: true },
+  { name: "CompanyDetailDialog", migrated: false },
+  { name: "InvoiceGenerator", migrated: false },
+];
+
 // ─── Edge Functions ─────────────────────────────────────────────
 export interface EdgeFunc {
   name: string;
