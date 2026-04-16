@@ -2,11 +2,11 @@ import { Link } from "react-router-dom";
 import { Helmet } from "react-helmet-async";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { SigmaLogo } from "@/components/ui/SigmaLogo";
-import { FloatingParticles } from "@/components/landing/FloatingParticles";
+import { LandingHeader } from "@/components/landing/LandingHeader";
+import { StarfieldCanvas } from "@/components/landing/StarfieldCanvas";
 import { Footer } from "@/components/landing/Footer";
 import {
-  ArrowLeft, Shield, Zap, BookOpen, CheckCircle2, Factory, Flame,
+  Shield, Zap, BookOpen, CheckCircle2, Factory, Flame,
   HardHat, Leaf, ArrowRight, Clock, FileCheck, RefreshCw,
   Heart, Wrench, Car, Layers, GraduationCap, Briefcase, Settings, Building2
 } from "lucide-react";
@@ -250,42 +250,11 @@ const RostechnadzorCoursesPage = () => {
         })}</script>
       </Helmet>
 
-      {/* Header */}
-      <header className="sticky top-0 z-50 bg-background/80 backdrop-blur-xl border-b border-border">
-        <div className="container mx-auto px-6 py-4 flex items-center justify-between">
-          <Link to="/" className="flex items-center gap-2">
-            <SigmaLogo size="sm" />
-          </Link>
-          <Link to="/">
-            <Button variant="ghost" className="gap-2">
-              <ArrowLeft className="w-4 h-4" />
-              На главную
-            </Button>
-          </Link>
-        </div>
-      </header>
+      <LandingHeader showStars />
 
-      {/* Hero — dark style */}
-      <section className="relative py-20 md:py-28 overflow-hidden bg-gradient-to-b from-background via-background to-secondary/20">
-        <FloatingParticles mode="mixed" count={10} />
-        <div className="absolute inset-0 opacity-[0.012]" style={{
-          backgroundImage: `radial-gradient(circle at 1px 1px, currentColor 1px, transparent 0)`,
-          backgroundSize: '32px 32px'
-        }} />
-
-        {/* Decorative glows */}
-        <div className="absolute top-[10%] right-[8%] w-80 h-80 bg-accent/5 rounded-full blur-3xl pointer-events-none" />
-        <div className="absolute bottom-[5%] left-[5%] w-64 h-64 bg-accent/4 rounded-full blur-3xl pointer-events-none" />
-
-        {/* Decorative corners */}
-        <motion.div
-          className="absolute top-12 left-8 w-14 h-14 border-l border-t border-accent/15 rounded-tl-2xl"
-          initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} viewport={{ once: true }} transition={{ duration: 1, delay: 0.5 }}
-        />
-        <motion.div
-          className="absolute bottom-12 right-8 w-14 h-14 border-r border-b border-accent/15 rounded-br-2xl"
-          initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} viewport={{ once: true }} transition={{ duration: 1, delay: 0.6 }}
-        />
+      {/* Hero — dark style with starfield */}
+      <section className="relative py-20 md:py-28 overflow-hidden bg-[#0a0e1a]">
+        <StarfieldCanvas />
 
         <div className="container mx-auto px-6 relative z-10">
           <motion.div initial="hidden" animate="visible" variants={stagger} className="max-w-4xl mx-auto text-center">
