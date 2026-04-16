@@ -31,6 +31,12 @@ import { TemplateHistoryDialog, type TemplateHistoryEntry } from "./contract-tem
 import { CONTRACT_PLACEHOLDERS, extractTextFromPDF, extractTextFromDOCX, getPreviewText, FALLBACK_VARIABLE_PATTERNS } from "./contract-template/contractTemplateHelpers";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 
+interface ContractTemplateEditorProps {
+  organizationId: string;
+  organizationName: string;
+  fullPage?: boolean;
+}
+
 export function ContractTemplateEditor({
   organizationId,
   organizationName,
