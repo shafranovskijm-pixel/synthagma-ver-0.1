@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { Navigate, useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import {
-  BookOpen, MessageCircle, Menu, Eye, X, User,
+  BookOpen, MessageCircle, Menu, Eye, X, User, Presentation, Monitor,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { SigmaLogo } from "@/components/ui/SigmaLogo";
