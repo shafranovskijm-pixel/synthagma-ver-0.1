@@ -15,7 +15,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import {
-  ArrowLeft, CreditCard, Handshake, HelpCircle, User, LogOut,
+  ArrowLeft, CreditCard, HelpCircle, User, LogOut,
   Sparkles, Settings, FileText, LucideIcon,
 } from "lucide-react";
 import { differenceInDays } from "date-fns";
