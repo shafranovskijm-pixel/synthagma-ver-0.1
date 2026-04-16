@@ -8,6 +8,7 @@ import { useOrgDashboard } from "@/contexts/OrgDashboardContext";
 import { SigmaLogo } from "@/components/ui/SigmaLogo";
 import { supabase } from "@/integrations/supabase/client";
 import { differenceInDays } from "date-fns";
+import { useTheme } from "next-themes";
 import { useAuth } from "@/hooks/useAuth";
 import { OrgNotifications } from "./OrgNotifications";
 import { HeroBannerSwiper } from "@/components/shared/HeroBannerSwiper";
