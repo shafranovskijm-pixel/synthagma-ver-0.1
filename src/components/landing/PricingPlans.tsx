@@ -375,12 +375,7 @@ export function PricingPlans() {
           whileInView={{ opacity: 1 }}
           viewport={{ once: true }}
           transition={{ delay: 0.6 }}
-          className="text-center text-sm text-muted-foreground mt-4 flex flex-col items-center gap-2"
         >
-          <span className="flex items-center gap-1.5">
-            <Sparkles className="w-4 h-4 text-accent" />
-            Все тарифы включают бесплатную техническую поддержку
-          </span>
           <span className="text-xs text-[hsl(38,92%,50%)]/80">
             ФИС ФРДО+ — выгрузка данных в реестр выполняется нами за вас
           </span>
