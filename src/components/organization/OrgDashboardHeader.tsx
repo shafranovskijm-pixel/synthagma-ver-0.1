@@ -33,6 +33,8 @@ function getUserInitials(email?: string | null, name?: string | null): string {
 export function OrgDashboardHeader() {
   const navigate = useNavigate();
   const d = useOrgDashboard();
+  const { theme, setTheme } = useTheme();
+  const toggleTheme = () => setTheme(theme === "dark" ? "light" : "dark");
 
   const activeTab = d.tabNavigation.activeTab;
   const organizationName = d.organizationName;
