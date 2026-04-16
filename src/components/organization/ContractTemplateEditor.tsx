@@ -269,7 +269,7 @@ export function ContractTemplateEditor({
         setTemplateBeforeAI(template);
         toast.info("Загружаем и обрабатываем документ...");
         const { data, error } = await safeInvoke<any>("process-contract-template", {
-          body: { text: text.trim(), placeholders: PLACEHOLDERS } });
+          body: { text: text.trim(), placeholders: CONTRACT_PLACEHOLDERS } });
         if (error) throw error;
         if (data?.processedText) {
           if (data.processedText.length < text.trim().length * 0.6) {
@@ -295,7 +295,7 @@ export function ContractTemplateEditor({
     setIsAddingVariables(true);
     try {
       const { data, error } = await safeInvoke<any>("process-contract-template", {
-        body: { text: template, placeholders: PLACEHOLDERS } });
+        body: { text: template, placeholders: CONTRACT_PLACEHOLDERS } });
       if (error) throw error;
       if (data?.processedText) {
         if (data.processedText.length < template.length * 0.6) {
@@ -323,7 +323,7 @@ export function ContractTemplateEditor({
 
   const getPreviewText = () => {
     let preview = template;
-    PLACEHOLDERS.forEach((p) => {
+    CONTRACT_PLACEHOLDERS.forEach((p) => {
       preview = preview.split(p.key).join(p.example || "_______________");
     });
     return preview;
