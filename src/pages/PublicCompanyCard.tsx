@@ -55,6 +55,7 @@ export default function PublicCompanyCard() {
   const { token } = useParams<{ token: string }>();
   const [valid, setValid] = useState<boolean | null>(null);
   const [address, setAddress] = useState<string | null>(null);
+  const [exporting, setExporting] = useState<string | null>(null);
 
   useEffect(() => {
     (async () => {
