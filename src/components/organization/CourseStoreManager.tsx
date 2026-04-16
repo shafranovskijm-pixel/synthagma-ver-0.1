@@ -38,10 +38,6 @@ interface CourseStoreManagerProps {
   organizationId: string;
   userRole?: 'organization' | 'student';
   userId?: string;
-  orgBalance?: number;
-  deductBalance?: (amount: number, description: string, orderId?: string) => Promise<boolean>;
-  topUpBalance?: (amount: number, description: string) => Promise<boolean>;
-  refreshBalance?: () => Promise<void>;
 }
 
 const programTypeMeta: Record<string, { icon: React.ElementType; color: string; bgColor: string }> = {

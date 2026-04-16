@@ -80,8 +80,6 @@ interface UseCourseStoreManagerProps {
   organizationId: string;
   userRole?: 'organization' | 'student';
   userId?: string;
-  orgBalance?: number;
-  deductBalance?: (amount: number, description: string, orderId?: string) => Promise<boolean>;
 }
 
 export function useCourseStoreManager({ organizationId, userRole = 'organization', userId }: UseCourseStoreManagerProps) {
