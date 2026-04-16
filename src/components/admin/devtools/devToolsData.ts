@@ -121,41 +121,29 @@ export interface LargeFile {
 }
 
 export const LARGEST_FILES: LargeFile[] = [
-  // Оптимизированные в этапах 1-4
-  { path: "src/components/organization/tabs/CoursesTab.tsx", lines: 554, status: "optimized", note: "Было 1747 → 554. Извлечены диалоги, SortableCourseListRow, хук." },
-  { path: "src/pages/CoursePreview.tsx", lines: 280, status: "optimized", note: "Было 1248. Логика → useCoursePreview + секции." },
-  { path: "src/components/organization/SelfExaminationQuiz.tsx", lines: 131, status: "optimized", note: "Было 1244. Логика → useSelfExaminationQuiz." },
-  { path: "src/components/organization/AutoDocumentRegistrationJournal.tsx", lines: 217, status: "optimized", note: "Было 1226. Логика → useDocumentRegistrationJournal." },
-  { path: "src/components/organization/tabs/StudentsTab.tsx", lines: 248, status: "optimized", note: "Было 1196. Подкомпоненты: StudentTableRow, StudentMobileCard и др." },
-  { path: "src/components/admin/OrganizationsManager.tsx", lines: 180, status: "optimized", note: "Было 1178. Логика → useOrganizationsManager + OrgFormDialog + OrgStatsCards." },
-  { path: "src/components/admin/AdminBillingOverview.tsx", lines: 220, status: "optimized", note: "Было 1076. Логика → useAdminBilling + подкомпоненты." },
-  { path: "src/components/organization/OrgDocumentsManager.tsx", lines: 290, status: "optimized", note: "Было 1075. Логика → useOrgDocumentsManager + подкомпоненты." },
-  { path: "src/components/organization/dialogs/CompanyDetailDialog.tsx", lines: 350, status: "optimized", note: "Было 975. Разбит на CompanyHeader, ActionsGrid, табы." },
-  { path: "src/components/admin/ContentGeneratorTab.tsx", lines: 200, status: "optimized", note: "Было 975. Логика → useContentGenerator." },
-  { path: "src/components/organization/CourseDetailsContent.tsx", lines: 220, status: "optimized", note: "Было 827. Логика → useCourseDetails + StudentsSection." },
-  { path: "src/components/organization/CopiesDuplicatesJournal.tsx", lines: 180, status: "optimized", note: "Было 805. Логика → useCopiesDuplicatesJournal." },
-  { path: "src/components/organization/AutoFinalAttestationJournal.tsx", lines: 150, status: "optimized", note: "Было 791. Логика → useAutoFinalAttestation." },
-  // Оптимизированные в этапе 5
-  { path: "src/pages/CourseEditor.tsx", lines: 130, status: "optimized", note: "Было 771. Логика → useCourseEditor." },
-  { path: "src/components/course-editor/LessonEditor.tsx", lines: 614, status: "optimized", note: "Было 726. VideoPreview → отдельный компонент." },
-  { path: "src/components/organization/StorageManager.tsx", lines: 140, status: "optimized", note: "Было 724. Логика → useStorageManager." },
-  // Оставшиеся крупные файлы (в пределах нормы или специфика)
-  { path: "src/components/admin/AISettingsManager.tsx", lines: 450, status: "optimized", note: "Было 874. Константы → constants.ts, логика → useAISettings." },
-  { path: "src/components/admin/BulkContentGenerator.tsx", lines: 867, status: "ok", note: "Логика в useBulkPipeline. UI специфичен." },
-  { path: "src/components/organization/InvoiceGenerator.tsx", lines: 846, status: "ok", note: "HTML-шаблон — основная часть." },
-  { path: "src/components/organization/JournalsManager.tsx", lines: 350, status: "optimized", note: "Было 841. Декомпозиция через JOURNAL_CATEGORIES." },
-  { path: "src/components/organization/ConsentGenerator.tsx", lines: 400, status: "optimized", note: "Было 834. Логика → useConsentGenerator." },
-  { path: "src/components/organization/ActGenerator.tsx", lines: 827, status: "ok", note: "HTML-шаблон — основная часть." },
-  { path: "src/pages/PartnerLanding.tsx", lines: 817, status: "ok", note: "Лендинг с inline-данными — приемлемо." },
+  // Текущие крупнейшие файлы (все в пределах нормы)
+  { path: "src/components/ui/sidebar.tsx", lines: 637, status: "ok", note: "UI-библиотека shadcn — не бизнес-логика." },
+  { path: "src/components/admin/devtools/devToolsData.ts", lines: 596, status: "ok", note: "Статические данные для DevTools." },
+  { path: "src/components/organization/FRDOExportDialog.tsx", lines: 512, status: "ok", note: "Сложный экспорт — приемлемо." },
+  { path: "src/hooks/useEducationDocumentsJournal.ts", lines: 504, status: "ok", note: "Хук — допустимый размер для сложной логики." },
+  { path: "src/components/organization/AutoAttendanceJournal.tsx", lines: 503, status: "ok", note: "Журнал посещаемости — специфичный UI." },
+  { path: "src/components/organization/PartnerCabinet.tsx", lines: 501, status: "ok", note: "Партнёрский кабинет — на границе." },
+  { path: "src/hooks/useAdminMarketplace.ts", lines: 500, status: "ok", note: "Хук — допустимый размер." },
+  { path: "src/pages/PartnerDashboard.tsx", lines: 490, status: "ok", note: "Дашборд партнёра — приемлемо." },
   // Ранее оптимизированные
-  { path: "src/components/organization/dialogs/CourseDetailsModal.tsx", lines: 250, status: "optimized", note: "Было 1416. Логика → useCourseDetailsLogic." },
-  { path: "src/components/organization/LaborSafetyStudentDetailCard.tsx", lines: 140, status: "optimized", note: "Было 1295. Логика → useLaborSafetyStudent." },
-  { path: "src/pages/CourseLearning.tsx", lines: 554, status: "optimized", note: "Было 2758. Логика в useCourseLearning." },
-  { path: "src/components/admin/OrganizationDetailsView.tsx", lines: 180, status: "optimized", note: "Было 1790. Логика в useOrgDetailsView." },
-  { path: "src/components/course-builder/block-editor/BlockEditorMain.tsx", lines: 155, status: "optimized", note: "Было 1461. Разбит на 7 подкомпонентов." },
-  { path: "src/components/admin/AdminAnalytics.tsx", lines: 191, status: "optimized", note: "Было 1435. Логика в useAdminAnalytics." },
-  { path: "src/hooks/useBulkPipeline.ts", lines: 682, status: "ok", note: "Хук — допустимый размер для сложной логики." },
-  { path: "src/hooks/useCourseBuilder.ts", lines: 660, status: "ok", note: "Хук — допустимый размер." },
+  { path: "src/components/organization/tabs/CoursesTab.tsx", lines: 480, status: "optimized", note: "Было 1747 → 480. Извлечены диалоги, тулбар, хук." },
+  { path: "src/pages/CoursePreview.tsx", lines: 429, status: "optimized", note: "Было 1248 → 429. Логика → useCoursePreview." },
+  { path: "src/components/organization/OrgDocumentsManager.tsx", lines: 374, status: "optimized", note: "Было 1075 → 374." },
+  { path: "src/components/organization/tabs/StudentsTab.tsx", lines: 248, status: "optimized", note: "Было 1196 → 248." },
+  { path: "src/components/admin/AdminMarketplaceManager.tsx", lines: 229, status: "optimized", note: "Было 572 → 229. Каталог → AdminMarketplaceCatalogTab." },
+  { path: "src/components/organization/AutoDocumentRegistrationJournal.tsx", lines: 217, status: "optimized", note: "Было 1226 → 217." },
+  { path: "src/components/admin/ContentGeneratorTab.tsx", lines: 208, status: "optimized", note: "Было 975 → 208." },
+  { path: "src/components/admin/OrganizationsManager.tsx", lines: 204, status: "optimized", note: "Было 1178 → 204." },
+  { path: "src/components/admin/AdminAnalytics.tsx", lines: 191, status: "optimized", note: "Было 1435 → 191." },
+  { path: "src/components/admin/OrganizationDetailsView.tsx", lines: 180, status: "optimized", note: "Было 1790 → 180." },
+  { path: "src/components/course-builder/block-editor/BlockEditorMain.tsx", lines: 155, status: "optimized", note: "Было 1461 → 155." },
+  { path: "src/components/organization/SelfExaminationQuiz.tsx", lines: 131, status: "optimized", note: "Было 1244 → 131." },
+  { path: "src/pages/CourseEditor.tsx", lines: 130, status: "optimized", note: "Было 771 → 130." },
 ];
 
 // ─── Dependency Stats ───────────────────────────────────────────
