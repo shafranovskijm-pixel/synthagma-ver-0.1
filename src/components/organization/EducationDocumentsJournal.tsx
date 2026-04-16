@@ -51,7 +51,7 @@ export function EducationDocumentsJournal({
     studentSearchQuery, setStudentSearchQuery,
     formData, setFormData,
     filteredRecords, stats, filteredStudents, newGraduatesCount,
-    getJournalTitle, getJournalSubtitle,
+    journalTitle, journalSubtitle,
     resetForm, generateRegNumber, handleOpenAdd, handleOpenEdit,
     handleOpenSelectStudents, handleAutoAddAllGraduates, handleCreateFromStudents,
     toggleStudentSelection, selectAllStudents,
@@ -76,8 +76,8 @@ export function EducationDocumentsJournal({
             </Button>
           )}
           <div>
-            <h2 className="text-xl font-semibold">{getJournalTitle()}</h2>
-            <p className="text-sm text-muted-foreground">{getJournalSubtitle()}</p>
+            <h2 className="text-xl font-semibold">{journalTitle}</h2>
+            <p className="text-sm text-muted-foreground">{journalSubtitle}</p>
           </div>
         </div>
         <div className="flex flex-wrap gap-2">
