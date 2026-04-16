@@ -401,7 +401,6 @@ const RostechnadzorCoursesPage = () => {
 
       {/* CTA */}
       <section className="py-16 md:py-20 relative overflow-hidden">
-        <FloatingParticles mode="mixed" count={6} />
         <div className="absolute top-[15%] left-[10%] w-72 h-72 bg-accent/5 rounded-full blur-3xl pointer-events-none" />
         <div className="absolute bottom-[10%] right-[8%] w-64 h-64 bg-accent/4 rounded-full blur-3xl pointer-events-none" />
         <div className="container mx-auto px-6 text-center relative z-10">
