@@ -1,3 +1,4 @@
+import { forwardRef } from "react";
 import { cn } from "@/lib/utils";
 
 interface SigmaSpinnerProps {
@@ -13,9 +14,13 @@ const sizeMap = {
   xl: "w-12 h-12 text-2xl",
 };
 
-export function SigmaSpinner({ size = "md", className }: SigmaSpinnerProps) {
+export const SigmaSpinner = forwardRef<HTMLDivElement, SigmaSpinnerProps>(function SigmaSpinner(
+  { size = "md", className },
+  ref
+) {
   return (
     <div
+      ref={ref}
       className={cn(
         "inline-flex items-center justify-center rounded-lg bg-primary animate-spin",
         sizeMap[size],
@@ -27,4 +32,4 @@ export function SigmaSpinner({ size = "md", className }: SigmaSpinnerProps) {
       </span>
     </div>
   );
-}
+});

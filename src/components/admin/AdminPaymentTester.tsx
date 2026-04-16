@@ -137,9 +137,14 @@ export function AdminPaymentTester() {
         body: { organization_id: selectedOrg, plan: selectedPlan, period_months: periodMonths, email: email || undefined },
       });
 
-      if (error) throw error;
+      if (error) {
+        const message = typeof error.context === "string"
+          ? error.context
+          : error.message || "Ошибка создания платежа";
+        throw new Error(message);
+      }
       if (data?.error) {
-        toast.error(data.error);
+        toast.error(data.details ? `${data.error}: ${data.details}` : data.error);
         return;
       }
 

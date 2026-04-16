@@ -133,9 +133,9 @@ Deno.serve(async (req) => {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const notificationUrl = `${supabaseUrl}/functions/v1/tbank-webhook`;
 
-    const orderId = `sub_${(invoice as any).id}`;
+    const orderId = `sub_${String((invoice as any).id).replace(/-/g, "").slice(0, 28)}`;
 
-    const description = `Подписка «${planNames[plan] || plan}» — ${months} мес.`.substring(0, 250);
+    const description = `Подписка «${planNames[plan] || plan}» — ${months} мес.`.substring(0, 140);
 
     const initParams: Record<string, string> = {
       TerminalKey: terminalKey,
@@ -145,6 +145,7 @@ Deno.serve(async (req) => {
       SuccessURL: `${siteUrl}/payment-success?type=subscription`,
       FailURL: `${siteUrl}/payment-fail?type=subscription`,
       NotificationURL: notificationUrl,
+      Language: "ru",
     };
 
     const token = await generateToken(initParams, password);
@@ -170,15 +171,13 @@ Deno.serve(async (req) => {
       };
     }
 
-    const apiUrl = isTestMode
-      ? "https://rest-api-test.tinkoff.ru/v2/Init"
-      : "https://securepay.tinkoff.ru/v2/Init";
+    const apiUrl = "https://securepay.tinkoff.ru/v2/Init";
 
-    console.log("T-Bank Init request to:", apiUrl, "TerminalKey:", terminalKey);
+    console.log("T-Bank Init request to:", apiUrl, "TerminalKey:", terminalKey, "mode:", isTestMode ? "test" : "prod");
 
     const response = await fetch(apiUrl, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", "Accept": "application/json" },
       body: JSON.stringify(requestBody),
     });
 
@@ -190,7 +189,7 @@ Deno.serve(async (req) => {
       result = JSON.parse(responseText);
     } catch {
       console.error("T-Bank returned non-JSON:", responseText.substring(0, 500));
-      return new Response(JSON.stringify({ error: "T-Bank returned invalid response", details: responseText.substring(0, 200) }), {
+      return new Response(JSON.stringify({ error: "T-Bank gateway blocked the request", details: responseText.substring(0, 200) }), {
         status: 502,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -198,7 +197,7 @@ Deno.serve(async (req) => {
 
     if (!result.Success) {
       console.error("T-Bank Init error:", result);
-      return new Response(JSON.stringify({ error: result.Message || "Payment init failed" }), {
+      return new Response(JSON.stringify({ error: result.Details || result.Message || "Payment init failed" }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
