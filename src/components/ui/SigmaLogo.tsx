@@ -5,6 +5,7 @@ interface SigmaLogoProps {
   size?: "sm" | "md" | "lg" | "xl";
   showText?: boolean;
   variant?: "default" | "white" | "gradient";
+  onClick?: () => void;
 }
 
 const sizeClasses = {
@@ -25,10 +26,11 @@ export function SigmaLogo({
   className,
   size = "md",
   showText = true,
-  variant = "default"
+  variant = "default",
+  onClick,
 }: SigmaLogoProps) {
   return (
-    <div className={cn("flex items-center gap-3", className)}>
+    <div className={cn("flex items-center gap-3", onClick && "cursor-pointer", className)} onClick={onClick}>
       <div
         className={cn(
           "flex items-center justify-center rounded-lg",

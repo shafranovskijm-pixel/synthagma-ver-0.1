@@ -137,18 +137,6 @@ export function OrgDashboardHeader() {
           {/* Radio */}
           <RadioPlayerButton />
 
-          {/* Partner program — icon only */}
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <button
-                onClick={() => d.tabNavigation.setActiveTab("profile" as any)}
-                className="flex h-9 w-9 items-center justify-center rounded-full text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
-              >
-                <Handshake className="w-4.5 h-4.5" />
-              </button>
-            </TooltipTrigger>
-            <TooltipContent>Партнёрам</TooltipContent>
-          </Tooltip>
 
           {/* Notifications */}
           {organizationId && (
