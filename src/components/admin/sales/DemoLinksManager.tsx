@@ -159,31 +159,43 @@ export function DemoLinksManager() {
             </div>
 
             {/* Kinescope Live ID — inline edit */}
-            <div className="flex items-center gap-2 mt-2 p-2 rounded-md bg-muted/30 border border-border">
-              <Video className="w-4 h-4 text-muted-foreground shrink-0" />
-              {editingKinescope[link.id] !== undefined ? (
-                <>
-                  <Input
-                    value={editingKinescope[link.id]}
-                    onChange={e => setEditingKinescope(prev => ({ ...prev, [link.id]: e.target.value }))}
-                    placeholder="Вставьте Kinescope Live ID"
-                    className="h-7 text-xs flex-1"
-                  />
-                  <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => saveKinescopeId(link.id)}>
-                    <Save className="w-3 h-3" />
-                  </Button>
-                </>
-              ) : (
-                <>
-                  <span className="text-xs text-muted-foreground flex-1">
-                    {link.kinescope_live_id
-                      ? <>Kinescope Live: <span className="font-mono text-foreground">{link.kinescope_live_id}</span></>
-                      : 'Трансляция не подключена'}
-                  </span>
-                  <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => startEditKinescope(link)}>
-                    <Pencil className="w-3 h-3" />
-                  </Button>
-                </>
+            <div className="mt-2 p-3 rounded-md bg-muted/30 border border-border space-y-2">
+              <div className="flex items-center gap-2">
+                <Video className="w-4 h-4 text-muted-foreground shrink-0" />
+                {editingKinescope[link.id] !== undefined ? (
+                  <>
+                    <Input
+                      value={editingKinescope[link.id]}
+                      onChange={e => setEditingKinescope(prev => ({ ...prev, [link.id]: e.target.value }))}
+                      placeholder="Вставьте Kinescope Live ID"
+                      className="h-7 text-xs flex-1"
+                    />
+                    <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => saveKinescopeId(link.id)}>
+                      <Save className="w-3 h-3" />
+                    </Button>
+                  </>
+                ) : (
+                  <>
+                    <span className="text-xs text-muted-foreground flex-1">
+                      {link.kinescope_live_id
+                        ? <>Kinescope Live: <span className="font-mono text-foreground">{link.kinescope_live_id}</span></>
+                        : 'Трансляция не подключена'}
+                    </span>
+                    <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => startEditKinescope(link)}>
+                      <Pencil className="w-3 h-3" />
+                    </Button>
+                  </>
+                )}
+              </div>
+              {!link.kinescope_live_id && editingKinescope[link.id] === undefined && (
+                <div className="text-xs text-muted-foreground bg-background/50 rounded p-2 space-y-1">
+                  <p className="font-medium text-foreground/80">Как подключить трансляцию:</p>
+                  <ol className="list-decimal list-inside space-y-0.5">
+                    <li>Откройте <a href="https://app.kinescope.io" target="_blank" rel="noopener noreferrer" className="text-primary underline">панель Kinescope</a> → Трансляции → Создать</li>
+                    <li>Настройте OBS: RTMP-сервер <span className="font-mono text-foreground/80">rtmp://rtmp.kinescope.io/live</span></li>
+                    <li>Скопируйте Live ID из Kinescope и вставьте сюда (нажмите ✏️)</li>
+                  </ol>
+                </div>
               )}
             </div>
 
