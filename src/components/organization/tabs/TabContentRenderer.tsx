@@ -196,10 +196,6 @@ export function TabContentRenderer() {
         <CourseStoreManager
           organizationId={organizationId}
           userId={d.user?.id}
-          orgBalance={d.orgBalance?.balance}
-          deductBalance={d.orgBalance?.deductBalance}
-          topUpBalance={d.orgBalance?.topUpBalance}
-          refreshBalance={d.orgBalance?.refresh}
         />
       )}
 
