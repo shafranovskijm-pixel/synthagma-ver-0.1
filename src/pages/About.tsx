@@ -5,6 +5,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Building2, Mail, Phone, MapPin, FileText, Shield, Users, Target, Lightbulb, Award } from "lucide-react";
 import { LandingHeader } from "@/components/landing/LandingHeader";
 import { Footer } from "@/components/landing/Footer";
+import { StarfieldCanvas } from "@/components/landing/StarfieldCanvas";
+import { TypewriterText } from "@/components/ui/TypewriterText";
 
 const About = () => {
   return (
@@ -21,70 +23,101 @@ const About = () => {
       </Helmet>
       <LandingHeader />
 
-      {/* Hero Section */}
-      <section className="relative py-20 overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-accent/5" />
+      {/* Hero Section with starfield */}
+      <section className="relative py-20 overflow-hidden bg-[#0a0e1a]">
+        <StarfieldCanvas />
+        {/* Upward-flying stars into header */}
+        <div className="absolute top-0 left-0 right-0 h-24 z-10 overflow-hidden pointer-events-none">
+          {[...Array(12)].map((_, i) => {
+            const left = 6 + (i * 8) % 88;
+            const size = 1 + (i % 3) * 0.5;
+            const duration = 2 + (i % 4) * 0.6;
+            const delay = (i * 0.35) % 2.5;
+            return (
+              <div
+                key={i}
+                className="absolute rounded-full"
+                style={{
+                  left: `${left}%`,
+                  bottom: 0,
+                  width: size,
+                  height: size,
+                  background: `rgba(255,255,255,${0.2 + (i % 3) * 0.1})`,
+                  animation: `star-rise ${duration}s ease-out ${delay}s infinite`,
+                }}
+              />
+            );
+          })}
+        </div>
         <div className="container mx-auto px-6 relative z-10">
           <div className="max-w-4xl mx-auto text-center">
-            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 border border-primary/20 mb-6">
-              <Building2 className="w-4 h-4 text-primary" />
-              <span className="text-sm font-medium text-primary">О компании</span>
+            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/10 border border-white/20 mb-6">
+              <Building2 className="w-4 h-4 text-white/80" />
+              <span className="text-sm font-medium text-white/80">О компании</span>
             </div>
-            <h1 className="font-display text-4xl md:text-5xl font-bold mb-6 bg-gradient-to-r from-foreground via-primary to-foreground bg-clip-text text-transparent">
-              СИНТАГМА — современная платформа для образования
+            <h1 className="font-display text-4xl md:text-5xl font-bold mb-6 text-white">
+              <TypewriterText text="СИНТАГМА — современная платформа для образования" speed={45} delay={300} />
             </h1>
-            <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
+            <p className="text-xl text-white/70 max-w-2xl mx-auto">
               Мы создаём инновационные решения для дистанционного обучения и автоматизации документооборота образовательных организаций
             </p>
           </div>
         </div>
       </section>
 
-      {/* Mission & Values */}
+      {/* Mission & Values — Comic-style cards */}
       <section className="py-16">
         <div className="container mx-auto px-6">
-          <div className="grid md:grid-cols-3 gap-6 max-w-5xl mx-auto">
-            <Card className="bg-gradient-to-br from-primary/5 to-primary/10 border-primary/20">
-              <CardHeader>
-                <div className="w-12 h-12 rounded-xl bg-primary/20 flex items-center justify-center mb-4">
-                  <Target className="w-6 h-6 text-primary" />
-                </div>
-                <CardTitle>Наша миссия</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-muted-foreground">
-                  Сделать качественное образование доступным для каждого, предоставляя современные инструменты для обучения и управления образовательным процессом.
-                </p>
-              </CardContent>
-            </Card>
+          <div className="grid md:grid-cols-3 gap-0 max-w-5xl mx-auto">
+            {/* Card 1 — Наша миссия */}
+            <div className="relative border-2 border-foreground/20 rounded-tl-3xl rounded-bl-3xl md:rounded-bl-3xl p-8 bg-gradient-to-br from-primary/5 to-primary/10 overflow-hidden group hover:scale-[1.03] transition-transform duration-300 z-10">
+              <div className="absolute -top-1 -right-1 w-8 h-8 border-b-2 border-l-2 border-foreground/20 rounded-bl-xl bg-background" />
+              <div className="w-14 h-14 rounded-2xl bg-primary/15 flex items-center justify-center mb-5 rotate-[-3deg] group-hover:rotate-0 transition-transform">
+                <Target className="w-7 h-7 text-primary" />
+              </div>
+              <h3 className="font-display text-xl font-bold mb-3 tracking-tight">Наша миссия</h3>
+              <p className="text-muted-foreground text-sm leading-relaxed">
+                Сделать качественное образование доступным для каждого, предоставляя современные инструменты для обучения и управления образовательным процессом.
+              </p>
+              {/* Comic dots */}
+              <div className="absolute bottom-3 right-4 flex gap-1 opacity-30">
+                {[...Array(4)].map((_, i) => <div key={i} className="w-1.5 h-1.5 rounded-full bg-primary" />)}
+              </div>
+            </div>
 
-            <Card className="bg-gradient-to-br from-accent/5 to-accent/10 border-accent/20">
-              <CardHeader>
-                <div className="w-12 h-12 rounded-xl bg-accent/20 flex items-center justify-center mb-4">
-                  <Lightbulb className="w-6 h-6 text-accent" />
-                </div>
-                <CardTitle>Инновации</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-muted-foreground">
-                  Используем передовые технологии, включая искусственный интеллект, для создания интерактивного и эффективного образовательного контента.
-                </p>
-              </CardContent>
-            </Card>
+            {/* Card 2 — Инновации */}
+            <div className="relative border-2 border-foreground/20 p-8 bg-gradient-to-br from-accent/5 to-accent/10 overflow-hidden group hover:scale-[1.03] transition-transform duration-300 z-20 -mx-px">
+              <div className="absolute -top-1 -right-1 w-8 h-8 border-b-2 border-l-2 border-foreground/20 rounded-bl-xl bg-background" />
+              {/* Speech bubble triangle */}
+              <div className="absolute -top-3 left-1/2 -translate-x-1/2 w-6 h-3 overflow-hidden">
+                <div className="w-4 h-4 bg-accent/10 border-2 border-foreground/20 rotate-45 transform origin-bottom-left translate-y-1 translate-x-1" />
+              </div>
+              <div className="w-14 h-14 rounded-2xl bg-accent/15 flex items-center justify-center mb-5 rotate-[2deg] group-hover:rotate-0 transition-transform">
+                <Lightbulb className="w-7 h-7 text-accent" />
+              </div>
+              <h3 className="font-display text-xl font-bold mb-3 tracking-tight">Инновации</h3>
+              <p className="text-muted-foreground text-sm leading-relaxed">
+                Используем передовые технологии, включая искусственный интеллект, для создания интерактивного и эффективного образовательного контента.
+              </p>
+              <div className="absolute bottom-3 right-4 flex gap-1 opacity-30">
+                {[...Array(4)].map((_, i) => <div key={i} className="w-1.5 h-1.5 rounded-full bg-accent" />)}
+              </div>
+            </div>
 
-            <Card className="bg-gradient-to-br from-sigma-green/5 to-sigma-green/10 border-sigma-green/20">
-              <CardHeader>
-                <div className="w-12 h-12 rounded-xl bg-sigma-green/20 flex items-center justify-center mb-4">
-                  <Shield className="w-6 h-6 text-sigma-green" />
-                </div>
-                <CardTitle>Соответствие</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-muted-foreground">
-                  Наша платформа полностью соответствует требованиям 273-ФЗ «Об образовании» и готова к интеграции с ФРДО и государственными системами.
-                </p>
-              </CardContent>
-            </Card>
+            {/* Card 3 — Соответствие */}
+            <div className="relative border-2 border-foreground/20 rounded-tr-3xl rounded-br-3xl p-8 bg-gradient-to-br from-sigma-green/5 to-sigma-green/10 overflow-hidden group hover:scale-[1.03] transition-transform duration-300 z-10">
+              <div className="absolute -top-1 -right-1 w-8 h-8 border-b-2 border-l-2 border-foreground/20 rounded-bl-xl bg-background" />
+              <div className="w-14 h-14 rounded-2xl bg-sigma-green/15 flex items-center justify-center mb-5 rotate-[3deg] group-hover:rotate-0 transition-transform">
+                <Shield className="w-7 h-7 text-sigma-green" />
+              </div>
+              <h3 className="font-display text-xl font-bold mb-3 tracking-tight">Соответствие</h3>
+              <p className="text-muted-foreground text-sm leading-relaxed">
+                Наша платформа полностью соответствует требованиям 273-ФЗ «Об образовании» и готова к интеграции с ФРДО и государственными системами.
+              </p>
+              <div className="absolute bottom-3 right-4 flex gap-1 opacity-30">
+                {[...Array(4)].map((_, i) => <div key={i} className="w-1.5 h-1.5 rounded-full bg-sigma-green" />)}
+              </div>
+            </div>
           </div>
         </div>
       </section>
@@ -257,6 +290,13 @@ const About = () => {
       </section>
 
       <Footer />
+
+      <style>{`
+        @keyframes star-rise {
+          0% { transform: translateY(0); opacity: 0.6; }
+          100% { transform: translateY(-80px); opacity: 0; }
+        }
+      `}</style>
     </div>
   );
 };
