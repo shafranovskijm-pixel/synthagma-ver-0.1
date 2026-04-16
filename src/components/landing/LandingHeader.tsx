@@ -5,6 +5,8 @@ import { RadioPlayerButton } from "@/components/radio/RadioPlayerButton";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { StarfieldCanvas } from "./StarfieldCanvas";
 
+const logoLetters = "СИНТАГМА".split("");
+
 export function LandingHeader() {
   return (
     <header className="sticky top-0 z-50 bg-[#0a0e1a] relative overflow-hidden">
@@ -16,7 +18,22 @@ export function LandingHeader() {
             <div className="w-10 h-10 rounded-lg bg-white flex items-center justify-center group-hover:scale-105 transition-transform duration-300">
               <span className="font-display font-bold text-xl text-[#0a0e1a]">Σ</span>
             </div>
-            <span className="font-display font-medium text-xl tracking-tight text-white">СИНТАГМА</span>
+            <span className="font-display font-medium text-xl tracking-tight text-white flex">
+              {logoLetters.map((letter, i) => (
+                <span
+                  key={i}
+                  className="inline-block transition-all duration-300 group-hover:animate-none"
+                  style={{
+                    opacity: 1,
+                    transform: "translateX(0)",
+                    transition: `transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) ${i * 0.04}s, opacity 0.3s ease ${i * 0.04}s`,
+                  }}
+                  onMouseEnter={() => {}}
+                >
+                  {letter}
+                </span>
+              ))}
+            </span>
           </Link>
 
           <div className="hidden md:flex items-center gap-10">
@@ -52,6 +69,17 @@ export function LandingHeader() {
           </div>
         </div>
       </div>
+
+      {/* CSS for logo hover animation */}
+      <style>{`
+        .group:hover span[style] {
+          animation: letterFlyIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+        }
+        @keyframes letterFlyIn {
+          0% { transform: translateX(20px); opacity: 0; }
+          100% { transform: translateX(0); opacity: 1; }
+        }
+      `}</style>
     </header>
   );
 }

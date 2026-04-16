@@ -10,6 +10,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
+import { LandingHeader } from "@/components/landing/LandingHeader";
+import { Footer } from "@/components/landing/Footer";
+import { TypewriterText } from "@/components/ui/TypewriterText";
 
 interface BlogPost {
   id: string;
@@ -195,27 +198,7 @@ const Blog = () => {
         <meta property="og:image" content="https://sintagma.com.ru/og-image.png" />
       </Helmet>
 
-      {/* Header */}
-      <header className="border-b border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 sticky top-0 z-50">
-        <div className="container mx-auto px-6 py-6 flex items-center justify-between">
-          <Link to="/" className="flex items-center gap-3 group">
-            <div className="w-10 h-10 rounded-lg bg-foreground flex items-center justify-center group-hover:scale-105 transition-transform duration-300">
-              <span className="font-display font-bold text-xl text-background">Σ</span>
-            </div>
-            <span className="font-display font-medium text-xl tracking-tight">СИНТАГМА</span>
-          </Link>
-          <div className="flex items-center gap-4">
-            <Link to="/" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
-              На главную
-            </Link>
-            <Link to="/register-organization">
-              <Button className="btn-gradient rounded-lg px-5 text-sm">
-                Начать
-              </Button>
-            </Link>
-          </div>
-        </div>
-      </header>
+      <LandingHeader />
 
       {/* Hero Section */}
       <section className="relative py-20 md:py-28 overflow-hidden">
@@ -285,8 +268,10 @@ const Blog = () => {
               Блог
             </span>
             <h1 className="font-display text-4xl md:text-5xl lg:text-6xl font-medium mb-6 tracking-tight">
-              Знания для{" "}
-              <span className="text-muted-foreground">профессионалов</span>
+              <TypewriterText text="Знания для " speed={60} delay={300} />
+              <span className="text-muted-foreground">
+                <TypewriterText text="профессионалов" speed={60} delay={1000} />
+              </span>
             </h1>
             <motion.div
               initial={{ scaleX: 0 }}
@@ -520,12 +505,7 @@ const Blog = () => {
         </div>
       </section>
 
-      {/* Footer */}
-      <footer className="py-8 border-t border-border/30">
-        <div className="container mx-auto px-6 text-center text-sm text-muted-foreground">
-          <p>© 2026 СИНТАГМА. Все права защищены.</p>
-        </div>
-      </footer>
+      <Footer />
     </div>
   );
 };
