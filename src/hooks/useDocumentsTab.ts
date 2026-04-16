@@ -56,13 +56,12 @@ export function useDocumentsTab(organizationId: string | null, organizationName?
   const { plan } = useSubscriptionLimits(organizationId);
   const isFreePlan = plan === 'free';
 
-  const [activeTab, setActiveTab] = useState<DocumentSubTab>("billing");
+  const [activeTab, setActiveTab] = useState<DocumentSubTab>("counterparties");
   const [constructorTab, setConstructorTab] = useState("requisites");
   const [stampUrl, setStampUrl] = useState<string | null>(null);
   const [signatureUrl, setSignatureUrl] = useState<string | null>(null);
   const [billingDocs, setBillingDocs] = useState<BillingDoc[]>([]);
   const [invoices, setInvoices] = useState<InvoiceRow[]>([]);
-  const [billingSubTab, setBillingSubTab] = useState<BillingSubTab>("contracts");
   const [counterpartySubTab, setCounterpartySubTab] = useState<CounterpartySubTab>("contracts");
   const [counterpartyDocs, setCounterpartyDocs] = useState<CounterpartyDoc[]>([]);
   const [counterpartyLoading, setCounterpartyLoading] = useState(false);
