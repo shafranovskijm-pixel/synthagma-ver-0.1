@@ -1,9 +1,11 @@
 import { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
-import { Building2, User, MapPin, Mail, Globe, CreditCard, Calendar, Hash, Copy, Check, Loader2 } from 'lucide-react';
+import { Building2, User, MapPin, Mail, Globe, CreditCard, Calendar, Hash, Copy, Check, Loader2, Download } from 'lucide-react';
 import { toast } from 'sonner';
 import companyCardBg from '@/assets/company-card-bg.jpg';
+
+
 
 const KNOWN_DATA = {
   inn: '253615392404',
