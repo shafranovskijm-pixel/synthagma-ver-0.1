@@ -201,7 +201,7 @@ export default function CourseLanding() {
         if (requestError) throw requestError;
 
         const notifyResult = await supabase.functions.invoke("notify-enrollment-request", {
-          body: { course_id: course.id },
+          body: { course_id: course.id, student_name: studentName },
         });
         if (notifyResult.error) {
           console.error("Purchase request notify error:", notifyResult.error);
