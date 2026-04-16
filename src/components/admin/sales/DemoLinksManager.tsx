@@ -8,7 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { toast } from 'sonner';
-import { Copy, Plus, Trash2, Users, ExternalLink } from 'lucide-react';
+import { Copy, Plus, Trash2, Users, ExternalLink, Eye } from 'lucide-react';
 import { format } from 'date-fns';
 import { ru } from 'date-fns/locale';
 
@@ -122,8 +122,11 @@ export function DemoLinksManager() {
                 <Button size="icon" variant="ghost" onClick={() => copyUrl(link.token)} title="Копировать">
                   <Copy className="w-4 h-4" />
                 </Button>
-                <Button size="icon" variant="ghost" onClick={() => window.open(`/demo/${link.token}`, '_blank')} title="Открыть">
+                <Button size="icon" variant="ghost" onClick={() => window.open(`/demo/${link.token}`, '_blank')} title="Открыть регистрацию">
                   <ExternalLink className="w-4 h-4" />
+                </Button>
+                <Button size="icon" variant="ghost" onClick={() => window.open(`/demo/${link.token}/dashboard${link.kinescope_live_id ? `?kinescope=${link.kinescope_live_id}` : ''}`, '_blank')} title="Превью ведущего">
+                  <Eye className="w-4 h-4" />
                 </Button>
                 <Switch checked={link.is_active} onCheckedChange={() => toggleActive(link)} />
                 <Button size="icon" variant="ghost" className="text-destructive" onClick={() => deleteLink(link.id)}>

@@ -1,4 +1,4 @@
-import { useLocation, useParams } from 'react-router-dom';
+import { useLocation, useParams, useSearchParams } from 'react-router-dom';
 import { Card, CardContent } from '@/components/ui/card';
 import { SigmaLogo } from '@/components/ui/SigmaLogo';
 import { Badge } from '@/components/ui/badge';
@@ -15,7 +15,8 @@ const DEMO_FEATURES = [
 export function DemoDashboard() {
   const location = useLocation();
   const { token } = useParams<{ token: string }>();
-  const kinescopeLiveId = (location.state as any)?.kinescopeLiveId;
+  const [searchParams] = useSearchParams();
+  const kinescopeLiveId = (location.state as any)?.kinescopeLiveId || searchParams.get('kinescope');
 
   return (
     <div className="min-h-screen bg-background">
