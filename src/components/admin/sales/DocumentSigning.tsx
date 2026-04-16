@@ -149,7 +149,7 @@ export function DocumentSigning() {
           width: sgW, height: sgH, opacity: 0.9,
         });
         const signed = await pdfDoc.save();
-        const blob = new Blob([signed], { type: 'application/pdf' });
+        const blob = new Blob([signed.buffer as ArrayBuffer], { type: 'application/pdf' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
