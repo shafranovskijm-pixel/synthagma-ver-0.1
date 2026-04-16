@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
 import { RadioPlayerButton } from "@/components/radio/RadioPlayerButton";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { StarfieldCanvas } from "./StarfieldCanvas";
+
 
 const logoLetters = "СИНТАГМА".split("");
 
@@ -14,7 +14,6 @@ export function LandingHeader() {
 
   return (
     <header className="sticky top-0 z-50 bg-[#0a0e1a] relative overflow-hidden">
-      <StarfieldCanvas />
 
       <div className="container mx-auto px-6 py-4 relative z-10">
         <div className="flex items-center justify-between">
