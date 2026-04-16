@@ -9,8 +9,9 @@ import { ChatContactsPanel } from "@/components/chat/ChatContactsPanel";
 import { ColleagueChatPanel } from "@/components/chat/ColleagueChatPanel";
 import { AiChatPanel } from "@/components/chat/AiChatPanel";
 import { StudentOrgChat } from "@/components/student/StudentOrgChat";
+import { OrgGeneralChat } from "@/components/chat/OrgGeneralChat";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
-import { MessageCircle, Bot, Users, Contact, Settings } from "lucide-react";
+import { MessageCircle, Bot, Users, Contact, Settings, MessagesSquare } from "lucide-react";
 
 interface StudentChatsTabProps {
   organizationId?: string;
@@ -19,6 +20,7 @@ interface StudentChatsTabProps {
 
 const studentSidebarItems = [
   { id: "chats" as ChatSection, label: "Чаты", icon: MessageCircle },
+  { id: "general" as ChatSection, label: "Общий чат", icon: MessagesSquare },
   { id: "ai" as ChatSection, label: "ИИ-помощник", icon: Bot },
   { id: "colleagues" as ChatSection, label: "Коллеги", icon: Users },
   { id: "contacts" as ChatSection, label: "Контакты", icon: Contact },
