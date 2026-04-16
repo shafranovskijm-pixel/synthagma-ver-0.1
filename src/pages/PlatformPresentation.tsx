@@ -244,11 +244,7 @@ export default function PlatformPresentation() {
           <h2 className="text-3xl md:text-5xl font-bold mb-3"><InViewTypewriterText text="Документооборот" speed={50} delay={200} /></h2>
           <p className="text-base md:text-xl text-white/60 mb-10">Автоматическая генерация всех документов из шаблонов</p>
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 md:gap-4">
-            {[
-              "Договор на обучение", "Приказ о зачислении", "Протокол проверки знаний",
-              "Акт выполненных работ", "Удостоверение", "Согласие на обработку ПД",
-              "Счёт на оплату", "Диплом о переподготовке", "Свидетельство о профессии",
-            ].map((d, i) => (
+            {documentTypes.map((d, i) => (
               <div key={i} className="bg-white/5 backdrop-blur-sm rounded-xl border border-white/10 p-4 flex items-center gap-3">
                 <FileText className="w-5 h-5 text-[hsl(174_72%_46%)] flex-shrink-0" />
                 <span className="text-sm font-medium">{d}</span>
@@ -292,12 +288,7 @@ export default function PlatformPresentation() {
           </div>
           <p className="text-base md:text-xl text-white/60 mb-10">Полный модуль для обучения по охране труда и проверке знаний</p>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {[
-              { icon: Users, title: "Группы обучения", desc: "Формирование групп, назначение программ" },
-              { icon: ClipboardList, title: "Протоколы", desc: "Автоформирование протоколов проверки знаний" },
-              { icon: FileText, title: "Журналы", desc: "Электронные журналы всех видов инструктажей" },
-              { icon: Award, title: "Удостоверения", desc: "Автоматическая генерация и печать" },
-            ].map((item, i) => (
+            {safetyFeatures.map((item, i) => (
               <div key={i} className="bg-white/5 backdrop-blur-sm rounded-2xl border border-white/10 p-6 flex items-start gap-4">
                 <div className="w-10 h-10 rounded-xl bg-[hsl(38_92%_50%/0.2)] flex items-center justify-center flex-shrink-0">
                   <item.icon className="w-5 h-5 text-[hsl(38_92%_50%)]" />
