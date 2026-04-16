@@ -492,6 +492,33 @@ export type Database = {
           },
         ]
       }
+      chat_notification_settings: {
+        Row: {
+          chat_partner_id: string | null
+          chat_type: string
+          created_at: string | null
+          id: string
+          muted: boolean | null
+          user_id: string
+        }
+        Insert: {
+          chat_partner_id?: string | null
+          chat_type: string
+          created_at?: string | null
+          id?: string
+          muted?: boolean | null
+          user_id: string
+        }
+        Update: {
+          chat_partner_id?: string | null
+          chat_type?: string
+          created_at?: string | null
+          id?: string
+          muted?: boolean | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       commercial_proposal_services: {
         Row: {
           custom_description: string | null
