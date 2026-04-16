@@ -454,15 +454,12 @@ export function useStudentDashboard() {
     return `${hours}ч ${mins}м`;
   };
 
-  // Apply catalogMode as initial tab once after data loads
+  // catalogMode "assigned" no longer has a separate tab — always stay on catalog
   useEffect(() => {
-    if (!loading && !initialTabApplied && dashboardSettings.catalogMode === "assigned") {
-      setActiveTab("library");
-      setInitialTabApplied(true);
-    } else if (!loading && !initialTabApplied) {
+    if (!loading && !initialTabApplied) {
       setInitialTabApplied(true);
     }
-  }, [loading, initialTabApplied, dashboardSettings.catalogMode]);
+  }, [loading, initialTabApplied]);
 
   return {
     user, navigate, isMobile, theme, setTheme,
