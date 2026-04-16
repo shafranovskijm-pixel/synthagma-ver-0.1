@@ -10,6 +10,7 @@ import { useOrgDashboard } from "@/contexts/OrgDashboardContext";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import { getStoredThemeId, getThemeById } from "@/constants/admin-themes";
+import { useTheme } from "next-themes";
 import { HelpCenterDialog } from "@/components/shared/HelpCenterDialog";
 import {
   AlertDialog,
@@ -120,6 +121,8 @@ export function OrgSidebar() {
 
   const [upgradeDialogOpen, setUpgradeDialogOpen] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
+  const { theme: currentTheme, setTheme } = useTheme();
+  const toggleTheme = () => setTheme(currentTheme === "dark" ? "light" : "dark");
 
   // Theme-aware accent
   const [themeAccent, setThemeAccent] = useState<string | null>(() => {
@@ -202,7 +205,6 @@ export function OrgSidebar() {
         )}
         style={{ backgroundColor: `hsl(${brandHsl} / 0.07)` }}
       >
-        {/* Logo – click to change */}
         <div className="flex justify-center py-4">
           <input
             ref={logoInputRef}
@@ -214,7 +216,7 @@ export function OrgSidebar() {
           <Tooltip>
             <TooltipTrigger asChild>
               <button
-                onClick={() => logoInputRef.current?.click()}
+                onClick={logoUrl ? () => logoInputRef.current?.click() : toggleTheme}
                 className="relative flex h-12 w-12 items-center justify-center overflow-hidden rounded-xl bg-card/80 shadow-sm hover:ring-2 hover:ring-primary/40 transition-all group/logo"
               >
                 {isUploadingLogo ? (
@@ -224,12 +226,16 @@ export function OrgSidebar() {
                 ) : (
                   <SigmaLogo size="sm" />
                 )}
-                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover/logo:opacity-100 transition-opacity flex items-center justify-center rounded-xl">
-                  <Upload className="w-4 h-4 text-white" />
-                </div>
+                {logoUrl && (
+                  <div className="absolute inset-0 bg-black/40 opacity-0 group-hover/logo:opacity-100 transition-opacity flex items-center justify-center rounded-xl">
+                    <Upload className="w-4 h-4 text-white" />
+                  </div>
+                )}
               </button>
             </TooltipTrigger>
-            <TooltipContent side="right" className="z-[100]">Нажмите, чтобы изменить значок</TooltipContent>
+            <TooltipContent side="right" className="z-[100]">
+              {logoUrl ? "Нажмите, чтобы изменить значок" : "Сменить тему"}
+            </TooltipContent>
           </Tooltip>
         </div>
 
