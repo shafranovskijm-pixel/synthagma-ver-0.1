@@ -4,7 +4,7 @@ import { StarfieldCanvas } from "./StarfieldCanvas";
 
 export function Footer() {
   return (
-    <footer className="bg-foreground text-background py-20 relative overflow-hidden">
+    <footer className="dark bg-[hsl(222,47%,6%)] text-white py-20 relative overflow-hidden">
       <StarfieldCanvas />
       
       {/* Subtle accent glow line */}
