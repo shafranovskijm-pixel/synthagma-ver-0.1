@@ -1,12 +1,12 @@
 import { useState, useEffect } from "react";
-import { BookOpen, Library, MessageCircle } from "lucide-react";
+import { BookOpen, MessageCircle, Monitor, Presentation } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { SigmaLogo } from "@/components/ui/SigmaLogo";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { getStoredThemeId, getThemeById } from "@/constants/admin-themes";
 import { useTheme } from "next-themes";
 
-export type StudentTab = "catalog" | "library" | "chat" | "profile";
+export type StudentTab = "catalog" | "library" | "chat" | "profile" | "webinars" | "trainers";
 
 interface StudentSidebarProps {
   activeTab: StudentTab;
@@ -19,7 +19,9 @@ interface StudentSidebarProps {
 }
 
 const navItems: { id: StudentTab; icon: typeof BookOpen; label: string }[] = [
-  { id: "catalog", icon: BookOpen, label: "Каталог" },
+  { id: "catalog", icon: BookOpen, label: "Курсы" },
+  { id: "webinars", icon: Presentation, label: "Вебинары" },
+  { id: "trainers", icon: Monitor, label: "3D" },
   { id: "chat", icon: MessageCircle, label: "Чат" },
 ];
 
@@ -58,16 +60,9 @@ function hexToHsl(hex: string): string | null {
 
 function normalizeBrandColor(color?: string): string {
   if (!color) return "174 72% 46%";
-
   const trimmed = color.trim();
-  if (trimmed.startsWith("#")) {
-    return hexToHsl(trimmed) ?? "174 72% 46%";
-  }
-
-  if (trimmed.startsWith("hsl(")) {
-    return trimmed.replace(/^hsl\((.*)\)$/i, "$1");
-  }
-
+  if (trimmed.startsWith("#")) return hexToHsl(trimmed) ?? "174 72% 46%";
+  if (trimmed.startsWith("hsl(")) return trimmed.replace(/^hsl\((.*)\)$/i, "$1");
   return trimmed;
 }
 
@@ -78,7 +73,6 @@ export function StudentSidebar({
   const { theme: currentTheme, setTheme } = useTheme();
   const toggleTheme = () => setTheme(currentTheme === "dark" ? "light" : "dark");
 
-  // Theme-aware accent
   const [themeAccent, setThemeAccent] = useState<string | null>(() => {
     const id = getStoredThemeId();
     return id ? getThemeById(id)?.accent || null : null;
