@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Plus, FileSpreadsheet, Menu, CreditCard, HelpCircle, User, LogOut, Sparkles, ShoppingBag, Settings, FileText, Sun, Moon } from "lucide-react";
+import { Plus, FileSpreadsheet, Menu, CreditCard, HelpCircle, User, LogOut, Sparkles, ShoppingBag, Settings, FileText } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useNavigate } from "react-router-dom";
 import { showLimitToast } from "@/utils/limitToast";
@@ -113,7 +113,14 @@ export function OrgDashboardHeader() {
 
           <div className="flex items-center gap-2.5">
             {logoUrl ? (
-              <img src={logoUrl} alt="Logo" className="w-8 h-8 object-contain rounded-lg" />
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button onClick={toggleTheme} className="hover:opacity-80 transition-opacity">
+                    <img src={logoUrl} alt="Logo" className="w-8 h-8 object-contain rounded-lg" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent>Сменить тему</TooltipContent>
+              </Tooltip>
             ) : (
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -144,20 +151,8 @@ export function OrgDashboardHeader() {
             </span>
           </button>
 
-          {/* Theme toggle */}
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button variant="ghost" size="icon" className="rounded-xl w-10 h-10 hover:scale-105 transition-transform" onClick={toggleTheme}>
-                <Sun className="w-5 h-5 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
-                <Moon className="absolute w-5 h-5 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>Сменить тему</TooltipContent>
-          </Tooltip>
-
           {/* Radio */}
           <RadioPlayerButton />
-
 
           {/* Notifications */}
           {organizationId && (
