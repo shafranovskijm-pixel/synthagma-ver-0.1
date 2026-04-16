@@ -218,13 +218,7 @@ export default function PlatformPresentation() {
               <h2 className="text-3xl md:text-5xl font-bold mb-4"><InViewTypewriterText text="ИИ-ассистент" speed={50} delay={200} /></h2>
               <p className="text-base md:text-xl text-white/70 mb-8">Искусственный интеллект, встроенный в каждый этап работы</p>
               <div className="space-y-4">
-                {[
-                  { icon: Sparkles, text: "Генерация курсов из темы — до 35 уроков с контентом от 700 слов" },
-                  { icon: ClipboardList, text: "Генерация тестов — 15 вопросов с вариантами ответов" },
-                  { icon: Headphones, text: "Озвучка лекций (SaluteSpeech) — русский язык" },
-                  { icon: Image, text: "Генерация обложек для курсов" },
-                  { icon: MessageSquare, text: "ИИ-чат для учеников — отвечает по материалу курса" },
-                ].map((t, i) => (
+                {aiFeatures.map((t, i) => (
                   <div key={i} className="flex items-start gap-3">
                     <t.icon className="w-5 h-5 text-[hsl(174_72%_46%)] flex-shrink-0 mt-0.5" />
                     <span className="text-sm md:text-base">{t.text}</span>
