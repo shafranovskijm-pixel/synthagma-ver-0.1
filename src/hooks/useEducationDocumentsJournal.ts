@@ -494,7 +494,7 @@ export function useEducationDocumentsJournal({
     // Computed
     filteredRecords, stats, filteredStudents, newGraduatesCount,
     // Helpers
-    getJournalTitle, getJournalSubtitle,
+    journalTitle, journalSubtitle,
     // Actions
     resetForm, generateRegNumber, handleOpenAdd, handleOpenEdit,
     handleOpenSelectStudents, handleAutoAddAllGraduates, handleCreateFromStudents,
