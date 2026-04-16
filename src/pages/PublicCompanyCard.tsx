@@ -1,9 +1,11 @@
 import { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
-import { Building2, User, MapPin, Mail, Globe, CreditCard, Calendar, Hash, Copy, Check, Loader2 } from 'lucide-react';
+import { Building2, User, MapPin, Mail, Globe, CreditCard, Calendar, Hash, Copy, Check, Loader2, Download } from 'lucide-react';
 import { toast } from 'sonner';
 import companyCardBg from '@/assets/company-card-bg.jpg';
+
+
 
 const KNOWN_DATA = {
   inn: '253615392404',
@@ -53,6 +55,7 @@ export default function PublicCompanyCard() {
   const { token } = useParams<{ token: string }>();
   const [valid, setValid] = useState<boolean | null>(null);
   const [address, setAddress] = useState<string | null>(null);
+  const [exporting, setExporting] = useState<string | null>(null);
 
   useEffect(() => {
     (async () => {
@@ -74,6 +77,36 @@ export default function PublicCompanyCard() {
       }
     })();
   }, [token]);
+
+  const handleExport = async (format: 'pdf' | 'docx') => {
+    setExporting(format);
+    try {
+      const { data, error: fnError } = await supabase.functions.invoke('generate-company-card', {
+        body: { format, companyData: { ...KNOWN_DATA, address, opf: null, ogrn: KNOWN_DATA.ogrnip } },
+      });
+      if (fnError) throw fnError;
+      if (data?.base64) {
+        const html = decodeURIComponent(escape(atob(data.base64)));
+        if (format === 'pdf') {
+          const w = window.open('', '_blank');
+          if (w) { w.document.write(html); w.document.close(); setTimeout(() => w.print(), 500); }
+        } else {
+          const blob = new Blob([html], { type: 'application/msword' });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url; a.download = 'Карточка_компании.doc'; a.click();
+          URL.revokeObjectURL(url);
+        }
+      }
+      toast.success(format === 'pdf' ? 'Откройте печать для сохранения в PDF' : 'Файл Word скачан');
+    } catch (e: any) {
+      console.error('Export error:', e);
+      toast.error('Ошибка экспорта');
+    } finally {
+      setExporting(null);
+    }
+  };
+
 
   if (valid === null) {
     return (
@@ -107,6 +140,24 @@ export default function PublicCompanyCard() {
         <div className="text-center mb-10">
           <h1 className="text-3xl font-bold text-white mb-1">Синтагма</h1>
           <p className="text-sm text-cyan-300/60">Образовательная платформа · Реквизиты компании</p>
+          <div className="flex items-center justify-center gap-3 mt-4">
+            <button
+              onClick={() => handleExport('pdf')}
+              disabled={!!exporting}
+              className="flex items-center gap-2 px-4 py-2 rounded-xl border border-white/20 text-white text-sm hover:bg-white/10 transition-colors disabled:opacity-50"
+            >
+              {exporting === 'pdf' ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+              PDF
+            </button>
+            <button
+              onClick={() => handleExport('docx')}
+              disabled={!!exporting}
+              className="flex items-center gap-2 px-4 py-2 rounded-xl border border-white/20 text-white text-sm hover:bg-white/10 transition-colors disabled:opacity-50"
+            >
+              {exporting === 'docx' ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+              Word
+            </button>
+          </div>
         </div>
 
         <div className="space-y-5">
