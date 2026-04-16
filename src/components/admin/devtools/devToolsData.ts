@@ -120,16 +120,18 @@ export interface LargeFile {
 }
 
 export const LARGEST_FILES: LargeFile[] = [
-  { path: "src/components/organization/tabs/CoursesTab.tsx", lines: 1379, status: "optimized", note: "Было 1747. Извлечены диалоги и SortableCourseListRow." },
-  { path: "src/pages/CoursePreview.tsx", lines: 1248, status: "needs-work", note: "Разбить на preview-секции (Hero, Content, Sidebar)." },
-  { path: "src/components/organization/SelfExaminationQuiz.tsx", lines: 1244, status: "needs-work", note: "Вынести логику в useSelfExaminationQuiz." },
-  { path: "src/components/organization/AutoDocumentRegistrationJournal.tsx", lines: 1226, status: "needs-work", note: "Логика в хук, UI в подкомпоненты." },
-  { path: "src/components/organization/tabs/StudentsTab.tsx", lines: 1196, status: "needs-work", note: "Вынести таблицу и фильтры в подкомпоненты." },
-  { path: "src/components/admin/OrganizationsManager.tsx", lines: 1178, status: "needs-work", note: "Декомпозиция: таблица + диалоги + фильтры." },
-  { path: "src/components/admin/AdminBillingOverview.tsx", lines: 1076, status: "needs-work", note: "Вынести таблицы и фильтры." },
-  { path: "src/components/organization/OrgDocumentsManager.tsx", lines: 1075, status: "needs-work", note: "Разбить по типам документов." },
-  { path: "src/components/organization/dialogs/CompanyDetailDialog.tsx", lines: 975, status: "needs-work", note: "Разбить на табы-компоненты." },
-  { path: "src/components/admin/ContentGeneratorTab.tsx", lines: 975, status: "needs-work", note: "Вынести форму и результат." },
+  // Оптимизированные в этапах 1-2
+  { path: "src/components/organization/tabs/CoursesTab.tsx", lines: 554, status: "optimized", note: "Было 1747 → 1379 → 554. Извлечены диалоги, SortableCourseListRow, хук." },
+  { path: "src/pages/CoursePreview.tsx", lines: 280, status: "optimized", note: "Было 1248. Логика → useCoursePreview + секции." },
+  { path: "src/components/organization/SelfExaminationQuiz.tsx", lines: 131, status: "optimized", note: "Было 1244. Логика → useSelfExaminationQuiz." },
+  { path: "src/components/organization/AutoDocumentRegistrationJournal.tsx", lines: 217, status: "optimized", note: "Было 1226. Логика → useDocumentRegistrationJournal." },
+  { path: "src/components/organization/tabs/StudentsTab.tsx", lines: 248, status: "optimized", note: "Было 1196. Подкомпоненты: StudentTableRow, StudentMobileCard и др." },
+  { path: "src/components/admin/OrganizationsManager.tsx", lines: 180, status: "optimized", note: "Было 1178. Логика → useOrganizationsManager + OrgFormDialog + OrgStatsCards." },
+  { path: "src/components/admin/AdminBillingOverview.tsx", lines: 220, status: "optimized", note: "Было 1076. Логика → useAdminBilling + подкомпоненты." },
+  { path: "src/components/organization/OrgDocumentsManager.tsx", lines: 290, status: "optimized", note: "Было 1075. Логика → useOrgDocumentsManager + подкомпоненты." },
+  { path: "src/components/organization/dialogs/CompanyDetailDialog.tsx", lines: 350, status: "optimized", note: "Было 975. Разбит на CompanyHeader, ActionsGrid, DocumentSection, Access/Requests табы." },
+  { path: "src/components/admin/ContentGeneratorTab.tsx", lines: 200, status: "optimized", note: "Было 975. Логика → useContentGenerator + CategoryOverview + CategoryDetailView." },
+  // Кандидаты на рефакторинг (этапы 3-5)
   { path: "src/components/admin/AISettingsManager.tsx", lines: 874, status: "needs-work", note: "Вынести секции настроек." },
   { path: "src/components/admin/BulkContentGenerator.tsx", lines: 867, status: "needs-work", note: "Логика уже в хуке, разбить UI." },
   { path: "src/components/organization/InvoiceGenerator.tsx", lines: 846, status: "needs-work", note: "Вынести preview и форму." },
@@ -140,7 +142,7 @@ export const LARGEST_FILES: LargeFile[] = [
   { path: "src/pages/PartnerLanding.tsx", lines: 817, status: "needs-work", note: "Разбить на секции лендинга." },
   { path: "src/components/organization/CopiesDuplicatesJournal.tsx", lines: 805, status: "needs-work", note: "Логика в хук." },
   { path: "src/components/organization/AutoFinalAttestationJournal.tsx", lines: 791, status: "ok", note: "Ниже порога 800. Логика в хук при росте." },
-  // Оптимизированные
+  // Ранее оптимизированные
   { path: "src/components/organization/dialogs/CourseDetailsModal.tsx", lines: 250, status: "optimized", note: "Было 1416. Логика → useCourseDetailsLogic + CourseStudentsTab + CourseSettingsTab." },
   { path: "src/components/organization/LaborSafetyStudentDetailCard.tsx", lines: 140, status: "optimized", note: "Было 1295. Логика → useLaborSafetyStudent + 4 таб-компонента." },
   { path: "src/pages/CourseLearning.tsx", lines: 554, status: "optimized", note: "Было 2758. Логика в useCourseLearning." },
