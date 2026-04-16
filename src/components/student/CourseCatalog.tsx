@@ -28,7 +28,6 @@ interface CourseCatalogProps {
   courses: CatalogCourse[];
   categories: { id: string; name: string; color: string | null }[];
   onCourseClick: (courseId: string, isEnrolled: boolean) => void;
-  /** Enrolled courses to show at the top */
   enrolledCourses?: {
     id: string;
     title: string;
@@ -41,12 +40,10 @@ interface CourseCatalogProps {
     skip_video_identification?: boolean;
   }[];
   isVideoIdentified?: boolean;
-  /** Progress stats for the banner */
   totalProgress?: number;
   totalTimeSpent?: number;
   totalCompletedLessons?: number;
   formatTime?: (m: number) => string;
-  /** Callbacks for paid courses */
   onBuy?: (courseId: string) => void;
   onEnroll?: (courseId: string) => void;
 }
@@ -61,7 +58,6 @@ export function CourseCatalog({
   const [search, setSearch] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
 
-  // Filter only non-enrolled courses for the "available" section
   const availableCourses = useMemo(() => {
     return courses.filter(c => !c.is_enrolled);
   }, [courses]);
@@ -74,7 +70,6 @@ export function CourseCatalog({
     });
   }, [availableCourses, search, selectedCategory]);
 
-  // Group filtered courses by category
   const grouped = useMemo(() => {
     const groups: { name: string; color: string | null; courses: CatalogCourse[] }[] = [];
     const catMap = new Map<string, { name: string; color: string | null; courses: CatalogCourse[] }>();
@@ -99,6 +94,32 @@ export function CourseCatalog({
 
   return (
     <div className="space-y-6">
+      {/* Progress banner — on top */}
+      {hasEnrolled && (
+        <HeroBannerSwiper className="!h-auto !min-h-[120px] md:!min-h-[140px]">
+          <div className="relative z-10 p-4 md:p-6 flex items-center justify-between text-white">
+            <div>
+              <h2 className="font-bold text-base md:text-lg mb-1">Общий прогресс</h2>
+              <p className="text-white/80 text-xs md:text-sm mb-2 md:mb-3">
+                {enrolledCourses!.length} {enrolledCourses!.length === 1 ? "курс" : enrolledCourses!.length < 5 ? "курса" : "курсов"}
+              </p>
+              <div className="flex gap-3 md:gap-4 text-xs md:text-sm">
+                <span className="flex items-center gap-1.5"><Clock className="w-3.5 h-3.5 md:w-4 md:h-4" />{formatTime(totalTimeSpent)}</span>
+                <span className="flex items-center gap-1.5"><CheckCircle2 className="w-3.5 h-3.5 md:w-4 md:h-4" />{totalCompletedLessons} уроков</span>
+              </div>
+            </div>
+            <div className="relative w-16 h-16 md:w-24 md:h-24 shrink-0">
+              <svg className="w-16 h-16 md:w-24 md:h-24 -rotate-90">
+                <circle cx="50%" cy="50%" r="35%" fill="none" stroke="rgba(255,255,255,0.2)" strokeWidth="8" />
+                <circle cx="50%" cy="50%" r="35%" fill="none" stroke="white" strokeWidth="8"
+                  strokeDasharray={`${totalProgress * 2.51} 251`} strokeLinecap="round" />
+              </svg>
+              <div className="absolute inset-0 flex items-center justify-center text-base md:text-xl font-bold">{totalProgress}%</div>
+            </div>
+          </div>
+        </HeroBannerSwiper>
+      )}
+
       {/* Enrolled courses section */}
       {hasEnrolled && (
         <div>
@@ -126,32 +147,6 @@ export function CourseCatalog({
             ))}
           </div>
         </div>
-      )}
-
-      {/* Progress banner */}
-      {hasEnrolled && (
-        <HeroBannerSwiper className="!h-auto !min-h-[120px] md:!min-h-[140px]">
-          <div className="relative z-10 p-4 md:p-6 flex items-center justify-between text-white">
-            <div>
-              <h2 className="font-bold text-base md:text-lg mb-1">Общий прогресс</h2>
-              <p className="text-white/80 text-xs md:text-sm mb-2 md:mb-3">
-                {enrolledCourses!.length} {enrolledCourses!.length === 1 ? "курс" : enrolledCourses!.length < 5 ? "курса" : "курсов"}
-              </p>
-              <div className="flex gap-3 md:gap-4 text-xs md:text-sm">
-                <span className="flex items-center gap-1.5"><Clock className="w-3.5 h-3.5 md:w-4 md:h-4" />{formatTime(totalTimeSpent)}</span>
-                <span className="flex items-center gap-1.5"><CheckCircle2 className="w-3.5 h-3.5 md:w-4 md:h-4" />{totalCompletedLessons} уроков</span>
-              </div>
-            </div>
-            <div className="relative w-16 h-16 md:w-24 md:h-24 shrink-0">
-              <svg className="w-16 h-16 md:w-24 md:h-24 -rotate-90">
-                <circle cx="50%" cy="50%" r="35%" fill="none" stroke="rgba(255,255,255,0.2)" strokeWidth="8" />
-                <circle cx="50%" cy="50%" r="35%" fill="none" stroke="white" strokeWidth="8"
-                  strokeDasharray={`${totalProgress * 2.51} 251`} strokeLinecap="round" />
-              </svg>
-              <div className="absolute inset-0 flex items-center justify-center text-base md:text-xl font-bold">{totalProgress}%</div>
-            </div>
-          </div>
-        </HeroBannerSwiper>
       )}
 
       {/* Search + filters */}
