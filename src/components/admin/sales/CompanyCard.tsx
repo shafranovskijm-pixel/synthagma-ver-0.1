@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Building2, User, MapPin, Mail, Globe, Copy, Check, CreditCard, Calendar, Hash, FileText, Loader2, AlertCircle } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Building2, User, MapPin, Mail, Globe, Copy, Check, CreditCard, Calendar, Hash, FileText, Loader2, AlertCircle, Download, Link2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
@@ -14,7 +15,8 @@ const KNOWN_DATA = {
   domain: 'sintagma.com.ru',
   bankName: 'ООО «Озон Банк»',
   bik: '044525068',
-  account: '40914810200040551529',
+  account1: '40914810200040551529',
+  account2: '40802810200000522079',
   corrAccount: '30101810645374525068',
 };
 
@@ -59,27 +61,67 @@ export function CompanyCard() {
   const [company, setCompany] = useState<DaDataCompany | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [publicToken, setPublicToken] = useState<string | null>(null);
+  const [exporting, setExporting] = useState<string | null>(null);
 
   useEffect(() => {
     (async () => {
       try {
-        const { data, error: fnError } = await supabase.functions.invoke('dadata-company', {
-          body: { inn: KNOWN_DATA.inn },
-        });
-        if (fnError) throw fnError;
-        if (data?.success && data.company) {
-          setCompany(data.company);
-        } else {
-          setError('Компания не найдена в DaData');
+        const [companyRes, tokenRes] = await Promise.all([
+          supabase.functions.invoke('dadata-company', { body: { inn: KNOWN_DATA.inn } }),
+          supabase.from('app_settings').select('setting_value').eq('setting_key', 'company_card_public_token').maybeSingle(),
+        ]);
+        if (companyRes.data?.success && companyRes.data.company) {
+          setCompany(companyRes.data.company);
+        } else if (companyRes.error) {
+          console.error('DaData error:', companyRes.error);
+        }
+        if (tokenRes.data) {
+          setPublicToken(tokenRes.data.setting_value);
         }
       } catch (e: any) {
-        console.error('DaData error:', e);
+        console.error('Load error:', e);
         setError(e.message || 'Ошибка загрузки');
       } finally {
         setLoading(false);
       }
     })();
   }, []);
+
+  const handleExport = async (format: 'pdf' | 'docx') => {
+    setExporting(format);
+    try {
+      const { data, error: fnError } = await supabase.functions.invoke('generate-company-card', {
+        body: { format, companyData: { ...KNOWN_DATA, address: company?.address, opf: company?.opf, ogrn: company?.ogrn || KNOWN_DATA.ogrnip } },
+      });
+      if (fnError) throw fnError;
+      if (data?.fileUrl) {
+        window.open(data.fileUrl, '_blank');
+      } else if (data?.base64) {
+        const mime = format === 'pdf' ? 'application/pdf' : 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+        const blob = await fetch(`data:${mime};base64,${data.base64}`).then(r => r.blob());
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `Карточка_компании.${format}`;
+        a.click();
+        URL.revokeObjectURL(url);
+      }
+      toast.success(`Файл ${format.toUpperCase()} скачан`);
+    } catch (e: any) {
+      console.error('Export error:', e);
+      toast.error('Ошибка экспорта: ' + (e.message || 'Неизвестная ошибка'));
+    } finally {
+      setExporting(null);
+    }
+  };
+
+  const handleCopyLink = () => {
+    if (!publicToken) return;
+    const url = `${window.location.origin}/company-card/${publicToken}`;
+    navigator.clipboard.writeText(url);
+    toast.success('Ссылка скопирована');
+  };
 
   if (loading) {
     return (
@@ -95,9 +137,27 @@ export function CompanyCard() {
 
   return (
     <div className="space-y-6 max-w-3xl">
-      <div className="flex items-center justify-between">
-        <h2 className="text-xl font-display font-bold">Карточка компании</h2>
-        {company && <Badge className={statusColor}>{statusLabel}</Badge>}
+      <div className="flex items-center justify-between flex-wrap gap-3">
+        <div className="flex items-center gap-3">
+          <h2 className="text-xl font-display font-bold">Карточка компании</h2>
+          {company && <Badge className={statusColor}>{statusLabel}</Badge>}
+        </div>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" onClick={() => handleExport('pdf')} disabled={!!exporting}>
+            {exporting === 'pdf' ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <Download className="w-4 h-4 mr-1" />}
+            PDF
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => handleExport('docx')} disabled={!!exporting}>
+            {exporting === 'docx' ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <Download className="w-4 h-4 mr-1" />}
+            Word
+          </Button>
+          {publicToken && (
+            <Button variant="outline" size="sm" onClick={handleCopyLink}>
+              <Link2 className="w-4 h-4 mr-1" />
+              Ссылка
+            </Button>
+          )}
+        </div>
       </div>
 
       {error && (
@@ -171,7 +231,8 @@ export function CompanyCard() {
           <h3 className="text-xs font-semibold uppercase text-muted-foreground tracking-wider mb-2">Банковские реквизиты</h3>
           <CopyField label="Банк" value={KNOWN_DATA.bankName} icon={CreditCard} />
           <CopyField label="БИК" value={KNOWN_DATA.bik} icon={Hash} />
-          <CopyField label="Расчётный счёт" value={KNOWN_DATA.account} icon={Hash} />
+          <CopyField label="Расчётный счёт №1" value={KNOWN_DATA.account1} icon={Hash} />
+          <CopyField label="Расчётный счёт №2" value={KNOWN_DATA.account2} icon={Hash} />
           <CopyField label="Корр. счёт" value={KNOWN_DATA.corrAccount} icon={Hash} />
         </CardContent>
       </Card>
