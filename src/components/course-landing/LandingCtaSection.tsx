@@ -87,7 +87,7 @@ export function LandingCtaSection({
               disabled={submitting}
               style={accent ? { backgroundColor: accent } : undefined}
             >
-              {submitting ? <SigmaSpinner /> : (price > 0 ? "Оставить заявку" : "Записаться бесплатно")}
+              {submitting ? <SigmaSpinner /> : (price > 0 ? "Оставить заявку" : "Оставить заявку")}
             </Button>
           </form>
         )}

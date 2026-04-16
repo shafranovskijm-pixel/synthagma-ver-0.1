@@ -165,30 +165,6 @@ export default function CourseLanding() {
     if (!course) return;
 
     const finalPrice = promoDiscount ? getDiscountedPrice() : course.price;
-    
-    // If course requires approval, create a request instead of direct enrollment
-    if (course.require_enrollment_approval) {
-      try {
-        const { error } = await supabase.from("enrollment_requests").insert({ 
-          user_id: user.id, 
-          course_id: course.id,
-          status: "pending"
-        } as any);
-        if (error) {
-          if (error.code === "23505") {
-            toast.info("Вы уже отправляли заявку на этот курс");
-          } else {
-            throw error;
-          }
-          return;
-        }
-        setHasPendingRequest(true);
-        toast.success("Заявка отправлена!", { description: "Учебный центр рассмотрит вашу заявку" });
-      } catch (e: any) {
-        toast.error("Ошибка отправки заявки", { description: e.message });
-      }
-      return;
-    }
 
     if (finalPrice > 0) {
       try {
@@ -235,24 +211,25 @@ export default function CourseLanding() {
       return;
     }
 
+    // Free course — always create enrollment request
     try {
-      const { error } = await supabase.from("enrollments").insert({ user_id: user.id, course_id: course.id });
-      if (error) throw error;
-
-      if (analytics?.yandex_goal_id && (window as any).ym) {
-        (window as any).ym(analytics.yandex_metrika_id, "reachGoal", analytics.yandex_goal_id);
+      const { error } = await supabase.from("enrollment_requests").insert({ 
+        user_id: user.id, 
+        course_id: course.id,
+        status: "pending"
+      } as any);
+      if (error) {
+        if (error.code === "23505") {
+          toast.info("Вы уже отправляли заявку на этот курс");
+        } else {
+          throw error;
+        }
+        return;
       }
-      if (analytics?.ga_event_name && (window as any).gtag) {
-        (window as any).gtag("event", analytics.ga_event_name);
-      }
-      if (analytics?.meta_pixel_id && (window as any).fbq) {
-        (window as any).fbq("track", "Lead");
-      }
-
-      toast.success("Вы записаны на курс!");
-      navigate(`/course/${course.id}/learn`);
+      setHasPendingRequest(true);
+      toast.success("Заявка отправлена!", { description: "Учебный центр рассмотрит вашу заявку" });
     } catch (e: any) {
-      toast.error("Ошибка записи", { description: e.message });
+      toast.error("Ошибка отправки заявки", { description: e.message });
     }
   };
 
@@ -303,7 +280,7 @@ export default function CourseLanding() {
     </Button>
   ) : (
     <div className="flex items-center gap-2">
-      {course.price > 0 && !course.require_enrollment_approval && (
+      {course.price > 0 && (
         <>
           <Input value={promoCode} onChange={(e) => setPromoCode(e.target.value)} placeholder="Промокод" className="bg-white/10 border-white/20 text-white placeholder:text-white/50 w-32" />
           <Button variant="secondary" size="sm" onClick={checkPromoCode} disabled={promoChecking}>
@@ -312,7 +289,7 @@ export default function CourseLanding() {
         </>
       )}
       <Button size="lg" onClick={() => handleEnroll()} className="bg-white text-black hover:bg-white/90">
-        {course.require_enrollment_approval ? "Оставить заявку" : (finalPrice > 0 ? "Купить курс" : "Записаться бесплатно")}
+        {finalPrice > 0 ? "Купить курс" : "Оставить заявку"}
       </Button>
     </div>
   );

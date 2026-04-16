@@ -292,9 +292,9 @@ export function useCourseLearning() {
 
       let enrollment = enrollmentResult.data;
       if (!enrollment) {
-        const { data: newEnrollment, error: createError } = await supabase.from('enrollments').insert({ course_id: courseId, user_id: user!.id }).select().single();
-        if (createError) throw createError;
-        enrollment = newEnrollment;
+        toast.error('Вы не записаны на этот курс', { description: 'Отправьте заявку на запись через каталог курсов' });
+        navigate('/student');
+        return;
       }
 
       if (enrollment && (enrollment as Record<string, unknown>).expires_at) {
