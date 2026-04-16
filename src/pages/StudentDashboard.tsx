@@ -351,7 +351,7 @@ export default function StudentDashboard() {
         >
           {isMobile && <PullToRefreshIndicator pullDistance={pullDistance} isRefreshing={isRefreshing} canRefresh={canRefresh} threshold={80} />}
 
-          {(currentTab === "catalog" || currentTab === "chat") && (
+          {(currentTab === "catalog" || currentTab === "chat" || currentTab === ("webinars" as any) || currentTab === ("trainers" as any)) && (
             <div className="p-4 md:p-6 space-y-4 md:space-y-6 max-w-[1400px] mx-auto w-full flex-1">
               <OrgBanner
                 orgName={profile?.organization_name || null}
@@ -360,25 +360,12 @@ export default function StudentDashboard() {
                 logoUrl={branding?.logoUrl}
                 primaryColor={branding?.primaryColor}
                 secondaryColor={branding?.secondaryColor}
+                totalProgress={totalProgress}
+                totalTimeSpent={totalTimeSpent}
+                totalCompletedLessons={totalCompletedLessons}
+                enrolledCount={courses.length}
+                formatTime={formatTime}
               />
-
-              <div className="flex gap-1 bg-muted rounded-lg p-1 w-fit overflow-x-auto">
-                {topTabs.map((t) => {
-                  const isActive = t.id === "chat" ? currentTab === "chat" : currentTab === "catalog" && contentTab === t.id;
-                  return (
-                    <button
-                      key={t.id}
-                      onClick={() => handleTopTabChange(t.id)}
-                      className={cn(
-                        "px-4 md:px-5 py-2 rounded-md text-sm font-medium transition-all shrink-0",
-                        isActive ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
-                      )}
-                    >
-                      {t.label}
-                    </button>
-                  );
-                })}
-              </div>
 
               {currentTab === "catalog" && (
                 <CatalogContent
@@ -392,17 +379,18 @@ export default function StudentDashboard() {
                   totalCompletedLessons={totalCompletedLessons}
                   formatTime={formatTime}
                   user={user}
-                  contentTab={contentTab}
+                  contentTab="courses"
                 />
               )}
 
+              {currentTab === ("webinars" as any) && <StudentWebinarsList />}
+              {currentTab === ("trainers" as any) && <Student3DTrainers />}
+
               {currentTab === "chat" && (
-                <div className="flex-1">
-                  <StudentChatsTab
-                    organizationId={profile?.organization_id}
-                    organizationName={profile?.organization_name || "Организация"}
-                  />
-                </div>
+                <StudentChatsTab
+                  organizationId={profile?.organization_id}
+                  organizationName={profile?.organization_name || "Организация"}
+                />
               )}
             </div>
           )}
