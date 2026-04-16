@@ -30,17 +30,63 @@ export function Hero({ showStars = true }: { showStars?: boolean }) {
       {dark && <StarfieldCanvas />}
 
       {/* Decorative glows */}
-      <div className={`absolute top-[10%] right-[8%] w-80 h-80 rounded-full blur-3xl pointer-events-none ${dark ? 'bg-cyan-500/5' : 'bg-accent/5'}`} />
-      <div className={`absolute bottom-[5%] left-[5%] w-64 h-64 rounded-full blur-3xl pointer-events-none ${dark ? 'bg-purple-500/5' : 'bg-accent/4'}`} />
+      <div className={`absolute top-[5%] right-[5%] w-96 h-96 rounded-full blur-3xl pointer-events-none ${dark ? 'bg-cyan-500/6' : 'bg-accent/5'}`} />
+      <div className={`absolute bottom-[5%] left-[3%] w-80 h-80 rounded-full blur-3xl pointer-events-none ${dark ? 'bg-purple-500/6' : 'bg-accent/4'}`} />
+      <div className={`absolute top-[40%] left-[15%] w-64 h-64 rounded-full blur-3xl pointer-events-none ${dark ? 'bg-teal-500/4' : 'bg-accent/3'}`} />
+      <div className={`absolute top-[20%] right-[20%] w-72 h-72 rounded-full blur-3xl pointer-events-none ${dark ? 'bg-indigo-500/4' : 'bg-primary/3'}`} />
 
-      {/* Decorative corners */}
+      {/* Decorative corners — all four */}
       <motion.div
-        className={`absolute top-12 left-8 w-14 h-14 border-l border-t rounded-tl-2xl ${dark ? 'border-white/10' : 'border-accent/15'}`}
-        initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 1, delay: 0.8 }}
+        className={`absolute top-10 left-8 w-16 h-16 border-l-2 border-t-2 rounded-tl-2xl ${dark ? 'border-white/10' : 'border-accent/15'}`}
+        initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 1, delay: 0.8 }}
       />
       <motion.div
-        className={`absolute bottom-12 right-8 w-14 h-14 border-r border-b rounded-br-2xl ${dark ? 'border-white/10' : 'border-accent/15'}`}
-        initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 1, delay: 0.9 }}
+        className={`absolute top-10 right-8 w-16 h-16 border-r-2 border-t-2 rounded-tr-2xl ${dark ? 'border-white/8' : 'border-accent/10'}`}
+        initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 1, delay: 0.9 }}
+      />
+      <motion.div
+        className={`absolute bottom-10 left-8 w-16 h-16 border-l-2 border-b-2 rounded-bl-2xl ${dark ? 'border-white/8' : 'border-accent/10'}`}
+        initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 1, delay: 1.0 }}
+      />
+      <motion.div
+        className={`absolute bottom-10 right-8 w-16 h-16 border-r-2 border-b-2 rounded-br-2xl ${dark ? 'border-white/10' : 'border-accent/15'}`}
+        initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 1, delay: 1.1 }}
+      />
+
+      {/* Floating decorative lines */}
+      <motion.div
+        className={`absolute top-[25%] left-[6%] w-24 h-px ${dark ? 'bg-gradient-to-r from-transparent via-white/15 to-transparent' : 'bg-gradient-to-r from-transparent via-accent/20 to-transparent'}`}
+        initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 1.2, delay: 1.2 }}
+      />
+      <motion.div
+        className={`absolute top-[35%] right-[6%] w-20 h-px ${dark ? 'bg-gradient-to-r from-transparent via-white/12 to-transparent' : 'bg-gradient-to-r from-transparent via-accent/15 to-transparent'}`}
+        initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 1.2, delay: 1.3 }}
+      />
+      <motion.div
+        className={`absolute bottom-[30%] left-[8%] w-16 h-px ${dark ? 'bg-gradient-to-r from-transparent via-cyan-400/15 to-transparent' : 'bg-gradient-to-r from-transparent via-accent/15 to-transparent'}`}
+        initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 1.2, delay: 1.4 }}
+      />
+      <motion.div
+        className={`absolute bottom-[25%] right-[10%] w-28 h-px ${dark ? 'bg-gradient-to-r from-transparent via-purple-400/12 to-transparent' : 'bg-gradient-to-r from-transparent via-primary/12 to-transparent'}`}
+        initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 1.2, delay: 1.5 }}
+      />
+
+      {/* Small decorative dots */}
+      <motion.div
+        className={`absolute top-[18%] left-[12%] w-1.5 h-1.5 rounded-full ${dark ? 'bg-cyan-400/30' : 'bg-accent/30'}`}
+        initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.8, delay: 1.0 }}
+      />
+      <motion.div
+        className={`absolute top-[70%] right-[14%] w-1 h-1 rounded-full ${dark ? 'bg-purple-400/25' : 'bg-accent/25'}`}
+        initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.8, delay: 1.2 }}
+      />
+      <motion.div
+        className={`absolute bottom-[40%] left-[20%] w-1 h-1 rounded-full ${dark ? 'bg-white/20' : 'bg-foreground/15'}`}
+        initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.8, delay: 1.4 }}
+      />
+      <motion.div
+        className={`absolute top-[55%] right-[6%] w-1.5 h-1.5 rounded-full ${dark ? 'bg-teal-400/25' : 'bg-accent/20'}`}
+        initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.8, delay: 1.1 }}
       />
 
       {/* Hero content */}
