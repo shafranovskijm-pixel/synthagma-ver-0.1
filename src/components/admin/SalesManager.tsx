@@ -7,6 +7,7 @@ import { SalesControlPanel } from './sales/SalesControlPanel';
 import { SalesContracts } from './sales/SalesContracts';
 import { CompetitorComparison } from './sales/CompetitorComparison';
 import { DemoLinksManager } from './sales/DemoLinksManager';
+import { CompanyCard } from './sales/CompanyCard';
 import { SalesSidebar } from './sales/SalesSidebar';
 
 const TABS: Record<string, React.ReactNode> = {
@@ -18,6 +19,7 @@ const TABS: Record<string, React.ReactNode> = {
   control: <SalesControlPanel />,
   comparison: <CompetitorComparison />,
   demo: <DemoLinksManager />,
+  'company-card': <CompanyCard />,
 };
 
 export function SalesManager() {
