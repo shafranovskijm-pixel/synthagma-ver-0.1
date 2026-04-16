@@ -14,6 +14,16 @@ import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 
 import { ProgramEntry, normalizeTitle, getParentType, knownPrograms } from "@/data/knownPrograms";
 
+interface ImportResult {
+  created: number;
+  skipped: number;
+  errors: { title: string; reason: string }[];
+}
+
+interface ProgramListImporterProps {
+  onComplete: () => void;
+}
+
 export function ProgramListImporter({ onComplete }: ProgramListImporterProps) {
   const [programs, setPrograms] = useState<ProgramEntry[]>([]);
   const [isLoading, setIsLoading] = useState(false);
