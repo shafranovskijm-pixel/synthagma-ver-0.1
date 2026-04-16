@@ -241,17 +241,30 @@ export function OrgChatsTab() {
               <div className="flex flex-col h-full">
                 <div className="px-4 py-3 border-b border-border flex items-center gap-3">
                   <ChatAvatar name="Администрация" size="sm" isAdmin />
-                  <h3 className="font-semibold">Администрация платформы</h3>
+                  <h3 className="font-semibold flex-1">Администрация платформы</h3>
+                  <ChatNotificationToggle chatType="admin" />
                 </div>
                 <div className="flex-1 p-4 overflow-hidden">
                   <AdminChatDialog organizationId={organizationId} currentUserId={currentUserId} />
+                </div>
+              </div>
+            ) : selectedGeneralChat && organizationId && currentUserId ? (
+              <div className="flex flex-col h-full">
+                <div className="px-4 py-3 border-b border-border flex items-center gap-3">
+                  <ChatAvatar name="Общий чат" size="sm" />
+                  <h3 className="font-semibold flex-1">Общий чат</h3>
+                  <ChatNotificationToggle chatType="general" />
+                </div>
+                <div className="flex-1 p-4 overflow-hidden">
+                  <OrgGeneralChat organizationId={organizationId} currentUserId={currentUserId} />
                 </div>
               </div>
             ) : selectedStudentId && organizationId && currentUserId ? (
               <div className="flex flex-col h-full">
                 <div className="px-4 py-3 border-b border-border flex items-center gap-3">
                   <ChatAvatar name={selectedConvo?.studentName || selectedStudentName} size="sm" />
-                  <h3 className="font-semibold">{selectedConvo?.studentName || selectedStudentName}</h3>
+                  <h3 className="font-semibold flex-1">{selectedConvo?.studentName || selectedStudentName}</h3>
+                  <ChatNotificationToggle chatType="student" chatPartnerId={selectedStudentId} />
                 </div>
                 <div className="flex-1 p-4 overflow-hidden">
                   <ChatTab studentUserId={selectedStudentId} organizationId={organizationId} currentUserId={currentUserId} studentName={selectedConvo?.studentName || selectedStudentName} />
