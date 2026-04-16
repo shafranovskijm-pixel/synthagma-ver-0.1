@@ -51,12 +51,10 @@ function loadTBankSdk(): Promise<void> {
 }
 
 function CatalogContent({
-  catalogCourses, categories, profile, branding, handleCourseClick,
+  catalogCourses, categories, handleCourseClick,
   enrolledCourses, isVideoIdentified, totalProgress, totalTimeSpent, totalCompletedLessons, formatTime,
-  user,
+  user, contentTab,
 }: any) {
-  const navigate = useNavigate();
-  const [contentTab, setContentTab] = useState<"courses" | "webinars" | "trainers">("courses");
   const [confirmCourse, setConfirmCourse] = useState<any>(null);
   const [enrollCourse, setEnrollCourse] = useState<any>(null);
   const [sendingCourseId, setSendingCourseId] = useState<string | null>(null);
@@ -64,16 +62,24 @@ function CatalogContent({
   const [paymentMode, setPaymentMode] = useState<"redirect" | "widget">("redirect");
 
   useEffect(() => {
-    if (!profile?.organization_id) return;
+    if (!user?.id) return;
     supabase
-      .from("organization_payment_settings")
-      .select("payment_mode" as any)
-      .eq("organization_id", profile.organization_id)
+      .from("profiles")
+      .select("organization_id")
+      .eq("user_id", user.id)
       .maybeSingle()
       .then(({ data }) => {
-        if (data) setPaymentMode((data as any).payment_mode || "redirect");
+        if (!data?.organization_id) return;
+        supabase
+          .from("organization_payment_settings")
+          .select("payment_mode" as any)
+          .eq("organization_id", data.organization_id)
+          .maybeSingle()
+          .then(({ data: paymentData }) => {
+            if (paymentData) setPaymentMode((paymentData as any).payment_mode || "redirect");
+          });
       });
-  }, [profile?.organization_id]);
+  }, [user?.id]);
 
   const handleBuy = (courseId: string) => {
     const course = catalogCourses.find((c: any) => c.id === courseId);
@@ -155,40 +161,8 @@ function CatalogContent({
     }
   };
 
-  const tabs = [
-    { id: "courses" as const, label: "Курсы" },
-    { id: "webinars" as const, label: "Вебинары" },
-    { id: "trainers" as const, label: "3D-тренажёры" },
-  ];
-
   return (
-    <div className="p-4 md:p-6 space-y-4 md:space-y-6 max-w-[1400px] mx-auto flex-1">
-      <OrgBanner
-        orgName={profile?.organization_name || null}
-        orgDescription={profile?.org_description}
-        coverUrl={branding?.coverUrl}
-        logoUrl={branding?.logoUrl}
-        primaryColor={branding?.primaryColor}
-        secondaryColor={branding?.secondaryColor}
-      />
-
-      <div className="flex gap-1 bg-muted rounded-lg p-1 w-fit">
-        {tabs.map((t) => (
-          <button
-            key={t.id}
-            onClick={() => setContentTab(t.id)}
-            className={cn(
-              "px-4 md:px-5 py-2 rounded-md text-sm font-medium transition-all",
-              contentTab === t.id
-                ? "bg-background text-foreground shadow-sm"
-                : "text-muted-foreground hover:text-foreground"
-            )}
-          >
-            {t.label}
-          </button>
-        ))}
-      </div>
-
+    <div className="space-y-4 md:space-y-6">
       {contentTab === "courses" && (
         <CourseCatalog
           courses={catalogCourses}
@@ -207,7 +181,6 @@ function CatalogContent({
       {contentTab === "webinars" && <StudentWebinarsList />}
       {contentTab === "trainers" && <Student3DTrainers />}
 
-      {/* Payment confirmation dialog */}
       <AlertDialog open={!!confirmCourse} onOpenChange={(open) => !open && setConfirmCourse(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -230,7 +203,6 @@ function CatalogContent({
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* Enrollment request dialog */}
       <AlertDialog open={!!enrollCourse} onOpenChange={(open) => !open && setEnrollCourse(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -256,6 +228,7 @@ function CatalogContent({
 }
 
 export default function StudentDashboard() {
+  const [contentTab, setContentTab] = useState<"courses" | "webinars" | "trainers" | "chat">("courses");
   const { userRole } = useAuth();
   const isMobile = useIsMobile();
 
