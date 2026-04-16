@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
-import { MessageCircle, Search, ArrowLeft, Shield, Plus, UserPlus, X } from "lucide-react";
+import { MessageCircle, Search, ArrowLeft, Shield, Plus, UserPlus, X, Users } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -20,6 +20,8 @@ import { ChatRequestsPanel } from "@/components/chat/ChatRequestsPanel";
 import { ChatContactsPanel } from "@/components/chat/ChatContactsPanel";
 import { OrgGeneralChat } from "@/components/chat/OrgGeneralChat";
 import { ChatNotificationToggle } from "@/components/chat/ChatNotificationToggle";
+import { ChatGroupsPanel } from "@/components/chat/ChatGroupsPanel";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Dialog,
   DialogContent,
@@ -35,6 +37,7 @@ export function OrgChatsTab() {
   const [selectedStudentName, setSelectedStudentName] = useState<string>("");
   const [selectedAdminChat, setSelectedAdminChat] = useState(false);
   const [selectedGeneralChat, setSelectedGeneralChat] = useState(false);
+  const [chatSubTab, setChatSubTab] = useState<"personal" | "service" | "groups">("personal");
   const [searchQuery, setSearchQuery] = useState("");
   const [adminUnreadCount, setAdminUnreadCount] = useState(0);
   const [showNewChatDialog, setShowNewChatDialog] = useState(false);
