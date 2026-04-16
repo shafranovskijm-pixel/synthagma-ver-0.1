@@ -66,6 +66,12 @@ export function CounterpartiesSection({
   const [showGroupDialog, setShowGroupDialog] = useState(false);
   const [newGroupName, setNewGroupName] = useState("");
   const [clientGroups, setClientGroups] = useState<ClientGroup[]>([]);
+  const [visibleClientIds, setVisibleClientIds] = useState<Set<string>>(new Set());
+  const [visiblePayerIds, setVisiblePayerIds] = useState<Set<string>>(new Set());
+  const [clientSearch, setClientSearch] = useState("");
+  const [payerSearch, setPayerSearch] = useState("");
+  const [clientPopoverOpen, setClientPopoverOpen] = useState(false);
+  const [payerPopoverOpen, setPayerPopoverOpen] = useState(false);
 
   // Load counterparties and groups
   useEffect(() => {
