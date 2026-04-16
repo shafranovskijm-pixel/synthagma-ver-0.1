@@ -189,73 +189,16 @@ export function useAdminMarketplace() {
   };
 
   const handleToggleActive = async (course: MarketplaceCourseWithDetails) => {
-    try {
-      const { error } = await supabase
-        .from("marketplace_courses")
-        .update({ is_active: !course.is_active })
-        .eq("id", course.id);
-      if (error) throw error;
-      toast.success(course.is_active ? "Курс скрыт" : "Курс активирован");
-      fetchCourses();
-    } catch (error) {
-      toast.error("Ошибка при изменении статуса");
-    }
+    try { await toggleCourseActive(course as any); fetchCourses(); } catch { toast.error("Ошибка при изменении статуса"); }
   };
 
   const handleDeleteCourse = async (courseId: string) => {
-    try {
-      const { data: orders } = await supabase
-        .from("marketplace_orders")
-        .select("id")
-        .eq("marketplace_course_id", courseId);
-      
-      const orderIds = (orders || []).map(o => o.id);
-      
-      if (orderIds.length > 0) {
-        for (const oid of orderIds) {
-          await supabase.from("balance_transactions").update({ related_order_id: null }).eq("related_order_id", oid);
-        }
-        for (const oid of orderIds) {
-          await supabase.from("courses").update({ source_order_id: null }).eq("source_order_id", oid);
-        }
-      }
-
-      const { error } = await supabase.from("marketplace_courses").delete().eq("id", courseId);
-      if (error) throw error;
-      toast.success("Курс удалён из маркетплейса");
-      fetchCourses();
-    } catch (error) {
-      console.error("Delete error:", error);
-      toast.error("Ошибка при удалении");
-    }
+    try { await deleteCourse(courseId); fetchCourses(); } catch (e) { console.error("Delete error:", e); toast.error("Ошибка при удалении"); }
   };
 
   const handleEditCourse = async () => {
     if (!editingCourse) return;
-    try {
-      const { error } = await supabase
-        .from("marketplace_courses")
-        .update({
-          price_student: editingCourse.price_student,
-          price_organization: editingCourse.price_organization,
-          description_short: editingCourse.description_short,
-        })
-        .eq("id", editingCourse.id);
-      if (error) throw error;
-
-      if (editingCourse.course?.id) {
-        await supabase
-          .from("courses")
-          .update({ duration: editingCourse.course.duration || null })
-          .eq("id", editingCourse.course.id);
-      }
-
-      toast.success("Курс обновлён");
-      setShowEditDialog(false);
-      fetchCourses();
-    } catch (error) {
-      toast.error("Ошибка при обновлении");
-    }
+    try { await editCourse(editingCourse as any); setShowEditDialog(false); fetchCourses(); } catch { toast.error("Ошибка при обновлении"); }
   };
 
   const handleUpdateOrderStatus = async (orderId: string, newStatus: string) => {
