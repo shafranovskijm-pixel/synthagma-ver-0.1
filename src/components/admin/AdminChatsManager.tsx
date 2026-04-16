@@ -443,5 +443,6 @@ export function AdminChatsManager() {
         </div>
       )}
     </div>
+    </>
   );
 }
