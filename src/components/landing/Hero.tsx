@@ -210,8 +210,16 @@ export function Hero() {
         </motion.div>
       </div>
 
-      {/* Decorative top accent bar */}
-      <div className="relative z-10 h-[3px] bg-gradient-to-r from-accent via-primary to-accent" />
+      {/* Animated decorative top accent bar */}
+      <motion.div
+        className="relative z-10 h-[3px]"
+        style={{
+          background: "linear-gradient(90deg, hsl(var(--accent)), hsl(var(--primary)), hsl(174 72% 56%), hsl(var(--accent)), hsl(var(--primary)))",
+          backgroundSize: "200% 100%",
+        }}
+        animate={{ backgroundPosition: ["0% 0%", "200% 0%"] }}
+        transition={{ duration: 4, repeat: Infinity, ease: "linear" }}
+      />
 
       {/* Navigation */}
       <nav className="relative z-10 bg-card/80 backdrop-blur-md border-b border-border/30">

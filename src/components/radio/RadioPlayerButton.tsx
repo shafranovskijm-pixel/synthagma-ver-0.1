@@ -12,7 +12,7 @@ export function RadioPlayerButton() {
     volume, setVolume, nowPlaying, toggle, selectStation,
   } = useRadioPlayer();
 
-  if (stations.length === 0) return null;
+  // Always show the button, even without stations
 
   return (
     <Popover>
