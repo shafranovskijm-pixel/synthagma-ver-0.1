@@ -1,40 +1,18 @@
 
 
-# Унификация тарифов + новые фичи в планах
+# Обновление страницы «300+ готовых курсов» (Rostechnadzor)
 
-## Изменения
+## Что делаем
 
-### 1. Константы (`src/constants/subscriptionPlans.ts`)
-- **Старт**: цена `3490` → `4490`
-- Добавить в `PlanLimits`: `webinarsEnabled`, `videoServicePlus` (>2ГБ), `trainersEnabled` (3D)
-- **Вебинары**: Professional ✓, Maximum ✓ (остальные ✗)
-- **Видеосервис+**: Professional ✓, Maximum ✓
-- **3D-тренажёры**: только Maximum ✓
-- Добавить `webinars` в `enabledCategories` Professional/Maximum (уже есть)
-- Добавить `3d_trainers` в `enabledCategories` Maximum
+1. **Заменить текущую шапку** на `LandingHeader` с пропом `showStars={true}` — это даст радио, переключение темы, навигацию и звёздное небо в хедере (как на страницах «О нас», «Блог», «Презентация»).
 
-### 2. Главная — PricingPlans (`src/components/landing/PricingPlans.tsx`)
-- Добавить строки в `featureRows`:
-  - «Вебинары» — Professional+
-  - «Видеосервис+» — Professional+ (описание: загрузка видео >2 ГБ)
-  - «3D-тренажёры» — только Maximum
-- Добавить описания в `featureDescriptions`
-- Обновить цену Старт (берётся из константы, обновится автоматически)
+2. **Добавить `StarfieldCanvas`** в Hero-секцию — заменить текущий градиентный фон (`bg-gradient-to-b`) и `FloatingParticles` на тёмный фон `bg-[#0a0e1a]` со звёздами, как на других страницах. Текст героя перевести на белые тона.
 
-### 3. Презентация — тарифы (`src/pages/PlatformPresentation.tsx`)
-- Обновить цену Старт: `3 490` → `4 490`
-- Добавить в features Professional: «Вебинары», «Видеосервис+»
-- Добавить в features Maximum: «Вебинары», «Видеосервис+», «3D-тренажёры»
-- Стиль «Видеосервис+» и «3D-тренажёры» — выделить акцентным цветом (как ФИС ФРДО+)
-
-### 4. Сравнительная таблица в презентации (строка 85)
-- Обновить стартовую цену: `3 490 ₽/мес` → `4 490 ₽/мес`
+3. **Убрать** импорт `SigmaLogo`, `ArrowLeft`, `FloatingParticles` (больше не нужны).
 
 ## Файлы
 
 | Файл | Действие |
 |------|----------|
-| `src/constants/subscriptionPlans.ts` | Цена Старт, новые лимиты |
-| `src/components/landing/PricingPlans.tsx` | Новые строки фич |
-| `src/pages/PlatformPresentation.tsx` | Обновить карточки тарифов |
+| `src/pages/RostechnadzorCoursesPage.tsx` | Заменить кастомный header на `<LandingHeader showStars />`, обновить Hero-секцию |
 
