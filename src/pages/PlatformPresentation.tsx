@@ -14,6 +14,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Footer } from "@/components/landing/Footer";
 import { LandingHeader } from "@/components/landing/LandingHeader";
 import { TypewriterText, InViewTypewriterText } from "@/components/ui/TypewriterText";
+import { StarfieldCanvas } from "@/components/landing/StarfieldCanvas";
 
 // AI-generated illustrations
 import heroBg from "@/assets/presentation/hero-bg.jpg";
@@ -144,23 +145,10 @@ export default function PlatformPresentation() {
     <div className="min-h-screen bg-background">
       <LandingHeader />
 
-      {/* ═══ Upward stars transition ═══ */}
-      <div className="relative h-0 overflow-visible pointer-events-none z-30">
-        {[...Array(12)].map((_, i) => (
-          <motion.div
-            key={i}
-            className="absolute w-1 h-1 rounded-full bg-white/40"
-            style={{ left: `${8 + i * 7.5}%`, top: 0 }}
-            animate={{ y: [60, -30], opacity: [0.5, 0] }}
-            transition={{ duration: 2.5 + i * 0.2, repeat: Infinity, delay: i * 0.35, ease: "easeOut" }}
-          />
-        ))}
-      </div>
-
       {/* ═══ HERO ═══ */}
-      <Section className="relative text-white overflow-hidden">
-        <img src={heroBg} alt="" className="absolute inset-0 w-full h-full object-cover" width={1920} height={1080} />
-        <div className="absolute inset-0 bg-[hsl(0_0%_6%/0.75)]" />
+      <Section className="relative text-white overflow-hidden bg-[#0a0e1a]">
+        <img src={heroBg} alt="" className="absolute inset-0 w-full h-full object-cover opacity-30" width={1920} height={1080} />
+        <StarfieldCanvas />
         <div className="relative max-w-7xl mx-auto px-4 md:px-8 py-20 md:py-32 text-center">
           <motion.div initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ duration: 0.7 }}>
             <div className="w-20 h-20 md:w-28 md:h-28 rounded-3xl bg-gradient-to-br from-[hsl(174_72%_46%)] to-[hsl(174_65%_30%)] flex items-center justify-center mx-auto mb-8 shadow-[0_0_60px_hsl(174_72%_46%/0.4)]">
