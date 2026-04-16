@@ -60,7 +60,7 @@ export function DemoLinksManager() {
   const createKinescopeLive = async (title: string): Promise<string | null> => {
     try {
       const { data, error } = await supabase.functions.invoke('kinescope-proxy', {
-        body: { action: 'create_live', params: { title } },
+        body: { action: 'create_live', title },
       });
       if (error) throw error;
       // Kinescope API returns data.data.id for the live stream
