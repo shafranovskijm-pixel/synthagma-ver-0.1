@@ -5,6 +5,7 @@ import {
 import { SigmaLogo } from "@/components/ui/SigmaLogo";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useAdminUnreadChats } from "@/hooks/useAdminUnreadChats";
+import { useTheme } from "next-themes";
 import { cn } from "@/lib/utils";
 import { getStoredThemeId, getThemeById } from "@/constants/admin-themes";
 
