@@ -128,27 +128,7 @@ export function useEducationDocumentsJournal({
     diplomaSettings?: { series: string; startNumber: number; city: string; regNumberFormat: string };
   }>({});
 
-  const [formData, setFormData] = useState({
-    reg_number: "",
-    full_name: "",
-    birth_date: null as Date | null,
-    document_type: (documentTypeFilter || "certificate") as "certificate" | "diploma" | "qualification",
-    document_series: "",
-    document_number: "",
-    issue_date: new Date(),
-    specialty_name: "",
-    qualification_name: "",
-    protocol_number: "",
-    protocol_date: null as Date | null,
-    order_number: "",
-    order_date: null as Date | null,
-    document_status: "original" as "original" | "duplicate",
-    original_document_data: "",
-    delivery_method: "personal" as "personal" | "representative" | "postal",
-    delivery_details: "",
-    notes: "",
-    enrollment_id: "",
-  });
+  const [formData, setFormData] = useState(getDefaultFormData(documentTypeFilter));
 
   // Load records and document settings
   useEffect(() => {
