@@ -356,24 +356,22 @@ export default function StudentDashboard() {
 
       {/* Main content */}
       <div className={cn("flex-1 flex flex-col min-w-0", (isPreviewMode || isAdminView) && "md:mt-10")}>
-        {/* Top header — desktop only */}
-        <div className="hidden md:block">
-          <StudentHeader
-            fullName={profile?.full_name || null}
-            orgName={profile?.organization_name || null}
-            logoUrl={branding?.logoUrl}
-            onLogout={handleLogout}
-            setTheme={setTheme}
-            pendingCount={pendingDocsCount}
-            isVideoIdentified={isVideoIdentified}
-            showAchievements={dashboardSettings.showAchievements}
-            onShowVideoId={() => setShowVideoIdentification(true)}
-            onShowConsent={() => setShowConsentForm(true)}
-            onShowDocs={() => setShowDocumentsUpload(true)}
-            onShowAchievements={() => setShowAchievements(true)}
-            onProfileClick={() => setActiveTab("profile" as any)}
-          />
-        </div>
+        {/* Top header */}
+        <StudentHeader
+          fullName={profile?.full_name || null}
+          orgName={profile?.organization_name || null}
+          logoUrl={branding?.logoUrl}
+          onLogout={handleLogout}
+          setTheme={setTheme}
+          pendingCount={pendingDocsCount}
+          isVideoIdentified={isVideoIdentified}
+          showAchievements={dashboardSettings.showAchievements}
+          onShowVideoId={() => setShowVideoIdentification(true)}
+          onShowConsent={() => setShowConsentForm(true)}
+          onShowDocs={() => setShowDocumentsUpload(true)}
+          onShowAchievements={() => setShowAchievements(true)}
+          onProfileClick={() => setActiveTab("profile" as any)}
+        />
 
         <main
           ref={isMobile ? pullToRefreshRef : undefined}
