@@ -65,6 +65,19 @@ export function StudentChatsTab({ organizationId, organizationName }: StudentCha
             <p className="text-sm">Нет привязки к организации</p>
           </div>
         );
+      case "general":
+        return user && organizationId ? (
+          <div className="border border-border rounded-xl bg-card overflow-hidden h-full p-4">
+            <OrgGeneralChat
+              organizationId={organizationId}
+              currentUserId={user.id}
+            />
+          </div>
+        ) : (
+          <div className="flex items-center justify-center h-full text-muted-foreground">
+            <p className="text-sm">Нет привязки к организации</p>
+          </div>
+        );
       case "ai":
         return (
           <div className="border border-border rounded-xl bg-card p-4 h-full">
