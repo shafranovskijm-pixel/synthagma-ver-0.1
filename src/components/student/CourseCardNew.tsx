@@ -128,13 +128,13 @@ export function CourseCardNew({
                 onClick={(e) => { e.stopPropagation(); onEnroll(); }}
               >
                 <ClipboardCheck className="w-3.5 h-3.5" />
-                Записаться
+                Оставить заявку
               </Button>
             </div>
           ) : (
             <Button size="sm" className="w-full gap-1.5" variant="outline">
               <ShoppingCart className="w-3.5 h-3.5" />
-              Записаться
+              Оставить заявку
             </Button>
           )}
         </div>
