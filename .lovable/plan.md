@@ -1,39 +1,40 @@
 
 
-# Исправления иконок + AI-иллюстрации для карточек и реквизитов
+# Унификация тарифов + новые фичи в планах
 
-## 1. Иконки радио и темы — невидимы на тёмном фоне
+## Изменения
 
-**Проблема**: Кнопки `RadioPlayerButton` и `ThemeToggle` используют `variant="ghost"` без явного цвета текста. На тёмном фоне `#0a0e1a` шапки иконки чёрные — не видно.
+### 1. Константы (`src/constants/subscriptionPlans.ts`)
+- **Старт**: цена `3490` → `4490`
+- Добавить в `PlanLimits`: `webinarsEnabled`, `videoServicePlus` (>2ГБ), `trainersEnabled` (3D)
+- **Вебинары**: Professional ✓, Maximum ✓ (остальные ✗)
+- **Видеосервис+**: Professional ✓, Maximum ✓
+- **3D-тренажёры**: только Maximum ✓
+- Добавить `webinars` в `enabledCategories` Professional/Maximum (уже есть)
+- Добавить `3d_trainers` в `enabledCategories` Maximum
 
-**Решение**: Добавить `text-white/80 hover:text-white hover:bg-white/10` к обеим кнопкам в `LandingHeader.tsx`, обернув их или передав className.
+### 2. Главная — PricingPlans (`src/components/landing/PricingPlans.tsx`)
+- Добавить строки в `featureRows`:
+  - «Вебинары» — Professional+
+  - «Видеосервис+» — Professional+ (описание: загрузка видео >2 ГБ)
+  - «3D-тренажёры» — только Maximum
+- Добавить описания в `featureDescriptions`
+- Обновить цену Старт (берётся из константы, обновится автоматически)
 
-**Файлы**:
-- `src/components/ui/ThemeToggle.tsx` — добавить проп `className` и пробросить на Button
-- `src/components/radio/RadioPlayerButton.tsx` — добавить `text-white/80` к Button в шапке
-- Или проще: в `LandingHeader.tsx` обернуть зону иконок в `div` с `[&_button]:text-white/80`
+### 3. Презентация — тарифы (`src/pages/PlatformPresentation.tsx`)
+- Обновить цену Старт: `3 490` → `4 490`
+- Добавить в features Professional: «Вебинары», «Видеосервис+»
+- Добавить в features Maximum: «Вебинары», «Видеосервис+», «3D-тренажёры»
+- Стиль «Видеосервис+» и «3D-тренажёры» — выделить акцентным цветом (как ФИС ФРДО+)
 
-## 2. Карточки «Наша миссия / Инновации / Соответствие» — AI-иллюстрации
-
-Сгенерировать 3 изображения через Lovable AI (gemini-2.5-flash-image):
-- **Миссия**: абстрактная иллюстрация — образование, доступность, свет знаний. Teal/cyan палитра.
-- **Инновации**: AI/нейросети, цифровые технологии, лампочка-мозг. Accent оранжевый.
-- **Соответствие**: щит, документы, государственные стандарты. Зелёная палитра.
-
-Стиль: минималистичные, премиальные иконки/иллюстрации на прозрачном или тёмном фоне, ~400x400px.
-
-Изображения сохранить в `public/images/about/` и использовать как фон или декор карточек.
-
-## 3. Реквизиты — AI-фон
-
-Сгенерировать абстрактный фон для секции реквизитов: нейросетевые линии, цифровые паттерны в стиле teal/cyan, полупрозрачный. Использовать как `background-image` секции с наложением `bg-background/90`.
+### 4. Сравнительная таблица в презентации (строка 85)
+- Обновить стартовую цену: `3 490 ₽/мес` → `4 490 ₽/мес`
 
 ## Файлы
 
 | Файл | Действие |
 |------|----------|
-| `src/components/landing/LandingHeader.tsx` | Добавить `text-white/80` к зоне иконок |
-| `src/pages/About.tsx` | Вставить AI-картинки в карточки, добавить фон реквизитам |
-| Edge function или скрипт | Сгенерировать 4 изображения через AI gateway |
-| `public/images/about/` | Сохранить сгенерированные изображения |
+| `src/constants/subscriptionPlans.ts` | Цена Старт, новые лимиты |
+| `src/components/landing/PricingPlans.tsx` | Новые строки фич |
+| `src/pages/PlatformPresentation.tsx` | Обновить карточки тарифов |
 
