@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import { MessageCircle, Search, Send, Paperclip, FileText, Building2, ArrowLeft, Bot, Users } from "lucide-react";
+import { MessageCircle, Search, Send, Building2, ArrowLeft } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -14,8 +14,10 @@ import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 import { AiChatPanel } from "@/components/chat/AiChatPanel";
 import { ColleagueChatPanel } from "@/components/chat/ColleagueChatPanel";
 import { ChatAvatar } from "@/components/chat/ChatAvatar";
-
-type AdminChatMode = "organizations" | "ai" | "colleagues";
+import { ChatSidebar, type ChatSection } from "@/components/chat/ChatSidebar";
+import { ChatSettingsPanel } from "@/components/chat/ChatSettingsPanel";
+import { ChatRequestsPanel } from "@/components/chat/ChatRequestsPanel";
+import { ChatContactsPanel } from "@/components/chat/ChatContactsPanel";
 
 interface Organization {
   id: string;
@@ -46,7 +48,7 @@ interface OrgConversation {
 export function AdminChatsManager() {
   const { user } = useAuth();
   const isMobile = useIsMobile();
-  const [chatMode, setChatMode] = useState<AdminChatMode>("organizations");
+  const [activeSection, setActiveSection] = useState<ChatSection>("chats");
   const [organizations, setOrganizations] = useState<Organization[]>([]);
   const [conversations, setConversations] = useState<OrgConversation[]>([]);
   const [selectedOrgId, setSelectedOrgId] = useState<string | null>(null);
@@ -56,58 +58,58 @@ export function AdminChatsManager() {
   const [isLoadingOrgs, setIsLoadingOrgs] = useState(true);
   const [isLoadingMessages, setIsLoadingMessages] = useState(false);
   const [isSending, setIsSending] = useState(false);
+  const [userName, setUserName] = useState("");
+  const [userEmail, setUserEmail] = useState("");
+  const [userAvatar, setUserAvatar] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = useCallback(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, []);
 
-  // Load organizations and build conversation list
+  // Load user profile
   useEffect(() => {
-    loadConversations();
-  }, []);
+    if (!user) return;
+    supabase.from("profiles").select("full_name, email, avatar_url").eq("user_id", user.id).maybeSingle()
+      .then(({ data }) => {
+        if (data) {
+          setUserName(data.full_name || data.email || "");
+          setUserEmail(data.email || "");
+          setUserAvatar(data.avatar_url);
+        }
+      });
+  }, [user]);
+
+  // Load organizations and build conversation list
+  useEffect(() => { loadConversations(); }, []);
 
   const loadConversations = async () => {
     setIsLoadingOrgs(true);
-    // Load all organizations
-    const { data: orgs } = await supabase
-      .from("organizations")
-      .select("id, name, email")
-      .order("name");
-
+    const { data: orgs } = await supabase.from("organizations").select("id, name, email").order("name");
     if (!orgs) { setIsLoadingOrgs(false); return; }
     setOrganizations(orgs);
 
-    // Load latest messages per org
-    const { data: msgs } = await supabase
-      .from("admin_org_messages")
-      .select("*")
-      .order("created_at", { ascending: false });
+    const { data: msgs } = await supabase.from("admin_org_messages").select("*").order("created_at", { ascending: false });
 
     const convos: OrgConversation[] = [];
     const orgMap = new Map(orgs.map(o => [o.id, o]));
-
-    // Group messages by org
     const msgByOrg = new Map<string, AdminMessage[]>();
     for (const m of (msgs || []) as AdminMessage[]) {
       if (!msgByOrg.has(m.organization_id)) msgByOrg.set(m.organization_id, []);
       msgByOrg.get(m.organization_id)!.push(m);
     }
 
-    // Orgs with messages first
     for (const [orgId, orgMsgs] of msgByOrg) {
       const org = orgMap.get(orgId);
       if (!org) continue;
       const latest = orgMsgs[0];
       convos.push({
-        org,
-        lastMessage: latest.content,
-        lastMessageAt: latest.created_at,
-        unreadCount: orgMsgs.filter(m => !m.is_read && m.sender_role === "organization").length });
+        org, lastMessage: latest.content, lastMessageAt: latest.created_at,
+        unreadCount: orgMsgs.filter(m => !m.is_read && m.sender_role === "organization").length,
+      });
       orgMap.delete(orgId);
     }
 
-    // Remaining orgs without messages
     for (const org of orgMap.values()) {
       convos.push({ org, lastMessage: null, lastMessageAt: "", unreadCount: 0 });
     }
@@ -120,20 +122,12 @@ export function AdminChatsManager() {
   useEffect(() => {
     if (!selectedOrgId) return;
     loadMessages(selectedOrgId);
-
-    const channel = supabase
-      .channel(`admin-chat-${selectedOrgId}`)
-      .on("postgres_changes", {
-        event: "INSERT",
-        schema: "public",
-        table: "admin_org_messages",
-        filter: `organization_id=eq.${selectedOrgId}` }, (payload) => {
+    const channel = supabase.channel(`admin-chat-${selectedOrgId}`)
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "admin_org_messages", filter: `organization_id=eq.${selectedOrgId}` }, (payload) => {
         const msg = payload.new as AdminMessage;
         setMessages(prev => prev.some(m => m.id === msg.id) ? prev : [...prev, msg]);
         setTimeout(scrollToBottom, 100);
-      })
-      .subscribe();
-
+      }).subscribe();
     return () => { supabase.removeChannel(channel); };
   }, [selectedOrgId]);
 
@@ -141,24 +135,12 @@ export function AdminChatsManager() {
 
   const loadMessages = async (orgId: string) => {
     setIsLoadingMessages(true);
-    const { data } = await supabase
-      .from("admin_org_messages")
-      .select("*")
-      .eq("organization_id", orgId)
-      .order("created_at", { ascending: true })
-      .limit(500);
-
+    const { data } = await supabase.from("admin_org_messages").select("*").eq("organization_id", orgId).order("created_at", { ascending: true }).limit(500);
     setMessages((data as AdminMessage[]) || []);
-
-    // Mark org replies as read
     const unread = ((data as AdminMessage[]) || []).filter(m => !m.is_read && m.sender_role === "organization");
     if (unread.length > 0) {
-      await supabase
-        .from("admin_org_messages")
-        .update({ is_read: true })
-        .in("id", unread.map(m => m.id));
+      await supabase.from("admin_org_messages").update({ is_read: true }).in("id", unread.map(m => m.id));
     }
-
     setIsLoadingMessages(false);
   };
 
@@ -172,25 +154,21 @@ export function AdminChatsManager() {
         id: tempId, organization_id: selectedOrgId, sender_user_id: user.id,
         sender_role: "admin", content: text, attachment_url: null,
         attachment_name: null, attachment_type: null, is_read: false,
-        created_at: new Date().toISOString() };
+        created_at: new Date().toISOString(),
+      };
       setMessages(prev => [...prev, optimistic]);
       setNewMessage("");
       setTimeout(scrollToBottom, 50);
 
       const { data, error } = await supabase.from("admin_org_messages").insert({
-        organization_id: selectedOrgId,
-        sender_user_id: user.id,
-        sender_role: "admin",
-        content: text }).select().single();
+        organization_id: selectedOrgId, sender_user_id: user.id, sender_role: "admin", content: text,
+      }).select().single();
 
       if (error) throw error;
       if (data) setMessages(prev => prev.map(m => m.id === tempId ? (data as AdminMessage) : m));
 
-      // Update conversation list
       setConversations(prev => prev.map(c =>
-        c.org.id === selectedOrgId
-          ? { ...c, lastMessage: text, lastMessageAt: new Date().toISOString() }
-          : c
+        c.org.id === selectedOrgId ? { ...c, lastMessage: text, lastMessageAt: new Date().toISOString() } : c
       ));
     } catch {
       toast.error("Ошибка отправки");
@@ -200,10 +178,7 @@ export function AdminChatsManager() {
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
-      handleSend();
-    }
+    if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSend(); }
   };
 
   const formatTime = (dateStr: string) => {
@@ -216,12 +191,6 @@ export function AdminChatsManager() {
 
   const selectedOrg = conversations.find(c => c.org.id === selectedOrgId);
 
-  // Filter conversations: show orgs with messages + search across all
-  const filtered = searchQuery
-    ? conversations.filter(c => c.org.name.toLowerCase().includes(searchQuery.toLowerCase()))
-    : conversations.filter(c => c.lastMessageAt || searchQuery);
-
-  // If searching, show all matching orgs
   const displayList = searchQuery
     ? conversations.filter(c => c.org.name.toLowerCase().includes(searchQuery.toLowerCase()))
     : conversations.sort((a, b) => {
@@ -235,24 +204,10 @@ export function AdminChatsManager() {
     return <div className="flex justify-center py-12"><SigmaSpinner /></div>;
   }
 
-  // Mobile: show chat if selected
-  if (isMobile && selectedOrgId) {
-    return (
-      <div className="space-y-3">
-        <Button variant="ghost" size="sm" onClick={() => setSelectedOrgId(null)} className="gap-2">
-          <ArrowLeft className="w-4 h-4" /> Назад
-        </Button>
-        <h3 className="font-semibold text-lg px-1">{selectedOrg?.org.name}</h3>
-        {renderChat()}
-      </div>
-    );
-  }
-
   function renderChat() {
     if (isLoadingMessages) {
       return <div className="flex justify-center py-12"><SigmaSpinner /></div>;
     }
-
     return (
       <div className="flex flex-col h-full">
         <div className="flex-1 overflow-y-auto space-y-3 mb-4 pr-1">
@@ -267,13 +222,9 @@ export function AdminChatsManager() {
               return (
                 <div key={msg.id} className={`flex ${isAdmin ? "justify-end" : "justify-start"}`}>
                   <div className={`max-w-[75%] rounded-2xl px-4 py-2.5 ${
-                    isAdmin
-                      ? "bg-primary text-primary-foreground rounded-br-md"
-                      : "bg-muted rounded-bl-md"
+                    isAdmin ? "bg-primary text-primary-foreground rounded-br-md" : "bg-muted rounded-bl-md"
                   }`}>
-                    {!isAdmin && (
-                      <div className="text-[10px] font-medium mb-1 opacity-70">Организация</div>
-                    )}
+                    {!isAdmin && <div className="text-[10px] font-medium mb-1 opacity-70">Организация</div>}
                     {msg.content && <p className="text-sm whitespace-pre-wrap">{msg.content}</p>}
                     <div className={`text-[10px] mt-1 ${isAdmin ? "text-primary-foreground/60" : "text-muted-foreground"}`}>
                       {format(new Date(msg.created_at), "HH:mm", { locale: ru })}
@@ -285,16 +236,9 @@ export function AdminChatsManager() {
           )}
           <div ref={messagesEndRef} />
         </div>
-
         <div className="border-t border-border pt-3 flex items-end gap-2">
-          <Textarea
-            value={newMessage}
-            onChange={(e) => setNewMessage(e.target.value)}
-            onKeyDown={handleKeyDown}
-            placeholder="Написать сообщение..."
-            className="min-h-[40px] max-h-[120px] rounded-xl resize-none"
-            rows={1}
-          />
+          <Textarea value={newMessage} onChange={(e) => setNewMessage(e.target.value)} onKeyDown={handleKeyDown}
+            placeholder="Написать сообщение..." className="min-h-[40px] max-h-[120px] rounded-xl resize-none" rows={1} />
           <Button size="icon" className="shrink-0 rounded-xl" onClick={handleSend} disabled={isSending || !newMessage.trim()}>
             <Send className="w-5 h-5" />
           </Button>
@@ -303,151 +247,155 @@ export function AdminChatsManager() {
     );
   }
 
-  const modeButtons = (
-    <div className="flex gap-1 mb-4 bg-muted/50 p-1 rounded-xl w-fit">
-      <Button
-        variant={chatMode === "organizations" ? "default" : "ghost"}
-        size="sm"
-        onClick={() => setChatMode("organizations")}
-        className="gap-1.5 rounded-lg text-xs"
-      >
-        <Building2 className="w-3.5 h-3.5" /> Организации
-      </Button>
-      <Button
-        variant={chatMode === "ai" ? "default" : "ghost"}
-        size="sm"
-        onClick={() => setChatMode("ai")}
-        className="gap-1.5 rounded-lg text-xs"
-      >
-        <Bot className="w-3.5 h-3.5" /> ИИ-помощник
-      </Button>
-      <Button
-        variant={chatMode === "colleagues" ? "default" : "ghost"}
-        size="sm"
-        onClick={() => setChatMode("colleagues")}
-        className="gap-1.5 rounded-lg text-xs"
-      >
-        <Users className="w-3.5 h-3.5" /> Коллеги
-      </Button>
-    </div>
-  );
-
-  if (chatMode === "ai") {
-    return (
-      <>
-        {modeButtons}
-        <div className="border border-border rounded-xl bg-card p-4 h-[calc(100vh-280px)] min-h-[400px]">
-          <AiChatPanel />
+  function renderOrgChats() {
+    // Mobile: show chat if selected
+    if (isMobile && selectedOrgId) {
+      return (
+        <div className="space-y-3">
+          <Button variant="ghost" size="sm" onClick={() => setSelectedOrgId(null)} className="gap-2">
+            <ArrowLeft className="w-4 h-4" /> Назад
+          </Button>
+          <h3 className="font-semibold text-lg px-1">{selectedOrg?.org.name}</h3>
+          {renderChat()}
         </div>
-      </>
+      );
+    }
+
+    return (
+      <div className="flex gap-4 h-full">
+        <div className={`flex flex-col ${selectedOrgId && !isMobile ? "w-80 shrink-0" : "flex-1"} border border-border rounded-xl bg-card overflow-hidden`}>
+          <div className="p-3 border-b border-border">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <Input value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder="Поиск организации..." className="pl-9" />
+            </div>
+          </div>
+          <div className="flex-1 overflow-y-auto">
+            {displayList.length === 0 ? (
+              <div className="text-center py-12 text-muted-foreground">
+                <Building2 className="w-10 h-10 mx-auto mb-3 opacity-50" />
+                <p className="text-sm">Нет организаций</p>
+              </div>
+            ) : (
+              displayList.map((convo) => (
+                <button key={convo.org.id} onClick={() => setSelectedOrgId(convo.org.id)}
+                  className={`w-full text-left px-4 py-3 border-b border-border/50 hover:bg-secondary/50 transition-colors ${selectedOrgId === convo.org.id ? "bg-primary/5" : ""}`}>
+                  <div className="flex items-center gap-3">
+                    <ChatAvatar name={convo.org.name} size="sm" />
+                    <div className="min-w-0 flex-1">
+                      <span className={`font-medium text-sm truncate block ${convo.unreadCount > 0 ? "text-foreground" : "text-muted-foreground"}`}>{convo.org.name}</span>
+                      {convo.lastMessage && (
+                        <p className={`text-xs truncate mt-0.5 ${convo.unreadCount > 0 ? "text-foreground font-medium" : "text-muted-foreground"}`}>{convo.lastMessage}</p>
+                      )}
+                    </div>
+                    <div className="flex flex-col items-end gap-1 shrink-0">
+                      {convo.lastMessageAt && <span className="text-[10px] text-muted-foreground">{formatTime(convo.lastMessageAt)}</span>}
+                      {convo.unreadCount > 0 && (
+                        <Badge variant="destructive" className="text-[10px] px-1.5 py-0 h-4 min-w-[16px] flex items-center justify-center">{convo.unreadCount}</Badge>
+                      )}
+                    </div>
+                  </div>
+                </button>
+              ))
+            )}
+          </div>
+        </div>
+
+        {!isMobile && (
+          <div className="flex-1 border border-border rounded-xl bg-card overflow-hidden flex flex-col">
+            {selectedOrgId ? (
+              <div className="flex flex-col h-full">
+                <div className="px-4 py-3 border-b border-border flex items-center gap-3">
+                  <ChatAvatar name={selectedOrg?.org.name || ""} size="sm" />
+                  <div>
+                    <h3 className="font-semibold">{selectedOrg?.org.name}</h3>
+                    {selectedOrg?.org.email && <p className="text-xs text-muted-foreground">{selectedOrg.org.email}</p>}
+                  </div>
+                </div>
+                <div className="flex-1 p-4 overflow-hidden">{renderChat()}</div>
+              </div>
+            ) : (
+              <div className="flex-1 flex items-center justify-center text-muted-foreground">
+                <div className="text-center">
+                  <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-muted/50 mb-4">
+                    <MessageCircle className="w-7 h-7 opacity-40" />
+                  </div>
+                  <p className="text-sm font-medium mb-1">Выберите организацию</p>
+                  <p className="text-xs text-muted-foreground/70">Найдите организацию через поиск и начните диалог</p>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
     );
   }
 
-  if (chatMode === "colleagues") {
-    return (
-      <>
-        {modeButtons}
-        <div className="h-[calc(100vh-280px)] min-h-[400px]">
-          <ColleagueChatPanel role="admin" />
+  function renderContent() {
+    switch (activeSection) {
+      case "chats": return renderOrgChats();
+      case "ai": return (
+        <div className="border border-border rounded-xl bg-card p-4 h-full">
+          <AiChatPanel />
         </div>
-      </>
+      );
+      case "colleagues": return <ColleagueChatPanel role="admin" />;
+      case "requests": return (
+        <div className="border border-border rounded-xl bg-card overflow-hidden h-full">
+          <ChatRequestsPanel role="admin" />
+        </div>
+      );
+      case "contacts": return (
+        <div className="border border-border rounded-xl bg-card overflow-hidden h-full">
+          <ChatContactsPanel role="admin" onStartChat={(userId, name) => {
+            setActiveSection("colleagues");
+          }} />
+        </div>
+      );
+      case "settings": return (
+        <div className="border border-border rounded-xl bg-card overflow-hidden h-full">
+          <ChatSettingsPanel userName={userName} email={userEmail} avatarUrl={userAvatar} onAvatarUpdated={setUserAvatar} />
+        </div>
+      );
+      default: return renderOrgChats();
+    }
+  }
+
+  // Mobile: horizontal tabs instead of sidebar
+  if (isMobile) {
+    return (
+      <div className="space-y-3">
+        <div className="flex gap-1 overflow-x-auto bg-muted/50 p-1 rounded-xl">
+          {[
+            { id: "chats" as ChatSection, label: "Чаты" },
+            { id: "ai" as ChatSection, label: "ИИ" },
+            { id: "colleagues" as ChatSection, label: "Коллеги" },
+            { id: "requests" as ChatSection, label: "Заявки" },
+            { id: "contacts" as ChatSection, label: "Контакты" },
+            { id: "settings" as ChatSection, label: "⚙️" },
+          ].map(item => (
+            <Button key={item.id} variant={activeSection === item.id ? "default" : "ghost"} size="sm"
+              onClick={() => setActiveSection(item.id)} className="rounded-lg text-xs shrink-0">
+              {item.label}
+            </Button>
+          ))}
+        </div>
+        <div className="min-h-[400px]">{renderContent()}</div>
+      </div>
     );
   }
 
   return (
-    <>
-    {modeButtons}
-    <div className="flex gap-4 h-[calc(100vh-280px)] min-h-[400px]">
-      {/* Org list */}
-      <div className={`flex flex-col ${selectedOrgId && !isMobile ? "w-80 shrink-0" : "flex-1"} border border-border rounded-xl bg-card overflow-hidden`}>
-        <div className="p-3 border-b border-border">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-            <Input
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Поиск организации..."
-              className="pl-9"
-            />
-          </div>
-        </div>
-
-        <div className="flex-1 overflow-y-auto">
-          {displayList.length === 0 ? (
-            <div className="text-center py-12 text-muted-foreground">
-              <Building2 className="w-10 h-10 mx-auto mb-3 opacity-50" />
-              <p className="text-sm">Нет организаций</p>
-            </div>
-          ) : (
-            displayList.map((convo) => (
-              <button
-                key={convo.org.id}
-                onClick={() => setSelectedOrgId(convo.org.id)}
-                className={`w-full text-left px-4 py-3 border-b border-border/50 hover:bg-secondary/50 transition-colors ${
-                  selectedOrgId === convo.org.id ? "bg-primary/5" : ""
-                }`}
-              >
-                <div className="flex items-center gap-3">
-                  <ChatAvatar name={convo.org.name} size="sm" />
-                  <div className="min-w-0 flex-1">
-                    <span className={`font-medium text-sm truncate block ${convo.unreadCount > 0 ? "text-foreground" : "text-muted-foreground"}`}>
-                      {convo.org.name}
-                    </span>
-                    {convo.lastMessage && (
-                      <p className={`text-xs truncate mt-0.5 ${convo.unreadCount > 0 ? "text-foreground font-medium" : "text-muted-foreground"}`}>
-                        {convo.lastMessage}
-                      </p>
-                    )}
-                  </div>
-                  <div className="flex flex-col items-end gap-1 shrink-0">
-                    {convo.lastMessageAt && (
-                      <span className="text-[10px] text-muted-foreground">{formatTime(convo.lastMessageAt)}</span>
-                    )}
-                    {convo.unreadCount > 0 && (
-                      <Badge variant="destructive" className="text-[10px] px-1.5 py-0 h-4 min-w-[16px] flex items-center justify-center">
-                        {convo.unreadCount}
-                      </Badge>
-                    )}
-                  </div>
-                </div>
-              </button>
-            ))
-          )}
-        </div>
+    <div className="flex h-[calc(100vh-200px)] min-h-[500px] border border-border rounded-xl overflow-hidden bg-card">
+      <ChatSidebar
+        activeSection={activeSection}
+        onSectionChange={setActiveSection}
+        userName={userName}
+        avatarUrl={userAvatar}
+      />
+      <div className="flex-1 overflow-hidden p-4">
+        {renderContent()}
       </div>
-
-      {/* Chat detail */}
-      {!isMobile && (
-        <div className="flex-1 border border-border rounded-xl bg-card overflow-hidden flex flex-col">
-          {selectedOrgId ? (
-            <div className="flex flex-col h-full">
-              <div className="px-4 py-3 border-b border-border flex items-center gap-3">
-                <ChatAvatar name={selectedOrg?.org.name || ""} size="sm" />
-                <div>
-                  <h3 className="font-semibold">{selectedOrg?.org.name}</h3>
-                  {selectedOrg?.org.email && (
-                    <p className="text-xs text-muted-foreground">{selectedOrg.org.email}</p>
-                  )}
-                </div>
-              </div>
-              <div className="flex-1 p-4 overflow-hidden">
-                {renderChat()}
-              </div>
-            </div>
-          ) : (
-            <div className="flex-1 flex items-center justify-center text-muted-foreground">
-              <div className="text-center">
-                <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-muted/50 mb-4">
-                  <MessageCircle className="w-7 h-7 opacity-40" />
-                </div>
-                <p className="text-sm font-medium mb-1">Выберите организацию</p>
-                <p className="text-xs text-muted-foreground/70">Найдите организацию через поиск и начните диалог</p>
-              </div>
-            </div>
-          )}
-        </div>
-      )}
     </div>
-    </>
   );
 }
