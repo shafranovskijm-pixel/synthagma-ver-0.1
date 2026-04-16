@@ -1,6 +1,4 @@
 import { useState } from 'react';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { FileText, Package, Users, Building2, BarChart3, ScrollText, GitCompareArrows } from 'lucide-react';
 import { CommercialProposals } from './sales/CommercialProposals';
 import { SalesServices } from './sales/SalesServices';
 import { SalesManagersList } from './sales/SalesManagersList';
@@ -8,26 +6,29 @@ import { LeadsManager } from './sales/LeadsManager';
 import { SalesControlPanel } from './sales/SalesControlPanel';
 import { SalesContracts } from './sales/SalesContracts';
 import { CompetitorComparison } from './sales/CompetitorComparison';
+import { DemoLinksManager } from './sales/DemoLinksManager';
+import { SalesSidebar } from './sales/SalesSidebar';
+
+const TABS: Record<string, React.ReactNode> = {
+  proposals: <CommercialProposals />,
+  services: <SalesServices />,
+  managers: <SalesManagersList />,
+  leads: <LeadsManager />,
+  contracts: <SalesContracts />,
+  control: <SalesControlPanel />,
+  comparison: <CompetitorComparison />,
+  demo: <DemoLinksManager />,
+};
 
 export function SalesManager() {
+  const [activeTab, setActiveTab] = useState('proposals');
+
   return (
-    <Tabs defaultValue="proposals" className="space-y-4">
-      <TabsList className="flex flex-wrap gap-1">
-        <TabsTrigger value="proposals" className="gap-1.5"><FileText className="w-4 h-4" />КП</TabsTrigger>
-        <TabsTrigger value="services" className="gap-1.5"><Package className="w-4 h-4" />Услуги</TabsTrigger>
-        <TabsTrigger value="managers" className="gap-1.5"><Users className="w-4 h-4" />Менеджеры</TabsTrigger>
-        <TabsTrigger value="leads" className="gap-1.5"><Building2 className="w-4 h-4" />База компаний</TabsTrigger>
-        <TabsTrigger value="contracts" className="gap-1.5"><ScrollText className="w-4 h-4" />Договоры</TabsTrigger>
-        <TabsTrigger value="control" className="gap-1.5"><BarChart3 className="w-4 h-4" />Контроль</TabsTrigger>
-        <TabsTrigger value="comparison" className="gap-1.5"><GitCompareArrows className="w-4 h-4" />Сравнение</TabsTrigger>
-      </TabsList>
-      <TabsContent value="proposals"><CommercialProposals /></TabsContent>
-      <TabsContent value="services"><SalesServices /></TabsContent>
-      <TabsContent value="managers"><SalesManagersList /></TabsContent>
-      <TabsContent value="leads"><LeadsManager /></TabsContent>
-      <TabsContent value="contracts"><SalesContracts /></TabsContent>
-      <TabsContent value="control"><SalesControlPanel /></TabsContent>
-      <TabsContent value="comparison"><CompetitorComparison /></TabsContent>
-    </Tabs>
+    <div className="flex gap-4">
+      <SalesSidebar activeTab={activeTab} onTabChange={setActiveTab} />
+      <div className="flex-1 min-w-0">
+        {TABS[activeTab]}
+      </div>
+    </div>
   );
 }

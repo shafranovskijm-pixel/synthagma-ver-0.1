@@ -34,6 +34,8 @@ const WhatsNew = lazyWithRetry(() => import("@/pages/WhatsNew"));
 const HelpCenter = lazyWithRetry(() => import("@/pages/HelpCenter"));
 const JoinByLink = lazyWithRetry(() => import("@/pages/JoinByLink"));
 const CourseLanding = lazyWithRetry(() => import("@/pages/CourseLanding"));
+const DemoJoin = lazyWithRetry(() => import("@/pages/DemoJoin"));
+const DemoDashboard = lazyWithRetry(() => import("@/components/demo/DemoDashboard"));
 const NotFound = lazyWithRetry(() => import("@/pages/NotFound"));
 
 export const publicRoutes = (
@@ -74,6 +76,8 @@ export const publicRoutes = (
     <Route path="/presentation" element={<PlatformPresentation />} />
     <Route path="/whats-new" element={<WhatsNew />} />
     <Route path="/help" element={<HelpCenter />} />
+    <Route path="/demo/:token" element={<DemoJoin />} />
+    <Route path="/demo/:token/dashboard" element={<DemoDashboard />} />
     <Route path="*" element={<NotFound />} />
   </>
 );
