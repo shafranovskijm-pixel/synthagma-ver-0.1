@@ -3,6 +3,11 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { MARKETPLACE_ORG_ID } from "@/constants/marketplace";
 import { PROGRAM_TYPE_GROUPS, AUTO_CATEGORIZE_MAPPINGS } from "./adminMarketplaceHelpers";
+import {
+  fetchMarketplaceCourses, fetchMarketplaceOrders, fetchDbCategoriesData,
+  toggleCourseActive, deleteCourse, editCourse,
+  createCategory as createCategoryApi, moveCourseToCategory, reorderCategories as reorderCategoriesApi,
+} from "./useAdminMarketplaceCrud";
 
 interface MarketplaceCourseWithDetails {
   id: string;
@@ -93,63 +98,23 @@ export function useAdminMarketplace() {
   }, []);
 
   const fetchDbCategories = async () => {
-    const { data } = await supabase
-      .from("course_categories")
-      .select("id, name, color, order_index, parent_type, icon")
-      .eq("organization_id", MARKETPLACE_ORG_ID)
-      .order("order_index");
-    setDbCategories((data || []).map(d => ({
-      ...d,
-      order_index: (d as any).order_index ?? 0,
-      parent_type: (d as any).parent_type ?? "Повышение квалификации",
-      icon: (d as any).icon ?? null,
-    })));
+    setDbCategories(await fetchDbCategoriesData());
   };
 
   const fetchData = async () => {
     setIsLoading(true);
-    await Promise.all([fetchCourses(), fetchOrders()]);
+    const [c, o] = await Promise.all([fetchMarketplaceCourses(), fetchMarketplaceOrders()]);
+    setCourses(c as any);
+    setOrders(o as any);
     setIsLoading(false);
   };
 
   const fetchCourses = async () => {
-    const { data, error } = await supabase
-      .from("marketplace_courses")
-      .select("*, course:courses(id, title, description, duration, category_id), organization:organizations(name)")
-      .order("created_at", { ascending: false });
-    if (error) { console.error("Error fetching marketplace courses:", error); return; }
-    setCourses(data || []);
+    setCourses(await fetchMarketplaceCourses() as any);
   };
 
   const fetchOrders = async () => {
-    const { data, error } = await supabase
-      .from("marketplace_orders")
-      .select("*, marketplace_course:marketplace_courses(id, course:courses(id, title), organization:organizations(name)), buyer_organization:organizations!marketplace_orders_buyer_organization_id_fkey(name)")
-      .order("created_at", { ascending: false });
-    if (error) { console.error("Error fetching orders:", error); return; }
-    
-    const studentUserIds = (data || [])
-      .filter((o) => o.buyer_type === "student" && o.buyer_user_id)
-      .map((o) => o.buyer_user_id!);
-    
-    let profilesMap: Record<string, { full_name: string | null; email: string | null }> = {};
-    if (studentUserIds.length > 0) {
-      const { data: profiles } = await supabase
-        .from("profiles")
-        .select("user_id, full_name, email")
-        .in("user_id", studentUserIds);
-      if (profiles) {
-        for (const p of profiles) {
-          profilesMap[p.user_id] = { full_name: p.full_name, email: p.email };
-        }
-      }
-    }
-    
-    const ordersWithProfiles = (data || []).map((o) => ({
-      ...o,
-      buyer_profile: o.buyer_user_id ? profilesMap[o.buyer_user_id] || null : null,
-    }));
-    setOrders(ordersWithProfiles as MarketplaceOrder[]);
+    setOrders(await fetchMarketplaceOrders() as any);
   };
 
   const handleCreateCourse = async (): Promise<string | null> => {
