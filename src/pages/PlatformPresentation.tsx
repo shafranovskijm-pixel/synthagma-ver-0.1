@@ -82,7 +82,7 @@ const compData: CompRow[] = [
   { category: "Интеграции", feature: "Email-рассылки (SMTP)", sintagma: "partial", getcourse: "yes", ispring: "yes", moodle: "partial" },
   { category: "Интеграции", feature: "Видеохостинг Kinescope", sintagma: "yes", getcourse: "no", ispring: "no", moodle: "no" },
   { category: "Тарифы", feature: "Бесплатный тариф навсегда", sintagma: "yes", getcourse: "partial", ispring: "no", moodle: "yes" },
-  { category: "Тарифы", feature: "Стартовая цена", sintagma: "3 490 ₽/мес", getcourse: "4 990 ₽/мес", ispring: "27 000 ₽/год", moodle: "Бесплатно (self-hosted)" },
+  { category: "Тарифы", feature: "Стартовая цена", sintagma: "4 490 ₽/мес", getcourse: "4 990 ₽/мес", ispring: "27 000 ₽/год", moodle: "Бесплатно (self-hosted)" },
   { category: "Тарифы", feature: "Макс. учеников", sintagma: "Без ограничений", getcourse: "По тарифу", ispring: "По тарифу", moodle: "Без ограничений" },
   { category: "Поддержка", feature: "Техподдержка", sintagma: "yes", getcourse: "yes", ispring: "yes", moodle: "Сообщество" },
   { category: "Поддержка", feature: "Обучение работе", sintagma: "yes", getcourse: "partial", ispring: "yes", moodle: "no" },
@@ -512,10 +512,10 @@ export default function PlatformPresentation() {
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 md:gap-4">
             {[
               { name: "Бесплатный", desc: "Для знакомства с платформой", price: "0", students: "10", courses: "3", storage: "100 МБ", features: ["Настройки курсов", "Магазин курсов", "Чек-лист документов", "Видеоидентификация", "Брендирование", "Документы для ЛОО", "Охрана труда", "ФИС ФРДО", "ИИ-генерация", "ИИ-озвучка"] },
-              { name: "Старт", desc: "Для начинающих организаций", price: "3 490", students: "100", courses: "15", storage: "3 ГБ", features: ["Настройки курсов", "Магазин курсов", "Чек-лист документов", "Видеоидентификация", "Брендирование", "Документы для ЛОО", "Охрана труда", "ФИС ФРДО", "ИИ-генерация", "ИИ-озвучка"] },
+              { name: "Старт", desc: "Для начинающих организаций", price: "4 490", students: "100", courses: "15", storage: "3 ГБ", features: ["Настройки курсов", "Магазин курсов", "Чек-лист документов", "Видеоидентификация", "Брендирование", "Документы для ЛОО", "Охрана труда", "ФИС ФРДО", "ИИ-генерация", "ИИ-озвучка"] },
               { name: "Стандарт", desc: "Для активных организаций", price: "6 990", students: "200", courses: "30", storage: "10 ГБ", popular: true, features: ["Настройки курсов", "Магазин курсов", "Чек-лист документов", "Видеоидентификация", "Брендирование", "Документы для ЛОО", "Охрана труда", "ФИС ФРДО", "ИИ-генерация", "ИИ-озвучка"] },
-              { name: "Профессиональный", desc: "Для крупных организаций", price: "16 990", students: "1 000", courses: "50", storage: "50 ГБ", features: ["Настройки курсов", "Магазин курсов", "Чек-лист документов", "Видеоидентификация", "Брендирование", "Документы для ЛОО", "Охрана труда", "ФИС ФРДО+", "API для CRM", "ИИ-генерация", "ИИ-озвучка"] },
-              { name: "Максимальный", desc: "Полный доступ ко всем функциям", price: "24 990", students: "∞", courses: "∞", storage: "100 ГБ", features: ["Настройки курсов", "Магазин курсов", "Чек-лист документов", "Видеоидентификация", "Брендирование", "Документы для ЛОО", "Охрана труда", "ФИС ФРДО+", "API для CRM", "ИИ-генерация", "ИИ-озвучка"] },
+              { name: "Профессиональный", desc: "Для крупных организаций", price: "16 990", students: "1 000", courses: "50", storage: "50 ГБ", features: ["Настройки курсов", "Магазин курсов", "Чек-лист документов", "Видеоидентификация", "Брендирование", "Документы для ЛОО", "Охрана труда", "ФИС ФРДО+", "Вебинары", "Видеосервис+", "ИИ-генерация", "ИИ-озвучка"] },
+              { name: "Максимальный", desc: "Полный доступ ко всем функциям", price: "24 990", students: "∞", courses: "∞", storage: "100 ГБ", features: ["Настройки курсов", "Магазин курсов", "Чек-лист документов", "Видеоидентификация", "Брендирование", "Документы для ЛОО", "Охрана труда", "ФИС ФРДО+", "Вебинары", "Видеосервис+", "3D-тренажёры", "ИИ-генерация", "ИИ-озвучка"] },
             ].map((p, i) => (
               <div key={i} className={`rounded-2xl p-4 md:p-5 border flex flex-col relative ${p.popular ? "bg-[hsl(174_72%_46%/0.1)] border-[hsl(174_72%_46%)] ring-1 ring-[hsl(174_72%_46%/0.3)]" : "bg-white/5 border-white/10"}`}>
                 {p.popular && <span className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-0.5 rounded-full bg-[hsl(174_72%_46%)] text-xs font-medium text-white whitespace-nowrap">Рекомендуем</span>}
@@ -532,8 +532,8 @@ export default function PlatformPresentation() {
                 <div className="space-y-1 text-[11px] text-white/60 flex-1">
                   {p.features.map((f, j) => (
                     <div key={j} className="flex items-center gap-1.5">
-                      <CheckCircle2 className={`w-3 h-3 flex-shrink-0 ${f.includes("ФРДО+") ? "text-[hsl(38_92%_50%)]" : "text-[hsl(174_72%_46%/0.7)]"}`} />
-                      <span className={f.includes("ФРДО+") ? "text-[hsl(38_92%_50%)] font-semibold" : ""}>{f}</span>
+                      <CheckCircle2 className={`w-3 h-3 flex-shrink-0 ${f.includes("ФРДО+") || f === "Видеосервис+" || f === "3D-тренажёры" ? "text-[hsl(38_92%_50%)]" : "text-[hsl(174_72%_46%/0.7)]"}`} />
+                      <span className={f.includes("ФРДО+") || f === "Видеосервис+" || f === "3D-тренажёры" ? "text-[hsl(38_92%_50%)] font-semibold" : ""}>{f}</span>
                     </div>
                   ))}
                 </div>

@@ -19,6 +19,8 @@ const featureDescriptions: Record<string, { description: string; minPlan: string
   "Охрана труда": { description: "Модуль для организации обучения по охране труда с журналами и протоколами.", minPlan: "Бесплатный" },
   "ФИС ФРДО": { description: "Выгрузка данных в Федеральный реестр документов об образовании. Автоматическое формирование XML.", minPlan: "Бесплатный" },
   "Вебинары": { description: "Проведение онлайн-вебинаров и трансляций с интеграцией Kinescope Live.", minPlan: "Профессиональный" },
+  "Видеосервис+": { description: "Загрузка видеофайлов размером более 2 ГБ. Профессиональный видеохостинг с DRM-защитой.", minPlan: "Профессиональный" },
+  "3D-тренажёры": { description: "Интерактивные 3D-тренажёры и симуляции для практического обучения.", minPlan: "Максимальный" },
   "ИИ-генерация": { description: "Автоматическое создание курсов, уроков и тестов с помощью искусственного интеллекта.", minPlan: "Бесплатный" },
   "ИИ-озвучка": { description: "Озвучивание текстовых уроков реалистичным голосом с помощью ИИ.", minPlan: "Бесплатный" },
 };
@@ -42,7 +44,9 @@ const featureRows: { label: string; link?: string; getValue: (p: SubscriptionPla
   { label: "Документы для ЛОО", link: "/feature/documents", getValue: (p) => SUBSCRIPTION_PLANS[p].enabledCategories.includes('documents') },
   { label: "Охрана труда", link: "/feature/labor-safety", getValue: (p) => SUBSCRIPTION_PLANS[p].enabledCategories.includes('labor_safety') },
   { label: "ФИС ФРДО", link: "/feature/frdo", getValue: (p) => SUBSCRIPTION_PLANS[p].enabledCategories.includes('frdo') },
-  { label: "Вебинары", getValue: (p) => SUBSCRIPTION_PLANS[p].enabledCategories.includes('webinars') },
+  { label: "Вебинары", getValue: (p) => SUBSCRIPTION_PLANS[p].limits.webinarsEnabled },
+  { label: "Видеосервис+", getValue: (p) => SUBSCRIPTION_PLANS[p].limits.videoServicePlus },
+  { label: "3D-тренажёры", getValue: (p) => SUBSCRIPTION_PLANS[p].limits.trainersEnabled },
   { label: "ИИ-генерация", link: "/feature/ai-courses", getValue: () => true },
   { label: "ИИ-озвучка", link: "/feature/ai-courses", getValue: () => true },
 ];

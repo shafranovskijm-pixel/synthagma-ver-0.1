@@ -14,6 +14,9 @@ export interface PlanLimits {
   frdoEnabled: boolean;
   reportsEnabled: boolean;
   kinescopeEnabled: boolean;
+  webinarsEnabled: boolean;
+  videoServicePlus: boolean; // загрузка видео >2 ГБ
+  trainersEnabled: boolean; // 3D-тренажёры
 }
 
 export interface PlanInfo {
@@ -47,13 +50,16 @@ export const SUBSCRIPTION_PLANS: Record<SubscriptionPlan, PlanInfo> = {
       frdoEnabled: true,
       reportsEnabled: true,
       kinescopeEnabled: false,
+      webinarsEnabled: false,
+      videoServicePlus: false,
+      trainersEnabled: false,
     },
     enabledCategories: ['courses', 'students', 'companies', 'documents', 'journals', 'frdo', 'links', 'library', 'services', 'settings', 'student_cabinet', 'labor_safety'],
   },
   start: {
     id: 'start',
     name: 'Старт',
-    price: 3490,
+    price: 4490,
     description: 'Для начинающих организаций',
     limits: {
       maxCourses: 15,
@@ -69,6 +75,9 @@ export const SUBSCRIPTION_PLANS: Record<SubscriptionPlan, PlanInfo> = {
       frdoEnabled: true,
       reportsEnabled: true,
       kinescopeEnabled: false,
+      webinarsEnabled: false,
+      videoServicePlus: false,
+      trainersEnabled: false,
     },
     enabledCategories: ['courses', 'students', 'companies', 'documents', 'journals', 'frdo', 'links', 'library', 'services', 'settings', 'student_cabinet', 'labor_safety'],
   },
@@ -91,6 +100,9 @@ export const SUBSCRIPTION_PLANS: Record<SubscriptionPlan, PlanInfo> = {
       frdoEnabled: true,
       reportsEnabled: true,
       kinescopeEnabled: false,
+      webinarsEnabled: false,
+      videoServicePlus: false,
+      trainersEnabled: false,
     },
     enabledCategories: ['courses', 'students', 'companies', 'documents', 'journals', 'frdo', 'links', 'library', 'services', 'settings', 'student_cabinet', 'labor_safety'],
   },
@@ -113,6 +125,9 @@ export const SUBSCRIPTION_PLANS: Record<SubscriptionPlan, PlanInfo> = {
       frdoEnabled: true,
       reportsEnabled: true,
       kinescopeEnabled: true,
+      webinarsEnabled: true,
+      videoServicePlus: true,
+      trainersEnabled: false,
     },
     enabledCategories: ['courses', 'students', 'companies', 'documents', 'journals', 'frdo', 'links', 'library', 'services', 'settings', 'student_cabinet', 'labor_safety', 'webinars'],
   },
@@ -135,8 +150,11 @@ export const SUBSCRIPTION_PLANS: Record<SubscriptionPlan, PlanInfo> = {
       frdoEnabled: true,
       reportsEnabled: true,
       kinescopeEnabled: true,
+      webinarsEnabled: true,
+      videoServicePlus: true,
+      trainersEnabled: true,
     },
-    enabledCategories: ['courses', 'students', 'companies', 'documents', 'journals', 'frdo', 'links', 'library', 'services', 'settings', 'student_cabinet', 'labor_safety', 'webinars'],
+    enabledCategories: ['courses', 'students', 'companies', 'documents', 'journals', 'frdo', 'links', 'library', 'services', 'settings', 'student_cabinet', 'labor_safety', 'webinars', '3d_trainers'],
   },
 };
 
