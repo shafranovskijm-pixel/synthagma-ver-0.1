@@ -1,6 +1,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { mergeCookiesFromResponse, getCookieHeader, getAuthToken, createApiFetch } from "../_shared/skillspace-auth.ts";
-import { extractLessonsFromStepList, extractLessonsFromFlows, parseLessonContent, getLessonFetchPaths, fetchFallbackPages, makeId, type LessonInfo, type ParsedLesson } from "../_shared/skillspace-lessons.ts";
+import { extractLessonsFromStepList, extractLessonsFromFlows, parseLessonContent, getLessonFetchPaths, fetchFallbackPages, type LessonInfo, type ParsedLesson } from "../_shared/skillspace-lessons.ts";
+import { makeId } from "../_shared/editorjs-converter.ts";
 import { createMediaTransfer } from "../_shared/skillspace-media.ts";
 
 const corsHeaders = {
