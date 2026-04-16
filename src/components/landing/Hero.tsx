@@ -222,27 +222,27 @@ export function Hero() {
       />
 
       {/* Navigation */}
-      <nav className="relative z-10 bg-card/80 backdrop-blur-md border-b border-border/30">
+      <nav className="relative z-10 bg-[#0a0e1a]/95 backdrop-blur-lg border-b border-white/10">
         <div className="container mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
             <Link to="/" className="flex items-center gap-3 group">
-              <div className="w-10 h-10 rounded-lg bg-foreground flex items-center justify-center group-hover:scale-105 transition-transform duration-300">
-                <span className="font-display font-bold text-xl text-background">Σ</span>
+              <div className="w-10 h-10 rounded-lg bg-white flex items-center justify-center group-hover:scale-105 transition-transform duration-300">
+                <span className="font-display font-bold text-xl text-[#0a0e1a]">Σ</span>
               </div>
-              <span className="font-display font-medium text-xl tracking-tight">СИНТАГМА</span>
+              <span className="font-display font-medium text-xl tracking-tight text-white">СИНТАГМА</span>
             </Link>
             
             <div className="hidden md:flex items-center gap-10">
-              <a href="#pricing" className="text-muted-foreground hover:text-foreground transition-colors text-sm tracking-wide">
+              <a href="#pricing" className="text-white/60 hover:text-white transition-colors text-sm tracking-wide">
                 Стоимость
               </a>
-              <Link to="/about" className="text-muted-foreground hover:text-foreground transition-colors text-sm tracking-wide">
+              <Link to="/about" className="text-white/60 hover:text-white transition-colors text-sm tracking-wide">
                 О нас
               </Link>
-              <Link to="/blog" className="text-muted-foreground hover:text-foreground transition-colors text-sm tracking-wide">
+              <Link to="/blog" className="text-white/60 hover:text-white transition-colors text-sm tracking-wide">
                 Блог
               </Link>
-              <Link to="/presentation" className="text-muted-foreground hover:text-foreground transition-colors text-sm tracking-wide">
+              <Link to="/presentation" className="text-white/60 hover:text-white transition-colors text-sm tracking-wide">
                 Презентация
               </Link>
             </div>
@@ -253,7 +253,7 @@ export function Hero() {
               </TooltipProvider>
               <ThemeToggle />
               <Link to="/login">
-                <Button variant="ghost" className="text-sm font-medium">
+                <Button variant="ghost" className="text-sm font-medium text-white/80 hover:text-white hover:bg-white/10">
                   Войти
                 </Button>
               </Link>
