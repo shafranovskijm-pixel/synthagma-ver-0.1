@@ -34,6 +34,7 @@ export function OrgChatsTab() {
   const [selectedStudentId, setSelectedStudentId] = useState<string | null>(null);
   const [selectedStudentName, setSelectedStudentName] = useState<string>("");
   const [selectedAdminChat, setSelectedAdminChat] = useState(false);
+  const [selectedGeneralChat, setSelectedGeneralChat] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [adminUnreadCount, setAdminUnreadCount] = useState(0);
   const [showNewChatDialog, setShowNewChatDialog] = useState(false);
