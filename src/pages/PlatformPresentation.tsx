@@ -191,7 +191,7 @@ export default function PlatformPresentation() {
       {/* ═══ ПРОБЛЕМА ═══ */}
       <Section className="bg-[hsl(40_20%_98%)] dark:bg-[hsl(0_0%_8%)]">
         <div className="max-w-7xl mx-auto px-4 md:px-8 py-16 md:py-24">
-          <h2 className="text-3xl md:text-5xl font-bold text-[hsl(0_0%_8%)] dark:text-white mb-3">Проблема</h2>
+          <h2 className="text-3xl md:text-5xl font-bold text-[hsl(0_0%_8%)] dark:text-white mb-3"><InViewTypewriterText text="Проблема" speed={60} delay={200} /></h2>
           <p className="text-base md:text-xl text-[hsl(0_0%_45%)] dark:text-white/60 mb-10">С чем сталкиваются образовательные организации каждый день</p>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-6">
             {[
@@ -217,22 +217,30 @@ export default function PlatformPresentation() {
       {/* ═══ РЕШЕНИЕ ═══ */}
       <Section className="bg-gradient-to-br from-[hsl(174_72%_46%)] to-[hsl(174_60%_28%)] text-white">
         <div className="max-w-7xl mx-auto px-4 md:px-8 py-16 md:py-24 text-center">
-          <h2 className="text-3xl md:text-5xl font-bold mb-4">Единая платформа</h2>
+          <h2 className="text-3xl md:text-5xl font-bold mb-4"><InViewTypewriterText text="Единая платформа" speed={50} delay={200} /></h2>
           <p className="text-base md:text-xl text-white/80 mb-12 max-w-3xl mx-auto">Всё для образовательной организации — от создания курсов до выгрузки в ФИС ФРДО</p>
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-4 md:gap-6 max-w-4xl mx-auto">
-            {[
-              { icon: BookOpen, label: "Курсы и обучение" },
-              { icon: FileText, label: "Документооборот" },
-              { icon: Brain, label: "ИИ-ассистент" },
-              { icon: Video, label: "Видеоидентификация" },
-              { icon: Database, label: "ФИС ФРДО" },
-              { icon: Shield, label: "Охрана труда" },
-            ].map((f, i) => (
-              <div key={i} className="bg-white/15 backdrop-blur-sm rounded-2xl p-5 md:p-8 flex flex-col items-center gap-3">
-                <f.icon className="w-8 h-8 md:w-10 md:h-10" />
-                <span className="text-sm md:text-base font-medium">{f.label}</span>
-              </div>
-            ))}
+          <div className="overflow-hidden [mask-image:linear-gradient(to_right,transparent,black_10%,black_90%,transparent)]">
+            <div className="flex gap-4 md:gap-6 animate-marquee hover:[animation-play-state:paused] w-max">
+              {[
+                { icon: BookOpen, label: "Курсы и обучение" },
+                { icon: FileText, label: "Документооборот" },
+                { icon: Brain, label: "ИИ-ассистент" },
+                { icon: Video, label: "Видеоидентификация" },
+                { icon: Database, label: "ФИС ФРДО" },
+                { icon: Shield, label: "Охрана труда" },
+                { icon: BookOpen, label: "Курсы и обучение" },
+                { icon: FileText, label: "Документооборот" },
+                { icon: Brain, label: "ИИ-ассистент" },
+                { icon: Video, label: "Видеоидентификация" },
+                { icon: Database, label: "ФИС ФРДО" },
+                { icon: Shield, label: "Охрана труда" },
+              ].map((f, i) => (
+                <div key={i} className="bg-white/15 backdrop-blur-sm rounded-2xl p-6 md:p-8 flex flex-col items-center gap-3 min-w-[160px] md:min-w-[200px] hover:scale-105 transition-transform">
+                  <f.icon className="w-8 h-8 md:w-10 md:h-10" />
+                  <span className="text-sm md:text-base font-medium whitespace-nowrap">{f.label}</span>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       </Section>
