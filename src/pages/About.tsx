@@ -209,8 +209,12 @@ const About = () => {
       </section>
 
       {/* Legal Info */}
-      <section className="py-16">
-        <div className="container mx-auto px-6">
+      <section className="py-16 relative overflow-hidden">
+        <div className="absolute inset-0 z-0">
+          <img src={requisitesBg} alt="" className="w-full h-full object-cover opacity-20 dark:opacity-15" loading="lazy" />
+          <div className="absolute inset-0 bg-background/90" />
+        </div>
+        <div className="container mx-auto px-6 relative z-10">
           <div className="max-w-2xl mx-auto">
             <h2 className="font-display text-3xl font-bold text-center mb-12">Реквизиты</h2>
             <Card>
