@@ -1,48 +1,30 @@
 
 
-# Анимации: логотип, typewriter, звёзды, marquee
+# Исправления: логотип + переход шапка→контент
 
-## Изменения
+## Проблемы
+1. **Логотип**: CSS селектор `.group:hover span[style]` применяет одну анимацию ко всем буквам одновременно, игнорируя stagger-задержку. Буквы просто мигают вместо последовательного слёта.
+2. **Переход**: Gradient blur выглядит как артефакт. Нужно убрать размытие и заменить на звёзды, которые летят от тёмного края вниз в светлый контент, меняя цвет с белых на тёмные.
 
-### 1. Логотип — буквы слетаются медленнее
-**Файл:** `src/components/landing/LandingHeader.tsx`
-- Увеличить stagger задержку с `0.04s` на `0.08s` на каждую букву
-- Увеличить длительность анимации с `0.4s` на `0.6s`
-- Буквы стартуют из `translateX(30px)` вместо `20px` для более заметного эффекта
+## Решение
 
-### 2. Typewriter на странице Презентации
-**Файл:** `src/pages/PlatformPresentation.tsx`
-- Импортировать `TypewriterText`
-- Hero: «СИНТАГМА» — typewriter (`speed={80}`, `delay={500}`)
-- Hero: «Платформа для образовательных организаций» — typewriter (`speed={40}`, `delay={1200}`)
-- «Единая платформа» — typewriter
-- «Проблема» — typewriter
-- Остальные заголовки секций — typewriter с `useInView` (печатает при появлении на экране). Создать обёртку `InViewTypewriter` которая запускает typewriter только когда элемент виден.
+### 1. Логотип — буквы слетаются по одной (`LandingHeader.tsx`)
+- Убрать `<style>` блок с `.group:hover span[style]` — он перезаписывает inline стили
+- Вместо CSS keyframes использовать inline стили с `group-hover` через состояние React: при hover на группу каждая буква получает `translateX(0)` с уникальной `transition-delay`, а в покое буквы стоят на `translateX(30px)` с `opacity: 0`
+- Реализация: `useState` для `hovered`, `onMouseEnter`/`onMouseLeave` на `<Link>`. При `hovered=true` буквы плавно появляются одна за другой справа
 
-### 3. Звёзды летят вверх из Hero презентации в шапку
-**Файл:** `src/pages/PlatformPresentation.tsx`
-- Между `<LandingHeader />` и Hero секцией добавить зону с анимированными частицами (framer-motion)
-- Частицы (белые точки) анимируются снизу вверх (`y: [60, -20]`, `opacity: [0.6, 0]`) создавая эффект "звёзды улетают в шапку"
-- ~10 частиц с разной скоростью и позицией
-
-### 4. Gradient blur прилипает к шапке на главной
-**Файл:** `src/components/landing/Hero.tsx`
-- Градиент `from-[#0a0e1a] to-transparent` (строка 212) — увеличить высоту до `h-12` и добавить `sticky top-[64px] z-20` чтобы он "прилипал" к нижней границе шапки при скролле, создавая эффект перетекания размытости
-
-### 5. Единая платформа — marquee карточки
-**Файл:** `src/pages/PlatformPresentation.tsx` (секция «Решение», строки 200-220)
-- Заменить статичную сетку `grid` на горизонтальный marquee (бесконечный скролл) как в `Features.tsx`
-- Дублировать массив карточек (`[...items, ...items]`)
-- Использовать `animate-marquee` + mask-gradient для fade по краям
-- Карточки увеличить, добавить hover-эффект масштабирования
-- Пауза при hover (`group-hover:[animation-play-state:paused]`)
+### 2. Переход шапка→контент — звёзды вместо blur (`Hero.tsx`)
+- **Удалить**: sticky gradient div (строка 212) и framer-motion частицы (строки 213-223)
+- **Добавить**: Canvas-элемент высотой ~40px между шапкой и контентом с маленькими звёздами/точками, которые:
+  - Начинают сверху как белые (на тёмном фоне шапки)
+  - Летят вниз и постепенно темнеют, становясь `rgba(10,14,26, opacity)` — цвета фона шапки
+  - Создают эффект "звёзды вытекают из шапки в контент"
+- Реализация: простой CSS с `absolute` positioned dots анимированных через `@keyframes` (без Canvas для простоты) — ~12 точек разного размера, летящих вниз с `color` переходом от `white/30` к `currentColor/10`
 
 ## Файлы
 
-| Файл | Действие |
-|------|----------|
-| `src/components/landing/LandingHeader.tsx` | Замедлить анимацию букв |
-| `src/pages/PlatformPresentation.tsx` | TypewriterText на заголовках, звёзды вверх, marquee для "Единая платформа" |
-| `src/components/landing/Hero.tsx` | Sticky gradient blur |
-| `src/components/ui/TypewriterText.tsx` | Добавить вариант `InViewTypewriter` (запуск при видимости) |
+| Файл | Изменения |
+|------|-----------|
+| `src/components/landing/LandingHeader.tsx` | Убрать `<style>`, добавить React state для hover, буквы слетаются по одной |
+| `src/components/landing/Hero.tsx` | Убрать sticky gradient + motion particles, добавить падающие затемняющиеся звёзды |
 
