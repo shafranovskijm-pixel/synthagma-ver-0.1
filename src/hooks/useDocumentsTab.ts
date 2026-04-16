@@ -9,9 +9,15 @@ import { SUBSCRIPTION_PLANS } from "@/constants/subscriptionPlans";
 import { type OrgRequisites } from "@/hooks/useCompanyLinksAndGenerators";
 import { toast } from "sonner";
 
-export type DocumentSubTab = "constructor" | "programs" | "org" | "orders" | "protocols" | "certificates" | "diplomas" | "testimonials" | "billing" | "payers" | "journals" | "frdo" | "counterparties";
-export type BillingSubTab = "contracts" | "invoices" | "closing";
-export type CounterpartySubTab = "contracts" | "invoices" | "acts" | "faq";
+export type DocumentSubTab = "constructor" | "programs" | "org" | "orders" | "protocols" | "certificates" | "diplomas" | "testimonials" | "journals" | "frdo" | "counterparties";
+export type CounterpartySubTab = "contracts" | "invoices" | "closing" | "faq";
+export type CounterpartyType = "platform" | "company" | "payer";
+
+export interface CounterpartyOption {
+  id: string;
+  name: string;
+  type: CounterpartyType;
+}
 
 export interface BillingDoc {
   id: string;
