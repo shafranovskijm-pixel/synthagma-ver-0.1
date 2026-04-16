@@ -208,18 +208,28 @@ export function Hero() {
         </motion.div>
       </div>
 
-      {/* Gradient fade from header to hero */}
-      <div className="sticky top-[64px] z-20 h-12 bg-gradient-to-b from-[#0a0e1a] to-transparent pointer-events-none" />
-      <div className="absolute top-0 left-0 right-0 h-16 z-10 overflow-hidden pointer-events-none">
-        {[...Array(8)].map((_, i) => (
-          <motion.div
-            key={i}
-            className="absolute w-1 h-1 rounded-full bg-white/30"
-            style={{ left: `${12 + i * 11}%`, top: 0 }}
-            animate={{ y: [0, 60], opacity: [0.6, 0] }}
-            transition={{ duration: 2 + i * 0.3, repeat: Infinity, delay: i * 0.4, ease: "easeOut" }}
-          />
-        ))}
+      {/* Falling stars transition from header to content */}
+      <div className="relative h-10 overflow-hidden pointer-events-none -mt-1">
+        {[...Array(14)].map((_, i) => {
+          const left = 5 + (i * 7) % 90;
+          const size = 1 + (i % 3) * 0.5;
+          const duration = 1.8 + (i % 4) * 0.5;
+          const delay = (i * 0.3) % 2;
+          return (
+            <div
+              key={i}
+              className="absolute rounded-full"
+              style={{
+                left: `${left}%`,
+                top: 0,
+                width: size,
+                height: size,
+                background: `rgba(255,255,255,${0.15 + (i % 3) * 0.1})`,
+                animation: `star-fall ${duration}s ease-in ${delay}s infinite`,
+              }}
+            />
+          );
+        })}
       </div>
 
       {/* Hero content */}
