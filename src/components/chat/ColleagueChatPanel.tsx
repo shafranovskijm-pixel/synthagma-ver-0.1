@@ -70,7 +70,7 @@ export function ColleagueChatPanel({ role, organizationId }: ColleagueChatPanelP
     setIsLoadingContacts(true);
 
     // Get all colleague messages for this user
-    const { data: msgs } = await supabase
+    const { data: msgs } = await (supabase as any)
       .from("colleague_messages")
       .select("*")
       .or(`sender_id.eq.${user.id},recipient_id.eq.${user.id}`)
@@ -191,7 +191,7 @@ export function ColleagueChatPanel({ role, organizationId }: ColleagueChatPanelP
     if (!user) return;
     setIsLoadingMessages(true);
 
-    const { data } = await supabase
+    const { data } = await (supabase as any)
       .from("colleague_messages")
       .select("*")
       .or(`and(sender_id.eq.${user.id},recipient_id.eq.${contactId}),and(sender_id.eq.${contactId},recipient_id.eq.${user.id})`)
@@ -203,7 +203,7 @@ export function ColleagueChatPanel({ role, organizationId }: ColleagueChatPanelP
     // Mark as read
     const unread = ((data as ColleagueMessage[]) || []).filter(m => !m.is_read && m.recipient_id === user.id);
     if (unread.length > 0) {
-      await supabase
+      await (supabase as any)
         .from("colleague_messages")
         .update({ is_read: true })
         .in("id", unread.map(m => m.id));
@@ -228,7 +228,7 @@ export function ColleagueChatPanel({ role, organizationId }: ColleagueChatPanelP
       setNewMessage("");
       setTimeout(scrollToBottom, 50);
 
-      const { data, error } = await supabase.from("colleague_messages").insert({
+      const { data, error } = await (supabase as any).from("colleague_messages").insert({
         sender_id: user.id,
         recipient_id: selectedContactId,
         content: text,

@@ -21,7 +21,7 @@ export function ChatNotificationToggle({ chatType, chatPartnerId }: ChatNotifica
 
   const loadSetting = async () => {
     if (!user) return;
-    let query = supabase
+    let query = (supabase as any)
       .from("chat_notification_settings")
       .select("muted")
       .eq("user_id", user.id)
@@ -50,9 +50,9 @@ export function ChatNotificationToggle({ chatType, chatPartnerId }: ChatNotifica
     if (chatPartnerId) payload.chat_partner_id = chatPartnerId;
 
     // Upsert
-    const { error } = await supabase
+    const { error } = await (supabase as any)
       .from("chat_notification_settings")
-      .upsert(payload, { onConflict: "user_id,chat_type,chat_partner_id" } as any);
+      .upsert(payload, { onConflict: "user_id,chat_type,chat_partner_id" });
 
     if (error) {
       setMuted(!newMuted);
