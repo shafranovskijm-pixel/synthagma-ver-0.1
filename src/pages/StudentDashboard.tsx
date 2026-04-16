@@ -1,16 +1,14 @@
 import { useState, useEffect } from "react";
-import { Navigate } from "react-router-dom";
+import { Navigate, useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import {
-  BookOpen, MessageCircle, Menu, Eye, X,
-  Library
+  BookOpen, MessageCircle, Menu, Eye, X, User,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { SigmaLogo } from "@/components/ui/SigmaLogo";
 import { PullToRefreshIndicator } from "@/components/ui/PullToRefreshIndicator";
 import { OnboardingDialog } from "@/components/onboarding/OnboardingDialog";
 import { studentOnboardingSteps } from "@/constants/onboardingSteps";
-import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { VideoIdentification } from "@/components/student/VideoIdentification";
 import { StudentConsentForm } from "@/components/student/StudentConsentForm";
 import { StudentDocumentsUpload } from "@/components/student/StudentDocumentsUpload";
@@ -18,22 +16,144 @@ import { AchievementsPanel } from "@/components/student/AchievementsPanel";
 import { useStudentDashboard } from "@/hooks/useStudentDashboard";
 import { toast } from "sonner";
 import { StudentChatsTab } from "@/components/student/StudentChatsTab";
-import { AvailablePaidCourses } from "@/components/student/AvailablePaidCourses";
 import { StudentSidebar, type StudentTab } from "@/components/student/StudentSidebar";
 import { StudentHeader } from "@/components/student/StudentHeader";
 import { StudentFooter } from "@/components/student/StudentFooter";
 import { OrgBanner } from "@/components/student/OrgBanner";
 import { CourseCatalog } from "@/components/student/CourseCatalog";
-import { StudentLibrary } from "@/components/student/StudentLibrary";
 import { cn } from "@/lib/utils";
-import { Video } from "lucide-react";
 import { StudentWebinarsList } from "@/components/student/StudentWebinarsList";
 import { Student3DTrainers } from "@/components/student/Student3DTrainers";
 import { StudentProfileContent } from "@/components/student/StudentProfileContent";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
+import { supabase } from "@/integrations/supabase/client";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel,
+  AlertDialogContent, AlertDialogDescription, AlertDialogFooter,
+  AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { CreditCard, ClipboardCheck } from "lucide-react";
+import { useIsMobile } from "@/hooks/use-mobile";
 
-function CatalogContent({ catalogCourses, categories, profile, branding, handleCourseClick }: any) {
+// T-Bank SDK loader
+let tbankSdkPromise: Promise<void> | null = null;
+function loadTBankSdk(): Promise<void> {
+  if (tbankSdkPromise) return tbankSdkPromise;
+  tbankSdkPromise = new Promise((resolve, reject) => {
+    if ((window as any).pay) { resolve(); return; }
+    const script = document.createElement("script");
+    script.src = "https://pay.tbank.ru/sdk/3.0/payment.js";
+    script.onload = () => resolve();
+    script.onerror = () => reject(new Error("Failed to load T-Bank SDK"));
+    document.head.appendChild(script);
+  });
+  return tbankSdkPromise;
+}
+
+function CatalogContent({
+  catalogCourses, categories, profile, branding, handleCourseClick,
+  enrolledCourses, isVideoIdentified, totalProgress, totalTimeSpent, totalCompletedLessons, formatTime,
+  user,
+}: any) {
+  const navigate = useNavigate();
   const [contentTab, setContentTab] = useState<"courses" | "webinars" | "trainers">("courses");
+  const [confirmCourse, setConfirmCourse] = useState<any>(null);
+  const [enrollCourse, setEnrollCourse] = useState<any>(null);
+  const [sendingCourseId, setSendingCourseId] = useState<string | null>(null);
+  const [enrollingCourseId, setEnrollingCourseId] = useState<string | null>(null);
+  const [paymentMode, setPaymentMode] = useState<"redirect" | "widget">("redirect");
+
+  useEffect(() => {
+    if (!profile?.organization_id) return;
+    supabase
+      .from("organization_payment_settings")
+      .select("payment_mode" as any)
+      .eq("organization_id", profile.organization_id)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (data) setPaymentMode((data as any).payment_mode || "redirect");
+      });
+  }, [profile?.organization_id]);
+
+  const handleBuy = (courseId: string) => {
+    const course = catalogCourses.find((c: any) => c.id === courseId);
+    if (course) setConfirmCourse(course);
+  };
+
+  const handleEnroll = (courseId: string) => {
+    const course = catalogCourses.find((c: any) => c.id === courseId);
+    if (course) setEnrollCourse(course);
+  };
+
+  const handlePayment = async (course: any) => {
+    setSendingCourseId(course.id);
+    try {
+      const { data, error } = await supabase.functions.invoke("tbank-init", {
+        body: { course_id: course.id, user_id: user?.id, email: user?.email },
+      });
+      if (error || !data?.url) throw new Error(data?.error || "Ошибка инициализации оплаты");
+
+      if (paymentMode === "widget" && data.paymentId) {
+        try {
+          await loadTBankSdk();
+          const pay = (window as any).pay;
+          if (pay) {
+            pay({
+              paymentId: data.paymentId,
+              onSuccess: () => { toast.success("Оплата прошла успешно!"); setSendingCourseId(null); setConfirmCourse(null); },
+              onClose: () => setSendingCourseId(null),
+              onFail: () => { toast.error("Оплата не прошла"); setSendingCourseId(null); },
+            });
+            return;
+          }
+        } catch { console.warn("T-Bank SDK unavailable, falling back to redirect"); }
+      }
+      window.location.href = data.url;
+    } catch (err: any) {
+      console.error("Payment error:", err);
+      toast.error(err.message || "Ошибка при создании платежа");
+      setSendingCourseId(null);
+    }
+  };
+
+  const handleEnrollRequest = async (course: any) => {
+    if (!user?.id) return;
+    setEnrollingCourseId(course.id);
+    try {
+      const { data: existingRequest } = await supabase
+        .from("enrollment_requests")
+        .select("id")
+        .eq("user_id", user.id)
+        .eq("course_id", course.id)
+        .eq("status", "pending")
+        .maybeSingle();
+
+      if (existingRequest) {
+        toast.info("Вы уже отправляли заявку на этот курс");
+        setEnrollCourse(null);
+        return;
+      }
+
+      const { error: requestError } = await supabase.from("enrollment_requests").insert({
+        user_id: user.id,
+        course_id: course.id,
+        status: "pending"
+      } as any);
+      if (requestError) throw requestError;
+
+      await supabase.functions.invoke("notify-enrollment-request", {
+        body: { course_id: course.id },
+      });
+
+      toast.success("Заявка отправлена!");
+      setEnrollCourse(null);
+    } catch (err: any) {
+      console.error("Enrollment request error:", err);
+      toast.error(err.message || "Ошибка при отправке заявки");
+    } finally {
+      setEnrollingCourseId(null);
+    }
+  };
 
   const tabs = [
     { id: "courses" as const, label: "Курсы" },
@@ -42,7 +162,7 @@ function CatalogContent({ catalogCourses, categories, profile, branding, handleC
   ];
 
   return (
-    <div className="p-6 space-y-6 max-w-[1400px] mx-auto flex-1">
+    <div className="p-4 md:p-6 space-y-4 md:space-y-6 max-w-[1400px] mx-auto flex-1">
       <OrgBanner
         orgName={profile?.organization_name || null}
         orgDescription={profile?.org_description}
@@ -58,7 +178,7 @@ function CatalogContent({ catalogCourses, categories, profile, branding, handleC
             key={t.id}
             onClick={() => setContentTab(t.id)}
             className={cn(
-              "px-5 py-2 rounded-md text-sm font-medium transition-all",
+              "px-4 md:px-5 py-2 rounded-md text-sm font-medium transition-all",
               contentTab === t.id
                 ? "bg-background text-foreground shadow-sm"
                 : "text-muted-foreground hover:text-foreground"
@@ -74,17 +194,70 @@ function CatalogContent({ catalogCourses, categories, profile, branding, handleC
           courses={catalogCourses}
           categories={categories}
           onCourseClick={(id: string, enrolled: boolean) => handleCourseClick(id, enrolled)}
+          enrolledCourses={enrolledCourses}
+          isVideoIdentified={isVideoIdentified}
+          totalProgress={totalProgress}
+          totalTimeSpent={totalTimeSpent}
+          totalCompletedLessons={totalCompletedLessons}
+          formatTime={formatTime}
+          onBuy={handleBuy}
+          onEnroll={handleEnroll}
         />
       )}
       {contentTab === "webinars" && <StudentWebinarsList />}
       {contentTab === "trainers" && <Student3DTrainers />}
+
+      {/* Payment confirmation dialog */}
+      <AlertDialog open={!!confirmCourse} onOpenChange={(open) => !open && setConfirmCourse(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Оплата курса</AlertDialogTitle>
+            <AlertDialogDescription>
+              Вы будете перенаправлены на страницу оплаты курса
+              «{confirmCourse?.title}» ({confirmCourse ? Number(confirmCourse.price).toLocaleString("ru-RU") : 0} ₽).
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Отмена</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => confirmCourse && handlePayment(confirmCourse)}
+              disabled={sendingCourseId === confirmCourse?.id}
+            >
+              <CreditCard className="w-4 h-4 mr-2" />
+              Перейти к оплате
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Enrollment request dialog */}
+      <AlertDialog open={!!enrollCourse} onOpenChange={(open) => !open && setEnrollCourse(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Заявка на запись</AlertDialogTitle>
+            <AlertDialogDescription>
+              Ваша заявка на курс «{enrollCourse?.title}» будет отправлена в учебный центр.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Отмена</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => enrollCourse && handleEnrollRequest(enrollCourse)}
+              disabled={enrollingCourseId === enrollCourse?.id}
+            >
+              <ClipboardCheck className="w-4 h-4 mr-2" />
+              Отправить заявку
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
 
 export default function StudentDashboard() {
-  
   const { userRole } = useAuth();
+  const isMobile = useIsMobile();
 
   const isAdminViewFromStorage = (() => {
     try { return !!localStorage.getItem('adminViewAsStudent'); } catch { return false; }
@@ -94,7 +267,7 @@ export default function StudentDashboard() {
   })();
 
   const {
-    user, navigate, isMobile, theme, setTheme,
+    user, navigate, theme, setTheme,
     activeTab, setActiveTab: setActiveTabRaw, messages, inputValue, setInputValue, isAiLoading, handleSendMessage,
     courses, catalogCourses, categories, profile, branding, dashboardSettings, loading,
     totalTimeSpent, totalCompletedLessons, totalProgress, firstName, formatTime,
@@ -105,9 +278,8 @@ export default function StudentDashboard() {
     handleLogout, pullToRefreshRef, pullDistance, isRefreshing, canRefresh, orgPlan,
     isAdminView, adminViewStudentName } = useStudentDashboard();
 
-  // Narrow the tab type (hook may still have "store" internally)
   const setActiveTab = (tab: StudentTab) => setActiveTabRaw(tab as any);
-  const currentTab: StudentTab = (activeTab === "store" ? "catalog" : activeTab) as StudentTab;
+  const currentTab: StudentTab = (activeTab === "store" || activeTab === "library" ? "catalog" : activeTab) as StudentTab;
 
   const pendingDocsCount = documentsProgress.total - documentsProgress.completed;
 
@@ -135,39 +307,12 @@ export default function StudentDashboard() {
     }
   };
 
-  // Mobile sidebar content
-  const MobileSidebarContent = ({ onNavigate }: { onNavigate?: () => void }) => (
-    <div className="flex flex-col h-full">
-      <div className="p-4 border-b border-border">
-        {branding?.logoUrl ? (
-          <img src={branding.logoUrl} alt="Logo" className="h-8 object-contain" />
-        ) : <SigmaLogo size="sm" />}
-      </div>
-      <nav className="flex-1 p-3 space-y-1">
-        {([
-          { id: "catalog" as StudentTab, icon: BookOpen, label: "Каталог курсов" },
-          { id: "library" as StudentTab, icon: Library, label: "Мои курсы" },
-          ...(dashboardSettings.showAiChat ? [{ id: "chat" as StudentTab, icon: MessageCircle, label: "Чат" }] : []),
-        ]).map(item => (
-          <button
-            key={item.id}
-            onClick={() => { setActiveTab(item.id); onNavigate?.(); }}
-            className={cn(
-              "w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-colors",
-              currentTab === item.id ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-secondary"
-            )}
-          >
-            <item.icon className="w-5 h-5" />{item.label}
-          </button>
-        ))}
-      </nav>
-      <div className="p-3 border-t border-border">
-        <button onClick={handleLogout} className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-destructive hover:bg-destructive/10 transition-colors">
-          Выйти
-        </button>
-      </div>
-    </div>
-  );
+  // Bottom navigation items for mobile
+  const bottomNavItems: { id: StudentTab; icon: typeof BookOpen; label: string }[] = [
+    { id: "catalog", icon: BookOpen, label: "Каталог" },
+    ...(dashboardSettings.showAiChat ? [{ id: "chat" as StudentTab, icon: MessageCircle, label: "Чат" }] : []),
+    { id: "profile" as StudentTab, icon: User, label: "Профиль" },
+  ];
 
   return (
     <div className="min-h-screen bg-background flex">
@@ -196,30 +341,22 @@ export default function StudentDashboard() {
         </div>
       )}
 
-      {/* Desktop sidebar */}
-      <StudentSidebar
-        activeTab={currentTab}
-        setActiveTab={setActiveTab}
-        branding={branding}
-        orgName={profile?.organization_name || null}
-        showAiChat={dashboardSettings.showAiChat}
-        isPreviewMode={isPreviewMode}
-        isAdminView={isAdminView}
-      />
-
-      {/* Mobile header */}
-      <div className="md:hidden fixed top-0 inset-x-0 bg-card border-b border-border z-40 px-4 py-3 flex items-center justify-between">
-        <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
-          <SheetTrigger asChild><Button variant="ghost" size="icon"><Menu className="w-5 h-5" /></Button></SheetTrigger>
-          <SheetContent side="left" className="w-72 p-0"><MobileSidebarContent onNavigate={() => setMobileMenuOpen(false)} /></SheetContent>
-        </Sheet>
-        {branding?.logoUrl ? <img src={branding.logoUrl} className="h-8 object-contain" /> : <SigmaLogo size="sm" />}
-        <div className="w-10" />
+      {/* Desktop sidebar — hidden on mobile */}
+      <div className="hidden md:block">
+        <StudentSidebar
+          activeTab={currentTab}
+          setActiveTab={setActiveTab}
+          branding={branding}
+          orgName={profile?.organization_name || null}
+          showAiChat={dashboardSettings.showAiChat}
+          isPreviewMode={isPreviewMode}
+          isAdminView={isAdminView}
+        />
       </div>
 
       {/* Main content */}
       <div className={cn("flex-1 flex flex-col min-w-0", (isPreviewMode || isAdminView) && "md:mt-10")}>
-        {/* Top header */}
+        {/* Top header — desktop only */}
         <div className="hidden md:block">
           <StudentHeader
             fullName={profile?.full_name || null}
@@ -240,7 +377,7 @@ export default function StudentDashboard() {
 
         <main
           ref={isMobile ? pullToRefreshRef : undefined}
-          className="flex-1 overflow-auto pt-14 md:pt-0 flex flex-col"
+          className="flex-1 overflow-auto md:pt-0 flex flex-col pb-20 md:pb-0"
         >
           {isMobile && <PullToRefreshIndicator pullDistance={pullDistance} isRefreshing={isRefreshing} canRefresh={canRefresh} threshold={80} />}
 
@@ -252,28 +389,14 @@ export default function StudentDashboard() {
               profile={profile}
               branding={branding}
               handleCourseClick={handleCourseClick}
+              enrolledCourses={courses}
+              isVideoIdentified={isVideoIdentified}
+              totalProgress={totalProgress}
+              totalTimeSpent={totalTimeSpent}
+              totalCompletedLessons={totalCompletedLessons}
+              formatTime={formatTime}
+              user={user}
             />
-          )}
-
-          {/* Library tab */}
-          {currentTab === "library" && (
-            <div className="p-6 max-w-[1400px] mx-auto flex-1">
-              <StudentLibrary
-                courses={courses}
-                totalProgress={totalProgress}
-                totalTimeSpent={totalTimeSpent}
-                totalCompletedLessons={totalCompletedLessons}
-                formatTime={formatTime}
-                isVideoIdentified={isVideoIdentified}
-                onCourseClick={(id) => handleCourseClick(id, true)}
-                branding={branding}
-              />
-              {user && profile?.organization_id && (
-                <div className="mt-8">
-                  <AvailablePaidCourses userId={user.id} organizationId={profile.organization_id} userEmail={user.email} />
-                </div>
-              )}
-            </div>
           )}
 
           {/* Chat tab */}
@@ -296,8 +419,8 @@ export default function StudentDashboard() {
             </div>
           )}
 
-          {/* Footer — show on catalog, library, and profile tabs */}
-          {(currentTab === "catalog" || currentTab === "library" || currentTab === ("profile" as any)) && (
+          {/* Footer */}
+          {(currentTab === "catalog" || currentTab === ("profile" as any)) && (
             <StudentFooter
               orgName={profile?.organization_name || null}
               logoUrl={branding?.logoUrl}
@@ -305,6 +428,28 @@ export default function StudentDashboard() {
             />
           )}
         </main>
+      </div>
+
+      {/* Mobile bottom navigation */}
+      <div className="md:hidden fixed bottom-0 inset-x-0 z-40 bg-card border-t border-border">
+        <nav className="flex items-center justify-around h-14">
+          {bottomNavItems.map(item => {
+            const isActive = currentTab === item.id;
+            return (
+              <button
+                key={item.id}
+                onClick={() => setActiveTab(item.id)}
+                className={cn(
+                  "flex flex-col items-center justify-center gap-0.5 flex-1 h-full transition-colors",
+                  isActive ? "text-primary" : "text-muted-foreground"
+                )}
+              >
+                <item.icon className="w-5 h-5" />
+                <span className="text-[10px] font-medium">{item.label}</span>
+              </button>
+            );
+          })}
+        </nav>
       </div>
 
       {/* Dialogs */}
