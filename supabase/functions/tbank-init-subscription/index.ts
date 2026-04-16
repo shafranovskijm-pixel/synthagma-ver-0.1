@@ -174,13 +174,27 @@ Deno.serve(async (req) => {
       ? "https://rest-api-test.tinkoff.ru/v2/Init"
       : "https://securepay.tinkoff.ru/v2/Init";
 
+    console.log("T-Bank Init request to:", apiUrl, "TerminalKey:", terminalKey);
+
     const response = await fetch(apiUrl, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(requestBody),
     });
 
-    const result = await response.json();
+    const responseText = await response.text();
+    console.log("T-Bank response status:", response.status, "body preview:", responseText.substring(0, 300));
+
+    let result: any;
+    try {
+      result = JSON.parse(responseText);
+    } catch {
+      console.error("T-Bank returned non-JSON:", responseText.substring(0, 500));
+      return new Response(JSON.stringify({ error: "T-Bank returned invalid response", details: responseText.substring(0, 200) }), {
+        status: 502,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
 
     if (!result.Success) {
       console.error("T-Bank Init error:", result);
