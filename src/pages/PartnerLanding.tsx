@@ -219,10 +219,10 @@ const PartnerLanding = () => {
 
       <div className="min-h-screen bg-background overflow-hidden">
         {/* Header */}
-        <header className="sticky top-0 z-50 bg-background/95 backdrop-blur-sm border-b border-border">
+        <header className="sticky top-0 z-50 bg-[#0a0e1a]/95 backdrop-blur-lg border-b border-white/10">
           <div className="container mx-auto px-6 h-16 flex items-center justify-between">
             <Link to="/" className="flex items-center gap-2">
-              <SigmaLogo size="md" showText />
+              <SigmaLogo size="md" showText className="text-white" />
             </Link>
             <div className="flex items-center gap-3">
               {isPartner ? (

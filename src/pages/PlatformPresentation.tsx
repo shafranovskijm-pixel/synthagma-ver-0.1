@@ -613,7 +613,8 @@ export default function PlatformPresentation() {
             <span>sintagma.com.ru</span>
           </div>
         </div>
-      </Section>
+    </Section>
+      <Footer />
     </div>
   );
 }
