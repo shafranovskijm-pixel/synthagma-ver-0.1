@@ -178,15 +178,15 @@ export interface QualityMetric {
 
 export const QUALITY_METRICS: QualityMetric[] = [
   { label: "Средний размер файла", value: Math.round(TOTAL_LINES / TOTAL_FILES), max: 300, unit: "строк", status: Math.round(TOTAL_LINES / TOTAL_FILES) > 300 ? "warning" : "good" },
-  { label: "Крупнейший файл", value: 874, max: 500, unit: "строк", status: "warning" },
-  { label: "Файлов >800 строк", value: 10, max: 0, unit: "штук", status: "warning" },
-  { label: "Файлов >500 строк", value: 52, max: 10, unit: "штук", status: "critical" },
+  { label: "Крупнейший файл", value: 637, max: 500, unit: "строк", status: "warning" },
+  { label: "Файлов >800 строк", value: 0, max: 0, unit: "штук", status: "good" },
+  { label: "Файлов >500 строк", value: 6, max: 10, unit: "штук", status: "good" },
   { label: "Покрытие тестами", value: 10, max: 50, unit: "файлов", status: "warning" },
-  { label: "Lazy-loaded страниц", value: 60, max: 60, unit: "из 60", status: "good" },
+  { label: "Lazy-loaded страниц", value: 61, max: 61, unit: "из 61", status: "good" },
   { label: "Dynamic imports", value: 4, max: 4, unit: "библиотек", status: "good" },
-  { label: "Кастомные хуки", value: 92, max: 100, unit: "штук", status: "good" },
-  { label: "Context Coverage", value: 63, max: 100, unit: "%", status: "warning" },
-  { label: "Edge-функции", value: 63, max: 63, unit: "штук", status: "good" },
+  { label: "Кастомные хуки", value: 123, max: 130, unit: "штук", status: "good" },
+  { label: "Context Coverage", value: 72, max: 100, unit: "%", status: "good" },
+  { label: "Edge-функции", value: 64, max: 64, unit: "штук", status: "good" },
   { label: "Таблиц в БД", value: 118, max: 150, unit: "штук", status: "good" },
 ];
 
