@@ -1,4 +1,4 @@
-import { BookOpen, Clock, Lock, CheckCircle2, ShoppingCart, Play, ClipboardCheck, CreditCard } from "lucide-react";
+import { BookOpen, Clock, Lock, CheckCircle2, ShoppingCart, Play, ClipboardCheck, CreditCard, Eye } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
