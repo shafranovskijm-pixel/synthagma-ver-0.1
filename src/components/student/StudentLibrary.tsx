@@ -1,5 +1,6 @@
 import { BookOpen, Clock, CheckCircle2 } from "lucide-react";
 import { CourseCardNew } from "./CourseCardNew";
+import { HeroBannerSwiper } from "@/components/shared/HeroBannerSwiper";
 import type { StudentCourse } from "@/hooks/useStudentDashboard";
 
 interface StudentLibraryProps {
@@ -20,12 +21,8 @@ export function StudentLibrary({
   return (
     <div className="space-y-6">
       {/* Progress summary card */}
-      <div
-        className="rounded-2xl p-6 text-white"
-        style={branding ? { background: `linear-gradient(135deg, ${branding.primaryColor}, ${branding.secondaryColor})` } : undefined}
-      >
-        {!branding && <div className="absolute inset-0 bg-gradient-to-r from-primary via-accent to-primary/70 rounded-2xl -z-10" />}
-        <div className="flex items-center justify-between relative z-10">
+      <HeroBannerSwiper className="!h-auto !min-h-[140px]">
+        <div className="relative z-10 p-6 flex items-center justify-between text-white">
           <div>
             <h2 className="font-bold text-lg mb-1">Общий прогресс</h2>
             <p className="text-white/80 text-sm mb-3">{courses.length} {courses.length === 1 ? "курс" : courses.length < 5 ? "курса" : "курсов"}</p>
@@ -42,7 +39,7 @@ export function StudentLibrary({
             <div className="absolute inset-0 flex items-center justify-center text-xl font-bold">{totalProgress}%</div>
           </div>
         </div>
-      </div>
+      </HeroBannerSwiper>
 
       {/* Course grid */}
       {courses.length === 0 ? (

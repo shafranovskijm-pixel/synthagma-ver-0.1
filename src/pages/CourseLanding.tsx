@@ -203,6 +203,14 @@ export default function CourseLanding() {
           message: `${studentName} хочет приобрести курс «${course.title}» (${finalPrice.toLocaleString("ru-RU")} ₽)`,
           is_read: false });
 
+        // Also create enrollment_request so it appears in org requests panel
+        await supabase.from("enrollment_requests").insert({
+          user_id: user.id,
+          course_id: course.id,
+          status: "pending"
+        } as any);
+
+        setHasPendingRequest(true);
         toast.success("Заявка отправлена!", { description: "Учебный центр свяжется с вами" });
       } catch (e: any) {
         console.error("Purchase request error:", e);

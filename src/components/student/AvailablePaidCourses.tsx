@@ -155,6 +155,13 @@ export function AvailablePaidCourses({ userId, organizationId, userEmail }: Prop
         is_read: false,
       } as any);
 
+      // Also create enrollment_request so it appears in org requests panel
+      await supabase.from("enrollment_requests").insert({
+        user_id: userId,
+        course_id: course.id,
+        status: "pending"
+      } as any);
+
       toast.success("Заявка отправлена! Учебный центр свяжется с вами");
       setEnrollCourse(null);
     } catch (err: any) {
