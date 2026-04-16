@@ -1,26 +1,32 @@
 
 
-# Подвал всегда тёмный
+# Единый тёмный стиль шапки + подвал на всех страницах
 
 ## Что будет сделано
 
-Вернуть подвал лендинга к фиксированному тёмному режиму — заменить все тематические CSS-переменные (`bg-background`, `text-foreground` и т.д.) на хардкод-цвета тёмной палитры. Звёзды будут всегда видны, переключатель светлая/тёмная на подвал не влияет.
+1. **Шапка главной страницы** (`Hero.tsx`, строка 225) — сделать всегда тёмной как подвал:
+   - `bg-card/80 backdrop-blur-md` → `bg-[#0a0e1a]/95 backdrop-blur-lg`
+   - `border-border/30` → `border-white/10`
+   - `bg-foreground` (логотип) → `bg-white`
+   - `text-background` → `text-[#0a0e1a]`
+   - Текст навигации и название: `text-muted-foreground` → `text-white/60`, `hover:text-foreground` → `hover:text-white`
+   - Кнопки «Войти»/«Начать»: белый текст
 
-## Технические детали
+2. **Шапка страницы Презентации** (`PlatformPresentation.tsx`, строка 143) — уже тёмная, без изменений.
 
-### Файл: `src/components/landing/Footer.tsx`
+3. **Подвал страницы Презентации** (`PlatformPresentation.tsx`) — добавить `<Footer />` после последней секции (перед закрывающим `</div>`). Сейчас подвала нет.
 
-Замены классов:
-- `bg-background` → `bg-[#0a0e1a]`
-- `text-foreground` → `text-white`
-- `text-muted-foreground` → `text-white/60`
-- `text-muted-foreground/60` → `text-white/40`
-- `text-muted-foreground/50` → `text-white/35`
-- `bg-foreground` → `bg-white`
-- `text-background` → `text-[#0a0e1a]`
-- `bg-foreground/10` → `bg-white/10`
-- `bg-foreground/15` → `bg-white/15`
-- `border-foreground/20` → `border-white/20`
-- `hover:text-foreground` → `hover:text-white`
-- `hover:text-muted-foreground` → `hover:text-white/60`
+4. **Шапка страницы Партнёров** (`PartnerLanding.tsx`, строка 222) — сделать тёмной:
+   - `bg-background/95 backdrop-blur-sm border-border` → `bg-[#0a0e1a]/95 backdrop-blur-lg border-white/10`
+   - Логотип и кнопки — белый текст
+
+5. **Подвал страницы Партнёров** — уже использует `<Footer />`, без изменений.
+
+## Файлы
+
+| Файл | Изменения |
+|------|-----------|
+| `src/components/landing/Hero.tsx` | Тёмная шапка (навигация, строки 225-268) |
+| `src/pages/PlatformPresentation.tsx` | Добавить `<Footer />` в конец |
+| `src/pages/PartnerLanding.tsx` | Тёмная шапка (строки 222-239) |
 
