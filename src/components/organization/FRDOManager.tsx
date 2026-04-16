@@ -1,10 +1,12 @@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Download, Search, Users, CheckCircle2, AlertCircle, XCircle, Filter, FileSpreadsheet, Shield, BarChart3, Upload, ClipboardCheck, BookOpen } from "lucide-react";
+import { Download, Search, Users, CheckCircle2, AlertCircle, XCircle, Filter, FileSpreadsheet, Shield, BarChart3, Upload, ClipboardCheck, BookOpen, Send } from "lucide-react";
 import { FRDOExportDialog } from "./FRDOExportDialog";
 import { useFRDOManager } from "@/hooks/useFRDOManager";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
+import { LoadMoreControls } from "@/components/ui/LoadMoreControls";
+import { useRef } from "react";
 
 export function FRDOManager({ organizationId }: { organizationId: string }) {
   const {
@@ -13,16 +15,34 @@ export function FRDOManager({ organizationId }: { organizationId: string }) {
     selectedStudents, isExporting, showExportDialog, setShowExportDialog,
     selectedStudentForExport, selectedEnrollmentForExport,
     filteredStudents, getFrdoStatus, toggleStudentSelection, toggleSelectAll,
-    handleBulkExport, openStudentExport, hasPOCourses, stats, missingFieldsStats
+    handleBulkExport, openStudentExport, hasPOCourses, stats, missingFieldsStats,
+    visibleCount, handleLoadMore, handleUploadSigned, handleSendToAdmin, isUploading,
   } = useFRDOManager(organizationId);
 
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) handleUploadSigned(file);
+    e.target.value = "";
+  };
+
   if (isLoading) return <div className="flex items-center justify-center py-12"><SigmaSpinner size="lg" /></div>;
+
+  const visibleStudents = filteredStudents.slice(0, visibleCount);
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div><h2 className="text-2xl font-display font-semibold">ФИС ФРДО</h2><p className="text-muted-foreground">Управление данными</p></div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
+          <input ref={fileInputRef} type="file" className="hidden" onChange={handleFileChange} accept=".xlsx,.xls,.pdf,.zip" />
+          <Button variant="outline" onClick={() => fileInputRef.current?.click()} className="rounded-xl gap-2" disabled={isUploading}>
+            {isUploading ? <SigmaSpinner size="sm" /> : <Upload className="w-4 h-4" />}Загрузить подписанный
+          </Button>
+          <Button variant="outline" onClick={handleSendToAdmin} className="rounded-xl gap-2">
+            <Send className="w-4 h-4" />Отправить в ФРДО
+          </Button>
           <Button onClick={() => handleBulkExport("dpo")} className="rounded-xl gap-2" disabled={isExporting || students.length === 0}>{isExporting ? <SigmaSpinner size="sm" /> : <Download className="w-4 h-4" />}Выгрузить ДПО</Button>
           {hasPOCourses && <Button variant="secondary" onClick={() => handleBulkExport("po")} className="rounded-xl gap-2" disabled={isExporting || students.length === 0}>{isExporting ? <SigmaSpinner size="sm" /> : <Download className="w-4 h-4" />}Выгрузить ПО</Button>}
         </div>
@@ -93,19 +113,22 @@ export function FRDOManager({ organizationId }: { organizationId: string }) {
             <div className="text-center py-12 text-muted-foreground"><FileSpreadsheet className="w-12 h-12 mx-auto mb-4 opacity-50" /><p>Нет студентов</p></div>
           )
         ) : (
-          <div className="overflow-x-auto"><table className="w-full"><thead><tr className="border-b border-border bg-muted/30"><th className="text-left px-4 py-4 w-12"><input type="checkbox" checked={selectedStudents.size === filteredStudents.length && filteredStudents.length > 0} onChange={toggleSelectAll} className="w-4 h-4 rounded" /></th><th className="text-left px-4 py-4 text-sm font-medium text-muted-foreground">Студент</th><th className="text-left px-4 py-4 text-sm font-medium text-muted-foreground">Статус</th><th className="text-left px-4 py-4 text-sm font-medium text-muted-foreground">Курс</th><th className="text-left px-4 py-4 text-sm font-medium text-muted-foreground">Действия</th></tr></thead><tbody>{filteredStudents.map(s => {
-            const { status, missingFields } = getFrdoStatus(s.user_id);
-            const isSelected = selectedStudents.has(s.user_id);
-            return (
-              <tr key={s.user_id} className={`border-b border-border last:border-0 hover:bg-muted/30 transition-colors ${isSelected ? 'bg-primary/5' : ''}`}>
-                <td className="px-4 py-4"><input type="checkbox" checked={isSelected} onChange={() => toggleStudentSelection(s.user_id)} className="w-4 h-4 rounded" /></td>
-                <td className="px-4 py-4"><div><div className="font-medium">{s.name}</div><div className="text-sm text-muted-foreground">{s.email}</div></div></td>
-                <td className="px-4 py-4">{status === "complete" ? <span className="flex items-center gap-2 text-sm text-green-600"><CheckCircle2 className="w-4 h-4" />Заполнено</span> : status === "incomplete" ? <span className="flex items-center gap-2 text-sm text-amber-600" title={missingFields.join(", ")}><AlertCircle className="w-4 h-4" />Не хватает</span> : <span className="flex items-center gap-2 text-sm text-muted-foreground"><XCircle className="w-4 h-4" />Пусто</span>}</td>
-                <td className="px-4 py-4 text-sm">{s.course || "Не зачислен"}</td>
-                <td className="px-4 py-4"><Button size="sm" variant="outline" className="rounded-lg gap-1" onClick={() => openStudentExport(s)}><FileSpreadsheet className="w-4 h-4" />Ред.</Button></td>
-              </tr>
-            );
-          })}</tbody></table></div>
+          <>
+            <div className="overflow-x-auto"><table className="w-full"><thead><tr className="border-b border-border bg-muted/30"><th className="text-left px-4 py-4 w-12"><input type="checkbox" checked={selectedStudents.size === filteredStudents.length && filteredStudents.length > 0} onChange={toggleSelectAll} className="w-4 h-4 rounded" /></th><th className="text-left px-4 py-4 text-sm font-medium text-muted-foreground">Студент</th><th className="text-left px-4 py-4 text-sm font-medium text-muted-foreground">Статус</th><th className="text-left px-4 py-4 text-sm font-medium text-muted-foreground">Курс</th><th className="text-left px-4 py-4 text-sm font-medium text-muted-foreground">Действия</th></tr></thead><tbody>{visibleStudents.map(s => {
+              const { status, missingFields } = getFrdoStatus(s.user_id);
+              const isSelected = selectedStudents.has(s.user_id);
+              return (
+                <tr key={s.user_id} className={`border-b border-border last:border-0 hover:bg-muted/30 transition-colors ${isSelected ? 'bg-primary/5' : ''}`}>
+                  <td className="px-4 py-4"><input type="checkbox" checked={isSelected} onChange={() => toggleStudentSelection(s.user_id)} className="w-4 h-4 rounded" /></td>
+                  <td className="px-4 py-4"><div><div className="font-medium">{s.name}</div><div className="text-sm text-muted-foreground">{s.email}</div></div></td>
+                  <td className="px-4 py-4">{status === "complete" ? <span className="flex items-center gap-2 text-sm text-green-600"><CheckCircle2 className="w-4 h-4" />Заполнено</span> : status === "incomplete" ? <span className="flex items-center gap-2 text-sm text-amber-600" title={missingFields.join(", ")}><AlertCircle className="w-4 h-4" />Не хватает</span> : <span className="flex items-center gap-2 text-sm text-muted-foreground"><XCircle className="w-4 h-4" />Пусто</span>}</td>
+                  <td className="px-4 py-4 text-sm">{s.course || "Не зачислен"}</td>
+                  <td className="px-4 py-4"><Button size="sm" variant="outline" className="rounded-lg gap-1" onClick={() => openStudentExport(s)}><FileSpreadsheet className="w-4 h-4" />Ред.</Button></td>
+                </tr>
+              );
+            })}</tbody></table></div>
+            <LoadMoreControls visibleCount={visibleCount} totalCount={filteredStudents.length} onLoadMore={handleLoadMore} />
+          </>
         )}
       </div>
 
