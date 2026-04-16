@@ -128,45 +128,40 @@ export function AvailablePaidCourses({ userId, organizationId, userEmail }: Prop
   const handleEnrollRequest = async (course: PaidCourse) => {
     setEnrollingCourseId(course.id);
     try {
-      // Get student name
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("full_name, email")
+      const { data: existingRequest } = await supabase
+        .from("enrollment_requests")
+        .select("id")
         .eq("user_id", userId)
+        .eq("course_id", course.id)
+        .eq("status", "pending")
         .maybeSingle();
-      const studentName = profile?.full_name || profile?.email || "Ученик";
 
-      // Send chat message to organization
-      await supabase.from("chat_messages").insert({
-        user_id: userId,
-        course_id: course.id,
-        role: "user",
-        content: `Заявка на запись: ${studentName} хочет записаться на курс «${course.title}» (${Number(course.price).toLocaleString("ru-RU")} ₽)`,
-      });
+      if (existingRequest) {
+        toast.info("Вы уже отправляли заявку на этот курс");
+        setEnrollCourse(null);
+        return;
+      }
 
-      // Create org notification
-      await supabase.from("org_notifications" as any).insert({
-        organization_id: course.organization_id,
-        user_id: userId,
-        type: "enrollment_request",
-        title: "Заявка на запись",
-        message: `${studentName} хочет записаться на курс «${course.title}»`,
-        related_id: course.id,
-        is_read: false,
-      } as any);
-
-      // Also create enrollment_request so it appears in org requests panel
-      await supabase.from("enrollment_requests").insert({
+      const { error: requestError } = await supabase.from("enrollment_requests").insert({
         user_id: userId,
         course_id: course.id,
         status: "pending"
       } as any);
+      if (requestError) throw requestError;
 
-      toast.success("Заявка отправлена! Учебный центр свяжется с вами");
+      const notifyResult = await supabase.functions.invoke("notify-enrollment-request", {
+        body: { course_id: course.id },
+      });
+      if (notifyResult.error) {
+        console.error("Enrollment request notify error:", notifyResult.error);
+      }
+
+      toast.success("Заявка отправлена! Учебный центр увидит её в заявках, чате и уведомлениях");
       setEnrollCourse(null);
+      fetchAvailableCourses();
     } catch (err: any) {
       console.error("Enrollment request error:", err);
-      toast.error("Ошибка при отправке заявки");
+      toast.error(err.message || "Ошибка при отправке заявки");
     } finally {
       setEnrollingCourseId(null);
     }
