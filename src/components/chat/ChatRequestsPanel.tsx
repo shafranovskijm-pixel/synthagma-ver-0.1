@@ -165,7 +165,7 @@ export function ChatRequestsPanel({ role, organizationId, userId }: ChatRequests
               key={f}
               onClick={() => setFilter(f)}
               className={`text-xs px-2.5 py-1 rounded-lg transition-colors ${
-                filter === f ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-secondary"
+                filter === f ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-secondary/50"
               }`}
             >
               {f === "all" ? "Все" : statusLabel(f)}
