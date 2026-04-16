@@ -78,6 +78,8 @@ export function AdminDashboardHeader({
   onNotificationClick,
   branding,
   onCoverUpload }: AdminDashboardHeaderProps) {
+  const { theme, setTheme } = useTheme();
+  const toggleTheme = () => setTheme(theme === "dark" ? "light" : "dark");
   const helpDialog = useHelpCenterDialog();
 
   const displayName = branding.customName || "СИНТАГМА";
@@ -96,7 +98,14 @@ export function AdminDashboardHeader({
             {branding.logoUrl ? (
               <img src={branding.logoUrl} alt="Logo" className="w-8 h-8 object-contain rounded-lg" />
             ) : (
-              <SigmaLogo size="sm" showText={false} />
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button onClick={toggleTheme} className="hover:opacity-80 transition-opacity">
+                    <SigmaLogo size="sm" showText={false} />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent>Сменить тему</TooltipContent>
+              </Tooltip>
             )}
             <div className="hidden sm:block">
               <span className="font-display font-bold text-sm">{displayName}</span>

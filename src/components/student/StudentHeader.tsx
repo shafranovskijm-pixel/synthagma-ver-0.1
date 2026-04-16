@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { RadioPlayerButton } from "@/components/radio/RadioPlayerButton";
+import { useTheme } from "next-themes";
 
 interface StudentHeaderProps {
   fullName: string | null;
@@ -30,6 +31,8 @@ export function StudentHeader({
   onProfileClick,
 }: StudentHeaderProps) {
   const navigate = useNavigate();
+  const { theme: currentTheme, setTheme: setAppTheme } = useTheme();
+  const toggleTheme = () => setAppTheme(currentTheme === "dark" ? "light" : "dark");
   const initials = fullName
     ? fullName.split(" ").slice(0, 2).map(n => n[0]).join("").toUpperCase()
     : "У";
@@ -40,7 +43,14 @@ export function StudentHeader({
         {logoUrl ? (
           <img src={logoUrl} alt="Logo" className="h-8 object-contain" />
         ) : (
-          <SigmaLogo size="sm" />
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button onClick={toggleTheme} className="hover:opacity-80 transition-opacity">
+                <SigmaLogo size="sm" />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent>Сменить тему</TooltipContent>
+          </Tooltip>
         )}
         {orgName && <span className="text-sm font-medium text-muted-foreground hidden sm:block">{orgName}</span>}
       </div>
