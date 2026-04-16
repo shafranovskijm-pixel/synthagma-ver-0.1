@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { User, Bell, Video, FileCheck, FileText, Trophy, Palette, Users, LogOut, ArrowLeft, Radio } from "lucide-react";
+import { User, Bell, FileText, Trophy, Users, LogOut, ArrowLeft, Radio } from "lucide-react";
 import { SigmaLogo } from "@/components/ui/SigmaLogo";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Badge } from "@/components/ui/badge";
@@ -42,12 +42,9 @@ export function StudentProfileSidebar({
   const navItems: NavItem[] = [
     { id: "profile", icon: User, label: "Профиль" },
     { id: "notifications", icon: Bell, label: "Уведомления" },
-    { id: "identification", icon: Video, label: "Идентификация" },
-    { id: "consent", icon: FileCheck, label: "Согласие на ПД", badge: consentBadge },
-    { id: "documents", icon: FileText, label: "Документы", badge: docsBadge },
+    { id: "documents", icon: FileText, label: "Документы", badge: (consentBadge || 0) + (docsBadge || 0) },
     ...(showAchievements ? [{ id: "achievements", icon: Trophy, label: "Достижения" }] : []),
     { id: "radio", icon: Radio, label: "Радио" },
-    { id: "theme", icon: Palette, label: "Тема" },
     { id: "partner", icon: Users, label: "Партнёрская программа" },
   ];
 

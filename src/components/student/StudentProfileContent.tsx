@@ -33,10 +33,7 @@ interface StudentProfileContentProps {
 const PROFILE_TABS = [
   { id: "profile", icon: User, label: "Профиль" },
   { id: "notifications", icon: Bell, label: "Уведомления" },
-  { id: "identification", icon: Video, label: "Идентификация" },
-  { id: "consent", icon: FileCheck, label: "Согласие" },
   { id: "documents", icon: FileText, label: "Документы" },
-  { id: "theme", icon: Palette, label: "Тема" },
   { id: "partner", icon: Users, label: "Партнёр" },
   { id: "help", icon: HelpCircle, label: "Помощь" },
 ];
@@ -412,6 +409,38 @@ export function StudentProfileContent({ effectiveUserId, isAdminView = false }: 
               </Card>
             </div>
           )}
+
+          {/* Theme settings inside profile */}
+          <Card className="rounded-2xl border-border/60 shadow-sm">
+            <CardHeader><CardTitle>Тема оформления</CardTitle></CardHeader>
+            <CardContent className="space-y-6">
+              <ThemeSelector />
+              <div>
+                <p className="font-medium text-sm mb-1">Режим оформления</p>
+                <p className="text-xs text-muted-foreground mb-3">Светлая или тёмная тема</p>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  {[
+                    { id: "light", label: "Светлая", icon: Sun, desc: "Классическая светлая тема" },
+                    { id: "dark", label: "Тёмная", icon: Moon, desc: "Тёмная тема для работы ночью" },
+                    { id: "system", label: "Системная", icon: Monitor, desc: "Следует настройкам вашего устройства" },
+                  ].map(t => (
+                    <button
+                      key={t.id}
+                      onClick={() => setTheme(t.id)}
+                      className={cn(
+                        "flex flex-col items-center gap-3 p-6 rounded-xl border-2 transition-all",
+                        theme === t.id ? "border-primary bg-primary/5" : "border-border hover:border-primary/30"
+                      )}
+                    >
+                      <t.icon className={cn("w-8 h-8", theme === t.id ? "text-primary" : "text-muted-foreground")} />
+                      <span className="font-medium">{t.label}</span>
+                      <span className="text-xs text-muted-foreground text-center">{t.desc}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
         </div>
       )}
 
@@ -469,47 +498,46 @@ export function StudentProfileContent({ effectiveUserId, isAdminView = false }: 
         </Card>
       )}
 
-      {/* Identification */}
-      {activeTab === "identification" && (
-        <Card className="rounded-2xl border-border/60 shadow-sm">
-          <CardContent className="pt-6">
-            <VideoIdentification
-              userId={effectiveUserId}
-              userName={profile?.full_name || "Ученик"}
-              organizationId={profile?.organization_id || undefined}
-              embedded={true}
-            />
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Consent */}
-      {activeTab === "consent" && (
-        <Card className="rounded-2xl border-border/60 shadow-sm">
-          <CardContent className="pt-6">
-            <StudentConsentForm
-              userId={effectiveUserId}
-              userName={profile?.full_name || "Ученик"}
-              organizationId={profile?.organization_id || ""}
-              embedded={true}
-            />
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Documents */}
+      {/* Documents (combined: identification + consent + documents) */}
       {activeTab === "documents" && (
-        <Card className="rounded-2xl border-border/60 shadow-sm">
-          <CardContent className="pt-6">
-            <StudentDocumentsUpload
-              userId={effectiveUserId}
-              organizationId={profile?.organization_id || ""}
-              isOpen={false}
-              onOpenChange={() => {}}
-              embedded={true}
-            />
-          </CardContent>
-        </Card>
+        <div className="space-y-6">
+          <Card className="rounded-2xl border-border/60 shadow-sm">
+            <CardHeader><CardTitle>Видеоидентификация</CardTitle></CardHeader>
+            <CardContent>
+              <VideoIdentification
+                userId={effectiveUserId}
+                userName={profile?.full_name || "Ученик"}
+                organizationId={profile?.organization_id || undefined}
+                embedded={true}
+              />
+            </CardContent>
+          </Card>
+
+          <Card className="rounded-2xl border-border/60 shadow-sm">
+            <CardHeader><CardTitle>Согласие на обработку ПД</CardTitle></CardHeader>
+            <CardContent>
+              <StudentConsentForm
+                userId={effectiveUserId}
+                userName={profile?.full_name || "Ученик"}
+                organizationId={profile?.organization_id || ""}
+                embedded={true}
+              />
+            </CardContent>
+          </Card>
+
+          <Card className="rounded-2xl border-border/60 shadow-sm">
+            <CardHeader><CardTitle>Документы</CardTitle></CardHeader>
+            <CardContent>
+              <StudentDocumentsUpload
+                userId={effectiveUserId}
+                organizationId={profile?.organization_id || ""}
+                isOpen={false}
+                onOpenChange={() => {}}
+                embedded={true}
+              />
+            </CardContent>
+          </Card>
+        </div>
       )}
 
       {/* Achievements */}
@@ -526,39 +554,6 @@ export function StudentProfileContent({ effectiveUserId, isAdminView = false }: 
         </Card>
       )}
 
-      {/* Theme */}
-      {activeTab === "theme" && (
-        <Card className="rounded-2xl border-border/60 shadow-sm">
-          <CardHeader><CardTitle>Тема оформления</CardTitle></CardHeader>
-          <CardContent className="space-y-6">
-            <ThemeSelector />
-            <div>
-              <p className="font-medium text-sm mb-1">Режим оформления</p>
-              <p className="text-xs text-muted-foreground mb-3">Светлая или тёмная тема</p>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                {[
-                  { id: "light", label: "Светлая", icon: Sun, desc: "Классическая светлая тема" },
-                  { id: "dark", label: "Тёмная", icon: Moon, desc: "Тёмная тема для работы ночью" },
-                  { id: "system", label: "Системная", icon: Monitor, desc: "Следует настройкам вашего устройства" },
-                ].map(t => (
-                  <button
-                    key={t.id}
-                    onClick={() => setTheme(t.id)}
-                    className={cn(
-                      "flex flex-col items-center gap-3 p-6 rounded-xl border-2 transition-all",
-                      theme === t.id ? "border-primary bg-primary/5" : "border-border hover:border-primary/30"
-                    )}
-                  >
-                    <t.icon className={cn("w-8 h-8", theme === t.id ? "text-primary" : "text-muted-foreground")} />
-                    <span className="font-medium">{t.label}</span>
-                    <span className="text-xs text-muted-foreground text-center">{t.desc}</span>
-                  </button>
-                ))}
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      )}
 
       {/* Radio */}
       {activeTab === "radio" && (
