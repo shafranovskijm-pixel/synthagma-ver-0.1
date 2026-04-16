@@ -76,6 +76,9 @@ export function StudentSidebar({
   activeTab, setActiveTab, branding, orgName, showAiChat,
   isPreviewMode, isAdminView,
 }: StudentSidebarProps) {
+  const { theme: currentTheme, setTheme } = useTheme();
+  const toggleTheme = () => setTheme(currentTheme === "dark" ? "light" : "dark");
+
   // Theme-aware accent
   const [themeAccent, setThemeAccent] = useState<string | null>(() => {
     const id = getStoredThemeId();
