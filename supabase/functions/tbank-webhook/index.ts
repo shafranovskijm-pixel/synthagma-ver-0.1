@@ -152,7 +152,7 @@ Deno.serve(async (req) => {
             paid_at: now.toISOString(),
             payment_id: String(PaymentId),
           } as any)
-          .eq("id", realId);
+          .eq("id", (invoice as any).id);
 
         // Update organization plan
         await supabaseAdmin
@@ -178,7 +178,7 @@ Deno.serve(async (req) => {
         await supabaseAdmin
           .from("subscription_invoices")
           .update({ status: "failed" } as any)
-          .eq("id", realId);
+          .eq("id", (invoice as any).id);
       }
 
       return new Response("OK", { status: 200 });
