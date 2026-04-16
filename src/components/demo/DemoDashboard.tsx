@@ -28,8 +28,8 @@ export function DemoDashboard() {
             <Badge variant="secondary">ДЕМО</Badge>
           </div>
           <div className="flex items-center gap-2">
-            <Monitor className="w-4 h-4 text-green-500" />
-            <span className="text-sm text-green-500 font-medium">Трансляция</span>
+            <Monitor className="w-4 h-4 text-primary" />
+            <span className="text-sm text-primary font-medium">Трансляция</span>
           </div>
         </div>
       </header>
