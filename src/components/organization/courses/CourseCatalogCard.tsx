@@ -1,0 +1,78 @@
+import React from "react";
+import { useNavigate } from "react-router-dom";
+import { Button } from "@/components/ui/button";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { BookOpen, Users, Edit, MoreVertical, Copy, ImagePlus, Wand2, CheckCircle } from "lucide-react";
+import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
+import type { Course, CourseCategory } from "@/types";
+
+interface Props {
+  course: Course;
+  onCourseClick: (course: Course) => void;
+  onDuplicate: (courseId: string) => void;
+  onCoverUpload: (courseId: string) => void;
+  onGenerateCover: (courseId: string) => void;
+  generatingCoverForCourse: string | null;
+  getCategoryById: (id: string | null | undefined) => CourseCategory | undefined;
+}
+
+export const CourseCatalogCard = React.memo(function CourseCatalogCard({ course, onCourseClick, onDuplicate, onCoverUpload, onGenerateCover, generatingCoverForCourse, getCategoryById }: Props) {
+  const navigate = useNavigate();
+  const category = getCategoryById(course.category_id);
+
+  return (
+    <div
+      className="bg-card rounded-2xl border border-border overflow-hidden hover:shadow-lg transition-all cursor-pointer relative group"
+      onClick={() => onCourseClick(course)}
+    >
+      <div className="relative h-44 bg-gradient-to-br from-primary/10 via-muted to-accent/10 flex items-center justify-center overflow-hidden">
+        {course.cover_image_url ? (
+          <img src={course.cover_image_url} alt={course.title} className="w-full h-full object-cover" />
+        ) : (
+          <BookOpen className="w-12 h-12 text-primary/30" />
+        )}
+        <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild onClick={e => e.stopPropagation()}>
+              <Button variant="secondary" size="icon" className="h-8 w-8 rounded-lg shadow-md bg-card/90 backdrop-blur-sm">
+                <MoreVertical className="w-4 h-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="rounded-xl">
+              <DropdownMenuItem onClick={e => { e.stopPropagation(); onDuplicate(course.id); }}><Copy className="w-4 h-4 mr-2" />Дублировать</DropdownMenuItem>
+              <DropdownMenuItem onClick={e => { e.stopPropagation(); navigate(`/course-builder/${course.id}`); }}><Edit className="w-4 h-4 mr-2" />Настроить</DropdownMenuItem>
+              <DropdownMenuItem onClick={e => { e.stopPropagation(); onCoverUpload(course.id); }}><ImagePlus className="w-4 h-4 mr-2" />Изменить обложку</DropdownMenuItem>
+              <DropdownMenuItem disabled={generatingCoverForCourse === course.id} onClick={e => { e.stopPropagation(); onGenerateCover(course.id); }}>
+                {generatingCoverForCourse === course.id ? <SigmaSpinner size="sm" className="mr-2" /> : <Wand2 className="w-4 h-4 mr-2" />}
+                {generatingCoverForCourse === course.id ? "Генерация..." : "Сгенерировать с ИИ"}
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+      </div>
+
+      <div className="p-4 space-y-2.5">
+        <div className="flex items-center gap-2">
+          <span className={`inline-flex items-center gap-1 text-xs font-medium ${course.is_published ? 'text-sigma-green' : 'text-muted-foreground'}`}>
+            {course.is_published && <CheckCircle className="w-3.5 h-3.5" />}
+            {course.is_published ? 'Опубликован' : 'Черновик'}
+          </span>
+        </div>
+        <h3 className="font-semibold text-base leading-snug line-clamp-2">{course.title}</h3>
+        {course.description && <p className="text-sm text-muted-foreground line-clamp-3">{course.description}</p>}
+        {category && (
+          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium text-white" style={{ backgroundColor: category.color }}>
+            {category.name}
+          </span>
+        )}
+        <div className="flex items-center gap-3 text-xs text-muted-foreground pt-1">
+          <div className="flex items-center gap-1"><Users className="w-3.5 h-3.5" />{course.studentsCount || 0} учеников</div>
+          <div className="flex items-center gap-1"><BookOpen className="w-3.5 h-3.5" />{course.lessonsCount || 0} уроков</div>
+        </div>
+        <Button variant="outline" className="w-full rounded-xl text-primary border-primary/30 hover:bg-primary/5 mt-1" onClick={e => { e.stopPropagation(); navigate(`/course-builder/${course.id}`); }}>
+          Редактировать курс
+        </Button>
+      </div>
+    </div>
+  );
+});
