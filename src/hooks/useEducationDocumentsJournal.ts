@@ -240,30 +240,11 @@ export function useEducationDocumentsJournal({
     return filtered;
   }, [completedStudents, studentSearchQuery, documentTypeFilter]);
 
-  const getJournalTitle = () => {
-    if (documentTypeFilter === "certificate") return "Журнал регистрации удостоверений";
-    if (documentTypeFilter === "diploma") return "Журнал регистрации дипломов";
-    if (documentTypeFilter === "qualification") return "Журнал регистрации свидетельств";
-    return "Журнал регистрации документов об образовании";
-  };
-
-  const getJournalSubtitle = () => {
-    if (documentTypeFilter === "certificate") return "Учёт выданных удостоверений о повышении квалификации";
-    if (documentTypeFilter === "diploma") return "Учёт выданных дипломов о профессиональной переподготовке";
-    if (documentTypeFilter === "qualification") return "Учёт выданных свидетельств о профессии/квалификации";
-    return "Учёт выданных удостоверений, дипломов и свидетельств о квалификации";
-  };
+  const journalTitle = getJournalTitle(documentTypeFilter);
+  const journalSubtitle = getJournalSubtitle(documentTypeFilter);
 
   const resetForm = () => {
-    setFormData({
-      reg_number: "", full_name: "", birth_date: null,
-      document_type: documentTypeFilter || "certificate",
-      document_series: "", document_number: "", issue_date: new Date(),
-      specialty_name: "", qualification_name: "", protocol_number: "",
-      protocol_date: null, order_number: "", order_date: null,
-      document_status: "original", original_document_data: "",
-      delivery_method: "personal", delivery_details: "", notes: "", enrollment_id: "",
-    });
+    setFormData(getDefaultFormData(documentTypeFilter));
   };
 
   const generateRegNumber = () => {
@@ -491,36 +472,11 @@ export function useEducationDocumentsJournal({
   const exportToExcel = async () => {
     if (filteredRecords.length === 0) { toast.error("Нет данных для экспорта"); return; }
     const XLSX = await getXLSX();
-    const exportData = filteredRecords.map((record, index) => ({
-      "№ п/п": index + 1,
-      "Рег. номер": record.reg_number,
-      "ФИО выпускника": record.full_name,
-      "Дата рождения": record.birth_date ? format(parseISO(record.birth_date), "dd.MM.yyyy", { locale: ru }) : "—",
-      "Тип документа": DOCUMENT_TYPES.find((t) => t.value === record.document_type)?.label || "",
-      "Серия": record.document_series || "—",
-      "Номер": record.document_number,
-      "Дата выдачи": format(parseISO(record.issue_date), "dd.MM.yyyy", { locale: ru }),
-      "Специальность/направление": record.specialty_name,
-      "Квалификация": record.qualification_name || "—",
-      "№ протокола ГЭК": record.protocol_number || "—",
-      "Дата протокола": record.protocol_date ? format(parseISO(record.protocol_date), "dd.MM.yyyy", { locale: ru }) : "—",
-      "№ приказа об отчислении": record.order_number || "—",
-      "Дата приказа": record.order_date ? format(parseISO(record.order_date), "dd.MM.yyyy", { locale: ru }) : "—",
-      "Статус": record.document_status === "original" ? "Оригинал" : "Дубликат",
-      "Данные оригинала (для дубликата)": record.original_document_data || "—",
-      "Способ получения": DELIVERY_METHODS.find((m) => m.value === record.delivery_method)?.label || "",
-      "Детали получения": record.delivery_details || "—",
-      "Примечания": record.notes || "—",
-    }));
+    const exportData = buildExportData(filteredRecords);
     const worksheet = XLSX.utils.json_to_sheet(exportData);
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, "Документы об образовании");
-    worksheet["!cols"] = [
-      { wch: 8 }, { wch: 18 }, { wch: 35 }, { wch: 14 }, { wch: 25 },
-      { wch: 10 }, { wch: 15 }, { wch: 14 }, { wch: 40 }, { wch: 25 },
-      { wch: 15 }, { wch: 14 }, { wch: 20 }, { wch: 14 }, { wch: 12 },
-      { wch: 30 }, { wch: 20 }, { wch: 30 }, { wch: 30 },
-    ];
+    worksheet["!cols"] = EXCEL_COL_WIDTHS;
     XLSX.writeFile(workbook, `Журнал_документов_об_образовании_${format(new Date(), "dd-MM-yyyy")}.xlsx`);
     toast.success("Журнал экспортирован в Excel");
   };
