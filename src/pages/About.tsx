@@ -7,6 +7,10 @@ import { LandingHeader } from "@/components/landing/LandingHeader";
 import { Footer } from "@/components/landing/Footer";
 import { StarfieldCanvas } from "@/components/landing/StarfieldCanvas";
 import { TypewriterText } from "@/components/ui/TypewriterText";
+import missionImg from "/images/about/mission.png";
+import innovationImg from "/images/about/innovation.png";
+import complianceImg from "/images/about/compliance.png";
+import requisitesBg from "/images/about/requisites-bg.jpg";
 
 const About = () => {
   return (
@@ -72,6 +76,7 @@ const About = () => {
             {/* Card 1 — Наша миссия */}
             <div className="relative border-2 border-foreground/20 rounded-tl-3xl rounded-bl-3xl md:rounded-bl-3xl p-8 bg-gradient-to-br from-primary/5 to-primary/10 overflow-hidden group hover:scale-[1.03] transition-transform duration-300 z-10">
               <div className="absolute -top-1 -right-1 w-8 h-8 border-b-2 border-l-2 border-foreground/20 rounded-bl-xl bg-background" />
+              <img src={missionImg} alt="Миссия" className="absolute -bottom-6 -right-6 w-32 h-32 opacity-15 group-hover:opacity-25 transition-opacity duration-500" loading="lazy" width={512} height={512} />
               <div className="w-14 h-14 rounded-2xl bg-primary/15 flex items-center justify-center mb-5 rotate-[-3deg] group-hover:rotate-0 transition-transform">
                 <Target className="w-7 h-7 text-primary" />
               </div>
@@ -79,7 +84,6 @@ const About = () => {
               <p className="text-muted-foreground text-sm leading-relaxed">
                 Сделать качественное образование доступным для каждого, предоставляя современные инструменты для обучения и управления образовательным процессом.
               </p>
-              {/* Comic dots */}
               <div className="absolute bottom-3 right-4 flex gap-1 opacity-30">
                 {[...Array(4)].map((_, i) => <div key={i} className="w-1.5 h-1.5 rounded-full bg-primary" />)}
               </div>
@@ -88,7 +92,7 @@ const About = () => {
             {/* Card 2 — Инновации */}
             <div className="relative border-2 border-foreground/20 p-8 bg-gradient-to-br from-accent/5 to-accent/10 overflow-hidden group hover:scale-[1.03] transition-transform duration-300 z-20 -mx-px">
               <div className="absolute -top-1 -right-1 w-8 h-8 border-b-2 border-l-2 border-foreground/20 rounded-bl-xl bg-background" />
-              {/* Speech bubble triangle */}
+              <img src={innovationImg} alt="Инновации" className="absolute -bottom-6 -right-6 w-32 h-32 opacity-15 group-hover:opacity-25 transition-opacity duration-500" loading="lazy" width={512} height={512} />
               <div className="absolute -top-3 left-1/2 -translate-x-1/2 w-6 h-3 overflow-hidden">
                 <div className="w-4 h-4 bg-accent/10 border-2 border-foreground/20 rotate-45 transform origin-bottom-left translate-y-1 translate-x-1" />
               </div>
@@ -107,6 +111,7 @@ const About = () => {
             {/* Card 3 — Соответствие */}
             <div className="relative border-2 border-foreground/20 rounded-tr-3xl rounded-br-3xl p-8 bg-gradient-to-br from-sigma-green/5 to-sigma-green/10 overflow-hidden group hover:scale-[1.03] transition-transform duration-300 z-10">
               <div className="absolute -top-1 -right-1 w-8 h-8 border-b-2 border-l-2 border-foreground/20 rounded-bl-xl bg-background" />
+              <img src={complianceImg} alt="Соответствие" className="absolute -bottom-6 -right-6 w-32 h-32 opacity-15 group-hover:opacity-25 transition-opacity duration-500" loading="lazy" width={512} height={512} />
               <div className="w-14 h-14 rounded-2xl bg-sigma-green/15 flex items-center justify-center mb-5 rotate-[3deg] group-hover:rotate-0 transition-transform">
                 <Shield className="w-7 h-7 text-sigma-green" />
               </div>
@@ -204,8 +209,12 @@ const About = () => {
       </section>
 
       {/* Legal Info */}
-      <section className="py-16">
-        <div className="container mx-auto px-6">
+      <section className="py-16 relative overflow-hidden">
+        <div className="absolute inset-0 z-0">
+          <img src={requisitesBg} alt="" className="w-full h-full object-cover opacity-20 dark:opacity-15" loading="lazy" />
+          <div className="absolute inset-0 bg-background/90" />
+        </div>
+        <div className="container mx-auto px-6 relative z-10">
           <div className="max-w-2xl mx-auto">
             <h2 className="font-display text-3xl font-bold text-center mb-12">Реквизиты</h2>
             <Card>
