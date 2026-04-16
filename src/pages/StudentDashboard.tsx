@@ -163,28 +163,13 @@ function CatalogContent({
 
   return (
     <div className="p-4 md:p-6 space-y-4 md:space-y-6 max-w-[1400px] mx-auto flex-1">
-      <CourseCatalog
-        courses={catalogCourses}
-        categories={categories}
-        onCourseClick={(id: string, enrolled: boolean) => handleCourseClick(id, enrolled)}
-        enrolledCourses={enrolledCourses}
-        isVideoIdentified={isVideoIdentified}
-        totalProgress={totalProgress}
-        totalTimeSpent={totalTimeSpent}
-        totalCompletedLessons={totalCompletedLessons}
-        formatTime={formatTime}
-        onBuy={handleBuy}
-        onEnroll={handleEnroll}
-        renderBefore={
-          <OrgBanner
-            orgName={profile?.organization_name || null}
-            orgDescription={profile?.org_description}
-            coverUrl={branding?.coverUrl}
-            logoUrl={branding?.logoUrl}
-            primaryColor={branding?.primaryColor}
-            secondaryColor={branding?.secondaryColor}
-          />
-        }
+      <OrgBanner
+        orgName={profile?.organization_name || null}
+        orgDescription={profile?.org_description}
+        coverUrl={branding?.coverUrl}
+        logoUrl={branding?.logoUrl}
+        primaryColor={branding?.primaryColor}
+        secondaryColor={branding?.secondaryColor}
       />
 
       <div className="flex gap-1 bg-muted rounded-lg p-1 w-fit">
@@ -204,7 +189,21 @@ function CatalogContent({
         ))}
       </div>
 
-      {contentTab === "courses" && null /* CourseCatalog moved above tabs */}
+      {contentTab === "courses" && (
+        <CourseCatalog
+          courses={catalogCourses}
+          categories={categories}
+          onCourseClick={(id: string, enrolled: boolean) => handleCourseClick(id, enrolled)}
+          enrolledCourses={enrolledCourses}
+          isVideoIdentified={isVideoIdentified}
+          totalProgress={totalProgress}
+          totalTimeSpent={totalTimeSpent}
+          totalCompletedLessons={totalCompletedLessons}
+          formatTime={formatTime}
+          onBuy={handleBuy}
+          onEnroll={handleEnroll}
+        />
+      )}
       {contentTab === "webinars" && <StudentWebinarsList />}
       {contentTab === "trainers" && <Student3DTrainers />}
 
