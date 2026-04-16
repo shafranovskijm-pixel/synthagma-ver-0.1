@@ -150,6 +150,22 @@ export function EnrollmentRequestsTab({ courseId, defaultAccessDays, onRefreshSt
         .eq("id", request.id);
       if (updateError) throw updateError;
 
+      // Get course info for chat message
+      const { data: courseInfo } = await supabase
+        .from("courses")
+        .select("title, organization_id")
+        .eq("id", request.course_id)
+        .maybeSingle();
+
+      // Send approval message to org general chat
+      if (courseInfo?.organization_id) {
+        await supabase.from("org_general_messages").insert({
+          organization_id: courseInfo.organization_id,
+          sender_user_id: (await supabase.auth.getUser()).data.user?.id || "",
+          content: `✅ Заявка одобрена: ${request.user_name} зачислен(а) на курс «${courseInfo.title}»`,
+        });
+      }
+
       toast.success(`Заявка одобрена: ${request.user_name}`);
       loadRequests();
       onRefreshStudents?.();
@@ -168,6 +184,22 @@ export function EnrollmentRequestsTab({ courseId, defaultAccessDays, onRefreshSt
         .update({ status: "rejected", resolved_at: new Date().toISOString() } as any)
         .eq("id", request.id);
       if (error) throw error;
+
+      // Get course info for chat message
+      const { data: courseInfo } = await supabase
+        .from("courses")
+        .select("title, organization_id")
+        .eq("id", request.course_id)
+        .maybeSingle();
+
+      // Send rejection message to org general chat
+      if (courseInfo?.organization_id) {
+        await supabase.from("org_general_messages").insert({
+          organization_id: courseInfo.organization_id,
+          sender_user_id: (await supabase.auth.getUser()).data.user?.id || "",
+          content: `❌ Заявка отклонена: ${request.user_name} — курс «${courseInfo.title}»`,
+        });
+      }
 
       toast.success(`Заявка отклонена: ${request.user_name}`);
       loadRequests();
