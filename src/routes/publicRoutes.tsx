@@ -79,6 +79,7 @@ export const publicRoutes = (
     <Route path="/help" element={<HelpCenter />} />
     <Route path="/demo/:token" element={<DemoJoin />} />
     <Route path="/demo/:token/dashboard" element={<DemoDashboard />} />
+    <Route path="/company-card/:token" element={<PublicCompanyCard />} />
     <Route path="*" element={<NotFound />} />
   </>
 );
