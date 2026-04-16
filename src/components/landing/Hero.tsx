@@ -69,10 +69,10 @@ export function Hero({ showStars = true }: { showStars?: boolean }) {
               <button
                 key={i}
                 onClick={() => setActiveIndex(i)}
-                className={`transition-all duration-500 rounded-full ${
+                className={`h-1 rounded-full transition-all duration-500 ${
                   i === activeIndex
-                    ? 'w-8 h-2 bg-accent'
-                    : dark ? 'w-2 h-2 bg-white/20 hover:bg-white/40' : 'w-2 h-2 bg-foreground/20 hover:bg-foreground/40'
+                    ? 'w-10 bg-accent'
+                    : 'w-6 bg-foreground/20 hover:bg-foreground/40'
                 }`}
               />
             ))}
