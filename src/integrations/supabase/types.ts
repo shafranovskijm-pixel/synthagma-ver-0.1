@@ -4653,6 +4653,84 @@ export type Database = {
           },
         ]
       }
+      sales_demo_links: {
+        Row: {
+          created_at: string
+          created_by: string
+          expires_at: string | null
+          id: string
+          is_active: boolean
+          kinescope_live_id: string | null
+          label: string
+          token: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          expires_at?: string | null
+          id?: string
+          is_active?: boolean
+          kinescope_live_id?: string | null
+          label?: string
+          token: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          expires_at?: string | null
+          id?: string
+          is_active?: boolean
+          kinescope_live_id?: string | null
+          label?: string
+          token?: string
+        }
+        Relationships: []
+      }
+      sales_demo_sessions: {
+        Row: {
+          created_at: string
+          demo_link_id: string
+          id: string
+          org_name: string | null
+          organization_id: string | null
+          participant_name: string | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          demo_link_id: string
+          id?: string
+          org_name?: string | null
+          organization_id?: string | null
+          participant_name?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          demo_link_id?: string
+          id?: string
+          org_name?: string | null
+          organization_id?: string | null
+          participant_name?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sales_demo_sessions_demo_link_id_fkey"
+            columns: ["demo_link_id"]
+            isOneToOne: false
+            referencedRelation: "sales_demo_links"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sales_demo_sessions_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       sales_lead_activities: {
         Row: {
           activity_type: string
