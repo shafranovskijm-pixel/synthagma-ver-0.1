@@ -205,10 +205,8 @@ export function BroadcastManager() {
 
         const publishedUrl = "https://sintagma.com.ru";
         const actionUrl = `${publishedUrl}/email-response?token=${tokenData.id}`;
-        const html = getEmailHtml(org.name, actionUrl);
-        const subject = selectedTemplate === "inactive"
-          ? "Мы заметили, что вы давно не заходили — Sintagma"
-          : "Добро пожаловать на платформу Sintagma!";
+        const html = getEmailHtml(selectedTemplate as "inactive" | "welcome", org.name, actionUrl);
+        const subject = getEmailSubject(selectedTemplate as "inactive" | "welcome");
 
         await supabase.functions.invoke("send-email", {
           body: {
