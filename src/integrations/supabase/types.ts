@@ -1885,6 +1885,47 @@ export type Database = {
           },
         ]
       }
+      frdo_signed_documents: {
+        Row: {
+          created_at: string
+          file_name: string
+          file_url: string
+          id: string
+          organization_id: string
+          sent_to_admin_at: string | null
+          status: string
+          uploaded_by: string
+        }
+        Insert: {
+          created_at?: string
+          file_name: string
+          file_url: string
+          id?: string
+          organization_id: string
+          sent_to_admin_at?: string | null
+          status?: string
+          uploaded_by: string
+        }
+        Update: {
+          created_at?: string
+          file_name?: string
+          file_url?: string
+          id?: string
+          organization_id?: string
+          sent_to_admin_at?: string | null
+          status?: string
+          uploaded_by?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "frdo_signed_documents_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       generation_history: {
         Row: {
           action: string
