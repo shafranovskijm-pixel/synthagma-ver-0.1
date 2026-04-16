@@ -13,6 +13,7 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { Footer } from "@/components/landing/Footer";
 import { LandingHeader } from "@/components/landing/LandingHeader";
+import { TypewriterText, InViewTypewriterText } from "@/components/ui/TypewriterText";
 
 // AI-generated illustrations
 import heroBg from "@/assets/presentation/hero-bg.jpg";
@@ -143,6 +144,19 @@ export default function PlatformPresentation() {
     <div className="min-h-screen bg-background">
       <LandingHeader />
 
+      {/* ═══ Upward stars transition ═══ */}
+      <div className="relative h-0 overflow-visible pointer-events-none z-30">
+        {[...Array(12)].map((_, i) => (
+          <motion.div
+            key={i}
+            className="absolute w-1 h-1 rounded-full bg-white/40"
+            style={{ left: `${8 + i * 7.5}%`, top: 0 }}
+            animate={{ y: [60, -30], opacity: [0.5, 0] }}
+            transition={{ duration: 2.5 + i * 0.2, repeat: Infinity, delay: i * 0.35, ease: "easeOut" }}
+          />
+        ))}
+      </div>
+
       {/* ═══ HERO ═══ */}
       <Section className="relative text-white overflow-hidden">
         <img src={heroBg} alt="" className="absolute inset-0 w-full h-full object-cover" width={1920} height={1080} />
@@ -153,8 +167,12 @@ export default function PlatformPresentation() {
               <GraduationCap className="w-10 h-10 md:w-16 md:h-16 text-white" />
             </div>
           </motion.div>
-          <h1 className="text-5xl md:text-8xl font-bold tracking-tight mb-4 bg-gradient-to-r from-white to-white/80 bg-clip-text text-transparent">СИНТАГМА</h1>
-          <p className="text-lg md:text-2xl text-white/60 font-light mb-10">Платформа для образовательных организаций</p>
+          <h1 className="text-5xl md:text-8xl font-bold tracking-tight mb-4 bg-gradient-to-r from-white to-white/80 bg-clip-text text-transparent">
+            <TypewriterText text="СИНТАГМА" speed={80} delay={500} />
+          </h1>
+          <p className="text-lg md:text-2xl text-white/60 font-light mb-10">
+            <TypewriterText text="Платформа для образовательных организаций" speed={40} delay={1200} />
+          </p>
           <div className="flex flex-wrap justify-center gap-3">
             {[
               { icon: BookOpen, label: "LMS" },
