@@ -12,6 +12,10 @@ const KNOWN_DATA = {
   birthDate: '25.10.1988',
   email: '24@24zxc.ru',
   domain: 'sintagma.com.ru',
+  bankName: 'ООО «Озон Банк»',
+  bik: '044525068',
+  account: '40914810200040551529',
+  corrAccount: '30101810645374525068',
 };
 
 interface DaDataCompany {
@@ -162,13 +166,13 @@ export function CompanyCard() {
       )}
 
       {/* Банковские реквизиты */}
-      <Card className="shadow-lg border-0 bg-card border-dashed border border-primary/20">
-        <CardContent className="p-5">
-          <h3 className="text-xs font-semibold uppercase text-muted-foreground tracking-wider mb-3">Банковские реквизиты</h3>
-          <div className="flex items-center gap-3 text-muted-foreground">
-            <CreditCard className="w-5 h-5 text-primary/50" />
-            <p className="text-sm italic">Требуется заполнить — направьте реквизиты расчётного счёта (банк, БИК, р/с, к/с)</p>
-          </div>
+      <Card className="shadow-lg border-0 bg-card">
+        <CardContent className="p-5 space-y-1">
+          <h3 className="text-xs font-semibold uppercase text-muted-foreground tracking-wider mb-2">Банковские реквизиты</h3>
+          <CopyField label="Банк" value={KNOWN_DATA.bankName} icon={CreditCard} />
+          <CopyField label="БИК" value={KNOWN_DATA.bik} icon={Hash} />
+          <CopyField label="Расчётный счёт" value={KNOWN_DATA.account} icon={Hash} />
+          <CopyField label="Корр. счёт" value={KNOWN_DATA.corrAccount} icon={Hash} />
         </CardContent>
       </Card>
     </div>
