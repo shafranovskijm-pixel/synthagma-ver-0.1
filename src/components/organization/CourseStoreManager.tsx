@@ -401,151 +401,44 @@ export function CourseStoreManager({ organizationId, userRole = 'organization', 
         </div>{/* end flex */}
       </Tabs>
 
-      {/* Add Course Dialog */}
-      <Dialog open={h.showAddDialog} onOpenChange={h.setShowAddDialog}>
-        <DialogContent className="rounded-2xl max-w-md">
-          <DialogHeader><DialogTitle>Добавить курс в магазин</DialogTitle><DialogDescription>Выберите курс для публикации</DialogDescription></DialogHeader>
-           <div className="space-y-4 py-4">
-            <div className="space-y-2"><Label>Курс</Label><Select value={h.selectedCourseToAdd} onValueChange={h.setSelectedCourseToAdd}><SelectTrigger className="rounded-xl"><SelectValue placeholder="Выберите курс" /></SelectTrigger><SelectContent>{h.availableCourses.map((c) => <SelectItem key={c.id} value={c.id}>{c.title}</SelectItem>)}</SelectContent></Select></div>
-            <div className="space-y-2"><Label>Краткое описание</Label><Textarea value={h.shortDescription} onChange={(e) => h.setShortDescription(e.target.value)} placeholder="Расскажите о курсе..." className="rounded-xl" /></div>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-2"><Label>Цена для студента (₽)</Label><Input type="number" min={0} value={h.priceStudent} onChange={(e) => h.setPriceStudent(Number(e.target.value) || 0)} className="rounded-xl" /></div>
-              <div className="space-y-2"><Label>Цена для организации (₽)</Label><Input type="number" min={0} value={h.priceOrganization} onChange={(e) => h.setPriceOrganization(Number(e.target.value) || 0)} className="rounded-xl" /></div>
-            </div>
-            <p className="text-xs text-muted-foreground">Оставьте 0 для бесплатного доступа</p>
-          </div>
-          <DialogFooter><Button className="w-full btn-gradient rounded-xl" onClick={h.handleAddToMarketplace} disabled={h.isAdding || !h.selectedCourseToAdd}>{h.isAdding ? <><SigmaSpinner size="sm" className="mr-2" />Добавление...</> : 'Добавить в магазин'}</Button></DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Order Dialog — simplified to direct clone */}
-      <Dialog open={h.showOrderDialog} onOpenChange={h.setShowOrderDialog}>
-        <DialogContent className="rounded-2xl max-w-md">
-          {(() => {
-            const orderPrice = h.selectedCourseForOrder ? (h.userRole === 'organization' ? h.selectedCourseForOrder.price_organization : h.selectedCourseForOrder.price_student) : 0;
-            const totalPrice = h.userRole === 'organization' ? orderPrice * h.studentsCount : orderPrice;
-            return (
-              <>
-                <DialogHeader><DialogTitle>Получить курс</DialogTitle><DialogDescription>{h.selectedCourseForOrder?.course?.title}</DialogDescription></DialogHeader>
-                <div className="space-y-4 py-4">
-                  {h.userRole === 'organization' && (
-                    <div className="flex gap-3 p-4 rounded-xl border border-blue-500/20 bg-blue-500/5">
-                      <Info className="w-5 h-5 text-blue-500 shrink-0 mt-0.5" />
-                      <p className="text-sm text-muted-foreground">Курс будет скопирован в вашу организацию.</p>
-                    </div>
-                  )}
-                  <div className="bg-secondary/50 rounded-xl p-4 space-y-3">
-                    <div className="flex justify-between items-center"><span className="text-muted-foreground">Источник:</span><span className="font-medium">{h.selectedCourseForOrder?.organization?.name || "Платформа Синтагма"}</span></div>
-                    {orderPrice > 0 && (
-                      <>
-                        <div className="flex justify-between items-center"><span className="text-muted-foreground">Цена:</span><span className="font-medium">{orderPrice.toLocaleString()} ₽</span></div>
-                        {h.userRole === 'organization' && h.studentsCount > 1 && (
-                          <div className="flex justify-between items-center border-t pt-2"><span className="text-muted-foreground font-medium">Итого:</span><span className="font-bold text-primary">{totalPrice.toLocaleString()} ₽</span></div>
-                        )}
-                      </>
-                    )}
-                  </div>
-                  {h.userRole === 'organization' && (
-                    <div className="space-y-2"><Label>Количество студентов</Label><Input type="number" min={1} value={h.studentsCount} onChange={(e) => h.setStudentsCount(Number(e.target.value) || 1)} className="rounded-xl" /></div>
-                  )}
-                  <div className="space-y-2"><Label>Комментарий</Label><Textarea value={h.orderNotes} onChange={(e) => h.setOrderNotes(e.target.value)} placeholder="Дополнительная информация..." className="rounded-xl" /></div>
-                </div>
-                <DialogFooter><Button className="w-full rounded-xl gap-2 bg-green-600 hover:bg-green-700 text-white" onClick={h.handleOrder} disabled={h.isOrdering}>{h.isOrdering ? <><SigmaSpinner size="sm" className="mr-2" />Оформление...</> : <><Plus className="w-4 h-4" />Получить курс</>}</Button></DialogFooter>
-              </>
-            );
-          })()}
-        </DialogContent>
-      </Dialog>
-
-      {/* Success Dialog */}
-      <Dialog open={h.showSuccessDialog} onOpenChange={h.setShowSuccessDialog}>
-        <DialogContent className="rounded-2xl text-center max-w-sm">
-          <div className="py-6">
-            <div className="w-16 h-16 rounded-full bg-green-500/10 flex items-center justify-center mx-auto mb-4"><CheckCircle className="w-8 h-8 text-green-500" /></div>
-            <DialogTitle className="text-xl mb-2">Курс добавлен!</DialogTitle>
-            <DialogDescription className="text-base">Курс скопирован в вашу организацию и доступен в разделе «Курсы».</DialogDescription>
-            <Button className="mt-6 btn-gradient rounded-xl" onClick={() => h.setShowSuccessDialog(false)}>Отлично</Button>
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      {/* Edit Course Dialog */}
-      <Dialog open={h.showEditDialog} onOpenChange={h.setShowEditDialog}>
-        <DialogContent className="rounded-2xl max-w-md">
-          <DialogHeader><DialogTitle>Редактировать курс</DialogTitle></DialogHeader>
-          {h.editingCourse && (
-            <div className="space-y-4 py-4">
-              <div className="space-y-2"><Label>Краткое описание</Label><Textarea value={h.editingCourse.description_short || ''} onChange={(e) => h.setEditingCourse({ ...h.editingCourse!, description_short: e.target.value })} className="rounded-xl" /></div>
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-2"><Label>Цена для студента (₽)</Label><Input type="number" min={0} value={h.editingCourse.price_student} onChange={(e) => h.setEditingCourse({ ...h.editingCourse!, price_student: Number(e.target.value) || 0 })} className="rounded-xl" /></div>
-                <div className="space-y-2"><Label>Цена для организации (₽)</Label><Input type="number" min={0} value={h.editingCourse.price_organization} onChange={(e) => h.setEditingCourse({ ...h.editingCourse!, price_organization: Number(e.target.value) || 0 })} className="rounded-xl" /></div>
-              </div>
-              <p className="text-xs text-muted-foreground">Оставьте 0 для бесплатного доступа</p>
-            </div>
-          )}
-          <DialogFooter><Button className="w-full btn-gradient rounded-xl" onClick={h.handleEditCourse}>Сохранить</Button></DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Order Details Dialog */}
-      <Dialog open={h.showOrderDetailsDialog} onOpenChange={h.setShowOrderDetailsDialog}>
-        <DialogContent className="rounded-2xl max-w-md">
-          <DialogHeader><DialogTitle>Детали заявки</DialogTitle></DialogHeader>
-          {h.selectedOrder && (
-            <div className="space-y-4 py-4">
-              <div className="space-y-3">
-                <div className="flex justify-between"><span className="text-muted-foreground">Курс:</span><span className="font-medium">{h.selectedOrder.marketplace_course?.course?.title}</span></div>
-                <div className="flex justify-between"><span className="text-muted-foreground">Тип:</span><span>{h.selectedOrder.buyer_type === 'organization' ? 'Организация' : 'Студент'}</span></div>
-                <div className="flex justify-between"><span className="text-muted-foreground">Количество:</span><span>{h.selectedOrder.students_count} студ.</span></div>
-                {h.selectedOrder.notes && <div className="pt-2 border-t"><span className="text-sm text-muted-foreground">Комментарий:</span><p className="mt-1">{h.selectedOrder.notes}</p></div>}
-              </div>
-              <div className="space-y-2">
-                <Label>Изменить статус</Label>
-                <Select value={h.selectedOrder.status} onValueChange={(value) => h.handleUpdateOrderStatus(h.selectedOrder!.id, value)}>
-                  <SelectTrigger className="rounded-xl"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="pending">Ожидает</SelectItem><SelectItem value="approved">Одобрена</SelectItem>
-                    <SelectItem value="paid">Оплачена</SelectItem><SelectItem value="completed">Завершена</SelectItem>
-                    <SelectItem value="cancelled">Отменена</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
-
-      {/* Request Dialog */}
-      <Dialog open={h.showRequestDialog} onOpenChange={h.setShowRequestDialog}>
-        <DialogContent className="rounded-2xl max-w-md">
-          <DialogHeader><DialogTitle>Новое объявление</DialogTitle><DialogDescription>Расскажите, какой курс ищете</DialogDescription></DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2"><Label>Заголовок *</Label><Input value={h.requestTitle} onChange={(e) => h.setRequestTitle(e.target.value)} placeholder="Какой курс вы ищете?" className="rounded-xl" /></div>
-            <div className="space-y-2"><Label>Описание</Label><Textarea value={h.requestDescription} onChange={(e) => h.setRequestDescription(e.target.value)} placeholder="Подробности..." className="rounded-xl" /></div>
-            <div className="space-y-2"><Label>Количество учеников</Label><Input type="number" min={1} value={h.requestStudentsCount} onChange={(e) => h.setRequestStudentsCount(e.target.value)} className="rounded-xl" /></div>
-          </div>
-          <DialogFooter><Button className="w-full btn-gradient rounded-xl" onClick={h.handleSubmitRequest} disabled={h.isSubmittingRequest || !h.requestTitle.trim()}>{h.isSubmittingRequest ? <><SigmaSpinner size="sm" className="mr-2" />Публикация...</> : 'Опубликовать'}</Button></DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Propose Course Dialog */}
-      <Dialog open={h.showProposeDialog} onOpenChange={h.setShowProposeDialog}>
-        <DialogContent className="rounded-2xl max-w-md">
-          <DialogHeader><DialogTitle className="font-display">Предложить курс</DialogTitle><DialogDescription>Объявление: {h.selectedRequest?.title}</DialogDescription></DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label>Выберите курс</Label>
-              <Select value={h.selectedCourseToPropose} onValueChange={h.setSelectedCourseToPropose}>
-                <SelectTrigger className="rounded-xl"><SelectValue placeholder="Выберите курс" /></SelectTrigger>
-                <SelectContent>{h.myCourses.map((c) => <SelectItem key={c.id} value={c.id}>{c.course?.title}</SelectItem>)}</SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2"><Label>Сообщение</Label><Textarea value={h.proposeMessage} onChange={(e) => h.setProposeMessage(e.target.value)} placeholder="Дополнительная информация..." className="rounded-xl" /></div>
-          </div>
-          <DialogFooter><Button className="w-full btn-gradient rounded-xl" onClick={h.handleProposeCourse} disabled={h.isProposing || !h.selectedCourseToPropose}>{h.isProposing ? <><SigmaSpinner size="sm" className="mr-2" />Отправка...</> : 'Отправить предложение'}</Button></DialogFooter>
-        </DialogContent>
-      </Dialog>
-
+      <AddCourseDialog
+        open={h.showAddDialog} onOpenChange={h.setShowAddDialog}
+        availableCourses={h.availableCourses} selectedCourseToAdd={h.selectedCourseToAdd} setSelectedCourseToAdd={h.setSelectedCourseToAdd}
+        shortDescription={h.shortDescription} setShortDescription={h.setShortDescription}
+        priceStudent={h.priceStudent} setPriceStudent={h.setPriceStudent}
+        priceOrganization={h.priceOrganization} setPriceOrganization={h.setPriceOrganization}
+        isAdding={h.isAdding} onAdd={h.handleAddToMarketplace}
+      />
+      <OrderDialog
+        open={h.showOrderDialog} onOpenChange={h.setShowOrderDialog}
+        course={h.selectedCourseForOrder} userRole={h.userRole}
+        studentsCount={h.studentsCount} setStudentsCount={h.setStudentsCount}
+        orderNotes={h.orderNotes} setOrderNotes={h.setOrderNotes}
+        isOrdering={h.isOrdering} onOrder={h.handleOrder}
+      />
+      <SuccessDialog open={h.showSuccessDialog} onOpenChange={h.setShowSuccessDialog} />
+      <EditCourseStoreDialog
+        open={h.showEditDialog} onOpenChange={h.setShowEditDialog}
+        editingCourse={h.editingCourse} setEditingCourse={h.setEditingCourse} onSave={h.handleEditCourse}
+      />
+      <OrderDetailsDialog
+        open={h.showOrderDetailsDialog} onOpenChange={h.setShowOrderDetailsDialog}
+        order={h.selectedOrder} onUpdateStatus={h.handleUpdateOrderStatus}
+      />
+      <RequestDialog
+        open={h.showRequestDialog} onOpenChange={h.setShowRequestDialog}
+        requestTitle={h.requestTitle} setRequestTitle={h.setRequestTitle}
+        requestDescription={h.requestDescription} setRequestDescription={h.setRequestDescription}
+        requestStudentsCount={h.requestStudentsCount} setRequestStudentsCount={h.setRequestStudentsCount}
+        isSubmitting={h.isSubmittingRequest} onSubmit={h.handleSubmitRequest}
+      />
+      <ProposeDialog
+        open={h.showProposeDialog} onOpenChange={h.setShowProposeDialog}
+        selectedRequest={h.selectedRequest} myCourses={h.myCourses}
+        selectedCourseToPropose={h.selectedCourseToPropose} setSelectedCourseToPropose={h.setSelectedCourseToPropose}
+        proposeMessage={h.proposeMessage} setProposeMessage={h.setProposeMessage}
+        isProposing={h.isProposing} onPropose={h.handleProposeCourse}
+      />
     </div>
   );
 }
