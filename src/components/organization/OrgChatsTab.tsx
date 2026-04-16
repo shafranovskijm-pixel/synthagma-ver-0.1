@@ -15,6 +15,7 @@ import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 import { AiChatPanel } from "@/components/chat/AiChatPanel";
 import { ColleagueChatPanel } from "@/components/chat/ColleagueChatPanel";
 import { ChatNotificationToggle } from "@/components/chat/ChatNotificationToggle";
+import { ChatAvatar } from "@/components/chat/ChatAvatar";
 import {
   Dialog,
   DialogContent,

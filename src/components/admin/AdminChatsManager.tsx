@@ -13,6 +13,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 import { AiChatPanel } from "@/components/chat/AiChatPanel";
 import { ColleagueChatPanel } from "@/components/chat/ColleagueChatPanel";
+import { ChatAvatar } from "@/components/chat/ChatAvatar";
 
 type AdminChatMode = "organizations" | "ai" | "colleagues";
 

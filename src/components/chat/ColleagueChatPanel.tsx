@@ -11,6 +11,7 @@ import { ru } from "date-fns/locale";
 import { toast } from "sonner";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { ChatAvatar } from "@/components/chat/ChatAvatar";
 
 interface ColleagueContact {
   user_id: string;
