@@ -24,6 +24,7 @@ import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import { useCourseStoreManager } from "@/hooks/useCourseStoreManager";
 import { CourseComments } from "./CourseComments";
+import { CourseStoreDetailView } from "./CourseStoreDetailView";
 import { MarketplaceHeroCards } from "@/components/admin/marketplace/MarketplaceHeroCards";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 
@@ -91,85 +92,13 @@ export function CourseStoreManager({ organizationId, userRole = 'organization', 
         {/* Catalog Tab */}
         <TabsContent value="catalog" className="space-y-6">
           {selectedCourseDetail ? (
-            <div className="animate-in fade-in slide-in-from-right-4 duration-300 space-y-6">
-              <Button variant="ghost" className="gap-2 -ml-2" onClick={() => setSelectedCourseDetail(null)}>
-                <ArrowLeft className="w-4 h-4" />Назад к каталогу
-              </Button>
-
-              <div>
-                <h2 className="text-2xl font-bold">{selectedCourseDetail.course?.title}</h2>
-                <p className="text-muted-foreground flex items-center gap-1.5 mt-1">
-                  <Building2 className="w-4 h-4" />{selectedCourseDetail.organization?.name}
-                </p>
-              </div>
-
-              {selectedCourseDetail.course?.duration && (
-                <div className="flex items-center gap-2 text-muted-foreground">
-                  <Clock className="w-4 h-4" />
-                  <span>Длительность: {selectedCourseDetail.course.duration}</span>
-                </div>
-              )}
-
-              {(selectedCourseDetail.description_short || selectedCourseDetail.course?.description) && (
-                <Card>
-                  <CardHeader><CardTitle className="text-base">Описание курса</CardTitle></CardHeader>
-                  <CardContent className="space-y-3">
-                    {selectedCourseDetail.description_short && (
-                      <p className="text-muted-foreground leading-relaxed">{selectedCourseDetail.description_short}</p>
-                    )}
-                    {selectedCourseDetail.course?.description && (
-                      <p className="leading-relaxed">{selectedCourseDetail.course.description}</p>
-                    )}
-                  </CardContent>
-                </Card>
-              )}
-
-              {/* Benefits block */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                {[
-                  { icon: Zap, text: "Доступ сразу после получения" },
-                  { icon: BookOpen, text: "Все материалы и тесты включены" },
-                  { icon: Award, text: "Удостоверение по завершении" },
-                ].map((b, i) => (
-                  <div key={i} className="flex items-center gap-2.5 p-3 rounded-xl bg-muted/50 border border-border">
-                    <b.icon className="w-4 h-4 text-green-600 shrink-0" />
-                    <span className="text-sm">{b.text}</span>
-                  </div>
-                ))}
-              </div>
-
-              {/* Price block */}
-              {(() => {
-                const price = h.userRole === 'organization' ? selectedCourseDetail.price_organization : selectedCourseDetail.price_student;
-                return (
-                  <Card className={`text-center ${price > 0 ? 'border-primary/20 bg-primary/5' : 'border-green-500/20 bg-green-500/5'}`}>
-                    <CardContent className="pt-6 pb-4 space-y-1">
-                      <div className={`text-2xl font-bold ${price > 0 ? 'text-primary' : 'text-green-600'}`}>
-                        {price > 0 ? `${price.toLocaleString()} ₽` : 'БЕСПЛАТНО'}
-                      </div>
-                      <p className="text-xs text-muted-foreground">{price > 0 ? 'Ограниченное предложение' : 'Доступно всем организациям'}</p>
-                    </CardContent>
-                  </Card>
-                );
-              })()}
-
-              <div className="flex flex-col sm:flex-row gap-3 pt-2">
-                <Button variant="outline" className="flex-1 rounded-xl gap-2" onClick={() => { const id = selectedCourseDetail.course_id; setSelectedCourseDetail(null); navigate(`/course-preview/${id}?from=store`); }}>
-                  <Eye className="w-4 h-4" />Просмотр
-                </Button>
-                {(() => {
-                  const price = h.userRole === 'organization' ? selectedCourseDetail.price_organization : selectedCourseDetail.price_student;
-                  return (
-                    <Button className="flex-1 rounded-xl gap-2 text-base py-5 bg-green-600 hover:bg-green-700 text-white" onClick={() => { const item = selectedCourseDetail; setSelectedCourseDetail(null); h.setSelectedCourseForOrder(item); h.setShowOrderDialog(true); }}>
-                      <Plus className="w-4 h-4" />Получить курс
-                    </Button>
-                  );
-                })()}
-              </div>
-
-              {/* Comments */}
-              <CourseComments marketplaceCourseId={selectedCourseDetail.id} userId={userId} />
-            </div>
+            <CourseStoreDetailView
+              course={selectedCourseDetail}
+              userRole={h.userRole}
+              userId={userId}
+              onBack={() => setSelectedCourseDetail(null)}
+              onOrder={(item) => { setSelectedCourseDetail(null); h.setSelectedCourseForOrder(item); h.setShowOrderDialog(true); }}
+            />
           ) : (
              <>
                {/* Info banner */}
