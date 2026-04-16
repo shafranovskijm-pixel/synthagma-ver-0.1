@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
-import { MessageCircle, Search, ArrowLeft, Bell, Paperclip, Clock, Shield, Plus, UserPlus, X } from "lucide-react";
+import { MessageCircle, Search, ArrowLeft, Bell, Paperclip, Clock, Shield, Plus, UserPlus, X, Bot, Users } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -12,15 +12,26 @@ import { format, isToday, isYesterday } from "date-fns";
 import { ru } from "date-fns/locale";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
+import { AiChatPanel } from "@/components/chat/AiChatPanel";
+import { ColleagueChatPanel } from "@/components/chat/ColleagueChatPanel";
+import { ChatNotificationToggle } from "@/components/chat/ChatNotificationToggle";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle } from "@/components/ui/dialog";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle } from "@/components/ui/dialog";
 
+type ChatMode = "students" | "ai" | "colleagues";
+
 export function OrgChatsTab() {
   const d = useOrgDashboard();
   const isMobile = useIsMobile();
+  const [chatMode, setChatMode] = useState<ChatMode>("students");
   const [selectedStudentId, setSelectedStudentId] = useState<string | null>(null);
   const [selectedStudentName, setSelectedStudentName] = useState<string>("");
   const [selectedAdminChat, setSelectedAdminChat] = useState(false);
