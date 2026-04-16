@@ -1,39 +1,37 @@
 
+# Полнофункциональный чат для студентов (как у организации)
 
-# Исправление заявок на запись + баннер с прогрессом
+## Что сейчас
+Студенческий чат — простой экран «Выберите чат» с 2 кнопками (Чат с учебным центром, ИИ-помощник). Нет боковой панели, нет настроек, нет контактов, нет аватаров, нет уведомлений.
 
-## Проблемы
+## Что будет
+Чат студента будет выглядеть и работать как чат организации: боковая панель `ChatSidebar` с разделами, аватары, настройки приватности, контакты, звуковые уведомления.
 
-### 1. Заявки не приходят
-При записи на курс (платный или бесплатный) запись в `enrollment_requests` **не создаётся** для платных курсов. В `CourseLanding.tsx` и `AvailablePaidCourses.tsx` при `price > 0` отправляется только чат-сообщение и уведомление в `org_notifications`, но **не** запись в `enrollment_requests`. Панель «Заявки» (`ChatRequestsPanel`) читает только из `enrollment_requests` — поэтому заявки не видны.
+### Разделы чата студента
+1. **Чаты** — переписка с учебным центром (существующий `StudentOrgChat`)
+2. **ИИ-помощник** — существующий `AiChatPanel`
+3. **Коллеги** — `ColleagueChatPanel` с `role="student"` (общение с однокурсниками)
+4. **Контакты** — `ChatContactsPanel` с `role="student"`
+5. **Настройки** — `ChatSettingsPanel` (аватар, приватность, звуки)
 
-### 2. Баннер «Общий прогресс» не переключается
-Баннер в `StudentLibrary.tsx` — обычный `<div>` со стилями, **не** использует `HeroBannerSwiper`. У него нет стрелок и свайпа. Нужно обернуть его в `HeroBannerSwiper`, чтобы фон переключался так же, как в организации.
+Разделы «Заявки» и «Группы» — только для организации, у студента их не будет.
 
-## Решение
+## Технические детали
 
-### Заявки
-В **обоих** местах (`CourseLanding.tsx` и `AvailablePaidCourses.tsx`) для платных курсов добавить создание записи в `enrollment_requests` (вместе с существующим chat + notification):
+### Новый компонент `StudentChatsTab`
+Создать `src/components/student/StudentChatsTab.tsx` — аналог `OrgChatsTab`, но адаптированный:
+- Использует `ChatSidebar` с набором items без «Заявки»
+- Раздел «Чаты» показывает `StudentOrgChat`
+- Загружает профиль пользователя для аватара и имени
+- Мобильная версия с горизонтальными табами
 
-```typescript
-// Для платных курсов тоже создаём enrollment_request
-await supabase.from("enrollment_requests").insert({
-  user_id: user.id,
-  course_id: course.id,
-  status: "pending"
-});
-```
-
-Это гарантирует, что заявка появится в панели «Заявки» организации.
-
-### Баннер
-В `StudentLibrary.tsx` заменить статичный градиентный `<div>` на `HeroBannerSwiper` с тем же содержимым (прогресс, время, уроки) в качестве `children`. Фон будет переключаться стрелками и свайпом.
+### Изменения в `StudentDashboard.tsx`
+- Убрать `chatMode` state и всю inline-логику чата (select/org/ai)
+- Заменить на `<StudentChatsTab />` при `currentTab === "chat"`
 
 ## Файлы
 
 | Действие | Файл |
 |----------|------|
-| Изменить | `src/pages/CourseLanding.tsx` — добавить `enrollment_requests.insert` для платных курсов |
-| Изменить | `src/components/student/AvailablePaidCourses.tsx` — добавить `enrollment_requests.insert` |
-| Изменить | `src/components/student/StudentLibrary.tsx` — обернуть баннер в `HeroBannerSwiper` |
-
+| Создать | `src/components/student/StudentChatsTab.tsx` — полнофункциональный чат с ChatSidebar |
+| Изменить | `src/pages/StudentDashboard.tsx` — заменить inline чат на `StudentChatsTab` |
