@@ -110,12 +110,14 @@ export function OrgChatsTab() {
 
   const handleSelectStudent = (studentId: string, name?: string) => {
     setSelectedAdminChat(false);
+    setSelectedGeneralChat(false);
     setSelectedStudentId(studentId);
     if (name) setSelectedStudentName(name);
     setTimeout(() => d.orgChats.refresh(), 1500);
   };
 
-  const handleSelectAdminChat = () => { setSelectedStudentId(null); setSelectedAdminChat(true); };
+  const handleSelectAdminChat = () => { setSelectedStudentId(null); setSelectedGeneralChat(false); setSelectedAdminChat(true); };
+  const handleSelectGeneralChat = () => { setSelectedStudentId(null); setSelectedAdminChat(false); setSelectedGeneralChat(true); };
   const handleNewChatWithStudent = (studentId: string, name: string) => { setShowNewChatDialog(false); setNewChatSearch(""); handleSelectStudent(studentId, name); };
   const handleOpenNewChat = () => { setShowNewChatDialog(true); loadOrgStudents(); };
 
