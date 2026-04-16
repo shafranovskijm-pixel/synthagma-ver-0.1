@@ -25,6 +25,7 @@ interface Overlay {
   y: number;
   scaleX: number;
   scaleY: number;
+  page: number;
 }
 
 const BASE_STAMP = { w: 120, h: 120 };
@@ -34,10 +35,10 @@ function makeId() {
   return Math.random().toString(36).slice(2, 9);
 }
 
-function defaultOverlays(): Overlay[] {
+function defaultOverlays(page: number): Overlay[] {
   return [
-    { id: makeId(), type: 'stamp', x: 0.75, y: 0.85, scaleX: 1, scaleY: 1 },
-    { id: makeId(), type: 'signature', x: 0.72, y: 0.88, scaleX: 1, scaleY: 1 },
+    { id: makeId(), type: 'stamp', x: 0.75, y: 0.85, scaleX: 1, scaleY: 1, page },
+    { id: makeId(), type: 'signature', x: 0.72, y: 0.88, scaleX: 1, scaleY: 1, page },
   ];
 }
 
@@ -58,7 +59,7 @@ export function DocumentSigning() {
   const [files, setFiles] = useState<PdfFile[]>([]);
   const [activeFileIdx, setActiveFileIdx] = useState(0);
   const [activePage, setActivePage] = useState(0);
-  const [overlays, setOverlays] = useState<Overlay[]>(defaultOverlays());
+  const [overlays, setOverlays] = useState<Overlay[]>(defaultOverlays(0));
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [dragging, setDragging] = useState<string | null>(null);
   const [signing, setSigning] = useState(false);
@@ -74,7 +75,6 @@ export function DocumentSigning() {
     const g = new Image(); g.src = signatureUrl; g.onload = () => setSigImg(g);
   }, []);
 
-  // Close context menu on any click
   useEffect(() => {
     if (!ctxMenu.visible) return;
     const close = () => setCtxMenu(prev => ({ ...prev, visible: false }));
@@ -105,7 +105,9 @@ export function DocumentSigning() {
     if (e.dataTransfer.files.length) handleFiles(e.dataTransfer.files);
   }, [handleFiles]);
 
-  // Render current page + overlays
+  // Render current page + overlays for this page only
+  const pageOverlays = overlays.filter(o => o.page === activePage);
+
   useEffect(() => {
     const f = files[activeFileIdx];
     if (!f || !canvasRef.current) return;
@@ -121,8 +123,9 @@ export function DocumentSigning() {
       if (cancelled) return;
       await page.render({ canvasContext: ctx, viewport: vp }).promise;
 
-      for (const o of overlays) {
-        const img = o.type === 'stamp' ? stampImg : sigImg;
+      for (const o of pageOverlays) {
+        // FIX: stamp type uses stampImg (печать), signature uses sigImg (подпись)
+        const img = o.type === 'stamp' ? sigImg : stampImg;
         if (!img) continue;
         const { w, h } = overlaySize(o);
         ctx.globalAlpha = o.type === 'stamp' ? 0.85 : 0.9;
@@ -153,7 +156,7 @@ export function DocumentSigning() {
   const findClosestOverlay = (rx: number, ry: number) => {
     let best: Overlay | null = null;
     let bestD = 0.08;
-    for (const o of overlays) {
+    for (const o of pageOverlays) {
       const d = Math.hypot(rx - o.x, ry - o.y);
       if (d < bestD) { best = o; bestD = d; }
     }
@@ -191,7 +194,7 @@ export function DocumentSigning() {
   };
 
   const addOverlayFromMenu = (type: 'stamp' | 'signature') => {
-    const newO: Overlay = { id: makeId(), type, x: ctxMenu.rx, y: ctxMenu.ry, scaleX: 1, scaleY: 1 };
+    const newO: Overlay = { id: makeId(), type, x: ctxMenu.rx, y: ctxMenu.ry, scaleX: 1, scaleY: 1, page: activePage };
     setOverlays(prev => [...prev, newO]);
     setSelectedId(newO.id);
     setCtxMenu(prev => ({ ...prev, visible: false }));
@@ -224,13 +227,15 @@ export function DocumentSigning() {
         const stImg = await pdfDoc.embedPng(stampBytes);
         const sgImg = await pdfDoc.embedPng(sigBytes);
         const pages = pdfDoc.getPages();
-        const lastPage = pages[pages.length - 1];
-        const { width, height } = lastPage.getSize();
 
         for (const o of overlays) {
-          const img = o.type === 'stamp' ? stImg : sgImg;
+          const pageIdx = Math.min(o.page, pages.length - 1);
+          const targetPage = pages[pageIdx];
+          const { width, height } = targetPage.getSize();
+          // FIX: swap — stamp uses sgImg (печать), signature uses stImg (подпись)
+          const img = o.type === 'stamp' ? sgImg : stImg;
           const { w, h } = overlaySize(o);
-          lastPage.drawImage(img, {
+          targetPage.drawImage(img, {
             x: o.x * width - w / 2,
             y: (1 - o.y) * height - h / 2,
             width: w, height: h,
