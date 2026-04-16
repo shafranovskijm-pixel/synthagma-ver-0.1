@@ -153,12 +153,7 @@ export default function PlatformPresentation() {
           <h2 className="text-3xl md:text-5xl font-bold text-[hsl(0_0%_8%)] dark:text-white mb-3"><InViewTypewriterText text="Проблема" speed={60} delay={200} /></h2>
           <p className="text-base md:text-xl text-[hsl(0_0%_45%)] dark:text-white/60 mb-10">С чем сталкиваются образовательные организации каждый день</p>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-6">
-            {[
-              { icon: FileText, title: "Бумажная работа", desc: "Договоры, протоколы, приказы — всё вручную", color: "hsl(0 72% 51%)" },
-              { icon: Layers, title: "Разрозненные системы", desc: "Excel, мессенджеры, почта, диски — хаос", color: "hsl(38 92% 50%)" },
-              { icon: AlertTriangle, title: "Нет контроля", desc: "Кто учится, кто завершил, кто просрочил — неизвестно", color: "hsl(262 80% 55%)" },
-              { icon: Clock, title: "Потеря времени", desc: "До 70% рабочего времени — на администрирование", color: "hsl(210 80% 50%)" },
-            ].map((p, i) => (
+            {problemCards.map((p, i) => (
               <div key={i} className="bg-white dark:bg-white/5 rounded-2xl p-6 md:p-8 border border-[hsl(40_15%_90%)] dark:border-white/10 shadow-sm flex items-start gap-4">
                 <div className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: `${p.color.replace(")", " / 0.1)")}` }}>
                   <p.icon className="w-6 h-6" style={{ color: p.color }} />
@@ -180,20 +175,7 @@ export default function PlatformPresentation() {
           <p className="text-base md:text-xl text-white/80 mb-12 max-w-3xl mx-auto">Всё для образовательной организации — от создания курсов до выгрузки в ФИС ФРДО</p>
           <div className="overflow-hidden [mask-image:linear-gradient(to_right,transparent,black_10%,black_90%,transparent)]">
             <div className="flex gap-4 md:gap-6 animate-marquee hover:[animation-play-state:paused] w-max">
-              {[
-                { icon: BookOpen, label: "Курсы и обучение" },
-                { icon: FileText, label: "Документооборот" },
-                { icon: Brain, label: "ИИ-ассистент" },
-                { icon: Video, label: "Видеоидентификация" },
-                { icon: Database, label: "ФИС ФРДО" },
-                { icon: Shield, label: "Охрана труда" },
-                { icon: BookOpen, label: "Курсы и обучение" },
-                { icon: FileText, label: "Документооборот" },
-                { icon: Brain, label: "ИИ-ассистент" },
-                { icon: Video, label: "Видеоидентификация" },
-                { icon: Database, label: "ФИС ФРДО" },
-                { icon: Shield, label: "Охрана труда" },
-              ].map((f, i) => (
+              {[...solutionMarquee, ...solutionMarquee].map((f, i) => (
                 <div key={i} className="bg-white/15 backdrop-blur-sm rounded-2xl p-6 md:p-8 flex flex-col items-center gap-3 min-w-[160px] md:min-w-[200px] hover:scale-105 transition-transform">
                   <f.icon className="w-8 h-8 md:w-10 md:h-10" />
                   <span className="text-sm md:text-base font-medium whitespace-nowrap">{f.label}</span>
