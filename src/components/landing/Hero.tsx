@@ -3,6 +3,7 @@ import { ArrowRight, Sparkles, Shield, FileCheck, GraduationCap, BookOpen } from
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { FloatingParticles } from "./FloatingParticles";
+import { TypewriterText } from "@/components/ui/TypewriterText";
 
 
 const features = [
@@ -207,16 +208,19 @@ export function Hero() {
         </motion.div>
       </div>
 
-      {/* Animated decorative top accent bar */}
-      <motion.div
-        className="relative z-10 h-[3px]"
-        style={{
-          background: "linear-gradient(90deg, hsl(var(--accent)), hsl(var(--primary)), hsl(174 72% 56%), hsl(var(--accent)), hsl(var(--primary)))",
-          backgroundSize: "200% 100%",
-        }}
-        animate={{ backgroundPosition: ["0% 0%", "200% 0%"] }}
-        transition={{ duration: 4, repeat: Infinity, ease: "linear" }}
-      />
+      {/* Gradient fade from header to hero */}
+      <div className="relative z-10 h-6 bg-gradient-to-b from-[#0a0e1a] to-transparent" />
+      <div className="absolute top-0 left-0 right-0 h-16 z-10 overflow-hidden pointer-events-none">
+        {[...Array(8)].map((_, i) => (
+          <motion.div
+            key={i}
+            className="absolute w-1 h-1 rounded-full bg-white/30"
+            style={{ left: `${12 + i * 11}%`, top: 0 }}
+            animate={{ y: [0, 60], opacity: [0.6, 0] }}
+            transition={{ duration: 2 + i * 0.3, repeat: Infinity, delay: i * 0.4, ease: "easeOut" }}
+          />
+        ))}
+      </div>
 
       {/* Hero content */}
       <div className="relative z-10 container mx-auto px-6 pt-12 pb-8 md:pt-16 md:pb-10">
@@ -239,9 +243,11 @@ export function Hero() {
             transition={{ duration: 0.8, delay: 0.1 }}
           >
             <h1 className="font-display text-5xl md:text-6xl lg:text-7xl font-medium leading-[1.1] mb-8 tracking-tight">
-              Обучение и документы
+              <TypewriterText text="Обучение и документы" speed={60} delay={400} />
               <br />
-              <span className="text-muted-foreground">в одной системе</span>
+              <span className="text-muted-foreground">
+                <TypewriterText text="в одной системе" speed={60} delay={1700} />
+              </span>
             </h1>
           </motion.div>
 
