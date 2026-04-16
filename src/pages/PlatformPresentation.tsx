@@ -192,14 +192,7 @@ export default function PlatformPresentation() {
           <h2 className="text-3xl md:text-5xl font-bold text-[hsl(0_0%_8%)] dark:text-white mb-3"><InViewTypewriterText text="Управление курсами" speed={40} delay={200} /></h2>
           <p className="text-base md:text-xl text-[hsl(0_0%_45%)] dark:text-white/60 mb-10">Создавайте, импортируйте или генерируйте курсы с ИИ</p>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
-            {[
-              { icon: Play, title: "Видеолекции", desc: "Kinescope, загрузка видео, запрет перемотки" },
-              { icon: ClipboardList, title: "Тесты", desc: "Банк вопросов, рандомизация, автопроверка" },
-              { icon: Brain, title: "ИИ-генерация", desc: "Курс из темы за 5 минут — до 35 уроков" },
-              { icon: FileText, title: "Материалы", desc: "Текст, HTML, файлы, вложения к урокам" },
-              { icon: Award, title: "Сертификаты", desc: "Удостоверения, дипломы, свидетельства — авто" },
-              { icon: Lock, title: "Гибкие настройки", desc: "Последовательность, проходной балл, доступ" },
-            ].map((t, i) => (
+            {lmsFeatures.map((t, i) => (
               <div key={i} className="bg-white dark:bg-white/5 rounded-2xl border border-[hsl(40_15%_90%)] dark:border-white/10 p-6 flex items-start gap-4">
                 <div className="w-10 h-10 rounded-xl bg-[hsl(174_72%_46%/0.1)] flex items-center justify-center flex-shrink-0">
                   <t.icon className="w-5 h-5 text-[hsl(174_72%_46%)]" />
