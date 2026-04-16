@@ -282,6 +282,8 @@ export default function StudentDashboard() {
   // Bottom navigation items for mobile
   const bottomNavItems: { id: StudentTab; icon: typeof BookOpen; label: string }[] = [
     { id: "catalog", icon: BookOpen, label: "Курсы" },
+    { id: "webinars" as StudentTab, icon: Presentation, label: "Вебинары" },
+    { id: "trainers" as StudentTab, icon: Monitor, label: "3D" },
     ...(dashboardSettings.showAiChat ? [{ id: "chat" as StudentTab, icon: MessageCircle, label: "Чат" }] : []),
     { id: "profile" as StudentTab, icon: User, label: "Профиль" },
   ];
