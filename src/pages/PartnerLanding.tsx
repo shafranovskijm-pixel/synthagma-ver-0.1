@@ -16,6 +16,7 @@ import { getBaseUrl } from "@/utils/getBaseUrl";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { FloatingParticles } from "@/components/landing/FloatingParticles";
+import { StarfieldCanvas } from "@/components/landing/StarfieldCanvas";
 import { toast } from "sonner";
 import { getPartnerRef } from "@/utils/referralCookie";
 import { InfiniteMarquee } from "@/components/partner/InfiniteMarquee";
@@ -222,11 +223,11 @@ const PartnerLanding = () => {
         <LandingHeader />
 
         {/* Hero — dark section */}
-        <section className="relative py-28 lg:py-40 overflow-hidden bg-foreground">
+        <section className="relative py-28 lg:py-40 overflow-hidden bg-[#0a0e1a]">
+          <StarfieldCanvas />
           <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_30%_20%,rgba(20,184,166,0.15),transparent_60%)]" />
           <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_70%_80%,rgba(6,182,212,0.1),transparent_60%)]" />
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(20,184,166,0.05),transparent_70%)]" />
-          <div className="absolute inset-0 opacity-[0.04] bg-[radial-gradient(#fff_1px,transparent_1px)] [background-size:32px_32px]" />
 
           <motion.div className="absolute left-[15%] top-0 w-px h-full bg-gradient-to-b from-transparent via-teal-400/20 to-transparent" initial={{ scaleY: 0 }} animate={{ scaleY: 1 }} transition={{ duration: 1.5 }} />
           <motion.div className="absolute right-[15%] top-0 w-px h-full bg-gradient-to-b from-transparent via-teal-400/15 to-transparent" initial={{ scaleY: 0 }} animate={{ scaleY: 1 }} transition={{ duration: 1.5, delay: 0.3 }} />
