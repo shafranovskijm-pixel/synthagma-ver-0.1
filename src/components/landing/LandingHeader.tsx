@@ -26,7 +26,7 @@ export function LandingHeader() {
             <div className="w-10 h-10 rounded-lg bg-white flex items-center justify-center hover:scale-105 transition-transform duration-300">
               <span className="font-display font-bold text-xl text-[#0a0e1a]">Σ</span>
             </div>
-            <span className="font-display font-medium text-xl tracking-tight text-white flex overflow-hidden">
+            <span className="font-display font-medium text-xl tracking-tight text-white flex">
               {logoLetters.map((letter, i) => (
                 <span
                   key={i}
