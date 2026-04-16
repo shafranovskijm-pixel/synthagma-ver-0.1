@@ -8,7 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { toast } from 'sonner';
-import { Copy, Plus, Trash2, Users, ExternalLink, Eye, Video, Radio, Save, Pencil } from 'lucide-react';
+import { Copy, Plus, Trash2, Users, ExternalLink, Eye, Video, Radio, Save, Pencil, MonitorPlay, ChevronDown, ChevronUp } from 'lucide-react';
 import { format } from 'date-fns';
 import { ru } from 'date-fns/locale';
 
@@ -37,6 +37,7 @@ export function DemoLinksManager() {
   const [kinescopeId, setKinescopeId] = useState('');
   const [loading, setLoading] = useState(false);
   const [editingKinescope, setEditingKinescope] = useState<Record<string, string>>({});
+  const [expandedPlayers, setExpandedPlayers] = useState<Record<string, boolean>>({});
 
   const fetchLinks = useCallback(async () => {
     const { data } = await supabase
@@ -214,6 +215,35 @@ export function DemoLinksManager() {
                 </div>
               )}
             </div>
+
+            {/* Inline player */}
+            {link.kinescope_live_id && (
+              <div className="mt-2">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="w-full gap-2"
+                  onClick={() => setExpandedPlayers(prev => ({ ...prev, [link.id]: !prev[link.id] }))}
+                >
+                  <MonitorPlay className="w-4 h-4" />
+                  {expandedPlayers[link.id] ? 'Скрыть трансляцию' : 'Показать трансляцию'}
+                  {expandedPlayers[link.id] ? <ChevronUp className="w-3 h-3 ml-auto" /> : <ChevronDown className="w-3 h-3 ml-auto" />}
+                </Button>
+                {expandedPlayers[link.id] && (
+                  <div className="mt-2 rounded-lg overflow-hidden border border-border bg-black">
+                    <div className="aspect-video w-full">
+                      <iframe
+                        src={`https://kinescope.io/embed/${link.kinescope_live_id}`}
+                        className="w-full h-full"
+                        allow="autoplay; fullscreen; picture-in-picture; encrypted-media; gyroscope; accelerometer; clipboard-write; screen-wake-lock;"
+                        allowFullScreen
+                        title="Превью трансляции"
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
 
             <p className="text-xs text-muted-foreground mt-2">
               Создана: {format(new Date(link.created_at), 'dd MMM yyyy HH:mm', { locale: ru })}
