@@ -1,50 +1,46 @@
 
 
-# Общий чат, уведомления и звуки в чатах
+# Улучшения чат-интерфейса
 
-## Что будет сделано
+## Проблемы из запроса
 
-### 1. Общий чат организации
-Новый групповой чат ниже «Администрация платформы» в списке — все сотрудники организации видят одну общую переписку.
+1. **Окно чата слишком большое** — занимает весь экран (`h-[calc(100vh-200px)]`). Нужно убрать фиксированную высоту, пусть растёт по содержимому.
+2. **При переключении вкладок прокрутка уходит вниз** — при смене секции не нужно автоскроллить.
+3. **Переключатель «Администрация / Общий чат / Мои группы»** — вверху списка чатов нужны табы-переключатели между типами: Личные, Админ+Общий, Группы.
+4. **Мои группы** — возможность создавать группы и добавлять туда коллег или учеников.
+5. **Личка из общего чата** — из общего чата можно кликнуть на имя участника и написать ему лично.
 
-**Миграция**: Таблица `org_general_messages` (id, organization_id, sender_user_id, content, attachment_url, attachment_name, attachment_type, created_at) с RLS — чтение/запись только для участников организации. Realtime включён.
+## План
 
-**Компонент**: `OrgGeneralChat.tsx` — аналог AdminChatDialog, но для всех членов организации. Каждое сообщение показывает аватар и имя отправителя (в отличие от 1-на-1 чатов).
+### 1. Убрать фиксированную высоту чата
+- В `OrgChatsTab.tsx` строка 340: убрать `h-[calc(100vh-200px)] min-h-[500px]`, заменить на `min-h-[300px]` — пусть блок растёт по содержимому родителя.
+- В `AdminChatsManager.tsx` и `ColleagueChatPanel.tsx` — аналогично, если есть фиксированная высота.
 
-**Интеграция**: В `OrgChatsTab.tsx` добавить кнопку «Общий чат» между «Администрация» и списком студентов с иконкой Users.
+### 2. Табы-переключатели вверху списка чатов
+В `OrgChatsTab.tsx` внутри `renderStudentChats()` вместо линейного списка (Администрация → Общий чат → ученики) добавить мини-табы вверху колонки:
+- **Личные** — список переписок с учениками (текущий)
+- **Служебные** — Администрация платформы + Общий чат
+- **Группы** — список пользовательских групп
 
-### 2. Кнопка мьюта (Bell/BellOff) на каждом чате
-Компонент `ChatNotificationToggle` уже существует и работает с таблицей `chat_notification_settings`.
+### 3. Система групповых чатов (Мои группы)
+**Миграция**: Таблица `chat_groups` (id, organization_id, name, created_by, created_at) и `chat_group_members` (id, group_id, user_id). Таблица `chat_group_messages` (id, group_id, sender_user_id, content, created_at) с RLS и Realtime.
 
-Добавить его в заголовок открытого чата (рядом с именем собеседника) в:
-- `OrgChatsTab.tsx` — в шапке desktop-чата (строка ~204-217)
-- `AdminChatsManager.tsx` — в шапке чата
-- `ColleagueChatPanel.tsx` — в шапке чата
+**Компонент**: `ChatGroupsPanel.tsx` — список групп с возможностью создать новую, добавить участников (коллег/учеников), переписка внутри группы.
 
-### 3. Звуковые уведомления при новых сообщениях
-**Хук `useChatSound.ts`**: Воспроизводит звук при получении нового сообщения через realtime-канал. Проверяет `chat_notification_settings.muted` перед воспроизведением.
+### 4. Личка из общего чата
+В `OrgGeneralChat.tsx` — клик на имя/аватар отправителя вызывает callback `onStartPrivateChat(userId, name)`, который переключает на личный чат с этим пользователем.
 
-**Звуковые файлы**: 5 вариантов в `public/sounds/` (message-1.mp3 ... message-5.mp3) — короткие синтезированные звуки, сгенерированные программно.
-
-### 4. Настройки звука в ChatSettingsPanel
-Добавить в существующий `ChatSettingsPanel.tsx`:
-- Переключатель «Звук уведомлений» (вкл/выкл) 
-- Выбор мелодии из 5 вариантов с кнопкой предпрослушивания
-- Сохранение в `chat_notification_settings` (chat_type = "global", chat_partner_id = null)
-
-**Миграция**: Добавить колонку `notification_sound` (text, default 'message-1') в `chat_notification_settings`.
+### 5. Не скроллить при переключении вкладок
+Убрать `useEffect(() => { scrollToBottom(); }, [messages])` из компонентов чатов — вместо этого скроллить только при отправке/получении нового сообщения.
 
 ## Файлы
 
 | Действие | Файл |
 |----------|------|
-| Миграция | `org_general_messages` таблица + RLS + realtime |
-| Миграция | `notification_sound` колонка в `chat_notification_settings` |
-| Создать | `src/components/chat/OrgGeneralChat.tsx` |
-| Создать | `src/hooks/useChatSound.ts` |
-| Создать | `public/sounds/message-1.mp3` ... `message-5.mp3` |
-| Изменить | `src/components/organization/OrgChatsTab.tsx` — общий чат + bell toggle |
-| Изменить | `src/components/chat/ChatSettingsPanel.tsx` — звуковые настройки |
-| Изменить | `src/components/admin/AdminChatsManager.tsx` — bell toggle |
-| Изменить | `src/components/chat/ColleagueChatPanel.tsx` — bell toggle |
+| Миграция | `chat_groups`, `chat_group_members`, `chat_group_messages` таблицы + RLS + Realtime |
+| Создать | `src/components/chat/ChatGroupsPanel.tsx` |
+| Изменить | `src/components/organization/OrgChatsTab.tsx` — убрать фиксированную высоту, добавить табы (Личные/Служебные/Группы), интегрировать группы |
+| Изменить | `src/components/chat/OrgGeneralChat.tsx` — клик на участника → личка |
+| Изменить | `src/components/admin/AdminChatsManager.tsx` — убрать фиксированную высоту |
+| Изменить | `src/components/chat/ColleagueChatPanel.tsx` — убрать фиксированную высоту |
 
