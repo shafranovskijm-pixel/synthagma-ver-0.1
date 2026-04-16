@@ -42,7 +42,7 @@ export function DemoDashboard() {
             <CardContent className="p-0">
               <div className="aspect-video w-full bg-black">
                 <iframe
-                  src={`https://player.kinescope.io/live/${kinescopeLiveId}`}
+                  src={`https://kinescope.io/embed/${kinescopeLiveId}`}
                   className="w-full h-full"
                   allow="autoplay; fullscreen; picture-in-picture; encrypted-media"
                   allowFullScreen
