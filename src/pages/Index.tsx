@@ -5,6 +5,7 @@ import { Hero } from "@/components/landing/Hero";
 import { Features } from "@/components/landing/Features";
 import { EditorDemo } from "@/components/landing/EditorDemo";
 import { RostechnadzorCourses } from "@/components/landing/RostechnadzorCourses";
+import { LandingHeader } from "@/components/landing/LandingHeader";
 
 import { PricingPlans } from "@/components/landing/PricingPlans";
 import { Testimonials } from "@/components/landing/Testimonials";
@@ -74,6 +75,7 @@ const Index = () => {
       </Helmet>
       
       <div className="min-h-screen bg-background">
+        <LandingHeader />
         <Hero />
         <EditorDemo />
         <PricingPlans />

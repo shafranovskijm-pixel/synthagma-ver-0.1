@@ -10,6 +10,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { useState, useEffect } from "react";
 import { Footer } from "@/components/landing/Footer";
+import { LandingHeader } from "@/components/landing/LandingHeader";
 import { Helmet } from "react-helmet-async";
 import { getBaseUrl } from "@/utils/getBaseUrl";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -218,25 +219,7 @@ const PartnerLanding = () => {
       </Helmet>
 
       <div className="min-h-screen bg-background overflow-hidden">
-        {/* Header */}
-        <header className="sticky top-0 z-50 bg-[#0a0e1a]/95 backdrop-blur-lg border-b border-white/10">
-          <div className="container mx-auto px-6 h-16 flex items-center justify-between">
-            <Link to="/" className="flex items-center gap-2">
-              <SigmaLogo size="md" showText className="text-white" />
-            </Link>
-            <div className="flex items-center gap-3">
-              {isPartner ? (
-                <Button onClick={() => navigate("/partner/dashboard")} className="bg-teal-500 hover:bg-teal-600 text-white shadow-[0_0_20px_rgba(20,184,166,0.25)]">
-                  Кабинет партнёра
-                </Button>
-              ) : (
-                <Button onClick={handleBecomePartner} disabled={isBecoming} className="bg-teal-500 hover:bg-teal-600 text-white shadow-[0_0_20px_rgba(20,184,166,0.25)]">
-                  {isBecoming ? "Загрузка..." : "Стать партнёром"}
-                </Button>
-              )}
-            </div>
-          </div>
-        </header>
+        <LandingHeader />
 
         {/* Hero — dark section */}
         <section className="relative py-28 lg:py-40 overflow-hidden bg-foreground">

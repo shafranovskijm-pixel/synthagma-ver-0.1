@@ -2,8 +2,9 @@ import { Link } from "react-router-dom";
 import { Helmet } from "react-helmet-async";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { SigmaLogo } from "@/components/ui/SigmaLogo";
-import { ArrowLeft, Building2, Mail, Phone, MapPin, FileText, Shield, Users, Target, Lightbulb, Award } from "lucide-react";
+import { Building2, Mail, Phone, MapPin, FileText, Shield, Users, Target, Lightbulb, Award } from "lucide-react";
+import { LandingHeader } from "@/components/landing/LandingHeader";
+import { Footer } from "@/components/landing/Footer";
 
 const About = () => {
   return (
@@ -18,20 +19,7 @@ const About = () => {
         <meta property="og:url" content="https://sintagma.com.ru/about" />
         <meta property="og:image" content="https://sintagma.com.ru/og-image.png" />
       </Helmet>
-      {/* Header */}
-      <header className="sticky top-0 z-50 bg-background/80 backdrop-blur-xl border-b border-border">
-        <div className="container mx-auto px-6 py-4 flex items-center justify-between">
-          <Link to="/" className="flex items-center gap-2">
-            <SigmaLogo size="sm" />
-          </Link>
-          <Link to="/">
-            <Button variant="ghost" className="gap-2">
-              <ArrowLeft className="w-4 h-4" />
-              На главную
-            </Button>
-          </Link>
-        </div>
-      </header>
+      <LandingHeader />
 
       {/* Hero Section */}
       <section className="relative py-20 overflow-hidden">
@@ -268,17 +256,7 @@ const About = () => {
         </div>
       </section>
 
-      {/* Footer */}
-      <footer className="py-8 border-t border-border">
-        <div className="container mx-auto px-6 text-center">
-          <p className="text-muted-foreground text-sm">
-            © 2026 СИНТАГМА. Все права защищены.
-          </p>
-          <a href="https://24zxc.ru" target="_blank" rel="noopener noreferrer" className="text-muted-foreground/60 text-xs hover:text-muted-foreground transition-colors">
-            Создание сайтов и рекламы — 24zxc.ru
-          </a>
-        </div>
-      </footer>
+      <Footer />
     </div>
   );
 };
