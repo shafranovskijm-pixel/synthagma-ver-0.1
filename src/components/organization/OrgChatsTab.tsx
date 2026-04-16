@@ -153,7 +153,7 @@ export function OrgChatsTab() {
             <h3 className="font-semibold text-lg flex-1">Общий чат</h3>
             <ChatNotificationToggle chatType="general" />
           </div>
-          <OrgGeneralChat organizationId={organizationId} currentUserId={currentUserId} />
+          <OrgGeneralChat organizationId={organizationId} currentUserId={currentUserId} onStartPrivateChat={(userId, name) => { setSelectedGeneralChat(false); setChatSubTab("personal"); handleSelectStudent(userId, name); }} />
         </div>
       );
     }
@@ -283,7 +283,7 @@ export function OrgChatsTab() {
                   <ChatNotificationToggle chatType="general" />
                 </div>
                 <div className="flex-1 p-4 overflow-hidden">
-                  <OrgGeneralChat organizationId={organizationId} currentUserId={currentUserId} />
+                  <OrgGeneralChat organizationId={organizationId} currentUserId={currentUserId} onStartPrivateChat={(userId, name) => { setSelectedGeneralChat(false); setChatSubTab("personal"); handleSelectStudent(userId, name); }} />
                 </div>
               </div>
             ) : selectedStudentId && organizationId && currentUserId ? (
