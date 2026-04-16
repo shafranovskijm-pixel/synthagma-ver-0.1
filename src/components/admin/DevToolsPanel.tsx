@@ -19,8 +19,8 @@ export function DevToolsPanel() {
   const errorCount = CODE_RECOMMENDATIONS.filter(r => r.severity === "error" && r.status !== "skipped" && r.status !== "applied").length;
 
   const metricCards = [
-    { label: "Таблиц", value: "65", icon: <Database className="w-5 h-5" />, colorClass: "bg-violet-500", bgClass: "bg-violet-500" },
-    { label: "Edge-функций", value: "63", icon: <Zap className="w-5 h-5" />, colorClass: "bg-emerald-500", bgClass: "bg-emerald-500" },
+    { label: "Таблиц", value: "118", icon: <Database className="w-5 h-5" />, colorClass: "bg-violet-500", bgClass: "bg-violet-500" },
+    { label: "Edge-функций", value: "64", icon: <Zap className="w-5 h-5" />, colorClass: "bg-emerald-500", bgClass: "bg-emerald-500" },
     { label: "Компонентов", value: `~${TOTAL_FILES}`, icon: <Code2 className="w-5 h-5" />, colorClass: "bg-sky-500", bgClass: "bg-sky-500" },
     { label: "Строк кода", value: `~${(TOTAL_LINES / 1000).toFixed(1)}k`, icon: <FileCode className="w-5 h-5" />, colorClass: "bg-amber-500", bgClass: "bg-amber-500" },
   ];
@@ -87,7 +87,7 @@ export function DevToolsPanel() {
 
         {/* Edge Functions Tab */}
         <TabsContent value="functions" className="mt-0 space-y-4">
-          <div className="text-sm text-muted-foreground font-mono">{EDGE_FUNCTIONS.length} функций в 5 категориях</div>
+          <div className="text-sm text-muted-foreground font-mono">{EDGE_FUNCTIONS.length} функций в {Object.keys(CATEGORY_META).length} категориях</div>
           {Object.entries(CATEGORY_META).map(([catKey, catMeta]) => {
             const fns = EDGE_FUNCTIONS.filter((f) => f.category === catKey);
             return (
