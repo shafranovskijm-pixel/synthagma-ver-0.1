@@ -280,7 +280,7 @@ export default function CourseLanding() {
     </Button>
   ) : (
     <div className="flex items-center gap-2">
-      {course.price > 0 && !course.require_enrollment_approval && (
+      {course.price > 0 && (
         <>
           <Input value={promoCode} onChange={(e) => setPromoCode(e.target.value)} placeholder="Промокод" className="bg-white/10 border-white/20 text-white placeholder:text-white/50 w-32" />
           <Button variant="secondary" size="sm" onClick={checkPromoCode} disabled={promoChecking}>
@@ -289,7 +289,7 @@ export default function CourseLanding() {
         </>
       )}
       <Button size="lg" onClick={() => handleEnroll()} className="bg-white text-black hover:bg-white/90">
-        {course.require_enrollment_approval ? "Оставить заявку" : (finalPrice > 0 ? "Купить курс" : "Записаться бесплатно")}
+        {finalPrice > 0 ? "Купить курс" : "Оставить заявку"}
       </Button>
     </div>
   );
