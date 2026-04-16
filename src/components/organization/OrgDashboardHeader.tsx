@@ -115,7 +115,14 @@ export function OrgDashboardHeader() {
             {logoUrl ? (
               <img src={logoUrl} alt="Logo" className="w-8 h-8 object-contain rounded-lg" />
             ) : (
-              <SigmaLogo size="sm" showText={false} />
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button onClick={toggleTheme} className="hover:opacity-80 transition-opacity">
+                    <SigmaLogo size="sm" showText={false} />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent>Сменить тему</TooltipContent>
+              </Tooltip>
             )}
             <span className="font-display font-bold text-sm hidden sm:inline">{customName || organizationName || "СИНТАГМА"}</span>
           </div>
