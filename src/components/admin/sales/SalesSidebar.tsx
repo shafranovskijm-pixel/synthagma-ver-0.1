@@ -1,4 +1,4 @@
-import { FileText, Package, Users, Building2, BarChart3, ScrollText, GitCompareArrows, Link2, CreditCard } from 'lucide-react';
+import { FileText, Package, Users, Building2, BarChart3, ScrollText, GitCompareArrows, Link2, CreditCard, PenTool } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const menuItems = [
@@ -7,6 +7,7 @@ const menuItems = [
   { id: 'managers', label: 'Менеджеры', icon: Users },
   { id: 'leads', label: 'База компаний', icon: Building2 },
   { id: 'contracts', label: 'Договоры', icon: ScrollText },
+  { id: 'signing', label: 'Подписание', icon: PenTool },
   { id: 'control', label: 'Контроль', icon: BarChart3 },
   { id: 'comparison', label: 'Сравнение', icon: GitCompareArrows },
   { id: 'demo', label: 'Демо-ссылки', icon: Link2 },

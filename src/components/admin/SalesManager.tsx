@@ -8,6 +8,7 @@ import { SalesContracts } from './sales/SalesContracts';
 import { CompetitorComparison } from './sales/CompetitorComparison';
 import { DemoLinksManager } from './sales/DemoLinksManager';
 import { CompanyCard } from './sales/CompanyCard';
+import { DocumentSigning } from './sales/DocumentSigning';
 import { SalesSidebar } from './sales/SalesSidebar';
 
 const TABS: Record<string, React.ReactNode> = {
@@ -16,6 +17,7 @@ const TABS: Record<string, React.ReactNode> = {
   managers: <SalesManagersList />,
   leads: <LeadsManager />,
   contracts: <SalesContracts />,
+  signing: <DocumentSigning />,
   control: <SalesControlPanel />,
   comparison: <CompetitorComparison />,
   demo: <DemoLinksManager />,
