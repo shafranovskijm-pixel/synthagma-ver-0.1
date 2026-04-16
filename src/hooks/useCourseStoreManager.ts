@@ -338,7 +338,7 @@ export function useCourseStoreManager({ organizationId, userRole = 'organization
         });
       } catch (notifyError) { console.error('Failed to send notification:', notifyError); }
 
-      setShowOrderDialog(false); setShowSuccessDialog(true); setOrderNotes(""); setStudentsCount(1); fetchOrders();
+      setShowOrderDialog(false); setShowSuccessDialog(true); setOrderNotes(""); setStudentsCount(1); _fetchOrders(organizationId, userId, setReceivedOrders, setMyOrders);
     } catch (error: any) {
       console.error('Error creating order:', error); toast.error('Ошибка при добавлении курса');
     } finally { setIsOrdering(false); }
@@ -366,7 +366,7 @@ export function useCourseStoreManager({ organizationId, userRole = 'organization
         } catch (notifyError) { console.error('Failed to send status notification:', notifyError); }
       }
 
-      toast.success('Статус заявки обновлён'); fetchOrders(); setShowOrderDetailsDialog(false);
+      toast.success('Статус заявки обновлён'); _fetchOrders(organizationId, userId, setReceivedOrders, setMyOrders); setShowOrderDetailsDialog(false);
     } catch (error) { console.error('Error updating order:', error); toast.error('Ошибка при обновлении статуса'); }
   };
 
@@ -379,7 +379,7 @@ export function useCourseStoreManager({ organizationId, userRole = 'organization
         description_short: editingCourse.description_short,
       }).eq('id', editingCourse.id);
       if (error) throw error;
-      toast.success('Курс обновлён'); setShowEditDialog(false); fetchMyCourses();
+      toast.success('Курс обновлён'); setShowEditDialog(false); _fetchMyCourses(organizationId, setMyCourses);
     } catch (error) { console.error('Error updating course:', error); toast.error('Ошибка при обновлении'); }
   };
 
