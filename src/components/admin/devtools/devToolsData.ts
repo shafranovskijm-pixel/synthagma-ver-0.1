@@ -495,12 +495,12 @@ export const CODE_RECOMMENDATIONS: Recommendation[] = [
   },
   {
     id: "parse-skillspace-size",
-    severity: "warn",
+    severity: "info",
     category: "code",
-    title: "⚠️ parse-skillspace-course — 1146 строк",
-    detail: "Самая крупная edge-функция. Рассмотреть разбиение на модули.",
-    actionable: true,
-    status: "unchecked",
+    title: "✅ parse-skillspace-course — модуляризирован",
+    detail: "Разбит на 4 модуля (_shared/editorjs-converter, skillspace-auth, skillspace-media, skillspace-lessons). index.ts ~310 строк.",
+    actionable: false,
+    status: "applied",
   },
 ];
 
