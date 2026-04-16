@@ -1,19 +1,11 @@
-import React, { useState, useMemo, useCallback, Suspense, lazy } from "react";
-const Student3DTrainers = lazy(() => import("@/components/student/Student3DTrainers").then(m => ({ default: m.Student3DTrainers })));
-import { WebinarsManager } from "@/components/organization/WebinarsManager";
+import React, { useState, useMemo, useCallback } from "react";
 import { useOrgDashboard } from "@/contexts/OrgDashboardContext";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
-import { 
-  Search, Filter, Tag, Plus, LayoutGrid, List, 
-  BookOpen, Users, Trash2, FolderPlus, Folder,
-  GripVertical, Radio, Box, Play, Crown, ArrowRight, Calendar, Video
-} from "lucide-react";
-import { Card } from "@/components/ui/card";
+import { BookOpen, Trash2, GripVertical, Radio, Box } from "lucide-react";
+import { WebinarsContent, ThreeDContent } from "./courses/ContentTabPlaceholders";
+import { CoursesToolbar } from "./courses/CoursesToolbar";
 import { useCourses } from "@/hooks/useCourses";
 import { useSubscriptionLimits } from "@/hooks/useSubscriptionLimits";
 import { supabase } from "@/integrations/supabase/client";
@@ -326,93 +318,27 @@ export const CoursesTab = React.memo(function CoursesTab({ organizationId, onCou
 
       {/* Webinars */}
       {contentTab === "webinars" && (
-        dashboard.isEnabled('webinars') ? <WebinarsManager organizationId={organizationId} /> : (
-          <div className="py-8">
-            <Card className="max-w-4xl mx-auto overflow-hidden border-0 shadow-lg">
-              <div className="bg-gradient-to-r from-purple-600 to-indigo-600 p-8 text-white">
-                <div className="flex items-center gap-4 mb-4">
-                  <div className="w-14 h-14 rounded-2xl bg-white/20 backdrop-blur flex items-center justify-center"><Radio className="w-7 h-7" /></div>
-                  <div><h2 className="text-2xl font-bold">Вебинары и онлайн-трансляции</h2><p className="text-white/80 mt-1">Проводите живые занятия и сохраняйте записи для повторного просмотра</p></div>
-                </div>
-              </div>
-              <div className="p-8">
-                <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
-                  {[
-                    { icon: Radio, title: "Онлайн-трансляции", desc: "Проводите занятия в реальном времени с неограниченным числом зрителей" },
-                    { icon: Video, title: "Запись вебинаров", desc: "Автоматическое сохранение записей для повторного просмотра студентами" },
-                    { icon: BookOpen, title: "Привязка к курсам", desc: "Студенты курса автоматически получают доступ к трансляциям" },
-                    { icon: Calendar, title: "Планирование", desc: "Назначайте дату и время вебинара заранее и рассылайте приглашения" },
-                    { icon: Users, title: "Управление участниками", desc: "Полный контроль доступа к трансляциям и записям" },
-                    { icon: Play, title: "Встроенный плеер", desc: "Просмотр прямо на платформе без переходов на сторонние сервисы" },
-                  ].map((f, i) => (
-                    <div key={i} className="flex gap-3">
-                      <div className="w-10 h-10 rounded-xl bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center shrink-0"><f.icon className="w-5 h-5 text-purple-600 dark:text-purple-400" /></div>
-                      <div><h4 className="font-semibold text-foreground text-sm">{f.title}</h4><p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">{f.desc}</p></div>
-                    </div>
-                  ))}
-                </div>
-                <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-4 rounded-xl bg-purple-50 dark:bg-purple-900/10 border border-purple-200 dark:border-purple-800/30">
-                  <div className="flex items-center gap-2"><Crown className="w-5 h-5 text-purple-600" /><span className="text-sm font-medium text-foreground">Доступно с тарифа <span className="text-purple-600 font-bold">Профессиональный</span></span></div>
-                  <Button className="bg-purple-600 hover:bg-purple-700 text-white rounded-xl gap-2" onClick={() => dashboard.tabNavigation.setActiveTab("subscription" as any)}>Перейти к тарифам<ArrowRight className="w-4 h-4" /></Button>
-                </div>
-              </div>
-            </Card>
-          </div>
-        )
+        <WebinarsContent
+          organizationId={organizationId}
+          isEnabled={dashboard.isEnabled('webinars')}
+          onNavigateToTariffs={() => dashboard.tabNavigation.setActiveTab("subscription" as any)}
+        />
       )}
 
       {/* 3D */}
-      {contentTab === "3d" && (
-        <div className="max-w-3xl mx-auto">
-          <Suspense fallback={<div className="flex justify-center py-8"><div className="animate-spin w-6 h-6 border-2 border-primary border-t-transparent rounded-full" /></div>}>
-            <Student3DTrainers />
-          </Suspense>
-        </div>
-      )}
+      {contentTab === "3d" && <ThreeDContent />}
 
       {/* Courses content */}
       {contentTab === "courses" && <>
       {/* Filters */}
-      <div className="bg-card rounded-xl lg:rounded-2xl border border-border p-3 lg:p-4">
-        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3 lg:gap-4">
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 lg:gap-3">
-            <div className="relative flex-1 sm:flex-none">
-              <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-              <Input placeholder="Поиск..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="pl-10 w-full sm:w-48 lg:w-64 rounded-xl text-sm" />
-            </div>
-            <div className="flex items-center gap-2 overflow-x-auto pb-1 lg:pb-0">
-              <Select value={filter} onValueChange={v => setFilter(v as CourseFilter)}>
-                <SelectTrigger className="w-32 lg:w-40 rounded-xl text-xs lg:text-sm shrink-0"><Filter className="w-4 h-4 mr-1 lg:mr-2" /><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Все курсы</SelectItem>
-                  <SelectItem value="published">Опубликованные</SelectItem>
-                  <SelectItem value="draft">Черновики</SelectItem>
-                </SelectContent>
-              </Select>
-              <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-                <SelectTrigger className="w-36 lg:w-48 rounded-xl text-xs lg:text-sm shrink-0"><Tag className="w-4 h-4 mr-1 lg:mr-2" /><SelectValue placeholder="Категория" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Все категории</SelectItem>
-                  <SelectItem value="none">Без категории</SelectItem>
-                  {categories.map(cat => (<SelectItem key={cat.id} value={cat.id}><div className="flex items-center gap-2"><div className="w-3 h-3 rounded-full" style={{ backgroundColor: cat.color }} />{cat.name}</div></SelectItem>))}
-                </SelectContent>
-              </Select>
-              <TooltipProvider delayDuration={300}><Tooltip><TooltipTrigger asChild>
-                <Button variant="outline" size="sm" className="rounded-lg gap-1 text-xs shrink-0" onClick={() => { setEditingCategory(null); setNewCategoryName(""); setNewCategoryColor("#6366f1"); setShowCategoryDialog(true); }}>
-                  <FolderPlus className="w-4 h-4" /><span className="hidden sm:inline">Категория</span>
-                </Button>
-              </TooltipTrigger><TooltipContent>Создать новую категорию курсов</TooltipContent></Tooltip></TooltipProvider>
-            </div>
-          </div>
-          <div className="flex items-center gap-2 self-end lg:self-auto">
-            <TooltipProvider delayDuration={300}>
-              <Tooltip><TooltipTrigger asChild><Button variant={folderViewMode === "folders" ? "secondary" : "ghost"} size="icon" className="h-8 w-8" onClick={() => setViewAndFolder(viewMode, "folders")}><Folder className="w-4 h-4" /></Button></TooltipTrigger><TooltipContent>Вид папками</TooltipContent></Tooltip>
-              <Tooltip><TooltipTrigger asChild><Button variant={folderViewMode === "flat" && viewMode === "grid" ? "secondary" : "ghost"} size="icon" className="h-8 w-8" onClick={() => setViewAndFolder("grid", "flat")}><LayoutGrid className="w-4 h-4" /></Button></TooltipTrigger><TooltipContent>Вид сеткой</TooltipContent></Tooltip>
-              <Tooltip><TooltipTrigger asChild><Button variant={folderViewMode === "flat" && viewMode === "list" ? "secondary" : "ghost"} size="icon" className="h-8 w-8" onClick={() => setViewAndFolder("list", "flat")}><List className="w-4 h-4" /></Button></TooltipTrigger><TooltipContent>Вид списком</TooltipContent></Tooltip>
-            </TooltipProvider>
-          </div>
-        </div>
-      </div>
+      <CoursesToolbar
+        searchQuery={searchQuery} setSearchQuery={setSearchQuery}
+        filter={filter} setFilter={setFilter}
+        categoryFilter={categoryFilter} setCategoryFilter={setCategoryFilter}
+        categories={categories} viewMode={viewMode} folderViewMode={folderViewMode}
+        setViewAndFolder={setViewAndFolder}
+        onNewCategory={() => { setEditingCategory(null); setNewCategoryName(""); setNewCategoryColor("#6366f1"); setShowCategoryDialog(true); }}
+      />
 
       {/* Bulk Actions */}
       {selectedCourseIds.size > 0 && (
