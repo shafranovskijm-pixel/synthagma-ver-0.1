@@ -5,6 +5,7 @@ import { Upload, FileText, Download, Trash2, ChevronLeft, ChevronRight, Move } f
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Slider } from '@/components/ui/slider';
 import { toast } from 'sonner';
 import stampUrl from '@/assets/stamp-shafranovskiy.png';
 import signatureUrl from '@/assets/signature-shafranovskiy.png';
@@ -17,27 +18,47 @@ interface PdfFile {
   pageCount: number;
 }
 
-interface OverlayPos {
+interface Overlay {
+  id: string;
+  type: 'stamp' | 'signature';
   x: number;
   y: number;
+  scale: number;
+}
+
+const BASE_STAMP = { w: 120, h: 120 };
+const BASE_SIG = { w: 150, h: 60 };
+
+function makeId() {
+  return Math.random().toString(36).slice(2, 9);
+}
+
+function defaultOverlays(): Overlay[] {
+  return [
+    { id: makeId(), type: 'stamp', x: 0.75, y: 0.85, scale: 1 },
+    { id: makeId(), type: 'signature', x: 0.72, y: 0.88, scale: 1 },
+  ];
+}
+
+function overlaySize(o: Overlay) {
+  const base = o.type === 'stamp' ? BASE_STAMP : BASE_SIG;
+  return { w: base.w * o.scale, h: base.h * o.scale };
 }
 
 export function DocumentSigning() {
   const [files, setFiles] = useState<PdfFile[]>([]);
   const [activeFileIdx, setActiveFileIdx] = useState(0);
   const [activePage, setActivePage] = useState(0);
-  const [stampPos, setStampPos] = useState<OverlayPos>({ x: 0.75, y: 0.85 });
-  const [sigPos, setSigPos] = useState<OverlayPos>({ x: 0.72, y: 0.88 });
-  const [dragging, setDragging] = useState<'stamp' | 'sig' | null>(null);
+  const [overlays, setOverlays] = useState<Overlay[]>(defaultOverlays());
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [dragging, setDragging] = useState<string | null>(null);
   const [signing, setSigning] = useState(false);
   const [stampImg, setStampImg] = useState<HTMLImageElement | null>(null);
   const [sigImg, setSigImg] = useState<HTMLImageElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const containerRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isDragOver, setIsDragOver] = useState(false);
 
-  // Preload images
   useEffect(() => {
     const s = new Image(); s.src = stampUrl; s.onload = () => setStampImg(s);
     const g = new Image(); g.src = signatureUrl; g.onload = () => setSigImg(g);
@@ -66,7 +87,7 @@ export function DocumentSigning() {
     if (e.dataTransfer.files.length) handleFiles(e.dataTransfer.files);
   }, [handleFiles]);
 
-  // Render current page
+  // Render current page + overlays
   useEffect(() => {
     const f = files[activeFileIdx];
     if (!f || !canvasRef.current) return;
@@ -81,32 +102,56 @@ export function DocumentSigning() {
       const ctx = canvas.getContext('2d')!;
       if (cancelled) return;
       await page.render({ canvasContext: ctx, viewport: vp }).promise;
-      // Draw overlays
-      if (stampImg) {
-        const sw = 120, sh = 120;
-        ctx.globalAlpha = 0.85;
-        ctx.drawImage(stampImg, stampPos.x * vp.width - sw / 2, stampPos.y * vp.height - sh / 2, sw, sh);
-        ctx.globalAlpha = 1;
-      }
-      if (sigImg) {
-        const sw = 150, sh = 60;
-        ctx.globalAlpha = 0.9;
-        ctx.drawImage(sigImg, sigPos.x * vp.width - sw / 2, sigPos.y * vp.height - sh / 2, sw, sh);
+
+      for (const o of overlays) {
+        const img = o.type === 'stamp' ? stampImg : sigImg;
+        if (!img) continue;
+        const { w, h } = overlaySize(o);
+        ctx.globalAlpha = o.type === 'stamp' ? 0.85 : 0.9;
+        ctx.drawImage(img, o.x * vp.width - w / 2, o.y * vp.height - h / 2, w, h);
+        if (o.id === selectedId) {
+          ctx.globalAlpha = 1;
+          ctx.strokeStyle = '#0ea5e9';
+          ctx.lineWidth = 2;
+          ctx.setLineDash([6, 3]);
+          ctx.strokeRect(o.x * vp.width - w / 2 - 2, o.y * vp.height - h / 2 - 2, w + 4, h + 4);
+          ctx.setLineDash([]);
+        }
         ctx.globalAlpha = 1;
       }
     })();
     return () => { cancelled = true; };
-  }, [files, activeFileIdx, activePage, stampPos, sigPos, stampImg, sigImg]);
+  }, [files, activeFileIdx, activePage, overlays, selectedId, stampImg, sigImg]);
+
+  const getRelCoords = (e: React.MouseEvent) => {
+    const rect = canvasRef.current?.getBoundingClientRect();
+    if (!rect) return null;
+    return {
+      rx: (e.clientX - rect.left) / rect.width,
+      ry: (e.clientY - rect.top) / rect.height,
+    };
+  };
+
+  const findClosestOverlay = (rx: number, ry: number) => {
+    let best: Overlay | null = null;
+    let bestD = 0.08;
+    for (const o of overlays) {
+      const d = Math.hypot(rx - o.x, ry - o.y);
+      if (d < bestD) { best = o; bestD = d; }
+    }
+    return best;
+  };
 
   const handleCanvasMouseDown = (e: React.MouseEvent) => {
-    const rect = canvasRef.current?.getBoundingClientRect();
-    if (!rect) return;
-    const rx = (e.clientX - rect.left) / rect.width;
-    const ry = (e.clientY - rect.top) / rect.height;
-    const dStamp = Math.hypot(rx - stampPos.x, ry - stampPos.y);
-    const dSig = Math.hypot(rx - sigPos.x, ry - sigPos.y);
-    if (dStamp < 0.08) setDragging('stamp');
-    else if (dSig < 0.08) setDragging('sig');
+    const c = getRelCoords(e);
+    if (!c) return;
+    const hit = findClosestOverlay(c.rx, c.ry);
+    if (hit) {
+      setSelectedId(hit.id);
+      setDragging(hit.id);
+    } else {
+      setSelectedId(null);
+    }
   };
 
   const handleCanvasMouseMove = (e: React.MouseEvent) => {
@@ -114,14 +159,32 @@ export function DocumentSigning() {
     const rect = canvasRef.current.getBoundingClientRect();
     const rx = Math.max(0.05, Math.min(0.95, (e.clientX - rect.left) / rect.width));
     const ry = Math.max(0.05, Math.min(0.95, (e.clientY - rect.top) / rect.height));
-    if (dragging === 'stamp') setStampPos({ x: rx, y: ry });
-    else setSigPos({ x: rx, y: ry });
+    setOverlays(prev => prev.map(o => o.id === dragging ? { ...o, x: rx, y: ry } : o));
   };
 
   const handleCanvasMouseUp = () => setDragging(null);
 
+  const handleContextMenu = (e: React.MouseEvent) => {
+    e.preventDefault();
+    const c = getRelCoords(e);
+    if (!c) return;
+    const newSig: Overlay = { id: makeId(), type: 'signature', x: c.rx, y: c.ry, scale: 1 };
+    setOverlays(prev => [...prev, newSig]);
+    setSelectedId(newSig.id);
+    toast.success('Подпись добавлена');
+  };
+
+  const removeOverlay = (id: string) => {
+    setOverlays(prev => prev.filter(o => o.id !== id));
+    if (selectedId === id) setSelectedId(null);
+  };
+
+  const updateScale = (id: string, scale: number) => {
+    setOverlays(prev => prev.map(o => o.id === id ? { ...o, scale } : o));
+  };
+
   const handleSign = async () => {
-    if (!files.length) return;
+    if (!files.length || !overlays.length) return;
     setSigning(true);
     try {
       const [stampBytes, sigBytes] = await Promise.all([
@@ -136,18 +199,18 @@ export function DocumentSigning() {
         const pages = pdfDoc.getPages();
         const lastPage = pages[pages.length - 1];
         const { width, height } = lastPage.getSize();
-        const stW = 120, stH = 120, sgW = 150, sgH = 60;
-        // Position from normalized coords — pdf-lib origin is bottom-left
-        lastPage.drawImage(stImg, {
-          x: stampPos.x * width - stW / 2,
-          y: (1 - stampPos.y) * height - stH / 2,
-          width: stW, height: stH, opacity: 0.85,
-        });
-        lastPage.drawImage(sgImg, {
-          x: sigPos.x * width - sgW / 2,
-          y: (1 - sigPos.y) * height - sgH / 2,
-          width: sgW, height: sgH, opacity: 0.9,
-        });
+
+        for (const o of overlays) {
+          const img = o.type === 'stamp' ? stImg : sgImg;
+          const { w, h } = overlaySize(o);
+          lastPage.drawImage(img, {
+            x: o.x * width - w / 2,
+            y: (1 - o.y) * height - h / 2,
+            width: w, height: h,
+            opacity: o.type === 'stamp' ? 0.85 : 0.9,
+          });
+        }
+
         const signed = await pdfDoc.save();
         const blob = new Blob([signed.buffer as ArrayBuffer], { type: 'application/pdf' });
         const url = URL.createObjectURL(blob);
@@ -173,20 +236,20 @@ export function DocumentSigning() {
   };
 
   const activeFile = files[activeFileIdx];
+  const selectedOverlay = overlays.find(o => o.id === selectedId);
 
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h2 className="text-lg font-semibold">Подписание документов</h2>
         {files.length > 0 && (
-          <Button onClick={handleSign} disabled={signing}>
+          <Button onClick={handleSign} disabled={signing || !overlays.length}>
             <Download className="w-4 h-4 mr-1" />
             {signing ? 'Подписание...' : `Подписать (${files.length})`}
           </Button>
         )}
       </div>
 
-      {/* Upload zone */}
       <div
         onDragOver={e => { e.preventDefault(); setIsDragOver(true); }}
         onDragLeave={() => setIsDragOver(false)}
@@ -199,7 +262,6 @@ export function DocumentSigning() {
         <input ref={fileInputRef} type="file" accept=".pdf" multiple className="hidden" onChange={e => e.target.files && handleFiles(e.target.files)} />
       </div>
 
-      {/* File chips */}
       {files.length > 0 && (
         <div className="flex flex-wrap gap-2">
           {files.map((f, i) => (
@@ -219,7 +281,6 @@ export function DocumentSigning() {
         </div>
       )}
 
-      {/* Preview */}
       {activeFile && (
         <Card>
           <CardContent className="p-4 space-y-3">
@@ -234,13 +295,39 @@ export function DocumentSigning() {
                 </Button>
               </div>
             </div>
+
             <p className="text-xs text-muted-foreground flex items-center gap-1">
-              <Move className="w-3 h-3" /> Перетаскивайте печать и подпись мышкой
+              <Move className="w-3 h-3" /> ЛКМ — перетащить, ПКМ — добавить подпись
             </p>
-            <div
-              ref={containerRef}
-              className="overflow-auto max-h-[70vh] border rounded-lg bg-muted/30 flex justify-center"
-            >
+
+            {/* Overlay controls */}
+            <div className="flex items-center gap-3 min-h-[36px] flex-wrap">
+              {selectedOverlay ? (
+                <>
+                  <span className="text-xs font-medium">
+                    {selectedOverlay.type === 'stamp' ? '🔴 Печать' : '✍️ Подпись'}
+                  </span>
+                  <div className="flex items-center gap-2 flex-1 max-w-[200px]">
+                    <span className="text-xs text-muted-foreground whitespace-nowrap">Размер</span>
+                    <Slider
+                      value={[selectedOverlay.scale]}
+                      min={0.5}
+                      max={2}
+                      step={0.05}
+                      onValueChange={([v]) => updateScale(selectedOverlay.id, v)}
+                    />
+                    <span className="text-xs text-muted-foreground w-8">{selectedOverlay.scale.toFixed(1)}x</span>
+                  </div>
+                  <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive hover:text-destructive" onClick={() => removeOverlay(selectedOverlay.id)}>
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </Button>
+                </>
+              ) : (
+                <span className="text-xs text-muted-foreground">Нажмите на элемент для настройки</span>
+              )}
+            </div>
+
+            <div className="overflow-auto max-h-[70vh] border rounded-lg bg-muted/30 flex justify-center">
               <canvas
                 ref={canvasRef}
                 className="max-w-full cursor-grab"
@@ -248,6 +335,7 @@ export function DocumentSigning() {
                 onMouseMove={handleCanvasMouseMove}
                 onMouseUp={handleCanvasMouseUp}
                 onMouseLeave={handleCanvasMouseUp}
+                onContextMenu={handleContextMenu}
               />
             </div>
           </CardContent>
