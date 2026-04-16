@@ -8,7 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { toast } from 'sonner';
-import { Copy, Plus, Trash2, Users, ExternalLink, Eye, Save, Video } from 'lucide-react';
+import { Copy, Plus, Trash2, Users, ExternalLink, Eye, Video, Loader2, Radio } from 'lucide-react';
 import { format } from 'date-fns';
 import { ru } from 'date-fns/locale';
 
@@ -34,9 +34,7 @@ export function DemoLinksManager() {
   const [sessions, setSessions] = useState<Record<string, DemoSession[]>>({});
   const [createOpen, setCreateOpen] = useState(false);
   const [label, setLabel] = useState('');
-  const [kinescopeId, setKinescopeId] = useState('');
   const [loading, setLoading] = useState(false);
-  const [editingKinescope, setEditingKinescope] = useState<Record<string, string>>({});
 
   const fetchLinks = useCallback(async () => {
     const { data } = await supabase
@@ -59,25 +57,50 @@ export function DemoLinksManager() {
 
   const generateToken = () => Math.random().toString(36).substring(2) + Date.now().toString(36);
 
+  const createKinescopeLive = async (title: string): Promise<string | null> => {
+    try {
+      const { data, error } = await supabase.functions.invoke('kinescope-proxy', {
+        body: { action: 'create_live', params: { title } },
+      });
+      if (error) throw error;
+      // Kinescope API returns data.data.id for the live stream
+      const liveId = data?.data?.id;
+      if (!liveId) {
+        console.error('No live ID in response:', data);
+        return null;
+      }
+      return liveId;
+    } catch (err) {
+      console.error('Failed to create Kinescope live:', err);
+      return null;
+    }
+  };
+
   const handleCreate = async () => {
     if (!label.trim()) { toast.error('Введите название'); return; }
     setLoading(true);
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) { toast.error('Не авторизован'); setLoading(false); return; }
 
+    toast.info('Создание трансляции Kinescope...');
+    const kinescopeLiveId = await createKinescopeLive(`Демо: ${label.trim()}`);
+
     const { error } = await supabase.from('sales_demo_links').insert({
       token: generateToken(),
       created_by: user.id,
       label: label.trim(),
-      kinescope_live_id: kinescopeId.trim() || null,
+      kinescope_live_id: kinescopeLiveId,
     });
 
     if (error) { toast.error('Ошибка создания'); console.error(error); }
     else {
-      toast.success('Демо-ссылка создана');
+      if (kinescopeLiveId) {
+        toast.success('Демо-ссылка создана с трансляцией');
+      } else {
+        toast.warning('Ссылка создана, но трансляция не подключилась. Проверьте Kinescope API.');
+      }
       setCreateOpen(false);
       setLabel('');
-      setKinescopeId('');
       fetchLinks();
     }
     setLoading(false);
@@ -100,18 +123,6 @@ export function DemoLinksManager() {
     toast.success('Ссылка скопирована');
   };
 
-  const saveKinescopeId = async (link: DemoLink) => {
-    const newId = editingKinescope[link.id]?.trim() || null;
-    await supabase.from('sales_demo_links').update({ kinescope_live_id: newId }).eq('id', link.id);
-    toast.success(newId ? 'Kinescope ID сохранён — трансляция подключена' : 'Kinescope ID удалён');
-    setEditingKinescope(prev => { const n = { ...prev }; delete n[link.id]; return n; });
-    fetchLinks();
-  };
-
-  const startEditKinescope = (link: DemoLink) => {
-    setEditingKinescope(prev => ({ ...prev, [link.id]: link.kinescope_live_id || '' }));
-  };
-
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
@@ -130,6 +141,12 @@ export function DemoLinksManager() {
                 <Badge variant={link.is_active ? 'default' : 'secondary'}>
                   {link.is_active ? 'Активна' : 'Отключена'}
                 </Badge>
+                {link.kinescope_live_id && (
+                  <Badge variant="outline" className="gap-1">
+                    <Radio className="w-3 h-3" />
+                    Трансляция
+                  </Badge>
+                )}
               </div>
               <div className="flex items-center gap-1">
                 <Button size="icon" variant="ghost" onClick={() => copyUrl(link.token)} title="Копировать ссылку">
@@ -148,35 +165,14 @@ export function DemoLinksManager() {
               </div>
             </div>
 
-            {/* Kinescope Live ID inline editor */}
-            <div className="flex items-center gap-2 mt-2 p-2 rounded-md bg-muted/30 border border-border">
-              <Video className="w-4 h-4 text-muted-foreground shrink-0" />
-              {editingKinescope[link.id] !== undefined ? (
-                <>
-                  <Input
-                    value={editingKinescope[link.id]}
-                    onChange={e => setEditingKinescope(prev => ({ ...prev, [link.id]: e.target.value }))}
-                    placeholder="Вставьте Kinescope Live ID"
-                    className="h-8 text-sm"
-                  />
-                  <Button size="sm" variant="default" onClick={() => saveKinescopeId(link)} className="shrink-0">
-                    <Save className="w-3 h-3 mr-1" />Сохранить
-                  </Button>
-                </>
-              ) : (
-                <>
-                  <span className="text-sm text-muted-foreground flex-1">
-                    {link.kinescope_live_id 
-                      ? <>Трансляция: <span className="font-mono text-foreground">{link.kinescope_live_id}</span></>
-                      : 'Трансляция не подключена'
-                    }
-                  </span>
-                  <Button size="sm" variant="outline" onClick={() => startEditKinescope(link)} className="shrink-0">
-                    {link.kinescope_live_id ? 'Изменить' : 'Подключить трансляцию'}
-                  </Button>
-                </>
-              )}
-            </div>
+            {link.kinescope_live_id && (
+              <div className="flex items-center gap-2 mt-2 p-2 rounded-md bg-muted/30 border border-border">
+                <Video className="w-4 h-4 text-muted-foreground shrink-0" />
+                <span className="text-xs text-muted-foreground">
+                  Kinescope Live: <span className="font-mono text-foreground">{link.kinescope_live_id}</span>
+                </span>
+              </div>
+            )}
 
             <p className="text-xs text-muted-foreground mt-2">
               Создана: {format(new Date(link.created_at), 'dd MMM yyyy HH:mm', { locale: ru })}
@@ -223,15 +219,15 @@ export function DemoLinksManager() {
               <Label>Название *</Label>
               <Input value={label} onChange={e => setLabel(e.target.value)} placeholder="Например: Демо для ООО Ромашка" />
             </div>
-            <div>
-              <Label>Kinescope Live ID (опционально)</Label>
-              <Input value={kinescopeId} onChange={e => setKinescopeId(e.target.value)} placeholder="ID трансляции Kinescope" />
-              <p className="text-xs text-muted-foreground mt-1">
-                Можно добавить позже на карточке ссылки
-              </p>
-            </div>
+            <p className="text-xs text-muted-foreground">
+              Трансляция Kinescope Live будет создана автоматически
+            </p>
             <Button onClick={handleCreate} disabled={loading} className="w-full">
-              {loading ? 'Создание...' : 'Создать'}
+              {loading ? (
+                <><Loader2 className="w-4 h-4 mr-1 animate-spin" />Создание трансляции...</>
+              ) : (
+                'Создать'
+              )}
             </Button>
           </div>
         </DialogContent>
