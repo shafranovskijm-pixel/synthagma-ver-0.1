@@ -1,7 +1,5 @@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
@@ -9,27 +7,23 @@ import {
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import {
   ArrowLeft, Calendar as CalendarIcon, Search, FileSpreadsheet, FileText,
-  Plus, Pencil, Trash2, Hash, User, GraduationCap, Award, Mail, Users, CheckCircle2, Sparkles, Printer } from "lucide-react";
+  Plus, Pencil, Trash2, User, GraduationCap, Award, Users, CheckCircle2, Sparkles, Printer } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import { ru } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Checkbox } from "@/components/ui/checkbox";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   useEducationDocumentsJournal,
-  DOCUMENT_TYPES,
-  DELIVERY_METHODS } from "@/hooks/useEducationDocumentsJournal";
+  DOCUMENT_TYPES } from "@/hooks/useEducationDocumentsJournal";
 import { generateEducationDocumentHtml } from "@/utils/generateEducationDocument";
 import { printHtmlContent } from "@/utils/printHtmlToPdf";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
+import { DocumentFormDialog } from "./education-documents/DocumentFormDialog";
+import { SelectStudentsDialog } from "./education-documents/SelectStudentsDialog";
 
 interface EducationDocumentsJournalProps {
   organizationId: string;
@@ -263,242 +257,31 @@ export function EducationDocumentsJournal({
         </div>
       )}
 
-      {/* Add/Edit Dialog */}
-      <Dialog open={showAddDialog || !!editingRecord} onOpenChange={() => { setShowAddDialog(false); setEditingRecord(null); resetForm(); }}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>{editingRecord ? "Редактирование записи" : "Добавление записи в журнал"}</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-6 py-4">
-            {/* Registration Number */}
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Регистрационный номер *</Label>
-                <div className="flex gap-2">
-                  <Input value={formData.reg_number} onChange={(e) => setFormData((prev) => ({ ...prev, reg_number: e.target.value }))} placeholder="ДОК-2025/0001" className="rounded-xl" />
-                  <Button type="button" variant="outline" onClick={generateRegNumber} className="rounded-xl shrink-0"><Hash className="w-4 h-4 mr-1" />Генерировать</Button>
-                </div>
-              </div>
-              <div className="space-y-2">
-                <Label>Дата выдачи документа *</Label>
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button variant="outline" className={cn("w-full justify-start text-left font-normal rounded-xl", !formData.issue_date && "text-muted-foreground")}>
-                      <CalendarIcon className="mr-2 h-4 w-4" />
-                      {formData.issue_date ? format(formData.issue_date, "dd MMMM yyyy", { locale: ru }) : "Выберите дату"}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start">
-                    <Calendar mode="single" selected={formData.issue_date} onSelect={(date) => setFormData((prev) => ({ ...prev, issue_date: date || new Date() }))} locale={ru} initialFocus />
-                  </PopoverContent>
-                </Popover>
-              </div>
-            </div>
+      {/* Extracted Dialogs */}
+      <DocumentFormDialog
+        open={showAddDialog || !!editingRecord}
+        onClose={() => { setShowAddDialog(false); setEditingRecord(null); resetForm(); }}
+        isEditing={!!editingRecord}
+        formData={formData}
+        setFormData={setFormData}
+        saving={saving}
+        onSave={handleSave}
+        onGenerateRegNumber={generateRegNumber}
+      />
 
-            {/* Graduate Info */}
-            <div className="space-y-4">
-              <h4 className="font-medium flex items-center gap-2"><User className="w-4 h-4" />Данные выпускника</h4>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>ФИО выпускника (как в паспорте) *</Label>
-                  <Input value={formData.full_name} onChange={(e) => setFormData((prev) => ({ ...prev, full_name: e.target.value }))} placeholder="Иванов Иван Иванович" className="rounded-xl" />
-                </div>
-                <div className="space-y-2">
-                  <Label>Дата рождения</Label>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <Button variant="outline" className={cn("w-full justify-start text-left font-normal rounded-xl", !formData.birth_date && "text-muted-foreground")}>
-                        <CalendarIcon className="mr-2 h-4 w-4" />
-                        {formData.birth_date ? format(formData.birth_date, "dd MMMM yyyy", { locale: ru }) : "Выберите дату"}
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0" align="start">
-                      <Calendar mode="single" selected={formData.birth_date || undefined} onSelect={(date) => setFormData((prev) => ({ ...prev, birth_date: date || null }))} locale={ru} captionLayout="dropdown-buttons" fromYear={1940} toYear={new Date().getFullYear()} initialFocus />
-                    </PopoverContent>
-                  </Popover>
-                </div>
-              </div>
-            </div>
-
-            {/* Document Info */}
-            <div className="space-y-4">
-              <h4 className="font-medium flex items-center gap-2"><Award className="w-4 h-4" />Данные документа</h4>
-              <div className="grid grid-cols-3 gap-4">
-                <div className="space-y-2">
-                  <Label>Тип документа *</Label>
-                  <Select value={formData.document_type} onValueChange={(value) => setFormData((prev) => ({ ...prev, document_type: value as any }))}>
-                    <SelectTrigger className="rounded-xl"><SelectValue /></SelectTrigger>
-                    <SelectContent>{DOCUMENT_TYPES.map((type) => (<SelectItem key={type.value} value={type.value}>{type.label}</SelectItem>))}</SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label>Серия документа</Label>
-                  <Input value={formData.document_series} onChange={(e) => setFormData((prev) => ({ ...prev, document_series: e.target.value }))} placeholder="ПП" className="rounded-xl" />
-                </div>
-                <div className="space-y-2">
-                  <Label>Номер документа *</Label>
-                  <Input value={formData.document_number} onChange={(e) => setFormData((prev) => ({ ...prev, document_number: e.target.value }))} placeholder="0000001" className="rounded-xl" />
-                </div>
-              </div>
-            </div>
-
-            {/* Education Info */}
-            <div className="space-y-4">
-              <h4 className="font-medium flex items-center gap-2"><GraduationCap className="w-4 h-4" />Сведения об образовании</h4>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>Наименование специальности / направления подготовки / профессии *</Label>
-                  <Textarea value={formData.specialty_name} onChange={(e) => setFormData((prev) => ({ ...prev, specialty_name: e.target.value }))} placeholder="Охрана труда" className="rounded-xl min-h-[80px]" />
-                </div>
-                <div className="space-y-2">
-                  <Label>Присвоенная квалификация</Label>
-                  <Textarea value={formData.qualification_name} onChange={(e) => setFormData((prev) => ({ ...prev, qualification_name: e.target.value }))} placeholder="Специалист по охране труда" className="rounded-xl min-h-[80px]" />
-                </div>
-              </div>
-            </div>
-
-            {/* Protocol & Order */}
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Номер протокола ГЭК</Label>
-                <Input value={formData.protocol_number} onChange={(e) => setFormData((prev) => ({ ...prev, protocol_number: e.target.value }))} placeholder="№ 1" className="rounded-xl" />
-              </div>
-              <div className="space-y-2">
-                <Label>Дата протокола</Label>
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button variant="outline" className={cn("w-full justify-start text-left font-normal rounded-xl", !formData.protocol_date && "text-muted-foreground")}>
-                      <CalendarIcon className="mr-2 h-4 w-4" />
-                      {formData.protocol_date ? format(formData.protocol_date, "dd MMMM yyyy", { locale: ru }) : "Выберите дату"}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start">
-                    <Calendar mode="single" selected={formData.protocol_date || undefined} onSelect={(date) => setFormData((prev) => ({ ...prev, protocol_date: date || null }))} locale={ru} initialFocus />
-                  </PopoverContent>
-                </Popover>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Номер приказа об отчислении</Label>
-                <Input value={formData.order_number} onChange={(e) => setFormData((prev) => ({ ...prev, order_number: e.target.value }))} placeholder="ПР-001" className="rounded-xl" />
-              </div>
-              <div className="space-y-2">
-                <Label>Дата приказа</Label>
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button variant="outline" className={cn("w-full justify-start text-left font-normal rounded-xl", !formData.order_date && "text-muted-foreground")}>
-                      <CalendarIcon className="mr-2 h-4 w-4" />
-                      {formData.order_date ? format(formData.order_date, "dd MMMM yyyy", { locale: ru }) : "Выберите дату"}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start">
-                    <Calendar mode="single" selected={formData.order_date || undefined} onSelect={(date) => setFormData((prev) => ({ ...prev, order_date: date || null }))} locale={ru} initialFocus />
-                  </PopoverContent>
-                </Popover>
-              </div>
-            </div>
-
-            {/* Document Status */}
-            <div className="space-y-3">
-              <Label>Статус документа</Label>
-              <RadioGroup value={formData.document_status} onValueChange={(value) => setFormData((prev) => ({ ...prev, document_status: value as "original" | "duplicate" }))} className="flex gap-4">
-                <div className="flex items-center space-x-2"><RadioGroupItem value="original" id="original" /><Label htmlFor="original">Оригинал</Label></div>
-                <div className="flex items-center space-x-2"><RadioGroupItem value="duplicate" id="duplicate" /><Label htmlFor="duplicate">Дубликат</Label></div>
-              </RadioGroup>
-              {formData.document_status === "duplicate" && (
-                <div className="space-y-2">
-                  <Label>Данные оригинала документа</Label>
-                  <Textarea value={formData.original_document_data} onChange={(e) => setFormData((prev) => ({ ...prev, original_document_data: e.target.value }))} placeholder="Серия, номер и дата выдачи оригинала" className="rounded-xl" />
-                </div>
-              )}
-            </div>
-
-            {/* Delivery */}
-            <div className="space-y-3">
-              <Label>Способ получения документа</Label>
-              <Select value={formData.delivery_method} onValueChange={(value) => setFormData((prev) => ({ ...prev, delivery_method: value as any }))}>
-                <SelectTrigger className="rounded-xl"><SelectValue /></SelectTrigger>
-                <SelectContent>{DELIVERY_METHODS.map((m) => (<SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>))}</SelectContent>
-              </Select>
-              {formData.delivery_method !== "personal" && (
-                <div className="space-y-2">
-                  <Label>{formData.delivery_method === "representative" ? "Данные представителя (ФИО, доверенность)" : "Почтовый адрес и номер отправления"}</Label>
-                  <Textarea value={formData.delivery_details} onChange={(e) => setFormData((prev) => ({ ...prev, delivery_details: e.target.value }))} className="rounded-xl" />
-                </div>
-              )}
-            </div>
-
-            {/* Notes */}
-            <div className="space-y-2">
-              <Label>Примечания</Label>
-              <Textarea value={formData.notes} onChange={(e) => setFormData((prev) => ({ ...prev, notes: e.target.value }))} placeholder="Дополнительные сведения..." className="rounded-xl" />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => { setShowAddDialog(false); setEditingRecord(null); resetForm(); }} className="rounded-xl">Отмена</Button>
-            <Button onClick={handleSave} disabled={saving} className="rounded-xl">
-              {saving && <SigmaSpinner size="sm" className="mr-2" />}
-              {editingRecord ? "Сохранить" : "Добавить"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Select Students Dialog */}
-      <Dialog open={showSelectStudentsDialog} onOpenChange={setShowSelectStudentsDialog}>
-        <DialogContent className="max-w-2xl max-h-[80vh] flex flex-col overflow-hidden">
-          <DialogHeader className="shrink-0">
-            <DialogTitle>Выбор выпускников для добавления</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4 flex-1 min-h-0 overflow-y-auto">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-              <Input placeholder="Поиск по ФИО или курсу..." value={studentSearchQuery} onChange={(e) => setStudentSearchQuery(e.target.value)} className="pl-10 rounded-xl" />
-            </div>
-            {loadingStudents ? (
-              <div className="flex justify-center py-8"><SigmaSpinner /></div>
-            ) : filteredStudents.length === 0 ? (
-              <div className="text-center py-8 text-muted-foreground">Нет завершивших студентов для добавления</div>
-            ) : (
-              <>
-                <div className="flex items-center justify-between">
-                  <Button variant="ghost" size="sm" onClick={selectAllStudents} className="rounded-lg">
-                    {selectedStudents.size === filteredStudents.filter((s) => !s.already_added).length ? "Снять всё" : "Выбрать всё"}
-                  </Button>
-                  <span className="text-sm text-muted-foreground">Выбрано: {selectedStudents.size}</span>
-                </div>
-                <ScrollArea className="h-[400px] pr-4">
-                  <div className="space-y-2">
-                    {filteredStudents.map((student) => (
-                      <div key={student.enrollment_id} className={cn("flex items-center gap-3 p-3 rounded-xl border transition-colors overflow-hidden", student.already_added ? "opacity-50 bg-muted/30" : "hover:bg-secondary/30 cursor-pointer", selectedStudents.has(student.enrollment_id) && "border-primary/50 bg-primary/5")} onClick={() => !student.already_added && toggleStudentSelection(student.enrollment_id)}>
-                        <Checkbox checked={student.already_added || selectedStudents.has(student.enrollment_id)} disabled={student.already_added} className="shrink-0" />
-                        <div className="flex-1 min-w-0 overflow-hidden">
-                          <div className="font-medium text-sm truncate">{student.full_name}</div>
-                          <div className="text-xs text-muted-foreground truncate">{student.course_title}</div>
-                        </div>
-                        {student.already_added ? (
-                          <Badge variant="secondary" className="text-xs">Добавлен</Badge>
-                        ) : (
-                          <span className="text-xs text-muted-foreground">{format(parseISO(student.completed_at), "dd.MM.yyyy")}</span>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                </ScrollArea>
-              </>
-            )}
-          </div>
-          <DialogFooter className="shrink-0">
-            <Button variant="outline" onClick={() => setShowSelectStudentsDialog(false)} className="rounded-xl">Отмена</Button>
-            <Button onClick={handleCreateFromStudents} disabled={saving || selectedStudents.size === 0} className="rounded-xl">
-              {saving && <SigmaSpinner size="sm" className="mr-2" />}
-              Добавить ({selectedStudents.size})
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <SelectStudentsDialog
+        open={showSelectStudentsDialog}
+        onOpenChange={setShowSelectStudentsDialog}
+        studentSearchQuery={studentSearchQuery}
+        setStudentSearchQuery={setStudentSearchQuery}
+        loadingStudents={loadingStudents}
+        filteredStudents={filteredStudents}
+        selectedStudents={selectedStudents}
+        toggleStudentSelection={toggleStudentSelection}
+        selectAllStudents={selectAllStudents}
+        saving={saving}
+        onSubmit={handleCreateFromStudents}
+      />
 
       {/* Delete Confirm */}
       <AlertDialog open={!!deletingRecord} onOpenChange={() => setDeletingRecord(null)}>
