@@ -101,12 +101,53 @@ export function CounterpartiesSection({
     if (saved) {
       try { setClientGroups(JSON.parse(saved)); } catch {}
     }
+    // Load saved visible clients/payers
+    const savedClients = localStorage.getItem(`visible_clients_${organizationId}`);
+    if (savedClients) try { setVisibleClientIds(new Set(JSON.parse(savedClients))); } catch {}
+    const savedPayers = localStorage.getItem(`visible_payers_${organizationId}`);
+    if (savedPayers) try { setVisiblePayerIds(new Set(JSON.parse(savedPayers))); } catch {}
   }, [organizationId]);
 
-  // Persist groups
-  const saveGroups = (groups: ClientGroup[]) => {
-    setClientGroups(groups);
-    localStorage.setItem(`client_groups_${organizationId}`, JSON.stringify(groups));
+  const persistVisibleClients = (ids: Set<string>) => {
+    setVisibleClientIds(ids);
+    localStorage.setItem(`visible_clients_${organizationId}`, JSON.stringify([...ids]));
+  };
+
+  const persistVisiblePayers = (ids: Set<string>) => {
+    setVisiblePayerIds(ids);
+    localStorage.setItem(`visible_payers_${organizationId}`, JSON.stringify([...ids]));
+  };
+
+  const addVisibleClient = (id: string) => {
+    const next = new Set(visibleClientIds);
+    next.add(id);
+    persistVisibleClients(next);
+    setSelectedId(id);
+    setClientPopoverOpen(false);
+    setClientSearch("");
+  };
+
+  const removeVisibleClient = (id: string) => {
+    const next = new Set(visibleClientIds);
+    next.delete(id);
+    persistVisibleClients(next);
+    if (selectedId === id) setSelectedId("platform");
+  };
+
+  const addVisiblePayer = (id: string) => {
+    const next = new Set(visiblePayerIds);
+    next.add(id);
+    persistVisiblePayers(next);
+    setSelectedId(id);
+    setPayerPopoverOpen(false);
+    setPayerSearch("");
+  };
+
+  const removeVisiblePayer = (id: string) => {
+    const next = new Set(visiblePayerIds);
+    next.delete(id);
+    persistVisiblePayers(next);
+    if (selectedId === id) setSelectedId("platform");
   };
 
   const handleCreateGroup = () => {
