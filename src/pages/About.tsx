@@ -7,6 +7,10 @@ import { LandingHeader } from "@/components/landing/LandingHeader";
 import { Footer } from "@/components/landing/Footer";
 import { StarfieldCanvas } from "@/components/landing/StarfieldCanvas";
 import { TypewriterText } from "@/components/ui/TypewriterText";
+import missionImg from "/images/about/mission.png";
+import innovationImg from "/images/about/innovation.png";
+import complianceImg from "/images/about/compliance.png";
+import requisitesBg from "/images/about/requisites-bg.jpg";
 
 const About = () => {
   return (
