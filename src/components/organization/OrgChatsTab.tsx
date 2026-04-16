@@ -123,7 +123,7 @@ export function OrgChatsTab() {
 
   if (isLoading) return <div className="flex justify-center py-12"><SigmaSpinner /></div>;
 
-  const hasActiveChat = selectedStudentId || selectedAdminChat;
+  const hasActiveChat = selectedStudentId || selectedAdminChat || selectedGeneralChat;
 
   function renderStudentChats() {
     // Mobile admin chat
