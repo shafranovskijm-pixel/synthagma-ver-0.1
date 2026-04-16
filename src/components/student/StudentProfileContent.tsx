@@ -33,10 +33,7 @@ interface StudentProfileContentProps {
 const PROFILE_TABS = [
   { id: "profile", icon: User, label: "Профиль" },
   { id: "notifications", icon: Bell, label: "Уведомления" },
-  { id: "identification", icon: Video, label: "Идентификация" },
-  { id: "consent", icon: FileCheck, label: "Согласие" },
   { id: "documents", icon: FileText, label: "Документы" },
-  { id: "theme", icon: Palette, label: "Тема" },
   { id: "partner", icon: Users, label: "Партнёр" },
   { id: "help", icon: HelpCircle, label: "Помощь" },
 ];

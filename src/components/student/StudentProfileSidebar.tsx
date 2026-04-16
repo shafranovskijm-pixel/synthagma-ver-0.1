@@ -42,12 +42,9 @@ export function StudentProfileSidebar({
   const navItems: NavItem[] = [
     { id: "profile", icon: User, label: "Профиль" },
     { id: "notifications", icon: Bell, label: "Уведомления" },
-    { id: "identification", icon: Video, label: "Идентификация" },
-    { id: "consent", icon: FileCheck, label: "Согласие на ПД", badge: consentBadge },
-    { id: "documents", icon: FileText, label: "Документы", badge: docsBadge },
+    { id: "documents", icon: FileText, label: "Документы", badge: (consentBadge || 0) + (docsBadge || 0) },
     ...(showAchievements ? [{ id: "achievements", icon: Trophy, label: "Достижения" }] : []),
     { id: "radio", icon: Radio, label: "Радио" },
-    { id: "theme", icon: Palette, label: "Тема" },
     { id: "partner", icon: Users, label: "Партнёрская программа" },
   ];
 
