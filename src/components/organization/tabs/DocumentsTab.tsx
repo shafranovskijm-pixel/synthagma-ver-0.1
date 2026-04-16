@@ -22,7 +22,6 @@ import { DocumentDialogs } from "./documents/DocumentDialogs";
 
 const NAV_ITEMS: { value: DocumentSubTab; label: string; icon: React.ElementType; ordersOnly?: boolean; iconColor?: string; group?: string }[] = [
   { value: "counterparties", label: "Контрагенты", icon: Building2, group: "platform" },
-  { value: "org", label: "Документы орг.", icon: FileText, iconColor: "text-primary/70", group: "docs" },
   { value: "orders", label: "Приказы", icon: ScrollText, ordersOnly: true, iconColor: "text-amber-500", group: "docs" },
   { value: "protocols", label: "Протоколы АК", icon: ClipboardList, iconColor: "text-violet-500", group: "docs" },
   { value: "certificates", label: "Удостоверения", icon: Award, iconColor: "text-emerald-500", group: "docs" },
@@ -32,6 +31,7 @@ const NAV_ITEMS: { value: DocumentSubTab; label: string; icon: React.ElementType
   { value: "journals", label: "Журналы", icon: ClipboardList, iconColor: "text-amber-500", group: "tools" },
   { value: "frdo", label: "ФИС ФРДО", icon: Database, iconColor: "text-violet-500", group: "tools" },
   { value: "constructor", label: "Конструктор", icon: Wrench, group: "tools" },
+  { value: "org", label: "Документы орг.", icon: FileText, iconColor: "text-primary/70", group: "tools" },
 ];
 
 const SECTION_DESCRIPTIONS: Partial<Record<DocumentSubTab, string>> = {
