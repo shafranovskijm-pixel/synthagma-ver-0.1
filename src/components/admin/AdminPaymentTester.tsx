@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -13,116 +13,102 @@ import {
   CreditCard, Save, CheckCircle2, XCircle, Copy, ExternalLink,
   Play, Eye, EyeOff, RefreshCw, AlertTriangle, Check
 } from "lucide-react";
+import { cn } from "@/lib/utils";
 
-interface Org { id: string; name: string; }
-interface Course { id: string; title: string; price: number; }
+interface Org { id: string; name: string; subscription_plan: string | null; paid_until: string | null; }
+
+const PLANS = [
+  { key: "start", name: "Старт", price: 3490 },
+  { key: "standard", name: "Стандарт", price: 6990 },
+  { key: "professional", name: "Профессиональный", price: 16990 },
+  { key: "maximum", name: "Максимальный", price: 24990 },
+] as const;
 
 export function AdminPaymentTester() {
-  // Step 1: Settings
-  const [orgs, setOrgs] = useState<Org[]>([]);
-  const [selectedOrg, setSelectedOrg] = useState("");
+  // Step 1: Platform terminal settings
   const [terminalKey, setTerminalKey] = useState("");
   const [password, setPassword] = useState("");
   const [isTestMode, setIsTestMode] = useState(true);
-  const [hasExisting, setHasExisting] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [loadingSettings, setLoadingSettings] = useState(false);
+  const [loadingSettings, setLoadingSettings] = useState(true);
+  const [isConnected, setIsConnected] = useState(false);
 
-  // Step 2: Payment
-  const [courses, setCourses] = useState<Course[]>([]);
-  const [selectedCourse, setSelectedCourse] = useState("");
+  // Step 2: Tariff purchase
+  const [orgs, setOrgs] = useState<Org[]>([]);
+  const [selectedOrg, setSelectedOrg] = useState("");
+  const [selectedPlan, setSelectedPlan] = useState("");
+  const [periodMonths, setPeriodMonths] = useState<1 | 12>(1);
   const [email, setEmail] = useState("test@example.com");
   const [initiating, setInitiating] = useState(false);
   const [paymentUrl, setPaymentUrl] = useState("");
-  const [paymentId, setPaymentId] = useState("");
+  const [invoiceId, setInvoiceId] = useState("");
 
   // Step 3: Result
-  const [paymentStatus, setPaymentStatus] = useState("");
+  const [invoiceStatus, setInvoiceStatus] = useState("");
   const [polling, setPolling] = useState(false);
-  const pollRef = useRef<NodeJS.Timeout | null>(null);
+  const [orgAfterPayment, setOrgAfterPayment] = useState<{ plan: string; paid_until: string } | null>(null);
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  // Load orgs on mount
+  // Load platform terminal settings + orgs on mount
   useEffect(() => {
-    supabase.from("organizations").select("id, name").order("name").then(({ data }) => {
-      setOrgs(data || []);
+    loadSettings();
+    supabase.from("organizations").select("id, name, subscription_plan, paid_until").order("name").then(({ data }) => {
+      setOrgs((data as any[]) || []);
     });
   }, []);
 
-  // Load settings when org changes
-  useEffect(() => {
-    if (!selectedOrg) return;
-    setLoadingSettings(true);
-    setHasExisting(false);
-    setTerminalKey("");
-    setPassword("");
-    setPaymentUrl("");
-    setPaymentId("");
-    setPaymentStatus("");
-
-    supabase
-      .from("organization_payment_settings")
-      .select("terminal_key, is_test_mode" as any)
-      .eq("organization_id", selectedOrg)
-      .maybeSingle()
-      .then(({ data }) => {
-        if (data) {
-          setTerminalKey((data as any).terminal_key || "");
-          setIsTestMode((data as any).is_test_mode ?? true);
-          setHasExisting(true);
-        }
-        setLoadingSettings(false);
-      });
-
-    // Load courses with price > 0
-    supabase
-      .from("courses")
-      .select("id, title, price")
-      .eq("organization_id", selectedOrg)
-      .gt("price", 0)
-      .order("title")
-      .then(({ data }) => {
-        setCourses(data || []);
-        setSelectedCourse("");
-      });
-  }, [selectedOrg]);
-
-  // Cleanup polling on unmount
   useEffect(() => {
     return () => { if (pollRef.current) clearInterval(pollRef.current); };
   }, []);
 
+  const loadSettings = async () => {
+    setLoadingSettings(true);
+    const { data } = await supabase
+      .from("app_settings")
+      .select("setting_key, setting_value")
+      .in("setting_key", ["tbank_terminal_key", "tbank_password", "tbank_test_mode"]);
+
+    const map: Record<string, string> = {};
+    (data || []).forEach(s => { map[s.setting_key] = s.setting_value; });
+
+    if (map.tbank_terminal_key) {
+      setTerminalKey(map.tbank_terminal_key);
+      setIsTestMode(map.tbank_test_mode === "true");
+      setIsConnected(true);
+    }
+    setLoadingSettings(false);
+  };
+
   const handleSaveSettings = async () => {
-    if (!terminalKey || !selectedOrg) return;
+    if (!terminalKey) return;
     setSaving(true);
     try {
-      const payload: any = {
-        organization_id: selectedOrg,
-        terminal_key: terminalKey,
-        is_test_mode: isTestMode,
-      };
-      if (password) payload.password_encrypted = password;
-
-      if (hasExisting) {
-        const { error } = await supabase
-          .from("organization_payment_settings")
-          .update(payload)
-          .eq("organization_id", selectedOrg);
-        if (error) throw error;
-      } else {
-        if (!password) {
-          toast.error("Введите пароль терминала");
-          setSaving(false);
-          return;
-        }
-        const { error } = await supabase
-          .from("organization_payment_settings")
-          .insert(payload);
-        if (error) throw error;
-        setHasExisting(true);
+      const entries = [
+        { setting_key: "tbank_terminal_key", setting_value: terminalKey },
+        { setting_key: "tbank_test_mode", setting_value: isTestMode ? "true" : "false" },
+      ];
+      if (password) {
+        entries.push({ setting_key: "tbank_password", setting_value: password });
       }
+
+      for (const entry of entries) {
+        const { data: existing } = await supabase
+          .from("app_settings")
+          .select("id")
+          .eq("setting_key", entry.setting_key)
+          .maybeSingle();
+
+        if (existing) {
+          await supabase.from("app_settings").update({ setting_value: entry.setting_value }).eq("setting_key", entry.setting_key);
+        } else {
+          await supabase.from("app_settings").insert(entry);
+        }
+      }
+
       setPassword("");
-      toast.success("Настройки кассы сохранены");
+      setIsConnected(true);
+      toast.success("Настройки платформенной кассы сохранены");
     } catch (err) {
       console.error(err);
       toast.error("Ошибка сохранения");
@@ -131,17 +117,24 @@ export function AdminPaymentTester() {
     }
   };
 
+  const selectedPlanData = PLANS.find(p => p.key === selectedPlan);
+  const discount = periodMonths === 12 ? 0.15 : 0;
+  const totalAmount = selectedPlanData
+    ? Math.round(selectedPlanData.price * periodMonths * (1 - discount))
+    : 0;
+
   const handleInitPayment = async () => {
-    if (!selectedCourse || !selectedOrg) return;
+    if (!selectedOrg || !selectedPlan) return;
     setInitiating(true);
     setPaymentUrl("");
-    setPaymentId("");
-    setPaymentStatus("");
+    setInvoiceId("");
+    setInvoiceStatus("");
+    setOrgAfterPayment(null);
     if (pollRef.current) clearInterval(pollRef.current);
 
     try {
-      const { data, error } = await supabase.functions.invoke("tbank-init", {
-        body: { course_id: selectedCourse, email: email || undefined },
+      const { data, error } = await supabase.functions.invoke("tbank-init-subscription", {
+        body: { organization_id: selectedOrg, plan: selectedPlan, period_months: periodMonths, email: email || undefined },
       });
 
       if (error) throw error;
@@ -151,15 +144,12 @@ export function AdminPaymentTester() {
       }
 
       setPaymentUrl(data.url);
-      setPaymentId(data.payment_id);
-      setPaymentStatus("pending");
-      toast.success("Тестовый платёж создан");
+      setInvoiceId(data.invoice_id);
+      setInvoiceStatus("pending");
+      toast.success("Счёт на подписку создан");
 
-      // Open payment page
       if (data.url) window.open(data.url, "_blank");
-
-      // Start polling
-      startPolling(data.payment_id);
+      startPolling(data.invoice_id);
     } catch (err: any) {
       console.error(err);
       toast.error(err.message || "Ошибка создания платежа");
@@ -172,17 +162,29 @@ export function AdminPaymentTester() {
     setPolling(true);
     pollRef.current = setInterval(async () => {
       const { data } = await supabase
-        .from("course_payments")
+        .from("subscription_invoices")
         .select("status, paid_at")
         .eq("id", id)
         .single();
 
       if (data) {
-        setPaymentStatus(data.status);
-        if (data.status !== "pending") {
+        setInvoiceStatus((data as any).status);
+        if ((data as any).status !== "pending") {
           if (pollRef.current) clearInterval(pollRef.current);
           setPolling(false);
-          toast.success(data.status === "CONFIRMED" ? "✅ Платёж подтверждён! Webhook работает." : `Статус: ${data.status}`);
+
+          if ((data as any).status === "paid") {
+            toast.success("✅ Подписка оплачена! Webhook работает.");
+            // Check org subscription update
+            const { data: org } = await supabase
+              .from("organizations")
+              .select("subscription_plan, paid_until")
+              .eq("id", selectedOrg)
+              .single();
+            if (org) setOrgAfterPayment({ plan: (org as any).subscription_plan, paid_until: (org as any).paid_until });
+          } else {
+            toast.error(`Статус: ${(data as any).status}`);
+          }
         }
       }
     }, 5000);
@@ -193,129 +195,163 @@ export function AdminPaymentTester() {
     toast.success("Скопировано");
   };
 
-  const isConnected = hasExisting && !!terminalKey;
-  const selectedCourseData = courses.find(c => c.id === selectedCourse);
+  const selectedOrgData = orgs.find(o => o.id === selectedOrg);
 
   return (
     <div className="space-y-6">
-      {/* Step 1: Configure */}
+      {/* Step 1: Platform Terminal */}
       <Card>
         <CardHeader>
           <CardTitle className="text-base flex items-center gap-2">
             <span className="w-6 h-6 rounded-full bg-primary/15 text-primary text-xs flex items-center justify-center font-bold">1</span>
-            Настройка кассы
+            Платформенная касса T-Bank
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div>
-            <Label>Организация</Label>
-            <Select value={selectedOrg} onValueChange={setSelectedOrg}>
-              <SelectTrigger>
-                <SelectValue placeholder="Выберите организацию" />
-              </SelectTrigger>
-              <SelectContent>
-                {orgs.map(o => (
-                  <SelectItem key={o.id} value={o.id}>{o.name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          {selectedOrg && (
-            loadingSettings ? (
-              <div className="flex items-center gap-2 text-muted-foreground"><SigmaSpinner size="sm" />Загрузка...</div>
-            ) : (
-              <>
-                <div className="flex items-center gap-2">
-                  <Badge variant={isConnected ? "default" : "destructive"} className="flex items-center gap-1.5">
-                    {isConnected ? <><CheckCircle2 className="w-3.5 h-3.5" /> Подключено</> : <><XCircle className="w-3.5 h-3.5" /> Не настроено</>}
+          {loadingSettings ? (
+            <div className="flex items-center gap-2 text-muted-foreground"><SigmaSpinner size="sm" />Загрузка...</div>
+          ) : (
+            <>
+              <div className="flex items-center gap-2">
+                <Badge variant={isConnected ? "default" : "destructive"} className="flex items-center gap-1.5">
+                  {isConnected ? <><CheckCircle2 className="w-3.5 h-3.5" /> Подключено</> : <><XCircle className="w-3.5 h-3.5" /> Не настроено</>}
+                </Badge>
+                {isConnected && (
+                  <Badge variant={isTestMode ? "secondary" : "default"}>
+                    {isTestMode ? "Тестовый режим" : "Боевой режим"}
                   </Badge>
-                  {isConnected && (
-                    <Badge variant={isTestMode ? "secondary" : "default"}>
-                      {isTestMode ? "Тестовый режим" : "Боевой режим"}
-                    </Badge>
-                  )}
-                </div>
+                )}
+              </div>
 
-                <div className="grid sm:grid-cols-2 gap-4 max-w-lg">
-                  <div>
-                    <Label>TerminalKey</Label>
-                    <Input value={terminalKey} onChange={e => setTerminalKey(e.target.value)} placeholder="Ключ терминала" />
-                  </div>
-                  <div>
-                    <Label>Пароль</Label>
-                    <div className="relative">
-                      <Input
-                        type={showPassword ? "text" : "password"}
-                        value={password}
-                        onChange={e => setPassword(e.target.value)}
-                        placeholder={hasExisting ? "••••••• (не изменён)" : "Пароль"}
-                      />
-                      <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
-                        {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                      </button>
-                    </div>
+              <div className="grid sm:grid-cols-2 gap-4 max-w-lg">
+                <div>
+                  <Label>TerminalKey</Label>
+                  <Input value={terminalKey} onChange={e => setTerminalKey(e.target.value)} placeholder="Ключ терминала" />
+                </div>
+                <div>
+                  <Label>Пароль</Label>
+                  <div className="relative">
+                    <Input
+                      type={showPassword ? "text" : "password"}
+                      value={password}
+                      onChange={e => setPassword(e.target.value)}
+                      placeholder={isConnected ? "••••••• (не изменён)" : "Пароль"}
+                    />
+                    <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
+                      {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
                   </div>
                 </div>
+              </div>
 
-                <div className="flex items-center gap-3">
-                  <Switch checked={isTestMode} onCheckedChange={setIsTestMode} id="admin-test-mode" />
-                  <Label htmlFor="admin-test-mode" className="cursor-pointer">Тестовый режим</Label>
-                </div>
+              <div className="flex items-center gap-3">
+                <Switch checked={isTestMode} onCheckedChange={setIsTestMode} id="admin-test-mode" />
+                <Label htmlFor="admin-test-mode" className="cursor-pointer">Тестовый режим</Label>
+              </div>
 
-                <Button onClick={handleSaveSettings} disabled={saving || !terminalKey} size="sm">
-                  {saving ? <SigmaSpinner size="sm" className="mr-2" /> : <Save className="w-4 h-4 mr-2" />}
-                  Сохранить настройки
-                </Button>
-              </>
-            )
+              <Button onClick={handleSaveSettings} disabled={saving || !terminalKey} size="sm">
+                {saving ? <SigmaSpinner size="sm" className="mr-2" /> : <Save className="w-4 h-4 mr-2" />}
+                Сохранить настройки
+              </Button>
+            </>
           )}
         </CardContent>
       </Card>
 
-      {/* Step 2: Initiate Payment */}
+      {/* Step 2: Buy Tariff */}
       {isConnected && (
         <Card>
           <CardHeader>
             <CardTitle className="text-base flex items-center gap-2">
               <span className="w-6 h-6 rounded-full bg-primary/15 text-primary text-xs flex items-center justify-center font-bold">2</span>
-              Тестовый платёж
+              Покупка тарифа
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            {courses.length === 0 ? (
-              <p className="text-sm text-muted-foreground">У этой организации нет курсов с ценой. Укажите цену курса в конструкторе.</p>
-            ) : (
-              <>
-                <div className="grid sm:grid-cols-2 gap-4 max-w-lg">
-                  <div>
-                    <Label>Курс</Label>
-                    <Select value={selectedCourse} onValueChange={setSelectedCourse}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Выберите курс" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {courses.map(c => (
-                          <SelectItem key={c.id} value={c.id}>{c.title} — {c.price} ₽</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div>
-                    <Label>Email (для чека)</Label>
-                    <Input value={email} onChange={e => setEmail(e.target.value)} placeholder="test@example.com" />
-                  </div>
-                </div>
+            <div className="max-w-md">
+              <Label>Организация</Label>
+              <Select value={selectedOrg} onValueChange={v => { setSelectedOrg(v); setPaymentUrl(""); setInvoiceId(""); setInvoiceStatus(""); setOrgAfterPayment(null); }}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Выберите организацию" />
+                </SelectTrigger>
+                <SelectContent>
+                  {orgs.map(o => (
+                    <SelectItem key={o.id} value={o.id}>
+                      {o.name} {o.subscription_plan ? `(${o.subscription_plan})` : ""}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
 
-                {selectedCourseData && (
-                  <div className="text-sm text-muted-foreground">
-                    Сумма: <span className="font-semibold text-foreground">{selectedCourseData.price} ₽</span>
+            {selectedOrg && selectedOrgData && (
+              <>
+                {selectedOrgData.subscription_plan && selectedOrgData.subscription_plan !== "free" && (
+                  <div className="text-xs text-muted-foreground">
+                    Текущий план: <span className="font-medium text-foreground">{selectedOrgData.subscription_plan}</span>
+                    {selectedOrgData.paid_until && <>, оплачен до {new Date(selectedOrgData.paid_until).toLocaleDateString("ru")}</>}
                   </div>
                 )}
 
-                <Button onClick={handleInitPayment} disabled={initiating || !selectedCourse} size="sm">
+                {/* Plan cards */}
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                  {PLANS.map(plan => (
+                    <button
+                      key={plan.key}
+                      onClick={() => setSelectedPlan(plan.key)}
+                      className={cn(
+                        "p-3 rounded-lg border text-left transition-all",
+                        selectedPlan === plan.key
+                          ? "border-primary bg-primary/5 ring-1 ring-primary"
+                          : "border-border hover:border-primary/40"
+                      )}
+                    >
+                      <p className="font-semibold text-sm">{plan.name}</p>
+                      <p className="text-lg font-bold mt-1">{plan.price.toLocaleString("ru")} ₽</p>
+                      <p className="text-[10px] text-muted-foreground">/ мес</p>
+                    </button>
+                  ))}
+                </div>
+
+                {/* Period */}
+                {selectedPlan && (
+                  <div className="flex gap-2">
+                    <Button
+                      variant={periodMonths === 1 ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => setPeriodMonths(1)}
+                    >
+                      1 месяц
+                    </Button>
+                    <Button
+                      variant={periodMonths === 12 ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => setPeriodMonths(12)}
+                    >
+                      12 месяцев (−15%)
+                    </Button>
+                  </div>
+                )}
+
+                {selectedPlanData && (
+                  <div className="text-sm">
+                    Итого: <span className="font-bold text-foreground">{totalAmount.toLocaleString("ru")} ₽</span>
+                    {periodMonths === 12 && (
+                      <span className="text-xs text-muted-foreground ml-2">
+                        (экономия {Math.round(selectedPlanData.price * 12 * 0.15).toLocaleString("ru")} ₽)
+                      </span>
+                    )}
+                  </div>
+                )}
+
+                <div className="max-w-xs">
+                  <Label>Email (для чека)</Label>
+                  <Input value={email} onChange={e => setEmail(e.target.value)} placeholder="test@example.com" />
+                </div>
+
+                <Button onClick={handleInitPayment} disabled={initiating || !selectedPlan} size="sm">
                   {initiating ? <SigmaSpinner size="sm" className="mr-2" /> : <Play className="w-4 h-4 mr-2" />}
-                  Создать тестовый платёж
+                  Оплатить подписку
                 </Button>
 
                 {paymentUrl && (
@@ -326,7 +362,7 @@ export function AdminPaymentTester() {
                         Ссылка на оплату
                       </a>
                     </div>
-                    <p className="text-xs text-muted-foreground">ID платежа: <code className="font-mono">{paymentId}</code></p>
+                    <p className="text-xs text-muted-foreground">Invoice ID: <code className="font-mono">{invoiceId}</code></p>
                   </div>
                 )}
               </>
@@ -362,7 +398,7 @@ export function AdminPaymentTester() {
       )}
 
       {/* Step 3: Result */}
-      {paymentId && (
+      {invoiceId && (
         <Card>
           <CardHeader>
             <CardTitle className="text-base flex items-center gap-2">
@@ -372,43 +408,46 @@ export function AdminPaymentTester() {
           </CardHeader>
           <CardContent className="space-y-3">
             <div className="flex items-center gap-3">
-              <span className="text-sm text-muted-foreground">Статус:</span>
-              {paymentStatus === "pending" && (
+              <span className="text-sm text-muted-foreground">Статус счёта:</span>
+              {invoiceStatus === "pending" && (
                 <Badge variant="outline" className="flex items-center gap-1.5">
                   {polling && <RefreshCw className="w-3 h-3 animate-spin" />}
                   Ожидание оплаты
                 </Badge>
               )}
-              {paymentStatus === "CONFIRMED" && (
+              {invoiceStatus === "paid" && (
                 <Badge variant="default" className="flex items-center gap-1.5 bg-emerald-600">
                   <Check className="w-3 h-3" /> Оплачен
                 </Badge>
               )}
-              {paymentStatus === "paid" && (
-                <Badge variant="default" className="flex items-center gap-1.5 bg-emerald-600">
-                  <Check className="w-3 h-3" /> Оплачен
-                </Badge>
-              )}
-              {(paymentStatus === "failed" || paymentStatus === "REJECTED") && (
+              {(invoiceStatus === "failed" || invoiceStatus === "cancelled") && (
                 <Badge variant="destructive" className="flex items-center gap-1.5">
                   <XCircle className="w-3 h-3" /> Ошибка
                 </Badge>
               )}
             </div>
 
-            {paymentStatus === "pending" && polling && (
+            {invoiceStatus === "pending" && polling && (
               <p className="text-xs text-muted-foreground flex items-center gap-1.5">
                 <AlertTriangle className="w-3 h-3 text-amber-500" />
                 Оплатите в открывшемся окне. Статус обновится автоматически.
               </p>
             )}
 
-            {(paymentStatus === "CONFIRMED" || paymentStatus === "paid") && (
-              <div className="p-3 rounded-lg bg-emerald-500/10 border border-emerald-500/30">
-                <p className="text-sm font-medium text-emerald-600">✅ Тест пройден!</p>
-                <p className="text-xs text-muted-foreground mt-1">
-                  Платёж успешно обработан. Webhook tbank-webhook корректно обновил статус.
+            {invoiceStatus === "paid" && (
+              <div className="p-3 rounded-lg bg-emerald-500/10 border border-emerald-500/30 space-y-2">
+                <p className="text-sm font-medium text-emerald-600">✅ Подписка оплачена!</p>
+                <p className="text-xs text-muted-foreground">
+                  Webhook tbank-webhook корректно обновил статус счёта.
                 </p>
+                {orgAfterPayment && (
+                  <div className="text-xs space-y-0.5 mt-2 pt-2 border-t border-emerald-500/20">
+                    <p>Тариф организации: <span className="font-semibold text-foreground">{orgAfterPayment.plan}</span></p>
+                    {orgAfterPayment.paid_until && (
+                      <p>Оплачен до: <span className="font-semibold text-foreground">{new Date(orgAfterPayment.paid_until).toLocaleDateString("ru")}</span></p>
+                    )}
+                  </div>
+                )}
               </div>
             )}
           </CardContent>
