@@ -9,13 +9,13 @@ import { StarfieldCanvas } from "@/components/landing/StarfieldCanvas";
 
 const logoLetters = "СИНТАГМА".split("");
 
-export function LandingHeader() {
+export function LandingHeader({ showStars = true }: { showStars?: boolean }) {
   const [animKey, setAnimKey] = useState(0);
   const triggerAnim = useCallback(() => setAnimKey((k) => k + 1), []);
 
   return (
     <header className="sticky top-0 z-50 bg-[#0a0e1a] relative">
-      <StarfieldCanvas />
+      {showStars && <StarfieldCanvas />}
 
       <div className="container mx-auto px-6 py-4 relative z-10">
         <div className="flex items-center justify-between">

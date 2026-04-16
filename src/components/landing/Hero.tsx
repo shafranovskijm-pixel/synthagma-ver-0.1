@@ -12,10 +12,10 @@ const features = [
   { icon: BookOpen, label: "200+ готовых курсов", href: "/rostechnadzor-courses" },
 ];
 
-export function Hero() {
+export function Hero({ showStars = true }: { showStars?: boolean }) {
   return (
     <section className="relative overflow-hidden bg-[#0a0e1a]">
-      <StarfieldCanvas />
+      {showStars && <StarfieldCanvas />}
 
       {/* Hero content */}
       <div className="relative z-10 container mx-auto px-6 pt-12 pb-8 md:pt-16 md:pb-10">

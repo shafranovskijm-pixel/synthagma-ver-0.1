@@ -75,8 +75,8 @@ const Index = () => {
       </Helmet>
       
       <div className="min-h-screen bg-background">
-        <LandingHeader />
-        <Hero />
+        <LandingHeader showStars={false} />
+        <Hero showStars={false} />
         <EditorDemo />
         <PricingPlans />
         <Features />
