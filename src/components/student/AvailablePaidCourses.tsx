@@ -149,37 +149,14 @@ export function AvailablePaidCourses({ userId, organizationId, userEmail }: Prop
       } as any);
       if (requestError) throw requestError;
 
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("full_name, email")
-        .eq("user_id", userId)
-        .maybeSingle();
-      const studentName = profile?.full_name || profile?.email || "Ученик";
-
-      const chatResult = await supabase.from("chat_messages").insert({
-        user_id: userId,
-        course_id: course.id,
-        role: "user",
-        content: `Заявка на запись: ${studentName} хочет записаться на курс «${course.title}» (${Number(course.price).toLocaleString("ru-RU")} ₽)`
+      const notifyResult = await supabase.functions.invoke("notify-enrollment-request", {
+        body: { course_id: course.id },
       });
-      if (chatResult.error) {
-        console.error("Enrollment request chat error:", chatResult.error);
+      if (notifyResult.error) {
+        console.error("Enrollment request notify error:", notifyResult.error);
       }
 
-      const notificationResult = await supabase.from("org_notifications" as any).insert({
-        organization_id: course.organization_id,
-        user_id: userId,
-        type: "enrollment_request",
-        title: "Новая заявка на запись",
-        message: `${studentName} хочет записаться на курс «${course.title}»`,
-        related_id: course.id,
-        is_read: false,
-      } as any);
-      if (notificationResult.error) {
-        console.error("Enrollment request notification error:", notificationResult.error);
-      }
-
-      toast.success("Заявка отправлена! Учебный центр увидит её в заявках и чате");
+      toast.success("Заявка отправлена! Учебный центр увидит её в заявках, чате и уведомлениях");
       setEnrollCourse(null);
       fetchAvailableCourses();
     } catch (err: any) {
