@@ -2,13 +2,16 @@ import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { ScrollText, Receipt, FileCheck, Download, FileText, Lightbulb, Eye, Trash2, ExternalLink, Building2, User, Store } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { ScrollText, Receipt, FileCheck, Download, FileText, Lightbulb, Eye, Trash2, ExternalLink, Building2, User, Store, Plus, FolderOpen, ChevronDown, ChevronRight } from "lucide-react";
 import { ContractLegalFaq } from "@/components/organization/ContractLegalFaq";
 import { File } from "lucide-react";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 import type { CounterpartySubTab, CounterpartyDoc, BillingDoc, InvoiceRow, CounterpartyOption } from "@/hooks/useDocumentsTab";
 
 const docTypeLabels: Record<string, { label: string; icon: React.ReactNode }> = {
@@ -17,6 +20,12 @@ const docTypeLabels: Record<string, { label: string; icon: React.ReactNode }> = 
   act: { label: "Акт", icon: <File className="w-4 h-4 text-amber-500" /> },
   other: { label: "Другое", icon: <File className="w-4 h-4 text-muted-foreground" /> },
 };
+
+interface ClientGroup {
+  id: string;
+  name: string;
+  clients: CounterpartyOption[];
+}
 
 interface CounterpartiesSectionProps {
   organizationId: string;
@@ -52,7 +61,12 @@ export function CounterpartiesSection({
   const [counterparties, setCounterparties] = useState<CounterpartyOption[]>([]);
   const [selectedId, setSelectedId] = useState<string>("platform");
   const [showFaq, setShowFaq] = useState(false);
+  const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({});
+  const [showGroupDialog, setShowGroupDialog] = useState(false);
+  const [newGroupName, setNewGroupName] = useState("");
+  const [clientGroups, setClientGroups] = useState<ClientGroup[]>([]);
 
+  // Load counterparties and groups
   useEffect(() => {
     const list: CounterpartyOption[] = [{ id: "platform", name: "Синтагма", type: "platform" }];
 
@@ -74,20 +88,72 @@ export function CounterpartiesSection({
             setCounterparties([...list, ...companies, ...payers]);
           });
       });
+
+    // Load saved groups from localStorage
+    const saved = localStorage.getItem(`client_groups_${organizationId}`);
+    if (saved) {
+      try { setClientGroups(JSON.parse(saved)); } catch {}
+    }
   }, [organizationId]);
+
+  // Persist groups
+  const saveGroups = (groups: ClientGroup[]) => {
+    setClientGroups(groups);
+    localStorage.setItem(`client_groups_${organizationId}`, JSON.stringify(groups));
+  };
+
+  const handleCreateGroup = () => {
+    if (!newGroupName.trim()) return;
+    const group: ClientGroup = { id: crypto.randomUUID(), name: newGroupName.trim(), clients: [] };
+    saveGroups([...clientGroups, group]);
+    setExpandedGroups(prev => ({ ...prev, [group.id]: true }));
+    setNewGroupName("");
+    setShowGroupDialog(false);
+    toast.success(`Группа «${group.name}» создана`);
+  };
+
+  const handleDeleteGroup = (groupId: string) => {
+    saveGroups(clientGroups.filter(g => g.id !== groupId));
+    toast.success("Группа удалена");
+  };
+
+  const handleAddClientToGroup = (groupId: string, client: CounterpartyOption) => {
+    saveGroups(clientGroups.map(g =>
+      g.id === groupId && !g.clients.find(c => c.id === client.id)
+        ? { ...g, clients: [...g.clients, client] }
+        : g
+    ));
+  };
+
+  const handleRemoveClientFromGroup = (groupId: string, clientId: string) => {
+    saveGroups(clientGroups.map(g =>
+      g.id === groupId
+        ? { ...g, clients: g.clients.filter(c => c.id !== clientId) }
+        : g
+    ));
+  };
 
   const selected = counterparties.find(c => c.id === selectedId) || counterparties[0];
   const isPlatform = selected?.type === "platform";
   const isCompany = selected?.type === "company";
   const isPayer = selected?.type === "payer";
 
-  const companyDocs = isCompany ? counterpartyDocs.filter(d => {
-    return (d as any).company_id === selectedId || d.company_name === selected?.name;
-  }) : [];
+  const companyDocs = isCompany ? counterpartyDocs.filter(d =>
+    (d as any).company_id === selectedId || d.company_name === selected?.name
+  ) : [];
 
   const platformItems = counterparties.filter(c => c.type === "platform");
   const companyItems = counterparties.filter(c => c.type === "company");
   const payerItems = counterparties.filter(c => c.type === "payer");
+
+  // Find clients not in any group
+  const groupedClientIds = new Set(clientGroups.flatMap(g => g.clients.map(c => c.id)));
+  const ungroupedClients = companyItems.filter(c => !groupedClientIds.has(c.id));
+
+  const toggleGroup = (id: string) =>
+    setExpandedGroups(prev => ({ ...prev, [id]: !prev[id] }));
+
+  // --- Renderers (unchanged logic) ---
 
   const renderPlatformContracts = () => (
     <div className="text-center py-12 text-muted-foreground">
@@ -256,19 +322,37 @@ export function CounterpartiesSection({
 
   return (
     <div className="space-y-4">
-      {/* Header with counterparty selector + FAQ button */}
+      {/* Header */}
       <div className="flex items-center gap-3">
         <div className="flex flex-wrap items-center gap-1.5 flex-1">
           {/* Platform */}
           {platformItems.map(renderChip)}
 
-          {/* Divider + Clients */}
-          {companyItems.length > 0 && (
-            <>
-              <div className="h-5 w-px bg-border mx-1" />
-              <span className="text-[10px] uppercase tracking-wider text-muted-foreground/60 font-semibold mr-0.5">Клиенты</span>
-              {companyItems.map(renderChip)}
-            </>
+          {/* Divider + Clients section */}
+          <div className="h-5 w-px bg-border mx-1" />
+          <span className="text-[10px] uppercase tracking-wider text-muted-foreground/60 font-semibold mr-0.5">Клиенты</span>
+
+          {/* Client groups */}
+          {clientGroups.map(group => (
+            <div key={group.id} className="flex items-center">
+              <button
+                onClick={() => toggleGroup(group.id)}
+                className="inline-flex items-center gap-1 px-2 py-1 text-[10px] font-semibold text-muted-foreground hover:text-foreground rounded-md bg-muted/30 hover:bg-muted transition-colors"
+              >
+                <FolderOpen className="w-3 h-3" />
+                {group.name}
+                {expandedGroups[group.id] ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
+                <span className="text-[9px] opacity-60">({group.clients.length})</span>
+              </button>
+            </div>
+          ))}
+
+          {/* Ungrouped clients */}
+          {ungroupedClients.map(renderChip)}
+
+          {/* If no clients at all */}
+          {companyItems.length === 0 && (
+            <span className="text-xs text-muted-foreground/50 italic">нет клиентов</span>
           )}
 
           {/* Divider + Payers */}
@@ -281,16 +365,73 @@ export function CounterpartiesSection({
           )}
         </div>
 
-        {/* Pulsing FAQ button */}
-        <button
-          onClick={() => setShowFaq(true)}
-          className="relative shrink-0 w-8 h-8 flex items-center justify-center rounded-full bg-primary/10 text-primary hover:bg-primary/20 transition-colors"
-          title="Справка по договорам (273-ФЗ)"
-        >
-          <span className="absolute inset-0 rounded-full animate-ping bg-primary/20" />
-          <Lightbulb className="w-4 h-4 relative z-10" />
-        </button>
+        {/* Actions */}
+        <div className="flex items-center gap-1 shrink-0">
+          {companyItems.length > 0 && (
+            <button
+              onClick={() => setShowGroupDialog(true)}
+              className="w-7 h-7 flex items-center justify-center rounded-full bg-muted/50 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+              title="Создать группу клиентов"
+            >
+              <Plus className="w-3.5 h-3.5" />
+            </button>
+          )}
+          {/* Pulsing FAQ button */}
+          <button
+            onClick={() => setShowFaq(true)}
+            className="relative shrink-0 w-7 h-7 flex items-center justify-center rounded-full bg-primary/10 text-primary hover:bg-primary/20 transition-colors"
+            title="Справка по договорам (273-ФЗ)"
+          >
+            <span className="absolute inset-0 rounded-full animate-ping bg-primary/20" />
+            <Lightbulb className="w-3.5 h-3.5 relative z-10" />
+          </button>
+        </div>
       </div>
+
+      {/* Expanded group chips */}
+      {clientGroups.filter(g => expandedGroups[g.id]).map(group => (
+        <div key={group.id} className="ml-4 flex flex-wrap items-center gap-1.5 p-2 rounded-xl bg-muted/20 border border-border/50">
+          <span className="text-[10px] text-muted-foreground font-medium mr-1">{group.name}:</span>
+          {group.clients.map(client => (
+            <div key={client.id} className="inline-flex items-center">
+              {renderChip(client)}
+              <button
+                onClick={(e) => { e.stopPropagation(); handleRemoveClientFromGroup(group.id, client.id); }}
+                className="ml-0.5 w-4 h-4 flex items-center justify-center rounded-full hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors"
+                title="Убрать из группы"
+              >
+                ×
+              </button>
+            </div>
+          ))}
+          {/* Add client to group dropdown */}
+          {ungroupedClients.length > 0 && (
+            <div className="relative group/add">
+              <button className="inline-flex items-center gap-1 px-2 py-1 text-[10px] rounded-md border border-dashed border-border text-muted-foreground hover:text-foreground hover:border-primary/30 transition-colors">
+                <Plus className="w-3 h-3" /> Добавить
+              </button>
+              <div className="absolute top-full left-0 mt-1 bg-card border border-border rounded-lg shadow-lg p-1 hidden group-hover/add:block z-20 min-w-[160px]">
+                {ungroupedClients.map(client => (
+                  <button
+                    key={client.id}
+                    onClick={() => handleAddClientToGroup(group.id, client)}
+                    className="w-full flex items-center gap-2 px-2 py-1.5 text-xs hover:bg-muted rounded-md transition-colors text-left"
+                  >
+                    <Building2 className="w-3 h-3 text-muted-foreground" />
+                    {client.name}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+          <button
+            onClick={() => handleDeleteGroup(group.id)}
+            className="ml-auto text-[10px] text-destructive/60 hover:text-destructive transition-colors"
+          >
+            Удалить группу
+          </button>
+        </div>
+      ))}
 
       {/* FAQ Dialog */}
       <Dialog open={showFaq} onOpenChange={setShowFaq}>
@@ -302,6 +443,30 @@ export function CounterpartiesSection({
             </DialogTitle>
           </DialogHeader>
           <ContractLegalFaq />
+        </DialogContent>
+      </Dialog>
+
+      {/* Create Group Dialog */}
+      <Dialog open={showGroupDialog} onOpenChange={setShowGroupDialog}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Создать группу клиентов</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="space-y-1.5">
+              <Label className="text-xs">Название группы</Label>
+              <Input
+                value={newGroupName}
+                onChange={(e) => setNewGroupName(e.target.value)}
+                placeholder="Например: Школы, Строительство…"
+                className="rounded-xl"
+                onKeyDown={(e) => e.key === "Enter" && handleCreateGroup()}
+              />
+            </div>
+            <Button onClick={handleCreateGroup} disabled={!newGroupName.trim()} className="w-full rounded-xl">
+              <FolderOpen className="w-4 h-4 mr-1.5" /> Создать группу
+            </Button>
+          </div>
         </DialogContent>
       </Dialog>
 
