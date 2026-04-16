@@ -18,6 +18,8 @@ import { ChatSidebar, type ChatSection } from "@/components/chat/ChatSidebar";
 import { ChatSettingsPanel } from "@/components/chat/ChatSettingsPanel";
 import { ChatRequestsPanel } from "@/components/chat/ChatRequestsPanel";
 import { ChatContactsPanel } from "@/components/chat/ChatContactsPanel";
+import { OrgGeneralChat } from "@/components/chat/OrgGeneralChat";
+import { ChatNotificationToggle } from "@/components/chat/ChatNotificationToggle";
 import {
   Dialog,
   DialogContent,
@@ -32,6 +34,7 @@ export function OrgChatsTab() {
   const [selectedStudentId, setSelectedStudentId] = useState<string | null>(null);
   const [selectedStudentName, setSelectedStudentName] = useState<string>("");
   const [selectedAdminChat, setSelectedAdminChat] = useState(false);
+  const [selectedGeneralChat, setSelectedGeneralChat] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [adminUnreadCount, setAdminUnreadCount] = useState(0);
   const [showNewChatDialog, setShowNewChatDialog] = useState(false);
@@ -107,18 +110,20 @@ export function OrgChatsTab() {
 
   const handleSelectStudent = (studentId: string, name?: string) => {
     setSelectedAdminChat(false);
+    setSelectedGeneralChat(false);
     setSelectedStudentId(studentId);
     if (name) setSelectedStudentName(name);
     setTimeout(() => d.orgChats.refresh(), 1500);
   };
 
-  const handleSelectAdminChat = () => { setSelectedStudentId(null); setSelectedAdminChat(true); };
+  const handleSelectAdminChat = () => { setSelectedStudentId(null); setSelectedGeneralChat(false); setSelectedAdminChat(true); };
+  const handleSelectGeneralChat = () => { setSelectedStudentId(null); setSelectedAdminChat(false); setSelectedGeneralChat(true); };
   const handleNewChatWithStudent = (studentId: string, name: string) => { setShowNewChatDialog(false); setNewChatSearch(""); handleSelectStudent(studentId, name); };
   const handleOpenNewChat = () => { setShowNewChatDialog(true); loadOrgStudents(); };
 
   if (isLoading) return <div className="flex justify-center py-12"><SigmaSpinner /></div>;
 
-  const hasActiveChat = selectedStudentId || selectedAdminChat;
+  const hasActiveChat = selectedStudentId || selectedAdminChat || selectedGeneralChat;
 
   function renderStudentChats() {
     // Mobile admin chat
@@ -126,8 +131,26 @@ export function OrgChatsTab() {
       return (
         <div className="space-y-3">
           <Button variant="ghost" size="sm" onClick={() => setSelectedAdminChat(false)} className="gap-2"><ArrowLeft className="w-4 h-4" /> Назад</Button>
-          <h3 className="font-semibold text-lg px-1 flex items-center gap-2"><ChatAvatar name="Администрация" size="sm" isAdmin /> Администрация платформы</h3>
+          <div className="flex items-center gap-2 px-1">
+            <ChatAvatar name="Администрация" size="sm" isAdmin />
+            <h3 className="font-semibold text-lg flex-1">Администрация платформы</h3>
+            <ChatNotificationToggle chatType="admin" />
+          </div>
           <AdminChatDialog organizationId={organizationId} currentUserId={currentUserId} />
+        </div>
+      );
+    }
+    // Mobile general chat
+    if (isMobile && selectedGeneralChat && organizationId && currentUserId) {
+      return (
+        <div className="space-y-3">
+          <Button variant="ghost" size="sm" onClick={() => setSelectedGeneralChat(false)} className="gap-2"><ArrowLeft className="w-4 h-4" /> Назад</Button>
+          <div className="flex items-center gap-2 px-1">
+            <ChatAvatar name="Общий чат" size="sm" />
+            <h3 className="font-semibold text-lg flex-1">Общий чат</h3>
+            <ChatNotificationToggle chatType="general" />
+          </div>
+          <OrgGeneralChat organizationId={organizationId} currentUserId={currentUserId} />
         </div>
       );
     }
@@ -136,7 +159,11 @@ export function OrgChatsTab() {
       return (
         <div className="space-y-3">
           <Button variant="ghost" size="sm" onClick={() => setSelectedStudentId(null)} className="gap-2"><ArrowLeft className="w-4 h-4" /> Назад</Button>
-          <h3 className="font-semibold text-lg px-1">{selectedConvo?.studentName || selectedStudentName}</h3>
+          <div className="flex items-center gap-2 px-1">
+            <ChatAvatar name={selectedConvo?.studentName || selectedStudentName} size="sm" />
+            <h3 className="font-semibold text-lg flex-1">{selectedConvo?.studentName || selectedStudentName}</h3>
+            <ChatNotificationToggle chatType="student" chatPartnerId={selectedStudentId} />
+          </div>
           <ChatTab studentUserId={selectedStudentId} organizationId={organizationId} currentUserId={currentUserId} studentName={selectedConvo?.studentName || selectedStudentName} />
         </div>
       );
@@ -168,6 +195,17 @@ export function OrgChatsTab() {
               </div>
             </button>
 
+            {/* General org chat */}
+            <button onClick={handleSelectGeneralChat}
+              className={`w-full text-left px-4 py-3 border-b border-border/50 hover:bg-secondary/50 transition-colors ${selectedGeneralChat ? "bg-primary/5" : ""}`}>
+              <div className="flex items-center gap-3">
+                <ChatAvatar name="Общий чат" size="sm" />
+                <div className="min-w-0 flex-1">
+                  <span className="font-medium text-sm truncate block text-muted-foreground">Общий чат</span>
+                  <p className="text-xs truncate mt-0.5 text-muted-foreground">Чат для всей организации</p>
+                </div>
+              </div>
+            </button>
             {filtered.length === 0 && searchQuery ? (
               <div className="text-center py-8 text-muted-foreground"><p className="text-sm">Ничего не найдено</p></div>
             ) : (
@@ -203,17 +241,30 @@ export function OrgChatsTab() {
               <div className="flex flex-col h-full">
                 <div className="px-4 py-3 border-b border-border flex items-center gap-3">
                   <ChatAvatar name="Администрация" size="sm" isAdmin />
-                  <h3 className="font-semibold">Администрация платформы</h3>
+                  <h3 className="font-semibold flex-1">Администрация платформы</h3>
+                  <ChatNotificationToggle chatType="admin" />
                 </div>
                 <div className="flex-1 p-4 overflow-hidden">
                   <AdminChatDialog organizationId={organizationId} currentUserId={currentUserId} />
+                </div>
+              </div>
+            ) : selectedGeneralChat && organizationId && currentUserId ? (
+              <div className="flex flex-col h-full">
+                <div className="px-4 py-3 border-b border-border flex items-center gap-3">
+                  <ChatAvatar name="Общий чат" size="sm" />
+                  <h3 className="font-semibold flex-1">Общий чат</h3>
+                  <ChatNotificationToggle chatType="general" />
+                </div>
+                <div className="flex-1 p-4 overflow-hidden">
+                  <OrgGeneralChat organizationId={organizationId} currentUserId={currentUserId} />
                 </div>
               </div>
             ) : selectedStudentId && organizationId && currentUserId ? (
               <div className="flex flex-col h-full">
                 <div className="px-4 py-3 border-b border-border flex items-center gap-3">
                   <ChatAvatar name={selectedConvo?.studentName || selectedStudentName} size="sm" />
-                  <h3 className="font-semibold">{selectedConvo?.studentName || selectedStudentName}</h3>
+                  <h3 className="font-semibold flex-1">{selectedConvo?.studentName || selectedStudentName}</h3>
+                  <ChatNotificationToggle chatType="student" chatPartnerId={selectedStudentId} />
                 </div>
                 <div className="flex-1 p-4 overflow-hidden">
                   <ChatTab studentUserId={selectedStudentId} organizationId={organizationId} currentUserId={currentUserId} studentName={selectedConvo?.studentName || selectedStudentName} />
