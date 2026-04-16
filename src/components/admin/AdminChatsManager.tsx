@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import { MessageCircle, Search, Send, Paperclip, FileText, Building2, ArrowLeft } from "lucide-react";
+import { MessageCircle, Search, Send, Paperclip, FileText, Building2, ArrowLeft, Bot, Users } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -11,6 +11,10 @@ import { toast } from "sonner";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useAuth } from "@/hooks/useAuth";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
+import { AiChatPanel } from "@/components/chat/AiChatPanel";
+import { ColleagueChatPanel } from "@/components/chat/ColleagueChatPanel";
+
+type AdminChatMode = "organizations" | "ai" | "colleagues";
 
 interface Organization {
   id: string;
