@@ -1,10 +1,11 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { ScrollText, Receipt, FileCheck, Download, FileText, Lightbulb, Eye, Trash2, ExternalLink, Building2, User, Store, Plus, FolderOpen, ChevronDown, ChevronRight } from "lucide-react";
+import { ScrollText, Receipt, FileCheck, Download, FileText, Lightbulb, Eye, Trash2, ExternalLink, Building2, User, Store, Plus, FolderOpen, ChevronDown, ChevronRight, X, Search } from "lucide-react";
 import { ContractLegalFaq } from "@/components/organization/ContractLegalFaq";
 import { File } from "lucide-react";
 import { format } from "date-fns";
