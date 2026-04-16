@@ -41,39 +41,57 @@ export function ChatRequestsPanel({ role, organizationId, userId }: ChatRequests
 
     // Load enrollment requests
     try {
-      let enrollQuery = supabase
-        .from("enrollment_requests")
-        .select("id, course_id, status, created_at, user_id")
-        .order("created_at", { ascending: false })
-        .limit(100);
-
-      const { data: enrollments } = await enrollQuery;
-
-      for (const er of enrollments || []) {
-        // Get user name
-        const { data: profile } = await supabase
-          .from("profiles")
-          .select("full_name")
-          .eq("user_id", er.user_id)
-          .maybeSingle();
-
-        // Get course name
-        const { data: course } = await supabase
+      // First get course IDs belonging to this organization
+      let courseIds: string[] = [];
+      if (role === "organization" && organizationId) {
+        const { data: courses } = await supabase
           .from("courses")
-          .select("title")
-          .eq("id", er.course_id)
-          .maybeSingle();
+          .select("id")
+          .eq("organization_id", organizationId);
+        courseIds = (courses || []).map(c => c.id);
+      }
 
-        items.push({
-          id: er.id,
-          type: "enrollment",
-          title: `Заявка на запись`,
-          description: course?.title || "",
-          status: er.status,
-          createdAt: er.created_at,
-          userName: profile?.full_name || "Без имени",
-          courseName: course?.title,
-        });
+      if (role !== "organization" || courseIds.length > 0) {
+        let enrollQuery = supabase
+          .from("enrollment_requests")
+          .select("id, course_id, status, created_at, user_id")
+          .order("created_at", { ascending: false })
+          .limit(100);
+
+        if (role === "organization" && courseIds.length > 0) {
+          enrollQuery = enrollQuery.in("course_id", courseIds);
+        }
+
+        if (role === "student" && userId) {
+          enrollQuery = enrollQuery.eq("user_id", userId);
+        }
+
+        const { data: enrollments } = await enrollQuery;
+
+        for (const er of enrollments || []) {
+          const { data: profile } = await supabase
+            .from("profiles")
+            .select("full_name")
+            .eq("user_id", er.user_id)
+            .maybeSingle();
+
+          const { data: course } = await supabase
+            .from("courses")
+            .select("title")
+            .eq("id", er.course_id)
+            .maybeSingle();
+
+          items.push({
+            id: er.id,
+            type: "enrollment",
+            title: `Заявка на запись`,
+            description: course?.title || "",
+            status: er.status,
+            createdAt: er.created_at,
+            userName: profile?.full_name || "Без имени",
+            courseName: course?.title,
+          });
+        }
       }
     } catch (err) {
       console.error("Error loading enrollment requests:", err);
