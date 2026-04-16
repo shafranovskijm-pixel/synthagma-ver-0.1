@@ -18,6 +18,8 @@ import { ChatSidebar, type ChatSection } from "@/components/chat/ChatSidebar";
 import { ChatSettingsPanel } from "@/components/chat/ChatSettingsPanel";
 import { ChatRequestsPanel } from "@/components/chat/ChatRequestsPanel";
 import { ChatContactsPanel } from "@/components/chat/ChatContactsPanel";
+import { OrgGeneralChat } from "@/components/chat/OrgGeneralChat";
+import { ChatNotificationToggle } from "@/components/chat/ChatNotificationToggle";
 import {
   Dialog,
   DialogContent,
