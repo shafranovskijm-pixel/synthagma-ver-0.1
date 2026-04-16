@@ -3,21 +3,15 @@ import { useParams } from "react-router-dom";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useSwipeGesture } from "@/hooks/useSwipeGesture";
 import { Button } from "@/components/ui/button";
-import { Progress } from "@/components/ui/progress";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { 
-  ArrowLeft, CheckCircle2, Circle, FileText, Video, ClipboardList, 
+  CheckCircle2, FileText, Video, ClipboardList, 
   ChevronLeft, ChevronRight, Trophy, Sparkles, Clock, 
-  Volume2, Square, MessageCircle, X, Send, List, Presentation, 
-  Lock, RotateCcw, Settings2, Headphones, Download, FileText as FileTextIcon,
-  FileSpreadsheet, Presentation as PresentationIcon, File, Eye, ChevronDown,
+  Volume2, Square, MessageCircle, Send, List, 
+  Lock, Settings2, Headphones, ChevronDown,
   MessageSquare, BookCheck
 } from "lucide-react";
-import {
-  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
-  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, 
-  AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator, DropdownMenuLabel } from "@/components/ui/dropdown-menu";
 import { BlockRenderer } from "@/components/course-builder/BlockEditor";
@@ -33,11 +27,13 @@ import { useState as useReactState } from "react";
 import { FilePreviewDialog } from "@/components/course-learning/FilePreviewDialog";
 import { HomeworkSubmission } from "@/components/course-learning/HomeworkSubmission";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
+import { CourseSidebarContent } from "@/components/course-learning/CourseSidebar";
+import { LessonAttachments } from "@/components/course-learning/LessonAttachments";
+import { AiChatPanel } from "@/components/course-learning/AiChatPanel";
 
 const CourseLearning = () => {
   const { courseId } = useParams();
   
-  // Use the new hook for all logic
   const {
     user, navigate, isMobile, contentRef,
     course, lessons, currentLessonIndex, lessonProgress, loading,
@@ -56,14 +52,11 @@ const CourseLearning = () => {
     isOfflineMode, offlineCachedAt } = useCourseLearning();
 
   const [previewFile, setPreviewFile] = useReactState<{ url: string; name: string; type: string | null } | null>(null);
-
-  // Swipe gesture handlers
   const handleSwipeLeft = () => { if (currentLessonIndex < lessons.length - 1) goToNextLesson(); };
   const handleSwipeRight = () => { if (currentLessonIndex > 0) goToPrevLesson(); };
   const isTestActive = currentLesson?.type === 'test' && !testSubmitted;
   const [reviewOpen, setReviewOpen] = useReactState(false);
 
-  // Auto-complete slider (presentation) lessons when opened
   useEffect(() => {
     if (currentLesson?.type === 'slider' && !isLessonCompleted(currentLesson.id)) {
       markLessonComplete(false);
@@ -78,10 +71,7 @@ const CourseLearning = () => {
   if (loading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="text-center">
-          <SigmaSpinner size="xl" className="mx-auto mb-4" />
-          <p className="text-muted-foreground">Загрузка курса...</p>
-        </div>
+        <div className="text-center"><SigmaSpinner size="xl" className="mx-auto mb-4" /><p className="text-muted-foreground">Загрузка курса...</p></div>
       </div>
     );
   }
@@ -98,52 +88,22 @@ const CourseLearning = () => {
     );
   }
 
-  const SidebarContent = ({ onNavigate }: { onNavigate?: () => void }) => (
-    <>
-      <div className="p-4 border-b border-border">
-        <Button variant="ghost" size="sm" onClick={() => navigate('/student')} className="mb-4 hover:bg-secondary">
-          <ArrowLeft className="w-4 h-4 mr-2" />Назад
-        </Button>
-        <h2 className="font-bold text-lg line-clamp-2">{course.title}</h2>
-        <div className="mt-4">
-          <div className="flex justify-between text-sm text-muted-foreground mb-2"><span>Прогресс</span><span className="font-medium">{completedCount}/{lessons.length}</span></div>
-          <Progress value={progressPercent} className="h-2" />
-        </div>
-      </div>
-      <ScrollArea className="flex-1">
-        <div className="p-2 space-y-1">
-          {lessons.map((lesson, index) => {
-            const Icon = getLessonIcon(lesson.type);
-            const completed = isLessonCompleted(lesson.id);
-            const isCurrent = index === currentLessonIndex;
-            const isAccessible = isLessonAccessible(index);
-            return (
-              <button key={lesson.id} onClick={() => { goToLesson(index); onNavigate?.(); }} disabled={!isAccessible}
-                className={cn("w-full flex items-center gap-3 p-3 rounded-xl text-left transition-all duration-200", isCurrent ? "bg-primary/10 text-primary shadow-sm" : isAccessible ? "hover:bg-muted" : "opacity-50 cursor-not-allowed")}>
-                {completed ? <div className="w-8 h-8 rounded-full bg-sigma-green/10 flex items-center justify-center shrink-0"><CheckCircle2 className="w-5 h-5 text-sigma-green" /></div> : !isAccessible ? <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center shrink-0"><Lock className="w-4 h-4 text-muted-foreground" /></div> : <div className={cn("w-8 h-8 rounded-full flex items-center justify-center shrink-0", isCurrent ? "bg-primary/10" : "bg-muted")}><Circle className={cn("w-5 h-5", isCurrent ? "text-primary" : "text-muted-foreground")} /></div>}
-                <div className="flex-1 min-w-0"><div className="text-sm font-medium line-clamp-2">{lesson.title}</div><div className="flex items-center gap-1 text-xs text-muted-foreground mt-1">{lesson.type === 'text' && 'Текст'}{lesson.type === 'video' && 'Видео'}{lesson.type === 'test' && 'Тест'}{lesson.type === 'audio' && 'Аудио'}{lesson.type === 'feedback' && 'Обратная связь'}{lesson.type === 'homework' && 'Задание'}{!isAccessible && <span className="ml-1">• Заблокировано</span>}</div></div>
-              </button>
-            );
-          })}
-        </div>
-      </ScrollArea>
-      <div className="p-4 border-t border-border space-y-3">
-        <div className="flex items-center gap-3 text-sm text-muted-foreground"><div className="flex items-center gap-1"><Clock className="w-4 h-4" /><span>{lessons.length} уроков</span></div><div className="flex items-center gap-1"><Trophy className="w-4 h-4 text-sigma-green" /><span>{completedCount} пройдено</span></div></div>
-        {completedCount > 0 && (
-          <AlertDialog>
-            <AlertDialogTrigger asChild><Button variant="outline" size="sm" className="w-full text-muted-foreground"><RotateCcw className="w-4 h-4 mr-2" />Сбросить прогресс</Button></AlertDialogTrigger>
-            <AlertDialogContent><AlertDialogHeader><AlertDialogTitle>Сбросить прогресс курса?</AlertDialogTitle><AlertDialogDescription>Все результаты тестов и отметки о прохождении уроков будут удалены.</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel>Отмена</AlertDialogCancel><AlertDialogAction onClick={resetCourseProgress}>Сбросить</AlertDialogAction></AlertDialogFooter></AlertDialogContent>
-          </AlertDialog>
-        )}
-      </div>
-    </>
-  );
+  const sidebarProps = {
+    courseTitle: course.title,
+    lessons, currentLessonIndex, completedCount, progressPercent,
+    getLessonIcon, isLessonCompleted, isLessonAccessible, goToLesson,
+    resetCourseProgress, onNavigateBack: () => navigate('/student'),
+  };
+
+  const testPassed = testScore ? (testScore.score / testScore.max) * 100 >= testPassingScore : false;
 
   return (
     <div className="flex h-screen overflow-hidden bg-background">
-      {!isMobile && <aside className="w-80 bg-card border-r border-border flex flex-col h-screen sticky top-0 shrink-0"><SidebarContent /></aside>}
-      {isMobile && <Sheet open={sidebarOpen} onOpenChange={setSidebarOpen}><SheetContent side="left" className="w-[85%] max-w-sm p-0 flex flex-col"><SidebarContent onNavigate={() => setSidebarOpen(false)} /></SheetContent></Sheet>}
+      {!isMobile && <aside className="w-80 bg-card border-r border-border flex flex-col h-screen sticky top-0 shrink-0"><CourseSidebarContent {...sidebarProps} /></aside>}
+      {isMobile && <Sheet open={sidebarOpen} onOpenChange={setSidebarOpen}><SheetContent side="left" className="w-[85%] max-w-sm p-0 flex flex-col"><CourseSidebarContent {...sidebarProps} onNavigate={() => setSidebarOpen(false)} /></SheetContent></Sheet>}
+      
       <main className="flex-1 flex flex-col h-screen overflow-hidden">
+        {/* Header */}
         <header className={cn("border-b border-border bg-card flex items-center justify-between shrink-0 sticky top-0 z-10", isMobile ? "px-3 py-3" : "px-6 py-4")}>
           <div className="flex items-center gap-2 md:gap-4 flex-1 min-w-0">
             {isMobile && <Button variant="ghost" size="icon" onClick={() => setSidebarOpen(true)} className="shrink-0"><List className="w-5 h-5" /></Button>}
@@ -205,6 +165,7 @@ const CourseLearning = () => {
             onContextMenu={(course as any)?.landing_content?.copy_protection ? (e: React.MouseEvent) => e.preventDefault() : undefined}
             onCopy={(course as any)?.landing_content?.copy_protection ? (e: React.ClipboardEvent) => e.preventDefault() : undefined}
           >
+            {/* Text lesson */}
             {currentLesson?.type === 'text' && (
               <div className="space-y-4 md:space-y-6 animate-fade-in">
                 <div className="flex items-center gap-3 pb-3 md:pb-4 border-b border-border">
@@ -215,6 +176,7 @@ const CourseLearning = () => {
               </div>
             )}
 
+            {/* Video lesson */}
             {currentLesson?.type === 'video' && (
               <div className="space-y-4 md:space-y-6 animate-fade-in">
                 <div className="flex items-center gap-3 pb-3 md:pb-4 border-b border-border">
@@ -227,19 +189,19 @@ const CourseLearning = () => {
                   ) : <div className="text-center text-muted-foreground"><Video className="w-16 h-16 mx-auto mb-4" /><p>Видео не загружено</p></div>}
                   {(course as any)?.landing_content?.video_watermark && user?.email && (
                     <div className="absolute inset-0 pointer-events-none flex items-center justify-center z-10">
-                      <span className="text-white/20 text-lg md:text-2xl font-bold rotate-[-30deg] select-none whitespace-nowrap">
-                        {user.email}
-                      </span>
+                      <span className="text-white/20 text-lg md:text-2xl font-bold rotate-[-30deg] select-none whitespace-nowrap">{user.email}</span>
                     </div>
                   )}
                 </div>
               </div>
             )}
 
+            {/* Slider lesson */}
             {currentLesson?.type === 'slider' && (
               <SliderLessonViewer content={currentLesson.content} title={currentLesson.title} lessonIndex={currentLessonIndex} isMobile={!!isMobile} />
             )}
 
+            {/* Audio lesson */}
             {currentLesson?.type === 'audio' && (
               <div className="space-y-4 md:space-y-6 animate-fade-in">
                 <div className="flex items-center gap-3 pb-3 md:pb-4 border-b border-border">
@@ -254,6 +216,7 @@ const CourseLearning = () => {
               </div>
             )}
 
+            {/* Feedback lesson */}
             {currentLesson?.type === 'feedback' && (
               <div className="space-y-4 md:space-y-6 animate-fade-in">
                 <div className="flex items-center gap-3 pb-3 md:pb-4 border-b border-border">
@@ -261,11 +224,7 @@ const CourseLearning = () => {
                   <div className="min-w-0"><h1 className={cn("font-bold line-clamp-2", isMobile ? "text-lg" : "text-2xl")}>{currentLesson.title}</h1><p className="text-xs md:text-sm text-muted-foreground">Обратная связь • Урок {currentLessonIndex + 1}</p></div>
                 </div>
                 <div className={cn("bg-card rounded-2xl border border-border", isMobile ? "p-4" : "p-6")}>
-                  {currentLesson.content && (
-                    <div className="mb-6">
-                      <p className="text-lg font-medium">{currentLesson.content}</p>
-                    </div>
-                  )}
+                  {currentLesson.content && <div className="mb-6"><p className="text-lg font-medium">{currentLesson.content}</p></div>}
                   {feedbackSent ? (
                     <div className="text-center py-8">
                       <CheckCircle2 className="w-12 h-12 text-green-500 mx-auto mb-4" />
@@ -274,18 +233,9 @@ const CourseLearning = () => {
                     </div>
                   ) : (
                     <div className="space-y-4">
-                      <textarea
-                        value={feedbackAnswer}
-                        onChange={(e) => setFeedbackAnswer(e.target.value)}
-                        placeholder="Напишите ваш ответ..."
-                        className="flex min-h-[120px] w-full rounded-xl border border-input bg-background px-4 py-3 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                        rows={5}
-                      />
-                      <Button
-                        onClick={submitFeedback}
-                        disabled={!feedbackAnswer.trim() || feedbackSending}
-                        className="btn-gradient rounded-xl gap-2"
-                      >
+                      <textarea value={feedbackAnswer} onChange={(e) => setFeedbackAnswer(e.target.value)} placeholder="Напишите ваш ответ..."
+                        className="flex min-h-[120px] w-full rounded-xl border border-input bg-background px-4 py-3 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2" rows={5} />
+                      <Button onClick={submitFeedback} disabled={!feedbackAnswer.trim() || feedbackSending} className="btn-gradient rounded-xl gap-2">
                         {feedbackSending ? <SigmaSpinner size="sm" /> : <Send className="w-4 h-4" />}
                         {feedbackSending ? 'Отправка...' : 'Отправить ответ'}
                       </Button>
@@ -295,25 +245,18 @@ const CourseLearning = () => {
               </div>
             )}
 
+            {/* Homework lesson */}
             {currentLesson?.type === 'homework' && (
               <div className="space-y-4 md:space-y-6 animate-fade-in">
                 <div className="flex items-center gap-3 pb-3 md:pb-4 border-b border-border">
                   <div className={cn("rounded-xl bg-indigo-500/10 flex items-center justify-center shrink-0", isMobile ? "w-8 h-8" : "w-10 h-10")}><BookCheck className={cn(isMobile ? "w-4 h-4" : "w-5 h-5", "text-indigo-500")} /></div>
                   <div className="min-w-0"><h1 className={cn("font-bold line-clamp-2", isMobile ? "text-lg" : "text-2xl")}>{currentLesson.title}</h1><p className="text-xs md:text-sm text-muted-foreground">Задание • Урок {currentLessonIndex + 1}</p></div>
                 </div>
-                {user && courseId && (
-                  <HomeworkSubmission
-                    lessonId={currentLesson.id}
-                    courseId={courseId}
-                    userId={user.id}
-                    taskDescription={currentLesson.content}
-                    isMobile={!!isMobile}
-                    onComplete={() => markLessonComplete(false)}
-                  />
-                )}
+                {user && courseId && <HomeworkSubmission lessonId={currentLesson.id} courseId={courseId} userId={user.id} taskDescription={currentLesson.content} isMobile={!!isMobile} onComplete={() => markLessonComplete(false)} />}
               </div>
             )}
 
+            {/* Test lesson */}
             {currentLesson?.type === 'test' && (
               <div className="space-y-4 md:space-y-6 animate-fade-in">
                 <div className="flex items-center gap-3 pb-3 md:pb-4 border-b border-border">
@@ -321,21 +264,18 @@ const CourseLearning = () => {
                   <div className="min-w-0"><h1 className={cn("font-bold line-clamp-2", isMobile ? "text-lg" : "text-2xl")}>{currentLesson.title}</h1><p className="text-xs md:text-sm text-muted-foreground">Тестирование • {testQuestions.length} вопросов • Проходной балл: {testPassingScore}%</p></div>
                 </div>
                 {testScore && (
-                  <div className={cn("p-6 rounded-2xl border transition-all", ((testScore.score / testScore.max) * 100 >= testPassingScore) ? "bg-sigma-green/10 border-sigma-green/20" : "bg-destructive/10 border-destructive/20")}>
+                  <div className={cn("p-6 rounded-2xl border transition-all", testPassed ? "bg-sigma-green/10 border-sigma-green/20" : "bg-destructive/10 border-destructive/20")}>
                     <div className="flex items-center gap-4">
-                      <div className={cn("w-16 h-16 rounded-full flex items-center justify-center", ((testScore.score / testScore.max) * 100 >= testPassingScore) ? "bg-sigma-green/20" : "bg-destructive/20")}><Trophy className={cn("w-8 h-8", ((testScore.score / testScore.max) * 100 >= testPassingScore) ? "text-sigma-green" : "text-destructive")} /></div>
-                      <div><h3 className="text-xl font-bold">{((testScore.score / testScore.max) * 100 >= testPassingScore) ? 'Тест пройден!' : 'Тест не пройден'}</h3><p className="text-muted-foreground">Результат: {testScore.score} из {testScore.max} ({Math.round(testScore.score / testScore.max * 100)}%)</p></div>
+                      <div className={cn("w-16 h-16 rounded-full flex items-center justify-center", testPassed ? "bg-sigma-green/20" : "bg-destructive/20")}><Trophy className={cn("w-8 h-8", testPassed ? "text-sigma-green" : "text-destructive")} /></div>
+                      <div><h3 className="text-xl font-bold">{testPassed ? 'Тест пройден!' : 'Тест не пройден'}</h3><p className="text-muted-foreground">Результат: {testScore.score} из {testScore.max} ({Math.round(testScore.score / testScore.max * 100)}%)</p></div>
                     </div>
-                    {!((testScore.score / testScore.max) * 100 >= testPassingScore) && <div className="mt-4 flex items-center gap-3"><Button onClick={retryTest}><Sparkles className="w-4 h-4 mr-2" />Попробовать снова</Button></div>}
+                    {!testPassed && <div className="mt-4 flex items-center gap-3"><Button onClick={retryTest}><Sparkles className="w-4 h-4 mr-2" />Попробовать снова</Button></div>}
                   </div>
                 )}
                 {testSubmitted && testScore && (
                   <Collapsible open={reviewOpen} onOpenChange={setReviewOpen}>
                     <CollapsibleTrigger asChild>
-                      <Button variant="outline" className="w-full rounded-xl">
-                        <ClipboardList className="w-4 h-4 mr-2" />
-                        {reviewOpen ? 'Скрыть разбор ответов' : 'Показать разбор ответов'}
-                      </Button>
+                      <Button variant="outline" className="w-full rounded-xl"><ClipboardList className="w-4 h-4 mr-2" />{reviewOpen ? 'Скрыть разбор ответов' : 'Показать разбор ответов'}</Button>
                     </CollapsibleTrigger>
                     <CollapsibleContent className="space-y-4 mt-4">
                       {testQuestions.map((q, i) => {
@@ -357,19 +297,13 @@ const CourseLearning = () => {
                                 return (
                                   <div key={oi} className={cn("flex items-center gap-3 p-3 rounded-xl border transition-all text-sm",
                                     isCorrectOption ? "border-green-500 bg-green-50 dark:bg-green-900/20 dark:border-green-600" :
-                                    isUserWrong ? "border-red-500 bg-red-50 dark:bg-red-900/20 dark:border-red-600" :
-                                    "border-border"
-                                  )}>
+                                    isUserWrong ? "border-red-500 bg-red-50 dark:bg-red-900/20 dark:border-red-600" : "border-border")}>
                                     <div className={cn("w-5 h-5 rounded-full border flex items-center justify-center shrink-0",
-                                      isCorrectOption ? "border-green-500 bg-green-500" :
-                                      isUserWrong ? "border-red-500 bg-red-500" :
-                                      "border-muted-foreground"
-                                    )}>
+                                      isCorrectOption ? "border-green-500 bg-green-500" : isUserWrong ? "border-red-500 bg-red-500" : "border-muted-foreground")}>
                                       {(isCorrectOption || isUserWrong) && <div className="w-2 h-2 rounded-full bg-white" />}
                                     </div>
                                     <span>{getOptionText(opt)}</span>
                                     {isCorrectOption && <CheckCircle2 className="w-4 h-4 text-green-600 dark:text-green-400 ml-auto shrink-0" />}
-                                    {isUserWrong && <X className="w-4 h-4 text-red-600 dark:text-red-400 ml-auto shrink-0" />}
                                   </div>
                                 );
                               })}
@@ -400,90 +334,14 @@ const CourseLearning = () => {
               </div>
             )}
 
-            {/* Lesson Attachments */}
-            {currentLesson && lessonAttachments[currentLesson.id] && lessonAttachments[currentLesson.id].length > 0 && (() => {
-              const atts = lessonAttachments[currentLesson.id];
-              const lectures = atts.filter(a => a.category === 'lecture');
-              const materials = atts.filter(a => a.category === 'material');
-              const others = atts.filter(a => a.category !== 'lecture' && a.category !== 'material');
-
-              const getIcon = (ft: string | null) => {
-                if (!ft) return File;
-                const t = ft.toLowerCase();
-                if (t === 'pdf') return FileTextIcon;
-                if (['doc', 'docx', 'txt', 'rtf'].includes(t)) return FileTextIcon;
-                if (['xls', 'xlsx'].includes(t)) return FileSpreadsheet;
-                if (['ppt', 'pptx'].includes(t)) return PresentationIcon;
-                return File;
-              };
-
-              const getColor = (ft: string | null) => {
-                if (!ft) return 'text-muted-foreground bg-muted';
-                const t = ft.toLowerCase();
-                if (t === 'pdf') return 'text-red-500 bg-red-500/10';
-                if (['doc', 'docx'].includes(t)) return 'text-blue-500 bg-blue-500/10';
-                if (['xls', 'xlsx'].includes(t)) return 'text-green-500 bg-green-500/10';
-                if (['ppt', 'pptx'].includes(t)) return 'text-orange-500 bg-orange-500/10';
-                return 'text-muted-foreground bg-muted';
-              };
-
-              const formatSize = (bytes: number | null) => {
-                if (!bytes) return '';
-                if (bytes < 1024) return `${bytes} Б`;
-                if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} КБ`;
-                return `${(bytes / (1024 * 1024)).toFixed(1)} МБ`;
-              };
-
-              const renderFiles = (files: typeof atts) => (
-                <div className="grid gap-3 sm:grid-cols-2">
-                  {files.map(att => {
-                    const Icon = getIcon(att.file_type);
-                    const color = getColor(att.file_type);
-                    return (
-                      <button key={att.id} onClick={() => setPreviewFile({ url: att.file_url, name: att.name, type: att.file_type })}
-                        className="flex items-center gap-3 p-4 rounded-xl border border-border bg-card hover:bg-secondary/50 transition-colors group text-left">
-                        <div className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 ${color}`}>
-                          <Icon className="w-5 h-5" />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium truncate">{att.name}</p>
-                          <p className="text-xs text-muted-foreground">
-                            {att.file_type?.toUpperCase()} {att.file_size ? `• ${formatSize(att.file_size)}` : ''}
-                          </p>
-                        </div>
-                        <Eye className="w-4 h-4 text-muted-foreground group-hover:text-primary transition-colors shrink-0" />
-                      </button>
-                    );
-                  })}
-                </div>
-              );
-
-              return (
-                <div className="mt-8 space-y-6 animate-fade-in">
-                  {lectures.length > 0 && (
-                    <div>
-                      <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3">📄 Лекции</h3>
-                      {renderFiles(lectures)}
-                    </div>
-                  )}
-                  {materials.length > 0 && (
-                    <div>
-                      <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3">📚 Методические материалы</h3>
-                      {renderFiles(materials)}
-                    </div>
-                  )}
-                  {others.length > 0 && (
-                    <div>
-                      <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3">📎 Дополнительные файлы</h3>
-                      {renderFiles(others)}
-                    </div>
-                  )}
-                </div>
-              );
-            })()}
+            {/* Attachments */}
+            {currentLesson && lessonAttachments[currentLesson.id] && lessonAttachments[currentLesson.id].length > 0 && (
+              <LessonAttachments attachments={lessonAttachments[currentLesson.id]} onPreview={setPreviewFile} />
+            )}
           </div>
         </ScrollArea>
 
+        {/* Mobile lesson dots */}
         {isMobile && (
           <div className="border-t border-border bg-card px-4 py-2 flex overflow-x-auto no-scrollbar gap-2 shrink-0">
             {lessons.map((l, i) => {
@@ -498,6 +356,7 @@ const CourseLearning = () => {
           </div>
         )}
 
+        {/* Footer */}
         <footer className={cn("border-t border-border bg-card flex justify-between items-center shrink-0", isMobile ? "px-3 py-3" : "px-6 py-4")}>
           <div className="text-sm text-muted-foreground">{isLessonCompleted(currentLesson?.id || '') && <span className="flex items-center gap-2 text-sigma-green font-medium"><CheckCircle2 className="w-4 h-4" />{!isMobile && "Урок завершён"}</span>}</div>
           <div className="flex gap-2 md:gap-3">
@@ -509,41 +368,12 @@ const CourseLearning = () => {
         </footer>
       </main>
 
+      {/* AI Chat */}
       <Button onClick={() => setIsChatOpen(true)} className={cn("fixed shadow-lg z-40 bg-gradient-to-r from-primary to-primary/80 transition-transform hover:scale-105 rounded-full", isMobile ? "bottom-20 right-4 w-12 h-12" : "bottom-24 right-6 w-14 h-14", isChatOpen && "hidden")}><MessageCircle className={cn(isMobile ? "w-5 h-5" : "w-6 h-6")} /></Button>
-      
-      {isChatOpen && (
-        <div className={cn("fixed bg-card border border-border shadow-2xl z-50 flex flex-col overflow-hidden animate-fade-in", isMobile ? "inset-0 rounded-none" : "bottom-24 right-6 w-96 h-[500px] rounded-2xl")}>
-          <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-muted/30">
-            <div className="flex items-center gap-2"><div className="w-8 h-8 rounded-full bg-gradient-to-r from-primary to-primary/60 flex items-center justify-center"><Sparkles className="w-4 h-4 text-white" /></div><div><h3 className="font-semibold text-sm">ИИ-помощник</h3><p className="text-xs text-muted-foreground">Задайте вопрос по курсу</p></div></div>
-            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setIsChatOpen(false)}><X className="w-4 h-4" /></Button>
-          </div>
-          <div ref={chatScrollRef} className="flex-1 overflow-y-auto p-4 space-y-4">
-            {chatMessages.map((msg, i) => (
-              <div key={i} className={cn("flex", msg.role === 'user' ? "justify-end" : "justify-start")}>
-                <div className={cn("max-w-[80%] rounded-2xl px-4 py-2 text-sm", msg.role === 'user' ? "bg-primary text-primary-foreground rounded-br-md" : "bg-muted rounded-bl-md")}><p className="whitespace-pre-wrap">{msg.content}</p></div>
-              </div>
-            ))}
-            {isChatLoading && <div className="flex justify-start"><div className="bg-muted rounded-2xl rounded-bl-md px-4 py-3 flex items-center gap-2"><SigmaSpinner size="sm" /><span className="text-sm text-muted-foreground">Печатает...</span></div></div>}
-          </div>
-          <div className={cn("border-t border-border bg-background", isMobile ? "p-3 pb-safe" : "p-3")}>
-            <div className="flex gap-2">
-              <input type="text" value={chatInput} onChange={(e) => setChatInput(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && sendChatMessage()} placeholder="Напишите сообщение..." className="flex-1 px-4 py-2 text-sm border border-border rounded-xl bg-background focus:outline-none focus:ring-2 focus:ring-primary/20" disabled={isChatLoading} />
-              <Button onClick={sendChatMessage} disabled={!chatInput.trim() || isChatLoading} size="icon" className="rounded-xl"><Send className="w-4 h-4" /></Button>
-            </div>
-          </div>
-        </div>
-      )}
+      {isChatOpen && <AiChatPanel isMobile={!!isMobile} chatMessages={chatMessages} chatInput={chatInput} setChatInput={setChatInput} isChatLoading={isChatLoading} chatScrollRef={chatScrollRef} sendChatMessage={sendChatMessage} onClose={() => setIsChatOpen(false)} />}
 
       <TTSSettingsDialog open={ttsSettingsOpen} onOpenChange={setTtsSettingsOpen} settings={ttsSettings} onSettingsChange={setTtsSettings} />
-      {previewFile && (
-        <FilePreviewDialog
-          open={!!previewFile}
-          onOpenChange={(open) => !open && setPreviewFile(null)}
-          fileUrl={previewFile.url}
-          fileName={previewFile.name}
-          fileType={previewFile.type}
-        />
-      )}
+      {previewFile && <FilePreviewDialog open={!!previewFile} onOpenChange={(o) => { if (!o) setPreviewFile(null); }} fileUrl={previewFile.url} fileName={previewFile.name} fileType={previewFile.type} allowDownload={(course as any)?.allow_materials_download !== false} />}
     </div>
   );
 };

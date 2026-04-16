@@ -2,13 +2,17 @@ import { useState, useCallback, useRef } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { motion, useInView } from "framer-motion";
 import {
-  ArrowLeft, GraduationCap, Building2, Users, BookOpen, Brain, FileText,
-  Video, Shield, ShoppingBag, Smartphone, Zap, CheckCircle2, BarChart3,
+  GraduationCap, Building2, Users, BookOpen, Brain, FileText,
+  Video, Shield, Smartphone, Zap, CheckCircle2,
   Clock, Globe, Award, Lock, MessageSquare, ClipboardList, AlertTriangle,
-  Layers, Database, RefreshCw, Play, Star, Target, Landmark, HardHat,
+  Layers, Database, Play, Landmark, HardHat,
   Factory, Flame, Waves, Download, Copy, Check, ExternalLink,
-  Settings, Headphones, Image, Sparkles
+  Headphones, Image, Sparkles
 } from "lucide-react";
+import {
+  problemCards, solutionMarquee, lmsFeatures, aiFeatures,
+  documentTypes, safetyFeatures, mobileFeatures, pricingPlans,
+} from "./presentationSections";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { Footer } from "@/components/landing/Footer";
@@ -149,12 +153,7 @@ export default function PlatformPresentation() {
           <h2 className="text-3xl md:text-5xl font-bold text-[hsl(0_0%_8%)] dark:text-white mb-3"><InViewTypewriterText text="Проблема" speed={60} delay={200} /></h2>
           <p className="text-base md:text-xl text-[hsl(0_0%_45%)] dark:text-white/60 mb-10">С чем сталкиваются образовательные организации каждый день</p>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-6">
-            {[
-              { icon: FileText, title: "Бумажная работа", desc: "Договоры, протоколы, приказы — всё вручную", color: "hsl(0 72% 51%)" },
-              { icon: Layers, title: "Разрозненные системы", desc: "Excel, мессенджеры, почта, диски — хаос", color: "hsl(38 92% 50%)" },
-              { icon: AlertTriangle, title: "Нет контроля", desc: "Кто учится, кто завершил, кто просрочил — неизвестно", color: "hsl(262 80% 55%)" },
-              { icon: Clock, title: "Потеря времени", desc: "До 70% рабочего времени — на администрирование", color: "hsl(210 80% 50%)" },
-            ].map((p, i) => (
+            {problemCards.map((p, i) => (
               <div key={i} className="bg-white dark:bg-white/5 rounded-2xl p-6 md:p-8 border border-[hsl(40_15%_90%)] dark:border-white/10 shadow-sm flex items-start gap-4">
                 <div className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: `${p.color.replace(")", " / 0.1)")}` }}>
                   <p.icon className="w-6 h-6" style={{ color: p.color }} />
@@ -176,20 +175,7 @@ export default function PlatformPresentation() {
           <p className="text-base md:text-xl text-white/80 mb-12 max-w-3xl mx-auto">Всё для образовательной организации — от создания курсов до выгрузки в ФИС ФРДО</p>
           <div className="overflow-hidden [mask-image:linear-gradient(to_right,transparent,black_10%,black_90%,transparent)]">
             <div className="flex gap-4 md:gap-6 animate-marquee hover:[animation-play-state:paused] w-max">
-              {[
-                { icon: BookOpen, label: "Курсы и обучение" },
-                { icon: FileText, label: "Документооборот" },
-                { icon: Brain, label: "ИИ-ассистент" },
-                { icon: Video, label: "Видеоидентификация" },
-                { icon: Database, label: "ФИС ФРДО" },
-                { icon: Shield, label: "Охрана труда" },
-                { icon: BookOpen, label: "Курсы и обучение" },
-                { icon: FileText, label: "Документооборот" },
-                { icon: Brain, label: "ИИ-ассистент" },
-                { icon: Video, label: "Видеоидентификация" },
-                { icon: Database, label: "ФИС ФРДО" },
-                { icon: Shield, label: "Охрана труда" },
-              ].map((f, i) => (
+              {[...solutionMarquee, ...solutionMarquee].map((f, i) => (
                 <div key={i} className="bg-white/15 backdrop-blur-sm rounded-2xl p-6 md:p-8 flex flex-col items-center gap-3 min-w-[160px] md:min-w-[200px] hover:scale-105 transition-transform">
                   <f.icon className="w-8 h-8 md:w-10 md:h-10" />
                   <span className="text-sm md:text-base font-medium whitespace-nowrap">{f.label}</span>
@@ -206,14 +192,7 @@ export default function PlatformPresentation() {
           <h2 className="text-3xl md:text-5xl font-bold text-[hsl(0_0%_8%)] dark:text-white mb-3"><InViewTypewriterText text="Управление курсами" speed={40} delay={200} /></h2>
           <p className="text-base md:text-xl text-[hsl(0_0%_45%)] dark:text-white/60 mb-10">Создавайте, импортируйте или генерируйте курсы с ИИ</p>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
-            {[
-              { icon: Play, title: "Видеолекции", desc: "Kinescope, загрузка видео, запрет перемотки" },
-              { icon: ClipboardList, title: "Тесты", desc: "Банк вопросов, рандомизация, автопроверка" },
-              { icon: Brain, title: "ИИ-генерация", desc: "Курс из темы за 5 минут — до 35 уроков" },
-              { icon: FileText, title: "Материалы", desc: "Текст, HTML, файлы, вложения к урокам" },
-              { icon: Award, title: "Сертификаты", desc: "Удостоверения, дипломы, свидетельства — авто" },
-              { icon: Lock, title: "Гибкие настройки", desc: "Последовательность, проходной балл, доступ" },
-            ].map((t, i) => (
+            {lmsFeatures.map((t, i) => (
               <div key={i} className="bg-white dark:bg-white/5 rounded-2xl border border-[hsl(40_15%_90%)] dark:border-white/10 p-6 flex items-start gap-4">
                 <div className="w-10 h-10 rounded-xl bg-[hsl(174_72%_46%/0.1)] flex items-center justify-center flex-shrink-0">
                   <t.icon className="w-5 h-5 text-[hsl(174_72%_46%)]" />
@@ -239,13 +218,7 @@ export default function PlatformPresentation() {
               <h2 className="text-3xl md:text-5xl font-bold mb-4"><InViewTypewriterText text="ИИ-ассистент" speed={50} delay={200} /></h2>
               <p className="text-base md:text-xl text-white/70 mb-8">Искусственный интеллект, встроенный в каждый этап работы</p>
               <div className="space-y-4">
-                {[
-                  { icon: Sparkles, text: "Генерация курсов из темы — до 35 уроков с контентом от 700 слов" },
-                  { icon: ClipboardList, text: "Генерация тестов — 15 вопросов с вариантами ответов" },
-                  { icon: Headphones, text: "Озвучка лекций (SaluteSpeech) — русский язык" },
-                  { icon: Image, text: "Генерация обложек для курсов" },
-                  { icon: MessageSquare, text: "ИИ-чат для учеников — отвечает по материалу курса" },
-                ].map((t, i) => (
+                {aiFeatures.map((t, i) => (
                   <div key={i} className="flex items-start gap-3">
                     <t.icon className="w-5 h-5 text-[hsl(174_72%_46%)] flex-shrink-0 mt-0.5" />
                     <span className="text-sm md:text-base">{t.text}</span>
@@ -271,11 +244,7 @@ export default function PlatformPresentation() {
           <h2 className="text-3xl md:text-5xl font-bold mb-3"><InViewTypewriterText text="Документооборот" speed={50} delay={200} /></h2>
           <p className="text-base md:text-xl text-white/60 mb-10">Автоматическая генерация всех документов из шаблонов</p>
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 md:gap-4">
-            {[
-              "Договор на обучение", "Приказ о зачислении", "Протокол проверки знаний",
-              "Акт выполненных работ", "Удостоверение", "Согласие на обработку ПД",
-              "Счёт на оплату", "Диплом о переподготовке", "Свидетельство о профессии",
-            ].map((d, i) => (
+            {documentTypes.map((d, i) => (
               <div key={i} className="bg-white/5 backdrop-blur-sm rounded-xl border border-white/10 p-4 flex items-center gap-3">
                 <FileText className="w-5 h-5 text-[hsl(174_72%_46%)] flex-shrink-0" />
                 <span className="text-sm font-medium">{d}</span>
@@ -319,12 +288,7 @@ export default function PlatformPresentation() {
           </div>
           <p className="text-base md:text-xl text-white/60 mb-10">Полный модуль для обучения по охране труда и проверке знаний</p>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {[
-              { icon: Users, title: "Группы обучения", desc: "Формирование групп, назначение программ" },
-              { icon: ClipboardList, title: "Протоколы", desc: "Автоформирование протоколов проверки знаний" },
-              { icon: FileText, title: "Журналы", desc: "Электронные журналы всех видов инструктажей" },
-              { icon: Award, title: "Удостоверения", desc: "Автоматическая генерация и печать" },
-            ].map((item, i) => (
+            {safetyFeatures.map((item, i) => (
               <div key={i} className="bg-white/5 backdrop-blur-sm rounded-2xl border border-white/10 p-6 flex items-start gap-4">
                 <div className="w-10 h-10 rounded-xl bg-[hsl(38_92%_50%/0.2)] flex items-center justify-center flex-shrink-0">
                   <item.icon className="w-5 h-5 text-[hsl(38_92%_50%)]" />
@@ -477,13 +441,7 @@ export default function PlatformPresentation() {
           <h2 className="text-3xl md:text-5xl font-bold mb-3 text-center"><InViewTypewriterText text="Тарифы" speed={60} delay={200} /></h2>
           <p className="text-base md:text-xl text-white/60 mb-10 text-center">Все функции доступны на каждом тарифе. Разница только в лимитах.</p>
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 md:gap-4">
-            {[
-              { name: "Бесплатный", desc: "Для знакомства с платформой", price: "0", students: "10", courses: "3", storage: "100 МБ", features: ["Настройки курсов", "Магазин курсов", "Чек-лист документов", "Видеоидентификация", "Брендирование", "Документы для ЛОО", "Охрана труда", "ФИС ФРДО", "ИИ-генерация", "ИИ-озвучка"] },
-              { name: "Старт", desc: "Для начинающих организаций", price: "4 490", students: "100", courses: "15", storage: "3 ГБ", features: ["Настройки курсов", "Магазин курсов", "Чек-лист документов", "Видеоидентификация", "Брендирование", "Документы для ЛОО", "Охрана труда", "ФИС ФРДО", "ИИ-генерация", "ИИ-озвучка"] },
-              { name: "Стандарт", desc: "Для активных организаций", price: "6 990", students: "200", courses: "30", storage: "10 ГБ", popular: true, features: ["Настройки курсов", "Магазин курсов", "Чек-лист документов", "Видеоидентификация", "Брендирование", "Документы для ЛОО", "Охрана труда", "ФИС ФРДО", "ИИ-генерация", "ИИ-озвучка"] },
-              { name: "Профессиональный", desc: "Для крупных организаций", price: "16 990", students: "1 000", courses: "50", storage: "50 ГБ", features: ["Настройки курсов", "Магазин курсов", "Чек-лист документов", "Видеоидентификация", "Брендирование", "Документы для ЛОО", "Охрана труда", "ФИС ФРДО+", "Вебинары", "Видеосервис+", "ИИ-генерация", "ИИ-озвучка"] },
-              { name: "Максимальный", desc: "Полный доступ ко всем функциям", price: "24 990", students: "∞", courses: "∞", storage: "100 ГБ", features: ["Настройки курсов", "Магазин курсов", "Чек-лист документов", "Видеоидентификация", "Брендирование", "Документы для ЛОО", "Охрана труда", "ФИС ФРДО+", "Вебинары", "Видеосервис+", "3D-тренажёры", "ИИ-генерация", "ИИ-озвучка"] },
-            ].map((p, i) => (
+            {pricingPlans.map((p, i) => (
               <div key={i} className={`rounded-2xl p-4 md:p-5 border flex flex-col relative ${p.popular ? "bg-[hsl(174_72%_46%/0.1)] border-[hsl(174_72%_46%)] ring-1 ring-[hsl(174_72%_46%/0.3)]" : "bg-white/5 border-white/10"}`}>
                 {p.popular && <span className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-0.5 rounded-full bg-[hsl(174_72%_46%)] text-xs font-medium text-white whitespace-nowrap">Рекомендуем</span>}
                 <h3 className="text-sm md:text-base font-bold mb-0.5">{p.name}</h3>
@@ -525,12 +483,7 @@ export default function PlatformPresentation() {
               <h2 className="text-3xl md:text-5xl font-bold text-white mb-4"><InViewTypewriterText text="Мобильное приложение" speed={40} delay={200} /></h2>
               <p className="text-base md:text-xl text-white/60 mb-8">Учитесь где угодно — с телефона или планшета</p>
               <div className="space-y-4">
-                {[
-                  { icon: Globe, text: "PWA — работает как нативное приложение" },
-                  { icon: Zap, text: "Оффлайн-режим — учёба без интернета" },
-                  { icon: MessageSquare, text: "Push-уведомления" },
-                  { icon: Smartphone, text: "Android и iOS" },
-                ].map((t, i) => (
+                {mobileFeatures.map((t, i) => (
                   <div key={i} className="flex items-center gap-3">
                     <t.icon className="w-5 h-5 text-[hsl(174_72%_46%)]" />
                     <span className="text-sm md:text-base text-white/80">{t.text}</span>
