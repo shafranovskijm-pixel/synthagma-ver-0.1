@@ -2,8 +2,8 @@ import { useState, useEffect } from "react";
 import { Navigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import {
-  BookOpen, MessageCircle, Menu, Eye, X, Building2, Bot,
-  Library, ArrowLeft
+  BookOpen, MessageCircle, Menu, Eye, X,
+  Library
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { SigmaLogo } from "@/components/ui/SigmaLogo";
@@ -17,7 +17,7 @@ import { StudentDocumentsUpload } from "@/components/student/StudentDocumentsUpl
 import { AchievementsPanel } from "@/components/student/AchievementsPanel";
 import { useStudentDashboard } from "@/hooks/useStudentDashboard";
 import { toast } from "sonner";
-import { StudentOrgChat } from "@/components/student/StudentOrgChat";
+import { StudentChatsTab } from "@/components/student/StudentChatsTab";
 import { AvailablePaidCourses } from "@/components/student/AvailablePaidCourses";
 import { StudentSidebar, type StudentTab } from "@/components/student/StudentSidebar";
 import { StudentHeader } from "@/components/student/StudentHeader";
@@ -83,7 +83,7 @@ function CatalogContent({ catalogCourses, categories, profile, branding, handleC
 }
 
 export default function StudentDashboard() {
-  const [chatMode, setChatMode] = useState<'select' | 'org' | 'ai'>('select');
+  
   const { userRole } = useAuth();
 
   const isAdminViewFromStorage = (() => {
@@ -277,56 +277,12 @@ export default function StudentDashboard() {
           )}
 
           {/* Chat tab */}
-          {currentTab === "chat" && chatMode === "select" && (
-            <div className="flex flex-col items-center justify-center h-full p-8 flex-1">
-              <MessageCircle className="w-12 h-12 text-primary mb-6" />
-              <h2 className="font-bold text-xl mb-2">Выберите чат</h2>
-              <p className="text-muted-foreground mb-8 text-center">С кем вы хотите пообщаться?</p>
-              <div className="grid gap-4 w-full max-w-md">
-                <button onClick={() => setChatMode("org")} className="flex items-center gap-4 p-5 rounded-2xl border border-border bg-card hover:bg-secondary/50 transition-colors text-left">
-                  <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center shrink-0"><Building2 className="w-6 h-6 text-primary" /></div>
-                  <div><div className="font-semibold">Чат с учебным центром</div><div className="text-sm text-muted-foreground">Переписка с {profile?.organization_name || "организацией"}</div></div>
-                </button>
-                <button onClick={() => setChatMode("ai")} className="flex items-center gap-4 p-5 rounded-2xl border border-border bg-card hover:bg-secondary/50 transition-colors text-left">
-                  <div className="w-12 h-12 rounded-xl bg-accent/10 flex items-center justify-center shrink-0"><Bot className="w-6 h-6 text-accent" /></div>
-                  <div><div className="font-semibold">ИИ-помощник</div><div className="text-sm text-muted-foreground">Ответит на вопросы по обучению</div></div>
-                </button>
-              </div>
-            </div>
-          )}
-
-          {currentTab === "chat" && chatMode === "org" && user && profile?.organization_id && (
-            <div className="flex flex-col h-full flex-1">
-              <div className="p-4 border-b border-border">
-                <Button variant="ghost" size="sm" onClick={() => setChatMode("select")} className="gap-1"><ArrowLeft className="w-4 h-4" />Назад</Button>
-              </div>
-              <StudentOrgChat studentUserId={user.id} organizationId={profile.organization_id} organizationName={profile.organization_name || "Организация"} />
-            </div>
-          )}
-
-          {currentTab === "chat" && chatMode === "ai" && (
-            <div className="flex flex-col h-full flex-1">
-              <div className="p-4 border-b border-border">
-                <Button variant="ghost" size="sm" onClick={() => setChatMode("select")} className="gap-1"><ArrowLeft className="w-4 h-4" />Назад</Button>
-              </div>
-              <div className="flex-1 overflow-auto p-6 space-y-4">
-                {messages.map((msg, i) => (
-                  <div key={i} className={cn("max-w-[80%] rounded-2xl p-4", msg.role === "user" ? "ml-auto bg-primary text-primary-foreground" : "bg-secondary")}>
-                    <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
-                  </div>
-                ))}
-                {isAiLoading && <div className="bg-secondary rounded-2xl p-4 max-w-[80%]"><SigmaSpinner size="sm" /></div>}
-              </div>
-              <div className="p-4 border-t border-border flex gap-2">
-                <input
-                  value={inputValue}
-                  onChange={e => setInputValue(e.target.value)}
-                  onKeyDown={e => e.key === "Enter" && handleSendMessage()}
-                  placeholder="Задайте вопрос..."
-                  className="flex-1 bg-secondary rounded-xl px-4 py-2 text-sm outline-none"
-                />
-                <Button size="sm" onClick={handleSendMessage} disabled={isAiLoading}>Отправить</Button>
-              </div>
+          {currentTab === "chat" && (
+            <div className="flex-1">
+              <StudentChatsTab
+                organizationId={profile?.organization_id}
+                organizationName={profile?.organization_name || "Организация"}
+              />
             </div>
           )}
 
