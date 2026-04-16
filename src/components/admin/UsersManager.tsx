@@ -314,6 +314,12 @@ export function UsersManager() {
                     onNavigate={(uid) => navigate(`/admin/user/${uid}`)}
                   />
                 ))
+              )}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
+
       {filteredUsers.length > visibleCount && (
         <div className="flex items-center justify-between">
           <span className="text-sm text-muted-foreground">
