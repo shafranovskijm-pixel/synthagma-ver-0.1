@@ -3,55 +3,15 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow } from "@/components/ui/table";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue } from "@/components/ui/select";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Trash2, Search, Users, Shield, Building2, GraduationCap, Copy, Eye, EyeOff, ExternalLink } from "lucide-react";
-import { format } from "date-fns";
-import { ru } from "date-fns/locale";
+import { Search, Users, Shield, Building2, GraduationCap } from "lucide-react";
 import { toast } from "sonner";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
+import { UserTableRow, type UserWithRole } from "./users/UserTableRow";
 
-interface UserWithRole {
-  id: string;
-  user_id: string;
-  full_name: string | null;
-  email: string | null;
-  avatar_url: string | null;
-  organization_id: string | null;
-  organization_name?: string | null;
-  role: string | null;
-  created_at: string;
-  login: string | null;
-  generated_password: string | null;
-}
-
-const ROLE_LABELS: Record<string, { label: string; icon: React.ReactNode; color: string }> = {
-  admin: { label: "Админ", icon: <Shield className="w-3 h-3" />, color: "bg-purple-100 text-purple-700" },
-  organization: { label: "Организация", icon: <Building2 className="w-3 h-3" />, color: "bg-blue-100 text-blue-700" },
-  student: { label: "Слушатель", icon: <GraduationCap className="w-3 h-3" />, color: "bg-green-100 text-green-700" } };
 
 export function UsersManager() {
   const [users, setUsers] = useState<UserWithRole[]>([]);
@@ -340,138 +300,19 @@ export function UsersManager() {
                 </TableRow>
               ) : (
                 displayedUsers.map((user) => (
-                  <TableRow key={user.id} className="cursor-pointer hover:bg-secondary/50" onClick={() => navigate(`/admin/user/${user.user_id}`)}>
-                    <TableCell>
-                      <div className="flex items-center gap-3">
-                        <Avatar>
-                          <AvatarImage src={user.avatar_url || undefined} />
-                          <AvatarFallback>
-                            {user.full_name?.[0]?.toUpperCase() || user.email?.[0]?.toUpperCase() || "?"}
-                          </AvatarFallback>
-                        </Avatar>
-                        <div>
-                          <div className="font-medium">{user.full_name || "Без имени"}</div>
-                          <div className="text-sm text-muted-foreground">{user.email}</div>
-                        </div>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      {user.role === 'student' && user.login ? (
-                        <div className="space-y-1">
-                          <div className="flex items-center gap-2">
-                            <span className="text-xs text-muted-foreground">Логин:</span>
-                            <span className="text-sm font-mono">{user.login}</span>
-                          </div>
-                          {user.generated_password && (
-                            <div className="flex items-center gap-1">
-                              <span className="text-xs text-muted-foreground">Пароль:</span>
-                              <span className="text-sm font-mono">
-                                {visiblePasswords.has(user.user_id) ? user.generated_password : '••••••••'}
-                              </span>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-5 w-5"
-                                onClick={() => togglePasswordVisibility(user.user_id)}
-                              >
-                                {visiblePasswords.has(user.user_id) ? (
-                                  <EyeOff className="w-3 h-3" />
-                                ) : (
-                                  <Eye className="w-3 h-3" />
-                                )}
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-5 w-5"
-                                onClick={() => copyCredentials(user.login!, user.generated_password!)}
-                              >
-                                <Copy className="w-3 h-3" />
-                              </Button>
-                            </div>
-                          )}
-                        </div>
-                      ) : (
-                        <span className="text-xs text-muted-foreground">—</span>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      <Select
-                        value={user.role || "student"}
-                        onValueChange={(value) => handleRoleChange(user.user_id, value as "admin" | "organization" | "student")}
-                      >
-                        <SelectTrigger className="w-40">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="admin">
-                            <div className="flex items-center gap-2">
-                              <Shield className="w-4 h-4" />
-                              Админ
-                            </div>
-                          </SelectItem>
-                          <SelectItem value="organization">
-                            <div className="flex items-center gap-2">
-                              <Building2 className="w-4 h-4" />
-                              Организация
-                            </div>
-                          </SelectItem>
-                          <SelectItem value="student">
-                            <div className="flex items-center gap-2">
-                              <GraduationCap className="w-4 h-4" />
-                              Слушатель
-                            </div>
-                          </SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </TableCell>
-                    <TableCell>
-                      <Select
-                        value={user.organization_id || "none"}
-                        onValueChange={(value) =>
-                          handleOrgChange(user.user_id, value === "none" ? null : value)
-                        }
-                      >
-                        <SelectTrigger className="w-48">
-                          <SelectValue placeholder="Не назначена" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="none">Не назначена</SelectItem>
-                          {organizations.map((org) => (
-                            <SelectItem key={org.id} value={org.id}>
-                              {org.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </TableCell>
-                    <TableCell className="text-muted-foreground text-sm">
-                      {format(new Date(user.created_at), "d MMM yyyy", { locale: ru })}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex items-center justify-end gap-2">
-                        {user.role === 'student' && (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="gap-1.5 text-xs"
-                            onClick={(e) => { e.stopPropagation(); viewAsStudent(user); }}
-                          >
-                            <ExternalLink className="w-3.5 h-3.5" />
-                            Войти как ученик
-                          </Button>
-                        )}
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="text-destructive hover:text-destructive"
-                          onClick={(e) => { e.stopPropagation(); setDeleteUser(user); }}
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
+                  <UserTableRow
+                    key={user.id}
+                    user={user}
+                    organizations={organizations}
+                    isPasswordVisible={visiblePasswords.has(user.user_id)}
+                    onTogglePassword={togglePasswordVisibility}
+                    onCopyCredentials={copyCredentials}
+                    onRoleChange={handleRoleChange}
+                    onOrgChange={handleOrgChange}
+                    onViewAsStudent={viewAsStudent}
+                    onDelete={setDeleteUser}
+                    onNavigate={(uid) => navigate(`/admin/user/${uid}`)}
+                  />
                 ))
               )}
             </TableBody>
