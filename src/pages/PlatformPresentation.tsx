@@ -12,6 +12,7 @@ import {
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { Footer } from "@/components/landing/Footer";
+import { LandingHeader } from "@/components/landing/LandingHeader";
 
 // AI-generated illustrations
 import heroBg from "@/assets/presentation/hero-bg.jpg";
@@ -140,31 +141,7 @@ export default function PlatformPresentation() {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* ─── Sticky Header ─── */}
-      <header className="sticky top-0 z-50 bg-[hsl(0_0%_6%/0.95)] backdrop-blur-lg border-b border-white/10">
-        <div className="max-w-7xl mx-auto flex items-center justify-between px-4 md:px-8 h-14 md:h-16">
-          <div className="flex items-center gap-3">
-            <button onClick={() => navigate("/")} className="p-2 rounded-full hover:bg-white/10 text-white"><ArrowLeft className="w-5 h-5" /></button>
-            <div className="flex items-center gap-2">
-              <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-[hsl(174_72%_46%)] to-[hsl(174_65%_35%)] flex items-center justify-center">
-                <GraduationCap className="w-4 h-4 text-white" />
-              </div>
-              <span className="text-white font-semibold text-sm hidden sm:inline">СИНТАГМА</span>
-            </div>
-          </div>
-          <div className="flex items-center gap-2">
-            <button onClick={handleCopyLink} className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium text-white/70 hover:text-white hover:bg-white/10 transition-colors">
-              {linkCopied ? <Check className="w-3.5 h-3.5" /> : <ExternalLink className="w-3.5 h-3.5" />}
-              <span className="hidden sm:inline">{linkCopied ? "Скопировано" : "Ссылка"}</span>
-            </button>
-            <button onClick={handleDownloadPDF} disabled={isExporting}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[hsl(174_72%_46%)] text-white text-xs font-medium hover:opacity-90 transition-opacity disabled:opacity-50">
-              {isExporting ? <SigmaSpinner size="xs" className=".5 .5" /> : <Download className="w-3.5 h-3.5" />}
-              <span className="hidden sm:inline">PDF</span>
-            </button>
-          </div>
-        </div>
-      </header>
+      <LandingHeader />
 
       {/* ═══ HERO ═══ */}
       <Section className="relative text-white overflow-hidden">
