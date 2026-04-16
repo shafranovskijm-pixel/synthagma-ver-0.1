@@ -170,73 +170,8 @@ serve(async (req) => {
         });
       }
 
-      // ── Kinescope Live API ──
-
-      case "create_live": {
-        const { title: liveTitle, project_id } = params;
-        const body: Record<string, unknown> = {
-          title: liveTitle || "Live Stream",
-          type: "livestream",
-        };
-        if (project_id) body.parent_id = project_id;
-
-        const res = await fetch(`${KINESCOPE_API}/live/streams`, {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(body),
-        });
-        const data = await res.json();
-        if (!res.ok) {
-          return new Response(JSON.stringify({ error: data }), {
-            status: res.status,
-            headers: { ...corsHeaders, "Content-Type": "application/json" },
-          });
-        }
-        return new Response(JSON.stringify(data), {
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-
-      case "stop_live": {
-        const { live_id } = params;
-        const res = await fetch(`${KINESCOPE_API}/live/streams/${live_id}/stop`, {
-          method: "POST",
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        const data = await res.json();
-        return new Response(JSON.stringify(data), {
-          status: res.status,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-
-      case "get_live": {
-        const { live_id } = params;
-        const res = await fetch(`${KINESCOPE_API}/live/streams/${live_id}`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        const data = await res.json();
-        return new Response(JSON.stringify(data), {
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-
-      case "list_live": {
-        const qs = new URLSearchParams();
-        if (params.page) qs.set("page", String(params.page));
-        qs.set("per_page", String(params.per_page || 50));
-
-        const res = await fetch(`${KINESCOPE_API}/live/streams?${qs}`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        const data = await res.json();
-        return new Response(JSON.stringify(data), {
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
+      // Note: Kinescope Live API (create/stop/get/list live streams) is not available
+      // via the v1 REST API. Live streams must be managed through the Kinescope dashboard.
 
       default:
         return new Response(JSON.stringify({ error: `Unknown action: ${action}` }), {
