@@ -388,7 +388,7 @@ export function AdminChatsManager() {
   }
 
   return (
-    <div className="flex h-[calc(100vh-200px)] min-h-[500px] border border-border rounded-xl overflow-hidden bg-card">
+    <div className="flex min-h-[300px] border border-border rounded-xl overflow-hidden bg-card">
       <ChatSidebar
         activeSection={activeSection}
         onSectionChange={setActiveSection}
