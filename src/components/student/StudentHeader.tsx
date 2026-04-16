@@ -113,6 +113,11 @@ export function StudentHeader({
               Что нового?
             </DropdownMenuItem>
 
+            <DropdownMenuItem onClick={() => navigate("/help")}>
+              <HelpCircle className="w-4 h-4 mr-2" />
+              Помощь
+            </DropdownMenuItem>
+
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={onLogout} className="text-destructive">
               <LogOut className="w-4 h-4 mr-2" />

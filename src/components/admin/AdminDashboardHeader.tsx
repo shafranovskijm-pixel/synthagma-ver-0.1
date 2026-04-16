@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Menu, Bell, User, LogOut, Settings, FileText, Sparkles, HelpCircle, Users, Check, Gift, Sun, Moon } from "lucide-react";
+import { Menu, Bell, User, LogOut, Settings, FileText, Sparkles, HelpCircle, Users, Check, Gift } from "lucide-react";
 import { RadioPlayerButton } from "@/components/radio/RadioPlayerButton";
 import { Button } from "@/components/ui/button";
 import { SigmaLogo } from "@/components/ui/SigmaLogo";
@@ -96,7 +96,14 @@ export function AdminDashboardHeader({
           </button>
           <div className="flex items-center gap-2.5">
             {branding.logoUrl ? (
-              <img src={branding.logoUrl} alt="Logo" className="w-8 h-8 object-contain rounded-lg" />
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button onClick={toggleTheme} className="hover:opacity-80 transition-opacity">
+                    <img src={branding.logoUrl} alt="Logo" className="w-8 h-8 object-contain rounded-lg" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent>Сменить тему</TooltipContent>
+              </Tooltip>
             ) : (
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -115,17 +122,6 @@ export function AdminDashboardHeader({
         </div>
 
         <div className="flex items-center gap-1.5 sm:gap-2.5">
-          {/* Theme toggle */}
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <button onClick={toggleTheme} className="p-2 rounded-lg hover:bg-secondary hover:scale-105 transition-all" title="Сменить тему">
-                <Sun className="w-5 h-5 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
-                <Moon className="absolute w-5 h-5 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
-              </button>
-            </TooltipTrigger>
-            <TooltipContent>Сменить тему</TooltipContent>
-          </Tooltip>
-
           {/* Radio */}
           <RadioPlayerButton />
 
