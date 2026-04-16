@@ -441,13 +441,7 @@ export default function PlatformPresentation() {
           <h2 className="text-3xl md:text-5xl font-bold mb-3 text-center"><InViewTypewriterText text="Тарифы" speed={60} delay={200} /></h2>
           <p className="text-base md:text-xl text-white/60 mb-10 text-center">Все функции доступны на каждом тарифе. Разница только в лимитах.</p>
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 md:gap-4">
-            {[
-              { name: "Бесплатный", desc: "Для знакомства с платформой", price: "0", students: "10", courses: "3", storage: "100 МБ", features: ["Настройки курсов", "Магазин курсов", "Чек-лист документов", "Видеоидентификация", "Брендирование", "Документы для ЛОО", "Охрана труда", "ФИС ФРДО", "ИИ-генерация", "ИИ-озвучка"] },
-              { name: "Старт", desc: "Для начинающих организаций", price: "4 490", students: "100", courses: "15", storage: "3 ГБ", features: ["Настройки курсов", "Магазин курсов", "Чек-лист документов", "Видеоидентификация", "Брендирование", "Документы для ЛОО", "Охрана труда", "ФИС ФРДО", "ИИ-генерация", "ИИ-озвучка"] },
-              { name: "Стандарт", desc: "Для активных организаций", price: "6 990", students: "200", courses: "30", storage: "10 ГБ", popular: true, features: ["Настройки курсов", "Магазин курсов", "Чек-лист документов", "Видеоидентификация", "Брендирование", "Документы для ЛОО", "Охрана труда", "ФИС ФРДО", "ИИ-генерация", "ИИ-озвучка"] },
-              { name: "Профессиональный", desc: "Для крупных организаций", price: "16 990", students: "1 000", courses: "50", storage: "50 ГБ", features: ["Настройки курсов", "Магазин курсов", "Чек-лист документов", "Видеоидентификация", "Брендирование", "Документы для ЛОО", "Охрана труда", "ФИС ФРДО+", "Вебинары", "Видеосервис+", "ИИ-генерация", "ИИ-озвучка"] },
-              { name: "Максимальный", desc: "Полный доступ ко всем функциям", price: "24 990", students: "∞", courses: "∞", storage: "100 ГБ", features: ["Настройки курсов", "Магазин курсов", "Чек-лист документов", "Видеоидентификация", "Брендирование", "Документы для ЛОО", "Охрана труда", "ФИС ФРДО+", "Вебинары", "Видеосервис+", "3D-тренажёры", "ИИ-генерация", "ИИ-озвучка"] },
-            ].map((p, i) => (
+            {pricingPlans.map((p, i) => (
               <div key={i} className={`rounded-2xl p-4 md:p-5 border flex flex-col relative ${p.popular ? "bg-[hsl(174_72%_46%/0.1)] border-[hsl(174_72%_46%)] ring-1 ring-[hsl(174_72%_46%/0.3)]" : "bg-white/5 border-white/10"}`}>
                 {p.popular && <span className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-0.5 rounded-full bg-[hsl(174_72%_46%)] text-xs font-medium text-white whitespace-nowrap">Рекомендуем</span>}
                 <h3 className="text-sm md:text-base font-bold mb-0.5">{p.name}</h3>
@@ -489,12 +483,7 @@ export default function PlatformPresentation() {
               <h2 className="text-3xl md:text-5xl font-bold text-white mb-4"><InViewTypewriterText text="Мобильное приложение" speed={40} delay={200} /></h2>
               <p className="text-base md:text-xl text-white/60 mb-8">Учитесь где угодно — с телефона или планшета</p>
               <div className="space-y-4">
-                {[
-                  { icon: Globe, text: "PWA — работает как нативное приложение" },
-                  { icon: Zap, text: "Оффлайн-режим — учёба без интернета" },
-                  { icon: MessageSquare, text: "Push-уведомления" },
-                  { icon: Smartphone, text: "Android и iOS" },
-                ].map((t, i) => (
+                {mobileFeatures.map((t, i) => (
                   <div key={i} className="flex items-center gap-3">
                     <t.icon className="w-5 h-5 text-[hsl(174_72%_46%)]" />
                     <span className="text-sm md:text-base text-white/80">{t.text}</span>
