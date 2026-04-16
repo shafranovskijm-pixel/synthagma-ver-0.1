@@ -113,14 +113,14 @@ export function HeroBannerSwiper({ children, className = "" }: HeroBannerSwiperP
       {/* Arrow buttons — visible on hover (desktop) */}
       <button
         onClick={goPrev}
-        className="absolute left-2 top-1/2 -translate-y-1/2 z-10 p-1.5 rounded-full bg-black/30 hover:bg-black/50 text-white/80 hover:text-white transition-all opacity-0 group-hover:opacity-100 hidden sm:flex items-center justify-center"
+        className="absolute left-2 top-1/2 -translate-y-1/2 z-10 p-1.5 rounded-full bg-black/30 hover:bg-black/50 text-white/80 hover:text-white transition-all flex items-center justify-center"
         aria-label="Предыдущая тема"
       >
         <ChevronLeft className="w-4 h-4" />
       </button>
       <button
         onClick={goNext}
-        className="absolute right-2 top-1/2 -translate-y-1/2 z-10 p-1.5 rounded-full bg-black/30 hover:bg-black/50 text-white/80 hover:text-white transition-all opacity-0 group-hover:opacity-100 hidden sm:flex items-center justify-center"
+        className="absolute right-2 top-1/2 -translate-y-1/2 z-10 p-1.5 rounded-full bg-black/30 hover:bg-black/50 text-white/80 hover:text-white transition-all flex items-center justify-center"
         aria-label="Следующая тема"
       >
         <ChevronRight className="w-4 h-4" />
