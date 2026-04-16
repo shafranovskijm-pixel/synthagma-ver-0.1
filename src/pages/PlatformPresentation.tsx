@@ -2,13 +2,17 @@ import { useState, useCallback, useRef } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { motion, useInView } from "framer-motion";
 import {
-  ArrowLeft, GraduationCap, Building2, Users, BookOpen, Brain, FileText,
-  Video, Shield, ShoppingBag, Smartphone, Zap, CheckCircle2, BarChart3,
+  GraduationCap, Building2, Users, BookOpen, Brain, FileText,
+  Video, Shield, Smartphone, Zap, CheckCircle2,
   Clock, Globe, Award, Lock, MessageSquare, ClipboardList, AlertTriangle,
-  Layers, Database, RefreshCw, Play, Star, Target, Landmark, HardHat,
+  Layers, Database, Play, Landmark, HardHat,
   Factory, Flame, Waves, Download, Copy, Check, ExternalLink,
-  Settings, Headphones, Image, Sparkles
+  Headphones, Image, Sparkles
 } from "lucide-react";
+import {
+  problemCards, solutionMarquee, lmsFeatures, aiFeatures,
+  documentTypes, safetyFeatures, mobileFeatures, pricingPlans,
+} from "./presentationSections";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { Footer } from "@/components/landing/Footer";
