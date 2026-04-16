@@ -42,6 +42,8 @@ export function useFRDOManager(organizationId: string) {
   const [showExportDialog, setShowExportDialog] = useState(false);
   const [selectedStudentForExport, setSelectedStudentForExport] = useState<Student | null>(null);
   const [selectedEnrollmentForExport, setSelectedEnrollmentForExport] = useState<EnrollmentData | null>(null);
+  const [visibleCount, setVisibleCount] = useState(5);
+  const [isUploading, setIsUploading] = useState(false);
 
   useEffect(() => { loadData(); }, [organizationId]);
 
@@ -187,6 +189,54 @@ export function useFRDOManager(organizationId: string) {
     return Object.entries(fieldCounts).filter(([_, c]) => c > 0).sort((a, b) => b[1] - a[1]);
   })();
 
+  const handleLoadMore = (count: number) => setVisibleCount(prev => prev + count);
+
+  const handleUploadSigned = async (file: File) => {
+    setIsUploading(true);
+    try {
+      const filePath = `${organizationId}/${Date.now()}_${file.name}`;
+      const { error: uploadError } = await supabase.storage.from("frdo-documents").upload(filePath, file);
+      if (uploadError) throw uploadError;
+      const { data: urlData } = supabase.storage.from("frdo-documents").getPublicUrl(filePath);
+      await supabase.from("frdo_signed_documents").insert({
+        organization_id: organizationId,
+        uploaded_by: (await supabase.auth.getUser()).data.user?.id,
+        file_url: urlData.publicUrl,
+        file_name: file.name,
+        status: "uploaded",
+      });
+      toast.success("Файл загружен");
+    } catch (error) { console.error(error); toast.error("Ошибка загрузки файла"); }
+    finally { setIsUploading(false); }
+  };
+
+  const handleSendToAdmin = async () => {
+    try {
+      const { data: docs } = await supabase.from("frdo_signed_documents").select("*").eq("organization_id", organizationId).eq("status", "uploaded");
+      if (!docs || docs.length === 0) { toast.error("Нет загруженных файлов для отправки"); return; }
+      const { data: org } = await supabase.from("organizations").select("name").eq("id", organizationId).single();
+      for (const doc of docs) {
+        await supabase.from("admin_org_messages").insert({
+          organization_id: organizationId,
+          sender_user_id: (await supabase.auth.getUser()).data.user!.id,
+          sender_role: "organization",
+          content: `📄 Подписанный документ ФРДО: ${doc.file_name}`,
+          attachment_url: doc.file_url,
+          attachment_name: doc.file_name,
+          attachment_type: "application/octet-stream",
+        });
+        await supabase.from("frdo_signed_documents").update({ status: "sent", sent_to_admin_at: new Date().toISOString() }).eq("id", doc.id);
+      }
+      await supabase.from("admin_notifications").insert({
+        title: `ФРДО: документы от ${org?.name || "организации"}`,
+        message: `Организация отправила ${docs.length} подписанных документов ФРДО`,
+        type: "frdo",
+        related_entity_id: organizationId,
+      });
+      toast.success(`Отправлено ${docs.length} документов администратору`);
+    } catch (error) { console.error(error); toast.error("Ошибка отправки"); }
+  };
+
   return {
     isLoading, students, courses, searchQuery, setSearchQuery,
     statusFilter, setStatusFilter, courseFilter, setCourseFilter,
@@ -195,5 +245,6 @@ export function useFRDOManager(organizationId: string) {
     filteredStudents, getFrdoStatus, toggleStudentSelection, toggleSelectAll,
     handleBulkExport, openStudentExport, hasPOCourses, stats, missingFieldsStats,
     enrollmentsMap, organizationId,
+    visibleCount, handleLoadMore, handleUploadSigned, handleSendToAdmin, isUploading,
   };
 }
