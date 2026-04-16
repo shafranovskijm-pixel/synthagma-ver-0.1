@@ -381,7 +381,8 @@ export function ColleagueChatPanel({ role, organizationId }: ColleagueChatPanelP
                   selectedContactId === contact.user_id ? "bg-primary/5" : ""
                 }`}
               >
-                <div className="flex items-start justify-between gap-2">
+                <div className="flex items-center gap-3">
+                  <ChatAvatar name={contact.full_name} size="sm" />
                   <div className="min-w-0 flex-1">
                     <span className={`font-medium text-sm truncate block ${contact.unreadCount > 0 ? "text-foreground" : "text-muted-foreground"}`}>
                       {contact.full_name}
@@ -414,7 +415,8 @@ export function ColleagueChatPanel({ role, organizationId }: ColleagueChatPanelP
         <div className="flex-1 border border-border rounded-xl bg-card overflow-hidden flex flex-col">
           {selectedContactId ? (
             <div className="flex flex-col h-full">
-              <div className="px-4 py-3 border-b border-border">
+              <div className="px-4 py-3 border-b border-border flex items-center gap-3">
+                <ChatAvatar name={selectedContact?.full_name || ""} size="sm" />
                 <h3 className="font-semibold">{selectedContact?.full_name}</h3>
               </div>
               <div className="flex-1 p-4 overflow-hidden">
