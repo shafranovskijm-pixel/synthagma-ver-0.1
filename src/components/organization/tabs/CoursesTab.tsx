@@ -25,9 +25,9 @@ import { SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable"
 import { CoursesEmptyState } from "./courses/CoursesEmptyState";
 import { SortableCourseListRow } from "./courses/CourseListRow";
 import { CategoryDialog, CreateCourseDialog, MoveCourseDialog, BulkDeleteDialog } from "./courses/CourseDialogs";
-import { CourseCard } from "../courses/CourseCardView";
-import { CourseCatalogCard } from "../courses/CourseCatalogCard";
-import { CategoryFolder } from "../courses/CategoryFolder";
+import { CourseCard } from "./courses/CourseCardView";
+import { CourseCatalogCard } from "./courses/CourseCatalogCard";
+import { CategoryFolder } from "./courses/CategoryFolder";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 
 interface CoursesTabProps {
