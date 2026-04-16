@@ -12,24 +12,6 @@ import { toast } from "sonner";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 import { UserTableRow, type UserWithRole } from "./users/UserTableRow";
 
-interface UserWithRole {
-  id: string;
-  user_id: string;
-  full_name: string | null;
-  email: string | null;
-  avatar_url: string | null;
-  organization_id: string | null;
-  organization_name?: string | null;
-  role: string | null;
-  created_at: string;
-  login: string | null;
-  generated_password: string | null;
-}
-
-const ROLE_LABELS: Record<string, { label: string; icon: React.ReactNode; color: string }> = {
-  admin: { label: "Админ", icon: <Shield className="w-3 h-3" />, color: "bg-purple-100 text-purple-700" },
-  organization: { label: "Организация", icon: <Building2 className="w-3 h-3" />, color: "bg-blue-100 text-blue-700" },
-  student: { label: "Слушатель", icon: <GraduationCap className="w-3 h-3" />, color: "bg-green-100 text-green-700" } };
 
 export function UsersManager() {
   const [users, setUsers] = useState<UserWithRole[]>([]);
