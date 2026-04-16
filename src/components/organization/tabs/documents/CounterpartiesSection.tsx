@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ScrollText, Receipt, FileCheck, Download, FileText, Lightbulb, Eye, Trash2, ExternalLink, Building2, User, Store } from "lucide-react";
 import { ContractLegalFaq } from "@/components/organization/ContractLegalFaq";
 import { File } from "lucide-react";
@@ -24,7 +25,6 @@ interface CounterpartiesSectionProps {
   counterpartyDocs: CounterpartyDoc[];
   counterpartyLoading: boolean;
   onCreateContract: () => void;
-  // billing data
   invoices: InvoiceRow[];
   billingDocs: BillingDoc[];
   onViewDoc: (doc: BillingDoc) => void;
@@ -51,11 +51,11 @@ export function CounterpartiesSection({
 }: CounterpartiesSectionProps) {
   const [counterparties, setCounterparties] = useState<CounterpartyOption[]>([]);
   const [selectedId, setSelectedId] = useState<string>("platform");
+  const [showFaq, setShowFaq] = useState(false);
 
   useEffect(() => {
     const list: CounterpartyOption[] = [{ id: "platform", name: "Синтагма", type: "platform" }];
 
-    // Load companies
     supabase
       .from("companies")
       .select("id, name")
@@ -64,7 +64,6 @@ export function CounterpartiesSection({
       .then(({ data }) => {
         const companies = (data || []).map(c => ({ id: c.id, name: c.name, type: "company" as const }));
 
-        // Load payers
         supabase
           .from("org_payers" as any)
           .select("id, name")
@@ -82,11 +81,13 @@ export function CounterpartiesSection({
   const isCompany = selected?.type === "company";
   const isPayer = selected?.type === "payer";
 
-  // Filter company docs for selected company
   const companyDocs = isCompany ? counterpartyDocs.filter(d => {
-    // Match by company_name since we have that
     return (d as any).company_id === selectedId || d.company_name === selected?.name;
   }) : [];
+
+  const platformItems = counterparties.filter(c => c.type === "platform");
+  const companyItems = counterparties.filter(c => c.type === "company");
+  const payerItems = counterparties.filter(c => c.type === "payer");
 
   const renderPlatformContracts = () => (
     <div className="text-center py-12 text-muted-foreground">
@@ -237,26 +238,72 @@ export function CounterpartiesSection({
     return <User className="w-3.5 h-3.5" />;
   };
 
+  const renderChip = (cp: CounterpartyOption) => (
+    <button
+      key={cp.id}
+      onClick={() => setSelectedId(cp.id)}
+      className={cn(
+        "inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg border transition-all",
+        selectedId === cp.id
+          ? "bg-primary text-primary-foreground border-primary shadow-sm"
+          : "bg-muted/40 text-muted-foreground border-border hover:bg-muted hover:text-foreground"
+      )}
+    >
+      {getIcon(cp.type)}
+      {cp.name}
+    </button>
+  );
+
   return (
     <div className="space-y-4">
-      {/* Counterparty selector */}
-      <div className="flex flex-wrap gap-1.5">
-        {counterparties.map(cp => (
-          <button
-            key={cp.id}
-            onClick={() => setSelectedId(cp.id)}
-            className={cn(
-              "inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg border transition-all",
-              selectedId === cp.id
-                ? "bg-primary text-primary-foreground border-primary shadow-sm"
-                : "bg-muted/40 text-muted-foreground border-border hover:bg-muted hover:text-foreground"
-            )}
-          >
-            {getIcon(cp.type)}
-            {cp.name}
-          </button>
-        ))}
+      {/* Header with counterparty selector + FAQ button */}
+      <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-1.5 flex-1">
+          {/* Platform */}
+          {platformItems.map(renderChip)}
+
+          {/* Divider + Clients */}
+          {companyItems.length > 0 && (
+            <>
+              <div className="h-5 w-px bg-border mx-1" />
+              <span className="text-[10px] uppercase tracking-wider text-muted-foreground/60 font-semibold mr-0.5">Клиенты</span>
+              {companyItems.map(renderChip)}
+            </>
+          )}
+
+          {/* Divider + Payers */}
+          {payerItems.length > 0 && (
+            <>
+              <div className="h-5 w-px bg-border mx-1" />
+              <span className="text-[10px] uppercase tracking-wider text-muted-foreground/60 font-semibold mr-0.5">Плательщики</span>
+              {payerItems.map(renderChip)}
+            </>
+          )}
+        </div>
+
+        {/* Pulsing FAQ button */}
+        <button
+          onClick={() => setShowFaq(true)}
+          className="relative shrink-0 w-8 h-8 flex items-center justify-center rounded-full bg-primary/10 text-primary hover:bg-primary/20 transition-colors"
+          title="Справка по договорам (273-ФЗ)"
+        >
+          <span className="absolute inset-0 rounded-full animate-ping bg-primary/20" />
+          <Lightbulb className="w-4 h-4 relative z-10" />
+        </button>
       </div>
+
+      {/* FAQ Dialog */}
+      <Dialog open={showFaq} onOpenChange={setShowFaq}>
+        <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Lightbulb className="w-5 h-5 text-primary" />
+              Справка по договорам (273-ФЗ)
+            </DialogTitle>
+          </DialogHeader>
+          <ContractLegalFaq />
+        </DialogContent>
+      </Dialog>
 
       {/* Sub-tabs */}
       <Tabs value={counterpartySubTab} onValueChange={(v) => setCounterpartySubTab(v as CounterpartySubTab)}>
@@ -264,7 +311,6 @@ export function CounterpartiesSection({
           <TabsTrigger value="contracts" className="rounded-lg text-xs gap-1.5"><ScrollText className="w-3.5 h-3.5" />Договоры</TabsTrigger>
           <TabsTrigger value="invoices" className="rounded-lg text-xs gap-1.5"><Receipt className="w-3.5 h-3.5" />Счета</TabsTrigger>
           <TabsTrigger value="closing" className="rounded-lg text-xs gap-1.5"><FileCheck className="w-3.5 h-3.5" />Закрывающие</TabsTrigger>
-          <TabsTrigger value="faq" className="rounded-lg text-xs gap-1.5"><Lightbulb className="w-3.5 h-3.5" />Справка 273-ФЗ</TabsTrigger>
         </TabsList>
 
         {isPlatform && (
@@ -296,8 +342,6 @@ export function CounterpartiesSection({
             <TabsContent value="closing" className="mt-0">{renderPayerContent()}</TabsContent>
           </>
         )}
-
-        <TabsContent value="faq" className="mt-0"><ContractLegalFaq /></TabsContent>
       </Tabs>
     </div>
   );
