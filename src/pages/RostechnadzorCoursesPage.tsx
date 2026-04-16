@@ -258,16 +258,16 @@ const RostechnadzorCoursesPage = () => {
 
         <div className="container mx-auto px-6 relative z-10">
           <motion.div initial="hidden" animate="visible" variants={stagger} className="max-w-4xl mx-auto text-center">
-            <motion.div variants={fadeUp} className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-accent/10 border border-accent/20 mb-6">
+            <motion.div variants={fadeUp} className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/5 border border-white/20 mb-6">
               <BookOpen className="w-4 h-4 text-accent" />
-              <span className="text-sm font-medium text-accent">Библиотека · 303 курса · 14 направлений</span>
+              <span className="text-sm font-medium text-white/80">Библиотека · 303 курса · 14 направлений</span>
             </motion.div>
-            <motion.h1 variants={fadeUp} className="font-display text-4xl md:text-5xl lg:text-6xl font-medium mb-6 tracking-tight">
+            <motion.h1 variants={fadeUp} className="font-display text-4xl md:text-5xl lg:text-6xl font-medium mb-6 tracking-tight text-white">
               300+ готовых курсов{" "}
               <br className="hidden sm:block" />
-              <span className="text-accent">для вашей организации</span>
+              <span className="text-white/50">для вашей организации</span>
             </motion.h1>
-            <motion.p variants={fadeUp} className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto mb-10 leading-relaxed">
+            <motion.p variants={fadeUp} className="text-lg md:text-xl text-white/50 max-w-2xl mx-auto mb-10 leading-relaxed">
               Ваши клиенты хотят обучение, но разработка программ занимает месяцы? 
               У нас уже всё готово — подключите библиотеку курсов по 14 направлениям 
               и начните обучение прямо сейчас.
