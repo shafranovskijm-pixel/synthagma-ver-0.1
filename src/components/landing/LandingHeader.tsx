@@ -55,6 +55,9 @@ export function LandingHeader({ showStars = true }: { showStars?: boolean }) {
             <Link to="/blog" className={`transition-colors text-sm tracking-wide ${dark ? 'text-white/60 hover:text-white' : 'text-muted-foreground hover:text-foreground'}`}>
               Блог
             </Link>
+            <Link to="/rostechnadzor-courses" className={`transition-colors text-sm tracking-wide ${dark ? 'text-white/60 hover:text-white' : 'text-muted-foreground hover:text-foreground'}`}>
+              Курсы
+            </Link>
             <Link to="/presentation" className={`transition-colors text-sm tracking-wide ${dark ? 'text-white/60 hover:text-white' : 'text-muted-foreground hover:text-foreground'}`}>
               Презентация
             </Link>
