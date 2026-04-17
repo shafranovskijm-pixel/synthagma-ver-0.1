@@ -126,6 +126,17 @@ function StudentPageInner({ studentId }: { studentId: string }) {
 
       const companyName = (profile as any).companies?.name || null;
 
+      // Decrypt password via RPC (profiles.generated_password is stored as ENC:...)
+      let decryptedPw: string | null = null;
+      try {
+        const { data: pw } = await supabase.rpc("get_decrypted_student_password", {
+          p_user_id: profile.user_id,
+        });
+        decryptedPw = (pw as string) || null;
+      } catch {
+        decryptedPw = null;
+      }
+
       setStudent({
         id: profile.user_id,
         user_id: profile.user_id,
@@ -133,7 +144,7 @@ function StudentPageInner({ studentId }: { studentId: string }) {
         email: profile.email || "",
         login: profile.login,
         company_name: companyName,
-        generated_password: profile.generated_password,
+        generated_password: decryptedPw,
         last_visit_at: profile.last_visit_at });
 
       // Load enrollments for courses belonging to this org
