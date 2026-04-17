@@ -106,78 +106,84 @@ function StudentPageInner({ studentId }: { studentId: string }) {
   const { plan: orgPlan } = useSubscriptionLimits(organizationId);
 
   // Load student data
-  useEffect(() => {
+  const loadStudent = async (showSpinner = true) => {
     if (!studentId || !organizationId) return;
-    const load = async () => {
-      setLoading(true);
+    if (showSpinner) setLoading(true);
 
-      // Get profile by matching organization members
-      // studentId here is the profile/member id — try to find user
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("user_id, full_name, email, login, generated_password, last_visit_at, organization_id, company_id, companies(name)")
-        .eq("user_id", studentId)
-        .maybeSingle();
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("user_id, full_name, email, login, generated_password, last_visit_at, organization_id, company_id, companies(name)")
+      .eq("user_id", studentId)
+      .maybeSingle();
 
-      if (!profile) {
-        setLoading(false);
-        return;
+    if (!profile) {
+      if (showSpinner) setLoading(false);
+      return;
+    }
+
+    const companyName = (profile as any).companies?.name || null;
+
+    // Decrypt password via RPC (profiles.generated_password is stored as ENC:...)
+    let decryptedPw: string | null = null;
+    try {
+      const { data: pw, error: pwErr } = await supabase.rpc("get_decrypted_student_password", {
+        p_user_id: profile.user_id,
+      });
+      if (pwErr) {
+        console.warn("[StudentDetails] decrypt RPC error:", pwErr);
       }
+      const raw = (pw as string) || "";
+      // Защита: если RPC вернула null/пусто или почему-то ENC:... — показываем "—"
+      decryptedPw = raw && !raw.startsWith("ENC:") ? raw : null;
+    } catch (e) {
+      console.warn("[StudentDetails] decrypt RPC threw:", e);
+      decryptedPw = null;
+    }
 
-      const companyName = (profile as any).companies?.name || null;
+    setStudent({
+      id: profile.user_id,
+      user_id: profile.user_id,
+      name: profile.full_name || "Без имени",
+      email: profile.email || "",
+      login: profile.login,
+      company_name: companyName,
+      generated_password: decryptedPw,
+      last_visit_at: profile.last_visit_at });
 
-      // Decrypt password via RPC (profiles.generated_password is stored as ENC:...)
-      let decryptedPw: string | null = null;
-      try {
-        const { data: pw } = await supabase.rpc("get_decrypted_student_password", {
-          p_user_id: profile.user_id,
-        });
-        decryptedPw = (pw as string) || null;
-      } catch {
-        decryptedPw = null;
-      }
+    // Load enrollments for courses belonging to this org
+    const { data: orgCourses } = await supabase
+      .from("courses")
+      .select("id")
+      .eq("organization_id", organizationId);
 
-      setStudent({
-        id: profile.user_id,
-        user_id: profile.user_id,
-        name: profile.full_name || "Без имени",
-        email: profile.email || "",
-        login: profile.login,
-        company_name: companyName,
-        generated_password: decryptedPw,
-        last_visit_at: profile.last_visit_at });
+    const courseIds = (orgCourses || []).map(c => c.id);
 
-      // Load enrollments for courses belonging to this org
-      const { data: orgCourses } = await supabase
-        .from("courses")
-        .select("id")
-        .eq("organization_id", organizationId);
+    if (courseIds.length > 0) {
+      const { data: enrs } = await supabase
+        .from("enrollments")
+        .select("id, course_id, progress, status, started_at, completed_at, time_spent, access_days, expires_at, courses(title)")
+        .eq("user_id", profile.user_id)
+        .in("course_id", courseIds);
 
-      const courseIds = (orgCourses || []).map(c => c.id);
-      
-      if (courseIds.length > 0) {
-        const { data: enrs } = await supabase
-          .from("enrollments")
-          .select("id, course_id, progress, status, started_at, completed_at, time_spent, access_days, expires_at, courses(title)")
-          .eq("user_id", profile.user_id)
-          .in("course_id", courseIds);
+      setEnrollments((enrs || []).map((e: any) => ({
+        id: e.id,
+        course_id: e.course_id,
+        course_title: e.courses?.title || "Без названия",
+        progress: e.progress || 0,
+        status: e.status || "active",
+        started_at: e.started_at,
+        completed_at: e.completed_at,
+        time_spent: e.time_spent || 0,
+        access_days: e.access_days,
+        expires_at: e.expires_at })));
+    }
 
-        setEnrollments((enrs || []).map((e: any) => ({
-          id: e.id,
-          course_id: e.course_id,
-          course_title: e.courses?.title || "Без названия",
-          progress: e.progress || 0,
-          status: e.status || "active",
-          started_at: e.started_at,
-          completed_at: e.completed_at,
-          time_spent: e.time_spent || 0,
-          access_days: e.access_days,
-          expires_at: e.expires_at })));
-      }
+    if (showSpinner) setLoading(false);
+  };
 
-      setLoading(false);
-    };
-    load();
+  useEffect(() => {
+    loadStudent(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [studentId, organizationId]);
 
   useEffect(() => {
