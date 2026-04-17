@@ -199,8 +199,8 @@ function StudentPageInner({ studentId }: { studentId: string }) {
     organizationId,
     enrollments,
     onStudentUpdated: () => {
-      // Reload
-      window.location.reload();
+      // Refetch only the student data — no full page reload (avoids auth 504 / logout)
+      loadStudent(false);
     } });
 
   const isOnline = student?.last_visit_at && (Date.now() - new Date(student.last_visit_at).getTime()) < 5 * 60 * 1000;
