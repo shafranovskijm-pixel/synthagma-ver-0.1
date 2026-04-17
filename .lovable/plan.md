@@ -1,22 +1,34 @@
 
 
-# Исправление отображения пароля в карточке ученика
+## Диагноз
 
-## Проблема
-На странице `/organization/student/:studentId` в разделе «Учетные данные для входа» пароль отображается в зашифрованном виде (`ENC:ww0EBwMCQ/5+KGlc0...`) вместо реального пароля.
+Проверил БД и edge function — пароль **на самом деле сохраняется** успешно:
+- В БД: `updated_at = 2026-04-17 01:09:44`, расшифрованный пароль = `123465`
+- Auth-логи подтверждают `user_modified` → 200 OK
 
-## Причина
-В `src/pages/OrganizationStudentDetails.tsx` (строки 116-137) пароль читается напрямую из таблицы `profiles.generated_password`, где он хранится в зашифрованном виде (`ENC:...`). Для расшифровки нужно использовать RPC `get_decrypted_student_password` (или `get_decrypted_student_passwords`) — как это уже сделано в `useOrganizationDashboard.ts`, `api/students.ts`, `api/courses.ts`.
+**Две реальные проблемы:**
 
-## Исправление
+### Проблема 1: Выкидывает в основное меню после «Сохранить»
+В `useStudentDetailCardLogic` callback `onStudentUpdated` в `OrganizationStudentDetails.tsx` (стр. 197) вызывает `window.location.reload()`. После reload браузер делает GET `/user` к Supabase Auth, который сейчас иногда отвечает 504 (видно в auth-логах: `request_timeout`, `context deadline exceeded`). Это вызывает разлогин и редирект на `/`.
 
-В `src/pages/OrganizationStudentDetails.tsx` в `useEffect` загрузки ученика:
+**Фикс:** не делать `window.location.reload()`, а перезагрузить только данные ученика через локальный refetch. Это и быстрее, и не триггерит потерю сессии.
 
-1. После получения профиля — вызвать RPC `get_decrypted_student_password({ p_user_id: profile.user_id })` параллельно с загрузкой курсов.
-2. Использовать расшифрованный пароль в `setStudent({ ..., generated_password: decryptedPw || null })`.
-3. Если RPC вернёт ошибку или пусто — оставить `null` (не показывать `ENC:...`).
+### Проблема 2: На карточке всё ещё видно `ENC:...`
+Хотя в коде уже стоит вызов RPC `get_decrypted_student_password` (lines 129–138) и расшифровка работает (проверено через `decrypt_password` в БД — возвращает `123465`), пользователь по-прежнему видит `ENC:...`. Скорее всего:
+- Браузер показывает старую закэшированную сборку (PWA), либо
+- RPC возвращает `null` (например, у пользователя нет роли `organization`/`admin` в текущей сессии — он зашёл через домен `sintagma.com.ru`), и тогда в state попадает `null`, но в момент скриншота были старые данные.
 
-## Технические детали
-- RPC `get_decrypted_student_password(p_user_id)` уже существует в БД и возвращает `text`, проверяет роль вызывающего (admin/organization владелец).
-- Никаких изменений в БД, миграциях или других файлах не требуется — точечное исправление одного места.
+**Фикс:** добавить логирование результата RPC и явно показывать «—» вместо `ENC:...` если расшифровать не удалось (форсированно проверять, что строка не начинается с `ENC:`).
+
+## Изменения
+
+### `src/pages/OrganizationStudentDetails.tsx`
+
+1. **Вынести загрузку студента в отдельную функцию `loadStudent`** (вместо inline в `useEffect`), чтобы можно было вызывать её повторно после сохранения.
+2. **Заменить `window.location.reload()`** в `onStudentUpdated` на вызов `loadStudent()` — без перезагрузки страницы.
+3. **Защита от `ENC:`:** если RPC вернула `null` или строку, начинающуюся с `ENC:`, ставим `null` (UI покажет «—»).
+
+### Технические детали
+- Никаких изменений в БД и edge function не требуется.
+- Никаких изменений в `useStudentDetailCard` — он уже правильно дёргает `onStudentUpdated?.()` после успеха.
 
