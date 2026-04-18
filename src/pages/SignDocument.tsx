@@ -9,11 +9,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
+import { Textarea } from "@/components/ui/textarea";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 import { PepSignatureStamp } from "@/components/signing/PepSignatureStamp";
+import { ReviewableDocument, type ReviewComment } from "@/components/signing/ReviewableDocument";
 import { getPepAgreementText, PEP_AGREEMENT_VERSION } from "@/constants/pepAgreementTemplate";
 import { sha256Hex } from "@/utils/documentHash";
-import { CheckCircle2, FileText, ShieldCheck, AlertTriangle, Clock } from "lucide-react";
+import { CheckCircle2, FileText, ShieldCheck, AlertTriangle, Clock, MessageSquareText, Send, PenLine } from "lucide-react";
 import { toast } from "sonner";
 
 interface SigData {
@@ -29,11 +31,13 @@ interface SigData {
   recipient_name: string;
   recipient_user_id: string | null;
   status: string;
+  mode?: string;
+  current_revision_id?: string | null;
   expires_at: string;
   signed_at: string | null;
 }
 
-type Step = "loading" | "identity" | "agreement" | "review" | "sign" | "done" | "error" | "expired" | "already-signed";
+type Step = "loading" | "identity" | "agreement" | "review" | "sign" | "done" | "error" | "expired" | "already-signed" | "review-mode";
 
 export default function SignDocument() {
   const { token } = useParams<{ token: string }>();
@@ -46,6 +50,14 @@ export default function SignDocument() {
   const [signAccepted, setSignAccepted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [signedInfo, setSignedInfo] = useState<{ ip: string; signedAt: string; pepAgreementId: string } | null>(null);
+  const [comments, setComments] = useState<ReviewComment[]>([]);
+  const [requestText, setRequestText] = useState("");
+  const [requestingChanges, setRequestingChanges] = useState(false);
+
+  const loadComments = async (tk: string) => {
+    const { data } = await (supabase as any).rpc("get_signature_comments_by_token", { p_token: tk });
+    setComments((data as ReviewComment[]) || []);
+  };
 
   useEffect(() => {
     if (!token) { setStep("error"); setErrorMsg("Токен не указан"); return; }
@@ -63,9 +75,48 @@ export default function SignDocument() {
 
       if (row.status === "signed") { setStep("already-signed"); return; }
       if (new Date(row.expires_at) < new Date()) { setStep("expired"); return; }
+
+      if (row.mode === "review" || row.status === "in_review" || row.status === "changes_requested") {
+        await loadComments(token);
+        setStep("review-mode");
+        return;
+      }
       setStep("identity");
     })();
   }, [token]);
+
+  const handleAddComment = async ({ quotedText, commentText, positionAnchor }: { quotedText: string; commentText: string; positionAnchor: any }) => {
+    if (!token) return;
+    const { error } = await (supabase as any).rpc("add_signature_comment_by_token", {
+      p_token: token,
+      p_author_name: fullName || sig?.recipient_name || "Получатель",
+      p_quoted_text: quotedText,
+      p_comment_text: commentText,
+      p_position_anchor: positionAnchor,
+    });
+    if (error) throw error;
+    await loadComments(token);
+  };
+
+  const handleRequestChanges = async () => {
+    if (!token) return;
+    setRequestingChanges(true);
+    try {
+      const { error } = await (supabase as any).rpc("request_signature_changes", {
+        p_token: token,
+        p_summary: requestText.trim() || null,
+      });
+      if (error) throw error;
+      toast.success("Запрос на правки отправлен отправителю");
+      setRequestText("");
+      const { data } = await supabase.rpc("get_signature_by_token", { p_token: token });
+      if (data && data.length > 0) setSig(data[0] as SigData);
+    } catch (e: any) {
+      toast.error(e.message || "Не удалось отправить запрос");
+    } finally {
+      setRequestingChanges(false);
+    }
+  };
 
   const today = new Date().toLocaleDateString("ru-RU");
   const agreementText = sig ? getPepAgreementText({
@@ -116,14 +167,16 @@ export default function SignDocument() {
 
   return (
     <>
-      <Helmet><title>Подписание документа · Синтагма</title></Helmet>
+      <Helmet><title>{sig?.mode === "review" ? "Согласование документа" : "Подписание документа"} · Синтагма</title></Helmet>
       <div className="min-h-screen bg-gradient-to-br from-background via-muted/20 to-primary/5 py-8 px-4">
-        <div className="max-w-3xl mx-auto">
+        <div className={step === "review-mode" ? "max-w-6xl mx-auto" : "max-w-3xl mx-auto"}>
           <div className="text-center mb-6">
             <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 text-primary text-sm font-medium mb-3">
-              <ShieldCheck className="w-4 h-4" /> Простая электронная подпись · 63-ФЗ
+              {sig?.mode === "review"
+                ? (<><MessageSquareText className="w-4 h-4" /> Согласование с правками</>)
+                : (<><ShieldCheck className="w-4 h-4" /> Простая электронная подпись · 63-ФЗ</>)}
             </div>
-            <h1 className="text-2xl font-bold">Подписание документа</h1>
+            <h1 className="text-2xl font-bold">{sig?.mode === "review" ? "Согласование документа" : "Подписание документа"}</h1>
             {sig && <p className="text-muted-foreground text-sm mt-1">Отправитель: <strong>{sig.organization_name}</strong></p>}
           </div>
 
@@ -149,6 +202,79 @@ export default function SignDocument() {
               <h2 className="font-bold text-lg mb-1">Документ уже подписан</h2>
               <p className="text-muted-foreground">«{sig.document_title}» подписан {sig.signed_at ? new Date(sig.signed_at).toLocaleString("ru-RU") : ""}.</p>
             </CardContent></Card>
+          )}
+
+          {/* === РЕЖИМ СОГЛАСОВАНИЯ === */}
+          {step === "review-mode" && sig && (
+            <div className="space-y-4">
+              <Card>
+                <CardHeader>
+                  <div className="flex items-start justify-between gap-3 flex-wrap">
+                    <div>
+                      <CardTitle className="flex items-center gap-2"><FileText className="w-5 h-5" />{sig.document_title}</CardTitle>
+                      <CardDescription>
+                        Выделите любой фрагмент текста, чтобы оставить комментарий или предложить правку.
+                        После согласования вы сможете подписать документ.
+                      </CardDescription>
+                    </div>
+                    <Badge variant="outline" className={
+                      sig.status === "changes_requested"
+                        ? "bg-pink-500/10 text-pink-600 border-pink-500/20"
+                        : "bg-violet-500/10 text-violet-600 border-violet-500/20"
+                    }>
+                      {sig.status === "changes_requested" ? "Запрошены правки" : "На согласовании"}
+                    </Badge>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  {sig.document_html ? (
+                    <ReviewableDocument
+                      documentHtml={sig.document_html}
+                      comments={comments}
+                      authorName={fullName || sig.recipient_name}
+                      onAddComment={handleAddComment}
+                    />
+                  ) : (
+                    <div className="text-center text-muted-foreground p-12">
+                      <FileText className="w-12 h-12 mx-auto mb-2 opacity-50" />
+                      Документ не содержит текстового представления для согласования.
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Действия */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-base">Что дальше?</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="space-y-2">
+                    <Label className="flex items-center gap-1.5"><MessageSquareText className="w-3.5 h-3.5" />Запросить правки у отправителя</Label>
+                    <Textarea
+                      placeholder="Опишите, какие изменения нужны (или оставьте пусто, если уже добавили комментарии к фрагментам)…"
+                      value={requestText}
+                      onChange={(e) => setRequestText(e.target.value)}
+                      rows={3}
+                    />
+                    <Button variant="outline" className="w-full gap-2" onClick={handleRequestChanges} disabled={requestingChanges}>
+                      <Send className="w-4 h-4" />
+                      {requestingChanges ? "Отправка…" : "Отправить запрос на правки"}
+                    </Button>
+                  </div>
+
+                  <div className="border-t pt-4">
+                    <Button className="w-full gap-2" size="lg" onClick={() => setStep("identity")}>
+                      <PenLine className="w-4 h-4" />
+                      Согласовать и подписать
+                    </Button>
+                    <p className="text-xs text-muted-foreground text-center mt-2">
+                      Если вас всё устраивает — переходите к подписанию ПЭП.
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
           )}
 
           {step === "identity" && sig && (
