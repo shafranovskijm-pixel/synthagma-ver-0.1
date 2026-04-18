@@ -24,6 +24,7 @@ import { CourseAchievementsTab } from "@/components/organization/CourseAchieveme
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 import { useCourseDetails } from "@/hooks/useCourseDetails";
 const CourseBuilder = lazy(() => import("@/pages/CourseBuilder"));
+const CoursePreviewView = lazy(() => import("@/components/course-preview/CoursePreviewView").then(m => ({ default: m.CoursePreviewView })));
 
 interface Course {
   id: string; title: string; description: string | null; is_published: boolean; created_at: string;
@@ -40,7 +41,7 @@ interface Student { id: string; user_id: string; enrollment_id: string | null; n
 
 interface CourseDetailsContentProps {
   course: Course; courseStudents: Student[]; organizationId: string | null;
-  activeTab: "students" | "materials" | "history" | "tests" | "landing" | "settings" | "reminders" | "groups" | "requests" | "achievements" | "editor";
+  activeTab: "students" | "materials" | "history" | "tests" | "landing" | "settings" | "reminders" | "groups" | "requests" | "achievements" | "editor" | "preview";
   onTabChange: (tab: CourseDetailsContentProps["activeTab"]) => void;
   onEnrollStudent: () => void; onCourseDeleted?: () => void; onCourseUpdated?: () => void; onRefreshStudents?: () => void;
 }
@@ -67,7 +68,7 @@ export function CourseDetailsContent({ course, courseStudents, organizationId, a
               </div>
             </div>
             <div className="flex gap-2">
-              <Button variant="outline" className="rounded-xl gap-2" onClick={() => h.navigate(`/course-preview/${course.id}`)}><Eye className="w-4 h-4" />Просмотр</Button>
+              <Button variant="outline" className="rounded-xl gap-2" onClick={() => onTabChange("preview")}><Eye className="w-4 h-4" />Просмотр</Button>
               <Button className="rounded-xl gap-2 btn-gradient" onClick={() => onTabChange("editor")}><Edit className="w-4 h-4" />Редактировать</Button>
               <Button variant="outline" className="rounded-xl gap-2 text-destructive hover:bg-destructive hover:text-destructive-foreground" onClick={() => h.setShowDeleteConfirm(true)}><Trash2 className="w-4 h-4" />Удалить</Button>
             </div>
@@ -110,6 +111,7 @@ export function CourseDetailsContent({ course, courseStudents, organizationId, a
             <div className="hidden lg:block mt-4"><div className="border-t border-border/50 mb-3" /><p className="text-[11px] font-semibold text-muted-foreground/70 uppercase tracking-wider px-3 mb-2">Настройки</p></div>
             <div className="lg:hidden w-px bg-border/50 mx-1 shrink-0" />
             {([
+              { value: "preview" as const, label: "Просмотр", icon: Eye, color: "text-sigma-cyan" },
               { value: "editor" as const, label: "Редактор", icon: Edit, color: "text-primary" },
               { value: "landing" as const, label: "Страница курса", icon: Globe, color: "text-rose-500" },
               { value: "settings" as const, label: "Настройки", icon: Settings, color: "text-muted-foreground" },
@@ -171,6 +173,7 @@ export function CourseDetailsContent({ course, courseStudents, organizationId, a
           {activeTab === "groups" && <CourseGroupsTab courseId={course.id} organizationId={organizationId || ""} onRefreshStudents={onRefreshStudents} />}
           {activeTab === "achievements" && organizationId && <CourseAchievementsTab courseId={course.id} organizationId={organizationId} />}
           {activeTab === "editor" && <Suspense fallback={<div className="flex items-center justify-center py-16"><SigmaSpinner size="lg" /></div>}><CourseBuilder embedded embeddedCourseId={course.id} /></Suspense>}
+          {activeTab === "preview" && <Suspense fallback={<div className="flex items-center justify-center py-16"><SigmaSpinner size="lg" /></div>}><CoursePreviewView courseId={course.id} embedded onNavigateToEditor={() => onTabChange("editor")} /></Suspense>}
         </div>
       </div>
 

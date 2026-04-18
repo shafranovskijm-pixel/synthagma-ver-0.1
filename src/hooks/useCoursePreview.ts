@@ -32,8 +32,16 @@ export interface TestQuestion {
   image_url?: string | null;
 }
 
-export function useCoursePreview() {
-  const { courseId } = useParams();
+export interface UseCoursePreviewOptions {
+  courseIdOverride?: string;
+  embedded?: boolean;
+  onNavigateBack?: () => void;
+  onNavigateToEditor?: () => void;
+}
+
+export function useCoursePreview(options: UseCoursePreviewOptions = {}) {
+  const params = useParams();
+  const courseId = options.courseIdOverride ?? params.courseId;
   const { user } = useAuth();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -132,8 +140,14 @@ export function useCoursePreview() {
     if (!showDocumentsView) transition(() => setShowDocumentsView(true));
   };
 
-  const navigateBack = () => fromStore ? navigate(getAdminAwareBackPath()) : navigate(`/course-builder/${courseId}`);
-  const navigateToEditor = () => navigate(`/course-builder/${courseId}`);
+  const navigateBack = () => {
+    if (options.onNavigateBack) return options.onNavigateBack();
+    return fromStore ? navigate(getAdminAwareBackPath()) : navigate(`/course-builder/${courseId}`);
+  };
+  const navigateToEditor = () => {
+    if (options.onNavigateToEditor) return options.onNavigateToEditor();
+    return navigate(`/course-builder/${courseId}`);
+  };
 
   return {
     courseId, course, lessons, currentLesson, currentLessonIndex, loading, isTransitioning,
