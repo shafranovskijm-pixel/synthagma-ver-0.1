@@ -286,6 +286,12 @@ export function ReviewableDocument({ documentHtml, comments, authorName, canComm
     <div className="grid grid-cols-1 lg:grid-cols-[1fr_340px] gap-4 relative">
       {/* Документ */}
       <div className="relative">
+        {canComment && !selection && !draftKind && (
+          <div className="mb-2 text-xs text-muted-foreground bg-emerald-50 border border-emerald-200 rounded-md px-3 py-1.5 flex items-center gap-2">
+            <Plus className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+            <span>Выделите фрагмент для правки или <b>кликните в нужное место</b> текста, чтобы добавить новый пункт.</span>
+          </div>
+        )}
         <div
           ref={docRef}
           className={
@@ -302,14 +308,7 @@ export function ReviewableDocument({ documentHtml, comments, authorName, canComm
             "[&_ins[data-kind='insert-only']]:font-medium"
           }
           dangerouslySetInnerHTML={{ __html: documentHtml }}
-          onClick={(e) => {
-            const target = e.target as HTMLElement;
-            const mark = target.closest("mark[data-comment-id], ins[data-comment-id]");
-            if (mark) {
-              const id = mark.getAttribute("data-comment-id");
-              if (id) setActiveCommentId(id);
-            }
-          }}
+          onClick={handleDocClick}
         />
 
         {/* Floating toolbar при выделении */}
