@@ -205,12 +205,16 @@ export function MediaLibraryDialog({ open, onClose, onSelect, filter = "all", or
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState("");
   const [selectedFile, setSelectedFile] = useState<StorageFile | null>(null);
+  const [showOnlyUnused, setShowOnlyUnused] = useState(false);
+  const [fileToDelete, setFileToDelete] = useState<StorageFile | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     if (open) {
       loadFiles();
       setSelectedFile(null);
       setSearch("");
+      setShowOnlyUnused(false);
     }
   }, [open]);
 
