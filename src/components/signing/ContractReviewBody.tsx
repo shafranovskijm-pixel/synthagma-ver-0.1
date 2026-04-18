@@ -104,6 +104,15 @@ export function ContractReviewBody({
   const [finalizing, setFinalizing] = useState(false);
   const [orgMessage, setOrgMessage] = useState("");
 
+  // Inline signing state (recipient)
+  const [signPanelOpen, setSignPanelOpen] = useState(false);
+  const [signFullName, setSignFullName] = useState("");
+  const [signEmail, setSignEmail] = useState("");
+  const [agreementAccepted, setAgreementAccepted] = useState(false);
+  const [signAccepted, setSignAccepted] = useState(false);
+  const [submittingSign, setSubmittingSign] = useState(false);
+  const [signedInfo, setSignedInfo] = useState<{ ip: string; signedAt: string; pepAgreementId: string } | null>(null);
+
   const currentRevision =
     revisions.find(r => r.id === sig?.current_revision_id) ||
     revisions[revisions.length - 1] ||
