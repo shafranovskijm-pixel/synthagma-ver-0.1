@@ -308,8 +308,8 @@ export default function CourseBuilder({ embedded, embeddedCourseId, onExitEditor
           </div>
 
           {/* RIGHT: sticky "Добавить урок" panel (desktop) */}
-          <aside className={cn("hidden lg:block sticky self-start w-72 shrink-0", embedded ? "top-4" : "top-24")}>
-            <div className={cn("bg-card rounded-2xl border border-border p-4 sm:p-6 shadow-sm overflow-y-auto", embedded ? "max-h-[calc(100vh-2rem)]" : "max-h-[calc(100vh-7rem)]")}>
+          <aside className={cn("hidden lg:block sticky self-start w-72 shrink-0 overflow-y-auto", embedded ? "top-4 max-h-[calc(100vh-2rem)]" : "top-24 max-h-[calc(100vh-7rem)]")}>
+            <div className="bg-card rounded-2xl border border-border p-4 sm:p-6 shadow-sm">
               <h3 className="font-semibold mb-3 sm:mb-4">Добавить урок</h3>
               <AddLessonGrid
                 addLesson={addLesson}
