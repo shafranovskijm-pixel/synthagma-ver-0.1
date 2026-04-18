@@ -50,23 +50,26 @@ const App = () => (
         <QueryClientProvider client={queryClient}>
           <Router>
             <AuthProvider>
-              <ThemeInit />
-              <ScrollToTop />
-              <OfflineIndicator />
-              <TooltipProvider>
-                <Sonner />
-                <SpecialOfferPopup />
-                <Suspense fallback={<LazyLoadFallback />}>
-                  <Routes>
-                    {publicRoutes}
-                    {studentRoutes}
-                    {organizationRoutes}
-                    {adminRoutes}
-                    {partnerRoutes}
-                    {companyRoutes}
-                  </Routes>
-                </Suspense>
-              </TooltipProvider>
+              <BackgroundUploadsProvider>
+                <ThemeInit />
+                <ScrollToTop />
+                <OfflineIndicator />
+                <TooltipProvider>
+                  <Sonner />
+                  <SpecialOfferPopup />
+                  <BackgroundUploadsTray />
+                  <Suspense fallback={<LazyLoadFallback />}>
+                    <Routes>
+                      {publicRoutes}
+                      {studentRoutes}
+                      {organizationRoutes}
+                      {adminRoutes}
+                      {partnerRoutes}
+                      {companyRoutes}
+                    </Routes>
+                  </Suspense>
+                </TooltipProvider>
+              </BackgroundUploadsProvider>
             </AuthProvider>
           </Router>
         </QueryClientProvider>
