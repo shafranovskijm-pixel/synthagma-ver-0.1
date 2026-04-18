@@ -240,7 +240,7 @@ export function ReviewableDocument({ documentHtml, comments, authorName, canComm
             className="fixed z-50 bg-foreground text-background rounded-lg shadow-xl px-1 py-1 flex items-center gap-0.5"
             style={{
               top: Math.max(selection.rect.top - 44, 8),
-              left: Math.max(Math.min(selection.rect.left + selection.rect.width / 2 - 130, window.innerWidth - 280), 8),
+              left: Math.max(Math.min(selection.rect.left + selection.rect.width / 2 - 170, window.innerWidth - 360), 8),
             }}
           >
             <Button size="sm" variant="ghost" className="h-7 text-xs gap-1.5 hover:bg-background/20"
@@ -253,9 +253,30 @@ export function ReviewableDocument({ documentHtml, comments, authorName, canComm
               <Scissors className="w-3.5 h-3.5" />Удалить
             </Button>
             <div className="w-px h-4 bg-background/20" />
-            <Button size="sm" variant="ghost" className="h-7 text-xs gap-1.5 hover:bg-background/20 text-emerald-200"
+            <Button size="sm" variant="ghost" className="h-7 text-xs gap-1.5 hover:bg-background/20 text-amber-200"
               onClick={() => setDraftKind("replace")}>
               <Replace className="w-3.5 h-3.5" />Заменить
+            </Button>
+            <div className="w-px h-4 bg-background/20" />
+            <Button size="sm" variant="ghost" className="h-7 text-xs gap-1.5 hover:bg-background/20 text-emerald-200"
+              onClick={() => setDraftKind("insert")}>
+              <Plus className="w-3.5 h-3.5" />Вставить после
+            </Button>
+          </div>
+        )}
+
+        {/* Caret-toolbar: insert в позицию курсора без выделения */}
+        {insertCaret && canComment && !draftKind && !selection && (
+          <div
+            className="fixed z-50 bg-foreground text-background rounded-lg shadow-xl px-1 py-1 flex items-center"
+            style={{
+              top: Math.max(insertCaret.rect.top - 40, 8),
+              left: Math.max(Math.min(insertCaret.rect.left, window.innerWidth - 220), 8),
+            }}
+          >
+            <Button size="sm" variant="ghost" className="h-7 text-xs gap-1.5 hover:bg-background/20 text-emerald-200"
+              onClick={() => setDraftKind("insert")}>
+              <Plus className="w-3.5 h-3.5" />Добавить пункт здесь
             </Button>
           </div>
         )}
