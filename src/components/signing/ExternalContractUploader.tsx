@@ -25,6 +25,8 @@ const ALLOWED_MIME = [
 ];
 const MAX_SIZE = 20 * 1024 * 1024; // 20 MB
 
+const FALLBACK_ADMIN_EMAIL = "support@syntagma.com.ru";
+
 export function ExternalContractUploader({ open, onOpenChange, organizationId, defaultAdminEmail, onSent }: Props) {
   const [file, setFile] = useState<File | null>(null);
   const [title, setTitle] = useState("");
@@ -58,10 +60,11 @@ export function ExternalContractUploader({ open, onOpenChange, organizationId, d
   };
 
   const send = async () => {
-    if (!file || !title.trim() || !adminEmail.trim()) {
-      toast.error("Заполните все поля");
+    if (!file || !title.trim()) {
+      toast.error("Загрузите файл и укажите название");
       return;
     }
+    const recipientEmail = adminEmail.trim() || FALLBACK_ADMIN_EMAIL;
     setUploading(true);
     try {
       const ext = file.name.split(".").pop() || "bin";
@@ -80,7 +83,7 @@ export function ExternalContractUploader({ open, onOpenChange, organizationId, d
         p_file_name: file.name,
         p_file_mime: file.type || "application/octet-stream",
         p_document_title: title.trim(),
-        p_admin_email: adminEmail.trim(),
+        p_admin_email: recipientEmail,
         p_admin_name: "Администратор Синтагма",
         p_summary: summary.trim() || null,
       });
@@ -161,8 +164,9 @@ export function ExternalContractUploader({ open, onOpenChange, organizationId, d
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="ec-admin">Email администратора Синтагмы</Label>
-            <Input id="ec-admin" type="email" value={adminEmail} onChange={(e) => setAdminEmail(e.target.value)} placeholder="admin@sintagma.com.ru" />
+            <Label htmlFor="ec-admin">Email администратора Синтагмы <span className="text-muted-foreground font-normal">(необязательно)</span></Label>
+            <Input id="ec-admin" type="email" value={adminEmail} onChange={(e) => setAdminEmail(e.target.value)} placeholder={FALLBACK_ADMIN_EMAIL} />
+            <p className="text-xs text-muted-foreground">Если оставить пустым, документ уйдёт на {FALLBACK_ADMIN_EMAIL}</p>
           </div>
 
           <div className="space-y-2">
@@ -173,7 +177,7 @@ export function ExternalContractUploader({ open, onOpenChange, organizationId, d
 
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={uploading}>Отмена</Button>
-          <Button onClick={send} disabled={!file || !title.trim() || !adminEmail.trim() || uploading} className="gap-2">
+          <Button onClick={send} disabled={!file || !title.trim() || uploading} className="gap-2">
             {uploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
             Отправить на согласование
           </Button>
