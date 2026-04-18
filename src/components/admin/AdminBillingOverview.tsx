@@ -131,7 +131,7 @@ function AllBillingContent({ h, statusBadge }: any) {
         </TabsList>
         <TabsContent value="contracts" className="mt-4">
           <div className="flex justify-end mb-3"><Button size="sm" className="rounded-xl gap-1.5" onClick={() => h.setShowCreateContract(true)}><Plus className="w-3.5 h-3.5" />Создать договор</Button></div>
-          {h.filteredContracts.length === 0 ? <EmptyState text="Договоров не найдено" /> : <div className="space-y-2">{h.filteredContracts.map((c: Contract) => <div key={c.id} className="flex items-center justify-between p-3 rounded-lg border border-border hover:bg-muted/30 transition-colors"><div className="flex items-center gap-3"><ScrollText className="w-4 h-4 text-primary" /><div><div className="text-sm font-medium">{c.contract_number ? `Договор №${c.contract_number}` : "Договор (без номера)"}</div><div className="text-xs text-muted-foreground">{c.org_name} {c.contract_date && `· ${format(new Date(c.contract_date), "d MMM yyyy", { locale: ru })}`}</div></div></div>{statusBadge(c.status)}</div>)}</div>}
+          {h.filteredContracts.length === 0 ? <EmptyState text="Договоров не найдено" /> : <div className="space-y-2">{h.filteredContracts.map((c: Contract) => <ContractRow key={c.id} c={c} statusBadge={statusBadge} />)}</div>}
         </TabsContent>
         <TabsContent value="invoices" className="mt-4">
           {h.selectedInvoiceIds.size > 0 && <div className="flex items-center gap-2 mb-3"><span className="text-sm text-muted-foreground">Выбрано: {h.selectedInvoiceIds.size}</span><Button variant="destructive" size="sm" className="rounded-xl gap-1.5" onClick={() => h.setShowDeleteConfirm(true)}><Trash2 className="w-3.5 h-3.5" />Удалить</Button><Button variant="ghost" size="sm" onClick={() => h.toggleInvoiceSelection('__clear__')}>Снять выделение</Button></div>}
@@ -147,7 +147,35 @@ function AllBillingContent({ h, statusBadge }: any) {
 
 function OrgContractsList({ contracts, statusBadge }: { contracts: Contract[]; statusBadge: (s: string) => React.ReactNode }) {
   if (contracts.length === 0) return <EmptyState text="Нет договоров" />;
-  return <div className="space-y-2">{contracts.map(c => <div key={c.id} className="flex items-center justify-between p-3 rounded-lg border border-border hover:bg-muted/30 transition-colors"><div className="flex items-center gap-3"><ScrollText className="w-4 h-4 text-primary" /><div><div className="text-sm font-medium">{c.contract_number ? `Договор №${c.contract_number}` : "Договор (без номера)"}</div><div className="text-xs text-muted-foreground">{c.contract_date && format(new Date(c.contract_date), "d MMM yyyy", { locale: ru })}</div></div></div>{statusBadge(c.status)}</div>)}</div>;
+  return <div className="space-y-2">{contracts.map(c => <ContractRow key={c.id} c={c} statusBadge={statusBadge} compact />)}</div>;
+}
+
+function ContractRow({ c, statusBadge, compact = false }: { c: Contract; statusBadge: (s: string) => React.ReactNode; compact?: boolean }) {
+  const isSignature = c.kind === 'signature';
+  const title = isSignature
+    ? (c.document_title || 'Договор на согласование')
+    : (c.contract_number ? `Договор №${c.contract_number}` : "Договор (без номера)");
+  const subtitle = isSignature
+    ? `${compact ? '' : (c.org_name + ' · ')}Внешний договор · ${c.sender_name || ''}${c.contract_date ? ' · ' + format(new Date(c.contract_date), "d MMM yyyy", { locale: ru }) : ''}`
+    : `${compact ? '' : (c.org_name || '')} ${c.contract_date ? '· ' + format(new Date(c.contract_date), "d MMM yyyy", { locale: ru }) : ''}`;
+  return (
+    <div id={`contract-${c.id}`} className="flex items-center justify-between p-3 rounded-lg border border-border hover:bg-muted/30 transition-colors">
+      <div className="flex items-center gap-3 min-w-0">
+        <ScrollText className={cn("w-4 h-4 shrink-0", isSignature ? "text-amber-500" : "text-primary")} />
+        <div className="min-w-0">
+          <div className="text-sm font-medium truncate">{title}</div>
+          <div className="text-xs text-muted-foreground truncate">{subtitle}</div>
+        </div>
+      </div>
+      <div className="flex items-center gap-2 shrink-0">
+        {isSignature && <Badge variant="outline" className="text-[10px] border-amber-300 text-amber-700 bg-amber-50">На согласование</Badge>}
+        {statusBadge(c.status)}
+        {isSignature && c.signature_token && (
+          <Button variant="ghost" size="sm" onClick={() => window.open(`/sign/${c.signature_token}`, "_blank")}><ExternalLink className="w-4 h-4" /></Button>
+        )}
+      </div>
+    </div>
+  );
 }
 
 function OrgInvoicesList({ invoices, statusBadge, onMarkPaid, selectedInvoiceIds, toggleInvoiceSelection, onDeleteSelected }: any) {

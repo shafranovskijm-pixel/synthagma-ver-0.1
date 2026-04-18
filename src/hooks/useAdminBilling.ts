@@ -24,6 +24,10 @@ export interface Contract {
   id: string; organization_id: string; contract_number: string | null;
   contract_date: string | null; file_url: string | null; status: string;
   created_at: string; org_name?: string;
+  kind?: 'org_contract' | 'signature';
+  signature_token?: string | null;
+  document_title?: string | null;
+  sender_name?: string | null;
 }
 
 export interface Org {
@@ -83,11 +87,15 @@ export function useAdminBilling() {
 
   const loadData = async () => {
     setLoading(true);
-    const [invoiceRes, docsRes, contractsRes, orgsRes] = await Promise.all([
+    const [invoiceRes, docsRes, contractsRes, orgsRes, signaturesRes] = await Promise.all([
       supabase.from("subscription_invoices").select("*").order("created_at", { ascending: false }),
       supabase.from("org_billing_documents" as any).select("*").order("created_at", { ascending: false }),
       supabase.from("org_contracts").select("*").order("created_at", { ascending: false }),
       supabase.from("organizations").select("id, name, inn, kpp, director_name, director_position, subscription_plan, custom_price, custom_discount"),
+      supabase.from("document_signatures")
+        .select("id, organization_id, document_title, sender_name, status, created_at, signature_token, recipient_type")
+        .eq("recipient_type", "admin_sintagma")
+        .order("created_at", { ascending: false }),
     ]);
     const orgMap: Record<string, string> = {};
     const orgList: Org[] = [];
@@ -95,7 +103,23 @@ export function useAdminBilling() {
     setOrgs(orgList);
     setInvoices((invoiceRes.data || []).map((i: any) => ({ ...i, org_name: orgMap[i.organization_id] || "—" })));
     setBillingDocs((docsRes.data as any[] || []).map((d: any) => ({ ...d, org_name: orgMap[d.organization_id] || "—" })));
-    setContracts((contractsRes.data || []).map((c: any) => ({ ...c, org_name: orgMap[c.organization_id] || "—" })));
+    const orgContractsList: Contract[] = (contractsRes.data || []).map((c: any) => ({ ...c, org_name: orgMap[c.organization_id] || "—", kind: 'org_contract' as const }));
+    const signatureContractsList: Contract[] = (signaturesRes.data || []).map((s: any) => ({
+      id: s.id,
+      organization_id: s.organization_id,
+      contract_number: null,
+      contract_date: s.created_at,
+      file_url: null,
+      status: s.status === 'signed' ? 'paid' : (s.status === 'in_review' || s.status === 'sent' ? 'pending' : s.status),
+      created_at: s.created_at,
+      org_name: orgMap[s.organization_id] || "—",
+      kind: 'signature' as const,
+      signature_token: s.signature_token,
+      document_title: s.document_title,
+      sender_name: s.sender_name,
+    }));
+    const merged = [...orgContractsList, ...signatureContractsList].sort((a, b) => (b.created_at || '').localeCompare(a.created_at || ''));
+    setContracts(merged);
     setLoading(false);
   };
 
