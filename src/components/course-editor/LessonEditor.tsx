@@ -1,17 +1,24 @@
+import { useState, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { FileText, Video, HelpCircle, Plus, Trash2, Sparkles, Settings, Upload, FolderOpen, FileSpreadsheet } from "lucide-react";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { FileText, Video, HelpCircle, Plus, Trash2, Sparkles, Settings, Upload, FolderOpen, FileSpreadsheet, Lock } from "lucide-react";
 import { BlockEditor } from "@/components/course-builder/BlockEditor";
 import { TestImportDialog } from "@/components/course-builder/TestImportDialog";
-import { Badge } from "@/components/ui/badge";
 import { MediaLibraryDialog } from "@/components/course-builder/MediaLibraryDialog";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
-import { VideoPreview } from "@/components/course-editor/VideoPreview";
+import { VideoPreviewInline } from "@/components/course-builder/VideoPreviewInline";
+import { LazyMediaPreview } from "@/components/course-builder/LazyMediaPreview";
+import { UploadProgressBlock } from "@/components/course-builder/UploadProgressBlock";
 import { useLessonEditor, type TestQuestion } from "@/hooks/useLessonEditor";
+import { useLessonMedia } from "@/hooks/useLessonMedia";
+import { useSubscriptionLimits } from "@/hooks/useSubscriptionLimits";
+import { useNavigate } from "react-router-dom";
+import { toast } from "sonner";
 
 interface Lesson {
   id: string;
@@ -38,13 +45,25 @@ interface LessonEditorProps {
   courseId?: string;
   courseTitle?: string;
   courseDescription?: string;
+  organizationId?: string;
 }
 
 export const LessonEditor = ({
   lesson, isOpen, onClose, onSave,
-  existingQuestions = [], courseId = "", courseTitle = "", courseDescription = ""
+  existingQuestions = [], courseId = "", courseTitle = "", courseDescription = "",
+  organizationId,
 }: LessonEditorProps) => {
   const e = useLessonEditor({ lesson, isOpen, existingQuestions, courseId, courseTitle, courseDescription, onSave });
+  const navigate = useNavigate();
+  const { limits } = useSubscriptionLimits(organizationId || null);
+  const isKinescopeAvailable = limits.kinescopeEnabled;
+  const [videoUploadTab, setVideoUploadTab] = useState<string>(isKinescopeAvailable ? "kinescope" : "server");
+  const [skipCompression, setSkipCompression] = useState(false);
+
+  const lessonIdForMedia = useMemo(() => lesson?.id || `new-${Date.now()}`, [lesson?.id]);
+  const media = useLessonMedia(lessonIdForMedia, courseId, (updates: any) => {
+    if (typeof updates?.content === "string") e.setVideoUrl(updates.content);
+  });
 
   return (
     <>
