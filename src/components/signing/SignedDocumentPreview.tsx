@@ -44,18 +44,22 @@ const BUCKET = "external-contracts";
 export function SignedDocumentPreview({
   open,
   onOpenChange,
+  signatureId,
   documentTitle,
   documentHtml,
   attachedFilePath,
   attachedFileMime,
   handwrittenScanPath,
+  signedDocumentPath,
   sender,
   recipient,
   signatureMethod = "pep",
 }: Props) {
   const [attachedUrl, setAttachedUrl] = useState<string | null>(null);
   const [scanUrl, setScanUrl] = useState<string | null>(null);
+  const [cachedPdfUrl, setCachedPdfUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [generating, setGenerating] = useState(false);
 
   useEffect(() => {
     if (!open) return;
