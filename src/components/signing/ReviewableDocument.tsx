@@ -115,20 +115,23 @@ export function ReviewableDocument({ documentHtml, comments, authorName, canComm
   // Подсветка фрагментов с учётом типа правки
   useEffect(() => {
     if (!docRef.current) return;
-    // Очищаем предыдущие подсветки
     clearHighlights(docRef.current);
-    // Применяем подсветки
     comments.forEach((c) => {
       const kind: SuggestionKind = c.position_anchor?.kind || "comment";
       const replacement: string | undefined = c.position_anchor?.replacement;
       const startOffset: number | undefined = c.position_anchor?.startOffset;
       const endOffset: number | undefined = c.position_anchor?.endOffset;
 
+      // Insert-only: одна точка, рендерим зелёную вставку в позиции
+      if (kind === "insert" && typeof startOffset === "number" && replacement) {
+        insertAtOffset(docRef.current!, startOffset, c.id, replacement);
+        return;
+      }
+
       if (typeof startOffset === "number" && typeof endOffset === "number" && endOffset > startOffset) {
         const ok = highlightByOffsets(docRef.current!, startOffset, endOffset, c.id, c.resolved, kind, replacement);
         if (ok) return;
       }
-      // Fallback: старый поиск по тексту (для legacy-комментариев)
       if (c.quoted_text) {
         highlightByText(docRef.current!, c.quoted_text, c.id, c.resolved, kind, replacement);
       }
@@ -136,32 +139,52 @@ export function ReviewableDocument({ documentHtml, comments, authorName, canComm
   }, [comments, documentHtml]);
 
   const handleSubmit = async () => {
-    if (!selection || !draftKind) return;
+    if (!draftKind) return;
+    if (draftKind === "insert" && !draftReplacement.trim()) return;
     if (draftKind === "comment" && !draftText.trim()) return;
     if (draftKind === "replace" && !draftReplacement.trim()) return;
+    if (draftKind !== "insert" && !selection) return;
+    if (draftKind === "insert" && !insertCaret && !selection) return;
 
     setSubmitting(true);
     try {
       const commentBody =
         draftKind === "delete" ? (draftText.trim() || "Предложено удалить фрагмент") :
         draftKind === "replace" ? (draftText.trim() || "Предложена замена фрагмента") :
+        draftKind === "insert" ? (draftText.trim() || "Предложено добавить текст") :
         draftText.trim();
 
+      // Для insert: если был выделен фрагмент — вставляем после него (endOffset);
+      //              если caret — используем offset курсора.
+      const insertOffset = draftKind === "insert"
+        ? (selection ? selection.endOffset : insertCaret!.offset)
+        : null;
+
+      const positionAnchor: any = draftKind === "insert"
+        ? {
+            kind: "insert",
+            startOffset: insertOffset,
+            endOffset: insertOffset,
+            replacement: draftReplacement.trim(),
+          }
+        : {
+            text: selection!.text,
+            startOffset: selection!.startOffset,
+            endOffset: selection!.endOffset,
+            kind: draftKind,
+            ...(draftKind === "replace" ? { replacement: draftReplacement.trim() } : {}),
+          };
+
       await onAddComment({
-        quotedText: selection.text,
+        quotedText: draftKind === "insert" ? "" : selection!.text,
         commentText: commentBody,
-        positionAnchor: {
-          text: selection.text,
-          startOffset: selection.startOffset,
-          endOffset: selection.endOffset,
-          kind: draftKind,
-          ...(draftKind === "replace" ? { replacement: draftReplacement.trim() } : {}),
-        },
+        positionAnchor,
       });
       resetAll();
       toast.success(
         draftKind === "delete" ? "Правка «удалить» добавлена" :
         draftKind === "replace" ? "Правка «заменить» добавлена" :
+        draftKind === "insert" ? "Новый текст добавлен" :
         "Комментарий добавлен"
       );
     } catch (e: any) {
