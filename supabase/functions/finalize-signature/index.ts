@@ -20,11 +20,20 @@ serve(async (req) => {
     const {
       token,
       pepAgreement, // { agreement_text, agreement_version, full_name, email }
-      documentHash, // SHA-256 from client
+      documentHash, // SHA-256 from client (или 'handwritten_scan')
+      method = "pep", // 'pep' | 'handwritten_scan'
+      handwrittenScanPath = null,
+      handwrittenScanComment = null,
     } = body;
 
-    if (!token || !pepAgreement || !documentHash) {
+    if (!token || !pepAgreement) {
       return new Response(JSON.stringify({ error: "Missing required fields" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+    if (method === "pep" && !documentHash) {
+      return new Response(JSON.stringify({ error: "documentHash required for PEP" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+    if (method === "handwritten_scan" && !handwrittenScanPath) {
+      return new Response(JSON.stringify({ error: "handwrittenScanPath required for scan method" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
     const supabase = createClient(
@@ -53,8 +62,8 @@ serve(async (req) => {
       return new Response(JSON.stringify({ error: "Token expired" }), { status: 410, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    // Verify document hash matches stored content (if document_html exists)
-    if (sig.document_html) {
+    // PEP-only: verify document hash matches stored content (if document_html exists)
+    if (method === "pep" && sig.document_html) {
       const serverHash = await sha256Hex(sig.document_html);
       if (serverHash !== documentHash) {
         return new Response(JSON.stringify({ error: "Document hash mismatch — content tampered" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
@@ -84,16 +93,27 @@ serve(async (req) => {
 
     // 2. Update signature record
     const signedAt = new Date().toISOString();
+    const updatePayload: Record<string, any> = {
+      status: "signed",
+      signed_at: signedAt,
+      signed_ip: ip,
+      signed_user_agent: ua,
+      pep_agreement_id: pep.id,
+      signature_method: method,
+    };
+    if (method === "pep") {
+      updatePayload.document_hash = documentHash;
+    } else {
+      updatePayload.handwritten_scan_path = handwrittenScanPath;
+      updatePayload.document_hash = `scan:${handwrittenScanPath}`;
+      if (handwrittenScanComment) {
+        // store comment alongside as rejection_reason isn't right — keep in pep_agreement_text already.
+      }
+    }
+
     const { error: updErr } = await supabase
       .from("document_signatures")
-      .update({
-        status: "signed",
-        signed_at: signedAt,
-        signed_ip: ip,
-        signed_user_agent: ua,
-        document_hash: documentHash,
-        pep_agreement_id: pep.id,
-      })
+      .update(updatePayload)
       .eq("id", sig.id);
 
     if (updErr) {
@@ -107,6 +127,7 @@ serve(async (req) => {
       pepAgreementId: pep.id,
       signedAt,
       ip,
+      method,
     }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
   } catch (e) {
     console.error(e);
