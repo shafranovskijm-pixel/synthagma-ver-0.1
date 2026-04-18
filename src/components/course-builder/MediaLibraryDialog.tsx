@@ -203,33 +203,26 @@ export function MediaLibraryDialog({ open, onClose, onSelect, filter = "all", or
     }
   }, [open]);
 
-  const getOrgCourseIds = async (): Promise<string[]> => {
+  const resolveOrgContext = async (): Promise<{ orgId: string | null; courseIds: string[]; courseTitles: Map<string, string> }> => {
     const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return [];
+    if (!user) return { orgId: null, courseIds: [], courseTitles: new Map() };
 
-    if (organizationId) {
-      const { data } = await supabase.from("courses").select("id").eq("organization_id", organizationId);
-      if (data && data.length > 0) return data.map(c => c.id);
+    let orgId = organizationId || null;
+    if (!orgId) {
+      const { data: profile } = await supabase
+        .from("profiles").select("organization_id").eq("user_id", user.id).maybeSingle();
+      orgId = profile?.organization_id || null;
     }
 
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("organization_id")
-      .eq("user_id", user.id)
-      .maybeSingle();
+    if (!orgId) return { orgId: null, courseIds: [], courseTitles: new Map() };
 
-    if (profile?.organization_id) {
-      const { data } = await supabase.from("courses").select("id").eq("organization_id", profile.organization_id);
-      if (data && data.length > 0) return data.map(c => c.id);
-    }
+    const { data: courses } = await supabase
+      .from("courses").select("id, title").eq("organization_id", orgId);
 
-    const { data: role } = await supabase.from("user_roles").select("role").eq("user_id", user.id).maybeSingle();
-    if (role?.role === "admin") {
-      const { data } = await supabase.from("courses").select("id").limit(200);
-      return data?.map(c => c.id) || [];
-    }
-
-    return [];
+    const titles = new Map<string, string>();
+    const ids: string[] = [];
+    for (const c of courses || []) { titles.set(c.id, c.title); ids.push(c.id); }
+    return { orgId, courseIds: ids, courseTitles: titles };
   };
 
   const loadFiles = async () => {
@@ -238,132 +231,82 @@ export function MediaLibraryDialog({ open, onClose, onSelect, filter = "all", or
     const baseUrl = import.meta.env.VITE_SUPABASE_URL;
 
     try {
-      // 1. Load files from internal storage
-      const [courseFilesRes, courseVideosRes] = await Promise.all([
-        supabase.rpc("get_user_storage_files", { bucket_name: "course-files" }),
-        supabase.rpc("get_user_storage_files", { bucket_name: "course-videos" }),
-      ]);
+      const { orgId, courseIds, courseTitles } = await resolveOrgContext();
+      if (!orgId) { setFiles([]); setLoading(false); return; }
 
-      for (const { data, error, bucket } of [
-        { ...courseFilesRes, bucket: "course-files" },
-        { ...courseVideosRes, bucket: "course-videos" },
-      ]) {
-        if (!error && data) {
-          for (const f of data as any[]) {
-            const filePath = f.file_path || f.file_name;
-            const fileName = filePath.split("/").pop() || filePath;
-            const folder = filePath.includes("/") ? filePath.substring(0, filePath.lastIndexOf("/")) : "";
-
-            allFiles.push({
-              name: fileName,
-              url: `${baseUrl}/storage/v1/object/public/${bucket}/${filePath}`,
+      // Scan a single bucket prefix (one folder level deep)
+      const scanPrefix = async (
+        client: any, bucket: string, prefix: string, urlBase: string
+      ): Promise<StorageFile[]> => {
+        const out: StorageFile[] = [];
+        try {
+          const { data: items } = await client.storage.from(bucket).list(prefix, { limit: 500 });
+          if (!items) return out;
+          for (const f of items) {
+            if (f.id === null) continue; // subfolder
+            const size = (f.metadata as any)?.size || 0;
+            if (size === 0 || !f.name.includes(".")) continue;
+            out.push({
+              name: f.name,
+              url: `${urlBase}/storage/v1/object/public/${bucket}/${prefix}/${f.name}`,
               bucket,
-              folder,
-              size: f.file_size || 0,
-              created_at: f.created_at || "",
-              type: getFileType(fileName) });
+              folder: prefix,
+              size,
+              created_at: (f as any).created_at || "",
+              type: getFileType(f.name),
+              courseName: courseTitles.get(prefix),
+            });
           }
-        }
-      }
+        } catch { /* missing folder */ }
+        return out;
+      };
 
-      // 2. Load from external storage
+      // 1. Internal storage: only this org's courses + org-level buckets
+      const internalScans: Promise<StorageFile[]>[] = [];
+      for (const cid of courseIds) {
+        internalScans.push(scanPrefix(supabase, "course-files", cid, baseUrl));
+        internalScans.push(scanPrefix(supabase, "presentations", cid, baseUrl));
+      }
+      internalScans.push(scanPrefix(supabase, "org-branding", orgId, baseUrl));
+      internalScans.push(scanPrefix(supabase, "library-files", `library/${orgId}`, baseUrl));
+
+      const internalResults = await Promise.all(internalScans);
+      for (const arr of internalResults) allFiles.push(...arr);
+
+      // 2. External storage (course-videos): only this org's course folders
       try {
         const { data: config } = await supabase.functions.invoke("get-external-storage-config");
         if (config?.configured && config?.url && config?.key) {
           const { createClient } = await import("@supabase/supabase-js");
           const extClient = createClient(config.url, config.key);
-          const courseIds = await getOrgCourseIds();
+          const extScans = courseIds.map(cid => scanPrefix(extClient, "course-videos", cid, config.url));
+          const extResults = await Promise.all(extScans);
+          for (const arr of extResults) allFiles.push(...arr);
+        }
+      } catch { /* external not configured */ }
 
-          for (const courseId of courseIds) {
-            try {
-              const { data: items } = await extClient.storage
-                .from("course-videos")
-                .list(courseId, { limit: 500 });
-              if (items) {
-                for (const f of items) {
-                  if (f.id === null) continue;
-                  allFiles.push({
-                    name: f.name,
-                    url: `${config.url}/storage/v1/object/public/course-videos/${courseId}/${f.name}`,
-                    bucket: "course-videos",
-                    folder: courseId,
-                    size: (f.metadata as any)?.size || 0,
-                    created_at: (f as any).created_at || "",
-                    type: getFileType(f.name) });
-                }
-              }
-            } catch { /* folder doesn't exist */ }
+      // 3. Lightweight enrichment: mark files used in lessons (org-scoped)
+      if (allFiles.length > 0 && courseIds.length > 0) {
+        const { data: lessons } = await supabase
+          .from("lessons").select("title, content, course_id")
+          .in("course_id", courseIds);
+        const lessonsArr = lessons || [];
+        for (const file of allFiles) {
+          const match = lessonsArr.find(l => l.content && file.url && (l.content as string).includes(file.name));
+          if (match) {
+            file.isUsed = true;
+            file.lessonTitle = match.title;
+          } else {
+            file.isUsed = false;
           }
         }
-      } catch {
-        // External storage not configured
       }
-
-      // 3. Enrich files with course/lesson/owner info
-      await enrichFilesWithMetadata(allFiles);
     } catch (err) {
       console.error("Error loading media library:", err);
     }
 
     setFiles(allFiles);
     setLoading(false);
-  };
-
-  const enrichFilesWithMetadata = async (allFiles: StorageFile[]) => {
-    try {
-      // Get courses and lessons in parallel
-      const [coursesRes, lessonsRes, profileRes] = await Promise.all([
-        supabase.from("courses").select("id, title").limit(500),
-        supabase.from("lessons").select("id, title, content, course_id").limit(1000),
-        supabase.auth.getUser().then(async ({ data: { user } }) => {
-          if (!user) return null;
-          const { data: profile } = await supabase
-            .from("profiles")
-            .select("full_name, user_id")
-            .limit(200);
-          return profile;
-        }),
-      ]);
-
-      const coursesMap = new Map<string, string>();
-      if (coursesRes.data) {
-        for (const c of coursesRes.data) {
-          coursesMap.set(c.id, c.title);
-        }
-      }
-
-      const lessons = lessonsRes.data || [];
-      const profiles = profileRes || [];
-
-      for (const file of allFiles) {
-        // Map folder (courseId) to course name
-        if (file.folder && coursesMap.has(file.folder)) {
-          file.courseName = coursesMap.get(file.folder);
-        }
-
-        // Check if file URL is used in any lesson content
-        const matchingLesson = lessons.find(l =>
-          l.content && file.url && l.content.includes(file.name)
-        );
-        if (matchingLesson) {
-          file.isUsed = true;
-          file.lessonTitle = matchingLesson.title;
-          // Also set course name from lesson if not already set
-          if (!file.courseName && matchingLesson.course_id && coursesMap.has(matchingLesson.course_id)) {
-            file.courseName = coursesMap.get(matchingLesson.course_id);
-          }
-        } else {
-          file.isUsed = false;
-        }
-
-        // Owner: for now use the first profile (current user context)
-        if (profiles.length > 0) {
-          file.ownerName = profiles[0].full_name || "Пользователь";
-        }
-      }
-    } catch (err) {
-      console.error("Error enriching files:", err);
-    }
   };
 
   const filteredFiles = files
