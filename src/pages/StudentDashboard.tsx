@@ -27,6 +27,7 @@ import { Student3DTrainers } from "@/components/student/Student3DTrainers";
 import { StudentProfileContent } from "@/components/student/StudentProfileContent";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 import { supabase } from "@/integrations/supabase/client";
+import { getStoredThemeId, storeThemeId } from "@/constants/admin-themes";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel,
   AlertDialogContent, AlertDialogDescription, AlertDialogFooter,
