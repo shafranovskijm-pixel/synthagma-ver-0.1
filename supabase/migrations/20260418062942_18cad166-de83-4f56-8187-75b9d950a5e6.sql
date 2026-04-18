@@ -1,0 +1,1 @@
+ALTER TABLE public.signature_revisions ALTER COLUMN document_html DROP NOT NULL;
