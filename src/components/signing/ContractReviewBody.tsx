@@ -322,28 +322,29 @@ export function ContractReviewBody({
     }
   };
 
-  const handleOrgFinalize = async (action: "reject_all" | "send_new_version" | "sign_as_is") => {
+  const handleOrgFinalize = async (action: "reject_all" | "send_new_version" | "sign_as_is" | "send_decisions") => {
     if (!sig) return;
     const confirmText = action === "reject_all"
       ? "Отклонить все правки клиента и вернуть документ?"
       : action === "sign_as_is"
         ? "Подписать документ в текущем виде?"
-        : null;
+        : action === "send_decisions"
+          ? `Отправить клиенту ваши решения по правкам?${pendingCount > 0 ? `\n\nВнимание: ${pendingCount} правок ещё не рассмотрены — клиент увидит их как «в ожидании».` : ""}`
+          : null;
     if (confirmText && !confirm(confirmText)) return;
 
     setFinalizing(true);
     try {
       if (action === "sign_as_is") {
-        // Закрыть режим review и переключиться в инлайн-подписание (без нового окна)
-        const { error } = await (supabase as any).rpc("org_finalize_signature_review", {
-          p_signature_id: sig.id,
-          p_action: "sign_as_is",
-          p_message: orgMessage.trim() || null,
-        });
-        if (error) throw error;
-        await loadAll(signatureToken!);
+        // Открываем инлайн-панель ПЭП без вызова RPC — RPC вызовется уже из самой подписи (finalize-signature)
+        // через handleInlineSign. Так избегаем двойного финализирования и подписи остаётся валидной.
+        setSignFullName(prev => prev || user?.user_metadata?.full_name || sig.organization_name || "");
+        setSignEmail(prev => prev || user?.email || "");
         setSignPanelOpen(true);
-        toast.success("Откройте панель ниже и подпишите документ");
+        setTimeout(() => {
+          document.getElementById("inline-sign-panel")?.scrollIntoView({ behavior: "smooth", block: "center" });
+        }, 50);
+        toast.success("Заполните данные ниже и подпишите документ");
       } else {
         const { error } = await (supabase as any).rpc("org_finalize_signature_review", {
           p_signature_id: sig.id,
@@ -353,7 +354,11 @@ export function ContractReviewBody({
         if (error) throw error;
         setOrgMessage("");
         await loadAll(signatureToken!);
-        toast.success(action === "reject_all" ? "Правки отклонены" : "Уведомление отправлено клиенту");
+        toast.success(
+          action === "reject_all" ? "Правки отклонены"
+          : action === "send_decisions" ? "Решения отправлены клиенту"
+          : "Уведомление отправлено клиенту"
+        );
       }
     } catch (e: any) {
       toast.error(e.message || "Не удалось выполнить действие");
