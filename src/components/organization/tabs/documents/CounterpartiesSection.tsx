@@ -9,6 +9,7 @@ import { ScrollText, Receipt, FileCheck, Download, FileText, Lightbulb, Eye, Tra
 import { ContractLegalFaq } from "@/components/organization/ContractLegalFaq";
 import { SendForSigningDialog, type SendForSigningPayload } from "@/components/signing/SendForSigningDialog";
 import { ExternalContractUploader } from "@/components/signing/ExternalContractUploader";
+import { ContractReviewDialog } from "@/components/signing/ContractReviewDialog";
 import { File, Upload } from "lucide-react";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
@@ -79,6 +80,7 @@ export function CounterpartiesSection({
   const [showExternalUploader, setShowExternalUploader] = useState(false);
   const [platformExternalContracts, setPlatformExternalContracts] = useState<any[]>([]);
   const [adminSigEmail, setAdminSigEmail] = useState<string>("support@sintagma.com.ru");
+  const [reviewToken, setReviewToken] = useState<string | null>(null);
 
   useEffect(() => {
     supabase.from("app_settings").select("setting_value").eq("setting_key", "admin_signature_email").maybeSingle()
@@ -92,7 +94,7 @@ export function CounterpartiesSection({
   const refreshPlatformContracts = async () => {
     const { data } = await (supabase as any)
       .from("document_signatures")
-      .select("id, document_title, status, created_at, current_revision_id, sender_signed_at, requires_bilateral, signed_at")
+      .select("id, document_title, status, created_at, current_revision_id, sender_signed_at, requires_bilateral, signed_at, signature_token")
       .eq("organization_id", organizationId)
       .eq("document_type", "external_upload")
       .order("created_at", { ascending: false });
@@ -317,6 +319,16 @@ export function CounterpartiesSection({
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
                   <span className={cn("text-[10px] px-2 py-0.5 rounded-full font-medium", st.cls)}>{st.text}</span>
+                  {c.signature_token && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      title="Открыть и просмотреть"
+                      onClick={() => setReviewToken(c.signature_token)}
+                    >
+                      <Eye className="w-4 h-4" />
+                    </Button>
+                  )}
                 </div>
               </div>
             );
