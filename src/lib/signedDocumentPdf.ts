@@ -5,14 +5,18 @@ import {
   appendStampPage,
   appendHtmlAsPages,
   appendImagePage,
+  appendAcceptedEditsListPage,
   type PartyInfo,
+  type AcceptedEditSummary,
 } from "./pdfStampDrawer";
+import { sha256Hex } from "@/utils/documentHash";
 
 const BUCKET = "external-contracts";
 
 interface BuildOptions {
   signatureId: string;
   documentTitle: string;
+  /** HTML, уже с применёнными принятыми правками (или исходный, если правок нет). */
   documentHtml?: string | null;
   /** Полный URL (signed) к оригинальному файлу-договору. */
   attachedFileUrl?: string | null;
@@ -24,6 +28,8 @@ interface BuildOptions {
   signatureMethod: "pep" | "handwritten_scan";
   sender?: PartyInfo;
   recipient?: PartyInfo;
+  /** Список принятых правок — для PDF-вложений добавим отдельную страницу-список. */
+  acceptedEdits?: AcceptedEditSummary[];
 }
 
 let cachedFonts: { regular: ArrayBuffer; bold: ArrayBuffer } | null = null;
@@ -65,9 +71,28 @@ function isImageMime(mime: string | null | undefined, url: string | null | undef
   return /\.(png|jpe?g|webp|gif)$/.test(lo);
 }
 
+/** Считает короткий хэш входов сборки PDF — для инвалидации кеша. */
+async function computeBuildHash(opts: BuildOptions): Promise<string> {
+  const payload = JSON.stringify({
+    html: opts.documentHtml || "",
+    attached: opts.attachedFileUrl?.split("?")[0] || "",
+    scan: opts.scanFileUrl?.split("?")[0] || "",
+    method: opts.signatureMethod,
+    sender: opts.sender || null,
+    recipient: opts.recipient || null,
+    edits: (opts.acceptedEdits || []).map((e) => ({
+      k: e.kind, b: e.before || "", a: e.after || "",
+    })),
+  });
+  const full = await sha256Hex(payload);
+  return full.slice(0, 10);
+}
+
 /**
  * Собирает финальный подписанный PDF и сохраняет его в storage.
  * Возвращает { path, url } — путь в бакете и временный signed URL.
+ *
+ * Кеширование: имя файла включает хэш входов. При смене hash — пересборка.
  */
 export async function generateSignedPdf(opts: BuildOptions): Promise<{ path: string; url: string }> {
   const {
@@ -81,17 +106,43 @@ export async function generateSignedPdf(opts: BuildOptions): Promise<{ path: str
     signatureMethod,
     sender,
     recipient,
+    acceptedEdits,
   } = opts;
+
+  const buildHash = await computeBuildHash(opts);
+  const path = `signed/${signatureId}_${buildHash}.pdf`;
+
+  // Если файл уже есть с актуальным хэшем — отдаём его (кеш-хит).
+  try {
+    const { data: existing } = await supabase.storage
+      .from(BUCKET)
+      .createSignedUrl(path, 60 * 60);
+    if (existing?.signedUrl) {
+      // Проверим, что файл реально существует — createSignedUrl может вернуть URL даже для отсутствующего файла
+      const head = await fetch(existing.signedUrl, { method: "HEAD" });
+      if (head.ok) {
+        await supabase
+          .from("document_signatures")
+          .update({ signed_document_path: path })
+          .eq("id", signatureId);
+        return { path, url: existing.signedUrl };
+      }
+    }
+  } catch {
+    /* ignore — собираем заново */
+  }
 
   const { regular, bold } = await loadFonts();
 
   let pdf: PDFDocument;
+  let isAttachedPdf = false;
 
   // === Сценарий 1: оригинальный документ — PDF ===
   if (attachedFileUrl && isPdfMime(attachedFileMime, attachedFileUrl)) {
     const { bytes } = await fetchBytes(attachedFileUrl);
     try {
       pdf = await PDFDocument.load(bytes, { ignoreEncryption: true });
+      isAttachedPdf = true;
     } catch (e) {
       console.warn("[generateSignedPdf] PDF load failed, fallback to fresh doc", e);
       pdf = await PDFDocument.create();
@@ -104,9 +155,14 @@ export async function generateSignedPdf(opts: BuildOptions): Promise<{ path: str
   const font = await pdf.embedFont(regular, { subset: true });
   const fontBold = await pdf.embedFont(bold, { subset: true });
 
-  // === Сценарий 2: HTML-договор → рендерим текстом ===
+  // === Сценарий 2: HTML-договор → рендерим текстом (с уже применёнными правками) ===
   if (documentHtml && (!attachedFileUrl || !isPdfMime(attachedFileMime, attachedFileUrl))) {
     appendHtmlAsPages(pdf, documentHtml, documentTitle, font, fontBold);
+  }
+
+  // === Для PDF-вложений: список принятых правок отдельной страницей ===
+  if (isAttachedPdf && acceptedEdits && acceptedEdits.length > 0) {
+    appendAcceptedEditsListPage(pdf, acceptedEdits, font, fontBold);
   }
 
   // === Скан с собственноручной подписью ===
@@ -114,7 +170,6 @@ export async function generateSignedPdf(opts: BuildOptions): Promise<{ path: str
     try {
       const { bytes, contentType } = await fetchBytes(scanFileUrl);
       if (isPdfMime(scanFileMime || contentType, scanFileUrl)) {
-        // Копируем все страницы скан-PDF в итоговый
         try {
           const scanPdf = await PDFDocument.load(bytes, { ignoreEncryption: true });
           const copied = await pdf.copyPages(scanPdf, scanPdf.getPageIndices());
@@ -146,7 +201,6 @@ export async function generateSignedPdf(opts: BuildOptions): Promise<{ path: str
 
   const out = await pdf.save();
   const blob = new Blob([out as BlobPart], { type: "application/pdf" });
-  const path = `signed/${signatureId}.pdf`;
 
   const { error: uploadError } = await supabase.storage
     .from(BUCKET)
@@ -169,7 +223,12 @@ export async function generateSignedPdf(opts: BuildOptions): Promise<{ path: str
   return { path, url: signed?.signedUrl || "" };
 }
 
-/** Получает кешированный URL подписанного PDF. */
+/**
+ * Получает кешированный URL подписанного PDF.
+ * Принимает путь, сохранённый ранее в `signed_document_path`.
+ * Внимание: вызывающий код должен сравнить хэш в имени файла с актуальным
+ * (см. `computeBuildHash`) — если не совпало, нужно вызвать `generateSignedPdf`.
+ */
 export async function getCachedSignedPdfUrl(
   signedDocumentPath: string | null | undefined,
 ): Promise<string | null> {
