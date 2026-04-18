@@ -49,6 +49,29 @@ export default function CourseBuilder({ embedded, embeddedCourseId }: CourseBuil
     startReview, dismissFinding, dismissAll, resetReview } = useCourseReview();
   const [showReviewDialog, setShowReviewDialog] = useState(false);
 
+  const [showReviewDialog, setShowReviewDialog] = useState(false);
+  const [addLessonSheetOpen, setAddLessonSheetOpen] = useState(false);
+
+  // IntersectionObserver — track which lesson is currently visible
+  useEffect(() => {
+    if (lessons.length === 0) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const visible = entries
+          .filter((e) => e.isIntersecting)
+          .sort((a, b) => b.intersectionRatio - a.intersectionRatio);
+        if (visible[0]) {
+          const id = (visible[0].target as HTMLElement).dataset.lessonId;
+          if (id) setActiveLessonId(id);
+        }
+      },
+      { rootMargin: "-100px 0px -50% 0px", threshold: [0, 0.25, 0.5, 0.75, 1] },
+    );
+    const els = document.querySelectorAll<HTMLElement>("[data-lesson-id]");
+    els.forEach((el) => observer.observe(el));
+    return () => observer.disconnect();
+  }, [lessons.length, setActiveLessonId]);
+
   const handleStartReview = async () => {
     if (!resolvedCourseId) {
       toast.error("Сначала сохраните курс");
