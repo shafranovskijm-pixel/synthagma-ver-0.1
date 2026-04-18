@@ -235,7 +235,13 @@ export function ProfileTab({ organizationId, initialSubTab }: ProfileTabProps) {
     try {
       const { error } = await supabase.auth.updateUser({ email: newEmail });
       if (error) throw error;
-      toast.success("Письмо подтверждения отправлено на новый email");
+      // Reflect in profile immediately so "Мой профиль" shows the new value upon return
+      setProfile(p => ({ ...p, email: newEmail }));
+      // Persist in profiles table best-effort
+      try {
+        await supabase.from("profiles").update({ email: newEmail } as any).eq("user_id", user!.id);
+      } catch (_) { /* noop */ }
+      toast.success("Письмо подтверждения отправлено на новый email. После подтверждения вход будет по новому адресу.");
     } catch (e: any) { toast.error(e.message); }
   };
 
