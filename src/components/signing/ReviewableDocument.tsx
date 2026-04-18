@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
@@ -27,36 +27,59 @@ interface Props {
   onAddComment: (params: { quotedText: string; commentText: string; positionAnchor: any }) => Promise<void>;
 }
 
+interface SelectionState {
+  text: string;
+  rect: DOMRect;
+  startOffset: number;
+  endOffset: number;
+}
+
 /**
  * Документ с возможностью выделять текст и оставлять комментарии/правки (как Google Docs).
- * Поддерживает три типа: comment (жёлтое выделение), delete (красное перечёркивание),
- * replace (красное перечёркивание + зелёная вставка).
+ * Использует offset-якоря в плоском тексте, чтобы корректно подсвечивать фрагменты,
+ * даже если они разбиты тегами (DOCX → HTML через mammoth).
  */
 export function ReviewableDocument({ documentHtml, comments, authorName, canComment = true, onAddComment }: Props) {
   const docRef = useRef<HTMLDivElement>(null);
-  const [selection, setSelection] = useState<{ text: string; rect: DOMRect } | null>(null);
+  const [selection, setSelection] = useState<SelectionState | null>(null);
   const [draftKind, setDraftKind] = useState<SuggestionKind | null>(null);
   const [draftText, setDraftText] = useState("");
   const [draftReplacement, setDraftReplacement] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [activeCommentId, setActiveCommentId] = useState<string | null>(null);
 
+  const resetAll = useCallback(() => {
+    setDraftKind(null);
+    setDraftText("");
+    setDraftReplacement("");
+    setSelection(null);
+    try { window.getSelection()?.removeAllRanges(); } catch {}
+  }, []);
+
+  // Слушаем выделение
   useEffect(() => {
-    const handler = () => {
+    const handler = (e: Event) => {
+      // Если идёт ввод в форме — не сбрасываем
+      const target = e.target as HTMLElement | null;
+      if (target && (target.closest("textarea, input, button"))) return;
+
       const sel = window.getSelection();
       if (!sel || sel.rangeCount === 0 || sel.isCollapsed) {
-        setSelection(null);
+        // Не сбрасываем форму, если она открыта (пользователь печатает)
+        if (!draftKind) setSelection(null);
         return;
       }
       const range = sel.getRangeAt(0);
       const text = sel.toString().trim();
-      if (text.length < 3 || text.length > 500) { setSelection(null); return; }
-      if (!docRef.current?.contains(range.commonAncestorContainer)) {
-        setSelection(null);
+      if (text.length < 3 || text.length > 1000) { if (!draftKind) setSelection(null); return; }
+      if (!docRef.current || !docRef.current.contains(range.commonAncestorContainer)) {
+        if (!draftKind) setSelection(null);
         return;
       }
+      const offsets = computeOffsets(docRef.current, range);
+      if (!offsets) { if (!draftKind) setSelection(null); return; }
       const rect = range.getBoundingClientRect();
-      setSelection({ text, rect });
+      setSelection({ text, rect, startOffset: offsets.start, endOffset: offsets.end });
     };
     document.addEventListener("mouseup", handler);
     document.addEventListener("touchend", handler);
@@ -64,42 +87,34 @@ export function ReviewableDocument({ documentHtml, comments, authorName, canComm
       document.removeEventListener("mouseup", handler);
       document.removeEventListener("touchend", handler);
     };
-  }, []);
+  }, [draftKind]);
 
   // Подсветка фрагментов с учётом типа правки
   useEffect(() => {
     if (!docRef.current) return;
     // Очищаем предыдущие подсветки
-    docRef.current.querySelectorAll("mark[data-comment-id], ins[data-comment-id]").forEach((el) => {
-      const parent = el.parentNode;
-      if (!parent) return;
-      // Для ins (вставленный текст) — просто удаляем, он не был частью оригинала
-      if (el.tagName === "INS") {
-        parent.removeChild(el);
-        return;
-      }
-      // Для mark — разворачиваем содержимое наружу
-      while (el.firstChild) parent.insertBefore(el.firstChild, el);
-      parent.removeChild(el);
-    });
+    clearHighlights(docRef.current);
     // Применяем подсветки
     comments.forEach((c) => {
-      if (!c.quoted_text) return;
       const kind: SuggestionKind = c.position_anchor?.kind || "comment";
       const replacement: string | undefined = c.position_anchor?.replacement;
-      highlightTextInElement(docRef.current!, c.quoted_text, c.id, c.resolved, kind, replacement);
+      const startOffset: number | undefined = c.position_anchor?.startOffset;
+      const endOffset: number | undefined = c.position_anchor?.endOffset;
+
+      if (typeof startOffset === "number" && typeof endOffset === "number" && endOffset > startOffset) {
+        const ok = highlightByOffsets(docRef.current!, startOffset, endOffset, c.id, c.resolved, kind, replacement);
+        if (ok) return;
+      }
+      // Fallback: старый поиск по тексту (для legacy-комментариев)
+      if (c.quoted_text) {
+        highlightByText(docRef.current!, c.quoted_text, c.id, c.resolved, kind, replacement);
+      }
     });
   }, [comments, documentHtml]);
 
-  const closeDraft = () => {
-    setDraftKind(null);
-    setDraftText("");
-    setDraftReplacement("");
-  };
-
   const handleSubmit = async () => {
     if (!selection || !draftKind) return;
-    if (draftKind !== "delete" && !draftText.trim()) return;
+    if (draftKind === "comment" && !draftText.trim()) return;
     if (draftKind === "replace" && !draftReplacement.trim()) return;
 
     setSubmitting(true);
@@ -114,13 +129,13 @@ export function ReviewableDocument({ documentHtml, comments, authorName, canComm
         commentText: commentBody,
         positionAnchor: {
           text: selection.text,
+          startOffset: selection.startOffset,
+          endOffset: selection.endOffset,
           kind: draftKind,
           ...(draftKind === "replace" ? { replacement: draftReplacement.trim() } : {}),
         },
       });
-      closeDraft();
-      setSelection(null);
-      window.getSelection()?.removeAllRanges();
+      resetAll();
       toast.success(
         draftKind === "delete" ? "Правка «удалить» добавлена" :
         draftKind === "replace" ? "Правка «заменить» добавлена" :
@@ -134,7 +149,7 @@ export function ReviewableDocument({ documentHtml, comments, authorName, canComm
   };
 
   const scrollToHighlight = (commentId: string) => {
-    const el = docRef.current?.querySelector(`mark[data-comment-id="${commentId}"]`) as HTMLElement | null;
+    const el = docRef.current?.querySelector(`mark[data-comment-id="${commentId}"], ins[data-comment-id="${commentId}"]`) as HTMLElement | null;
     if (el) {
       el.scrollIntoView({ behavior: "smooth", block: "center" });
       el.classList.add("ring-2", "ring-primary");
@@ -241,7 +256,7 @@ export function ReviewableDocument({ documentHtml, comments, authorName, canComm
               className="text-sm min-h-[60px] mb-2"
             />
             <div className="flex justify-end gap-1.5">
-              <Button size="sm" variant="ghost" onClick={closeDraft} disabled={submitting}>
+              <Button size="sm" variant="ghost" onClick={resetAll} disabled={submitting}>
                 <X className="w-3.5 h-3.5" />
               </Button>
               <Button
@@ -329,11 +344,153 @@ export function ReviewableDocument({ documentHtml, comments, authorName, canComm
   );
 }
 
-/**
- * Подсветка текстового фрагмента внутри HTML-элемента.
- * Поддерживает kind: comment | delete | replace, для replace добавляет <ins> с заменой.
- */
-function highlightTextInElement(
+// ============== Helpers ==============
+
+/** Считает плоские offset'ы (без учёта тегов) для Range внутри корня. */
+function computeOffsets(root: HTMLElement, range: Range): { start: number; end: number } | null {
+  const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, null);
+  let pos = 0;
+  let start = -1;
+  let end = -1;
+  let n: Node | null;
+  while ((n = walker.nextNode())) {
+    const t = n as Text;
+    const len = t.data.length;
+    if (start === -1 && t === range.startContainer) {
+      start = pos + range.startOffset;
+    }
+    if (t === range.endContainer) {
+      end = pos + range.endOffset;
+      break;
+    }
+    pos += len;
+  }
+  if (start === -1 || end === -1 || end <= start) return null;
+  return { start, end };
+}
+
+/** Удаляет все mark/ins подсветки, возвращая исходный текст. */
+function clearHighlights(root: HTMLElement) {
+  // Сначала удаляем вставленные <ins> (они не были частью оригинала)
+  root.querySelectorAll("ins[data-comment-id]").forEach((el) => el.parentNode?.removeChild(el));
+  // Затем разворачиваем mark
+  root.querySelectorAll("mark[data-comment-id]").forEach((el) => {
+    const parent = el.parentNode;
+    if (!parent) return;
+    while (el.firstChild) parent.insertBefore(el.firstChild, el);
+    parent.removeChild(el);
+  });
+  // Объединяем соседние текстовые ноды
+  root.normalize();
+}
+
+/** Подсветка по плоским offset'ам — поддерживает выделение, разбитое тегами. */
+function highlightByOffsets(
+  root: HTMLElement,
+  startOffset: number,
+  endOffset: number,
+  commentId: string,
+  resolved: boolean,
+  kind: SuggestionKind,
+  replacement?: string
+): boolean {
+  const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, null);
+  let pos = 0;
+  let startNode: Text | null = null;
+  let startNodeOffset = 0;
+  let endNode: Text | null = null;
+  let endNodeOffset = 0;
+  let n: Node | null;
+
+  while ((n = walker.nextNode())) {
+    const t = n as Text;
+    const len = t.data.length;
+    if (!startNode && pos + len >= startOffset) {
+      startNode = t;
+      startNodeOffset = startOffset - pos;
+    }
+    if (!endNode && pos + len >= endOffset) {
+      endNode = t;
+      endNodeOffset = endOffset - pos;
+      break;
+    }
+    pos += len;
+  }
+  if (!startNode || !endNode) return false;
+
+  try {
+    const range = document.createRange();
+    range.setStart(startNode, Math.max(0, Math.min(startNodeOffset, startNode.data.length)));
+    range.setEnd(endNode, Math.max(0, Math.min(endNodeOffset, endNode.data.length)));
+    return wrapRange(range, commentId, resolved, kind, replacement);
+  } catch (e) {
+    console.warn("[highlightByOffsets] failed", e);
+    return false;
+  }
+}
+
+/** Оборачивает Range в <mark> (поддерживая многонодовые выделения). */
+function wrapRange(
+  range: Range,
+  commentId: string,
+  resolved: boolean,
+  kind: SuggestionKind,
+  replacement?: string
+): boolean {
+  // Собираем все text-ноды, попадающие в range
+  const root = range.commonAncestorContainer;
+  const rootEl: Node = root.nodeType === Node.TEXT_NODE ? root.parentNode! : root;
+  const walker = document.createTreeWalker(rootEl, NodeFilter.SHOW_TEXT, null);
+  const textNodes: Text[] = [];
+  let n: Node | null;
+  while ((n = walker.nextNode())) {
+    const t = n as Text;
+    if (range.intersectsNode(t)) textNodes.push(t);
+  }
+  if (textNodes.length === 0) return false;
+
+  let lastMark: HTMLElement | null = null;
+
+  for (const node of textNodes) {
+    // Пропускаем уже подсвеченные
+    if (node.parentElement?.closest("mark[data-comment-id]")) continue;
+    const isStart = node === range.startContainer;
+    const isEnd = node === range.endContainer;
+    const from = isStart ? range.startOffset : 0;
+    const to = isEnd ? range.endOffset : node.data.length;
+    if (to <= from) continue;
+
+    // Делим ноду на части
+    let target = node;
+    if (from > 0) {
+      target = target.splitText(from);
+    }
+    if (to - from < target.data.length) {
+      target.splitText(to - from);
+    }
+    const mark = document.createElement("mark");
+    mark.setAttribute("data-comment-id", commentId);
+    mark.setAttribute("data-kind", kind);
+    mark.setAttribute("data-resolved", String(resolved));
+    target.parentNode?.insertBefore(mark, target);
+    mark.appendChild(target);
+    lastMark = mark;
+  }
+
+  // Для replace — добавляем <ins> с заменой после последнего mark
+  if (kind === "replace" && replacement && lastMark) {
+    const ins = document.createElement("ins");
+    ins.setAttribute("data-comment-id", commentId);
+    ins.setAttribute("data-kind", "insert");
+    ins.textContent = replacement;
+    lastMark.parentNode?.insertBefore(ins, lastMark.nextSibling);
+  }
+
+  return lastMark !== null;
+}
+
+/** Fallback: подсветка по тексту (для legacy-комментариев без offsets). */
+function highlightByText(
   root: HTMLElement,
   text: string,
   commentId: string,
@@ -347,30 +504,15 @@ function highlightTextInElement(
   let n: Node | null;
   while ((n = walker.nextNode())) nodes.push(n as Text);
   for (const node of nodes) {
-    // Пропускаем текст внутри уже подсвеченных mark/ins
-    if ((node.parentElement?.closest("mark[data-comment-id], ins[data-comment-id]"))) continue;
+    if (node.parentElement?.closest("mark[data-comment-id], ins[data-comment-id]")) continue;
     const idx = node.textContent?.indexOf(text) ?? -1;
     if (idx === -1) continue;
-    const range = document.createRange();
-    range.setStart(node, idx);
-    range.setEnd(node, idx + text.length);
-    const mark = document.createElement("mark");
-    mark.setAttribute("data-comment-id", commentId);
-    mark.setAttribute("data-kind", kind);
-    mark.setAttribute("data-resolved", String(resolved));
     try {
-      range.surroundContents(mark);
-      // Для replace — вставляем <ins> с заменой сразу после <mark>
-      if (kind === "replace" && replacement) {
-        const ins = document.createElement("ins");
-        ins.setAttribute("data-comment-id", commentId);
-        ins.setAttribute("data-kind", "insert");
-        ins.textContent = replacement;
-        mark.parentNode?.insertBefore(ins, mark.nextSibling);
-      }
-    } catch {
-      // если range пересекает теги — пропускаем
-    }
-    return; // подсвечиваем только первое вхождение
+      const range = document.createRange();
+      range.setStart(node, idx);
+      range.setEnd(node, idx + text.length);
+      wrapRange(range, commentId, resolved, kind, replacement);
+    } catch {}
+    return;
   }
 }
