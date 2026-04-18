@@ -47,6 +47,15 @@ interface SigData {
   mode?: string;
   current_revision_id?: string | null;
   expires_at: string;
+  signed_at?: string | null;
+  signed_ip?: string | null;
+  sender_signed_at?: string | null;
+  sender_signed_ip?: string | null;
+  sender_name?: string | null;
+  signature_method?: "pep" | "handwritten_scan" | null;
+  handwritten_scan_path?: string | null;
+  document_hash?: string | null;
+  pep_agreement_id?: string | null;
 }
 
 interface Revision {
