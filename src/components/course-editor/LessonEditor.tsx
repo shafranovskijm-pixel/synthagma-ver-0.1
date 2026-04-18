@@ -1,17 +1,24 @@
+import { useState, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { FileText, Video, HelpCircle, Plus, Trash2, Sparkles, Settings, Upload, FolderOpen, FileSpreadsheet } from "lucide-react";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { FileText, Video, HelpCircle, Plus, Trash2, Sparkles, Settings, Upload, FolderOpen, FileSpreadsheet, Lock } from "lucide-react";
 import { BlockEditor } from "@/components/course-builder/BlockEditor";
 import { TestImportDialog } from "@/components/course-builder/TestImportDialog";
-import { Badge } from "@/components/ui/badge";
 import { MediaLibraryDialog } from "@/components/course-builder/MediaLibraryDialog";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
-import { VideoPreview } from "@/components/course-editor/VideoPreview";
+import { VideoPreviewInline } from "@/components/course-builder/VideoPreviewInline";
+import { LazyMediaPreview } from "@/components/course-builder/LazyMediaPreview";
+import { UploadProgressBlock } from "@/components/course-builder/UploadProgressBlock";
 import { useLessonEditor, type TestQuestion } from "@/hooks/useLessonEditor";
+import { useLessonMedia } from "@/hooks/useLessonMedia";
+import { useSubscriptionLimits } from "@/hooks/useSubscriptionLimits";
+import { useNavigate } from "react-router-dom";
+import { toast } from "sonner";
 
 interface Lesson {
   id: string;
@@ -38,13 +45,25 @@ interface LessonEditorProps {
   courseId?: string;
   courseTitle?: string;
   courseDescription?: string;
+  organizationId?: string;
 }
 
 export const LessonEditor = ({
   lesson, isOpen, onClose, onSave,
-  existingQuestions = [], courseId = "", courseTitle = "", courseDescription = ""
+  existingQuestions = [], courseId = "", courseTitle = "", courseDescription = "",
+  organizationId,
 }: LessonEditorProps) => {
   const e = useLessonEditor({ lesson, isOpen, existingQuestions, courseId, courseTitle, courseDescription, onSave });
+  const navigate = useNavigate();
+  const { limits } = useSubscriptionLimits(organizationId || null);
+  const isKinescopeAvailable = limits.kinescopeEnabled;
+  const [videoUploadTab, setVideoUploadTab] = useState<string>(isKinescopeAvailable ? "kinescope" : "server");
+  const [skipCompression, setSkipCompression] = useState(false);
+
+  const lessonIdForMedia = useMemo(() => lesson?.id || `new-${Date.now()}`, [lesson?.id]);
+  const media = useLessonMedia(lessonIdForMedia, courseId, (updates: any) => {
+    if (typeof updates?.content === "string") e.setVideoUrl(updates.content);
+  });
 
   return (
     <>
@@ -88,46 +107,129 @@ export const LessonEditor = ({
 
             {e.type === "video" && (
               <div className="space-y-4">
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <Label>Ссылка на видео или embed код</Label>
-                      <p className="text-xs text-muted-foreground">YouTube, Vimeo, Rutube, VK, Дзен, OK.ru, Mail.ru или &lt;iframe&gt;</p>
+                <Tabs value={videoUploadTab} onValueChange={setVideoUploadTab} className="w-full">
+                  <TabsList className="w-full">
+                    <TabsTrigger value="kinescope" className="flex-1 text-xs">Kinescope (рекомендуется)</TabsTrigger>
+                    <TabsTrigger value="server" className="flex-1 text-xs">На сервер (до 2 ГБ)</TabsTrigger>
+                  </TabsList>
+                </Tabs>
+
+                <div className="border-2 border-dashed border-border rounded-xl p-6 text-center hover:border-sigma-purple/50 transition-colors">
+                  {videoUploadTab === "kinescope" && media.kinescopeUploadProgress !== null ? (
+                    <div className="space-y-4">
+                      <Video className="w-10 h-10 mx-auto text-sigma-purple animate-pulse" />
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-center gap-2"><SigmaSpinner size="sm" className="text-sigma-purple" /><span className="text-sm font-medium">Загрузка в Kinescope...</span></div>
+                        <div className="w-full max-w-xs mx-auto">
+                          <div className="h-2 bg-secondary rounded-full overflow-hidden"><div className="h-full bg-sigma-purple transition-all duration-300 ease-out" style={{ width: `${media.kinescopeUploadProgress}%` }} /></div>
+                          <p className="text-sm text-muted-foreground mt-1">{media.kinescopeUploadProgress}%</p>
+                        </div>
+                        <Button variant="outline" size="sm" className="mt-2 gap-1 text-destructive hover:text-destructive border-destructive/50 hover:bg-destructive/10" onClick={media.cancelVideoUpload}><Trash2 className="w-3 h-3" />Отменить</Button>
+                      </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <Button type="button" variant="outline" size="sm" onClick={() => e.setShowMediaLibrary(true)} className="gap-2"><FolderOpen className="w-4 h-4" />Из загруженных</Button>
-                      <Button type="button" variant="outline" size="sm" onClick={() => e.videoInputRef.current?.click()} disabled={e.isUploading} className="gap-2">
-                        {e.isUploading ? <SigmaSpinner size="sm" /> : <Upload className="w-4 h-4" />}
-                        {e.isUploading ? "Загрузка..." : "Загрузить видео"}
+                  ) : media.compressionProgress !== null ? (
+                    <div className="space-y-4">
+                      <Video className="w-10 h-10 mx-auto text-sigma-purple animate-pulse" />
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-center gap-2"><SigmaSpinner size="sm" className="text-sigma-purple" /><span className="text-sm font-medium">Сжатие видео...</span></div>
+                        <div className="w-full max-w-xs mx-auto">
+                          <div className="h-2 bg-secondary rounded-full overflow-hidden"><div className="h-full bg-sigma-orange transition-all duration-300 ease-out" style={{ width: `${media.compressionProgress}%` }} /></div>
+                          <p className="text-sm text-muted-foreground mt-1">{media.compressionProgress}%</p>
+                        </div>
+                      </div>
+                    </div>
+                  ) : media.videoUploadProgress !== null ? (
+                    <UploadProgressBlock
+                      label="Загрузка видео..."
+                      progress={media.videoUploadProgress}
+                      uploadStartTime={media.uploadStartTime}
+                      uploadedBytes={media.uploadedBytes}
+                      uploadFileSize={media.uploadFileSize}
+                      onCancel={media.cancelVideoUpload}
+                    />
+                  ) : videoUploadTab === "kinescope" && !isKinescopeAvailable ? (
+                    <div className="space-y-3 py-2">
+                      <Lock className="w-10 h-10 mx-auto text-muted-foreground" />
+                      <p className="text-sm font-medium">Загрузка через Kinescope</p>
+                      <p className="text-xs text-muted-foreground max-w-sm mx-auto">
+                        Профессиональный видеохостинг с CDN и DRM-защитой доступен на тарифе «Профессиональный» и выше.
+                      </p>
+                      <Button variant="outline" size="sm" className="gap-2"
+                        onClick={() => navigate(organizationId ? `/organization/${organizationId}?tab=tariffs` : '/settings')}>
+                        Перейти к тарифам →
                       </Button>
-                      <input ref={e.videoInputRef} type="file" accept="video/*" className="hidden" onChange={async (ev) => {
-                        const file = ev.target.files?.[0];
-                        if (file) await e.handleVideoUpload(file);
-                        ev.target.value = '';
-                      }} />
-                      <MediaLibraryDialog open={e.showMediaLibrary} onClose={() => e.setShowMediaLibrary(false)} onSelect={(url) => e.setVideoUrl(url)} filter="video" />
                     </div>
-                    {e.videoUploadProgress !== null && (
-                      <div className="space-y-2 pt-2">
-                        <div className="flex items-center justify-between text-sm">
-                          <div className="flex items-center gap-2"><SigmaSpinner size="sm" /><span className="font-medium">Загрузка видео...</span></div>
-                          <span className="text-muted-foreground font-mono">{e.videoUploadProgress}%</span>
-                        </div>
-                        <div className="h-2 bg-secondary rounded-full overflow-hidden">
-                          <div className="h-full bg-primary transition-all duration-300 ease-out rounded-full" style={{ width: `${e.videoUploadProgress}%` }} />
-                        </div>
-                        <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive" onClick={() => { e.abortUpload(); e.setVideoUploadProgress(null); }}>
-                          <Trash2 className="w-3 h-3 mr-1" />Отменить
+                  ) : videoUploadTab === "kinescope" ? (
+                    <div key="kinescope-upload">
+                      <Video className="w-10 h-10 mx-auto mb-3 text-sigma-purple" />
+                      <p className="text-sm font-medium mb-1">Загрузить через Kinescope</p>
+                      <p className="text-xs text-muted-foreground mb-4">Любой размер файла • CDN • Профессиональный плеер</p>
+                      <input ref={media.kinescopeInputRef} type="file" accept="video/*" className="hidden"
+                        onChange={(ev) => { const file = ev.target.files?.[0]; if (file) media.handleKinescopeUpload(file); }} />
+                      <Button type="button" className="gap-2 bg-sigma-purple text-white hover:bg-sigma-purple/90"
+                        onClick={(ev) => { ev.stopPropagation(); ev.preventDefault(); const inp = media.kinescopeInputRef.current; if (inp) { inp.value = ''; inp.click(); } else { toast.error("Не удалось открыть выбор файла"); } }}>
+                        <Upload className="w-4 h-4" />Выбрать файл
+                      </Button>
+                    </div>
+                  ) : (
+                    <div key="server-upload" className="space-y-3">
+                      <Video className="w-10 h-10 mx-auto mb-3 text-sigma-purple" />
+                      <p className="text-sm font-medium mb-1">Загрузить видео на сервер</p>
+                      <p className="text-xs text-muted-foreground mb-4">MP4, MOV, AVI и др. — до 2 ГБ</p>
+                      <input ref={media.videoInputRef} type="file" accept="video/*" className="hidden"
+                        onChange={(ev) => { const file = ev.target.files?.[0]; if (file) media.handleVideoUpload(file, skipCompression); }} />
+                      <div className="flex flex-col items-center gap-2">
+                        <Button type="button" className="gap-2 bg-sigma-purple text-white hover:bg-sigma-purple/90"
+                          onClick={(ev) => { ev.stopPropagation(); ev.preventDefault(); const inp = media.videoInputRef.current; if (inp) { inp.value = ''; inp.click(); } else { toast.error("Не удалось открыть выбор файла"); } }}>
+                          <Upload className="w-4 h-4" />Выбрать файл
+                        </Button>
+                        <label className="inline-flex items-center gap-2 text-xs text-muted-foreground cursor-pointer select-none">
+                          <input type="checkbox" checked={skipCompression} onChange={(ev) => setSkipCompression(ev.target.checked)} className="rounded border-border" />
+                          Без сжатия (быстрее)
+                        </label>
+                        <Button variant="outline" size="sm" className="gap-2" onClick={() => e.setShowMediaLibrary(true)}>
+                          <FolderOpen className="w-4 h-4" />Из загруженных
                         </Button>
                       </div>
-                    )}
-                  </div>
-                  <Textarea placeholder="https://youtube.com/watch?v=... или <iframe>...</iframe>" value={e.videoUrl} onChange={(ev) => e.setVideoUrl(ev.target.value)} className="min-h-[100px] resize-none" />
+                    </div>
+                  )}
                 </div>
+
+                <MediaLibraryDialog open={e.showMediaLibrary} onClose={() => e.setShowMediaLibrary(false)} onSelect={(url) => e.setVideoUrl(url)} filter="video" />
+
+                <div className="relative">
+                  <div className="absolute inset-0 flex items-center"><span className="w-full border-t border-border" /></div>
+                  <div className="relative flex justify-center text-xs uppercase"><span className="bg-card px-2 text-muted-foreground">или вставьте ссылку</span></div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Ссылка на видео или код для встраивания</Label>
+                  <Textarea
+                    value={e.videoUrl}
+                    onChange={(ev) => e.setVideoUrl(ev.target.value)}
+                    placeholder="Вставьте ссылку (YouTube, Vimeo, Rutube, VK Video, Дзен и др.) или код iframe для встраивания"
+                    className="rounded-xl min-h-[100px] font-mono text-sm"
+                  />
+                  <p className="text-xs text-muted-foreground">Поддерживаются: YouTube, Vimeo, Rutube, VK Video, Kinescope, Одноклассники, Mail.ru, Дзен, Яндекс Видео</p>
+                </div>
+
                 {e.videoUrl && (
-                  e.videoUrl.startsWith('http') && !e.videoUrl.includes('youtube') && !e.videoUrl.includes('vimeo') && !e.videoUrl.includes('rutube') && !e.videoUrl.includes('vk.') && !e.videoUrl.includes('dzen') && !e.videoUrl.includes('ok.ru') && !e.videoUrl.includes('mail.ru') && !e.videoUrl.includes('<iframe') ? (
-                    <video src={e.videoUrl} controls className="w-full aspect-video rounded-xl bg-black" />
-                  ) : <VideoPreview videoUrl={e.videoUrl} />
+                  <div className="space-y-2">
+                    <Label className="text-sm">Предпросмотр</Label>
+                    {e.videoUrl.startsWith('kinescope:') ? (
+                      <div className="relative">
+                        <VideoPreviewInline content={e.videoUrl} />
+                        <Button variant="ghost" size="sm" className="absolute top-2 right-2 h-8 text-destructive hover:text-destructive bg-background/80 backdrop-blur-sm" onClick={() => e.setVideoUrl('')}><Trash2 className="w-4 h-4" /></Button>
+                      </div>
+                    ) : (e.videoUrl.includes('supabase') || e.videoUrl.includes('.mp4') || e.videoUrl.includes('.webm') || e.videoUrl.includes('.mov')) ? (
+                      <div className="relative">
+                        <LazyMediaPreview type="video">
+                          <video controls preload="none" controlsList="nodownload" className="w-full rounded-xl border border-border" src={e.videoUrl}>Ваш браузер не поддерживает видео.</video>
+                        </LazyMediaPreview>
+                        <Button variant="ghost" size="sm" className="absolute top-2 right-2 h-8 text-destructive hover:text-destructive bg-background/80 backdrop-blur-sm" onClick={() => e.setVideoUrl('')}><Trash2 className="w-4 h-4" /></Button>
+                      </div>
+                    ) : <VideoPreviewInline content={e.videoUrl} />}
+                  </div>
                 )}
               </div>
             )}

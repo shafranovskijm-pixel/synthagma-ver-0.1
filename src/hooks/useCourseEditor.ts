@@ -12,6 +12,7 @@ import { arrayMove, sortableKeyboardCoordinates } from "@dnd-kit/sortable";
 interface Course {
   id: string; title: string; description: string | null; duration: string | null;
   is_published: boolean; sequential_lessons: boolean; allow_video_seek: boolean; price?: number;
+  organization_id?: string;
 }
 
 interface Lesson {

@@ -120,7 +120,7 @@ const CourseEditor = () => {
       </main>
 
       <LessonEditor lesson={h.editingLesson} isOpen={h.isLessonEditorOpen} onClose={() => { h.setIsLessonEditorOpen(false); h.setEditingLesson(null); h.setEditingQuestions([]); }}
-        onSave={h.handleSaveLesson} existingQuestions={h.editingQuestions} courseId={h.courseId} courseTitle={h.title} courseDescription={h.description} />
+        onSave={h.handleSaveLesson} existingQuestions={h.editingQuestions} courseId={h.courseId} courseTitle={h.title} courseDescription={h.description} organizationId={h.course?.organization_id} />
 
       {h.courseId && <CoursePageSettingsDialog open={h.isPageSettingsOpen} onOpenChange={h.setIsPageSettingsOpen} courseId={h.courseId} courseTitle={h.title} />}
       <GitHubImportDialog isOpen={h.isGitHubImportOpen} onClose={() => h.setIsGitHubImportOpen(false)} onImport={h.handleGitHubImport} />
