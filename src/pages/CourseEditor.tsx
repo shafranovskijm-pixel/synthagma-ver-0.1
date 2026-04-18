@@ -22,6 +22,28 @@ import { useEffect } from "react";
 const CourseEditor = () => {
   const h = useCourseEditor();
 
+  // Track which lesson is in viewport → highlight in sidebar
+  useEffect(() => {
+    if (!h.lessons.length) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const visible = entries
+          .filter((e) => e.isIntersecting)
+          .sort((a, b) => b.intersectionRatio - a.intersectionRatio);
+        if (visible[0]) {
+          const id = (visible[0].target as HTMLElement).dataset.lessonId;
+          if (id) h.setActiveLessonId(id);
+        }
+      },
+      { rootMargin: "-100px 0px -50% 0px", threshold: [0, 0.25, 0.5, 0.75, 1] },
+    );
+    h.lessons.forEach((l) => {
+      const el = document.querySelector(`[data-lesson-id="${l.id}"]`);
+      if (el) observer.observe(el);
+    });
+    return () => observer.disconnect();
+  }, [h.lessons.length]);
+
   if (h.isLoading) return <div className="min-h-screen bg-background flex items-center justify-center"><SigmaSpinner size="lg" /></div>;
   if (!h.course) return (
     <div className="min-h-screen bg-background flex items-center justify-center">
