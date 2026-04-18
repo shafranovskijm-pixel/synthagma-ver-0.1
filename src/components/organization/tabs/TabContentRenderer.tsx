@@ -206,6 +206,12 @@ export function TabContentRenderer() {
       {/* Subscription Tab */}
       {activeTab === "subscription" && <SubscriptionTab />}
 
+      {/* Secondary nav (duplicates the avatar dropdown) for profile/settings/documents/whats-new */}
+      {(activeTab === "profile" ||
+        activeTab === "settings" ||
+        activeTab === "org-documents" ||
+        activeTab === "whats-new") && <OrgSecondaryNavTabs embedded />}
+
       {/* Profile Tab */}
       {activeTab === "profile" && organizationId && (
         <ProfileTab organizationId={organizationId} />
