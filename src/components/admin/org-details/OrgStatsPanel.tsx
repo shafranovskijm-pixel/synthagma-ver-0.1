@@ -1,7 +1,7 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { BookOpen, HardDrive, Sparkles } from "lucide-react";
+import { BookOpen, HardDrive, Sparkles, Video } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line } from "recharts";
 import type { Student, Course, UsageData, UsageHistoryItem } from "@/hooks/useOrgDetailsView";
 
@@ -117,10 +117,26 @@ export function OrgStatsPanel({
           <div className="space-y-4">
             <div>
               <div className="flex items-center justify-between mb-2">
-                <span className="text-sm text-muted-foreground">Хранилище</span>
+                <span className="text-sm text-muted-foreground">Хранилище (всего)</span>
                 <span className="text-sm font-medium">{formatBytes(usage.storage_bytes)} / {formatBytes(storageLimit)}</span>
               </div>
               <Progress value={Math.min(storageLimitPercent, 100)} className="h-2" />
+              {(usage.kinescope_bytes ?? 0) > 0 && (
+                <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
+                  <span>
+                    Файлы Lovable Cloud:{" "}
+                    <span className="font-medium text-foreground">
+                      {formatBytes(Math.max(0, usage.storage_bytes - (usage.kinescope_bytes ?? 0)))}
+                    </span>
+                  </span>
+                  <span>
+                    Видео Kinescope:{" "}
+                    <span className="font-medium text-foreground">
+                      {formatBytes(usage.kinescope_bytes ?? 0)}
+                    </span>
+                  </span>
+                </div>
+              )}
             </div>
             <div>
               <div className="flex items-center justify-between mb-2">
@@ -132,6 +148,45 @@ export function OrgStatsPanel({
           </div>
         </CardContent>
       </Card>
+
+      {(usage.kinescope_videos_count ?? 0) > 0 && (
+        <Card className={cardClass}>
+          <CardHeader>
+            <CardTitle className="text-lg flex items-center gap-2">
+              <div className="p-1.5 rounded-lg bg-rose-500/10"><Video className="w-5 h-5 text-rose-500" /></div>
+              Видео Kinescope этой организации
+            </CardTitle>
+            <CardDescription>Объём, длительность и ориентировочные расходы</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div>
+                <p className="text-xs text-muted-foreground">Видео</p>
+                <p className="text-2xl font-bold">{usage.kinescope_videos_count}</p>
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">Объём</p>
+                <p className="text-2xl font-bold">{formatBytes(usage.kinescope_bytes ?? 0)}</p>
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">Длительность</p>
+                <p className="text-2xl font-bold">
+                  {Math.round(((usage.kinescope_seconds ?? 0) / 3600) * 10) / 10} ч
+                </p>
+              </div>
+              <div>
+                <div className="flex items-center gap-1.5">
+                  <p className="text-xs text-muted-foreground">~Стоимость / мес</p>
+                  <Badge variant="outline" className="text-[10px] px-1.5 py-0">Оценка</Badge>
+                </div>
+                <p className="text-2xl font-bold">
+                  {(usage.kinescope_estimated_rub ?? 0).toLocaleString("ru-RU")} ₽
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }
