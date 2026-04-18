@@ -12,13 +12,37 @@ import { LessonItem } from "@/components/course-editor/LessonItem";
 import { LessonEditor } from "@/components/course-editor/LessonEditor";
 import { GitHubImportDialog } from "@/components/course-editor/GitHubImportDialog";
 import { CoursePageSettingsDialog } from "@/components/course-editor/CoursePageSettingsDialog";
+import { CourseLessonsSidebar } from "@/components/course-editor/CourseLessonsSidebar";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { useCourseEditor } from "@/hooks/useCourseEditor";
+import { useEffect } from "react";
 
 const CourseEditor = () => {
   const h = useCourseEditor();
+
+  // Track which lesson is in viewport → highlight in sidebar
+  useEffect(() => {
+    if (!h.lessons.length) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const visible = entries
+          .filter((e) => e.isIntersecting)
+          .sort((a, b) => b.intersectionRatio - a.intersectionRatio);
+        if (visible[0]) {
+          const id = (visible[0].target as HTMLElement).dataset.lessonId;
+          if (id) h.setActiveLessonId(id);
+        }
+      },
+      { rootMargin: "-100px 0px -50% 0px", threshold: [0, 0.25, 0.5, 0.75, 1] },
+    );
+    h.lessons.forEach((l) => {
+      const el = document.querySelector(`[data-lesson-id="${l.id}"]`);
+      if (el) observer.observe(el);
+    });
+    return () => observer.disconnect();
+  }, [h.lessons.length]);
 
   if (h.isLoading) return <div className="min-h-screen bg-background flex items-center justify-center"><SigmaSpinner size="lg" /></div>;
   if (!h.course) return (
@@ -55,7 +79,17 @@ const CourseEditor = () => {
         </div>
       </div>
 
-      <main className="max-w-5xl mx-auto p-6 pb-32">
+      <CourseLessonsSidebar
+        lessons={h.lessons}
+        activeLessonId={h.activeLessonId}
+        sensors={h.sensors}
+        onDragEnd={h.handleDragEnd}
+        onLessonClick={h.scrollToLesson}
+        onAddLesson={h.handleAddLesson}
+        onOpenGitHubImport={() => h.setIsGitHubImportOpen(true)}
+      />
+
+      <main className="max-w-5xl mx-auto p-6 pb-32 lg:pl-[18.5rem]">
         <div className="feature-card rounded-2xl p-6 mb-8">
           <h2 className="font-display text-xl font-semibold mb-6">Информация о курсе</h2>
           <div className="grid sm:grid-cols-2 gap-6">
@@ -107,10 +141,12 @@ const CourseEditor = () => {
               <SortableContext items={h.lessons.map(l => l.id)} strategy={verticalListSortingStrategy}>
                 <div className="space-y-3">
                   {h.lessons.map(lesson => (
-                    <LessonItem key={lesson.id} lesson={lesson} isExpanded={h.expandedLessonId === lesson.id}
-                      onToggleExpand={() => h.setExpandedLessonId(h.expandedLessonId === lesson.id ? null : lesson.id)}
-                      onEdit={() => h.handleEditLesson(lesson)} onDelete={() => h.setDeletingLessonId(lesson.id)}
-                      onToggleLock={() => h.handleToggleLock(lesson)} />
+                    <div key={lesson.id} data-lesson-id={lesson.id} className="scroll-mt-24">
+                      <LessonItem lesson={lesson} isExpanded={h.expandedLessonId === lesson.id}
+                        onToggleExpand={() => h.setExpandedLessonId(h.expandedLessonId === lesson.id ? null : lesson.id)}
+                        onEdit={() => h.handleEditLesson(lesson)} onDelete={() => h.setDeletingLessonId(lesson.id)}
+                        onToggleLock={() => h.handleToggleLock(lesson)} />
+                    </div>
                   ))}
                 </div>
               </SortableContext>

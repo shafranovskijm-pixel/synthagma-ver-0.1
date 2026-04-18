@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { safeInvoke, safeFetch } from "@/utils/safeInvoke";
 import { toast } from "sonner";
 import { ContentBlock, blocksToJson as blocksToJsonFn } from "@/components/course-builder/BlockEditor";
+import { useBackgroundUploads } from "@/contexts/BackgroundUploadsContext";
 
 const SIZE_100MB = 100 * 1024 * 1024;
 const SIZE_500MB = 500 * 1024 * 1024;
@@ -12,8 +13,24 @@ const SIZE_2GB = 2 * 1024 * 1024 * 1024;
 export function useLessonMedia(
   lessonId: string,
   courseId: string | undefined,
-  onUpdate: (updates: any) => void
+  onUpdate: (updates: any) => void,
+  meta?: { courseTitle?: string; lessonTitle?: string; organizationId?: string }
 ) {
+  const bg = useBackgroundUploads();
+  const currentTaskIdRef = useRef<string | null>(null);
+  const startBgTask = useCallback((kind: "internal" | "kinescope", file: File, abort: () => void) => {
+    const id = crypto.randomUUID();
+    bg.registerUpload({
+      id, kind, lessonId, courseId: courseId || "",
+      courseTitle: meta?.courseTitle || "Курс",
+      lessonTitle: meta?.lessonTitle || "Урок",
+      fileName: file.name, fileSize: file.size, abort,
+      organizationId: meta?.organizationId,
+    });
+    currentTaskIdRef.current = id;
+    return id;
+  }, [bg, lessonId, courseId, meta?.courseTitle, meta?.lessonTitle, meta?.organizationId]);
+
   // TTS
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [isSpeechPaused, setIsSpeechPaused] = useState(false);
@@ -155,30 +172,43 @@ export function useLessonMedia(
     const abortController = new AbortController();
     tusAbortRef.current = abortController;
 
-    const result = await tusUpload({
-      file: fileToUpload,
-      bucket: config.bucketName,
-      path: filePath,
-      baseUrl: config.baseUrl,
-      apiKey: config.apiKey,
-      authToken: config.authToken,
-      onProgress: (percent) => {
-        setVideoUploadProgress(percent);
-        setUploadedBytes(Math.round((percent / 100) * fileToUpload.size));
-      },
-      onStall: () => {
-        toast.warning("Загрузка замедлилась. Проверьте интернет-соединение.", { duration: 5000 });
-      },
-      signal: abortController.signal,
-    });
+    // Register background task (so closing dialog won't lose visibility)
+    const taskId = (fileToUpload instanceof File)
+      ? startBgTask("internal", fileToUpload, () => abortController.abort())
+      : null;
 
-    tusAbortRef.current = null;
-    onUpdate({ content: result.url });
-    setUploadFinishTime(Date.now());
-    toast.success("Видео загружено!");
-    setVideoUploadProgress(null);
-    if (videoInputRef.current) videoInputRef.current.value = '';
-  }, [onUpdate]);
+    try {
+      const result = await tusUpload({
+        file: fileToUpload,
+        bucket: config.bucketName,
+        path: filePath,
+        baseUrl: config.baseUrl,
+        apiKey: config.apiKey,
+        authToken: config.authToken,
+        onProgress: (percent) => {
+          setVideoUploadProgress(percent);
+          setUploadedBytes(Math.round((percent / 100) * fileToUpload.size));
+          if (taskId) bg.updateUpload(taskId, { progress: percent });
+        },
+        onStall: () => {
+          toast.warning("Загрузка замедлилась. Проверьте интернет-соединение.", { duration: 5000 });
+        },
+        signal: abortController.signal,
+      });
+
+      tusAbortRef.current = null;
+      onUpdate({ content: result.url });
+      setUploadFinishTime(Date.now());
+      setVideoUploadProgress(null);
+      if (videoInputRef.current) videoInputRef.current.value = '';
+      if (taskId) bg.finishUpload(taskId);
+      else toast.success("Видео загружено!");
+    } catch (e: any) {
+      if (taskId) bg.failUpload(taskId, e?.message || "Ошибка загрузки");
+      throw e;
+    }
+  }, [onUpdate, startBgTask, bg]);
+
 
   const uploadViaXhr = useCallback(async (
     fileToUpload: File | Blob,
@@ -280,6 +310,7 @@ export function useLessonMedia(
       const fileSize = file.size;
       const abortController = new AbortController();
       tusAbortRef.current = abortController;
+      const bgTaskId = startBgTask("kinescope", file, () => abortController.abort());
 
       const fetchKinescopeOffset = async (): Promise<number | null> => {
         try {
@@ -321,6 +352,7 @@ export function useLessonMedia(
             offset = serverOffset;
             setKinescopeUploadProgress(Math.round((offset / fileSize) * 100));
             setUploadedBytes(offset);
+            bg.updateUpload(bgTaskId, { progress: Math.round((offset / fileSize) * 100) });
             continue;
           }
           const errBody = await patchRes.text().catch(() => "");
@@ -336,6 +368,7 @@ export function useLessonMedia(
         offset = newOffset ? parseInt(newOffset, 10) : end;
         setKinescopeUploadProgress(Math.round((offset / fileSize) * 100));
         setUploadedBytes(offset);
+        bg.updateUpload(bgTaskId, { progress: Math.round((offset / fileSize) * 100) });
       }
 
       tusAbortRef.current = null;
@@ -343,11 +376,12 @@ export function useLessonMedia(
       // 3. Save kinescope:{videoId} as content
       onUpdate({ content: `kinescope:${video_id}` });
       setUploadFinishTime(Date.now());
-      toast.success("Видео загружено в Kinescope!");
       setKinescopeUploadProgress(null);
       if (kinescopeInputRef.current) kinescopeInputRef.current.value = '';
+      bg.finishUpload(bgTaskId);
     } catch (error: any) {
       console.error("Kinescope upload error:", error);
+      if (currentTaskIdRef.current) bg.failUpload(currentTaskIdRef.current, error?.message || "Ошибка");
       if (!error.message?.includes("cancelled")) {
         toast.error(`Ошибка загрузки: ${error.message}`);
       }

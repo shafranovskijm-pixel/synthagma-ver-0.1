@@ -13,6 +13,8 @@ import { SpecialOfferPopup } from "./components/landing/SpecialOfferPopup";
 import { OfflineIndicator } from "./components/OfflineIndicator";
 import { useThemePersonalization } from "@/components/ui/ThemePersonalization";
 import { captureRefFromUrl } from "@/utils/referralCookie";
+import { BackgroundUploadsProvider } from "@/contexts/BackgroundUploadsContext";
+import { BackgroundUploadsTray } from "@/components/uploads/BackgroundUploadsTray";
 import {
   publicRoutes,
   studentRoutes,
@@ -48,23 +50,26 @@ const App = () => (
         <QueryClientProvider client={queryClient}>
           <Router>
             <AuthProvider>
-              <ThemeInit />
-              <ScrollToTop />
-              <OfflineIndicator />
-              <TooltipProvider>
-                <Sonner />
-                <SpecialOfferPopup />
-                <Suspense fallback={<LazyLoadFallback />}>
-                  <Routes>
-                    {publicRoutes}
-                    {studentRoutes}
-                    {organizationRoutes}
-                    {adminRoutes}
-                    {partnerRoutes}
-                    {companyRoutes}
-                  </Routes>
-                </Suspense>
-              </TooltipProvider>
+              <BackgroundUploadsProvider>
+                <ThemeInit />
+                <ScrollToTop />
+                <OfflineIndicator />
+                <TooltipProvider>
+                  <Sonner />
+                  <SpecialOfferPopup />
+                  <BackgroundUploadsTray />
+                  <Suspense fallback={<LazyLoadFallback />}>
+                    <Routes>
+                      {publicRoutes}
+                      {studentRoutes}
+                      {organizationRoutes}
+                      {adminRoutes}
+                      {partnerRoutes}
+                      {companyRoutes}
+                    </Routes>
+                  </Suspense>
+                </TooltipProvider>
+              </BackgroundUploadsProvider>
             </AuthProvider>
           </Router>
         </QueryClientProvider>

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
@@ -50,6 +50,22 @@ export function useCourseEditor() {
   const [deletingLessonId, setDeletingLessonId] = useState<string | null>(null);
   const [isPageSettingsOpen, setIsPageSettingsOpen] = useState(false);
   const [isGitHubImportOpen, setIsGitHubImportOpen] = useState(false);
+  const [activeLessonId, setActiveLessonId] = useState<string | null>(null);
+  const lessonRefs = useRef<Map<string, HTMLElement>>(new Map());
+
+  const registerLessonRef = useCallback((id: string, el: HTMLElement | null) => {
+    if (el) lessonRefs.current.set(id, el);
+    else lessonRefs.current.delete(id);
+  }, []);
+
+  const scrollToLesson = useCallback((id: string) => {
+    const el = lessonRefs.current.get(id);
+    if (el) {
+      el.scrollIntoView({ behavior: "smooth", block: "start" });
+      setExpandedLessonId(id);
+      setActiveLessonId(id);
+    }
+  }, []);
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -182,5 +198,6 @@ export function useCourseEditor() {
     sensors, navigate, handleSaveCourse, handleTogglePublish, handleDragEnd,
     handleAddLesson, handleEditLesson, handleSaveLesson, handleDeleteLesson,
     handleToggleLock, handleGitHubImport,
+    activeLessonId, setActiveLessonId, registerLessonRef, scrollToLesson,
   };
 }
