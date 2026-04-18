@@ -232,36 +232,78 @@ export function appendStampPage(
   return page;
 }
 
-/** Очень простой парсер HTML → текстовые блоки. */
-interface TextBlock {
+/** Очень простой парсер HTML → текстовые блоки с поддержкой <ins>. */
+interface TextRun {
   text: string;
+  inserted: boolean;
+}
+interface TextBlock {
+  runs: TextRun[];
   size: number;
   bold: boolean;
   spacingAfter: number;
 }
 
+const decodeEntities = (s: string) =>
+  s.replace(/&nbsp;/g, " ")
+   .replace(/&amp;/g, "&")
+   .replace(/&lt;/g, "<")
+   .replace(/&gt;/g, ">")
+   .replace(/&quot;/g, '"')
+   .replace(/&#39;/g, "'")
+   .replace(/&laquo;/g, "«")
+   .replace(/&raquo;/g, "»")
+   .replace(/&mdash;/g, "—")
+   .replace(/&ndash;/g, "–")
+   .replace(/<br\s*\/?>(\s*)/gi, " ");
+
+/**
+ * Преобразует inner HTML блока в массив runs.
+ * Распознаёт <ins ...>...</ins> (и вложенный текст) — помечает как inserted.
+ * Все остальные теги внутри удаляются (их текст сохраняется).
+ */
+function innerHtmlToRuns(inner: string): TextRun[] {
+  if (!inner) return [];
+  const runs: TextRun[] = [];
+  // Регулярка для <ins>...</ins> (не вложенные ins)
+  const insRe = /<ins\b[^>]*>([\s\S]*?)<\/ins>/gi;
+  let lastIdx = 0;
+  let m: RegExpExecArray | null;
+  const pushPlain = (chunk: string) => {
+    const t = decodeEntities(chunk.replace(/<[^>]+>/g, "")).replace(/\s+/g, " ");
+    if (t) runs.push({ text: t, inserted: false });
+  };
+  while ((m = insRe.exec(inner))) {
+    if (m.index > lastIdx) pushPlain(inner.slice(lastIdx, m.index));
+    const insText = decodeEntities(m[1].replace(/<[^>]+>/g, "")).replace(/\s+/g, " ");
+    if (insText) runs.push({ text: insText, inserted: true });
+    lastIdx = insRe.lastIndex;
+  }
+  if (lastIdx < inner.length) pushPlain(inner.slice(lastIdx));
+  // Склеиваем соседние runs одного типа
+  const merged: TextRun[] = [];
+  for (const r of runs) {
+    const last = merged[merged.length - 1];
+    if (last && last.inserted === r.inserted) {
+      last.text = (last.text + r.text).replace(/\s{2,}/g, " ");
+    } else {
+      merged.push({ ...r });
+    }
+  }
+  // Trim leading/trailing whitespace
+  if (merged.length) {
+    merged[0].text = merged[0].text.replace(/^\s+/, "");
+    merged[merged.length - 1].text = merged[merged.length - 1].text.replace(/\s+$/, "");
+  }
+  return merged.filter((r) => r.text.length > 0);
+}
+
 function htmlToBlocks(html: string): TextBlock[] {
-  // Нормализуем
   const cleaned = html
     .replace(/<style[\s\S]*?<\/style>/gi, "")
     .replace(/<script[\s\S]*?<\/script>/gi, "");
 
   const blocks: TextBlock[] = [];
-  const decode = (s: string) =>
-    s.replace(/&nbsp;/g, " ")
-     .replace(/&amp;/g, "&")
-     .replace(/&lt;/g, "<")
-     .replace(/&gt;/g, ">")
-     .replace(/&quot;/g, '"')
-     .replace(/&#39;/g, "'")
-     .replace(/&laquo;/g, "«")
-     .replace(/&raquo;/g, "»")
-     .replace(/&mdash;/g, "—")
-     .replace(/&ndash;/g, "–");
-
-  const stripTags = (s: string) => decode(s.replace(/<[^>]+>/g, "")).replace(/\s+/g, " ").trim();
-
-  // Делим по блочным тегам
   const blockRegex = /<(h[1-6]|p|li|tr|div|blockquote)[^>]*>([\s\S]*?)<\/\1>/gi;
   let m: RegExpExecArray | null;
   let lastIdx = 0;
@@ -270,52 +312,130 @@ function htmlToBlocks(html: string): TextBlock[] {
   while ((m = blockRegex.exec(cleaned))) {
     if (m.index > lastIdx) {
       const between = cleaned.slice(lastIdx, m.index);
-      const t = stripTags(between);
+      const t = decodeEntities(between.replace(/<[^>]+>/g, "")).replace(/\s+/g, " ").trim();
       if (t) fallbackChunks.push(t);
     }
     const tag = m[1].toLowerCase();
-    const inner = stripTags(m[2]);
-    if (!inner) {
+    const runs = innerHtmlToRuns(m[2]);
+    if (runs.length === 0) {
       lastIdx = blockRegex.lastIndex;
       continue;
     }
     if (/^h[1-3]$/.test(tag)) {
       const sz = tag === "h1" ? 16 : tag === "h2" ? 14 : 12;
-      blocks.push({ text: inner, size: sz, bold: true, spacingAfter: 8 });
+      blocks.push({ runs, size: sz, bold: true, spacingAfter: 8 });
     } else if (tag === "li") {
-      blocks.push({ text: "• " + inner, size: 11, bold: false, spacingAfter: 4 });
+      runs[0] = { ...runs[0], text: "• " + runs[0].text };
+      blocks.push({ runs, size: 11, bold: false, spacingAfter: 4 });
     } else if (tag === "blockquote") {
-      blocks.push({ text: "» " + inner, size: 11, bold: false, spacingAfter: 6 });
+      runs[0] = { ...runs[0], text: "» " + runs[0].text };
+      blocks.push({ runs, size: 11, bold: false, spacingAfter: 6 });
     } else {
-      blocks.push({ text: inner, size: 11, bold: false, spacingAfter: 6 });
+      blocks.push({ runs, size: 11, bold: false, spacingAfter: 6 });
     }
     lastIdx = blockRegex.lastIndex;
   }
   if (lastIdx < cleaned.length) {
-    const tail = stripTags(cleaned.slice(lastIdx));
+    const tail = decodeEntities(cleaned.slice(lastIdx).replace(/<[^>]+>/g, "")).replace(/\s+/g, " ").trim();
     if (tail) fallbackChunks.push(tail);
   }
 
-  // Если совсем ничего не распарсилось — fallback на чистый текст
+  // Если ничего не распарсилось — делаем один блок из всего текста (с учётом <ins>)
   if (blocks.length === 0) {
-    const plain = stripTags(cleaned);
-    if (plain) {
-      // Делим длинный текст по двойным переносам
-      for (const para of plain.split(/\s{4,}|\n{2,}/)) {
-        const t = para.trim();
-        if (t) blocks.push({ text: t, size: 11, bold: false, spacingAfter: 6 });
-      }
+    const runs = innerHtmlToRuns(cleaned);
+    if (runs.length) {
+      blocks.push({ runs, size: 11, bold: false, spacingAfter: 6 });
     }
   } else if (fallbackChunks.length) {
     for (const t of fallbackChunks) {
-      blocks.push({ text: t, size: 11, bold: false, spacingAfter: 6 });
+      blocks.push({ runs: [{ text: t, inserted: false }], size: 11, bold: false, spacingAfter: 6 });
     }
   }
 
   return blocks;
 }
 
-/** Рендерит HTML-договор как новые страницы PDF. */
+/** Token = слово или один пробел; используется при per-run wrapping. */
+interface Token {
+  text: string;
+  inserted: boolean;
+  isSpace: boolean;
+}
+
+function tokenizeRuns(runs: TextRun[]): Token[] {
+  const tokens: Token[] = [];
+  for (const r of runs) {
+    const parts = r.text.split(/(\s+)/);
+    for (const p of parts) {
+      if (!p) continue;
+      if (/^\s+$/.test(p)) {
+        tokens.push({ text: " ", inserted: r.inserted, isSpace: true });
+      } else {
+        tokens.push({ text: p, inserted: r.inserted, isSpace: false });
+      }
+    }
+  }
+  return tokens;
+}
+
+/** Раскладывает токены на строки с переносом по maxWidth. */
+function layoutTokens(
+  tokens: Token[],
+  font: PDFFont,
+  size: number,
+  maxWidth: number,
+): Token[][] {
+  const lines: Token[][] = [];
+  let line: Token[] = [];
+  let lineWidth = 0;
+  const widthOf = (s: string) => font.widthOfTextAtSize(s, size);
+
+  for (const tok of tokens) {
+    // не начинаем строку с пробела
+    if (tok.isSpace && line.length === 0) continue;
+    const w = widthOf(tok.text);
+    if (lineWidth + w > maxWidth && line.length > 0) {
+      // убираем хвостовой пробел
+      while (line.length && line[line.length - 1].isSpace) {
+        const last = line.pop()!;
+        lineWidth -= widthOf(last.text);
+      }
+      lines.push(line);
+      line = [];
+      lineWidth = 0;
+      if (tok.isSpace) continue;
+    }
+    // если слово длиннее ширины — разбиваем по символам
+    if (!tok.isSpace && w > maxWidth) {
+      let chunk = "";
+      for (const ch of tok.text) {
+        if (widthOf(chunk + ch) > maxWidth && chunk) {
+          line.push({ text: chunk, inserted: tok.inserted, isSpace: false });
+          lines.push(line);
+          line = [];
+          lineWidth = 0;
+          chunk = ch;
+        } else {
+          chunk += ch;
+        }
+      }
+      if (chunk) {
+        line.push({ text: chunk, inserted: tok.inserted, isSpace: false });
+        lineWidth += widthOf(chunk);
+      }
+      continue;
+    }
+    line.push(tok);
+    lineWidth += w;
+  }
+  if (line.length) {
+    while (line.length && line[line.length - 1].isSpace) line.pop();
+    if (line.length) lines.push(line);
+  }
+  return lines;
+}
+
+/** Рендерит HTML-договор как новые страницы PDF (с поддержкой <ins>). */
 export function appendHtmlAsPages(
   pdf: PDFDocument,
   html: string,
@@ -343,18 +463,127 @@ export function appendHtmlAsPages(
   for (const b of blocks) {
     const f = b.bold ? fontBold : font;
     const lh = b.size * 1.4;
-    const lines = wrapText(b.text, f, b.size, maxWidth);
+    const tokens = tokenizeRuns(b.runs);
+    const lines = layoutTokens(tokens, f, b.size, maxWidth);
+
     for (const line of lines) {
       if (y < MARGIN + lh) {
         page = pdf.addPage([A4.width, A4.height]);
         y = A4.height - MARGIN;
       }
-      page.drawText(line, { x: MARGIN, y, size: b.size, font: f, color: TEXT });
+      // Рисуем токены последовательно с правильным цветом + фоном для inserted
+      let cx = MARGIN;
+      for (const tok of line) {
+        const w = f.widthOfTextAtSize(tok.text, b.size);
+        if (tok.inserted && !tok.isSpace) {
+          // фон-прямоугольник
+          const padY = 1.5;
+          page.drawRectangle({
+            x: cx - 1,
+            y: y - padY,
+            width: w + 2,
+            height: b.size + padY * 1.5,
+            color: INS_BG,
+          });
+        }
+        page.drawText(tok.text, {
+          x: cx,
+          y,
+          size: b.size,
+          font: f,
+          color: tok.inserted ? INS_TEXT : TEXT,
+        });
+        cx += w;
+      }
       y -= lh;
     }
     y -= b.spacingAfter;
   }
 }
+
+/** Описание принятой правки для итоговой страницы со списком. */
+export interface AcceptedEditSummary {
+  id: string;
+  kind: "insert" | "replace" | "delete";
+  before?: string;
+  after?: string;
+}
+
+/** Добавляет страницу «Принятые правки клиента» (для PDF-вложений). */
+export function appendAcceptedEditsListPage(
+  pdf: PDFDocument,
+  edits: AcceptedEditSummary[],
+  font: PDFFont,
+  fontBold: PDFFont,
+): void {
+  if (!edits || edits.length === 0) return;
+  let page = pdf.addPage([A4.width, A4.height]);
+  const maxWidth = A4.width - MARGIN * 2;
+  let y = A4.height - MARGIN;
+
+  page.drawText("Принятые правки клиента", {
+    x: MARGIN, y: y - 18, size: 16, font: fontBold, color: TEAL,
+  });
+  page.drawLine({
+    start: { x: MARGIN, y: y - 26 },
+    end: { x: A4.width - MARGIN, y: y - 26 },
+    color: TEAL, thickness: 1.5,
+  });
+  y -= 44;
+
+  page.drawText(
+    "Перечисленные правки приняты организацией и являются неотъемлемой частью договора.",
+    { x: MARGIN, y, size: 9, font, color: MUTED, maxWidth },
+  );
+  y -= 18;
+
+  edits.forEach((e, i) => {
+    const num = `${i + 1}.`;
+    const label =
+      e.kind === "insert" ? "Вставить:"
+      : e.kind === "delete" ? "Удалить:"
+      : "Заменить:";
+    const headerLine = `${num} ${label}`;
+
+    if (y < MARGIN + 60) {
+      page = pdf.addPage([A4.width, A4.height]);
+      y = A4.height - MARGIN;
+    }
+    page.drawText(headerLine, { x: MARGIN, y, size: 11, font: fontBold, color: TEAL });
+    y -= 16;
+
+    const drawTextBlock = (label: string, text: string, color: RGB, bg?: RGB) => {
+      const lines = wrapText(text, font, 10, maxWidth - 12);
+      const blockH = lines.length * 13 + 8;
+      if (y - blockH < MARGIN) {
+        page = pdf.addPage([A4.width, A4.height]);
+        y = A4.height - MARGIN;
+      }
+      if (bg) {
+        page.drawRectangle({
+          x: MARGIN, y: y - blockH + 4, width: maxWidth, height: blockH,
+          color: bg,
+        });
+      }
+      page.drawText(label, { x: MARGIN + 6, y: y - 4, size: 8, font: fontBold, color: MUTED });
+      let cy = y - 16;
+      for (const ln of lines) {
+        page.drawText(ln, { x: MARGIN + 6, y: cy, size: 10, font, color });
+        cy -= 13;
+      }
+      y -= blockH + 4;
+    };
+
+    if ((e.kind === "delete" || e.kind === "replace") && e.before) {
+      drawTextBlock("Было:", e.before, MUTED);
+    }
+    if ((e.kind === "insert" || e.kind === "replace") && e.after) {
+      drawTextBlock("Стало:", e.after, INS_TEXT, INS_BG);
+    }
+    y -= 6;
+  });
+}
+
 
 /** Встраивает скан-изображение (jpg/png) на отдельной странице. */
 export async function appendImagePage(
