@@ -75,68 +75,51 @@ export function SignedDocumentPreview({
       return data?.signedUrl || null;
     };
     setLoading(true);
-    Promise.all([resolve(attachedFilePath), resolve(handwrittenScanPath)])
-      .then(([a, s]) => {
+    Promise.all([
+      resolve(attachedFilePath),
+      resolve(handwrittenScanPath),
+      getCachedSignedPdfUrl(signedDocumentPath),
+    ])
+      .then(([a, s, cached]) => {
         if (cancelled) return;
         setAttachedUrl(a);
         setScanUrl(s);
+        setCachedPdfUrl(cached);
       })
       .finally(() => !cancelled && setLoading(false));
     return () => { cancelled = true; };
-  }, [open, attachedFilePath, handwrittenScanPath]);
+  }, [open, attachedFilePath, handwrittenScanPath, signedDocumentPath]);
 
-  const handlePrint = () => {
-    const win = window.open("", "_blank", "width=900,height=1200");
-    if (!win) {
-      toast.error("Разрешите всплывающие окна, чтобы скачать PDF");
+  const handleDownloadPdf = async () => {
+    if (cachedPdfUrl) {
+      window.open(cachedPdfUrl, "_blank");
       return;
     }
-    const stampHtml = (p?: PartyInfo, label?: string) => {
-      if (!p?.signedAt) return "";
-      const date = new Date(p.signedAt).toLocaleString("ru-RU", { timeZone: "Europe/Moscow" });
-      return `
-        <div style="border:2px solid #0f8c7e;border-radius:12px;padding:16px;margin:8px;min-width:320px;background:linear-gradient(135deg,rgba(15,140,126,.08),rgba(15,140,126,.02));">
-          <div style="font-weight:700;font-size:11px;letter-spacing:.05em;text-transform:uppercase;color:#0f8c7e;border-bottom:1px solid rgba(15,140,126,.3);padding-bottom:6px;margin-bottom:10px;">
-            ${label || "Подпись"} · ПЭП (63-ФЗ)
-          </div>
-          <table style="font-size:12px;width:100%;border-collapse:collapse;">
-            <tr><td style="color:#666;width:110px;padding:2px 0;">ФИО:</td><td style="font-weight:600;">${p.fullName}</td></tr>
-            <tr><td style="color:#666;padding:2px 0;">Email:</td><td>${p.email}</td></tr>
-            <tr><td style="color:#666;padding:2px 0;">Дата:</td><td>${date} (МСК)</td></tr>
-            ${p.ip ? `<tr><td style="color:#666;padding:2px 0;">IP:</td><td style="font-family:monospace;">${p.ip}</td></tr>` : ""}
-            ${p.agreementId ? `<tr><td style="color:#666;padding:2px 0;">Соглашение:</td><td style="font-family:monospace;">PEP-${p.agreementId.slice(0,8).toUpperCase()}</td></tr>` : ""}
-            ${p.documentHash ? `<tr><td style="color:#666;padding:2px 0;">SHA-256:</td><td style="font-family:monospace;font-size:10px;word-break:break-all;">${p.documentHash}</td></tr>` : ""}
-          </table>
-        </div>`;
-    };
-    const body = documentHtml
-      ? documentHtml
-      : (attachedUrl
-          ? `<div style="text-align:center;padding:40px;border:1px dashed #ccc;border-radius:12px;">
-              <p>Документ — вложение: <a href="${attachedUrl}" target="_blank">${documentTitle}</a></p>
-              <p style="font-size:11px;color:#666;">Откройте по ссылке и распечатайте отдельно.</p>
-            </div>`
-          : "<p>Содержимое документа недоступно.</p>");
-    const scanBlock = scanUrl
-      ? `<div style="margin-top:24px;border-top:2px solid #0f8c7e;padding-top:16px;"><h3>Скан с собственноручной подписью и печатью</h3><img src="${scanUrl}" style="max-width:100%;border:1px solid #ddd;border-radius:8px;"/></div>`
-      : "";
-    win.document.write(`<!DOCTYPE html><html><head><title>${documentTitle}</title><meta charset="utf-8"/><style>
-      body{font-family:'Times New Roman',serif;color:#111;max-width:900px;margin:24px auto;padding:24px;}
-      h1,h2,h3{color:#111;}
-      .stamps{display:flex;flex-wrap:wrap;gap:12px;justify-content:center;margin-top:32px;border-top:2px dashed #0f8c7e;padding-top:24px;}
-      @media print {.no-print{display:none;}}
-    </style></head><body>
-      <div class="no-print" style="text-align:right;margin-bottom:16px;"><button onclick="window.print()" style="padding:8px 16px;background:#0f8c7e;color:#fff;border:none;border-radius:6px;cursor:pointer;">Печать / Сохранить как PDF</button></div>
-      <h1 style="border-bottom:2px solid #0f8c7e;padding-bottom:8px;">${documentTitle}</h1>
-      ${body}
-      ${scanBlock}
-      <div class="stamps">
-        ${stampHtml(sender, "Подпись отправителя")}
-        ${stampHtml(recipient, "Подпись получателя")}
-      </div>
-    </body></html>`);
-    win.document.close();
-    setTimeout(() => win.focus(), 200);
+    setGenerating(true);
+    try {
+      const isPdfScan = !!scanUrl && (scanUrl.toLowerCase().includes(".pdf") || !!attachedFileMime?.includes("pdf"));
+      const result = await generateSignedPdf({
+        signatureId,
+        documentTitle,
+        documentHtml: documentHtml || null,
+        attachedFileUrl: attachedUrl,
+        scanFileUrl: scanUrl,
+        scanIsPdf: isPdfScan,
+        signatureMethod,
+        sender,
+        recipient,
+      });
+      setCachedPdfUrl(result.url);
+      if (result.url) {
+        window.open(result.url, "_blank");
+        toast.success("Подписанный PDF готов");
+      }
+    } catch (e: any) {
+      console.error("[SignedDocumentPreview] generateSignedPdf error", e);
+      toast.error("Не удалось собрать PDF: " + (e?.message || "ошибка"));
+    } finally {
+      setGenerating(false);
+    }
   };
 
   const handleDownloadAttachment = () => {
