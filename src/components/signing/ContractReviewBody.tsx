@@ -54,6 +54,7 @@ interface SigData {
   sender_name?: string | null;
   signature_method?: "pep" | "handwritten_scan" | null;
   handwritten_scan_path?: string | null;
+  signed_document_path?: string | null;
   document_hash?: string | null;
   pep_agreement_id?: string | null;
 }
