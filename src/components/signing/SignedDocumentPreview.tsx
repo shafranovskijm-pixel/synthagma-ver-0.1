@@ -6,7 +6,8 @@ import { Loader2, Download, FileText, FileDown } from "lucide-react";
 import { PepSignatureStamp } from "@/components/signing/PepSignatureStamp";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { generateSignedPdf, getCachedSignedPdfUrl } from "@/lib/signedDocumentPdf";
+import { generateSignedPdf } from "@/lib/signedDocumentPdf";
+import type { AcceptedEditSummary } from "@/lib/pdfStampDrawer";
 
 interface PartyInfo {
   fullName: string;
@@ -22,14 +23,14 @@ interface Props {
   onOpenChange: (v: boolean) => void;
   signatureId: string;
   documentTitle: string;
-  /** HTML тело документа (если HTML-договор). */
+  /** HTML тело документа (уже с применёнными принятыми правками клиента). */
   documentHtml?: string | null;
   /** Если документ — загруженный файл (PDF/DOCX), путь в `external-contracts`. */
   attachedFilePath?: string | null;
   attachedFileMime?: string | null;
   /** Скан с собственноручной подписью (если signature_method = handwritten_scan). */
   handwrittenScanPath?: string | null;
-  /** Кешированный путь к финальному подписанному PDF. */
+  /** Кешированный путь к финальному подписанному PDF (для предварительной загрузки URL). */
   signedDocumentPath?: string | null;
   /** Подпись отправителя (организация / Оператор). */
   sender?: PartyInfo;
@@ -37,6 +38,8 @@ interface Props {
   recipient?: PartyInfo;
   /** Способ подписания. */
   signatureMethod?: "pep" | "handwritten_scan";
+  /** Список принятых правок — для PDF-вложений добавится отдельная страница-список. */
+  acceptedEdits?: AcceptedEditSummary[];
 }
 
 const BUCKET = "external-contracts";
@@ -50,14 +53,13 @@ export function SignedDocumentPreview({
   attachedFilePath,
   attachedFileMime,
   handwrittenScanPath,
-  signedDocumentPath,
   sender,
   recipient,
   signatureMethod = "pep",
+  acceptedEdits,
 }: Props) {
   const [attachedUrl, setAttachedUrl] = useState<string | null>(null);
   const [scanUrl, setScanUrl] = useState<string | null>(null);
-  const [cachedPdfUrl, setCachedPdfUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [generating, setGenerating] = useState(false);
 
@@ -75,26 +77,17 @@ export function SignedDocumentPreview({
       return data?.signedUrl || null;
     };
     setLoading(true);
-    Promise.all([
-      resolve(attachedFilePath),
-      resolve(handwrittenScanPath),
-      getCachedSignedPdfUrl(signedDocumentPath),
-    ])
-      .then(([a, s, cached]) => {
+    Promise.all([resolve(attachedFilePath), resolve(handwrittenScanPath)])
+      .then(([a, s]) => {
         if (cancelled) return;
         setAttachedUrl(a);
         setScanUrl(s);
-        setCachedPdfUrl(cached);
       })
       .finally(() => !cancelled && setLoading(false));
     return () => { cancelled = true; };
-  }, [open, attachedFilePath, handwrittenScanPath, signedDocumentPath]);
+  }, [open, attachedFilePath, handwrittenScanPath]);
 
   const handleDownloadPdf = async () => {
-    if (cachedPdfUrl) {
-      window.open(cachedPdfUrl, "_blank");
-      return;
-    }
     setGenerating(true);
     try {
       const result = await generateSignedPdf({
@@ -108,8 +101,8 @@ export function SignedDocumentPreview({
         signatureMethod,
         sender,
         recipient,
+        acceptedEdits,
       });
-      setCachedPdfUrl(result.url);
       if (result.url) {
         window.open(result.url, "_blank");
         toast.success("Подписанный PDF готов");
@@ -162,6 +155,29 @@ export function SignedDocumentPreview({
               className="w-full h-[60vh] border rounded-lg bg-white"
               title={documentTitle}
             />
+          )}
+
+          {!loading && attachedUrl && !documentHtml && acceptedEdits && acceptedEdits.length > 0 && (
+            <div className="border rounded-lg p-4 bg-emerald-50/50 space-y-2">
+              <div className="text-sm font-semibold text-emerald-900 flex items-center gap-2">
+                <FileText className="w-4 h-4" />
+                Принятые правки клиента ({acceptedEdits.length})
+              </div>
+              <ol className="text-xs text-emerald-900 space-y-1 list-decimal pl-5">
+                {acceptedEdits.map((e, i) => (
+                  <li key={e.id || i}>
+                    {e.kind === "insert" && <>Вставить: «<span className="font-medium">{e.after}</span>»</>}
+                    {e.kind === "delete" && <>Удалить: «<span className="line-through opacity-70">{e.before}</span>»</>}
+                    {e.kind === "replace" && (
+                      <>
+                        Заменить «<span className="opacity-70">{e.before}</span>» на «
+                        <span className="font-medium">{e.after}</span>»
+                      </>
+                    )}
+                  </li>
+                ))}
+              </ol>
+            </div>
           )}
 
           {!loading && scanUrl && (
@@ -225,7 +241,7 @@ export function SignedDocumentPreview({
             )}
             <Button size="sm" className="gap-1.5" onClick={handleDownloadPdf} disabled={generating}>
               {generating ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileDown className="w-4 h-4" />}
-              {cachedPdfUrl ? "Скачать подписанный PDF" : (generating ? "Сборка PDF…" : "Сформировать PDF")}
+              {generating ? "Сборка PDF…" : "Скачать подписанный PDF"}
             </Button>
           </div>
         </div>

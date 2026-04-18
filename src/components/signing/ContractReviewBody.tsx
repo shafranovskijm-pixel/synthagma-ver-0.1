@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
@@ -22,6 +22,7 @@ import { SignedDocumentPreview } from "@/components/signing/SignedDocumentPrevie
 import { getPepAgreementText, PEP_AGREEMENT_VERSION } from "@/constants/pepAgreementTemplate";
 import { OPERATOR } from "@/constants/operatorDetails";
 import { sha256Hex } from "@/utils/documentHash";
+import { applyAcceptedEdits } from "@/lib/applyAcceptedEdits";
 import { useAuth } from "@/hooks/useAuth";
 import { cn } from "@/lib/utils";
 
@@ -139,6 +140,13 @@ export function ContractReviewBody({
   const isPdf = fileMime.includes("pdf") || rawFileUrl?.toLowerCase().endsWith(".pdf");
   const isDocx = fileMime.includes("wordprocessingml") || rawFileUrl?.toLowerCase().endsWith(".docx");
   const documentHtml = sig?.document_html || currentRevision?.document_html || convertedHtml || null;
+
+  // Merge accepted client edits into the HTML — used in the signed preview popup AND in the final PDF.
+  const { html: mergedHtml, applied: appliedEdits } = useMemo(() => {
+    if (!documentHtml) return { html: null as string | null, applied: [] as ReturnType<typeof applyAcceptedEdits>["applied"] };
+    const result = applyAcceptedEdits(documentHtml, comments as any);
+    return { html: result.html, applied: result.applied };
+  }, [documentHtml, comments]);
 
   const pendingCount = comments.filter(c => (c.resolution_status ?? "pending") === "pending").length;
   const acceptedCount = comments.filter(c => c.resolution_status === "accepted").length;
@@ -949,12 +957,13 @@ export function ContractReviewBody({
           onOpenChange={setPreviewOpen}
           signatureId={sig.id}
           documentTitle={sig.document_title}
-          documentHtml={documentHtml}
+          documentHtml={mergedHtml}
           attachedFilePath={rawFileUrl && !rawFileUrl.startsWith("http") ? rawFileUrl : null}
           attachedFileMime={fileMime || null}
           handwrittenScanPath={sig.handwritten_scan_path || null}
           signedDocumentPath={sig.signed_document_path || null}
           signatureMethod={sig.signature_method || "pep"}
+          acceptedEdits={appliedEdits}
           sender={sig.sender_signed_at ? {
             fullName: sig.sender_name || OPERATOR.fullName,
             email: OPERATOR.email,
