@@ -249,7 +249,19 @@ export function SignaturesJournal({ organizationId }: Props) {
                     <TableCell>
                       <div className="flex items-center gap-1">
                         <Button variant="ghost" size="icon" title="Подробнее" onClick={() => setSelected(r)}><Eye className="w-4 h-4" /></Button>
-                        {r.status === "sent" && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          title="Обсудить документ"
+                          onClick={() => {
+                            const subject = encodeURIComponent(`Документ: ${r.document_title}`);
+                            const body = encodeURIComponent(`Здравствуйте, ${r.recipient_name}!\n\nХочу обсудить документ «${r.document_title}».\n\nСсылка: ${window.location.origin}/sign/${r.signature_token}`);
+                            window.open(`mailto:${r.recipient_email}?subject=${subject}&body=${body}`, "_blank");
+                          }}
+                        >
+                          <MessageCircle className="w-4 h-4" />
+                        </Button>
+                        {(r.status === "sent" || r.status === "in_review" || r.status === "changes_requested") && (
                           <Button variant="ghost" size="icon" title="Скопировать ссылку" onClick={() => copyLink(r.signature_token)}><Copy className="w-4 h-4" /></Button>
                         )}
                         {r.status === "signed" && (
