@@ -13,6 +13,8 @@ import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import { downloadSignatureProtocol, exportSignaturesToCSV } from "@/utils/signatureProtocol";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { SignatureRevisionUploader } from "@/components/signing/SignatureRevisionUploader";
+import { Upload, PenLine } from "lucide-react";
 
 interface SignatureRow {
   id: string;
@@ -297,6 +299,17 @@ export function SignaturesJournal({ organizationId }: Props) {
                 <SignatureCommentsPanel signatureId={selected.id} />
               )}
 
+              {selected.document_type === "external_upload" && (
+                <SignatureFilesPanel
+                  signatureId={selected.id}
+                  organizationId={selected.organization_id}
+                  status={selected.status}
+                  requiresBilateral={(selected as any).requires_bilateral}
+                  senderSignedAt={(selected as any).sender_signed_at}
+                  onChanged={load}
+                />
+              )}
+
               {selected.status === "signed" && (
                 <div className="rounded-xl border-2 border-emerald-500/30 bg-emerald-500/5 p-4 space-y-2">
                   <div className="font-semibold text-emerald-700 dark:text-emerald-400 flex items-center gap-2">
@@ -390,6 +403,113 @@ function SignatureCommentsPanel({ signatureId }: { signatureId: string }) {
           ))}
         </div>
       )}
+    </div>
+  );
+}
+
+/** Панель файлов-версий для внешне загруженных договоров */
+function SignatureFilesPanel({ signatureId, organizationId, status, requiresBilateral, senderSignedAt, onChanged }: {
+  signatureId: string; organizationId: string; status: string;
+  requiresBilateral?: boolean; senderSignedAt?: string | null; onChanged: () => void;
+}) {
+  const [revisions, setRevisions] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [showUploader, setShowUploader] = useState(false);
+  const [countersigning, setCountersigning] = useState(false);
+
+  const loadRev = async () => {
+    setLoading(true);
+    const { data } = await (supabase as any)
+      .from("signature_revisions").select("*")
+      .eq("signature_id", signatureId).order("version", { ascending: false });
+    setRevisions((data as any[]) || []);
+    setLoading(false);
+  };
+  useEffect(() => { loadRev(); }, [signatureId]);
+
+  const downloadFile = async (path: string, name: string) => {
+    const { data, error } = await supabase.storage.from("external-contracts").createSignedUrl(path, 600);
+    if (error || !data?.signedUrl) { toast.error("Не удалось получить ссылку"); return; }
+    const a = document.createElement("a");
+    a.href = data.signedUrl; a.download = name; a.target = "_blank";
+    document.body.appendChild(a); a.click(); a.remove();
+  };
+
+  const countersign = async () => {
+    setCountersigning(true);
+    try {
+      let ip = "unknown";
+      try { const r = await fetch("https://api.ipify.org?format=json"); const j = await r.json(); ip = j.ip || "unknown"; } catch {}
+      const { error } = await (supabase as any).rpc("sender_countersign", {
+        p_signature_id: signatureId, p_ip: ip, p_user_agent: navigator.userAgent,
+      });
+      if (error) throw error;
+      toast.success("Документ подписан с вашей стороны");
+      onChanged(); loadRev();
+    } catch (e: any) {
+      toast.error("Не удалось поставить подпись", { description: e?.message || String(e) });
+    } finally { setCountersigning(false); }
+  };
+
+  return (
+    <div className="rounded-xl border border-blue-500/30 bg-blue-500/5 p-4 space-y-3">
+      <div className="font-semibold text-blue-700 dark:text-blue-400 flex items-center gap-2">
+        <FileText className="w-5 h-5" />Версии документа
+        {revisions.length > 0 && <Badge variant="secondary">v{revisions[0].version}</Badge>}
+      </div>
+
+      {loading ? (
+        <div className="py-2 text-sm text-muted-foreground">Загрузка…</div>
+      ) : revisions.length === 0 ? (
+        <div className="py-2 text-sm text-muted-foreground">Версий нет</div>
+      ) : (
+        <div className="space-y-1.5">
+          {revisions.map((r) => (
+            <div key={r.id} className="flex items-center justify-between bg-background rounded-md border p-2">
+              <div className="min-w-0 flex-1">
+                <div className="text-xs font-medium flex items-center gap-2">
+                  <Badge variant="outline">v{r.version}</Badge>
+                  <span className="truncate">{r.file_name || "без файла"}</span>
+                </div>
+                <div className="text-[10px] text-muted-foreground mt-0.5">
+                  {r.created_by_name} · {new Date(r.created_at).toLocaleString("ru-RU")}
+                  {r.change_summary ? ` · ${r.change_summary}` : ""}
+                </div>
+              </div>
+              {r.file_url && (
+                <Button variant="ghost" size="icon" onClick={() => downloadFile(r.file_url, r.file_name || "document")}>
+                  <Download className="w-4 h-4" />
+                </Button>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+
+      <div className="flex flex-wrap gap-2 pt-1">
+        {(status === "in_review" || status === "changes_requested" || status === "sent") && (
+          <Button size="sm" variant="outline" className="gap-1.5" onClick={() => setShowUploader(true)}>
+            <Upload className="w-3.5 h-3.5" />Загрузить новую версию
+          </Button>
+        )}
+        {requiresBilateral && status === "signed" && !senderSignedAt && (
+          <Button size="sm" className="gap-1.5" onClick={countersign} disabled={countersigning}>
+            <PenLine className="w-3.5 h-3.5" />Подписать с моей стороны
+          </Button>
+        )}
+        {requiresBilateral && senderSignedAt && (
+          <Badge variant="outline" className="bg-emerald-500/10 text-emerald-700 border-emerald-500/30">
+            <CheckCircle2 className="w-3 h-3 mr-1" />Встречная подпись поставлена
+          </Badge>
+        )}
+      </div>
+
+      <SignatureRevisionUploader
+        open={showUploader} onOpenChange={setShowUploader}
+        signatureId={signatureId} organizationId={organizationId}
+        title="Загрузить новую версию"
+        onUploaded={() => { loadRev(); onChanged(); }}
+      />
     </div>
   );
 }
