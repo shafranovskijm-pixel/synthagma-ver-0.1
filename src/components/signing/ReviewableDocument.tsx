@@ -56,8 +56,6 @@ export function ReviewableDocument({ documentHtml, comments, authorName, canComm
     setSelection(null);
     setInsertCaret(null);
     try { window.getSelection()?.removeAllRanges(); } catch {}
-    // Удаляем визуальный caret-маркер
-    docRef.current?.querySelectorAll("[data-caret-marker]").forEach(el => el.remove());
   }, []);
 
   // Получает caret-позицию из координат клика (cross-browser)
