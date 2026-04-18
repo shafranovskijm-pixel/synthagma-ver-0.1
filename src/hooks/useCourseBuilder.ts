@@ -38,6 +38,7 @@ export function useCourseBuilder(propCourseId?: string) {
   const [subscriptionPlan, setSubscriptionPlan] = useState<string>('free');
   const aiLimit = useAiGenerationLimit(organizationId, subscriptionPlan);
   const [autoSaveStatus, setAutoSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
+  const [activeLessonId, setActiveLessonId] = useState<string | null>(null);
   const autoSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const draftTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const latestStateRef = useRef({ courseTitle: '', courseDescription: '', lessons: [] as Lesson[] });
@@ -180,6 +181,16 @@ export function useCourseBuilder(propCourseId?: string) {
   const updateLesson = useCallback((id: string, updates: Partial<Lesson>) => { setLessons(prev => prev.map(l => l.id === id ? { ...l, ...updates } : l)); markAsChanged(); }, [markAsChanged]);
   const deleteLesson = useCallback((id: string) => { setLessons(prev => prev.filter(l => l.id !== id)); markAsChanged(); if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current); autoSaveTimerRef.current = setTimeout(() => { saveCourse(true); }, 500); }, [markAsChanged]);
   const toggleLesson = useCallback((id: string) => { setLessons(prev => prev.map(l => l.id === id ? { ...l, expanded: !l.expanded } : l)); }, []);
+  const expandLesson = useCallback((id: string) => { setLessons(prev => prev.map(l => l.id === id ? { ...l, expanded: true } : l)); }, []);
+  const scrollToLesson = useCallback((id: string) => {
+    expandLesson(id);
+    setActiveLessonId(id);
+    // Defer to allow expansion to render before scroll
+    requestAnimationFrame(() => {
+      const el = document.querySelector<HTMLElement>(`[data-lesson-id="${id}"]`);
+      if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  }, [expandLesson]);
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }), useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }));
 
   const handleDragEnd = (event: DragEndEvent) => {
@@ -277,5 +288,6 @@ export function useCourseBuilder(propCourseId?: string) {
     addLesson, handleGenerateStructure, handleAIGenerate,
     updateLesson, deleteLesson, toggleLesson,
     sensors, handleDragEnd, saveCourse, saveSingleLesson, organizationId,
+    activeLessonId, setActiveLessonId, scrollToLesson, expandLesson,
   };
 }

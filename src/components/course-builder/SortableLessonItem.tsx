@@ -81,7 +81,7 @@ export function SortableLessonItem({
   const onGenerate = (mode: "text" | "image" | "full" = "full") => media.handleGenerateContent(lesson.title, lesson.type, courseTitle, courseDescription, lesson.blocks, mode);
 
   return (
-    <div ref={setNodeRef} style={style} className="border border-border rounded-xl overflow-hidden bg-card">
+    <div ref={setNodeRef} style={style} data-lesson-id={lesson.id} className="border border-border rounded-xl overflow-hidden bg-card scroll-mt-24">
       {/* Header */}
       <div className="flex items-center gap-3 p-4 cursor-pointer hover:bg-secondary/50 transition-colors" onClick={onToggle}>
         <div {...attributes} {...listeners} className="cursor-grab active:cursor-grabbing touch-none" onClick={(e) => e.stopPropagation()}>
