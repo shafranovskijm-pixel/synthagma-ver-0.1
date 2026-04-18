@@ -167,8 +167,8 @@ export function SubscriptionTab() {
                   <CardContent>
                     <p className="text-sm text-muted-foreground mb-4">Перейдите на более высокий тариф, чтобы разблокировать</p>
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
-                      {FEATURE_HIGHLIGHTS.filter(f => PLAN_ORDER.indexOf(f.minPlan) > s.currentPlanIndex && !(f.categoryKey && s.customEnabledCategories.includes(f.categoryKey))).map((feature, i) => (
-                        <div key={i} className="p-4 rounded-xl border border-border bg-muted/30 space-y-2 relative overflow-hidden">
+                      {FEATURE_HIGHLIGHTS.filter(f => PLAN_ORDER.indexOf(f.minPlan) > s.currentPlanIndex && !s.customEnabledCategories.includes(f.key)).map((feature) => (
+                        <div key={feature.key} className="p-4 rounded-xl border border-border bg-muted/30 space-y-2 relative overflow-hidden">
                           <div className="absolute top-2 right-2">
                             <Badge variant="outline" className={planAccents[feature.minPlan]}>
                               {SUBSCRIPTION_PLANS[feature.minPlan].name}+
