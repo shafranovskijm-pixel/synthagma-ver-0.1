@@ -334,6 +334,24 @@ export function ReviewableDocument({ documentHtml, comments, authorName, canComm
           </div>
         )}
 
+        {/* Визуальный мигающий маркер точки вставки (overlay, без модификации DOM документа) */}
+        {insertCaret && !selection && (
+          <div
+            className="fixed z-40 pointer-events-none"
+            style={{
+              top: insertCaret.rect.top,
+              left: insertCaret.rect.left - 1,
+              width: 2,
+              height: insertCaret.rect.height || 18,
+              background: "hsl(160 84% 39%)",
+              borderRadius: 1,
+              boxShadow: "0 0 6px hsl(160 84% 39% / 0.6)",
+              animation: "caret-blink 1s ease-in-out infinite",
+            }}
+          />
+        )}
+        <style>{`@keyframes caret-blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }`}</style>
+
         {/* Caret-toolbar: insert в позицию курсора без выделения */}
         {insertCaret && canComment && !draftKind && !selection && (
           <div
