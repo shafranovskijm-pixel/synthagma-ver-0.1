@@ -7,7 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Send, User, Mail, Calendar, Loader2, Copy, ExternalLink, Building2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { hashHtml } from "@/utils/documentHash";
+import { sha256Hex } from "@/utils/documentHash";
 
 export type SigningRecipientType = "student" | "company" | "individual";
 
@@ -74,7 +74,7 @@ export function SendForSigningDialog({ open, onOpenChange, payload, recipients =
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Нет авторизации");
 
-      const documentHash = await hashHtml(payload.documentHtml);
+      const documentHash = await sha256Hex(payload.documentHtml);
       const signatureToken = crypto.randomUUID() + crypto.randomUUID().replace(/-/g, "");
       const expires = new Date(Date.now() + Number(expiresDays || 7) * 24 * 60 * 60 * 1000).toISOString();
 
