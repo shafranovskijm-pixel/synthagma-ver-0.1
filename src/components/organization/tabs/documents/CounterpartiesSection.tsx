@@ -82,6 +82,31 @@ export function CounterpartiesSection({
   const [adminSigEmail, setAdminSigEmail] = useState<string>("support@sintagma.com.ru");
   const [expandedReviewId, setExpandedReviewId] = useState<string | null>(null);
 
+  // Handle deep-link from notification: open a specific signature
+  useEffect(() => {
+    const sigId = sessionStorage.getItem("openSignatureId");
+    if (!sigId) return;
+    sessionStorage.removeItem("openSignatureId");
+    setSelectedId("platform");
+    setCounterpartySubTab("contracts");
+    // Wait for platformExternalContracts to load, then expand
+    (async () => {
+      const { data } = await (supabase as any)
+        .from("document_signatures")
+        .select("id, document_title, status, created_at, current_revision_id, sender_signed_at, requires_bilateral, signed_at, signature_token")
+        .eq("organization_id", organizationId)
+        .eq("document_type", "external_upload")
+        .order("created_at", { ascending: false });
+      setPlatformExternalContracts((data as any[]) || []);
+      setExpandedReviewId(sigId);
+      // Scroll into view next tick
+      setTimeout(() => {
+        const el = document.querySelector(`[data-signature-id="${sigId}"]`);
+        el?.scrollIntoView({ behavior: "smooth", block: "center" });
+      }, 200);
+    })();
+  }, [organizationId, setCounterpartySubTab]);
+
   useEffect(() => {
     supabase.from("app_settings").select("setting_value").eq("setting_key", "admin_signature_email").maybeSingle()
       .then(({ data }) => {
@@ -307,7 +332,7 @@ export function CounterpartiesSection({
             };
             const st = statusLabel[c.status] || { text: c.status, cls: "text-muted-foreground bg-muted" };
             return (
-              <div key={c.id} className={cn("rounded-lg border transition-colors overflow-hidden", expandedReviewId === c.id ? "border-primary bg-primary/5" : "border-border hover:bg-muted/30")}>
+              <div key={c.id} data-signature-id={c.id} className={cn("rounded-lg border transition-colors overflow-hidden", expandedReviewId === c.id ? "border-primary bg-primary/5" : "border-border hover:bg-muted/30")}>
                 <div className="flex items-center justify-between p-3">
                   <div className="flex items-center gap-3 min-w-0">
                     <ScrollText className="w-4 h-4 text-primary shrink-0" />

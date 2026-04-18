@@ -249,6 +249,11 @@ export function OrgNotifications({ organizationId }: OrgNotificationsProps) {
                     if (n.type === "subscription_expiry" && n.related_id) {
                       setIsOpen(false);
                       navigate(`/invoice/${n.related_id}`);
+                    } else if (n.type === "signature" && n.related_id) {
+                      setIsOpen(false);
+                      // CounterpartiesSection reads this on mount to expand the right contract
+                      sessionStorage.setItem("openSignatureId", n.related_id);
+                      navigate(`/organization?tab=org-documents`);
                     }
                   }}
                 >
