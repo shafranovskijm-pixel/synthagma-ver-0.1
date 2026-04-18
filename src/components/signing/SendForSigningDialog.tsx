@@ -115,8 +115,9 @@ export function SendForSigningDialog({ open, onOpenChange, payload, recipients =
 
       // Создаём первую ревизию для режима review
       if (mode === "review") {
-        const { data: rev } = await supabase
-          .from("signature_revisions" as any)
+        const sb: any = supabase;
+        const { data: rev } = await sb
+          .from("signature_revisions")
           .insert({
             signature_id: inserted.id,
             version: 1,
@@ -129,7 +130,7 @@ export function SendForSigningDialog({ open, onOpenChange, payload, recipients =
           .select("id")
           .single();
         if (rev?.id) {
-          await supabase.from("document_signatures").update({ current_revision_id: rev.id } as any).eq("id", inserted.id);
+          await sb.from("document_signatures").update({ current_revision_id: rev.id }).eq("id", inserted.id);
         }
       }
 
