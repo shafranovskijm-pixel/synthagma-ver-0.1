@@ -88,7 +88,7 @@ export function SignaturesJournal({ organizationId }: Props) {
     setRows(list);
 
     // Подгружаем названия организаций (для админки — все, для орг-кабинета — одна)
-    const orgIds = Array.from(new Set(list.map((r: any) => r.organization_id)));
+    const orgIds = Array.from(new Set(list.map((r: any) => r.organization_id))) as string[];
     if (orgIds.length) {
       const { data: orgList } = await supabase.from("organizations").select("id, name, inn").in("id", orgIds);
       const map: Record<string, OrgInfo> = {};
