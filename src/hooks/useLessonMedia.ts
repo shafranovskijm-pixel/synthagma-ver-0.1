@@ -381,7 +381,12 @@ export function useLessonMedia(
       tusAbortRef.current = null;
 
       // 3. Save kinescope:{videoId} as content
-      onUpdate({ content: `kinescope:${video_id}` });
+      const kinescopeContent = `kinescope:${video_id}`;
+      onUpdate({ content: kinescopeContent });
+      // Persist directly to DB so URL is saved even if CourseBuilder unmounts
+      try {
+        await supabase.from('lessons').update({ content: kinescopeContent }).eq('id', lessonId);
+      } catch (e) { console.warn('[KinescopeUpload] direct DB save failed', e); }
       setUploadFinishTime(Date.now());
       setKinescopeUploadProgress(null);
       if (kinescopeInputRef.current) kinescopeInputRef.current.value = '';
