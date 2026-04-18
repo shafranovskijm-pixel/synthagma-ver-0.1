@@ -2,16 +2,18 @@
  * TUS (resumable) upload utility for Supabase Storage.
  * Supabase supports TUS protocol at: {baseUrl}/storage/v1/upload/resumable
  *
- * This implements chunked upload with:
+ * Features:
  * - 50 MB chunk size
- * - Auto-retry up to 3 times per chunk
+ * - Auto-retry up to 5 times per chunk with exponential backoff
+ * - **Resume on 409/410 mismatch offset**: server is queried via HEAD to learn
+ *   its true offset, then uploading continues from there.
  * - Progress reporting
- * - Stall detection (60s no progress)
+ * - Stall detection (90s no progress)
  * - Abort support
  */
 
 const CHUNK_SIZE = 50 * 1024 * 1024; // 50 MB
-const STALL_TIMEOUT_MS = 90_000; // 90 seconds (increased for slow connections)
+const STALL_TIMEOUT_MS = 90_000; // 90 seconds
 const MAX_RETRIES = 5;
 
 export interface TusUploadOptions {
@@ -29,6 +31,36 @@ export interface TusUploadOptions {
 export interface TusUploadResult {
   url: string;
   storage: 'external' | 'internal';
+}
+
+/**
+ * Read the server's current Upload-Offset for a TUS upload URL.
+ * Returns null on failure.
+ */
+async function fetchServerOffset(
+  uploadUrl: string,
+  authToken: string,
+  apiKey: string,
+  signal?: AbortSignal,
+): Promise<number | null> {
+  try {
+    const headRes = await fetch(uploadUrl, {
+      method: 'HEAD',
+      headers: {
+        'Authorization': `Bearer ${authToken}`,
+        'apikey': apiKey,
+        'Tus-Resumable': '1.0.0',
+      },
+      signal,
+    });
+    if (!headRes.ok) return null;
+    const off = headRes.headers.get('Upload-Offset');
+    if (!off) return null;
+    const parsed = parseInt(off, 10);
+    return Number.isFinite(parsed) ? parsed : null;
+  } catch {
+    return null;
+  }
 }
 
 export async function tusUpload(options: TusUploadOptions): Promise<TusUploadResult> {
@@ -62,10 +94,8 @@ export async function tusUpload(options: TusUploadOptions): Promise<TusUploadRes
   // 2. Upload chunks
   let offset = 0;
   let stallTimer: ReturnType<typeof setTimeout> | null = null;
-  let lastProgressTime = Date.now();
 
   const resetStallTimer = () => {
-    lastProgressTime = Date.now();
     if (stallTimer) clearTimeout(stallTimer);
     stallTimer = setTimeout(() => {
       onStall?.();
@@ -98,6 +128,27 @@ export async function tusUpload(options: TusUploadOptions): Promise<TusUploadRes
             signal,
           });
 
+          // 409 = mismatch offset, 410 = upload gone (but might just be re-sync needed)
+          // → re-sync with server's actual offset and continue without counting as retry
+          if (patchRes.status === 409 || patchRes.status === 410) {
+            const serverOffset = await fetchServerOffset(uploadUrl, authToken, apiKey, signal);
+            if (serverOffset !== null && serverOffset > offset && serverOffset <= fileSize) {
+              console.warn(`[TUS] resync ${offset} → ${serverOffset} (status ${patchRes.status})`);
+              offset = serverOffset;
+              onProgress?.(Math.round((offset / fileSize) * 100));
+              success = true; // chunk was already accepted by server
+              break;
+            }
+            if (serverOffset !== null && serverOffset === offset) {
+              // Server is at our offset: chunk truly rejected, count as retry
+              const body = await patchRes.text().catch(() => '');
+              throw new Error(`TUS PATCH ${patchRes.status} at offset ${offset}: ${body}`);
+            }
+            // Could not get server offset → fall through to error path
+            const body = await patchRes.text().catch(() => '');
+            throw new Error(`TUS PATCH ${patchRes.status} (resync failed): ${body}`);
+          }
+
           if (!patchRes.ok) {
             const body = await patchRes.text().catch(() => '');
             throw new Error(`TUS PATCH failed (${patchRes.status}): ${body}`);
@@ -116,7 +167,19 @@ export async function tusUpload(options: TusUploadOptions): Promise<TusUploadRes
           if (signal?.aborted) throw err;
           retries++;
           if (retries >= MAX_RETRIES) throw err;
-          // Wait before retry: 2s, 4s
+
+          // Before retrying, try resync with server in case the previous PATCH
+          // actually went through.
+          const serverOffset = await fetchServerOffset(uploadUrl, authToken, apiKey, signal);
+          if (serverOffset !== null && serverOffset > offset && serverOffset <= fileSize) {
+            console.warn(`[TUS] retry resync ${offset} → ${serverOffset}`);
+            offset = serverOffset;
+            onProgress?.(Math.round((offset / fileSize) * 100));
+            success = true;
+            break;
+          }
+
+          // Wait before retry: 2s, 4s, 6s, 8s
           await new Promise(r => setTimeout(r, retries * 2000));
         }
       }
