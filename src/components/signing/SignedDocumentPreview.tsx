@@ -223,9 +223,9 @@ export function SignedDocumentPreview({
                 Скачать вложение
               </Button>
             )}
-            <Button size="sm" className="gap-1.5" onClick={handlePrint}>
-              <Printer className="w-4 h-4" />
-              Скачать PDF / Печать
+            <Button size="sm" className="gap-1.5" onClick={handleDownloadPdf} disabled={generating}>
+              {generating ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileDown className="w-4 h-4" />}
+              {cachedPdfUrl ? "Скачать подписанный PDF" : (generating ? "Сборка PDF…" : "Сформировать PDF")}
             </Button>
           </div>
         </div>
