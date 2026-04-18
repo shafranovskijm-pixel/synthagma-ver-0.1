@@ -2,10 +2,11 @@ import { useEffect, useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Printer, Download, FileText } from "lucide-react";
+import { Loader2, Download, FileText, FileDown } from "lucide-react";
 import { PepSignatureStamp } from "@/components/signing/PepSignatureStamp";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { generateSignedPdf, getCachedSignedPdfUrl } from "@/lib/signedDocumentPdf";
 
 interface PartyInfo {
   fullName: string;
@@ -19,6 +20,7 @@ interface PartyInfo {
 interface Props {
   open: boolean;
   onOpenChange: (v: boolean) => void;
+  signatureId: string;
   documentTitle: string;
   /** HTML тело документа (если HTML-договор). */
   documentHtml?: string | null;
@@ -27,6 +29,8 @@ interface Props {
   attachedFileMime?: string | null;
   /** Скан с собственноручной подписью (если signature_method = handwritten_scan). */
   handwrittenScanPath?: string | null;
+  /** Кешированный путь к финальному подписанному PDF. */
+  signedDocumentPath?: string | null;
   /** Подпись отправителя (организация / Оператор). */
   sender?: PartyInfo;
   /** Подпись получателя (клиент). */
