@@ -211,7 +211,7 @@ export function ReviewableDocument({ documentHtml, comments, authorName, canComm
         <div
           ref={docRef}
           className={
-            "rounded-lg border bg-white p-6 max-h-[600px] overflow-auto prose prose-sm max-w-none " +
+            "rounded-lg border bg-white p-6 max-h-[600px] overflow-auto prose prose-sm max-w-none cursor-text " +
             // Comment (жёлтый)
             "[&_mark[data-kind='comment']]:bg-amber-200/60 [&_mark[data-kind='comment']]:cursor-pointer " +
             "[&_mark[data-kind='comment'][data-resolved='true']]:bg-emerald-200/40 " +
@@ -219,8 +219,9 @@ export function ReviewableDocument({ documentHtml, comments, authorName, canComm
             "[&_mark[data-kind='delete']]:bg-red-200/70 [&_mark[data-kind='delete']]:line-through [&_mark[data-kind='delete']]:text-red-800 [&_mark[data-kind='delete']]:cursor-pointer " +
             // Replace (красный перечёркнутый источник)
             "[&_mark[data-kind='replace']]:bg-red-200/70 [&_mark[data-kind='replace']]:line-through [&_mark[data-kind='replace']]:text-red-800 [&_mark[data-kind='replace']]:cursor-pointer " +
-            // Insert (зелёная вставка)
-            "[&_ins[data-comment-id]]:bg-emerald-200/70 [&_ins[data-comment-id]]:no-underline [&_ins[data-comment-id]]:text-emerald-800 [&_ins[data-comment-id]]:px-1 [&_ins[data-comment-id]]:rounded [&_ins[data-comment-id]]:mx-0.5"
+            // Insert / Replace-вставка (зелёная)
+            "[&_ins[data-comment-id]]:bg-emerald-200/70 [&_ins[data-comment-id]]:no-underline [&_ins[data-comment-id]]:text-emerald-800 [&_ins[data-comment-id]]:px-1 [&_ins[data-comment-id]]:rounded [&_ins[data-comment-id]]:mx-0.5 [&_ins[data-comment-id]]:cursor-pointer " +
+            "[&_ins[data-kind='insert-only']]:font-medium"
           }
           dangerouslySetInnerHTML={{ __html: documentHtml }}
           onClick={(e) => {
