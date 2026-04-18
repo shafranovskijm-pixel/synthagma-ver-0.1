@@ -12,10 +12,12 @@ import { LessonItem } from "@/components/course-editor/LessonItem";
 import { LessonEditor } from "@/components/course-editor/LessonEditor";
 import { GitHubImportDialog } from "@/components/course-editor/GitHubImportDialog";
 import { CoursePageSettingsDialog } from "@/components/course-editor/CoursePageSettingsDialog";
+import { CourseLessonsSidebar } from "@/components/course-editor/CourseLessonsSidebar";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { useCourseEditor } from "@/hooks/useCourseEditor";
+import { useEffect } from "react";
 
 const CourseEditor = () => {
   const h = useCourseEditor();
