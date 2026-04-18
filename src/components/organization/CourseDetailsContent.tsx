@@ -91,41 +91,43 @@ export function CourseDetailsContent({ course, courseStudents, organizationId, a
       </div>
 
       <div className="flex flex-col lg:flex-row flex-1">
-        {/* Sidebar navigation */}
-        <nav className="lg:w-64 shrink-0 border-b lg:border-b-0 lg:border-r border-border bg-gradient-to-b from-card to-muted/20">
-          <div className="p-4 space-y-1 overflow-x-auto lg:overflow-x-visible flex lg:flex-col gap-1">
-            <div className="hidden lg:block"><p className="text-[11px] font-semibold text-muted-foreground/70 uppercase tracking-wider px-3 mb-2">Обучение</p></div>
-            {([
-              { value: "students" as const, label: "Ученики", icon: Users, color: "text-primary" },
-              { value: "requests" as const, label: "Заявки", icon: ClipboardCheck, color: "text-orange-500" },
-              { value: "materials" as const, label: "Материалы", icon: FileText, color: "text-amber-500" },
-              { value: "history" as const, label: "История", icon: History, color: "text-violet-500" },
-              { value: "tests" as const, label: "Тесты", icon: CheckSquare, color: "text-emerald-500" },
-              { value: "groups" as const, label: "Группы", icon: Users, color: "text-blue-500" },
-              { value: "achievements" as const, label: "Достижения", icon: Trophy, color: "text-amber-500" },
-            ]).map(item => (
-              <button key={item.value} onClick={() => onTabChange(item.value)} className={cn("flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 whitespace-nowrap hover:bg-primary/10 hover:text-primary hover:translate-x-0.5", activeTab === item.value ? "bg-primary/15 text-primary lg:border-r-2 lg:border-primary" : "text-muted-foreground")}>
-                <item.icon className={cn("w-4 h-4 shrink-0", activeTab === item.value ? "text-primary" : item.color)} />{item.label}
-              </button>
-            ))}
-            <div className="hidden lg:block mt-4"><div className="border-t border-border/50 mb-3" /><p className="text-[11px] font-semibold text-muted-foreground/70 uppercase tracking-wider px-3 mb-2">Настройки</p></div>
-            <div className="lg:hidden w-px bg-border/50 mx-1 shrink-0" />
-            {([
-              { value: "preview" as const, label: "Просмотр", icon: Eye, color: "text-sigma-cyan" },
-              { value: "editor" as const, label: "Редактор", icon: Edit, color: "text-primary" },
-              { value: "landing" as const, label: "Страница курса", icon: Globe, color: "text-rose-500" },
-              { value: "settings" as const, label: "Настройки", icon: Settings, color: "text-muted-foreground" },
-              { value: "reminders" as const, label: "Напоминания", icon: Bell, color: "text-orange-500" },
-            ]).map(item => (
-              <button key={item.value} onClick={() => onTabChange(item.value)} className={cn("flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 whitespace-nowrap hover:bg-primary/10 hover:text-primary hover:translate-x-0.5", activeTab === item.value ? "bg-primary/15 text-primary lg:border-r-2 lg:border-primary" : "text-muted-foreground")}>
-                <item.icon className={cn("w-4 h-4 shrink-0", activeTab === item.value ? "text-primary" : item.color)} />{item.label}
-              </button>
-            ))}
-          </div>
-        </nav>
+        {/* Sidebar navigation — hidden in editor mode (lessons nav takes its place) */}
+        {activeTab !== "editor" && (
+          <nav className="lg:w-64 shrink-0 border-b lg:border-b-0 lg:border-r border-border bg-gradient-to-b from-card to-muted/20">
+            <div className="p-4 space-y-1 overflow-x-auto lg:overflow-x-visible flex lg:flex-col gap-1">
+              <div className="hidden lg:block"><p className="text-[11px] font-semibold text-muted-foreground/70 uppercase tracking-wider px-3 mb-2">Обучение</p></div>
+              {([
+                { value: "students" as const, label: "Ученики", icon: Users, color: "text-primary" },
+                { value: "requests" as const, label: "Заявки", icon: ClipboardCheck, color: "text-orange-500" },
+                { value: "materials" as const, label: "Материалы", icon: FileText, color: "text-amber-500" },
+                { value: "history" as const, label: "История", icon: History, color: "text-violet-500" },
+                { value: "tests" as const, label: "Тесты", icon: CheckSquare, color: "text-emerald-500" },
+                { value: "groups" as const, label: "Группы", icon: Users, color: "text-blue-500" },
+                { value: "achievements" as const, label: "Достижения", icon: Trophy, color: "text-amber-500" },
+              ]).map(item => (
+                <button key={item.value} onClick={() => onTabChange(item.value)} className={cn("flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 whitespace-nowrap hover:bg-primary/10 hover:text-primary hover:translate-x-0.5", activeTab === item.value ? "bg-primary/15 text-primary lg:border-r-2 lg:border-primary" : "text-muted-foreground")}>
+                  <item.icon className={cn("w-4 h-4 shrink-0", activeTab === item.value ? "text-primary" : item.color)} />{item.label}
+                </button>
+              ))}
+              <div className="hidden lg:block mt-4"><div className="border-t border-border/50 mb-3" /><p className="text-[11px] font-semibold text-muted-foreground/70 uppercase tracking-wider px-3 mb-2">Настройки</p></div>
+              <div className="lg:hidden w-px bg-border/50 mx-1 shrink-0" />
+              {([
+                { value: "preview" as const, label: "Просмотр", icon: Eye, color: "text-sigma-cyan" },
+                { value: "editor" as const, label: "Редактор", icon: Edit, color: "text-primary" },
+                { value: "landing" as const, label: "Страница курса", icon: Globe, color: "text-rose-500" },
+                { value: "settings" as const, label: "Настройки", icon: Settings, color: "text-muted-foreground" },
+                { value: "reminders" as const, label: "Напоминания", icon: Bell, color: "text-orange-500" },
+              ]).map(item => (
+                <button key={item.value} onClick={() => onTabChange(item.value)} className={cn("flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 whitespace-nowrap hover:bg-primary/10 hover:text-primary hover:translate-x-0.5", activeTab === item.value ? "bg-primary/15 text-primary lg:border-r-2 lg:border-primary" : "text-muted-foreground")}>
+                  <item.icon className={cn("w-4 h-4 shrink-0", activeTab === item.value ? "text-primary" : item.color)} />{item.label}
+                </button>
+              ))}
+            </div>
+          </nav>
+        )}
 
         {/* Content panel */}
-        <div className="flex-1 p-6 min-w-0">
+        <div className={cn("flex-1 min-w-0", activeTab === "editor" ? "" : "p-6")}>
           {activeTab === "students" && <StudentsSection h={h} courseStudents={courseStudents} />}
           {activeTab === "requests" && <EnrollmentRequestsTab courseId={course.id} defaultAccessDays={h.defaultAccessDays} onRefreshStudents={onRefreshStudents} />}
           {activeTab === "materials" && <CourseDocumentsManager courseId={course.id} courseName={course.title} embedded={true} />}
@@ -172,7 +174,7 @@ export function CourseDetailsContent({ course, courseStudents, organizationId, a
           )}
           {activeTab === "groups" && <CourseGroupsTab courseId={course.id} organizationId={organizationId || ""} onRefreshStudents={onRefreshStudents} />}
           {activeTab === "achievements" && organizationId && <CourseAchievementsTab courseId={course.id} organizationId={organizationId} />}
-          {activeTab === "editor" && <Suspense fallback={<div className="flex items-center justify-center py-16"><SigmaSpinner size="lg" /></div>}><CourseBuilder embedded embeddedCourseId={course.id} /></Suspense>}
+          {activeTab === "editor" && <Suspense fallback={<div className="flex items-center justify-center py-16"><SigmaSpinner size="lg" /></div>}><CourseBuilder embedded embeddedCourseId={course.id} onExitEditor={() => onTabChange("students")} /></Suspense>}
           {activeTab === "preview" && <Suspense fallback={<div className="flex items-center justify-center py-16"><SigmaSpinner size="lg" /></div>}><CoursePreviewView courseId={course.id} embedded onNavigateToEditor={() => onTabChange("editor")} /></Suspense>}
         </div>
       </div>
