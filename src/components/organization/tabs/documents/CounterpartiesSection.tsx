@@ -78,6 +78,12 @@ export function CounterpartiesSection({
   const [signingRecipients, setSigningRecipients] = useState<{ id: string; name: string; email: string; type: "student" | "company" | "individual" }[]>([]);
   const [showExternalUploader, setShowExternalUploader] = useState(false);
   const [platformExternalContracts, setPlatformExternalContracts] = useState<any[]>([]);
+  const [adminSigEmail, setAdminSigEmail] = useState<string>("admin@sintagma.com.ru");
+
+  useEffect(() => {
+    supabase.from("app_settings").select("setting_value").eq("setting_key", "admin_signature_email").maybeSingle()
+      .then(({ data }) => { if (data?.setting_value) setAdminSigEmail(data.setting_value); });
+  }, []);
 
   // Load external contracts (Synthagma counterparty) sent by current org
   const refreshPlatformContracts = async () => {
@@ -777,7 +783,7 @@ export function CounterpartiesSection({
         open={showExternalUploader}
         onOpenChange={setShowExternalUploader}
         organizationId={organizationId}
-        defaultAdminEmail="admin@sintagma.com.ru"
+        defaultAdminEmail={adminSigEmail}
         onSent={() => { refreshPlatformContracts(); }}
       />
     </div>
