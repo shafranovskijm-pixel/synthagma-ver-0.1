@@ -7,7 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Switch } from "@/components/ui/switch";
-import { User, Bell, Handshake, Save, Eye, EyeOff, Upload, X, Image as ImageIcon, Palette, LogIn, Camera, KeyRound, Mail, AlertTriangle } from "lucide-react";
+import { User, Bell, Handshake, Save, Eye, EyeOff, Upload, X, Image as ImageIcon, Palette, LogIn, Camera, KeyRound, Mail, AlertTriangle, LayoutGrid, GraduationCap, Users, BarChart3, Link as LinkIcon, HardHat, FileText, Building2, ShoppingBag, RefreshCw, RotateCcw } from "lucide-react";
 import { toast } from "sonner";
 import { PartnerCabinet } from "@/components/organization/PartnerCabinet";
 import { ThemePersonalization } from "@/components/ui/ThemePersonalization";
@@ -17,6 +17,8 @@ import { ProfileLoginBrandingTab } from "@/components/organization/ProfileLoginB
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 import { useOrgTheme, applyOrgTheme } from "@/hooks/useOrgTheme";
 import { AvatarLocationHint, OrgIconLocationHint, HintBlock } from "@/components/organization/BrandingHints";
+import { SettingsStudentDashboardTab } from "@/components/organization/SettingsStudentDashboardTab";
+import { StaffManager } from "@/components/organization/StaffManager";
 
 interface ProfileData {
   full_name: string;
@@ -49,7 +51,7 @@ const DEFAULT_NOTIFS: NotifRow[] = [
   { key: "student_paid", label: "Ученик оплатил курс", platform: true, browser: true, email: true, telegram: false, app: false },
 ];
 
-type SectionKey = "profile" | "theme" | "branding" | "login-branding" | "signin" | "notifications" | "partner";
+type SectionKey = "profile" | "theme" | "branding" | "login-branding" | "signin" | "notifications" | "partner" | "menu" | "student-dashboard" | "staff";
 
 const SECTIONS: { key: SectionKey; label: string; icon: React.ElementType; color: string }[] = [
   { key: "profile", label: "Мой профиль", icon: User, color: "text-blue-500" },
@@ -58,8 +60,26 @@ const SECTIONS: { key: SectionKey; label: string; icon: React.ElementType; color
   { key: "login-branding", label: "Бренд. страницы входа", icon: LogIn, color: "text-cyan-500" },
   { key: "signin", label: "Вход", icon: KeyRound, color: "text-orange-500" },
   { key: "notifications", label: "Уведомления", icon: Bell, color: "text-amber-500" },
+  { key: "menu", label: "Разделы меню", icon: LayoutGrid, color: "text-indigo-500" },
+  { key: "student-dashboard", label: "ЛК ученика", icon: GraduationCap, color: "text-pink-500" },
+  { key: "staff", label: "Сотрудники", icon: Users, color: "text-sky-500" },
   { key: "partner", label: "Партнёрская программа", icon: Handshake, color: "text-emerald-500" },
 ];
+
+interface MenuSettingsLocal {
+  showStats: boolean;
+  showLinks: boolean;
+  showLaborSafety: boolean;
+  showDocuments: boolean;
+  showServices: boolean;
+  showCompanies: boolean;
+  [key: string]: boolean;
+}
+
+const DEFAULT_MENU: MenuSettingsLocal = {
+  showStats: true, showLinks: true, showLaborSafety: true,
+  showDocuments: true, showServices: true, showCompanies: true,
+};
 
 interface ProfileTabProps {
   organizationId: string;
@@ -99,13 +119,48 @@ export function ProfileTab({ organizationId, initialSubTab }: ProfileTabProps) {
   const [savingOrgEmail, setSavingOrgEmail] = useState(false);
   const [savingOrgPassword, setSavingOrgPassword] = useState(false);
 
+  // Menu settings (sidebar visibility)
+  const [menuSettings, setMenuSettings] = useState<MenuSettingsLocal>(DEFAULT_MENU);
+
   useEffect(() => {
     if (!user) return;
     loadProfile();
     loadNotificationPrefs();
     loadOrgIcon();
     loadOrgCredentials();
+    loadMenuSettings();
   }, [user, organizationId]);
+
+  const loadMenuSettings = async () => {
+    if (!organizationId) return;
+    const { data: org } = await supabase.from("organizations").select("menu_settings").eq("id", organizationId).maybeSingle();
+    if (org?.menu_settings) {
+      const m = org.menu_settings as any;
+      setMenuSettings({
+        showStats: m.showStats ?? true, showLinks: m.showLinks ?? true, showLaborSafety: m.showLaborSafety ?? true,
+        showDocuments: m.showDocuments ?? true, showServices: m.showServices ?? true, showCompanies: m.showCompanies ?? true,
+      });
+    }
+  };
+
+  const handleSaveMenuSettings = async () => {
+    if (!organizationId) return;
+    const { error } = await supabase.from("organizations").update({ menu_settings: menuSettings as any }).eq("id", organizationId);
+    if (error) { toast.error("Ошибка сохранения"); return; }
+    toast.success("Настройки меню сохранены");
+  };
+
+  const resetMenuSettings = async () => {
+    if (!organizationId) return;
+    setMenuSettings(DEFAULT_MENU);
+    await supabase.from("organizations").update({ menu_settings: DEFAULT_MENU as any }).eq("id", organizationId);
+    toast.success("Меню восстановлено по умолчанию");
+  };
+
+  const reloadMenuSettings = async () => {
+    await loadMenuSettings();
+    toast.success("Меню обновлено");
+  };
 
   const loadOrgCredentials = async () => {
     if (!organizationId) return;
@@ -705,6 +760,62 @@ export function ProfileTab({ organizationId, initialSubTab }: ProfileTabProps) {
             </CardContent>
           </Card>
         );
+
+      case "menu": {
+        const menuItems = [
+          { icon: BarChart3, bg: "bg-accent/15", color: "text-accent", label: "Статистика", desc: "Аналитика и отчёты", key: "showStats" as keyof MenuSettingsLocal },
+          { icon: LinkIcon, bg: "bg-primary/15", color: "text-primary", label: "Ссылки регистрации", desc: "Самостоятельная регистрация", key: "showLinks" as keyof MenuSettingsLocal },
+          { icon: HardHat, bg: "bg-accent/15", color: "text-accent", label: "Охрана труда", desc: "Модуль охраны труда", key: "showLaborSafety" as keyof MenuSettingsLocal },
+          { icon: FileText, bg: "bg-destructive/15", color: "text-destructive", label: "Документы", desc: "Документооборот", key: "showDocuments" as keyof MenuSettingsLocal },
+          { icon: Building2, bg: "bg-primary/15", color: "text-primary", label: "Компании", desc: "Управление корпоративными клиентами", key: "showCompanies" as keyof MenuSettingsLocal },
+          { icon: ShoppingBag, bg: "bg-primary/15", color: "text-primary", label: "Маркетплейс", desc: "Магазин курсов", key: "showServices" as keyof MenuSettingsLocal },
+        ];
+        return (
+          <div className="max-w-2xl">
+            <p className="text-xs lg:text-sm text-muted-foreground mb-4 lg:mb-5">Включите или отключите разделы в боковом меню</p>
+            <div className="space-y-2">
+              {menuItems.map((item) => {
+                const Icon = item.icon;
+                const isOn = menuSettings[item.key];
+                return (
+                  <div key={item.key} className="flex items-center justify-between p-3 lg:p-4 rounded-xl border border-border/60 hover:border-primary/30 hover:bg-accent/5 transition-all group/row">
+                    <div className="flex items-center gap-3 lg:gap-4">
+                      <div className={`w-11 h-11 lg:w-12 lg:h-12 rounded-xl ${item.bg} flex items-center justify-center shadow-sm transition-transform group-hover/row:scale-105`}>
+                        <Icon className={`w-5 h-5 lg:w-[22px] lg:h-[22px] ${item.color}`} />
+                      </div>
+                      <div>
+                        <p className="font-medium text-sm lg:text-base">{item.label}</p>
+                        <p className="text-xs lg:text-sm text-muted-foreground">{item.desc}</p>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => setMenuSettings(prev => ({ ...prev, [item.key]: !prev[item.key] }))}
+                      className={`relative inline-flex h-7 w-12 items-center rounded-full transition-colors shrink-0 ${isOn ? 'bg-primary shadow-md' : 'bg-muted'}`}
+                    >
+                      <span className={`inline-block h-5 w-5 transform rounded-full bg-white shadow-sm transition-transform ${isOn ? 'translate-x-6' : 'translate-x-1'}`} />
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+            <div className="mt-5 lg:mt-6 pt-4 border-t border-border flex flex-wrap gap-2">
+              <Button className="btn-gradient rounded-xl gap-2 text-sm" onClick={handleSaveMenuSettings}><Save className="w-4 h-4" /> Сохранить</Button>
+              <Button variant="outline" className="rounded-xl gap-2 text-sm" onClick={reloadMenuSettings}><RefreshCw className="w-4 h-4" /> Обновить меню</Button>
+              <Button variant="ghost" className="rounded-xl gap-2 text-sm" onClick={resetMenuSettings}><RotateCcw className="w-4 h-4" /> По умолчанию</Button>
+            </div>
+          </div>
+        );
+      }
+
+      case "student-dashboard":
+        return (
+          <div className="max-w-3xl">
+            <SettingsStudentDashboardTab organizationId={organizationId} />
+          </div>
+        );
+
+      case "staff":
+        return <StaffManager organizationId={organizationId} />;
 
       case "partner":
         return <PartnerCabinet />;

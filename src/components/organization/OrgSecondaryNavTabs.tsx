@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { User, Settings, FileText, Sparkles, HelpCircle } from "lucide-react";
+import { User, FileText, Sparkles, HelpCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useOrgDashboard } from "@/contexts/OrgDashboardContext";
 import { HelpCenterDialog } from "@/components/shared/HelpCenterDialog";
@@ -15,7 +15,6 @@ interface NavItem {
 
 const NAV_ITEMS: NavItem[] = [
   { icon: User, label: "Профиль", tab: "profile" as TabType, path: "/organization/profile" },
-  { icon: Settings, label: "Настройки", tab: "settings" as TabType, path: "/organization/settings" },
   { icon: FileText, label: "Документы", tab: "org-documents" as TabType, path: "/organization/documents" },
   { icon: Sparkles, label: "Что нового?", tab: "whats-new" as TabType, path: "/organization/whats-new" },
   { icon: HelpCircle, label: "Помощь", tab: "__help_dialog__", path: "__help_dialog__" },
