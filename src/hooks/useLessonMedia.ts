@@ -235,6 +235,9 @@ export function useLessonMedia(
         if (xhr.status >= 200 && xhr.status < 300) {
           const publicUrl = `${config.baseUrl}/storage/v1/object/public/${config.bucketName}/${filePath}`;
           onUpdate({ content: publicUrl });
+          // Persist directly to DB so URL is saved even if CourseBuilder unmounts
+          supabase.from('lessons').update({ content: publicUrl }).eq('id', lessonId)
+            .then(({ error }) => { if (error) console.warn('[VideoUpload] direct DB save failed', error); });
           setUploadFinishTime(Date.now());
           toast.success("Видео загружено!");
           resolve();
