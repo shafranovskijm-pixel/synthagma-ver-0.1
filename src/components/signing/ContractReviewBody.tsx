@@ -957,12 +957,13 @@ export function ContractReviewBody({
           onOpenChange={setPreviewOpen}
           signatureId={sig.id}
           documentTitle={sig.document_title}
-          documentHtml={documentHtml}
+          documentHtml={mergedHtml}
           attachedFilePath={rawFileUrl && !rawFileUrl.startsWith("http") ? rawFileUrl : null}
           attachedFileMime={fileMime || null}
           handwrittenScanPath={sig.handwritten_scan_path || null}
           signedDocumentPath={sig.signed_document_path || null}
           signatureMethod={sig.signature_method || "pep"}
+          acceptedEdits={appliedEdits}
           sender={sig.sender_signed_at ? {
             fullName: sig.sender_name || OPERATOR.fullName,
             email: OPERATOR.email,
