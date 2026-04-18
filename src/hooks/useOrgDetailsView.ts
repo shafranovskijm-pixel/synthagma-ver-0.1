@@ -111,7 +111,10 @@ export function useOrgDetailsView(organization: Organization) {
   const [migrationResult, setMigrationResult] = useState<Record<string, { status: 'success' | 'error'; message: string }>>({});
   const [orgBranding, setOrgBranding] = useState<{ coverUrl?: string; primaryColor?: string; logoUrl?: string }>({});
   const [tariffCustomLabel, setTariffCustomLabel] = useState(organization.tariff_custom_label || "");
-  const [tariffPaidUntil, setTariffPaidUntil] = useState(organization.paid_until || "");
+  // paid_until приходит из БД как ISO timestamp, но <input type="date"> ждёт YYYY-MM-DD
+  const [tariffPaidUntil, setTariffPaidUntil] = useState(
+    organization.paid_until ? organization.paid_until.slice(0, 10) : ""
+  );
   const [isSavingTariff, setIsSavingTariff] = useState(false);
   const [customLimits, setCustomLimits] = useState({
     maxCourses: (organization as any).custom_max_courses as number | null,
