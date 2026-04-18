@@ -420,6 +420,15 @@ export function MediaLibraryDialog({ open, onClose, onSelect, filter = "all", or
           />
         </div>
 
+        {!loading && unusedCount > 0 && (
+          <div className="flex items-start gap-2.5 px-3 py-2.5 rounded-xl bg-primary/5 border border-primary/20">
+            <Sparkles className="w-4 h-4 text-primary mt-0.5 shrink-0" />
+            <p className="text-xs text-foreground/80 leading-relaxed">
+              Совет: удаляйте видео и файлы, которые больше не используются — это освобождает место на сервере и ускоряет работу платформы. Спасибо, что заботитесь о порядке 💚
+            </p>
+          </div>
+        )}
+
         {loading ? (
           <div className="flex items-center justify-center py-16">
             <SigmaSpinner />
