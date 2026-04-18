@@ -50,6 +50,22 @@ export function useCourseEditor() {
   const [deletingLessonId, setDeletingLessonId] = useState<string | null>(null);
   const [isPageSettingsOpen, setIsPageSettingsOpen] = useState(false);
   const [isGitHubImportOpen, setIsGitHubImportOpen] = useState(false);
+  const [activeLessonId, setActiveLessonId] = useState<string | null>(null);
+  const lessonRefs = useRef<Map<string, HTMLElement>>(new Map());
+
+  const registerLessonRef = useCallback((id: string, el: HTMLElement | null) => {
+    if (el) lessonRefs.current.set(id, el);
+    else lessonRefs.current.delete(id);
+  }, []);
+
+  const scrollToLesson = useCallback((id: string) => {
+    const el = lessonRefs.current.get(id);
+    if (el) {
+      el.scrollIntoView({ behavior: "smooth", block: "start" });
+      setExpandedLessonId(id);
+      setActiveLessonId(id);
+    }
+  }, []);
 
   const sensors = useSensors(
     useSensor(PointerSensor),
