@@ -134,7 +134,7 @@ export function CourseBuilderLessonsNav(props: Props) {
       {/* Desktop sticky panel — в стиле штатного сайдбара курса */}
       <aside
         className={cn(
-          "hidden lg:flex sticky self-start w-72 shrink-0 rounded-2xl border border-border/60 bg-gradient-to-b from-card to-muted/20 shadow-sm overflow-hidden",
+          "hidden lg:flex flex-col sticky self-start w-72 shrink-0 rounded-2xl border border-border/60 bg-gradient-to-b from-card to-muted/20 shadow-sm overflow-hidden",
           stickyTop,
           stickyMaxH,
         )}
