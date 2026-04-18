@@ -6,11 +6,13 @@ import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Eye, FileText, Search, Send, CheckCircle2, Clock, XCircle, AlertTriangle, Copy } from "lucide-react";
+import { Eye, FileText, Search, Send, CheckCircle2, XCircle, AlertTriangle, Copy, Download, FileDown } from "lucide-react";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
+import { downloadSignatureProtocol, exportSignaturesToCSV } from "@/utils/signatureProtocol";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 interface SignatureRow {
   id: string;
@@ -31,7 +33,11 @@ interface SignatureRow {
   sent_at: string | null;
   created_at: string;
   expires_at: string;
+  rejected_at?: string | null;
+  rejection_reason?: string | null;
 }
+
+interface OrgInfo { name: string; inn: string | null; }
 
 const STATUS_LABELS: Record<string, { label: string; cls: string; icon: any }> = {
   draft: { label: "Черновик", cls: "bg-muted text-muted-foreground", icon: FileText },
@@ -59,8 +65,12 @@ interface Props {
 
 export function SignaturesJournal({ organizationId }: Props) {
   const [rows, setRows] = useState<SignatureRow[]>([]);
+  const [orgs, setOrgs] = useState<Record<string, OrgInfo>>({});
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [typeFilter, setTypeFilter] = useState<string>("all");
+  const [dateFrom, setDateFrom] = useState<string>("");
+  const [dateTo, setDateTo] = useState<string>("");
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState<SignatureRow | null>(null);
 
@@ -70,11 +80,21 @@ export function SignaturesJournal({ organizationId }: Props) {
       .from("document_signatures")
       .select("*")
       .order("created_at", { ascending: false })
-      .limit(500);
+      .limit(1000);
     if (organizationId) q = q.eq("organization_id", organizationId);
     const { data, error } = await q;
     if (error) { toast.error("Ошибка загрузки журнала"); setLoading(false); return; }
-    setRows((data as any) || []);
+    const list = (data as any) || [];
+    setRows(list);
+
+    // Подгружаем названия организаций (для админки — все, для орг-кабинета — одна)
+    const orgIds = Array.from(new Set(list.map((r: any) => r.organization_id))) as string[];
+    if (orgIds.length) {
+      const { data: orgList } = await supabase.from("organizations").select("id, name, inn").in("id", orgIds);
+      const map: Record<string, OrgInfo> = {};
+      (orgList || []).forEach((o: any) => { map[o.id] = { name: o.name, inn: o.inn }; });
+      setOrgs(map);
+    }
     setLoading(false);
   };
 
@@ -83,6 +103,9 @@ export function SignaturesJournal({ organizationId }: Props) {
   const filtered = useMemo(() => {
     return rows.filter((r) => {
       if (statusFilter !== "all" && r.status !== statusFilter) return false;
+      if (typeFilter !== "all" && r.document_type !== typeFilter) return false;
+      if (dateFrom && new Date(r.created_at) < new Date(dateFrom)) return false;
+      if (dateTo && new Date(r.created_at) > new Date(dateTo + "T23:59:59")) return false;
       if (search) {
         const s = search.toLowerCase();
         if (!r.document_title.toLowerCase().includes(s) &&
@@ -91,7 +114,7 @@ export function SignaturesJournal({ organizationId }: Props) {
       }
       return true;
     });
-  }, [rows, statusFilter, search]);
+  }, [rows, statusFilter, typeFilter, dateFrom, dateTo, search]);
 
   const counts = useMemo(() => {
     const c: Record<string, number> = { all: rows.length, sent: 0, signed: 0, viewed: 0, rejected: 0, expired: 0 };
@@ -105,6 +128,42 @@ export function SignaturesJournal({ organizationId }: Props) {
     toast.success("Ссылка скопирована");
   };
 
+  const handleDownloadProtocol = (r: SignatureRow) => {
+    const org = orgs[r.organization_id];
+    downloadSignatureProtocol({
+      documentTitle: r.document_title,
+      documentType: r.document_type,
+      documentHash: r.document_hash,
+      organizationName: org?.name,
+      organizationInn: org?.inn,
+      senderName: r.sender_name,
+      recipientName: r.recipient_name,
+      recipientEmail: r.recipient_email,
+      recipientType: r.recipient_type,
+      status: r.status,
+      createdAt: r.created_at,
+      sentAt: r.sent_at,
+      signedAt: r.signed_at,
+      signedIp: r.signed_ip,
+      signedUserAgent: r.signed_user_agent,
+      rejectedAt: r.rejected_at,
+      rejectionReason: r.rejection_reason,
+      expiresAt: r.expires_at,
+      signatureToken: r.signature_token,
+    });
+  };
+
+  const handleExportCsv = () => {
+    if (!filtered.length) { toast.error("Нет данных для экспорта"); return; }
+    exportSignaturesToCSV(filtered);
+    toast.success(`Экспортировано записей: ${filtered.length}`);
+  };
+
+  const uniqueTypes = useMemo(() => {
+    const set = new Set(rows.map((r) => r.document_type));
+    return Array.from(set);
+  }, [rows]);
+
   if (loading) {
     return <div className="flex justify-center py-16"><SigmaSpinner size="lg" /></div>;
   }
@@ -116,16 +175,31 @@ export function SignaturesJournal({ organizationId }: Props) {
           <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
           <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Поиск по документу или получателю" className="pl-9" />
         </div>
-        <Tabs value={statusFilter} onValueChange={setStatusFilter}>
-          <TabsList>
-            <TabsTrigger value="all">Все ({counts.all})</TabsTrigger>
-            <TabsTrigger value="sent">Отправлено ({counts.sent || 0})</TabsTrigger>
-            <TabsTrigger value="signed">Подписано ({counts.signed || 0})</TabsTrigger>
-            <TabsTrigger value="rejected">Отклонено ({counts.rejected || 0})</TabsTrigger>
-            <TabsTrigger value="expired">Просрочено ({counts.expired || 0})</TabsTrigger>
-          </TabsList>
-        </Tabs>
+        <Select value={typeFilter} onValueChange={setTypeFilter}>
+          <SelectTrigger className="w-[180px]"><SelectValue placeholder="Тип документа" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Все типы</SelectItem>
+            {uniqueTypes.map((t) => (
+              <SelectItem key={t} value={t}>{TYPE_LABELS[t] || t}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className="w-[150px]" placeholder="С" title="Создано с" />
+        <Input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} className="w-[150px]" placeholder="По" title="Создано по" />
+        <Button variant="outline" size="sm" className="gap-2" onClick={handleExportCsv}>
+          <FileDown className="w-4 h-4" />CSV
+        </Button>
       </div>
+
+      <Tabs value={statusFilter} onValueChange={setStatusFilter}>
+        <TabsList>
+          <TabsTrigger value="all">Все ({counts.all})</TabsTrigger>
+          <TabsTrigger value="sent">Отправлено ({counts.sent || 0})</TabsTrigger>
+          <TabsTrigger value="signed">Подписано ({counts.signed || 0})</TabsTrigger>
+          <TabsTrigger value="rejected">Отклонено ({counts.rejected || 0})</TabsTrigger>
+          <TabsTrigger value="expired">Просрочено ({counts.expired || 0})</TabsTrigger>
+        </TabsList>
+      </Tabs>
 
       {filtered.length === 0 ? (
         <div className="text-center py-16 text-muted-foreground">
@@ -175,6 +249,9 @@ export function SignaturesJournal({ organizationId }: Props) {
                         {r.status === "sent" && (
                           <Button variant="ghost" size="icon" title="Скопировать ссылку" onClick={() => copyLink(r.signature_token)}><Copy className="w-4 h-4" /></Button>
                         )}
+                        {r.status === "signed" && (
+                          <Button variant="ghost" size="icon" title="Скачать протокол" onClick={() => handleDownloadProtocol(r)}><Download className="w-4 h-4" /></Button>
+                        )}
                       </div>
                     </TableCell>
                   </TableRow>
@@ -221,15 +298,20 @@ export function SignaturesJournal({ organizationId }: Props) {
                 </div>
               )}
 
-              <div className="flex gap-2">
-                <Button variant="outline" className="flex-1 gap-2" onClick={() => copyLink(selected.signature_token)}>
+              <div className="flex flex-wrap gap-2">
+                <Button variant="outline" className="flex-1 gap-2 min-w-[180px]" onClick={() => copyLink(selected.signature_token)}>
                   <Copy className="w-4 h-4" />Скопировать ссылку
                 </Button>
-                <Button variant="outline" className="flex-1 gap-2" asChild>
+                <Button variant="outline" className="flex-1 gap-2 min-w-[180px]" asChild>
                   <a href={`/sign/${selected.signature_token}`} target="_blank" rel="noopener noreferrer">
                     <Eye className="w-4 h-4" />Открыть страницу подписания
                   </a>
                 </Button>
+                {selected.status === "signed" && (
+                  <Button variant="default" className="flex-1 gap-2 min-w-[180px]" onClick={() => handleDownloadProtocol(selected)}>
+                    <Download className="w-4 h-4" />Скачать протокол
+                  </Button>
+                )}
               </div>
             </div>
           )}
