@@ -5,8 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Switch } from "@/components/ui/switch";
 import { User, Bell, Handshake, Save, Eye, EyeOff, Upload, X, Image as ImageIcon, Palette, LogIn, Camera, KeyRound, Mail, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 import { PartnerCabinet } from "@/components/organization/PartnerCabinet";
@@ -15,7 +15,8 @@ import { ThemeSelector } from "@/components/ui/ThemeSelector";
 import { ProfileBrandingTab } from "@/components/organization/ProfileBrandingTab";
 import { ProfileLoginBrandingTab } from "@/components/organization/ProfileLoginBrandingTab";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
-import { useOrgTheme } from "@/hooks/useOrgTheme";
+import { useOrgTheme, applyOrgTheme } from "@/hooks/useOrgTheme";
+import { AvatarLocationHint, OrgIconLocationHint, HintBlock } from "@/components/organization/BrandingHints";
 
 interface ProfileData {
   full_name: string;
@@ -48,6 +49,18 @@ const DEFAULT_NOTIFS: NotifRow[] = [
   { key: "student_paid", label: "Ученик оплатил курс", platform: true, browser: true, email: true, telegram: false, app: false },
 ];
 
+type SectionKey = "profile" | "theme" | "branding" | "login-branding" | "signin" | "notifications" | "partner";
+
+const SECTIONS: { key: SectionKey; label: string; icon: React.ElementType; color: string }[] = [
+  { key: "profile", label: "Мой профиль", icon: User, color: "text-blue-500" },
+  { key: "theme", label: "Тема оформления", icon: Palette, color: "text-violet-500" },
+  { key: "branding", label: "Брендирование", icon: ImageIcon, color: "text-teal-500" },
+  { key: "login-branding", label: "Бренд. страницы входа", icon: LogIn, color: "text-cyan-500" },
+  { key: "signin", label: "Вход", icon: KeyRound, color: "text-orange-500" },
+  { key: "notifications", label: "Уведомления", icon: Bell, color: "text-amber-500" },
+  { key: "partner", label: "Партнёрская программа", icon: Handshake, color: "text-emerald-500" },
+];
+
 interface ProfileTabProps {
   organizationId: string;
   initialSubTab?: string;
@@ -55,7 +68,8 @@ interface ProfileTabProps {
 
 export function ProfileTab({ organizationId, initialSubTab }: ProfileTabProps) {
   const { user } = useAuth();
-  const [activeTab, setActiveTab] = useState(initialSubTab || "profile");
+  const initialKey = (SECTIONS.find(s => s.key === initialSubTab)?.key as SectionKey) || "profile";
+  const [activeSection, setActiveSection] = useState<SectionKey>(initialKey);
   const [saving, setSaving] = useState(false);
 
   const [profile, setProfile] = useState<ProfileData>({
@@ -286,124 +300,166 @@ export function ProfileTab({ organizationId, initialSubTab }: ProfileTabProps) {
     finally { setSaving(false); }
   };
 
+  const handleToggleEnforce = async (next: boolean) => {
+    try {
+      await saveOrgTheme({ enforce: next });
+      if (next) {
+        // Immediately apply on this device so admin sees the result
+        applyOrgTheme({ ...orgTheme, enforce: true });
+        toast.success("Единый интерфейс включён — применяется ко всем сотрудникам");
+      } else {
+        toast.success("Единый интерфейс отключён — каждый сотрудник видит свой выбор");
+      }
+    } catch (e: any) {
+      toast.error(e.message || "Не удалось сохранить настройку");
+    }
+  };
+
   if (!user) return null;
 
-  return (
-    <Tabs value={activeTab} onValueChange={setActiveTab}>
-      <TabsList className="mb-6 bg-muted/50 p-1 rounded-xl flex-wrap">
-        <TabsTrigger value="profile" className="rounded-lg gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm px-4 py-2">
-          <User className="w-4 h-4" /> Мой профиль
-        </TabsTrigger>
-        <TabsTrigger value="branding" className="rounded-lg gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm px-4 py-2">
-          <Palette className="w-4 h-4" /> Брендирование
-        </TabsTrigger>
-        <TabsTrigger value="login-branding" className="rounded-lg gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm px-4 py-2">
-          <LogIn className="w-4 h-4" /> Бренд. страницы входа
-        </TabsTrigger>
-        <TabsTrigger value="signin" className="rounded-lg gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm px-4 py-2">
-          <KeyRound className="w-4 h-4" /> Вход
-        </TabsTrigger>
-        <TabsTrigger value="notifications" className="rounded-lg gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm px-4 py-2">
-          <Bell className="w-4 h-4" /> Уведомления
-        </TabsTrigger>
-        <TabsTrigger value="partner" className="rounded-lg gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm px-4 py-2">
-          <Handshake className="w-4 h-4" /> Партнёрская программа
-        </TabsTrigger>
-      </TabsList>
-
-      <TabsContent value="profile">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <Card className="lg:col-span-2 rounded-2xl">
-            <CardHeader><CardTitle className="text-lg">Основная информация</CardTitle></CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex items-center gap-4 pb-2">
-                <input ref={avatarInputRef} type="file" accept="image/*" className="hidden" onChange={handleAvatarUpload} />
-                <button
-                  onClick={() => avatarInputRef.current?.click()}
-                  className="relative w-20 h-20 rounded-full border-2 border-dashed border-border flex items-center justify-center overflow-hidden hover:border-primary/50 hover:bg-primary/5 transition-all group/avatar"
-                >
-                  {isUploadingAvatar ? (
-                    <SigmaSpinner />
-                  ) : profile.avatar_url ? (
-                    <>
-                      <img src={profile.avatar_url} alt="Аватар" className="w-full h-full object-cover" />
-                      <div className="absolute inset-0 bg-black/40 opacity-0 group-hover/avatar:opacity-100 transition-opacity flex items-center justify-center rounded-full">
-                        <Camera className="w-5 h-5 text-white" />
+  const renderContent = () => {
+    switch (activeSection) {
+      case "profile":
+        return (
+          <div className="space-y-6">
+            <Card className="rounded-2xl">
+              <CardHeader><CardTitle className="text-lg">Основная информация</CardTitle></CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex items-center gap-4 pb-2">
+                  <input ref={avatarInputRef} type="file" accept="image/*" className="hidden" onChange={handleAvatarUpload} />
+                  <button
+                    onClick={() => avatarInputRef.current?.click()}
+                    className="relative w-20 h-20 rounded-full border-2 border-dashed border-border flex items-center justify-center overflow-hidden hover:border-primary/50 hover:bg-primary/5 transition-all group/avatar"
+                  >
+                    {isUploadingAvatar ? (
+                      <SigmaSpinner />
+                    ) : profile.avatar_url ? (
+                      <>
+                        <img src={profile.avatar_url} alt="Аватар" className="w-full h-full object-cover" />
+                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover/avatar:opacity-100 transition-opacity flex items-center justify-center rounded-full">
+                          <Camera className="w-5 h-5 text-white" />
+                        </div>
+                      </>
+                    ) : (
+                      <div className="flex flex-col items-center gap-1">
+                        <Camera className="w-5 h-5 text-muted-foreground" />
+                        <span className="text-[10px] text-muted-foreground">Фото</span>
                       </div>
-                    </>
-                  ) : (
-                    <div className="flex flex-col items-center gap-1">
-                      <Camera className="w-5 h-5 text-muted-foreground" />
-                      <span className="text-[10px] text-muted-foreground">Фото</span>
-                    </div>
-                  )}
-                </button>
-                <div>
-                  <p className="text-sm font-medium">Фото профиля</p>
-                  <p className="text-xs text-muted-foreground">Отображается в шапке вместо инициалов</p>
-                  {profile.avatar_url && (
-                    <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive hover:bg-destructive/10 rounded-lg gap-1 mt-1 h-7 px-2 text-xs" onClick={handleRemoveAvatar}>
-                      <X className="w-3 h-3" /> Удалить
-                    </Button>
-                  )}
+                    )}
+                  </button>
+                  <div className="flex-1">
+                    <p className="text-sm font-medium">Фото профиля</p>
+                    <p className="text-xs text-muted-foreground mb-2">Виден в правом верхнем углу шапки кабинета вместо ваших инициалов</p>
+                    {profile.avatar_url && (
+                      <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive hover:bg-destructive/10 rounded-lg gap-1 mt-1 h-7 px-2 text-xs" onClick={handleRemoveAvatar}>
+                        <X className="w-3 h-3" /> Удалить
+                      </Button>
+                    )}
+                  </div>
                 </div>
-              </div>
-              <div>
-                <label className="text-sm font-medium text-muted-foreground mb-1 block">Email</label>
-                <Input value={profile.email} disabled className="bg-muted/30 rounded-xl" />
-              </div>
-              <div>
-                <label className="text-sm font-medium text-muted-foreground mb-1 block">ФИО</label>
-                <Input value={profile.full_name} onChange={e => setProfile(p => ({ ...p, full_name: e.target.value }))} placeholder="Иванов Иван Иванович" className="rounded-xl" />
-              </div>
-              <div>
-                <label className="text-sm font-medium text-muted-foreground mb-1 block">Телефон</label>
-                <Input value={profile.phone} onChange={e => setProfile(p => ({ ...p, phone: e.target.value }))} placeholder="+7 (999) 123-45-67" className="rounded-xl" />
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <HintBlock
+                  diagram={<AvatarLocationHint className="w-full h-auto" />}
+                  text="Аватар появится в правом верхнем углу шапки личного кабинета — на месте круга с инициалами."
+                />
                 <div>
-                  <label className="text-sm font-medium text-muted-foreground mb-1 block">VK</label>
-                  <Input value={profile.vk_link} onChange={e => setProfile(p => ({ ...p, vk_link: e.target.value }))} placeholder="https://vk.com/username" className="rounded-xl" />
+                  <label className="text-sm font-medium text-muted-foreground mb-1 block">Email</label>
+                  <Input value={profile.email} disabled className="bg-muted/30 rounded-xl" />
                 </div>
                 <div>
-                  <label className="text-sm font-medium text-muted-foreground mb-1 block">Telegram</label>
-                  <Input value={profile.telegram_link} onChange={e => setProfile(p => ({ ...p, telegram_link: e.target.value }))} placeholder="@username" className="rounded-xl" />
+                  <label className="text-sm font-medium text-muted-foreground mb-1 block">ФИО</label>
+                  <Input value={profile.full_name} onChange={e => setProfile(p => ({ ...p, full_name: e.target.value }))} placeholder="Иванов Иван Иванович" className="rounded-xl" />
                 </div>
-              </div>
-              <div>
-                <label className="text-sm font-medium text-muted-foreground mb-1 block">О себе</label>
-                <Textarea value={profile.bio} onChange={e => setProfile(p => ({ ...p, bio: e.target.value }))} placeholder="Расскажите о себе..." className="rounded-xl min-h-[100px]" />
-              </div>
-              <Button className="btn-gradient rounded-xl gap-2" onClick={handleSaveProfile} disabled={saving}>
-                <Save className="w-4 h-4" /> Сохранить
-              </Button>
-            </CardContent>
-          </Card>
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground mb-1 block">Телефон</label>
+                  <Input value={profile.phone} onChange={e => setProfile(p => ({ ...p, phone: e.target.value }))} placeholder="+7 (999) 123-45-67" className="rounded-xl" />
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-sm font-medium text-muted-foreground mb-1 block">VK</label>
+                    <Input value={profile.vk_link} onChange={e => setProfile(p => ({ ...p, vk_link: e.target.value }))} placeholder="https://vk.com/username" className="rounded-xl" />
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-muted-foreground mb-1 block">Telegram</label>
+                    <Input value={profile.telegram_link} onChange={e => setProfile(p => ({ ...p, telegram_link: e.target.value }))} placeholder="@username" className="rounded-xl" />
+                  </div>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground mb-1 block">О себе</label>
+                  <Textarea value={profile.bio} onChange={e => setProfile(p => ({ ...p, bio: e.target.value }))} placeholder="Расскажите о себе..." className="rounded-xl min-h-[100px]" />
+                </div>
+                <Button className="btn-gradient rounded-xl gap-2" onClick={handleSaveProfile} disabled={saving}>
+                  <Save className="w-4 h-4" /> Сохранить
+                </Button>
+              </CardContent>
+            </Card>
 
+            <Card className="rounded-2xl">
+              <CardHeader><CardTitle className="text-base">Личный пароль</CardTitle></CardHeader>
+              <CardContent className="space-y-3">
+                <div className="relative">
+                  <Input type={showPassword ? "text" : "password"} value={newPassword} onChange={e => setNewPassword(e.target.value)} placeholder="Новый пароль" className="rounded-xl pr-10" />
+                  <button type="button" className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground" onClick={() => setShowPassword(!showPassword)}>
+                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+                <Input type={showPassword ? "text" : "password"} value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} placeholder="Повторите пароль" className="rounded-xl" />
+                <Button variant="outline" className="w-full rounded-xl" onClick={handleChangePassword} disabled={!newPassword}>Изменить пароль</Button>
+                <p className="text-xs text-muted-foreground">Это пароль вашего личного аккаунта сотрудника. Чтобы изменить email/пароль для входа в кабинет всей организации — откройте раздел «Вход».</p>
+              </CardContent>
+            </Card>
+          </div>
+        );
+
+      case "theme":
+        return (
           <div className="space-y-6">
             <Card className="rounded-2xl">
               <CardHeader>
-                <CardTitle className="text-base flex items-center gap-2"><Palette className="w-4 h-4" /> Тема оформления</CardTitle>
-                <p className="text-xs text-muted-foreground mt-1">Единый интерфейс для всей организации. Применяется на всех устройствах и для всех сотрудников.</p>
+                <CardTitle className="text-base flex items-center gap-2"><Palette className="w-4 h-4" /> Единый интерфейс организации</CardTitle>
               </CardHeader>
-              <CardContent className="space-y-6">
-                <ThemePersonalization isDarkMode={isDarkMode} onToggleDark={(dark) => {
-                  setIsDarkMode(dark);
-                  if (dark) { document.documentElement.classList.add('dark'); localStorage.setItem('theme', 'dark'); }
-                  else { document.documentElement.classList.remove('dark'); localStorage.setItem('theme', 'light'); }
-                  saveOrgTheme({ themeMode: dark ? 'dark' : 'light' }).catch((e) => toast.error(e.message));
-                }} />
-                <div className="pt-4 border-t border-border">
-                  <p className="font-medium text-sm mb-1">Визуальная тема организации</p>
-                  <p className="text-xs text-muted-foreground mb-3">Выбор сохраняется в облаке и применяется ко всем сотрудникам.</p>
-                  <ThemeSelector
-                    value={orgTheme.themeId}
-                    onChange={(id) => {
-                      saveOrgTheme({ themeId: id })
-                        .then(() => toast.success("Тема организации обновлена"))
-                        .catch((e) => toast.error(e.message));
+              <CardContent className="space-y-4">
+                <div className="flex items-start justify-between gap-4 p-4 rounded-xl bg-muted/30 border border-border/60">
+                  <div className="flex-1">
+                    <p className="font-medium text-sm">Применять визуальную тему ко всем сотрудникам</p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Когда включено — выбранная тема и режим (свет/тьма) хранятся в облаке и применяются у всех сотрудников
+                      организации на любых устройствах. Когда выключено — каждый сотрудник выбирает оформление сам, и его выбор
+                      сохраняется только локально.
+                    </p>
+                  </div>
+                  <Switch
+                    checked={orgTheme.enforce}
+                    onCheckedChange={handleToggleEnforce}
+                    aria-label="Применять тему ко всем сотрудникам"
+                  />
+                </div>
+
+                <div className={orgTheme.enforce ? "" : "opacity-60 pointer-events-none select-none"}>
+                  <ThemePersonalization
+                    isDarkMode={isDarkMode}
+                    onToggleDark={(dark) => {
+                      setIsDarkMode(dark);
+                      if (dark) { document.documentElement.classList.add('dark'); localStorage.setItem('theme', 'dark'); }
+                      else { document.documentElement.classList.remove('dark'); localStorage.setItem('theme', 'light'); }
+                      saveOrgTheme({ themeMode: dark ? 'dark' : 'light' }).catch((e) => toast.error(e.message));
                     }}
                   />
+                  <div className="pt-4 mt-4 border-t border-border">
+                    <p className="font-medium text-sm mb-1">Визуальная тема</p>
+                    <p className="text-xs text-muted-foreground mb-3">
+                      {orgTheme.enforce
+                        ? "Выбор сохраняется в облаке и применяется ко всем сотрудникам."
+                        : "Включите тумблер выше, чтобы тема применялась ко всем сотрудникам."}
+                    </p>
+                    <ThemeSelector
+                      value={orgTheme.themeId}
+                      onChange={(id) => {
+                        saveOrgTheme({ themeId: id })
+                          .then(() => toast.success("Тема организации обновлена"))
+                          .catch((e) => toast.error(e.message));
+                      }}
+                    />
+                  </div>
                 </div>
               </CardContent>
             </Card>
@@ -413,7 +469,6 @@ export function ProfileTab({ organizationId, initialSubTab }: ProfileTabProps) {
                 <CardTitle className="text-base flex items-center gap-2"><ImageIcon className="w-4 h-4" /> Значок организации</CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
-                <p className="text-sm text-muted-foreground">Отображается в боковом меню вместо стандартного логотипа</p>
                 <input ref={iconInputRef} type="file" accept="image/*" className="hidden" onChange={handleIconUpload} />
                 <div className="flex items-center gap-4">
                   <button onClick={() => iconInputRef.current?.click()} className="relative w-16 h-16 rounded-xl border-2 border-dashed border-border flex items-center justify-center overflow-hidden hover:border-primary/50 hover:bg-primary/5 transition-all group/icon">
@@ -439,172 +494,209 @@ export function ProfileTab({ organizationId, initialSubTab }: ProfileTabProps) {
                     </Button>
                   )}
                 </div>
-              </CardContent>
-            </Card>
-
-            <Card className="rounded-2xl">
-              <CardHeader><CardTitle className="text-base">Изменить email</CardTitle></CardHeader>
-              <CardContent className="space-y-3">
-                <Input value={newEmail} onChange={e => setNewEmail(e.target.value)} placeholder="new@email.com" className="rounded-xl" />
-                <Button variant="outline" className="w-full rounded-xl" onClick={handleChangeEmail} disabled={!newEmail || newEmail === profile.email}>Сохранить email</Button>
-              </CardContent>
-            </Card>
-
-            <Card className="rounded-2xl">
-              <CardHeader><CardTitle className="text-base">Смена пароля</CardTitle></CardHeader>
-              <CardContent className="space-y-3">
-                <div className="relative">
-                  <Input type={showPassword ? "text" : "password"} value={newPassword} onChange={e => setNewPassword(e.target.value)} placeholder="Новый пароль" className="rounded-xl pr-10" />
-                  <button type="button" className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground" onClick={() => setShowPassword(!showPassword)}>
-                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                  </button>
-                </div>
-                <Input type={showPassword ? "text" : "password"} value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} placeholder="Повторите пароль" className="rounded-xl" />
-                <Button variant="outline" className="w-full rounded-xl" onClick={handleChangePassword} disabled={!newPassword}>Изменить пароль</Button>
+                <HintBlock
+                  diagram={<OrgIconLocationHint className="w-full h-auto" />}
+                  text="Значок появится в левом боковом меню над названием организации. Рекомендуется квадратное изображение от 128×128 px, лучше всего — прозрачный PNG."
+                />
               </CardContent>
             </Card>
           </div>
-        </div>
-      </TabsContent>
+        );
 
-      <TabsContent value="branding">
-        {user?.id ? (
-          <ProfileBrandingTab organizationId={organizationId} userId={user.id} />
-        ) : (
-          <div className="text-center py-16 text-muted-foreground">Организация не найдена</div>
-        )}
-      </TabsContent>
+      case "branding":
+        return user?.id
+          ? <ProfileBrandingTab organizationId={organizationId} userId={user.id} />
+          : <div className="text-center py-16 text-muted-foreground">Организация не найдена</div>;
 
-      <TabsContent value="login-branding">
-        {user?.id ? (
-          <ProfileLoginBrandingTab organizationId={organizationId} userId={user.id} />
-        ) : (
-          <div className="text-center py-16 text-muted-foreground">Организация не найдена</div>
-        )}
-      </TabsContent>
+      case "login-branding":
+        return user?.id
+          ? <ProfileLoginBrandingTab organizationId={organizationId} userId={user.id} />
+          : <div className="text-center py-16 text-muted-foreground">Организация не найдена</div>;
 
-      <TabsContent value="signin">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 max-w-4xl">
+      case "signin":
+        return (
+          <div className="space-y-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <Card className="rounded-2xl">
+                <CardHeader>
+                  <CardTitle className="text-base flex items-center gap-2"><Mail className="w-4 h-4" /> Email для входа в кабинет организации</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <div>
+                    <label className="text-sm font-medium text-muted-foreground mb-1 block">Текущий email</label>
+                    <Input value={orgLoginEmail} disabled className="bg-muted/30 rounded-xl" />
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-muted-foreground mb-1 block">Новый email</label>
+                    <Input value={newOrgEmail} onChange={e => setNewOrgEmail(e.target.value)} placeholder="new-org@email.com" className="rounded-xl" />
+                  </div>
+                  <div className="flex items-start gap-2 p-3 rounded-xl bg-warning/10 border border-warning/20">
+                    <AlertTriangle className="w-4 h-4 text-warning shrink-0 mt-0.5" />
+                    <p className="text-xs text-warning-foreground/80">После смены email вы будете автоматически разлогинены и должны войти заново с новым адресом.</p>
+                  </div>
+                  <Button
+                    className="w-full rounded-xl btn-gradient"
+                    onClick={handleChangeOrgEmail}
+                    disabled={!newOrgEmail || newOrgEmail === orgLoginEmail || savingOrgEmail}
+                  >
+                    {savingOrgEmail ? "Сохранение..." : "Изменить email"}
+                  </Button>
+                </CardContent>
+              </Card>
+
+              <Card className="rounded-2xl">
+                <CardHeader>
+                  <CardTitle className="text-base flex items-center gap-2"><KeyRound className="w-4 h-4" /> Пароль для входа в кабинет организации</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <div className="relative">
+                    <Input
+                      type={showOrgPassword ? "text" : "password"}
+                      value={newOrgPassword}
+                      onChange={e => setNewOrgPassword(e.target.value)}
+                      placeholder="Новый пароль (мин. 6 символов)"
+                      className="rounded-xl pr-10"
+                    />
+                    <button type="button" className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground" onClick={() => setShowOrgPassword(!showOrgPassword)}>
+                      {showOrgPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
+                  <Input
+                    type={showOrgPassword ? "text" : "password"}
+                    value={confirmOrgPassword}
+                    onChange={e => setConfirmOrgPassword(e.target.value)}
+                    placeholder="Повторите пароль"
+                    className="rounded-xl"
+                  />
+                  <div className="flex items-start gap-2 p-3 rounded-xl bg-warning/10 border border-warning/20">
+                    <AlertTriangle className="w-4 h-4 text-warning shrink-0 mt-0.5" />
+                    <p className="text-xs text-warning-foreground/80">После смены пароля вы будете автоматически разлогинены и должны войти заново с новым паролем.</p>
+                  </div>
+                  <Button
+                    className="w-full rounded-xl btn-gradient"
+                    onClick={handleChangeOrgPassword}
+                    disabled={!newOrgPassword || savingOrgPassword}
+                  >
+                    {savingOrgPassword ? "Сохранение..." : "Изменить пароль"}
+                  </Button>
+                </CardContent>
+              </Card>
+            </div>
+
+            <Card className="rounded-2xl">
+              <CardHeader>
+                <CardTitle className="text-base">Email вашего личного аккаунта</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <p className="text-xs text-muted-foreground">
+                  Это email для входа лично вашим аккаунтом сотрудника (не путайте с email для входа всей организации, см. карточки выше).
+                </p>
+                <Input value={newEmail} onChange={e => setNewEmail(e.target.value)} placeholder="new@email.com" className="rounded-xl" />
+                <Button variant="outline" className="rounded-xl" onClick={handleChangeEmail} disabled={!newEmail || newEmail === profile.email}>Сохранить email</Button>
+              </CardContent>
+            </Card>
+          </div>
+        );
+
+      case "notifications":
+        return (
           <Card className="rounded-2xl">
             <CardHeader>
-              <CardTitle className="text-base flex items-center gap-2"><Mail className="w-4 h-4" /> Email для входа в кабинет организации</CardTitle>
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-lg">Настройки уведомлений</CardTitle>
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-muted-foreground">Звук уведомлений</span>
+                  <Button variant={soundEnabled ? "default" : "outline"} size="sm" className="rounded-lg text-xs h-8" onClick={() => setSoundEnabled(!soundEnabled)}>
+                    {soundEnabled ? "Вкл" : "Выкл"}
+                  </Button>
+                </div>
+              </div>
             </CardHeader>
-            <CardContent className="space-y-3">
-              <div>
-                <label className="text-sm font-medium text-muted-foreground mb-1 block">Текущий email</label>
-                <Input value={orgLoginEmail} disabled className="bg-muted/30 rounded-xl" />
+            <CardContent>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b">
+                      <th className="text-left py-3 pr-4 font-medium text-muted-foreground">Тип уведомления</th>
+                      <th className="text-center py-3 px-3 font-medium text-muted-foreground">Платформа</th>
+                      <th className="text-center py-3 px-3 font-medium text-muted-foreground">Браузер</th>
+                      <th className="text-center py-3 px-3 font-medium text-muted-foreground">Email</th>
+                      <th className="text-center py-3 px-3 font-medium text-muted-foreground opacity-40">Телеграм</th>
+                      <th className="text-center py-3 px-3 font-medium text-muted-foreground opacity-40">Приложение</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {notifs.map(n => (
+                      <tr key={n.key} className="border-b last:border-0 hover:bg-muted/30 transition-colors">
+                        <td className="py-3 pr-4">{n.label}</td>
+                        <td className="text-center py-3 px-3"><Checkbox checked={n.platform} onCheckedChange={() => toggleNotif(n.key, "platform")} /></td>
+                        <td className="text-center py-3 px-3"><Checkbox checked={n.browser} onCheckedChange={() => toggleNotif(n.key, "browser")} /></td>
+                        <td className="text-center py-3 px-3"><Checkbox checked={n.email} onCheckedChange={() => toggleNotif(n.key, "email")} /></td>
+                        <td className="text-center py-3 px-3"><Checkbox checked={false} disabled className="opacity-30" /></td>
+                        <td className="text-center py-3 px-3"><Checkbox checked={false} disabled className="opacity-30" /></td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
-              <div>
-                <label className="text-sm font-medium text-muted-foreground mb-1 block">Новый email</label>
-                <Input value={newOrgEmail} onChange={e => setNewOrgEmail(e.target.value)} placeholder="new-org@email.com" className="rounded-xl" />
-              </div>
-              <div className="flex items-start gap-2 p-3 rounded-xl bg-warning/10 border border-warning/20">
-                <AlertTriangle className="w-4 h-4 text-warning shrink-0 mt-0.5" />
-                <p className="text-xs text-warning-foreground/80">После смены email вы будете автоматически разлогинены и должны войти заново с новым адресом.</p>
-              </div>
-              <Button
-                className="w-full rounded-xl btn-gradient"
-                onClick={handleChangeOrgEmail}
-                disabled={!newOrgEmail || newOrgEmail === orgLoginEmail || savingOrgEmail}
-              >
-                {savingOrgEmail ? "Сохранение..." : "Изменить email"}
-              </Button>
-            </CardContent>
-          </Card>
-
-          <Card className="rounded-2xl">
-            <CardHeader>
-              <CardTitle className="text-base flex items-center gap-2"><KeyRound className="w-4 h-4" /> Пароль для входа в кабинет организации</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <div className="relative">
-                <Input
-                  type={showOrgPassword ? "text" : "password"}
-                  value={newOrgPassword}
-                  onChange={e => setNewOrgPassword(e.target.value)}
-                  placeholder="Новый пароль (мин. 6 символов)"
-                  className="rounded-xl pr-10"
-                />
-                <button type="button" className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground" onClick={() => setShowOrgPassword(!showOrgPassword)}>
-                  {showOrgPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                </button>
-              </div>
-              <Input
-                type={showOrgPassword ? "text" : "password"}
-                value={confirmOrgPassword}
-                onChange={e => setConfirmOrgPassword(e.target.value)}
-                placeholder="Повторите пароль"
-                className="rounded-xl"
-              />
-              <div className="flex items-start gap-2 p-3 rounded-xl bg-warning/10 border border-warning/20">
-                <AlertTriangle className="w-4 h-4 text-warning shrink-0 mt-0.5" />
-                <p className="text-xs text-warning-foreground/80">После смены пароля вы будете автоматически разлогинены и должны войти заново с новым паролем.</p>
-              </div>
-              <Button
-                className="w-full rounded-xl btn-gradient"
-                onClick={handleChangeOrgPassword}
-                disabled={!newOrgPassword || savingOrgPassword}
-              >
-                {savingOrgPassword ? "Сохранение..." : "Изменить пароль"}
-              </Button>
-            </CardContent>
-          </Card>
-        </div>
-      </TabsContent>
-
-      <TabsContent value="notifications">
-        <Card className="rounded-2xl">
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-lg">Настройки уведомлений</CardTitle>
-              <div className="flex items-center gap-2">
-                <span className="text-sm text-muted-foreground">Звук уведомлений</span>
-                <Button variant={soundEnabled ? "default" : "outline"} size="sm" className="rounded-lg text-xs h-8" onClick={() => setSoundEnabled(!soundEnabled)}>
-                  {soundEnabled ? "Вкл" : "Выкл"}
+              <div className="flex items-center justify-between mt-6">
+                <p className="text-xs text-muted-foreground">Телеграм и Приложение — скоро</p>
+                <Button className="btn-gradient rounded-xl gap-2" onClick={handleSaveNotifs} disabled={saving}>
+                  <Save className="w-4 h-4" /> Сохранить
                 </Button>
               </div>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b">
-                    <th className="text-left py-3 pr-4 font-medium text-muted-foreground">Тип уведомления</th>
-                    <th className="text-center py-3 px-3 font-medium text-muted-foreground">Платформа</th>
-                    <th className="text-center py-3 px-3 font-medium text-muted-foreground">Браузер</th>
-                    <th className="text-center py-3 px-3 font-medium text-muted-foreground">Email</th>
-                    <th className="text-center py-3 px-3 font-medium text-muted-foreground opacity-40">Телеграм</th>
-                    <th className="text-center py-3 px-3 font-medium text-muted-foreground opacity-40">Приложение</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {notifs.map(n => (
-                    <tr key={n.key} className="border-b last:border-0 hover:bg-muted/30 transition-colors">
-                      <td className="py-3 pr-4">{n.label}</td>
-                      <td className="text-center py-3 px-3"><Checkbox checked={n.platform} onCheckedChange={() => toggleNotif(n.key, "platform")} /></td>
-                      <td className="text-center py-3 px-3"><Checkbox checked={n.browser} onCheckedChange={() => toggleNotif(n.key, "browser")} /></td>
-                      <td className="text-center py-3 px-3"><Checkbox checked={n.email} onCheckedChange={() => toggleNotif(n.key, "email")} /></td>
-                      <td className="text-center py-3 px-3"><Checkbox checked={false} disabled className="opacity-30" /></td>
-                      <td className="text-center py-3 px-3"><Checkbox checked={false} disabled className="opacity-30" /></td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-            <div className="flex items-center justify-between mt-6">
-              <p className="text-xs text-muted-foreground">Телеграм и Приложение — скоро</p>
-              <Button className="btn-gradient rounded-xl gap-2" onClick={handleSaveNotifs} disabled={saving}>
-                <Save className="w-4 h-4" /> Сохранить
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      </TabsContent>
+            </CardContent>
+          </Card>
+        );
 
-      <TabsContent value="partner">
-        <PartnerCabinet />
-      </TabsContent>
-    </Tabs>
+      case "partner":
+        return <PartnerCabinet />;
+
+      default:
+        return null;
+    }
+  };
+
+  const active = SECTIONS.find(s => s.key === activeSection)!;
+
+  return (
+    <div className="flex flex-col lg:flex-row gap-4 lg:gap-6 min-h-[60vh]">
+      {/* Left vertical menu (mirrors AdminSettings.tsx) */}
+      <nav className="w-full lg:w-[240px] shrink-0">
+        <div className="lg:sticky lg:top-4 overflow-x-auto lg:overflow-x-visible">
+          <div className="flex lg:flex-col gap-1 min-w-max lg:min-w-0 p-1 bg-card rounded-xl border border-border/60">
+            {SECTIONS.map(s => {
+              const Icon = s.icon;
+              const isActive = activeSection === s.key;
+              return (
+                <button
+                  key={s.key}
+                  onClick={() => setActiveSection(s.key)}
+                  className={`flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-left text-sm transition-all whitespace-nowrap ${
+                    isActive
+                      ? "bg-primary/10 text-primary font-medium shadow-sm"
+                      : "text-muted-foreground hover:bg-primary/5 hover:text-foreground"
+                  }`}
+                >
+                  <Icon className={`w-4 h-4 shrink-0 ${isActive ? "text-primary" : s.color}`} />
+                  <span className="hidden lg:inline">{s.label}</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      </nav>
+
+      {/* Right content */}
+      <div className="flex-1 min-w-0">
+        <div className="bg-card rounded-xl lg:rounded-2xl border border-border/60 p-4 lg:p-6">
+          <div className="flex items-center gap-2.5 mb-4 pb-3 border-b border-border/60">
+            <active.icon className={`w-5 h-5 ${active.color}`} />
+            <h3 className="font-display font-semibold text-lg">{active.label}</h3>
+          </div>
+          {renderContent()}
+        </div>
+      </div>
+    </div>
   );
 }
