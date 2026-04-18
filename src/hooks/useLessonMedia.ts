@@ -78,10 +78,22 @@ export function useLessonMedia(
 
   const handleVideoUpload = useCallback(async (file: File, skipCompression = false) => {
     if (!courseId) { toast.error("Сначала сохраните курс"); return; }
+    // Guard against double-trigger (e.g. user clicked twice, antivirus duplicated event)
+    if (videoUploadProgress !== null || kinescopeUploadProgress !== null || tusAbortRef.current) {
+      toast.info("Загрузка уже идёт, дождитесь завершения");
+      if (videoInputRef.current) videoInputRef.current.value = '';
+      return;
+    }
     if (file.size > SIZE_2GB) {
       toast.error("Файл слишком большой. Максимум — 2 ГБ.");
       if (videoInputRef.current) videoInputRef.current.value = '';
       return;
+    }
+
+    // Inform users about .TS limitations
+    const ext = file.name.split('.').pop()?.toLowerCase();
+    if (ext === 'ts' || ext === 'm2ts' || ext === 'mts') {
+      toast.info("Формат .TS загружен. Для гарантированного воспроизведения во всех браузерах рекомендуем «Видеосервис+» — он автоматически перекодирует.", { duration: 8000 });
     }
 
     setVideoUploadProgress(0);
@@ -232,6 +244,12 @@ export function useLessonMedia(
   // Kinescope upload
   const handleKinescopeUpload = useCallback(async (file: File) => {
     if (!courseId) { toast.error("Сначала сохраните курс"); return; }
+    // Guard against double-trigger
+    if (videoUploadProgress !== null || kinescopeUploadProgress !== null || tusAbortRef.current) {
+      toast.info("Загрузка уже идёт, дождитесь завершения");
+      if (kinescopeInputRef.current) kinescopeInputRef.current.value = '';
+      return;
+    }
 
     setKinescopeUploadProgress(0);
     setUploadStartTime(Date.now());
@@ -263,6 +281,21 @@ export function useLessonMedia(
       const abortController = new AbortController();
       tusAbortRef.current = abortController;
 
+      const fetchKinescopeOffset = async (): Promise<number | null> => {
+        try {
+          const headRes = await fetch(upload_url, {
+            method: "HEAD",
+            headers: { "Tus-Resumable": "1.0.0" },
+            signal: abortController.signal,
+          });
+          if (!headRes.ok) return null;
+          const off = headRes.headers.get("Upload-Offset");
+          if (!off) return null;
+          const parsed = parseInt(off, 10);
+          return Number.isFinite(parsed) ? parsed : null;
+        } catch { return null; }
+      };
+
       while (offset < fileSize) {
         if (abortController.signal.aborted) throw new Error("Upload cancelled");
 
@@ -279,6 +312,20 @@ export function useLessonMedia(
           body: chunk,
           signal: abortController.signal,
         });
+
+        // Handle 409/410: server has different offset → resync via HEAD
+        if (patchRes.status === 409 || patchRes.status === 410) {
+          const serverOffset = await fetchKinescopeOffset();
+          if (serverOffset !== null && serverOffset > offset && serverOffset <= fileSize) {
+            console.warn(`[Kinescope TUS] resync ${offset} → ${serverOffset} (status ${patchRes.status})`);
+            offset = serverOffset;
+            setKinescopeUploadProgress(Math.round((offset / fileSize) * 100));
+            setUploadedBytes(offset);
+            continue;
+          }
+          const errBody = await patchRes.text().catch(() => "");
+          throw new Error(`Загрузка прервана (${patchRes.status}). Попробуйте загрузить файл ещё раз. ${errBody}`);
+        }
 
         if (!patchRes.ok) {
           const errBody = await patchRes.text().catch(() => "");
