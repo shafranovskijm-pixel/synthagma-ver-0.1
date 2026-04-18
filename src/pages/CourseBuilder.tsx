@@ -25,6 +25,7 @@ import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 interface CourseBuilderProps {
   embedded?: boolean;
   embeddedCourseId?: string;
+  onExitEditor?: () => void;
 }
 
 function AddLessonGrid({
@@ -80,7 +81,7 @@ function AddLessonGrid({
   );
 }
 
-export default function CourseBuilder({ embedded, embeddedCourseId }: CourseBuilderProps = {}) {
+export default function CourseBuilder({ embedded, embeddedCourseId, onExitEditor }: CourseBuilderProps = {}) {
   const navigate = useNavigate();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isSavingForPreview, setIsSavingForPreview] = useState(false);
@@ -217,6 +218,8 @@ export default function CourseBuilder({ embedded, embeddedCourseId }: CourseBuil
             sensors={sensors}
             onDragEnd={handleDragEnd}
             onLessonClick={scrollToLesson}
+            onBack={onExitEditor}
+            backLabel="Назад к разделам курса"
           />
 
           {/* CENTER: main content */}

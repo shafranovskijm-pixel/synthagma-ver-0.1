@@ -5,7 +5,7 @@ import { CSS } from "@dnd-kit/utilities";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
-import { GripVertical, Menu, FileText } from "lucide-react";
+import { GripVertical, Menu, FileText, ArrowLeft } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { lessonIcons, lessonColors, type Lesson } from "@/components/course-builder/LessonTypeConfig";
 
@@ -15,6 +15,8 @@ interface Props {
   sensors: any;
   onDragEnd: (e: DragEndEvent) => void;
   onLessonClick: (id: string) => void;
+  onBack?: () => void;
+  backLabel?: string;
 }
 
 function SortableNavRow({
@@ -63,9 +65,18 @@ function SortableNavRow({
   );
 }
 
-function NavList({ lessons, activeLessonId, sensors, onDragEnd, onLessonClick }: Props) {
+function NavList({ lessons, activeLessonId, sensors, onDragEnd, onLessonClick, onBack, backLabel }: Props) {
   return (
     <div className="flex flex-col h-full">
+      {onBack && (
+        <button
+          onClick={onBack}
+          className="flex items-center gap-2 px-3 py-2.5 border-b border-border text-sm font-medium text-muted-foreground hover:text-primary hover:bg-muted/40 transition-colors"
+        >
+          <ArrowLeft className="w-4 h-4" />
+          {backLabel || "Назад к разделам"}
+        </button>
+      )}
       <div className="px-3 py-3 border-b border-border">
         <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
           Уроки ({lessons.length})
