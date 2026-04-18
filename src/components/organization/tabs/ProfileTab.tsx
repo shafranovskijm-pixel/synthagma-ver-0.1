@@ -73,12 +73,35 @@ export function ProfileTab({ organizationId, initialSubTab }: ProfileTabProps) {
   const avatarInputRef = useRef<HTMLInputElement>(null);
   const [isDarkMode, setIsDarkMode] = useState(() => document.documentElement.classList.contains('dark'));
 
+  // Org-wide theme (DB-backed, shared across all sessions/staff)
+  const { theme: orgTheme, saveTheme: saveOrgTheme } = useOrgTheme(organizationId);
+
+  // Org login credentials
+  const [orgLoginEmail, setOrgLoginEmail] = useState("");
+  const [newOrgEmail, setNewOrgEmail] = useState("");
+  const [newOrgPassword, setNewOrgPassword] = useState("");
+  const [confirmOrgPassword, setConfirmOrgPassword] = useState("");
+  const [showOrgPassword, setShowOrgPassword] = useState(false);
+  const [savingOrgEmail, setSavingOrgEmail] = useState(false);
+  const [savingOrgPassword, setSavingOrgPassword] = useState(false);
+
   useEffect(() => {
     if (!user) return;
     loadProfile();
     loadNotificationPrefs();
     loadOrgIcon();
-  }, [user]);
+    loadOrgCredentials();
+  }, [user, organizationId]);
+
+  const loadOrgCredentials = async () => {
+    if (!organizationId) return;
+    const { data } = await supabase.rpc("get_decrypted_org_credentials", { p_organization_id: organizationId });
+    const row = Array.isArray(data) ? data[0] : null;
+    if (row?.login_email) {
+      setOrgLoginEmail(row.login_email);
+      setNewOrgEmail(row.login_email);
+    }
+  };
 
   const loadProfile = async () => {
     const { data } = await supabase.from("profiles").select("full_name, email, phone, avatar_url, vk_link, telegram_link, bio").eq("user_id", user!.id).single();
