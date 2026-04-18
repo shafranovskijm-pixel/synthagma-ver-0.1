@@ -105,10 +105,10 @@ export function useOrgTheme(organizationId: string | null | undefined) {
         .eq("id", organizationId)
         .maybeSingle();
       const current = (org?.branding as Record<string, unknown>) || {};
-      const newBranding = { ...current, orgTheme: merged };
+      const newBranding = { ...current, orgTheme: { ...merged } } as Record<string, unknown>;
       const { error } = await supabase
         .from("organizations")
-        .update({ branding: newBranding })
+        .update({ branding: newBranding as any })
         .eq("id", organizationId);
       if (error) throw error;
       setTheme(merged);
