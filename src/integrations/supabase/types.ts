@@ -5188,7 +5188,7 @@ export type Database = {
           created_by: string | null
           created_by_name: string | null
           document_hash: string | null
-          document_html: string
+          document_html: string | null
           file_mime: string | null
           file_name: string | null
           file_url: string | null
@@ -5202,7 +5202,7 @@ export type Database = {
           created_by?: string | null
           created_by_name?: string | null
           document_hash?: string | null
-          document_html: string
+          document_html?: string | null
           file_mime?: string | null
           file_name?: string | null
           file_url?: string | null
@@ -5216,7 +5216,7 @@ export type Database = {
           created_by?: string | null
           created_by_name?: string | null
           document_hash?: string | null
-          document_html?: string
+          document_html?: string | null
           file_mime?: string | null
           file_name?: string | null
           file_url?: string | null
