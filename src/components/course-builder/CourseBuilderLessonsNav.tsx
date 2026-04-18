@@ -15,6 +15,8 @@ interface Props {
   sensors: any;
   onDragEnd: (e: DragEndEvent) => void;
   onLessonClick: (id: string) => void;
+  onBack?: () => void;
+  backLabel?: string;
 }
 
 function SortableNavRow({
