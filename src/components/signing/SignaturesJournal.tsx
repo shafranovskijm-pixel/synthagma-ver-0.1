@@ -249,6 +249,9 @@ export function SignaturesJournal({ organizationId }: Props) {
                         {r.status === "sent" && (
                           <Button variant="ghost" size="icon" title="Скопировать ссылку" onClick={() => copyLink(r.signature_token)}><Copy className="w-4 h-4" /></Button>
                         )}
+                        {r.status === "signed" && (
+                          <Button variant="ghost" size="icon" title="Скачать протокол" onClick={() => handleDownloadProtocol(r)}><Download className="w-4 h-4" /></Button>
+                        )}
                       </div>
                     </TableCell>
                   </TableRow>
@@ -295,15 +298,20 @@ export function SignaturesJournal({ organizationId }: Props) {
                 </div>
               )}
 
-              <div className="flex gap-2">
-                <Button variant="outline" className="flex-1 gap-2" onClick={() => copyLink(selected.signature_token)}>
+              <div className="flex flex-wrap gap-2">
+                <Button variant="outline" className="flex-1 gap-2 min-w-[180px]" onClick={() => copyLink(selected.signature_token)}>
                   <Copy className="w-4 h-4" />Скопировать ссылку
                 </Button>
-                <Button variant="outline" className="flex-1 gap-2" asChild>
+                <Button variant="outline" className="flex-1 gap-2 min-w-[180px]" asChild>
                   <a href={`/sign/${selected.signature_token}`} target="_blank" rel="noopener noreferrer">
                     <Eye className="w-4 h-4" />Открыть страницу подписания
                   </a>
                 </Button>
+                {selected.status === "signed" && (
+                  <Button variant="default" className="flex-1 gap-2 min-w-[180px]" onClick={() => handleDownloadProtocol(selected)}>
+                    <Download className="w-4 h-4" />Скачать протокол
+                  </Button>
+                )}
               </div>
             </div>
           )}
