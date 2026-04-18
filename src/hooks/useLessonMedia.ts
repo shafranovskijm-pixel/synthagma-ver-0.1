@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { safeInvoke, safeFetch } from "@/utils/safeInvoke";
 import { toast } from "sonner";
 import { ContentBlock, blocksToJson as blocksToJsonFn } from "@/components/course-builder/BlockEditor";
+import { useBackgroundUploads } from "@/contexts/BackgroundUploadsContext";
 
 const SIZE_100MB = 100 * 1024 * 1024;
 const SIZE_500MB = 500 * 1024 * 1024;
@@ -12,8 +13,24 @@ const SIZE_2GB = 2 * 1024 * 1024 * 1024;
 export function useLessonMedia(
   lessonId: string,
   courseId: string | undefined,
-  onUpdate: (updates: any) => void
+  onUpdate: (updates: any) => void,
+  meta?: { courseTitle?: string; lessonTitle?: string; organizationId?: string }
 ) {
+  const bg = useBackgroundUploads();
+  const currentTaskIdRef = useRef<string | null>(null);
+  const startBgTask = useCallback((kind: "internal" | "kinescope", file: File, abort: () => void) => {
+    const id = crypto.randomUUID();
+    bg.registerUpload({
+      id, kind, lessonId, courseId: courseId || "",
+      courseTitle: meta?.courseTitle || "Курс",
+      lessonTitle: meta?.lessonTitle || "Урок",
+      fileName: file.name, fileSize: file.size, abort,
+      organizationId: meta?.organizationId,
+    });
+    currentTaskIdRef.current = id;
+    return id;
+  }, [bg, lessonId, courseId, meta?.courseTitle, meta?.lessonTitle, meta?.organizationId]);
+
   // TTS
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [isSpeechPaused, setIsSpeechPaused] = useState(false);
