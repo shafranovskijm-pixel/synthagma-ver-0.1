@@ -578,7 +578,7 @@ function insertAtOffset(root: HTMLElement, offset: number, commentId: string, te
   return true;
 }
 
-/** Удаляет все mark/ins подсветки, возвращая исходный текст. */
+/** Удаляет все mark/ins подсветки, возвращая исходный текст. Caret-маркер не трогаем. */
 function clearHighlights(root: HTMLElement) {
   // Сначала удаляем вставленные <ins> (они не были частью оригинала)
   root.querySelectorAll("ins[data-comment-id]").forEach((el) => el.parentNode?.removeChild(el));
