@@ -164,7 +164,7 @@ export const LessonEditor = ({
                       <Video className="w-10 h-10 mx-auto mb-3 text-sigma-purple" />
                       <p className="text-sm font-medium mb-1">Загрузить через Видеосервис+</p>
                       <p className="text-xs text-muted-foreground mb-4">Любой размер файла • CDN • Профессиональный плеер</p>
-                      <input ref={media.kinescopeInputRef} type="file" accept="video/*" className="hidden"
+                      <input ref={media.kinescopeInputRef} type="file" accept="video/*,.ts,.m2ts,.mts,.mpg,.mpeg,video/mp2t" className="hidden"
                         onChange={(ev) => { const file = ev.target.files?.[0]; if (file) media.handleKinescopeUpload(file); }} />
                       <Button type="button" className="gap-2 bg-sigma-purple text-white hover:bg-sigma-purple/90"
                         onClick={(ev) => { ev.stopPropagation(); ev.preventDefault(); const inp = media.kinescopeInputRef.current; if (inp) { inp.value = ''; inp.click(); } else { toast.error("Не удалось открыть выбор файла"); } }}>
@@ -175,8 +175,8 @@ export const LessonEditor = ({
                     <div key="server-upload" className="space-y-3">
                       <Video className="w-10 h-10 mx-auto mb-3 text-sigma-purple" />
                       <p className="text-sm font-medium mb-1">Загрузить видео на сервер</p>
-                      <p className="text-xs text-muted-foreground mb-4">MP4, MOV, AVI и др. — до 2 ГБ</p>
-                      <input ref={media.videoInputRef} type="file" accept="video/*" className="hidden"
+                      <p className="text-xs text-muted-foreground mb-4">MP4, MOV, AVI, .TS / .M2TS — до 2 ГБ</p>
+                      <input ref={media.videoInputRef} type="file" accept="video/*,.ts,.m2ts,.mts,.mpg,.mpeg,video/mp2t" className="hidden"
                         onChange={(ev) => { const file = ev.target.files?.[0]; if (file) media.handleVideoUpload(file, skipCompression); }} />
                       <div className="flex flex-col items-center gap-2">
                         <Button type="button" className="gap-2 bg-sigma-purple text-white hover:bg-sigma-purple/90"

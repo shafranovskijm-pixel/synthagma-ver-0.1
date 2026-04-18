@@ -19,10 +19,17 @@ const isDirectVideoFileUrl = (url: string): boolean => {
   try {
     const u = new URL(url);
     const path = u.pathname.toLowerCase();
-    if (/(\.mp4|\.webm|\.ogg|\.ogv|\.mov|\.m4v|\.mkv)(\?|$)/.test(path)) return true;
+    if (/(\.mp4|\.webm|\.ogg|\.ogv|\.mov|\.m4v|\.mkv|\.ts|\.m2ts|\.mts|\.mpg|\.mpeg|\.m3u8)(\?|$)/.test(path)) return true;
     if (u.hostname.includes("selcdn.ru")) return true;
     return false;
   } catch { return false; }
+};
+
+const isMpegTsFileUrl = (url: string): boolean => {
+  try {
+    const u = new URL(url);
+    return /(\.ts|\.m2ts|\.mts|\.mpg|\.mpeg|\.m3u8)(\?|$)/i.test(u.pathname);
+  } catch { return /(\.ts|\.m2ts|\.mts|\.mpg|\.mpeg|\.m3u8)(\?|$)/i.test(url); }
 };
 
 const getVideoEmbedUrl = (content: string): { url: string; canEmbed: boolean } | null => {

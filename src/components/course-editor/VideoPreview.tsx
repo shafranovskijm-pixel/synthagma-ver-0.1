@@ -28,7 +28,7 @@ function getEmbedFromContent(content: string): { type: 'iframe' | 'url' | 'direc
   const yandexMatch = content.match(/yandex\.ru\/video\/preview\/(\d+)/);
   if (yandexMatch) return { type: 'url', value: `https://yandex.ru/video/preview/${yandexMatch[1]}` };
 
-  if (content.match(/\.(mp4|webm|ogg|mov|mkv|m4v)(\?.*)?$/i) || content.includes("selcdn.ru"))
+  if (content.match(/\.(mp4|webm|ogg|mov|mkv|m4v|ts|m2ts|mts|mpg|mpeg|m3u8)(\?.*)?$/i) || content.includes("selcdn.ru"))
     return { type: 'direct' as any, value: content };
 
   if (content.match(/^https?:\/\/.*\/recordings?\//i) || content.match(/^https?:\/\/.*\/video\//i))
