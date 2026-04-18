@@ -1,67 +1,70 @@
 
 
-## Корень проблем
+## Цель
+Показывать в подписанном документе (и в попапе, и в скачиваемом PDF) **результат принятых правок клиента**:
+- вставки и замены — зелёным выделением «вставлено»;
+- удаления — просто убрать текст (без перечёркивания);
+- комментарии без изменений — игнорировать в финальном тексте;
+- отклонённые / нерассмотренные правки — игнорировать.
 
-Глядя на скриншот, договор это **PDF-вложение** (`current_revision.file_url` = .pdf в storage), а не HTML. Текущий `generateSignedPdf`:
-
-1. **Не вставляет тело PDF-договора в итоговую сборку** — только заглушку «Документ-вложение». Поэтому «договор не содержит правок» — там вообще нет контента договора.
-2. **Падает на html2canvas**, потому что:
-   - prose/contract HTML может содержать современные CSS (`oklch()`, css-переменные дизайн-системы) — html2canvas их не парсит и кидает ошибку.
-   - тянет внешние изображения через signed URL без надёжного CORS.
-3. **Кириллица** в jsPDF без подключённого шрифта рендерится квадратами / пустыми глифами.
-4. RLS на `external-contracts` для пути `signed/` мог не разрешать `upsert` от обычного юзера.
+## Корень проблемы
+Сейчас `documentHtml` — это **исходный** текст ревизии, в него никогда не вмерживаются принятые правки (`signature_comments` с `resolution_status = "accepted"`). Поэтому в попапе предпросмотра видно «голый» договор, а в собираемом PDF — то же самое.
 
 ## Что меняем
 
-### A. Полностью переписываем `src/lib/signedDocumentPdf.ts` — два движка под два сценария:
+### 1. Новый утилит `src/lib/applyAcceptedEdits.ts`
+Чистая функция:
+```ts
+applyAcceptedEdits(html: string, comments: AcceptedComment[]): string
+```
+- Берёт только комментарии с `resolution_status === "accepted"`.
+- Сортирует по `position_anchor.startOffset` (по убыванию, чтобы при правках с конца не сбивались offset'ы более ранних).
+- По плоскому тексту документа (через `Range` или `TreeWalker` на временном контейнере в `<template>`) находит диапазоны и применяет:
+  - `replace` → оборачивает `<ins data-edit="replace" style="background:#dcfce7;color:#14532d;">replacement</ins>` (старый текст вырезается);
+  - `delete` → удаляет фрагмент;
+  - `insert` → вставляет `<ins>...</ins>` по `path/nodeOffset` (или по offset+quoted_text как fallback);
+  - `comment` → пропускаем.
+- Возвращает чистый HTML без зависимости от tailwind-классов / oklch (инлайновый зелёный фон).
 
-**Сценарий 1: PDF-вложение (`attachedFileUrl` это .pdf)**
-- Скачиваем оригинальный PDF как `ArrayBuffer`.
-- Через **`pdf-lib`** (`PDFDocument.load(...)`) открываем его.
-- Через `pdf-lib` рисуем поверх последней страницы или **добавляем в конец отдельные страницы**:
-  - заголовок «Подписи сторон»,
-  - таблицу-штамп Отправителя (ИП Шафрановский, email, дата МСК, IP, agreementId, SHA-256),
-  - таблицу-штамп Получателя,
-  - футер «63-ФЗ».
-- Для скан-листа (если `signature_method=handwritten_scan`) — встраиваем картинку/PDF тоже через pdf-lib (`embedJpg/embedPng/copyPages`).
-- Без html2canvas вообще → не падает на oklch.
-- Кириллица: используем встраиваемый TTF (PT Sans/Roboto) через `@pdf-lib/fontkit` (`pdf.registerFontkit`, затем `pdf.embedFont(ttfBytes)`). Шрифт кладём в `public/fonts/` (`PTSans-Regular.ttf`, `PTSans-Bold.ttf`).
+### 2. Использование в попапе предпросмотра
+В `ContractReviewBody.tsx` — рассчитать `mergedHtml` через `useMemo(applyAcceptedEdits(documentHtml, comments), [documentHtml, comments])` и передать его в `SignedDocumentPreview` вместо сырого `documentHtml`. То же значение использовать для `sha256Hex` при инвалидации кеша PDF (см. п.4).
 
-**Сценарий 2: HTML-договор (`documentHtml`)**
-- То же, но первую часть PDF создаём заново: рендерим текст HTML → plain blocks (parser упрощает: `<p>`, `<h1-3>`, `<ul>`, `<table>` → текст с переносами) и пишем через pdf-lib теми же шрифтами PT Sans.
-- Альтернатива при нехватке времени: всё ещё используем html2canvas, но **только** на чистом инлайн-стилизованном контейнере (без классов tailwind/oklch). Текущий код контейнер уже инлайн-стилизует, проблема — встроенный `documentHtml` от ReviewableDocument с oklch-классами; перед рендером прогоняем через очистку: вырезаем `class`, `style` с `oklch`/`hsl(var(...`, заменяем на безопасные.
+В `SignedDocumentPreview.tsx` — рендерить `documentHtml` (теперь уже merged) через тот же `dangerouslySetInnerHTML`, ничего больше не меняем.
 
-→ Берём **первый вариант** (pdf-lib). Надёжно, без visual-зависимости от tailwind.
+### 3. Использование в собираемом PDF
+В `signedDocumentPdf.ts` ветка «есть HTML-договор» уже вызывает `appendHtmlAsPages(pdf, documentHtml, ...)`. Ему просто будем передавать **уже merged** html. Чтобы зелёная подсветка вставок отрисовалась — расширим `appendHtmlAsPages` (или text parser в `pdfStampDrawer.ts`):
+- При парсинге HTML распознаём теги `<ins>` (и помечаем фрагменты как «inserted»).
+- При рендере fragmentа: рисуем фон-прямоугольник `rgb(0.86, 0.99, 0.84)` (light-green) под текстом и сам текст тёмно-зелёным `rgb(0.08, 0.33, 0.18)`.
+- Удаления уже физически вырезаны на этапе merge — отдельно ничего не нужно.
 
-### B. Хранилище и RLS
-- Добавим миграцию: явные политики на `external-contracts` для папки `signed/`:
-  - `INSERT/UPDATE` разрешён auth-юзеру, если он либо отправитель (`organization_id` = его текущая org), либо получатель по токену (через RPC).
-  - `SELECT` — те же. Сам файл всегда открываем через `createSignedUrl`, поэтому публичность не нужна.
+### 4. Инвалидация кеша подписанного PDF
+Сейчас если `signed_document_path` есть — отдаём кеш. После наших изменений кеш может оказаться построен из старого html. Поэтому:
+- Если число / состав принятых правок изменился (или текущая ревизия обновилась) — нужно перегенерить.
+- Простой признак: в `signedDocumentPath` хранить хэш входа `signed/{signatureId}_{shortHash}.pdf`. На клиенте перед использованием кеша сверяем хэш в имени файла с текущим хэшем. Не совпало — пересобираем.
+- Хэш = sha256 от `mergedHtml + JSON(sender) + JSON(recipient) + scanPath + attachedPath` (берём первые 10 символов).
 
-### C. UI `SignedDocumentPreview.tsx`
-- Убрать ветку «Сформировать PDF / Скачать PDF» с двумя состояниями кеша, оставить **одну кнопку** «Скачать PDF»: если `signedDocumentPath` есть и файл актуален — открываем; иначе генерим и сохраняем.
-- Добавить **инвалидаци кеша** при смене ревизии: если `current_revision_id` изменился после `signed_document_path` — пересобираем.
-
-### D. Шрифты
-- `public/fonts/PTSans-Regular.ttf`, `public/fonts/PTSans-Bold.ttf` (свободная Apache 2.0 лицензия, ~250KB каждый). Грузим лениво только при сборке PDF (`fetch('/fonts/...')`).
+### 5. PDF-вложения (когда исходник — uploaded PDF)
+Для PDF-вложений править содержимое файла мы не можем (это бинарь). В этом сценарии:
+- На последней странице со штампами добавляем доп. блок «Принятые правки клиента» — нумерованный список из `quoted_text → replacement`/`удалить «…»`/`вставить «…»`.
+- Это уже частично нужный артефакт юридически, плюс пользователь ясно видит, что было принято.
 
 ## Файлы
 
-- `src/lib/signedDocumentPdf.ts` — переписать на pdf-lib.
-- `src/lib/pdfStampDrawer.ts` — новый: функции `drawStampPage(pdf, sender, recipient, opts)`, `drawHtmlAsPages(pdf, html, font, fontBold)`.
-- `src/components/signing/SignedDocumentPreview.tsx` — упростить логику кнопки.
-- `public/fonts/PTSans-Regular.ttf`, `public/fonts/PTSans-Bold.ttf` — добавить.
-- `package.json` — добавить `pdf-lib`, `@pdf-lib/fontkit`. Удалить использование `html2canvas` в этом флоу (пакет оставить — он используется в других местах).
-- Миграция `signed_storage_policies.sql` — RLS на путь `signed/*` в бакете `external-contracts`.
+- `src/lib/applyAcceptedEdits.ts` — **новый**.
+- `src/lib/pdfStampDrawer.ts` — расширить `appendHtmlAsPages`: поддержка `<ins>` (зелёный фон + цвет), плюс новая функция `appendAcceptedEditsListPage(pdf, edits, font, fontBold)` для PDF-вложений.
+- `src/lib/signedDocumentPdf.ts` — принимать список `acceptedEdits` (для PDF-вложений), обновить логику кеш-имени (хэш в имени файла).
+- `src/components/signing/ContractReviewBody.tsx` — посчитать `mergedHtml` и `acceptedEdits`, передать в `SignedDocumentPreview`.
+- `src/components/signing/SignedDocumentPreview.tsx` — принимать `acceptedEdits` и пробросить в `generateSignedPdf`. Сам `documentHtml` уже приходит merged.
 
 ## Этапы
 
-1. Установить `pdf-lib` и `@pdf-lib/fontkit`, положить TTF-шрифты в `public/fonts/`.
-2. Реализовать `pdfStampDrawer.ts` (рисование штампа сторон через pdf-lib + кириллица).
-3. Реализовать `signedDocumentPdf.ts`:
-   - ветка «есть PDF-вложение» → load + appendPages со штампами (+ embed скана).
-   - ветка «HTML» → создать новый PDFDocument, отрендерить текст блоками + штампы.
-4. Миграция RLS на storage `external-contracts` для пути `signed/`.
-5. Обновить `SignedDocumentPreview.tsx` (одна кнопка, инвалидация по `current_revision_id`).
-6. Проверить флоу: открыть подписанный договор-PDF → «Скачать PDF» → в файле виден исходный договор + последняя страница со штампами обеих сторон + кириллица читается. Повторно — кеш-файл открывается мгновенно. Аналогично для HTML-договора и для варианта «загруженный скан».
+1. Реализовать `applyAcceptedEdits` (HTML→DOM→merge→HTML), покрыть все 4 kind'а.
+2. Расширить `appendHtmlAsPages` поддержкой `<ins>` (фон + цвет текста).
+3. Добавить `appendAcceptedEditsListPage` для PDF-вложений.
+4. Поменять имя кеш-файла на `signed/{id}_{hash10}.pdf`, при отсутствии файла с актуальным хэшем — пересобирать.
+5. Прокинуть `mergedHtml` и `acceptedEdits` через `ContractReviewBody → SignedDocumentPreview → generateSignedPdf`.
+6. Проверка end-to-end:
+   - HTML-договор → клиент оставил 3 правки → организация одну приняла, две отклонила → подписали → в попапе и в PDF видна **только** принятая правка зелёным; исходный текст изменён согласно ей; отклонённых — нет.
+   - PDF-вложение → правки приняты → в собранном PDF в конце появилась страница «Принятые правки клиента» со списком.
+   - Кеш PDF: добавили новую правку и приняли → кнопка «Скачать PDF» собирает заново, а не отдаёт старый файл.
 
