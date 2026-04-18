@@ -530,6 +530,39 @@ export function MediaLibraryDialog({ open, onClose, onSelect, filter = "all", or
           </Button>
         </div>
       </DialogContent>
+
+      <AlertDialog open={!!fileToDelete} onOpenChange={(o) => { if (!o) setFileToDelete(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Удалить файл?</AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-2">
+                <p className="text-sm">
+                  Файл <span className="font-medium text-foreground">{fileToDelete?.name}</span> будет безвозвратно удалён из хранилища.
+                </p>
+                {fileToDelete?.isUsed && (
+                  <p className="text-sm text-destructive font-medium">
+                    ⚠️ Этот файл используется в уроке «{fileToDelete.lessonTitle}». Удаление сломает отображение в уроке. Продолжить?
+                  </p>
+                )}
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleting}>Отмена</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={deleting}
+              onClick={(e) => {
+                e.preventDefault();
+                if (fileToDelete) handleDeleteFile(fileToDelete);
+              }}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deleting ? "Удаление..." : "Удалить"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Dialog>
   );
 }
