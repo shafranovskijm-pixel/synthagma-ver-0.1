@@ -1631,6 +1631,7 @@ export type Database = {
       document_signatures: {
         Row: {
           created_at: string
+          current_revision_id: string | null
           document_hash: string | null
           document_html: string | null
           document_id: string | null
@@ -1639,6 +1640,7 @@ export type Database = {
           document_type: string
           expires_at: string
           id: string
+          mode: string
           organization_id: string
           pep_agreement_id: string | null
           recipient_email: string
@@ -1660,6 +1662,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          current_revision_id?: string | null
           document_hash?: string | null
           document_html?: string | null
           document_id?: string | null
@@ -1668,6 +1671,7 @@ export type Database = {
           document_type: string
           expires_at?: string
           id?: string
+          mode?: string
           organization_id: string
           pep_agreement_id?: string | null
           recipient_email: string
@@ -1689,6 +1693,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          current_revision_id?: string | null
           document_hash?: string | null
           document_html?: string | null
           document_id?: string | null
@@ -1697,6 +1702,7 @@ export type Database = {
           document_type?: string
           expires_at?: string
           id?: string
+          mode?: string
           organization_id?: string
           pep_agreement_id?: string | null
           recipient_email?: string
@@ -5103,6 +5109,110 @@ export type Database = {
           },
         ]
       }
+      signature_comments: {
+        Row: {
+          author_name: string
+          author_role: string
+          author_user_id: string | null
+          comment_text: string
+          created_at: string
+          id: string
+          position_anchor: Json | null
+          quoted_text: string | null
+          resolved: boolean
+          resolved_at: string | null
+          revision_id: string | null
+          signature_id: string
+        }
+        Insert: {
+          author_name: string
+          author_role?: string
+          author_user_id?: string | null
+          comment_text: string
+          created_at?: string
+          id?: string
+          position_anchor?: Json | null
+          quoted_text?: string | null
+          resolved?: boolean
+          resolved_at?: string | null
+          revision_id?: string | null
+          signature_id: string
+        }
+        Update: {
+          author_name?: string
+          author_role?: string
+          author_user_id?: string | null
+          comment_text?: string
+          created_at?: string
+          id?: string
+          position_anchor?: Json | null
+          quoted_text?: string | null
+          resolved?: boolean
+          resolved_at?: string | null
+          revision_id?: string | null
+          signature_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "signature_comments_revision_id_fkey"
+            columns: ["revision_id"]
+            isOneToOne: false
+            referencedRelation: "signature_revisions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "signature_comments_signature_id_fkey"
+            columns: ["signature_id"]
+            isOneToOne: false
+            referencedRelation: "document_signatures"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      signature_revisions: {
+        Row: {
+          change_summary: string | null
+          created_at: string
+          created_by: string | null
+          created_by_name: string | null
+          document_hash: string | null
+          document_html: string
+          id: string
+          signature_id: string
+          version: number
+        }
+        Insert: {
+          change_summary?: string | null
+          created_at?: string
+          created_by?: string | null
+          created_by_name?: string | null
+          document_hash?: string | null
+          document_html: string
+          id?: string
+          signature_id: string
+          version: number
+        }
+        Update: {
+          change_summary?: string | null
+          created_at?: string
+          created_by?: string | null
+          created_by_name?: string | null
+          document_hash?: string | null
+          document_html?: string
+          id?: string
+          signature_id?: string
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "signature_revisions_signature_id_fkey"
+            columns: ["signature_id"]
+            isOneToOne: false
+            referencedRelation: "document_signatures"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       skillspace_import_jobs: {
         Row: {
           batch_id: string
@@ -6388,6 +6498,16 @@ export type Database = {
     }
     Functions: {
       _get_pw_key: { Args: never; Returns: string }
+      add_signature_comment_by_token: {
+        Args: {
+          p_author_name: string
+          p_comment_text: string
+          p_position_anchor?: Json
+          p_quoted_text: string
+          p_token: string
+        }
+        Returns: string
+      }
       admin_collect_media_references: {
         Args: never
         Returns: {
@@ -6523,12 +6643,14 @@ export type Database = {
       get_signature_by_token: {
         Args: { p_token: string }
         Returns: {
+          current_revision_id: string
           document_hash: string
           document_html: string
           document_title: string
           document_type: string
           expires_at: string
           id: string
+          mode: string
           organization_id: string
           organization_inn: string
           organization_name: string
@@ -6537,6 +6659,32 @@ export type Database = {
           recipient_user_id: string
           signed_at: string
           status: string
+        }[]
+      }
+      get_signature_comments_by_token: {
+        Args: { p_token: string }
+        Returns: {
+          author_name: string
+          author_role: string
+          comment_text: string
+          created_at: string
+          id: string
+          position_anchor: Json
+          quoted_text: string
+          resolved: boolean
+          revision_id: string
+        }[]
+      }
+      get_signature_revisions_by_token: {
+        Args: { p_token: string }
+        Returns: {
+          change_summary: string
+          created_at: string
+          created_by_name: string
+          document_hash: string
+          document_html: string
+          id: string
+          version: number
         }[]
       }
       get_user_role: {
@@ -6609,6 +6757,10 @@ export type Database = {
       }
       register_referral: {
         Args: { p_organization_id: string; p_ref_code: string }
+        Returns: undefined
+      }
+      request_signature_changes: {
+        Args: { p_summary?: string; p_token: string }
         Returns: undefined
       }
       show_limit: { Args: never; Returns: number }
