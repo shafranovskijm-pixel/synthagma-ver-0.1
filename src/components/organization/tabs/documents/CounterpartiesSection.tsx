@@ -9,7 +9,7 @@ import { ScrollText, Receipt, FileCheck, Download, FileText, Lightbulb, Eye, Tra
 import { ContractLegalFaq } from "@/components/organization/ContractLegalFaq";
 import { SendForSigningDialog, type SendForSigningPayload } from "@/components/signing/SendForSigningDialog";
 import { ExternalContractUploader } from "@/components/signing/ExternalContractUploader";
-import { ContractReviewDialog } from "@/components/signing/ContractReviewDialog";
+import { ContractReviewBody } from "@/components/signing/ContractReviewBody";
 import { File, Upload } from "lucide-react";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
@@ -80,7 +80,7 @@ export function CounterpartiesSection({
   const [showExternalUploader, setShowExternalUploader] = useState(false);
   const [platformExternalContracts, setPlatformExternalContracts] = useState<any[]>([]);
   const [adminSigEmail, setAdminSigEmail] = useState<string>("support@sintagma.com.ru");
-  const [reviewToken, setReviewToken] = useState<string | null>(null);
+  const [expandedReviewId, setExpandedReviewId] = useState<string | null>(null);
 
   useEffect(() => {
     supabase.from("app_settings").select("setting_value").eq("setting_key", "admin_signature_email").maybeSingle()
@@ -307,29 +307,36 @@ export function CounterpartiesSection({
             };
             const st = statusLabel[c.status] || { text: c.status, cls: "text-muted-foreground bg-muted" };
             return (
-              <div key={c.id} className="flex items-center justify-between p-3 rounded-lg border border-border hover:bg-muted/30 transition-colors">
-                <div className="flex items-center gap-3 min-w-0">
-                  <ScrollText className="w-4 h-4 text-primary shrink-0" />
-                  <div className="min-w-0">
-                    <div className="text-sm font-medium truncate">{c.document_title}</div>
-                    <div className="text-xs text-muted-foreground">
-                      {format(new Date(c.created_at), "d MMM yyyy HH:mm", { locale: ru })}
+              <div key={c.id} className={cn("rounded-lg border transition-colors overflow-hidden", expandedReviewId === c.id ? "border-primary bg-primary/5" : "border-border hover:bg-muted/30")}>
+                <div className="flex items-center justify-between p-3">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <ScrollText className="w-4 h-4 text-primary shrink-0" />
+                    <div className="min-w-0">
+                      <div className="text-sm font-medium truncate">{c.document_title}</div>
+                      <div className="text-xs text-muted-foreground">
+                        {format(new Date(c.created_at), "d MMM yyyy HH:mm", { locale: ru })}
+                      </div>
                     </div>
                   </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <span className={cn("text-[10px] px-2 py-0.5 rounded-full font-medium", st.cls)}>{st.text}</span>
+                    {c.signature_token && (
+                      <Button
+                        variant={expandedReviewId === c.id ? "default" : "ghost"}
+                        size="sm"
+                        title={expandedReviewId === c.id ? "Свернуть" : "Открыть и просмотреть"}
+                        onClick={() => setExpandedReviewId(prev => prev === c.id ? null : c.id)}
+                      >
+                        <Eye className="w-4 h-4" />
+                      </Button>
+                    )}
+                  </div>
                 </div>
-                <div className="flex items-center gap-2 shrink-0">
-                  <span className={cn("text-[10px] px-2 py-0.5 rounded-full font-medium", st.cls)}>{st.text}</span>
-                  {c.signature_token && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      title="Открыть и просмотреть"
-                      onClick={() => setReviewToken(c.signature_token)}
-                    >
-                      <Eye className="w-4 h-4" />
-                    </Button>
-                  )}
-                </div>
+                {expandedReviewId === c.id && c.signature_token && (
+                  <div className="border-t bg-background p-4">
+                    <ContractReviewBody signatureToken={c.signature_token} readOnly embedded />
+                  </div>
+                )}
               </div>
             );
           })}
@@ -802,13 +809,6 @@ export function CounterpartiesSection({
         onSent={() => { refreshPlatformContracts(); }}
       />
 
-      {/* Просмотр своего отправленного договора (read-only — отправитель видит правки/комментарии получателя) */}
-      <ContractReviewDialog
-        open={!!reviewToken}
-        onOpenChange={(o) => { if (!o) setReviewToken(null); }}
-        signatureToken={reviewToken}
-        readOnly
-      />
     </div>
   );
 }
