@@ -1640,6 +1640,8 @@ export type Database = {
           document_type: string
           expires_at: string
           handwritten_scan_path: string | null
+          hidden_for_recipient: boolean
+          hidden_for_sender: boolean
           id: string
           mode: string
           organization_id: string
@@ -1678,6 +1680,8 @@ export type Database = {
           document_type: string
           expires_at?: string
           handwritten_scan_path?: string | null
+          hidden_for_recipient?: boolean
+          hidden_for_sender?: boolean
           id?: string
           mode?: string
           organization_id: string
@@ -1716,6 +1720,8 @@ export type Database = {
           document_type?: string
           expires_at?: string
           handwritten_scan_path?: string | null
+          hidden_for_recipient?: boolean
+          hidden_for_sender?: boolean
           id?: string
           mode?: string
           organization_id?: string
@@ -6842,6 +6848,10 @@ export type Database = {
           _user_id: string
         }
         Returns: boolean
+      }
+      hide_signature_for_viewer: {
+        Args: { p_signature_id: string }
+        Returns: undefined
       }
       increment_lesson_time: {
         Args: { p_lesson_id: string; p_seconds: number; p_user_id: string }
