@@ -4,7 +4,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Send, User, Mail, Calendar, Loader2, Copy, ExternalLink, Building2 } from "lucide-react";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Send, User, Mail, Calendar, Loader2, Copy, ExternalLink, Building2, PenLine, MessageSquareText } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { sha256Hex } from "@/utils/documentHash";
@@ -29,6 +30,7 @@ interface Props {
 
 export function SendForSigningDialog({ open, onOpenChange, payload, recipients = [] }: Props) {
   const [tab, setTab] = useState<"registered" | "external">(recipients.length > 0 ? "registered" : "external");
+  const [mode, setMode] = useState<"sign" | "review">("sign");
   const [selectedRecipientId, setSelectedRecipientId] = useState<string>("");
   const [extName, setExtName] = useState("");
   const [extEmail, setExtEmail] = useState("");
@@ -43,6 +45,7 @@ export function SendForSigningDialog({ open, onOpenChange, payload, recipients =
       setExtName("");
       setExtEmail("");
       setExpiresDays("7");
+      setMode("sign");
       setTab(recipients.length > 0 ? "registered" : "external");
     }
   }, [open, recipients.length]);
@@ -100,14 +103,35 @@ export function SendForSigningDialog({ open, onOpenChange, payload, recipients =
           recipient_email: recipientEmail,
           recipient_name: recipientName,
           signature_token: signatureToken,
-          status: "sent",
+          status: mode === "review" ? "in_review" : "sent",
+          mode,
           expires_at: expires,
           sent_at: new Date().toISOString(),
-        })
+        } as any)
         .select("id, signature_token")
         .single();
 
       if (insertErr) throw insertErr;
+
+      // Создаём первую ревизию для режима review
+      if (mode === "review") {
+        const { data: rev } = await supabase
+          .from("signature_revisions" as any)
+          .insert({
+            signature_id: inserted.id,
+            version: 1,
+            document_html: payload.documentHtml,
+            document_hash: documentHash,
+            created_by: user.id,
+            created_by_name: senderProfile?.full_name || senderProfile?.email || "Отправитель",
+            change_summary: "Первая версия документа",
+          })
+          .select("id")
+          .single();
+        if (rev?.id) {
+          await supabase.from("document_signatures").update({ current_revision_id: rev.id } as any).eq("id", inserted.id);
+        }
+      }
 
       // Отправляем email (best-effort — если SMTP не настроен, просто покажем ссылку)
       try {
@@ -171,6 +195,27 @@ export function SendForSigningDialog({ open, onOpenChange, payload, recipients =
             <Button className="w-full" onClick={() => onOpenChange(false)}>Готово</Button>
           </div>
         ) : (
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label className="text-sm font-semibold">Цель отправки</Label>
+              <RadioGroup value={mode} onValueChange={(v) => setMode(v as "sign" | "review")} className="grid grid-cols-2 gap-2">
+                <label className={`flex items-start gap-2 rounded-lg border p-3 cursor-pointer transition-colors ${mode === "sign" ? "border-primary bg-primary/5" : "hover:bg-muted/50"}`}>
+                  <RadioGroupItem value="sign" className="mt-0.5" />
+                  <div className="flex-1">
+                    <div className="flex items-center gap-1.5 text-sm font-medium"><PenLine className="w-3.5 h-3.5" />На подпись</div>
+                    <div className="text-xs text-muted-foreground mt-0.5">Получатель подпишет ПЭП без правок</div>
+                  </div>
+                </label>
+                <label className={`flex items-start gap-2 rounded-lg border p-3 cursor-pointer transition-colors ${mode === "review" ? "border-primary bg-primary/5" : "hover:bg-muted/50"}`}>
+                  <RadioGroupItem value="review" className="mt-0.5" />
+                  <div className="flex-1">
+                    <div className="flex items-center gap-1.5 text-sm font-medium"><MessageSquareText className="w-3.5 h-3.5" />На согласование</div>
+                    <div className="text-xs text-muted-foreground mt-0.5">Можно оставлять комментарии и правки</div>
+                  </div>
+                </label>
+              </RadioGroup>
+            </div>
+
           <Tabs value={tab} onValueChange={(v) => setTab(v as any)}>
             <TabsList className="grid grid-cols-2 w-full">
               <TabsTrigger value="registered" disabled={recipients.length === 0} className="gap-2">
@@ -217,10 +262,11 @@ export function SendForSigningDialog({ open, onOpenChange, payload, recipients =
               <Button variant="outline" onClick={() => onOpenChange(false)} disabled={sending}>Отмена</Button>
               <Button onClick={handleSend} disabled={sending} className="gap-2">
                 {sending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-                Отправить
+                {mode === "review" ? "Отправить на согласование" : "Отправить на подпись"}
               </Button>
             </DialogFooter>
           </Tabs>
+          </div>
         )}
       </DialogContent>
     </Dialog>
