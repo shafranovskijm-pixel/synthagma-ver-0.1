@@ -2,16 +2,22 @@ import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Loader2, FileText, Download, Send, MessageSquareText, ShieldCheck,
-  ExternalLink, Check, X, Reply, Upload, AlertTriangle,
+  Check, X, Reply, Upload, AlertTriangle, Trash2, PenLine, CheckCircle2,
 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { ReviewableDocument, type ReviewComment } from "@/components/signing/ReviewableDocument";
 import { DocxRenderer } from "@/components/signing/DocxRenderer";
 import { SignatureRevisionUploader } from "@/components/signing/SignatureRevisionUploader";
+import { PepSignatureStamp } from "@/components/signing/PepSignatureStamp";
+import { getPepAgreementText, PEP_AGREEMENT_VERSION } from "@/constants/pepAgreementTemplate";
+import { sha256Hex } from "@/utils/documentHash";
 import { useAuth } from "@/hooks/useAuth";
 import { cn } from "@/lib/utils";
 
