@@ -7,7 +7,7 @@ import { QuizBlock } from "./QuizBlock";
 import { ImageBlock, VideoBlock, AudioBlock, DocumentBlock } from "./MediaBlocks";
 import { SliderBlock } from "./SliderBlock";
 
-export function BlockContent({ block, onUpdate, courseTitle, lessonTitle, existingContent }: { block: ContentBlock; onUpdate: (updates: Partial<ContentBlock>) => void; courseTitle?: string; lessonTitle?: string; existingContent?: string }) {
+export function BlockContent({ block, onUpdate, courseTitle, lessonTitle, existingContent, organizationId, courseId, lessonId }: { block: ContentBlock; onUpdate: (updates: Partial<ContentBlock>) => void; courseTitle?: string; lessonTitle?: string; existingContent?: string; organizationId?: string; courseId?: string; lessonId?: string }) {
   const editorStyleClasses = (() => {
     const classes: string[] = [];
     if (block.textAlign === 'center') classes.push('text-center');
@@ -44,7 +44,7 @@ export function BlockContent({ block, onUpdate, courseTitle, lessonTitle, existi
     case "accordion": return <AccordionBlock block={block} onUpdate={onUpdate} courseTitle={courseTitle} lessonTitle={lessonTitle} existingContent={existingContent} />;
     case "quiz": return <QuizBlock block={block} onUpdate={onUpdate} courseTitle={courseTitle} lessonTitle={lessonTitle} existingContent={existingContent} />;
     case "image": return <ImageBlock block={block} onUpdate={onUpdate} />;
-    case "video": return <VideoBlock block={block} onUpdate={onUpdate} />;
+    case "video": return <VideoBlock block={block} onUpdate={onUpdate} organizationId={organizationId} courseId={courseId} lessonId={lessonId} />;
     case "audio": return <AudioBlock block={block} onUpdate={onUpdate} />;
     case "slider": return <SliderBlock block={block} onUpdate={onUpdate} />;
     case "document": return <DocumentBlock block={block} onUpdate={onUpdate} />;

@@ -16,7 +16,7 @@ import { SortableBlockItem } from "./blocks/SortableBlockItem";
 import { AddBlockButton } from "./blocks/AddBlockButton";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 
-export function BlockEditor({ blocks, onChange, readOnly = false, courseTitle, lessonTitle }: BlockEditorProps) {
+export function BlockEditor({ blocks, onChange, readOnly = false, courseTitle, lessonTitle, organizationId, courseId, lessonId }: BlockEditorProps) {
   const [focusedBlockId, setFocusedBlockId] = useState<string | null>(null);
   const [stylePresets, setStylePresets] = useState(() => loadPresets());
   const [isFormatting, setIsFormatting] = useState(false);
@@ -155,6 +155,9 @@ export function BlockEditor({ blocks, onChange, readOnly = false, courseTitle, l
                 onAddAfter={(type) => addBlock(type, index)}
                 courseTitle={courseTitle}
                 lessonTitle={lessonTitle}
+                organizationId={organizationId}
+                courseId={courseId}
+                lessonId={lessonId}
                 existingContent={summarizeExistingContent(blocks)}
                 presets={stylePresets}
                 onPresetsChange={(p) => { setStylePresets(p); savePresets(p); }}

@@ -37,12 +37,15 @@ interface SortableBlockItemProps {
   onAddAfter: (type: BlockType) => void;
   courseTitle?: string;
   lessonTitle?: string;
+  organizationId?: string;
+  courseId?: string;
+  lessonId?: string;
   existingContent?: string;
   presets: { name: string; style: StylePreset }[];
   onPresetsChange: (presets: { name: string; style: StylePreset }[]) => void;
 }
 
-export function SortableBlockItem({ block, isFocused, onFocus, onUpdate, onDelete, onAddAfter, courseTitle, lessonTitle, existingContent, presets, onPresetsChange }: SortableBlockItemProps) {
+export function SortableBlockItem({ block, isFocused, onFocus, onUpdate, onDelete, onAddAfter, courseTitle, lessonTitle, organizationId, courseId, lessonId, existingContent, presets, onPresetsChange }: SortableBlockItemProps) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: block.id });
   const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.5 : 1, zIndex: isDragging ? 1000 : 'auto' as any };
   const canConvert = convertibleTypes.includes(block.type);
@@ -100,7 +103,7 @@ export function SortableBlockItem({ block, isFocused, onFocus, onUpdate, onDelet
   return (
     <div ref={setNodeRef} style={style} data-block-id={block.id} className={cn("group relative rounded-lg transition-all", isFocused && "bg-secondary/30")} onClick={onFocus}>
       <div className="min-w-0">
-        <BlockContent block={block} onUpdate={onUpdate} courseTitle={courseTitle} lessonTitle={lessonTitle} existingContent={existingContent} />
+        <BlockContent block={block} onUpdate={onUpdate} courseTitle={courseTitle} lessonTitle={lessonTitle} existingContent={existingContent} organizationId={organizationId} courseId={courseId} lessonId={lessonId} />
       </div>
       <div className="flex items-center justify-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity py-1">
         <div className="flex items-center gap-0.5 bg-foreground/80 backdrop-blur-sm text-background rounded-full px-2 py-1 shadow-lg">

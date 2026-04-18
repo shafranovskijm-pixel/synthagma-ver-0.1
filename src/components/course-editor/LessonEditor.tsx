@@ -101,7 +101,7 @@ export const LessonEditor = ({
                     {e.isGenerating ? "Генерация..." : "Сгенерировать ИИ"}
                   </Button>
                 </div>
-                <BlockEditor blocks={e.blocks} onChange={e.setBlocks} />
+                <BlockEditor blocks={e.blocks} onChange={e.setBlocks} organizationId={organizationId} courseId={courseId} lessonId={lesson?.id} />
               </div>
             )}
 
@@ -109,7 +109,7 @@ export const LessonEditor = ({
               <div className="space-y-4">
                 <Tabs value={videoUploadTab} onValueChange={setVideoUploadTab} className="w-full">
                   <TabsList className="w-full">
-                    <TabsTrigger value="kinescope" className="flex-1 text-xs">Kinescope (рекомендуется)</TabsTrigger>
+                    <TabsTrigger value="kinescope" className="flex-1 text-xs">Видеосервис+ (рекомендуется)</TabsTrigger>
                     <TabsTrigger value="server" className="flex-1 text-xs">На сервер (до 2 ГБ)</TabsTrigger>
                   </TabsList>
                 </Tabs>
@@ -119,7 +119,7 @@ export const LessonEditor = ({
                     <div className="space-y-4">
                       <Video className="w-10 h-10 mx-auto text-sigma-purple animate-pulse" />
                       <div className="space-y-2">
-                        <div className="flex items-center justify-center gap-2"><SigmaSpinner size="sm" className="text-sigma-purple" /><span className="text-sm font-medium">Загрузка в Kinescope...</span></div>
+                        <div className="flex items-center justify-center gap-2"><SigmaSpinner size="sm" className="text-sigma-purple" /><span className="text-sm font-medium">Загрузка в Видеосервис+...</span></div>
                         <div className="w-full max-w-xs mx-auto">
                           <div className="h-2 bg-secondary rounded-full overflow-hidden"><div className="h-full bg-sigma-purple transition-all duration-300 ease-out" style={{ width: `${media.kinescopeUploadProgress}%` }} /></div>
                           <p className="text-sm text-muted-foreground mt-1">{media.kinescopeUploadProgress}%</p>
@@ -150,7 +150,7 @@ export const LessonEditor = ({
                   ) : videoUploadTab === "kinescope" && !isKinescopeAvailable ? (
                     <div className="space-y-3 py-2">
                       <Lock className="w-10 h-10 mx-auto text-muted-foreground" />
-                      <p className="text-sm font-medium">Загрузка через Kinescope</p>
+                      <p className="text-sm font-medium">Загрузка через Видеосервис+</p>
                       <p className="text-xs text-muted-foreground max-w-sm mx-auto">
                         Профессиональный видеохостинг с CDN и DRM-защитой доступен на тарифе «Профессиональный» и выше.
                       </p>
@@ -162,7 +162,7 @@ export const LessonEditor = ({
                   ) : videoUploadTab === "kinescope" ? (
                     <div key="kinescope-upload">
                       <Video className="w-10 h-10 mx-auto mb-3 text-sigma-purple" />
-                      <p className="text-sm font-medium mb-1">Загрузить через Kinescope</p>
+                      <p className="text-sm font-medium mb-1">Загрузить через Видеосервис+</p>
                       <p className="text-xs text-muted-foreground mb-4">Любой размер файла • CDN • Профессиональный плеер</p>
                       <input ref={media.kinescopeInputRef} type="file" accept="video/*" className="hidden"
                         onChange={(ev) => { const file = ev.target.files?.[0]; if (file) media.handleKinescopeUpload(file); }} />
@@ -210,7 +210,7 @@ export const LessonEditor = ({
                     placeholder="Вставьте ссылку (YouTube, Vimeo, Rutube, VK Video, Дзен и др.) или код iframe для встраивания"
                     className="rounded-xl min-h-[100px] font-mono text-sm"
                   />
-                  <p className="text-xs text-muted-foreground">Поддерживаются: YouTube, Vimeo, Rutube, VK Video, Kinescope, Одноклассники, Mail.ru, Дзен, Яндекс Видео</p>
+                  <p className="text-xs text-muted-foreground">Поддерживаются: YouTube, Vimeo, Rutube, VK Video, Видеосервис+, Одноклассники, Mail.ru, Дзен, Яндекс Видео</p>
                 </div>
 
                 {e.videoUrl && (
