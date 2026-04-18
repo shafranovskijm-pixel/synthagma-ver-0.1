@@ -5129,10 +5129,13 @@ export type Database = {
           comment_text: string
           created_at: string
           id: string
+          org_reply: string | null
           position_anchor: Json | null
           quoted_text: string | null
+          resolution_status: string
           resolved: boolean
           resolved_at: string | null
+          resolved_by: string | null
           revision_id: string | null
           signature_id: string
         }
@@ -5143,10 +5146,13 @@ export type Database = {
           comment_text: string
           created_at?: string
           id?: string
+          org_reply?: string | null
           position_anchor?: Json | null
           quoted_text?: string | null
+          resolution_status?: string
           resolved?: boolean
           resolved_at?: string | null
+          resolved_by?: string | null
           revision_id?: string | null
           signature_id: string
         }
@@ -5157,10 +5163,13 @@ export type Database = {
           comment_text?: string
           created_at?: string
           id?: string
+          org_reply?: string | null
           position_anchor?: Json | null
           quoted_text?: string | null
+          resolution_status?: string
           resolved?: boolean
           resolved_at?: string | null
+          resolved_by?: string | null
           revision_id?: string | null
           signature_id?: string
         }
@@ -6727,8 +6736,10 @@ export type Database = {
           comment_text: string
           created_at: string
           id: string
+          org_reply: string
           position_anchor: Json
           quoted_text: string
+          resolution_status: string
           resolved: boolean
           revision_id: string
         }[]
@@ -6783,6 +6794,10 @@ export type Database = {
           user_id: string
         }[]
       }
+      org_finalize_signature_review: {
+        Args: { p_action: string; p_message?: string; p_signature_id: string }
+        Returns: undefined
+      }
       public_get_organization_by_slug: {
         Args: { p_slug: string }
         Returns: {
@@ -6826,6 +6841,14 @@ export type Database = {
       }
       sender_countersign: {
         Args: { p_ip?: string; p_signature_id: string; p_user_agent?: string }
+        Returns: undefined
+      }
+      set_signature_comment_resolution: {
+        Args: {
+          p_comment_id: string
+          p_org_reply?: string
+          p_resolution_status: string
+        }
         Returns: undefined
       }
       show_limit: { Args: never; Returns: number }
