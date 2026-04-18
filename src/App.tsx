@@ -13,6 +13,8 @@ import { SpecialOfferPopup } from "./components/landing/SpecialOfferPopup";
 import { OfflineIndicator } from "./components/OfflineIndicator";
 import { useThemePersonalization } from "@/components/ui/ThemePersonalization";
 import { captureRefFromUrl } from "@/utils/referralCookie";
+import { BackgroundUploadsProvider } from "@/contexts/BackgroundUploadsContext";
+import { BackgroundUploadsTray } from "@/components/uploads/BackgroundUploadsTray";
 import {
   publicRoutes,
   studentRoutes,
