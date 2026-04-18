@@ -3,17 +3,24 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { Loader2, FileText, Download, Send, MessageSquareText, ShieldCheck, ExternalLink } from "lucide-react";
+import {
+  Loader2, FileText, Download, Send, MessageSquareText, ShieldCheck,
+  ExternalLink, Check, X, Reply, Upload, AlertTriangle,
+} from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { ReviewableDocument, type ReviewComment } from "@/components/signing/ReviewableDocument";
 import { DocxRenderer } from "@/components/signing/DocxRenderer";
+import { SignatureRevisionUploader } from "@/components/signing/SignatureRevisionUploader";
 import { useAuth } from "@/hooks/useAuth";
+import { cn } from "@/lib/utils";
 
 interface Props {
   signatureToken: string | null;
+  /** Полностью read-only режим (наблюдатель). */
   readOnly?: boolean;
-  /** Если true — карточка занимает всю ширину контейнера (для встраивания) */
+  /** Роль смотрящего: "recipient" — клиент, "organization" — отправитель. */
+  viewerRole?: "recipient" | "organization";
   embedded?: boolean;
 }
 
@@ -44,13 +51,16 @@ interface Revision {
   created_at: string;
 }
 
+interface OrgComment extends ReviewComment {
+  resolution_status?: "pending" | "accepted" | "rejected";
+  org_reply?: string | null;
+}
+
 const EXTERNAL_BUCKET = "external-contracts";
 
-/** Если значение похоже на storage path (без http) — генерим signed URL из бакета. */
 async function resolveFileUrl(raw: string | null): Promise<string | null> {
   if (!raw) return null;
   if (raw.startsWith("http://") || raw.startsWith("https://")) return raw;
-  // Storage path → signed URL (бакет приватный)
   const { data, error } = await supabase.storage
     .from(EXTERNAL_BUCKET)
     .createSignedUrl(raw, 60 * 60);
@@ -61,12 +71,19 @@ async function resolveFileUrl(raw: string | null): Promise<string | null> {
   return data?.signedUrl || null;
 }
 
-export function ContractReviewBody({ signatureToken, readOnly = false, embedded = true }: Props) {
+export function ContractReviewBody({
+  signatureToken,
+  readOnly = false,
+  viewerRole = "recipient",
+  embedded = true,
+}: Props) {
   const { user } = useAuth();
+  const isOrg = viewerRole === "organization" && !readOnly;
+
   const [loading, setLoading] = useState(false);
   const [sig, setSig] = useState<SigData | null>(null);
   const [revisions, setRevisions] = useState<Revision[]>([]);
-  const [comments, setComments] = useState<ReviewComment[]>([]);
+  const [comments, setComments] = useState<OrgComment[]>([]);
   const [convertedHtml, setConvertedHtml] = useState<string | null>(null);
   const [resolvedUrl, setResolvedUrl] = useState<string | null>(null);
   const [requestText, setRequestText] = useState("");
@@ -74,12 +91,26 @@ export function ContractReviewBody({ signatureToken, readOnly = false, embedded 
   const [pdfComment, setPdfComment] = useState("");
   const [authorName, setAuthorName] = useState("");
 
-  const currentRevision = revisions.find(r => r.id === sig?.current_revision_id) || revisions[revisions.length - 1] || null;
+  // Org-mode state
+  const [replyOpenId, setReplyOpenId] = useState<string | null>(null);
+  const [replyText, setReplyText] = useState("");
+  const [showRevisionUploader, setShowRevisionUploader] = useState(false);
+  const [finalizing, setFinalizing] = useState(false);
+  const [orgMessage, setOrgMessage] = useState("");
+
+  const currentRevision =
+    revisions.find(r => r.id === sig?.current_revision_id) ||
+    revisions[revisions.length - 1] ||
+    null;
   const rawFileUrl = currentRevision?.file_url || null;
   const fileMime = currentRevision?.file_mime || "";
   const isPdf = fileMime.includes("pdf") || rawFileUrl?.toLowerCase().endsWith(".pdf");
   const isDocx = fileMime.includes("wordprocessingml") || rawFileUrl?.toLowerCase().endsWith(".docx");
   const documentHtml = sig?.document_html || currentRevision?.document_html || convertedHtml || null;
+
+  const pendingCount = comments.filter(c => (c.resolution_status ?? "pending") === "pending").length;
+  const acceptedCount = comments.filter(c => c.resolution_status === "accepted").length;
+  const rejectedCount = comments.filter(c => c.resolution_status === "rejected").length;
 
   const loadAll = async (token: string) => {
     setLoading(true);
@@ -93,7 +124,7 @@ export function ContractReviewBody({ signatureToken, readOnly = false, embedded 
       const row = sigRes.data[0] as SigData;
       setSig(row);
       setRevisions((revRes.data as Revision[]) || []);
-      setComments((comRes.data as ReviewComment[]) || []);
+      setComments((comRes.data as OrgComment[]) || []);
       setAuthorName(user?.email || row.recipient_name || "Получатель");
     } catch (e: any) {
       toast.error(e.message || "Ошибка загрузки");
@@ -110,7 +141,6 @@ export function ContractReviewBody({ signatureToken, readOnly = false, embedded 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [signatureToken]);
 
-  // Резолв signed URL для приватного бакета
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -123,7 +153,7 @@ export function ContractReviewBody({ signatureToken, readOnly = false, embedded 
   const reloadComments = async () => {
     if (!signatureToken) return;
     const { data } = await (supabase as any).rpc("get_signature_comments_by_token", { p_token: signatureToken });
-    setComments((data as ReviewComment[]) || []);
+    setComments((data as OrgComment[]) || []);
   };
 
   const handleAddComment = async ({ quotedText, commentText, positionAnchor }: { quotedText: string; commentText: string; positionAnchor: any }) => {
@@ -181,7 +211,86 @@ export function ContractReviewBody({ signatureToken, readOnly = false, embedded 
     if (signatureToken) window.open(`/sign/${signatureToken}`, "_blank");
   };
 
-  const canTakeAction = !readOnly && sig && (sig.status === "in_review" || sig.status === "sent" || sig.status === "changes_requested");
+  // ==== ORG ACTIONS ====
+  const setResolution = async (commentId: string, status: "accepted" | "rejected" | "pending", reply?: string) => {
+    try {
+      const { error } = await (supabase as any).rpc("set_signature_comment_resolution", {
+        p_comment_id: commentId,
+        p_resolution_status: status,
+        p_org_reply: reply ?? null,
+      });
+      if (error) throw error;
+      await reloadComments();
+      if (status === "accepted") toast.success("Правка принята");
+      else if (status === "rejected") toast.success("Правка отклонена");
+      else toast.success("Решение сброшено");
+    } catch (e: any) {
+      toast.error(e.message || "Не удалось обновить решение");
+    }
+  };
+
+  const handleSubmitReply = async (commentId: string) => {
+    if (!replyText.trim()) return;
+    try {
+      const { error } = await (supabase as any).rpc("set_signature_comment_resolution", {
+        p_comment_id: commentId,
+        p_resolution_status: comments.find(c => c.id === commentId)?.resolution_status || "pending",
+        p_org_reply: replyText.trim(),
+      });
+      if (error) throw error;
+      setReplyOpenId(null);
+      setReplyText("");
+      await reloadComments();
+      toast.success("Ответ отправлен");
+    } catch (e: any) {
+      toast.error(e.message || "Не удалось отправить ответ");
+    }
+  };
+
+  const handleOrgFinalize = async (action: "reject_all" | "send_new_version" | "sign_as_is") => {
+    if (!sig) return;
+    const confirmText = action === "reject_all"
+      ? "Отклонить все правки клиента и вернуть документ?"
+      : action === "sign_as_is"
+        ? "Подписать документ в текущем виде?"
+        : null;
+    if (confirmText && !confirm(confirmText)) return;
+
+    setFinalizing(true);
+    try {
+      if (action === "sign_as_is") {
+        // Открыть страницу подписания организацией
+        const { error } = await (supabase as any).rpc("org_finalize_signature_review", {
+          p_signature_id: sig.id,
+          p_action: "sign_as_is",
+          p_message: orgMessage.trim() || null,
+        });
+        if (error) throw error;
+        await loadAll(signatureToken!);
+        if (signatureToken) window.open(`/sign/${signatureToken}`, "_blank");
+        toast.success("Можно подписать в открывшейся вкладке");
+      } else {
+        const { error } = await (supabase as any).rpc("org_finalize_signature_review", {
+          p_signature_id: sig.id,
+          p_action: action,
+          p_message: orgMessage.trim() || null,
+        });
+        if (error) throw error;
+        setOrgMessage("");
+        await loadAll(signatureToken!);
+        toast.success(action === "reject_all" ? "Правки отклонены" : "Уведомление отправлено клиенту");
+      }
+    } catch (e: any) {
+      toast.error(e.message || "Не удалось выполнить действие");
+    } finally {
+      setFinalizing(false);
+    }
+  };
+
+  const canTakeRecipientAction = !isOrg && !readOnly && sig &&
+    (sig.status === "in_review" || sig.status === "sent" || sig.status === "changes_requested");
+  const canTakeOrgAction = isOrg && sig &&
+    (sig.status === "changes_requested" || sig.status === "in_review" || sig.status === "sent");
 
   if (loading) {
     return (
@@ -193,9 +302,82 @@ export function ContractReviewBody({ signatureToken, readOnly = false, embedded 
 
   if (!sig) return null;
 
+  const renderCommentCard = (c: OrgComment) => {
+    const status = c.resolution_status ?? "pending";
+    const statusBadge =
+      status === "accepted" ? <Badge className="bg-emerald-500/15 text-emerald-700 border-emerald-300 text-[10px]">Принята</Badge>
+      : status === "rejected" ? <Badge className="bg-red-500/15 text-red-700 border-red-300 text-[10px]">Отклонена</Badge>
+      : <Badge variant="outline" className="text-[10px]">В ожидании</Badge>;
+    return (
+      <div key={c.id} className={cn(
+        "rounded-md border bg-background p-2.5 text-sm",
+        status === "accepted" && "border-emerald-300/60",
+        status === "rejected" && "border-red-300/60 opacity-80",
+      )}>
+        <div className="flex items-center justify-between gap-2 mb-1">
+          <div className="text-xs font-medium">{c.author_name}</div>
+          {statusBadge}
+        </div>
+        {c.quoted_text && (
+          <blockquote className="text-[11px] italic border-l-2 border-amber-400 pl-1.5 mb-1 text-muted-foreground line-clamp-3">«{c.quoted_text}»</blockquote>
+        )}
+        <div className="text-xs whitespace-pre-wrap">{c.comment_text}</div>
+        <div className="text-[10px] text-muted-foreground mt-1">{new Date(c.created_at).toLocaleString("ru-RU")}</div>
+
+        {c.org_reply && (
+          <div className="mt-2 rounded border border-primary/20 bg-primary/5 p-2 text-xs">
+            <div className="text-[10px] font-semibold text-primary mb-0.5">Ответ организации:</div>
+            <div className="whitespace-pre-wrap">{c.org_reply}</div>
+          </div>
+        )}
+
+        {isOrg && (
+          <div className="mt-2 pt-2 border-t flex items-center gap-1.5 flex-wrap">
+            <Button
+              size="sm" variant={status === "accepted" ? "default" : "outline"}
+              className={cn("h-7 text-[11px] gap-1", status === "accepted" && "bg-emerald-600 hover:bg-emerald-700")}
+              onClick={() => setResolution(c.id, status === "accepted" ? "pending" : "accepted")}
+            >
+              <Check className="w-3 h-3" />Принять
+            </Button>
+            <Button
+              size="sm" variant={status === "rejected" ? "destructive" : "outline"}
+              className="h-7 text-[11px] gap-1"
+              onClick={() => setResolution(c.id, status === "rejected" ? "pending" : "rejected")}
+            >
+              <X className="w-3 h-3" />Отклонить
+            </Button>
+            <Button
+              size="sm" variant="ghost" className="h-7 text-[11px] gap-1"
+              onClick={() => { setReplyOpenId(replyOpenId === c.id ? null : c.id); setReplyText(c.org_reply || ""); }}
+            >
+              <Reply className="w-3 h-3" />{c.org_reply ? "Изменить ответ" : "Ответить"}
+            </Button>
+          </div>
+        )}
+
+        {isOrg && replyOpenId === c.id && (
+          <div className="mt-2 space-y-1.5">
+            <Textarea
+              value={replyText} onChange={e => setReplyText(e.target.value)}
+              rows={2} placeholder="Ваш ответ на правку клиента…"
+              className="text-xs"
+            />
+            <div className="flex gap-1.5 justify-end">
+              <Button size="sm" variant="ghost" className="h-7 text-[11px]" onClick={() => { setReplyOpenId(null); setReplyText(""); }}>Отмена</Button>
+              <Button size="sm" className="h-7 text-[11px] gap-1" onClick={() => handleSubmitReply(c.id)} disabled={!replyText.trim()}>
+                <Send className="w-3 h-3" />Отправить
+              </Button>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  };
+
   return (
     <div className="space-y-4">
-      {/* Шапка — компактная */}
+      {/* Шапка */}
       <div className="flex items-start justify-between gap-3 flex-wrap pb-3 border-b">
         <div className="min-w-0">
           <div className="flex items-center gap-2 text-sm font-semibold">
@@ -206,6 +388,7 @@ export function ContractReviewBody({ signatureToken, readOnly = false, embedded 
             <span>От: <strong>{sig.organization_name}</strong></span>
             <span>·</span>
             <span>Получатель: {sig.recipient_name}</span>
+            {currentRevision && <><span>·</span><span>Версия {currentRevision.version}</span></>}
           </div>
         </div>
         <Badge variant="outline" className="text-[10px] border-amber-300 text-amber-700 bg-amber-50 shrink-0">
@@ -215,39 +398,39 @@ export function ContractReviewBody({ signatureToken, readOnly = false, embedded 
         </Badge>
       </div>
 
+      {/* Org summary bar — для организации показываем счётчики */}
+      {isOrg && comments.length > 0 && (
+        <div className="flex items-center gap-2 flex-wrap text-xs bg-muted/40 rounded-lg px-3 py-2">
+          <span className="font-medium">Правки клиента:</span>
+          <Badge variant="outline">Всего {comments.length}</Badge>
+          {pendingCount > 0 && <Badge variant="outline" className="text-amber-700 border-amber-300">В ожидании {pendingCount}</Badge>}
+          {acceptedCount > 0 && <Badge className="bg-emerald-500/15 text-emerald-700 border-emerald-300">Принято {acceptedCount}</Badge>}
+          {rejectedCount > 0 && <Badge className="bg-red-500/15 text-red-700 border-red-300">Отклонено {rejectedCount}</Badge>}
+        </div>
+      )}
+
       {/* PDF */}
       {isPdf && resolvedUrl && (
         <div className="space-y-3">
           <div className="flex items-center justify-between gap-2">
-            <p className="text-xs text-muted-foreground">PDF-документ. Выделение текста для пофрагментных комментариев недоступно — используйте поле ниже.</p>
+            <p className="text-xs text-muted-foreground">PDF-документ. Используйте поле ниже для общих комментариев.</p>
             <Button variant="outline" size="sm" className="gap-1.5" asChild>
               <a href={resolvedUrl} target="_blank" rel="noreferrer"><Download className="w-3.5 h-3.5" />Скачать</a>
             </Button>
           </div>
           <iframe src={resolvedUrl} className="w-full h-[70vh] rounded-lg border bg-white" title={sig.document_title} />
           <div className="grid lg:grid-cols-2 gap-4">
-            <div className="border rounded-lg p-3 bg-muted/20 max-h-[300px] overflow-auto">
+            <div className="border rounded-lg p-3 bg-muted/20 max-h-[400px] overflow-auto">
               <div className="text-sm font-semibold mb-2 flex items-center gap-1.5">
                 <MessageSquareText className="w-4 h-4" />Комментарии {comments.length > 0 && <Badge variant="secondary">{comments.length}</Badge>}
               </div>
               {comments.length === 0 ? (
                 <div className="text-xs text-muted-foreground py-4 text-center">Пока нет комментариев.</div>
               ) : (
-                <div className="space-y-2">
-                  {comments.map(c => (
-                    <div key={c.id} className="rounded-md border bg-background p-2.5 text-sm">
-                      <div className="text-xs font-medium mb-0.5">{c.author_name}</div>
-                      {c.quoted_text && (
-                        <blockquote className="text-[11px] italic border-l-2 border-amber-400 pl-1.5 mb-1 text-muted-foreground line-clamp-2">«{c.quoted_text}»</blockquote>
-                      )}
-                      <div className="text-xs whitespace-pre-wrap">{c.comment_text}</div>
-                      <div className="text-[10px] text-muted-foreground mt-1">{new Date(c.created_at).toLocaleString("ru-RU")}</div>
-                    </div>
-                  ))}
-                </div>
+                <div className="space-y-2">{comments.map(renderCommentCard)}</div>
               )}
             </div>
-            {!readOnly && (
+            {!readOnly && !isOrg && (
               <div className="border rounded-lg p-3 bg-muted/20 space-y-2">
                 <Label className="text-xs">Добавить комментарий</Label>
                 <Textarea value={pdfComment} onChange={(e) => setPdfComment(e.target.value)} rows={4} placeholder="Опишите замечание или предложение по договору…" />
@@ -273,13 +456,27 @@ export function ContractReviewBody({ signatureToken, readOnly = false, embedded 
 
       {/* HTML / converted DOCX with reviewable comments */}
       {!isPdf && documentHtml && (
-        <ReviewableDocument
-          documentHtml={documentHtml}
-          comments={comments}
-          authorName={authorName}
-          canComment={!readOnly}
-          onAddComment={handleAddComment}
-        />
+        <div className={cn(isOrg && "grid lg:grid-cols-[1fr_320px] gap-4")}>
+          <ReviewableDocument
+            documentHtml={documentHtml}
+            comments={comments}
+            authorName={authorName}
+            canComment={!readOnly && !isOrg}
+            onAddComment={handleAddComment}
+          />
+          {isOrg && (
+            <div className="border rounded-lg p-3 bg-muted/20 max-h-[70vh] overflow-auto space-y-2">
+              <div className="text-sm font-semibold flex items-center gap-1.5 sticky top-0 bg-muted/60 -m-3 mb-1 px-3 py-2 backdrop-blur">
+                <MessageSquareText className="w-4 h-4" />Правки клиента
+              </div>
+              {comments.length === 0 ? (
+                <div className="text-xs text-muted-foreground py-4 text-center">Клиент пока не оставил правок.</div>
+              ) : (
+                comments.map(renderCommentCard)
+              )}
+            </div>
+          )}
+        </div>
       )}
 
       {/* Loader для signed URL */}
@@ -305,8 +502,62 @@ export function ContractReviewBody({ signatureToken, readOnly = false, embedded 
         </div>
       )}
 
-      {/* Action footer */}
-      {canTakeAction && (
+      {/* === ORG ACTION FOOTER === */}
+      {canTakeOrgAction && (
+        <div className="border-t bg-gradient-to-br from-primary/5 to-transparent -mx-4 px-4 py-4 mt-4 space-y-3 rounded-b-xl">
+          <div className="flex items-center gap-2 text-sm font-semibold">
+            <ShieldCheck className="w-4 h-4 text-primary" />
+            Действия организации
+          </div>
+          <div className="space-y-2">
+            <Label className="text-xs flex items-center gap-1.5">
+              <MessageSquareText className="w-3 h-3" />
+              Сообщение клиенту (необязательно)
+            </Label>
+            <Textarea
+              rows={2} value={orgMessage} onChange={e => setOrgMessage(e.target.value)}
+              placeholder="Например: учли все правки кроме п. 5.1 — оставили в исходной редакции."
+              className="text-xs"
+            />
+          </div>
+          {pendingCount > 0 && (
+            <div className="flex items-start gap-2 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-md p-2">
+              <AlertTriangle className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+              <span>Остались нерассмотренные правки ({pendingCount}). Рекомендуется обработать каждую перед финализацией.</span>
+            </div>
+          )}
+          <div className="grid sm:grid-cols-3 gap-2">
+            <Button
+              size="sm" variant="outline" className="gap-1.5"
+              onClick={() => handleOrgFinalize("reject_all")}
+              disabled={finalizing}
+            >
+              <X className="w-3.5 h-3.5" />Отклонить все правки
+            </Button>
+            <Button
+              size="sm" variant="outline" className="gap-1.5 border-primary/40"
+              onClick={() => setShowRevisionUploader(true)}
+              disabled={finalizing}
+            >
+              <Upload className="w-3.5 h-3.5" />Отправить новую версию
+            </Button>
+            <Button
+              size="sm" className="gap-1.5"
+              onClick={() => handleOrgFinalize("sign_as_is")}
+              disabled={finalizing}
+            >
+              <ShieldCheck className="w-3.5 h-3.5" />Подписать как есть
+              <ExternalLink className="w-3 h-3 opacity-70" />
+            </Button>
+          </div>
+          <p className="text-[10px] text-muted-foreground text-center">
+            «Подписать как есть» откроет страницу ПЭП в новой вкладке. «Отправить новую версию» позволит загрузить отредактированный файл и переслать клиенту.
+          </p>
+        </div>
+      )}
+
+      {/* === RECIPIENT ACTION FOOTER === */}
+      {canTakeRecipientAction && (
         <div className="border-t bg-muted/30 -mx-4 px-4 py-4 mt-4 space-y-3 rounded-b-xl">
           <div className="grid lg:grid-cols-[1fr_auto] gap-3 items-start">
             <div className="space-y-1.5">
@@ -332,6 +583,31 @@ export function ContractReviewBody({ signatureToken, readOnly = false, embedded 
           </div>
           <p className="text-[10px] text-muted-foreground text-center">Подписание ПЭП открывается в отдельной вкладке для соблюдения требований 63-ФЗ.</p>
         </div>
+      )}
+
+      {/* Revision uploader (org-only) */}
+      {isOrg && sig && (
+        <SignatureRevisionUploader
+          open={showRevisionUploader}
+          onOpenChange={setShowRevisionUploader}
+          signatureId={sig.id}
+          organizationId={sig.organization_id}
+          title="Отправить новую версию клиенту"
+          onUploaded={async () => {
+            // После загрузки новой ревизии — финализируем "send_new_version" чтобы выслать уведомление клиенту
+            try {
+              await (supabase as any).rpc("org_finalize_signature_review", {
+                p_signature_id: sig.id,
+                p_action: "send_new_version",
+                p_message: orgMessage.trim() || null,
+              });
+              setOrgMessage("");
+            } catch (e) {
+              console.error(e);
+            }
+            await loadAll(signatureToken!);
+          }}
+        />
       )}
     </div>
   );
