@@ -77,6 +77,9 @@ export interface BlockEditorProps {
   readOnly?: boolean;
   courseTitle?: string;
   lessonTitle?: string;
+  organizationId?: string;
+  courseId?: string;
+  lessonId?: string;
 }
 
 export const blockTypeConfig: Record<BlockType, { icon: any; label: string; color: string }> = {
