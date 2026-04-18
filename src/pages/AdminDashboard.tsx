@@ -90,15 +90,25 @@ const AdminDashboard = () => {
   };
 
   const handleNotificationClick = async (n: any) => {
-    // Mark as read
     if (!n.is_read) {
       await supabase.from("admin_notifications").update({ is_read: true }).eq("id", n.id);
       fetchNotifications();
     }
-    // Navigate based on type
     if (n.type === "invoice" && n.related_entity_id) {
       setOpenOrgId(n.related_entity_id);
       setActiveTab("organizations");
+    } else if (n.type === "signature") {
+      setActiveTab("billing");
+      if (n.related_entity_id) {
+        setTimeout(() => {
+          const el = document.getElementById(`contract-${n.related_entity_id}`);
+          if (el) {
+            el.scrollIntoView({ behavior: "smooth", block: "center" });
+            el.classList.add("ring-2", "ring-primary");
+            setTimeout(() => el.classList.remove("ring-2", "ring-primary"), 2000);
+          }
+        }, 500);
+      }
     }
   };
 
