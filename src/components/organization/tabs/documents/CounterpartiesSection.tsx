@@ -5,8 +5,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { ScrollText, Receipt, FileCheck, Download, FileText, Lightbulb, Eye, Trash2, ExternalLink, Building2, User, Store, Plus, FolderOpen, ChevronDown, ChevronRight, X, Search } from "lucide-react";
+import { ScrollText, Receipt, FileCheck, Download, FileText, Lightbulb, Eye, Trash2, ExternalLink, Building2, User, Store, Plus, FolderOpen, ChevronDown, ChevronRight, X, Search, Send } from "lucide-react";
 import { ContractLegalFaq } from "@/components/organization/ContractLegalFaq";
+import { SendForSigningDialog, type SendForSigningPayload } from "@/components/signing/SendForSigningDialog";
 import { File } from "lucide-react";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
@@ -72,6 +73,45 @@ export function CounterpartiesSection({
   const [payerSearch, setPayerSearch] = useState("");
   const [clientPopoverOpen, setClientPopoverOpen] = useState(false);
   const [payerPopoverOpen, setPayerPopoverOpen] = useState(false);
+  const [signingPayload, setSigningPayload] = useState<SendForSigningPayload | null>(null);
+  const [signingRecipients, setSigningRecipients] = useState<{ id: string; name: string; email: string; type: "student" | "company" | "individual" }[]>([]);
+
+  const openSignDialog = async (doc: CounterpartyDoc) => {
+    let html = "";
+    if (doc.file_url) {
+      try {
+        const res = await fetch(doc.file_url);
+        const ct = res.headers.get("content-type") || "";
+        if (ct.includes("text/html")) {
+          html = await res.text();
+        } else {
+          html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${doc.name}</title></head><body style="font-family:sans-serif;padding:32px"><h1>${doc.name}</h1><p>Документ доступен по ссылке:</p><p><a href="${doc.file_url}" target="_blank">${doc.file_url}</a></p></body></html>`;
+        }
+      } catch {
+        html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${doc.name}</title></head><body style="font-family:sans-serif;padding:32px"><h1>${doc.name}</h1><p>${doc.contract_number ? "№" + doc.contract_number : ""}</p></body></html>`;
+      }
+    } else {
+      html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${doc.name}</title></head><body style="font-family:sans-serif;padding:32px"><h1>${doc.name}</h1><p>${doc.contract_number ? "№" + doc.contract_number : ""}${doc.contract_date ? " от " + new Date(doc.contract_date).toLocaleDateString("ru-RU") : ""}</p></body></html>`;
+    }
+
+    // Подгружаем получателей: компания (если выбрана) + ученики этой компании
+    const recipients: { id: string; name: string; email: string; type: "student" | "company" | "individual" }[] = [];
+    if (isCompany && selected) {
+      const { data: comp } = await supabase.from("companies").select("user_id, login_email, name, email").eq("id", selected.id).maybeSingle();
+      if (comp?.user_id && (comp.login_email || comp.email)) {
+        recipients.push({ id: comp.user_id, name: comp.name, email: comp.login_email || comp.email!, type: "company" });
+      }
+    }
+    setSigningRecipients(recipients);
+
+    setSigningPayload({
+      documentType: doc.type === "contract" ? "contract" : doc.type === "act" ? "act" : "custom_pdf",
+      documentTitle: doc.name,
+      documentHtml: html,
+      documentId: doc.id,
+      organizationId,
+    });
+  };
 
   // Load counterparties and groups
   useEffect(() => {
