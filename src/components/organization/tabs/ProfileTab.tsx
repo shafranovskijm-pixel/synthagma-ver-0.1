@@ -109,11 +109,25 @@ export function ProfileTab({ organizationId, initialSubTab }: ProfileTabProps) {
 
   const loadOrgCredentials = async () => {
     if (!organizationId) return;
-    const { data } = await supabase.rpc("get_decrypted_org_credentials", { p_organization_id: organizationId });
-    const row = Array.isArray(data) ? data[0] : null;
-    if (row?.login_email) {
-      setOrgLoginEmail(row.login_email);
-      setNewOrgEmail(row.login_email);
+    let email = "";
+    try {
+      const { data } = await supabase.rpc("get_decrypted_org_credentials", { p_organization_id: organizationId });
+      const row = Array.isArray(data) ? data[0] : null;
+      if (row?.login_email) email = row.login_email;
+    } catch (e) {
+      console.warn("get_decrypted_org_credentials failed, falling back to organizations.email", e);
+    }
+    if (!email) {
+      const { data: org } = await supabase
+        .from("organizations")
+        .select("email")
+        .eq("id", organizationId)
+        .maybeSingle();
+      if (org?.email) email = org.email;
+    }
+    if (email) {
+      setOrgLoginEmail(email);
+      setNewOrgEmail(email);
     }
   };
 
