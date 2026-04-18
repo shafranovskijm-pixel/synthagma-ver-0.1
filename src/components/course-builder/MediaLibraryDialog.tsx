@@ -4,15 +4,26 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { supabase } from "@/integrations/supabase/client";
-import { Video, FileText, Image as ImageIcon, Search, FolderOpen, Music, BookOpen, User, CheckCircle2, XCircle } from "lucide-react";
+import { Video, FileText, Image as ImageIcon, Search, FolderOpen, Music, BookOpen, User, CheckCircle2, XCircle, Trash2, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
+import { toast } from "sonner";
 
 interface MediaLibraryDialogProps {
   open: boolean;
@@ -194,12 +205,16 @@ export function MediaLibraryDialog({ open, onClose, onSelect, filter = "all", or
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState("");
   const [selectedFile, setSelectedFile] = useState<StorageFile | null>(null);
+  const [showOnlyUnused, setShowOnlyUnused] = useState(false);
+  const [fileToDelete, setFileToDelete] = useState<StorageFile | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     if (open) {
       loadFiles();
       setSelectedFile(null);
       setSearch("");
+      setShowOnlyUnused(false);
     }
   }, [open]);
 
@@ -315,6 +330,45 @@ export function MediaLibraryDialog({ open, onClose, onSelect, filter = "all", or
     setLoading(false);
   };
 
+  const handleDeleteFile = async (file: StorageFile) => {
+    setDeleting(true);
+    try {
+      const path = `${file.folder}/${file.name}`;
+      let removeError: any = null;
+
+      if (file.bucket === "course-videos") {
+        const { data: config } = await supabase.functions.invoke("get-external-storage-config");
+        if (config?.configured && config?.url && config?.key) {
+          const { createClient } = await import("@supabase/supabase-js");
+          const extClient = createClient(config.url, config.key);
+          const { error } = await extClient.storage.from(file.bucket).remove([path]);
+          removeError = error;
+        } else {
+          removeError = new Error("Внешнее хранилище не настроено");
+        }
+      } else {
+        const { error } = await supabase.storage.from(file.bucket).remove([path]);
+        removeError = error;
+      }
+
+      if (removeError) throw removeError;
+
+      setFiles(prev => prev.filter(f => !(f.bucket === file.bucket && f.folder === file.folder && f.name === file.name)));
+      if (selectedFile && selectedFile.bucket === file.bucket && selectedFile.folder === file.folder && selectedFile.name === file.name) {
+        setSelectedFile(null);
+      }
+      toast.success("Файл удалён");
+    } catch (err: any) {
+      console.error("Delete error:", err);
+      toast.error("Ошибка удаления", { description: err?.message || "Не удалось удалить файл" });
+    } finally {
+      setDeleting(false);
+      setFileToDelete(null);
+    }
+  };
+
+  const unusedCount = files.filter(f => f.isUsed === false).length;
+
   const filteredFiles = files
     .filter((f) => {
       if (filter === "video") return f.type === "video";
@@ -322,6 +376,7 @@ export function MediaLibraryDialog({ open, onClose, onSelect, filter = "all", or
       if (filter === "audio") return f.type === "audio";
       return true;
     })
+    .filter((f) => !showOnlyUnused || f.isUsed === false)
     .filter((f) => !search || f.name.toLowerCase().includes(search.toLowerCase()) || f.folder.toLowerCase().includes(search.toLowerCase()))
     .sort((a, b) => (b.created_at || "").localeCompare(a.created_at || ""));
 
@@ -329,13 +384,28 @@ export function MediaLibraryDialog({ open, onClose, onSelect, filter = "all", or
     <Dialog open={open} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-4xl max-h-[85vh] flex flex-col">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
+          <DialogTitle className="flex items-center gap-2 flex-wrap">
             <FolderOpen className="w-5 h-5" />
             Медиатека
             {!loading && files.length > 0 && (
               <Badge variant="secondary" className="ml-2 text-xs">
                 {filteredFiles.length} файл(ов)
               </Badge>
+            )}
+            {!loading && unusedCount > 0 && (
+              <button
+                type="button"
+                onClick={() => setShowOnlyUnused(v => !v)}
+                className={cn(
+                  "text-[11px] px-2 py-0.5 rounded-full border transition-colors",
+                  showOnlyUnused
+                    ? "bg-primary/15 border-primary/40 text-primary"
+                    : "border-muted-foreground/30 text-muted-foreground hover:border-primary/40 hover:text-primary"
+                )}
+                title="Показать только неиспользуемые"
+              >
+                {unusedCount} не используется
+              </button>
             )}
           </DialogTitle>
         </DialogHeader>
@@ -349,6 +419,15 @@ export function MediaLibraryDialog({ open, onClose, onSelect, filter = "all", or
             className="pl-9"
           />
         </div>
+
+        {!loading && unusedCount > 0 && (
+          <div className="flex items-start gap-2.5 px-3 py-2.5 rounded-xl bg-primary/5 border border-primary/20">
+            <Sparkles className="w-4 h-4 text-primary mt-0.5 shrink-0" />
+            <p className="text-xs text-foreground/80 leading-relaxed">
+              Совет: удаляйте видео и файлы, которые больше не используются — это освобождает место на сервере и ускоряет работу платформы. Спасибо, что заботитесь о порядке 💚
+            </p>
+          </div>
+        )}
 
         {loading ? (
           <div className="flex items-center justify-center py-16">
@@ -368,11 +447,19 @@ export function MediaLibraryDialog({ open, onClose, onSelect, filter = "all", or
             <ScrollArea className="h-[420px] flex-[3] min-w-0">
               <div className="space-y-1 pr-2">
                 {filteredFiles.map((file, i) => (
-                  <button
+                  <div
                     key={`${file.bucket}-${file.folder}-${file.name}-${i}`}
+                    role="button"
+                    tabIndex={0}
                     onClick={() => setSelectedFile(file)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        setSelectedFile(file);
+                      }
+                    }}
                     className={cn(
-                      "w-full flex items-center gap-3 p-2 rounded-lg text-left transition-colors",
+                      "group w-full flex items-center gap-3 p-2 rounded-lg text-left transition-colors cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-primary/40",
                       selectedFile?.url === file.url
                         ? "bg-primary/10 border border-primary/30"
                         : "hover:bg-muted/70"
@@ -401,7 +488,20 @@ export function MediaLibraryDialog({ open, onClose, onSelect, filter = "all", or
                         <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4">{file.bucket}</Badge>
                       </div>
                     </div>
-                  </button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="shrink-0 h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10 opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity"
+                      title="Удалить файл"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setFileToDelete(file);
+                      }}
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  </div>
                 ))}
               </div>
             </ScrollArea>
@@ -430,6 +530,39 @@ export function MediaLibraryDialog({ open, onClose, onSelect, filter = "all", or
           </Button>
         </div>
       </DialogContent>
+
+      <AlertDialog open={!!fileToDelete} onOpenChange={(o) => { if (!o) setFileToDelete(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Удалить файл?</AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-2">
+                <p className="text-sm">
+                  Файл <span className="font-medium text-foreground">{fileToDelete?.name}</span> будет безвозвратно удалён из хранилища.
+                </p>
+                {fileToDelete?.isUsed && (
+                  <p className="text-sm text-destructive font-medium">
+                    ⚠️ Этот файл используется в уроке «{fileToDelete.lessonTitle}». Удаление сломает отображение в уроке. Продолжить?
+                  </p>
+                )}
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleting}>Отмена</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={deleting}
+              onClick={(e) => {
+                e.preventDefault();
+                if (fileToDelete) handleDeleteFile(fileToDelete);
+              }}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deleting ? "Удаление..." : "Удалить"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Dialog>
   );
 }
