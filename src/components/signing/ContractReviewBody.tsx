@@ -141,6 +141,13 @@ export function ContractReviewBody({
   const isDocx = fileMime.includes("wordprocessingml") || rawFileUrl?.toLowerCase().endsWith(".docx");
   const documentHtml = sig?.document_html || currentRevision?.document_html || convertedHtml || null;
 
+  // Merge accepted client edits into the HTML — used in the signed preview popup AND in the final PDF.
+  const { html: mergedHtml, applied: appliedEdits } = useMemo(() => {
+    if (!documentHtml) return { html: null as string | null, applied: [] as ReturnType<typeof applyAcceptedEdits>["applied"] };
+    const result = applyAcceptedEdits(documentHtml, comments as any);
+    return { html: result.html, applied: result.applied };
+  }, [documentHtml, comments]);
+
   const pendingCount = comments.filter(c => (c.resolution_status ?? "pending") === "pending").length;
   const acceptedCount = comments.filter(c => c.resolution_status === "accepted").length;
   const rejectedCount = comments.filter(c => c.resolution_status === "rejected").length;
