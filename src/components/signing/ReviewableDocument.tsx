@@ -94,8 +94,6 @@ export function ReviewableDocument({ documentHtml, comments, authorName, canComm
       if (!offsets) { if (!draftKind) setSelection(null); return; }
       const rect = range.getBoundingClientRect();
       setInsertCaret(null);
-      // Удаляем caret-маркер при выделении
-      docRef.current?.querySelectorAll("[data-caret-marker]").forEach(el => el.remove());
       setSelection({ text, rect, startOffset: offsets.start, endOffset: offsets.end });
     };
     document.addEventListener("mouseup", handler);
