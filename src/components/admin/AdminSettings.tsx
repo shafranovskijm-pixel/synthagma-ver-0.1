@@ -217,6 +217,7 @@ export function AdminSettings() {
         );
 
       case "staff": return <AdminStaffTab />;
+      case "media": return <AdminMediaLibrary />;
       case "analytics": return <AdminAnalytics />;
       case "content": return <BlogManager />;
       case "ai": return <AISettingsManager />;
