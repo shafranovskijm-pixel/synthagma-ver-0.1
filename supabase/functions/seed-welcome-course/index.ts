@@ -288,7 +288,8 @@ async function seedCourseForOrg(supabase: any, organizationId: string, forceUpda
     return { updated: true, courseId: existing.id };
   }
 
-  // Create the welcome course
+  // Create the welcome course (with shared welcome cover so it always has an image)
+  const WELCOME_COVER_URL = "https://atxwvjxbqjgkbjlhsdch.supabase.co/storage/v1/object/public/course-files/welcome/shared-cover.png";
   const { data: course, error: courseErr } = await supabase
     .from("courses")
     .insert({
@@ -297,6 +298,7 @@ async function seedCourseForOrg(supabase: any, organizationId: string, forceUpda
       description: "Приветственный курс для знакомства с платформой СИНТАГМА. Узнайте обо всех возможностях: создание курсов с ИИ, тестирование, видеоидентификация, документооборот, ФРДО и многое другое.",
       is_published: true,
       catalog_order: 0,
+      cover_image_url: WELCOME_COVER_URL,
     })
     .select("id")
     .single();
