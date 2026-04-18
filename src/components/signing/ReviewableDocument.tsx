@@ -42,6 +42,7 @@ interface SelectionState {
 export function ReviewableDocument({ documentHtml, comments, authorName, canComment = true, onAddComment }: Props) {
   const docRef = useRef<HTMLDivElement>(null);
   const [selection, setSelection] = useState<SelectionState | null>(null);
+  const [insertCaret, setInsertCaret] = useState<{ offset: number; rect: DOMRect } | null>(null);
   const [draftKind, setDraftKind] = useState<SuggestionKind | null>(null);
   const [draftText, setDraftText] = useState("");
   const [draftReplacement, setDraftReplacement] = useState("");
@@ -53,32 +54,54 @@ export function ReviewableDocument({ documentHtml, comments, authorName, canComm
     setDraftText("");
     setDraftReplacement("");
     setSelection(null);
+    setInsertCaret(null);
     try { window.getSelection()?.removeAllRanges(); } catch {}
   }, []);
 
-  // Слушаем выделение
+  // Слушаем выделение / клик в документе
   useEffect(() => {
     const handler = (e: Event) => {
-      // Если идёт ввод в форме — не сбрасываем
       const target = e.target as HTMLElement | null;
       if (target && (target.closest("textarea, input, button"))) return;
 
       const sel = window.getSelection();
-      if (!sel || sel.rangeCount === 0 || sel.isCollapsed) {
-        // Не сбрасываем форму, если она открыта (пользователь печатает)
-        if (!draftKind) setSelection(null);
+      if (!sel || sel.rangeCount === 0) {
+        if (!draftKind) { setSelection(null); setInsertCaret(null); }
         return;
       }
       const range = sel.getRangeAt(0);
-      const text = sel.toString().trim();
-      if (text.length < 3 || text.length > 1000) { if (!draftKind) setSelection(null); return; }
+      // Клик внутри документа?
       if (!docRef.current || !docRef.current.contains(range.commonAncestorContainer)) {
-        if (!draftKind) setSelection(null);
+        if (!draftKind) { setSelection(null); setInsertCaret(null); }
         return;
       }
+
+      // Collapsed → caret для insert
+      if (sel.isCollapsed) {
+        const offsets = computeOffsets(docRef.current, range);
+        if (offsets) {
+          // Используем bounding rect курсора (через временный span)
+          const tempRange = range.cloneRange();
+          let rect = tempRange.getBoundingClientRect();
+          if (rect.width === 0 && rect.height === 0) {
+            // Пустой rect — берём родительский элемент
+            const parent = (range.startContainer.nodeType === Node.TEXT_NODE
+              ? range.startContainer.parentElement
+              : range.startContainer as HTMLElement);
+            if (parent) rect = parent.getBoundingClientRect();
+          }
+          setSelection(null);
+          setInsertCaret({ offset: offsets.start, rect });
+        }
+        return;
+      }
+
+      const text = sel.toString().trim();
+      if (text.length < 3 || text.length > 1000) { if (!draftKind) { setSelection(null); setInsertCaret(null); } return; }
       const offsets = computeOffsets(docRef.current, range);
-      if (!offsets) { if (!draftKind) setSelection(null); return; }
+      if (!offsets) { if (!draftKind) { setSelection(null); setInsertCaret(null); } return; }
       const rect = range.getBoundingClientRect();
+      setInsertCaret(null);
       setSelection({ text, rect, startOffset: offsets.start, endOffset: offsets.end });
     };
     document.addEventListener("mouseup", handler);
