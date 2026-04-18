@@ -5,10 +5,10 @@ import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
-import { ScrollArea } from "@/components/ui/scroll-area";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import {
   Loader2, FileText, Download, Send, MessageSquareText, ShieldCheck,
-  Check, X, Reply, Upload, AlertTriangle, Trash2, PenLine, CheckCircle2,
+  Check, X, Reply, Upload, AlertTriangle, Trash2, PenLine, CheckCircle2, Eye, FileSignature,
 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -16,7 +16,11 @@ import { ReviewableDocument, type ReviewComment } from "@/components/signing/Rev
 import { DocxRenderer } from "@/components/signing/DocxRenderer";
 import { SignatureRevisionUploader } from "@/components/signing/SignatureRevisionUploader";
 import { PepSignatureStamp } from "@/components/signing/PepSignatureStamp";
+import { PepAgreementDialog } from "@/components/signing/PepAgreementDialog";
+import { HandwrittenSignUploader } from "@/components/signing/HandwrittenSignUploader";
+import { SignedDocumentPreview } from "@/components/signing/SignedDocumentPreview";
 import { getPepAgreementText, PEP_AGREEMENT_VERSION } from "@/constants/pepAgreementTemplate";
+import { OPERATOR } from "@/constants/operatorDetails";
 import { sha256Hex } from "@/utils/documentHash";
 import { useAuth } from "@/hooks/useAuth";
 import { cn } from "@/lib/utils";
@@ -43,6 +47,15 @@ interface SigData {
   mode?: string;
   current_revision_id?: string | null;
   expires_at: string;
+  signed_at?: string | null;
+  signed_ip?: string | null;
+  sender_signed_at?: string | null;
+  sender_signed_ip?: string | null;
+  sender_name?: string | null;
+  signature_method?: "pep" | "handwritten_scan" | null;
+  handwritten_scan_path?: string | null;
+  document_hash?: string | null;
+  pep_agreement_id?: string | null;
 }
 
 interface Revision {
@@ -104,7 +117,7 @@ export function ContractReviewBody({
   const [finalizing, setFinalizing] = useState(false);
   const [orgMessage, setOrgMessage] = useState("");
 
-  // Inline signing state (recipient)
+  // Inline signing state (recipient AND organization)
   const [signPanelOpen, setSignPanelOpen] = useState(false);
   const [signFullName, setSignFullName] = useState("");
   const [signEmail, setSignEmail] = useState("");
@@ -112,6 +125,9 @@ export function ContractReviewBody({
   const [signAccepted, setSignAccepted] = useState(false);
   const [submittingSign, setSubmittingSign] = useState(false);
   const [signedInfo, setSignedInfo] = useState<{ ip: string; signedAt: string; pepAgreementId: string } | null>(null);
+  const [signMethod, setSignMethod] = useState<"pep" | "handwritten_scan">("pep");
+  const [agreementDialogOpen, setAgreementDialogOpen] = useState(false);
+  const [previewOpen, setPreviewOpen] = useState(false);
 
   const currentRevision =
     revisions.find(r => r.id === sig?.current_revision_id) ||
@@ -141,8 +157,15 @@ export function ContractReviewBody({
       setRevisions((revRes.data as Revision[]) || []);
       setComments((comRes.data as OrgComment[]) || []);
       setAuthorName(user?.email || row.recipient_name || "Получатель");
-      setSignFullName(row.recipient_name || "");
-      setSignEmail(row.recipient_email || user?.email || "");
+      // ФИО / email подписанта: для организации — реквизиты Оператора (ИП Шафрановский),
+      // для получателя — его собственные данные.
+      if (viewerRole === "organization") {
+        setSignFullName(OPERATOR.fullName);
+        setSignEmail(OPERATOR.email);
+      } else {
+        setSignFullName(row.recipient_name || "");
+        setSignEmail(row.recipient_email || user?.email || "");
+      }
     } catch (e: any) {
       toast.error(e.message || "Ошибка загрузки");
     } finally {
@@ -338,8 +361,8 @@ export function ContractReviewBody({
       if (action === "sign_as_is") {
         // Открываем инлайн-панель ПЭП без вызова RPC — RPC вызовется уже из самой подписи (finalize-signature)
         // через handleInlineSign. Так избегаем двойного финализирования и подписи остаётся валидной.
-        setSignFullName(prev => prev || user?.user_metadata?.full_name || sig.organization_name || "");
-        setSignEmail(prev => prev || user?.email || "");
+        setSignFullName(prev => prev || OPERATOR.fullName);
+        setSignEmail(prev => prev || OPERATOR.email);
         setSignPanelOpen(true);
         setTimeout(() => {
           document.getElementById("inline-sign-panel")?.scrollIntoView({ behavior: "smooth", block: "center" });
@@ -661,51 +684,88 @@ export function ContractReviewBody({
             <ShieldCheck className="w-4 h-4 text-primary" />
             Подписать прямо здесь {isOrg && <Badge variant="outline" className="text-[10px]">подпись организации</Badge>}
           </div>
-          <p className="text-[11px] text-muted-foreground">
-            Подпишите документ простой электронной подписью без перехода на другую страницу.
-          </p>
-          <div className="grid sm:grid-cols-2 gap-2">
-            <div className="space-y-1">
-              <Label className="text-[11px]">ФИО подписанта</Label>
-              <Input value={signFullName} onChange={(e) => setSignFullName(e.target.value)} placeholder="Иванов Иван Иванович" className="h-9 text-sm" />
+
+          <Tabs value={signMethod} onValueChange={(v) => setSignMethod(v as "pep" | "handwritten_scan")} className="w-full">
+            <TabsList className="grid w-full grid-cols-2 h-9">
+              <TabsTrigger value="pep" className="text-xs gap-1.5">
+                <ShieldCheck className="w-3.5 h-3.5" />Электронно (ПЭП)
+              </TabsTrigger>
+              <TabsTrigger value="handwritten_scan" className="text-xs gap-1.5">
+                <FileSignature className="w-3.5 h-3.5" />Скан с подписью и печатью
+              </TabsTrigger>
+            </TabsList>
+
+            <div className="grid sm:grid-cols-2 gap-2 mt-3">
+              <div className="space-y-1">
+                <Label className="text-[11px]">ФИО подписанта</Label>
+                <Input value={signFullName} onChange={(e) => setSignFullName(e.target.value)} placeholder="Иванов Иван Иванович" className="h-9 text-sm" />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-[11px]">Email</Label>
+                <Input type="email" value={signEmail} onChange={(e) => setSignEmail(e.target.value)} className="h-9 text-sm" />
+              </div>
             </div>
-            <div className="space-y-1">
-              <Label className="text-[11px]">Email</Label>
-              <Input type="email" value={signEmail} onChange={(e) => setSignEmail(e.target.value)} className="h-9 text-sm" />
-            </div>
-          </div>
-          <div>
-            <Label className="text-[11px] mb-1 block">Соглашение об использовании ПЭП ({PEP_AGREEMENT_VERSION})</Label>
-            <ScrollArea className="h-32 rounded border bg-background p-2">
-              <pre className="text-[10px] whitespace-pre-wrap font-sans leading-relaxed">{agreementText}</pre>
-            </ScrollArea>
-          </div>
-          <div className="flex items-start gap-2">
-            <Checkbox id="agree-shared" checked={agreementAccepted} onCheckedChange={(v) => setAgreementAccepted(!!v)} />
-            <Label htmlFor="agree-shared" className="text-[11px] leading-relaxed cursor-pointer">
-              Я ознакомился(ась) и принимаю условия Соглашения об использовании ПЭП (63-ФЗ).
-            </Label>
-          </div>
-          <div className="flex items-start gap-2">
-            <Checkbox id="sign-shared" checked={signAccepted} onCheckedChange={(v) => setSignAccepted(!!v)} />
-            <Label htmlFor="sign-shared" className="text-[11px] leading-relaxed cursor-pointer">
-              Я, <strong>{signFullName || "—"}</strong>, подписываю «{sig.document_title}» простой электронной подписью. Подпись имеет юридическую силу, равную собственноручной.
-            </Label>
-          </div>
-          <div className="flex gap-2">
-            <Button variant="ghost" size="sm" onClick={() => setSignPanelOpen(false)} disabled={submittingSign}>
-              Отмена
-            </Button>
-            <Button
-              className="flex-1 gap-1.5"
-              size="sm"
-              onClick={handleInlineSign}
-              disabled={submittingSign || !signAccepted || !agreementAccepted || !signFullName.trim() || !signEmail.trim()}
-            >
-              {submittingSign ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <ShieldCheck className="w-3.5 h-3.5" />}
-              {submittingSign ? "Подписание…" : "Подписать"}
-            </Button>
-          </div>
+
+            <TabsContent value="pep" className="space-y-3 mt-3">
+              <div className="flex items-start gap-2">
+                <Checkbox id="agree-shared" checked={agreementAccepted} onCheckedChange={(v) => setAgreementAccepted(!!v)} />
+                <Label htmlFor="agree-shared" className="text-[11px] leading-relaxed cursor-pointer">
+                  Я ознакомился(ась) и принимаю условия{" "}
+                  <button
+                    type="button"
+                    onClick={(e) => { e.preventDefault(); setAgreementDialogOpen(true); }}
+                    className="text-primary underline underline-offset-2 hover:text-primary/80 font-medium"
+                  >
+                    Соглашения об использовании ПЭП
+                  </button>
+                  {" "}(63-ФЗ).
+                </Label>
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="w-full gap-1.5 h-8 text-[11px]"
+                onClick={() => setAgreementDialogOpen(true)}
+              >
+                <Eye className="w-3.5 h-3.5" />Открыть полный текст соглашения
+              </Button>
+              <div className="flex items-start gap-2">
+                <Checkbox id="sign-shared" checked={signAccepted} onCheckedChange={(v) => setSignAccepted(!!v)} />
+                <Label htmlFor="sign-shared" className="text-[11px] leading-relaxed cursor-pointer">
+                  Я, <strong>{signFullName || "—"}</strong>, подписываю «{sig.document_title}» простой электронной подписью. Подпись имеет юридическую силу, равную собственноручной.
+                </Label>
+              </div>
+              <div className="flex gap-2">
+                <Button variant="ghost" size="sm" onClick={() => setSignPanelOpen(false)} disabled={submittingSign}>
+                  Отмена
+                </Button>
+                <Button
+                  className="flex-1 gap-1.5"
+                  size="sm"
+                  onClick={handleInlineSign}
+                  disabled={submittingSign || !signAccepted || !agreementAccepted || !signFullName.trim() || !signEmail.trim()}
+                >
+                  {submittingSign ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <ShieldCheck className="w-3.5 h-3.5" />}
+                  {submittingSign ? "Подписание…" : "Подписать"}
+                </Button>
+              </div>
+            </TabsContent>
+
+            <TabsContent value="handwritten_scan" className="mt-3">
+              <HandwrittenSignUploader
+                signatureId={sig.id}
+                organizationId={sig.organization_id}
+                signatureToken={signatureToken!}
+                signerName={signFullName}
+                signerEmail={signEmail}
+                onSigned={async (info) => {
+                  setSignedInfo({ ip: info.ip, signedAt: info.signedAt, pepAgreementId: info.pepAgreementId });
+                  await loadAll(signatureToken!);
+                }}
+              />
+            </TabsContent>
+          </Tabs>
         </div>
       )}
 
@@ -795,7 +855,66 @@ export function ContractReviewBody({
             </div>
           )}
           <p className="text-xs text-muted-foreground">Копия подписанного документа отправлена на {signEmail || sig.recipient_email}.</p>
+          <div className="flex flex-wrap items-center justify-center gap-2">
+            <Button size="sm" variant="outline" className="gap-1.5" onClick={() => setPreviewOpen(true)}>
+              <Eye className="w-4 h-4" />Посмотреть подписанный документ
+            </Button>
+            <Button size="sm" className="gap-1.5" onClick={() => setPreviewOpen(true)}>
+              <Download className="w-4 h-4" />Скачать PDF
+            </Button>
+          </div>
         </div>
+      )}
+
+      {/* === DIALOGS === */}
+      <PepAgreementDialog
+        open={agreementDialogOpen}
+        onOpenChange={setAgreementDialogOpen}
+        agreementText={agreementText}
+        onAccept={() => setAgreementAccepted(true)}
+      />
+
+      {sig && (
+        <SignedDocumentPreview
+          open={previewOpen}
+          onOpenChange={setPreviewOpen}
+          documentTitle={sig.document_title}
+          documentHtml={documentHtml}
+          attachedFilePath={rawFileUrl && !rawFileUrl.startsWith("http") ? rawFileUrl : null}
+          attachedFileMime={fileMime || null}
+          handwrittenScanPath={sig.handwritten_scan_path || null}
+          signatureMethod={sig.signature_method || "pep"}
+          sender={sig.sender_signed_at ? {
+            fullName: sig.sender_name || OPERATOR.fullName,
+            email: OPERATOR.email,
+            signedAt: sig.sender_signed_at,
+            ip: sig.sender_signed_ip,
+            documentHash: sig.document_hash,
+            agreementId: sig.pep_agreement_id,
+          } : (isOrg && signedInfo ? {
+            fullName: signFullName,
+            email: signEmail,
+            signedAt: signedInfo.signedAt,
+            ip: signedInfo.ip,
+            documentHash: sig.document_hash,
+            agreementId: signedInfo.pepAgreementId,
+          } : undefined)}
+          recipient={sig.signed_at ? {
+            fullName: sig.recipient_name,
+            email: sig.recipient_email,
+            signedAt: sig.signed_at,
+            ip: sig.signed_ip,
+            documentHash: sig.document_hash,
+            agreementId: sig.pep_agreement_id,
+          } : (!isOrg && signedInfo ? {
+            fullName: signFullName,
+            email: signEmail,
+            signedAt: signedInfo.signedAt,
+            ip: signedInfo.ip,
+            documentHash: sig.document_hash,
+            agreementId: signedInfo.pepAgreementId,
+          } : undefined)}
+        />
       )}
 
       {/* Revision uploader (org-only) */}

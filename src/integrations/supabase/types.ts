@@ -1639,6 +1639,7 @@ export type Database = {
           document_title: string
           document_type: string
           expires_at: string
+          handwritten_scan_path: string | null
           id: string
           mode: string
           organization_id: string
@@ -1656,8 +1657,10 @@ export type Database = {
           sender_signed_user_agent: string | null
           sender_user_id: string
           sent_at: string | null
+          signature_method: string
           signature_token: string
           signed_at: string | null
+          signed_document_path: string | null
           signed_ip: string | null
           signed_user_agent: string | null
           status: string
@@ -1674,6 +1677,7 @@ export type Database = {
           document_title: string
           document_type: string
           expires_at?: string
+          handwritten_scan_path?: string | null
           id?: string
           mode?: string
           organization_id: string
@@ -1691,8 +1695,10 @@ export type Database = {
           sender_signed_user_agent?: string | null
           sender_user_id: string
           sent_at?: string | null
+          signature_method?: string
           signature_token?: string
           signed_at?: string | null
+          signed_document_path?: string | null
           signed_ip?: string | null
           signed_user_agent?: string | null
           status?: string
@@ -1709,6 +1715,7 @@ export type Database = {
           document_title?: string
           document_type?: string
           expires_at?: string
+          handwritten_scan_path?: string | null
           id?: string
           mode?: string
           organization_id?: string
@@ -1726,8 +1733,10 @@ export type Database = {
           sender_signed_user_agent?: string | null
           sender_user_id?: string
           sent_at?: string | null
+          signature_method?: string
           signature_token?: string
           signed_at?: string | null
+          signed_document_path?: string | null
           signed_ip?: string | null
           signed_user_agent?: string | null
           status?: string
