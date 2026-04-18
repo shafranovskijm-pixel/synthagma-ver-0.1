@@ -25,6 +25,8 @@ const ALLOWED_MIME = [
 ];
 const MAX_SIZE = 20 * 1024 * 1024; // 20 MB
 
+const FALLBACK_ADMIN_EMAIL = "support@syntagma.com.ru";
+
 export function ExternalContractUploader({ open, onOpenChange, organizationId, defaultAdminEmail, onSent }: Props) {
   const [file, setFile] = useState<File | null>(null);
   const [title, setTitle] = useState("");
@@ -58,10 +60,11 @@ export function ExternalContractUploader({ open, onOpenChange, organizationId, d
   };
 
   const send = async () => {
-    if (!file || !title.trim() || !adminEmail.trim()) {
-      toast.error("Заполните все поля");
+    if (!file || !title.trim()) {
+      toast.error("Загрузите файл и укажите название");
       return;
     }
+    const recipientEmail = adminEmail.trim() || FALLBACK_ADMIN_EMAIL;
     setUploading(true);
     try {
       const ext = file.name.split(".").pop() || "bin";
