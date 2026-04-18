@@ -82,6 +82,24 @@ export function CounterpartiesSection({
   const [platformExternalContracts, setPlatformExternalContracts] = useState<any[]>([]);
   const [adminSigEmail, setAdminSigEmail] = useState<string>("support@sintagma.com.ru");
   const [expandedReviewId, setExpandedReviewId] = useState<string | null>(null);
+  const [contractToDelete, setContractToDelete] = useState<{ id: string; title: string } | null>(null);
+  const [deletingContract, setDeletingContract] = useState(false);
+
+  const handleDeleteContract = async () => {
+    if (!contractToDelete) return;
+    setDeletingContract(true);
+    try {
+      const { error } = await (supabase as any).rpc("hide_signature_for_viewer", { p_signature_id: contractToDelete.id });
+      if (error) throw error;
+      toast.success("Договор удалён из вашего списка");
+      setContractToDelete(null);
+      await refreshPlatformContracts();
+    } catch (e: any) {
+      toast.error(e?.message || "Не удалось удалить договор");
+    } finally {
+      setDeletingContract(false);
+    }
+  };
 
   // Handle deep-link from notification: open a specific signature
   useEffect(() => {
