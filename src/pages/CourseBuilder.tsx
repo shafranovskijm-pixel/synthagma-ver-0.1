@@ -218,6 +218,8 @@ export default function CourseBuilder({ embedded, embeddedCourseId, onExitEditor
             sensors={sensors}
             onDragEnd={handleDragEnd}
             onLessonClick={scrollToLesson}
+            onBack={onExitEditor}
+            backLabel="Назад к разделам курса"
           />
 
           {/* CENTER: main content */}
