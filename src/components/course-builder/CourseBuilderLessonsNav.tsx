@@ -124,10 +124,10 @@ export function CourseBuilderLessonsNav(props: Props) {
     setMobileOpen(false);
   };
 
-  // Embedded режим: нет глобальной шапки над редактором → меньший top.
-  // Standalone: есть собственный sticky header → top-24.
-  const stickyTop = props.embedded ? "top-4" : "top-24";
-  const stickyMaxH = props.embedded ? "max-h-[calc(100vh-2rem)]" : "max-h-[calc(100vh-7rem)]";
+  // Embedded: панель встроена в /organization, над ней sticky-хедер ~316px (h-14 + h-48 hero + h-12).
+  // Standalone: только собственный sticky-хедер ~96px.
+  const stickyTop = props.embedded ? "top-[332px]" : "top-24";
+  const stickyMaxH = props.embedded ? "max-h-[calc(100dvh-348px)]" : "max-h-[calc(100dvh-7rem)]";
 
   return (
     <>

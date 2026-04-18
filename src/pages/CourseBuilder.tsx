@@ -307,10 +307,21 @@ export default function CourseBuilder({ embedded, embeddedCourseId, onExitEditor
             )}
           </div>
 
-          {/* RIGHT: sticky "Добавить урок" panel (desktop) */}
-          <aside className={cn("hidden lg:block sticky self-start w-72 shrink-0 overflow-y-auto", embedded ? "top-4 max-h-[calc(100vh-2rem)]" : "top-24 max-h-[calc(100vh-7rem)]")}>
-            <div className="bg-card rounded-2xl border border-border p-4 sm:p-6 shadow-sm">
-              <h3 className="font-semibold mb-3 sm:mb-4">Добавить урок</h3>
+          {/* RIGHT: sticky "Добавить урок" panel (desktop)
+              embedded: учитываем высоту OrgDashboardHeader (h-14 + h-48 hero + h-12 = ~316px)
+              standalone: только собственный header (~96px) */}
+          <aside
+            className={cn(
+              "hidden lg:flex flex-col sticky self-start w-72 shrink-0 rounded-2xl border border-border bg-card shadow-sm overflow-hidden",
+              embedded
+                ? "top-[332px] max-h-[calc(100dvh-348px)]"
+                : "top-24 max-h-[calc(100dvh-7rem)]"
+            )}
+          >
+            <div className="px-4 sm:px-6 pt-4 sm:pt-6 pb-3 shrink-0 border-b border-border/50">
+              <h3 className="font-semibold">Добавить урок</h3>
+            </div>
+            <div className="flex-1 min-h-0 overflow-y-auto p-4 sm:p-6">
               <AddLessonGrid
                 addLesson={addLesson}
                 openAIDialog={() => setShowAIGenerateDialog(true)}
