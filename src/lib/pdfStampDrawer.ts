@@ -24,6 +24,105 @@ const MUTED: RGB = rgb(0.4, 0.4, 0.4);
 const STAMP_BG: RGB = rgb(0.94, 0.98, 0.97);
 const INS_BG: RGB = rgb(0.86, 0.99, 0.84);    // light-green фон вставки
 const INS_TEXT: RGB = rgb(0.08, 0.33, 0.18);  // тёмно-зелёный текст вставки
+const INK_BLUE: RGB = rgb(0.10, 0.30, 0.75);  // синий «как чернила» — для watermark
+const INK_BLUE_BG: RGB = rgb(0.93, 0.95, 1.0);
+
+/**
+ * Рисует компактный синий watermark-штамп ПЭП в правом нижнем углу страницы.
+ * Если подписали обе стороны — рендерит две полоски рядом.
+ */
+export function drawSignatureWatermark(
+  page: PDFPage,
+  sender: PartyInfo | undefined,
+  recipient: PartyInfo | undefined,
+  font: PDFFont,
+  fontBold: PDFFont,
+  signatureMethod: "pep" | "handwritten_scan",
+): void {
+  const parties: Array<{ label: string; party: PartyInfo }> = [];
+  if (sender?.signedAt) parties.push({ label: "Отправитель", party: sender });
+  if (recipient?.signedAt) parties.push({ label: "Получатель", party: recipient });
+  if (parties.length === 0) return;
+
+  const { width: pageW } = page.getSize();
+  const stampW = 175;
+  const stampH = 64;
+  const gap = 6;
+  const marginR = 18;
+  const marginB = 18;
+
+  const totalW = parties.length * stampW + (parties.length - 1) * gap;
+  let x = pageW - marginR - totalW;
+  const y = marginB;
+
+  const methodSuffix =
+    signatureMethod === "handwritten_scan" ? "Скан · подпись" : "ПЭП · 63-ФЗ";
+
+  for (const { label, party } of parties) {
+    // Рамка
+    page.drawRectangle({
+      x, y, width: stampW, height: stampH,
+      color: INK_BLUE_BG,
+      borderColor: INK_BLUE,
+      borderWidth: 0.8,
+      opacity: 0.85,
+      borderOpacity: 0.85,
+    });
+
+    // Заголовок
+    page.drawText(`Подписано · ${methodSuffix}`, {
+      x: x + 8, y: y + stampH - 12,
+      size: 7, font: fontBold, color: INK_BLUE,
+    });
+
+    // ФИО (обрезаем по ширине)
+    const fio = (party.fullName || party.email || "—").slice(0, 36);
+    page.drawText(fio, {
+      x: x + 8, y: y + stampH - 24,
+      size: 8, font: fontBold, color: INK_BLUE,
+    });
+
+    // Роль
+    page.drawText(label, {
+      x: x + 8, y: y + stampH - 35,
+      size: 7, font, color: INK_BLUE,
+    });
+
+    // Дата
+    page.drawText(fmtDate(party.signedAt), {
+      x: x + 8, y: y + stampH - 46,
+      size: 7, font, color: INK_BLUE,
+    });
+
+    // Хеш / ID соглашения (последние 8)
+    const tail = (party.documentHash || party.agreementId || "").slice(-8);
+    if (tail) {
+      page.drawText(`#${tail.toUpperCase()}`, {
+        x: x + 8, y: y + 6,
+        size: 6, font, color: INK_BLUE,
+      });
+    }
+
+    x += stampW + gap;
+  }
+}
+
+/** Применяет watermark ко всем страницам PDF, кроме указанных индексов. */
+export function applyWatermarkToAllPages(
+  pdf: PDFDocument,
+  sender: PartyInfo | undefined,
+  recipient: PartyInfo | undefined,
+  font: PDFFont,
+  fontBold: PDFFont,
+  signatureMethod: "pep" | "handwritten_scan",
+  skipIndices: Set<number> = new Set(),
+): void {
+  const pages = pdf.getPages();
+  pages.forEach((page, i) => {
+    if (skipIndices.has(i)) return;
+    drawSignatureWatermark(page, sender, recipient, font, fontBold, signatureMethod);
+  });
+}
 
 const fmtDate = (iso: string | null | undefined): string => {
   if (!iso) return "—";
