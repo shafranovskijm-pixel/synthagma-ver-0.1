@@ -6831,6 +6831,10 @@ export type Database = {
       show_limit: { Args: never; Returns: number }
       show_trgm: { Args: { "": string }; Returns: string[] }
       track_user_visit: { Args: { p_user_id: string }; Returns: undefined }
+      update_signature_revision_html: {
+        Args: { p_html: string; p_revision_id: string }
+        Returns: undefined
+      }
       upgrade_to_organization_role: {
         Args: { p_organization_id: string; p_user_id: string }
         Returns: undefined

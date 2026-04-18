@@ -26,6 +26,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { getStoredThemeId, getThemeById, type AdminTheme } from "@/constants/admin-themes";
 import { ThemeAnimations, getStoredAnimationLevel, type AnimationLevel } from "@/components/ui/ThemeAnimations";
 import { AtmosphericBleed } from "@/components/ui/AtmosphericBleed";
+import { ContractReviewDialog } from "@/components/signing/ContractReviewDialog";
 
 const AdminDashboard = () => {
   const { user, signOut } = useAuth();
@@ -35,6 +36,7 @@ const AdminDashboard = () => {
   const [notifications, setNotifications] = useState<any[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [openOrgId, setOpenOrgId] = useState<string | null>(null);
+  const [reviewToken, setReviewToken] = useState<string | null>(null);
   const adminBranding = useAdminBranding();
 
   // Visual theme
@@ -98,17 +100,21 @@ const AdminDashboard = () => {
       setOpenOrgId(n.related_entity_id);
       setActiveTab("organizations");
     } else if (n.type === "signature") {
-      setActiveTab("billing");
+      // Открываем модалку просмотра договора прямо в админке
       if (n.related_entity_id) {
-        setTimeout(() => {
-          const el = document.getElementById(`contract-${n.related_entity_id}`);
-          if (el) {
-            el.scrollIntoView({ behavior: "smooth", block: "center" });
-            el.classList.add("ring-2", "ring-primary");
-            setTimeout(() => el.classList.remove("ring-2", "ring-primary"), 2000);
-          }
-        }, 500);
+        const { data: sigRow } = await supabase
+          .from("document_signatures")
+          .select("signature_token")
+          .eq("id", n.related_entity_id)
+          .maybeSingle();
+        const token = (sigRow as any)?.signature_token;
+        if (token) {
+          setReviewToken(token);
+          return;
+        }
       }
+      // Fallback — переход на вкладку "Биллинг"
+      setActiveTab("billing");
     }
   };
 
@@ -188,6 +194,13 @@ const AdminDashboard = () => {
         {/* Footer */}
         <AdminDashboardFooter />
       </main>
+
+      {/* Глобальный диалог просмотра внешнего договора (открывается из колокола или из биллинга) */}
+      <ContractReviewDialog
+        open={!!reviewToken}
+        onOpenChange={(o) => { if (!o) setReviewToken(null); }}
+        signatureToken={reviewToken}
+      />
     </div>
   );
 };
