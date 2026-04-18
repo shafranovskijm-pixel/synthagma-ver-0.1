@@ -83,7 +83,7 @@ export function ExternalContractUploader({ open, onOpenChange, organizationId, d
         p_file_name: file.name,
         p_file_mime: file.type || "application/octet-stream",
         p_document_title: title.trim(),
-        p_admin_email: adminEmail.trim(),
+        p_admin_email: recipientEmail,
         p_admin_name: "Администратор Синтагма",
         p_summary: summary.trim() || null,
       });
@@ -164,8 +164,9 @@ export function ExternalContractUploader({ open, onOpenChange, organizationId, d
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="ec-admin">Email администратора Синтагмы</Label>
-            <Input id="ec-admin" type="email" value={adminEmail} onChange={(e) => setAdminEmail(e.target.value)} placeholder="admin@sintagma.com.ru" />
+            <Label htmlFor="ec-admin">Email администратора Синтагмы <span className="text-muted-foreground font-normal">(необязательно)</span></Label>
+            <Input id="ec-admin" type="email" value={adminEmail} onChange={(e) => setAdminEmail(e.target.value)} placeholder={FALLBACK_ADMIN_EMAIL} />
+            <p className="text-xs text-muted-foreground">Если оставить пустым, документ уйдёт на {FALLBACK_ADMIN_EMAIL}</p>
           </div>
 
           <div className="space-y-2">
@@ -176,7 +177,7 @@ export function ExternalContractUploader({ open, onOpenChange, organizationId, d
 
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={uploading}>Отмена</Button>
-          <Button onClick={send} disabled={!file || !title.trim() || !adminEmail.trim() || uploading} className="gap-2">
+          <Button onClick={send} disabled={!file || !title.trim() || uploading} className="gap-2">
             {uploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
             Отправить на согласование
           </Button>
