@@ -195,14 +195,6 @@ export function VideoBlock({ block, onUpdate, organizationId, courseId, lessonId
   const [showLibrary, setShowLibrary] = useState(false);
   const [skipCompression, setSkipCompression] = useState(false);
 
-  // Lazy hooks — imported inline to keep file dependency tree intact.
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const { useSubscriptionLimits } = require("@/hooks/useSubscriptionLimits");
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const { useLessonMedia } = require("@/hooks/useLessonMedia");
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const { useNavigate } = require("react-router-dom");
-
   const { limits } = useSubscriptionLimits(organizationId || null);
   const isKinescopeAvailable = !!limits?.kinescopeEnabled;
   const navigate = useNavigate();
