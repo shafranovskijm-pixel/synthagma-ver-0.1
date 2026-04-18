@@ -6770,15 +6770,23 @@ export type Database = {
           document_title: string
           document_type: string
           expires_at: string
+          handwritten_scan_path: string
           id: string
           mode: string
           organization_id: string
           organization_inn: string
           organization_name: string
+          pep_agreement_id: string
           recipient_email: string
           recipient_name: string
           recipient_user_id: string
+          sender_name: string
+          sender_signed_at: string
+          sender_signed_ip: string
+          signature_method: string
           signed_at: string
+          signed_document_path: string
+          signed_ip: string
           status: string
         }[]
       }
