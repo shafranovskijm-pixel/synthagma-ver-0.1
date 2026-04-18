@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { MessageSquarePlus, X, Loader2, MessageCircle, CheckCheck, Scissors, Replace, MessageSquare } from "lucide-react";
+import { MessageSquarePlus, X, Loader2, MessageCircle, CheckCheck, Scissors, Replace, MessageSquare, Plus } from "lucide-react";
 import { toast } from "sonner";
 
 export interface ReviewComment {
@@ -17,7 +17,7 @@ export interface ReviewComment {
   created_at: string;
 }
 
-type SuggestionKind = "comment" | "delete" | "replace";
+type SuggestionKind = "comment" | "delete" | "replace" | "insert";
 
 interface Props {
   documentHtml: string;
