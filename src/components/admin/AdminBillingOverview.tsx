@@ -146,7 +146,7 @@ export const AdminBillingOverview = ({ pendingExpandContractId }: { pendingExpan
 function EmptyOrgPrompt() { return <div className="text-center py-12 text-muted-foreground text-sm">Выберите организацию в боковом меню</div>; }
 function EmptyState({ text }: { text: string }) { return <div className="text-center py-8 text-muted-foreground text-sm">{text}</div>; }
 
-function AllBillingContent({ h, statusBadge }: any) {
+function AllBillingContent({ h, statusBadge, expandedContractId, onToggleExpand }: any) {
   return (
     <div className="space-y-4">
       <div className="relative max-w-sm"><Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" /><Input placeholder="Поиск по номеру или организации..." value={h.search} onChange={(e: any) => h.setSearch(e.target.value)} className="pl-9 rounded-xl" /></div>
@@ -158,7 +158,7 @@ function AllBillingContent({ h, statusBadge }: any) {
         </TabsList>
         <TabsContent value="contracts" className="mt-4">
           <div className="flex justify-end mb-3"><Button size="sm" className="rounded-xl gap-1.5" onClick={() => h.setShowCreateContract(true)}><Plus className="w-3.5 h-3.5" />Создать договор</Button></div>
-          {h.filteredContracts.length === 0 ? <EmptyState text="Договоров не найдено" /> : <div className="space-y-2">{h.filteredContracts.map((c: Contract) => <ContractRow key={c.id} c={c} statusBadge={statusBadge} />)}</div>}
+          {h.filteredContracts.length === 0 ? <EmptyState text="Договоров не найдено" /> : <div className="space-y-2">{h.filteredContracts.map((c: Contract) => <ContractRow key={c.id} c={c} statusBadge={statusBadge} expanded={expandedContractId === c.id} onToggle={onToggleExpand} />)}</div>}
         </TabsContent>
         <TabsContent value="invoices" className="mt-4">
           {h.selectedInvoiceIds.size > 0 && <div className="flex items-center gap-2 mb-3"><span className="text-sm text-muted-foreground">Выбрано: {h.selectedInvoiceIds.size}</span><Button variant="destructive" size="sm" className="rounded-xl gap-1.5" onClick={() => h.setShowDeleteConfirm(true)}><Trash2 className="w-3.5 h-3.5" />Удалить</Button><Button variant="ghost" size="sm" onClick={() => h.toggleInvoiceSelection('__clear__')}>Снять выделение</Button></div>}
@@ -172,12 +172,12 @@ function AllBillingContent({ h, statusBadge }: any) {
   );
 }
 
-function OrgContractsList({ contracts, statusBadge }: { contracts: Contract[]; statusBadge: (s: string) => React.ReactNode }) {
+function OrgContractsList({ contracts, statusBadge, expandedContractId, onToggleExpand }: { contracts: Contract[]; statusBadge: (s: string) => React.ReactNode; expandedContractId: string | null; onToggleExpand: (id: string) => void }) {
   if (contracts.length === 0) return <EmptyState text="Нет договоров" />;
-  return <div className="space-y-2">{contracts.map(c => <ContractRow key={c.id} c={c} statusBadge={statusBadge} compact />)}</div>;
+  return <div className="space-y-2">{contracts.map(c => <ContractRow key={c.id} c={c} statusBadge={statusBadge} compact expanded={expandedContractId === c.id} onToggle={onToggleExpand} />)}</div>;
 }
 
-function ContractRow({ c, statusBadge, compact = false }: { c: Contract; statusBadge: (s: string) => React.ReactNode; compact?: boolean }) {
+function ContractRow({ c, statusBadge, compact = false, expanded = false, onToggle }: { c: Contract; statusBadge: (s: string) => React.ReactNode; compact?: boolean; expanded?: boolean; onToggle?: (id: string) => void }) {
   const isSignature = c.kind === 'signature';
   const title = isSignature
     ? (c.document_title || 'Договор на согласование')
@@ -186,28 +186,35 @@ function ContractRow({ c, statusBadge, compact = false }: { c: Contract; statusB
     ? `${compact ? '' : (c.org_name + ' · ')}Внешний договор · ${c.sender_name || ''}${c.contract_date ? ' · ' + format(new Date(c.contract_date), "d MMM yyyy", { locale: ru }) : ''}`
     : `${compact ? '' : (c.org_name || '')} ${c.contract_date ? '· ' + format(new Date(c.contract_date), "d MMM yyyy", { locale: ru }) : ''}`;
   return (
-    <div id={`contract-${c.id}`} className="flex items-center justify-between p-3 rounded-lg border border-border hover:bg-muted/30 transition-colors">
-      <div className="flex items-center gap-3 min-w-0">
-        <ScrollText className={cn("w-4 h-4 shrink-0", isSignature ? "text-amber-500" : "text-primary")} />
-        <div className="min-w-0">
-          <div className="text-sm font-medium truncate">{title}</div>
-          <div className="text-xs text-muted-foreground truncate">{subtitle}</div>
+    <div id={`contract-${c.id}`} className={cn("rounded-lg border transition-colors overflow-hidden", expanded ? "border-primary bg-primary/5" : "border-border hover:bg-muted/30")}>
+      <div className="flex items-center justify-between p-3">
+        <div className="flex items-center gap-3 min-w-0">
+          <ScrollText className={cn("w-4 h-4 shrink-0", isSignature ? "text-amber-500" : "text-primary")} />
+          <div className="min-w-0">
+            <div className="text-sm font-medium truncate">{title}</div>
+            <div className="text-xs text-muted-foreground truncate">{subtitle}</div>
+          </div>
+        </div>
+        <div className="flex items-center gap-2 shrink-0">
+          {isSignature && <Badge variant="outline" className="text-[10px] border-amber-300 text-amber-700 bg-amber-50">На согласование</Badge>}
+          {statusBadge(c.status)}
+          {isSignature && c.signature_token && (
+            <Button
+              variant={expanded ? "default" : "ghost"}
+              size="sm"
+              title={expanded ? "Свернуть" : "Открыть для согласования"}
+              onClick={() => onToggle?.(c.id)}
+            >
+              <Eye className="w-4 h-4" />
+            </Button>
+          )}
         </div>
       </div>
-      <div className="flex items-center gap-2 shrink-0">
-        {isSignature && <Badge variant="outline" className="text-[10px] border-amber-300 text-amber-700 bg-amber-50">На согласование</Badge>}
-        {statusBadge(c.status)}
-        {isSignature && c.signature_token && (
-          <Button
-            variant="ghost"
-            size="sm"
-            title="Открыть для согласования"
-            onClick={() => (window as any).__openContractReview?.(c.signature_token)}
-          >
-            <Eye className="w-4 h-4" />
-          </Button>
-        )}
-      </div>
+      {expanded && isSignature && c.signature_token && (
+        <div className="border-t bg-background p-4">
+          <ContractReviewBody signatureToken={c.signature_token} embedded />
+        </div>
+      )}
     </div>
   );
 }
