@@ -5,10 +5,10 @@ import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
-import { ScrollArea } from "@/components/ui/scroll-area";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import {
   Loader2, FileText, Download, Send, MessageSquareText, ShieldCheck,
-  Check, X, Reply, Upload, AlertTriangle, Trash2, PenLine, CheckCircle2,
+  Check, X, Reply, Upload, AlertTriangle, Trash2, PenLine, CheckCircle2, Eye, FileSignature,
 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -16,7 +16,11 @@ import { ReviewableDocument, type ReviewComment } from "@/components/signing/Rev
 import { DocxRenderer } from "@/components/signing/DocxRenderer";
 import { SignatureRevisionUploader } from "@/components/signing/SignatureRevisionUploader";
 import { PepSignatureStamp } from "@/components/signing/PepSignatureStamp";
+import { PepAgreementDialog } from "@/components/signing/PepAgreementDialog";
+import { HandwrittenSignUploader } from "@/components/signing/HandwrittenSignUploader";
+import { SignedDocumentPreview } from "@/components/signing/SignedDocumentPreview";
 import { getPepAgreementText, PEP_AGREEMENT_VERSION } from "@/constants/pepAgreementTemplate";
+import { OPERATOR } from "@/constants/operatorDetails";
 import { sha256Hex } from "@/utils/documentHash";
 import { useAuth } from "@/hooks/useAuth";
 import { cn } from "@/lib/utils";
