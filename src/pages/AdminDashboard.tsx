@@ -170,7 +170,7 @@ const AdminDashboard = () => {
           {activeTab === "organizations" && <OrganizationsManager openOrgId={openOrgId} onOpenOrgHandled={() => setOpenOrgId(null)} />}
           {activeTab === "marketplace" && <AdminMarketplaceManager />}
           {activeTab === "sales" && <SalesManager />}
-          {activeTab === "billing" && <AdminBillingOverview />}
+          {activeTab === "billing" && <AdminBillingOverview pendingExpandContractId={pendingExpandContractId} />}
           {activeTab === "finance" && <AdminFinanceOverview />}
           {activeTab === "ai" && <AISettingsManager />}
           {activeTab === "users" && <UsersManager />}
@@ -189,12 +189,6 @@ const AdminDashboard = () => {
         <AdminDashboardFooter />
       </main>
 
-      {/* Глобальный диалог просмотра внешнего договора (открывается из колокола или из биллинга) */}
-      <ContractReviewDialog
-        open={!!reviewToken}
-        onOpenChange={(o) => { if (!o) setReviewToken(null); }}
-        signatureToken={reviewToken}
-      />
     </div>
   );
 };
