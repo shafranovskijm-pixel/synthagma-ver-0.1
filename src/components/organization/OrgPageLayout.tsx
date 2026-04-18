@@ -26,6 +26,7 @@ import { AtmosphericBleed } from "@/components/ui/AtmosphericBleed";
 import { HelpCenterDialog, useHelpCenterDialog } from "@/components/shared/HelpCenterDialog";
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { useOrgTheme } from "@/hooks/useOrgTheme";
 
 function getUserInitials(email?: string | null, name?: string | null): string {
   if (name) {
@@ -55,6 +56,9 @@ export default function OrgPageLayout({ title, icon: Icon, children }: OrgPageLa
   const logoUrl = d.branding.brandingSettings.logoUrl;
   const coverUrl = d.branding.brandingSettings.coverUrl;
   const coverPosition = d.branding.brandingSettings.coverPosition;
+
+  // Sync org-wide theme from DB (acts as source of truth across devices)
+  useOrgTheme(organizationId);
 
   // Full visual theme
   const [activeTheme, setActiveTheme] = useState<AdminTheme | null>(() => {

@@ -17,11 +17,15 @@ import { PlatformAnnouncementsBanner } from "@/components/organization/PlatformA
 import { getStoredThemeId, getThemeById, type AdminTheme } from "@/constants/admin-themes";
 import { ThemeAnimations, getStoredAnimationLevel, type AnimationLevel } from "@/components/ui/ThemeAnimations";
 import { AtmosphericBleed } from "@/components/ui/AtmosphericBleed";
+import { useOrgTheme } from "@/hooks/useOrgTheme";
 
 export default function OrganizationDashboard() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const d = useOrgDashboard();
+
+  // Sync org-wide theme from DB (source of truth across devices/staff)
+  useOrgTheme(d.organizationId);
 
   // Visual theme
   const [activeTheme, setActiveTheme] = useState<AdminTheme | null>(() => {

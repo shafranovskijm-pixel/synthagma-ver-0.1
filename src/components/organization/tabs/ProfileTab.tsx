@@ -7,13 +7,15 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Checkbox } from "@/components/ui/checkbox";
-import { User, Bell, Handshake, Save, Eye, EyeOff, Upload, X, Image as ImageIcon, Palette, LogIn, Camera } from "lucide-react";
+import { User, Bell, Handshake, Save, Eye, EyeOff, Upload, X, Image as ImageIcon, Palette, LogIn, Camera, KeyRound, Mail, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 import { PartnerCabinet } from "@/components/organization/PartnerCabinet";
 import { ThemePersonalization } from "@/components/ui/ThemePersonalization";
+import { ThemeSelector } from "@/components/ui/ThemeSelector";
 import { ProfileBrandingTab } from "@/components/organization/ProfileBrandingTab";
 import { ProfileLoginBrandingTab } from "@/components/organization/ProfileLoginBrandingTab";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
+import { useOrgTheme } from "@/hooks/useOrgTheme";
 
 interface ProfileData {
   full_name: string;
@@ -71,12 +73,35 @@ export function ProfileTab({ organizationId, initialSubTab }: ProfileTabProps) {
   const avatarInputRef = useRef<HTMLInputElement>(null);
   const [isDarkMode, setIsDarkMode] = useState(() => document.documentElement.classList.contains('dark'));
 
+  // Org-wide theme (DB-backed, shared across all sessions/staff)
+  const { theme: orgTheme, saveTheme: saveOrgTheme } = useOrgTheme(organizationId);
+
+  // Org login credentials
+  const [orgLoginEmail, setOrgLoginEmail] = useState("");
+  const [newOrgEmail, setNewOrgEmail] = useState("");
+  const [newOrgPassword, setNewOrgPassword] = useState("");
+  const [confirmOrgPassword, setConfirmOrgPassword] = useState("");
+  const [showOrgPassword, setShowOrgPassword] = useState(false);
+  const [savingOrgEmail, setSavingOrgEmail] = useState(false);
+  const [savingOrgPassword, setSavingOrgPassword] = useState(false);
+
   useEffect(() => {
     if (!user) return;
     loadProfile();
     loadNotificationPrefs();
     loadOrgIcon();
-  }, [user]);
+    loadOrgCredentials();
+  }, [user, organizationId]);
+
+  const loadOrgCredentials = async () => {
+    if (!organizationId) return;
+    const { data } = await supabase.rpc("get_decrypted_org_credentials", { p_organization_id: organizationId });
+    const row = Array.isArray(data) ? data[0] : null;
+    if (row?.login_email) {
+      setOrgLoginEmail(row.login_email);
+      setNewOrgEmail(row.login_email);
+    }
+  };
 
   const loadProfile = async () => {
     const { data } = await supabase.from("profiles").select("full_name, email, phone, avatar_url, vk_link, telegram_link, bio").eq("user_id", user!.id).single();
@@ -197,6 +222,50 @@ export function ProfileTab({ organizationId, initialSubTab }: ProfileTabProps) {
     } catch (e: any) { toast.error(e.message); }
   };
 
+  const handleChangeOrgEmail = async () => {
+    if (!newOrgEmail || newOrgEmail === orgLoginEmail) return;
+    setSavingOrgEmail(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("update-org-email", {
+        body: { organization_id: organizationId, new_email: newOrgEmail },
+      });
+      if (error) throw error;
+      if ((data as any)?.error) throw new Error((data as any).error);
+      toast.success("Email для входа обновлён. Сейчас вы будете перенаправлены на страницу входа.");
+      setTimeout(async () => {
+        await supabase.auth.signOut();
+        window.location.href = "/auth";
+      }, 1500);
+    } catch (e: any) {
+      toast.error(e.message || "Ошибка обновления email");
+    } finally {
+      setSavingOrgEmail(false);
+    }
+  };
+
+  const handleChangeOrgPassword = async () => {
+    if (newOrgPassword.length < 6) { toast.error("Минимум 6 символов"); return; }
+    if (newOrgPassword !== confirmOrgPassword) { toast.error("Пароли не совпадают"); return; }
+    setSavingOrgPassword(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("reset-org-password", {
+        body: { organization_id: organizationId, new_password: newOrgPassword },
+      });
+      if (error) throw error;
+      if ((data as any)?.error) throw new Error((data as any).error);
+      toast.success("Пароль для входа обновлён. Сейчас вы будете перенаправлены на страницу входа.");
+      setNewOrgPassword(""); setConfirmOrgPassword("");
+      setTimeout(async () => {
+        await supabase.auth.signOut();
+        window.location.href = "/auth";
+      }, 1500);
+    } catch (e: any) {
+      toast.error(e.message || "Ошибка обновления пароля");
+    } finally {
+      setSavingOrgPassword(false);
+    }
+  };
+
   const toggleNotif = (key: string, channel: "platform" | "browser" | "email") => {
     setNotifs(prev => prev.map(n => n.key === key ? { ...n, [channel]: !n[channel] } : n));
   };
@@ -230,6 +299,9 @@ export function ProfileTab({ organizationId, initialSubTab }: ProfileTabProps) {
         </TabsTrigger>
         <TabsTrigger value="login-branding" className="rounded-lg gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm px-4 py-2">
           <LogIn className="w-4 h-4" /> Бренд. страницы входа
+        </TabsTrigger>
+        <TabsTrigger value="signin" className="rounded-lg gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm px-4 py-2">
+          <KeyRound className="w-4 h-4" /> Вход
         </TabsTrigger>
         <TabsTrigger value="notifications" className="rounded-lg gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm px-4 py-2">
           <Bell className="w-4 h-4" /> Уведомления
@@ -312,13 +384,27 @@ export function ProfileTab({ organizationId, initialSubTab }: ProfileTabProps) {
             <Card className="rounded-2xl">
               <CardHeader>
                 <CardTitle className="text-base flex items-center gap-2"><Palette className="w-4 h-4" /> Тема оформления</CardTitle>
+                <p className="text-xs text-muted-foreground mt-1">Единый интерфейс для всей организации. Применяется на всех устройствах и для всех сотрудников.</p>
               </CardHeader>
-              <CardContent>
+              <CardContent className="space-y-6">
                 <ThemePersonalization isDarkMode={isDarkMode} onToggleDark={(dark) => {
                   setIsDarkMode(dark);
                   if (dark) { document.documentElement.classList.add('dark'); localStorage.setItem('theme', 'dark'); }
                   else { document.documentElement.classList.remove('dark'); localStorage.setItem('theme', 'light'); }
+                  saveOrgTheme({ themeMode: dark ? 'dark' : 'light' }).catch((e) => toast.error(e.message));
                 }} />
+                <div className="pt-4 border-t border-border">
+                  <p className="font-medium text-sm mb-1">Визуальная тема организации</p>
+                  <p className="text-xs text-muted-foreground mb-3">Выбор сохраняется в облаке и применяется ко всем сотрудникам.</p>
+                  <ThemeSelector
+                    value={orgTheme.themeId}
+                    onChange={(id) => {
+                      saveOrgTheme({ themeId: id })
+                        .then(() => toast.success("Тема организации обновлена"))
+                        .catch((e) => toast.error(e.message));
+                    }}
+                  />
+                </div>
               </CardContent>
             </Card>
 
@@ -395,6 +481,75 @@ export function ProfileTab({ organizationId, initialSubTab }: ProfileTabProps) {
         ) : (
           <div className="text-center py-16 text-muted-foreground">Организация не найдена</div>
         )}
+      </TabsContent>
+
+      <TabsContent value="signin">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 max-w-4xl">
+          <Card className="rounded-2xl">
+            <CardHeader>
+              <CardTitle className="text-base flex items-center gap-2"><Mail className="w-4 h-4" /> Email для входа в кабинет организации</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div>
+                <label className="text-sm font-medium text-muted-foreground mb-1 block">Текущий email</label>
+                <Input value={orgLoginEmail} disabled className="bg-muted/30 rounded-xl" />
+              </div>
+              <div>
+                <label className="text-sm font-medium text-muted-foreground mb-1 block">Новый email</label>
+                <Input value={newOrgEmail} onChange={e => setNewOrgEmail(e.target.value)} placeholder="new-org@email.com" className="rounded-xl" />
+              </div>
+              <div className="flex items-start gap-2 p-3 rounded-xl bg-warning/10 border border-warning/20">
+                <AlertTriangle className="w-4 h-4 text-warning shrink-0 mt-0.5" />
+                <p className="text-xs text-warning-foreground/80">После смены email вы будете автоматически разлогинены и должны войти заново с новым адресом.</p>
+              </div>
+              <Button
+                className="w-full rounded-xl btn-gradient"
+                onClick={handleChangeOrgEmail}
+                disabled={!newOrgEmail || newOrgEmail === orgLoginEmail || savingOrgEmail}
+              >
+                {savingOrgEmail ? "Сохранение..." : "Изменить email"}
+              </Button>
+            </CardContent>
+          </Card>
+
+          <Card className="rounded-2xl">
+            <CardHeader>
+              <CardTitle className="text-base flex items-center gap-2"><KeyRound className="w-4 h-4" /> Пароль для входа в кабинет организации</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div className="relative">
+                <Input
+                  type={showOrgPassword ? "text" : "password"}
+                  value={newOrgPassword}
+                  onChange={e => setNewOrgPassword(e.target.value)}
+                  placeholder="Новый пароль (мин. 6 символов)"
+                  className="rounded-xl pr-10"
+                />
+                <button type="button" className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground" onClick={() => setShowOrgPassword(!showOrgPassword)}>
+                  {showOrgPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
+              <Input
+                type={showOrgPassword ? "text" : "password"}
+                value={confirmOrgPassword}
+                onChange={e => setConfirmOrgPassword(e.target.value)}
+                placeholder="Повторите пароль"
+                className="rounded-xl"
+              />
+              <div className="flex items-start gap-2 p-3 rounded-xl bg-warning/10 border border-warning/20">
+                <AlertTriangle className="w-4 h-4 text-warning shrink-0 mt-0.5" />
+                <p className="text-xs text-warning-foreground/80">После смены пароля вы будете автоматически разлогинены и должны войти заново с новым паролем.</p>
+              </div>
+              <Button
+                className="w-full rounded-xl btn-gradient"
+                onClick={handleChangeOrgPassword}
+                disabled={!newOrgPassword || savingOrgPassword}
+              >
+                {savingOrgPassword ? "Сохранение..." : "Изменить пароль"}
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
       </TabsContent>
 
       <TabsContent value="notifications">

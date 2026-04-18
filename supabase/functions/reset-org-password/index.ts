@@ -37,16 +37,19 @@ serve(async (req) => {
       );
     }
 
-    // Verify user has admin role
+    // Verify user has admin or organization role
     const { data: roleData } = await supabaseAuth
       .from('user_roles')
       .select('role')
       .eq('user_id', user.id)
       .single();
 
-    if (!roleData || roleData.role !== 'admin') {
+    const isAdmin = roleData?.role === 'admin';
+    const isOrg = roleData?.role === 'organization';
+
+    if (!isAdmin && !isOrg) {
       return new Response(
-        JSON.stringify({ error: "Только администратор может сбрасывать пароли организаций" }),
+        JSON.stringify({ error: "Нет прав для смены пароля" }),
         { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -58,6 +61,21 @@ serve(async (req) => {
     );
 
     const { organization_id, new_password } = await req.json();
+
+    // If caller is organization role, they must own this organization
+    if (isOrg) {
+      const { data: callerProfile } = await supabaseAdmin
+        .from('profiles')
+        .select('organization_id')
+        .eq('user_id', user.id)
+        .maybeSingle();
+      if (!callerProfile || callerProfile.organization_id !== organization_id) {
+        return new Response(
+          JSON.stringify({ error: "Нет доступа к этой организации" }),
+          { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+    }
 
     if (!organization_id) {
       return new Response(
