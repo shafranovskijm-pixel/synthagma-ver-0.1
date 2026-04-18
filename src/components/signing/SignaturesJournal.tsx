@@ -122,8 +122,11 @@ export function SignaturesJournal({ organizationId }: Props) {
   }, [rows, statusFilter, typeFilter, dateFrom, dateTo, search]);
 
   const counts = useMemo(() => {
-    const c: Record<string, number> = { all: rows.length, sent: 0, signed: 0, viewed: 0, rejected: 0, expired: 0 };
-    rows.forEach((r) => { c[r.status] = (c[r.status] || 0) + 1; });
+    const c: Record<string, number> = { all: rows.length, sent: 0, signed: 0, viewed: 0, rejected: 0, expired: 0, in_review: 0, changes_requested: 0, external_upload: 0 };
+    rows.forEach((r) => {
+      c[r.status] = (c[r.status] || 0) + 1;
+      if (r.document_type === "external_upload") c.external_upload++;
+    });
     return c;
   }, [rows]);
 
@@ -197,12 +200,22 @@ export function SignaturesJournal({ organizationId }: Props) {
       </div>
 
       <Tabs value={statusFilter} onValueChange={setStatusFilter}>
-        <TabsList>
+        <TabsList className="flex-wrap h-auto">
           <TabsTrigger value="all">Все ({counts.all})</TabsTrigger>
+          <TabsTrigger value="in_review">На согласовании ({counts.in_review || 0})</TabsTrigger>
+          <TabsTrigger value="changes_requested">Правки ({counts.changes_requested || 0})</TabsTrigger>
           <TabsTrigger value="sent">Отправлено ({counts.sent || 0})</TabsTrigger>
           <TabsTrigger value="signed">Подписано ({counts.signed || 0})</TabsTrigger>
           <TabsTrigger value="rejected">Отклонено ({counts.rejected || 0})</TabsTrigger>
           <TabsTrigger value="expired">Просрочено ({counts.expired || 0})</TabsTrigger>
+          {!organizationId && (
+            <TabsTrigger
+              value="__external"
+              onClick={(e) => { e.preventDefault(); setStatusFilter("all"); setTypeFilter("external_upload"); }}
+            >
+              Входящие договоры ({counts.external_upload || 0})
+            </TabsTrigger>
+          )}
         </TabsList>
       </Tabs>
 
