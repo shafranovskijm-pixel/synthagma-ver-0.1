@@ -119,13 +119,48 @@ export function ProfileTab({ organizationId, initialSubTab }: ProfileTabProps) {
   const [savingOrgEmail, setSavingOrgEmail] = useState(false);
   const [savingOrgPassword, setSavingOrgPassword] = useState(false);
 
+  // Menu settings (sidebar visibility)
+  const [menuSettings, setMenuSettings] = useState<MenuSettingsLocal>(DEFAULT_MENU);
+
   useEffect(() => {
     if (!user) return;
     loadProfile();
     loadNotificationPrefs();
     loadOrgIcon();
     loadOrgCredentials();
+    loadMenuSettings();
   }, [user, organizationId]);
+
+  const loadMenuSettings = async () => {
+    if (!organizationId) return;
+    const { data: org } = await supabase.from("organizations").select("menu_settings").eq("id", organizationId).maybeSingle();
+    if (org?.menu_settings) {
+      const m = org.menu_settings as any;
+      setMenuSettings({
+        showStats: m.showStats ?? true, showLinks: m.showLinks ?? true, showLaborSafety: m.showLaborSafety ?? true,
+        showDocuments: m.showDocuments ?? true, showServices: m.showServices ?? true, showCompanies: m.showCompanies ?? true,
+      });
+    }
+  };
+
+  const handleSaveMenuSettings = async () => {
+    if (!organizationId) return;
+    const { error } = await supabase.from("organizations").update({ menu_settings: menuSettings as any }).eq("id", organizationId);
+    if (error) { toast.error("Ошибка сохранения"); return; }
+    toast.success("Настройки меню сохранены");
+  };
+
+  const resetMenuSettings = async () => {
+    if (!organizationId) return;
+    setMenuSettings(DEFAULT_MENU);
+    await supabase.from("organizations").update({ menu_settings: DEFAULT_MENU as any }).eq("id", organizationId);
+    toast.success("Меню восстановлено по умолчанию");
+  };
+
+  const reloadMenuSettings = async () => {
+    await loadMenuSettings();
+    toast.success("Меню обновлено");
+  };
 
   const loadOrgCredentials = async () => {
     if (!organizationId) return;
