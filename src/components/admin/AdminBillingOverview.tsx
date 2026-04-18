@@ -17,6 +17,8 @@ import {
   FileCheck, Download, Trash2, CheckCircle2, Calendar
 } from "lucide-react";
 import { useAdminBilling, type Invoice, type BillingDoc, type Contract } from "@/hooks/useAdminBilling";
+import { ContractReviewDialog } from "@/components/signing/ContractReviewDialog";
+import { useState } from "react";
 
 const NAV_SECTIONS = [
   { value: "all" as const, label: "Все расчёты", icon: FolderOpen, group: "overview" },
@@ -32,9 +34,15 @@ const SECTION_DESCRIPTIONS: Record<string, string> = {
   "org-closing": "Акты и закрывающие документы выбранной организации",
 };
 
-export const AdminBillingOverview = () => {
+export const AdminBillingOverview = ({ openSignatureToken }: { openSignatureToken?: string | null } = {}) => {
   const h = useAdminBilling();
   const activeNavItem = NAV_SECTIONS.find(n => n.value === h.activeSection) || NAV_SECTIONS[0];
+  const [reviewToken, setReviewToken] = useState<string | null>(null);
+
+  // Открытие диалога по токену из уведомления (props)
+  if (openSignatureToken && reviewToken !== openSignatureToken) {
+    setTimeout(() => setReviewToken(openSignatureToken), 0);
+  }
 
   const statusBadge = (status: string) => {
     if (status === "paid") return <Badge variant="default" className="bg-emerald-500/10 text-emerald-600 border-emerald-200">Оплачен</Badge>;
@@ -111,9 +119,28 @@ export const AdminBillingOverview = () => {
       <PendingActDialog h={h} />
       <PendingInvoiceDialog h={h} />
       <DeleteInvoicesDialog h={h} />
+
+      {/* Просмотр и согласование внешнего договора */}
+      <ContractReviewDialog
+        open={!!reviewToken}
+        onOpenChange={(o) => { if (!o) setReviewToken(null); }}
+        signatureToken={reviewToken}
+      />
+
+      {/* Глобальный обработчик кликов: делегируем кнопке открытие диалога */}
+      <ContractRowClickListener onOpen={(token) => setReviewToken(token)} contracts={h.filteredContracts.concat(h.orgContracts)} />
     </div>
   );
 };
+
+// Эмулирует клик на ExternalLink → передаёт токен наверх. Через атрибут data-signature-token на кнопке.
+function ContractRowClickListener({ onOpen, contracts }: { onOpen: (t: string) => void; contracts: Contract[] }) {
+  // Слушаем кастомное событие window
+  if (typeof window !== "undefined") {
+    (window as any).__openContractReview = onOpen;
+  }
+  return null;
+}
 
 // ---- Sub-components ----
 function EmptyOrgPrompt() { return <div className="text-center py-12 text-muted-foreground text-sm">Выберите организацию в боковом меню</div>; }
@@ -171,7 +198,14 @@ function ContractRow({ c, statusBadge, compact = false }: { c: Contract; statusB
         {isSignature && <Badge variant="outline" className="text-[10px] border-amber-300 text-amber-700 bg-amber-50">На согласование</Badge>}
         {statusBadge(c.status)}
         {isSignature && c.signature_token && (
-          <Button variant="ghost" size="sm" onClick={() => window.open(`/sign/${c.signature_token}`, "_blank")}><ExternalLink className="w-4 h-4" /></Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            title="Открыть для согласования"
+            onClick={() => (window as any).__openContractReview?.(c.signature_token)}
+          >
+            <Eye className="w-4 h-4" />
+          </Button>
         )}
       </div>
     </div>
