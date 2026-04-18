@@ -141,6 +141,8 @@ export function ContractReviewBody({
       setRevisions((revRes.data as Revision[]) || []);
       setComments((comRes.data as OrgComment[]) || []);
       setAuthorName(user?.email || row.recipient_name || "Получатель");
+      setSignFullName(row.recipient_name || "");
+      setSignEmail(row.recipient_email || user?.email || "");
     } catch (e: any) {
       toast.error(e.message || "Ошибка загрузки");
     } finally {
