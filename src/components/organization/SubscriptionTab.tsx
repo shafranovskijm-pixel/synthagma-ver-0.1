@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 import { SUBSCRIPTION_PLANS, type SubscriptionPlan, formatStorageSize } from "@/constants/subscriptionPlans";
+import { ORG_FEATURE_CATALOG } from "@/constants/orgFeatureCatalog";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Button } from "@/components/ui/button";
@@ -9,30 +10,26 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Textarea } from "@/components/ui/textarea";
 import {
   Crown, BookOpen, Users, HardDrive, Sparkles, Check, X,
-  Palette, Video, FileCheck, Brain, FileSpreadsheet, ClipboardList,
-  HardHat, Infinity, ArrowRight, Calendar, AlertTriangle,
-  ExternalLink, ShoppingCart, CreditCard
+  ArrowRight, Calendar, AlertTriangle,
+  ExternalLink, CreditCard
 } from "lucide-react";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import {
   useSubscriptionTab,
   PLAN_ORDER, planGradients, planAccents, planBorders,
-  featureRows, type FeatureHighlight,
+  featureRows,
 } from "@/hooks/useSubscriptionTab";
 
-const FEATURE_HIGHLIGHTS: FeatureHighlight[] = [
-  { icon: <Palette className="w-5 h-5" />, title: "Брендирование", description: "Ваш логотип и цвета в портале ученика", minPlan: "standard", link: "/feature/branding", categoryKey: "branding" },
-  { icon: <Video className="w-5 h-5" />, title: "Видео-идентификация", description: "Автоматическая проверка личности ученика", minPlan: "standard", link: "/feature/video-id", categoryKey: "video_id" },
-  { icon: <FileCheck className="w-5 h-5" />, title: "Чек-лист документов", description: "100% контроль документов при зачислении", minPlan: "standard", link: "/feature/document-checklist", categoryKey: "document_checklist" },
-  { icon: <ClipboardList className="w-5 h-5" />, title: "Журналы", description: "Автогенерация журналов посещаемости и оценок", minPlan: "professional", categoryKey: "journals" },
-  { icon: <FileSpreadsheet className="w-5 h-5" />, title: "Документооборот", description: "Полный цикл документов организации", minPlan: "professional", link: "/feature/documents", categoryKey: "documents" },
-  { icon: <HardHat className="w-5 h-5" />, title: "Охрана труда", description: "Полное управление обучением ОТ", minPlan: "professional", link: "/feature/labor-safety", categoryKey: "labor_safety" },
-  { icon: <ShoppingCart className="w-5 h-5" />, title: "Магазин курсов", description: "Продавайте и покупайте курсы на маркетплейсе", minPlan: "professional", link: "/feature/course-store", categoryKey: "services" },
-  { icon: <FileSpreadsheet className="w-5 h-5" />, title: "ФИС ФРДО", description: "Автоматическая отчётность в федеральный реестр", minPlan: "maximum", link: "/feature/frdo", categoryKey: "frdo" },
-  { icon: <Brain className="w-5 h-5" />, title: "ИИ-генерация", description: "Создание контента курсов за минуты с ИИ", minPlan: "maximum", link: "/feature/ai-courses", categoryKey: "ai_generation" },
-  { icon: <Infinity className="w-5 h-5" />, title: "Без ограничений", description: "Безлимитные курсы и ученики — масштабируйтесь свободно", minPlan: "maximum", categoryKey: "unlimited" },
-];
+// Build feature highlights dynamically from the unified catalog
+const FEATURE_HIGHLIGHTS = ORG_FEATURE_CATALOG.map((f) => ({
+  key: f.key,
+  icon: <f.icon className="w-5 h-5" />,
+  title: f.label,
+  description: f.description,
+  minPlan: f.minPlan,
+  link: f.link,
+}));
 
 export function SubscriptionTab() {
   const s = useSubscriptionTab();
