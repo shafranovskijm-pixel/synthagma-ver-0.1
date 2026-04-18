@@ -133,8 +133,8 @@ export function SignedDocumentPreview({
         acceptedEdits,
       });
       if (result.url) {
-        window.open(result.url, "_blank");
-        toast.success("Подписанный PDF готов");
+        await downloadBlobFromUrl(result.url, buildDownloadFilename(documentTitle));
+        toast.success("Подписанный PDF скачан");
       }
     } catch (e: any) {
       console.error("[SignedDocumentPreview] generateSignedPdf error", e);
@@ -142,12 +142,6 @@ export function SignedDocumentPreview({
     } finally {
       setGenerating(false);
     }
-  };
-
-  const handleDownloadAttachment = () => {
-    const url = scanUrl || attachedUrl;
-    if (!url) return;
-    window.open(url, "_blank");
   };
 
   return (
