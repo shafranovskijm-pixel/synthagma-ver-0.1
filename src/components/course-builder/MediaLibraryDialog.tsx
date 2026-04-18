@@ -330,6 +330,45 @@ export function MediaLibraryDialog({ open, onClose, onSelect, filter = "all", or
     setLoading(false);
   };
 
+  const handleDeleteFile = async (file: StorageFile) => {
+    setDeleting(true);
+    try {
+      const path = `${file.folder}/${file.name}`;
+      let removeError: any = null;
+
+      if (file.bucket === "course-videos") {
+        const { data: config } = await supabase.functions.invoke("get-external-storage-config");
+        if (config?.configured && config?.url && config?.key) {
+          const { createClient } = await import("@supabase/supabase-js");
+          const extClient = createClient(config.url, config.key);
+          const { error } = await extClient.storage.from(file.bucket).remove([path]);
+          removeError = error;
+        } else {
+          removeError = new Error("Внешнее хранилище не настроено");
+        }
+      } else {
+        const { error } = await supabase.storage.from(file.bucket).remove([path]);
+        removeError = error;
+      }
+
+      if (removeError) throw removeError;
+
+      setFiles(prev => prev.filter(f => !(f.bucket === file.bucket && f.folder === file.folder && f.name === file.name)));
+      if (selectedFile && selectedFile.bucket === file.bucket && selectedFile.folder === file.folder && selectedFile.name === file.name) {
+        setSelectedFile(null);
+      }
+      toast.success("Файл удалён");
+    } catch (err: any) {
+      console.error("Delete error:", err);
+      toast.error("Ошибка удаления", { description: err?.message || "Не удалось удалить файл" });
+    } finally {
+      setDeleting(false);
+      setFileToDelete(null);
+    }
+  };
+
+  const unusedCount = files.filter(f => f.isUsed === false).length;
+
   const filteredFiles = files
     .filter((f) => {
       if (filter === "video") return f.type === "video";
@@ -337,6 +376,7 @@ export function MediaLibraryDialog({ open, onClose, onSelect, filter = "all", or
       if (filter === "audio") return f.type === "audio";
       return true;
     })
+    .filter((f) => !showOnlyUnused || f.isUsed === false)
     .filter((f) => !search || f.name.toLowerCase().includes(search.toLowerCase()) || f.folder.toLowerCase().includes(search.toLowerCase()))
     .sort((a, b) => (b.created_at || "").localeCompare(a.created_at || ""));
 
@@ -344,13 +384,28 @@ export function MediaLibraryDialog({ open, onClose, onSelect, filter = "all", or
     <Dialog open={open} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-4xl max-h-[85vh] flex flex-col">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
+          <DialogTitle className="flex items-center gap-2 flex-wrap">
             <FolderOpen className="w-5 h-5" />
             Медиатека
             {!loading && files.length > 0 && (
               <Badge variant="secondary" className="ml-2 text-xs">
                 {filteredFiles.length} файл(ов)
               </Badge>
+            )}
+            {!loading && unusedCount > 0 && (
+              <button
+                type="button"
+                onClick={() => setShowOnlyUnused(v => !v)}
+                className={cn(
+                  "text-[11px] px-2 py-0.5 rounded-full border transition-colors",
+                  showOnlyUnused
+                    ? "bg-primary/15 border-primary/40 text-primary"
+                    : "border-muted-foreground/30 text-muted-foreground hover:border-primary/40 hover:text-primary"
+                )}
+                title="Показать только неиспользуемые"
+              >
+                {unusedCount} не используется
+              </button>
             )}
           </DialogTitle>
         </DialogHeader>
