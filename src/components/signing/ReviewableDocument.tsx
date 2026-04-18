@@ -56,52 +56,48 @@ export function ReviewableDocument({ documentHtml, comments, authorName, canComm
     setSelection(null);
     setInsertCaret(null);
     try { window.getSelection()?.removeAllRanges(); } catch {}
+    // Удаляем визуальный caret-маркер
+    docRef.current?.querySelectorAll("[data-caret-marker]").forEach(el => el.remove());
   }, []);
 
-  // Слушаем выделение / клик в документе
+  // Получает caret-позицию из координат клика (cross-browser)
+  const getCaretFromPoint = (clientX: number, clientY: number): { node: Node; offset: number } | null => {
+    const doc: any = document;
+    if (typeof doc.caretPositionFromPoint === "function") {
+      const pos = doc.caretPositionFromPoint(clientX, clientY);
+      if (pos && pos.offsetNode) return { node: pos.offsetNode, offset: pos.offset };
+    }
+    if (typeof doc.caretRangeFromPoint === "function") {
+      const range = doc.caretRangeFromPoint(clientX, clientY);
+      if (range) return { node: range.startContainer, offset: range.startOffset };
+    }
+    return null;
+  };
+
+  // Слушаем выделение в документе (для selection-режима)
   useEffect(() => {
     const handler = (e: Event) => {
       const target = e.target as HTMLElement | null;
       if (target && (target.closest("textarea, input, button"))) return;
 
       const sel = window.getSelection();
-      if (!sel || sel.rangeCount === 0) {
-        if (!draftKind) { setSelection(null); setInsertCaret(null); }
+      if (!sel || sel.rangeCount === 0 || sel.isCollapsed) {
+        // Collapsed — обработает onClickDoc
         return;
       }
       const range = sel.getRangeAt(0);
-      // Клик внутри документа?
       if (!docRef.current || !docRef.current.contains(range.commonAncestorContainer)) {
-        if (!draftKind) { setSelection(null); setInsertCaret(null); }
+        if (!draftKind) { setSelection(null); }
         return;
       }
-
-      // Collapsed → caret для insert
-      if (sel.isCollapsed) {
-        const offsets = computeOffsets(docRef.current, range);
-        if (offsets) {
-          // Используем bounding rect курсора (через временный span)
-          const tempRange = range.cloneRange();
-          let rect = tempRange.getBoundingClientRect();
-          if (rect.width === 0 && rect.height === 0) {
-            // Пустой rect — берём родительский элемент
-            const parent = (range.startContainer.nodeType === Node.TEXT_NODE
-              ? range.startContainer.parentElement
-              : range.startContainer as HTMLElement);
-            if (parent) rect = parent.getBoundingClientRect();
-          }
-          setSelection(null);
-          setInsertCaret({ offset: offsets.start, rect });
-        }
-        return;
-      }
-
       const text = sel.toString().trim();
-      if (text.length < 3 || text.length > 1000) { if (!draftKind) { setSelection(null); setInsertCaret(null); } return; }
+      if (text.length < 3 || text.length > 1000) { if (!draftKind) setSelection(null); return; }
       const offsets = computeOffsets(docRef.current, range);
-      if (!offsets) { if (!draftKind) { setSelection(null); setInsertCaret(null); } return; }
+      if (!offsets) { if (!draftKind) setSelection(null); return; }
       const rect = range.getBoundingClientRect();
       setInsertCaret(null);
+      // Удаляем caret-маркер при выделении
+      docRef.current?.querySelectorAll("[data-caret-marker]").forEach(el => el.remove());
       setSelection({ text, rect, startOffset: offsets.start, endOffset: offsets.end });
     };
     document.addEventListener("mouseup", handler);
@@ -111,6 +107,88 @@ export function ReviewableDocument({ documentHtml, comments, authorName, canComm
       document.removeEventListener("touchend", handler);
     };
   }, [draftKind]);
+
+  // Обработчик клика по документу для caret-режима (точная позиция вставки)
+  const handleDocClick = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+    const target = e.target as HTMLElement;
+    // Если кликнули на mark/ins — это переход к комментарию, не caret
+    const mark = target.closest("mark[data-comment-id], ins[data-comment-id]");
+    if (mark) {
+      const id = mark.getAttribute("data-comment-id");
+      if (id) setActiveCommentId(id);
+      return;
+    }
+
+    // Если есть выделение — это selection, не caret
+    const sel = window.getSelection();
+    if (sel && !sel.isCollapsed && sel.toString().trim().length >= 3) return;
+
+    // Если уже открыта форма — не перехватываем
+    if (draftKind) return;
+
+    if (!canComment || !docRef.current) return;
+
+    // Получаем caret из точки клика
+    const caretPos = getCaretFromPoint(e.clientX, e.clientY);
+    if (!caretPos) return;
+
+    // Если node не текстовый или вне документа — пытаемся привязаться к ближайшему text-node
+    let node = caretPos.node;
+    let nodeOffset = caretPos.offset;
+
+    if (node.nodeType !== Node.TEXT_NODE) {
+      // Эвристика: ищем ближайший text-node внутри (для границ блоков)
+      const el = node as HTMLElement;
+      const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT, null);
+      const first = walker.nextNode() as Text | null;
+      if (first) {
+        node = first;
+        nodeOffset = 0;
+      } else {
+        return;
+      }
+    }
+
+    if (!docRef.current.contains(node)) return;
+
+    // Вычисляем flat-offset
+    const range = document.createRange();
+    try {
+      range.setStart(node, Math.min(nodeOffset, (node as Text).data.length));
+      range.collapse(true);
+    } catch {
+      return;
+    }
+    const offsets = computeOffsets(docRef.current, range);
+    if (!offsets) return;
+
+    // Получаем точный rect курсора через временный zero-width span
+    let rect: DOMRect;
+    const probe = document.createElement("span");
+    probe.textContent = "\u200b";
+    try {
+      range.insertNode(probe);
+      rect = probe.getBoundingClientRect();
+    } catch {
+      rect = new DOMRect(e.clientX, e.clientY, 0, 18);
+    }
+
+    // Удаляем старый caret-маркер
+    docRef.current.querySelectorAll("[data-caret-marker]").forEach(el => el.remove());
+
+    // Заменяем probe на видимый мигающий маркер
+    const marker = document.createElement("span");
+    marker.setAttribute("data-caret-marker", "1");
+    marker.className = "inline-block w-[2px] h-[1em] bg-emerald-500 align-middle animate-pulse mx-[1px] rounded-sm";
+    marker.style.cssText = "display:inline-block;width:2px;height:1.1em;background:#10b981;vertical-align:middle;margin:0 1px;border-radius:1px;animation:pulse 1s ease-in-out infinite;";
+    probe.parentNode?.replaceChild(marker, probe);
+
+    // Очищаем браузерный selection чтобы не мешал
+    try { window.getSelection()?.removeAllRanges(); } catch {}
+
+    setSelection(null);
+    setInsertCaret({ offset: offsets.start, rect: marker.getBoundingClientRect() });
+  }, [canComment, draftKind]);
 
   // Подсветка фрагментов с учётом типа правки
   useEffect(() => {
@@ -208,6 +286,12 @@ export function ReviewableDocument({ documentHtml, comments, authorName, canComm
     <div className="grid grid-cols-1 lg:grid-cols-[1fr_340px] gap-4 relative">
       {/* Документ */}
       <div className="relative">
+        {canComment && !selection && !draftKind && (
+          <div className="mb-2 text-xs text-muted-foreground bg-emerald-50 border border-emerald-200 rounded-md px-3 py-1.5 flex items-center gap-2">
+            <Plus className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+            <span>Выделите фрагмент для правки или <b>кликните в нужное место</b> текста, чтобы добавить новый пункт.</span>
+          </div>
+        )}
         <div
           ref={docRef}
           className={
@@ -224,14 +308,7 @@ export function ReviewableDocument({ documentHtml, comments, authorName, canComm
             "[&_ins[data-kind='insert-only']]:font-medium"
           }
           dangerouslySetInnerHTML={{ __html: documentHtml }}
-          onClick={(e) => {
-            const target = e.target as HTMLElement;
-            const mark = target.closest("mark[data-comment-id], ins[data-comment-id]");
-            if (mark) {
-              const id = mark.getAttribute("data-comment-id");
-              if (id) setActiveCommentId(id);
-            }
-          }}
+          onClick={handleDocClick}
         />
 
         {/* Floating toolbar при выделении */}
@@ -501,7 +578,7 @@ function insertAtOffset(root: HTMLElement, offset: number, commentId: string, te
   return true;
 }
 
-/** Удаляет все mark/ins подсветки, возвращая исходный текст. */
+/** Удаляет все mark/ins подсветки, возвращая исходный текст. Caret-маркер не трогаем. */
 function clearHighlights(root: HTMLElement) {
   // Сначала удаляем вставленные <ins> (они не были частью оригинала)
   root.querySelectorAll("ins[data-comment-id]").forEach((el) => el.parentNode?.removeChild(el));
