@@ -287,6 +287,24 @@ export default function CourseBuilder({ embedded, embeddedCourseId, onExitEditor
                 </div>
               )}
             </div>
+
+            {/* Embedded save bar — внутри центральной колонки, чтобы не перекрывать боковые sticky-панели */}
+            {embedded && (
+              <div className="sticky bottom-4 z-30 flex flex-col items-center gap-2 pt-4 pointer-events-none">
+                <div className="pointer-events-auto flex flex-col items-center gap-2">
+                  <Tooltip><TooltipTrigger asChild>
+                    <Button onClick={() => saveCourse()} disabled={isSaving} size="lg" className="btn-gradient rounded-2xl gap-2 sm:gap-3 px-6 sm:px-8 py-5 sm:py-6 text-base sm:text-lg font-semibold shadow-2xl hover:scale-105 transition-transform">
+                      {isSaving ? <SigmaSpinner /> : <Save className="w-5 h-5" />}
+                      {isSaving ? "Сохранение..." : "Сохранить курс"}
+                      {hasUnsavedChanges && !isSaving && <span className="ml-1 w-2 h-2 rounded-full bg-white/80 animate-pulse" />}
+                    </Button>
+                  </TooltipTrigger><TooltipContent>Сохранить все изменения курса</TooltipContent></Tooltip>
+                  {autoSaveStatus === 'saved' && <span className="text-xs text-sigma-green flex items-center gap-1 animate-in fade-in"><Check className="w-3 h-3" /> Сохранено</span>}
+                  {autoSaveStatus === 'saving' && <span className="text-xs text-muted-foreground flex items-center gap-1"><SigmaSpinner size="xs" /> Автосохранение...</span>}
+                  {autoSaveStatus === 'error' && <span className="text-xs text-destructive flex items-center gap-1"><AlertCircle className="w-3 h-3" /> Ошибка сохранения</span>}
+                </div>
+              </div>
+            )}
           </div>
 
           {/* RIGHT: sticky "Добавить урок" panel (desktop) */}
