@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Eye, FileText, Search, Send, CheckCircle2, XCircle, AlertTriangle, Copy, Download, FileDown } from "lucide-react";
+import { Eye, FileText, Search, Send, CheckCircle2, XCircle, AlertTriangle, Copy, Download, FileDown, MessageCircle, Edit3 } from "lucide-react";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 import { toast } from "sonner";
 import { format } from "date-fns";
