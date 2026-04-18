@@ -267,6 +267,12 @@ export function MediaLibraryDialog({ open, onClose, onSelect, filter = "all", or
         internalScans.push(scanPrefix(supabase, "course-files", cid, baseUrl));
         internalScans.push(scanPrefix(supabase, "presentations", cid, baseUrl));
       }
+      // Imported files (e.g. from course migration) live at course-files/{orgId}/<uuid>.<ext>
+      internalScans.push(
+        scanPrefix(supabase, "course-files", orgId, baseUrl).then(arr =>
+          arr.map(f => ({ ...f, courseName: f.courseName || "Импортированные файлы" }))
+        )
+      );
       internalScans.push(scanPrefix(supabase, "org-branding", orgId, baseUrl));
       internalScans.push(scanPrefix(supabase, "library-files", `library/${orgId}`, baseUrl));
 
