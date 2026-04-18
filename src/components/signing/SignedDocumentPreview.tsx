@@ -256,12 +256,6 @@ export function SignedDocumentPreview({
             Подписи имеют юридическую силу, равную собственноручной (ст. 6 63-ФЗ).
           </div>
           <div className="flex gap-2 ml-auto">
-            {(attachedUrl || scanUrl) && (
-              <Button variant="outline" size="sm" className="gap-1.5" onClick={handleDownloadAttachment}>
-                <Download className="w-4 h-4" />
-                Скачать вложение
-              </Button>
-            )}
             <Button size="sm" className="gap-1.5" onClick={handleDownloadPdf} disabled={generating}>
               {generating ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileDown className="w-4 h-4" />}
               {generating ? "Сборка PDF…" : "Скачать подписанный PDF"}
