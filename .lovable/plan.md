@@ -1,49 +1,61 @@
 
-## Проблемы (с скриншота)
-
-1. **DOCX не рендерится**: ошибка `Can't find end of central directory: is this a zip file?` — `mammoth.browser` получил не тот ArrayBuffer. Скорее всего `fetch(file_url)` вернул HTML-страницу логина Supabase Storage (файл в приватном бакете) или редирект, а не сам .docx. Нужно: брать файл через `supabase.storage.from(bucket).createSignedUrl(...)` или `download(...)`, а не публичный URL.
-2. **Просмотр должен быть встроенным**, а не модалкой. Раскрывается прямо в "Биллинг → Договоры".
-3. **Клик по уведомлению** должен вести в Биллинг → конкретный договор и сразу его раскрывать (а не открывать модалку).
+## Проблема
+Сейчас «правка» сохраняется как обычный комментарий с цитатой. Визуально в тексте только бледно-жёлтая подсветка. Нет различия «удалить»/«заменить»/«добавить», нет перечёркивания и зелёной вставки.
 
 ## Решение
 
-### A. Встроенный просмотр в админ-биллинге
-Заменить `ContractReviewDialog` на инлайн-блок `ContractReviewInline`, который раскрывается в строке договора (accordion-style). При клике на иконку "глаз" (или строку) — карточка ниже расширяется, показывая документ + панель действий + комментарии. Повторный клик — сворачивает.
+### 1. Типизация правок
+Расширить комментарий полем **`suggestion_type`** (хранить в `position_anchor.suggestion`):
+- `comment` — обычный комментарий (как сейчас)
+- `delete` — удалить выделенный фрагмент
+- `replace` — заменить выделенный фрагмент новым текстом
+- `insert` — вставить текст в позицию (без выделения)
 
-- Состояние `expandedContractId` в `AdminBillingOverview`.
-- Удалить `(window as any).__openContractReview` хак.
-- Сам компонент `ContractReviewInline.tsx` — переиспользует логику `ContractReviewDialog` (рендер PDF/DOCX/HTML, комментарии, действия), только без `<Dialog>`-обёртки. Вынести общую часть в `ContractReviewBody.tsx`.
+`position_anchor` JSONB уже есть — добавим в него `{ kind: "delete" | "replace" | "insert", replacement?: string }`. Без миграции БД.
 
-### B. Фикс DOCX-рендера
-В `DocxRenderer.tsx`:
-- Если `file_url` указывает на Supabase Storage — извлекать `bucket` и `path` и грузить через `supabase.storage.from(bucket).download(path)` → `Blob.arrayBuffer()`.
-- Fallback: обычный `fetch` с проверкой `Content-Type` (если HTML — ошибка "Файл недоступен / приватный бакет").
-- Логировать первые байты ArrayBuffer (PK\x03\x04 = валидный zip/docx).
+### 2. UI выделения правки в тексте (`ReviewableDocument`)
+В попапе после выделения — **3 кнопки** вместо одной:
+- 💬 **Комментарий** (как сейчас)
+- ✂️ **Предложить удалить**
+- ✏️ **Предложить замену** → textarea с новым текстом
 
-Проверить, в какой бакет загружаются внешние договоры (предположительно `signature-files` или `billing-documents`) — посмотрю в `ExternalContractUploader.tsx`. Если бакет приватный — переключить на signed URL при создании revision (или хранить относительный путь и каждый раз генерировать signed URL на чтение).
+Подсветка в HTML (через `<mark>`-обёртки):
+- `comment` → жёлтый фон (как сейчас)
+- `delete` → **красный фон + `text-decoration: line-through`**
+- `replace` → красный + перечёркнутый исходный фрагмент, **рядом вставляется зелёный `<ins>` с предложенным текстом**
+- `insert` (без выделения) → маркер «➕» в позиции + зелёный текст вставки в боковой панели
 
-### C. Клик по уведомлению → инлайн-раскрытие
-В `AdminDashboard.tsx`:
-- При клике на signature-уведомление: переключить `activeTab = "billing"` + установить `pendingExpandContractId = n.related_entity_id`.
-- Прокинуть `pendingExpandContractId` пропом в `AdminBillingOverview` → при изменении автоматически выставлять `expandedContractId`, скроллить к строке.
-- Убрать всю логику открытия модалки и `__openContractReview`.
+CSS-классы (Tailwind arbitrary):
+```
+[&_mark[data-kind="delete"]]:bg-red-200/70 [&_mark[data-kind="delete"]]:line-through [&_mark[data-kind="delete"]]:text-red-800
+[&_ins[data-kind="insert"]]:bg-emerald-200/70 [&_ins[data-kind="insert"]]:no-underline [&_ins[data-kind="insert"]]:text-emerald-800
+```
 
-### D. Read-only встроенный просмотр в кабинете организации
-В `CounterpartiesSection.tsx` тоже инлайн-раскрытие (тот же `ContractReviewBody` в read-only режиме), убрать модалку.
+### 3. Боковая панель комментариев
+Каждая карточка получает **бейдж** типа правки:
+- `🗨 Комментарий` (нейтральный)
+- `🗑 Удалить` (красный)
+- `↔ Заменить` (амбер) + блок с предложенным текстом зелёным
+- `➕ Вставить` (зелёный)
+
+Клик по бейджу скроллит к подсветке в документе.
+
+### 4. Применение правок отправителем (опционально, фаза 2)
+Кнопка «Принять правку» у отправителя/админа — реальной модификации HTML пока не делаем (договор у нас файл). Только меняем `resolved=true`. Это уже работает через существующий флаг.
 
 ## Файлы
 
-- **Новый** `src/components/signing/ContractReviewBody.tsx` — общее тело (документ + комментарии + действия), без обёртки.
-- **Удалить/упростить** `src/components/signing/ContractReviewDialog.tsx` — больше не нужен либо превращается в тонкую обёртку для legacy.
-- `src/components/signing/DocxRenderer.tsx` — поддержка Supabase Storage download + проверка валидности zip.
-- `src/components/admin/AdminBillingOverview.tsx` — инлайн-аккордеон + приём `pendingExpandContractId`.
-- `src/pages/AdminDashboard.tsx` — `pendingExpandContractId` state, прокидка в биллинг, удаление `__openContractReview`.
-- `src/components/organization/tabs/documents/CounterpartiesSection.tsx` — инлайн-раскрытие.
+- **`src/components/signing/ReviewableDocument.tsx`**:
+  - тулбар с 3 действиями (комментарий / удалить / заменить);
+  - расширить `highlightTextInElement` — принимать `kind` и `replacement`, рисовать `<mark data-kind="delete">` + опциональный `<ins data-kind="insert">` рядом;
+  - CSS-классы для красного/зелёного;
+  - в передаче `onAddComment` добавить `kind` и `replacement` в `positionAnchor`.
+
+- **`src/components/signing/ContractReviewBody.tsx`**:
+  - в `handleAddComment` пробрасывать `position_anchor` как есть (без изменений в RPC);
+  - бейджи типа правки в правой панели для PDF-режима тоже (без подсветки в iframe — только в карточках).
 
 ## Этапы
-1. Создать `ContractReviewBody`, перенести в него логику из Dialog.
-2. Фикс `DocxRenderer` (Supabase Storage download + диагностика).
-3. Инлайн-режим в `AdminBillingOverview` + проп `pendingExpandContractId`.
-4. Перенаправление из колокола в `AdminDashboard`.
-5. Инлайн-режим в `CounterpartiesSection`.
-6. End-to-end проверка: загрузить DOCX и PDF договор, открыть из колокола, оставить комментарий, запросить правки.
+1. Расширить `ReviewableDocument` (тулбар, типы, подсветка, бейджи).
+2. Прокинуть тип в `ContractReviewBody` (PDF + DOCX/HTML).
+3. End-to-end проверка: выделить фрагмент → «Заменить» → ввести текст → увидеть красное перечёркивание + зелёную вставку + бейдж в панели.
