@@ -81,7 +81,7 @@ function AddLessonGrid({
   );
 }
 
-export default function CourseBuilder({ embedded, embeddedCourseId }: CourseBuilderProps = {}) {
+export default function CourseBuilder({ embedded, embeddedCourseId, onExitEditor }: CourseBuilderProps = {}) {
   const navigate = useNavigate();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isSavingForPreview, setIsSavingForPreview] = useState(false);
