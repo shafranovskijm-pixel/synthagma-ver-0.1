@@ -6622,6 +6622,10 @@ export type Database = {
       current_company_id: { Args: never; Returns: string }
       current_organization_id: { Args: never; Returns: string }
       decrypt_password: { Args: { p_text: string }; Returns: string }
+      delete_signature_comment_by_token: {
+        Args: { p_comment_id: string; p_token: string }
+        Returns: undefined
+      }
       encrypt_password: { Args: { p_text: string }; Returns: string }
       find_knowledge_bank_content: {
         Args: { p_min_similarity?: number; p_title: string }
