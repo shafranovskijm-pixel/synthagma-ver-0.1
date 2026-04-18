@@ -1,14 +1,19 @@
 import { useState, useRef } from "react";
 import DOMPurify from "dompurify";
+import { useNavigate } from "react-router-dom";
 import { checkAiLimitGlobal, incrementAiLimitGlobal } from "@/hooks/useAiGenerationLimit";
+import { useSubscriptionLimits } from "@/hooks/useSubscriptionLimits";
+import { useLessonMedia } from "@/hooks/useLessonMedia";
 import { safeInvoke } from "@/utils/safeInvoke";
 import { LazyMediaPreview } from "@/components/course-builder/LazyMediaPreview";
 import { MediaLibraryDialog } from "../../MediaLibraryDialog";
+import { UploadProgressBlock } from "@/components/course-builder/UploadProgressBlock";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
-  Image as ImageIcon, Video, Upload, Headphones, BookOpen, FolderOpen, Play, Sparkles, Wand2, Trash2 } from "lucide-react";
+  Image as ImageIcon, Video, Upload, Headphones, BookOpen, FolderOpen, Play, Sparkles, Wand2, Trash2, Lock } from "lucide-react";
 import type { ContentBlock } from "../types";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 
