@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { ThemePersonalization } from "@/components/ui/ThemePersonalization";
 import {
   Palette, Database, Shield, Bell, Save, Globe, Tag, Sparkles,
-  RefreshCw, BarChart3, FileText, Bot, Terminal, Users, FolderOpen
+  RefreshCw, BarChart3, FileText, Bot, Terminal, Users, FolderOpen, FileSignature
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -16,6 +16,7 @@ import { AISettingsManager } from "./AISettingsManager";
 import { DevToolsPanel } from "./DevToolsPanel";
 import { AdminStaffTab } from "./AdminStaffTab";
 import { AdminMediaLibrary } from "./AdminMediaLibrary";
+import { SignaturesJournal } from "@/components/signing/SignaturesJournal";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 
 interface SystemSettings {
@@ -23,13 +24,14 @@ interface SystemSettings {
   registrationEnabled: boolean;
 }
 
-type SectionKey = "theme" | "staff" | "db" | "media" | "cache" | "seo" | "system" | "promo" | "notifications" | "analytics" | "content" | "ai" | "devtools";
+type SectionKey = "theme" | "staff" | "db" | "media" | "signatures" | "cache" | "seo" | "system" | "promo" | "notifications" | "analytics" | "content" | "ai" | "devtools";
 
 const SECTIONS: { key: SectionKey; label: string; icon: React.ElementType; color: string }[] = [
   { key: "theme", label: "Тема оформления", icon: Palette, color: "text-violet-500" },
   { key: "staff", label: "Сотрудники", icon: Users, color: "text-cyan-500" },
   { key: "db", label: "Статистика БД", icon: Database, color: "text-blue-500" },
   { key: "media", label: "Медиатека", icon: FolderOpen, color: "text-teal-500" },
+  { key: "signatures", label: "Подписания", icon: FileSignature, color: "text-indigo-500" },
   { key: "cache", label: "Сброс кеша", icon: RefreshCw, color: "text-red-500" },
   { key: "seo", label: "SEO", icon: Globe, color: "text-emerald-500" },
   { key: "system", label: "Системные", icon: Shield, color: "text-orange-500" },
@@ -218,6 +220,7 @@ export function AdminSettings() {
 
       case "staff": return <AdminStaffTab />;
       case "media": return <AdminMediaLibrary />;
+      case "signatures": return <SignaturesJournal />;
       case "analytics": return <AdminAnalytics />;
       case "content": return <BlogManager />;
       case "ai": return <AISettingsManager />;
