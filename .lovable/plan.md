@@ -1,50 +1,32 @@
 
-## Задача
-1. Изменить дефолтный email админа Синтагмы: `admin@sintagma.com.ru` → `support@syntagma.com.ru` (это рабочий SMTP-email отправки).
-2. Сделать поле «Email администратора Синтагмы» в настройках **необязательным** — по умолчанию пустое.
-3. Исправить ошибку `new row violates row-level security policy` при загрузке внешнего договора (на скриншоте).
 
-## Что меняем
+## Проблема
+Ошибка `No organization` при отправке внешнего договора. Источник — RPC `create_external_contract_signature`: она вызывает `current_organization_id()`, которая смотрит только в `profiles.organization_id`. У текущего пользователя там NULL — он связан с организацией через `org_staff` (или владелец, у которого профильное поле не заполнено).
 
-### 1. Дефолтный email
-- Миграция: `UPDATE app_settings SET setting_value = 'support@syntagma.com.ru' WHERE setting_key = 'admin_signature_email'` — но только если значение всё ещё дефолтное `admin@sintagma.com.ru`. Иначе не трогаем (вдруг уже поменяли вручную).
-- Альтернатива (выбираю): оставляем строку в БД пустой, а fallback-значение `support@syntagma.com.ru` хранится в коде на случай, если поле не заполнено.
+При этом сама страница `/organization` работает корректно и знает свой `organizationId` — он уже передаётся пропом в `ExternalContractUploader`. Просто RPC его игнорирует и выводит свой.
 
-### 2. Поле необязательное
-- В админке (где редактируется `admin_signature_email`) — убрать `required`, placeholder сделать `support@syntagma.com.ru`, подпись «Если оставить пустым, будет использоваться support@syntagma.com.ru».
-- Найду компонент, где это поле рендерится (вероятно `AdminSettings` → SMTP/General).
+## Решение
 
-### 3. Фикс RLS на загрузке внешнего договора
-**Источник ошибки:** `ExternalContractUploader.tsx` загружает файл в bucket `external-contracts` через `supabase.storage.from('external-contracts').upload(path, file)`. RLS на `storage.objects` для этого бакета, скорее всего, не разрешает INSERT текущему пользователю-организации (или path не подпадает под политику).
+### 1. RPC `create_external_contract_signature` — fallback логика
+- Добавить параметр `p_organization_id uuid DEFAULT NULL`.
+- Логика определения организации внутри RPC:
+  1. Если `p_organization_id` передан → проверить, что пользователь действительно член этой организации (через `profiles.organization_id` ИЛИ `org_staff`).
+  2. Иначе fallback: `current_organization_id()` → `org_staff WHERE user_id = auth.uid()`.
+- Если ничего не найдено — выбросить понятную ошибку с подсказкой.
 
-**План фикса:**
-- Проверю текущие политики бакета `external-contracts` через `supabase--read_query`.
-- Посмотрю, какой путь формирует `ExternalContractUploader` (по структуре политики path должен начинаться с `{org_id}/...`).
-- Скорректирую миграцию: добавить INSERT-политику вида:
-  ```sql
-  CREATE POLICY "Org users upload external contracts" ON storage.objects
-  FOR INSERT TO authenticated
-  WITH CHECK (
-    bucket_id = 'external-contracts'
-    AND (storage.foldername(name))[1] = current_organization_id()::text
-  );
-  ```
-  Аналогично SELECT — для скачивания владельцем-орг и админом.
-- Если в `ExternalContractUploader` путь сейчас не `{orgId}/...` — поправлю на корректный.
+### 2. Клиент `ExternalContractUploader.tsx`
+- Передавать `p_organization_id: organizationId` в RPC явно (он уже есть в пропсах).
 
-### 4. Frontend fallback
-В `CounterpartiesSection.tsx`, где читается `admin_signature_email` из `app_settings`:
-```ts
-const adminEmail = settingValue?.trim() || 'support@syntagma.com.ru';
-```
+### 3. Бонус — улучшить `current_organization_id()` (безопасно)
+- Добавить fallback на `org_staff`: сначала ищем в `profiles`, если NULL — берём из `org_staff` (LIMIT 1, по самой ранней записи).
+- Это чисто аддитивно: где раньше возвращался NULL — теперь может вернуться валидный orgId. Существующие 137 RLS-политик от этого только начнут пропускать тех, кого раньше отбивали по ошибке. Риск минимальный, но улучшит UX в десятках мест.
 
-## Технически
-- Изменения аддитивные, никаких ломающих API.
-- Миграция: одна — для UPDATE дефолта (если ещё не меняли) + DROP/CREATE storage policies для `external-contracts`.
-- Файлы: `CounterpartiesSection.tsx`, `ExternalContractUploader.tsx` (проверка пути), компонент админ-настроек (placeholder + не-required).
+## Файлы
+- Миграция: `CREATE OR REPLACE FUNCTION create_external_contract_signature` + `CREATE OR REPLACE FUNCTION current_organization_id` с fallback на `org_staff`.
+- `src/components/signing/ExternalContractUploader.tsx` — передать `p_organization_id` в RPC.
 
 ## Этапы
-1. Проверка текущих RLS-политик бакета и пути загрузки в коде.
-2. Миграция: storage policies + обновление дефолтного email.
-3. Frontend: fallback + UX поля (placeholder, не-required).
-4. End-to-end проверка: загрузить внешний договор от лица организации.
+1. Миграция (две функции).
+2. Правка клиента.
+3. Проверка: повторно отправить тот же договор — ошибка должна уйти.
+
