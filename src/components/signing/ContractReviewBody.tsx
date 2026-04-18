@@ -838,33 +838,101 @@ export function ContractReviewBody({
       )}
 
       {/* === SIGNED CONFIRMATION === */}
-      {(signedInfo || sig.status === "signed") && (
-        <div className="border-t mt-4 pt-4 -mx-4 px-4 text-center space-y-3">
-          <CheckCircle2 className="w-12 h-12 mx-auto text-primary" />
-          <div className="text-sm font-semibold">Документ подписан</div>
-          {signedInfo && (
-            <div className="flex justify-center">
-              <PepSignatureStamp
-                fullName={signFullName}
-                email={signEmail}
-                signedAt={signedInfo.signedAt}
-                ip={signedInfo.ip}
-                documentHash={documentHtml ? undefined : null}
-                agreementId={signedInfo.pepAgreementId}
-              />
+      {(signedInfo || sig.status === "signed" || sig.sender_signed_at) && (() => {
+        // Собираем данные обеих сторон.
+        const senderStamp = sig.sender_signed_at
+          ? {
+              fullName: sig.sender_name || OPERATOR.fullName,
+              email: OPERATOR.email,
+              signedAt: sig.sender_signed_at,
+              ip: sig.sender_signed_ip || null,
+              documentHash: sig.document_hash || null,
+              agreementId: sig.pep_agreement_id || null,
+            }
+          : (isOrg && signedInfo
+            ? {
+                fullName: signFullName || OPERATOR.fullName,
+                email: signEmail || OPERATOR.email,
+                signedAt: signedInfo.signedAt,
+                ip: signedInfo.ip,
+                documentHash: sig.document_hash || null,
+                agreementId: signedInfo.pepAgreementId,
+              }
+            : null);
+        const recipientStamp = sig.signed_at
+          ? {
+              fullName: sig.recipient_name,
+              email: sig.recipient_email,
+              signedAt: sig.signed_at,
+              ip: sig.signed_ip || null,
+              documentHash: sig.document_hash || null,
+              agreementId: sig.pep_agreement_id || null,
+            }
+          : (!isOrg && signedInfo
+            ? {
+                fullName: signFullName,
+                email: signEmail,
+                signedAt: signedInfo.signedAt,
+                ip: signedInfo.ip,
+                documentHash: sig.document_hash || null,
+                agreementId: signedInfo.pepAgreementId,
+              }
+            : null);
+        const bothSigned = !!senderStamp && !!recipientStamp;
+        return (
+          <div className="border-t mt-4 pt-4 -mx-4 px-4 text-center space-y-3">
+            <CheckCircle2 className="w-12 h-12 mx-auto text-primary" />
+            <div className="text-sm font-semibold">
+              {bothSigned ? "Документ подписан сторонами" : "Документ подписан"}
             </div>
-          )}
-          <p className="text-xs text-muted-foreground">Копия подписанного документа отправлена на {signEmail || sig.recipient_email}.</p>
-          <div className="flex flex-wrap items-center justify-center gap-2">
-            <Button size="sm" variant="outline" className="gap-1.5" onClick={() => setPreviewOpen(true)}>
-              <Eye className="w-4 h-4" />Посмотреть подписанный документ
-            </Button>
-            <Button size="sm" className="gap-1.5" onClick={() => setPreviewOpen(true)}>
-              <Download className="w-4 h-4" />Скачать PDF
-            </Button>
+
+            <div className="grid md:grid-cols-2 gap-3 text-left max-w-3xl mx-auto">
+              {senderStamp && (
+                <div className="space-y-1">
+                  <div className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground text-center md:text-left">
+                    Отправитель (Оператор)
+                  </div>
+                  <PepSignatureStamp
+                    fullName={senderStamp.fullName}
+                    email={senderStamp.email}
+                    signedAt={senderStamp.signedAt}
+                    ip={senderStamp.ip}
+                    documentHash={senderStamp.documentHash}
+                    agreementId={senderStamp.agreementId}
+                  />
+                </div>
+              )}
+              {recipientStamp && (
+                <div className="space-y-1">
+                  <div className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground text-center md:text-left">
+                    Получатель
+                  </div>
+                  <PepSignatureStamp
+                    fullName={recipientStamp.fullName}
+                    email={recipientStamp.email}
+                    signedAt={recipientStamp.signedAt}
+                    ip={recipientStamp.ip}
+                    documentHash={recipientStamp.documentHash}
+                    agreementId={recipientStamp.agreementId}
+                  />
+                </div>
+              )}
+            </div>
+
+            <p className="text-xs text-muted-foreground">
+              Копия подписанного документа отправлена на {signEmail || sig.recipient_email}.
+            </p>
+            <div className="flex flex-wrap items-center justify-center gap-2">
+              <Button size="sm" variant="outline" className="gap-1.5" onClick={() => setPreviewOpen(true)}>
+                <Eye className="w-4 h-4" />Посмотреть подписанный документ
+              </Button>
+              <Button size="sm" className="gap-1.5" onClick={() => setPreviewOpen(true)}>
+                <Download className="w-4 h-4" />Скачать PDF
+              </Button>
+            </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* === DIALOGS === */}
       <PepAgreementDialog
