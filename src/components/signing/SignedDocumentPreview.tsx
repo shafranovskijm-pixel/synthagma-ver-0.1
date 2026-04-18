@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Download, FileText, FileDown } from "lucide-react";
+import { Loader2, FileText, FileDown } from "lucide-react";
 import { PepSignatureStamp } from "@/components/signing/PepSignatureStamp";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
