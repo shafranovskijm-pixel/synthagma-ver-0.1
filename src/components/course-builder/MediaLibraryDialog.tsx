@@ -447,11 +447,19 @@ export function MediaLibraryDialog({ open, onClose, onSelect, filter = "all", or
             <ScrollArea className="h-[420px] flex-[3] min-w-0">
               <div className="space-y-1 pr-2">
                 {filteredFiles.map((file, i) => (
-                  <button
+                  <div
                     key={`${file.bucket}-${file.folder}-${file.name}-${i}`}
+                    role="button"
+                    tabIndex={0}
                     onClick={() => setSelectedFile(file)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        setSelectedFile(file);
+                      }
+                    }}
                     className={cn(
-                      "w-full flex items-center gap-3 p-2 rounded-lg text-left transition-colors",
+                      "group w-full flex items-center gap-3 p-2 rounded-lg text-left transition-colors cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-primary/40",
                       selectedFile?.url === file.url
                         ? "bg-primary/10 border border-primary/30"
                         : "hover:bg-muted/70"
@@ -480,7 +488,20 @@ export function MediaLibraryDialog({ open, onClose, onSelect, filter = "all", or
                         <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4">{file.bucket}</Badge>
                       </div>
                     </div>
-                  </button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="shrink-0 h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10 opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity"
+                      title="Удалить файл"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setFileToDelete(file);
+                      }}
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  </div>
                 ))}
               </div>
             </ScrollArea>
