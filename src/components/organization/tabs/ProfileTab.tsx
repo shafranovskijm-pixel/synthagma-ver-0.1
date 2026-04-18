@@ -537,12 +537,27 @@ export function ProfileTab({ organizationId, initialSubTab }: ProfileTabProps) {
                 </CardHeader>
                 <CardContent className="space-y-3">
                   <div>
-                    <label className="text-sm font-medium text-muted-foreground mb-1 block">Текущий email</label>
-                    <Input value={orgLoginEmail} disabled className="bg-muted/30 rounded-xl" />
+                    <label className="text-sm font-medium text-muted-foreground mb-1 block">Текущий email входа</label>
+                    {orgLoginEmail ? (
+                      <div className="px-3 py-2 rounded-xl bg-muted/40 border border-border text-sm font-mono text-foreground break-all">
+                        {orgLoginEmail}
+                      </div>
+                    ) : (
+                      <div className="px-3 py-2 rounded-xl bg-muted/40 border border-dashed border-border text-sm text-muted-foreground italic">
+                        Email для входа ещё не задан — укажите его ниже.
+                      </div>
+                    )}
                   </div>
                   <div>
-                    <label className="text-sm font-medium text-muted-foreground mb-1 block">Новый email</label>
-                    <Input value={newOrgEmail} onChange={e => setNewOrgEmail(e.target.value)} placeholder="new-org@email.com" className="rounded-xl" />
+                    <label className="text-sm font-medium text-foreground mb-1 block">Новый email</label>
+                    <Input
+                      type="email"
+                      value={newOrgEmail}
+                      onChange={e => setNewOrgEmail(e.target.value)}
+                      placeholder="new-org@email.com"
+                      className="rounded-xl"
+                      autoComplete="off"
+                    />
                   </div>
                   <div className="flex items-start gap-2 p-3 rounded-xl bg-warning/10 border border-warning/20">
                     <AlertTriangle className="w-4 h-4 text-warning shrink-0 mt-0.5" />
