@@ -25,6 +25,7 @@ import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 interface CourseBuilderProps {
   embedded?: boolean;
   embeddedCourseId?: string;
+  onExitEditor?: () => void;
 }
 
 function AddLessonGrid({
