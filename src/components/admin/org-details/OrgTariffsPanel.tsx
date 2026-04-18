@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Crown, Save} from "lucide-react";
 import { toast } from "sonner";
 import { getPlanInfo, type SubscriptionPlan } from "@/constants/subscriptionPlans";
+import { ORG_FEATURE_CATALOG } from "@/constants/orgFeatureCatalog";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 
 interface OrgTariffsPanelProps {
@@ -149,28 +150,39 @@ export function OrgTariffsPanel({
       <Card>
         <CardHeader>
           <CardTitle>Индивидуальные возможности</CardTitle>
-          <CardDescription>Включите категории, которые будут доступны организации независимо от тарифа.</CardDescription>
+          <CardDescription>Включите функции, которые будут доступны организации независимо от тарифа.</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-            {[
-              { key: 'journals', label: 'Журналы' }, { key: 'documents', label: 'Документооборот' },
-              { key: 'labor_safety', label: 'Охрана труда' }, { key: 'services', label: 'Магазин курсов' },
-              { key: 'frdo', label: 'ФИС ФРДО' }, { key: 'webinars', label: 'Вебинары' },
-              { key: '3d_trainers', label: '3D-тренажёры' }, { key: 'branding', label: 'Брендирование' },
-              { key: 'video_id', label: 'Видео-идентификация' }, { key: 'document_checklist', label: 'Чек-лист документов' },
-              { key: 'ai_generation', label: 'ИИ-генерация' }, { key: 'unlimited', label: 'Без ограничений' },
-            ].map(({ key, label }) => (
-              <label key={key} className="flex items-center gap-2 p-2 rounded-lg border cursor-pointer hover:bg-muted/50 transition-colors">
-                <input type="checkbox" className="h-4 w-4 rounded border-primary accent-primary"
-                  checked={customCategories.includes(key)}
-                  onChange={(e) => {
-                    if (e.target.checked) setCustomCategories(prev => [...prev, key]);
-                    else setCustomCategories(prev => prev.filter(c => c !== key));
-                  }} />
-                <span className="text-sm font-medium">{label}</span>
-              </label>
-            ))}
+            {ORG_FEATURE_CATALOG.map(({ key, label, description, icon: Icon, minPlan }) => {
+              const minPlanName = getPlanInfo(minPlan).name;
+              const checked = customCategories.includes(key);
+              return (
+                <label
+                  key={key}
+                  className="flex items-start gap-2 p-3 rounded-lg border cursor-pointer hover:bg-muted/50 transition-colors"
+                  title={description}
+                >
+                  <input
+                    type="checkbox"
+                    className="h-4 w-4 mt-0.5 rounded border-primary accent-primary shrink-0"
+                    checked={checked}
+                    onChange={(e) => {
+                      if (e.target.checked) setCustomCategories(prev => [...prev, key]);
+                      else setCustomCategories(prev => prev.filter(c => c !== key));
+                    }}
+                  />
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-1.5">
+                      <Icon className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                      <span className="text-sm font-medium truncate">{label}</span>
+                    </div>
+                    <div className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{description}</div>
+                    <div className="text-[10px] text-muted-foreground/70 mt-1">с тарифа «{minPlanName}»</div>
+                  </div>
+                </label>
+              );
+            })}
           </div>
         </CardContent>
       </Card>
