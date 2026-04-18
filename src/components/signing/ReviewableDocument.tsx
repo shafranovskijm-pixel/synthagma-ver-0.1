@@ -282,47 +282,55 @@ export function ReviewableDocument({ documentHtml, comments, authorName, canComm
         )}
 
         {/* Форма правки */}
-        {draftKind && selection && (
+        {draftKind && (selection || (draftKind === "insert" && insertCaret)) && (
           <Card className="fixed z-50 p-3 w-[360px] shadow-xl"
             style={{
-              top: Math.min(selection.rect.bottom + 8, window.innerHeight - 320),
-              left: Math.max(Math.min(selection.rect.left, window.innerWidth - 380), 8),
+              top: Math.min(((selection?.rect.bottom ?? insertCaret!.rect.bottom)) + 8, window.innerHeight - 340),
+              left: Math.max(Math.min(((selection?.rect.left ?? insertCaret!.rect.left)), window.innerWidth - 380), 8),
             }}>
             <div className="text-xs font-semibold mb-1.5 flex items-center gap-1.5">
               {draftKind === "comment" && <><MessageSquare className="w-3.5 h-3.5" /> Комментарий к фрагменту</>}
               {draftKind === "delete" && <><Scissors className="w-3.5 h-3.5 text-red-600" /> Предложить удалить</>}
-              {draftKind === "replace" && <><Replace className="w-3.5 h-3.5 text-emerald-600" /> Предложить замену</>}
+              {draftKind === "replace" && <><Replace className="w-3.5 h-3.5 text-amber-600" /> Предложить замену</>}
+              {draftKind === "insert" && <><Plus className="w-3.5 h-3.5 text-emerald-600" /> {selection ? "Вставить после фрагмента" : "Добавить новый текст"}</>}
             </div>
-            <blockquote className={
-              "text-xs italic border-l-2 pl-2 mb-2 line-clamp-3 " +
-              (draftKind === "delete" || draftKind === "replace"
-                ? "border-red-400 line-through text-red-700"
-                : "border-primary")
-            }>
-              «{selection.text}»
-            </blockquote>
+            {selection && (
+              <blockquote className={
+                "text-xs italic border-l-2 pl-2 mb-2 line-clamp-3 " +
+                (draftKind === "delete" || draftKind === "replace"
+                  ? "border-red-400 line-through text-red-700"
+                  : draftKind === "insert"
+                  ? "border-emerald-400 text-muted-foreground"
+                  : "border-primary")
+              }>
+                «{selection.text}»
+                {draftKind === "insert" && <span className="not-italic text-emerald-700 font-medium"> ← добавить после этого</span>}
+              </blockquote>
+            )}
 
-            {draftKind === "replace" && (
+            {(draftKind === "replace" || draftKind === "insert") && (
               <Textarea
                 autoFocus
-                placeholder="Заменить на…"
+                placeholder={draftKind === "insert" ? "Текст нового пункта…" : "Заменить на…"}
                 value={draftReplacement}
                 onChange={(e) => setDraftReplacement(e.target.value)}
                 className="text-sm min-h-[60px] mb-2 border-emerald-300 focus-visible:ring-emerald-400 bg-emerald-50/30"
               />
             )}
 
-            <Textarea
-              autoFocus={draftKind !== "replace"}
-              placeholder={
-                draftKind === "delete" ? "Причина удаления (опционально)…" :
-                draftKind === "replace" ? "Комментарий к замене (опционально)…" :
-                "Ваш комментарий…"
-              }
-              value={draftText}
-              onChange={(e) => setDraftText(e.target.value)}
-              className="text-sm min-h-[60px] mb-2"
-            />
+            {draftKind !== "insert" && (
+              <Textarea
+                autoFocus={draftKind !== "replace"}
+                placeholder={
+                  draftKind === "delete" ? "Причина удаления (опционально)…" :
+                  draftKind === "replace" ? "Комментарий к замене (опционально)…" :
+                  "Ваш комментарий…"
+                }
+                value={draftText}
+                onChange={(e) => setDraftText(e.target.value)}
+                className="text-sm min-h-[60px] mb-2"
+              />
+            )}
             <div className="flex justify-end gap-1.5">
               <Button size="sm" variant="ghost" onClick={resetAll} disabled={submitting}>
                 <X className="w-3.5 h-3.5" />
@@ -330,7 +338,12 @@ export function ReviewableDocument({ documentHtml, comments, authorName, canComm
               <Button
                 size="sm"
                 onClick={handleSubmit}
-                disabled={submitting || (draftKind === "replace" && !draftReplacement.trim()) || (draftKind === "comment" && !draftText.trim())}
+                disabled={
+                  submitting ||
+                  (draftKind === "replace" && !draftReplacement.trim()) ||
+                  (draftKind === "insert" && !draftReplacement.trim()) ||
+                  (draftKind === "comment" && !draftText.trim())
+                }
               >
                 {submitting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : "Добавить"}
               </Button>
