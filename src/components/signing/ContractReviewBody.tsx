@@ -634,41 +634,136 @@ export function ContractReviewBody({
               disabled={finalizing}
             >
               <ShieldCheck className="w-3.5 h-3.5" />Подписать как есть
-              <ExternalLink className="w-3 h-3 opacity-70" />
             </Button>
           </div>
           <p className="text-[10px] text-muted-foreground text-center">
-            «Подписать как есть» откроет страницу ПЭП в новой вкладке. «Отправить новую версию» позволит загрузить отредактированный файл и переслать клиенту.
+            «Подписать как есть» откроет панель ПЭП прямо здесь. «Отправить новую версию» позволит загрузить отредактированный файл и переслать клиенту.
           </p>
         </div>
       )}
 
       {/* === RECIPIENT ACTION FOOTER === */}
-      {canTakeRecipientAction && (
-        <div className="border-t bg-muted/30 -mx-4 px-4 py-4 mt-4 space-y-3 rounded-b-xl">
-          <div className="grid lg:grid-cols-[1fr_auto] gap-3 items-start">
-            <div className="space-y-1.5">
-              <Label className="text-xs flex items-center gap-1.5"><MessageSquareText className="w-3 h-3" />Запросить правки (опционально)</Label>
-              <Textarea
-                rows={2}
-                value={requestText}
-                onChange={(e) => setRequestText(e.target.value)}
-                placeholder="Краткое описание необходимых изменений…"
-                className="text-xs"
+      {canTakeRecipientAction && !signedInfo && sig.status !== "signed" && (
+        <div className="border-t bg-gradient-to-br from-primary/5 to-transparent -mx-4 px-4 py-4 mt-4 space-y-4 rounded-b-xl">
+          {/* Сводка */}
+          {comments.length > 0 && (
+            <div className="flex items-center gap-2 flex-wrap text-xs bg-muted/40 rounded-lg px-3 py-2">
+              <span className="font-medium">Ваши правки:</span>
+              <Badge variant="outline">Всего {comments.length}</Badge>
+              {pendingCount > 0 && <Badge variant="outline" className="text-amber-700 border-amber-300">Не отправлено отправителю: {pendingCount}</Badge>}
+              {acceptedCount > 0 && <Badge className="bg-emerald-500/15 text-emerald-700 border-emerald-300">Принято: {acceptedCount}</Badge>}
+              {rejectedCount > 0 && <Badge className="bg-red-500/15 text-red-700 border-red-300">Отклонено: {rejectedCount}</Badge>}
+            </div>
+          )}
+
+          {/* Блок 1: отправить все правки разом */}
+          <div className="rounded-lg border bg-background/60 p-3 space-y-2">
+            <div className="flex items-center gap-2 text-sm font-semibold">
+              <Send className="w-4 h-4 text-primary" />
+              Отправить правки отправителю одной кнопкой
+            </div>
+            <p className="text-[11px] text-muted-foreground">
+              Все добавленные вами правки уйдут отправителю одним пакетом. Вы можете оставить общий комментарий ниже.
+            </p>
+            <Textarea
+              rows={2}
+              value={requestText}
+              onChange={(e) => setRequestText(e.target.value)}
+              placeholder="Общий комментарий отправителю (необязательно)…"
+              className="text-xs"
+            />
+            <Button
+              className="w-full gap-1.5"
+              size="sm"
+              onClick={handleRequestChanges}
+              disabled={requesting || (comments.length === 0 && !requestText.trim())}
+            >
+              <Send className="w-3.5 h-3.5" />
+              {requesting ? "Отправка…" : `Отправить все правки${comments.length > 0 ? ` (${comments.length})` : ""}`}
+            </Button>
+          </div>
+
+          {/* Блок 2: подписать здесь */}
+          <div className="rounded-lg border-2 border-primary/30 bg-primary/5 p-3 space-y-2">
+            <div className="flex items-center gap-2 text-sm font-semibold">
+              <ShieldCheck className="w-4 h-4 text-primary" />
+              Подписать прямо здесь
+            </div>
+            <p className="text-[11px] text-muted-foreground">
+              Если вас всё устраивает — подпишите документ простой электронной подписью без перехода на другую страницу.
+            </p>
+            {!signPanelOpen ? (
+              <Button className="w-full gap-1.5" size="sm" onClick={() => setSignPanelOpen(true)}>
+                <PenLine className="w-3.5 h-3.5" />Подписать здесь
+              </Button>
+            ) : (
+              <div className="space-y-3 pt-1">
+                <div className="grid sm:grid-cols-2 gap-2">
+                  <div className="space-y-1">
+                    <Label className="text-[11px]">ФИО подписанта</Label>
+                    <Input value={signFullName} onChange={(e) => setSignFullName(e.target.value)} placeholder="Иванов Иван Иванович" className="h-9 text-sm" />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-[11px]">Email</Label>
+                    <Input type="email" value={signEmail} onChange={(e) => setSignEmail(e.target.value)} className="h-9 text-sm" />
+                  </div>
+                </div>
+                <div>
+                  <Label className="text-[11px] mb-1 block">Соглашение об использовании ПЭП ({PEP_AGREEMENT_VERSION})</Label>
+                  <ScrollArea className="h-32 rounded border bg-background p-2">
+                    <pre className="text-[10px] whitespace-pre-wrap font-sans leading-relaxed">{agreementText}</pre>
+                  </ScrollArea>
+                </div>
+                <div className="flex items-start gap-2">
+                  <Checkbox id="agree-inline" checked={agreementAccepted} onCheckedChange={(v) => setAgreementAccepted(!!v)} />
+                  <Label htmlFor="agree-inline" className="text-[11px] leading-relaxed cursor-pointer">
+                    Я ознакомился(ась) и принимаю условия Соглашения об использовании ПЭП (63-ФЗ).
+                  </Label>
+                </div>
+                <div className="flex items-start gap-2">
+                  <Checkbox id="sign-inline" checked={signAccepted} onCheckedChange={(v) => setSignAccepted(!!v)} />
+                  <Label htmlFor="sign-inline" className="text-[11px] leading-relaxed cursor-pointer">
+                    Я, <strong>{signFullName || "—"}</strong>, подписываю «{sig.document_title}» простой электронной подписью. Подпись имеет юридическую силу, равную собственноручной.
+                  </Label>
+                </div>
+                <div className="flex gap-2">
+                  <Button variant="ghost" size="sm" onClick={() => setSignPanelOpen(false)} disabled={submittingSign}>
+                    Отмена
+                  </Button>
+                  <Button
+                    className="flex-1 gap-1.5"
+                    size="sm"
+                    onClick={handleInlineSign}
+                    disabled={submittingSign || !signAccepted || !agreementAccepted || !signFullName.trim() || !signEmail.trim()}
+                  >
+                    {submittingSign ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <ShieldCheck className="w-3.5 h-3.5" />}
+                    {submittingSign ? "Подписание…" : "Подписать"}
+                  </Button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* === SIGNED CONFIRMATION === */}
+      {(signedInfo || sig.status === "signed") && (
+        <div className="border-t mt-4 pt-4 -mx-4 px-4 text-center space-y-3">
+          <CheckCircle2 className="w-12 h-12 mx-auto text-primary" />
+          <div className="text-sm font-semibold">Документ подписан</div>
+          {signedInfo && (
+            <div className="flex justify-center">
+              <PepSignatureStamp
+                fullName={signFullName}
+                email={signEmail}
+                signedAt={signedInfo.signedAt}
+                ip={signedInfo.ip}
+                documentHash={documentHtml ? undefined : null}
+                agreementId={signedInfo.pepAgreementId}
               />
             </div>
-            <div className="flex flex-col gap-2">
-              <Button variant="outline" size="sm" className="gap-1.5" onClick={handleRequestChanges} disabled={requesting}>
-                <Send className="w-3.5 h-3.5" />
-                {requesting ? "Отправка…" : "Запросить правки"}
-              </Button>
-              <Button size="sm" className="gap-1.5" onClick={handleOpenSignPage}>
-                <ShieldCheck className="w-3.5 h-3.5" />Согласовать и подписать
-                <ExternalLink className="w-3 h-3 opacity-70" />
-              </Button>
-            </div>
-          </div>
-          <p className="text-[10px] text-muted-foreground text-center">Подписание ПЭП открывается в отдельной вкладке для соблюдения требований 63-ФЗ.</p>
+          )}
+          <p className="text-xs text-muted-foreground">Копия подписанного документа отправлена на {signEmail || sig.recipient_email}.</p>
         </div>
       )}
 
