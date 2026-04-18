@@ -80,17 +80,17 @@ export function CounterpartiesSection({
   const [platformExternalContracts, setPlatformExternalContracts] = useState<any[]>([]);
 
   // Load external contracts (Synthagma counterparty) sent by current org
+  const refreshPlatformContracts = async () => {
+    const { data } = await (supabase as any)
+      .from("document_signatures")
+      .select("id, document_title, status, created_at, current_revision_id, sender_signed_at, requires_bilateral, signed_at")
+      .eq("organization_id", organizationId)
+      .eq("document_type", "external_upload")
+      .order("created_at", { ascending: false });
+    setPlatformExternalContracts((data as any[]) || []);
+  };
   useEffect(() => {
-    if (!isPlatform) return;
-    (async () => {
-      const { data } = await (supabase as any)
-        .from("document_signatures")
-        .select("id, document_title, status, created_at, current_revision_id, sender_signed_at, requires_bilateral, signed_at")
-        .eq("organization_id", organizationId)
-        .eq("document_type", "external_upload")
-        .order("created_at", { ascending: false });
-      setPlatformExternalContracts((data as any[]) || []);
-    })();
+    if (selectedId === "platform") refreshPlatformContracts();
   }, [organizationId, selectedId]);
 
   const openSignDialog = async (doc: CounterpartyDoc) => {
@@ -778,18 +778,7 @@ export function CounterpartiesSection({
         onOpenChange={setShowExternalUploader}
         organizationId={organizationId}
         defaultAdminEmail="admin@sintagma.com.ru"
-        onSent={() => {
-          // refresh list
-          (async () => {
-            const { data } = await (supabase as any)
-              .from("document_signatures")
-              .select("id, document_title, status, created_at, current_revision_id, sender_signed_at, requires_bilateral, signed_at")
-              .eq("organization_id", organizationId)
-              .eq("document_type", "external_upload")
-              .order("created_at", { ascending: false });
-            setPlatformExternalContracts((data as any[]) || []);
-          })();
-        }}
+        onSent={() => { refreshPlatformContracts(); }}
       />
     </div>
   );
