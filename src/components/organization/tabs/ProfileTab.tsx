@@ -376,8 +376,30 @@ export function ProfileTab({ organizationId, initialSubTab }: ProfileTabProps) {
                   text="Аватар появится в правом верхнем углу шапки личного кабинета — на месте круга с инициалами."
                 />
                 <div>
-                  <label className="text-sm font-medium text-muted-foreground mb-1 block">Email</label>
-                  <Input value={profile.email} disabled className="bg-muted/30 rounded-xl" />
+                  <label className="text-sm font-medium text-muted-foreground mb-1 block">Email вашего личного аккаунта</label>
+                  <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+                    {profile.email ? (
+                      <div className="flex-1 px-3 py-2 rounded-xl bg-muted/40 border border-border text-sm font-mono text-foreground break-all">
+                        {profile.email}
+                      </div>
+                    ) : (
+                      <div className="flex-1 px-3 py-2 rounded-xl bg-muted/40 border border-dashed border-border text-sm text-muted-foreground italic">
+                        Email ещё не задан
+                      </div>
+                    )}
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="rounded-xl gap-1 h-9 shrink-0"
+                      onClick={() => setActiveSection("signin")}
+                    >
+                      <Mail className="w-3.5 h-3.5" /> Изменить email
+                    </Button>
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1.5">
+                    Email меняется в разделе «Вход» → блок «Email вашего личного аккаунта».
+                  </p>
                 </div>
                 <div>
                   <label className="text-sm font-medium text-muted-foreground mb-1 block">ФИО</label>
