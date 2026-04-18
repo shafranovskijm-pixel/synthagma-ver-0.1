@@ -2255,6 +2255,47 @@ export type Database = {
           },
         ]
       }
+      kinescope_usage_cache: {
+        Row: {
+          billing_json: Json | null
+          by_org_json: Json | null
+          fetched_at: string
+          id: string
+          organization_id: string | null
+          total_bytes: number
+          total_seconds: number
+          videos_count: number
+        }
+        Insert: {
+          billing_json?: Json | null
+          by_org_json?: Json | null
+          fetched_at?: string
+          id?: string
+          organization_id?: string | null
+          total_bytes?: number
+          total_seconds?: number
+          videos_count?: number
+        }
+        Update: {
+          billing_json?: Json | null
+          by_org_json?: Json | null
+          fetched_at?: string
+          id?: string
+          organization_id?: string | null
+          total_bytes?: number
+          total_seconds?: number
+          videos_count?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "kinescope_usage_cache_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       knowledge_bank: {
         Row: {
           content: string | null
