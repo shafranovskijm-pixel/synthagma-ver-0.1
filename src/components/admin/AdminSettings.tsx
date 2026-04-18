@@ -15,6 +15,7 @@ import { BlogManager } from "./BlogManager";
 import { AISettingsManager } from "./AISettingsManager";
 import { DevToolsPanel } from "./DevToolsPanel";
 import { AdminStaffTab } from "./AdminStaffTab";
+import { AdminMediaLibrary } from "./AdminMediaLibrary";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 
 interface SystemSettings {
@@ -22,7 +23,7 @@ interface SystemSettings {
   registrationEnabled: boolean;
 }
 
-type SectionKey = "theme" | "staff" | "db" | "cache" | "seo" | "system" | "promo" | "notifications" | "analytics" | "content" | "ai" | "devtools";
+type SectionKey = "theme" | "staff" | "db" | "media" | "cache" | "seo" | "system" | "promo" | "notifications" | "analytics" | "content" | "ai" | "devtools";
 
 const SECTIONS: { key: SectionKey; label: string; icon: React.ElementType; color: string }[] = [
   { key: "theme", label: "Тема оформления", icon: Palette, color: "text-violet-500" },
