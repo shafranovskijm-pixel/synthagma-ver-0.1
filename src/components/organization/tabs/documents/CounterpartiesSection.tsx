@@ -359,7 +359,7 @@ export function CounterpartiesSection({
                 </div>
                 {expandedReviewId === c.id && c.signature_token && (
                   <div className="border-t bg-background p-4">
-                    <ContractReviewBody signatureToken={c.signature_token} readOnly embedded />
+                    <ContractReviewBody signatureToken={c.signature_token} viewerRole="organization" embedded />
                   </div>
                 )}
               </div>
