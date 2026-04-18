@@ -63,7 +63,11 @@ export function SortableLessonItem({
   const { limits } = useSubscriptionLimits(organizationId || null);
   const isKinescopeAvailable = limits.kinescopeEnabled;
   const [videoUploadTab, setVideoUploadTab] = useState<string>(isKinescopeAvailable ? "kinescope" : "server");
-  const media = useLessonMedia(lesson.id, courseId, onUpdate);
+  const media = useLessonMedia(lesson.id, courseId, onUpdate, {
+    courseTitle,
+    lessonTitle: lesson.title || "Урок",
+    organizationId,
+  });
 
   // SaluteSpeech TTS
   const { saluteVoice, isSaluteSpeaking, isSaluteLoading, handleSaluteTTS, handleVoiceChange, stopSaluteTTS, SALUTE_VOICES } = useLessonTTS();

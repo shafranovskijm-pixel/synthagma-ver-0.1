@@ -61,9 +61,18 @@ export const LessonEditor = ({
   const [skipCompression, setSkipCompression] = useState(false);
 
   const lessonIdForMedia = useMemo(() => lesson?.id || `new-${Date.now()}`, [lesson?.id]);
-  const media = useLessonMedia(lessonIdForMedia, courseId, (updates: any) => {
-    if (typeof updates?.content === "string") e.setVideoUrl(updates.content);
-  });
+  const media = useLessonMedia(
+    lessonIdForMedia,
+    courseId,
+    (updates: any) => {
+      if (typeof updates?.content === "string") e.setVideoUrl(updates.content);
+    },
+    {
+      courseTitle,
+      lessonTitle: e.title || lesson?.title || "Урок",
+      organizationId,
+    },
+  );
 
   return (
     <>
