@@ -8,7 +8,8 @@ import { Label } from "@/components/ui/label";
 import { ScrollText, Receipt, FileCheck, Download, FileText, Lightbulb, Eye, Trash2, ExternalLink, Building2, User, Store, Plus, FolderOpen, ChevronDown, ChevronRight, X, Search, Send } from "lucide-react";
 import { ContractLegalFaq } from "@/components/organization/ContractLegalFaq";
 import { SendForSigningDialog, type SendForSigningPayload } from "@/components/signing/SendForSigningDialog";
-import { File } from "lucide-react";
+import { ExternalContractUploader } from "@/components/signing/ExternalContractUploader";
+import { File, Upload } from "lucide-react";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import { cn } from "@/lib/utils";
@@ -75,6 +76,22 @@ export function CounterpartiesSection({
   const [payerPopoverOpen, setPayerPopoverOpen] = useState(false);
   const [signingPayload, setSigningPayload] = useState<SendForSigningPayload | null>(null);
   const [signingRecipients, setSigningRecipients] = useState<{ id: string; name: string; email: string; type: "student" | "company" | "individual" }[]>([]);
+  const [showExternalUploader, setShowExternalUploader] = useState(false);
+  const [platformExternalContracts, setPlatformExternalContracts] = useState<any[]>([]);
+
+  // Load external contracts (Synthagma counterparty) sent by current org
+  useEffect(() => {
+    if (!isPlatform) return;
+    (async () => {
+      const { data } = await (supabase as any)
+        .from("document_signatures")
+        .select("id, document_title, status, created_at, current_revision_id, sender_signed_at, requires_bilateral, signed_at")
+        .eq("organization_id", organizationId)
+        .eq("document_type", "external_upload")
+        .order("created_at", { ascending: false });
+      setPlatformExternalContracts((data as any[]) || []);
+    })();
+  }, [organizationId, selectedId]);
 
   const openSignDialog = async (doc: CounterpartyDoc) => {
     let html = "";
@@ -249,10 +266,54 @@ export function CounterpartiesSection({
   // --- Renderers (unchanged logic) ---
 
   const renderPlatformContracts = () => (
-    <div className="text-center py-12 text-muted-foreground">
-      <ScrollText className="w-10 h-10 mx-auto mb-2 opacity-30" />
-      <p className="text-sm font-medium">Договоры с платформой</p>
-      <p className="text-xs mt-1">Здесь будут отображаться ваши договоры с Sintagma</p>
+    <div className="space-y-3">
+      <div className="flex items-center justify-between p-3 rounded-xl border border-dashed border-primary/30 bg-primary/5">
+        <div className="flex items-center gap-3">
+          <Upload className="w-5 h-5 text-primary" />
+          <div>
+            <div className="text-sm font-medium">Загрузить свой договор на согласование</div>
+            <div className="text-xs text-muted-foreground">PDF или DOCX — администратор Синтагмы внесёт правки и отправит на ПЭП</div>
+          </div>
+        </div>
+        <Button size="sm" className="rounded-xl gap-1.5" onClick={() => setShowExternalUploader(true)}>
+          <Upload className="w-3.5 h-3.5" />Загрузить
+        </Button>
+      </div>
+
+      {platformExternalContracts.length === 0 ? (
+        <div className="text-center py-8 text-muted-foreground">
+          <ScrollText className="w-10 h-10 mx-auto mb-2 opacity-30" />
+          <p className="text-sm">Договоров с платформой пока нет</p>
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {platformExternalContracts.map((c) => {
+            const statusLabel: Record<string, { text: string; cls: string }> = {
+              in_review: { text: "На согласовании", cls: "text-violet-600 bg-violet-500/10" },
+              changes_requested: { text: "Запрошены правки", cls: "text-pink-600 bg-pink-500/10" },
+              signed: { text: c.requires_bilateral && !c.sender_signed_at ? "Подписано получателем" : "Подписано", cls: "text-emerald-600 bg-emerald-500/10" },
+              rejected: { text: "Отклонено", cls: "text-destructive bg-destructive/10" },
+            };
+            const st = statusLabel[c.status] || { text: c.status, cls: "text-muted-foreground bg-muted" };
+            return (
+              <div key={c.id} className="flex items-center justify-between p-3 rounded-lg border border-border hover:bg-muted/30 transition-colors">
+                <div className="flex items-center gap-3 min-w-0">
+                  <ScrollText className="w-4 h-4 text-primary shrink-0" />
+                  <div className="min-w-0">
+                    <div className="text-sm font-medium truncate">{c.document_title}</div>
+                    <div className="text-xs text-muted-foreground">
+                      {format(new Date(c.created_at), "d MMM yyyy HH:mm", { locale: ru })}
+                    </div>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  <span className={cn("text-[10px] px-2 py-0.5 rounded-full font-medium", st.cls)}>{st.text}</span>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 
@@ -710,6 +771,25 @@ export function CounterpartiesSection({
         onOpenChange={(v) => !v && setSigningPayload(null)}
         payload={signingPayload}
         recipients={signingRecipients}
+      />
+
+      <ExternalContractUploader
+        open={showExternalUploader}
+        onOpenChange={setShowExternalUploader}
+        organizationId={organizationId}
+        defaultAdminEmail="admin@sintagma.com.ru"
+        onSent={() => {
+          // refresh list
+          (async () => {
+            const { data } = await (supabase as any)
+              .from("document_signatures")
+              .select("id, document_title, status, created_at, current_revision_id, sender_signed_at, requires_bilateral, signed_at")
+              .eq("organization_id", organizationId)
+              .eq("document_type", "external_upload")
+              .order("created_at", { ascending: false });
+            setPlatformExternalContracts((data as any[]) || []);
+          })();
+        }}
       />
     </div>
   );
