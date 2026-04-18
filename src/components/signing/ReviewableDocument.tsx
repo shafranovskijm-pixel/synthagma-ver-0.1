@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { MessageSquarePlus, X, Loader2, MessageCircle, CheckCheck, Scissors, Replace, MessageSquare } from "lucide-react";
+import { MessageSquarePlus, X, Loader2, MessageCircle, CheckCheck, Scissors, Replace, MessageSquare, Plus } from "lucide-react";
 import { toast } from "sonner";
 
 export interface ReviewComment {
@@ -17,7 +17,7 @@ export interface ReviewComment {
   created_at: string;
 }
 
-type SuggestionKind = "comment" | "delete" | "replace";
+type SuggestionKind = "comment" | "delete" | "replace" | "insert";
 
 interface Props {
   documentHtml: string;
@@ -42,6 +42,7 @@ interface SelectionState {
 export function ReviewableDocument({ documentHtml, comments, authorName, canComment = true, onAddComment }: Props) {
   const docRef = useRef<HTMLDivElement>(null);
   const [selection, setSelection] = useState<SelectionState | null>(null);
+  const [insertCaret, setInsertCaret] = useState<{ offset: number; rect: DOMRect } | null>(null);
   const [draftKind, setDraftKind] = useState<SuggestionKind | null>(null);
   const [draftText, setDraftText] = useState("");
   const [draftReplacement, setDraftReplacement] = useState("");
@@ -53,32 +54,54 @@ export function ReviewableDocument({ documentHtml, comments, authorName, canComm
     setDraftText("");
     setDraftReplacement("");
     setSelection(null);
+    setInsertCaret(null);
     try { window.getSelection()?.removeAllRanges(); } catch {}
   }, []);
 
-  // Слушаем выделение
+  // Слушаем выделение / клик в документе
   useEffect(() => {
     const handler = (e: Event) => {
-      // Если идёт ввод в форме — не сбрасываем
       const target = e.target as HTMLElement | null;
       if (target && (target.closest("textarea, input, button"))) return;
 
       const sel = window.getSelection();
-      if (!sel || sel.rangeCount === 0 || sel.isCollapsed) {
-        // Не сбрасываем форму, если она открыта (пользователь печатает)
-        if (!draftKind) setSelection(null);
+      if (!sel || sel.rangeCount === 0) {
+        if (!draftKind) { setSelection(null); setInsertCaret(null); }
         return;
       }
       const range = sel.getRangeAt(0);
-      const text = sel.toString().trim();
-      if (text.length < 3 || text.length > 1000) { if (!draftKind) setSelection(null); return; }
+      // Клик внутри документа?
       if (!docRef.current || !docRef.current.contains(range.commonAncestorContainer)) {
-        if (!draftKind) setSelection(null);
+        if (!draftKind) { setSelection(null); setInsertCaret(null); }
         return;
       }
+
+      // Collapsed → caret для insert
+      if (sel.isCollapsed) {
+        const offsets = computeOffsets(docRef.current, range);
+        if (offsets) {
+          // Используем bounding rect курсора (через временный span)
+          const tempRange = range.cloneRange();
+          let rect = tempRange.getBoundingClientRect();
+          if (rect.width === 0 && rect.height === 0) {
+            // Пустой rect — берём родительский элемент
+            const parent = (range.startContainer.nodeType === Node.TEXT_NODE
+              ? range.startContainer.parentElement
+              : range.startContainer as HTMLElement);
+            if (parent) rect = parent.getBoundingClientRect();
+          }
+          setSelection(null);
+          setInsertCaret({ offset: offsets.start, rect });
+        }
+        return;
+      }
+
+      const text = sel.toString().trim();
+      if (text.length < 3 || text.length > 1000) { if (!draftKind) { setSelection(null); setInsertCaret(null); } return; }
       const offsets = computeOffsets(docRef.current, range);
-      if (!offsets) { if (!draftKind) setSelection(null); return; }
+      if (!offsets) { if (!draftKind) { setSelection(null); setInsertCaret(null); } return; }
       const rect = range.getBoundingClientRect();
+      setInsertCaret(null);
       setSelection({ text, rect, startOffset: offsets.start, endOffset: offsets.end });
     };
     document.addEventListener("mouseup", handler);
@@ -92,20 +115,23 @@ export function ReviewableDocument({ documentHtml, comments, authorName, canComm
   // Подсветка фрагментов с учётом типа правки
   useEffect(() => {
     if (!docRef.current) return;
-    // Очищаем предыдущие подсветки
     clearHighlights(docRef.current);
-    // Применяем подсветки
     comments.forEach((c) => {
       const kind: SuggestionKind = c.position_anchor?.kind || "comment";
       const replacement: string | undefined = c.position_anchor?.replacement;
       const startOffset: number | undefined = c.position_anchor?.startOffset;
       const endOffset: number | undefined = c.position_anchor?.endOffset;
 
+      // Insert-only: одна точка, рендерим зелёную вставку в позиции
+      if (kind === "insert" && typeof startOffset === "number" && replacement) {
+        insertAtOffset(docRef.current!, startOffset, c.id, replacement);
+        return;
+      }
+
       if (typeof startOffset === "number" && typeof endOffset === "number" && endOffset > startOffset) {
         const ok = highlightByOffsets(docRef.current!, startOffset, endOffset, c.id, c.resolved, kind, replacement);
         if (ok) return;
       }
-      // Fallback: старый поиск по тексту (для legacy-комментариев)
       if (c.quoted_text) {
         highlightByText(docRef.current!, c.quoted_text, c.id, c.resolved, kind, replacement);
       }
@@ -113,32 +139,52 @@ export function ReviewableDocument({ documentHtml, comments, authorName, canComm
   }, [comments, documentHtml]);
 
   const handleSubmit = async () => {
-    if (!selection || !draftKind) return;
+    if (!draftKind) return;
+    if (draftKind === "insert" && !draftReplacement.trim()) return;
     if (draftKind === "comment" && !draftText.trim()) return;
     if (draftKind === "replace" && !draftReplacement.trim()) return;
+    if (draftKind !== "insert" && !selection) return;
+    if (draftKind === "insert" && !insertCaret && !selection) return;
 
     setSubmitting(true);
     try {
       const commentBody =
         draftKind === "delete" ? (draftText.trim() || "Предложено удалить фрагмент") :
         draftKind === "replace" ? (draftText.trim() || "Предложена замена фрагмента") :
+        draftKind === "insert" ? (draftText.trim() || "Предложено добавить текст") :
         draftText.trim();
 
+      // Для insert: если был выделен фрагмент — вставляем после него (endOffset);
+      //              если caret — используем offset курсора.
+      const insertOffset = draftKind === "insert"
+        ? (selection ? selection.endOffset : insertCaret!.offset)
+        : null;
+
+      const positionAnchor: any = draftKind === "insert"
+        ? {
+            kind: "insert",
+            startOffset: insertOffset,
+            endOffset: insertOffset,
+            replacement: draftReplacement.trim(),
+          }
+        : {
+            text: selection!.text,
+            startOffset: selection!.startOffset,
+            endOffset: selection!.endOffset,
+            kind: draftKind,
+            ...(draftKind === "replace" ? { replacement: draftReplacement.trim() } : {}),
+          };
+
       await onAddComment({
-        quotedText: selection.text,
+        quotedText: draftKind === "insert" ? "" : selection!.text,
         commentText: commentBody,
-        positionAnchor: {
-          text: selection.text,
-          startOffset: selection.startOffset,
-          endOffset: selection.endOffset,
-          kind: draftKind,
-          ...(draftKind === "replace" ? { replacement: draftReplacement.trim() } : {}),
-        },
+        positionAnchor,
       });
       resetAll();
       toast.success(
         draftKind === "delete" ? "Правка «удалить» добавлена" :
         draftKind === "replace" ? "Правка «заменить» добавлена" :
+        draftKind === "insert" ? "Новый текст добавлен" :
         "Комментарий добавлен"
       );
     } catch (e: any) {
@@ -165,7 +211,7 @@ export function ReviewableDocument({ documentHtml, comments, authorName, canComm
         <div
           ref={docRef}
           className={
-            "rounded-lg border bg-white p-6 max-h-[600px] overflow-auto prose prose-sm max-w-none " +
+            "rounded-lg border bg-white p-6 max-h-[600px] overflow-auto prose prose-sm max-w-none cursor-text " +
             // Comment (жёлтый)
             "[&_mark[data-kind='comment']]:bg-amber-200/60 [&_mark[data-kind='comment']]:cursor-pointer " +
             "[&_mark[data-kind='comment'][data-resolved='true']]:bg-emerald-200/40 " +
@@ -173,8 +219,9 @@ export function ReviewableDocument({ documentHtml, comments, authorName, canComm
             "[&_mark[data-kind='delete']]:bg-red-200/70 [&_mark[data-kind='delete']]:line-through [&_mark[data-kind='delete']]:text-red-800 [&_mark[data-kind='delete']]:cursor-pointer " +
             // Replace (красный перечёркнутый источник)
             "[&_mark[data-kind='replace']]:bg-red-200/70 [&_mark[data-kind='replace']]:line-through [&_mark[data-kind='replace']]:text-red-800 [&_mark[data-kind='replace']]:cursor-pointer " +
-            // Insert (зелёная вставка)
-            "[&_ins[data-comment-id]]:bg-emerald-200/70 [&_ins[data-comment-id]]:no-underline [&_ins[data-comment-id]]:text-emerald-800 [&_ins[data-comment-id]]:px-1 [&_ins[data-comment-id]]:rounded [&_ins[data-comment-id]]:mx-0.5"
+            // Insert / Replace-вставка (зелёная)
+            "[&_ins[data-comment-id]]:bg-emerald-200/70 [&_ins[data-comment-id]]:no-underline [&_ins[data-comment-id]]:text-emerald-800 [&_ins[data-comment-id]]:px-1 [&_ins[data-comment-id]]:rounded [&_ins[data-comment-id]]:mx-0.5 [&_ins[data-comment-id]]:cursor-pointer " +
+            "[&_ins[data-kind='insert-only']]:font-medium"
           }
           dangerouslySetInnerHTML={{ __html: documentHtml }}
           onClick={(e) => {
@@ -193,7 +240,7 @@ export function ReviewableDocument({ documentHtml, comments, authorName, canComm
             className="fixed z-50 bg-foreground text-background rounded-lg shadow-xl px-1 py-1 flex items-center gap-0.5"
             style={{
               top: Math.max(selection.rect.top - 44, 8),
-              left: Math.max(Math.min(selection.rect.left + selection.rect.width / 2 - 130, window.innerWidth - 280), 8),
+              left: Math.max(Math.min(selection.rect.left + selection.rect.width / 2 - 170, window.innerWidth - 360), 8),
             }}
           >
             <Button size="sm" variant="ghost" className="h-7 text-xs gap-1.5 hover:bg-background/20"
@@ -206,55 +253,84 @@ export function ReviewableDocument({ documentHtml, comments, authorName, canComm
               <Scissors className="w-3.5 h-3.5" />Удалить
             </Button>
             <div className="w-px h-4 bg-background/20" />
-            <Button size="sm" variant="ghost" className="h-7 text-xs gap-1.5 hover:bg-background/20 text-emerald-200"
+            <Button size="sm" variant="ghost" className="h-7 text-xs gap-1.5 hover:bg-background/20 text-amber-200"
               onClick={() => setDraftKind("replace")}>
               <Replace className="w-3.5 h-3.5" />Заменить
+            </Button>
+            <div className="w-px h-4 bg-background/20" />
+            <Button size="sm" variant="ghost" className="h-7 text-xs gap-1.5 hover:bg-background/20 text-emerald-200"
+              onClick={() => setDraftKind("insert")}>
+              <Plus className="w-3.5 h-3.5" />Вставить после
+            </Button>
+          </div>
+        )}
+
+        {/* Caret-toolbar: insert в позицию курсора без выделения */}
+        {insertCaret && canComment && !draftKind && !selection && (
+          <div
+            className="fixed z-50 bg-foreground text-background rounded-lg shadow-xl px-1 py-1 flex items-center"
+            style={{
+              top: Math.max(insertCaret.rect.top - 40, 8),
+              left: Math.max(Math.min(insertCaret.rect.left, window.innerWidth - 220), 8),
+            }}
+          >
+            <Button size="sm" variant="ghost" className="h-7 text-xs gap-1.5 hover:bg-background/20 text-emerald-200"
+              onClick={() => setDraftKind("insert")}>
+              <Plus className="w-3.5 h-3.5" />Добавить пункт здесь
             </Button>
           </div>
         )}
 
         {/* Форма правки */}
-        {draftKind && selection && (
+        {draftKind && (selection || (draftKind === "insert" && insertCaret)) && (
           <Card className="fixed z-50 p-3 w-[360px] shadow-xl"
             style={{
-              top: Math.min(selection.rect.bottom + 8, window.innerHeight - 320),
-              left: Math.max(Math.min(selection.rect.left, window.innerWidth - 380), 8),
+              top: Math.min(((selection?.rect.bottom ?? insertCaret!.rect.bottom)) + 8, window.innerHeight - 340),
+              left: Math.max(Math.min(((selection?.rect.left ?? insertCaret!.rect.left)), window.innerWidth - 380), 8),
             }}>
             <div className="text-xs font-semibold mb-1.5 flex items-center gap-1.5">
               {draftKind === "comment" && <><MessageSquare className="w-3.5 h-3.5" /> Комментарий к фрагменту</>}
               {draftKind === "delete" && <><Scissors className="w-3.5 h-3.5 text-red-600" /> Предложить удалить</>}
-              {draftKind === "replace" && <><Replace className="w-3.5 h-3.5 text-emerald-600" /> Предложить замену</>}
+              {draftKind === "replace" && <><Replace className="w-3.5 h-3.5 text-amber-600" /> Предложить замену</>}
+              {draftKind === "insert" && <><Plus className="w-3.5 h-3.5 text-emerald-600" /> {selection ? "Вставить после фрагмента" : "Добавить новый текст"}</>}
             </div>
-            <blockquote className={
-              "text-xs italic border-l-2 pl-2 mb-2 line-clamp-3 " +
-              (draftKind === "delete" || draftKind === "replace"
-                ? "border-red-400 line-through text-red-700"
-                : "border-primary")
-            }>
-              «{selection.text}»
-            </blockquote>
+            {selection && (
+              <blockquote className={
+                "text-xs italic border-l-2 pl-2 mb-2 line-clamp-3 " +
+                (draftKind === "delete" || draftKind === "replace"
+                  ? "border-red-400 line-through text-red-700"
+                  : draftKind === "insert"
+                  ? "border-emerald-400 text-muted-foreground"
+                  : "border-primary")
+              }>
+                «{selection.text}»
+                {draftKind === "insert" && <span className="not-italic text-emerald-700 font-medium"> ← добавить после этого</span>}
+              </blockquote>
+            )}
 
-            {draftKind === "replace" && (
+            {(draftKind === "replace" || draftKind === "insert") && (
               <Textarea
                 autoFocus
-                placeholder="Заменить на…"
+                placeholder={draftKind === "insert" ? "Текст нового пункта…" : "Заменить на…"}
                 value={draftReplacement}
                 onChange={(e) => setDraftReplacement(e.target.value)}
                 className="text-sm min-h-[60px] mb-2 border-emerald-300 focus-visible:ring-emerald-400 bg-emerald-50/30"
               />
             )}
 
-            <Textarea
-              autoFocus={draftKind !== "replace"}
-              placeholder={
-                draftKind === "delete" ? "Причина удаления (опционально)…" :
-                draftKind === "replace" ? "Комментарий к замене (опционально)…" :
-                "Ваш комментарий…"
-              }
-              value={draftText}
-              onChange={(e) => setDraftText(e.target.value)}
-              className="text-sm min-h-[60px] mb-2"
-            />
+            {draftKind !== "insert" && (
+              <Textarea
+                autoFocus={draftKind !== "replace"}
+                placeholder={
+                  draftKind === "delete" ? "Причина удаления (опционально)…" :
+                  draftKind === "replace" ? "Комментарий к замене (опционально)…" :
+                  "Ваш комментарий…"
+                }
+                value={draftText}
+                onChange={(e) => setDraftText(e.target.value)}
+                className="text-sm min-h-[60px] mb-2"
+              />
+            )}
             <div className="flex justify-end gap-1.5">
               <Button size="sm" variant="ghost" onClick={resetAll} disabled={submitting}>
                 <X className="w-3.5 h-3.5" />
@@ -262,7 +338,12 @@ export function ReviewableDocument({ documentHtml, comments, authorName, canComm
               <Button
                 size="sm"
                 onClick={handleSubmit}
-                disabled={submitting || (draftKind === "replace" && !draftReplacement.trim()) || (draftKind === "comment" && !draftText.trim())}
+                disabled={
+                  submitting ||
+                  (draftKind === "replace" && !draftReplacement.trim()) ||
+                  (draftKind === "insert" && !draftReplacement.trim()) ||
+                  (draftKind === "comment" && !draftText.trim())
+                }
               >
                 {submitting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : "Добавить"}
               </Button>
@@ -306,6 +387,11 @@ export function ReviewableDocument({ documentHtml, comments, authorName, canComm
                         <Replace className="w-2.5 h-2.5" />Заменить
                       </Badge>
                     )}
+                    {kind === "insert" && (
+                      <Badge variant="outline" className="h-5 text-[10px] gap-1 border-emerald-300 text-emerald-700 bg-emerald-50">
+                        <Plus className="w-2.5 h-2.5" />Добавить
+                      </Badge>
+                    )}
                     {kind === "comment" && (
                       <Badge variant="outline" className="h-5 text-[10px] gap-1 border-muted-foreground/30 text-muted-foreground">
                         <MessageSquare className="w-2.5 h-2.5" />Комм.
@@ -324,9 +410,9 @@ export function ReviewableDocument({ documentHtml, comments, authorName, canComm
                     «{c.quoted_text}»
                   </blockquote>
                 )}
-                {kind === "replace" && replacement && (
+                {(kind === "replace" || kind === "insert") && replacement && (
                   <div className="text-[11px] border-l-2 border-emerald-400 pl-1.5 mb-1 text-emerald-700 bg-emerald-50/50 py-0.5 rounded-r">
-                    → «{replacement}»
+                    {kind === "insert" ? "+ " : "→ "}«{replacement}»
                   </div>
                 )}
                 {c.comment_text && c.comment_text !== "Предложено удалить фрагмент" && c.comment_text !== "Предложена замена фрагмента" && (
@@ -346,7 +432,7 @@ export function ReviewableDocument({ documentHtml, comments, authorName, canComm
 
 // ============== Helpers ==============
 
-/** Считает плоские offset'ы (без учёта тегов) для Range внутри корня. */
+/** Считает плоские offset'ы (без учёта тегов) для Range внутри корня. Поддерживает collapsed range (caret). */
 function computeOffsets(root: HTMLElement, range: Range): { start: number; end: number } | null {
   const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, null);
   let pos = 0;
@@ -365,8 +451,54 @@ function computeOffsets(root: HTMLElement, range: Range): { start: number; end: 
     }
     pos += len;
   }
-  if (start === -1 || end === -1 || end <= start) return null;
+  if (start === -1 || end === -1 || end < start) return null;
   return { start, end };
+}
+
+/** Вставляет зелёный <ins> в позицию offset (без выделения исходного текста). */
+function insertAtOffset(root: HTMLElement, offset: number, commentId: string, text: string): boolean {
+  const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, null);
+  let pos = 0;
+  let n: Node | null;
+  while ((n = walker.nextNode())) {
+    const t = n as Text;
+    // Пропускаем подсветки/вставки, чтобы не сместить позицию
+    if (t.parentElement?.closest("ins[data-comment-id]")) continue;
+    const len = t.data.length;
+    if (pos + len >= offset) {
+      const local = Math.max(0, Math.min(offset - pos, len));
+      try {
+        let target: Text = t;
+        if (local > 0 && local < len) {
+          target = t.splitText(local);
+        } else if (local === 0) {
+          target = t;
+        }
+        const ins = document.createElement("ins");
+        ins.setAttribute("data-comment-id", commentId);
+        ins.setAttribute("data-kind", "insert-only");
+        ins.textContent = "+ " + text;
+        if (local === 0) {
+          target.parentNode?.insertBefore(ins, target);
+        } else {
+          // target теперь начинается с позиции вставки → вставляем перед ним
+          target.parentNode?.insertBefore(ins, target);
+        }
+        return true;
+      } catch (e) {
+        console.warn("[insertAtOffset] failed", e);
+        return false;
+      }
+    }
+    pos += len;
+  }
+  // Если offset за пределами — вставляем в конец
+  const ins = document.createElement("ins");
+  ins.setAttribute("data-comment-id", commentId);
+  ins.setAttribute("data-kind", "insert-only");
+  ins.textContent = "+ " + text;
+  root.appendChild(ins);
+  return true;
 }
 
 /** Удаляет все mark/ins подсветки, возвращая исходный текст. */
