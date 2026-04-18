@@ -26,7 +26,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { getStoredThemeId, getThemeById, type AdminTheme } from "@/constants/admin-themes";
 import { ThemeAnimations, getStoredAnimationLevel, type AnimationLevel } from "@/components/ui/ThemeAnimations";
 import { AtmosphericBleed } from "@/components/ui/AtmosphericBleed";
-import { ContractReviewDialog } from "@/components/signing/ContractReviewDialog";
+
 
 const AdminDashboard = () => {
   const { user, signOut } = useAuth();
@@ -36,7 +36,7 @@ const AdminDashboard = () => {
   const [notifications, setNotifications] = useState<any[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [openOrgId, setOpenOrgId] = useState<string | null>(null);
-  const [reviewToken, setReviewToken] = useState<string | null>(null);
+  const [pendingExpandContractId, setPendingExpandContractId] = useState<string | null>(null);
   const adminBranding = useAdminBranding();
 
   // Visual theme
@@ -100,20 +100,14 @@ const AdminDashboard = () => {
       setOpenOrgId(n.related_entity_id);
       setActiveTab("organizations");
     } else if (n.type === "signature") {
-      // Открываем модалку просмотра договора прямо в админке
+      // Открываем нужный договор инлайн внутри вкладки "Биллинг"
       if (n.related_entity_id) {
-        const { data: sigRow } = await supabase
-          .from("document_signatures")
-          .select("signature_token")
-          .eq("id", n.related_entity_id)
-          .maybeSingle();
-        const token = (sigRow as any)?.signature_token;
-        if (token) {
-          setReviewToken(token);
-          return;
-        }
+        setActiveTab("billing");
+        // Сбрасываем, чтобы повторный клик по тому же уведомлению снова сработал
+        setPendingExpandContractId(null);
+        setTimeout(() => setPendingExpandContractId(n.related_entity_id), 50);
+        return;
       }
-      // Fallback — переход на вкладку "Биллинг"
       setActiveTab("billing");
     }
   };
@@ -176,7 +170,7 @@ const AdminDashboard = () => {
           {activeTab === "organizations" && <OrganizationsManager openOrgId={openOrgId} onOpenOrgHandled={() => setOpenOrgId(null)} />}
           {activeTab === "marketplace" && <AdminMarketplaceManager />}
           {activeTab === "sales" && <SalesManager />}
-          {activeTab === "billing" && <AdminBillingOverview />}
+          {activeTab === "billing" && <AdminBillingOverview pendingExpandContractId={pendingExpandContractId} />}
           {activeTab === "finance" && <AdminFinanceOverview />}
           {activeTab === "ai" && <AISettingsManager />}
           {activeTab === "users" && <UsersManager />}
@@ -195,12 +189,6 @@ const AdminDashboard = () => {
         <AdminDashboardFooter />
       </main>
 
-      {/* Глобальный диалог просмотра внешнего договора (открывается из колокола или из биллинга) */}
-      <ContractReviewDialog
-        open={!!reviewToken}
-        onOpenChange={(o) => { if (!o) setReviewToken(null); }}
-        signatureToken={reviewToken}
-      />
     </div>
   );
 };
