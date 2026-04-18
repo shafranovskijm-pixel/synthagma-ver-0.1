@@ -750,66 +750,30 @@ export function ContractReviewBody({
             </Button>
           </div>
 
-          {/* Блок 2: подписать здесь */}
-          <div className="rounded-lg border-2 border-primary/30 bg-primary/5 p-3 space-y-2">
-            <div className="flex items-center gap-2 text-sm font-semibold">
-              <ShieldCheck className="w-4 h-4 text-primary" />
-              Подписать прямо здесь
-            </div>
-            <p className="text-[11px] text-muted-foreground">
-              Если вас всё устраивает — подпишите документ простой электронной подписью без перехода на другую страницу.
-            </p>
-            {!signPanelOpen ? (
-              <Button className="w-full gap-1.5" size="sm" onClick={() => setSignPanelOpen(true)}>
+          {/* Блок 2: подписать здесь — открывает общую панель ниже */}
+          {!signPanelOpen && (
+            <div className="rounded-lg border-2 border-primary/30 bg-primary/5 p-3 space-y-2">
+              <div className="flex items-center gap-2 text-sm font-semibold">
+                <ShieldCheck className="w-4 h-4 text-primary" />
+                Подписать прямо здесь
+              </div>
+              <p className="text-[11px] text-muted-foreground">
+                Если вас всё устраивает — подпишите документ простой электронной подписью без перехода на другую страницу.
+              </p>
+              <Button
+                className="w-full gap-1.5"
+                size="sm"
+                onClick={() => {
+                  setSignPanelOpen(true);
+                  setTimeout(() => {
+                    document.getElementById("inline-sign-panel")?.scrollIntoView({ behavior: "smooth", block: "center" });
+                  }, 50);
+                }}
+              >
                 <PenLine className="w-3.5 h-3.5" />Подписать здесь
               </Button>
-            ) : (
-              <div className="space-y-3 pt-1">
-                <div className="grid sm:grid-cols-2 gap-2">
-                  <div className="space-y-1">
-                    <Label className="text-[11px]">ФИО подписанта</Label>
-                    <Input value={signFullName} onChange={(e) => setSignFullName(e.target.value)} placeholder="Иванов Иван Иванович" className="h-9 text-sm" />
-                  </div>
-                  <div className="space-y-1">
-                    <Label className="text-[11px]">Email</Label>
-                    <Input type="email" value={signEmail} onChange={(e) => setSignEmail(e.target.value)} className="h-9 text-sm" />
-                  </div>
-                </div>
-                <div>
-                  <Label className="text-[11px] mb-1 block">Соглашение об использовании ПЭП ({PEP_AGREEMENT_VERSION})</Label>
-                  <ScrollArea className="h-32 rounded border bg-background p-2">
-                    <pre className="text-[10px] whitespace-pre-wrap font-sans leading-relaxed">{agreementText}</pre>
-                  </ScrollArea>
-                </div>
-                <div className="flex items-start gap-2">
-                  <Checkbox id="agree-inline" checked={agreementAccepted} onCheckedChange={(v) => setAgreementAccepted(!!v)} />
-                  <Label htmlFor="agree-inline" className="text-[11px] leading-relaxed cursor-pointer">
-                    Я ознакомился(ась) и принимаю условия Соглашения об использовании ПЭП (63-ФЗ).
-                  </Label>
-                </div>
-                <div className="flex items-start gap-2">
-                  <Checkbox id="sign-inline" checked={signAccepted} onCheckedChange={(v) => setSignAccepted(!!v)} />
-                  <Label htmlFor="sign-inline" className="text-[11px] leading-relaxed cursor-pointer">
-                    Я, <strong>{signFullName || "—"}</strong>, подписываю «{sig.document_title}» простой электронной подписью. Подпись имеет юридическую силу, равную собственноручной.
-                  </Label>
-                </div>
-                <div className="flex gap-2">
-                  <Button variant="ghost" size="sm" onClick={() => setSignPanelOpen(false)} disabled={submittingSign}>
-                    Отмена
-                  </Button>
-                  <Button
-                    className="flex-1 gap-1.5"
-                    size="sm"
-                    onClick={handleInlineSign}
-                    disabled={submittingSign || !signAccepted || !agreementAccepted || !signFullName.trim() || !signEmail.trim()}
-                  >
-                    {submittingSign ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <ShieldCheck className="w-3.5 h-3.5" />}
-                    {submittingSign ? "Подписание…" : "Подписать"}
-                  </Button>
-                </div>
-              </div>
-            )}
-          </div>
+            </div>
+          )}
         </div>
       )}
 
