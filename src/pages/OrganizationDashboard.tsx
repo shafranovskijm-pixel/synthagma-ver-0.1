@@ -24,7 +24,9 @@ export default function OrganizationDashboard() {
   const [searchParams, setSearchParams] = useSearchParams();
   const d = useOrgDashboard();
 
-  // Sync org-wide theme from DB (source of truth across devices/staff)
+  // Sync org-wide theme from DB (source of truth across devices/staff).
+  // The hook respects `enforce` — it applies only when the organization
+  // has enabled the shared interface toggle.
   useOrgTheme(d.organizationId);
 
   // Visual theme
