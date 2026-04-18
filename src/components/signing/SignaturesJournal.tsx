@@ -293,6 +293,10 @@ export function SignaturesJournal({ organizationId }: Props) {
                 <div><span className="text-muted-foreground">Действует до:</span> {format(new Date(selected.expires_at), "d MMM yyyy HH:mm", { locale: ru })}</div>
               </div>
 
+              {(selected.status === "in_review" || selected.status === "changes_requested") && (
+                <SignatureCommentsPanel signatureId={selected.id} />
+              )}
+
               {selected.status === "signed" && (
                 <div className="rounded-xl border-2 border-emerald-500/30 bg-emerald-500/5 p-4 space-y-2">
                   <div className="font-semibold text-emerald-700 dark:text-emerald-400 flex items-center gap-2">
@@ -332,6 +336,60 @@ export function SignaturesJournal({ organizationId }: Props) {
           )}
         </DialogContent>
       </Dialog>
+    </div>
+  );
+}
+
+/** Панель комментариев и версий по signature_id (для отправителя) */
+function SignatureCommentsPanel({ signatureId }: { signatureId: string }) {
+  const [comments, setComments] = useState<any[]>([]);
+  const [revisions, setRevisions] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    (async () => {
+      setLoading(true);
+      const sb: any = supabase;
+      const [cRes, rRes] = await Promise.all([
+        sb.from("signature_comments").select("*").eq("signature_id", signatureId).order("created_at", { ascending: true }),
+        sb.from("signature_revisions").select("*").eq("signature_id", signatureId).order("version", { ascending: true }),
+      ]);
+      setComments(cRes.data || []);
+      setRevisions(rRes.data || []);
+      setLoading(false);
+    })();
+  }, [signatureId]);
+
+  if (loading) return <div className="py-4 text-center text-sm text-muted-foreground">Загрузка комментариев…</div>;
+
+  return (
+    <div className="rounded-xl border border-violet-500/30 bg-violet-500/5 p-4 space-y-3">
+      <div className="font-semibold text-violet-700 dark:text-violet-400 flex items-center gap-2">
+        <MessageCircle className="w-5 h-5" />
+        Согласование документа
+        {revisions.length > 0 && <Badge variant="secondary">Версия {revisions.length}</Badge>}
+      </div>
+
+      {comments.length === 0 ? (
+        <div className="text-sm text-muted-foreground py-2">Комментариев от получателя пока нет.</div>
+      ) : (
+        <div className="space-y-2">
+          {comments.map((c) => (
+            <div key={c.id} className="bg-background rounded-md border p-2.5 text-sm">
+              <div className="flex items-center justify-between mb-1">
+                <div className="text-xs font-medium">{c.author_name} <span className="text-muted-foreground">· {c.author_role}</span></div>
+                <div className="text-[10px] text-muted-foreground">{new Date(c.created_at).toLocaleString("ru-RU")}</div>
+              </div>
+              {c.quoted_text && (
+                <blockquote className="text-[11px] italic border-l-2 border-amber-400 pl-1.5 mb-1 text-muted-foreground line-clamp-2">
+                  «{c.quoted_text}»
+                </blockquote>
+              )}
+              <div className="text-xs whitespace-pre-wrap">{c.comment_text}</div>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
