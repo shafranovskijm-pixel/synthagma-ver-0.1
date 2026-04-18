@@ -112,9 +112,10 @@ export function CounterpartiesSection({
     (async () => {
       const { data } = await (supabase as any)
         .from("document_signatures")
-        .select("id, document_title, status, created_at, current_revision_id, sender_signed_at, requires_bilateral, signed_at, signature_token")
+        .select("id, document_title, status, created_at, current_revision_id, sender_signed_at, requires_bilateral, signed_at, signature_token, hidden_for_sender")
         .eq("organization_id", organizationId)
         .eq("document_type", "external_upload")
+        .eq("hidden_for_sender", false)
         .order("created_at", { ascending: false });
       setPlatformExternalContracts((data as any[]) || []);
       setExpandedReviewId(sigId);
