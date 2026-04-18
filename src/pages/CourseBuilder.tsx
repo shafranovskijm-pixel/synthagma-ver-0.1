@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 import { useNavigate, useParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -7,12 +7,14 @@ import { Textarea } from "@/components/ui/textarea";
 import { SigmaLogo } from "@/components/ui/SigmaLogo";
 import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from "@/components/ui/tooltip";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { ArrowLeft, Save, Eye, Plus, FileUp, Wand2, Check, AlertCircle, FileText, Video, CheckSquare, Sparkles, Presentation, Headphones, BookOpen, Layers, MessageSquare, BookCheck, SearchCheck } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { DndContext, closestCenter, useSensor, useSensors, PointerSensor, KeyboardSensor } from "@dnd-kit/core";
 import { SortableContext, verticalListSortingStrategy, sortableKeyboardCoordinates } from "@dnd-kit/sortable";
 import { SortableLessonItem } from "@/components/course-builder/SortableLessonItem";
+import { CourseBuilderLessonsNav } from "@/components/course-builder/CourseBuilderLessonsNav";
 import { AIGenerateDialog } from "@/components/course-builder/AIGenerateDialog";
 import { CourseReviewDialog } from "@/components/course-builder/CourseReviewDialog";
 import { useCourseBuilder } from "@/hooks/useCourseBuilder";
@@ -23,6 +25,59 @@ import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 interface CourseBuilderProps {
   embedded?: boolean;
   embeddedCourseId?: string;
+}
+
+function AddLessonGrid({
+  addLesson,
+  openAIDialog,
+}: {
+  addLesson: (type: LessonType) => void;
+  openAIDialog: () => void;
+}) {
+  return (
+    <div className="grid grid-cols-3 sm:grid-cols-2 gap-2 sm:gap-3">
+      <Button variant="outline" className="h-auto py-3 sm:py-4 flex flex-col gap-1 sm:gap-2 rounded-xl hover:shadow-md hover:-translate-y-0.5 transition-all hover:border-primary/30" onClick={() => addLesson('text')}>
+        <div className="p-1.5 sm:p-2 rounded-full bg-primary/10"><FileText className="w-4 h-4 sm:w-5 sm:h-5 text-primary" /></div>
+        <span className="text-[10px] sm:text-xs font-semibold">Текст</span>
+        <span className="text-[9px] sm:text-[10px] text-muted-foreground leading-tight text-center hidden sm:block">Блочный редактор с медиа</span>
+      </Button>
+      <Button variant="outline" className="h-auto py-3 sm:py-4 flex flex-col gap-1 sm:gap-2 rounded-xl hover:shadow-md hover:-translate-y-0.5 transition-all hover:border-purple-400/30" onClick={() => addLesson('video')}>
+        <div className="p-1.5 sm:p-2 rounded-full bg-purple-500/10"><Video className="w-4 h-4 sm:w-5 sm:h-5 text-purple-500" /></div>
+        <span className="text-[10px] sm:text-xs font-semibold">Видео</span>
+        <span className="text-[9px] sm:text-[10px] text-muted-foreground leading-tight text-center hidden sm:block">MP4, WebM · YouTube, VK</span>
+      </Button>
+      <Button variant="outline" className="h-auto py-3 sm:py-4 flex flex-col gap-1 sm:gap-2 rounded-xl hover:shadow-md hover:-translate-y-0.5 transition-all hover:border-orange-400/30" onClick={() => addLesson('test')}>
+        <div className="p-1.5 sm:p-2 rounded-full bg-orange-500/10"><CheckSquare className="w-4 h-4 sm:w-5 sm:h-5 text-orange-500" /></div>
+        <span className="text-[10px] sm:text-xs font-semibold">Тест</span>
+        <span className="text-[9px] sm:text-[10px] text-muted-foreground leading-tight text-center hidden sm:block">Вопросы с вариантами</span>
+      </Button>
+      <Button variant="outline" className="h-auto py-3 sm:py-4 flex flex-col gap-1 sm:gap-2 rounded-xl hover:shadow-md hover:-translate-y-0.5 transition-all hover:border-primary/30" onClick={openAIDialog}>
+        <div className="p-1.5 sm:p-2 rounded-full bg-primary/10"><Sparkles className="w-4 h-4 sm:w-5 sm:h-5 text-primary" /></div>
+        <span className="text-[10px] sm:text-xs font-semibold">AI</span>
+        <span className="text-[9px] sm:text-[10px] text-muted-foreground leading-tight text-center hidden sm:block">Создать с помощью ИИ</span>
+      </Button>
+      <Button variant="outline" className="h-auto py-3 sm:py-4 flex flex-col gap-1 sm:gap-2 rounded-xl hover:shadow-md hover:-translate-y-0.5 transition-all hover:border-amber-400/30" onClick={() => addLesson('slider')}>
+        <div className="p-1.5 sm:p-2 rounded-full bg-amber-500/10"><Presentation className="w-4 h-4 sm:w-5 sm:h-5 text-amber-500" /></div>
+        <span className="text-[10px] sm:text-xs font-semibold">Слайды</span>
+        <span className="text-[9px] sm:text-[10px] text-muted-foreground leading-tight text-center hidden sm:block">PPTX или вручную</span>
+      </Button>
+      <Button variant="outline" className="h-auto py-3 sm:py-4 flex flex-col gap-1 sm:gap-2 rounded-xl hover:shadow-md hover:-translate-y-0.5 transition-all hover:border-green-400/30" onClick={() => addLesson('audio')}>
+        <div className="p-1.5 sm:p-2 rounded-full bg-green-500/10"><Headphones className="w-4 h-4 sm:w-5 sm:h-5 text-green-500" /></div>
+        <span className="text-[10px] sm:text-xs font-semibold">Аудио</span>
+        <span className="text-[9px] sm:text-[10px] text-muted-foreground leading-tight text-center hidden sm:block">MP3, WAV, OGG</span>
+      </Button>
+      <Button variant="outline" className="h-auto py-3 sm:py-4 flex flex-col gap-1 sm:gap-2 rounded-xl hover:shadow-md hover:-translate-y-0.5 transition-all hover:border-blue-400/30" onClick={() => addLesson('feedback')}>
+        <div className="p-1.5 sm:p-2 rounded-full bg-blue-500/10"><MessageSquare className="w-4 h-4 sm:w-5 sm:h-5 text-blue-500" /></div>
+        <span className="text-[10px] sm:text-xs font-semibold">Обратная связь</span>
+        <span className="text-[9px] sm:text-[10px] text-muted-foreground leading-tight text-center hidden sm:block">Вопрос → чат</span>
+      </Button>
+      <Button variant="outline" className="h-auto py-3 sm:py-4 flex flex-col gap-1 sm:gap-2 rounded-xl hover:shadow-md hover:-translate-y-0.5 transition-all hover:border-indigo-400/30" onClick={() => addLesson('homework')}>
+        <div className="p-1.5 sm:p-2 rounded-full bg-indigo-500/10"><BookCheck className="w-4 h-4 sm:w-5 sm:h-5 text-indigo-500" /></div>
+        <span className="text-[10px] sm:text-xs font-semibold">Задание</span>
+        <span className="text-[9px] sm:text-[10px] text-muted-foreground leading-tight text-center hidden sm:block">Домашняя работа</span>
+      </Button>
+    </div>
+  );
 }
 
 export default function CourseBuilder({ embedded, embeddedCourseId }: CourseBuilderProps = {}) {
@@ -39,12 +94,34 @@ export default function CourseBuilder({ embedded, embeddedCourseId }: CourseBuil
     handleSaveAndExit, handleExitWithoutSave, handleBackClick,
     sensors, handleDragEnd, saveCourse, autoSaveStatus,
     courseId: resolvedCourseId,
-    organizationId } = useCourseBuilder(embeddedCourseId);
+    organizationId,
+    activeLessonId, setActiveLessonId, scrollToLesson } = useCourseBuilder(embeddedCourseId);
 
   const {
     isReviewing, reviewResult, activeFindings, dismissedIds,
     startReview, dismissFinding, dismissAll, resetReview } = useCourseReview();
   const [showReviewDialog, setShowReviewDialog] = useState(false);
+  const [addLessonSheetOpen, setAddLessonSheetOpen] = useState(false);
+
+  // IntersectionObserver — track which lesson is currently visible
+  useEffect(() => {
+    if (lessons.length === 0) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const visible = entries
+          .filter((e) => e.isIntersecting)
+          .sort((a, b) => b.intersectionRatio - a.intersectionRatio);
+        if (visible[0]) {
+          const id = (visible[0].target as HTMLElement).dataset.lessonId;
+          if (id) setActiveLessonId(id);
+        }
+      },
+      { rootMargin: "-100px 0px -50% 0px", threshold: [0, 0.25, 0.5, 0.75, 1] },
+    );
+    const els = document.querySelectorAll<HTMLElement>("[data-lesson-id]");
+    els.forEach((el) => observer.observe(el));
+    return () => observer.disconnect();
+  }, [lessons.length, setActiveLessonId]);
 
   const handleStartReview = async () => {
     if (!resolvedCourseId) {
@@ -132,8 +209,18 @@ export default function CourseBuilder({ embedded, embeddedCourseId }: CourseBuil
       </div>
 
       <div className="container mx-auto px-3 sm:px-6 py-4 sm:py-8 pb-28 sm:pb-32">
-        <div className="grid lg:grid-cols-3 gap-4 sm:gap-8">
-          <div className="lg:col-span-2 space-y-6">
+        <div className="flex gap-4 lg:gap-6 items-start">
+          {/* LEFT: sticky lessons navigation (desktop) */}
+          <CourseBuilderLessonsNav
+            lessons={lessons}
+            activeLessonId={activeLessonId}
+            sensors={sensors}
+            onDragEnd={handleDragEnd}
+            onLessonClick={scrollToLesson}
+          />
+
+          {/* CENTER: main content */}
+          <div className="flex-1 min-w-0 space-y-6">
             <div className="bg-card rounded-2xl border border-border border-t-2 border-t-primary/30 p-4 sm:p-6 space-y-4">
               <h2 className="font-display text-xl font-semibold mb-4 flex items-center gap-2"><BookOpen className="w-5 h-5 text-primary" />Информация о курсе</h2>
               <div className="space-y-2"><Label>Название курса</Label><Input value={courseTitle} onChange={e => setCourseTitle(e.target.value)} placeholder="Введите название курса" className="text-lg font-medium" /></div>
@@ -196,54 +283,35 @@ export default function CourseBuilder({ embedded, embeddedCourseId }: CourseBuil
             </div>
           </div>
 
-          <div className="space-y-6">
-            <div className="bg-card rounded-2xl border border-border p-4 sm:p-6 lg:sticky lg:top-24">
+          {/* RIGHT: sticky "Добавить урок" panel (desktop) */}
+          <aside className="hidden lg:block sticky top-24 self-start w-72 shrink-0">
+            <div className="bg-card rounded-2xl border border-border p-4 sm:p-6 shadow-sm max-h-[calc(100vh-7rem)] overflow-y-auto">
               <h3 className="font-semibold mb-3 sm:mb-4">Добавить урок</h3>
-              <div className="grid grid-cols-3 sm:grid-cols-2 gap-2 sm:gap-3">
-                <Button variant="outline" className="h-auto py-3 sm:py-4 flex flex-col gap-1 sm:gap-2 rounded-xl hover:shadow-md hover:-translate-y-0.5 transition-all hover:border-primary/30" onClick={() => addLesson('text')}>
-                  <div className="p-1.5 sm:p-2 rounded-full bg-primary/10"><FileText className="w-4 h-4 sm:w-5 sm:h-5 text-primary" /></div>
-                  <span className="text-[10px] sm:text-xs font-semibold">Текст</span>
-                  <span className="text-[9px] sm:text-[10px] text-muted-foreground leading-tight text-center hidden sm:block">Блочный редактор с медиа</span>
-                </Button>
-                <Button variant="outline" className="h-auto py-3 sm:py-4 flex flex-col gap-1 sm:gap-2 rounded-xl hover:shadow-md hover:-translate-y-0.5 transition-all hover:border-purple-400/30" onClick={() => addLesson('video')}>
-                  <div className="p-1.5 sm:p-2 rounded-full bg-purple-500/10"><Video className="w-4 h-4 sm:w-5 sm:h-5 text-purple-500" /></div>
-                  <span className="text-[10px] sm:text-xs font-semibold">Видео</span>
-                  <span className="text-[9px] sm:text-[10px] text-muted-foreground leading-tight text-center hidden sm:block">MP4, WebM · YouTube, VK</span>
-                </Button>
-                <Button variant="outline" className="h-auto py-3 sm:py-4 flex flex-col gap-1 sm:gap-2 rounded-xl hover:shadow-md hover:-translate-y-0.5 transition-all hover:border-orange-400/30" onClick={() => addLesson('test')}>
-                  <div className="p-1.5 sm:p-2 rounded-full bg-orange-500/10"><CheckSquare className="w-4 h-4 sm:w-5 sm:h-5 text-orange-500" /></div>
-                  <span className="text-[10px] sm:text-xs font-semibold">Тест</span>
-                  <span className="text-[9px] sm:text-[10px] text-muted-foreground leading-tight text-center hidden sm:block">Вопросы с вариантами</span>
-                </Button>
-                <Button variant="outline" className="h-auto py-3 sm:py-4 flex flex-col gap-1 sm:gap-2 rounded-xl hover:shadow-md hover:-translate-y-0.5 transition-all hover:border-primary/30" onClick={() => setShowAIGenerateDialog(true)}>
-                  <div className="p-1.5 sm:p-2 rounded-full bg-primary/10"><Sparkles className="w-4 h-4 sm:w-5 sm:h-5 text-primary" /></div>
-                  <span className="text-[10px] sm:text-xs font-semibold">AI</span>
-                  <span className="text-[9px] sm:text-[10px] text-muted-foreground leading-tight text-center hidden sm:block">Создать с помощью ИИ</span>
-                </Button>
-                <Button variant="outline" className="h-auto py-3 sm:py-4 flex flex-col gap-1 sm:gap-2 rounded-xl hover:shadow-md hover:-translate-y-0.5 transition-all hover:border-amber-400/30" onClick={() => addLesson('slider')}>
-                  <div className="p-1.5 sm:p-2 rounded-full bg-amber-500/10"><Presentation className="w-4 h-4 sm:w-5 sm:h-5 text-amber-500" /></div>
-                  <span className="text-[10px] sm:text-xs font-semibold">Слайды</span>
-                  <span className="text-[9px] sm:text-[10px] text-muted-foreground leading-tight text-center hidden sm:block">PPTX или вручную</span>
-                </Button>
-                <Button variant="outline" className="h-auto py-3 sm:py-4 flex flex-col gap-1 sm:gap-2 rounded-xl hover:shadow-md hover:-translate-y-0.5 transition-all hover:border-green-400/30" onClick={() => addLesson('audio')}>
-                  <div className="p-1.5 sm:p-2 rounded-full bg-green-500/10"><Headphones className="w-4 h-4 sm:w-5 sm:h-5 text-green-500" /></div>
-                  <span className="text-[10px] sm:text-xs font-semibold">Аудио</span>
-                  <span className="text-[9px] sm:text-[10px] text-muted-foreground leading-tight text-center hidden sm:block">MP3, WAV, OGG</span>
-                </Button>
-                <Button variant="outline" className="h-auto py-3 sm:py-4 flex flex-col gap-1 sm:gap-2 rounded-xl hover:shadow-md hover:-translate-y-0.5 transition-all hover:border-blue-400/30" onClick={() => addLesson('feedback')}>
-                  <div className="p-1.5 sm:p-2 rounded-full bg-blue-500/10"><MessageSquare className="w-4 h-4 sm:w-5 sm:h-5 text-blue-500" /></div>
-                  <span className="text-[10px] sm:text-xs font-semibold">Обратная связь</span>
-                  <span className="text-[9px] sm:text-[10px] text-muted-foreground leading-tight text-center hidden sm:block">Вопрос → чат</span>
-                </Button>
-                <Button variant="outline" className="h-auto py-3 sm:py-4 flex flex-col gap-1 sm:gap-2 rounded-xl hover:shadow-md hover:-translate-y-0.5 transition-all hover:border-indigo-400/30" onClick={() => addLesson('homework')}>
-                  <div className="p-1.5 sm:p-2 rounded-full bg-indigo-500/10"><BookCheck className="w-4 h-4 sm:w-5 sm:h-5 text-indigo-500" /></div>
-                  <span className="text-[10px] sm:text-xs font-semibold">Задание</span>
-                  <span className="text-[9px] sm:text-[10px] text-muted-foreground leading-tight text-center hidden sm:block">Домашняя работа</span>
-                </Button>
+              <AddLessonGrid
+                addLesson={addLesson}
+                openAIDialog={() => setShowAIGenerateDialog(true)}
+              />
+            </div>
+          </aside>
         </div>
       </div>
-    </div>
-        </div>
+
+      {/* Mobile floating "+" trigger for Add Lesson */}
+      <div className="lg:hidden fixed bottom-24 right-4 z-40">
+        <Sheet open={addLessonSheetOpen} onOpenChange={setAddLessonSheetOpen}>
+          <SheetTrigger asChild>
+            <Button size="sm" className="btn-gradient shadow-lg gap-2 rounded-full">
+              <Plus className="w-4 h-4" /> Добавить
+            </Button>
+          </SheetTrigger>
+          <SheetContent side="right" className="w-80 p-6">
+            <h3 className="font-semibold mb-4 mt-6">Добавить урок</h3>
+            <AddLessonGrid
+              addLesson={(t) => { addLesson(t); setAddLessonSheetOpen(false); }}
+              openAIDialog={() => { setShowAIGenerateDialog(true); setAddLessonSheetOpen(false); }}
+            />
+          </SheetContent>
+        </Sheet>
       </div>
 
       <AlertDialog open={showExitDialog} onOpenChange={setShowExitDialog}>
