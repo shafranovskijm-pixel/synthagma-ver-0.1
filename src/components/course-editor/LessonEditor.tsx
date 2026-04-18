@@ -101,7 +101,7 @@ export const LessonEditor = ({
                     {e.isGenerating ? "Генерация..." : "Сгенерировать ИИ"}
                   </Button>
                 </div>
-                <BlockEditor blocks={e.blocks} onChange={e.setBlocks} />
+                <BlockEditor blocks={e.blocks} onChange={e.setBlocks} organizationId={organizationId} courseId={courseId} lessonId={lesson?.id} />
               </div>
             )}
 
