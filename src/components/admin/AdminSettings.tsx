@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { ThemePersonalization } from "@/components/ui/ThemePersonalization";
 import {
   Palette, Database, Shield, Bell, Save, Globe, Tag, Sparkles,
-  RefreshCw, BarChart3, FileText, Bot, Terminal, Users
+  RefreshCw, BarChart3, FileText, Bot, Terminal, Users, FolderOpen
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
