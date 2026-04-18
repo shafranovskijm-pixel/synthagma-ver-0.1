@@ -432,7 +432,7 @@ export function ReviewableDocument({ documentHtml, comments, authorName, canComm
 
 // ============== Helpers ==============
 
-/** Считает плоские offset'ы (без учёта тегов) для Range внутри корня. */
+/** Считает плоские offset'ы (без учёта тегов) для Range внутри корня. Поддерживает collapsed range (caret). */
 function computeOffsets(root: HTMLElement, range: Range): { start: number; end: number } | null {
   const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, null);
   let pos = 0;
@@ -451,8 +451,54 @@ function computeOffsets(root: HTMLElement, range: Range): { start: number; end: 
     }
     pos += len;
   }
-  if (start === -1 || end === -1 || end <= start) return null;
+  if (start === -1 || end === -1 || end < start) return null;
   return { start, end };
+}
+
+/** Вставляет зелёный <ins> в позицию offset (без выделения исходного текста). */
+function insertAtOffset(root: HTMLElement, offset: number, commentId: string, text: string): boolean {
+  const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, null);
+  let pos = 0;
+  let n: Node | null;
+  while ((n = walker.nextNode())) {
+    const t = n as Text;
+    // Пропускаем подсветки/вставки, чтобы не сместить позицию
+    if (t.parentElement?.closest("ins[data-comment-id]")) continue;
+    const len = t.data.length;
+    if (pos + len >= offset) {
+      const local = Math.max(0, Math.min(offset - pos, len));
+      try {
+        let target: Text = t;
+        if (local > 0 && local < len) {
+          target = t.splitText(local);
+        } else if (local === 0) {
+          target = t;
+        }
+        const ins = document.createElement("ins");
+        ins.setAttribute("data-comment-id", commentId);
+        ins.setAttribute("data-kind", "insert-only");
+        ins.textContent = "+ " + text;
+        if (local === 0) {
+          target.parentNode?.insertBefore(ins, target);
+        } else {
+          // target теперь начинается с позиции вставки → вставляем перед ним
+          target.parentNode?.insertBefore(ins, target);
+        }
+        return true;
+      } catch (e) {
+        console.warn("[insertAtOffset] failed", e);
+        return false;
+      }
+    }
+    pos += len;
+  }
+  // Если offset за пределами — вставляем в конец
+  const ins = document.createElement("ins");
+  ins.setAttribute("data-comment-id", commentId);
+  ins.setAttribute("data-kind", "insert-only");
+  ins.textContent = "+ " + text;
+  root.appendChild(ins);
+  return true;
 }
 
 /** Удаляет все mark/ins подсветки, возвращая исходный текст. */
