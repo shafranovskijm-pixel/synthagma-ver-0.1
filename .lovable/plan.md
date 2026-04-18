@@ -1,57 +1,62 @@
 
-## Проблема
+## Задача
+Сделать просмотр и согласование внешнего договора (PDF/DOCX) **прямо внутри панели** (модалка), без перехода на отдельную страницу `/sign/{token}`. Доступно и админу-получателю, и отправителю-организации (read-only режим), с возможностью выделять фрагменты и оставлять правки.
 
-Договор отправлен админу Синтагмы, но:
-1. В админ-панели в колоколе уведомлений — пусто
-2. В разделе «Биллинг → Договоры» — 0 договоров
-3. У отправителя (организации) уведомление появилось, у получателя (админа) — нет
-
-## Анализ
-
-**Где сейчас создаются уведомления:** триггер `notify_on_signature_event` пишет в `org_notifications`. Это таблица **уведомлений организации**, а не админа платформы. В колоколе админа отображается `admin_notifications` (видно в `AdminDashboard.tsx`: `from("admin_notifications")`).
-
-То есть когда `recipient_type = 'admin_sintagma'` — никакое уведомление в `admin_notifications` не создаётся вообще. Поэтому в колоколе админа пусто.
-
-**Почему нет в «Биллинг → Договоры»:** надо посмотреть, как `AdminBillingOverview` грузит договоры. Скорее всего, он смотрит таблицу `sales_contracts` или `org_billing_documents`, а не `document_signatures`. Внешние договоры от организаций сейчас попадают в `document_signatures` — в админский биллинг они просто не подключены.
-
-## Что нужно проверить (read-only этап)
-
-1. `src/components/admin/AdminBillingOverview.tsx` — откуда таблица «Договоры» берёт данные.
-2. `supabase--read_query`: посмотреть последнюю запись в `document_signatures` (она должна быть создана) — проверить что RPC реально отработал.
-3. Триггер `notify_on_signature_event` — убедиться, что он не пишет ничего для `recipient_type='admin_sintagma'`.
+## Проблема "Документ не содержит текстового представления"
+Внешние договоры — это PDF/DOCX-файлы. Сейчас review-страница рисует только `documentHtml`. Для PDF/DOCX надо рендерить сам файл:
+- **PDF** → `<iframe src={file_url}>` или `pdf.js` (поддержка выделения текста).
+- **DOCX** → конвертировать в HTML на лету через `mammoth.js` (клиентская библиотека) → отдать в `ReviewableDocument` как обычный HTML и сохранить выделение/комментарии.
 
 ## Решение
 
-### A. Уведомления админу Синтагмы при получении договора
-Расширить триггер `notify_on_signature_event`: когда `recipient_type = 'admin_sintagma'` — ДОПОЛНИТЕЛЬНО создавать запись в `admin_notifications`:
-- `type = 'signature'` (или `'contract'`)
-- `title = 'Новый договор на согласование'`
-- `message = recipient_name + " от " + sender_name + " — " + document_title`
-- `related_entity_id = signature_id`
-- `related_entity_type = 'document_signature'`
+### 1. Универсальный модальный просмотрщик
+Новый компонент `ContractReviewDialog.tsx` (Dialog на базе shadcn). Принимает `signature_token`, тянет данные через существующие RPC:
+- `get_signature_by_token`
+- `get_signature_revisions_by_token`
+- `get_signature_comments_by_token`
 
-И при смене статуса (`signed`, `rejected`, `changes_requested`) — тоже писать в `admin_notifications`, чтобы админ видел отклик.
+Содержит:
+- **Шапка**: название, отправитель, статус, бейдж "На согласовании".
+- **Тело** — рендер по типу `file_mime`:
+  - `application/pdf` → `<iframe>` встроенным просмотром PDF (нативный браузерный) + кнопка "Скачать".
+  - `*.docx` (`vnd.openxmlformats-officedocument.wordprocessingml.document`) → парсинг через **mammoth.js** в HTML → `ReviewableDocument` (выделение + комментарии работают как сейчас).
+  - HTML-документы → как сейчас, `ReviewableDocument`.
+- **Панель действий** (только для получателя/админа в статусе `in_review`):
+  - "Запросить правки" (textarea + RPC `request_signature_changes`).
+  - "Согласовать и подписать" (переход на `/sign/{token}` для финальной ПЭП — это юридически безопаснее, т.к. ПЭП требует OTP/audit на отдельной странице).
+- Для отправителя и других просмотрщиков — режим **read-only**: видит документ + все комментарии, может скачать.
 
-### B. Раздел «Договоры» в админ-биллинге
-Добавить в `AdminBillingOverview` (вкладка «Договоры») источник `document_signatures` с фильтром `recipient_type = 'admin_sintagma'`. Показывать:
-- организация-отправитель, название документа, дата, статус, действие «Открыть» → `/sign/{token}` (в режиме админа — открывается review-интерфейс).
+### 2. Точки входа в модалку
+- **Админ-биллинг** (`AdminBillingOverview.tsx`): кнопка `ExternalLink` у строки внешнего договора → вместо `window.open('/sign/...')` открывает `ContractReviewDialog`.
+- **Колокол админа** (`AdminDashboard.tsx`): клик по уведомлению `type='signature'` → открывает модалку поверх дашборда.
+- **Документооборот организации** (`CounterpartiesSection.tsx` и/или список своих договоров): добавить такую же кнопку "Открыть" → модалка в read-only.
+- Сохранить и существующую публичную страницу `/sign/{token}` (для гостей по email-ссылке) — она остаётся для финального ПЭП-подписания.
 
-Альтернатива: создать отдельную вкладку «На согласование» — но проще вписать в существующие «Договоры», потому что внешние загрузки концептуально это договоры.
+### 3. Поддержка DOCX-парсинга
+- Добавить зависимость `mammoth` (легковесная, ~200кб). Динамический импорт `await import("mammoth")` чтобы не раздувать основной бандл.
+- Кэш: после первой конвертации DOCX→HTML — сохранить результат в `signature_revisions.document_html` через `add_signature_revision`-стиль апдейт (отдельный RPC `update_revision_html` с проверкой что только админ/отправитель). Это ускорит повторные открытия и даст всем участникам согласованный текст для комментариев.
 
-### C. Клик по уведомлению в колоколе админа
-В `AdminDashboard.tsx` `handleNotificationClick`: добавить ветку для `n.type = 'signature'` → переход на вкладку `billing` + открытие соответствующего договора.
+### 4. Комментарии работают как раньше
+`ReviewableDocument` уже умеет:
+- выделять текст и оставлять комментарии (`add_signature_comment_by_token`),
+- подсвечивать прокомментированные фрагменты,
+- показывать боковую панель.
+
+Для PDF (через iframe) комментарии по выделению технически не работают (iframe sandbox). Решение: если документ PDF — показать внизу **общий чат комментариев** (без привязки к фрагменту) + предложение "Запросить правки текстом". Для DOCX выделение работает, как для HTML.
 
 ## Файлы
 
-- Миграция:
-  - `CREATE OR REPLACE FUNCTION notify_on_signature_event` — добавить ветку для `admin_sintagma` с записью в `admin_notifications`.
-- `src/components/admin/AdminBillingOverview.tsx` — добавить источник `document_signatures` (recipient_type='admin_sintagma') в список договоров.
-- `src/pages/AdminDashboard.tsx` — обработка `n.type='signature'` в `handleNotificationClick`.
+- `src/components/signing/ContractReviewDialog.tsx` — **новый**, модалка-обёртка над `ReviewableDocument` + PDF/DOCX рендер.
+- `src/components/signing/DocxRenderer.tsx` — **новый**, динамическая загрузка mammoth и конвертация.
+- `src/components/admin/AdminBillingOverview.tsx` — заменить `window.open('/sign/...')` на открытие диалога.
+- `src/pages/AdminDashboard.tsx` — клик по signature-уведомлению открывает диалог.
+- `src/components/organization/tabs/documents/CounterpartiesSection.tsx` — добавить кнопку "Открыть" у внешних договоров → диалог (read-only).
+- Миграция: новый RPC `update_signature_revision_html(p_revision_id, p_html)` — только sender/recipient/admin, для кеширования DOCX→HTML.
+- `package.json` — добавить `mammoth`.
 
 ## Этапы
-
-1. **Диагностика** (read-only): прочитать `AdminBillingOverview.tsx` + проверить через `read_query` что запись в `document_signatures` создалась.
-2. **Миграция триггера**: писать `admin_notifications` для `recipient_type='admin_sintagma'`.
-3. **UI админ-биллинга**: подключить `document_signatures` к вкладке «Договоры».
-4. **Клик по колоколу**: routing на договор.
-5. **End-to-end проверка**: повторно отправить договор → должен появиться в колоколе и в «Договоры».
+1. Создать `ContractReviewDialog` + `DocxRenderer` (mammoth, dynamic import).
+2. Подключить диалог в админ-биллинг (заменить переход) и в колокол.
+3. Подключить диалог в списке договоров организации (read-only режим).
+4. Миграция: RPC для кеша HTML после первой конвертации DOCX.
+5. End-to-end проверка: открыть PDF и DOCX-договор от админа и от организации, оставить комментарий, отправить запрос правок.
