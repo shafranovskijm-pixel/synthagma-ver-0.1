@@ -7,13 +7,15 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Checkbox } from "@/components/ui/checkbox";
-import { User, Bell, Handshake, Save, Eye, EyeOff, Upload, X, Image as ImageIcon, Palette, LogIn, Camera } from "lucide-react";
+import { User, Bell, Handshake, Save, Eye, EyeOff, Upload, X, Image as ImageIcon, Palette, LogIn, Camera, KeyRound, Mail, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 import { PartnerCabinet } from "@/components/organization/PartnerCabinet";
 import { ThemePersonalization } from "@/components/ui/ThemePersonalization";
+import { ThemeSelector } from "@/components/ui/ThemeSelector";
 import { ProfileBrandingTab } from "@/components/organization/ProfileBrandingTab";
 import { ProfileLoginBrandingTab } from "@/components/organization/ProfileLoginBrandingTab";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
+import { useOrgTheme } from "@/hooks/useOrgTheme";
 
 interface ProfileData {
   full_name: string;
