@@ -361,8 +361,8 @@ export function ContractReviewBody({
       if (action === "sign_as_is") {
         // Открываем инлайн-панель ПЭП без вызова RPC — RPC вызовется уже из самой подписи (finalize-signature)
         // через handleInlineSign. Так избегаем двойного финализирования и подписи остаётся валидной.
-        setSignFullName(prev => prev || user?.user_metadata?.full_name || sig.organization_name || "");
-        setSignEmail(prev => prev || user?.email || "");
+        setSignFullName(prev => prev || OPERATOR.fullName);
+        setSignEmail(prev => prev || OPERATOR.email);
         setSignPanelOpen(true);
         setTimeout(() => {
           document.getElementById("inline-sign-panel")?.scrollIntoView({ behavior: "smooth", block: "center" });
