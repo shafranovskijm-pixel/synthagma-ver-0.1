@@ -371,6 +371,9 @@ export function CounterpartiesSection({
             </div>
             <div className="flex items-center gap-2">
               {showAmount && (doc.is_paid ? <span className="text-xs font-medium text-emerald-600">Оплачен</span> : <span className="text-xs font-medium text-amber-600">Не оплачен</span>)}
+              <Button variant="ghost" size="icon" title="Отправить на подписание" onClick={() => openSignDialog(doc)}>
+                <Send className="w-4 h-4 text-indigo-500" />
+              </Button>
               {doc.file_url && (
                 <Button variant="ghost" size="icon" asChild>
                   <a href={doc.file_url} target="_blank" rel="noopener noreferrer"><Download className="w-4 h-4" /></a>
@@ -701,6 +704,13 @@ export function CounterpartiesSection({
           </>
         )}
       </Tabs>
+
+      <SendForSigningDialog
+        open={!!signingPayload}
+        onOpenChange={(v) => !v && setSigningPayload(null)}
+        payload={signingPayload}
+        recipients={signingRecipients}
+      />
     </div>
   );
 }
