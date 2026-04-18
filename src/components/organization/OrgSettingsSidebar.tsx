@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { User, Settings, FileText, Sparkles, HelpCircle, LogOut, ArrowLeft } from "lucide-react";
+import { User, FileText, Sparkles, HelpCircle, LogOut, ArrowLeft } from "lucide-react";
 import { SigmaLogo } from "@/components/ui/SigmaLogo";
 import { useOrgDashboard } from "@/contexts/OrgDashboardContext";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -11,7 +11,6 @@ import type { TabType } from "@/components/organization/OrgSidebar";
 
 const settingsNavItems = [
   { icon: User, label: "Профиль", tab: "profile" as TabType, path: "/organization/profile" },
-  { icon: Settings, label: "Настройки", tab: "settings" as TabType, path: "/organization/settings" },
   { icon: FileText, label: "Документы", tab: "org-documents" as TabType, path: "/organization/documents" },
   { icon: Sparkles, label: "Что нового", tab: "whats-new" as TabType, path: "/organization/whats-new" },
   { icon: HelpCircle, label: "Помощь", tab: "__help_dialog__" as any, path: "__help_dialog__" },
@@ -50,7 +49,7 @@ export function OrgSettingsSidebar({ embedded }: OrgSettingsSidebarProps) {
   }, []);
 
   const activeTab = d.tabNavigation.activeTab;
-  const secondaryTabs: TabType[] = ["profile", "settings", "org-documents", "whats-new"];
+  const secondaryTabs: TabType[] = ["profile", "org-documents", "whats-new"];
 
   const handleItemClick = (item: typeof settingsNavItems[0]) => {
     if (item.path === "__help_dialog__") {
