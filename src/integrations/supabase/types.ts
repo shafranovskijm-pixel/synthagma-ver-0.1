@@ -6233,6 +6233,16 @@ export type Database = {
     }
     Functions: {
       _get_pw_key: { Args: never; Returns: string }
+      admin_collect_media_references: {
+        Args: never
+        Returns: {
+          entity_id: string
+          entity_title: string
+          entity_type: string
+          organization_id: string
+          reference_url: string
+        }[]
+      }
       admin_update_user_role: {
         Args: {
           p_new_role: Database["public"]["Enums"]["app_role"]
