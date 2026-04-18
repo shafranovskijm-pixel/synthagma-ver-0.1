@@ -5,7 +5,7 @@ import { CSS } from "@dnd-kit/utilities";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
-import { GripVertical, Menu, FileText } from "lucide-react";
+import { GripVertical, Menu, FileText, ArrowLeft } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { lessonIcons, lessonColors, type Lesson } from "@/components/course-builder/LessonTypeConfig";
 
