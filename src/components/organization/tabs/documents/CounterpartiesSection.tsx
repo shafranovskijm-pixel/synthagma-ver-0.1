@@ -6,6 +6,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ScrollText, Receipt, FileCheck, Download, FileText, Lightbulb, Eye, Trash2, ExternalLink, Building2, User, Store, Plus, FolderOpen, ChevronDown, ChevronRight, X, Search, Send } from "lucide-react";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { ContractLegalFaq } from "@/components/organization/ContractLegalFaq";
 import { SendForSigningDialog, type SendForSigningPayload } from "@/components/signing/SendForSigningDialog";
 import { ExternalContractUploader } from "@/components/signing/ExternalContractUploader";
