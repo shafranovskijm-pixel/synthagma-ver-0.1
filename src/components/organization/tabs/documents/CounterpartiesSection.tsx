@@ -376,6 +376,15 @@ export function CounterpartiesSection({
                         <Eye className="w-4 h-4" />
                       </Button>
                     )}
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      title="Удалить договор"
+                      className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                      onClick={() => setContractToDelete({ id: c.id, title: c.document_title })}
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
                   </div>
                 </div>
                 {expandedReviewId === c.id && c.signature_token && (
