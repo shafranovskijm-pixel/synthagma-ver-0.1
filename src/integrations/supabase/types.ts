@@ -6570,18 +6570,32 @@ export type Database = {
         Returns: number
       }
       count_org_students: { Args: { org_id: string }; Returns: number }
-      create_external_contract_signature: {
-        Args: {
-          p_admin_email: string
-          p_admin_name?: string
-          p_document_title: string
-          p_file_mime: string
-          p_file_name: string
-          p_file_url: string
-          p_summary?: string
-        }
-        Returns: string
-      }
+      create_external_contract_signature:
+        | {
+            Args: {
+              p_admin_email: string
+              p_admin_name?: string
+              p_document_title: string
+              p_file_mime: string
+              p_file_name: string
+              p_file_url: string
+              p_summary?: string
+            }
+            Returns: string
+          }
+        | {
+            Args: {
+              p_admin_email: string
+              p_admin_name?: string
+              p_document_title: string
+              p_file_mime: string
+              p_file_name: string
+              p_file_url: string
+              p_organization_id?: string
+              p_summary?: string
+            }
+            Returns: string
+          }
       create_organization: {
         Args: {
           p_contact_name?: string

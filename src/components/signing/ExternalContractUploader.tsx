@@ -86,6 +86,7 @@ export function ExternalContractUploader({ open, onOpenChange, organizationId, d
         p_admin_email: recipientEmail,
         p_admin_name: "Администратор Синтагма",
         p_summary: summary.trim() || null,
+        p_organization_id: organizationId,
       });
       if (rpcErr) throw rpcErr;
 
