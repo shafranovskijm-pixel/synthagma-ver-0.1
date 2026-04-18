@@ -498,9 +498,9 @@ export function ProfileTab({ organizationId, initialSubTab }: ProfileTabProps) {
                 <label className="text-sm font-medium text-muted-foreground mb-1 block">Новый email</label>
                 <Input value={newOrgEmail} onChange={e => setNewOrgEmail(e.target.value)} placeholder="new-org@email.com" className="rounded-xl" />
               </div>
-              <div className="flex items-start gap-2 p-3 rounded-xl bg-amber-500/10 border border-amber-500/20">
-                <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
-                <p className="text-xs text-amber-700 dark:text-amber-400">После смены email вы будете автоматически разлогинены и должны войти заново с новым адресом.</p>
+              <div className="flex items-start gap-2 p-3 rounded-xl bg-warning/10 border border-warning/20">
+                <AlertTriangle className="w-4 h-4 text-warning shrink-0 mt-0.5" />
+                <p className="text-xs text-warning-foreground/80">После смены email вы будете автоматически разлогинены и должны войти заново с новым адресом.</p>
               </div>
               <Button
                 className="w-full rounded-xl btn-gradient"
@@ -536,9 +536,9 @@ export function ProfileTab({ organizationId, initialSubTab }: ProfileTabProps) {
                 placeholder="Повторите пароль"
                 className="rounded-xl"
               />
-              <div className="flex items-start gap-2 p-3 rounded-xl bg-amber-500/10 border border-amber-500/20">
-                <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
-                <p className="text-xs text-amber-700 dark:text-amber-400">После смены пароля вы будете автоматически разлогинены и должны войти заново с новым паролем.</p>
+              <div className="flex items-start gap-2 p-3 rounded-xl bg-warning/10 border border-warning/20">
+                <AlertTriangle className="w-4 h-4 text-warning shrink-0 mt-0.5" />
+                <p className="text-xs text-warning-foreground/80">После смены пароля вы будете автоматически разлогинены и должны войти заново с новым паролем.</p>
               </div>
               <Button
                 className="w-full rounded-xl btn-gradient"
@@ -551,6 +551,8 @@ export function ProfileTab({ organizationId, initialSubTab }: ProfileTabProps) {
           </Card>
         </div>
       </TabsContent>
+
+      <TabsContent value="notifications">
         <Card className="rounded-2xl">
           <CardHeader>
             <div className="flex items-center justify-between">
