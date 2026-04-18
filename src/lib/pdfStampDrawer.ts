@@ -22,6 +22,8 @@ const TEAL: RGB = rgb(0.06, 0.55, 0.49); // ~#0f8c7e
 const TEXT: RGB = rgb(0.07, 0.07, 0.07);
 const MUTED: RGB = rgb(0.4, 0.4, 0.4);
 const STAMP_BG: RGB = rgb(0.94, 0.98, 0.97);
+const INS_BG: RGB = rgb(0.86, 0.99, 0.84);    // light-green фон вставки
+const INS_TEXT: RGB = rgb(0.08, 0.33, 0.18);  // тёмно-зелёный текст вставки
 
 const fmtDate = (iso: string | null | undefined): string => {
   if (!iso) return "—";
