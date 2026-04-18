@@ -145,7 +145,7 @@ export async function generateSignedPdf(opts: BuildOptions): Promise<{ path: str
   });
 
   const out = await pdf.save();
-  const blob = new Blob([out], { type: "application/pdf" });
+  const blob = new Blob([out as BlobPart], { type: "application/pdf" });
   const path = `signed/${signatureId}.pdf`;
 
   const { error: uploadError } = await supabase.storage
