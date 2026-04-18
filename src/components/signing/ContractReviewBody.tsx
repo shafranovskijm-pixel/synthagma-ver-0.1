@@ -855,7 +855,66 @@ export function ContractReviewBody({
             </div>
           )}
           <p className="text-xs text-muted-foreground">Копия подписанного документа отправлена на {signEmail || sig.recipient_email}.</p>
+          <div className="flex flex-wrap items-center justify-center gap-2">
+            <Button size="sm" variant="outline" className="gap-1.5" onClick={() => setPreviewOpen(true)}>
+              <Eye className="w-4 h-4" />Посмотреть подписанный документ
+            </Button>
+            <Button size="sm" className="gap-1.5" onClick={() => setPreviewOpen(true)}>
+              <Download className="w-4 h-4" />Скачать PDF
+            </Button>
+          </div>
         </div>
+      )}
+
+      {/* === DIALOGS === */}
+      <PepAgreementDialog
+        open={agreementDialogOpen}
+        onOpenChange={setAgreementDialogOpen}
+        agreementText={agreementText}
+        onAccept={() => setAgreementAccepted(true)}
+      />
+
+      {sig && (
+        <SignedDocumentPreview
+          open={previewOpen}
+          onOpenChange={setPreviewOpen}
+          documentTitle={sig.document_title}
+          documentHtml={documentHtml}
+          attachedFilePath={rawFileUrl && !rawFileUrl.startsWith("http") ? rawFileUrl : null}
+          attachedFileMime={fileMime || null}
+          handwrittenScanPath={sig.handwritten_scan_path || null}
+          signatureMethod={sig.signature_method || "pep"}
+          sender={sig.sender_signed_at ? {
+            fullName: sig.sender_name || OPERATOR.fullName,
+            email: OPERATOR.email,
+            signedAt: sig.sender_signed_at,
+            ip: sig.sender_signed_ip,
+            documentHash: sig.document_hash,
+            agreementId: sig.pep_agreement_id,
+          } : (isOrg && signedInfo ? {
+            fullName: signFullName,
+            email: signEmail,
+            signedAt: signedInfo.signedAt,
+            ip: signedInfo.ip,
+            documentHash: sig.document_hash,
+            agreementId: signedInfo.pepAgreementId,
+          } : undefined)}
+          recipient={sig.signed_at ? {
+            fullName: sig.recipient_name,
+            email: sig.recipient_email,
+            signedAt: sig.signed_at,
+            ip: sig.signed_ip,
+            documentHash: sig.document_hash,
+            agreementId: sig.pep_agreement_id,
+          } : (!isOrg && signedInfo ? {
+            fullName: signFullName,
+            email: signEmail,
+            signedAt: signedInfo.signedAt,
+            ip: signedInfo.ip,
+            documentHash: sig.document_hash,
+            agreementId: signedInfo.pepAgreementId,
+          } : undefined)}
+        />
       )}
 
       {/* Revision uploader (org-only) */}
