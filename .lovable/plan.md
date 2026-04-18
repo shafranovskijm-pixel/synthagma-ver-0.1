@@ -1,62 +1,49 @@
 
-## Задача
-Сделать просмотр и согласование внешнего договора (PDF/DOCX) **прямо внутри панели** (модалка), без перехода на отдельную страницу `/sign/{token}`. Доступно и админу-получателю, и отправителю-организации (read-only режим), с возможностью выделять фрагменты и оставлять правки.
+## Проблемы (с скриншота)
 
-## Проблема "Документ не содержит текстового представления"
-Внешние договоры — это PDF/DOCX-файлы. Сейчас review-страница рисует только `documentHtml`. Для PDF/DOCX надо рендерить сам файл:
-- **PDF** → `<iframe src={file_url}>` или `pdf.js` (поддержка выделения текста).
-- **DOCX** → конвертировать в HTML на лету через `mammoth.js` (клиентская библиотека) → отдать в `ReviewableDocument` как обычный HTML и сохранить выделение/комментарии.
+1. **DOCX не рендерится**: ошибка `Can't find end of central directory: is this a zip file?` — `mammoth.browser` получил не тот ArrayBuffer. Скорее всего `fetch(file_url)` вернул HTML-страницу логина Supabase Storage (файл в приватном бакете) или редирект, а не сам .docx. Нужно: брать файл через `supabase.storage.from(bucket).createSignedUrl(...)` или `download(...)`, а не публичный URL.
+2. **Просмотр должен быть встроенным**, а не модалкой. Раскрывается прямо в "Биллинг → Договоры".
+3. **Клик по уведомлению** должен вести в Биллинг → конкретный договор и сразу его раскрывать (а не открывать модалку).
 
 ## Решение
 
-### 1. Универсальный модальный просмотрщик
-Новый компонент `ContractReviewDialog.tsx` (Dialog на базе shadcn). Принимает `signature_token`, тянет данные через существующие RPC:
-- `get_signature_by_token`
-- `get_signature_revisions_by_token`
-- `get_signature_comments_by_token`
+### A. Встроенный просмотр в админ-биллинге
+Заменить `ContractReviewDialog` на инлайн-блок `ContractReviewInline`, который раскрывается в строке договора (accordion-style). При клике на иконку "глаз" (или строку) — карточка ниже расширяется, показывая документ + панель действий + комментарии. Повторный клик — сворачивает.
 
-Содержит:
-- **Шапка**: название, отправитель, статус, бейдж "На согласовании".
-- **Тело** — рендер по типу `file_mime`:
-  - `application/pdf` → `<iframe>` встроенным просмотром PDF (нативный браузерный) + кнопка "Скачать".
-  - `*.docx` (`vnd.openxmlformats-officedocument.wordprocessingml.document`) → парсинг через **mammoth.js** в HTML → `ReviewableDocument` (выделение + комментарии работают как сейчас).
-  - HTML-документы → как сейчас, `ReviewableDocument`.
-- **Панель действий** (только для получателя/админа в статусе `in_review`):
-  - "Запросить правки" (textarea + RPC `request_signature_changes`).
-  - "Согласовать и подписать" (переход на `/sign/{token}` для финальной ПЭП — это юридически безопаснее, т.к. ПЭП требует OTP/audit на отдельной странице).
-- Для отправителя и других просмотрщиков — режим **read-only**: видит документ + все комментарии, может скачать.
+- Состояние `expandedContractId` в `AdminBillingOverview`.
+- Удалить `(window as any).__openContractReview` хак.
+- Сам компонент `ContractReviewInline.tsx` — переиспользует логику `ContractReviewDialog` (рендер PDF/DOCX/HTML, комментарии, действия), только без `<Dialog>`-обёртки. Вынести общую часть в `ContractReviewBody.tsx`.
 
-### 2. Точки входа в модалку
-- **Админ-биллинг** (`AdminBillingOverview.tsx`): кнопка `ExternalLink` у строки внешнего договора → вместо `window.open('/sign/...')` открывает `ContractReviewDialog`.
-- **Колокол админа** (`AdminDashboard.tsx`): клик по уведомлению `type='signature'` → открывает модалку поверх дашборда.
-- **Документооборот организации** (`CounterpartiesSection.tsx` и/или список своих договоров): добавить такую же кнопку "Открыть" → модалка в read-only.
-- Сохранить и существующую публичную страницу `/sign/{token}` (для гостей по email-ссылке) — она остаётся для финального ПЭП-подписания.
+### B. Фикс DOCX-рендера
+В `DocxRenderer.tsx`:
+- Если `file_url` указывает на Supabase Storage — извлекать `bucket` и `path` и грузить через `supabase.storage.from(bucket).download(path)` → `Blob.arrayBuffer()`.
+- Fallback: обычный `fetch` с проверкой `Content-Type` (если HTML — ошибка "Файл недоступен / приватный бакет").
+- Логировать первые байты ArrayBuffer (PK\x03\x04 = валидный zip/docx).
 
-### 3. Поддержка DOCX-парсинга
-- Добавить зависимость `mammoth` (легковесная, ~200кб). Динамический импорт `await import("mammoth")` чтобы не раздувать основной бандл.
-- Кэш: после первой конвертации DOCX→HTML — сохранить результат в `signature_revisions.document_html` через `add_signature_revision`-стиль апдейт (отдельный RPC `update_revision_html` с проверкой что только админ/отправитель). Это ускорит повторные открытия и даст всем участникам согласованный текст для комментариев.
+Проверить, в какой бакет загружаются внешние договоры (предположительно `signature-files` или `billing-documents`) — посмотрю в `ExternalContractUploader.tsx`. Если бакет приватный — переключить на signed URL при создании revision (или хранить относительный путь и каждый раз генерировать signed URL на чтение).
 
-### 4. Комментарии работают как раньше
-`ReviewableDocument` уже умеет:
-- выделять текст и оставлять комментарии (`add_signature_comment_by_token`),
-- подсвечивать прокомментированные фрагменты,
-- показывать боковую панель.
+### C. Клик по уведомлению → инлайн-раскрытие
+В `AdminDashboard.tsx`:
+- При клике на signature-уведомление: переключить `activeTab = "billing"` + установить `pendingExpandContractId = n.related_entity_id`.
+- Прокинуть `pendingExpandContractId` пропом в `AdminBillingOverview` → при изменении автоматически выставлять `expandedContractId`, скроллить к строке.
+- Убрать всю логику открытия модалки и `__openContractReview`.
 
-Для PDF (через iframe) комментарии по выделению технически не работают (iframe sandbox). Решение: если документ PDF — показать внизу **общий чат комментариев** (без привязки к фрагменту) + предложение "Запросить правки текстом". Для DOCX выделение работает, как для HTML.
+### D. Read-only встроенный просмотр в кабинете организации
+В `CounterpartiesSection.tsx` тоже инлайн-раскрытие (тот же `ContractReviewBody` в read-only режиме), убрать модалку.
 
 ## Файлы
 
-- `src/components/signing/ContractReviewDialog.tsx` — **новый**, модалка-обёртка над `ReviewableDocument` + PDF/DOCX рендер.
-- `src/components/signing/DocxRenderer.tsx` — **новый**, динамическая загрузка mammoth и конвертация.
-- `src/components/admin/AdminBillingOverview.tsx` — заменить `window.open('/sign/...')` на открытие диалога.
-- `src/pages/AdminDashboard.tsx` — клик по signature-уведомлению открывает диалог.
-- `src/components/organization/tabs/documents/CounterpartiesSection.tsx` — добавить кнопку "Открыть" у внешних договоров → диалог (read-only).
-- Миграция: новый RPC `update_signature_revision_html(p_revision_id, p_html)` — только sender/recipient/admin, для кеширования DOCX→HTML.
-- `package.json` — добавить `mammoth`.
+- **Новый** `src/components/signing/ContractReviewBody.tsx` — общее тело (документ + комментарии + действия), без обёртки.
+- **Удалить/упростить** `src/components/signing/ContractReviewDialog.tsx` — больше не нужен либо превращается в тонкую обёртку для legacy.
+- `src/components/signing/DocxRenderer.tsx` — поддержка Supabase Storage download + проверка валидности zip.
+- `src/components/admin/AdminBillingOverview.tsx` — инлайн-аккордеон + приём `pendingExpandContractId`.
+- `src/pages/AdminDashboard.tsx` — `pendingExpandContractId` state, прокидка в биллинг, удаление `__openContractReview`.
+- `src/components/organization/tabs/documents/CounterpartiesSection.tsx` — инлайн-раскрытие.
 
 ## Этапы
-1. Создать `ContractReviewDialog` + `DocxRenderer` (mammoth, dynamic import).
-2. Подключить диалог в админ-биллинг (заменить переход) и в колокол.
-3. Подключить диалог в списке договоров организации (read-only режим).
-4. Миграция: RPC для кеша HTML после первой конвертации DOCX.
-5. End-to-end проверка: открыть PDF и DOCX-договор от админа и от организации, оставить комментарий, отправить запрос правок.
+1. Создать `ContractReviewBody`, перенести в него логику из Dialog.
+2. Фикс `DocxRenderer` (Supabase Storage download + диагностика).
+3. Инлайн-режим в `AdminBillingOverview` + проп `pendingExpandContractId`.
+4. Перенаправление из колокола в `AdminDashboard`.
+5. Инлайн-режим в `CounterpartiesSection`.
+6. End-to-end проверка: загрузить DOCX и PDF договор, открыть из колокола, оставить комментарий, запросить правки.
