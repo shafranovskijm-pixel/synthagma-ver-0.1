@@ -115,7 +115,7 @@ export default function OrganizationDashboard() {
         {/* Header with hero banner */}
         <OrgDashboardHeader />
 
-        <div className="flex-1 p-4 lg:p-8 overflow-hidden">
+        <div className="flex-1 p-4 lg:p-8 overflow-x-clip">
           <PlatformAnnouncementsBanner />
           
           <AnimatedTabContent tabKey={d.tabNavigation.activeTab} direction={d.tabNavigation.swipeDirection} isMobile={d.isMobile}>
