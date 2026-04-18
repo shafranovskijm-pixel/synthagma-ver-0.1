@@ -761,6 +761,62 @@ export function ProfileTab({ organizationId, initialSubTab }: ProfileTabProps) {
           </Card>
         );
 
+      case "menu": {
+        const menuItems = [
+          { icon: BarChart3, bg: "bg-accent/15", color: "text-accent", label: "Статистика", desc: "Аналитика и отчёты", key: "showStats" as keyof MenuSettingsLocal },
+          { icon: LinkIcon, bg: "bg-primary/15", color: "text-primary", label: "Ссылки регистрации", desc: "Самостоятельная регистрация", key: "showLinks" as keyof MenuSettingsLocal },
+          { icon: HardHat, bg: "bg-accent/15", color: "text-accent", label: "Охрана труда", desc: "Модуль охраны труда", key: "showLaborSafety" as keyof MenuSettingsLocal },
+          { icon: FileText, bg: "bg-destructive/15", color: "text-destructive", label: "Документы", desc: "Документооборот", key: "showDocuments" as keyof MenuSettingsLocal },
+          { icon: Building2, bg: "bg-primary/15", color: "text-primary", label: "Компании", desc: "Управление корпоративными клиентами", key: "showCompanies" as keyof MenuSettingsLocal },
+          { icon: ShoppingBag, bg: "bg-primary/15", color: "text-primary", label: "Маркетплейс", desc: "Магазин курсов", key: "showServices" as keyof MenuSettingsLocal },
+        ];
+        return (
+          <div className="max-w-2xl">
+            <p className="text-xs lg:text-sm text-muted-foreground mb-4 lg:mb-5">Включите или отключите разделы в боковом меню</p>
+            <div className="space-y-2">
+              {menuItems.map((item) => {
+                const Icon = item.icon;
+                const isOn = menuSettings[item.key];
+                return (
+                  <div key={item.key} className="flex items-center justify-between p-3 lg:p-4 rounded-xl border border-border/60 hover:border-primary/30 hover:bg-accent/5 transition-all group/row">
+                    <div className="flex items-center gap-3 lg:gap-4">
+                      <div className={`w-11 h-11 lg:w-12 lg:h-12 rounded-xl ${item.bg} flex items-center justify-center shadow-sm transition-transform group-hover/row:scale-105`}>
+                        <Icon className={`w-5 h-5 lg:w-[22px] lg:h-[22px] ${item.color}`} />
+                      </div>
+                      <div>
+                        <p className="font-medium text-sm lg:text-base">{item.label}</p>
+                        <p className="text-xs lg:text-sm text-muted-foreground">{item.desc}</p>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => setMenuSettings(prev => ({ ...prev, [item.key]: !prev[item.key] }))}
+                      className={`relative inline-flex h-7 w-12 items-center rounded-full transition-colors shrink-0 ${isOn ? 'bg-primary shadow-md' : 'bg-muted'}`}
+                    >
+                      <span className={`inline-block h-5 w-5 transform rounded-full bg-white shadow-sm transition-transform ${isOn ? 'translate-x-6' : 'translate-x-1'}`} />
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+            <div className="mt-5 lg:mt-6 pt-4 border-t border-border flex flex-wrap gap-2">
+              <Button className="btn-gradient rounded-xl gap-2 text-sm" onClick={handleSaveMenuSettings}><Save className="w-4 h-4" /> Сохранить</Button>
+              <Button variant="outline" className="rounded-xl gap-2 text-sm" onClick={reloadMenuSettings}><RefreshCw className="w-4 h-4" /> Обновить меню</Button>
+              <Button variant="ghost" className="rounded-xl gap-2 text-sm" onClick={resetMenuSettings}><RotateCcw className="w-4 h-4" /> По умолчанию</Button>
+            </div>
+          </div>
+        );
+      }
+
+      case "student-dashboard":
+        return (
+          <div className="max-w-3xl">
+            <SettingsStudentDashboardTab organizationId={organizationId} />
+          </div>
+        );
+
+      case "staff":
+        return <StaffManager organizationId={organizationId} />;
+
       case "partner":
         return <PartnerCabinet />;
 
