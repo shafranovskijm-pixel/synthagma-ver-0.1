@@ -35,15 +35,33 @@ const SECTION_DESCRIPTIONS: Record<string, string> = {
   "org-closing": "Акты и закрывающие документы выбранной организации",
 };
 
-export const AdminBillingOverview = ({ openSignatureToken }: { openSignatureToken?: string | null } = {}) => {
+export const AdminBillingOverview = ({ pendingExpandContractId }: { pendingExpandContractId?: string | null } = {}) => {
   const h = useAdminBilling();
   const activeNavItem = NAV_SECTIONS.find(n => n.value === h.activeSection) || NAV_SECTIONS[0];
-  const [reviewToken, setReviewToken] = useState<string | null>(null);
+  const [expandedContractId, setExpandedContractId] = useState<string | null>(null);
 
-  // Открытие диалога по токену из уведомления (props)
-  if (openSignatureToken && reviewToken !== openSignatureToken) {
-    setTimeout(() => setReviewToken(openSignatureToken), 0);
-  }
+  // Открытие нужного договора по сигналу извне (из колокола)
+  useEffect(() => {
+    if (!pendingExpandContractId) return;
+    (async () => {
+      const { data } = await (supabase as any)
+        .from("document_signatures")
+        .select("organization_id")
+        .eq("id", pendingExpandContractId)
+        .maybeSingle();
+      if (data?.organization_id) {
+        h.setSelectedOrgId(data.organization_id);
+        h.setActiveSection("org-contracts");
+      }
+      setExpandedContractId(pendingExpandContractId);
+      setTimeout(() => {
+        document.getElementById(`contract-${pendingExpandContractId}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
+      }, 400);
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pendingExpandContractId]);
+
+  const toggleExpand = (id: string) => setExpandedContractId(prev => prev === id ? null : id);
 
   const statusBadge = (status: string) => {
     if (status === "paid") return <Badge variant="default" className="bg-emerald-500/10 text-emerald-600 border-emerald-200">Оплачен</Badge>;
