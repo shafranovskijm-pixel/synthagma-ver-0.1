@@ -157,8 +157,15 @@ export function ContractReviewBody({
       setRevisions((revRes.data as Revision[]) || []);
       setComments((comRes.data as OrgComment[]) || []);
       setAuthorName(user?.email || row.recipient_name || "Получатель");
-      setSignFullName(row.recipient_name || "");
-      setSignEmail(row.recipient_email || user?.email || "");
+      // ФИО / email подписанта: для организации — реквизиты Оператора (ИП Шафрановский),
+      // для получателя — его собственные данные.
+      if (viewerRole === "organization") {
+        setSignFullName(OPERATOR.fullName);
+        setSignEmail(OPERATOR.email);
+      } else {
+        setSignFullName(row.recipient_name || "");
+        setSignEmail(row.recipient_email || user?.email || "");
+      }
     } catch (e: any) {
       toast.error(e.message || "Ошибка загрузки");
     } finally {
