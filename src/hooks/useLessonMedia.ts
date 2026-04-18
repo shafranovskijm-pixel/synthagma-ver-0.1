@@ -310,6 +310,7 @@ export function useLessonMedia(
       const fileSize = file.size;
       const abortController = new AbortController();
       tusAbortRef.current = abortController;
+      const bgTaskId = startBgTask("kinescope", file, () => abortController.abort());
 
       const fetchKinescopeOffset = async (): Promise<number | null> => {
         try {
@@ -351,6 +352,7 @@ export function useLessonMedia(
             offset = serverOffset;
             setKinescopeUploadProgress(Math.round((offset / fileSize) * 100));
             setUploadedBytes(offset);
+            bg.updateUpload(bgTaskId, { progress: Math.round((offset / fileSize) * 100) });
             continue;
           }
           const errBody = await patchRes.text().catch(() => "");
@@ -366,6 +368,7 @@ export function useLessonMedia(
         offset = newOffset ? parseInt(newOffset, 10) : end;
         setKinescopeUploadProgress(Math.round((offset / fileSize) * 100));
         setUploadedBytes(offset);
+        bg.updateUpload(bgTaskId, { progress: Math.round((offset / fileSize) * 100) });
       }
 
       tusAbortRef.current = null;
@@ -373,11 +376,12 @@ export function useLessonMedia(
       // 3. Save kinescope:{videoId} as content
       onUpdate({ content: `kinescope:${video_id}` });
       setUploadFinishTime(Date.now());
-      toast.success("Видео загружено в Kinescope!");
       setKinescopeUploadProgress(null);
       if (kinescopeInputRef.current) kinescopeInputRef.current.value = '';
+      bg.finishUpload(bgTaskId);
     } catch (error: any) {
       console.error("Kinescope upload error:", error);
+      if (currentTaskIdRef.current) bg.failUpload(currentTaskIdRef.current, error?.message || "Ошибка");
       if (!error.message?.includes("cancelled")) {
         toast.error(`Ошибка загрузки: ${error.message}`);
       }
