@@ -382,7 +382,8 @@ export const VideoPlayerInline = ({
       <video
         key={allowSeek ? "seek-on" : "seek-off"}
         ref={videoRef} controls={false} className="w-full h-full rounded-2xl video-no-controls"
-        src={resolvedContent} preload="metadata" onClick={togglePlay}
+        {...(isMpegTsFileUrl(resolvedContent) ? {} : { src: resolvedContent })}
+        preload="metadata" onClick={togglePlay}
         onTimeUpdate={handleTimeUpdate} onLoadedMetadata={handleLoadedMetadata}
         onSeeking={handleSeeking} onRateChange={handleRateChange}
         onPlay={() => { setIsPlaying(true); setVideoEnded(false); showControls(); }}
