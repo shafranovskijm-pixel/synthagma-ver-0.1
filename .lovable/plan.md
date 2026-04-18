@@ -1,54 +1,57 @@
 
-## Анализ проблемы
+## Проблема
 
-Смотрю скриншот: ошибка `No organization: пользователь не привязан к организации (profiles/org_staff)`. То есть мой обновлённый RPC реально вызвался, но текущий пользователь НЕ найден ни в `profiles.organization_id = X`, ни в `org_staff.organization_id = X` — для того `organizationId`, что передаётся пропом из страницы /organization.
+Договор отправлен админу Синтагмы, но:
+1. В админ-панели в колоколе уведомлений — пусто
+2. В разделе «Биллинг → Договоры» — 0 договоров
+3. У отправителя (организации) уведомление появилось, у получателя (админа) — нет
 
-Пользователь намекает на правильную вещь: **возможно, `organizationId`, который страница `/organization` передаёт в `ExternalContractUploader`, не совпадает с тем, к чему пользователь реально привязан.** Например, страница работает в режиме "Войти как организация" / View As Company / админская выборка `fallback org` — и orgId оттуда левый.
+## Анализ
 
-## Что нужно проверить (план)
+**Где сейчас создаются уведомления:** триггер `notify_on_signature_event` пишет в `org_notifications`. Это таблица **уведомлений организации**, а не админа платформы. В колоколе админа отображается `admin_notifications` (видно в `AdminDashboard.tsx`: `from("admin_notifications")`).
 
-### 1. Откуда страница /organization берёт `organizationId`
-- Найду компонент `CounterpartiesSection` и его родителя.
-- Посмотрю, как туда прокидывается `organizationId` (хук `useOrganization`, контекст, локальный стейт админа).
+То есть когда `recipient_type = 'admin_sintagma'` — никакое уведомление в `admin_notifications` не создаётся вообще. Поэтому в колоколе админа пусто.
 
-### 2. Связь пользователя с организацией в БД
-- Через `supabase--read_query` посмотрю:
-  - `SELECT user_id, organization_id, email FROM profiles WHERE user_id = <текущий>` 
-  - `SELECT user_id, organization_id, role FROM org_staff WHERE user_id = <текущий>`
-  - `SELECT id, name FROM organizations WHERE id = <тот orgId, что передаётся>`
+**Почему нет в «Биллинг → Договоры»:** надо посмотреть, как `AdminBillingOverview` грузит договоры. Скорее всего, он смотрит таблицу `sales_contracts` или `org_billing_documents`, а не `document_signatures`. Внешние договоры от организаций сейчас попадают в `document_signatures` — в админский биллинг они просто не подключены.
 
-### 3. Логика "Синтагма / Компании / Ученики"
-Пользователь говорит — на скриншоте сверху видны кнопки `Синтагма | КОМПАНИИ | УЧЕНИКИ`. Это переключатели типа получателя. Сейчас RPC `create_external_contract_signature` всегда ставит `recipient_type = 'admin_sintagma'`. Это правильно для вкладки "Синтагма", но если пользователь переключится на "Компании" или "Ученики", той же кнопкой загрузки — получатель должен быть другой.
+## Что нужно проверить (read-only этап)
 
-**План:**
-- Расширить RPC параметром `p_recipient_type` (`admin_sintagma` / `company` / `student`) и опционально `p_recipient_user_id` / `p_company_id`.
-- Передавать активную вкладку из `CounterpartiesSection` в `ExternalContractUploader`.
-- Внутри RPC — использовать соответствующее значение.
+1. `src/components/admin/AdminBillingOverview.tsx` — откуда таблица «Договоры» берёт данные.
+2. `supabase--read_query`: посмотреть последнюю запись в `document_signatures` (она должна быть создана) — проверить что RPC реально отработал.
+3. Триггер `notify_on_signature_event` — убедиться, что он не пишет ничего для `recipient_type='admin_sintagma'`.
 
-## Решение (по этапам)
+## Решение
 
-### Этап A — Диагностика (СНАЧАЛА это)
-1. Прочитать `CounterpartiesSection.tsx` и его родителя — понять источник `organizationId`.
-2. Через `supabase--read_query` сверить связку user ↔ org для текущего пользователя.
-3. Понять — это баг неправильного orgId или баг RPC.
+### A. Уведомления админу Синтагмы при получении договора
+Расширить триггер `notify_on_signature_event`: когда `recipient_type = 'admin_sintagma'` — ДОПОЛНИТЕЛЬНО создавать запись в `admin_notifications`:
+- `type = 'signature'` (или `'contract'`)
+- `title = 'Новый договор на согласование'`
+- `message = recipient_name + " от " + sender_name + " — " + document_title`
+- `related_entity_id = signature_id`
+- `related_entity_type = 'document_signature'`
 
-### Этап B — Фикс orgId (если выявится несоответствие)
-- Если страница работает в режиме "view as company / impersonation" — не использовать тот orgId, а брать `current_organization_id()` от auth-сессии.
-- Альтернатива: ослабить проверку членства — если пользователь админ платформы (`has_role admin`), разрешить любой `p_organization_id`.
+И при смене статуса (`signed`, `rejected`, `changes_requested`) — тоже писать в `admin_notifications`, чтобы админ видел отклик.
 
-### Этап C — Поддержка получателей "Синтагма / Компания / Ученик"
-- Расширить `ExternalContractUploader`: пропс `recipientMode: 'admin_sintagma' | 'company' | 'student'` + опц. `recipientId`, `recipientEmail`, `recipientName`.
-- Расширить RPC: `p_recipient_type`, `p_recipient_user_id`, `p_recipient_email`, `p_recipient_name`. CHECK constraint на `recipient_type` уже включает эти три значения (проверю).
-- В `CounterpartiesSection` пробрасывать активную вкладку в загрузчик.
+### B. Раздел «Договоры» в админ-биллинге
+Добавить в `AdminBillingOverview` (вкладка «Договоры») источник `document_signatures` с фильтром `recipient_type = 'admin_sintagma'`. Показывать:
+- организация-отправитель, название документа, дата, статус, действие «Открыть» → `/sign/{token}` (в режиме админа — открывается review-интерфейс).
 
-## Файлы (примерно)
-- `src/components/organization/tabs/documents/CounterpartiesSection.tsx` — пробрасывать активный таб + источник orgId.
-- `src/components/signing/ExternalContractUploader.tsx` — `recipientMode` + UI выбора получателя для company/student.
-- Миграция: `CREATE OR REPLACE FUNCTION create_external_contract_signature` с новыми параметрами + допуск админа платформы.
+Альтернатива: создать отдельную вкладку «На согласование» — но проще вписать в существующие «Договоры», потому что внешние загрузки концептуально это договоры.
 
-## Этапы релиза
-1. **Сначала диагностика** (запросы к БД + чтение компонентов) — определить корневую причину.
-2. **Фикс orgId** для текущего сценария — чтобы загрузка заработала здесь и сейчас.
-3. **Расширение на Компании / Ученики** — добавить выбор получателя.
+### C. Клик по уведомлению в колоколе админа
+В `AdminDashboard.tsx` `handleNotificationClick`: добавить ветку для `n.type = 'signature'` → переход на вкладку `billing` + открытие соответствующего договора.
 
-После approve начну с **Этапа 1 (диагностика)**, и сразу перейду к **Этапу 2 (фикс)** — без ожидания дополнительного подтверждения. Этап 3 (получатели Компания/Ученик) — после.
+## Файлы
+
+- Миграция:
+  - `CREATE OR REPLACE FUNCTION notify_on_signature_event` — добавить ветку для `admin_sintagma` с записью в `admin_notifications`.
+- `src/components/admin/AdminBillingOverview.tsx` — добавить источник `document_signatures` (recipient_type='admin_sintagma') в список договоров.
+- `src/pages/AdminDashboard.tsx` — обработка `n.type='signature'` в `handleNotificationClick`.
+
+## Этапы
+
+1. **Диагностика** (read-only): прочитать `AdminBillingOverview.tsx` + проверить через `read_query` что запись в `document_signatures` создалась.
+2. **Миграция триггера**: писать `admin_notifications` для `recipient_type='admin_sintagma'`.
+3. **UI админ-биллинга**: подключить `document_signatures` к вкладке «Договоры».
+4. **Клик по колоколу**: routing на договор.
+5. **End-to-end проверка**: повторно отправить договор → должен появиться в колоколе и в «Договоры».
