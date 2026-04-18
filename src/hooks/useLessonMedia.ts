@@ -172,30 +172,43 @@ export function useLessonMedia(
     const abortController = new AbortController();
     tusAbortRef.current = abortController;
 
-    const result = await tusUpload({
-      file: fileToUpload,
-      bucket: config.bucketName,
-      path: filePath,
-      baseUrl: config.baseUrl,
-      apiKey: config.apiKey,
-      authToken: config.authToken,
-      onProgress: (percent) => {
-        setVideoUploadProgress(percent);
-        setUploadedBytes(Math.round((percent / 100) * fileToUpload.size));
-      },
-      onStall: () => {
-        toast.warning("Загрузка замедлилась. Проверьте интернет-соединение.", { duration: 5000 });
-      },
-      signal: abortController.signal,
-    });
+    // Register background task (so closing dialog won't lose visibility)
+    const taskId = (fileToUpload instanceof File)
+      ? startBgTask("internal", fileToUpload, () => abortController.abort())
+      : null;
 
-    tusAbortRef.current = null;
-    onUpdate({ content: result.url });
-    setUploadFinishTime(Date.now());
-    toast.success("Видео загружено!");
-    setVideoUploadProgress(null);
-    if (videoInputRef.current) videoInputRef.current.value = '';
-  }, [onUpdate]);
+    try {
+      const result = await tusUpload({
+        file: fileToUpload,
+        bucket: config.bucketName,
+        path: filePath,
+        baseUrl: config.baseUrl,
+        apiKey: config.apiKey,
+        authToken: config.authToken,
+        onProgress: (percent) => {
+          setVideoUploadProgress(percent);
+          setUploadedBytes(Math.round((percent / 100) * fileToUpload.size));
+          if (taskId) bg.updateUpload(taskId, { progress: percent });
+        },
+        onStall: () => {
+          toast.warning("Загрузка замедлилась. Проверьте интернет-соединение.", { duration: 5000 });
+        },
+        signal: abortController.signal,
+      });
+
+      tusAbortRef.current = null;
+      onUpdate({ content: result.url });
+      setUploadFinishTime(Date.now());
+      setVideoUploadProgress(null);
+      if (videoInputRef.current) videoInputRef.current.value = '';
+      if (taskId) bg.finishUpload(taskId);
+      else toast.success("Видео загружено!");
+    } catch (e: any) {
+      if (taskId) bg.failUpload(taskId, e?.message || "Ошибка загрузки");
+      throw e;
+    }
+  }, [onUpdate, startBgTask, bg]);
+
 
   const uploadViaXhr = useCallback(async (
     fileToUpload: File | Blob,
