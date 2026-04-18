@@ -185,11 +185,6 @@ export function useCourseBuilder(propCourseId?: string) {
   const scrollToLesson = useCallback((id: string) => {
     expandLesson(id);
     setActiveLessonId(id);
-    // Defer to allow expansion to render before scroll
-    requestAnimationFrame(() => {
-      const el = document.querySelector<HTMLElement>(`[data-lesson-id="${id}"]`);
-      if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
-    });
   }, [expandLesson]);
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }), useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }));
 
