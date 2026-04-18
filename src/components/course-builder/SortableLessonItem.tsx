@@ -248,7 +248,7 @@ export function SortableLessonItem({
                     <Video className="w-10 h-10 mx-auto mb-3 text-sigma-purple" />
                     <p className="text-sm font-medium mb-1">Загрузить через Видеосервис+</p>
                     <p className="text-xs text-muted-foreground mb-4">Любой размер файла • CDN • Профессиональный плеер</p>
-                    <input ref={media.kinescopeInputRef} type="file" accept="video/*" className="hidden" onChange={(e) => { console.log('[VideoUpload] Kinescope file selected', e.target.files?.[0]?.name); const file = e.target.files?.[0]; if (file) media.handleKinescopeUpload(file); }} />
+                    <input ref={media.kinescopeInputRef} type="file" accept="video/*,.ts,.m2ts,.mts,.mpg,.mpeg,video/mp2t" className="hidden" onChange={(e) => { console.log('[VideoUpload] Kinescope file selected', e.target.files?.[0]?.name); const file = e.target.files?.[0]; if (file) media.handleKinescopeUpload(file); }} />
                     <Button type="button" className="gap-2 bg-sigma-purple text-white hover:bg-sigma-purple/90" onClick={(e) => { e.stopPropagation(); e.preventDefault(); const inp = media.kinescopeInputRef.current; if (inp) { inp.value = ''; inp.click(); } else { toast.error("Не удалось открыть выбор файла"); } }}>
                       <Upload className="w-4 h-4" />Выбрать файл
                     </Button>
@@ -257,8 +257,8 @@ export function SortableLessonItem({
                   <div key="server-upload">
                     <Video className="w-10 h-10 mx-auto mb-3 text-sigma-purple" />
                     <p className="text-sm font-medium mb-1">Загрузить видео на сервер</p>
-                    <p className="text-xs text-muted-foreground mb-4">MP4, MOV, AVI и др. — до 2 ГБ</p>
-                    <input ref={media.videoInputRef} type="file" accept="video/*" className="hidden" onChange={(e) => { console.log('[VideoUpload] Server file selected', e.target.files?.[0]?.name); const file = e.target.files?.[0]; if (file) media.handleVideoUpload(file, skipCompression); }} />
+                    <p className="text-xs text-muted-foreground mb-4">MP4, MOV, AVI, .TS / .M2TS — до 2 ГБ</p>
+                    <input ref={media.videoInputRef} type="file" accept="video/*,.ts,.m2ts,.mts,.mpg,.mpeg,video/mp2t" className="hidden" onChange={(e) => { console.log('[VideoUpload] Server file selected', e.target.files?.[0]?.name); const file = e.target.files?.[0]; if (file) media.handleVideoUpload(file, skipCompression); }} />
                     <Button type="button" className="gap-2 bg-sigma-purple text-white hover:bg-sigma-purple/90" onClick={(e) => { e.stopPropagation(); e.preventDefault(); const inp = media.videoInputRef.current; if (inp) { inp.value = ''; inp.click(); } else { toast.error("Не удалось открыть выбор файла"); } }}>
                       <Upload className="w-4 h-4" />Выбрать файл
                     </Button>

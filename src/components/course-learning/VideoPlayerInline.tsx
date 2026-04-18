@@ -19,10 +19,17 @@ const isDirectVideoFileUrl = (url: string): boolean => {
   try {
     const u = new URL(url);
     const path = u.pathname.toLowerCase();
-    if (/(\.mp4|\.webm|\.ogg|\.ogv|\.mov|\.m4v|\.mkv)(\?|$)/.test(path)) return true;
+    if (/(\.mp4|\.webm|\.ogg|\.ogv|\.mov|\.m4v|\.mkv|\.ts|\.m2ts|\.mts|\.mpg|\.mpeg|\.m3u8)(\?|$)/.test(path)) return true;
     if (u.hostname.includes("selcdn.ru")) return true;
     return false;
   } catch { return false; }
+};
+
+const isMpegTsFileUrl = (url: string): boolean => {
+  try {
+    const u = new URL(url);
+    return /(\.ts|\.m2ts|\.mts|\.mpg|\.mpeg|\.m3u8)(\?|$)/i.test(u.pathname);
+  } catch { return /(\.ts|\.m2ts|\.mts|\.mpg|\.mpeg|\.m3u8)(\?|$)/i.test(url); }
 };
 
 const getVideoEmbedUrl = (content: string): { url: string; canEmbed: boolean } | null => {
@@ -154,6 +161,63 @@ export const VideoPlayerInline = ({
     }, 500);
     return () => clearInterval(interval);
   }, [allowSeek]);
+
+  // Wire up hls.js for .ts / .m2ts / .mts / .m3u8 files (Chrome/Firefox/Edge can't decode MPEG-TS natively)
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video || !content) return;
+    if (!isMpegTsFileUrl(content)) return;
+
+    // Safari can play MPEG-TS / HLS natively — let the native <video src> handle it
+    const canPlayNative =
+      video.canPlayType("application/vnd.apple.mpegurl") !== "" ||
+      video.canPlayType("video/mp2t") !== "";
+    if (canPlayNative && !/\.m3u8(\?|$)/i.test(content)) return;
+
+    let hls: any = null;
+    let cancelled = false;
+    let manifestObjectUrl: string | null = null;
+
+    (async () => {
+      try {
+        const Hls = (await import("hls.js")).default;
+        if (cancelled) return;
+        if (!Hls.isSupported()) {
+          setVideoError(true);
+          return;
+        }
+        hls = new Hls({ enableWorker: true });
+
+        let manifestUrl = content;
+        if (!/\.m3u8(\?|$)/i.test(content)) {
+          // Wrap the standalone .ts file in a synthesized HLS playlist
+          const playlist =
+            "#EXTM3U\n#EXT-X-VERSION:3\n#EXT-X-TARGETDURATION:60\n" +
+            "#EXT-X-MEDIA-SEQUENCE:0\n#EXT-X-PLAYLIST-TYPE:VOD\n" +
+            `#EXTINF:60.0,\n${content}\n#EXT-X-ENDLIST\n`;
+          manifestObjectUrl = URL.createObjectURL(
+            new Blob([playlist], { type: "application/vnd.apple.mpegurl" })
+          );
+          manifestUrl = manifestObjectUrl;
+        }
+
+        hls.loadSource(manifestUrl);
+        hls.attachMedia(video);
+        hls.on(Hls.Events.ERROR, (_e: any, data: any) => {
+          if (data?.fatal) { console.error("[HLS] fatal", data); setVideoError(true); }
+        });
+      } catch (err) {
+        console.error("[HLS] init failed", err);
+        setVideoError(true);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+      try { hls?.destroy(); } catch {}
+      if (manifestObjectUrl) URL.revokeObjectURL(manifestObjectUrl);
+    };
+  }, [content]);
 
   if (!content) return null;
 
@@ -318,7 +382,8 @@ export const VideoPlayerInline = ({
       <video
         key={allowSeek ? "seek-on" : "seek-off"}
         ref={videoRef} controls={false} className="w-full h-full rounded-2xl video-no-controls"
-        src={resolvedContent} preload="metadata" onClick={togglePlay}
+        {...(isMpegTsFileUrl(resolvedContent) ? {} : { src: resolvedContent })}
+        preload="metadata" onClick={togglePlay}
         onTimeUpdate={handleTimeUpdate} onLoadedMetadata={handleLoadedMetadata}
         onSeeking={handleSeeking} onRateChange={handleRateChange}
         onPlay={() => { setIsPlaying(true); setVideoEnded(false); showControls(); }}
