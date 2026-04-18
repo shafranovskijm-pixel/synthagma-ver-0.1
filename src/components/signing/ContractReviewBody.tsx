@@ -684,51 +684,88 @@ export function ContractReviewBody({
             <ShieldCheck className="w-4 h-4 text-primary" />
             Подписать прямо здесь {isOrg && <Badge variant="outline" className="text-[10px]">подпись организации</Badge>}
           </div>
-          <p className="text-[11px] text-muted-foreground">
-            Подпишите документ простой электронной подписью без перехода на другую страницу.
-          </p>
-          <div className="grid sm:grid-cols-2 gap-2">
-            <div className="space-y-1">
-              <Label className="text-[11px]">ФИО подписанта</Label>
-              <Input value={signFullName} onChange={(e) => setSignFullName(e.target.value)} placeholder="Иванов Иван Иванович" className="h-9 text-sm" />
+
+          <Tabs value={signMethod} onValueChange={(v) => setSignMethod(v as "pep" | "handwritten_scan")} className="w-full">
+            <TabsList className="grid w-full grid-cols-2 h-9">
+              <TabsTrigger value="pep" className="text-xs gap-1.5">
+                <ShieldCheck className="w-3.5 h-3.5" />Электронно (ПЭП)
+              </TabsTrigger>
+              <TabsTrigger value="handwritten_scan" className="text-xs gap-1.5">
+                <FileSignature className="w-3.5 h-3.5" />Скан с подписью и печатью
+              </TabsTrigger>
+            </TabsList>
+
+            <div className="grid sm:grid-cols-2 gap-2 mt-3">
+              <div className="space-y-1">
+                <Label className="text-[11px]">ФИО подписанта</Label>
+                <Input value={signFullName} onChange={(e) => setSignFullName(e.target.value)} placeholder="Иванов Иван Иванович" className="h-9 text-sm" />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-[11px]">Email</Label>
+                <Input type="email" value={signEmail} onChange={(e) => setSignEmail(e.target.value)} className="h-9 text-sm" />
+              </div>
             </div>
-            <div className="space-y-1">
-              <Label className="text-[11px]">Email</Label>
-              <Input type="email" value={signEmail} onChange={(e) => setSignEmail(e.target.value)} className="h-9 text-sm" />
-            </div>
-          </div>
-          <div>
-            <Label className="text-[11px] mb-1 block">Соглашение об использовании ПЭП ({PEP_AGREEMENT_VERSION})</Label>
-            <ScrollArea className="h-32 rounded border bg-background p-2">
-              <pre className="text-[10px] whitespace-pre-wrap font-sans leading-relaxed">{agreementText}</pre>
-            </ScrollArea>
-          </div>
-          <div className="flex items-start gap-2">
-            <Checkbox id="agree-shared" checked={agreementAccepted} onCheckedChange={(v) => setAgreementAccepted(!!v)} />
-            <Label htmlFor="agree-shared" className="text-[11px] leading-relaxed cursor-pointer">
-              Я ознакомился(ась) и принимаю условия Соглашения об использовании ПЭП (63-ФЗ).
-            </Label>
-          </div>
-          <div className="flex items-start gap-2">
-            <Checkbox id="sign-shared" checked={signAccepted} onCheckedChange={(v) => setSignAccepted(!!v)} />
-            <Label htmlFor="sign-shared" className="text-[11px] leading-relaxed cursor-pointer">
-              Я, <strong>{signFullName || "—"}</strong>, подписываю «{sig.document_title}» простой электронной подписью. Подпись имеет юридическую силу, равную собственноручной.
-            </Label>
-          </div>
-          <div className="flex gap-2">
-            <Button variant="ghost" size="sm" onClick={() => setSignPanelOpen(false)} disabled={submittingSign}>
-              Отмена
-            </Button>
-            <Button
-              className="flex-1 gap-1.5"
-              size="sm"
-              onClick={handleInlineSign}
-              disabled={submittingSign || !signAccepted || !agreementAccepted || !signFullName.trim() || !signEmail.trim()}
-            >
-              {submittingSign ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <ShieldCheck className="w-3.5 h-3.5" />}
-              {submittingSign ? "Подписание…" : "Подписать"}
-            </Button>
-          </div>
+
+            <TabsContent value="pep" className="space-y-3 mt-3">
+              <div className="flex items-start gap-2">
+                <Checkbox id="agree-shared" checked={agreementAccepted} onCheckedChange={(v) => setAgreementAccepted(!!v)} />
+                <Label htmlFor="agree-shared" className="text-[11px] leading-relaxed cursor-pointer">
+                  Я ознакомился(ась) и принимаю условия{" "}
+                  <button
+                    type="button"
+                    onClick={(e) => { e.preventDefault(); setAgreementDialogOpen(true); }}
+                    className="text-primary underline underline-offset-2 hover:text-primary/80 font-medium"
+                  >
+                    Соглашения об использовании ПЭП
+                  </button>
+                  {" "}(63-ФЗ).
+                </Label>
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="w-full gap-1.5 h-8 text-[11px]"
+                onClick={() => setAgreementDialogOpen(true)}
+              >
+                <Eye className="w-3.5 h-3.5" />Открыть полный текст соглашения
+              </Button>
+              <div className="flex items-start gap-2">
+                <Checkbox id="sign-shared" checked={signAccepted} onCheckedChange={(v) => setSignAccepted(!!v)} />
+                <Label htmlFor="sign-shared" className="text-[11px] leading-relaxed cursor-pointer">
+                  Я, <strong>{signFullName || "—"}</strong>, подписываю «{sig.document_title}» простой электронной подписью. Подпись имеет юридическую силу, равную собственноручной.
+                </Label>
+              </div>
+              <div className="flex gap-2">
+                <Button variant="ghost" size="sm" onClick={() => setSignPanelOpen(false)} disabled={submittingSign}>
+                  Отмена
+                </Button>
+                <Button
+                  className="flex-1 gap-1.5"
+                  size="sm"
+                  onClick={handleInlineSign}
+                  disabled={submittingSign || !signAccepted || !agreementAccepted || !signFullName.trim() || !signEmail.trim()}
+                >
+                  {submittingSign ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <ShieldCheck className="w-3.5 h-3.5" />}
+                  {submittingSign ? "Подписание…" : "Подписать"}
+                </Button>
+              </div>
+            </TabsContent>
+
+            <TabsContent value="handwritten_scan" className="mt-3">
+              <HandwrittenSignUploader
+                signatureId={sig.id}
+                organizationId={sig.organization_id}
+                signatureToken={signatureToken!}
+                signerName={signFullName}
+                signerEmail={signEmail}
+                onSigned={async (info) => {
+                  setSignedInfo({ ip: info.ip, signedAt: info.signedAt, pepAgreementId: info.pepAgreementId });
+                  await loadAll(signatureToken!);
+                }}
+              />
+            </TabsContent>
+          </Tabs>
         </div>
       )}
 
