@@ -1,72 +1,50 @@
 
 ## Задача
-1. **Фикс бага**: добавить `education_document` в CHECK-constraint таблицы `document_signatures`.
-2. **Уведомления в колокольчике** при отправке/получении документа на подписание.
-3. **Связь подписания с чатом** — кнопка «Обсудить документ» открывает чат с отправителем.
-4. **Согласование с правками** — режим «На согласование» (вместо «На подпись»): получатель может оставить комментарии/правки прямо к документу, отправить обратно. Версионирование.
-5. **Загрузка своего договора** (PDF/DOCX) клиентом → drag-n-drop → отправка в админку Синтагмы на согласование → итерации правок → финальная подпись.
+1. Изменить дефолтный email админа Синтагмы: `admin@sintagma.com.ru` → `support@syntagma.com.ru` (это рабочий SMTP-email отправки).
+2. Сделать поле «Email администратора Синтагмы» в настройках **необязательным** — по умолчанию пустое.
+3. Исправить ошибку `new row violates row-level security policy` при загрузке внешнего договора (на скриншоте).
 
 ## Что меняем
 
-### Этап 1 — фикс + уведомления
-**Миграция БД:**
-- `ALTER TABLE document_signatures DROP CONSTRAINT … ADD CONSTRAINT … CHECK (document_type IN ('contract','consent','pep_agreement','act','order','custom_pdf','education_document','external_upload'))`.
-- Добавить статус `'in_review'` и `'changes_requested'` (расширить CHECK на `status`).
-- Триггер `notify_on_signature_event()`: при INSERT в `document_signatures` (status='sent' или 'in_review') → INSERT в `org_notifications` для `organization_id` отправителя + (если получатель — внутренний `recipient_user_id`) в его `notifications` / `org_notifications`.
-- При UPDATE → status changes ('signed', 'rejected', 'changes_requested') — тоже уведомление.
+### 1. Дефолтный email
+- Миграция: `UPDATE app_settings SET setting_value = 'support@syntagma.com.ru' WHERE setting_key = 'admin_signature_email'` — но только если значение всё ещё дефолтное `admin@sintagma.com.ru`. Иначе не трогаем (вдруг уже поменяли вручную).
+- Альтернатива (выбираю): оставляем строку в БД пустой, а fallback-значение `support@syntagma.com.ru` хранится в коде на случай, если поле не заполнено.
 
-**Frontend:**
-- Использовать существующий `org_notifications` (см. memory `Order Notifications`) — колокольчик вверху уже подписан на эту таблицу. Просто новый `type='signature'` с `link='/organization?tab=documents&sub=signatures&id=…'`.
+### 2. Поле необязательное
+- В админке (где редактируется `admin_signature_email`) — убрать `required`, placeholder сделать `support@syntagma.com.ru`, подпись «Если оставить пустым, будет использоваться support@syntagma.com.ru».
+- Найду компонент, где это поле рендерится (вероятно `AdminSettings` → SMTP/General).
 
-### Этап 2 — чат по документу
-**Миграция:** добавить поле `chat_thread_id UUID` в `document_signatures` (необязательное).
+### 3. Фикс RLS на загрузке внешнего договора
+**Источник ошибки:** `ExternalContractUploader.tsx` загружает файл в bucket `external-contracts` через `supabase.storage.from('external-contracts').upload(path, file)`. RLS на `storage.objects` для этого бакета, скорее всего, не разрешает INSERT текущему пользователю-организации (или path не подпадает под политику).
 
-**Frontend:**
-- В `SignaturesJournal` и на странице `/sign/:token` — кнопка «Обсудить» → открывает существующий чат организации (используем уже имеющуюся систему чатов, см. `Feedback Lesson Type` — feedback уходит в org-чат). Создаём/находим thread по `signatureId` и автоматически добавляем системное сообщение «Документ: <название>» со ссылкой.
+**План фикса:**
+- Проверю текущие политики бакета `external-contracts` через `supabase--read_query`.
+- Посмотрю, какой путь формирует `ExternalContractUploader` (по структуре политики path должен начинаться с `{org_id}/...`).
+- Скорректирую миграцию: добавить INSERT-политику вида:
+  ```sql
+  CREATE POLICY "Org users upload external contracts" ON storage.objects
+  FOR INSERT TO authenticated
+  WITH CHECK (
+    bucket_id = 'external-contracts'
+    AND (storage.foldername(name))[1] = current_organization_id()::text
+  );
+  ```
+  Аналогично SELECT — для скачивания владельцем-орг и админом.
+- Если в `ExternalContractUploader` путь сейчас не `{orgId}/...` — поправлю на корректный.
 
-### Этап 3 — режим «На согласование» с правками
-**Миграция:**
-- Новая таблица `signature_revisions`:
-  - `id`, `signature_id` (FK), `version` (int), `document_html`, `document_hash`, `created_by`, `created_at`, `change_summary`.
-- Новая таблица `signature_comments`:
-  - `id`, `signature_id`, `revision_id`, `author_user_id`, `author_name`, `quoted_text` (выделенный фрагмент), `comment_text`, `position_anchor` (xpath/offset для подсветки), `resolved`, `created_at`.
-- В `document_signatures`: поле `mode` ('sign' | 'review') и `current_revision_id`.
-
-**Frontend:**
-- В `SendForSigningDialog` — toggle «Только подписать» / «На согласование (с правками)».
-- На `/sign/:token` (режим review):
-  - Получатель видит документ + может **выделять текст и оставлять комментарии** (как в Google Docs / Notion) — компонент `<ReviewableDocument />`.
-  - Кнопки: «Запросить правки» (status → `changes_requested`) и «Согласовать и подписать».
-- В `SignaturesJournal` отправитель видит вкладку «Комментарии», может ответить, загрузить новую версию (создаётся новый `signature_revision`), повторно отправить.
-- Каждая версия — новая `revision`, на UI таймлайн версий с дельтой комментариев.
-- Подсветка правок: сравнение версий через простой diff (`diff-match-patch`) → `<ins>`/`<del>` подсветка.
-
-### Этап 4 — загрузка своего договора (PDF/DOCX)
-**Миграция:** новый бакет `external-contracts` (private), RLS — org owner + admin Синтагмы.
-
-**Frontend:** в `CounterpartiesSection` (вкладка «Синтагма» → «Договоры») добавить:
-- Кнопка/dropzone «Загрузить свой договор и отправить на согласование» (PDF/DOCX, до 20 МБ).
-- При загрузке:
-  - Файл → `external-contracts/{org_id}/{uuid}.{ext}`.
-  - Создаётся `document_signatures` с `document_type='external_upload'`, `mode='review'`, `recipient_type='admin_sintagma'`, `recipient_email=<admin email из настроек>`.
-  - Уведомление в админку (`AdminSettings → Подписания` уже есть — добавить вкладку/фильтр «Входящие на согласование»).
-- В админке (`SignaturesJournal` admin-mode) — новая кнопка «Открыть для правки» → скачать DOCX, внести правки, загрузить новую версию (`signature_revisions` v2), статус → `in_review` обратно к клиенту.
-- Клиент видит уведомление, скачивает новую версию, либо принимает (подписывает ПЭП), либо снова шлёт на правки.
-- Финал: обе стороны подписывают (двусторонняя подпись — расширение `document_signatures.signed_by` → массив `[{role, user_id, signed_at, ip, ua}]`, либо парная запись).
-
-**Edge-функция:** `signature-version-upload` — приём DOCX/PDF, сохранение в Storage, регистрация revision.
+### 4. Frontend fallback
+В `CounterpartiesSection.tsx`, где читается `admin_signature_email` из `app_settings`:
+```ts
+const adminEmail = settingValue?.trim() || 'support@syntagma.com.ru';
+```
 
 ## Технически
-- Все изменения **аддитивные**: существующие записи и flow не ломаются (`mode` default `'sign'`, новые статусы опциональны).
-- Чат — переиспользуем существующую систему org-чатов.
-- Подсветка правок — клиентская через `diff-match-patch` (без серверной нагрузки).
-- DOCX-просмотр — через `mammoth.js` (HTML preview) для отображения внутри `/sign/:token`.
-- RLS: получатель видит свои revisions/comments по `signature_id`; админ Синтагмы — все с `recipient_type='admin_sintagma'`.
-- НЕ трогаем: `useAuth`, существующие RLS других таблиц, конструкторы документов.
+- Изменения аддитивные, никаких ломающих API.
+- Миграция: одна — для UPDATE дефолта (если ещё не меняли) + DROP/CREATE storage policies для `external-contracts`.
+- Файлы: `CounterpartiesSection.tsx`, `ExternalContractUploader.tsx` (проверка пути), компонент админ-настроек (placeholder + не-required).
 
-## Этапы релиза
-1. **Этап 1** (минимальный риск): фикс constraint + уведомления + кнопка «Обсудить» с заглушкой-чатом. Проверка end-to-end.
-2. **Этап 2**: режим «На согласование» + комментарии к выделенному тексту + версионирование.
-3. **Этап 3**: загрузка PDF/DOCX от клиента + админский flow правок + двусторонняя подпись.
-
-После approve — начну с **Этапа 1**.
+## Этапы
+1. Проверка текущих RLS-политик бакета и пути загрузки в коде.
+2. Миграция: storage policies + обновление дефолтного email.
+3. Frontend: fallback + UX поля (placeholder, не-required).
+4. End-to-end проверка: загрузить внешний договор от лица организации.
