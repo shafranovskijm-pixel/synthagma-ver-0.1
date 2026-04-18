@@ -387,6 +387,11 @@ export function ReviewableDocument({ documentHtml, comments, authorName, canComm
                         <Replace className="w-2.5 h-2.5" />Заменить
                       </Badge>
                     )}
+                    {kind === "insert" && (
+                      <Badge variant="outline" className="h-5 text-[10px] gap-1 border-emerald-300 text-emerald-700 bg-emerald-50">
+                        <Plus className="w-2.5 h-2.5" />Добавить
+                      </Badge>
+                    )}
                     {kind === "comment" && (
                       <Badge variant="outline" className="h-5 text-[10px] gap-1 border-muted-foreground/30 text-muted-foreground">
                         <MessageSquare className="w-2.5 h-2.5" />Комм.
