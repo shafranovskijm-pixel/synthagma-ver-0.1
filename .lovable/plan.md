@@ -1,44 +1,66 @@
 
 
-## Что добавляем
+## Цель
 
-В разделе «Настройки → ЛК ученика» (`SettingsStudentDashboardTab.tsx`) — новый блок «Визуальная тема ученика»:
-- селектор тем (тот же `ThemeSelector`, что у админа/студента),
-- сохранение `studentTheme: string | null` в `organizations.student_dashboard_settings`,
-- подсказка: «Это тема по умолчанию. Ученик сможет изменить её в своём профиле».
+1. **Единый интерфейс организации**: настройки визуальной темы и тёмного/светлого режима хранятся в БД (`organizations.branding`), а не в localStorage. Один раз выбрала организация — при заходе с любого компьютера/любого сотрудника тема применяется автоматически.
+2. **Смена логина (email) и пароля организации в Профиле**: добавить блок «Учётные данные для входа» в `ProfileTab` организации, чтобы менять email и пароль входа в саму ЛК организации (это креды строки `organization_credentials`, не персональный профиль сотрудника).
 
-В кабинете ученика (`useStudentDashboard.ts` + `StudentDashboard.tsx`):
-- читаем `studentTheme` из `student_dashboard_settings`,
-- если у ученика **ещё нет** своего выбора (`localStorage.visual-theme` пуст) — применяем тему организации (без записи в localStorage, чтобы при сбросе организацией всё подхватилось снова),
-- если ученик потом сам выберет тему через `ThemeSelector` в профиле — она запишется в localStorage и победит организационную (приоритет: личный выбор > org > пусто).
+## Что меняем
+
+### A. Глобальная тема организации (БД-источник правды)
+
+**Где хранить:** `organizations.branding.orgTheme: { themeId: string|null, themeMode: 'light'|'dark'|'system', animLevel: 'off'|'low'|'medium'|'high' }`. Уже есть колонка `branding jsonb` — миграция не нужна.
+
+**Новый файл `src/hooks/useOrgTheme.ts`** — единый загрузчик:
+- по `organizationId` (или `current_organization_id` для членов) тянет `branding.orgTheme`,
+- кэширует в `sessionStorage` (быстрый старт), но всегда перезаписывает после ответа БД,
+- экспортирует `applyOrgTheme()` — записывает значения в `localStorage` (`visual-theme`, `theme`, `visual-animation-level`) **и** диспатчит `visual-theme-change` / `visual-animation-change` / `theme` (для совместимости со всеми существующими слушателями: `OrganizationDashboard`, `OrgSidebar`, `HeroBannerSwiper`, `ThemePersonalization`).
+
+**Где вызывать `applyOrgTheme`:**
+- `OrganizationDashboard` — в эффекте после монтирования (если orgId доступен) синхронно подтягиваем тему перед рендером сайдбара/баннера.
+- `OrgPageLayout` (используется на /organization/profile, /organization/settings и т.д.) — то же самое.
+
+**Где сохранять:** `ProfileTab` (новый подраздел «Внешний вид») и в `OrgSettingsContent` оставляем удобный доступ. Сохраняется через `update organizations.branding`.
+
+**Поведение `ThemePersonalization` для роли organization:**
+- В `ProfileTab` рядом с `ThemePersonalization` показываем `<ThemeSelector value=... onChange=...>` в **controlled-режиме** (уже поддерживается), значения берутся из `useOrgTheme`.
+- При сохранении вызываем `update organizations.branding`, затем `applyOrgTheme(...)` — тема мгновенно применяется на текущей вкладке и подтянется на других устройствах при следующей загрузке.
+- Тёмный/светлый режим тоже сохраняем в `orgTheme.themeMode` и применяем единообразно.
+- На студенческой части ничего не ломаем — там действует `studentTheme` из `student_dashboard_settings` (уже реализовано).
+
+### B. Смена логина и пароля организации в Профиле
+
+Добавляем в `src/components/organization/tabs/ProfileTab.tsx` новую вкладку «Вход» (рядом с «Мой профиль»):
+
+- Поле «Email для входа» (текущее значение из `organization_credentials.login_email` через `get_decrypted_org_credentials`).
+- Кнопка «Изменить email» → новая edge-функция `update-org-email` (по аналогии с `reset-org-password`):
+  - проверяет, что caller — организация, владеющая `organization_id`, либо admin;
+  - меняет email в `auth.users` через service role (`updateUserById`);
+  - обновляет `organization_credentials.login_email`;
+  - возвращает success.
+- Поля «Новый пароль» / «Подтвердите пароль» → вызывает существующую `reset-org-password`. **Доработка функции:** сейчас она требует `role = 'admin'`. Нужно разрешить также организации менять собственный пароль: добавить ветку `if role === 'organization' && current_organization_id() === organization_id`. Тогда на фронте просто передаём `organization_id = current org`.
+
+UI: компактные карточки в стиле существующего блока «Сменить пароль», + предупреждение «После смены потребуется заново войти в систему» и автоматический `supabase.auth.signOut()` после смены email/пароля.
 
 ## Файлы
 
-1. **`src/components/organization/SettingsStudentDashboardTab.tsx`**
-   - Добавить state `studentTheme: string | null`, читать/сохранять в `student_dashboard_settings.studentTheme`.
-   - Под существующими тогглами добавить секцию «Визуальная тема» с `<ThemeSelector value={studentTheme} onThemeChange={...} />` (нужен мини-доработка — см. п.3).
-   - Кнопка «Сохранить» сохраняет всё вместе.
-
-2. **`src/hooks/useStudentDashboard.ts`**
-   - Расширить `DashboardSettings` полем `studentTheme: string | null`.
-   - При маппинге `effectiveDashboardSettings` читать `studentTheme`.
-   - Возвращать его наружу.
-
-3. **`src/components/ui/ThemeSelector.tsx`**
-   - Сделать controlled-вариант: принимать необязательные `value?: string | null` и `onChange?: (id: string | null) => void`. Если переданы — не трогать localStorage и не диспатчить глобальный event (org-режим). Если не переданы — текущее поведение (студент/админ для своего ЛК).
-
-4. **`src/pages/StudentDashboard.tsx`** (и `StudentSidebar` / `OrgBanner` / `HeroBannerSwiper` через единый источник правды — localStorage уже работает как сейчас):
-   - После загрузки `dashboardSettings` в эффекте: если `localStorage.visual-theme` пуст и `dashboardSettings.studentTheme` задан → вызвать `storeThemeId(studentTheme)` + диспатчить `visual-theme-change`. **Только** при пустом localStorage — это и даёт «организация задаёт по умолчанию, ученик может перевыбрать».
-   - Чтобы при смене темы организацией ученик с активным личным выбором ничего не потерял, ничего больше не делаем. А чтобы ученик мог «вернуться к теме организации», добавим в `ThemeSelector` кнопку «Сбросить» (она уже есть) — после неё тема организации применится при следующем заходе. Дополнительно — после `clearTheme` в студенте сразу применим org-тему, если она есть.
+- **Новый**: `src/hooks/useOrgTheme.ts` — загрузка/сохранение/применение темы организации.
+- **Edit**: `src/components/organization/tabs/ProfileTab.tsx` — новая вкладка «Вход» (email + пароль), новая секция «Внешний вид» (через ThemeSelector controlled + переключатель light/dark, общий для организации).
+- **Edit**: `src/pages/OrganizationDashboard.tsx`, `src/components/organization/OrgPageLayout.tsx` — на старте применяют `applyOrgTheme` из БД.
+- **Edit**: `supabase/functions/reset-org-password/index.ts` — разрешить смену пароля своей организацией (не только admin).
+- **Новый edge**: `supabase/functions/update-org-email/index.ts` — смена email входа.
 
 ## Этапы
 
-1. Доработать `ThemeSelector` (controlled-режим).
-2. В `SettingsStudentDashboardTab` добавить блок «Визуальная тема ученика» с сохранением в `student_dashboard_settings.studentTheme`.
-3. Расширить `useStudentDashboard.ts`: тип, загрузка, экспорт `studentTheme`.
-4. В `StudentDashboard.tsx` применить org-тему при пустом localStorage; в обработчике сброса темы у ученика — вернуться к org-теме.
-5. Проверка end-to-end:
-   - Организация выбрала тему «Пляж» → новый ученик заходит → у него сразу «Пляж».
-   - Ученик в своём профиле выбрал «Океан» → у него «Океан», даже если организация поменяла на «Лаванду».
-   - Ученик нажал «Сбросить» в `ThemeSelector` → применилась тема организации.
+1. Создать хук `useOrgTheme` (read/write `organizations.branding.orgTheme`, apply через events).
+2. Подключить `applyOrgTheme` на старте `OrganizationDashboard` и `OrgPageLayout` (приоритет БД над localStorage).
+3. В `ProfileTab` организации:
+   - заменить текущий блок «Тема оформления» на единую секцию (ThemePersonalization + ThemeSelector в controlled-режиме, сохранение в БД через хук);
+   - добавить вкладку «Вход» с формами смены email и пароля.
+4. Расширить `reset-org-password`: caller-организация может менять свой пароль.
+5. Создать edge-функцию `update-org-email` (auth check → admin updateUserById → upsert organization_credentials).
+6. Проверка end-to-end:
+   - Организация выбирает тему «Лаванда» → сохраняет → на втором браузере (и у второго сотрудника той же организации) после входа сразу та же тема.
+   - В Профиле меняется email — приходит письмо подтверждения, после подтверждения вход по новому email.
+   - В Профиле меняется пароль — пользователь автоматически выходит и входит уже по новому.
 
