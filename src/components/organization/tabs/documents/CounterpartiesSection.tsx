@@ -864,6 +864,26 @@ export function CounterpartiesSection({
         onSent={() => { refreshPlatformContracts(); }}
       />
 
+      <AlertDialog open={!!contractToDelete} onOpenChange={(v) => !v && !deletingContract && setContractToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Хотите удалить договор?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Договор «{contractToDelete?.title}» будет скрыт из вашего списка. У второй стороны он останется виден — это позволяет сохранить юридическую целостность документа.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deletingContract}>Отмена</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => { e.preventDefault(); handleDeleteContract(); }}
+              disabled={deletingContract}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deletingContract ? "Удаляем..." : "Удалить"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
