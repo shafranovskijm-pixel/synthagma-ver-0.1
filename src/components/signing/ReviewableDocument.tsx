@@ -162,32 +162,28 @@ export function ReviewableDocument({ documentHtml, comments, authorName, canComm
     const offsets = computeOffsets(docRef.current, range);
     if (!offsets) return;
 
-    // Получаем точный rect курсора через временный zero-width span
+    // Получаем rect курсора БЕЗ модификации DOM (чтобы не сместить offsets):
+    // используем range.getClientRects() — для collapsed range вернёт позицию каретки.
     let rect: DOMRect;
-    const probe = document.createElement("span");
-    probe.textContent = "\u200b";
-    try {
-      range.insertNode(probe);
-      rect = probe.getBoundingClientRect();
-    } catch {
-      rect = new DOMRect(e.clientX, e.clientY, 0, 18);
+    const rects = range.getClientRects();
+    if (rects.length > 0) {
+      rect = rects[0];
+    } else {
+      // Fallback: берём rect родительского элемента в позиции node
+      const parentEl = (node.nodeType === Node.TEXT_NODE ? node.parentElement : node as HTMLElement);
+      if (parentEl) {
+        const parentRect = parentEl.getBoundingClientRect();
+        rect = new DOMRect(e.clientX, parentRect.top, 0, parentRect.height || 18);
+      } else {
+        rect = new DOMRect(e.clientX, e.clientY, 0, 18);
+      }
     }
-
-    // Удаляем старый caret-маркер
-    docRef.current.querySelectorAll("[data-caret-marker]").forEach(el => el.remove());
-
-    // Заменяем probe на видимый мигающий маркер
-    const marker = document.createElement("span");
-    marker.setAttribute("data-caret-marker", "1");
-    marker.className = "inline-block w-[2px] h-[1em] bg-emerald-500 align-middle animate-pulse mx-[1px] rounded-sm";
-    marker.style.cssText = "display:inline-block;width:2px;height:1.1em;background:#10b981;vertical-align:middle;margin:0 1px;border-radius:1px;animation:pulse 1s ease-in-out infinite;";
-    probe.parentNode?.replaceChild(marker, probe);
 
     // Очищаем браузерный selection чтобы не мешал
     try { window.getSelection()?.removeAllRanges(); } catch {}
 
     setSelection(null);
-    setInsertCaret({ offset: offsets.start, rect: marker.getBoundingClientRect() });
+    setInsertCaret({ offset: offsets.start, rect });
   }, [canComment, draftKind]);
 
   // Подсветка фрагментов с учётом типа правки
