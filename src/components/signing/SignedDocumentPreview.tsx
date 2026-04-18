@@ -97,14 +97,14 @@ export function SignedDocumentPreview({
     }
     setGenerating(true);
     try {
-      const isPdfScan = !!scanUrl && (scanUrl.toLowerCase().includes(".pdf") || !!attachedFileMime?.includes("pdf"));
       const result = await generateSignedPdf({
         signatureId,
         documentTitle,
         documentHtml: documentHtml || null,
         attachedFileUrl: attachedUrl,
+        attachedFileMime: attachedFileMime || null,
         scanFileUrl: scanUrl,
-        scanIsPdf: isPdfScan,
+        scanFileMime: attachedFileMime || null,
         signatureMethod,
         sender,
         recipient,
