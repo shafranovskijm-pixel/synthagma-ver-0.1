@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Eye, FileText, Search, Send, CheckCircle2, XCircle, AlertTriangle, Copy, Download, FileDown } from "lucide-react";
+import { Eye, FileText, Search, Send, CheckCircle2, XCircle, AlertTriangle, Copy, Download, FileDown, MessageCircle, Edit3 } from "lucide-react";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 import { toast } from "sonner";
 import { format } from "date-fns";
@@ -46,6 +46,8 @@ const STATUS_LABELS: Record<string, { label: string; cls: string; icon: any }> =
   signed: { label: "Подписано", cls: "bg-emerald-500/10 text-emerald-600 border-emerald-500/20", icon: CheckCircle2 },
   rejected: { label: "Отклонено", cls: "bg-destructive/10 text-destructive border-destructive/20", icon: XCircle },
   expired: { label: "Просрочено", cls: "bg-orange-500/10 text-orange-600 border-orange-500/20", icon: AlertTriangle },
+  in_review: { label: "На согласовании", cls: "bg-violet-500/10 text-violet-600 border-violet-500/20", icon: Edit3 },
+  changes_requested: { label: "Запрошены правки", cls: "bg-pink-500/10 text-pink-600 border-pink-500/20", icon: MessageCircle },
 };
 
 const TYPE_LABELS: Record<string, string> = {
@@ -56,6 +58,7 @@ const TYPE_LABELS: Record<string, string> = {
   custom_pdf: "Документ",
   education_document: "Документ об образовании",
   pep_agreement: "Соглашение ПЭП",
+  external_upload: "Загруженный договор",
 };
 
 interface Props {
@@ -246,7 +249,19 @@ export function SignaturesJournal({ organizationId }: Props) {
                     <TableCell>
                       <div className="flex items-center gap-1">
                         <Button variant="ghost" size="icon" title="Подробнее" onClick={() => setSelected(r)}><Eye className="w-4 h-4" /></Button>
-                        {r.status === "sent" && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          title="Обсудить документ"
+                          onClick={() => {
+                            const subject = encodeURIComponent(`Документ: ${r.document_title}`);
+                            const body = encodeURIComponent(`Здравствуйте, ${r.recipient_name}!\n\nХочу обсудить документ «${r.document_title}».\n\nСсылка: ${window.location.origin}/sign/${r.signature_token}`);
+                            window.open(`mailto:${r.recipient_email}?subject=${subject}&body=${body}`, "_blank");
+                          }}
+                        >
+                          <MessageCircle className="w-4 h-4" />
+                        </Button>
+                        {(r.status === "sent" || r.status === "in_review" || r.status === "changes_requested") && (
                           <Button variant="ghost" size="icon" title="Скопировать ссылку" onClick={() => copyLink(r.signature_token)}><Copy className="w-4 h-4" /></Button>
                         )}
                         {r.status === "signed" && (
