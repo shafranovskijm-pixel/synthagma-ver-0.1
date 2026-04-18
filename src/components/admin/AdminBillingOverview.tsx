@@ -123,8 +123,8 @@ export const AdminBillingOverview = ({ pendingExpandContractId }: { pendingExpan
             </div>
           </div>
           <div className="p-4 lg:p-6">
-            {h.activeSection === "all" && <AllBillingContent h={h} statusBadge={statusBadge} />}
-            {h.activeSection === "org-contracts" && (h.selectedOrgId ? <OrgContractsList contracts={h.orgContracts} statusBadge={statusBadge} /> : <EmptyOrgPrompt />)}
+            {h.activeSection === "all" && <AllBillingContent h={h} statusBadge={statusBadge} expandedContractId={expandedContractId} onToggleExpand={toggleExpand} />}
+            {h.activeSection === "org-contracts" && (h.selectedOrgId ? <OrgContractsList contracts={h.orgContracts} statusBadge={statusBadge} expandedContractId={expandedContractId} onToggleExpand={toggleExpand} /> : <EmptyOrgPrompt />)}
             {h.activeSection === "org-invoices" && (h.selectedOrgId ? <OrgInvoicesList invoices={h.orgInvoices} statusBadge={statusBadge} onMarkPaid={h.handleMarkPaid} selectedInvoiceIds={h.selectedInvoiceIds} toggleInvoiceSelection={h.toggleInvoiceSelection} onDeleteSelected={() => h.setShowDeleteConfirm(true)} /> : <EmptyOrgPrompt />)}
             {h.activeSection === "org-closing" && (h.selectedOrgId ? <OrgClosingList docs={h.orgClosingDocs} handleViewDoc={h.handleViewDoc} handleDeleteDoc={h.handleDeleteDoc} /> : <EmptyOrgPrompt />)}
           </div>
@@ -138,28 +138,9 @@ export const AdminBillingOverview = ({ pendingExpandContractId }: { pendingExpan
       <PendingActDialog h={h} />
       <PendingInvoiceDialog h={h} />
       <DeleteInvoicesDialog h={h} />
-
-      {/* Просмотр и согласование внешнего договора */}
-      <ContractReviewDialog
-        open={!!reviewToken}
-        onOpenChange={(o) => { if (!o) setReviewToken(null); }}
-        signatureToken={reviewToken}
-      />
-
-      {/* Глобальный обработчик кликов: делегируем кнопке открытие диалога */}
-      <ContractRowClickListener onOpen={(token) => setReviewToken(token)} contracts={h.filteredContracts.concat(h.orgContracts)} />
     </div>
   );
 };
-
-// Эмулирует клик на ExternalLink → передаёт токен наверх. Через атрибут data-signature-token на кнопке.
-function ContractRowClickListener({ onOpen, contracts }: { onOpen: (t: string) => void; contracts: Contract[] }) {
-  // Слушаем кастомное событие window
-  if (typeof window !== "undefined") {
-    (window as any).__openContractReview = onOpen;
-  }
-  return null;
-}
 
 // ---- Sub-components ----
 function EmptyOrgPrompt() { return <div className="text-center py-12 text-muted-foreground text-sm">Выберите организацию в боковом меню</div>; }
