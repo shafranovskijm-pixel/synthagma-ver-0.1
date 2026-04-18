@@ -206,7 +206,7 @@ export function TabContentRenderer() {
       {/* Subscription Tab */}
       {activeTab === "subscription" && <SubscriptionTab />}
 
-      {/* Secondary nav (duplicates the avatar dropdown) for profile/settings/documents/whats-new */}
+      {/* Secondary nav (duplicates the avatar dropdown) for profile/documents/whats-new */}
       {(activeTab === "profile" ||
         activeTab === "settings" ||
         activeTab === "org-documents" ||
@@ -217,8 +217,10 @@ export function TabContentRenderer() {
         <ProfileTab organizationId={organizationId} />
       )}
 
-      {/* Settings Tab */}
-      {activeTab === "settings" && <OrgSettingsContent />}
+      {/* Settings Tab — раздел удалён, перенаправляем на профиль (раздел «Разделы меню») */}
+      {activeTab === "settings" && organizationId && (
+        <ProfileTab organizationId={organizationId} initialSubTab="menu" />
+      )}
 
       {/* What's New Tab */}
       {activeTab === "whats-new" && <WhatsNewTab />}
