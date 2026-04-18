@@ -198,6 +198,10 @@ export function useLessonMedia(
 
       tusAbortRef.current = null;
       onUpdate({ content: result.url });
+      // Persist directly to DB so URL is saved even if CourseBuilder unmounts
+      try {
+        await supabase.from('lessons').update({ content: result.url }).eq('id', lessonId);
+      } catch (e) { console.warn('[VideoUpload] direct DB save failed', e); }
       setUploadFinishTime(Date.now());
       setVideoUploadProgress(null);
       if (videoInputRef.current) videoInputRef.current.value = '';
@@ -231,6 +235,9 @@ export function useLessonMedia(
         if (xhr.status >= 200 && xhr.status < 300) {
           const publicUrl = `${config.baseUrl}/storage/v1/object/public/${config.bucketName}/${filePath}`;
           onUpdate({ content: publicUrl });
+          // Persist directly to DB so URL is saved even if CourseBuilder unmounts
+          supabase.from('lessons').update({ content: publicUrl }).eq('id', lessonId)
+            .then(({ error }) => { if (error) console.warn('[VideoUpload] direct DB save failed', error); });
           setUploadFinishTime(Date.now());
           toast.success("Видео загружено!");
           resolve();
@@ -374,7 +381,12 @@ export function useLessonMedia(
       tusAbortRef.current = null;
 
       // 3. Save kinescope:{videoId} as content
-      onUpdate({ content: `kinescope:${video_id}` });
+      const kinescopeContent = `kinescope:${video_id}`;
+      onUpdate({ content: kinescopeContent });
+      // Persist directly to DB so URL is saved even if CourseBuilder unmounts
+      try {
+        await supabase.from('lessons').update({ content: kinescopeContent }).eq('id', lessonId);
+      } catch (e) { console.warn('[KinescopeUpload] direct DB save failed', e); }
       setUploadFinishTime(Date.now());
       setKinescopeUploadProgress(null);
       if (kinescopeInputRef.current) kinescopeInputRef.current.value = '';
