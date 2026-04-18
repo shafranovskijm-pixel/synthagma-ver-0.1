@@ -224,8 +224,66 @@ export function ContractReviewBody({
     }
   };
 
-  const handleOpenSignPage = () => {
-    if (signatureToken) window.open(`/sign/${signatureToken}`, "_blank");
+  // Inline-sign helpers (recipient AND organization)
+  const today = new Date().toLocaleDateString("ru-RU");
+  const agreementText = sig ? getPepAgreementText({
+    org_name: sig.organization_name,
+    org_inn: (sig as any).organization_inn || undefined,
+    user_name: signFullName || sig.recipient_name,
+    user_email: signEmail || sig.recipient_email,
+    current_date: today,
+  }) : "";
+
+  const handleWithdrawComment = async (commentId: string) => {
+    if (!signatureToken) return;
+    if (!confirm("Удалить эту правку? Действие необратимо.")) return;
+    try {
+      const { error } = await (supabase as any).rpc("delete_signature_comment_by_token", {
+        p_token: signatureToken,
+        p_comment_id: commentId,
+      });
+      if (error) throw error;
+      await reloadComments();
+      toast.success("Правка удалена");
+    } catch (e: any) {
+      toast.error(e.message || "Не удалось удалить");
+    }
+  };
+
+  const handleInlineSign = async () => {
+    if (!sig || !signatureToken || !signAccepted || !agreementAccepted) return;
+    setSubmittingSign(true);
+    try {
+      const docHash = documentHtml
+        ? await sha256Hex(documentHtml)
+        : await sha256Hex(sig.document_title);
+      const { data, error } = await supabase.functions.invoke("finalize-signature", {
+        body: {
+          token: signatureToken,
+          documentHash: docHash,
+          pepAgreement: {
+            agreement_text: agreementText,
+            agreement_version: PEP_AGREEMENT_VERSION,
+            full_name: signFullName,
+            email: signEmail,
+          },
+        },
+      });
+      if (error || (data as any)?.error) {
+        throw new Error((data as any)?.error || error?.message || "Ошибка подписания");
+      }
+      setSignedInfo({
+        ip: (data as any).ip,
+        signedAt: (data as any).signedAt,
+        pepAgreementId: (data as any).pepAgreementId,
+      });
+      toast.success("Документ подписан");
+      await loadAll(signatureToken);
+    } catch (e: any) {
+      toast.error(e.message || "Не удалось подписать документ");
+    } finally {
+      setSubmittingSign(false);
+    }
   };
 
   // ==== ORG ACTIONS ====
