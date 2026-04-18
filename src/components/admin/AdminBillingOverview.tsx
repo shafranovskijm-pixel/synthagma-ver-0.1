@@ -17,8 +17,9 @@ import {
   FileCheck, Download, Trash2, CheckCircle2, Calendar
 } from "lucide-react";
 import { useAdminBilling, type Invoice, type BillingDoc, type Contract } from "@/hooks/useAdminBilling";
-import { ContractReviewDialog } from "@/components/signing/ContractReviewDialog";
-import { useState } from "react";
+import { ContractReviewBody } from "@/components/signing/ContractReviewBody";
+import { useEffect, useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
 
 const NAV_SECTIONS = [
   { value: "all" as const, label: "Все расчёты", icon: FolderOpen, group: "overview" },
