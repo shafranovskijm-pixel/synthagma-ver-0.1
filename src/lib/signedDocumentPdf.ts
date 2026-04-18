@@ -3,12 +3,13 @@ import fontkit from "@pdf-lib/fontkit";
 import { supabase } from "@/integrations/supabase/client";
 import {
   appendStampPage,
-  appendHtmlAsPages,
   appendImagePage,
   appendAcceptedEditsListPage,
+  applyWatermarkToAllPages,
   type PartyInfo,
   type AcceptedEditSummary,
 } from "./pdfStampDrawer";
+import { appendHtmlAsRenderedPages } from "./htmlToPdfPages";
 import { sha256Hex } from "@/utils/documentHash";
 
 const BUCKET = "external-contracts";
@@ -74,6 +75,7 @@ function isImageMime(mime: string | null | undefined, url: string | null | undef
 /** Считает короткий хэш входов сборки PDF — для инвалидации кеша. */
 async function computeBuildHash(opts: BuildOptions): Promise<string> {
   const payload = JSON.stringify({
+    renderer: "v2", // bump → инвалидирует старые «уродливые» PDF
     html: opts.documentHtml || "",
     attached: opts.attachedFileUrl?.split("?")[0] || "",
     scan: opts.scanFileUrl?.split("?")[0] || "",
@@ -155,15 +157,19 @@ export async function generateSignedPdf(opts: BuildOptions): Promise<{ path: str
   const font = await pdf.embedFont(regular, { subset: true });
   const fontBold = await pdf.embedFont(bold, { subset: true });
 
-  // === Сценарий 2: HTML-договор → рендерим текстом (с уже применёнными правками) ===
+  // === Сценарий 2: HTML-договор → рендерим через браузер (html2canvas) ===
   if (documentHtml && (!attachedFileUrl || !isPdfMime(attachedFileMime, attachedFileUrl))) {
-    appendHtmlAsPages(pdf, documentHtml, documentTitle, font, fontBold);
+    await appendHtmlAsRenderedPages(pdf, documentHtml, documentTitle);
   }
+
+  // Запоминаем сколько страниц «тела документа» уже есть — на них пойдёт watermark
+  const bodyPageCount = pdf.getPageCount();
 
   // === Для PDF-вложений: список принятых правок отдельной страницей ===
   if (isAttachedPdf && acceptedEdits && acceptedEdits.length > 0) {
     appendAcceptedEditsListPage(pdf, acceptedEdits, font, fontBold);
   }
+  const editsPagesEnd = pdf.getPageCount();
 
   // === Скан с собственноручной подписью ===
   if (scanFileUrl) {
@@ -198,6 +204,13 @@ export async function generateSignedPdf(opts: BuildOptions): Promise<{ path: str
     signatureMethod,
     documentTitle,
   });
+
+  // === Watermark с подписью на каждой странице (тело + скан) ===
+  // Пропускаем: страницы со списком принятых правок и финальную страницу штампов.
+  const skip = new Set<number>();
+  for (let i = bodyPageCount; i < editsPagesEnd; i++) skip.add(i);
+  skip.add(pdf.getPageCount() - 1);
+  applyWatermarkToAllPages(pdf, sender, recipient, font, fontBold, signatureMethod, skip);
 
   const out = await pdf.save();
   const blob = new Blob([out as BlobPart], { type: "application/pdf" });
