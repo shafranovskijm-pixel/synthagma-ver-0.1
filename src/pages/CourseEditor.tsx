@@ -79,7 +79,17 @@ const CourseEditor = () => {
         </div>
       </div>
 
-      <main className="max-w-5xl mx-auto p-6 pb-32">
+      <CourseLessonsSidebar
+        lessons={h.lessons}
+        activeLessonId={h.activeLessonId}
+        sensors={h.sensors}
+        onDragEnd={h.handleDragEnd}
+        onLessonClick={h.scrollToLesson}
+        onAddLesson={h.handleAddLesson}
+        onOpenGitHubImport={() => h.setIsGitHubImportOpen(true)}
+      />
+
+      <main className="max-w-5xl mx-auto p-6 pb-32 lg:pl-[18.5rem]">
         <div className="feature-card rounded-2xl p-6 mb-8">
           <h2 className="font-display text-xl font-semibold mb-6">Информация о курсе</h2>
           <div className="grid sm:grid-cols-2 gap-6">
@@ -131,10 +141,12 @@ const CourseEditor = () => {
               <SortableContext items={h.lessons.map(l => l.id)} strategy={verticalListSortingStrategy}>
                 <div className="space-y-3">
                   {h.lessons.map(lesson => (
-                    <LessonItem key={lesson.id} lesson={lesson} isExpanded={h.expandedLessonId === lesson.id}
-                      onToggleExpand={() => h.setExpandedLessonId(h.expandedLessonId === lesson.id ? null : lesson.id)}
-                      onEdit={() => h.handleEditLesson(lesson)} onDelete={() => h.setDeletingLessonId(lesson.id)}
-                      onToggleLock={() => h.handleToggleLock(lesson)} />
+                    <div key={lesson.id} data-lesson-id={lesson.id} className="scroll-mt-24">
+                      <LessonItem lesson={lesson} isExpanded={h.expandedLessonId === lesson.id}
+                        onToggleExpand={() => h.setExpandedLessonId(h.expandedLessonId === lesson.id ? null : lesson.id)}
+                        onEdit={() => h.handleEditLesson(lesson)} onDelete={() => h.setDeletingLessonId(lesson.id)}
+                        onToggleLock={() => h.handleToggleLock(lesson)} />
+                    </div>
                   ))}
                 </div>
               </SortableContext>
