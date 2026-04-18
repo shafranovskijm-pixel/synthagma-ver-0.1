@@ -8,6 +8,35 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { generateSignedPdf } from "@/lib/signedDocumentPdf";
 import type { AcceptedEditSummary } from "@/lib/pdfStampDrawer";
+import { transliterate } from "@/utils/credentials";
+
+async function downloadBlobFromUrl(url: string, filename: string) {
+  try {
+    const response = await fetch(url);
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    const blob = await response.blob();
+    const blobUrl = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = blobUrl;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
+  } catch (e) {
+    console.error("[SignedDocumentPreview] downloadBlobFromUrl failed", e);
+    window.open(url, "_blank");
+  }
+}
+
+function buildDownloadFilename(title: string): string {
+  const ascii = transliterate((title || "document").toLowerCase())
+    .replace(/[^a-z0-9_\-]+/g, "_")
+    .replace(/_+/g, "_")
+    .replace(/^_|_$/g, "")
+    .slice(0, 80) || "document";
+  return `${ascii}_signed.pdf`;
+}
 
 interface PartyInfo {
   fullName: string;
