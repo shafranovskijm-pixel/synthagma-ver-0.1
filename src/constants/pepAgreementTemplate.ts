@@ -82,12 +82,14 @@ const TEMPLATE = `СОГЛАШЕНИЕ
 
 export function getPepAgreementText(vars: PepAgreementVars): string {
   const innPart = vars.org_inn ? ` (ИНН ${vars.org_inn})` : "";
-  return TEMPLATE
-    .replaceAll("{{org_name}}", vars.org_name)
-    .replaceAll("{{org_inn_part}}", innPart)
-    .replaceAll("{{user_name}}", vars.user_name)
-    .replaceAll("{{user_email}}", vars.user_email)
-    .replaceAll("{{current_date}}", vars.current_date);
+  const repl = (s: string, k: string, v: string) => s.split(k).join(v);
+  let out = TEMPLATE;
+  out = repl(out, "{{org_name}}", vars.org_name);
+  out = repl(out, "{{org_inn_part}}", innPart);
+  out = repl(out, "{{user_name}}", vars.user_name);
+  out = repl(out, "{{user_email}}", vars.user_email);
+  out = repl(out, "{{current_date}}", vars.current_date);
+  return out;
 }
 
 export function getPepAgreementHtml(vars: PepAgreementVars): string {
