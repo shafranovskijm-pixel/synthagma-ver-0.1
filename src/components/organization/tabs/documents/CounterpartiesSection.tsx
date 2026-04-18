@@ -801,6 +801,14 @@ export function CounterpartiesSection({
         defaultAdminEmail={adminSigEmail}
         onSent={() => { refreshPlatformContracts(); }}
       />
+
+      {/* Просмотр своего отправленного договора (read-only — отправитель видит правки/комментарии получателя) */}
+      <ContractReviewDialog
+        open={!!reviewToken}
+        onOpenChange={(o) => { if (!o) setReviewToken(null); }}
+        signatureToken={reviewToken}
+        readOnly
+      />
     </div>
   );
 }
