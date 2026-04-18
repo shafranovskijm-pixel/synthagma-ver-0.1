@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
@@ -22,6 +22,7 @@ import { SignedDocumentPreview } from "@/components/signing/SignedDocumentPrevie
 import { getPepAgreementText, PEP_AGREEMENT_VERSION } from "@/constants/pepAgreementTemplate";
 import { OPERATOR } from "@/constants/operatorDetails";
 import { sha256Hex } from "@/utils/documentHash";
+import { applyAcceptedEdits } from "@/lib/applyAcceptedEdits";
 import { useAuth } from "@/hooks/useAuth";
 import { cn } from "@/lib/utils";
 
