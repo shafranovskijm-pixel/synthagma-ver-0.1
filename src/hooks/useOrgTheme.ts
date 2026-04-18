@@ -9,12 +9,14 @@ export interface OrgThemeSettings {
   themeId: string | null;
   themeMode: OrgThemeMode;
   animLevel: AnimationLevel;
+  enforce: boolean;
 }
 
 const DEFAULT_THEME: OrgThemeSettings = {
   themeId: null,
   themeMode: "light",
   animLevel: "full",
+  enforce: false,
 };
 
 const cacheKey = (orgId: string) => `org-theme-cache:${orgId}`;
@@ -52,11 +54,12 @@ function readBrandingTheme(branding: any): OrgThemeSettings {
     themeId: ot.themeId ?? null,
     themeMode: (ot.themeMode as OrgThemeMode) || "light",
     animLevel: (ot.animLevel as AnimationLevel) || "full",
+    enforce: ot.enforce === true,
   };
 }
 
 /**
- * Loads the org theme from DB, applies it, and exposes a saver.
+ * Loads the org theme from DB, applies it (only if enforce=true), and exposes a saver.
  * If no orgId is provided, this hook is a no-op (returns defaults).
  */
 export function useOrgTheme(organizationId: string | null | undefined) {
@@ -87,7 +90,10 @@ export function useOrgTheme(organizationId: string | null | undefined) {
       try {
         sessionStorage.setItem(cacheKey(organizationId), JSON.stringify(next));
       } catch {}
-      applyOrgTheme(next);
+      // Apply to device only if organization enforces shared theme
+      if (next.enforce) {
+        applyOrgTheme(next);
+      }
     })();
     return () => {
       cancelled = true;
@@ -115,7 +121,10 @@ export function useOrgTheme(organizationId: string | null | undefined) {
       try {
         sessionStorage.setItem(cacheKey(organizationId), JSON.stringify(merged));
       } catch {}
-      applyOrgTheme(merged);
+      // Apply on this device only if enforcement is on (shared org theme)
+      if (merged.enforce) {
+        applyOrgTheme(merged);
+      }
     },
     [organizationId, theme]
   );
