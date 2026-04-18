@@ -209,8 +209,9 @@ export default function CourseBuilder({ embedded, embeddedCourseId, onExitEditor
           )}
         </div>
       </div>
+      )}
 
-      <div className="container mx-auto px-3 sm:px-6 py-4 sm:py-8 pb-28 sm:pb-32">
+      <div className={cn(embedded ? "px-0 py-4" : "container mx-auto px-3 sm:px-6 py-4 sm:py-8 pb-28 sm:pb-32")}>
         <div className="flex gap-4 lg:gap-6 items-start">
           {/* LEFT: sticky lessons navigation (desktop) */}
           <CourseBuilderLessonsNav
@@ -221,6 +222,7 @@ export default function CourseBuilder({ embedded, embeddedCourseId, onExitEditor
             onLessonClick={scrollToLesson}
             onBack={onExitEditor}
             backLabel="Назад к разделам курса"
+            embedded={embedded}
           />
 
           {/* CENTER: main content */}
