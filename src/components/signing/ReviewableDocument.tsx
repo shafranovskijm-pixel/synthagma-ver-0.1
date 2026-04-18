@@ -410,9 +410,9 @@ export function ReviewableDocument({ documentHtml, comments, authorName, canComm
                     «{c.quoted_text}»
                   </blockquote>
                 )}
-                {kind === "replace" && replacement && (
+                {(kind === "replace" || kind === "insert") && replacement && (
                   <div className="text-[11px] border-l-2 border-emerald-400 pl-1.5 mb-1 text-emerald-700 bg-emerald-50/50 py-0.5 rounded-r">
-                    → «{replacement}»
+                    {kind === "insert" ? "+ " : "→ "}«{replacement}»
                   </div>
                 )}
                 {c.comment_text && c.comment_text !== "Предложено удалить фрагмент" && c.comment_text !== "Предложена замена фрагмента" && (
