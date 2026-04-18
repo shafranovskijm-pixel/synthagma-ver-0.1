@@ -182,7 +182,8 @@ export default function CourseBuilder({ embedded, embeddedCourseId, onExitEditor
         </header>
       )}
 
-      <div className={cn(embedded ? "sticky bottom-0 z-40" : "fixed bottom-0 inset-x-0 z-50", "bg-gradient-to-t from-background via-background to-transparent pb-3 sm:pb-4 pt-6 sm:pt-8 pointer-events-none")}>
+      {!embedded && (
+      <div className="fixed bottom-0 inset-x-0 z-50 bg-gradient-to-t from-background via-background to-transparent pb-3 sm:pb-4 pt-6 sm:pt-8 pointer-events-none">
         <div className="container mx-auto px-3 sm:px-6 pointer-events-auto flex flex-col items-center gap-2">
           <Tooltip><TooltipTrigger asChild>
             <Button onClick={() => saveCourse()} disabled={isSaving} size="lg" className="btn-gradient rounded-2xl gap-2 sm:gap-3 px-6 sm:px-8 py-5 sm:py-6 text-base sm:text-lg font-semibold shadow-2xl hover:scale-105 transition-transform w-full sm:w-auto">
@@ -208,8 +209,9 @@ export default function CourseBuilder({ embedded, embeddedCourseId, onExitEditor
           )}
         </div>
       </div>
+      )}
 
-      <div className="container mx-auto px-3 sm:px-6 py-4 sm:py-8 pb-28 sm:pb-32">
+      <div className={cn(embedded ? "px-0 py-4" : "container mx-auto px-3 sm:px-6 py-4 sm:py-8 pb-28 sm:pb-32")}>
         <div className="flex gap-4 lg:gap-6 items-start">
           {/* LEFT: sticky lessons navigation (desktop) */}
           <CourseBuilderLessonsNav
@@ -220,6 +222,7 @@ export default function CourseBuilder({ embedded, embeddedCourseId, onExitEditor
             onLessonClick={scrollToLesson}
             onBack={onExitEditor}
             backLabel="Назад к разделам курса"
+            embedded={embedded}
           />
 
           {/* CENTER: main content */}
@@ -284,11 +287,29 @@ export default function CourseBuilder({ embedded, embeddedCourseId, onExitEditor
                 </div>
               )}
             </div>
+
+            {/* Embedded save bar — внутри центральной колонки, чтобы не перекрывать боковые sticky-панели */}
+            {embedded && (
+              <div className="sticky bottom-4 z-30 flex flex-col items-center gap-2 pt-4 pointer-events-none">
+                <div className="pointer-events-auto flex flex-col items-center gap-2">
+                  <Tooltip><TooltipTrigger asChild>
+                    <Button onClick={() => saveCourse()} disabled={isSaving} size="lg" className="btn-gradient rounded-2xl gap-2 sm:gap-3 px-6 sm:px-8 py-5 sm:py-6 text-base sm:text-lg font-semibold shadow-2xl hover:scale-105 transition-transform">
+                      {isSaving ? <SigmaSpinner /> : <Save className="w-5 h-5" />}
+                      {isSaving ? "Сохранение..." : "Сохранить курс"}
+                      {hasUnsavedChanges && !isSaving && <span className="ml-1 w-2 h-2 rounded-full bg-white/80 animate-pulse" />}
+                    </Button>
+                  </TooltipTrigger><TooltipContent>Сохранить все изменения курса</TooltipContent></Tooltip>
+                  {autoSaveStatus === 'saved' && <span className="text-xs text-sigma-green flex items-center gap-1 animate-in fade-in"><Check className="w-3 h-3" /> Сохранено</span>}
+                  {autoSaveStatus === 'saving' && <span className="text-xs text-muted-foreground flex items-center gap-1"><SigmaSpinner size="xs" /> Автосохранение...</span>}
+                  {autoSaveStatus === 'error' && <span className="text-xs text-destructive flex items-center gap-1"><AlertCircle className="w-3 h-3" /> Ошибка сохранения</span>}
+                </div>
+              </div>
+            )}
           </div>
 
           {/* RIGHT: sticky "Добавить урок" panel (desktop) */}
-          <aside className="hidden lg:block sticky top-24 self-start w-72 shrink-0">
-            <div className="bg-card rounded-2xl border border-border p-4 sm:p-6 shadow-sm max-h-[calc(100vh-7rem)] overflow-y-auto">
+          <aside className={cn("hidden lg:block sticky self-start w-72 shrink-0", embedded ? "top-4" : "top-24")}>
+            <div className={cn("bg-card rounded-2xl border border-border p-4 sm:p-6 shadow-sm overflow-y-auto", embedded ? "max-h-[calc(100vh-2rem)]" : "max-h-[calc(100vh-7rem)]")}>
               <h3 className="font-semibold mb-3 sm:mb-4">Добавить урок</h3>
               <AddLessonGrid
                 addLesson={addLesson}
