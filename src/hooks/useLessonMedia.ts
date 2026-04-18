@@ -198,6 +198,10 @@ export function useLessonMedia(
 
       tusAbortRef.current = null;
       onUpdate({ content: result.url });
+      // Persist directly to DB so URL is saved even if CourseBuilder unmounts
+      try {
+        await supabase.from('lessons').update({ content: result.url }).eq('id', lessonId);
+      } catch (e) { console.warn('[VideoUpload] direct DB save failed', e); }
       setUploadFinishTime(Date.now());
       setVideoUploadProgress(null);
       if (videoInputRef.current) videoInputRef.current.value = '';
