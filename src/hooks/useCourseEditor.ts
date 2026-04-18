@@ -198,5 +198,6 @@ export function useCourseEditor() {
     sensors, navigate, handleSaveCourse, handleTogglePublish, handleDragEnd,
     handleAddLesson, handleEditLesson, handleSaveLesson, handleDeleteLesson,
     handleToggleLock, handleGitHubImport,
+    activeLessonId, setActiveLessonId, registerLessonRef, scrollToLesson,
   };
 }
