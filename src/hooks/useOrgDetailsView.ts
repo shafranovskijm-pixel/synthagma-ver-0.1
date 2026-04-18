@@ -297,10 +297,9 @@ export function useOrgDetailsView(organization: Organization) {
     // Kinescope storage for this organization
     let kBytes = 0, kSec = 0, kCount = 0, kRub = 0;
     try {
-      const { data: kData } = await safeInvoke<any>(
-        `kinescope-storage-stats?organization_id=${organization.id}`,
-        { method: "GET" } as any,
-      );
+      const { data: kData } = await safeInvoke<any>("kinescope-storage-stats", {
+        body: { organization_id: organization.id },
+      });
       if (kData && !kData.error) {
         kBytes = kData.total_bytes || 0;
         kSec = kData.total_seconds || 0;
