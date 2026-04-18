@@ -334,7 +334,7 @@ export function ContractReviewBody({
     setFinalizing(true);
     try {
       if (action === "sign_as_is") {
-        // Открыть страницу подписания организацией
+        // Закрыть режим review и переключиться в инлайн-подписание (без нового окна)
         const { error } = await (supabase as any).rpc("org_finalize_signature_review", {
           p_signature_id: sig.id,
           p_action: "sign_as_is",
@@ -342,8 +342,8 @@ export function ContractReviewBody({
         });
         if (error) throw error;
         await loadAll(signatureToken!);
-        if (signatureToken) window.open(`/sign/${signatureToken}`, "_blank");
-        toast.success("Можно подписать в открывшейся вкладке");
+        setSignPanelOpen(true);
+        toast.success("Откройте панель ниже и подпишите документ");
       } else {
         const { error } = await (supabase as any).rpc("org_finalize_signature_review", {
           p_signature_id: sig.id,
@@ -427,6 +427,18 @@ export function ContractReviewBody({
               onClick={() => { setReplyOpenId(replyOpenId === c.id ? null : c.id); setReplyText(c.org_reply || ""); }}
             >
               <Reply className="w-3 h-3" />{c.org_reply ? "Изменить ответ" : "Ответить"}
+            </Button>
+          </div>
+        )}
+
+        {/* Recipient: позволить отозвать собственную правку, пока орг ещё не отреагировал */}
+        {!isOrg && !readOnly && status === "pending" && (
+          <div className="mt-2 pt-2 border-t flex items-center justify-end">
+            <Button
+              size="sm" variant="ghost" className="h-7 text-[11px] gap-1 text-destructive hover:text-destructive"
+              onClick={() => handleWithdrawComment(c.id)}
+            >
+              <Trash2 className="w-3 h-3" />Отозвать правку
             </Button>
           </div>
         )}
