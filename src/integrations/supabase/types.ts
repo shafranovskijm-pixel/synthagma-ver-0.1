@@ -1628,6 +1628,111 @@ export type Database = {
           },
         ]
       }
+      document_signatures: {
+        Row: {
+          created_at: string
+          document_hash: string | null
+          document_html: string | null
+          document_id: string | null
+          document_snapshot_url: string | null
+          document_title: string
+          document_type: string
+          expires_at: string
+          id: string
+          organization_id: string
+          pep_agreement_id: string | null
+          recipient_email: string
+          recipient_name: string
+          recipient_type: string
+          recipient_user_id: string | null
+          rejected_at: string | null
+          rejection_reason: string | null
+          sender_name: string | null
+          sender_user_id: string
+          sent_at: string | null
+          signature_token: string
+          signed_at: string | null
+          signed_ip: string | null
+          signed_user_agent: string | null
+          status: string
+          updated_at: string
+          viewed_at: string | null
+        }
+        Insert: {
+          created_at?: string
+          document_hash?: string | null
+          document_html?: string | null
+          document_id?: string | null
+          document_snapshot_url?: string | null
+          document_title: string
+          document_type: string
+          expires_at?: string
+          id?: string
+          organization_id: string
+          pep_agreement_id?: string | null
+          recipient_email: string
+          recipient_name: string
+          recipient_type: string
+          recipient_user_id?: string | null
+          rejected_at?: string | null
+          rejection_reason?: string | null
+          sender_name?: string | null
+          sender_user_id: string
+          sent_at?: string | null
+          signature_token?: string
+          signed_at?: string | null
+          signed_ip?: string | null
+          signed_user_agent?: string | null
+          status?: string
+          updated_at?: string
+          viewed_at?: string | null
+        }
+        Update: {
+          created_at?: string
+          document_hash?: string | null
+          document_html?: string | null
+          document_id?: string | null
+          document_snapshot_url?: string | null
+          document_title?: string
+          document_type?: string
+          expires_at?: string
+          id?: string
+          organization_id?: string
+          pep_agreement_id?: string | null
+          recipient_email?: string
+          recipient_name?: string
+          recipient_type?: string
+          recipient_user_id?: string | null
+          rejected_at?: string | null
+          rejection_reason?: string | null
+          sender_name?: string | null
+          sender_user_id?: string
+          sent_at?: string | null
+          signature_token?: string
+          signed_at?: string | null
+          signed_ip?: string | null
+          signed_user_agent?: string | null
+          status?: string
+          updated_at?: string
+          viewed_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "document_signatures_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "document_signatures_pep_agreement_id_fkey"
+            columns: ["pep_agreement_id"]
+            isOneToOne: false
+            referencedRelation: "pep_agreements"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       education_document_records: {
         Row: {
           birth_date: string | null
@@ -3801,6 +3906,56 @@ export type Database = {
           },
           {
             foreignKeyName: "pending_enrollments_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pep_agreements: {
+        Row: {
+          accepted_at: string
+          agreement_text: string
+          agreement_version: string
+          created_at: string
+          email: string | null
+          full_name: string | null
+          id: string
+          ip_address: string | null
+          organization_id: string
+          user_agent: string | null
+          user_id: string | null
+        }
+        Insert: {
+          accepted_at?: string
+          agreement_text: string
+          agreement_version?: string
+          created_at?: string
+          email?: string | null
+          full_name?: string | null
+          id?: string
+          ip_address?: string | null
+          organization_id: string
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          accepted_at?: string
+          agreement_text?: string
+          agreement_version?: string
+          created_at?: string
+          email?: string | null
+          full_name?: string | null
+          id?: string
+          ip_address?: string | null
+          organization_id?: string
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pep_agreements_organization_id_fkey"
             columns: ["organization_id"]
             isOneToOne: false
             referencedRelation: "organizations"
@@ -6363,6 +6518,25 @@ export type Database = {
           id: string
           name: string
           organization_id: string
+        }[]
+      }
+      get_signature_by_token: {
+        Args: { p_token: string }
+        Returns: {
+          document_hash: string
+          document_html: string
+          document_title: string
+          document_type: string
+          expires_at: string
+          id: string
+          organization_id: string
+          organization_inn: string
+          organization_name: string
+          recipient_email: string
+          recipient_name: string
+          recipient_user_id: string
+          signed_at: string
+          status: string
         }[]
       }
       get_user_role: {
