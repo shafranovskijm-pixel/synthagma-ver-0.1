@@ -54,6 +54,7 @@ interface SigData {
   sender_name?: string | null;
   signature_method?: "pep" | "handwritten_scan" | null;
   handwritten_scan_path?: string | null;
+  signed_document_path?: string | null;
   document_hash?: string | null;
   pep_agreement_id?: string | null;
 }
@@ -946,11 +947,13 @@ export function ContractReviewBody({
         <SignedDocumentPreview
           open={previewOpen}
           onOpenChange={setPreviewOpen}
+          signatureId={sig.id}
           documentTitle={sig.document_title}
           documentHtml={documentHtml}
           attachedFilePath={rawFileUrl && !rawFileUrl.startsWith("http") ? rawFileUrl : null}
           attachedFileMime={fileMime || null}
           handwrittenScanPath={sig.handwritten_scan_path || null}
+          signedDocumentPath={sig.signed_document_path || null}
           signatureMethod={sig.signature_method || "pep"}
           sender={sig.sender_signed_at ? {
             fullName: sig.sender_name || OPERATOR.fullName,
