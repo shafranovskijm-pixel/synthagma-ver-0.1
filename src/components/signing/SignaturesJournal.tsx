@@ -13,6 +13,8 @@ import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import { downloadSignatureProtocol, exportSignaturesToCSV } from "@/utils/signatureProtocol";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { SignatureRevisionUploader } from "@/components/signing/SignatureRevisionUploader";
+import { Upload, PenLine } from "lucide-react";
 
 interface SignatureRow {
   id: string;
@@ -295,6 +297,17 @@ export function SignaturesJournal({ organizationId }: Props) {
 
               {(selected.status === "in_review" || selected.status === "changes_requested") && (
                 <SignatureCommentsPanel signatureId={selected.id} />
+              )}
+
+              {selected.document_type === "external_upload" && (
+                <SignatureFilesPanel
+                  signatureId={selected.id}
+                  organizationId={selected.organization_id}
+                  status={selected.status}
+                  requiresBilateral={(selected as any).requires_bilateral}
+                  senderSignedAt={(selected as any).sender_signed_at}
+                  onChanged={load}
+                />
               )}
 
               {selected.status === "signed" && (
