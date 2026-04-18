@@ -201,9 +201,14 @@ export function VideoBlock({ block, onUpdate, organizationId, courseId, lessonId
   const [videoUploadTab, setVideoUploadTab] = useState<string>(isKinescopeAvailable ? "kinescope" : "server");
 
   const lessonIdForMedia = lessonId || block.id;
-  const media = useLessonMedia(lessonIdForMedia, courseId, (updates: any) => {
-    if (typeof updates?.content === "string") onUpdate({ videoUrl: updates.content });
-  });
+  const media = useLessonMedia(
+    lessonIdForMedia,
+    courseId,
+    (updates: any) => {
+      if (typeof updates?.content === "string") onUpdate({ videoUrl: updates.content });
+    },
+    { organizationId },
+  );
 
   const isIframeEmbed = (content: string): boolean => content.trim().startsWith('<iframe') && content.includes('</iframe>');
 
