@@ -7,7 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Switch } from "@/components/ui/switch";
-import { User, Bell, Handshake, Save, Eye, EyeOff, Upload, X, Image as ImageIcon, Palette, LogIn, Camera, KeyRound, Mail, AlertTriangle } from "lucide-react";
+import { User, Bell, Handshake, Save, Eye, EyeOff, Upload, X, Image as ImageIcon, Palette, LogIn, Camera, KeyRound, Mail, AlertTriangle, LayoutGrid, GraduationCap, Users, BarChart3, Link as LinkIcon, HardHat, FileText, Building2, ShoppingBag, RefreshCw, RotateCcw } from "lucide-react";
 import { toast } from "sonner";
 import { PartnerCabinet } from "@/components/organization/PartnerCabinet";
 import { ThemePersonalization } from "@/components/ui/ThemePersonalization";
@@ -17,6 +17,8 @@ import { ProfileLoginBrandingTab } from "@/components/organization/ProfileLoginB
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 import { useOrgTheme, applyOrgTheme } from "@/hooks/useOrgTheme";
 import { AvatarLocationHint, OrgIconLocationHint, HintBlock } from "@/components/organization/BrandingHints";
+import { SettingsStudentDashboardTab } from "@/components/organization/SettingsStudentDashboardTab";
+import { StaffManager } from "@/components/organization/StaffManager";
 
 interface ProfileData {
   full_name: string;
@@ -49,7 +51,7 @@ const DEFAULT_NOTIFS: NotifRow[] = [
   { key: "student_paid", label: "Ученик оплатил курс", platform: true, browser: true, email: true, telegram: false, app: false },
 ];
 
-type SectionKey = "profile" | "theme" | "branding" | "login-branding" | "signin" | "notifications" | "partner";
+type SectionKey = "profile" | "theme" | "branding" | "login-branding" | "signin" | "notifications" | "partner" | "menu" | "student-dashboard" | "staff";
 
 const SECTIONS: { key: SectionKey; label: string; icon: React.ElementType; color: string }[] = [
   { key: "profile", label: "Мой профиль", icon: User, color: "text-blue-500" },
@@ -58,8 +60,26 @@ const SECTIONS: { key: SectionKey; label: string; icon: React.ElementType; color
   { key: "login-branding", label: "Бренд. страницы входа", icon: LogIn, color: "text-cyan-500" },
   { key: "signin", label: "Вход", icon: KeyRound, color: "text-orange-500" },
   { key: "notifications", label: "Уведомления", icon: Bell, color: "text-amber-500" },
+  { key: "menu", label: "Разделы меню", icon: LayoutGrid, color: "text-indigo-500" },
+  { key: "student-dashboard", label: "ЛК ученика", icon: GraduationCap, color: "text-pink-500" },
+  { key: "staff", label: "Сотрудники", icon: Users, color: "text-sky-500" },
   { key: "partner", label: "Партнёрская программа", icon: Handshake, color: "text-emerald-500" },
 ];
+
+interface MenuSettingsLocal {
+  showStats: boolean;
+  showLinks: boolean;
+  showLaborSafety: boolean;
+  showDocuments: boolean;
+  showServices: boolean;
+  showCompanies: boolean;
+  [key: string]: boolean;
+}
+
+const DEFAULT_MENU: MenuSettingsLocal = {
+  showStats: true, showLinks: true, showLaborSafety: true,
+  showDocuments: true, showServices: true, showCompanies: true,
+};
 
 interface ProfileTabProps {
   organizationId: string;
