@@ -48,8 +48,6 @@ export default function CourseBuilder({ embedded, embeddedCourseId }: CourseBuil
     isReviewing, reviewResult, activeFindings, dismissedIds,
     startReview, dismissFinding, dismissAll, resetReview } = useCourseReview();
   const [showReviewDialog, setShowReviewDialog] = useState(false);
-
-  const [showReviewDialog, setShowReviewDialog] = useState(false);
   const [addLessonSheetOpen, setAddLessonSheetOpen] = useState(false);
 
   // IntersectionObserver — track which lesson is currently visible
