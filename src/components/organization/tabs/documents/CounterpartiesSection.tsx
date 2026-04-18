@@ -6,6 +6,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ScrollText, Receipt, FileCheck, Download, FileText, Lightbulb, Eye, Trash2, ExternalLink, Building2, User, Store, Plus, FolderOpen, ChevronDown, ChevronRight, X, Search, Send } from "lucide-react";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { ContractLegalFaq } from "@/components/organization/ContractLegalFaq";
 import { SendForSigningDialog, type SendForSigningPayload } from "@/components/signing/SendForSigningDialog";
 import { ExternalContractUploader } from "@/components/signing/ExternalContractUploader";
@@ -81,6 +82,24 @@ export function CounterpartiesSection({
   const [platformExternalContracts, setPlatformExternalContracts] = useState<any[]>([]);
   const [adminSigEmail, setAdminSigEmail] = useState<string>("support@sintagma.com.ru");
   const [expandedReviewId, setExpandedReviewId] = useState<string | null>(null);
+  const [contractToDelete, setContractToDelete] = useState<{ id: string; title: string } | null>(null);
+  const [deletingContract, setDeletingContract] = useState(false);
+
+  const handleDeleteContract = async () => {
+    if (!contractToDelete) return;
+    setDeletingContract(true);
+    try {
+      const { error } = await (supabase as any).rpc("hide_signature_for_viewer", { p_signature_id: contractToDelete.id });
+      if (error) throw error;
+      toast.success("Договор удалён из вашего списка");
+      setContractToDelete(null);
+      await refreshPlatformContracts();
+    } catch (e: any) {
+      toast.error(e?.message || "Не удалось удалить договор");
+    } finally {
+      setDeletingContract(false);
+    }
+  };
 
   // Handle deep-link from notification: open a specific signature
   useEffect(() => {
@@ -93,9 +112,10 @@ export function CounterpartiesSection({
     (async () => {
       const { data } = await (supabase as any)
         .from("document_signatures")
-        .select("id, document_title, status, created_at, current_revision_id, sender_signed_at, requires_bilateral, signed_at, signature_token")
+        .select("id, document_title, status, created_at, current_revision_id, sender_signed_at, requires_bilateral, signed_at, signature_token, hidden_for_sender")
         .eq("organization_id", organizationId)
         .eq("document_type", "external_upload")
+        .eq("hidden_for_sender", false)
         .order("created_at", { ascending: false });
       setPlatformExternalContracts((data as any[]) || []);
       setExpandedReviewId(sigId);
@@ -119,9 +139,10 @@ export function CounterpartiesSection({
   const refreshPlatformContracts = async () => {
     const { data } = await (supabase as any)
       .from("document_signatures")
-      .select("id, document_title, status, created_at, current_revision_id, sender_signed_at, requires_bilateral, signed_at, signature_token")
+      .select("id, document_title, status, created_at, current_revision_id, sender_signed_at, requires_bilateral, signed_at, signature_token, hidden_for_sender")
       .eq("organization_id", organizationId)
       .eq("document_type", "external_upload")
+      .eq("hidden_for_sender", false)
       .order("created_at", { ascending: false });
     setPlatformExternalContracts((data as any[]) || []);
   };
@@ -355,6 +376,15 @@ export function CounterpartiesSection({
                         <Eye className="w-4 h-4" />
                       </Button>
                     )}
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      title="Удалить договор"
+                      className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                      onClick={() => setContractToDelete({ id: c.id, title: c.document_title })}
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
                   </div>
                 </div>
                 {expandedReviewId === c.id && c.signature_token && (
@@ -834,6 +864,26 @@ export function CounterpartiesSection({
         onSent={() => { refreshPlatformContracts(); }}
       />
 
+      <AlertDialog open={!!contractToDelete} onOpenChange={(v) => !v && !deletingContract && setContractToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Хотите удалить договор?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Договор «{contractToDelete?.title}» будет скрыт из вашего списка. У второй стороны он останется виден — это позволяет сохранить юридическую целостность документа.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deletingContract}>Отмена</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => { e.preventDefault(); handleDeleteContract(); }}
+              disabled={deletingContract}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deletingContract ? "Удаляем..." : "Удалить"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
