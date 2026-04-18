@@ -11,6 +11,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 import {
   Save, Upload, X, Eye, Lock, ArrowUpRight, Image } from "lucide-react";
+import { CoverLocationHint, LogoLocationHint, HintBlock } from "@/components/organization/BrandingHints";
 
 interface BrandingSettings {
   primaryColor: string;
@@ -146,6 +147,10 @@ export function ProfileBrandingTab({ organizationId, userId }: Props) {
           <div>
             <Label className="text-sm font-medium mb-2 block">Обложка организации</Label>
             <p className="text-sm text-muted-foreground mb-3">Изображение отображается в шапке личного кабинета (рекомендуется 1920×400 px)</p>
+            <HintBlock
+              diagram={<CoverLocationHint className="w-full h-auto" />}
+              text="Большое изображение-баннер в верхней части кабинета — между шапкой и основным содержимым. Видят его все сотрудники и ученики при входе."
+            />
             <div className="relative">
               {brandingSettings.coverUrl ? (
                 <div className="relative rounded-xl overflow-hidden border border-border">
@@ -188,7 +193,13 @@ export function ProfileBrandingTab({ organizationId, userId }: Props) {
           {/* Logo */}
           <div>
             <Label className="text-sm font-medium mb-2 block">Логотип организации</Label>
-            <p className="text-sm text-muted-foreground mb-3">Отображается вместо стандартного логотипа (рекомендуется квадрат или прозрачный PNG)</p>
+            <p className="text-sm text-muted-foreground mb-3">Отображается вместо стандартного логотипа Синтагма (рекомендуется квадрат или прозрачный PNG)</p>
+            <div className="mb-3">
+              <HintBlock
+                diagram={<LogoLocationHint className="w-full h-auto" />}
+                text="Логотип появится в шапке кабинета (слева) и на странице входа в кабинет вместо стандартного логотипа Синтагма."
+              />
+            </div>
             <div className="flex items-start gap-4">
               {brandingSettings.logoUrl ? (
                 <div className="relative">

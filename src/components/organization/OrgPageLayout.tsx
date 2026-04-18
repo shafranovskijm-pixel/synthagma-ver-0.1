@@ -58,6 +58,7 @@ export default function OrgPageLayout({ title, icon: Icon, children }: OrgPageLa
   const coverPosition = d.branding.brandingSettings.coverPosition;
 
   // Sync org-wide theme from DB (acts as source of truth across devices)
+  // Hook itself respects the `enforce` flag — applies only when org has enabled it.
   useOrgTheme(organizationId);
 
   // Full visual theme
