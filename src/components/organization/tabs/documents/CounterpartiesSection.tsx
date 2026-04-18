@@ -78,13 +78,13 @@ export function CounterpartiesSection({
   const [signingRecipients, setSigningRecipients] = useState<{ id: string; name: string; email: string; type: "student" | "company" | "individual" }[]>([]);
   const [showExternalUploader, setShowExternalUploader] = useState(false);
   const [platformExternalContracts, setPlatformExternalContracts] = useState<any[]>([]);
-  const [adminSigEmail, setAdminSigEmail] = useState<string>("support@syntagma.com.ru");
+  const [adminSigEmail, setAdminSigEmail] = useState<string>("support@sintagma.com.ru");
 
   useEffect(() => {
     supabase.from("app_settings").select("setting_value").eq("setting_key", "admin_signature_email").maybeSingle()
       .then(({ data }) => {
         const v = data?.setting_value?.trim();
-        setAdminSigEmail(v && v.length > 0 ? v : "support@syntagma.com.ru");
+        setAdminSigEmail(v && v.length > 0 ? v : "support@sintagma.com.ru");
       });
   }, []);
 

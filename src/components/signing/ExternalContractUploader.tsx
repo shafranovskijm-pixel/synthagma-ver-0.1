@@ -25,7 +25,7 @@ const ALLOWED_MIME = [
 ];
 const MAX_SIZE = 20 * 1024 * 1024; // 20 MB
 
-const FALLBACK_ADMIN_EMAIL = "support@syntagma.com.ru";
+const FALLBACK_ADMIN_EMAIL = "support@sintagma.com.ru";
 
 export function ExternalContractUploader({ open, onOpenChange, organizationId, defaultAdminEmail, onSent }: Props) {
   const [file, setFile] = useState<File | null>(null);
