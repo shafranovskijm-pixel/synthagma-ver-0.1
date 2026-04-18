@@ -26,6 +26,7 @@ import { OrgSettingsContent } from "@/components/organization/tabs/OrgSettingsCo
 import { WhatsNewTab } from "@/components/organization/tabs/WhatsNewTab";
 import { OrgDocumentsTab } from "@/components/organization/tabs/OrgDocumentsTab";
 import { ContractEditorTab } from "@/components/organization/tabs/ContractEditorTab";
+import { OrgSecondaryNavTabs } from "@/components/organization/OrgSecondaryNavTabs";
 
 import { useOrgDashboard } from "@/contexts/OrgDashboardContext";
 
@@ -204,6 +205,12 @@ export function TabContentRenderer() {
 
       {/* Subscription Tab */}
       {activeTab === "subscription" && <SubscriptionTab />}
+
+      {/* Secondary nav (duplicates the avatar dropdown) for profile/settings/documents/whats-new */}
+      {(activeTab === "profile" ||
+        activeTab === "settings" ||
+        activeTab === "org-documents" ||
+        activeTab === "whats-new") && <OrgSecondaryNavTabs embedded />}
 
       {/* Profile Tab */}
       {activeTab === "profile" && organizationId && (
