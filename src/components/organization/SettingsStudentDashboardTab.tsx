@@ -11,18 +11,21 @@ import {
   Trophy, MessageCircle, LayoutGrid, Pencil } from "lucide-react";
 import { AchievementsManager } from "./AchievementsManager";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
+import { ThemeSelector } from "@/components/ui/ThemeSelector";
 
 interface StudentDashboardSettings {
   showAchievements: boolean;
   showAiChat: boolean;
   catalogMode: "catalog" | "assigned";
-  [key: string]: boolean | string;
+  studentTheme: string | null;
+  [key: string]: boolean | string | null;
 }
 
 const DEFAULT_STUDENT: StudentDashboardSettings = {
   showAchievements: false,
   showAiChat: false,
-  catalogMode: "catalog" };
+  catalogMode: "catalog",
+  studentTheme: null };
 
 interface Props {
   organizationId: string;
@@ -48,7 +51,8 @@ export function SettingsStudentDashboardTab({ organizationId }: Props) {
         setSettings({
           showAchievements: s.showAchievements ?? false,
           showAiChat: s.showAiChat ?? false,
-          catalogMode: s.catalogMode || "catalog" });
+          catalogMode: s.catalogMode || "catalog",
+          studentTheme: s.studentTheme ?? null });
       }
     };
     load();
@@ -172,6 +176,15 @@ export function SettingsStudentDashboardTab({ organizationId }: Props) {
               Назначенные
             </button>
           </div>
+        </div>
+        <div className="py-3 border-t border-border">
+          <ThemeSelector
+            value={settings.studentTheme}
+            onChange={(id) => setSettings(prev => ({ ...prev, studentTheme: id }))}
+          />
+          <p className="text-xs text-muted-foreground mt-2">
+            Это тема по умолчанию для новых учеников. Каждый ученик сможет изменить её в своём профиле.
+          </p>
         </div>
       </div>
       <div className="mt-6 pt-4 border-t border-border">

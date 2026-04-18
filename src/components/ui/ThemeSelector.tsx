@@ -5,35 +5,50 @@ import { ADMIN_THEMES, THEME_GROUPS, getStoredThemeId, storeThemeId, type AdminT
 
 interface ThemeSelectorProps {
   onThemeChange?: (theme: AdminTheme | null) => void;
+  /** Controlled mode: if provided, the selector won't touch localStorage or dispatch global theme events */
+  value?: string | null;
+  onChange?: (id: string | null) => void;
 }
 
-export function ThemeSelector({ onThemeChange }: ThemeSelectorProps) {
-  const [activeId, setActiveId] = useState<string | null>(() => getStoredThemeId());
+export function ThemeSelector({ onThemeChange, value, onChange }: ThemeSelectorProps) {
+  const isControlled = value !== undefined;
+  const [internalId, setInternalId] = useState<string | null>(() => getStoredThemeId());
+  const activeId = isControlled ? (value ?? null) : internalId;
+
   const [openGroup, setOpenGroup] = useState<string | null>(() => {
-    const stored = getStoredThemeId();
+    const stored = isControlled ? (value ?? null) : getStoredThemeId();
     if (!stored) return null;
     const theme = ADMIN_THEMES.find(t => t.id === stored);
     return theme?.group || null;
   });
 
   useEffect(() => {
+    if (isControlled) return;
     window.dispatchEvent(new CustomEvent("visual-theme-change", { detail: activeId }));
-  }, [activeId]);
+  }, [activeId, isControlled]);
 
   const selectTheme = (theme: AdminTheme) => {
     const newId = activeId === theme.id ? null : theme.id;
-    setActiveId(newId);
-    storeThemeId(newId);
+    if (isControlled) {
+      onChange?.(newId);
+    } else {
+      setInternalId(newId);
+      storeThemeId(newId);
+      window.dispatchEvent(new CustomEvent("visual-theme-change", { detail: newId }));
+    }
     const resolved = newId ? ADMIN_THEMES.find(t => t.id === newId) || null : null;
     onThemeChange?.(resolved);
-    window.dispatchEvent(new CustomEvent("visual-theme-change", { detail: newId }));
   };
 
   const clearTheme = () => {
-    setActiveId(null);
-    storeThemeId(null);
+    if (isControlled) {
+      onChange?.(null);
+    } else {
+      setInternalId(null);
+      storeThemeId(null);
+      window.dispatchEvent(new CustomEvent("visual-theme-change", { detail: null }));
+    }
     onThemeChange?.(null);
-    window.dispatchEvent(new CustomEvent("visual-theme-change", { detail: null }));
   };
 
   const toggleGroup = (groupId: string) => {

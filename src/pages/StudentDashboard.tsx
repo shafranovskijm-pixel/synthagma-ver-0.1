@@ -27,6 +27,7 @@ import { Student3DTrainers } from "@/components/student/Student3DTrainers";
 import { StudentProfileContent } from "@/components/student/StudentProfileContent";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 import { supabase } from "@/integrations/supabase/client";
+import { getStoredThemeId, storeThemeId } from "@/constants/admin-themes";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel,
   AlertDialogContent, AlertDialogDescription, AlertDialogFooter,
@@ -252,6 +253,30 @@ export default function StudentDashboard() {
 
   const setActiveTab = (tab: StudentTab) => setActiveTabRaw(tab as any);
   const currentTab: StudentTab = (activeTab === "store" || activeTab === "library" ? "catalog" : activeTab) as StudentTab;
+
+  // Apply org's default visual theme if student hasn't picked their own.
+  // Personal choice in localStorage always wins.
+  useEffect(() => {
+    const orgTheme = dashboardSettings.studentTheme;
+    if (!orgTheme) return;
+    const personal = getStoredThemeId();
+    if (personal) return;
+    storeThemeId(orgTheme);
+    window.dispatchEvent(new CustomEvent("visual-theme-change", { detail: orgTheme }));
+  }, [dashboardSettings.studentTheme]);
+
+  // When student clears their personal theme, fall back to org theme on next load
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent).detail;
+      if (detail === null && dashboardSettings.studentTheme) {
+        storeThemeId(dashboardSettings.studentTheme);
+        window.dispatchEvent(new CustomEvent("visual-theme-change", { detail: dashboardSettings.studentTheme }));
+      }
+    };
+    window.addEventListener("visual-theme-change", handler);
+    return () => window.removeEventListener("visual-theme-change", handler);
+  }, [dashboardSettings.studentTheme]);
 
   const pendingDocsCount = documentsProgress.total - documentsProgress.completed;
 
