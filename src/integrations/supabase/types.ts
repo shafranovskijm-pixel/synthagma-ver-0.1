@@ -1649,7 +1649,11 @@ export type Database = {
           recipient_user_id: string | null
           rejected_at: string | null
           rejection_reason: string | null
+          requires_bilateral: boolean
           sender_name: string | null
+          sender_signed_at: string | null
+          sender_signed_ip: string | null
+          sender_signed_user_agent: string | null
           sender_user_id: string
           sent_at: string | null
           signature_token: string
@@ -1680,7 +1684,11 @@ export type Database = {
           recipient_user_id?: string | null
           rejected_at?: string | null
           rejection_reason?: string | null
+          requires_bilateral?: boolean
           sender_name?: string | null
+          sender_signed_at?: string | null
+          sender_signed_ip?: string | null
+          sender_signed_user_agent?: string | null
           sender_user_id: string
           sent_at?: string | null
           signature_token?: string
@@ -1711,7 +1719,11 @@ export type Database = {
           recipient_user_id?: string | null
           rejected_at?: string | null
           rejection_reason?: string | null
+          requires_bilateral?: boolean
           sender_name?: string | null
+          sender_signed_at?: string | null
+          sender_signed_ip?: string | null
+          sender_signed_user_agent?: string | null
           sender_user_id?: string
           sent_at?: string | null
           signature_token?: string
@@ -5177,6 +5189,9 @@ export type Database = {
           created_by_name: string | null
           document_hash: string | null
           document_html: string
+          file_mime: string | null
+          file_name: string | null
+          file_url: string | null
           id: string
           signature_id: string
           version: number
@@ -5188,6 +5203,9 @@ export type Database = {
           created_by_name?: string | null
           document_hash?: string | null
           document_html: string
+          file_mime?: string | null
+          file_name?: string | null
+          file_url?: string | null
           id?: string
           signature_id: string
           version: number
@@ -5199,6 +5217,9 @@ export type Database = {
           created_by_name?: string | null
           document_hash?: string | null
           document_html?: string
+          file_mime?: string | null
+          file_name?: string | null
+          file_url?: string | null
           id?: string
           signature_id?: string
           version?: number
@@ -6508,6 +6529,17 @@ export type Database = {
         }
         Returns: string
       }
+      add_signature_revision: {
+        Args: {
+          p_change_summary?: string
+          p_document_html?: string
+          p_file_mime?: string
+          p_file_name?: string
+          p_file_url?: string
+          p_signature_id: string
+        }
+        Returns: string
+      }
       admin_collect_media_references: {
         Args: never
         Returns: {
@@ -6538,6 +6570,18 @@ export type Database = {
         Returns: number
       }
       count_org_students: { Args: { org_id: string }; Returns: number }
+      create_external_contract_signature: {
+        Args: {
+          p_admin_email: string
+          p_admin_name?: string
+          p_document_title: string
+          p_file_mime: string
+          p_file_name: string
+          p_file_url: string
+          p_summary?: string
+        }
+        Returns: string
+      }
       create_organization: {
         Args: {
           p_contact_name?: string
@@ -6683,6 +6727,9 @@ export type Database = {
           created_by_name: string
           document_hash: string
           document_html: string
+          file_mime: string
+          file_name: string
+          file_url: string
           id: string
           version: number
         }[]
@@ -6761,6 +6808,10 @@ export type Database = {
       }
       request_signature_changes: {
         Args: { p_summary?: string; p_token: string }
+        Returns: undefined
+      }
+      sender_countersign: {
+        Args: { p_ip?: string; p_signature_id: string; p_user_agent?: string }
         Returns: undefined
       }
       show_limit: { Args: never; Returns: number }
