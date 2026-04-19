@@ -3,7 +3,7 @@ import { useOrgDashboard } from "@/contexts/OrgDashboardContext";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { BookOpen, Trash2, GripVertical, Radio, Box } from "lucide-react";
+import { BookOpen, Trash2, GripVertical, Video, Box } from "lucide-react";
 import { WebinarsContent, ThreeDContent } from "./courses/ContentTabPlaceholders";
 import { CoursesToolbar } from "./courses/CoursesToolbar";
 import { useCourses } from "@/hooks/useCourses";
@@ -307,7 +307,7 @@ export const CoursesTab = React.memo(function CoursesTab({ organizationId, onCou
       <div className="flex items-center gap-1 bg-muted rounded-xl p-1 w-fit">
         {[
           { key: "courses" as const, icon: BookOpen, label: "Курсы" },
-          { key: "webinars" as const, icon: Radio, label: "Вебинары" },
+          { key: "webinars" as const, icon: Video, label: "Вебинары" },
           { key: "3d" as const, icon: Box, label: "3D-тренажёры" },
         ].map(tab => (
           <button key={tab.key} onClick={() => setContentTab(tab.key)} className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${contentTab === tab.key ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}>
