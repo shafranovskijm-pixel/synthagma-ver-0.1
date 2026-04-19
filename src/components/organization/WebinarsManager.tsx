@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
-import { Plus, Radio, Video, Calendar, Users, Copy, ExternalLink, Square, Trash2, RefreshCw, Pencil, CopyPlus, Link, Search, Clock } from "lucide-react";
+import { Plus, Radio, Video, Calendar, Users, Copy, ExternalLink, Square, Trash2, RefreshCw, Pencil, CopyPlus, Link, Search, Clock, Zap } from "lucide-react";
 import { CreateWebinarDialog } from "./CreateWebinarDialog";
 import { WebinarParticipantsDialog } from "./WebinarParticipantsDialog";
 import { format } from "date-fns";
@@ -112,6 +112,51 @@ export function WebinarsManager({ organizationId }: Props) {
     setActionLoading(null);
   };
 
+  const handleStartNow = async () => {
+    setActionLoading("__start_now__");
+    try {
+      const now = new Date();
+      const title = `Вебинар — ${format(now, "d MMM yyyy, HH:mm", { locale: ru })}`;
+      const { data, error } = await supabase.functions.invoke("telemost-create-conference", {
+        body: { title, withLiveStream: true },
+      });
+      if (error) throw error;
+      if (!data?.join_url) throw new Error("Яндекс не вернул ссылку на встречу");
+
+      const insertData: Record<string, unknown> = {
+        organization_id: organizationId,
+        title,
+        description: null,
+        scheduled_at: now.toISOString(),
+        duration_minutes: null,
+        source_type: "telemost",
+        status: "live",
+        external_url: data.join_url,
+        embed_url: data.watch_url || data.join_url,
+        course_id: null,
+        created_by: user?.id,
+        player_settings: {
+          telemost: {
+            id: data.id,
+            join_url: data.join_url,
+            watch_url: data.watch_url,
+            sip_id: data.sip_id,
+          },
+        },
+      };
+      const { error: insertErr } = await supabase.from("webinars").insert(insertData as any);
+      if (insertErr) throw insertErr;
+
+      window.open(data.join_url, "_blank", "noopener,noreferrer");
+      toast.success("Вебинар начат — окно Телемоста открыто");
+      fetchWebinars();
+    } catch (e: any) {
+      toast.error(e.message || "Не удалось начать вебинар");
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
   const handleDelete = async () => {
     if (!deleteTarget) return;
     await supabase.from("webinars").delete().eq("id", deleteTarget.id);
@@ -209,9 +254,24 @@ export function WebinarsManager({ organizationId }: Props) {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h3 className="text-lg font-semibold">Вебинары</h3>
-        <Button onClick={() => { setEditWebinar(null); setShowCreate(true); }} size="sm">
-          <Plus className="w-4 h-4 mr-2" />Создать вебинар
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            onClick={handleStartNow}
+            size="sm"
+            variant="default"
+            disabled={actionLoading === "__start_now__"}
+          >
+            {actionLoading === "__start_now__" ? (
+              <SigmaSpinner size="xs" className="mr-2" />
+            ) : (
+              <Zap className="w-4 h-4 mr-2" />
+            )}
+            Начать сейчас
+          </Button>
+          <Button onClick={() => { setEditWebinar(null); setShowCreate(true); }} size="sm" variant="outline">
+            <Plus className="w-4 h-4 mr-2" />Создать вебинар
+          </Button>
+        </div>
       </div>
 
       {webinars.length > 0 && (
