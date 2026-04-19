@@ -16,6 +16,7 @@ import {
   Image as ImageIcon, Video, Upload, Headphones, BookOpen, FolderOpen, Play, Sparkles, Wand2, Trash2, Lock } from "lucide-react";
 import type { ContentBlock } from "../types";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
+import { HlsVideoPlayer } from "@/components/video/HlsVideoPlayer";
 
 // ─── DirectVideoBlock ───────────────────────────────────────────
 function DirectVideoBlockInner({ url }: { url: string }) {
@@ -34,7 +35,7 @@ function DirectVideoBlockInner({ url }: { url: string }) {
   }
   return (
     <div className="aspect-video not-prose">
-      <video src={url} controls preload="none" className="w-full h-full rounded-lg bg-black" controlsList="nodownload"
+      <HlsVideoPlayer src={url} className="w-full h-full rounded-lg bg-black" controls preload="none" controlsList="nodownload"
         onError={() => setError(true)} />
     </div>
   );

@@ -12,6 +12,7 @@ import { TestImportDialog } from "@/components/course-builder/TestImportDialog";
 import { MediaLibraryDialog } from "@/components/course-builder/MediaLibraryDialog";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 import { VideoPreviewInline } from "@/components/course-builder/VideoPreviewInline";
+import { HlsVideoPlayer } from "@/components/video/HlsVideoPlayer";
 import { LazyMediaPreview } from "@/components/course-builder/LazyMediaPreview";
 import { UploadProgressBlock } from "@/components/course-builder/UploadProgressBlock";
 import { useLessonEditor, type TestQuestion } from "@/hooks/useLessonEditor";
@@ -230,10 +231,10 @@ export const LessonEditor = ({
                         <VideoPreviewInline content={e.videoUrl} />
                         <Button variant="ghost" size="sm" className="absolute top-2 right-2 h-8 text-destructive hover:text-destructive bg-background/80 backdrop-blur-sm" onClick={() => e.setVideoUrl('')}><Trash2 className="w-4 h-4" /></Button>
                       </div>
-                    ) : (e.videoUrl.includes('supabase') || e.videoUrl.includes('.mp4') || e.videoUrl.includes('.webm') || e.videoUrl.includes('.mov')) ? (
+                    ) : (e.videoUrl.includes('supabase') || /\.(mp4|webm|mov|m4v|mkv|ts|m2ts|mts|m3u8)(\?|$)/i.test(e.videoUrl)) ? (
                       <div className="relative">
                         <LazyMediaPreview type="video">
-                          <video controls preload="none" controlsList="nodownload" className="w-full rounded-xl border border-border" src={e.videoUrl}>Ваш браузер не поддерживает видео.</video>
+                          <HlsVideoPlayer src={e.videoUrl} controls preload="none" controlsList="nodownload" className="w-full rounded-xl border border-border bg-black" />
                         </LazyMediaPreview>
                         <Button variant="ghost" size="sm" className="absolute top-2 right-2 h-8 text-destructive hover:text-destructive bg-background/80 backdrop-blur-sm" onClick={() => e.setVideoUrl('')}><Trash2 className="w-4 h-4" /></Button>
                       </div>

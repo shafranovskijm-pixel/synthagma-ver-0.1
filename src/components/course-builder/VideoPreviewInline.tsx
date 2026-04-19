@@ -1,22 +1,13 @@
 import { useState } from "react";
 import DOMPurify from "dompurify";
 import { Video, Play } from "lucide-react";
-import { getVideoEmbedUrl, isIframeEmbed, getKinescopeVideoId, getKinescopeEmbedUrl } from "@/utils/courseBuilderHelpers";
+import { getVideoEmbedUrl, isIframeEmbed, getKinescopeVideoId, getKinescopeEmbedUrl, isDirectVideoFileUrl } from "@/utils/courseBuilderHelpers";
 import { LazyMediaPreview } from "@/components/course-builder/LazyMediaPreview";
+import { HlsVideoPlayer } from "@/components/video/HlsVideoPlayer";
 
 interface VideoPreviewInlineProps {
   content: string;
 }
-
-const isDirectVideoFileUrl = (url: string): boolean => {
-  try {
-    const u = new URL(url);
-    const path = u.pathname.toLowerCase();
-    if (/(\.mp4|\.webm|\.ogg|\.ogv|\.mov|\.m4v|\.mkv)(\?|$)/.test(path)) return true;
-    if (u.hostname.includes("selcdn.ru")) return true;
-    return false;
-  } catch { return false; }
-};
 
 function DirectVideoPreview({ url }: { url: string }) {
   const [error, setError] = useState(false);
@@ -34,8 +25,7 @@ function DirectVideoPreview({ url }: { url: string }) {
   }
   return (
     <div className="aspect-video w-full rounded-xl overflow-hidden bg-muted">
-      <video src={url} controls preload="none" className="w-full h-full bg-black" controlsList="nodownload"
-        onError={() => setError(true)} />
+      <HlsVideoPlayer src={url} className="w-full h-full bg-black" controls preload="none" controlsList="nodownload" onError={() => setError(true)} />
     </div>
   );
 }

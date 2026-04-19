@@ -107,10 +107,10 @@ export function useLessonMedia(
       return;
     }
 
-    // Inform users about .TS limitations
+    // Inform users about .TS — internal storage is the most reliable path
     const ext = file.name.split('.').pop()?.toLowerCase();
     if (ext === 'ts' || ext === 'm2ts' || ext === 'mts') {
-      toast.info("Формат .TS загружен. Для гарантированного воспроизведения во всех браузерах рекомендуем «Видеосервис+» — он автоматически перекодирует.", { duration: 8000 });
+      toast.info("Формат .TS поддерживается. Рекомендуем загрузку «На сервер» — она надёжнее для этого формата.", { duration: 6000 });
     }
 
     setVideoUploadProgress(0);
@@ -223,11 +223,18 @@ export function useLessonMedia(
     videoUploadXhrRef.current = xhr;
     const uploadUrl = `${config.baseUrl}/storage/v1/object/${config.bucketName}/${filePath}`;
 
+    // Register as background task so progress survives lesson navigation
+    const taskId = (fileToUpload instanceof File)
+      ? startBgTask("internal", fileToUpload, () => xhr.abort())
+      : null;
+
     return new Promise<void>((resolve, reject) => {
       xhr.upload.addEventListener('progress', (event) => {
         if (event.lengthComputable) {
-          setVideoUploadProgress(Math.round((event.loaded / event.total) * 100));
+          const pct = Math.round((event.loaded / event.total) * 100);
+          setVideoUploadProgress(pct);
           setUploadedBytes(event.loaded);
+          if (taskId) bg.updateUpload(taskId, { progress: pct });
         }
       });
       xhr.addEventListener('load', () => {
@@ -239,10 +246,13 @@ export function useLessonMedia(
           supabase.from('lessons').update({ content: publicUrl }).eq('id', lessonId)
             .then(({ error }) => { if (error) console.warn('[VideoUpload] direct DB save failed', error); });
           setUploadFinishTime(Date.now());
-          toast.success("Видео загружено!");
+          if (taskId) bg.finishUpload(taskId);
+          else toast.success("Видео загружено!");
           resolve();
         } else {
-          reject(new Error(`Ошибка загрузки: ${xhr.statusText || 'Неизвестная ошибка'}`));
+          const errMsg = `Ошибка загрузки: ${xhr.statusText || 'Неизвестная ошибка'}`;
+          if (taskId) bg.failUpload(taskId, errMsg);
+          reject(new Error(errMsg));
         }
         setVideoUploadProgress(null);
         if (videoInputRef.current) videoInputRef.current.value = '';
@@ -251,6 +261,7 @@ export function useLessonMedia(
         videoUploadXhrRef.current = null;
         setVideoUploadProgress(null);
         if (videoInputRef.current) videoInputRef.current.value = '';
+        if (taskId) bg.failUpload(taskId, "Ошибка соединения при загрузке");
         reject(new Error("Ошибка соединения при загрузке"));
       });
       xhr.addEventListener('abort', () => {
@@ -266,7 +277,7 @@ export function useLessonMedia(
       xhr.setRequestHeader('x-upsert', 'true');
       xhr.send(fileToUpload);
     });
-  }, [onUpdate]);
+  }, [onUpdate, startBgTask, bg, lessonId]);
 
   const cancelVideoUpload = useCallback(() => {
     if (videoUploadXhrRef.current) { videoUploadXhrRef.current.abort(); videoUploadXhrRef.current = null; }
