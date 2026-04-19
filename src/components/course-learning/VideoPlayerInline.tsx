@@ -75,6 +75,10 @@ export const VideoPlayerInline = ({
   content, allowSeek = true, onVideoComplete, onProgressChange,
   onFinishLesson, userId, lessonId, courseId, savedPosition = 0, onSavePosition
 }: VideoPlayerInlineProps) => {
+  const embedResult = getVideoEmbedUrl(content);
+  const directVideoSrc = embedResult?.url && isDirectVideoFileUrl(embedResult.url) ? embedResult.url : null;
+  const resolvedContent = directVideoSrc ?? content;
+
   const videoRef = useRef<HTMLVideoElement>(null);
   const [watchedProgress, setWatchedProgress] = useState(0);
   const [videoError, setVideoError] = useState(false);
@@ -165,14 +169,14 @@ export const VideoPlayerInline = ({
   // Wire up hls.js for .ts / .m2ts / .mts / .m3u8 files (Chrome/Firefox/Edge can't decode MPEG-TS natively)
   useEffect(() => {
     const video = videoRef.current;
-    if (!video || !content) return;
-    if (!isMpegTsFileUrl(content)) return;
+    if (!video || !resolvedContent) return;
+    if (!isMpegTsFileUrl(resolvedContent)) return;
 
     // Safari can play MPEG-TS / HLS natively — let the native <video src> handle it
     const canPlayNative =
       video.canPlayType("application/vnd.apple.mpegurl") !== "" ||
       video.canPlayType("video/mp2t") !== "";
-    if (canPlayNative && !/\.m3u8(\?|$)/i.test(content)) return;
+    if (canPlayNative && !/\.m3u8(\?|$)/i.test(resolvedContent)) return;
 
     let hls: any = null;
     let cancelled = false;
@@ -188,13 +192,13 @@ export const VideoPlayerInline = ({
         }
         hls = new Hls({ enableWorker: true });
 
-        let manifestUrl = content;
-        if (!/\.m3u8(\?|$)/i.test(content)) {
+        let manifestUrl = resolvedContent;
+        if (!/\.m3u8(\?|$)/i.test(resolvedContent)) {
           // Wrap the standalone .ts file in a synthesized HLS playlist
           const playlist =
             "#EXTM3U\n#EXT-X-VERSION:3\n#EXT-X-TARGETDURATION:60\n" +
             "#EXT-X-MEDIA-SEQUENCE:0\n#EXT-X-PLAYLIST-TYPE:VOD\n" +
-            `#EXTINF:60.0,\n${content}\n#EXT-X-ENDLIST\n`;
+            `#EXTINF:60.0,\n${resolvedContent}\n#EXT-X-ENDLIST\n`;
           manifestObjectUrl = URL.createObjectURL(
             new Blob([playlist], { type: "application/vnd.apple.mpegurl" })
           );
@@ -217,7 +221,7 @@ export const VideoPlayerInline = ({
       try { hls?.destroy(); } catch {}
       if (manifestObjectUrl) URL.revokeObjectURL(manifestObjectUrl);
     };
-  }, [content]);
+  }, [resolvedContent]);
 
   if (!content) return null;
 
@@ -266,10 +270,6 @@ export const VideoPlayerInline = ({
     const sanitized = DOMPurify.sanitize(content, { ADD_TAGS: ['iframe'], ADD_ATTR: ['allow', 'allowfullscreen', 'frameborder', 'src', 'width', 'height', 'title', 'referrerpolicy'] });
     return <div className="aspect-video w-full rounded-2xl overflow-hidden bg-black" dangerouslySetInnerHTML={{ __html: sanitized }} />;
   }
-
-  const embedResult = getVideoEmbedUrl(content);
-  const directVideoSrc = embedResult?.url && isDirectVideoFileUrl(embedResult.url) ? embedResult.url : null;
-  const resolvedContent = directVideoSrc ?? content;
 
   if (embedResult && !directVideoSrc) {
     if (!allowSeek) {
