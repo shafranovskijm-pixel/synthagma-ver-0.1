@@ -8,7 +8,6 @@ const StudentWhatsNew = lazyWithRetry(() => import("@/pages/StudentWhatsNew"));
 const CourseLearning = lazyWithRetry(() => import("@/pages/CourseLearning"));
 const InvoiceView = lazyWithRetry(() => import("@/pages/InvoiceView"));
 const WebinarLive = lazyWithRetry(() => import("@/pages/WebinarLive"));
-const AITutor = lazyWithRetry(() => import("@/pages/AITutor"));
 
 export const studentRoutes = (
   <>
@@ -20,6 +19,5 @@ export const studentRoutes = (
     <Route path="/invoice/:id" element={protectedRoute(<InvoiceView />)} />
     <Route path="/webinar/:id/live" element={protectedRoute(<WebinarLive />)} />
     <Route path="/webinar/ai-tutor/live" element={protectedRoute(<WebinarLive />)} />
-    <Route path="/ai-tutor" element={protectedRoute(<AITutor />)} />
   </>
 );

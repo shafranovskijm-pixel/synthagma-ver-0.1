@@ -84,7 +84,7 @@ const WebinarLive = () => {
       } catch {
         /* ignore */
       }
-      navigate("/ai-tutor");
+      navigate(-1);
     } else {
       navigate(-1);
     }
