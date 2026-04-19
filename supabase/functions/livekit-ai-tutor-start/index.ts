@@ -138,7 +138,21 @@ Deno.serve(async (req) => {
         name: roomName,
         empty_timeout: 60,
         max_participants: 2,
-        metadata: JSON.stringify({ kind: "ai-tutor", userId: user.id, topic }),
+        metadata: JSON.stringify({
+          kind: "ai-tutor",
+          userId: user.id,
+          topic,
+          lessonId,
+          tutor: lessonConfig ? {
+            name: lessonConfig.ai_avatar_name,
+            voice: lessonConfig.ai_avatar_voice_id,
+            systemPrompt: lessonConfig.ai_avatar_system_prompt,
+            greeting: lessonConfig.ai_avatar_greeting,
+            subject: lessonConfig.ai_avatar_subject,
+            style: lessonConfig.ai_avatar_style,
+            model: lessonConfig.ai_avatar_model,
+          } : null,
+        }),
       }),
     });
     if (!lkResp.ok) {
@@ -154,7 +168,8 @@ Deno.serve(async (req) => {
         organization_id: orgId,
         room_name: roomName,
         topic: topic || null,
-        max_duration_seconds: SESSION_DURATION,
+        lesson_id: lessonId,
+        max_duration_seconds: sessionDurationSeconds,
         status: "active",
       })
       .select()
@@ -168,7 +183,7 @@ Deno.serve(async (req) => {
       ok: true,
       sessionId: session.id,
       roomName,
-      maxDurationSeconds: SESSION_DURATION,
+      maxDurationSeconds: sessionDurationSeconds,
       remainingMinutesThisMonth: Math.max(0, MONTHLY_FREE_MINUTES - usedMinutes),
     });
   } catch (e) {
