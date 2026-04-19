@@ -5,6 +5,15 @@ export interface Lesson {
   content: string | null;
   order_index: number;
   is_locked?: boolean;
+  ai_avatar_name?: string | null;
+  ai_avatar_image_url?: string | null;
+  ai_avatar_voice_id?: string | null;
+  ai_avatar_system_prompt?: string | null;
+  ai_avatar_greeting?: string | null;
+  ai_avatar_subject?: string | null;
+  ai_avatar_style?: string | null;
+  ai_avatar_session_minutes?: number | null;
+  ai_avatar_model?: string | null;
 }
 
 export interface Course {
