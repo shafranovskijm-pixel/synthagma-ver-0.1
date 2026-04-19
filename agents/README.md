@@ -71,27 +71,32 @@ registered worker id=... region=...
 
 ---
 
-## Деплой на Fly.io
+## Деплой на Fly.io (one-click)
 
-Создайте `agents/Dockerfile`:
+В каталоге `agents/` уже лежат готовые `Dockerfile` и `fly.toml` — отдельные
+файлы создавать не нужно.
 
-```dockerfile
-FROM python:3.11-slim
-WORKDIR /app
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
-COPY tutor_agent.py .
-CMD ["python", "tutor_agent.py", "start"]
-```
-
-Затем:
 ```bash
 cd agents
-fly launch --no-deploy
-fly secrets set LIVEKIT_URL=... LIVEKIT_API_KEY=... LIVEKIT_API_SECRET=... \
-              OPENAI_API_KEY=... DEEPGRAM_API_KEY=... ELEVENLABS_API_KEY=...
+fly launch --no-deploy --copy-config --name sintagma-tutor
+fly secrets set \
+    LIVEKIT_URL=wss://your-project.livekit.cloud \
+    LIVEKIT_API_KEY=APIxxx \
+    LIVEKIT_API_SECRET=secret... \
+    OPENAI_API_KEY=sk-... \
+    DEEPGRAM_API_KEY=... \
+    ELEVENLABS_API_KEY=...
 fly deploy
 ```
+
+После `fly deploy` посмотрите логи:
+```bash
+fly logs
+```
+Должно появиться `registered worker id=AW_... region=...` — воркер готов
+принимать комнаты.
+
+> 📖 Подробная инструкция по получению всех API-ключей — см. [DEPLOY_KEYS.md](./DEPLOY_KEYS.md).
 
 ---
 

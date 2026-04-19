@@ -1,0 +1,34 @@
+# fly.toml — Sintagma LiveKit AI Tutor worker
+# Deploy:
+#   cd agents
+#   fly launch --no-deploy --copy-config --name sintagma-tutor
+#   fly secrets set LIVEKIT_URL=wss://... LIVEKIT_API_KEY=... LIVEKIT_API_SECRET=... \
+#                   OPENAI_API_KEY=... DEEPGRAM_API_KEY=... ELEVENLABS_API_KEY=...
+#   fly deploy
+
+app = "sintagma-tutor"
+primary_region = "fra"   # Frankfurt — closest to ru/eu users; change if needed
+kill_signal = "SIGINT"
+kill_timeout = 30
+
+[build]
+  dockerfile = "Dockerfile"
+
+[env]
+  PYTHONUNBUFFERED = "1"
+
+# No [[services]] section — the worker only opens an outbound WebSocket to
+# LiveKit Cloud. We don't need any public port.
+
+[[vm]]
+  cpu_kind = "shared"
+  cpus = 1
+  memory_mb = 1024
+
+# Keep at least one instance always running so the worker is registered with
+# LiveKit and can pick up new rooms instantly.
+[deploy]
+  strategy = "rolling"
+
+[processes]
+  app = "python tutor_agent.py start"
