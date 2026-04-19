@@ -6484,6 +6484,72 @@ export type Database = {
           },
         ]
       }
+      yandex_identities: {
+        Row: {
+          id: string
+          linked_at: string
+          user_id: string
+          yandex_display_name: string | null
+          yandex_email: string | null
+          yandex_id: string
+          yandex_login: string | null
+        }
+        Insert: {
+          id?: string
+          linked_at?: string
+          user_id: string
+          yandex_display_name?: string | null
+          yandex_email?: string | null
+          yandex_id: string
+          yandex_login?: string | null
+        }
+        Update: {
+          id?: string
+          linked_at?: string
+          user_id?: string
+          yandex_display_name?: string | null
+          yandex_email?: string | null
+          yandex_id?: string
+          yandex_login?: string | null
+        }
+        Relationships: []
+      }
+      yandex_oauth_nonces: {
+        Row: {
+          created_at: string
+          current_user_id: string | null
+          expires_at: string
+          id: string
+          mode: string
+          nonce: string
+          redirect_to: string | null
+          used: boolean
+          used_at: string | null
+        }
+        Insert: {
+          created_at?: string
+          current_user_id?: string | null
+          expires_at?: string
+          id?: string
+          mode: string
+          nonce: string
+          redirect_to?: string | null
+          used?: boolean
+          used_at?: string | null
+        }
+        Update: {
+          created_at?: string
+          current_user_id?: string | null
+          expires_at?: string
+          id?: string
+          mode?: string
+          nonce?: string
+          redirect_to?: string | null
+          used?: boolean
+          used_at?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       profiles_safe: {
