@@ -128,14 +128,39 @@ export const getVideoEmbedUrl = (content: string): { url: string; canEmbed: bool
   const yandexMatch = content.match(/yandex\.ru\/video\/preview\/(\d+)/);
   if (yandexMatch) return { url: `https://yandex.ru/video/preview/${yandexMatch[1]}`, canEmbed: true };
 
-  // Direct video file URLs (including selcdn.ru CDN)
-  if (content.match(/\.(mp4|webm|ogg|mov|mkv|m4v)(\?.*)?$/i) || content.includes("selcdn.ru")) {
+  // Direct video file URLs (including selcdn.ru CDN, MPEG-TS family, HLS)
+  if (content.match(/\.(mp4|webm|ogg|ogv|mov|mkv|m4v|ts|m2ts|mts|mpg|mpeg|m3u8)(\?.*)?$/i) || content.includes("selcdn.ru")) {
     return { url: content, canEmbed: true };
   }
 
   if (content.match(/^https?:\/\/.+/i)) return { url: content, canEmbed: canEmbedInIframe(content) };
 
   return null;
+};
+
+// Detect direct video file URL (including HLS / MPEG-TS) — shared helper
+export const isDirectVideoFileUrl = (url: string): boolean => {
+  if (!url) return false;
+  try {
+    const u = new URL(url);
+    const path = u.pathname.toLowerCase();
+    if (/\.(mp4|webm|ogg|ogv|mov|m4v|mkv|ts|m2ts|mts|mpg|mpeg|m3u8)(\?|$)/.test(path)) return true;
+    if (u.hostname.includes("selcdn.ru")) return true;
+    return false;
+  } catch {
+    return /\.(mp4|webm|ogg|ogv|mov|m4v|mkv|ts|m2ts|mts|mpg|mpeg|m3u8)(\?|$)/i.test(url);
+  }
+};
+
+// Detect MPEG-TS / HLS specifically — these need hls.js in non-Safari browsers
+export const isMpegTsOrHlsUrl = (url: string): boolean => {
+  if (!url) return false;
+  try {
+    const u = new URL(url);
+    return /\.(ts|m2ts|mts|mpg|mpeg|m3u8)(\?|$)/i.test(u.pathname);
+  } catch {
+    return /\.(ts|m2ts|mts|mpg|mpeg|m3u8)(\?|$)/i.test(url);
+  }
 };
 
 // Check if content is an iframe embed
