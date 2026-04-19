@@ -6,57 +6,15 @@ import {
   ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
-
-// Helper to check if content is an iframe embed
-const isIframeEmbed = (content: string): boolean => content.trim().startsWith('<iframe');
-
-const canEmbedInIframe = (url: string): boolean => {
-  const noEmbedPatterns = [/ktalk\.ru/i, /zoom\.us/i, /teams\.microsoft/i, /meet\.google/i];
-  return !noEmbedPatterns.some(p => p.test(url));
-};
-
-const isDirectVideoFileUrl = (url: string): boolean => {
-  try {
-    const u = new URL(url);
-    const path = u.pathname.toLowerCase();
-    if (/(\.mp4|\.webm|\.ogg|\.ogv|\.mov|\.m4v|\.mkv|\.ts|\.m2ts|\.mts|\.mpg|\.mpeg|\.m3u8)(\?|$)/.test(path)) return true;
-    if (u.hostname.includes("selcdn.ru")) return true;
-    return false;
-  } catch { return false; }
-};
-
-const isMpegTsFileUrl = (url: string): boolean => {
-  try {
-    const u = new URL(url);
-    return /(\.ts|\.m2ts|\.mts|\.mpg|\.mpeg|\.m3u8)(\?|$)/i.test(u.pathname);
-  } catch { return /(\.ts|\.m2ts|\.mts|\.mpg|\.mpeg|\.m3u8)(\?|$)/i.test(url); }
-};
-
-const getVideoEmbedUrl = (content: string): { url: string; canEmbed: boolean } | null => {
-  if (!content) return null;
-  const iframeSrcMatch = content.match(/<iframe[^>]*src=["']([^"']+)["']/i);
-  if (iframeSrcMatch) return { url: iframeSrcMatch[1], canEmbed: true };
-  const youtubeMatch = content.match(/(?:youtube\.com\/(?:watch\?v=|embed\/)|youtu\.be\/)([a-zA-Z0-9_-]+)/);
-  if (youtubeMatch) return { url: `https://www.youtube.com/embed/${youtubeMatch[1]}`, canEmbed: true };
-  const vimeoMatch = content.match(/vimeo\.com\/(?:video\/)?(\d+)/);
-  if (vimeoMatch) return { url: `https://player.vimeo.com/video/${vimeoMatch[1]}`, canEmbed: true };
-  const rutubeMatch = content.match(/rutube\.ru\/video\/([a-zA-Z0-9]+)/);
-  if (rutubeMatch) return { url: `https://rutube.ru/play/embed/${rutubeMatch[1]}`, canEmbed: true };
-  const vkMatch = content.match(/(?:vk\.com|vkvideo\.ru)\/video(-?\d+)_(\d+)/);
-  if (vkMatch) return { url: `https://vk.com/video_ext.php?oid=${vkMatch[1]}&id=${vkMatch[2]}&hd=2`, canEmbed: true };
-  const ktalkMatch = content.match(/([a-zA-Z0-9]+)\.ktalk\.ru\/recordings\/([a-zA-Z0-9_-]+)/);
-  if (ktalkMatch) return { url: content, canEmbed: false };
-  const okMatch = content.match(/ok\.ru\/video\/(\d+)/);
-  if (okMatch) return { url: `https://ok.ru/videoembed/${okMatch[1]}`, canEmbed: true };
-  const mailMatch = content.match(/my\.mail\.ru\/video\/embed\/(\d+)/);
-  if (mailMatch) return { url: `https://my.mail.ru/video/embed/${mailMatch[1]}`, canEmbed: true };
-  const dzenMatch = content.match(/dzen\.ru\/video\/watch\/([a-zA-Z0-9]+)/);
-  if (dzenMatch) return { url: `https://dzen.ru/embed/${dzenMatch[1]}`, canEmbed: true };
-  const yandexMatch = content.match(/yandex\.ru\/video\/preview\/(\d+)/);
-  if (yandexMatch) return { url: `https://yandex.ru/video/preview/${yandexMatch[1]}`, canEmbed: true };
-  if (content.match(/^https?:\/\/.+/i)) return { url: content, canEmbed: canEmbedInIframe(content) };
-  return null;
-};
+import {
+  getVideoEmbedUrl,
+  isDirectVideoFileUrl,
+  isMpegTsOrHlsUrl as isMpegTsFileUrl,
+  isIframeEmbed,
+  getKinescopeVideoId,
+  getKinescopeEmbedUrl,
+  generateKinescopeDrmToken,
+} from "@/utils/courseBuilderHelpers";
 
 export interface VideoPlayerInlineProps {
   content: string;
@@ -225,17 +183,11 @@ export const VideoPlayerInline = ({
 
   if (!content) return null;
 
-  // Kinescope video with DRM auth
-  const kinescopeMatch = content.match(/^kinescope:(.+)/) || content.match(/kinescope\.io\/embed\/([a-zA-Z0-9-]+)/);
-  if (kinescopeMatch) {
-    const videoId = kinescopeMatch[1];
-    let embedSrc = `https://kinescope.io/embed/${videoId}`;
-    // Add DRM auth token if user and course context available
-    if (userId && courseId) {
-      const payload = { userId, courseId, exp: Date.now() + 4 * 60 * 60 * 1000 };
-      const token = btoa(JSON.stringify(payload));
-      embedSrc += `?drmauthtoken=${encodeURIComponent(token)}`;
-    }
+  // Kinescope video with DRM auth (uses shared helpers)
+  const kinescopeId = getKinescopeVideoId(content);
+  if (kinescopeId) {
+    const drmToken = userId && courseId ? generateKinescopeDrmToken(userId, courseId) : undefined;
+    const embedSrc = getKinescopeEmbedUrl(kinescopeId, drmToken);
     return (
       <div className="aspect-video w-full rounded-2xl overflow-hidden bg-black">
         <iframe
