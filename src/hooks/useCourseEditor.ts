@@ -138,20 +138,32 @@ export function useCourseEditor() {
     setIsLessonEditorOpen(true);
   };
 
-  const handleSaveLesson = async (data: { title: string; type: string; content: string; questions?: TestQuestion[]; test_questions_count?: number; }) => {
+  const handleSaveLesson = async (data: { title: string; type: string; content: string; questions?: TestQuestion[]; test_questions_count?: number; aiAvatar?: any; }) => {
     if (!courseId) return;
+    const aiAvatarFields = data.type === "ai_avatar" && data.aiAvatar ? {
+      ai_avatar_name: data.aiAvatar.ai_avatar_name || null,
+      ai_avatar_image_url: data.aiAvatar.ai_avatar_image_url || null,
+      ai_avatar_voice_id: data.aiAvatar.ai_avatar_voice_id || null,
+      ai_avatar_system_prompt: data.aiAvatar.ai_avatar_system_prompt || null,
+      ai_avatar_greeting: data.aiAvatar.ai_avatar_greeting || null,
+      ai_avatar_subject: data.aiAvatar.ai_avatar_subject || null,
+      ai_avatar_style: data.aiAvatar.ai_avatar_style || null,
+      ai_avatar_session_minutes: data.aiAvatar.ai_avatar_session_minutes || 5,
+      ai_avatar_model: data.aiAvatar.ai_avatar_model || null,
+    } : {};
+
     if (editingLesson) {
-      const { error } = await supabase.from("lessons").update({ title: data.title, type: data.type, content: data.content || null, test_questions_count: data.test_questions_count || null }).eq("id", editingLesson.id);
+      const { error } = await supabase.from("lessons").update({ title: data.title, type: data.type, content: data.content || null, test_questions_count: data.test_questions_count || null, ...aiAvatarFields }).eq("id", editingLesson.id);
       if (!error) {
         if (data.type === "test" && data.questions) {
           await supabase.from("test_questions").delete().eq("lesson_id", editingLesson.id);
           if (data.questions.length > 0) await supabase.from("test_questions").insert(data.questions.map((q, i) => ({ lesson_id: editingLesson.id, question: q.question, options: q.options, correct_answer: q.correct_answer, order_index: i })));
         }
-        setLessons(lessons.map(l => l.id === editingLesson.id ? { ...l, title: data.title, type: data.type, content: data.content } : l));
+        setLessons(lessons.map(l => l.id === editingLesson.id ? { ...l, title: data.title, type: data.type, content: data.content, ...aiAvatarFields } : l));
         toast.success("Урок обновлён");
       }
     } else {
-      const { data: newLesson, error } = await supabase.from("lessons").insert({ course_id: courseId, title: data.title, type: data.type, content: data.content || null, order_index: lessons.length, test_questions_count: data.test_questions_count || null }).select().single();
+      const { data: newLesson, error } = await supabase.from("lessons").insert({ course_id: courseId, title: data.title, type: data.type, content: data.content || null, order_index: lessons.length, test_questions_count: data.test_questions_count || null, ...aiAvatarFields }).select().single();
       if (!error && newLesson) {
         if (data.type === "test" && data.questions?.length) await supabase.from("test_questions").insert(data.questions.map((q, i) => ({ lesson_id: newLesson.id, question: q.question, options: q.options, correct_answer: q.correct_answer, order_index: i })));
         setLessons([...lessons, newLesson]); toast.success("Урок создан");
