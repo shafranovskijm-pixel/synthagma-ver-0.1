@@ -61,6 +61,7 @@ serve(async (req) => {
       "SALUTESPEECH_AUTH_KEY_3",
       "ELEVENLABS_API_KEY",
       "DADATA_API_KEY",
+      "YANDEX_TELEMOST_OAUTH_TOKEN",
     ];
 
     if (!ALLOWED_SECRETS.includes(name)) {

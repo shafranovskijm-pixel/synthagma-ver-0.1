@@ -43,6 +43,16 @@ Deno.serve(async (req) => {
       }, 500);
     }
 
+    // Безопасный fingerprint токена для диагностики (без раскрытия секрета)
+    const tokenTrimmed = oauthToken.trim();
+    const tokenFingerprint = {
+      length: tokenTrimmed.length,
+      prefix: tokenTrimmed.slice(0, 4),
+      suffix: tokenTrimmed.slice(-4),
+      hadWhitespace: tokenTrimmed.length !== oauthToken.length,
+    };
+    console.log("[telemost] token fingerprint:", JSON.stringify(tokenFingerprint));
+
     const body: CreateBody = await req.json().catch(() => ({}));
     const title = (body.title || "").toString().trim().slice(0, 200) || "Вебинар";
     const description = (body.description || "").toString().trim().slice(0, 1000);
