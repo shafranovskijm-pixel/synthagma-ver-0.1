@@ -121,7 +121,7 @@ export function WebinarsManager({ organizationId }: Props) {
         body: { title, withLiveStream: true },
       });
       if (error) throw error;
-      if (!data?.join_url) throw new Error("Яндекс не вернул ссылку на встречу");
+      if (!data?.ok || !data?.join_url) throw new Error(data?.error || "Яндекс не вернул ссылку на встречу");
 
       const insertData: Record<string, unknown> = {
         organization_id: organizationId,
