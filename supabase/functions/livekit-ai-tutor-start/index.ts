@@ -6,7 +6,7 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-const SESSION_DURATION = 25 * 60; // 25 минут
+const DEFAULT_SESSION_MINUTES = 5; // дефолт для бета-периода
 const MONTHLY_FREE_MINUTES = 1000; // лимит LiveKit Cloud Free
 
 function base64url(input: Uint8Array | string): string {
@@ -68,6 +68,23 @@ Deno.serve(async (req) => {
 
     const body = await req.json().catch(() => ({}));
     const topic: string = (body.topic || "").toString().slice(0, 200);
+    const lessonId: string | null = body.lessonId || null;
+
+    // Если урок передан — читаем настройки ИИ-аватара из урока
+    let lessonConfig: any = null;
+    let sessionDurationSeconds = DEFAULT_SESSION_MINUTES * 60;
+    if (lessonId) {
+      const { data: lessonRow } = await admin
+        .from("lessons")
+        .select("id,title,ai_avatar_name,ai_avatar_image_url,ai_avatar_voice_id,ai_avatar_system_prompt,ai_avatar_greeting,ai_avatar_subject,ai_avatar_style,ai_avatar_session_minutes,ai_avatar_model")
+        .eq("id", lessonId)
+        .maybeSingle();
+      if (lessonRow) {
+        lessonConfig = lessonRow;
+        const m = Number(lessonRow.ai_avatar_session_minutes) || DEFAULT_SESSION_MINUTES;
+        sessionDurationSeconds = Math.max(60, Math.min(25 * 60, m * 60));
+      }
+    }
 
     // Профиль пользователя для organization_id
     const { data: profile } = await admin
@@ -121,7 +138,21 @@ Deno.serve(async (req) => {
         name: roomName,
         empty_timeout: 60,
         max_participants: 2,
-        metadata: JSON.stringify({ kind: "ai-tutor", userId: user.id, topic }),
+        metadata: JSON.stringify({
+          kind: "ai-tutor",
+          userId: user.id,
+          topic,
+          lessonId,
+          tutor: lessonConfig ? {
+            name: lessonConfig.ai_avatar_name,
+            voice: lessonConfig.ai_avatar_voice_id,
+            systemPrompt: lessonConfig.ai_avatar_system_prompt,
+            greeting: lessonConfig.ai_avatar_greeting,
+            subject: lessonConfig.ai_avatar_subject,
+            style: lessonConfig.ai_avatar_style,
+            model: lessonConfig.ai_avatar_model,
+          } : null,
+        }),
       }),
     });
     if (!lkResp.ok) {
@@ -137,7 +168,8 @@ Deno.serve(async (req) => {
         organization_id: orgId,
         room_name: roomName,
         topic: topic || null,
-        max_duration_seconds: SESSION_DURATION,
+        lesson_id: lessonId,
+        max_duration_seconds: sessionDurationSeconds,
         status: "active",
       })
       .select()
@@ -151,7 +183,7 @@ Deno.serve(async (req) => {
       ok: true,
       sessionId: session.id,
       roomName,
-      maxDurationSeconds: SESSION_DURATION,
+      maxDurationSeconds: sessionDurationSeconds,
       remainingMinutesThisMonth: Math.max(0, MONTHLY_FREE_MINUTES - usedMinutes),
     });
   } catch (e) {
