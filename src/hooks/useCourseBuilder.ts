@@ -146,7 +146,7 @@ export function useCourseBuilder(propCourseId?: string) {
   }, [courseId, hasUnsavedChanges]);
 
   const addLesson = (type: LessonType) => {
-    const typeNames: Record<LessonType, string> = { text: "урок", video: "видеоурок", image: "материал", test: "тест", audio: "аудиолекция", lesson: "урок", slider: "презентация", practice: "ситуационное задание", feedback: "обратная связь", homework: "задание" };
+    const typeNames: Record<LessonType, string> = { text: "урок", video: "видеоурок", image: "материал", test: "тест", audio: "аудиолекция", lesson: "урок", slider: "презентация", practice: "ситуационное задание", feedback: "обратная связь", homework: "задание", ai_avatar: "ИИ-аватар" };
     const newLesson: Lesson = { id: crypto.randomUUID(), type, title: `Новый ${typeNames[type]}`, content: "", expanded: true, blocks: (type === "text" || type === "practice") ? [] : undefined };
     // Accordion: новый урок раскрыт, остальные свёрнуты
     setLessons(prev => [...prev.map(l => ({ ...l, expanded: false })), newLesson]);
