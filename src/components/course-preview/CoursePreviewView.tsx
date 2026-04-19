@@ -8,6 +8,7 @@ import { SigmaLogo } from "@/components/ui/SigmaLogo";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 import { FilePreviewDialog } from "@/components/course-learning/FilePreviewDialog";
 import { ContentBlock, jsonToBlocks, BlockRenderer } from "@/components/course-builder/BlockEditor";
+import { VideoPreviewInline } from "@/components/course-builder/VideoPreviewInline";
 import { cn } from "@/lib/utils";
 import { useCoursePreview } from "@/hooks/useCoursePreview";
 import {
