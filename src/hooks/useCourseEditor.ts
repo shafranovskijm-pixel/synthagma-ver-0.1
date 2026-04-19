@@ -150,6 +150,14 @@ export function useCourseEditor() {
       ai_avatar_style: data.aiAvatar.ai_avatar_style || null,
       ai_avatar_session_minutes: data.aiAvatar.ai_avatar_session_minutes || 5,
       ai_avatar_model: data.aiAvatar.ai_avatar_model || null,
+      ai_avatar_stt_provider: data.aiAvatar.ai_avatar_stt_provider || "deepgram",
+      ai_avatar_stt_model: data.aiAvatar.ai_avatar_stt_model || "nova-2",
+      ai_avatar_llm_provider: data.aiAvatar.ai_avatar_llm_provider || "openai",
+      ai_avatar_llm_model: data.aiAvatar.ai_avatar_llm_model || "gpt-4o-mini",
+      ai_avatar_tts_provider: data.aiAvatar.ai_avatar_tts_provider || "elevenlabs",
+      ai_avatar_tts_voice: data.aiAvatar.ai_avatar_tts_voice || "EXAVITQu4vr4xnSDxMaL",
+      ai_avatar_language: data.aiAvatar.ai_avatar_language || "ru",
+      ai_avatar_allow_interruptions: data.aiAvatar.ai_avatar_allow_interruptions ?? true,
     } : {};
 
     if (editingLesson) {
