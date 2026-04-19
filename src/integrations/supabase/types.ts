@@ -207,6 +207,68 @@ export type Database = {
         }
         Relationships: []
       }
+      ai_avatar_templates: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          greeting: string
+          id: string
+          image_url: string | null
+          is_active: boolean
+          model: string
+          name: string
+          organization_id: string
+          session_minutes: number
+          style: string
+          subject: string
+          system_prompt: string
+          updated_at: string
+          voice_id: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          greeting?: string
+          id?: string
+          image_url?: string | null
+          is_active?: boolean
+          model?: string
+          name?: string
+          organization_id: string
+          session_minutes?: number
+          style?: string
+          subject?: string
+          system_prompt?: string
+          updated_at?: string
+          voice_id?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          greeting?: string
+          id?: string
+          image_url?: string | null
+          is_active?: boolean
+          model?: string
+          name?: string
+          organization_id?: string
+          session_minutes?: number
+          style?: string
+          subject?: string
+          system_prompt?: string
+          updated_at?: string
+          voice_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_avatar_templates_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ai_settings: {
         Row: {
           concurrency: number | null
