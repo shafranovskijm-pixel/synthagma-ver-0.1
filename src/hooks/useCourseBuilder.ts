@@ -200,11 +200,18 @@ export function useCourseBuilder(propCourseId?: string) {
   const expandLesson = useCallback((id: string) => {
     setLessons(prev => prev.map(l => l.id === id ? { ...l, expanded: true } : { ...l, expanded: false }));
   }, []);
-  // Клик в левой навигации: раскрыть только этот урок (и свернуть остальные).
-  // Если уже раскрыт — оставить раскрытым (не сворачиваем при повторном клике из навигации).
+  // Клик в левой навигации: раскрыть только этот урок (и свернуть остальные)
+  // и проскроллить страницу к началу его карточки.
   const scrollToLesson = useCallback((id: string) => {
     expandLesson(id);
     setActiveLessonId(id);
+    // Дать React домотать DOM (раскрытие карточки) перед прокруткой
+    setTimeout(() => {
+      const el = document.querySelector(`[data-lesson-id="${id}"]`);
+      if (el && 'scrollIntoView' in el) {
+        (el as HTMLElement).scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    }, 60);
   }, [expandLesson]);
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }), useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }));
 
