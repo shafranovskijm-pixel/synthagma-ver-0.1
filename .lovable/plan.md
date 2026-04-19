@@ -1,57 +1,65 @@
 
-Что я подтвердил по коду сейчас
 
-1. Для текстовых уроков с video-блоками логика уже стала общей:
-   - `CoursePreviewView` для `lesson.type === "text"` рендерит `BlockRenderer`;
-   - `CourseLearning` для `lesson.type === "text"` тоже рендерит `BlockRenderer`;
-   - в `BlockRenderer` `case "video"` уже использует `VideoPreviewInline content={block.videoUrl} eager`.
+## План: Заменить Kinescope Live на Яндекс Телемост в вебинарах
 
-Это значит: именно сценарий из первого урока, где видео лежит внутри текстового урока как `videoUrl: "kinescope:..."`, теперь должен одинаково идти и в preview, и у студента, и для старых, и для новых курсов такого формата.
+### Что я выяснил из документации
+- **Telemost API** живёт по адресу `https://cloud-api.yandex.net/v1/telemost-api/conferences` и принимает обычный OAuth-токен Яндекса в заголовке `Authorization: OAuth <token>`.
+- На создании конференции возвращаются:
+  - `id`, `join_url` (ссылка для участников),
+  - `live_stream.watch_url` — публичная страница просмотра трансляции (если включён `live_stream`),
+  - SIP-параметры.
+- Важное ограничение Яндекса: **API доступно только пользователям Яндекс 360 для бизнеса** (домен организации), а live-stream требует подходящего тарифа Яндекс 360.
+- Нужный scope для нас: `telemost-api:conferences.create` (и при необходимости `.read`/`.update`).
 
-2. Для обычных видео-уроков (`lesson.type === "video"`) логика всё ещё не до конца унифицирована:
-   - preview использует `VideoPreviewInline`;
-   - студент использует отдельный `VideoPlayerInline` со своей собственной копией парсинга URL/iframe/Kinescope/HLS.
+Это значит: пользователю надо один раз получить личный OAuth-токен Яндекс 360 и вставить его в настройки — мы в edge-функции проксируем создание конференций по этому токену. Никакого собственного OAuth-callback не нужно: для серверных интеграций Яндекс рекомендует именно «токен в Authorization».
 
-Почему это важно:
-- для вашего текущего кейса video-блока внутри текстового урока узкое место уже закрыто;
-- но “везде и навсегда одинаково” я по коду пока не могу честно подтвердить, потому что standalone video-уроки всё ещё живут на двух разных ветках логики.
+### Что меняется в продукте
+1. В диалоге создания вебинара вместо `Kinescope Live (RTMP)` ставим:
+   - `Яндекс Телемост` (по умолчанию) — мы сами создаём конференцию через API,
+   - `Внешняя ссылка` (как было).
+2. При создании «Телемост»-вебинара:
+   - вызываем новую edge-функцию `telemost-create-conference`,
+   - сохраняем в `webinars`:
+     - `source_type = 'telemost'`,
+     - `external_url = join_url`,
+     - `embed_url = live_stream.watch_url` (если включён live_stream) или `join_url`,
+     - метаданные конференции в `player_settings.telemost = { id, watch_url, join_url, sip_id }`.
+3. У организации в кабинете появляется поле «OAuth-токен Яндекс 360» (хранится как секрет на бэкенде, не в `webinars`). Самый чистый вариант — **общий секрет проекта** `YANDEX_TELEMOST_OAUTH_TOKEN` в Lovable Cloud, который использует edge-функция. Это покрывает один аккаунт-владелец на школу. Если понадобится мультитенант — можно будет позже завести таблицу `organization_telemost_credentials`, но это уже сверх текущего запроса.
+4. У студента и в просмотре уже есть универсальный рендер `embed_url` через iframe, поэтому `watch_url` Телемоста заработает без отдельной правки плеера.
+5. Старые Kinescope-вебинары не ломаются — `source_type = 'kinescope_live'` оставляем как есть, просто его больше нельзя выбрать при создании.
 
-Что сделаю, чтобы это было действительно надёжно везде
+### Технически
+- **БД**: расширить CHECK на `source_type` для `webinars`, добавив `'telemost'`. Никаких новых таблиц не создаём.
+- **Секреты**: один новый runtime-секрет `YANDEX_TELEMOST_OAUTH_TOKEN`. Запрошу его через `add_secret` после подтверждения.
+- **Edge-функция `telemost-create-conference`**:
+  - принимает `{ title, description, withLiveStream }`,
+  - валидирует JWT (как остальные функции организации),
+  - дергает `POST https://cloud-api.yandex.net/v1/telemost-api/conferences` с телом
+    `{ access_level: "PUBLIC", live_stream: { access_level: "PUBLIC", title, description } }`,
+  - возвращает `{ id, join_url, watch_url }`.
+  - CORS как везде.
+- **Фронт**:
+  - `CreateWebinarDialog.tsx`: добавить вариант `telemost`, заменить ветку Kinescope при `sourceType === 'telemost'` — звать `telemost-create-conference`, заполнять `external_url`/`embed_url`/`player_settings`.
+  - `WebinarsManager.tsx` и `StudentWebinarsList.tsx`: для `source_type === 'telemost'` показывать кнопки «Войти в Телемост» (`join_url`) и «Смотреть трансляцию» (`watch_url`, если есть).
+  - Иконку оставляем камеру (как уже сделали).
 
-1. Уберу дублирование видеологики
-- приведу `VideoPlayerInline` к использованию общих helper-функций из `courseBuilderHelpers`;
-- исключу локальные копии `getVideoEmbedUrl`, `isDirectVideoFileUrl`, Kinescope/HLS-детекта.
+### Проверка перед сдачей
+1. Создаю Телемост-вебинар → в БД появляется запись с `external_url` и `embed_url`.
+2. У организации есть кнопки «Войти» и «Смотреть».
+3. У студента вебинар появляется в списке и открывается через iframe `watch_url` (или внешней ссылкой, если только `join_url`).
+4. Старые Kinescope-вебинары продолжают работать без регрессий.
+5. Если `YANDEX_TELEMOST_OAUTH_TOKEN` не задан или Яндекс ответит 402/403 — показываем понятную ошибку в toast.
 
-2. Зафиксирую единую схему рендера
-- text lesson + video-block → общий `BlockRenderer` → `VideoPreviewInline`;
-- preview для `lesson.type="video"` → общий `VideoPreviewInline`;
-- student для `lesson.type="video"` → тот же общий разбор источника, но с сохранением student-логики прогресса/перемотки.
+### Что нужно от вас
+Один раз получить персональный OAuth-токен Яндекс 360 для бизнеса по ссылке из доки:
+`https://oauth.yandex.ru/authorize?response_type=token&client_id=65e062c9a30c4b8f86651dd464c17572`
+(это DEBUG-клиент Телемоста из их же спецификации; для прод-режима потом можно завести своё OAuth-приложение).
+После одобрения плана я попрошу вставить этот токен в защищённый секрет — он будет лежать на бэкенде и наружу не светиться.
 
-3. Проверю все 4 сценария перед применением результата
-- Kinescope внутри text lesson как `video-block`;
-- `.ts/.m3u8` внутри text lesson как `video-block`;
-- Kinescope как отдельный `lesson.type="video"`;
-- `.ts/.m3u8` как отдельный `lesson.type="video"`.
+### Файлы, которые буду менять/создавать
+- `supabase/functions/telemost-create-conference/index.ts` (новая)
+- миграция: расширить CHECK на `webinars.source_type`
+- `src/components/organization/CreateWebinarDialog.tsx`
+- `src/components/organization/WebinarsManager.tsx`
+- `src/components/student/StudentWebinarsList.tsx`
 
-4. Что будет гарантировано после этого
-- старые и новые курсы будут проходить через одну и ту же видеологику;
-- preview и student не будут расходиться по Kinescope/TS/HLS;
-- новые исправления по видео больше не придётся вносить в 2–3 местах отдельно.
-
-Технически
-```text
-Сейчас:
-text lesson/video-block -> BlockRenderer -> VideoPreviewInline
-preview video lesson    -> VideoPreviewInline
-student video lesson    -> VideoPlayerInline (отдельная логика)
-
-После правки:
-text lesson/video-block -> общий video pipeline
-preview video lesson    -> общий video pipeline
-student video lesson    -> общий video pipeline + student progress wrapper
-```
-
-Итог по вашему вопросу
-- Для video-блоков внутри текстовых уроков логика уже откалибрована и должна работать и в preview, и у студента, в том числе для новых курсов.
-- Но чтобы я мог честно сказать “теперь везде хорошо отображается”, нужно ещё добить последнее расхождение: отдельные video-уроки в student-ветке.
-- После этого будет одна нормальная, единая логика без рассыпания по режимам.
