@@ -183,17 +183,11 @@ export const VideoPlayerInline = ({
 
   if (!content) return null;
 
-  // Kinescope video with DRM auth
-  const kinescopeMatch = content.match(/^kinescope:(.+)/) || content.match(/kinescope\.io\/embed\/([a-zA-Z0-9-]+)/);
-  if (kinescopeMatch) {
-    const videoId = kinescopeMatch[1];
-    let embedSrc = `https://kinescope.io/embed/${videoId}`;
-    // Add DRM auth token if user and course context available
-    if (userId && courseId) {
-      const payload = { userId, courseId, exp: Date.now() + 4 * 60 * 60 * 1000 };
-      const token = btoa(JSON.stringify(payload));
-      embedSrc += `?drmauthtoken=${encodeURIComponent(token)}`;
-    }
+  // Kinescope video with DRM auth (uses shared helpers)
+  const kinescopeId = getKinescopeVideoId(content);
+  if (kinescopeId) {
+    const drmToken = userId && courseId ? generateKinescopeDrmToken(userId, courseId) : undefined;
+    const embedSrc = getKinescopeEmbedUrl(kinescopeId, drmToken);
     return (
       <div className="aspect-video w-full rounded-2xl overflow-hidden bg-black">
         <iframe
