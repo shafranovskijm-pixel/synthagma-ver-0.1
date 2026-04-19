@@ -21,6 +21,7 @@ import { PaymentsTab } from "@/components/organization/PaymentsTab";
 import { HomeworkReviewTab } from "@/components/organization/HomeworkReviewTab";
 import { StaffManager } from "@/components/organization/StaffManager";
 import { WebinarsManager } from "@/components/organization/WebinarsManager";
+import { AIAvatarManager } from "@/components/organization/AIAvatarManager";
 import { ProfileTab } from "@/components/organization/tabs/ProfileTab";
 import { OrgSettingsContent } from "@/components/organization/tabs/OrgSettingsContent";
 import { WhatsNewTab } from "@/components/organization/tabs/WhatsNewTab";
@@ -49,6 +50,7 @@ export function TabContentRenderer() {
     activeTab !== "chats" &&
     activeTab !== "courses" &&
     activeTab !== "homework-review" &&
+    activeTab !== "ai-tutors" &&
     activeTab !== "staff" &&
     activeTab !== "webinars" &&
     activeTab !== "profile" &&
@@ -181,6 +183,11 @@ export function TabContentRenderer() {
 
       {/* Homework Review Tab */}
       {activeTab === "homework-review" && <HomeworkReviewTab />}
+
+      {/* AI Tutors Tab */}
+      {activeTab === "ai-tutors" && organizationId && (
+        <AIAvatarManager organizationId={organizationId} />
+      )}
 
       {/* Webinars Tab */}
       {activeTab === "webinars" && organizationId && (
