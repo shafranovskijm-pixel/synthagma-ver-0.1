@@ -185,7 +185,11 @@ export function OrgSidebar() {
   navItems.push({ id: "payments", icon: Wallet, label: "Финансы" });
 
   navItems.push({ id: "homework-review", icon: BookCheck, label: "Задания" });
-  
+
+  if (menuSettings.showAITutors !== false) {
+    navItems.push({ id: "ai-tutors", icon: Sparkles, label: "ИИ-преподаватели" });
+  }
+
   navItems.push({ id: "chats", icon: MessageCircle, label: "Чаты", badge: d.unreadChatsCount });
 
 
