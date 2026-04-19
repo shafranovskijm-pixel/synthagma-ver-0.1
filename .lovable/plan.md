@@ -1,45 +1,57 @@
 
-## Где сейчас не воспроизводится `.ts`
+Что я подтвердил по коду сейчас
 
-Я прошёл по всем местам, где играется видео. После прошлого этапа уже работают:
-- редактор (`LessonEditor.tsx` → `VideoPreviewInline` → `HlsVideoPlayer`),
-- список уроков (`SortableLessonItem.tsx`) — то же,
-- студент в `CourseLearning` (`VideoPlayerInline` из `course-learning/` уже умеет HLS через hls.js).
+1. Для текстовых уроков с video-блоками логика уже стала общей:
+   - `CoursePreviewView` для `lesson.type === "text"` рендерит `BlockRenderer`;
+   - `CourseLearning` для `lesson.type === "text"` тоже рендерит `BlockRenderer`;
+   - в `BlockRenderer` `case "video"` уже использует `VideoPreviewInline content={block.videoUrl} eager`.
 
-Не работает **только** «Просмотр» курса (кнопка "Просмотр" в редакторе → `CoursePreviewView`):
+Это значит: именно сценарий из первого урока, где видео лежит внутри текстового урока как `videoUrl: "kinescope:..."`, теперь должен одинаково идти и в preview, и у студента, и для старых, и для новых курсов такого формата.
 
-В `src/components/course-preview/CoursePreviewView.tsx` определён **локальный** `VideoPreview` (строки 53–76):
-- его собственный `getVideoEmbedUrl` не знает про `.ts/.m2ts/.mts/.m3u8` и про `selcdn.ru`;
-- ссылка `.ts` попадает в общий `if (content.match(/^https?:\/\/.+/i))` и подставляется в `<iframe src=...>` — браузер не может проиграть TS как страницу;
-- HLS / hls.js не подключён вообще.
+2. Для обычных видео-уроков (`lesson.type === "video"`) логика всё ещё не до конца унифицирована:
+   - preview использует `VideoPreviewInline`;
+   - студент использует отдельный `VideoPlayerInline` со своей собственной копией парсинга URL/iframe/Kinescope/HLS.
 
-Ровно поэтому в «Просмотре» TS не показывается. Тот же эффект мог быть и у студента, если урок открывался через preview-роут.
+Почему это важно:
+- для вашего текущего кейса video-блока внутри текстового урока узкое место уже закрыто;
+- но “везде и навсегда одинаково” я по коду пока не могу честно подтвердить, потому что standalone video-уроки всё ещё живут на двух разных ветках логики.
 
-## Что сделаю
+Что сделаю, чтобы это было действительно надёжно везде
 
-### 1) Заменить локальный `VideoPreview` в `CoursePreviewView.tsx` на общий
-- удалить локальные `getVideoEmbedUrl` / `VideoPreview` / `canEmbedInIframe` в `CoursePreviewView.tsx`;
-- импортировать и использовать уже существующий `VideoPreviewInline` из `@/components/course-builder/VideoPreviewInline` — он уже:
-  - распознаёт `.ts/.m2ts/.mts/.m3u8/.mpg/.mpeg` через общий `isDirectVideoFileUrl`,
-  - проигрывает их через `HlsVideoPlayer` (hls.js),
-  - корректно показывает Kinescope, YouTube, Vimeo, Rutube, VK, OK, Дзен, Mail, Yandex, iframe-embed,
-  - для не-встраиваемых сервисов даёт «Открыть видео».
+1. Уберу дублирование видеологики
+- приведу `VideoPlayerInline` к использованию общих helper-функций из `courseBuilderHelpers`;
+- исключу локальные копии `getVideoEmbedUrl`, `isDirectVideoFileUrl`, Kinescope/HLS-детекта.
 
-Результат: в «Просмотре» курса TS-файлы будут играть так же, как в редакторе.
+2. Зафиксирую единую схему рендера
+- text lesson + video-block → общий `BlockRenderer` → `VideoPreviewInline`;
+- preview для `lesson.type="video"` → общий `VideoPreviewInline`;
+- student для `lesson.type="video"` → тот же общий разбор источника, но с сохранением student-логики прогресса/перемотки.
 
-### 2) Подстраховать студенческий плеер на edge-кейс «embed-URL → TS»
-В `src/components/course-learning/VideoPlayerInline.tsx` уже есть `directVideoSrc` для случая, когда `embedResult.url` оказался прямым видеофайлом — это уже корректно. Просто перепроверю, что `isMpegTsFileUrl(resolvedContent)` срабатывает и для TS, пришедшего через `embedResult.url`. Если найду расхождение — поправлю одной строкой.
+3. Проверю все 4 сценария перед применением результата
+- Kinescope внутри text lesson как `video-block`;
+- `.ts/.m3u8` внутри text lesson как `video-block`;
+- Kinescope как отдельный `lesson.type="video"`;
+- `.ts/.m3u8` как отдельный `lesson.type="video"`.
 
-Никакие другие компоненты не трогаю — там HLS уже подключён.
+4. Что будет гарантировано после этого
+- старые и новые курсы будут проходить через одну и ту же видеологику;
+- preview и student не будут расходиться по Kinescope/TS/HLS;
+- новые исправления по видео больше не придётся вносить в 2–3 местах отдельно.
 
-### 3) Проверка
-1. Открыть урок с `.ts`-видео → нажать «Просмотр» курса → видео играет (hls.js).
-2. Открыть тот же урок как студент → видео играет.
-3. Открыть урок с обычным `.mp4` → как раньше, без регрессии.
-4. Открыть урок с YouTube/Kinescope → как раньше.
-5. Если браузер совсем не поддерживает MSE — показывается аккуратный fallback «Скачать видео» из `HlsVideoPlayer`.
+Технически
+```text
+Сейчас:
+text lesson/video-block -> BlockRenderer -> VideoPreviewInline
+preview video lesson    -> VideoPreviewInline
+student video lesson    -> VideoPlayerInline (отдельная логика)
 
-## Файлы, которые буду менять
+После правки:
+text lesson/video-block -> общий video pipeline
+preview video lesson    -> общий video pipeline
+student video lesson    -> общий video pipeline + student progress wrapper
+```
 
-- `src/components/course-preview/CoursePreviewView.tsx` — заменить локальный `VideoPreview` на `VideoPreviewInline`, убрать дубль-хелперы.
-- (опционально, точечно) `src/components/course-learning/VideoPlayerInline.tsx` — только если найду, что TS из `embedResult.url` не уходит в hls-ветку.
+Итог по вашему вопросу
+- Для video-блоков внутри текстовых уроков логика уже откалибрована и должна работать и в preview, и у студента, в том числе для новых курсов.
+- Но чтобы я мог честно сказать “теперь везде хорошо отображается”, нужно ещё добить последнее расхождение: отдельные video-уроки в student-ветке.
+- После этого будет одна нормальная, единая логика без рассыпания по режимам.
