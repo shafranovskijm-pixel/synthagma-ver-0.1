@@ -249,6 +249,7 @@ export type Database = {
           duration_seconds: number
           ended_at: string | null
           id: string
+          lesson_id: string | null
           max_duration_seconds: number
           organization_id: string | null
           room_name: string
@@ -263,6 +264,7 @@ export type Database = {
           duration_seconds?: number
           ended_at?: string | null
           id?: string
+          lesson_id?: string | null
           max_duration_seconds?: number
           organization_id?: string | null
           room_name: string
@@ -277,6 +279,7 @@ export type Database = {
           duration_seconds?: number
           ended_at?: string | null
           id?: string
+          lesson_id?: string | null
           max_duration_seconds?: number
           organization_id?: string | null
           room_name?: string
@@ -286,7 +289,15 @@ export type Database = {
           updated_at?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "ai_tutor_sessions_lesson_id_fkey"
+            columns: ["lesson_id"]
+            isOneToOne: false
+            referencedRelation: "lessons"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       ai_usage_log: {
         Row: {
@@ -2639,6 +2650,15 @@ export type Database = {
       }
       lessons: {
         Row: {
+          ai_avatar_greeting: string | null
+          ai_avatar_image_url: string | null
+          ai_avatar_model: string | null
+          ai_avatar_name: string | null
+          ai_avatar_session_minutes: number | null
+          ai_avatar_style: string | null
+          ai_avatar_subject: string | null
+          ai_avatar_system_prompt: string | null
+          ai_avatar_voice_id: string | null
           content: string | null
           course_id: string
           created_at: string
@@ -2653,6 +2673,15 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          ai_avatar_greeting?: string | null
+          ai_avatar_image_url?: string | null
+          ai_avatar_model?: string | null
+          ai_avatar_name?: string | null
+          ai_avatar_session_minutes?: number | null
+          ai_avatar_style?: string | null
+          ai_avatar_subject?: string | null
+          ai_avatar_system_prompt?: string | null
+          ai_avatar_voice_id?: string | null
           content?: string | null
           course_id: string
           created_at?: string
@@ -2667,6 +2696,15 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          ai_avatar_greeting?: string | null
+          ai_avatar_image_url?: string | null
+          ai_avatar_model?: string | null
+          ai_avatar_name?: string | null
+          ai_avatar_session_minutes?: number | null
+          ai_avatar_style?: string | null
+          ai_avatar_subject?: string | null
+          ai_avatar_system_prompt?: string | null
+          ai_avatar_voice_id?: string | null
           content?: string | null
           course_id?: string
           created_at?: string
