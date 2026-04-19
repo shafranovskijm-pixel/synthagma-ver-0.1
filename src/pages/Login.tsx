@@ -19,6 +19,7 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle } from "@/components/ui/dialog";
+import { YandexLoginButton } from "@/components/auth/YandexLoginButton";
 
 const DEMO_ACCOUNTS = {
   admin: { email: "admin@demo.sigma", password: "demo123456", role: "admin", label: "Админ", icon: Shield, color: "bg-sigma-purple" },
@@ -342,6 +343,17 @@ const Login = () => {
               )}
             </Button>
           </form>
+
+          <div className="relative my-6">
+            <div className="absolute inset-0 flex items-center">
+              <span className="w-full border-t" />
+            </div>
+            <div className="relative flex justify-center text-xs uppercase">
+              <span className="bg-background px-2 text-muted-foreground">или</span>
+            </div>
+          </div>
+
+          <YandexLoginButton mode="login" />
 
           {/* Forgot Password Dialog */}
           <Dialog open={showForgotPassword} onOpenChange={setShowForgotPassword}>
