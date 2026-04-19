@@ -156,6 +156,8 @@ export function WebinarsManager({ organizationId }: Props) {
       setActionLoading(null);
     }
   };
+
+  const handleDelete = async () => {
     if (!deleteTarget) return;
     await supabase.from("webinars").delete().eq("id", deleteTarget.id);
     toast.success("Вебинар удалён");
