@@ -7,6 +7,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { LazyMediaPreview } from "@/components/course-builder/LazyMediaPreview";
+import { HlsVideoPlayer, isMpegTsUrl } from "@/components/video/HlsVideoPlayer";
 import type { ContentBlock } from "./types";
 import { bgColorPresets, textColorPresets } from "./types";
 import { renderHtml } from "./utils";
@@ -27,8 +28,7 @@ function DirectVideoBlockInner({ url }: { url: string }) {
   }
   return (
     <div className="aspect-video not-prose">
-      <video src={url} controls preload="none" className="w-full h-full rounded-lg bg-black" controlsList="nodownload"
-        onError={() => setError(true)} />
+      <HlsVideoPlayer src={url} controls preload="none" className="w-full h-full rounded-lg bg-black" controlsList="nodownload" onError={() => setError(true)} />
     </div>
   );
 }
@@ -171,7 +171,7 @@ function RenderBlock({ block, quizAnswer, quizSubmitted, onQuizAnswer, onQuizSub
     case "video": {
       if (!block.videoUrl) return null;
       const vid = block.videoUrl;
-      if (vid.match(/\.(mp4|webm|ogg|mov|mkv|m4v)(\?.*)?$/i) || vid.includes("selcdn.ru")) {
+      if (vid.match(/\.(mp4|webm|ogg|mov|mkv|m4v)(\?.*)?$/i) || vid.includes("selcdn.ru") || isMpegTsUrl(vid)) {
         return <DirectVideoBlockReadOnly url={vid} />;
       }
       const ytId = vid.match(/(?:youtube\.com\/(?:watch\?v=|embed\/)|youtu\.be\/)([a-zA-Z0-9_-]+)/)?.[1];
