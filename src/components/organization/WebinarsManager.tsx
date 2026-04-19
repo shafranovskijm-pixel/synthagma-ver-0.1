@@ -117,11 +117,11 @@ export function WebinarsManager({ organizationId }: Props) {
     try {
       const now = new Date();
       const title = `Вебинар — ${format(now, "d MMM yyyy, HH:mm", { locale: ru })}`;
-      const { data, error } = await supabase.functions.invoke("telemost-create-conference", {
-        body: { title, withLiveStream: true },
+      const { data, error } = await supabase.functions.invoke("livekit-create-room", {
+        body: { title },
       });
       if (error) throw error;
-      if (!data?.ok || !data?.join_url) throw new Error(data?.error || "Яндекс не вернул ссылку на встречу");
+      if (!data?.ok || !data?.roomName) throw new Error(data?.error || "Не удалось создать комнату LiveKit");
 
       const insertData: Record<string, unknown> = {
         organization_id: organizationId,
@@ -129,19 +129,14 @@ export function WebinarsManager({ organizationId }: Props) {
         description: null,
         scheduled_at: now.toISOString(),
         duration_minutes: null,
-        source_type: "telemost",
+        source_type: "livekit",
         status: "live",
-        external_url: data.join_url,
-        embed_url: data.join_url,
+        external_url: null,
+        embed_url: null,
         course_id: null,
         created_by: user?.id,
         player_settings: {
-          telemost: {
-            id: data.id,
-            join_url: data.join_url,
-            watch_url: data.watch_url,
-            sip_id: data.sip_id,
-          },
+          livekit: { roomName: data.roomName, wsUrl: data.wsUrl },
         },
       };
       const { data: inserted, error: insertErr } = await supabase
@@ -153,7 +148,9 @@ export function WebinarsManager({ organizationId }: Props) {
 
       toast.success("Вебинар начат");
       await fetchWebinars();
-      if (inserted) setEmbedWebinar(inserted as any);
+      if (inserted) {
+        window.location.href = `/webinar/${(inserted as any).id}/live`;
+      }
     } catch (e: any) {
       toast.error(e.message || "Не удалось начать вебинар");
     } finally {
@@ -334,8 +331,8 @@ export function WebinarsManager({ organizationId }: Props) {
                 <Badge variant="outline" className="text-xs">
                   {w.source_type === "kinescope"
                     ? "Kinescope"
-                    : w.source_type === "telemost"
-                      ? "Яндекс Телемост"
+                    : w.source_type === "livekit"
+                      ? "LiveKit (встроенный)"
                       : "Внешняя ссылка"}
                 </Badge>
               </div>
@@ -388,17 +385,17 @@ export function WebinarsManager({ organizationId }: Props) {
                     <RefreshCw className="w-3 h-3 mr-1" />Запись
                   </Button>
                 )}
-                {w.source_type === "telemost" && w.external_url && (
+                {w.source_type === "livekit" && (
                   <Button size="sm" variant="default" asChild>
-                    <a href={w.external_url} target="_blank" rel="noreferrer">
-                      <Video className="w-3 h-3 mr-1" />Войти в Телемост
+                    <a href={`/webinar/${w.id}/live`}>
+                      <Video className="w-3 h-3 mr-1" />Войти в эфир
                     </a>
                   </Button>
                 )}
-                {getEmbedUrl(w) && (
+                {getEmbedUrl(w) && w.source_type !== "livekit" && (
                   <Button size="sm" variant="outline" onClick={() => setEmbedWebinar(w)}>
                     <Video className="w-3 h-3 mr-1" />
-                    {w.source_type === "telemost" ? "Трансляция" : "Смотреть"}
+                    Смотреть
                   </Button>
                 )}
                 <Button size="sm" variant="outline" onClick={() => setParticipantsWebinar(w)}>

@@ -61,10 +61,9 @@ serve(async (req) => {
       "SALUTESPEECH_AUTH_KEY_3",
       "ELEVENLABS_API_KEY",
       "DADATA_API_KEY",
-      "YANDEX_TELEMOST_OAUTH_TOKEN",
-      "YANDEX_OAUTH_CLIENT_ID",
-      "YANDEX_OAUTH_CLIENT_SECRET",
-      "YANDEX_OAUTH_STATE_SECRET",
+      "LIVEKIT_API_KEY",
+      "LIVEKIT_API_SECRET",
+      "LIVEKIT_WS_URL",
     ];
 
     if (!ALLOWED_SECRETS.includes(name)) {
