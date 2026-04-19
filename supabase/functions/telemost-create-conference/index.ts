@@ -18,40 +18,40 @@ Deno.serve(async (req) => {
   }
 
   try {
-    // Authenticate caller
     const authHeader = req.headers.get("Authorization");
     if (!authHeader?.startsWith("Bearer ")) {
-      return json({ error: "Unauthorized" }, 401);
+      return respond(false, { error: "Unauthorized", code: "UNAUTHORIZED" }, 401);
     }
+
     const supabase = createClient(
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_ANON_KEY")!,
       { global: { headers: { Authorization: authHeader } } },
     );
+
     const { data: userData, error: userErr } = await supabase.auth.getUser();
     if (userErr || !userData?.user?.id) {
-      return json({ error: "Unauthorized" }, 401);
+      return respond(false, { error: "Unauthorized", code: "UNAUTHORIZED" }, 401);
     }
 
     const oauthToken = Deno.env.get("YANDEX_TELEMOST_OAUTH_TOKEN");
     if (!oauthToken) {
-      return json(
-        {
-          error:
-            "Yandex Telemost OAuth token не настроен. Добавьте секрет YANDEX_TELEMOST_OAUTH_TOKEN.",
-        },
-        500,
-      );
+      return respond(false, {
+        error:
+          "Yandex Telemost OAuth token не настроен. Добавьте секрет YANDEX_TELEMOST_OAUTH_TOKEN.",
+        code: "TOKEN_NOT_CONFIGURED",
+      }, 500);
     }
 
     const body: CreateBody = await req.json().catch(() => ({}));
     const title = (body.title || "").toString().trim().slice(0, 200) || "Вебинар";
     const description = (body.description || "").toString().trim().slice(0, 1000);
-    const withLiveStream = body.withLiveStream !== false; // default true
+    const withLiveStream = body.withLiveStream !== false;
 
     const payload: Record<string, unknown> = {
       access_level: "PUBLIC",
     };
+
     if (withLiveStream) {
       payload.live_stream = {
         access_level: "PUBLIC",
@@ -87,7 +87,23 @@ Deno.serve(async (req) => {
         yaData?.error_description ||
         yaData?.description ||
         `Яндекс Телемост вернул ошибку ${yaResp.status}`;
-      return json({ error: message, status: yaResp.status, details: yaData }, 502);
+
+      if (yaResp.status === 403 && yaData?.error === "ApiRestrictedToOrganizations") {
+        return respond(false, {
+          error:
+            "Яндекс Телемост API доступен только для аккаунтов Яндекс 360 для бизнеса. Проверьте, что OAuth-токен выпущен для такого аккаунта.",
+          code: "YANDEX_360_REQUIRED",
+          status: yaResp.status,
+          details: yaData,
+        });
+      }
+
+      return respond(false, {
+        error: message,
+        code: "YANDEX_API_ERROR",
+        status: yaResp.status,
+        details: yaData,
+      });
     }
 
     const id = yaData?.id || yaData?.conference_id || null;
@@ -95,8 +111,7 @@ Deno.serve(async (req) => {
     const watch_url = yaData?.live_stream?.watch_url || null;
     const sip_id = yaData?.sip?.id || yaData?.sip_id || null;
 
-    return json({
-      ok: true,
+    return respond(true, {
       id,
       join_url,
       watch_url,
@@ -105,12 +120,15 @@ Deno.serve(async (req) => {
     });
   } catch (e) {
     console.error("[telemost] unexpected", e);
-    return json({ error: (e as Error).message || "Internal error" }, 500);
+    return respond(false, {
+      error: (e as Error).message || "Internal error",
+      code: "INTERNAL_ERROR",
+    }, 500);
   }
 });
 
-function json(data: unknown, status = 200) {
-  return new Response(JSON.stringify(data), {
+function respond(ok: boolean, data: Record<string, unknown>, status = 200) {
+  return new Response(JSON.stringify({ ok, ...data }), {
     headers: { ...corsHeaders, "Content-Type": "application/json" },
     status,
   });
