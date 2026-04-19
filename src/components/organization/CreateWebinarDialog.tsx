@@ -117,19 +117,24 @@ export function CreateWebinarDialog({ open, onOpenChange, organizationId, userId
           cover_url: coverUrl.trim() || null,
           course_id: courseId === "none" ? null : courseId };
 
-        if (sourceType === "kinescope") {
-          const { data, error } = await supabase.functions.invoke("kinescope-proxy", {
-            body: { action: "create_live", title: title.trim() } });
+        if (sourceType === "telemost") {
+          const { data, error } = await supabase.functions.invoke("telemost-create-conference", {
+            body: { title: title.trim(), description: description.trim(), withLiveStream: true } });
           if (error) throw new Error(error.message);
-          const stream = data?.data;
-          if (stream) {
-            webinarData.kinescope_live_id = stream.id;
-            webinarData.embed_url = stream.embed_link || `https://kinescope.io/embed/${stream.id}`;
-            if (stream.broadcast_location) {
-              webinarData.rtmp_url = stream.broadcast_location.rtmp_url || stream.broadcast_location.url;
-              webinarData.rtmp_key = stream.broadcast_location.stream_key || stream.broadcast_location.key;
-            }
-          }
+          if (data?.error) throw new Error(data.error);
+          const join_url = data?.join_url || null;
+          const watch_url = data?.watch_url || null;
+          if (!join_url) throw new Error("Яндекс Телемост не вернул ссылку на конференцию");
+          webinarData.external_url = join_url;
+          webinarData.embed_url = watch_url || join_url;
+          webinarData.player_settings = {
+            telemost: {
+              id: data?.id || null,
+              join_url,
+              watch_url,
+              sip_id: data?.sip_id || null,
+            },
+          };
         } else {
           webinarData.external_url = externalUrl.trim() || null;
           webinarData.embed_url = externalUrl.trim() || null;
@@ -205,16 +210,16 @@ export function CreateWebinarDialog({ open, onOpenChange, organizationId, userId
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="kinescope">Kinescope Live (RTMP)</SelectItem>
+                  <SelectItem value="telemost">Яндекс Телемост (рекомендуется)</SelectItem>
                   <SelectItem value="external">Внешняя ссылка (Zoom, VK, Rutube, YouTube)</SelectItem>
                 </SelectContent>
               </Select>
             </div>
           )}
 
-          {!isEdit && sourceType === "kinescope" && (
+          {!isEdit && sourceType === "telemost" && (
             <p className="text-xs text-muted-foreground">
-              Kinescope автоматически создаст трансляцию. Вы получите RTMP URL и ключ для OBS/другого ПО.
+              Мы автоматически создадим конференцию в Яндекс Телемост и сохраним ссылки для входа и просмотра трансляции.
             </p>
           )}
           {((!isEdit && sourceType === "external") || (isEdit && editWebinar?.source_type === "external")) && (
