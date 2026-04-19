@@ -132,7 +132,7 @@ export function WebinarsManager({ organizationId }: Props) {
         source_type: "telemost",
         status: "live",
         external_url: data.join_url,
-        embed_url: data.watch_url || data.join_url,
+        embed_url: data.join_url,
         course_id: null,
         created_by: user?.id,
         player_settings: {
