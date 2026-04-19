@@ -3,7 +3,7 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { 
   BookOpen, Users, Settings, LogOut, Upload,
   Building2, HardHat, HardDrive, CreditCard, Lock, MessageCircle, Wallet,
-  BarChart3, Link, ShoppingBag, FileText, ClipboardList, FileSpreadsheet, BookCheck, Radio
+  BarChart3, Link, ShoppingBag, FileText, ClipboardList, FileSpreadsheet, BookCheck, Radio, Sparkles
 } from "lucide-react";
 import { SigmaLogo } from "@/components/ui/SigmaLogo";
 import { useOrgDashboard } from "@/contexts/OrgDashboardContext";
@@ -29,6 +29,7 @@ export type TabType =
   | "students" 
   | "chats"
   | "homework-review"
+  | "ai-tutors"
   | "library" 
   | "stats" 
   | "links" 
@@ -184,7 +185,11 @@ export function OrgSidebar() {
   navItems.push({ id: "payments", icon: Wallet, label: "Финансы" });
 
   navItems.push({ id: "homework-review", icon: BookCheck, label: "Задания" });
-  
+
+  if (menuSettings.showAITutors !== false) {
+    navItems.push({ id: "ai-tutors", icon: Sparkles, label: "ИИ-преподаватели" });
+  }
+
   navItems.push({ id: "chats", icon: MessageCircle, label: "Чаты", badge: d.unreadChatsCount });
 
 
