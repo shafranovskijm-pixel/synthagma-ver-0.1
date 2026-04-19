@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
-import { Plus, Radio, Video, Calendar, Users, Copy, ExternalLink, Square, Trash2, RefreshCw, Pencil, CopyPlus, Link, Search, Clock } from "lucide-react";
+import { Plus, Radio, Video, Calendar, Users, Copy, ExternalLink, Square, Trash2, RefreshCw, Pencil, CopyPlus, Link, Search, Clock, Zap } from "lucide-react";
 import { CreateWebinarDialog } from "./CreateWebinarDialog";
 import { WebinarParticipantsDialog } from "./WebinarParticipantsDialog";
 import { format } from "date-fns";
