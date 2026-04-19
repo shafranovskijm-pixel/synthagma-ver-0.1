@@ -315,6 +315,16 @@ export const LessonEditor = ({
               </div>
             )}
 
+            {e.type === "ai_avatar" && (
+              <AIAvatarLessonEditor
+                value={e.aiAvatar}
+                onChange={e.setAiAvatar}
+                courseId={courseId}
+                courseTitle={courseTitle}
+                lessonTitle={e.title}
+              />
+            )}
+
             <div className="flex gap-3 pt-4 border-t border-border">
               <Button variant="outline" onClick={onClose} className="flex-1 h-11">Отмена</Button>
               <Button onClick={e.handleSave} className="flex-1 btn-gradient h-11" disabled={!e.title.trim()}>{lesson ? "Сохранить изменения" : "Создать урок"}</Button>
