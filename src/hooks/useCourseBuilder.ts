@@ -148,7 +148,15 @@ export function useCourseBuilder(propCourseId?: string) {
   const addLesson = (type: LessonType) => {
     const typeNames: Record<LessonType, string> = { text: "урок", video: "видеоурок", image: "материал", test: "тест", audio: "аудиолекция", lesson: "урок", slider: "презентация", practice: "ситуационное задание", feedback: "обратная связь", homework: "задание" };
     const newLesson: Lesson = { id: crypto.randomUUID(), type, title: `Новый ${typeNames[type]}`, content: "", expanded: true, blocks: (type === "text" || type === "practice") ? [] : undefined };
-    setLessons(prev => [...prev, newLesson]); markAsChanged();
+    // Accordion: новый урок раскрыт, остальные свёрнуты
+    setLessons(prev => [...prev.map(l => ({ ...l, expanded: false })), newLesson]);
+    setActiveLessonId(newLesson.id);
+    markAsChanged();
+    // Прокрутка правой колонки к новой карточке (не трогаем левую навигацию)
+    setTimeout(() => {
+      const el = document.querySelector(`[data-lesson-id="${newLesson.id}"]`);
+      if (el && 'scrollIntoView' in el) (el as HTMLElement).scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 50);
   };
 
   const handleGenerateStructure = async () => {
@@ -180,8 +188,20 @@ export function useCourseBuilder(propCourseId?: string) {
 
   const updateLesson = useCallback((id: string, updates: Partial<Lesson>) => { setLessons(prev => prev.map(l => l.id === id ? { ...l, ...updates } : l)); markAsChanged(); }, [markAsChanged]);
   const deleteLesson = useCallback((id: string) => { setLessons(prev => prev.filter(l => l.id !== id)); markAsChanged(); if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current); autoSaveTimerRef.current = setTimeout(() => { saveCourse(true); }, 500); }, [markAsChanged]);
-  const toggleLesson = useCallback((id: string) => { setLessons(prev => prev.map(l => l.id === id ? { ...l, expanded: !l.expanded } : l)); }, []);
-  const expandLesson = useCallback((id: string) => { setLessons(prev => prev.map(l => l.id === id ? { ...l, expanded: true } : l)); }, []);
+  // Accordion: открыт только один урок. Повторный клик по уже открытому — сворачивает.
+  const toggleLesson = useCallback((id: string) => {
+    setLessons(prev => {
+      const target = prev.find(l => l.id === id);
+      const willOpen = !(target?.expanded);
+      return prev.map(l => l.id === id ? { ...l, expanded: willOpen } : { ...l, expanded: false });
+    });
+    setActiveLessonId(id);
+  }, []);
+  const expandLesson = useCallback((id: string) => {
+    setLessons(prev => prev.map(l => l.id === id ? { ...l, expanded: true } : { ...l, expanded: false }));
+  }, []);
+  // Клик в левой навигации: раскрыть только этот урок (и свернуть остальные).
+  // Если уже раскрыт — оставить раскрытым (не сворачиваем при повторном клике из навигации).
   const scrollToLesson = useCallback((id: string) => {
     expandLesson(id);
     setActiveLessonId(id);
