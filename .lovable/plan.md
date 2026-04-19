@@ -1,80 +1,86 @@
 
-## План
+## План: LiveKit Cloud для вебинаров + AI-преподаватель + полное удаление Яндекса
 
-### 1. Скрыть кнопки «Войти через Яндекс ID»
-Временно убрать `YandexLoginButton` из `src/pages/Login.tsx` и `src/pages/RegisterOrganization.tsx` (просто закомментировать импорт + использование, чтобы потом легко вернуть). Сами edge-функции, таблицы и страницу `/auth/yandex/callback` оставляем — они готовы и ждут тестирования.
+### Что делаем
 
-### 2. Изучить актуальную документацию Telemost API
-Прочитать https://yandex.ru/dev/telemost/doc/ru/ через `code--fetch_website`, чтобы зафиксировать:
-- точный endpoint создания конференции,
-- требуемые scope OAuth-токена,
-- формат заголовка авторизации (`OAuth <token>` vs `Bearer <token>`),
-- какие тарифы Яндекс 360 реально дают доступ к API,
-- как именно Яндекс отвечает `ApiRestrictedToOrganizations` и что с этим делать.
+1. **LiveKit Cloud** (не свой VPS — у вас уже есть проект `sintagma-h5kuy8k3.livekit.cloud`, бесплатный тариф включает 1000 AI-минут/мес и до 100 одновременных участников). Используем готовое облако — никаких серверов, никакого админства.
+2. **Вебинары на LiveKit** — встроенный плеер прямо в платформе.
+3. **AI-преподаватель** — заглушка-карточка рядом с «3D-тренажёры» в кабинете ученика, сессии по 25 минут на LiveKit Agents.
+4. **Полное удаление всего Яндекс-кода** (ID OAuth + Telemost).
 
-Сейчас в `telemost-create-conference/index.ts` мы:
-- используем `Authorization: OAuth <token>`,
-- бьём в `https://cloud-api.yandex.net/v1/telemost-api/conferences`,
-- получаем `403 ApiRestrictedToOrganizations`.
+---
 
-Нужно сверить всё это с документацией один-в-один.
+### 1. Секреты (запрошу через add_secret)
 
-### 3. Получить точный fingerprint токена и тело ответа
-Запустить `telemost-create-conference` ещё раз через `supabase--curl_edge_functions` от вашего пользователя, чтобы свежие логи показали:
-- `tokenFingerprint` (длина / префикс / суффикс),
-- сырой ответ Яндекса (статус + JSON с `error`, `error_description`, `request_id`).
+- `LIVEKIT_API_KEY` = `APIkR7fby7jQSyS` (со скриншота)
+- `LIVEKIT_API_SECRET` = откроете «Reveal secret» в кабинете LiveKit
+- `LIVEKIT_WS_URL` = `wss://sintagma-h5kuy8k3.livekit.cloud`
 
-`request_id` от Яндекса — ключевая штука для техподдержки.
+---
 
-### 4. Подготовить чёткий запрос в техподдержку Яндекс 360
-На основе ответа Яндекса собрать одно сообщение, которое можно скопировать и отправить. Шаблон:
+### 2. База данных (миграция)
 
-```text
-Здравствуйте.
+- DROP таблиц `yandex_identities`, `yandex_oauth_nonces` (CASCADE).
+- В `webinars`: дефолт `source_type` → `'livekit'`. Старые записи не трогаем.
+- Новая таблица `ai_tutor_sessions` (user_id, room_name, started_at, ended_at, duration_seconds, topic) — для учёта 25-минутных сессий AI-преподавателя и лимитов по тарифу.
 
-Аккаунт: <ваш email в Яндекс 360>
-Организация в Яндекс 360: <название>
-Тариф Яндекс 360: <название тарифа, дата активации>
-OAuth-приложение (client_id): <client_id из oauth.yandex.ru>
-Scope токена: telemost-api:conferences.create (и др., если документация требует)
+---
 
-Что делаю:
-POST https://cloud-api.yandex.net/v1/telemost-api/conferences
-Headers:
-  Authorization: OAuth <token c length=NN, prefix=XXXX, suffix=YYYY>
-  Content-Type: application/json
-Body:
-  { "access_level": "PUBLIC", "live_stream": { ... } }
+### 3. Edge-функции
 
-Что получаю:
-HTTP 403
-{
-  "error": "ApiRestrictedToOrganizations",
-  "description": "Forbidden",
-  "message": "API доступен пользователям Яндекс 360 для бизнеса.",
-  "request_id": "<сюда подставим из ответа>"
-}
+**Создаём:**
+- `livekit-create-room` — создаёт комнату вебинара через LiveKit REST API, пишет `room_name` в `webinars.player_settings.livekit`.
+- `livekit-issue-token` — по `webinar_id` или `ai_tutor_session_id` проверяет права в БД и подписывает JWT (HS256) для подключения к LiveKit.
+- `livekit-ai-tutor-start` — создаёт комнату для AI-преподавателя, лимит 25 минут на сессию, проверяет месячный лимит организации.
 
-Вопрос:
-1. Подтвердите, что мой тариф Яндекс 360 даёт доступ к Telemost API.
-2. Если да — что нужно дополнительно включить в админке организации,
-   чтобы перестало возвращаться ApiRestrictedToOrganizations?
-3. Если нет — какой минимальный тариф нужен и как его подключить?
-```
+**Удаляем (через delete_edge_functions):**
+- `telemost-create-conference`
+- `yandex-oauth-start`
+- `yandex-oauth-callback`
+- `yandex-oauth-complete-org`
 
-### 5. Если документация выявит расхождение в коде
-Если окажется, что нужен другой endpoint / другой формат авторизации / другой scope — исправить `telemost-create-conference/index.ts` соответствующим образом и переразвернуть. Это будет небольшая правка одного файла.
+---
 
-### Файлы, которых коснёмся
-- `src/pages/Login.tsx` — убрать кнопку Яндекс ID.
-- `src/pages/RegisterOrganization.tsx` — убрать кнопку Яндекс ID.
-- `supabase/functions/telemost-create-conference/index.ts` — возможные правки после чтения доков; гарантированно — добавить в ответ `request_id` Яндекса, чтобы он попадал и в логи, и в UI ошибки.
-- (опционально) UI ошибки создания вебинара — показать `request_id`, чтобы вы могли скопировать его в обращение в поддержку.
+### 4. Фронтенд
 
-### Что не трогаем
-- Таблицы `yandex_identities`, `yandex_oauth_nonces`.
-- Edge-функции `yandex-oauth-*`.
-- Страницу `/auth/yandex/callback`.
-- Секреты Яндекс OAuth.
+**Новое:**
+- `src/pages/WebinarLive.tsx` (`/webinar/:id/live`) — комната на `@livekit/components-react`: видео, чат, демо экрана, для хоста — кнопка «Начать запись».
+- `src/pages/AITutor.tsx` (`/ai-tutor`) — пока заглушка-карточка + кнопка «Начать 25-минутную сессию» (в превью-режиме показывает «Скоро доступно»).
+- В дашборде ученика рядом с «3D-тренажёры» добавляю карточку «AI-преподаватель» в том же градиентном стиле.
 
-Всё это остаётся, просто временно не вызывается из UI.
+**Правлю:**
+- `CreateWebinarDialog.tsx` — источник по умолчанию `livekit` вместо `telemost`. При создании зовём `livekit-create-room`.
+- `WebinarsManager.tsx` — кнопка «Начать вебинар» ведёт на `/webinar/:id/live`. Все ветки `telemost` → `livekit`.
+- `StudentWebinarsList.tsx` — кнопка «Присоединиться» открывает `/webinar/:id/live` в роли viewer.
+- `manage-secret/index.ts` — whitelist: убираем все `YANDEX_*`, добавляем `LIVEKIT_*`.
+- `src/components/admin/ai-settings/constants.ts` — то же самое.
+
+**Удаляем файлы:**
+- `src/components/auth/YandexLoginButton.tsx`
+- `src/components/profile/LinkedAccounts.tsx`
+- `src/pages/YandexCallback.tsx`
+- Импорты/использования из `Login.tsx`, `RegisterOrganization.tsx`, `publicRoutes.tsx`.
+
+**Не трогаем:** Яндекс.Метрику и детект Яндекс-Браузера — это не аккаунты.
+
+---
+
+### 5. AI-преподаватель — что внутри
+
+Первая версия = заглушка с правильной инфраструктурой:
+- Карточка в кабинете ученика → кнопка «Начать сессию».
+- Создаём LiveKit-комнату через `livekit-ai-tutor-start`, ограничение 25 мин (таймер на клиенте + проверка на сервере при выдаче токена).
+- Сам AI-агент (LLM + voice) — отдельной задачей позже: подключим LiveKit Agents Worker (Python/Node, развернём в LiveKit Cloud Agents). Сейчас в UI пишем «Бета — голосовой ИИ-преподаватель скоро» и просто открываем пустую комнату для теста инфраструктуры.
+
+---
+
+### 6. Память
+
+- Удалить `mem://integrations/yandex-id-oauth`.
+- Создать `mem://integrations/livekit-cloud` — endpoint, формат токенов, бесплатный лимит, проект `sintagma-h5kuy8k3`.
+- Создать `mem://features/ai-tutor` — лимит 25 минут/сессия, заглушка пока, путь `/ai-tutor`.
+
+---
+
+### 7. Открытые вопросы
+
