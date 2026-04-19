@@ -183,13 +183,23 @@ export function StudentWebinarsList() {
                 {format(new Date(w.scheduled_at), "d MMM yyyy, HH:mm", { locale: ru })}
               </p>
             )}
-            <div className="flex gap-2">
-              {getEmbedUrl(w) && (
-                <Button size="sm" onClick={() => setEmbedWebinar(w)}>
-                  <Video className="w-3 h-3 mr-1" />{w.status === "live" ? "Смотреть" : "Запись"}
+            <div className="flex flex-wrap gap-2">
+              {w.source_type === "telemost" && w.external_url && (
+                <Button size="sm" asChild>
+                  <a href={w.external_url} target="_blank" rel="noreferrer">
+                    <Video className="w-3 h-3 mr-1" />Войти в Телемост
+                  </a>
                 </Button>
               )}
-              {w.external_url && !getEmbedUrl(w) && (
+              {getEmbedUrl(w) && (
+                <Button size="sm" variant={w.source_type === "telemost" ? "outline" : "default"} onClick={() => setEmbedWebinar(w)}>
+                  <Video className="w-3 h-3 mr-1" />
+                  {w.source_type === "telemost"
+                    ? "Смотреть трансляцию"
+                    : w.status === "live" ? "Смотреть" : "Запись"}
+                </Button>
+              )}
+              {w.external_url && !getEmbedUrl(w) && w.source_type !== "telemost" && (
                 <Button size="sm" variant="outline" asChild>
                   <a href={w.external_url} target="_blank" rel="noreferrer">
                     Открыть
