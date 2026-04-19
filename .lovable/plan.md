@@ -1,76 +1,80 @@
 
-## План: Авторизация через Яндекс ID
+## План
 
-### Что нужно сделать
-Добавить вход/регистрацию через Яндекс ID (OAuth) для трёх сценариев:
-1. **Ученик** заходит под выданным логином → может привязать Яндекс к текущему аккаунту → дальше входит одной кнопкой.
-2. **Организация** регистрируется через Яндекс → обязательно вводит ИНН → создаётся организация и профиль.
-3. **Компания-клиент** заходит через Яндекс по тому же принципу.
+### 1. Скрыть кнопки «Войти через Яндекс ID»
+Временно убрать `YandexLoginButton` из `src/pages/Login.tsx` и `src/pages/RegisterOrganization.tsx` (просто закомментировать импорт + использование, чтобы потом легко вернуть). Сами edge-функции, таблицы и страницу `/auth/yandex/callback` оставляем — они готовы и ждут тестирования.
 
-### Почему кастомный OAuth, а не встроенный
-Lovable Cloud / Supabase нативно поддерживает Google, Apple, Phone, Email — Яндекс **не входит** в список нативных провайдеров. Поэтому реализуем кастомный OAuth-флоу через свои edge-функции, используя ваши `client_id` / `client_secret` (на скрине).
+### 2. Изучить актуальную документацию Telemost API
+Прочитать https://yandex.ru/dev/telemost/doc/ru/ через `code--fetch_website`, чтобы зафиксировать:
+- точный endpoint создания конференции,
+- требуемые scope OAuth-токена,
+- формат заголовка авторизации (`OAuth <token>` vs `Bearer <token>`),
+- какие тарифы Яндекс 360 реально дают доступ к API,
+- как именно Яндекс отвечает `ApiRestrictedToOrganizations` и что с этим делать.
 
-### Архитектура
+Сейчас в `telemost-create-conference/index.ts` мы:
+- используем `Authorization: OAuth <token>`,
+- бьём в `https://cloud-api.yandex.net/v1/telemost-api/conferences`,
+- получаем `403 ApiRestrictedToOrganizations`.
+
+Нужно сверить всё это с документацией один-в-один.
+
+### 3. Получить точный fingerprint токена и тело ответа
+Запустить `telemost-create-conference` ещё раз через `supabase--curl_edge_functions` от вашего пользователя, чтобы свежие логи показали:
+- `tokenFingerprint` (длина / префикс / суффикс),
+- сырой ответ Яндекса (статус + JSON с `error`, `error_description`, `request_id`).
+
+`request_id` от Яндекса — ключевая штука для техподдержки.
+
+### 4. Подготовить чёткий запрос в техподдержку Яндекс 360
+На основе ответа Яндекса собрать одно сообщение, которое можно скопировать и отправить. Шаблон:
 
 ```text
-[Кнопка "Войти через Яндекс"]
-        │
-        ▼
-[edge: yandex-oauth-start] ──► redirect на oauth.yandex.ru
-        │
-        ▼
-[Яндекс] ──► redirect на /auth/yandex/callback?code=...
-        │
-        ▼
-[edge: yandex-oauth-callback]
-   1. code → access_token (login:info)
-   2. token → данные пользователя (id, email, ФИО)
-   3. ветвление по state:
-      - link    → привязать к текущему user_id
-      - login   → найти по yandex_id → создать сессию
-      - signup-org → требовать ИНН → создать org + profile
-        │
-        ▼
-[Возврат в приложение с сессией Supabase]
+Здравствуйте.
+
+Аккаунт: <ваш email в Яндекс 360>
+Организация в Яндекс 360: <название>
+Тариф Яндекс 360: <название тарифа, дата активации>
+OAuth-приложение (client_id): <client_id из oauth.yandex.ru>
+Scope токена: telemost-api:conferences.create (и др., если документация требует)
+
+Что делаю:
+POST https://cloud-api.yandex.net/v1/telemost-api/conferences
+Headers:
+  Authorization: OAuth <token c length=NN, prefix=XXXX, suffix=YYYY>
+  Content-Type: application/json
+Body:
+  { "access_level": "PUBLIC", "live_stream": { ... } }
+
+Что получаю:
+HTTP 403
+{
+  "error": "ApiRestrictedToOrganizations",
+  "description": "Forbidden",
+  "message": "API доступен пользователям Яндекс 360 для бизнеса.",
+  "request_id": "<сюда подставим из ответа>"
+}
+
+Вопрос:
+1. Подтвердите, что мой тариф Яндекс 360 даёт доступ к Telemost API.
+2. Если да — что нужно дополнительно включить в админке организации,
+   чтобы перестало возвращаться ApiRestrictedToOrganizations?
+3. Если нет — какой минимальный тариф нужен и как его подключить?
 ```
 
-### Изменения в БД (миграция)
-- Таблица `yandex_identities`: `user_id`, `yandex_id` (uniq), `yandex_email`, `yandex_login`, `linked_at`. RLS: пользователь видит только свою связь.
-- Поле `inn` в `organizations` уже есть (проверить); если нет — добавить.
+### 5. Если документация выявит расхождение в коде
+Если окажется, что нужен другой endpoint / другой формат авторизации / другой scope — исправить `telemost-create-conference/index.ts` соответствующим образом и переразвернуть. Это будет небольшая правка одного файла.
 
-### Edge-функции (новые, `verify_jwt = false` для callback)
-1. `yandex-oauth-start` — формирует URL `https://oauth.yandex.ru/authorize?response_type=code&client_id=...&state=...&redirect_uri=...`. Параметр `state` шифрует: режим (`link` / `login` / `signup-org`) + текущий `user_id` (если есть) + nonce.
-2. `yandex-oauth-callback` — обменивает `code` на токен, тянет `https://login.yandex.ru/info`, выполняет один из сценариев:
-   - **link**: вставка в `yandex_identities` под текущим `user_id`.
-   - **login**: ищем `yandex_identities.yandex_id` → если есть, создаём magic-link / одноразовую сессию через Admin API (`generateLink` type=magiclink) и редиректим. Если нет — редирект на страницу «Аккаунт не найден, привяжите вручную».
-   - **signup-org**: если ИНН ещё не передан — редирект на `/auth/yandex/complete?token=...` (форма ИНН). После сабмита — создаём `auth.user`, `profiles`, `organizations`, `user_roles=organization`, пишем `yandex_identities`.
+### Файлы, которых коснёмся
+- `src/pages/Login.tsx` — убрать кнопку Яндекс ID.
+- `src/pages/RegisterOrganization.tsx` — убрать кнопку Яндекс ID.
+- `supabase/functions/telemost-create-conference/index.ts` — возможные правки после чтения доков; гарантированно — добавить в ответ `request_id` Яндекса, чтобы он попадал и в логи, и в UI ошибки.
+- (опционально) UI ошибки создания вебинара — показать `request_id`, чтобы вы могли скопировать его в обращение в поддержку.
 
-### Секреты
-- `YANDEX_OAUTH_CLIENT_ID` = `2215ed57e51341d2bbeb0389e7eb7df8`
-- `YANDEX_OAUTH_CLIENT_SECRET` = `78f00ae93c9b45c29011142d7e602cd6`
-- `YANDEX_OAUTH_STATE_SECRET` = случайная строка для подписи state (HMAC).
+### Что не трогаем
+- Таблицы `yandex_identities`, `yandex_oauth_nonces`.
+- Edge-функции `yandex-oauth-*`.
+- Страницу `/auth/yandex/callback`.
+- Секреты Яндекс OAuth.
 
-Запрошу через `add_secret` после одобрения.
-
-### Frontend
-- Кнопка «Войти через Яндекс» на `/auth` (login + signup табы) и на странице регистрации организации.
-- В кабинете ученика/организации — раздел «Привязанные аккаунты» с кнопкой «Привязать Яндекс ID» и статусом (привязан + email).
-- Новая страница `/auth/yandex/callback` — принимает результат (success/нужен ИНН/ошибка), показывает форму ИНН при необходимости, потом дергает Supabase для установки сессии по присланному magic link.
-- Отдельная страница `/auth/yandex/complete-org` — форма ИНН + название организации (с DaData lookup, как уже используется).
-
-### Настройка в Яндексе (что вам сделать руками)
-В кабинете приложения Яндекс OAuth добавить Redirect URI:
-- `https://atxwvjxbqjgkbjlhsdch.supabase.co/functions/v1/yandex-oauth-callback`
-
-### Безопасность
-- `state` подписан HMAC, TTL 10 мин, одноразовый (храним nonce в таблице `yandex_oauth_nonces`).
-- ИНН валидируется (10/12 цифр, контрольная сумма).
-- Привязка возможна только если `yandex_id` ещё ни к кому не привязан (uniq + явная проверка).
-- `client_secret` только в edge-функции, никогда на фронте.
-
-### Файлы, которые будут затронуты
-- Новые: `supabase/functions/yandex-oauth-start/index.ts`, `supabase/functions/yandex-oauth-callback/index.ts`, миграция БД, `src/pages/auth/YandexCallback.tsx`, `src/pages/auth/YandexCompleteOrg.tsx`, `src/components/auth/YandexLoginButton.tsx`, `src/components/profile/LinkedAccounts.tsx`.
-- Правки: `src/pages/Auth.tsx` (или текущая страница входа), маршруты в `src/App.tsx`, `supabase/config.toml` (verify_jwt=false для двух функций), `manage-secret` whitelist.
-
-### Открытый вопрос
-Если Яндекс-аккаунт уже привязан к другому пользователю и кто-то ещё пытается «войти через Яндекс» с него — что делать: блокировать со ссылкой на поддержку, или предлагать «выйти из старого и привязать сюда»? По умолчанию сделаю **блокировку с понятным сообщением**, как безопасный вариант.
+Всё это остаётся, просто временно не вызывается из UI.
