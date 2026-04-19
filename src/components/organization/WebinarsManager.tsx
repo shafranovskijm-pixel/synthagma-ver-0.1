@@ -268,7 +268,11 @@ export function WebinarsManager({ organizationId }: Props) {
                 )}
                 {w.duration_minutes && <span>{w.duration_minutes} мин</span>}
                 <Badge variant="outline" className="text-xs">
-                  {w.source_type === "kinescope" ? "Kinescope" : "Внешняя ссылка"}
+                  {w.source_type === "kinescope"
+                    ? "Kinescope"
+                    : w.source_type === "telemost"
+                      ? "Яндекс Телемост"
+                      : "Внешняя ссылка"}
                 </Badge>
               </div>
 
@@ -320,9 +324,17 @@ export function WebinarsManager({ organizationId }: Props) {
                     <RefreshCw className="w-3 h-3 mr-1" />Запись
                   </Button>
                 )}
+                {w.source_type === "telemost" && w.external_url && (
+                  <Button size="sm" variant="default" asChild>
+                    <a href={w.external_url} target="_blank" rel="noreferrer">
+                      <Video className="w-3 h-3 mr-1" />Войти в Телемост
+                    </a>
+                  </Button>
+                )}
                 {getEmbedUrl(w) && (
                   <Button size="sm" variant="outline" onClick={() => setEmbedWebinar(w)}>
-                    <Video className="w-3 h-3 mr-1" />Смотреть
+                    <Video className="w-3 h-3 mr-1" />
+                    {w.source_type === "telemost" ? "Трансляция" : "Смотреть"}
                   </Button>
                 )}
                 <Button size="sm" variant="outline" onClick={() => setParticipantsWebinar(w)}>
