@@ -7,35 +7,10 @@ import {
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { LazyMediaPreview } from "@/components/course-builder/LazyMediaPreview";
-import { HlsVideoPlayer, isMpegTsUrl } from "@/components/video/HlsVideoPlayer";
+import { VideoPreviewInline } from "@/components/course-builder/VideoPreviewInline";
 import type { ContentBlock } from "./types";
 import { bgColorPresets, textColorPresets } from "./types";
 import { renderHtml } from "./utils";
-
-function DirectVideoBlockInner({ url }: { url: string }) {
-  const [error, setError] = useState(false);
-  if (error) {
-    return (
-      <div className="aspect-video not-prose rounded-lg bg-muted flex flex-col items-center justify-center gap-3">
-        <Video className="w-12 h-12 text-muted-foreground" />
-        <p className="text-sm text-muted-foreground">Браузер не может воспроизвести это видео</p>
-        <a href={url} target="_blank" rel="noopener noreferrer"
-          className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary/90 transition-colors">
-          <Play className="w-4 h-4" /> Открыть видео
-        </a>
-      </div>
-    );
-  }
-  return (
-    <div className="aspect-video not-prose">
-      <HlsVideoPlayer src={url} controls preload="none" className="w-full h-full rounded-lg bg-black" controlsList="nodownload" onError={() => setError(true)} />
-    </div>
-  );
-}
-
-function DirectVideoBlockReadOnly({ url }: { url: string }) {
-  return <DirectVideoBlockInner url={url} />;
-}
 
 function RenderBlock({ block, quizAnswer, quizSubmitted, onQuizAnswer, onQuizSubmit, sliderIndex, onSliderChange }: { 
   block: ContentBlock; 
@@ -170,23 +145,7 @@ function RenderBlock({ block, quizAnswer, quizSubmitted, onQuizAnswer, onQuizSub
       return block.imageSrc ? <img src={block.imageSrc} alt={block.imageAlt || ""} className="rounded-lg max-w-full h-auto not-prose" /> : null;
     case "video": {
       if (!block.videoUrl) return null;
-      const vid = block.videoUrl;
-      if (vid.match(/\.(mp4|webm|ogg|mov|mkv|m4v)(\?.*)?$/i) || vid.includes("selcdn.ru") || isMpegTsUrl(vid)) {
-        return <DirectVideoBlockReadOnly url={vid} />;
-      }
-      const ytId = vid.match(/(?:youtube\.com\/(?:watch\?v=|embed\/)|youtu\.be\/)([a-zA-Z0-9_-]+)/)?.[1];
-      if (ytId) return <div className="aspect-video not-prose"><iframe src={`https://www.youtube.com/embed/${ytId}`} className="w-full h-full rounded-lg" allowFullScreen /></div>;
-      const vimeoId = vid.match(/vimeo\.com\/(\d+)/)?.[1];
-      if (vimeoId) return <div className="aspect-video not-prose"><iframe src={`https://player.vimeo.com/video/${vimeoId}`} className="w-full h-full rounded-lg" allowFullScreen /></div>;
-      const rutubeId = vid.match(/rutube\.ru\/video\/([a-zA-Z0-9]+)/)?.[1];
-      if (rutubeId) return <div className="aspect-video not-prose"><iframe src={`https://rutube.ru/play/embed/${rutubeId}`} className="w-full h-full rounded-lg" allowFullScreen /></div>;
-      if (vid.includes("<iframe")) {
-        return <div className="aspect-video not-prose [&>iframe]:w-full [&>iframe]:h-full [&>iframe]:border-0" dangerouslySetInnerHTML={{ __html: vid }} />;
-      }
-      if (vid.startsWith("http")) {
-        return <DirectVideoBlockReadOnly url={vid} />;
-      }
-      return null;
+      return <div className="not-prose"><VideoPreviewInline content={block.videoUrl} /></div>;
     }
     case "slider":
       const slides = block.sliderSlides || [];
