@@ -7,6 +7,7 @@ import { HlsVideoPlayer } from "@/components/video/HlsVideoPlayer";
 
 interface VideoPreviewInlineProps {
   content: string;
+  eager?: boolean;
 }
 
 function DirectVideoPreview({ url }: { url: string }) {
@@ -30,14 +31,14 @@ function DirectVideoPreview({ url }: { url: string }) {
   );
 }
 
-export function VideoPreviewInline({ content }: VideoPreviewInlineProps) {
+export function VideoPreviewInline({ content, eager = false }: VideoPreviewInlineProps) {
   if (!content) return null;
 
   // Kinescope video
   const kinescopeId = getKinescopeVideoId(content);
   if (kinescopeId) {
     return (
-      <LazyMediaPreview type="video">
+      <LazyMediaPreview type="video" defaultActivated={eager}>
         <div className="aspect-video w-full rounded-xl overflow-hidden bg-muted">
           <iframe
             src={getKinescopeEmbedUrl(kinescopeId)}
@@ -53,7 +54,7 @@ export function VideoPreviewInline({ content }: VideoPreviewInlineProps) {
   // Direct video file → native player with error fallback
   if (isDirectVideoFileUrl(content)) {
     return (
-      <LazyMediaPreview type="video">
+      <LazyMediaPreview type="video" defaultActivated={eager}>
         <DirectVideoPreview url={content} />
       </LazyMediaPreview>
     );
@@ -65,7 +66,7 @@ export function VideoPreviewInline({ content }: VideoPreviewInlineProps) {
       ADD_ATTR: ['allow', 'allowfullscreen', 'frameborder', 'src', 'width', 'height', 'title', 'referrerpolicy']
     });
     return (
-      <LazyMediaPreview type="iframe">
+      <LazyMediaPreview type="iframe" defaultActivated={eager}>
         <div
           className="aspect-video w-full rounded-xl overflow-hidden bg-muted"
           dangerouslySetInnerHTML={{ __html: sanitized }}
@@ -80,7 +81,7 @@ export function VideoPreviewInline({ content }: VideoPreviewInlineProps) {
     // Check if embed URL is a direct video file
     if (isDirectVideoFileUrl(embedResult.url)) {
       return (
-        <LazyMediaPreview type="video">
+        <LazyMediaPreview type="video" defaultActivated={eager}>
           <DirectVideoPreview url={embedResult.url} />
         </LazyMediaPreview>
       );
@@ -102,7 +103,7 @@ export function VideoPreviewInline({ content }: VideoPreviewInlineProps) {
       );
     }
     return (
-      <LazyMediaPreview type="video">
+        <LazyMediaPreview type="video" defaultActivated={eager}>
         <div className="aspect-video w-full rounded-xl overflow-hidden bg-muted">
           <iframe src={embedResult.url} className="w-full h-full"
             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"

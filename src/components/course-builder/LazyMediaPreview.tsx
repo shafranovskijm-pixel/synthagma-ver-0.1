@@ -17,10 +17,11 @@ interface LazyMediaPreviewProps {
   type: MediaType;
   children: React.ReactNode;
   className?: string;
+  defaultActivated?: boolean;
 }
 
-export function LazyMediaPreview({ type, children, className }: LazyMediaPreviewProps) {
-  const [activated, setActivated] = useState(false);
+export function LazyMediaPreview({ type, children, className, defaultActivated = false }: LazyMediaPreviewProps) {
+  const [activated, setActivated] = useState(defaultActivated);
   const { icon: Icon, label, color } = config[type];
 
   if (activated) return <>{children}</>;
