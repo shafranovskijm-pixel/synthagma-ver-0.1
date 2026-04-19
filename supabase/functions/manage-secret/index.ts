@@ -62,6 +62,9 @@ serve(async (req) => {
       "ELEVENLABS_API_KEY",
       "DADATA_API_KEY",
       "YANDEX_TELEMOST_OAUTH_TOKEN",
+      "YANDEX_OAUTH_CLIENT_ID",
+      "YANDEX_OAUTH_CLIENT_SECRET",
+      "YANDEX_OAUTH_STATE_SECRET",
     ];
 
     if (!ALLOWED_SECRETS.includes(name)) {
