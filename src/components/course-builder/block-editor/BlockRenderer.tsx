@@ -145,7 +145,7 @@ function RenderBlock({ block, quizAnswer, quizSubmitted, onQuizAnswer, onQuizSub
       return block.imageSrc ? <img src={block.imageSrc} alt={block.imageAlt || ""} className="rounded-lg max-w-full h-auto not-prose" /> : null;
     case "video": {
       if (!block.videoUrl) return null;
-      return <div className="not-prose"><VideoPreviewInline content={block.videoUrl} /></div>;
+      return <div className="not-prose"><VideoPreviewInline content={block.videoUrl} eager /></div>;
     }
     case "slider":
       const slides = block.sliderSlides || [];

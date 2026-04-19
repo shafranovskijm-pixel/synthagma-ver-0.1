@@ -26,7 +26,7 @@ function parseContentToBlocks(content: string): ContentBlock[] {
 
 // Video preview now uses the shared VideoPreviewInline (supports MPEG-TS / HLS via hls.js)
 const VideoPreview = ({ content }: { content: string }) =>
-  content ? <VideoPreviewInline content={content} /> : null;
+  content ? <VideoPreviewInline content={content} eager /> : null;
 
 interface SliderSlide { id: string; content: string; title?: string; imageUrl?: string; }
 const parseSliderContent = (content: string | null) => {
