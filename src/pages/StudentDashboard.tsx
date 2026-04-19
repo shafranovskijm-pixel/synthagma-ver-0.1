@@ -180,7 +180,7 @@ function CatalogContent({
         />
       )}
       {contentTab === "webinars" && <StudentWebinarsList />}
-      {contentTab === "trainers" && <Student3DTrainers />}
+      {contentTab === "trainers" && <StudentTrainersAndAI />}
 
       <AlertDialog open={!!confirmCourse} onOpenChange={(open) => !open && setConfirmCourse(null)}>
         <AlertDialogContent>
@@ -411,7 +411,7 @@ export default function StudentDashboard() {
               )}
 
               {currentTab === ("webinars" as any) && <StudentWebinarsList />}
-              {currentTab === ("trainers" as any) && <Student3DTrainers />}
+              {currentTab === ("trainers" as any) && <StudentTrainersAndAI />}
 
               {currentTab === "chat" && (
                 <StudentChatsTab
