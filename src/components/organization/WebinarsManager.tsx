@@ -254,9 +254,24 @@ export function WebinarsManager({ organizationId }: Props) {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h3 className="text-lg font-semibold">Вебинары</h3>
-        <Button onClick={() => { setEditWebinar(null); setShowCreate(true); }} size="sm">
-          <Plus className="w-4 h-4 mr-2" />Создать вебинар
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            onClick={handleStartNow}
+            size="sm"
+            variant="default"
+            disabled={actionLoading === "__start_now__"}
+          >
+            {actionLoading === "__start_now__" ? (
+              <SigmaSpinner size="xs" className="mr-2" />
+            ) : (
+              <Zap className="w-4 h-4 mr-2" />
+            )}
+            Начать сейчас
+          </Button>
+          <Button onClick={() => { setEditWebinar(null); setShowCreate(true); }} size="sm" variant="outline">
+            <Plus className="w-4 h-4 mr-2" />Создать вебинар
+          </Button>
+        </div>
       </div>
 
       {webinars.length > 0 && (
