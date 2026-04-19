@@ -1,10 +1,10 @@
 import type { LucideIcon } from "lucide-react";
 import {
-  FileText, Video, Image, FileQuestion, Headphones, Presentation, ClipboardList, MessageSquare, BookCheck,
+  FileText, Video, Image, FileQuestion, Headphones, Presentation, ClipboardList, MessageSquare, BookCheck, Sparkles,
 } from "lucide-react";
 import type { ContentBlock } from "@/components/course-builder/BlockEditor";
 
-export type LessonType = "text" | "video" | "image" | "test" | "audio" | "lesson" | "slider" | "practice" | "feedback" | "homework";
+export type LessonType = "text" | "video" | "image" | "test" | "audio" | "lesson" | "slider" | "practice" | "feedback" | "homework" | "ai_avatar";
 
 export interface TestQuestionLocal {
   id: string;
@@ -65,6 +65,7 @@ export const lessonIcons: Record<LessonType, LucideIcon> = {
   practice: ClipboardList,
   feedback: MessageSquare,
   homework: BookCheck,
+  ai_avatar: Sparkles,
 };
 
 export const lessonColors: Record<LessonType, string> = {
@@ -78,4 +79,5 @@ export const lessonColors: Record<LessonType, string> = {
   practice: "text-rose-500 bg-rose-500/10",
   feedback: "text-blue-500 bg-blue-500/10",
   homework: "text-indigo-500 bg-indigo-500/10",
+  ai_avatar: "text-fuchsia-500 bg-gradient-to-br from-fuchsia-500/10 to-pink-500/10",
 };
