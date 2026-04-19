@@ -209,53 +209,77 @@ export type Database = {
       }
       ai_avatar_templates: {
         Row: {
+          allow_interruptions: boolean | null
           created_at: string
           created_by: string | null
           greeting: string
           id: string
           image_url: string | null
           is_active: boolean
+          language: string | null
+          llm_model: string | null
+          llm_provider: string | null
           model: string
           name: string
           organization_id: string
           session_minutes: number
+          stt_model: string | null
+          stt_provider: string | null
           style: string
           subject: string
           system_prompt: string
+          tts_provider: string | null
+          tts_voice: string | null
           updated_at: string
           voice_id: string
         }
         Insert: {
+          allow_interruptions?: boolean | null
           created_at?: string
           created_by?: string | null
           greeting?: string
           id?: string
           image_url?: string | null
           is_active?: boolean
+          language?: string | null
+          llm_model?: string | null
+          llm_provider?: string | null
           model?: string
           name?: string
           organization_id: string
           session_minutes?: number
+          stt_model?: string | null
+          stt_provider?: string | null
           style?: string
           subject?: string
           system_prompt?: string
+          tts_provider?: string | null
+          tts_voice?: string | null
           updated_at?: string
           voice_id?: string
         }
         Update: {
+          allow_interruptions?: boolean | null
           created_at?: string
           created_by?: string | null
           greeting?: string
           id?: string
           image_url?: string | null
           is_active?: boolean
+          language?: string | null
+          llm_model?: string | null
+          llm_provider?: string | null
           model?: string
           name?: string
           organization_id?: string
           session_minutes?: number
+          stt_model?: string | null
+          stt_provider?: string | null
           style?: string
           subject?: string
           system_prompt?: string
+          tts_provider?: string | null
+          tts_voice?: string | null
           updated_at?: string
           voice_id?: string
         }
@@ -2712,14 +2736,22 @@ export type Database = {
       }
       lessons: {
         Row: {
+          ai_avatar_allow_interruptions: boolean | null
           ai_avatar_greeting: string | null
           ai_avatar_image_url: string | null
+          ai_avatar_language: string | null
+          ai_avatar_llm_model: string | null
+          ai_avatar_llm_provider: string | null
           ai_avatar_model: string | null
           ai_avatar_name: string | null
           ai_avatar_session_minutes: number | null
+          ai_avatar_stt_model: string | null
+          ai_avatar_stt_provider: string | null
           ai_avatar_style: string | null
           ai_avatar_subject: string | null
           ai_avatar_system_prompt: string | null
+          ai_avatar_tts_provider: string | null
+          ai_avatar_tts_voice: string | null
           ai_avatar_voice_id: string | null
           content: string | null
           course_id: string
@@ -2735,14 +2767,22 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          ai_avatar_allow_interruptions?: boolean | null
           ai_avatar_greeting?: string | null
           ai_avatar_image_url?: string | null
+          ai_avatar_language?: string | null
+          ai_avatar_llm_model?: string | null
+          ai_avatar_llm_provider?: string | null
           ai_avatar_model?: string | null
           ai_avatar_name?: string | null
           ai_avatar_session_minutes?: number | null
+          ai_avatar_stt_model?: string | null
+          ai_avatar_stt_provider?: string | null
           ai_avatar_style?: string | null
           ai_avatar_subject?: string | null
           ai_avatar_system_prompt?: string | null
+          ai_avatar_tts_provider?: string | null
+          ai_avatar_tts_voice?: string | null
           ai_avatar_voice_id?: string | null
           content?: string | null
           course_id: string
@@ -2758,14 +2798,22 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          ai_avatar_allow_interruptions?: boolean | null
           ai_avatar_greeting?: string | null
           ai_avatar_image_url?: string | null
+          ai_avatar_language?: string | null
+          ai_avatar_llm_model?: string | null
+          ai_avatar_llm_provider?: string | null
           ai_avatar_model?: string | null
           ai_avatar_name?: string | null
           ai_avatar_session_minutes?: number | null
+          ai_avatar_stt_model?: string | null
+          ai_avatar_stt_provider?: string | null
           ai_avatar_style?: string | null
           ai_avatar_subject?: string | null
           ai_avatar_system_prompt?: string | null
+          ai_avatar_tts_provider?: string | null
+          ai_avatar_tts_voice?: string | null
           ai_avatar_voice_id?: string | null
           content?: string | null
           course_id?: string

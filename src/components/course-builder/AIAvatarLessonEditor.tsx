@@ -3,10 +3,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Sparkles, Upload, Volume2, RefreshCw, ImageIcon, Trash2, Mic } from "lucide-react";
+import { Sparkles, Upload, Volume2, ImageIcon, Trash2, Mic, Brain, Ear, Languages } from "lucide-react";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
-import { SALUTE_VOICES } from "@/components/student/TTSSettingsDialog";
 import { supabase } from "@/integrations/supabase/client";
 import { safeInvoke } from "@/utils/safeInvoke";
 import { useExternalStorageWithProgress } from "@/hooks/useExternalStorageWithProgress";
@@ -15,13 +15,23 @@ import { toast } from "sonner";
 export interface AIAvatarConfig {
   ai_avatar_name: string;
   ai_avatar_image_url: string;
-  ai_avatar_voice_id: string;
+  ai_avatar_voice_id: string; // legacy SaluteSpeech (preview)
   ai_avatar_system_prompt: string;
   ai_avatar_greeting: string;
   ai_avatar_subject: string;
   ai_avatar_style: string;
   ai_avatar_session_minutes: number;
-  ai_avatar_model: string;
+  ai_avatar_model: string; // legacy
+
+  // LiveKit Agents pipeline
+  ai_avatar_stt_provider: string;
+  ai_avatar_stt_model: string;
+  ai_avatar_llm_provider: string;
+  ai_avatar_llm_model: string;
+  ai_avatar_tts_provider: string;
+  ai_avatar_tts_voice: string;
+  ai_avatar_language: string;
+  ai_avatar_allow_interruptions: boolean;
 }
 
 interface Props {
@@ -39,10 +49,125 @@ const STYLES = [
   { value: "peer", label: "На равных" },
 ];
 
-const MODELS = [
-  { value: "google/gemini-3-flash-preview", label: "Gemini 3 Flash (быстро, рекомендуется)" },
-  { value: "google/gemini-2.5-pro", label: "Gemini 2.5 Pro (точно, медленнее)" },
-  { value: "openai/gpt-5-mini", label: "GPT-5 mini" },
+// === LiveKit Agents провайдеры ===
+
+const STT_OPTIONS: Record<string, { label: string; models: { value: string; label: string }[] }> = {
+  deepgram: {
+    label: "Deepgram (рекомендуется)",
+    models: [
+      { value: "nova-2", label: "Nova-2 (универсальная)" },
+      { value: "nova-2-general", label: "Nova-2 General" },
+      { value: "nova-3", label: "Nova-3 (новейшая)" },
+    ],
+  },
+  openai: {
+    label: "OpenAI Whisper",
+    models: [
+      { value: "whisper-1", label: "Whisper v1" },
+      { value: "gpt-4o-transcribe", label: "GPT-4o Transcribe" },
+      { value: "gpt-4o-mini-transcribe", label: "GPT-4o-mini Transcribe" },
+    ],
+  },
+  google: {
+    label: "Google Speech-to-Text",
+    models: [
+      { value: "latest_long", label: "Latest Long" },
+      { value: "latest_short", label: "Latest Short" },
+    ],
+  },
+};
+
+const LLM_OPTIONS: Record<string, { label: string; models: { value: string; label: string }[] }> = {
+  openai: {
+    label: "OpenAI",
+    models: [
+      { value: "gpt-4o-mini", label: "GPT-4o mini (быстро, дёшево — рекомендуется)" },
+      { value: "gpt-4o", label: "GPT-4o (точно)" },
+      { value: "gpt-4.1", label: "GPT-4.1" },
+      { value: "gpt-4.1-mini", label: "GPT-4.1 mini" },
+    ],
+  },
+  google: {
+    label: "Google Gemini",
+    models: [
+      { value: "gemini-2.0-flash-exp", label: "Gemini 2.0 Flash" },
+      { value: "gemini-2.5-flash", label: "Gemini 2.5 Flash" },
+      { value: "gemini-2.5-pro", label: "Gemini 2.5 Pro" },
+    ],
+  },
+  anthropic: {
+    label: "Anthropic Claude",
+    models: [
+      { value: "claude-3-5-sonnet-20241022", label: "Claude 3.5 Sonnet" },
+      { value: "claude-3-5-haiku-20241022", label: "Claude 3.5 Haiku (быстро)" },
+    ],
+  },
+  groq: {
+    label: "Groq (минимальная задержка)",
+    models: [
+      { value: "llama-3.3-70b-versatile", label: "Llama 3.3 70B" },
+      { value: "llama-3.1-8b-instant", label: "Llama 3.1 8B (мгновенно)" },
+    ],
+  },
+};
+
+const TTS_OPTIONS: Record<string, { label: string; voices: { value: string; label: string }[] }> = {
+  elevenlabs: {
+    label: "ElevenLabs (лучшее качество русского)",
+    voices: [
+      { value: "EXAVITQu4vr4xnSDxMaL", label: "Sarah (женский, тёплый)" },
+      { value: "9BWtsMINqrJLrRacOk9x", label: "Aria (женский, чистый)" },
+      { value: "FGY2WhTYpPnrIDTdsKH5", label: "Laura (женский, мягкий)" },
+      { value: "XB0fDUnXU5powFXDhCwa", label: "Charlotte (женский, выразительный)" },
+      { value: "JBFqnCBsd6RMkjVDRZzb", label: "George (мужской, спокойный)" },
+      { value: "iP95p4xoKVk53GoZ742B", label: "Chris (мужской, дружелюбный)" },
+      { value: "onwK4e9ZLuTAKqWW03F9", label: "Daniel (мужской, авторитетный)" },
+      { value: "pqHfZKP75CvOlQylNhV4", label: "Bill (мужской, зрелый)" },
+    ],
+  },
+  openai: {
+    label: "OpenAI TTS",
+    voices: [
+      { value: "alloy", label: "Alloy (нейтральный)" },
+      { value: "echo", label: "Echo (мужской)" },
+      { value: "fable", label: "Fable (британский)" },
+      { value: "nova", label: "Nova (женский, энергичный)" },
+      { value: "onyx", label: "Onyx (мужской, глубокий)" },
+      { value: "shimmer", label: "Shimmer (женский, мягкий)" },
+    ],
+  },
+  cartesia: {
+    label: "Cartesia (минимальная задержка)",
+    voices: [
+      { value: "a0e99841-438c-4a64-b679-ae501e7d6091", label: "Barbershop Man" },
+      { value: "79a125e8-cd45-4c13-8a67-188112f4dd22", label: "British Lady" },
+    ],
+  },
+  salutespeech: {
+    label: "SaluteSpeech (Сбер, русский)",
+    voices: [
+      { value: "Nec_24000", label: "Наталья" },
+      { value: "Bys_24000", label: "Борис" },
+      { value: "May_24000", label: "Марфа" },
+      { value: "Tur_24000", label: "Тарас" },
+      { value: "Ost_24000", label: "Останкино" },
+      { value: "Pon_24000", label: "Сергей" },
+    ],
+  },
+};
+
+const LANGUAGES = [
+  { value: "ru", label: "Русский" },
+  { value: "en", label: "English" },
+  { value: "es", label: "Español" },
+  { value: "de", label: "Deutsch" },
+  { value: "fr", label: "Français" },
+  { value: "it", label: "Italiano" },
+  { value: "pt", label: "Português" },
+  { value: "kk", label: "Қазақша" },
+  { value: "uz", label: "O'zbekcha" },
+  { value: "zh", label: "中文" },
+  { value: "ja", label: "日本語" },
 ];
 
 export function AIAvatarLessonEditor({ value, onChange, courseId, courseTitle, lessonTitle }: Props) {
@@ -54,6 +179,20 @@ export function AIAvatarLessonEditor({ value, onChange, courseId, courseTitle, l
   const [uploadingImg, setUploadingImg] = useState(false);
 
   const upd = (patch: Partial<AIAvatarConfig>) => onChange({ ...value, ...patch });
+
+  // При смене провайдера автоматически выбираем первую доступную модель/голос
+  const setSttProvider = (provider: string) => {
+    const first = STT_OPTIONS[provider]?.models[0]?.value || "";
+    upd({ ai_avatar_stt_provider: provider, ai_avatar_stt_model: first });
+  };
+  const setLlmProvider = (provider: string) => {
+    const first = LLM_OPTIONS[provider]?.models[0]?.value || "";
+    upd({ ai_avatar_llm_provider: provider, ai_avatar_llm_model: first });
+  };
+  const setTtsProvider = (provider: string) => {
+    const first = TTS_OPTIONS[provider]?.voices[0]?.value || "";
+    upd({ ai_avatar_tts_provider: provider, ai_avatar_tts_voice: first });
+  };
 
   const handleGeneratePrompt = async () => {
     if (!value.ai_avatar_subject?.trim() && !lessonTitle?.trim()) {
@@ -126,11 +265,18 @@ export function AIAvatarLessonEditor({ value, onChange, courseId, courseTitle, l
   };
 
   const handlePreviewVoice = async () => {
+    // Превью через SaluteSpeech (для других провайдеров — после деплоя агента)
+    if (value.ai_avatar_tts_provider !== "salutespeech") {
+      toast.info("Превью голоса", {
+        description: "Прослушать можно только голоса SaluteSpeech. Остальные провайдеры заработают после деплоя LiveKit-агента.",
+      });
+      return;
+    }
     setPreviewing(true);
     try {
       const text = value.ai_avatar_greeting || `Здравствуйте, я ваш преподаватель ${value.ai_avatar_name || ""}`;
       const { data, error } = await supabase.functions.invoke("salutespeech-tts", {
-        body: { text, voice: value.ai_avatar_voice_id || "Nec_24000" },
+        body: { text, voice: value.ai_avatar_tts_voice || "Nec_24000" },
       });
       if (error) throw error;
       if (data?.audio) {
@@ -143,6 +289,10 @@ export function AIAvatarLessonEditor({ value, onChange, courseId, courseTitle, l
       setPreviewing(false);
     }
   };
+
+  const sttModels = STT_OPTIONS[value.ai_avatar_stt_provider]?.models || [];
+  const llmModels = LLM_OPTIONS[value.ai_avatar_llm_provider]?.models || [];
+  const ttsVoices = TTS_OPTIONS[value.ai_avatar_tts_provider]?.voices || [];
 
   return (
     <div className="space-y-6">
@@ -203,19 +353,13 @@ export function AIAvatarLessonEditor({ value, onChange, courseId, courseTitle, l
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label className="text-xs flex items-center gap-1"><Mic className="w-3 h-3" /> Голос</Label>
-                <div className="flex gap-1.5">
-                  <Select value={value.ai_avatar_voice_id} onValueChange={(v) => upd({ ai_avatar_voice_id: v })}>
-                    <SelectTrigger className="h-10 flex-1"><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      {SALUTE_VOICES.map((v) => <SelectItem key={v.id} value={v.id}>{v.name}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
-                  <Button type="button" size="icon" variant="outline" className="h-10 w-10 shrink-0"
-                    onClick={handlePreviewVoice} disabled={previewing} title="Прослушать">
-                    {previewing ? <SigmaSpinner size="sm" /> : <Volume2 className="w-4 h-4" />}
-                  </Button>
-                </div>
+                <Label className="text-xs flex items-center gap-1"><Languages className="w-3 h-3" /> Язык диалога</Label>
+                <Select value={value.ai_avatar_language} onValueChange={(v) => upd({ ai_avatar_language: v })}>
+                  <SelectTrigger className="h-10"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {LANGUAGES.map((l) => <SelectItem key={l.value} value={l.value}>{l.label}</SelectItem>)}
+                  </SelectContent>
+                </Select>
               </div>
             </div>
           </div>
@@ -260,22 +404,114 @@ export function AIAvatarLessonEditor({ value, onChange, courseId, courseTitle, l
             <p className="text-[10px] text-muted-foreground">В бета-режиме рекомендуется 5 минут</p>
           </div>
           <div className="space-y-2">
-            <Label className="text-xs">Модель ИИ</Label>
-            <Select value={value.ai_avatar_model} onValueChange={(v) => upd({ ai_avatar_model: v })}>
-              <SelectTrigger className="h-10"><SelectValue /></SelectTrigger>
+            <Label className="text-xs">Поведение при перебивании</Label>
+            <div className="flex items-center justify-between h-10 px-3 rounded-md border border-input bg-background">
+              <span className="text-sm">Можно перебивать аватара</span>
+              <Switch checked={value.ai_avatar_allow_interruptions}
+                onCheckedChange={(c) => upd({ ai_avatar_allow_interruptions: c })} />
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Section 3 — Голосовая связка LiveKit Agents */}
+      <section className="space-y-4 p-5 rounded-xl bg-gradient-to-br from-cyan-500/5 to-teal-500/5 border border-cyan-500/20">
+        <div className="flex items-center gap-2">
+          <Mic className="w-5 h-5 text-cyan-500" />
+          <h3 className="font-semibold">Голосовая связка LiveKit Agents</h3>
+        </div>
+        <p className="text-xs text-muted-foreground -mt-2">
+          Цепочка <strong>STT → LLM → TTS</strong>: распознавание речи ученика, мозг преподавателя и синтез голоса.
+        </p>
+
+        {/* STT */}
+        <div className="space-y-2 p-3 rounded-lg bg-background/60 border border-border">
+          <div className="flex items-center gap-2">
+            <Ear className="w-4 h-4 text-cyan-600" />
+            <Label className="text-xs font-semibold uppercase tracking-wide">STT — распознавание речи</Label>
+          </div>
+          <div className="grid sm:grid-cols-2 gap-2">
+            <Select value={value.ai_avatar_stt_provider} onValueChange={setSttProvider}>
+              <SelectTrigger className="h-10"><SelectValue placeholder="Провайдер" /></SelectTrigger>
               <SelectContent>
-                {MODELS.map((m) => <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>)}
+                {Object.entries(STT_OPTIONS).map(([k, v]) => (
+                  <SelectItem key={k} value={k}>{v.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select value={value.ai_avatar_stt_model} onValueChange={(v) => upd({ ai_avatar_stt_model: v })}>
+              <SelectTrigger className="h-10"><SelectValue placeholder="Модель" /></SelectTrigger>
+              <SelectContent>
+                {sttModels.map((m) => <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>)}
               </SelectContent>
             </Select>
           </div>
+        </div>
+
+        {/* LLM */}
+        <div className="space-y-2 p-3 rounded-lg bg-background/60 border border-border">
+          <div className="flex items-center gap-2">
+            <Brain className="w-4 h-4 text-fuchsia-600" />
+            <Label className="text-xs font-semibold uppercase tracking-wide">LLM — мозг преподавателя</Label>
+          </div>
+          <div className="grid sm:grid-cols-2 gap-2">
+            <Select value={value.ai_avatar_llm_provider} onValueChange={setLlmProvider}>
+              <SelectTrigger className="h-10"><SelectValue placeholder="Провайдер" /></SelectTrigger>
+              <SelectContent>
+                {Object.entries(LLM_OPTIONS).map(([k, v]) => (
+                  <SelectItem key={k} value={k}>{v.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select value={value.ai_avatar_llm_model} onValueChange={(v) => upd({ ai_avatar_llm_model: v })}>
+              <SelectTrigger className="h-10"><SelectValue placeholder="Модель" /></SelectTrigger>
+              <SelectContent>
+                {llmModels.map((m) => <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+
+        {/* TTS */}
+        <div className="space-y-2 p-3 rounded-lg bg-background/60 border border-border">
+          <div className="flex items-center gap-2">
+            <Volume2 className="w-4 h-4 text-teal-600" />
+            <Label className="text-xs font-semibold uppercase tracking-wide">TTS — голос аватара</Label>
+          </div>
+          <div className="grid sm:grid-cols-[1fr_1fr_auto] gap-2">
+            <Select value={value.ai_avatar_tts_provider} onValueChange={setTtsProvider}>
+              <SelectTrigger className="h-10"><SelectValue placeholder="Провайдер" /></SelectTrigger>
+              <SelectContent>
+                {Object.entries(TTS_OPTIONS).map(([k, v]) => (
+                  <SelectItem key={k} value={k}>{v.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select value={value.ai_avatar_tts_voice} onValueChange={(v) => upd({ ai_avatar_tts_voice: v })}>
+              <SelectTrigger className="h-10"><SelectValue placeholder="Голос" /></SelectTrigger>
+              <SelectContent>
+                {ttsVoices.map((v) => <SelectItem key={v.value} value={v.value}>{v.label}</SelectItem>)}
+              </SelectContent>
+            </Select>
+            <Button type="button" size="icon" variant="outline" className="h-10 w-10 shrink-0"
+              onClick={handlePreviewVoice} disabled={previewing} title="Прослушать">
+              {previewing ? <SigmaSpinner size="sm" /> : <Volume2 className="w-4 h-4" />}
+            </Button>
+          </div>
+          {value.ai_avatar_tts_provider === "elevenlabs" && (
+            <p className="text-[10px] text-muted-foreground">
+              ID голоса можно скопировать из библиотеки <a href="https://elevenlabs.io/voice-library" target="_blank" rel="noopener noreferrer" className="text-primary underline">ElevenLabs Voice Library</a> и вставить вручную, выбрав «Custom».
+            </p>
+          )}
         </div>
       </section>
 
       <div className="p-3 rounded-lg bg-amber-500/10 border border-amber-500/30 text-xs text-amber-700 dark:text-amber-400 flex gap-2">
         <Sparkles className="w-4 h-4 shrink-0 mt-0.5" />
         <div>
-          <strong>Бета.</strong> Голосовой ИИ-преподаватель находится в разработке. Настройки сохраняются;
-          уроки запустятся, как только мы активируем голосовой движок (LiveKit Agent). Обычно это занимает несколько дней.
+          <strong>Бета.</strong> Голосовой ИИ-преподаватель работает через внешний LiveKit-агент.
+          После сохранения настроек запустите воркер из <code className="bg-amber-500/20 px-1 rounded">agents/tutor_agent.py</code> на Railway/Fly.io —
+          инструкция в <code className="bg-amber-500/20 px-1 rounded">agents/README.md</code>. Без воркера комната создаётся, но аватар молчит.
         </div>
       </div>
     </div>
@@ -292,4 +528,14 @@ export const defaultAIAvatarConfig: AIAvatarConfig = {
   ai_avatar_style: "friendly",
   ai_avatar_session_minutes: 5,
   ai_avatar_model: "google/gemini-3-flash-preview",
+
+  // LiveKit defaults
+  ai_avatar_stt_provider: "deepgram",
+  ai_avatar_stt_model: "nova-2",
+  ai_avatar_llm_provider: "openai",
+  ai_avatar_llm_model: "gpt-4o-mini",
+  ai_avatar_tts_provider: "elevenlabs",
+  ai_avatar_tts_voice: "EXAVITQu4vr4xnSDxMaL",
+  ai_avatar_language: "ru",
+  ai_avatar_allow_interruptions: true,
 };

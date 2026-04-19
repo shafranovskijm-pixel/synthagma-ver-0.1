@@ -27,6 +27,15 @@ interface Template {
   model: string;
   is_active: boolean;
   created_at: string;
+  // LiveKit Agents pipeline
+  stt_provider?: string | null;
+  stt_model?: string | null;
+  llm_provider?: string | null;
+  llm_model?: string | null;
+  tts_provider?: string | null;
+  tts_voice?: string | null;
+  language?: string | null;
+  allow_interruptions?: boolean | null;
 }
 
 interface LessonRow {
@@ -107,6 +116,14 @@ export function AIAvatarManager({ organizationId }: Props) {
       ai_avatar_style: tpl.style,
       ai_avatar_session_minutes: tpl.session_minutes,
       ai_avatar_model: tpl.model,
+      ai_avatar_stt_provider: tpl.stt_provider || "deepgram",
+      ai_avatar_stt_model: tpl.stt_model || "nova-2",
+      ai_avatar_llm_provider: tpl.llm_provider || "openai",
+      ai_avatar_llm_model: tpl.llm_model || "gpt-4o-mini",
+      ai_avatar_tts_provider: tpl.tts_provider || "elevenlabs",
+      ai_avatar_tts_voice: tpl.tts_voice || "EXAVITQu4vr4xnSDxMaL",
+      ai_avatar_language: tpl.language || "ru",
+      ai_avatar_allow_interruptions: tpl.allow_interruptions ?? true,
     });
     setEditorOpen(true);
   };
@@ -125,6 +142,14 @@ export function AIAvatarManager({ organizationId }: Props) {
         style: config.ai_avatar_style,
         session_minutes: config.ai_avatar_session_minutes,
         model: config.ai_avatar_model,
+        stt_provider: config.ai_avatar_stt_provider,
+        stt_model: config.ai_avatar_stt_model,
+        llm_provider: config.ai_avatar_llm_provider,
+        llm_model: config.ai_avatar_llm_model,
+        tts_provider: config.ai_avatar_tts_provider,
+        tts_voice: config.ai_avatar_tts_voice,
+        language: config.ai_avatar_language,
+        allow_interruptions: config.ai_avatar_allow_interruptions,
       };
       if (editingId) {
         const { error } = await supabase.from("ai_avatar_templates" as any).update(payload).eq("id", editingId);
@@ -156,6 +181,14 @@ export function AIAvatarManager({ organizationId }: Props) {
       style: tpl.style,
       session_minutes: tpl.session_minutes,
       model: tpl.model,
+      stt_provider: tpl.stt_provider,
+      stt_model: tpl.stt_model,
+      llm_provider: tpl.llm_provider,
+      llm_model: tpl.llm_model,
+      tts_provider: tpl.tts_provider,
+      tts_voice: tpl.tts_voice,
+      language: tpl.language,
+      allow_interruptions: tpl.allow_interruptions,
     });
     if (error) { toast.error("Ошибка"); return; }
     toast.success("Дублировано");
