@@ -25,6 +25,7 @@ import {
   type LessonType, type TestQuestionLocal, type Lesson, type GeneratedQuestion,
   lessonIcons, lessonColors } from "@/components/course-builder/LessonTypeConfig";
 import { VideoPreviewInline } from "@/components/course-builder/VideoPreviewInline";
+import { HlsVideoPlayer } from "@/components/video/HlsVideoPlayer";
 import { LazyMediaPreview } from "@/components/course-builder/LazyMediaPreview";
 import { SliderLessonEditor } from "@/components/course-builder/SliderLessonEditor";
 import { LessonAttachments } from "@/components/course-builder/LessonAttachments";

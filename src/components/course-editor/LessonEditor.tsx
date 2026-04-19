@@ -12,6 +12,7 @@ import { TestImportDialog } from "@/components/course-builder/TestImportDialog";
 import { MediaLibraryDialog } from "@/components/course-builder/MediaLibraryDialog";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 import { VideoPreviewInline } from "@/components/course-builder/VideoPreviewInline";
+import { HlsVideoPlayer } from "@/components/video/HlsVideoPlayer";
 import { LazyMediaPreview } from "@/components/course-builder/LazyMediaPreview";
 import { UploadProgressBlock } from "@/components/course-builder/UploadProgressBlock";
 import { useLessonEditor, type TestQuestion } from "@/hooks/useLessonEditor";
