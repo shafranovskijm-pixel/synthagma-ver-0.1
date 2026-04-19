@@ -24,57 +24,9 @@ function parseContentToBlocks(content: string): ContentBlock[] {
   catch { return jsonToBlocks(content); }
 }
 
-const canEmbedInIframe = (url: string): boolean => {
-  const noEmbed = [/ktalk\.ru/i, /zoom\.us/i, /teams\.microsoft/i, /meet\.google/i];
-  return !noEmbed.some(p => p.test(url));
-};
-
-const getVideoEmbedUrl = (content: string): { url: string; canEmbed: boolean } | null => {
-  if (!content) return null;
-  const iframeSrc = content.match(/<iframe[^>]*src=["']([^"']+)["']/i);
-  if (iframeSrc) return { url: iframeSrc[1], canEmbed: true };
-  const yt = content.match(/(?:youtube\.com\/(?:watch\?v=|embed\/)|youtu\.be\/)([a-zA-Z0-9_-]+)/);
-  if (yt) return { url: `https://www.youtube.com/embed/${yt[1]}`, canEmbed: true };
-  const vim = content.match(/vimeo\.com\/(?:video\/)?(\d+)/);
-  if (vim) return { url: `https://player.vimeo.com/video/${vim[1]}`, canEmbed: true };
-  const rt = content.match(/rutube\.ru\/video\/([a-zA-Z0-9]+)/);
-  if (rt) return { url: `https://rutube.ru/play/embed/${rt[1]}`, canEmbed: true };
-  const vk = content.match(/(?:vk\.com|vkvideo\.ru)\/video(-?\d+)_(\d+)/);
-  if (vk) return { url: `https://vk.com/video_ext.php?oid=${vk[1]}&id=${vk[2]}&hd=2`, canEmbed: true };
-  const kt = content.match(/([a-zA-Z0-9]+)\.ktalk\.ru\/recordings\/([a-zA-Z0-9_-]+)/);
-  if (kt) return { url: content, canEmbed: false };
-  const ok = content.match(/ok\.ru\/video\/(\d+)/);
-  if (ok) return { url: `https://ok.ru/videoembed/${ok[1]}`, canEmbed: true };
-  const dz = content.match(/dzen\.ru\/video\/watch\/([a-zA-Z0-9]+)/);
-  if (dz) return { url: `https://dzen.ru/embed/${dz[1]}`, canEmbed: true };
-  if (content.match(/^https?:\/\/.+/i)) return { url: content, canEmbed: canEmbedInIframe(content) };
-  return null;
-};
-
-const VideoPreview = ({ content }: { content: string }) => {
-  if (!content) return null;
-  if (content.trim().startsWith('<iframe')) {
-    const sanitized = DOMPurify.sanitize(content, { ADD_TAGS: ['iframe'], ADD_ATTR: ['allow', 'allowfullscreen', 'frameborder', 'src', 'width', 'height', 'title', 'referrerpolicy'] });
-    return <div className="aspect-video w-full rounded-2xl overflow-hidden bg-black" dangerouslySetInnerHTML={{ __html: sanitized }} />;
-  }
-  const result = getVideoEmbedUrl(content);
-  if (result) {
-    if (!result.canEmbed) return (
-      <div className="aspect-video w-full rounded-2xl overflow-hidden bg-gradient-to-br from-primary/10 to-primary/5 border border-primary/20 flex flex-col items-center justify-center gap-4">
-        <Video className="w-16 h-16 text-primary/60" />
-        <div className="text-center px-4">
-          <p className="text-sm font-medium text-foreground mb-1">Видеозапись</p>
-          <p className="text-xs text-muted-foreground mb-3">Этот сервис не поддерживает встраивание</p>
-          <a href={result.url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary/90 transition-colors">
-            <Play className="w-4 h-4" />Открыть видео
-          </a>
-        </div>
-      </div>
-    );
-    return <div className="aspect-video w-full rounded-2xl overflow-hidden bg-black"><iframe src={result.url} className="w-full h-full" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen /></div>;
-  }
-  return <div className="aspect-video w-full rounded-2xl overflow-hidden bg-muted flex items-center justify-center"><p className="text-sm text-muted-foreground">Неподдерживаемый формат видео</p></div>;
-};
+// Video preview now uses the shared VideoPreviewInline (supports MPEG-TS / HLS via hls.js)
+const VideoPreview = ({ content }: { content: string }) =>
+  content ? <VideoPreviewInline content={content} /> : null;
 
 interface SliderSlide { id: string; content: string; title?: string; imageUrl?: string; }
 const parseSliderContent = (content: string | null) => {
