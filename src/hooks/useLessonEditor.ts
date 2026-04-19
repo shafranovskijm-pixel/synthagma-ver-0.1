@@ -3,6 +3,7 @@ import { ContentBlock } from "@/components/course-builder/BlockEditor";
 import { safeInvoke } from "@/utils/safeInvoke";
 import { useExternalStorageWithProgress } from "@/hooks/useExternalStorageWithProgress";
 import { toast } from "sonner";
+import { defaultAIAvatarConfig, type AIAvatarConfig } from "@/components/course-builder/AIAvatarLessonEditor";
 
 interface Lesson {
   id: string;
@@ -12,6 +13,7 @@ interface Lesson {
   order_index: number;
   course_id?: string;
   test_questions_count?: number;
+  [key: string]: any;
 }
 
 export interface TestQuestion {
@@ -35,6 +37,7 @@ interface UseLessonEditorProps {
     content: string;
     questions?: TestQuestion[];
     test_questions_count?: number;
+    aiAvatar?: AIAvatarConfig;
   }) => void;
 }
 
@@ -48,6 +51,7 @@ export function useLessonEditor({
   const [questions, setQuestions] = useState<TestQuestion[]>([]);
   const [isGenerating, setIsGenerating] = useState(false);
   const [testQuestionsCount, setTestQuestionsCount] = useState(5);
+  const [aiAvatar, setAiAvatar] = useState<AIAvatarConfig>(defaultAIAvatarConfig);
 
   const videoInputRef = useRef<HTMLInputElement>(null);
   const [showMediaLibrary, setShowMediaLibrary] = useState(false);
@@ -84,8 +88,20 @@ export function useLessonEditor({
       parseContent(lesson.content, lesson.type);
       setQuestions(existingQuestions);
       setTestQuestionsCount(lesson.test_questions_count || 5);
+      setAiAvatar({
+        ai_avatar_name: lesson.ai_avatar_name || "",
+        ai_avatar_image_url: lesson.ai_avatar_image_url || "",
+        ai_avatar_voice_id: lesson.ai_avatar_voice_id || "Nec_24000",
+        ai_avatar_system_prompt: lesson.ai_avatar_system_prompt || "",
+        ai_avatar_greeting: lesson.ai_avatar_greeting || "",
+        ai_avatar_subject: lesson.ai_avatar_subject || "",
+        ai_avatar_style: lesson.ai_avatar_style || "friendly",
+        ai_avatar_session_minutes: lesson.ai_avatar_session_minutes || 5,
+        ai_avatar_model: lesson.ai_avatar_model || "google/gemini-3-flash-preview",
+      });
     } else {
       setTitle(""); setType("text"); setBlocks([]); setVideoUrl(""); setQuestions([]); setTestQuestionsCount(5);
+      setAiAvatar(defaultAIAvatarConfig);
     }
   }, [lesson, existingQuestions, isOpen, parseContent]);
 
@@ -141,7 +157,12 @@ export function useLessonEditor({
     let content = "";
     if (type === "text") content = JSON.stringify(blocks);
     else if (type === "video") content = videoUrl;
-    onSave({ title, type, content, questions: type === "test" ? questions : undefined, test_questions_count: type === "test" ? testQuestionsCount : undefined });
+    onSave({
+      title, type, content,
+      questions: type === "test" ? questions : undefined,
+      test_questions_count: type === "test" ? testQuestionsCount : undefined,
+      aiAvatar: type === "ai_avatar" ? aiAvatar : undefined,
+    });
   };
 
   const handleVideoUpload = async (file: File) => {
@@ -162,6 +183,7 @@ export function useLessonEditor({
     blocks, setBlocks, videoUrl, setVideoUrl,
     questions, setQuestions,
     isGenerating, testQuestionsCount, setTestQuestionsCount,
+    aiAvatar, setAiAvatar,
     videoInputRef, showMediaLibrary, setShowMediaLibrary,
     videoUploadProgress, setVideoUploadProgress,
     isUploading, abortUpload,
