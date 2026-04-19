@@ -121,7 +121,7 @@ export function CreateWebinarDialog({ open, onOpenChange, organizationId, userId
           const { data, error } = await supabase.functions.invoke("telemost-create-conference", {
             body: { title: title.trim(), description: description.trim(), withLiveStream: true } });
           if (error) throw new Error(error.message);
-          if (data?.error) throw new Error(data.error);
+          if (!data?.ok) throw new Error(data?.error || "Не удалось создать конференцию");
           const join_url = data?.join_url || null;
           const watch_url = data?.watch_url || null;
           if (!join_url) throw new Error("Яндекс Телемост не вернул ссылку на конференцию");
