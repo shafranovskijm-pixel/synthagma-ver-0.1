@@ -76,7 +76,9 @@ Deno.serve(async (req) => {
     if (lessonId) {
       const { data: lessonRow } = await admin
         .from("lessons")
-        .select("id,title,ai_avatar_name,ai_avatar_image_url,ai_avatar_voice_id,ai_avatar_system_prompt,ai_avatar_greeting,ai_avatar_subject,ai_avatar_style,ai_avatar_session_minutes,ai_avatar_model")
+        .select(
+          "id,title,ai_avatar_name,ai_avatar_image_url,ai_avatar_voice_id,ai_avatar_system_prompt,ai_avatar_greeting,ai_avatar_subject,ai_avatar_style,ai_avatar_session_minutes,ai_avatar_model,ai_avatar_stt_provider,ai_avatar_stt_model,ai_avatar_llm_provider,ai_avatar_llm_model,ai_avatar_tts_provider,ai_avatar_tts_voice,ai_avatar_language,ai_avatar_allow_interruptions",
+        )
         .eq("id", lessonId)
         .maybeSingle();
       if (lessonRow) {
@@ -145,11 +147,28 @@ Deno.serve(async (req) => {
           lessonId,
           tutor: lessonConfig ? {
             name: lessonConfig.ai_avatar_name,
-            voice: lessonConfig.ai_avatar_voice_id,
-            systemPrompt: lessonConfig.ai_avatar_system_prompt,
-            greeting: lessonConfig.ai_avatar_greeting,
+            avatarUrl: lessonConfig.ai_avatar_image_url,
             subject: lessonConfig.ai_avatar_subject,
             style: lessonConfig.ai_avatar_style,
+            systemPrompt: lessonConfig.ai_avatar_system_prompt,
+            greeting: lessonConfig.ai_avatar_greeting,
+            language: lessonConfig.ai_avatar_language || "ru",
+            allowInterruptions: lessonConfig.ai_avatar_allow_interruptions ?? true,
+            stt: {
+              provider: lessonConfig.ai_avatar_stt_provider || "deepgram",
+              model: lessonConfig.ai_avatar_stt_model || "nova-2",
+            },
+            llm: {
+              provider: lessonConfig.ai_avatar_llm_provider || "openai",
+              model: lessonConfig.ai_avatar_llm_model || "gpt-4o-mini",
+            },
+            tts: {
+              provider: lessonConfig.ai_avatar_tts_provider || "elevenlabs",
+              voice: lessonConfig.ai_avatar_tts_voice || "EXAVITQu4vr4xnSDxMaL",
+              // Legacy SaluteSpeech voice for fallback
+              legacyVoice: lessonConfig.ai_avatar_voice_id,
+            },
+            // Legacy field
             model: lessonConfig.ai_avatar_model,
           } : null,
         }),
