@@ -30,6 +30,7 @@ import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 import { CourseSidebarContent } from "@/components/course-learning/CourseSidebar";
 import { LessonAttachments } from "@/components/course-learning/LessonAttachments";
 import { AiChatPanel } from "@/components/course-learning/AiChatPanel";
+import { LessonAIAvatar } from "@/components/course-learning/LessonAIAvatar";
 
 const CourseLearning = () => {
   const { courseId } = useParams();
@@ -256,7 +257,10 @@ const CourseLearning = () => {
               </div>
             )}
 
-            {/* Test lesson */}
+            {/* AI Avatar lesson */}
+            {currentLesson?.type === 'ai_avatar' && (
+              <LessonAIAvatar lesson={currentLesson as any} onComplete={() => markLessonComplete(false)} isMobile={!!isMobile} />
+            )}
             {currentLesson?.type === 'test' && (
               <div className="space-y-4 md:space-y-6 animate-fade-in">
                 <div className="flex items-center gap-3 pb-3 md:pb-4 border-b border-border">
