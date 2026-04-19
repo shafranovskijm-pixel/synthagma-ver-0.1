@@ -23,7 +23,7 @@ import { OrgBanner } from "@/components/student/OrgBanner";
 import { CourseCatalog } from "@/components/student/CourseCatalog";
 import { cn } from "@/lib/utils";
 import { StudentWebinarsList } from "@/components/student/StudentWebinarsList";
-import { Student3DTrainers } from "@/components/student/Student3DTrainers";
+import { StudentTrainersAndAI } from "@/components/student/StudentTrainersAndAI";
 import { StudentProfileContent } from "@/components/student/StudentProfileContent";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 import { supabase } from "@/integrations/supabase/client";
