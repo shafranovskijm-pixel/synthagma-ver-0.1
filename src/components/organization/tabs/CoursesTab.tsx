@@ -3,7 +3,8 @@ import { useOrgDashboard } from "@/contexts/OrgDashboardContext";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { BookOpen, Trash2, GripVertical, Video, Box } from "lucide-react";
+import { BookOpen, Trash2, GripVertical, Video, Box, Sparkles } from "lucide-react";
+import { AIAvatarManager } from "@/components/organization/AIAvatarManager";
 import { WebinarsContent, ThreeDContent } from "./courses/ContentTabPlaceholders";
 import { CoursesToolbar } from "./courses/CoursesToolbar";
 import { useCourses } from "@/hooks/useCourses";
@@ -297,7 +298,7 @@ export const CoursesTab = React.memo(function CoursesTab({ organizationId, onCou
     return groups;
   }, [filteredCourses, categories]);
 
-  const [contentTab, setContentTab] = useState<"courses" | "webinars" | "3d">("courses");
+  const [contentTab, setContentTab] = useState<"courses" | "webinars" | "3d" | "ai-tutor">("courses");
 
   return (
     <div className="space-y-4 lg:space-y-6">
@@ -309,6 +310,7 @@ export const CoursesTab = React.memo(function CoursesTab({ organizationId, onCou
           { key: "courses" as const, icon: BookOpen, label: "Курсы" },
           { key: "webinars" as const, icon: Video, label: "Вебинары" },
           { key: "3d" as const, icon: Box, label: "3D-тренажёры" },
+          { key: "ai-tutor" as const, icon: Sparkles, label: "ИИ-преподаватель" },
         ].map(tab => (
           <button key={tab.key} onClick={() => setContentTab(tab.key)} className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${contentTab === tab.key ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}>
             <tab.icon className="w-4 h-4 inline-block mr-2" />{tab.label}
@@ -327,6 +329,9 @@ export const CoursesTab = React.memo(function CoursesTab({ organizationId, onCou
 
       {/* 3D */}
       {contentTab === "3d" && <ThreeDContent />}
+
+      {/* AI Tutor */}
+      {contentTab === "ai-tutor" && <AIAvatarManager organizationId={organizationId} />}
 
       {/* Courses content */}
       {contentTab === "courses" && <>
