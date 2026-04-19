@@ -39,7 +39,7 @@ export function CreateWebinarDialog({ open, onOpenChange, organizationId, userId
   const [description, setDescription] = useState("");
   const [scheduledAt, setScheduledAt] = useState("");
   const [durationMinutes, setDurationMinutes] = useState("60");
-  const [sourceType, setSourceType] = useState<"kinescope" | "external">("kinescope");
+  const [sourceType, setSourceType] = useState<"telemost" | "external">("telemost");
   const [externalUrl, setExternalUrl] = useState("");
   const [coverUrl, setCoverUrl] = useState("");
   const [courseId, setCourseId] = useState<string>("none");
@@ -64,7 +64,7 @@ export function CreateWebinarDialog({ open, onOpenChange, organizationId, userId
       setDescription(editWebinar.description || "");
       setScheduledAt(editWebinar.scheduled_at ? editWebinar.scheduled_at.slice(0, 16) : "");
       setDurationMinutes(String(editWebinar.duration_minutes || 60));
-      setSourceType(editWebinar.source_type as any || "kinescope");
+      setSourceType(editWebinar.source_type as any || "telemost");
       setExternalUrl(editWebinar.external_url || "");
       setCoverUrl(editWebinar.cover_url || "");
       setCourseId(editWebinar.course_id || "none");
@@ -78,7 +78,7 @@ export function CreateWebinarDialog({ open, onOpenChange, organizationId, userId
     setDescription("");
     setScheduledAt("");
     setDurationMinutes("60");
-    setSourceType("kinescope");
+    setSourceType("telemost");
     setExternalUrl("");
     setCoverUrl("");
     setCourseId("none");
