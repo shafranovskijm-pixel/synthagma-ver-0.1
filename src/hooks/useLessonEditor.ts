@@ -98,6 +98,14 @@ export function useLessonEditor({
         ai_avatar_style: lesson.ai_avatar_style || "friendly",
         ai_avatar_session_minutes: lesson.ai_avatar_session_minutes || 5,
         ai_avatar_model: lesson.ai_avatar_model || "google/gemini-3-flash-preview",
+        ai_avatar_stt_provider: lesson.ai_avatar_stt_provider || "deepgram",
+        ai_avatar_stt_model: lesson.ai_avatar_stt_model || "nova-2",
+        ai_avatar_llm_provider: lesson.ai_avatar_llm_provider || "openai",
+        ai_avatar_llm_model: lesson.ai_avatar_llm_model || "gpt-4o-mini",
+        ai_avatar_tts_provider: lesson.ai_avatar_tts_provider || "elevenlabs",
+        ai_avatar_tts_voice: lesson.ai_avatar_tts_voice || "EXAVITQu4vr4xnSDxMaL",
+        ai_avatar_language: lesson.ai_avatar_language || "ru",
+        ai_avatar_allow_interruptions: lesson.ai_avatar_allow_interruptions ?? true,
       });
     } else {
       setTitle(""); setType("text"); setBlocks([]); setVideoUrl(""); setQuestions([]); setTestQuestionsCount(5);
