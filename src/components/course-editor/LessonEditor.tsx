@@ -7,6 +7,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { FileText, Video, HelpCircle, Plus, Trash2, Sparkles, Settings, Upload, FolderOpen, FileSpreadsheet, Lock } from "lucide-react";
+import { AIAvatarLessonEditor, type AIAvatarConfig } from "@/components/course-builder/AIAvatarLessonEditor";
 import { BlockEditor } from "@/components/course-builder/BlockEditor";
 import { TestImportDialog } from "@/components/course-builder/TestImportDialog";
 import { MediaLibraryDialog } from "@/components/course-builder/MediaLibraryDialog";
@@ -41,6 +42,7 @@ interface LessonEditorProps {
     content: string;
     questions?: TestQuestion[];
     test_questions_count?: number;
+    aiAvatar?: AIAvatarConfig;
   }) => void;
   existingQuestions?: TestQuestion[];
   courseId?: string;
@@ -97,6 +99,7 @@ export const LessonEditor = ({
                     <SelectItem value="text"><div className="flex items-center gap-2"><FileText className="w-4 h-4" />Текстовый урок</div></SelectItem>
                     <SelectItem value="video"><div className="flex items-center gap-2"><Video className="w-4 h-4" />Видео урок</div></SelectItem>
                     <SelectItem value="test"><div className="flex items-center gap-2"><HelpCircle className="w-4 h-4" />Тест</div></SelectItem>
+                    <SelectItem value="ai_avatar"><div className="flex items-center gap-2"><Sparkles className="w-4 h-4 text-fuchsia-500" />ИИ-аватар (бета)</div></SelectItem>
                   </SelectContent>
                 </Select>
               </div>
