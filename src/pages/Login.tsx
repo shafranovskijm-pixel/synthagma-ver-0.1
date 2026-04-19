@@ -19,6 +19,7 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle } from "@/components/ui/dialog";
+import { YandexLoginButton } from "@/components/auth/YandexLoginButton";
 
 const DEMO_ACCOUNTS = {
   admin: { email: "admin@demo.sigma", password: "demo123456", role: "admin", label: "Админ", icon: Shield, color: "bg-sigma-purple" },
