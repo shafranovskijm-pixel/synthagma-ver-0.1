@@ -75,7 +75,7 @@ Deno.serve(async (req) => {
       {
         method: "POST",
         headers: {
-          "Authorization": `OAuth ${oauthToken}`,
+          "Authorization": `OAuth ${tokenTrimmed}`,
           "Content-Type": "application/json",
         },
         body: JSON.stringify(payload),
