@@ -205,13 +205,17 @@ export function useCourseBuilder(propCourseId?: string) {
   const scrollToLesson = useCallback((id: string) => {
     expandLesson(id);
     setActiveLessonId(id);
-    // Дать React домотать DOM (раскрытие карточки) перед прокруткой
-    setTimeout(() => {
-      const el = document.querySelector(`[data-lesson-id="${id}"]`);
-      if (el && 'scrollIntoView' in el) {
-        (el as HTMLElement).scrollIntoView({ behavior: 'smooth', block: 'start' });
-      }
-    }, 60);
+    // Точная прокрутка к началу карточки с учётом sticky-шапки кабинета.
+    const doScroll = () => {
+      const el = document.querySelector(`[data-lesson-id="${id}"]`) as HTMLElement | null;
+      if (!el) return;
+      const header = document.querySelector('[data-org-sticky-header]') as HTMLElement | null;
+      const offset = (header?.getBoundingClientRect().height ?? 200) + 12;
+      const top = el.getBoundingClientRect().top + window.scrollY - offset;
+      window.scrollTo({ top, behavior: 'smooth' });
+    };
+    // Двойной rAF + задержка — accordion успевает развернуться до измерения
+    setTimeout(() => requestAnimationFrame(() => requestAnimationFrame(doScroll)), 150);
   }, [expandLesson]);
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }), useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }));
 
