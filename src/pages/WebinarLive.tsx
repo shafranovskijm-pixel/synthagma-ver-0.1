@@ -64,8 +64,6 @@ const WebinarLive = () => {
 
   const handleDisconnected = useCallback(async () => {
     if (sessionId) {
-      // Закрываем AI-сессию и записываем длительность
-      await supabase.rpc("noop" as never).catch(() => {}); // ничего, ниже идёт прямой update
       try {
         const { data: s } = await supabase
           .from("ai_tutor_sessions")

@@ -7,7 +7,6 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import {} from "lucide-react";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 
 interface Webinar {
@@ -39,7 +38,7 @@ export function CreateWebinarDialog({ open, onOpenChange, organizationId, userId
   const [description, setDescription] = useState("");
   const [scheduledAt, setScheduledAt] = useState("");
   const [durationMinutes, setDurationMinutes] = useState("60");
-  const [sourceType, setSourceType] = useState<"telemost" | "external">("telemost");
+  const [sourceType, setSourceType] = useState<"livekit" | "external">("livekit");
   const [externalUrl, setExternalUrl] = useState("");
   const [coverUrl, setCoverUrl] = useState("");
   const [courseId, setCourseId] = useState<string>("none");
@@ -64,7 +63,7 @@ export function CreateWebinarDialog({ open, onOpenChange, organizationId, userId
       setDescription(editWebinar.description || "");
       setScheduledAt(editWebinar.scheduled_at ? editWebinar.scheduled_at.slice(0, 16) : "");
       setDurationMinutes(String(editWebinar.duration_minutes || 60));
-      setSourceType(editWebinar.source_type as any || "telemost");
+      setSourceType((editWebinar.source_type as any) || "livekit");
       setExternalUrl(editWebinar.external_url || "");
       setCoverUrl(editWebinar.cover_url || "");
       setCourseId(editWebinar.course_id || "none");
@@ -78,7 +77,7 @@ export function CreateWebinarDialog({ open, onOpenChange, organizationId, userId
     setDescription("");
     setScheduledAt("");
     setDurationMinutes("60");
-    setSourceType("telemost");
+    setSourceType("livekit");
     setExternalUrl("");
     setCoverUrl("");
     setCourseId("none");
@@ -117,23 +116,13 @@ export function CreateWebinarDialog({ open, onOpenChange, organizationId, userId
           cover_url: coverUrl.trim() || null,
           course_id: courseId === "none" ? null : courseId };
 
-        if (sourceType === "telemost") {
-          const { data, error } = await supabase.functions.invoke("telemost-create-conference", {
-            body: { title: title.trim(), description: description.trim(), withLiveStream: true } });
+        if (sourceType === "livekit") {
+          const { data, error } = await supabase.functions.invoke("livekit-create-room", {
+            body: { title: title.trim() } });
           if (error) throw new Error(error.message);
-          if (!data?.ok) throw new Error(data?.error || "Не удалось создать конференцию");
-          const join_url = data?.join_url || null;
-          const watch_url = data?.watch_url || null;
-          if (!join_url) throw new Error("Яндекс Телемост не вернул ссылку на конференцию");
-          webinarData.external_url = join_url;
-          webinarData.embed_url = watch_url || join_url;
+          if (!data?.ok || !data?.roomName) throw new Error(data?.error || "Не удалось создать комнату LiveKit");
           webinarData.player_settings = {
-            telemost: {
-              id: data?.id || null,
-              join_url,
-              watch_url,
-              sip_id: data?.sip_id || null,
-            },
+            livekit: { roomName: data.roomName, wsUrl: data.wsUrl },
           };
         } else {
           webinarData.external_url = externalUrl.trim() || null;
@@ -210,16 +199,16 @@ export function CreateWebinarDialog({ open, onOpenChange, organizationId, userId
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="telemost">Яндекс Телемост (рекомендуется)</SelectItem>
+                  <SelectItem value="livekit">Встроенный плеер LiveKit (рекомендуется)</SelectItem>
                   <SelectItem value="external">Внешняя ссылка (Zoom, VK, Rutube, YouTube)</SelectItem>
                 </SelectContent>
               </Select>
             </div>
           )}
 
-          {!isEdit && sourceType === "telemost" && (
+          {!isEdit && sourceType === "livekit" && (
             <p className="text-xs text-muted-foreground">
-              Мы автоматически создадим конференцию в Яндекс Телемост и сохраним ссылки для входа и просмотра трансляции.
+              Мы создадим комнату прямо в платформе. Подключение видео и звука происходит без перехода на сторонние сервисы.
             </p>
           )}
           {((!isEdit && sourceType === "external") || (isEdit && editWebinar?.source_type === "external")) && (
