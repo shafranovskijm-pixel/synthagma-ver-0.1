@@ -102,5 +102,7 @@ export const API_KEYS_LIST = [
   { name: "SALUTESPEECH_AUTH_KEY_3", label: "SaluteSpeech Key 3" },
   { name: "ELEVENLABS_API_KEY", label: "ElevenLabs" },
   { name: "LOVABLE_API_KEY", label: "Lovable AI" },
-  { name: "YANDEX_TELEMOST_OAUTH_TOKEN", label: "Яндекс Телемост (OAuth)" },
+  { name: "LIVEKIT_API_KEY", label: "LiveKit API Key" },
+  { name: "LIVEKIT_API_SECRET", label: "LiveKit API Secret" },
+  { name: "LIVEKIT_WS_URL", label: "LiveKit WebSocket URL" },
 ];

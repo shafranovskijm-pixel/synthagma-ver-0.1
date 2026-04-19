@@ -19,7 +19,7 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle } from "@/components/ui/dialog";
-import { YandexLoginButton } from "@/components/auth/YandexLoginButton";
+
 
 const DEMO_ACCOUNTS = {
   admin: { email: "admin@demo.sigma", password: "demo123456", role: "admin", label: "Админ", icon: Shield, color: "bg-sigma-purple" },
@@ -352,9 +352,6 @@ const Login = () => {
               <span className="bg-background px-2 text-muted-foreground">или</span>
             </div>
           </div>
-
-          {/* Временно скрыто до подключения Яндекс ID */}
-          {/* <YandexLoginButton mode="login" /> */}
 
           {/* Forgot Password Dialog */}
           <Dialog open={showForgotPassword} onOpenChange={setShowForgotPassword}>
