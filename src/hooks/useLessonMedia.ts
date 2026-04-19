@@ -107,10 +107,10 @@ export function useLessonMedia(
       return;
     }
 
-    // Inform users about .TS limitations
+    // Inform users about .TS — internal storage is the most reliable path
     const ext = file.name.split('.').pop()?.toLowerCase();
     if (ext === 'ts' || ext === 'm2ts' || ext === 'mts') {
-      toast.info("Формат .TS загружен. Для гарантированного воспроизведения во всех браузерах рекомендуем «Видеосервис+» — он автоматически перекодирует.", { duration: 8000 });
+      toast.info("Формат .TS поддерживается. Рекомендуем загрузку «На сервер» — она надёжнее для этого формата.", { duration: 6000 });
     }
 
     setVideoUploadProgress(0);
