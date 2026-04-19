@@ -41,13 +41,14 @@ const RegisterOrganization = () => {
           <h1 className="font-display text-3xl font-bold mb-2">Регистрация организации</h1>
           <p className="text-muted-foreground mb-4">Создайте аккаунт для вашей организации</p>
 
-          <div className="mb-6">
+          {/* Временно скрыто до подключения Яндекс ID */}
+          {/* <div className="mb-6">
             <YandexLoginButton mode="signup-org" label="Зарегистрироваться через Яндекс ID" />
             <div className="relative my-4">
               <div className="absolute inset-0 flex items-center"><span className="w-full border-t" /></div>
               <div className="relative flex justify-center text-xs uppercase"><span className="bg-background px-2 text-muted-foreground">или заполните вручную</span></div>
             </div>
-          </div>
+          </div> */}
 
           {/* Selected Plan Card */}
           {h.selectedPlan !== 'free' && (

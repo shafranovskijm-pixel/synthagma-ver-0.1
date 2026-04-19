@@ -353,7 +353,8 @@ const Login = () => {
             </div>
           </div>
 
-          <YandexLoginButton mode="login" />
+          {/* Временно скрыто до подключения Яндекс ID */}
+          {/* <YandexLoginButton mode="login" /> */}
 
           {/* Forgot Password Dialog */}
           <Dialog open={showForgotPassword} onOpenChange={setShowForgotPassword}>
