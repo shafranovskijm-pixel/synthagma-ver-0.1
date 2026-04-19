@@ -144,12 +144,16 @@ export function WebinarsManager({ organizationId }: Props) {
           },
         },
       };
-      const { error: insertErr } = await supabase.from("webinars").insert(insertData as any);
+      const { data: inserted, error: insertErr } = await supabase
+        .from("webinars")
+        .insert(insertData as any)
+        .select("*")
+        .single();
       if (insertErr) throw insertErr;
 
-      window.open(data.join_url, "_blank", "noopener,noreferrer");
-      toast.success("Вебинар начат — окно Телемоста открыто");
-      fetchWebinars();
+      toast.success("Вебинар начат");
+      await fetchWebinars();
+      if (inserted) setEmbedWebinar(inserted as any);
     } catch (e: any) {
       toast.error(e.message || "Не удалось начать вебинар");
     } finally {
