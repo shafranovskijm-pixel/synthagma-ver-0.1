@@ -151,7 +151,7 @@ function AddLessonButton({
         <Button
           size="sm"
           variant="ghost"
-          className="w-full justify-start gap-2 text-xs text-muted-foreground hover:text-primary hover:bg-primary/5 rounded-lg"
+          className="w-full justify-center gap-2 text-xs font-medium text-primary bg-primary/10 hover:bg-primary/15 hover:text-primary rounded-lg border border-primary/20"
           onClick={() => setOpen(true)}
         >
           <Plus className="w-3.5 h-3.5" /> {label}
