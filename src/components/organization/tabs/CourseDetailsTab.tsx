@@ -3,8 +3,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { useOrgDashboard } from "@/contexts/OrgDashboardContext";
 import { CourseDetailsContent } from "@/components/organization/CourseDetailsContent";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
-import { Button } from "@/components/ui/button";
-import { ArrowLeft } from "lucide-react";
 
 export function CourseDetailsTab() {
   const d = useOrgDashboard();
