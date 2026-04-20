@@ -240,7 +240,17 @@ export function RichTextEditor({
     editorRef.current?.focus();
   };
 
+  const hasUsableSelection = (): boolean => {
+    if (savedRange.current && !savedRange.current.collapsed) return true;
+    const sel = window.getSelection();
+    return !!sel && !sel.isCollapsed && sel.rangeCount > 0;
+  };
+
   const execFormat = (command: string) => {
+    if (!hasUsableSelection()) {
+      toast.message("Выделите текст", { description: "Чтобы применить стиль, сначала выделите фрагмент текста." });
+      return;
+    }
     restoreSelection();
     document.execCommand(command, false);
     handleInput();
@@ -261,6 +271,10 @@ export function RichTextEditor({
   };
 
   const toggleCode = () => {
+    if (!hasUsableSelection() && !getParentTag('CODE')) {
+      toast.message("Выделите текст", { description: "Чтобы вставить код, сначала выделите фрагмент текста." });
+      return;
+    }
     restoreSelection();
     const existing = getParentTag('CODE');
     if (existing) {
@@ -284,6 +298,10 @@ export function RichTextEditor({
 
   const handleApplyLink = () => {
     if (!linkInput.trim()) return;
+    if (!hasUsableSelection()) {
+      toast.message("Выделите текст", { description: "Сначала выделите фрагмент, к которому нужно прикрепить ссылку." });
+      return;
+    }
     let href = linkInput.trim();
     if (!/^https?:\/\//i.test(href) && !href.startsWith('www.')) href = `https://${href}`;
     if (href.startsWith('www.')) href = `https://${href}`;
@@ -303,6 +321,10 @@ export function RichTextEditor({
   // Inline font-size cycling on the current selection via <span style="font-size">.
   const FONT_SIZES = [12, 14, 16, 18, 20, 24, 28, 32];
   const cycleSize = (dir: 1 | -1) => {
+    if (!hasUsableSelection()) {
+      toast.message("Выделите текст", { description: "Чтобы изменить размер, сначала выделите фрагмент текста." });
+      return;
+    }
     restoreSelection();
     const sel = window.getSelection();
     if (!sel || sel.rangeCount === 0) return;
