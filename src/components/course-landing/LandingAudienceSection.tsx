@@ -24,13 +24,15 @@ interface Props {
 /** Диспетчер Audience. Выбирает variant по `theme.audience_layout`. */
 export function LandingAudienceSection(props: Props) {
   const { theme } = useLandingTheme();
-  switch (theme.audience_layout) {
-    case "icons-row":
-      return <AudienceIconsRow {...props} />;
-    case "stacked-cards":
-      return <AudienceStackedCards {...props} />;
-    case "grid":
-    default:
-      return <AudienceGrid {...props} />;
-  }
+  const Variant =
+    theme.audience_layout === "icons-row"
+      ? AudienceIconsRow
+      : theme.audience_layout === "stacked-cards"
+      ? AudienceStackedCards
+      : AudienceGrid;
+  return (
+    <div className="landing-bg-section">
+      <Variant {...props} />
+    </div>
+  );
 }

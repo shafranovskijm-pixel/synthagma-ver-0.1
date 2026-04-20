@@ -19,11 +19,10 @@ interface Props {
 /** Диспетчер Benefits. Выбирает variant по `theme.benefits_layout`. */
 export function LandingBenefitsSection(props: Props) {
   const { theme } = useLandingTheme();
-  switch (theme.benefits_layout) {
-    case "icon-list":
-      return <BenefitsIconList {...props} />;
-    case "grid":
-    default:
-      return <BenefitsGrid {...props} />;
-  }
+  const Variant = theme.benefits_layout === "icon-list" ? BenefitsIconList : BenefitsGrid;
+  return (
+    <div className="landing-bg-section">
+      <Variant {...props} />
+    </div>
+  );
 }
