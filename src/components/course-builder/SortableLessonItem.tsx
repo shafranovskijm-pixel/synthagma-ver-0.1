@@ -28,7 +28,7 @@ import { VideoPreviewInline } from "@/components/course-builder/VideoPreviewInli
 import { HlsVideoPlayer } from "@/components/video/HlsVideoPlayer";
 import { LazyMediaPreview } from "@/components/course-builder/LazyMediaPreview";
 import { SliderLessonEditor } from "@/components/course-builder/SliderLessonEditor";
-import { LessonAttachments } from "@/components/course-builder/LessonAttachments";
+
 import { TestAnswersDialog } from "@/components/course-builder/TestAnswersDialog";
 import { useLessonMedia } from "@/hooks/useLessonMedia";
 import { useSubscriptionLimits } from "@/hooks/useSubscriptionLimits";
