@@ -99,10 +99,29 @@ export function LandingThemeProvider({ theme, accent, bare, className, style, ch
   );
 
   const skin = getTemplateStyle(merged.template_id);
+  const rootRef = useRef<HTMLDivElement | null>(null);
+
+  // Авто-разметка секций атрибутом data-reveal: вешаем на все <section>
+  // и заголовки секций внутри лендинга. Используется CSS-анимациями
+  // [data-template-skin="..."] [data-reveal] (см. index.css).
+  useEffect(() => {
+    if (bare) return;
+    const root = rootRef.current;
+    if (!root) return;
+    const sections = root.querySelectorAll("section");
+    sections.forEach((s) => s.setAttribute("data-reveal", ""));
+    const titles = root.querySelectorAll(
+      ".tpl-aurora-section-title, .tpl-beauty-section-title, .tpl-safety-section-title, .tpl-lab-section-title, .tpl-language-section-title",
+    );
+    titles.forEach((t) => t.setAttribute("data-reveal", ""));
+  }, [bare, merged.template_id, children]);
+
+  useRevealOnScroll(rootRef);
 
   return (
     <LandingThemeContext.Provider value={{ theme: merged, accent: accentColor }}>
       <div
+        ref={rootRef}
         data-template-skin={skin.dataSkin || undefined}
         className={cn(
           "relative",
