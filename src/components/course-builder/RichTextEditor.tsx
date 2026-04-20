@@ -528,6 +528,175 @@ export function RichTextEditor({
             </>
           )}
 
+          {/* Convert block to another type */}
+          {canConvert && onConvertBlockType && (
+            <>
+              <div className="w-px h-7 bg-white/15 mx-1" />
+              <Popover open={convertOpen} onOpenChange={setConvertOpen}>
+                <PopoverTrigger asChild>
+                  <button
+                    onMouseDown={(e) => e.preventDefault()}
+                    className="h-9 w-9 flex items-center justify-center hover:bg-white/10 rounded-lg transition-colors"
+                    title="Преобразовать в…"
+                  >
+                    <Wand2 className="w-[18px] h-[18px]" />
+                  </button>
+                </PopoverTrigger>
+                <PopoverContent className="w-60 p-1.5 max-h-[60vh] overflow-y-auto" align="start" onOpenAutoFocus={(e) => e.preventDefault()}>
+                  <p className="text-[10px] uppercase font-semibold text-muted-foreground px-2 py-1">Преобразовать в…</p>
+                  {wrapOtherTargets.filter(t => t.type !== currentBlockType).map((t) => (
+                    <button
+                      key={t.type}
+                      onMouseDown={(e) => { e.preventDefault(); onConvertBlockType(t.type); setConvertOpen(false); }}
+                      className="w-full flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-accent text-sm text-left"
+                    >
+                      <t.icon className={cn("w-4 h-4", t.color)} />{t.label}
+                    </button>
+                  ))}
+                  <div className="border-t my-1" />
+                  <p className="text-[10px] uppercase font-semibold text-muted-foreground px-2 py-1">Выделение</p>
+                  {wrapCalloutTargets.filter(t => t.type !== currentBlockType).map((t) => (
+                    <button
+                      key={t.type}
+                      onMouseDown={(e) => { e.preventDefault(); onConvertBlockType(t.type); setConvertOpen(false); }}
+                      className="w-full flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-accent text-sm text-left"
+                    >
+                      <t.icon className={cn("w-4 h-4", t.color)} />{t.label}
+                    </button>
+                  ))}
+                </PopoverContent>
+              </Popover>
+            </>
+          )}
+
+          {/* Advanced styling */}
+          {canStyle && onStyleUpdate && (
+            <Popover open={advancedOpen} onOpenChange={setAdvancedOpen}>
+              <PopoverTrigger asChild>
+                <button
+                  onMouseDown={(e) => e.preventDefault()}
+                  className="h-9 w-9 flex items-center justify-center hover:bg-white/10 rounded-lg transition-colors"
+                  title="Доп. оформление"
+                >
+                  <Sliders className="w-[18px] h-[18px]" />
+                </button>
+              </PopoverTrigger>
+              <PopoverContent className="w-72 p-3 max-h-[70vh] overflow-y-auto" align="end" onOpenAutoFocus={(e) => e.preventDefault()}>
+                <div className="space-y-3">
+                  <div>
+                    <p className="text-[10px] uppercase font-semibold text-muted-foreground mb-1.5">Доп. форматирование</p>
+                    <div className="flex gap-1">
+                      <Button variant={currentBlock?.strikethrough ? "default" : "outline"} size="sm" className="h-7 px-2.5 text-xs" onMouseDown={(e) => { e.preventDefault(); onStyleUpdate({ strikethrough: !currentBlock?.strikethrough }); }}>Зачёркнутый</Button>
+                      <Button variant={currentBlock?.uppercase ? "default" : "outline"} size="sm" className="h-7 px-2.5 text-xs" onMouseDown={(e) => { e.preventDefault(); onStyleUpdate({ uppercase: !currentBlock?.uppercase }); }}>UPPERCASE</Button>
+                    </div>
+                  </div>
+                  <div>
+                    <p className="text-[10px] uppercase font-semibold text-muted-foreground mb-1.5">Шрифт</p>
+                    <div className="flex gap-1">
+                      {([['sans', 'Обычный'], ['mono', 'Моно']] as const).map(([ff, label]) => (
+                        <Button key={ff} variant={(currentBlock?.fontFamily || 'sans') === ff ? "default" : "outline"} size="sm" className="h-7 px-2.5 text-xs" onMouseDown={(e) => { e.preventDefault(); onStyleUpdate({ fontFamily: ff === 'sans' ? undefined : ff }); }}>{label}</Button>
+                      ))}
+                    </div>
+                  </div>
+                  <div>
+                    <p className="text-[10px] uppercase font-semibold text-muted-foreground mb-1.5">Межстрочный интервал</p>
+                    <div className="flex gap-1">
+                      {([['tight', 'Плотный'], ['normal', 'Обычный'], ['relaxed', 'Свободный']] as const).map(([lh, label]) => (
+                        <Button key={lh} variant={(currentBlock?.lineHeight || 'normal') === lh ? "default" : "outline"} size="sm" className="h-7 px-2.5 text-xs" onMouseDown={(e) => { e.preventDefault(); onStyleUpdate({ lineHeight: lh === 'normal' ? undefined : lh }); }}>{label}</Button>
+                      ))}
+                    </div>
+                  </div>
+                  <div>
+                    <p className="text-[10px] uppercase font-semibold text-muted-foreground mb-1.5">Рамка</p>
+                    <div className="flex gap-1 flex-wrap">
+                      {([['none', 'Нет'], ['thin', 'Тонкая'], ['bold', 'Жирная'], ['dashed', 'Пунктир']] as const).map(([bs, label]) => (
+                        <Button key={bs} variant={(currentBlock?.borderStyle || 'none') === bs ? "default" : "outline"} size="sm" className="h-7 px-2.5 text-xs" onMouseDown={(e) => { e.preventDefault(); onStyleUpdate({ borderStyle: bs === 'none' ? undefined : bs }); }}>{label}</Button>
+                      ))}
+                    </div>
+                  </div>
+                  <div>
+                    <p className="text-[10px] uppercase font-semibold text-muted-foreground mb-1.5">Скругление</p>
+                    <div className="flex gap-1">
+                      {([['none', 'Нет'], ['md', 'Md'], ['xl', 'Xl']] as const).map(([br, label]) => (
+                        <Button key={br} variant={(currentBlock?.borderRadius || 'none') === br ? "default" : "outline"} size="sm" className="h-7 px-2.5 text-xs" onMouseDown={(e) => { e.preventDefault(); onStyleUpdate({ borderRadius: br === 'none' ? undefined : br }); }}>{label}</Button>
+                      ))}
+                    </div>
+                  </div>
+                  <div>
+                    <p className="text-[10px] uppercase font-semibold text-muted-foreground mb-1.5">Готовые стили</p>
+                    <div className="grid grid-cols-3 gap-1">
+                      {quickStyles.map((qs) => (
+                        <button
+                          key={qs.name}
+                          onMouseDown={(e) => { e.preventDefault(); onStyleUpdate(qs.style); }}
+                          className="flex flex-col items-center gap-0.5 p-1.5 rounded-md border border-border hover:border-primary/50 hover:bg-primary/5 transition-all text-xs"
+                        >
+                          <span>{qs.icon}</span>
+                          <span className="truncate w-full text-center">{qs.name}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  {presets && onPresetsChange && currentBlock && (
+                    <div>
+                      <p className="text-[10px] uppercase font-semibold text-muted-foreground mb-1.5">Пресеты</p>
+                      <button
+                        onMouseDown={(e) => {
+                          e.preventDefault();
+                          const s = extractStyle(currentBlock);
+                          const name = describeStyle(s);
+                          onPresetsChange([...presets, { name, style: s }]);
+                          import("sonner").then(({ toast }) => toast.success(`Пресет сохранён: ${name}`));
+                        }}
+                        className="w-full flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-accent text-sm text-left"
+                      >
+                        <Star className="w-4 h-4 text-yellow-500" />Сохранить текущий стиль
+                      </button>
+                      {presets.length > 0 && (
+                        <div className="mt-1 space-y-0.5">
+                          {presets.map((p, i) => (
+                            <div key={i} className="flex items-center justify-between gap-2 px-2 py-1 rounded-md hover:bg-accent group/preset">
+                              <button
+                                className="flex-1 truncate text-xs text-left"
+                                onMouseDown={(e) => {
+                                  e.preventDefault();
+                                  const applied = { ...p.style, textSize: p.style.textSize === 'base' ? undefined : p.style.textSize, lineHeight: p.style.lineHeight === 'normal' ? undefined : p.style.lineHeight };
+                                  onStyleUpdate(applied);
+                                  setAdvancedOpen(false);
+                                }}
+                              >
+                                {p.name}
+                              </button>
+                              <button
+                                className="opacity-0 group-hover/preset:opacity-100 h-5 w-5 flex items-center justify-center hover:bg-destructive/20 rounded transition-all"
+                                onMouseDown={(e) => { e.preventDefault(); onPresetsChange(presets.filter((_, j) => j !== i)); }}
+                              >
+                                <X className="w-3 h-3" />
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                  <div className="border-t border-border pt-2">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="w-full h-7 text-xs gap-1.5"
+                      onMouseDown={(e) => {
+                        e.preventDefault();
+                        onStyleUpdate({ textAlign: undefined, bgColor: undefined, textColor: undefined, textSize: undefined, bold: undefined, italic: undefined, strikethrough: undefined, underline: undefined, uppercase: undefined, lineHeight: undefined, fontFamily: undefined, borderStyle: undefined, borderRadius: undefined });
+                      }}
+                    >
+                      <Eraser className="w-3.5 h-3.5" />Сбросить стиль
+                    </Button>
+                  </div>
+                </div>
+              </PopoverContent>
+            </Popover>
+          )}
+
           <Popover open={linkOpen} onOpenChange={(o) => { setLinkOpen(o); if (o) setLinkInput(getParentTag('A')?.getAttribute('href') || ''); }}>
             <PopoverTrigger asChild>
               <button
