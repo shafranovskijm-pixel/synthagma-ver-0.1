@@ -310,5 +310,7 @@ export function useCoursePageSettings(courseId: string, courseTitle: string, cou
     handleSave, addPromoCode, deletePromoCode, togglePromoCode,
     updateEnrollmentForm, updateAnalytics, updateSeo,
     handleAiGenerate, copyUrl,
+    updatePricingTitle, addTier, removeTier, updateTier,
+    addTierFeature, removeTierFeature, updateTierFeature,
   };
 }
