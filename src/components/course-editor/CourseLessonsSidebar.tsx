@@ -21,8 +21,27 @@ import {
   GripVertical,
   Lock,
   Menu,
+  Image as ImageIcon,
+  Headphones,
+  Presentation,
+  ClipboardList,
+  MessageSquare,
+  BookCheck,
+  Sparkles,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+
+export type AddLessonType =
+  | "text"
+  | "video"
+  | "test"
+  | "ai_avatar"
+  | "slider"
+  | "audio"
+  | "feedback"
+  | "homework"
+  | "image"
+  | "practice";
 
 interface Lesson {
   id: string;
@@ -37,7 +56,7 @@ interface Props {
   sensors: any;
   onDragEnd: (e: DragEndEvent) => void;
   onLessonClick: (id: string) => void;
-  onAddLesson: () => void;
+  onAddLesson: (type?: AddLessonType) => void;
   onOpenGitHubImport: () => void;
 }
 
