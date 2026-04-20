@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { checkAiLimitGlobal, incrementAiLimitGlobal } from "@/hooks/useAiGenerationLimit";
+import { useBlockAIGenerate } from "@/hooks/useBlockAIGenerate";
 import { LazyMediaPreview } from "@/components/course-builder/LazyMediaPreview";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -10,7 +10,7 @@ import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 
 export function AudioBlock({ block, onUpdate }: { block: ContentBlock; onUpdate: (updates: Partial<ContentBlock>) => void }) {
   const [isUploading, setIsUploading] = useState(false);
-  const [isGeneratingTts, setIsGeneratingTts] = useState(false);
+  const { isGenerating: isGeneratingTts, run: runTts } = useBlockAIGenerate();
   const [showTts, setShowTts] = useState(false);
   const [ttsText, setTtsText] = useState("");
   const [ttsVoice, setTtsVoice] = useState("Nec_24000");
@@ -47,9 +47,7 @@ export function AudioBlock({ block, onUpdate }: { block: ContentBlock; onUpdate:
   const handleGenerateTts = async () => {
     const text = ttsText.trim();
     if (!text) return;
-    if (!(await checkAiLimitGlobal())) return;
-    setIsGeneratingTts(true);
-    try {
+    const result = await runTts(async () => {
       const { supabase } = await import("@/integrations/supabase/client");
       const { data, error } = await supabase.functions.invoke("salutespeech-tts", {
         body: { text, voice: ttsVoice },
@@ -63,15 +61,13 @@ export function AudioBlock({ block, onUpdate }: { block: ContentBlock; onUpdate:
       if (upErr) throw upErr;
       const publicUrl = `${import.meta.env.VITE_SUPABASE_URL}/storage/v1/object/public/course-files/${fileName}`;
       onUpdate({ audioUrl: publicUrl });
-      await incrementAiLimitGlobal();
+      return publicUrl;
+    }, "Ошибка генерации озвучки");
+    if (result) {
       setShowTts(false);
       const { toast } = await import("sonner");
       toast.success("Аудио сгенерировано");
-    } catch (e) {
-      console.error("TTS generation error:", e);
-      const { toast } = await import("sonner");
-      toast.error(e instanceof Error ? e.message : "Ошибка генерации озвучки");
-    } finally { setIsGeneratingTts(false); }
+    }
   };
 
   return (

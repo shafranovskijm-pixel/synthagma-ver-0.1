@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { checkAiLimitGlobal, incrementAiLimitGlobal } from "@/hooks/useAiGenerationLimit";
+import { useBlockAIGenerate } from "@/hooks/useBlockAIGenerate";
 import { safeInvoke } from "@/utils/safeInvoke";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -9,7 +9,7 @@ import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 
 export function ImageBlock({ block, onUpdate }: { block: ContentBlock; onUpdate: (updates: Partial<ContentBlock>) => void }) {
   const [isUploading, setIsUploading] = useState(false);
-  const [isGenerating, setIsGenerating] = useState(false);
+  const { isGenerating, run: runGenerate } = useBlockAIGenerate();
   const [isEditing, setIsEditing] = useState(false);
   const [isGeneratingAlt, setIsGeneratingAlt] = useState(false);
   const [aiPrompt, setAiPrompt] = useState("");
@@ -90,9 +90,7 @@ export function ImageBlock({ block, onUpdate }: { block: ContentBlock; onUpdate:
 
   const handleAiGenerate = async () => {
     if (!aiPrompt.trim()) return;
-    if (!(await checkAiLimitGlobal())) return;
-    setIsGenerating(true);
-    try {
+    const result = await runGenerate(async () => {
       let url: string | null = null;
       let lastError: string | null = null;
       try {
@@ -108,16 +106,12 @@ export function ImageBlock({ block, onUpdate }: { block: ContentBlock; onUpdate:
         url = data.url;
       }
       onUpdate({ imageSrc: url, imageAlt: aiPrompt.trim() });
-      await incrementAiLimitGlobal();
-      setAiPrompt(""); setShowAiInput(false);
-    } catch (err) {
-      console.error("AI image generation error:", err);
-      const { toast } = await import("sonner");
-      const message = err instanceof Error ? err.message : "Ошибка генерации изображения";
-      if (message.includes("429")) toast.error("ИИ перегружен, повторите через 10–20 секунд");
-      else if (message.includes("402")) toast.error("Лимит генерации исчерпан, повторите позже");
-      else toast.error(message);
-    } finally { setIsGenerating(false); }
+      return url;
+    }, "Ошибка генерации изображения");
+    if (result) {
+      setAiPrompt("");
+      setShowAiInput(false);
+    }
   };
 
   const handleAiEdit = async () => {

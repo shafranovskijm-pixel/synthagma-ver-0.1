@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { checkAiLimitGlobal, incrementAiLimitGlobal } from "@/hooks/useAiGenerationLimit";
+import { useBlockAIGenerate } from "@/hooks/useBlockAIGenerate";
 import { RichTextEditor } from "../../RichTextEditor";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -31,27 +31,37 @@ interface BlockAIProps {
   blockCtrlProps?: Record<string, any>;
 }
 
+/** Helper to invoke the AI content generation edge function. */
+async function invokeContentFn(body: Record<string, unknown>) {
+  const { supabase } = await import("@/integrations/supabase/client");
+  const { data, error } = await supabase.functions.invoke("generate-course-content", { body });
+  if (error) throw error;
+  if (data?.error) throw new Error(data.error);
+  return data;
+}
+
 export function ParagraphBlock({ block, onUpdate, courseTitle, lessonTitle, existingContent, editorStyleClasses, blockCtrlProps }: BlockAIProps & { editorStyleClasses: string }) {
-  const [isGenerating, setIsGenerating] = useState(false);
+  const { isGenerating, run } = useBlockAIGenerate();
   const [showPrompt, setShowPrompt] = useState(false);
   const [customPrompt, setCustomPrompt] = useState("");
 
   const handleGenerate = async (prompt?: string) => {
-    if (!(await checkAiLimitGlobal())) return;
-    setIsGenerating(true);
-    try {
-      const { supabase } = await import("@/integrations/supabase/client");
-      const { data, error } = await supabase.functions.invoke("generate-course-content", {
-        body: { contentType: "paragraph_text", lessonTitle: lessonTitle || "Общая тема", courseTitle: courseTitle || "Курс", existingContent, customPrompt: prompt || "" } });
-      if (error) throw error;
-      if (data?.content) { onUpdate({ content: data.content }); await incrementAiLimitGlobal(); }
+    const ok = await run(async () => {
+      const data = await invokeContentFn({
+        contentType: "paragraph_text",
+        lessonTitle: lessonTitle || "Общая тема",
+        courseTitle: courseTitle || "Курс",
+        existingContent,
+        customPrompt: prompt || "",
+      });
+      if (!data?.content) return null;
+      onUpdate({ content: data.content });
+      return data.content as string;
+    }, "Ошибка генерации текста");
+    if (ok) {
       setShowPrompt(false);
       setCustomPrompt("");
-    } catch (e) {
-      console.error("Paragraph AI error:", e);
-      const { toast } = await import("sonner");
-      toast.error("Ошибка генерации текста");
-    } finally { setIsGenerating(false); }
+    }
   };
 
   return (
@@ -83,22 +93,18 @@ export function ParagraphBlock({ block, onUpdate, courseTitle, lessonTitle, exis
 }
 
 export function QuoteBlock({ block, onUpdate, courseTitle, lessonTitle, existingContent, blockCtrlProps }: BlockAIProps) {
-  const [isGenerating, setIsGenerating] = useState(false);
-  const handleGenerate = async () => {
-    if (!(await checkAiLimitGlobal())) return;
-    setIsGenerating(true);
-    try {
-      const { supabase } = await import("@/integrations/supabase/client");
-      const { data, error } = await supabase.functions.invoke("generate-course-content", {
-        body: { contentType: "quote", lessonTitle: lessonTitle || "Общая тема", courseTitle: courseTitle || "Курс", existingContent } });
-      if (error) throw error;
-      if (data?.content) { onUpdate({ content: data.content }); await incrementAiLimitGlobal(); }
-    } catch (e) {
-      console.error("Quote AI error:", e);
-      const { toast } = await import("sonner");
-      toast.error("Ошибка генерации цитаты");
-    } finally { setIsGenerating(false); }
-  };
+  const { isGenerating, run } = useBlockAIGenerate();
+  const handleGenerate = () => run(async () => {
+    const data = await invokeContentFn({
+      contentType: "quote",
+      lessonTitle: lessonTitle || "Общая тема",
+      courseTitle: courseTitle || "Курс",
+      existingContent,
+    });
+    if (!data?.content) return null;
+    onUpdate({ content: data.content });
+    return data.content as string;
+  }, "Ошибка генерации цитаты");
   return (
     <div className="border-l-4 border-muted-foreground/30 pl-4 py-2 space-y-2">
       <div className="flex justify-end"><AIGenerateButton isGenerating={isGenerating} onClick={handleGenerate} /></div>
@@ -108,7 +114,7 @@ export function QuoteBlock({ block, onUpdate, courseTitle, lessonTitle, existing
 }
 
 export function CalloutBlock({ block, onUpdate, courseTitle, lessonTitle, existingContent, blockCtrlProps }: BlockAIProps) {
-  const [isGenerating, setIsGenerating] = useState(false);
+  const { isGenerating, run } = useBlockAIGenerate();
   const styles = {
     "callout-info": { bg: "bg-blue-500/10", border: "border-blue-500/30", icon: AlertCircle, iconColor: "text-blue-500" },
     "callout-warning": { bg: "bg-amber-500/10", border: "border-amber-500/30", icon: AlertCircle, iconColor: "text-amber-500" },
@@ -118,24 +124,18 @@ export function CalloutBlock({ block, onUpdate, courseTitle, lessonTitle, existi
   const style = styles[block.type as keyof typeof styles];
   const Icon = style.icon;
 
-  const handleGenerate = async () => {
-    if (!(await checkAiLimitGlobal())) return;
-    setIsGenerating(true);
-    try {
-      const { supabase } = await import("@/integrations/supabase/client");
-      const { data, error } = await supabase.functions.invoke("generate-course-content", {
-        body: { contentType: "callout", calloutType: block.type, lessonTitle: lessonTitle || "Общая тема", courseTitle: courseTitle || "Курс", existingContent } });
-      if (error) throw error;
-      if (data?.error) throw new Error(data.error);
-      if (data?.content) { onUpdate({ content: data.content }); await incrementAiLimitGlobal(); }
-      else throw new Error("Пустой ответ от сервера");
-    } catch (e: any) {
-      console.error("Callout AI error:", e);
-      const { toast } = await import("sonner");
-      const msg = e?.message || "Неизвестная ошибка";
-      toast.error(msg.includes("429") ? "Лимит запросов, попробуйте позже" : `Ошибка генерации: ${msg.slice(0, 100)}`);
-    } finally { setIsGenerating(false); }
-  };
+  const handleGenerate = () => run(async () => {
+    const data = await invokeContentFn({
+      contentType: "callout",
+      calloutType: block.type,
+      lessonTitle: lessonTitle || "Общая тема",
+      courseTitle: courseTitle || "Курс",
+      existingContent,
+    });
+    if (!data?.content) return null;
+    onUpdate({ content: data.content });
+    return data.content as string;
+  }, "Ошибка генерации");
 
   return (
     <div className={cn("rounded-xl p-4 border", style.bg, style.border)}>
@@ -155,25 +155,19 @@ export function CalloutBlock({ block, onUpdate, courseTitle, lessonTitle, existi
 }
 
 export function HighlightBlock({ block, onUpdate, courseTitle, lessonTitle, existingContent, blockCtrlProps }: BlockAIProps) {
-  const [isGenerating, setIsGenerating] = useState(false);
-  const handleGenerate = async () => {
-    if (!(await checkAiLimitGlobal())) return;
-    setIsGenerating(true);
-    try {
-      const { supabase } = await import("@/integrations/supabase/client");
-      const { data, error } = await supabase.functions.invoke("generate-course-content", {
-        body: { contentType: "callout", calloutType: "highlight", lessonTitle: lessonTitle || "Общая тема", courseTitle: courseTitle || "Курс", existingContent } });
-      if (error) throw error;
-      if (data?.error) throw new Error(data.error);
-      if (data?.content) { onUpdate({ content: data.content }); await incrementAiLimitGlobal(); }
-      else throw new Error("Пустой ответ от сервера");
-    } catch (e: any) {
-      console.error("Highlight AI error:", e);
-      const { toast } = await import("sonner");
-      const msg = e?.message || "Неизвестная ошибка";
-      toast.error(msg.includes("429") ? "Лимит запросов, попробуйте позже" : `Ошибка генерации: ${msg.slice(0, 100)}`);
-    } finally { setIsGenerating(false); }
-  };
+  const { isGenerating, run } = useBlockAIGenerate();
+  const handleGenerate = () => run(async () => {
+    const data = await invokeContentFn({
+      contentType: "callout",
+      calloutType: "highlight",
+      lessonTitle: lessonTitle || "Общая тема",
+      courseTitle: courseTitle || "Курс",
+      existingContent,
+    });
+    if (!data?.content) return null;
+    onUpdate({ content: data.content });
+    return data.content as string;
+  }, "Ошибка генерации");
   return (
     <div className="rounded-xl p-4 border border-yellow-400/40 bg-gradient-to-r from-yellow-400/10 via-amber-400/5 to-transparent relative overflow-hidden">
       <div className="absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b from-yellow-400 via-amber-500 to-orange-500" />
@@ -189,29 +183,23 @@ export function HighlightBlock({ block, onUpdate, courseTitle, lessonTitle, exis
 }
 
 export function AccordionBlock({ block, onUpdate, courseTitle, lessonTitle, existingContent, blockCtrlProps }: BlockAIProps) {
-  const [isGenerating, setIsGenerating] = useState(false);
+  const { isGenerating, run } = useBlockAIGenerate();
   const isOpen = block.accordionOpen ?? true;
 
-  const handleGenerate = async () => {
-    if (!(await checkAiLimitGlobal())) return;
-    setIsGenerating(true);
-    try {
-      const { supabase } = await import("@/integrations/supabase/client");
-      const { data, error } = await supabase.functions.invoke("generate-course-content", {
-        body: { contentType: "accordion", lessonTitle: lessonTitle || "Общая тема", courseTitle: courseTitle || "Курс", existingContent } });
-      if (error) throw error;
-      if (data?.error) throw new Error(data.error);
-      if (data?.accordion) {
-        onUpdate({ accordionTitle: data.accordion.title || block.accordionTitle, content: data.accordion.content || "" });
-        await incrementAiLimitGlobal();
-      } else throw new Error("Пустой ответ от сервера");
-    } catch (e: any) {
-      console.error("Accordion AI error:", e);
-      const { toast } = await import("sonner");
-      const msg = e?.message || "Неизвестная ошибка";
-      toast.error(msg.includes("429") ? "Лимит запросов, попробуйте позже" : `Ошибка генерации: ${msg.slice(0, 100)}`);
-    } finally { setIsGenerating(false); }
-  };
+  const handleGenerate = () => run(async () => {
+    const data = await invokeContentFn({
+      contentType: "accordion",
+      lessonTitle: lessonTitle || "Общая тема",
+      courseTitle: courseTitle || "Курс",
+      existingContent,
+    });
+    if (!data?.accordion) return null;
+    onUpdate({
+      accordionTitle: data.accordion.title || block.accordionTitle,
+      content: data.accordion.content || "",
+    });
+    return data.accordion;
+  }, "Ошибка генерации");
 
   return (
     <div className="rounded-xl border border-purple-500/30 bg-purple-500/5 overflow-hidden">
