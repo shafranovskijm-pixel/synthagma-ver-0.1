@@ -113,6 +113,28 @@ export const LessonEditor = ({
           </DialogHeader>
 
           <div className="space-y-6 py-4">
+            {hasDraft && draftAgeMin !== null && (
+              <div className="flex items-start gap-3 p-3 rounded-lg border border-amber-500/40 bg-amber-500/10 text-sm">
+                <Save className="w-4 h-4 mt-0.5 text-amber-600 dark:text-amber-400 shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <p className="font-medium text-amber-900 dark:text-amber-200">
+                    Найден несохранённый черновик
+                  </p>
+                  <p className="text-xs text-amber-800/80 dark:text-amber-300/80">
+                    Автоматически сохранён {draftAgeMin === 1 ? "только что" : `${draftAgeMin} мин назад`}.
+                    Можно восстановить или продолжить с текущими данными.
+                  </p>
+                </div>
+                <div className="flex gap-2 shrink-0">
+                  <Button type="button" size="sm" variant="outline" className="gap-1.5 h-8" onClick={handleRestoreDraft}>
+                    <RotateCcw className="w-3.5 h-3.5" />Восстановить
+                  </Button>
+                  <Button type="button" size="sm" variant="ghost" className="h-8" onClick={discardDraft}>
+                    Удалить
+                  </Button>
+                </div>
+              </div>
+            )}
             <div className="grid sm:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Название урока *</Label>
@@ -354,7 +376,7 @@ export const LessonEditor = ({
 
             <div className="flex gap-3 pt-4 border-t border-border">
               <Button variant="outline" onClick={onClose} className="flex-1 h-11">Отмена</Button>
-              <Button onClick={e.handleSave} className="flex-1 btn-gradient h-11" disabled={!e.title.trim()}>{lesson ? "Сохранить изменения" : "Создать урок"}</Button>
+              <Button onClick={handleSaveAndDiscardDraft} className="flex-1 btn-gradient h-11" disabled={!e.title.trim()}>{lesson ? "Сохранить изменения" : "Создать урок"}</Button>
             </div>
           </div>
         </DialogContent>
