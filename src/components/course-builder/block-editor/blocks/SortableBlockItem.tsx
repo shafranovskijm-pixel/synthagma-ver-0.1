@@ -119,7 +119,7 @@ export function SortableBlockItem({ block, isFocused, onFocus, onUpdate, onDelet
   };
 
   return (
-    <div ref={setNodeRef} style={style} data-block-id={block.id} className={cn("group relative rounded-lg transition-all pl-14", isFocused && "bg-secondary/30")} onClick={onFocus}>
+    <div ref={setNodeRef} style={style} data-block-id={block.id} className={cn("group relative rounded-lg transition-all pl-14 pr-14", isFocused && "bg-secondary/30")} onClick={onFocus}>
       {/* Left gutter: "+" add-block button, vertically aligned with floating formatting toolbar */}
       <div className="absolute left-2 top-1 opacity-0 group-hover:opacity-100 transition-opacity z-20">
         <InlineAddBlockButton onAdd={(type) => onAddAfter(type)} />
