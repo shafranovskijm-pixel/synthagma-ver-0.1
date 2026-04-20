@@ -149,7 +149,7 @@ export function OrgSidebar() {
 
   const handleTabClick = useCallback((tab: TabType | "__help_dialog__") => {
     if (tab === "__help_dialog__") {
-      setHelpOpen(true);
+      window.dispatchEvent(new CustomEvent('open-support-chat'));
       return;
     }
     const category = tabCategoryMap[tab];
