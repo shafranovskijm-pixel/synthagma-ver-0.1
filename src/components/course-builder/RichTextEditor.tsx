@@ -466,10 +466,10 @@ export function RichTextEditor({
                 <PopoverTrigger asChild>
                   <button
                     onMouseDown={(e) => e.preventDefault()}
-                    className="h-8 w-8 flex items-center justify-center hover:bg-white/10 rounded-lg transition-colors"
+                    className="h-9 w-9 flex items-center justify-center hover:bg-white/10 rounded-lg transition-colors"
                     title="Цвет"
                   >
-                    <Palette className="w-4 h-4" />
+                    <Palette className="w-[18px] h-[18px]" />
                   </button>
                 </PopoverTrigger>
                 <PopoverContent className="w-60 p-3" align="start" onOpenAutoFocus={(e) => e.preventDefault()}>
@@ -520,10 +520,10 @@ export function RichTextEditor({
             <PopoverTrigger asChild>
               <button
                 onMouseDown={(e) => e.preventDefault()}
-                className="h-8 w-8 flex items-center justify-center hover:bg-white/10 rounded-lg transition-colors"
+                className="h-9 w-9 flex items-center justify-center hover:bg-white/10 rounded-lg transition-colors"
                 title="Ссылка"
               >
-                <Link2 className="w-4 h-4" />
+                <Link2 className="w-[18px] h-[18px]" />
               </button>
             </PopoverTrigger>
             <PopoverContent className="w-72 p-2" align="start" onOpenAutoFocus={(e) => e.preventDefault()}>
