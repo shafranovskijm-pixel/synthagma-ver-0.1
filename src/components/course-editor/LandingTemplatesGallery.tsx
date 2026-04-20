@@ -91,6 +91,7 @@ export function LandingTemplatesGallery({ courseId, accentColor }: Props) {
       const merged: Record<string, any> = {
         ...existing,
         ...pending.data,
+        theme: pending.theme ?? null,
         applied_template_id: pending.id,
       };
       // Сохраняем SEO, аналитику, форму и редирект — их шаблон не должен трогать.
