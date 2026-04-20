@@ -9,8 +9,9 @@ import { Badge } from "@/components/ui/badge";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 import {
   Plus, Sparkles, LayoutGrid, Wand2, Trash2,
-  ChevronDown, ChevronUp, HardHat, Stethoscope, Monitor, Star,
+  ChevronDown, ChevronUp,
   Trophy, BookOpen, Award } from "lucide-react";
+import { TEMPLATE_CATEGORIES, RARITY_STYLES, getRarity } from "@/constants/achievementTemplates";
 
 interface Achievement {
   id: string;
