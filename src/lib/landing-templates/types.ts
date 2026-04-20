@@ -16,6 +16,13 @@ export type TemplateCategory =
  * лендинг рендерится — в публичной странице, в редакторе и в галерее превью.
  */
 export interface LandingTheme {
+  /**
+   * Идентификатор шаблона-источника. Заполняется при применении шаблона
+   * и используется хуком `useTemplateStyle()` для подбора уникальных
+   * CSS-скинов карточек/кнопок (см. `templateStyles.ts`).
+   * Опционален — обратная совместимость со старыми сохранёнными темами.
+   */
+  template_id?: string;
   font_heading: "inter" | "manrope" | "playfair" | "unbounded" | "jetbrains";
   font_body: "inter" | "manrope" | "pt-serif";
   /** 0 / 16px / 9999 — резкие, мягкие, пилюли */
