@@ -371,22 +371,28 @@ export function AdminChatsManager() {
     }
   }
 
+  const sidebarItems = [
+    { id: "chats" as ChatSection, label: "Организации", icon: MessageCircle },
+    { id: "support" as ChatSection, label: "Поддержка ИИ", icon: Headset, badge: supportUnread },
+    { id: "ai" as ChatSection, label: "ИИ-помощник", icon: Bot },
+    { id: "colleagues" as ChatSection, label: "Коллеги", icon: Users },
+    { id: "requests" as ChatSection, label: "Заявки", icon: ClipboardList },
+    { id: "contacts" as ChatSection, label: "Контакты", icon: Contact },
+    { id: "settings" as ChatSection, label: "Настройки", icon: Settings },
+  ];
+
   // Mobile: horizontal tabs instead of sidebar
   if (isMobile) {
     return (
       <div className="space-y-3">
         <div className="flex gap-1 overflow-x-auto bg-muted/50 p-1 rounded-xl">
-          {[
-            { id: "chats" as ChatSection, label: "Чаты" },
-            { id: "ai" as ChatSection, label: "ИИ" },
-            { id: "colleagues" as ChatSection, label: "Коллеги" },
-            { id: "requests" as ChatSection, label: "Заявки" },
-            { id: "contacts" as ChatSection, label: "Контакты" },
-            { id: "settings" as ChatSection, label: "⚙️" },
-          ].map(item => (
+          {sidebarItems.map(item => (
             <Button key={item.id} variant={activeSection === item.id ? "default" : "ghost"} size="sm"
-              onClick={() => setActiveSection(item.id)} className="rounded-lg text-xs shrink-0">
+              onClick={() => setActiveSection(item.id)} className="rounded-lg text-xs shrink-0 relative">
               {item.label}
+              {(item.badge ?? 0) > 0 && (
+                <Badge variant="destructive" className="ml-1 h-4 min-w-[16px] px-1 text-[10px]">{item.badge}</Badge>
+              )}
             </Button>
           ))}
         </div>
@@ -402,6 +408,7 @@ export function AdminChatsManager() {
         onSectionChange={setActiveSection}
         userName={userName}
         avatarUrl={userAvatar}
+        items={sidebarItems}
       />
       <div className="flex-1 overflow-hidden p-4">
         {renderContent()}
