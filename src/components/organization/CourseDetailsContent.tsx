@@ -222,8 +222,6 @@ export function CourseDetailsContent({ course, courseStudents, organizationId, a
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
-            </div>
-          </div>
         </div>
       </div>
 
