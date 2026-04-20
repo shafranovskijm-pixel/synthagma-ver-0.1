@@ -1,7 +1,9 @@
-import React from "react";
+import React, { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Save, ExternalLink, Sparkles } from "lucide-react";
+import { ArrowLeft, Save, ExternalLink, Sparkles, Palette } from "lucide-react";
+import { LandingThemePanel } from "@/components/course-landing/LandingThemePanel";
+import type { LandingTheme } from "@/lib/landing-templates/types";
 import { LandingHeroSection } from "@/components/course-landing/LandingHeroSection";
 import { LandingAIGenerateDialog } from "@/components/course-landing/LandingAIGenerateDialog";
 import { LandingAudienceSection } from "@/components/course-landing/LandingAudienceSection";
@@ -24,9 +26,19 @@ interface CourseLandingEditorContentProps { courseId: string; embedded?: boolean
 
 export function CourseLandingEditorContent({ courseId, embedded = false }: CourseLandingEditorContentProps) {
   const h = useLandingEditor(courseId);
+  const [themePanelOpen, setThemePanelOpen] = useState(false);
 
   if (h.loading) return <div className="min-h-screen flex items-center justify-center"><SigmaSpinner size="lg" /></div>;
   if (!h.course) return null;
+
+  const themeFromContent: Partial<LandingTheme> | undefined = (h.course?.landing_content as any)?.theme;
+
+  const handleThemeChange = (next: LandingTheme) => {
+    h.setCourse((c: any) => c ? {
+      ...c,
+      landing_content: { ...(c.landing_content ?? {}), theme: next },
+    } : c);
+  };
 
   const renderSection = (sectionId: string, index: number) => {
     const isHidden = h.landing.sections_hidden.includes(sectionId);
@@ -54,7 +66,14 @@ export function CourseLandingEditorContent({ courseId, embedded = false }: Cours
 
   const aiDialog = <LandingAIGenerateDialog open={h.aiDialogOpen} onOpenChange={h.setAiDialogOpen} sectionId={h.aiDialogSection} courseTitle={h.course.title} courseDescription={h.course.description} courseId={courseId} onTextGenerated={h.handleAITextGenerated} onImageGenerated={h.handleAIImageGenerated} />;
 
-  const themeFromContent = (h.course?.landing_content as any)?.theme;
+  const themePanel = (
+    <LandingThemePanel
+      open={themePanelOpen}
+      onOpenChange={setThemePanelOpen}
+      theme={themeFromContent}
+      onChange={handleThemeChange}
+    />
+  );
 
   if (embedded) {
     return (
@@ -62,6 +81,7 @@ export function CourseLandingEditorContent({ courseId, embedded = false }: Cours
         <div className="flex items-center justify-between">
           <h3 className="font-semibold">Редактор страницы курса</h3>
           <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" onClick={() => setThemePanelOpen(true)} className="gap-1.5"><Palette className="w-4 h-4" />Оформление</Button>
             <Button variant="outline" size="sm" onClick={() => h.openAIDialog(null)} className="gap-1.5"><Sparkles className="w-4 h-4" />ИИ</Button>
             <Button variant="outline" size="sm" onClick={() => window.open(h.publicUrl, "_blank")} className="gap-1.5"><ExternalLink className="w-4 h-4" />Просмотр</Button>
             <Button size="sm" onClick={h.handleSave} disabled={h.saving} className="gap-1.5">{h.saving ? <SigmaSpinner size="sm" /> : <Save className="w-4 h-4" />}Сохранить</Button>
@@ -72,6 +92,7 @@ export function CourseLandingEditorContent({ courseId, embedded = false }: Cours
           {h.landing.sections_order.map((sectionId, index) => renderSection(sectionId, index))}
         </LandingThemeProvider>
         {aiDialog}
+        {themePanel}
       </div>
     );
   }
@@ -85,6 +106,7 @@ export function CourseLandingEditorContent({ courseId, embedded = false }: Cours
             <span className="text-sm font-medium text-muted-foreground hidden sm:block">{h.course.title}</span>
           </div>
           <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" onClick={() => setThemePanelOpen(true)} className="gap-1.5"><Palette className="w-4 h-4" /><span className="hidden sm:inline">Оформление</span></Button>
             <Button variant="outline" size="sm" onClick={() => h.openAIDialog(null)} className="gap-1.5"><Sparkles className="w-4 h-4" /><span className="hidden sm:inline">Сгенерировать с ИИ</span></Button>
             <Button variant="outline" size="sm" onClick={() => window.open(h.publicUrl, "_blank")} className="gap-1.5"><ExternalLink className="w-4 h-4" /><span className="hidden sm:inline">Просмотр</span></Button>
             <Button size="sm" onClick={h.handleSave} disabled={h.saving} className="gap-1.5">{h.saving ? <SigmaSpinner size="sm" /> : <Save className="w-4 h-4" />}Сохранить</Button>
@@ -96,6 +118,7 @@ export function CourseLandingEditorContent({ courseId, embedded = false }: Cours
         {h.landing.sections_order.map((sectionId, index) => renderSection(sectionId, index))}
       </LandingThemeProvider>
       {aiDialog}
+      {themePanel}
     </div>
   );
 }
