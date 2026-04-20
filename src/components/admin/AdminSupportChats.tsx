@@ -209,40 +209,90 @@ export function AdminSupportChats() {
           </div>
         ) : (
           <>
-            <div className="p-4 border-b flex items-center justify-between">
-              <div>
-                <p className="font-semibold">{activeName}</p>
-                <p className="text-xs text-muted-foreground">
-                  {activeConv?.organizations?.name || activeConv?.source} · {activeConv?.guest_email || activeConv?.guest_name}
-                </p>
+            <div className="p-4 border-b flex items-center justify-between gap-4">
+              <div className="min-w-0 flex-1">
+                <p className="font-semibold text-base truncate">{activeName}</p>
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1">
+                  {activeConv?.organizations?.name && (
+                    <span className="inline-flex items-center gap-1 text-xs font-medium text-primary bg-primary/10 px-2 py-0.5 rounded-md">
+                      <Building2 className="h-3 w-3" />
+                      {activeConv.organizations.name}
+                    </span>
+                  )}
+                  {!activeConv?.organizations?.name && activeConv?.source && (
+                    <span className="inline-flex items-center gap-1 text-xs font-medium text-muted-foreground bg-muted px-2 py-0.5 rounded-md">
+                      {activeConv.source}
+                    </span>
+                  )}
+                  {(activeConv?.guest_email || activeConv?.guest_name) && (
+                    <span className="text-xs text-muted-foreground truncate">
+                      {activeConv?.guest_email || activeConv?.guest_name}
+                    </span>
+                  )}
+                </div>
               </div>
-              <Button size="sm" variant="outline" onClick={closeConversation}>Закрыть диалог</Button>
+              <Button size="sm" variant="outline" onClick={closeConversation} className="shrink-0">Закрыть диалог</Button>
             </div>
             <ScrollArea className="flex-1 p-4">
-              <div className="space-y-3">
-                {messages.map(m => (
-                  <div key={m.id} className={cn(
-                    'flex',
-                    m.role === 'user' ? 'justify-start' : m.role === 'system' ? 'justify-center' : 'justify-end'
-                  )}>
-                    <div className={cn(
-                      'max-w-[75%] rounded-2xl px-4 py-2.5 text-sm',
-                      m.role === 'user' && 'bg-muted',
-                      m.role === 'ai' && 'bg-primary/10 border border-primary/20',
-                      m.role === 'operator' && 'bg-primary text-primary-foreground',
-                      m.role === 'system' && 'bg-muted/50 text-muted-foreground italic text-xs'
+              <div className="space-y-4">
+                {messages.map(m => {
+                  const senderLabel =
+                    m.role === 'user'
+                      ? (m.sender_name || activeName || 'Пользователь')
+                      : m.role === 'ai'
+                        ? 'ИИ-помощник'
+                        : m.role === 'operator'
+                          ? (m.sender_name || 'Оператор поддержки')
+                          : '';
+                  const orgLabel = m.role === 'user' ? activeConv?.organizations?.name : null;
+                  return (
+                    <div key={m.id} className={cn(
+                      'flex',
+                      m.role === 'user' ? 'justify-start' : m.role === 'system' ? 'justify-center' : 'justify-end'
                     )}>
-                      <p className="text-[10px] opacity-60 mb-1 flex items-center gap-1">
-                        {m.role === 'user' && <><User className="h-3 w-3" /> {m.sender_name || 'Пользователь'}</>}
-                        {m.role === 'ai' && <><Bot className="h-3 w-3" /> ИИ</>}
-                        {m.role === 'operator' && <><Headset className="h-3 w-3" /> {m.sender_name || 'Оператор'}</>}
-                      </p>
-                      <div className="prose prose-sm dark:prose-invert max-w-none break-words">
-                        <ReactMarkdown>{m.content}</ReactMarkdown>
+                      <div className="max-w-[75%] flex flex-col gap-1">
+                        {m.role !== 'system' && (
+                          <div className={cn(
+                            "flex items-center gap-1.5 text-xs font-medium px-1",
+                            m.role === 'operator' ? 'justify-end text-primary' : 'text-foreground'
+                          )}>
+                            {m.role === 'user' && <User className="h-3.5 w-3.5 text-muted-foreground" />}
+                            {m.role === 'ai' && <Bot className="h-3.5 w-3.5 text-primary" />}
+                            {m.role === 'operator' && <Headset className="h-3.5 w-3.5" />}
+                            <span className="truncate">{senderLabel}</span>
+                            {orgLabel && (
+                              <span className="inline-flex items-center gap-1 text-[10px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded">
+                                <Building2 className="h-2.5 w-2.5" />
+                                {orgLabel}
+                              </span>
+                            )}
+                          </div>
+                        )}
+                        <div className={cn(
+                          'rounded-2xl px-4 py-2.5 text-sm',
+                          m.role === 'user' && 'bg-muted rounded-tl-sm',
+                          m.role === 'ai' && 'bg-primary/10 border border-primary/20 rounded-tr-sm',
+                          m.role === 'operator' && 'bg-primary text-primary-foreground rounded-tr-sm',
+                          m.role === 'system' && 'bg-muted/50 text-muted-foreground italic text-xs'
+                        )}>
+                          {m.role === 'user' || m.role === 'system' ? (
+                            <p className="whitespace-pre-wrap break-words">{m.content}</p>
+                          ) : (
+                            <div className="prose prose-sm dark:prose-invert max-w-none break-words prose-p:my-1">
+                              <ReactMarkdown>{m.content}</ReactMarkdown>
+                            </div>
+                          )}
+                          <p className={cn(
+                            "text-[10px] mt-1.5",
+                            m.role === 'operator' ? 'text-primary-foreground/60' : 'text-muted-foreground'
+                          )}>
+                            {formatDistanceToNow(new Date(m.created_at), { locale: ru, addSuffix: true })}
+                          </p>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
                 <div ref={endRef} />
               </div>
             </ScrollArea>
