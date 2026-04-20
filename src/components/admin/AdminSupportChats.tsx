@@ -270,8 +270,8 @@ export function AdminSupportChats() {
                         )}
                         <div className={cn(
                           'rounded-2xl px-4 py-2.5 text-sm',
-                          m.role === 'user' && 'bg-muted rounded-tl-sm',
-                          m.role === 'ai' && 'bg-primary/10 border border-primary/20 rounded-tr-sm',
+                          m.role === 'user' && 'bg-muted text-foreground rounded-tl-sm',
+                          m.role === 'ai' && 'bg-primary/10 text-foreground border border-primary/20 rounded-tr-sm',
                           m.role === 'operator' && 'bg-primary text-primary-foreground rounded-tr-sm',
                           m.role === 'system' && 'bg-muted/50 text-muted-foreground italic text-xs'
                         )}>
