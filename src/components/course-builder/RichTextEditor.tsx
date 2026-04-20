@@ -182,13 +182,15 @@ export function RichTextEditor({
     savedRange.current = range.cloneRange();
     const rect = range.getBoundingClientRect();
     const editorRect = editor.getBoundingClientRect();
-    // Position toolbar in the LEFT GUTTER (same column as the "+" button on the left of the block).
-    // Vertical: aligned with the selected text line (not below).
-    // Horizontal: shifted left into the gutter zone (-52px from editor left edge).
-    setToolbarPos({
-      top: rect.top - editorRect.top - 4,
-      left: -52,
-    });
+    // Centered above the text selection. Flip below when too close to the viewport top.
+    const TOOLBAR_HEIGHT = 44;
+    const GAP = 10;
+    const flipBelow = rect.top < TOOLBAR_HEIGHT + GAP + 8;
+    const top = flipBelow
+      ? rect.bottom - editorRect.top + GAP
+      : rect.top - editorRect.top - TOOLBAR_HEIGHT - GAP;
+    const left = rect.left + rect.width / 2 - editorRect.left;
+    setToolbarPos({ top, left });
     setShowToolbar(true);
     updateActiveFormats();
   }, [styleMenuOpen, listMenuOpen, paletteOpen, linkOpen, updateActiveFormats]);
@@ -293,7 +295,7 @@ export function RichTextEditor({
     <div className="relative">
       {showToolbar && (
         <div
-          className="absolute z-50 flex items-center gap-0.5 bg-slate-800/95 backdrop-blur-md text-white rounded-2xl shadow-xl border border-white/10 px-1.5 py-1 pointer-events-auto"
+          className="absolute z-50 flex items-center gap-0.5 bg-slate-800/95 backdrop-blur-md text-white rounded-2xl shadow-2xl border border-white/10 px-2 py-1.5 h-11 pointer-events-auto -translate-x-1/2"
           style={{ top: toolbarPos.top, left: toolbarPos.left }}
           onMouseDown={(e) => e.preventDefault()}
         >
@@ -302,10 +304,10 @@ export function RichTextEditor({
             <>
               <button
                 onMouseDown={(e) => { e.preventDefault(); cycleSize(-1); }}
-                className="h-7 w-7 flex items-center justify-center hover:bg-white/10 rounded-lg transition-colors"
+                className="h-8 w-8 flex items-center justify-center hover:bg-white/10 rounded-lg transition-colors"
                 title="Уменьшить"
               >
-                <Minus className="w-3.5 h-3.5" />
+                <Minus className="w-4 h-4" />
               </button>
               {onConvertType && (
                 <Popover open={styleMenuOpen} onOpenChange={setStyleMenuOpen}>
@@ -315,7 +317,7 @@ export function RichTextEditor({
                       className="h-7 px-2 flex items-center gap-1 hover:bg-white/10 rounded-lg transition-colors text-xs"
                       title="Стиль"
                     >
-                      <Type className="w-3.5 h-3.5" />
+                      <Type className="w-4 h-4" />
                       <ChevronDown className="w-3 h-3 opacity-70" />
                     </button>
                   </PopoverTrigger>
@@ -327,7 +329,7 @@ export function RichTextEditor({
                         className="w-full flex items-center justify-between gap-2 px-2 py-1.5 rounded-md hover:bg-accent transition-colors text-left"
                       >
                         <span className={cn(item.preview)}>{item.label}</span>
-                        {currentBlockType === item.type && <Check className="w-3.5 h-3.5 text-primary" />}
+                        {currentBlockType === item.type && <Check className="w-4 h-4 text-primary" />}
                       </button>
                     ))}
                   </PopoverContent>
@@ -335,57 +337,57 @@ export function RichTextEditor({
               )}
               <button
                 onMouseDown={(e) => { e.preventDefault(); cycleSize(1); }}
-                className="h-7 w-7 flex items-center justify-center hover:bg-white/10 rounded-lg transition-colors"
+                className="h-8 w-8 flex items-center justify-center hover:bg-white/10 rounded-lg transition-colors"
                 title="Увеличить"
               >
-                <Plus className="w-3.5 h-3.5" />
+                <Plus className="w-4 h-4" />
               </button>
-              <div className="w-px h-5 bg-white/15 mx-0.5" />
+              <div className="w-px h-6 bg-white/15 mx-0.5" />
             </>
           )}
 
           {/* Inline formatting */}
           <button
             onMouseDown={(e) => { e.preventDefault(); execFormat('bold'); }}
-            className={cn("h-7 w-7 flex items-center justify-center rounded-lg transition-colors", activeFormats.bold ? "bg-primary text-primary-foreground" : "hover:bg-white/10")}
+            className={cn("h-8 w-8 flex items-center justify-center rounded-lg transition-colors", activeFormats.bold ? "bg-primary text-primary-foreground" : "hover:bg-white/10")}
             title="Жирный (Ctrl+B)"
           >
-            <Bold className="w-3.5 h-3.5" />
+            <Bold className="w-4 h-4" />
           </button>
           <button
             onMouseDown={(e) => { e.preventDefault(); execFormat('italic'); }}
-            className={cn("h-7 w-7 flex items-center justify-center rounded-lg transition-colors", activeFormats.italic ? "bg-primary text-primary-foreground" : "hover:bg-white/10")}
+            className={cn("h-8 w-8 flex items-center justify-center rounded-lg transition-colors", activeFormats.italic ? "bg-primary text-primary-foreground" : "hover:bg-white/10")}
             title="Курсив (Ctrl+I)"
           >
-            <Italic className="w-3.5 h-3.5" />
+            <Italic className="w-4 h-4" />
           </button>
           <button
             onMouseDown={(e) => { e.preventDefault(); toggleCode(); }}
-            className={cn("h-7 w-7 flex items-center justify-center rounded-lg transition-colors", activeFormats.code ? "bg-primary text-primary-foreground" : "hover:bg-white/10")}
+            className={cn("h-8 w-8 flex items-center justify-center rounded-lg transition-colors", activeFormats.code ? "bg-primary text-primary-foreground" : "hover:bg-white/10")}
             title="Код"
           >
-            <Code className="w-3.5 h-3.5" />
+            <Code className="w-4 h-4" />
           </button>
           <button
             onMouseDown={(e) => { e.preventDefault(); execFormat('underline'); }}
-            className={cn("h-7 w-7 flex items-center justify-center rounded-lg transition-colors", activeFormats.underline ? "bg-primary text-primary-foreground" : "hover:bg-white/10")}
+            className={cn("h-8 w-8 flex items-center justify-center rounded-lg transition-colors", activeFormats.underline ? "bg-primary text-primary-foreground" : "hover:bg-white/10")}
             title="Подчёркнутый (Ctrl+U)"
           >
-            <Underline className="w-3.5 h-3.5" />
+            <Underline className="w-4 h-4" />
           </button>
 
           {hasBlockControls && onConvertType && (
             <>
-              <div className="w-px h-5 bg-white/15 mx-0.5" />
+              <div className="w-px h-6 bg-white/15 mx-0.5" />
               {/* Lists */}
               <Popover open={listMenuOpen} onOpenChange={setListMenuOpen}>
                 <PopoverTrigger asChild>
                   <button
                     onMouseDown={(e) => e.preventDefault()}
-                    className="h-7 w-7 flex items-center justify-center hover:bg-white/10 rounded-lg transition-colors"
+                    className="h-8 w-8 flex items-center justify-center hover:bg-white/10 rounded-lg transition-colors"
                     title="Список"
                   >
-                    <List className="w-3.5 h-3.5" />
+                    <List className="w-4 h-4" />
                   </button>
                 </PopoverTrigger>
                 <PopoverContent className="w-44 p-1" align="start" onOpenAutoFocus={(e) => e.preventDefault()}>
@@ -394,14 +396,14 @@ export function RichTextEditor({
                     className="w-full flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-accent transition-colors text-sm text-left"
                   >
                     <List className="w-4 h-4" />Маркированный
-                    {currentBlockType === "bulletList" && <Check className="w-3.5 h-3.5 text-primary ml-auto" />}
+                    {currentBlockType === "bulletList" && <Check className="w-4 h-4 text-primary ml-auto" />}
                   </button>
                   <button
                     onMouseDown={(e) => { e.preventDefault(); onConvertType("numberedList"); setListMenuOpen(false); }}
                     className="w-full flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-accent transition-colors text-sm text-left"
                   >
                     <ListOrdered className="w-4 h-4" />Нумерованный
-                    {currentBlockType === "numberedList" && <Check className="w-3.5 h-3.5 text-primary ml-auto" />}
+                    {currentBlockType === "numberedList" && <Check className="w-4 h-4 text-primary ml-auto" />}
                   </button>
                 </PopoverContent>
               </Popover>
@@ -410,7 +412,7 @@ export function RichTextEditor({
 
           {hasBlockControls && onStyleUpdate && (
             <>
-              <div className="w-px h-5 bg-white/15 mx-0.5" />
+              <div className="w-px h-6 bg-white/15 mx-0.5" />
               {/* Alignment */}
               {([
                 { v: undefined, icon: AlignLeft, key: 'left', title: 'По левому краю' },
@@ -423,24 +425,24 @@ export function RichTextEditor({
                   <button
                     key={key}
                     onMouseDown={(e) => { e.preventDefault(); onStyleUpdate({ textAlign: v }); }}
-                    className={cn("h-7 w-7 flex items-center justify-center rounded-lg transition-colors", isActive ? "bg-primary text-primary-foreground" : "hover:bg-white/10")}
+                    className={cn("h-8 w-8 flex items-center justify-center rounded-lg transition-colors", isActive ? "bg-primary text-primary-foreground" : "hover:bg-white/10")}
                     title={title}
                   >
-                    <Icon className="w-3.5 h-3.5" />
+                    <Icon className="w-4 h-4" />
                   </button>
                 );
               })}
 
-              <div className="w-px h-5 bg-white/15 mx-0.5" />
+              <div className="w-px h-6 bg-white/15 mx-0.5" />
               {/* Palette */}
               <Popover open={paletteOpen} onOpenChange={setPaletteOpen}>
                 <PopoverTrigger asChild>
                   <button
                     onMouseDown={(e) => e.preventDefault()}
-                    className="h-7 w-7 flex items-center justify-center hover:bg-white/10 rounded-lg transition-colors"
+                    className="h-8 w-8 flex items-center justify-center hover:bg-white/10 rounded-lg transition-colors"
                     title="Цвет"
                   >
-                    <Palette className="w-3.5 h-3.5" />
+                    <Palette className="w-4 h-4" />
                   </button>
                 </PopoverTrigger>
                 <PopoverContent className="w-60 p-3" align="start" onOpenAutoFocus={(e) => e.preventDefault()}>
@@ -491,10 +493,10 @@ export function RichTextEditor({
             <PopoverTrigger asChild>
               <button
                 onMouseDown={(e) => e.preventDefault()}
-                className="h-7 w-7 flex items-center justify-center hover:bg-white/10 rounded-lg transition-colors"
+                className="h-8 w-8 flex items-center justify-center hover:bg-white/10 rounded-lg transition-colors"
                 title="Ссылка"
               >
-                <Link2 className="w-3.5 h-3.5" />
+                <Link2 className="w-4 h-4" />
               </button>
             </PopoverTrigger>
             <PopoverContent className="w-72 p-2" align="start" onOpenAutoFocus={(e) => e.preventDefault()}>

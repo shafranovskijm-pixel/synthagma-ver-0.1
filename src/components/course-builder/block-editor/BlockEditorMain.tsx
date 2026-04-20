@@ -86,6 +86,14 @@ export function BlockEditor({ blocks, onChange, readOnly = false, courseTitle, l
     onChangeWithHistory(blocks.filter(b => b.id !== id));
   }, [blocks, onChangeWithHistory]);
 
+  const moveBlock = useCallback((id: string, dir: -1 | 1) => {
+    const idx = blocks.findIndex(b => b.id === id);
+    if (idx < 0) return;
+    const newIdx = idx + dir;
+    if (newIdx < 0 || newIdx >= blocks.length) return;
+    onChangeWithHistory(arrayMove(blocks, idx, newIdx));
+  }, [blocks, onChangeWithHistory]);
+
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
@@ -153,6 +161,8 @@ export function BlockEditor({ blocks, onChange, readOnly = false, courseTitle, l
                 onUpdate={(updates) => updateBlock(block.id, updates)}
                 onDelete={() => deleteBlock(block.id)}
                 onAddAfter={(type) => addBlock(type, index)}
+                onMoveUp={index > 0 ? () => moveBlock(block.id, -1) : undefined}
+                onMoveDown={index < blocks.length - 1 ? () => moveBlock(block.id, 1) : undefined}
                 courseTitle={courseTitle}
                 lessonTitle={lessonTitle}
                 organizationId={organizationId}
