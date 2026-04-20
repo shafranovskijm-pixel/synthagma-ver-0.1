@@ -147,7 +147,19 @@ export const LessonEditor = ({
       <Dialog open={isOpen} onOpenChange={onClose}>
         <DialogContent className="sm:max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle className="font-display text-xl">{lesson ? "Редактировать урок" : "Новый урок"}</DialogTitle>
+            <div className="flex items-center justify-between gap-3">
+              <DialogTitle className="font-display text-xl">{lesson ? "Редактировать урок" : "Новый урок"}</DialogTitle>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setPreviewOpen(true)}
+                className="gap-1.5 mr-8"
+                title="Посмотреть, как урок выглядит у студента"
+              >
+                <Eye className="w-4 h-4" />Превью
+              </Button>
+            </div>
           </DialogHeader>
 
           <div className="space-y-6 py-4">
@@ -194,14 +206,35 @@ export const LessonEditor = ({
 
             {e.type === "text" && (
               <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <Label>Содержание урока</Label>
-                  <Button type="button" variant="outline" size="sm" onClick={e.handleGenerateContent} disabled={e.isGenerating || !e.title.trim()} className="gap-2">
-                    {e.isGenerating ? <SigmaSpinner size="sm" /> : <Sparkles className="w-4 h-4" />}
-                    {e.isGenerating ? "Генерация..." : "Сгенерировать ИИ"}
-                  </Button>
+                <div className="flex items-center justify-between flex-wrap gap-2">
+                  <div className="flex items-center gap-3">
+                    <Label>Содержание урока</Label>
+                    {wordCount > 0 && (
+                      <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                        <span className="inline-flex items-center gap-1" title="Количество слов"><Hash className="w-3 h-3" />{wordCount}</span>
+                        <span className="inline-flex items-center gap-1" title="Примерное время чтения"><Clock className="w-3 h-3" />{readingTime}</span>
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <input ref={docxInputRef} type="file" accept=".docx" className="hidden" onChange={(ev) => { const f = ev.target.files?.[0]; if (f) handleDocxImport(f); }} />
+                    <Button type="button" variant="outline" size="sm" onClick={() => docxInputRef.current?.click()} disabled={importingDocx} className="gap-2" title="Импорт текста из Word (.docx)">
+                      {importingDocx ? <SigmaSpinner size="sm" /> : <FileType2 className="w-4 h-4" />}
+                      {importingDocx ? "Импорт..." : "Из .docx"}
+                    </Button>
+                    <Button type="button" variant="outline" size="sm" onClick={e.handleGenerateContent} disabled={e.isGenerating || !e.title.trim()} className="gap-2">
+                      {e.isGenerating ? <SigmaSpinner size="sm" /> : <Sparkles className="w-4 h-4" />}
+                      {e.isGenerating ? "Генерация..." : "Сгенерировать ИИ"}
+                    </Button>
+                  </div>
                 </div>
-                <BlockEditor blocks={e.blocks} onChange={e.setBlocks} organizationId={organizationId} courseId={courseId} lessonId={lesson?.id} />
+                <EditorDropZone
+                  onAddBlock={(b) => e.setBlocks([...e.blocks, b])}
+                  courseId={courseId}
+                  organizationId={organizationId}
+                >
+                  <BlockEditor blocks={e.blocks} onChange={e.setBlocks} organizationId={organizationId} courseId={courseId} lessonId={lesson?.id} />
+                </EditorDropZone>
               </div>
             )}
 
