@@ -1,15 +1,17 @@
 import { useRef, useEffect, useState, useCallback } from "react";
 import {
   Bold, Italic, Underline, Code, Link2, Type, ChevronDown, Check,
-  AlignLeft, AlignCenter, AlignRight, List, ListOrdered, Palette, Minus, Plus
+  AlignLeft, AlignCenter, AlignRight, List, ListOrdered, Palette, Minus, Plus,
+  Wand2, Sliders, Star, X, Eraser
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import DOMPurify from "dompurify";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { textColorPresets, bgColorPresets, bgColorDotStyles } from "./block-editor/types";
-import type { BlockType, ContentBlock } from "./block-editor/types";
+import { textColorPresets, bgColorPresets, bgColorDotStyles, wrapCalloutTargets, wrapOtherTargets, quickStyles } from "./block-editor/types";
+import type { BlockType, ContentBlock, StylePreset } from "./block-editor/types";
+import { extractStyle, describeStyle } from "./block-editor/utils";
 
 interface RichTextEditorProps {
   value: string;
@@ -25,6 +27,13 @@ interface RichTextEditorProps {
   currentTextColor?: string;
   currentBgColor?: string;
   currentTextSize?: 'sm' | 'base' | 'lg';
+  // Block conversion (separate from list/heading switcher)
+  onConvertBlockType?: (type: BlockType) => void;
+  canConvert?: boolean;
+  canStyle?: boolean;
+  currentBlock?: ContentBlock;
+  presets?: { name: string; style: StylePreset }[];
+  onPresetsChange?: (p: { name: string; style: StylePreset }[]) => void;
 }
 
 const ALLOWED_TAGS = ['strong', 'b', 'em', 'i', 'u', 's', 'br', 'p', 'span', 'div', 'a', 'code'];
