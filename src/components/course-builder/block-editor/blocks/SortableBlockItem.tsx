@@ -101,7 +101,11 @@ export function SortableBlockItem({ block, isFocused, onFocus, onUpdate, onDelet
   };
 
   return (
-    <div ref={setNodeRef} style={style} data-block-id={block.id} className={cn("group relative rounded-lg transition-all", isFocused && "bg-secondary/30")} onClick={onFocus}>
+    <div ref={setNodeRef} style={style} data-block-id={block.id} className={cn("group relative rounded-lg transition-all pl-14", isFocused && "bg-secondary/30")} onClick={onFocus}>
+      {/* Left gutter: "+" add-block button, vertically aligned with floating formatting toolbar */}
+      <div className="absolute left-2 top-1 opacity-0 group-hover:opacity-100 transition-opacity z-20">
+        <InlineAddBlockButton onAdd={(type) => onAddAfter(type)} />
+      </div>
       <div className="min-w-0">
         <BlockContent block={block} onUpdate={onUpdate} courseTitle={courseTitle} lessonTitle={lessonTitle} existingContent={existingContent} organizationId={organizationId} courseId={courseId} lessonId={lessonId} />
       </div>
@@ -285,7 +289,6 @@ export function SortableBlockItem({ block, isFocused, onFocus, onUpdate, onDelet
               </Dialog>
             </>
           )}
-          <InlineAddBlockButton onAdd={(type) => onAddAfter(type)} />
           <button className="h-8 w-8 flex items-center justify-center hover:bg-red-500/30 rounded-full transition-colors" onClick={(e) => { e.stopPropagation(); onDelete(); }} title="Удалить блок"><Trash2 className="w-4 h-4" /></button>
         </div>
       </div>
