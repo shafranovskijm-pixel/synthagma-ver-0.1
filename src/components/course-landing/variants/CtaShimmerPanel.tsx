@@ -4,6 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Sparkles } from "lucide-react";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 import { useTemplateStyle } from "../LandingThemeProvider";
+import auroraCtaBanner from "@/assets/landing-templates/decor/aurora-cta-banner.jpg";
 
 interface Props {
   title: string;
@@ -43,6 +44,11 @@ export function CtaShimmerPanel({
       {/* Aurora glow */}
       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[400px] rounded-full opacity-40 blur-3xl pointer-events-none"
         style={{ background: `radial-gradient(ellipse, ${accent}, transparent 70%)` }} />
+
+      {/* Aurora premium banner accent */}
+      <img src={auroraCtaBanner} alt="" aria-hidden
+        className="hidden md:block absolute right-0 top-1/2 -translate-y-1/2 w-[420px] h-[420px] object-cover opacity-40 mix-blend-screen pointer-events-none rounded-full blur-sm"
+        style={{ animation: "aurora-float 9s ease-in-out infinite" }} />
 
       <div className="max-w-3xl mx-auto relative">
         <div className="relative rounded-3xl p-8 md:p-12 backdrop-blur-xl border border-white/10 overflow-hidden"
