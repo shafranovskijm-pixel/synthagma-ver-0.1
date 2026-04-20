@@ -131,8 +131,9 @@ export function LandingThemeProvider({ theme, accent, bare, className, style, ch
         )}
         style={{ ...cssVars, ...style }}
       >
-        {/* Декоративный фоновый слой */}
-        {!bare && (decorPattern !== "none" || auroraGradient) && (
+        {/* Декоративный фоновый слой — рендерится всегда (включая bare-режим в галерее).
+            Только тяжёлые фоновые картинки секций мы при необходимости отключаем отдельно. */}
+        {(decorPattern !== "none" || auroraGradient) && (
           <div
             aria-hidden
             className="pointer-events-none absolute inset-0 z-0"

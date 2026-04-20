@@ -154,8 +154,7 @@ export function LandingTemplateMiniPreview({
   return (
     <div
       ref={wrapperRef}
-      className="absolute inset-0 overflow-hidden bg-background"
-      style={accentColor ? ({ ["--primary" as any]: accentColor } as React.CSSProperties) : undefined}
+      className="absolute inset-0 overflow-hidden"
       aria-hidden="true"
     >
       {/* Слой со скроллом — управляется CSS-переменной --mini-translate */}
