@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { LANDING_TEMPLATES, type LandingTemplate, type TemplateTier } from "@/lib/landing-templates";
 import { LandingTemplatePreviewDialog } from "./LandingTemplatePreviewDialog";
+import { LandingTemplateMiniPreview } from "./LandingTemplateMiniPreview";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -158,15 +159,17 @@ export function LandingTemplatesGallery({ courseId, accentColor }: Props) {
                 }}
                 aria-label={`Открыть превью шаблона ${tpl.name}`}
               >
-                <img
-                  src={tpl.preview_image}
-                  alt={`Превью шаблона ${tpl.name}`}
-                  loading="lazy"
-                  width={1280}
-                  height={800}
-                  className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                <LandingTemplateMiniPreview
+                  template={tpl}
+                  courseTitle={course?.title ?? "Название курса"}
+                  orgName={orgName}
+                  coverImageUrl={course?.cover_image_url ?? null}
+                  price={course?.price ?? 0}
+                  lessonsCount={lessonsCount}
+                  duration={course?.duration ?? null}
+                  courseAccentColor={accentColor ?? null}
                 />
-                <div className="absolute top-3 left-3 flex flex-wrap gap-1.5">
+                <div className="absolute top-3 left-3 flex flex-wrap gap-1.5 z-10">
                   <Badge variant="outline" className={cn("backdrop-blur-sm font-medium gap-1", tierMeta.className)}>
                     <TierIcon className="w-3 h-3" />
                     {tierMeta.label}
@@ -178,14 +181,14 @@ export function LandingTemplatesGallery({ courseId, accentColor }: Props) {
                   )}
                 </div>
                 {isActive && (
-                  <div className="absolute top-3 right-3">
+                  <div className="absolute top-3 right-3 z-10">
                     <Badge className="bg-primary text-primary-foreground gap-1 shadow">
                       <Check className="w-3 h-3" />
                       Активный
                     </Badge>
                   </div>
                 )}
-                <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end justify-center pb-4">
+                <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end justify-center pb-4 z-10">
                   <span className="inline-flex items-center gap-1.5 text-white text-xs font-medium bg-black/50 backdrop-blur px-3 py-1.5 rounded-full">
                     <Eye className="w-3.5 h-3.5" />
                     Нажмите, чтобы посмотреть

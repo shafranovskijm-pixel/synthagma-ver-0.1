@@ -1,4 +1,3 @@
-import auroraPreview from "@/assets/landing-templates/aurora.jpg";
 import type { LandingTemplate } from "./types";
 import { ALL_SECTIONS } from "@/hooks/useLandingEditor";
 
@@ -6,7 +5,6 @@ export const auroraTemplate: LandingTemplate = {
   id: "aurora",
   name: "Аврора",
   tagline: "Премиальный продающий лендинг с фокусом на конверсию",
-  preview_image: auroraPreview,
   accent_color: "#22b8a6",
   tier: "free",
   data: {

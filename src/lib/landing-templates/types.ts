@@ -20,7 +20,8 @@ export interface LandingTemplate {
   id: string;
   name: string;
   tagline: string;
-  preview_image: string;
+  /** @deprecated превью теперь рендерится живым `LandingTemplateMiniPreview` */
+  preview_image?: string;
   accent_color: string;
   tier: TemplateTier;
   category?: TemplateCategory;
