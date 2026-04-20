@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-import { LayoutGrid, Save, RefreshCw, RotateCcw, Users, FileText, BarChart3, Link, HardHat, ShoppingBag, Building2, GraduationCap } from "lucide-react";
+import { LayoutGrid, Save, RefreshCw, RotateCcw, Users, FileText, BarChart3, Link, HardHat, ShoppingBag, Building2, GraduationCap, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { SettingsStudentDashboardTab } from "@/components/organization/SettingsStudentDashboardTab";
@@ -15,12 +15,14 @@ interface MenuSettings {
   showDocuments: boolean;
   showServices: boolean;
   showCompanies: boolean;
+  showAITutors: boolean;
   [key: string]: boolean;
 }
 
 const DEFAULT_MENU: MenuSettings = {
-  showStats: true, showLinks: true, showLaborSafety: true,
-  showDocuments: true, showServices: true, showCompanies: true,
+  showStats: false, showLinks: false, showLaborSafety: false,
+  showDocuments: false, showServices: true, showCompanies: false,
+  showAITutors: false,
 };
 
 const settingsTabs = [
@@ -28,6 +30,19 @@ const settingsTabs = [
   { key: "student", label: "ЛК ученика", icon: GraduationCap },
   { key: "staff", label: "Сотрудники", icon: Users },
 ];
+
+function parseMenu(m: any): MenuSettings {
+  return {
+    showStats: m?.showStats === true,
+    showLinks: m?.showLinks === true,
+    showLaborSafety: m?.showLaborSafety !== false,
+    showDocuments: m?.showDocuments === true,
+    showServices: m?.showServices !== false,
+    // Off by default — must be explicitly enabled
+    showCompanies: m?.showCompanies === true,
+    showAITutors: m?.showAITutors === true,
+  };
+}
 
 export function OrgSettingsContent() {
   const { user } = useAuth();
@@ -48,13 +63,7 @@ export function OrgSettingsContent() {
       if (orgId) {
         setOrganizationId(orgId);
         const { data: org } = await supabase.from("organizations").select("menu_settings").eq("id", orgId).single();
-        if (org?.menu_settings) {
-          const m = org.menu_settings as any;
-          setMenuSettings({
-            showStats: m.showStats ?? true, showLinks: m.showLinks ?? true, showLaborSafety: m.showLaborSafety ?? true,
-            showDocuments: m.showDocuments ?? true, showServices: m.showServices ?? true, showCompanies: m.showCompanies ?? true,
-          });
-        }
+        if (org?.menu_settings) setMenuSettings(parseMenu(org.menu_settings));
       }
       setLoading(false);
     };
@@ -63,7 +72,10 @@ export function OrgSettingsContent() {
 
   const handleSaveMenuSettings = async () => {
     if (!organizationId) return;
-    const { error } = await supabase.from('organizations').update({ menu_settings: menuSettings as any }).eq('id', organizationId);
+    // Merge with existing settings to preserve other keys (courseViewMode, etc.)
+    const { data: org } = await supabase.from("organizations").select("menu_settings").eq("id", organizationId).single();
+    const merged = { ...(org?.menu_settings as any || {}), ...menuSettings };
+    const { error } = await supabase.from('organizations').update({ menu_settings: merged }).eq('id', organizationId);
     if (error) { toast.error('Ошибка сохранения'); return; }
     toast.success('Настройки меню сохранены');
   };
@@ -71,20 +83,16 @@ export function OrgSettingsContent() {
   const resetMenuSettings = async () => {
     if (!organizationId) return;
     setMenuSettings(DEFAULT_MENU);
-    await supabase.from('organizations').update({ menu_settings: DEFAULT_MENU as any }).eq('id', organizationId);
+    const { data: org } = await supabase.from("organizations").select("menu_settings").eq("id", organizationId).single();
+    const merged = { ...(org?.menu_settings as any || {}), ...DEFAULT_MENU };
+    await supabase.from('organizations').update({ menu_settings: merged }).eq('id', organizationId);
     toast.success('Меню восстановлено по умолчанию');
   };
 
   const reloadMenuSettings = async () => {
     if (!organizationId) return;
     const { data } = await supabase.from("organizations").select("menu_settings").eq("id", organizationId).single();
-    if (data?.menu_settings) {
-      const m = data.menu_settings as any;
-      setMenuSettings({
-        showStats: m.showStats ?? true, showLinks: m.showLinks ?? true, showLaborSafety: m.showLaborSafety ?? true,
-        showDocuments: m.showDocuments ?? true, showServices: m.showServices ?? true, showCompanies: m.showCompanies ?? true,
-      });
-    }
+    if (data?.menu_settings) setMenuSettings(parseMenu(data.menu_settings));
     toast.success('Меню обновлено');
   };
 
@@ -94,6 +102,7 @@ export function OrgSettingsContent() {
     { icon: HardHat, bg: "bg-accent/15", color: "text-accent", label: "Охрана труда", desc: "Модуль охраны труда", key: "showLaborSafety" as keyof MenuSettings },
     { icon: FileText, bg: "bg-destructive/15", color: "text-destructive", label: "Документы", desc: "Документооборот", key: "showDocuments" as keyof MenuSettings },
     { icon: Building2, bg: "bg-primary/15", color: "text-primary", label: "Компании", desc: "Управление корпоративными клиентами", key: "showCompanies" as keyof MenuSettings },
+    { icon: Sparkles, bg: "bg-accent/15", color: "text-accent", label: "ИИ-преподаватели", desc: "Голосовые ИИ-аватары для уроков", key: "showAITutors" as keyof MenuSettings },
     { icon: ShoppingBag, bg: "bg-primary/15", color: "text-primary", label: "Маркетплейс", desc: "Магазин курсов", key: "showServices" as keyof MenuSettings },
   ];
 
