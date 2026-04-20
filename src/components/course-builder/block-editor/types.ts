@@ -56,6 +56,8 @@ export interface ContentBlock {
   content: string;
   accordionTitle?: string;
   accordionOpen?: boolean;
+  /** Optional bold heading shown above the body inside callout/highlight blocks. */
+  calloutTitle?: string;
   quizQuestion?: string;
   quizOptions?: QuizOption[];
   quizExplanation?: string;
