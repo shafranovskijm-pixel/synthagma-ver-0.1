@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { checkAiLimitGlobal, incrementAiLimitGlobal } from "@/hooks/useAiGenerationLimit";
+import { useBlockAIGenerate } from "@/hooks/useBlockAIGenerate";
 import { safeInvoke } from "@/utils/safeInvoke";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
