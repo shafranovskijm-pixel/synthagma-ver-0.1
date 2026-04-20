@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -6,7 +6,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { FileText, Video, HelpCircle, Plus, Trash2, Sparkles, Settings, Upload, FolderOpen, FileSpreadsheet, Lock, RotateCcw, Save } from "lucide-react";
+import { FileText, Video, HelpCircle, Plus, Trash2, Sparkles, Settings, Upload, FolderOpen, FileSpreadsheet, Lock, RotateCcw, Save, Eye, FileType2, Clock, Hash } from "lucide-react";
 import { AIAvatarLessonEditor, type AIAvatarConfig } from "@/components/course-builder/AIAvatarLessonEditor";
 import { BlockEditor } from "@/components/course-builder/BlockEditor";
 import { TestImportDialog } from "@/components/course-builder/TestImportDialog";
@@ -16,12 +16,16 @@ import { VideoPreviewInline } from "@/components/course-builder/VideoPreviewInli
 import { HlsVideoPlayer } from "@/components/video/HlsVideoPlayer";
 import { LazyMediaPreview } from "@/components/course-builder/LazyMediaPreview";
 import { UploadProgressBlock } from "@/components/course-builder/UploadProgressBlock";
+import { LessonPreviewDialog } from "./LessonPreviewDialog";
+import { EditorDropZone } from "@/components/course-builder/block-editor/blocks/EditorDropZone";
 import { useLessonEditor, type TestQuestion } from "@/hooks/useLessonEditor";
 import { useLessonMedia } from "@/hooks/useLessonMedia";
 import { useSubscriptionLimits } from "@/hooks/useSubscriptionLimits";
 import { useLessonDraft } from "@/hooks/useLessonDraft";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
+import { countBlocksWords, formatReadingTime } from "@/lib/wordCount";
+import { importDocxFile } from "@/lib/docxImport";
 
 interface Lesson {
   id: string;
@@ -64,6 +68,10 @@ export const LessonEditor = ({
   const [videoUploadTab, setVideoUploadTab] = useState<string>(isKinescopeAvailable ? "kinescope" : "server");
   const [skipCompression, setSkipCompression] = useState(false);
 
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const [importingDocx, setImportingDocx] = useState(false);
+  const docxInputRef = useRef<HTMLInputElement>(null);
+
   const lessonIdForMedia = useMemo(() => lesson?.id || `new-${Date.now()}`, [lesson?.id]);
   const media = useLessonMedia(
     lessonIdForMedia,
@@ -103,6 +111,36 @@ export const LessonEditor = ({
   };
 
   const draftAgeMin = draftSavedAt ? Math.max(1, Math.round((Date.now() - draftSavedAt) / 60000)) : null;
+
+  // Word count + reading time (only for text lessons)
+  const wordCount = useMemo(() => e.type === "text" ? countBlocksWords(e.blocks) : 0, [e.type, e.blocks]);
+  const readingTime = useMemo(() => formatReadingTime(wordCount), [wordCount]);
+
+  const handleDocxImport = async (file: File) => {
+    if (!file) return;
+    if (!/\.docx$/i.test(file.name)) {
+      toast.error("Поддерживается только формат .docx");
+      return;
+    }
+    setImportingDocx(true);
+    try {
+      const { blocks, warnings } = await importDocxFile(file);
+      if (blocks.length === 0) {
+        toast.error("Не удалось извлечь содержимое из документа");
+        return;
+      }
+      e.setBlocks([...e.blocks, ...blocks]);
+      toast.success(`Импортировано блоков: ${blocks.length}`, {
+        description: warnings.length > 0 ? `Предупреждений: ${warnings.length}` : undefined,
+      });
+    } catch (err: any) {
+      console.error("DOCX import error:", err);
+      toast.error("Ошибка импорта", { description: err?.message || "Не удалось прочитать файл" });
+    } finally {
+      setImportingDocx(false);
+      if (docxInputRef.current) docxInputRef.current.value = "";
+    }
+  };
 
   return (
     <>
