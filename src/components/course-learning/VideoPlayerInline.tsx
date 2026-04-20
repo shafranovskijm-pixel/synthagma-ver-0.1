@@ -27,11 +27,13 @@ export interface VideoPlayerInlineProps {
   courseId?: string;
   savedPosition?: number;
   onSavePosition?: (position: number, duration: number) => void;
+  /** Reports playback mode so the parent can decide whether to gate "Complete" by 90% (native) or show it immediately (embed). */
+  onPlayerTypeDetected?: (type: 'native' | 'embed') => void;
 }
 
 export const VideoPlayerInline = ({
   content, allowSeek = true, onVideoComplete, onProgressChange,
-  onFinishLesson, userId, lessonId, courseId, savedPosition = 0, onSavePosition
+  onFinishLesson, userId, lessonId, courseId, savedPosition = 0, onSavePosition, onPlayerTypeDetected
 }: VideoPlayerInlineProps) => {
   const embedResult = getVideoEmbedUrl(content);
   const directVideoSrc = embedResult?.url && isDirectVideoFileUrl(embedResult.url) ? embedResult.url : null;
@@ -180,6 +182,16 @@ export const VideoPlayerInline = ({
       if (manifestObjectUrl) URL.revokeObjectURL(manifestObjectUrl);
     };
   }, [resolvedContent]);
+
+  // Determine player mode (native vs embed) once and report up.
+  // Native = HTML5 <video> with timeupdate; Embed = iframe (Kinescope, KonturTalk, YouTube etc.)
+  const _isKinescope = !!getKinescopeVideoId(content);
+  const _isIframe = isIframeEmbed(content);
+  const _isExternalEmbed = !!embedResult && !directVideoSrc;
+  const _isEmbedMode = _isKinescope || _isIframe || _isExternalEmbed;
+  useEffect(() => {
+    onPlayerTypeDetected?.(_isEmbedMode ? 'embed' : 'native');
+  }, [_isEmbedMode, onPlayerTypeDetected]);
 
   if (!content) return null;
 

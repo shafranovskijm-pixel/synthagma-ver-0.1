@@ -53,10 +53,14 @@ const CourseLearning = () => {
     isOfflineMode, offlineCachedAt } = useCourseLearning();
 
   const [previewFile, setPreviewFile] = useReactState<{ url: string; name: string; type: string | null } | null>(null);
+  const [hasNativeVideoTracking, setHasNativeVideoTracking] = useReactState(false);
   const handleSwipeLeft = () => { if (currentLessonIndex < lessons.length - 1) goToNextLesson(); };
   const handleSwipeRight = () => { if (currentLessonIndex > 0) goToPrevLesson(); };
   const isTestActive = currentLesson?.type === 'test' && !testSubmitted;
   const [reviewOpen, setReviewOpen] = useReactState(false);
+
+  // Reset native-tracking flag whenever the lesson changes; VideoPlayerInline re-reports
+  useEffect(() => { setHasNativeVideoTracking(false); }, [currentLesson?.id]);
 
   useEffect(() => {
     if (currentLesson?.type === 'slider' && !isLessonCompleted(currentLesson.id)) {
@@ -186,7 +190,7 @@ const CourseLearning = () => {
                 </div>
                 <div className="aspect-video bg-muted rounded-2xl flex items-center justify-center overflow-hidden shadow-lg relative">
                   {isVideoProgressLoading ? <div className="flex items-center justify-center"><SigmaSpinner size="lg" /></div> : currentLesson.content ? (
-                    <VideoPlayerInline key={`${currentLesson.id}-${course?.allow_video_seek !== false ? "seek" : "no-seek"}`} content={currentLesson.content} allowSeek={course?.allow_video_seek !== false} userId={user?.id} lessonId={currentLesson.id} courseId={course?.id} savedPosition={savedPosition} onSavePosition={saveVideoPosition} onProgressChange={setVideoWatchProgress} onFinishLesson={() => markLessonComplete()} onVideoComplete={async () => { if (!isLessonCompleted(currentLesson.id)) markLessonComplete(); }} />
+                    <VideoPlayerInline key={`${currentLesson.id}-${course?.allow_video_seek !== false ? "seek" : "no-seek"}`} content={currentLesson.content} allowSeek={course?.allow_video_seek !== false} userId={user?.id} lessonId={currentLesson.id} courseId={course?.id} savedPosition={savedPosition} onSavePosition={saveVideoPosition} onProgressChange={setVideoWatchProgress} onFinishLesson={() => markLessonComplete()} onVideoComplete={async () => { if (!isLessonCompleted(currentLesson.id)) markLessonComplete(); }} onPlayerTypeDetected={(t) => setHasNativeVideoTracking(t === 'native')} />
                   ) : <div className="text-center text-muted-foreground"><Video className="w-16 h-16 mx-auto mb-4" /><p>Видео не загружено</p></div>}
                   {(course as any)?.landing_content?.video_watermark && user?.email && (
                     <div className="absolute inset-0 pointer-events-none flex items-center justify-center z-10">
@@ -365,7 +369,17 @@ const CourseLearning = () => {
           <div className="text-sm text-muted-foreground">{isLessonCompleted(currentLesson?.id || '') && <span className="flex items-center gap-2 text-sigma-green font-medium"><CheckCircle2 className="w-4 h-4" />{!isMobile && "Урок завершён"}</span>}</div>
           <div className="flex gap-2 md:gap-3">
             {currentLesson?.type === 'test' && !testSubmitted && <Button onClick={submitTest} disabled={Object.keys(answers).length !== testQuestions.length} className={cn("btn-gradient rounded-xl", isMobile && "text-sm px-3")}>{isMobile ? "Отправить" : "Отправить ответы"}</Button>}
-            {currentLesson?.type !== 'test' && currentLesson?.type !== 'feedback' && currentLesson?.type !== 'homework' && !isLessonCompleted(currentLesson?.id || '') && (currentLesson?.type !== 'video' || videoWatchProgress >= 90) && <Button onClick={() => markLessonComplete()} className={cn("btn-gradient rounded-xl", isMobile && "text-sm px-3")}>{isMobile ? "Завершить" : "Завершить урок"}<ChevronRight className="w-4 h-4 ml-1" /></Button>}
+            {currentLesson?.type !== 'test' && currentLesson?.type !== 'feedback' && currentLesson?.type !== 'homework' && !isLessonCompleted(currentLesson?.id || '') && (
+              <Button
+                onClick={() => markLessonComplete()}
+                disabled={currentLesson?.type === 'video' && hasNativeVideoTracking && videoWatchProgress < 90}
+                title={currentLesson?.type === 'video' && hasNativeVideoTracking && videoWatchProgress < 90 ? `Просмотрите минимум 90% видео (сейчас ${Math.floor(videoWatchProgress)}%)` : currentLesson?.type === 'video' ? 'Подтвердить просмотр и завершить урок' : undefined}
+                className={cn("btn-gradient rounded-xl", isMobile && "text-sm px-3")}
+              >
+                {isMobile ? "Завершить" : currentLesson?.type === 'video' && !hasNativeVideoTracking ? "Подтвердить просмотр" : "Завершить урок"}
+                <ChevronRight className="w-4 h-4 ml-1" />
+              </Button>
+            )}
             {isLessonCompleted(currentLesson?.id || '') && currentLessonIndex < lessons.length - 1 && <Button onClick={goToNextLesson} className={cn("btn-gradient rounded-xl", isMobile && "text-sm px-3")}>{isMobile ? "Далее" : "Следующий урок"}<ChevronRight className="w-4 h-4 ml-1" /></Button>}
             {isLessonCompleted(currentLesson?.id || '') && currentLessonIndex === lessons.length - 1 && <Button onClick={() => navigate('/student')} className={cn("btn-gradient rounded-xl", isMobile && "text-sm px-3")}><Trophy className="w-4 h-4 mr-1" />{isMobile ? "Готово!" : "Курс завершён!"}</Button>}
           </div>
