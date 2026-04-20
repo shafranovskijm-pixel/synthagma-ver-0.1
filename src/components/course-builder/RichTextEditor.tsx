@@ -178,7 +178,7 @@ export function RichTextEditor({
     const sel = window.getSelection();
     if (!sel || sel.isCollapsed || !sel.rangeCount) {
       // Don't auto-hide while a popover is open
-      if (!styleMenuOpen && !listMenuOpen && !paletteOpen && !linkOpen) {
+      if (!styleMenuOpen && !listMenuOpen && !paletteOpen && !linkOpen && !convertOpen && !advancedOpen) {
         setShowToolbar(false);
       }
       return;
@@ -186,7 +186,7 @@ export function RichTextEditor({
     const range = sel.getRangeAt(0);
     const editor = editorRef.current;
     if (!editor || !editor.contains(range.commonAncestorContainer)) {
-      if (!styleMenuOpen && !listMenuOpen && !paletteOpen && !linkOpen) {
+      if (!styleMenuOpen && !listMenuOpen && !paletteOpen && !linkOpen && !convertOpen && !advancedOpen) {
         setShowToolbar(false);
       }
       return;
@@ -205,7 +205,7 @@ export function RichTextEditor({
     setToolbarPos({ top, left });
     setShowToolbar(true);
     updateActiveFormats();
-  }, [styleMenuOpen, listMenuOpen, paletteOpen, linkOpen, updateActiveFormats]);
+  }, [styleMenuOpen, listMenuOpen, paletteOpen, linkOpen, convertOpen, advancedOpen, updateActiveFormats]);
 
   useEffect(() => {
     document.addEventListener("selectionchange", handleSelectionChange);
