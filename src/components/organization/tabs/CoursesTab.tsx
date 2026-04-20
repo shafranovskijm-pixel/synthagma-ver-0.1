@@ -279,6 +279,22 @@ export const CoursesTab = React.memo(function CoursesTab({ organizationId, onCou
     finally { setIsDeletingCourses(false); }
   };
 
+  const handleSingleDelete = useCallback(async (courseId: string) => {
+    try {
+      await supabase.from("enrollments").delete().eq("course_id", courseId);
+      await supabase.from("lessons").delete().eq("course_id", courseId);
+      await supabase.from("course_documents").delete().eq("course_id", courseId);
+      const { error } = await supabase.from("courses").delete().eq("id", courseId);
+      if (error) throw error;
+      toast.success("Курс удалён");
+      refresh();
+      onCoursesDeleted?.();
+    } catch (e) {
+      console.error("Delete course error:", e);
+      toast.error("Ошибка удаления курса");
+    }
+  }, [refresh, onCoursesDeleted]);
+
   const handleToggleCourseSetting = async (course: Course, setting: 'skip_video_identification' | 'sequential_lessons' | 'allow_video_seek' | 'hidden_from_catalog', e: React.MouseEvent) => {
     e.stopPropagation();
     if (setting !== 'hidden_from_catalog' && !hasCourseSettings) { showLimitToast('Настройки курсов доступны начиная с тарифа «Старт». Перейдите на следующий тариф.'); return; }
