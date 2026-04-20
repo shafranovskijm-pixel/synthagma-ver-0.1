@@ -72,8 +72,8 @@ export interface LandingTemplate {
   tier: TemplateTier;
   category?: TemplateCategory;
   is_new?: boolean;
-  /** Глобальная тема оформления шаблона */
-  theme: LandingTheme;
+  /** Глобальная тема оформления шаблона. Если не задана — defaultLandingTheme. */
+  theme?: LandingTheme;
   /** Partial data — поля будут смерджены поверх defaultLanding в useLandingEditor */
   data: Partial<LandingData>;
 }
