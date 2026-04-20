@@ -56,6 +56,13 @@ export function BlockEditor({ blocks, onChange, readOnly = false, courseTitle, l
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
+      // Не перехватываем undo/redo внутри contentEditable / input / textarea — там работает нативный браузерный undo
+      const target = e.target as HTMLElement | null;
+      if (target) {
+        const tag = target.tagName;
+        const isEditable = target.isContentEditable || tag === "INPUT" || tag === "TEXTAREA";
+        if (isEditable) return;
+      }
       if ((e.ctrlKey || e.metaKey) && e.key === 'z') {
         if (e.shiftKey) { e.preventDefault(); handleRedo(); }
         else { e.preventDefault(); handleUndo(); }

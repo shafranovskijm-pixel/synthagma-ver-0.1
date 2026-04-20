@@ -6,7 +6,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { FileText, Video, HelpCircle, Plus, Trash2, Sparkles, Settings, Upload, FolderOpen, FileSpreadsheet, Lock } from "lucide-react";
+import { FileText, Video, HelpCircle, Plus, Trash2, Sparkles, Settings, Upload, FolderOpen, FileSpreadsheet, Lock, RotateCcw, Save } from "lucide-react";
 import { AIAvatarLessonEditor, type AIAvatarConfig } from "@/components/course-builder/AIAvatarLessonEditor";
 import { BlockEditor } from "@/components/course-builder/BlockEditor";
 import { TestImportDialog } from "@/components/course-builder/TestImportDialog";
@@ -19,6 +19,7 @@ import { UploadProgressBlock } from "@/components/course-builder/UploadProgressB
 import { useLessonEditor, type TestQuestion } from "@/hooks/useLessonEditor";
 import { useLessonMedia } from "@/hooks/useLessonMedia";
 import { useSubscriptionLimits } from "@/hooks/useSubscriptionLimits";
+import { useLessonDraft } from "@/hooks/useLessonDraft";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 
@@ -77,6 +78,32 @@ export const LessonEditor = ({
     },
   );
 
+  // Draft autosave: защита от потери текста урока при закрытии вкладки
+  const draftKey = lesson?.id ? `lesson:${lesson.id}` : (courseId ? `lesson:new:${courseId}` : null);
+  const draftSnapshot = useMemo(
+    () => ({ title: e.title, type: e.type, blocks: e.blocks, videoUrl: e.videoUrl, questions: e.questions }),
+    [e.title, e.type, e.blocks, e.videoUrl, e.questions]
+  );
+  const { hasDraft, draftSavedAt, restoreDraft, discardDraft } = useLessonDraft(draftKey, draftSnapshot, isOpen);
+
+  const handleRestoreDraft = () => {
+    const data = restoreDraft();
+    if (!data) return;
+    if (typeof data.title === "string") e.setTitle(data.title);
+    if (typeof data.type === "string") e.setType(data.type);
+    if (Array.isArray(data.blocks)) e.setBlocks(data.blocks);
+    if (typeof data.videoUrl === "string") e.setVideoUrl(data.videoUrl);
+    if (Array.isArray(data.questions)) e.setQuestions(data.questions);
+    toast.success("Черновик восстановлен");
+  };
+
+  const handleSaveAndDiscardDraft = () => {
+    e.handleSave();
+    discardDraft();
+  };
+
+  const draftAgeMin = draftSavedAt ? Math.max(1, Math.round((Date.now() - draftSavedAt) / 60000)) : null;
+
   return (
     <>
       <Dialog open={isOpen} onOpenChange={onClose}>
@@ -86,6 +113,28 @@ export const LessonEditor = ({
           </DialogHeader>
 
           <div className="space-y-6 py-4">
+            {hasDraft && draftAgeMin !== null && (
+              <div className="flex items-start gap-3 p-3 rounded-lg border border-amber-500/40 bg-amber-500/10 text-sm">
+                <Save className="w-4 h-4 mt-0.5 text-amber-600 dark:text-amber-400 shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <p className="font-medium text-amber-900 dark:text-amber-200">
+                    Найден несохранённый черновик
+                  </p>
+                  <p className="text-xs text-amber-800/80 dark:text-amber-300/80">
+                    Автоматически сохранён {draftAgeMin === 1 ? "только что" : `${draftAgeMin} мин назад`}.
+                    Можно восстановить или продолжить с текущими данными.
+                  </p>
+                </div>
+                <div className="flex gap-2 shrink-0">
+                  <Button type="button" size="sm" variant="outline" className="gap-1.5 h-8" onClick={handleRestoreDraft}>
+                    <RotateCcw className="w-3.5 h-3.5" />Восстановить
+                  </Button>
+                  <Button type="button" size="sm" variant="ghost" className="h-8" onClick={discardDraft}>
+                    Удалить
+                  </Button>
+                </div>
+              </div>
+            )}
             <div className="grid sm:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Название урока *</Label>
@@ -327,7 +376,7 @@ export const LessonEditor = ({
 
             <div className="flex gap-3 pt-4 border-t border-border">
               <Button variant="outline" onClick={onClose} className="flex-1 h-11">Отмена</Button>
-              <Button onClick={e.handleSave} className="flex-1 btn-gradient h-11" disabled={!e.title.trim()}>{lesson ? "Сохранить изменения" : "Создать урок"}</Button>
+              <Button onClick={handleSaveAndDiscardDraft} className="flex-1 btn-gradient h-11" disabled={!e.title.trim()}>{lesson ? "Сохранить изменения" : "Создать урок"}</Button>
             </div>
           </div>
         </DialogContent>

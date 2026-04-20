@@ -1,56 +1,12 @@
 import { Input } from "@/components/ui/input";
 import { Globe } from "lucide-react";
 import type { ContentBlock } from "../types";
-
-const ALLOWED_HOSTS = [
-  "youtube.com", "www.youtube.com", "youtu.be",
-  "vimeo.com", "player.vimeo.com",
-  "codepen.io",
-  "figma.com", "www.figma.com",
-  "miro.com",
-  "kinescope.io",
-  "docs.google.com", "drive.google.com",
-  "loom.com", "www.loom.com",
-  "rutube.ru",
-  "vk.com", "vkvideo.ru",
-];
-
-function toEmbedUrl(raw: string): string | null {
-  if (!raw) return null;
-  try {
-    const u = new URL(raw.trim());
-    const host = u.hostname.toLowerCase();
-    if (!ALLOWED_HOSTS.some((h) => host === h || host.endsWith("." + h))) return null;
-
-    // YouTube → embed
-    if (host.includes("youtube.com")) {
-      const v = u.searchParams.get("v");
-      if (v) return `https://www.youtube.com/embed/${v}`;
-      if (u.pathname.startsWith("/embed/")) return u.toString();
-    }
-    if (host === "youtu.be") {
-      const id = u.pathname.replace(/^\//, "");
-      if (id) return `https://www.youtube.com/embed/${id}`;
-    }
-    // Vimeo
-    if (host === "vimeo.com") {
-      const id = u.pathname.replace(/^\//, "");
-      if (id) return `https://player.vimeo.com/video/${id}`;
-    }
-    // Figma → /embed
-    if (host.includes("figma.com") && !u.pathname.startsWith("/embed")) {
-      return `https://www.figma.com/embed?embed_host=lovable&url=${encodeURIComponent(raw)}`;
-    }
-    return raw;
-  } catch {
-    return null;
-  }
-}
+import { getEmbedSrc, ALLOWED_EMBED_HOSTS_LABELS } from "../embedSrc";
 
 export function EmbedBlock({ block, onUpdate }: { block: ContentBlock; onUpdate: (updates: Partial<ContentBlock>) => void }) {
   const url = block.embedUrl || "";
   const height = block.embedHeight || 480;
-  const embedSrc = toEmbedUrl(url);
+  const embedSrc = getEmbedSrc(url);
   const isInvalid = url && !embedSrc;
 
   return (
@@ -67,7 +23,12 @@ export function EmbedBlock({ block, onUpdate }: { block: ContentBlock; onUpdate:
         </div>
         {isInvalid && (
           <p className="text-xs text-destructive">
-            Этот источник не поддерживается. Разрешены: YouTube, Vimeo, Figma, Miro, CodePen, Kinescope, Google Docs, Loom, Rutube, VK.
+            Этот источник не поддерживается. Разрешены: {ALLOWED_EMBED_HOSTS_LABELS.join(", ")}.
+          </p>
+        )}
+        {!url && (
+          <p className="text-xs text-muted-foreground">
+            Поддерживаются: {ALLOWED_EMBED_HOSTS_LABELS.join(", ")}.
           </p>
         )}
         <div className="flex items-center gap-2">
@@ -97,10 +58,5 @@ export function EmbedBlock({ block, onUpdate }: { block: ContentBlock; onUpdate:
   );
 }
 
-export function isAllowedEmbed(url: string): boolean {
-  return toEmbedUrl(url) !== null;
-}
-
-export function getEmbedSrc(url: string): string | null {
-  return toEmbedUrl(url);
-}
+// Re-export for backward compatibility
+export { getEmbedSrc, isAllowedEmbed } from "../embedSrc";

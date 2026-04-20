@@ -69,8 +69,16 @@ export function ImageBlock({ block, onUpdate }: { block: ContentBlock; onUpdate:
   }, [block.pendingAI]);
 
   const handleFileUpload = async (file: File) => {
-    if (!file.type.startsWith("image/")) return;
-    if (file.size > 10 * 1024 * 1024) return;
+    const { toast } = await import("sonner");
+    if (!file.type.startsWith("image/")) {
+      toast.error("Это не изображение", { description: "Поддерживаются JPG, PNG, GIF, WebP" });
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      const sizeMb = (file.size / 1024 / 1024).toFixed(1);
+      toast.error(`Файл слишком большой (${sizeMb} МБ)`, { description: "Максимум 10 МБ. Сожмите изображение или используйте онлайн-конвертер." });
+      return;
+    }
     setIsUploading(true);
     try {
       const { supabase } = await import("@/integrations/supabase/client");

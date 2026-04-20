@@ -11,8 +11,8 @@ import { VideoPreviewInline } from "@/components/course-builder/VideoPreviewInli
 import type { ContentBlock } from "./types";
 import { bgColorPresets, textColorPresets } from "./types";
 import { renderHtml } from "./utils";
-import { getEmbedSrc } from "./blocks/EmbedBlock";
-import { FormulaRender } from "./blocks/FormulaBlock";
+import { getEmbedSrc } from "./embedSrc";
+import { FormulaRender } from "./FormulaRender";
 
 function RenderBlock({ block, quizAnswer, quizSubmitted, onQuizAnswer, onQuizSubmit, sliderIndex, onSliderChange }: { 
   block: ContentBlock; 
