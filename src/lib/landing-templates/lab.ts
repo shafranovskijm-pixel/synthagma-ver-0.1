@@ -16,6 +16,7 @@ export const labTemplate: LandingTemplate = {
   category: "it",
   is_new: true,
   theme: {
+    template_id: "lab",
     font_heading: "jetbrains",
     font_body: "inter",
     radius: "sharp",

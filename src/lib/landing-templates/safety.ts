@@ -16,6 +16,7 @@ export const safetyTemplate: LandingTemplate = {
   category: "safety",
   is_new: true,
   theme: {
+    template_id: "safety",
     font_heading: "inter",
     font_body: "inter",
     radius: "sharp",

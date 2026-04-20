@@ -16,6 +16,7 @@ export const beautyTemplate: LandingTemplate = {
   category: "beauty",
   is_new: true,
   theme: {
+    template_id: "beauty",
     font_heading: "playfair",
     font_body: "inter",
     radius: "pill",
