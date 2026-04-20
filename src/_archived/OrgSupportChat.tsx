@@ -7,7 +7,7 @@ export function OrgSupportChat() {
       <Tooltip>
         <TooltipTrigger asChild>
           <a
-            href="https://t.me/sintagma_support"
+            href="https://t.me/+SVTbxqnGmF1iMzIy"
             target="_blank"
             rel="noopener noreferrer"
             className="flex h-14 w-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-200"

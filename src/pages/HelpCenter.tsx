@@ -377,7 +377,7 @@ export default function HelpCenter({ isModal = false }: HelpCenterProps) {
                 <div>
                   <h3 className="font-semibold text-lg mb-1">Telegram</h3>
                   <p className="text-muted-foreground text-sm mb-4">Самый быстрый способ связи. Ответим в течение нескольких минут.</p>
-                  <Button size="sm" className="rounded-xl gap-2 bg-gradient-to-r from-blue-500 to-indigo-500 hover:from-blue-600 hover:to-indigo-600 text-white shadow-md shadow-blue-500/20 hover:shadow-lg hover:shadow-blue-500/30 transition-all" onClick={() => window.open("https://t.me/sintagma_support", "_blank")}>
+                  <Button size="sm" className="rounded-xl gap-2 bg-gradient-to-r from-blue-500 to-indigo-500 hover:from-blue-600 hover:to-indigo-600 text-white shadow-md shadow-blue-500/20 hover:shadow-lg hover:shadow-blue-500/30 transition-all" onClick={() => window.open("https://t.me/+SVTbxqnGmF1iMzIy", "_blank")}>
                     <ExternalLink className="w-3.5 h-3.5" /> Написать в Telegram
                   </Button>
                 </div>
@@ -449,7 +449,7 @@ export default function HelpCenter({ isModal = false }: HelpCenterProps) {
                 <h3 className="text-2xl sm:text-3xl font-bold text-white mb-3">Не нашли ответ?</h3>
                 <p className="text-teal-100/70 mb-6 max-w-md mx-auto">Наша команда поддержки поможет решить любой вопрос. Напишите нам — ответим максимально быстро.</p>
                 <div className="flex flex-col sm:flex-row gap-3 justify-center">
-                  <Button className="rounded-xl gap-2 bg-white text-teal-900 hover:bg-teal-50 shadow-lg" onClick={() => window.open("https://t.me/sintagma_support", "_blank")}>
+                  <Button className="rounded-xl gap-2 bg-white text-teal-900 hover:bg-teal-50 shadow-lg" onClick={() => window.open("https://t.me/+SVTbxqnGmF1iMzIy", "_blank")}>
                     <MessageCircle className="w-4 h-4" /> Telegram
                   </Button>
                   <Button variant="outline" className="rounded-xl gap-2 border-white/20 text-white hover:bg-white/10 backdrop-blur-sm" onClick={() => window.open("mailto:support@sintagma.ru")}>
