@@ -80,7 +80,11 @@ export function HeroDarkPromo({
             onBlur={(e) => onSubtitleChange?.(e.currentTarget.textContent || "")}
           >{subtitle}</p>
         ) : (
-          subtitle && <p className="text-zinc-400 text-lg max-w-2xl mb-8">{subtitle}</p>
+          subtitle && (
+            <p className={`text-zinc-400 text-lg max-w-2xl mb-8 ${theme.template_id === "lab" ? "tpl-lab-card-cursor" : ""}`}>
+              {subtitle}
+            </p>
+          )
         )}
 
         <div className="flex flex-wrap items-center gap-4 mb-8">
