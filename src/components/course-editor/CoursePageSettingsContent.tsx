@@ -5,10 +5,11 @@ import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Copy, Plus, Trash2, ExternalLink, Sparkles, Tag, ArrowUp, Globe, FileEdit, BarChart3, Search, Ticket } from "lucide-react";
+import { Copy, Plus, Trash2, ExternalLink, Sparkles, Tag, ArrowUp, Globe, FileEdit, BarChart3, Search, Ticket, LayoutTemplate } from "lucide-react";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 import { useCoursePageSettings } from "@/hooks/useCoursePageSettings";
 import { CoursePricingTiersTab } from "./CoursePricingTiersTab";
+import { LandingTemplatesGallery } from "./LandingTemplatesGallery";
 import { cn } from "@/lib/utils";
 
 interface Props {
@@ -17,9 +18,10 @@ interface Props {
   courseDescription?: string;
 }
 
-type TabKey = "page" | "seo" | "form" | "pricing" | "promo" | "analytics";
+type TabKey = "templates" | "page" | "seo" | "form" | "pricing" | "promo" | "analytics";
 
 const TAB_META: Record<TabKey, { label: string; icon: any; description: string }> = {
+  templates: { label: "Шаблоны", icon: LayoutTemplate, description: "Готовые продающие структуры страницы" },
   page: { label: "Страница", icon: Globe, description: "URL, акцентный цвет и цена курса" },
   seo: { label: "SEO", icon: Search, description: "Метатеги для поисковиков, ИИ-генерация" },
   form: { label: "Форма записи", icon: FileEdit, description: "Подзаголовок, кнопка и доп. поля заявки" },
@@ -28,11 +30,11 @@ const TAB_META: Record<TabKey, { label: string; icon: any; description: string }
   analytics: { label: "Аналитика", icon: BarChart3, description: "Яндекс.Метрика, Google Analytics, Meta Pixel" },
 };
 
-const TAB_ORDER: TabKey[] = ["page", "seo", "form", "pricing", "promo", "analytics"];
+const TAB_ORDER: TabKey[] = ["templates", "page", "seo", "form", "pricing", "promo", "analytics"];
 
 export function CoursePageSettingsContent({ courseId, courseTitle, courseDescription }: Props) {
   const s = useCoursePageSettings(courseId, courseTitle, courseDescription);
-  const [activeTab, setActiveTab] = useState<TabKey>("page");
+  const [activeTab, setActiveTab] = useState<TabKey>("templates");
 
   if (s.loading) {
     return (
@@ -79,6 +81,10 @@ export function CoursePageSettingsContent({ courseId, courseTitle, courseDescrip
 
       {/* Content */}
       <div className="min-w-0">
+        {activeTab === "templates" && (
+          <LandingTemplatesGallery courseId={courseId} accentColor={s.accentColor} />
+        )}
+
         {activeTab === "page" && (
           <div className="space-y-5">
             <div className="space-y-2">
