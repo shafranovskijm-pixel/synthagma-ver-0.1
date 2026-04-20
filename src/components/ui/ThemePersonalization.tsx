@@ -121,17 +121,26 @@ function applyVisualTheme(themeId: string | null) {
 
 export function useThemePersonalization() {
   useEffect(() => {
-    const accent = localStorage.getItem('theme-accent');
-    if (accent) applyAccent(accent);
-    const density = localStorage.getItem('theme-density');
-    if (density) applyDensity(density);
-    const radius = localStorage.getItem('theme-radius');
-    if (radius) applyRadius(radius);
-    // Restore visual theme
-    const vt = getStoredThemeId();
-    if (vt) applyVisualTheme(vt);
+    // If the organization enforces a shared theme, skip applying personal
+    // localStorage overrides — useOrgTheme will dictate the visual theme.
+    const enforced = (() => {
+      try { return localStorage.getItem("org-theme-enforce-active") === "1"; }
+      catch { return false; }
+    })();
 
-    // Listen for theme changes from ThemeSelector
+    if (!enforced) {
+      const accent = localStorage.getItem('theme-accent');
+      if (accent) applyAccent(accent);
+      const density = localStorage.getItem('theme-density');
+      if (density) applyDensity(density);
+      const radius = localStorage.getItem('theme-radius');
+      if (radius) applyRadius(radius);
+      // Restore visual theme from personal storage
+      const vt = getStoredThemeId();
+      if (vt) applyVisualTheme(vt);
+    }
+
+    // Always listen for runtime theme changes (org enforce push or user toggle)
     const handler = (e: Event) => {
       const id = (e as CustomEvent).detail;
       applyVisualTheme(id);
