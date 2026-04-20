@@ -202,7 +202,6 @@ export function LandingTemplatePreviewDialog({
             key={template.id}
             theme={template.theme}
             accent={accentColor}
-            className="bg-background"
             style={accentColor ? ({ ["--primary" as any]: accentColor } as React.CSSProperties) : undefined}
           >
             {order.map(renderSection)}
