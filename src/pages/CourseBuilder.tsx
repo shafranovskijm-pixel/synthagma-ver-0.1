@@ -254,9 +254,6 @@ export default function CourseBuilder({ embedded, embeddedCourseId, onExitEditor
         </div>
       </div>
 
-      {/* placeholder removed: right aside and mobile add-lesson sheet */}
-      <div className="hidden">
-        </div>
 
       <AlertDialog open={showExitDialog} onOpenChange={setShowExitDialog}>
         <AlertDialogContent>
