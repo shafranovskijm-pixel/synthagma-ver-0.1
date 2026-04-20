@@ -37,7 +37,7 @@ export function PricingCards({
             onBlur={(e) => onTitleChange?.(e.currentTarget.textContent || "")}
           >{title}</h2>
         ) : (
-          <h2 className="landing-heading text-2xl md:text-3xl font-bold mb-8 text-center">{title}</h2>
+          <h2 className={`landing-heading text-2xl md:text-3xl font-bold mb-8 text-center ${skin.sectionTitle}`}>{title}</h2>
         )}
 
         <div className={`grid gap-6 ${tiers.length === 1 ? "max-w-md mx-auto" : tiers.length === 2 ? "sm:grid-cols-2 max-w-2xl mx-auto" : "sm:grid-cols-2 lg:grid-cols-3"}`}>
