@@ -463,13 +463,7 @@ export function SortableLessonItem({
             </div>
           )}
 
-          {/* Attachments for all lesson types */}
-          <LessonAttachments
-            lessonId={lesson.id}
-            courseId={courseId}
-            attachments={lesson.attachments || []}
-            onAttachmentsChange={(attachments) => onUpdate({ attachments })}
-          />
+          {/* Прикреплённые файлы перенесены в отдельную вкладку — здесь не дублируем */}
         </div>
       )}
     </div>
