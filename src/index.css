@@ -683,6 +683,13 @@
    *  - language  → flip-in с поворотом по X (страница книги)
    * ============================================================= */
   [data-reveal] { opacity: 0; transition: none; will-change: opacity, transform, filter; }
+  /* В мини-превью карточек шаблонов reveal-анимации отключены — показываем сразу. */
+  .mini-preview-scroll [data-reveal] {
+    opacity: 1 !important; transform: none !important;
+    filter: none !important; clip-path: none !important;
+    animation: none !important;
+  }
+  .mini-preview-scroll .tpl-beauty-card { animation: none !important; }
   [data-reveal].is-revealed { opacity: 1; }
 
   /* AURORA */
