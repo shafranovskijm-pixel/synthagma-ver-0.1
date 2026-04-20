@@ -30,6 +30,8 @@ export const beautyTemplate: LandingTemplate = {
     reviews_layout: "carousel-mini",
     benefits_layout: "grid",
     scheme: "light",
+    learn_layout: "beauty-polaroids",
+    process_layout: "beauty-steps",
     section_bg_url: beautySectionBg,
     pricing_bg_url: beautyPricingBg,
     cta_bg_url: beautyCtaBg,

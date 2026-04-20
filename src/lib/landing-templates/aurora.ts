@@ -29,6 +29,8 @@ export const auroraTemplate: LandingTemplate = {
     reviews_layout: "masonry",
     benefits_layout: "grid",
     scheme: "light",
+    learn_layout: "aurora-numbers",
+    process_layout: "aurora-timeline",
     section_bg_url: auroraSectionBg,
     pricing_bg_url: auroraPricingBg,
     cta_bg_url: auroraCtaBg,

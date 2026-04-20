@@ -30,6 +30,8 @@ export const safetyTemplate: LandingTemplate = {
     reviews_layout: "cards",
     benefits_layout: "icon-list",
     scheme: "light",
+    learn_layout: "safety-checklist",
+    process_layout: "safety-blueprint",
     section_bg_url: safetySectionBg,
     pricing_bg_url: safetyPricingBg,
     cta_bg_url: safetyCtaBg,
