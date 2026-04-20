@@ -1,65 +1,41 @@
 
 
-## Перенос «Преобразовать» и недостающих частей «Стиль блока» в основной floating toolbar
+## Унификация popup «Добавить блок» с popup «Выберите тип занятия»
 
-### Что убираю из «...» меню (SortableBlockItem.tsx)
-Убираю 4 пункта и связанные диалоги:
-- `Преобразовать в…` → переезжает в основной toolbar
-- `Стиль блока…` → недостающие подразделы переезжают в основной toolbar, остальное удаляется как дубль
-- `Пресеты стиля` → переезжает в основной toolbar
-- `Сбросить стиль` → переезжает в основной toolbar
+Пользователь хочет, чтобы popup выбора блока (по «+») выглядел как popup выбора типа занятия (скрин 2): крупные карточки в сетке 4 колонки, с описанием выбранного элемента внизу и кнопкой «Далее».
 
-В «...» меню остаётся только: **Вверх / Вниз / Удалить** (+ поиск).
+### Что меняю
 
-Удаляю также диалоги `convertOpen`, `styleDialogOpen`, `presetsOpen` и связанные стейты.
+**`AddBlockButton.tsx` → `BlockPicker`:**
+- Заменяю текущую сетку 3 колонки маленьких квадратиков на **сетку 4 колонки** с крупными карточками как на скрине 2:
+  - Карточка: квадрат с `rounded-2xl bg-muted/50`, иконка в круглом цветном фоне сверху (как сейчас в LessonTypeSelector), подпись снизу.
+  - Ховер/выбор: `border-primary ring-2 ring-primary/20`.
+- Добавляю **состояние выбора** `selectedType` (одиночный клик = выделение, не моментальное добавление).
+- Под сеткой — **блок описания**: `bg-muted/30 rounded-xl p-3` с заголовком блока и кратким описанием (что это и зачем).
+- Внизу — кнопки **«Отмена» / «Далее»** (Далее активна только если выбран тип; по клику вызывает `onSelect(type)`).
+- Заголовок popover: «Выберите тип блока» + подзаголовок «Каждый блок подходит для своих задач — выберите подходящий формат.»
+- Поиск оставляю сверху (как сейчас).
 
-### Что добавляю в основной toolbar (RichTextEditor.tsx)
+**Описания блоков (новое):**
+Добавляю `blockDescriptions: Record<BlockType, string>` рядом с `blockCategories` в `types.ts` (или прямо в `AddBlockButton.tsx`). Краткие тексты по 1 предложению на каждый из ~25 типов:
+- `paragraph`: «Обычный текст для основного содержания.»
+- `heading1`: «Крупный заголовок раздела.»
+- `image`: «Картинка из библиотеки или загрузки.»
+- `video`: «Видеоплеер с поддержкой Kinescope и прямых ссылок.»
+- `accordion`: «Раскрывающийся блок для длинного текста.»
+- ... и т.д.
 
-Добавляю **2 новые popover-кнопки** в правой части (после палитры, перед ссылкой), чтобы не раздувать линейку:
+**Размер popover:**
+- Расширяю `PopoverContent` с `w-80` до `w-[560px]` (4 колонки помещаются комфортно).
+- `max-h` для сетки увеличиваю, описание и кнопки — sticky снизу.
 
-**1. Кнопка `Wand2` — «Преобразовать»** (только при `onConvertType` и для блоков из `convertibleTypes`):
-- Popover со списком из `wrapOtherTargets` + раздел «Выделение» с `wrapCalloutTargets` (как было в Dialog).
-- Передаю наружу через новый проп `onConvertBlockType?: (type: BlockType) => void` (отдельный от `onConvertType`, который сейчас используется для смены H1/H2/paragraph). На уровне `BlockContent` мапим оба к одному `onUpdate({ type })`.
+### Применимость
+Изменения касаются и `AddBlockButton` (нижняя «+ Добавить блок»), и `InlineAddBlockButton` (круглый «+» между блоками) — оба используют один `BlockPicker`, поэтому оба popup-а станут одинаковыми и совпадут по стилю с `LessonTypeSelector`.
 
-**2. Кнопка `Sliders` — «Доп. оформление»** (только при `onStyleUpdate` и `canStyle`):
-Popover с разделами, которых нет в текущем toolbar:
-- **Доп. форматирование:** Зачёркнутый, UPPERCASE
-- **Шрифт:** Обычный / Моно
-- **Межстрочный интервал:** Плотный / Обычный / Свободный
-- **Рамка:** Нет / Тонкая / Жирная / Пунктир
-- **Скругление:** Нет / Md / Xl
-- **Готовые стили:** сетка `quickStyles` 3 колонки
-- **Пресеты:** «Сохранить текущий стиль» + список сохранённых (берём через новые пропсы `presets`, `onPresetsChange`)
-- Внизу — **«Сбросить стиль»** (та же логика что была в `...`)
-
-### Новые пропсы RichTextEditor
-```ts
-onConvertBlockType?: (type: BlockType) => void;   // для меню «Преобразовать»
-canConvert?: boolean;                              // показывать ли кнопку Wand2
-canStyle?: boolean;                                // показывать ли кнопку Sliders
-presets?: { name: string; style: StylePreset }[];
-onPresetsChange?: (p: { name: string; style: StylePreset }[]) => void;
-currentBlock?: ContentBlock;                       // для extractStyle/describeStyle при сохранении пресета
-```
-
-### Проброс в `BlockContent.tsx` / `TextBlocks.tsx`
-В `BlockContent.tsx` расширяю `blockCtrlProps`:
-```ts
-onConvertBlockType: (type) => onUpdate({ type, ...(type === 'accordion' && !block.accordionTitle ? { accordionTitle: 'Заголовок секции', accordionOpen: true } : {}) }),
-canConvert: convertibleTypes.includes(block.type),
-canStyle: textStyleableTypes.includes(block.type),
-currentBlock: block,
-```
-И принимаю/прокидываю `presets` / `onPresetsChange` из `SortableBlockItem` → `BlockContent` → `*Block` → `RichTextEditor`.
-
-### Файлы под изменение
-- `src/components/course-builder/RichTextEditor.tsx` — 2 новые кнопки/popover (Преобразовать, Доп. оформление + пресеты + сброс).
-- `src/components/course-builder/block-editor/blocks/SortableBlockItem.tsx` — убрать 4 пункта из «...», удалить 3 Dialog'а, прокинуть `presets`/`onPresetsChange` и расширенные `blockCtrlProps`.
-- `src/components/course-builder/block-editor/blocks/BlockContent.tsx` — расширить `blockCtrlProps`, принять `presets`/`onPresetsChange`.
-- `src/components/course-builder/block-editor/blocks/TextBlocks.tsx` — пропускает `blockCtrlProps` дальше (уже сделано в прошлый раз, без изменений интерфейса).
+### Файлы
+- `src/components/course-builder/block-editor/blocks/AddBlockButton.tsx` — переработка `BlockPicker` (сетка 4 колонки, выбор + описание + Далее, шапка).
+- `src/components/course-builder/block-editor/types.ts` — добавить `blockDescriptions` map.
 
 ### Результат
-- В «...» меню остаётся: Поиск, Вверх, Вниз, Удалить.
-- В основном floating toolbar добавляются 2 кнопки: «Преобразовать в…» и «Доп. оформление» (зачёркнутый/UPPERCASE/шрифт/интервал/рамка/скругление/пресеты/сброс).
-- Никаких дубликатов с тем, что уже есть (B/I/U, размер, выравнивание, цвет, H1-H4).
+Popup «Добавить блок» визуально и по UX идентичен popup «Выберите тип занятия»: крупные карточки 4 в ряд, описание выбранного типа, кнопки Отмена/Далее.
 
