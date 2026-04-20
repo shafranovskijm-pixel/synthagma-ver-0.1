@@ -6,16 +6,28 @@ import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import {
-  DropdownMenu,
-  DropdownMenuTrigger,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuLabel,
-} from "@/components/ui/dropdown-menu";
-import { GripVertical, Menu, FileText, ArrowLeft, Plus, Video, CheckSquare, Presentation, Headphones, MessageSquare, BookCheck, Sparkles } from "lucide-react";
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import { GripVertical, Menu, FileText, ArrowLeft, Plus, CheckSquare, Presentation, Headphones, MessageSquare, BookCheck, Sparkles, type LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { lessonIcons, lessonColors, type Lesson, type LessonType } from "@/components/course-builder/LessonTypeConfig";
+
+type LessonTypeOption = { type: LessonType; icon: LucideIcon; label: string; description: string; iconClass: string };
+
+const LESSON_TYPE_OPTIONS: LessonTypeOption[] = [
+  { type: "text", icon: FileText, label: "Текст", description: "Форматированный текст с видео, аудио и изображениями. Прикрепляйте файлы для скачивания.", iconClass: "text-primary bg-primary/10" },
+  { type: "test", icon: CheckSquare, label: "Тест", description: "Проверка знаний с вариантами ответов, изображениями и пояснениями. Настраиваемый проходной балл.", iconClass: "text-sigma-orange bg-sigma-orange/10" },
+  { type: "slider", icon: Presentation, label: "Слайды", description: "Презентация с переключаемыми слайдами. Удобно для пошагового объяснения материала.", iconClass: "text-amber-500 bg-amber-500/10" },
+  { type: "audio", icon: Headphones, label: "Аудио", description: "Аудиоурок: подкаст, лекция или интервью. Поддержка фоновой обложки и описания.", iconClass: "text-green-500 bg-green-500/10" },
+  { type: "feedback", icon: MessageSquare, label: "Обратная связь", description: "Студент отправляет текстовый ответ — он попадает в чат организации. Урок засчитывается автоматически.", iconClass: "text-blue-500 bg-blue-500/10" },
+  { type: "homework", icon: BookCheck, label: "Задание", description: "Домашнее задание с проверкой преподавателем. Студент прикрепляет текст и файлы, ждёт одобрения.", iconClass: "text-indigo-500 bg-indigo-500/10" },
+  { type: "ai_avatar", icon: Sparkles, label: "ИИ-преподаватель", description: "Голосовой диалог с ИИ-аватаром на тему урока. По умолчанию ограничен 5 минутами.", iconClass: "text-fuchsia-500 bg-gradient-to-br from-fuchsia-500/10 to-pink-500/10" },
+];
 
 interface Props {
   lessons: Lesson[];
@@ -90,60 +102,96 @@ function AddLessonButton({
   onOpenAIDialog?: () => void;
   afterAction?: () => void;
 }) {
+  const [open, setOpen] = useState(false);
+  const [selectedType, setSelectedType] = useState<LessonType>("text");
+
   if (!onAddLesson && !onOpenAIDialog) return null;
 
-  const handleAdd = (type: LessonType) => {
-    onAddLesson?.(type);
+  const selected = LESSON_TYPE_OPTIONS.find((o) => o.type === selectedType) ?? LESSON_TYPE_OPTIONS[0];
+
+  const handleConfirm = () => {
+    onAddLesson?.(selectedType);
+    setOpen(false);
     afterAction?.();
   };
+
   const handleAI = () => {
     onOpenAIDialog?.();
+    setOpen(false);
     afterAction?.();
   };
 
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button size="sm" className="btn-gradient w-full gap-2 rounded-xl shadow-sm">
-          <Plus className="w-4 h-4" /> Добавить урок
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="start" className="w-60 z-50 bg-popover">
-        <DropdownMenuLabel>Тип урока</DropdownMenuLabel>
-        <DropdownMenuItem onClick={() => handleAdd("text")}>
-          <FileText className="w-4 h-4 mr-2 text-primary" /> Текст
-        </DropdownMenuItem>
-        <DropdownMenuItem onClick={() => handleAdd("video")}>
-          <Video className="w-4 h-4 mr-2 text-sigma-purple" /> Видео
-        </DropdownMenuItem>
-        <DropdownMenuItem onClick={() => handleAdd("test")}>
-          <CheckSquare className="w-4 h-4 mr-2 text-sigma-orange" /> Тест
-        </DropdownMenuItem>
-        <DropdownMenuItem onClick={() => handleAdd("slider")}>
-          <Presentation className="w-4 h-4 mr-2 text-amber-500" /> Слайды
-        </DropdownMenuItem>
-        <DropdownMenuItem onClick={() => handleAdd("audio")}>
-          <Headphones className="w-4 h-4 mr-2 text-green-500" /> Аудио
-        </DropdownMenuItem>
-        <DropdownMenuItem onClick={() => handleAdd("feedback")}>
-          <MessageSquare className="w-4 h-4 mr-2 text-blue-500" /> Обратная связь
-        </DropdownMenuItem>
-        <DropdownMenuItem onClick={() => handleAdd("homework")}>
-          <BookCheck className="w-4 h-4 mr-2 text-indigo-500" /> Задание
-        </DropdownMenuItem>
-        <DropdownMenuItem onClick={() => handleAdd("ai_avatar")}>
-          <Sparkles className="w-4 h-4 mr-2 text-fuchsia-500" /> ИИ-преподаватель
-        </DropdownMenuItem>
+    <Dialog open={open} onOpenChange={setOpen}>
+      <Button
+        size="sm"
+        className="btn-gradient w-full gap-2 rounded-xl shadow-sm"
+        onClick={() => setOpen(true)}
+      >
+        <Plus className="w-4 h-4" /> Добавить урок
+      </Button>
+
+      <DialogContent className="sm:max-w-2xl">
+        <DialogHeader>
+          <DialogTitle>Выберите тип занятия</DialogTitle>
+          <DialogDescription>
+            Каждый тип урока подходит для своих задач — выберите подходящий формат.
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          {LESSON_TYPE_OPTIONS.map((opt) => {
+            const Icon = opt.icon;
+            const isActive = opt.type === selectedType;
+            return (
+              <button
+                key={opt.type}
+                type="button"
+                onClick={() => setSelectedType(opt.type)}
+                className={cn(
+                  "group flex flex-col items-center justify-center gap-2 rounded-xl border-2 p-4 text-center transition-all",
+                  "hover:border-primary/40 hover:bg-primary/5",
+                  isActive
+                    ? "border-primary bg-primary/10 shadow-sm"
+                    : "border-border/60 bg-card",
+                )}
+              >
+                <div className={cn("w-11 h-11 rounded-xl flex items-center justify-center", opt.iconClass)}>
+                  <Icon className="w-5 h-5" />
+                </div>
+                <span className={cn("text-sm font-medium leading-tight", isActive ? "text-primary" : "text-foreground")}>
+                  {opt.label}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+
+        <div className="rounded-xl border border-border/60 bg-muted/30 p-4">
+          <p className="text-sm font-semibold text-foreground mb-1">{selected.label}</p>
+          <p className="text-sm text-muted-foreground leading-relaxed">{selected.description}</p>
+        </div>
+
         {onOpenAIDialog && (
-          <>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={handleAI}>
-              <Sparkles className="w-4 h-4 mr-2 text-primary" /> Создать с помощью ИИ
-            </DropdownMenuItem>
-          </>
+          <button
+            type="button"
+            onClick={handleAI}
+            className="inline-flex items-center justify-center gap-2 text-sm font-medium text-primary hover:text-primary/80 transition-colors"
+          >
+            <Sparkles className="w-4 h-4" /> Создать урок с помощью ИИ
+          </button>
         )}
-      </DropdownMenuContent>
-    </DropdownMenu>
+
+        <DialogFooter className="gap-2 sm:gap-2">
+          <Button variant="outline" onClick={() => setOpen(false)}>
+            Отмена
+          </Button>
+          <Button className="btn-gradient" onClick={handleConfirm} disabled={!onAddLesson}>
+            Далее
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 
