@@ -1,10 +1,11 @@
 import { useState, useEffect } from "react";
 import { 
-  Building2, Users, LogOut, Store, Briefcase, MessageSquare, CreditCard, HardDrive
+  Building2, Users, LogOut, Store, Briefcase, MessageSquare, CreditCard, HardDrive, Headset
 } from "lucide-react";
 import { SigmaLogo } from "@/components/ui/SigmaLogo";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useAdminUnreadChats } from "@/hooks/useAdminUnreadChats";
+import { useSupportUnread } from "@/hooks/useSupportUnread";
 import { useTheme } from "next-themes";
 import { cn } from "@/lib/utils";
 import { getStoredThemeId, getThemeById } from "@/constants/admin-themes";
@@ -21,6 +22,7 @@ export type AdminTabType =
   | "ai"
   | "broadcast"
   | "chats"
+  | "support-chats"
   | "referrals"
   | "support"
   | "devtools"
@@ -53,6 +55,7 @@ export function AdminSidebar({
   onLogout
 }: AdminSidebarProps) {
   const unreadChats = useAdminUnreadChats();
+  const unreadSupport = useSupportUnread();
   const { theme, setTheme } = useTheme();
   const toggleTheme = () => setTheme(theme === "dark" ? "light" : "dark");
 
@@ -84,6 +87,7 @@ export function AdminSidebar({
     { id: "finance", icon: CreditCard, label: "Финансы" },
     { id: "storage", icon: HardDrive, label: "Хранилище и Kinescope" },
     { id: "chats", icon: MessageSquare, label: "Чаты", badge: unreadChats },
+    { id: "support-chats", icon: Headset, label: "Поддержка ИИ", badge: unreadSupport },
   ];
 
   const brandHsl = themeAccent || "220 70% 50%";
