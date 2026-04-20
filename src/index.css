@@ -668,14 +668,125 @@
     border-radius: 2px;
   }
 
-  /* prefers-reduced-motion: глушим shimmer/transform */
+  /* =============================================================
+   * Per-template REVEAL animations — Этап 4.
+   * Скрипт useRevealOnScroll() ставит на <section data-reveal>
+   * класс `is-revealed` при попадании в viewport. До показа секция
+   * остаётся видимой по контенту, но имеет начальный transform/opacity,
+   * который сбрасывается анимацией.
+   *
+   * Каждый шаблон имеет уникальный «характер появления»:
+   *  - aurora    → плавный fade-up + лёгкое размытие
+   *  - beauty    → мягкое scale + покачивание sway
+   *  - safety    → штамповый stamp-in (scale + rotate)
+   *  - lab       → glitch с тонким горизонтальным сдвигом + clip
+   *  - language  → flip-in с поворотом по X (страница книги)
+   * ============================================================= */
+  [data-reveal] { opacity: 0; transition: none; will-change: opacity, transform, filter; }
+  [data-reveal].is-revealed { opacity: 1; }
+
+  /* AURORA */
+  [data-template-skin="aurora"] [data-reveal] {
+    transform: translateY(28px);
+    filter: blur(6px);
+  }
+  [data-template-skin="aurora"] [data-reveal].is-revealed {
+    animation: tpl-aurora-reveal .9s cubic-bezier(.2,.7,.2,1) forwards;
+  }
+
+  /* BEAUTY */
+  [data-template-skin="beauty"] [data-reveal] { transform: scale(.96); }
+  [data-template-skin="beauty"] [data-reveal].is-revealed {
+    animation: tpl-beauty-reveal 1s cubic-bezier(.34,1.56,.64,1) forwards;
+  }
+  [data-template-skin="beauty"] .tpl-beauty-card { animation: tpl-beauty-sway 7s ease-in-out infinite; }
+  [data-template-skin="beauty"] .tpl-beauty-card:nth-child(2n) { animation-delay: -3.5s; }
+
+  /* SAFETY — штамп */
+  [data-template-skin="safety"] [data-reveal] {
+    transform: scale(.5) rotate(-12deg);
+  }
+  [data-template-skin="safety"] [data-reveal].is-revealed {
+    animation: tpl-safety-stamp .55s cubic-bezier(.25,1.4,.5,1) forwards;
+  }
+
+  /* LAB — glitch */
+  [data-template-skin="lab"] [data-reveal] {
+    transform: translateX(-12px);
+    clip-path: inset(0 100% 0 0);
+  }
+  [data-template-skin="lab"] [data-reveal].is-revealed {
+    animation: tpl-lab-glitch .7s steps(8, end) forwards;
+  }
+  [data-template-skin="lab"] .tpl-lab-card-cursor::after {
+    content: "_"; margin-left: 2px;
+    animation: tpl-lab-blink 1.1s steps(2, end) infinite;
+    color: #34d399;
+  }
+
+  /* LANGUAGE — flip страницы */
+  [data-template-skin="language"] [data-reveal] {
+    transform-origin: top center;
+    transform: perspective(1200px) rotateX(-22deg);
+  }
+  [data-template-skin="language"] [data-reveal].is-revealed {
+    animation: tpl-language-flip .85s cubic-bezier(.2,.8,.2,1) forwards;
+  }
+  /* Анимированное подчёркивание заголовков «кистью» */
+  [data-template-skin="language"] .tpl-language-section-title.is-revealed::after {
+    animation: tpl-language-brush .8s ease-out .4s forwards;
+    transform-origin: left center;
+    transform: scaleX(0);
+  }
+
+  /* prefers-reduced-motion: всё статично */
   @media (prefers-reduced-motion: reduce) {
     .tpl-aurora-card, .tpl-beauty-card, .tpl-safety-card, .tpl-lab-card, .tpl-language-card,
     .tpl-aurora-button, .tpl-beauty-button, .tpl-safety-button, .tpl-lab-button, .tpl-language-button {
       transition: none !important;
     }
     .tpl-aurora-button::after { display: none; }
+    [data-reveal], [data-reveal].is-revealed {
+      opacity: 1 !important; transform: none !important;
+      filter: none !important; clip-path: none !important;
+      animation: none !important;
+    }
+    [data-template-skin="beauty"] .tpl-beauty-card { animation: none !important; }
   }
+}
+
+/* ============= Per-template keyframes ============= */
+@keyframes tpl-aurora-reveal {
+  to { opacity: 1; transform: translateY(0); filter: blur(0); }
+}
+@keyframes tpl-beauty-reveal {
+  to { opacity: 1; transform: scale(1); }
+}
+@keyframes tpl-beauty-sway {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  50%      { transform: translateY(-3px) rotate(.4deg); }
+}
+@keyframes tpl-safety-stamp {
+  0%   { opacity: 0; transform: scale(.5) rotate(-12deg); }
+  60%  { opacity: 1; transform: scale(1.08) rotate(2deg); }
+  100% { opacity: 1; transform: scale(1) rotate(0deg); }
+}
+@keyframes tpl-lab-glitch {
+  0%   { opacity: 0; transform: translateX(-12px); clip-path: inset(0 100% 0 0); }
+  20%  { opacity: .6; transform: translateX(4px); clip-path: inset(0 60% 0 0); }
+  40%  { opacity: .8; transform: translateX(-2px); clip-path: inset(0 30% 0 0); }
+  60%  { opacity: 1;  transform: translateX(2px);  clip-path: inset(0 10% 0 0); }
+  100% { opacity: 1;  transform: translateX(0);    clip-path: inset(0 0 0 0); }
+}
+@keyframes tpl-lab-blink {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0; }
+}
+@keyframes tpl-language-flip {
+  to { opacity: 1; transform: perspective(1200px) rotateX(0deg); }
+}
+@keyframes tpl-language-brush {
+  to { transform: scaleX(1); }
 }
 
 /* Keyframes */
