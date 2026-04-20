@@ -2,6 +2,10 @@ import { useLandingTheme } from "./LandingThemeProvider";
 import { AudienceGrid } from "./variants/AudienceGrid";
 import { AudienceIconsRow } from "./variants/AudienceIconsRow";
 import { AudienceStackedCards } from "./variants/AudienceStackedCards";
+import { AudienceWideFeatureRow } from "./variants/AudienceWideFeatureRow";
+import { AudienceSafetyTable } from "./variants/AudienceSafetyTable";
+import { AudienceTerminalStrip } from "./variants/AudienceTerminalStrip";
+import { AudiencePassportCards } from "./variants/AudiencePassportCards";
 
 export interface AudienceItem {
   icon: string;
@@ -21,15 +25,20 @@ interface Props {
   onRemoveItem?: (index: number) => void;
 }
 
-/** Диспетчер Audience. Выбирает variant по `theme.audience_layout`. */
+/** Диспетчер Audience — выбирает variant по `theme.audience_layout`. */
 export function LandingAudienceSection(props: Props) {
   const { theme } = useLandingTheme();
-  const Variant =
-    theme.audience_layout === "icons-row"
-      ? AudienceIconsRow
-      : theme.audience_layout === "stacked-cards"
-      ? AudienceStackedCards
-      : AudienceGrid;
+  const Variant = (() => {
+    switch (theme.audience_layout) {
+      case "wide-feature-row": return AudienceWideFeatureRow;
+      case "safety-table": return AudienceSafetyTable;
+      case "terminal-strip": return AudienceTerminalStrip;
+      case "passport-cards": return AudiencePassportCards;
+      case "icons-row": return AudienceIconsRow;
+      case "stacked-cards": return AudienceStackedCards;
+      default: return AudienceGrid;
+    }
+  })();
   return (
     <div className="landing-bg-section">
       <Variant {...props} />

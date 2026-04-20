@@ -2,6 +2,9 @@ import { useLandingTheme } from "./LandingThemeProvider";
 import { PricingCards } from "./variants/PricingCards";
 import { PricingHighlightMiddle } from "./variants/PricingHighlightMiddle";
 import { PricingComparison } from "./variants/PricingComparison";
+import { PricingHeroFocus } from "./variants/PricingHeroFocus";
+import { PricingLanguageLevels } from "./variants/PricingLanguageLevels";
+import { PricingPackageJson } from "./variants/PricingPackageJson";
 
 export interface PricingTier {
   name: string;
@@ -23,15 +26,19 @@ interface Props {
   onRemoveTier?: (index: number) => void;
 }
 
-/** Диспетчер Pricing. Выбирает variant по `theme.pricing_layout`. */
+/** Диспетчер Pricing — выбирает variant по `theme.pricing_layout`. */
 export function LandingPricingSection(props: Props) {
   const { theme } = useLandingTheme();
-  const Variant =
-    theme.pricing_layout === "highlight-middle"
-      ? PricingHighlightMiddle
-      : theme.pricing_layout === "comparison"
-      ? PricingComparison
-      : PricingCards;
+  const Variant = (() => {
+    switch (theme.pricing_layout) {
+      case "highlight-middle": return PricingHighlightMiddle;
+      case "comparison": return PricingComparison;
+      case "hero-focus": return PricingHeroFocus;
+      case "language-levels": return PricingLanguageLevels;
+      case "package-json": return PricingPackageJson;
+      default: return PricingCards;
+    }
+  })();
   return (
     <div className="landing-bg-pricing">
       <Variant {...props} />
