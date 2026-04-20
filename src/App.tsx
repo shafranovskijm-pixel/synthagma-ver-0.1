@@ -15,6 +15,7 @@ import { useThemePersonalization } from "@/components/ui/ThemePersonalization";
 import { captureRefFromUrl } from "@/utils/referralCookie";
 import { BackgroundUploadsProvider } from "@/contexts/BackgroundUploadsContext";
 import { BackgroundUploadsTray } from "@/components/uploads/BackgroundUploadsTray";
+import { SupportChatWidget } from "@/components/support/SupportChatWidget";
 import {
   publicRoutes,
   studentRoutes,
@@ -58,6 +59,7 @@ const App = () => (
                   <Sonner />
                   <SpecialOfferPopup />
                   <BackgroundUploadsTray />
+                  <SupportChatWidget />
                   <Suspense fallback={<LazyLoadFallback />}>
                     <Routes>
                       {publicRoutes}
