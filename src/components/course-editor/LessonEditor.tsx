@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -6,7 +6,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { FileText, Video, HelpCircle, Plus, Trash2, Sparkles, Settings, Upload, FolderOpen, FileSpreadsheet, Lock } from "lucide-react";
+import { FileText, Video, HelpCircle, Plus, Trash2, Sparkles, Settings, Upload, FolderOpen, FileSpreadsheet, Lock, RotateCcw, Save } from "lucide-react";
 import { AIAvatarLessonEditor, type AIAvatarConfig } from "@/components/course-builder/AIAvatarLessonEditor";
 import { BlockEditor } from "@/components/course-builder/BlockEditor";
 import { TestImportDialog } from "@/components/course-builder/TestImportDialog";
@@ -19,6 +19,7 @@ import { UploadProgressBlock } from "@/components/course-builder/UploadProgressB
 import { useLessonEditor, type TestQuestion } from "@/hooks/useLessonEditor";
 import { useLessonMedia } from "@/hooks/useLessonMedia";
 import { useSubscriptionLimits } from "@/hooks/useSubscriptionLimits";
+import { useLessonDraft } from "@/hooks/useLessonDraft";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 
@@ -76,6 +77,32 @@ export const LessonEditor = ({
       organizationId,
     },
   );
+
+  // Draft autosave: защита от потери текста урока при закрытии вкладки
+  const draftKey = lesson?.id ? `lesson:${lesson.id}` : (courseId ? `lesson:new:${courseId}` : null);
+  const draftSnapshot = useMemo(
+    () => ({ title: e.title, type: e.type, blocks: e.blocks, videoUrl: e.videoUrl, questions: e.questions }),
+    [e.title, e.type, e.blocks, e.videoUrl, e.questions]
+  );
+  const { hasDraft, draftSavedAt, restoreDraft, discardDraft } = useLessonDraft(draftKey, draftSnapshot, isOpen);
+
+  const handleRestoreDraft = () => {
+    const data = restoreDraft();
+    if (!data) return;
+    if (typeof data.title === "string") e.setTitle(data.title);
+    if (typeof data.type === "string") e.setType(data.type);
+    if (Array.isArray(data.blocks)) e.setBlocks(data.blocks);
+    if (typeof data.videoUrl === "string") e.setVideoUrl(data.videoUrl);
+    if (Array.isArray(data.questions)) e.setQuestions(data.questions);
+    toast.success("Черновик восстановлен");
+  };
+
+  const handleSaveAndDiscardDraft = () => {
+    e.handleSave();
+    discardDraft();
+  };
+
+  const draftAgeMin = draftSavedAt ? Math.max(1, Math.round((Date.now() - draftSavedAt) / 60000)) : null;
 
   return (
     <>
