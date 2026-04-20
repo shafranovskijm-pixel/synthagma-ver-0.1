@@ -60,9 +60,13 @@ function RenderBlock({ block, quizAnswer, quizSubmitted, onQuizAnswer, onQuizSub
     case "paragraph":
       return <p className={styleClasses} dangerouslySetInnerHTML={{ __html: renderHtml(block.content) }} />;
     case "heading1":
-      return <h1 className={cn("text-2xl font-bold", styleClasses)} dangerouslySetInnerHTML={{ __html: renderHtml(block.content) }} />;
+      return <h1 className={cn("text-3xl font-bold", styleClasses)} dangerouslySetInnerHTML={{ __html: renderHtml(block.content) }} />;
     case "heading2":
-      return <h2 className={cn("text-xl font-semibold", styleClasses)} dangerouslySetInnerHTML={{ __html: renderHtml(block.content) }} />;
+      return <h2 className={cn("text-2xl font-bold", styleClasses)} dangerouslySetInnerHTML={{ __html: renderHtml(block.content) }} />;
+    case "heading3":
+      return <h3 className={cn("text-xl font-semibold", styleClasses)} dangerouslySetInnerHTML={{ __html: renderHtml(block.content) }} />;
+    case "heading4":
+      return <h4 className={cn("text-lg font-semibold", styleClasses)} dangerouslySetInnerHTML={{ __html: renderHtml(block.content) }} />;
     case "bulletList":
       return <ul className={cn("list-disc pl-6", styleClasses)}>{(block.content || "").replace(/<\/?li>/gi, "").split("\n").filter(Boolean).map((item, i) => <li key={i} dangerouslySetInnerHTML={{ __html: renderHtml(item) }} />)}</ul>;
     case "numberedList":
