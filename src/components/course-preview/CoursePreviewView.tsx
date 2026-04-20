@@ -7,7 +7,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { SigmaLogo } from "@/components/ui/SigmaLogo";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 import { FilePreviewDialog } from "@/components/course-learning/FilePreviewDialog";
-import { ContentBlock, jsonToBlocks, BlockRenderer } from "@/components/course-builder/BlockEditor";
+import { ContentBlock, BlockRenderer, parseLessonContent } from "@/components/course-builder/BlockEditor";
 import { VideoPreviewInline } from "@/components/course-builder/VideoPreviewInline";
 import { cn } from "@/lib/utils";
 import { useCoursePreview } from "@/hooks/useCoursePreview";
@@ -19,10 +19,7 @@ import {
 } from "lucide-react";
 
 // ---- Helpers ----
-function parseContentToBlocks(content: string): ContentBlock[] {
-  try { const parsed = JSON.parse(content); return Array.isArray(parsed) ? parsed : jsonToBlocks(content); }
-  catch { return jsonToBlocks(content); }
-}
+const parseContentToBlocks = (content: string): ContentBlock[] => parseLessonContent(content);
 
 // Video preview now uses the shared VideoPreviewInline (supports MPEG-TS / HLS via hls.js)
 const VideoPreview = ({ content }: { content: string }) =>

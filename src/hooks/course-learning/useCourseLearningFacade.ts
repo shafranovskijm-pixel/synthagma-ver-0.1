@@ -9,7 +9,7 @@ import { toast } from "sonner";
 import { cacheCourseData, getCachedCourseData } from "@/utils/courseCache";
 import { setupOfflineSyncListeners } from "@/utils/offlineSync";
 import { showLimitToast } from "@/utils/limitToast";
-import { ContentBlock, jsonToBlocks } from "@/components/course-builder/BlockEditor";
+import { ContentBlock, parseLessonContent } from "@/components/course-builder/BlockEditor";
 import { generateAttestationProtocol } from "@/utils/generateAttestationProtocol";
 
 import type { Lesson, Course, LessonProgress } from "./types";
@@ -19,14 +19,12 @@ import { useLessonTest } from "./useLessonTest";
 import { useLessonVideo } from "./useLessonVideo";
 import { getOptionText } from "./types";
 
+/**
+ * Public re-export — kept for backwards compatibility with tests and callers.
+ * Now delegates to the unified parser used everywhere in the app.
+ */
 export function parseContentToBlocks(content: string): ContentBlock[] {
-  try {
-    const parsed = JSON.parse(content);
-    if (Array.isArray(parsed) && parsed.every(item => item.type && item.id)) {
-      return parsed;
-    }
-  } catch { /* Not JSON */ }
-  return [];
+  return parseLessonContent(content);
 }
 
 export function useCourseLearning() {
