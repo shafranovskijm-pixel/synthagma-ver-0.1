@@ -257,12 +257,15 @@ serve(async (req) => {
     });
 
     // Дублируем в Telegram
+    const tgContact = body.guestEmail || body.guestPhone || undefined;
     const tgUser = await sendToTelegramTopic(
       conv.telegram_topic_id,
       body.message,
       conversationId!,
       true,
-      userLabel
+      userLabel,
+      body.source,
+      tgContact
     );
     if (tgUser?.topic_id && !conv.telegram_topic_id) {
       await supabase.from("support_conversations")
