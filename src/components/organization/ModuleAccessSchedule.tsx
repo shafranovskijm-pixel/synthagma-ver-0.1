@@ -119,8 +119,8 @@ export function ModuleAccessSchedule({ courseId, courseStudents }: Props) {
   return (
     <div className="space-y-4">
       <div className="flex items-start gap-3">
-        <div className="p-2 rounded-lg bg-violet-500/10 mt-0.5 shrink-0">
-          <CalendarClock className="w-5 h-5 text-violet-500" />
+        <div className="p-2 rounded-lg bg-primary/10 mt-0.5 shrink-0">
+          <CalendarClock className="w-5 h-5 text-primary" />
         </div>
         <div>
           <div className="text-sm font-medium">Расписание открытия модулей</div>
