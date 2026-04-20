@@ -460,6 +460,222 @@
     background-position: center;
     background-repeat: no-repeat;
   }
+
+  /* =============================================================
+   * Per-template skins — уникальные «личности» карточек/кнопок.
+   * Используются вариантами секций через хук useTemplateStyle().
+   * ============================================================= */
+
+  /* ---------- AURORA — премиальный glass + shimmer ---------- */
+  .tpl-aurora-card {
+    position: relative;
+    background: rgba(255, 255, 255, 0.55);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid rgba(34, 184, 166, 0.18);
+    box-shadow: 0 12px 40px -16px rgba(34, 184, 166, 0.25);
+    transition: transform .35s ease, box-shadow .35s ease;
+  }
+  .tpl-aurora-card::before {
+    content: "";
+    position: absolute; inset: 0;
+    border-radius: inherit; padding: 1px;
+    background: linear-gradient(135deg, rgba(34,184,166,.55), rgba(255,255,255,.05) 40%, rgba(34,184,166,.35));
+    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor; mask-composite: exclude;
+    pointer-events: none;
+  }
+  .tpl-aurora-card:hover { transform: translateY(-4px); box-shadow: 0 24px 60px -20px rgba(34,184,166,.45); }
+  .tpl-aurora-card-highlight { background: rgba(34,184,166,.10); }
+  .tpl-aurora-button {
+    position: relative; overflow: hidden;
+    background: linear-gradient(135deg, hsl(174 72% 46%), hsl(186 80% 50%));
+    color: #fff;
+    box-shadow: 0 12px 30px -10px rgba(34,184,166,.55);
+  }
+  .tpl-aurora-button::after {
+    content: ""; position: absolute; top: 0; left: -120%; width: 60%; height: 100%;
+    background: linear-gradient(120deg, transparent, rgba(255,255,255,.45), transparent);
+    transform: skewX(-20deg);
+    transition: left .9s cubic-bezier(.4,0,.2,1);
+  }
+  .tpl-aurora-button:hover::after { left: 130%; }
+  .tpl-aurora-section-title {
+    background: linear-gradient(135deg, hsl(174 72% 36%), hsl(186 80% 45%));
+    -webkit-background-clip: text; background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+
+  /* ---------- BEAUTY — пудровая тень + волнистый низ ---------- */
+  .tpl-beauty-card {
+    background: linear-gradient(180deg, #fff 0%, #fdf6f8 100%);
+    border: 1px solid rgba(232, 158, 178, 0.25);
+    box-shadow: 0 14px 40px -18px rgba(232, 158, 178, 0.45);
+    transition: transform .3s ease, box-shadow .3s ease;
+    position: relative;
+  }
+  .tpl-beauty-card::after {
+    content: ""; position: absolute; left: 0; right: 0; bottom: -1px; height: 10px;
+    background-image: radial-gradient(circle at 8px 0, transparent 8px, hsl(var(--background)) 9px);
+    background-size: 16px 10px;
+    pointer-events: none;
+  }
+  .tpl-beauty-card:hover { transform: translateY(-3px) rotate(-.4deg); box-shadow: 0 22px 50px -18px rgba(232,158,178,.6); }
+  .tpl-beauty-card-highlight {
+    background: linear-gradient(180deg, #fff 0%, #fbeaef 100%);
+    border-color: rgba(232, 158, 178, 0.6);
+  }
+  .tpl-beauty-button {
+    background: linear-gradient(135deg, #e89eb2, #d97a98);
+    color: #fff;
+    box-shadow: 0 10px 24px -8px rgba(217,122,152,.55);
+    transition: transform .2s ease, box-shadow .25s ease;
+  }
+  .tpl-beauty-button:hover { transform: translateY(-2px) scale(1.02); }
+  .tpl-beauty-button::before {
+    content: "♡"; opacity: 0; margin-right: .35rem;
+    transition: opacity .25s ease, transform .25s ease; display: inline-block;
+  }
+  .tpl-beauty-button:hover::before { opacity: 1; transform: scale(1.2); }
+  .tpl-beauty-section-title {
+    font-style: italic;
+    text-shadow: 0 2px 0 rgba(232,158,178,.15);
+  }
+  .tpl-beauty-section-title::after {
+    content: ""; display: block; margin-top: .5rem;
+    width: 64px; height: 6px;
+    background: linear-gradient(90deg, #e89eb2, transparent);
+    border-radius: 3px;
+  }
+
+  /* ---------- SAFETY — жёсткие прямоугольники + штриховка hover ---------- */
+  .tpl-safety-card {
+    background: #fff;
+    border: 2px solid #1e3a8a;
+    border-radius: 0 !important;
+    box-shadow: 4px 4px 0 0 rgba(30, 58, 138, 0.15);
+    position: relative;
+    transition: box-shadow .25s ease, transform .25s ease;
+  }
+  .tpl-safety-card::before {
+    content: attr(data-clause);
+    position: absolute; top: -1px; right: -1px;
+    background: #1e3a8a; color: #fff;
+    font-size: 10px; font-weight: 700; letter-spacing: .04em;
+    padding: 4px 8px;
+    font-family: 'JetBrains Mono', ui-monospace, monospace;
+  }
+  .tpl-safety-card:hover {
+    box-shadow: 6px 6px 0 0 rgba(30,58,138,.35);
+    background-image: repeating-linear-gradient(45deg, transparent 0 8px, rgba(30,58,138,.04) 8px 9px);
+  }
+  .tpl-safety-card-highlight {
+    border-color: hsl(38 92% 50%);
+    box-shadow: 4px 4px 0 0 rgba(245, 158, 11, 0.35);
+  }
+  .tpl-safety-card-highlight::before { background: hsl(38 92% 50%); color: #1e3a8a; }
+  .tpl-safety-button {
+    background: #1e3a8a; color: #fff;
+    border-radius: 0 !important;
+    border: 2px solid #1e3a8a;
+    text-transform: uppercase; letter-spacing: .08em; font-weight: 700;
+    box-shadow: 3px 3px 0 0 rgba(30,58,138,.3);
+    transition: transform .15s ease, box-shadow .15s ease;
+  }
+  .tpl-safety-button:hover { transform: translate(-2px,-2px); box-shadow: 5px 5px 0 0 rgba(30,58,138,.5); }
+  .tpl-safety-section-title {
+    text-transform: uppercase;
+    letter-spacing: .04em;
+    border-left: 6px solid #1e3a8a;
+    padding-left: 1rem;
+  }
+
+  /* ---------- LAB — тёмная карточка с неоновым свечением ---------- */
+  .tpl-lab-card {
+    background: rgba(13, 17, 23, 0.85);
+    border: 1px solid rgba(34, 211, 238, 0.25);
+    color: #d4e4ff;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.04);
+    transition: border-color .3s ease, box-shadow .3s ease, transform .3s ease;
+    font-family: 'JetBrains Mono', ui-monospace, monospace;
+  }
+  .tpl-lab-card:hover {
+    border-color: rgba(34,211,238,.7);
+    box-shadow: 0 0 0 1px rgba(34,211,238,.4), 0 0 30px -4px rgba(34,211,238,.4);
+    transform: translateY(-2px);
+  }
+  .tpl-lab-card-highlight {
+    background: rgba(13,17,23,.95);
+    border-color: rgba(168, 85, 247, 0.7);
+    box-shadow: 0 0 0 1px rgba(168,85,247,.4), 0 0 40px -4px rgba(168,85,247,.5);
+  }
+  .tpl-lab-button {
+    background: #0d1117; color: #34d399;
+    border: 1px solid #34d399;
+    font-family: 'JetBrains Mono', ui-monospace, monospace;
+    text-transform: lowercase;
+    box-shadow: 0 0 0 0 rgba(52,211,153,.4);
+    transition: box-shadow .25s ease, background .25s ease;
+  }
+  .tpl-lab-button::before { content: "> "; color: #34d399; }
+  .tpl-lab-button:hover {
+    background: #111827;
+    box-shadow: 0 0 0 3px rgba(52,211,153,.25), 0 0 24px -2px rgba(52,211,153,.5);
+  }
+  .tpl-lab-section-title {
+    font-family: 'JetBrains Mono', ui-monospace, monospace;
+    color: #d4e4ff;
+  }
+  .tpl-lab-section-title::before {
+    content: "// "; color: #6b7280;
+  }
+
+  /* ---------- LANGUAGE — карточка-страница с закладкой ---------- */
+  .tpl-language-card {
+    background: #fffdf7;
+    border: 1px solid rgba(120, 80, 40, 0.15);
+    box-shadow: 0 8px 24px -10px rgba(120,80,40,.2);
+    position: relative;
+    transition: transform .3s ease, box-shadow .3s ease;
+  }
+  .tpl-language-card::after {
+    content: ""; position: absolute; top: 0; right: 0; width: 28px; height: 28px;
+    background: linear-gradient(225deg, #d4a574 0 50%, transparent 50%);
+    box-shadow: -2px 2px 4px -2px rgba(0,0,0,.15);
+  }
+  .tpl-language-card:hover { transform: translateY(-3px); box-shadow: 0 16px 32px -10px rgba(120,80,40,.3); }
+  .tpl-language-card-highlight {
+    background: linear-gradient(180deg, #fffdf7 0%, #fef3e2 100%);
+    border-color: #d4a574;
+  }
+  .tpl-language-button {
+    background: #fffdf7; color: #78502c;
+    border: 2px solid #78502c;
+    font-family: 'PT Serif', Georgia, serif;
+    font-style: italic;
+    transition: background .25s ease, color .25s ease;
+  }
+  .tpl-language-button:hover { background: #78502c; color: #fffdf7; }
+  .tpl-language-section-title {
+    font-family: 'PT Serif', Georgia, serif;
+    font-style: italic;
+    position: relative; display: inline-block;
+  }
+  .tpl-language-section-title::after {
+    content: ""; display: block; height: 3px; margin-top: 4px;
+    background-image: linear-gradient(90deg, #78502c 0 70%, transparent 70%);
+    background-size: 12px 3px;
+    border-radius: 2px;
+  }
+
+  /* prefers-reduced-motion: глушим shimmer/transform */
+  @media (prefers-reduced-motion: reduce) {
+    .tpl-aurora-card, .tpl-beauty-card, .tpl-safety-card, .tpl-lab-card, .tpl-language-card,
+    .tpl-aurora-button, .tpl-beauty-button, .tpl-safety-button, .tpl-lab-button, .tpl-language-button {
+      transition: none !important;
+    }
+    .tpl-aurora-button::after { display: none; }
+  }
 }
 
 /* Keyframes */
