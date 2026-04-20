@@ -21,8 +21,27 @@ import {
   GripVertical,
   Lock,
   Menu,
+  Image as ImageIcon,
+  Headphones,
+  Presentation,
+  ClipboardList,
+  MessageSquare,
+  BookCheck,
+  Sparkles,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+
+export type AddLessonType =
+  | "text"
+  | "video"
+  | "test"
+  | "ai_avatar"
+  | "slider"
+  | "audio"
+  | "feedback"
+  | "homework"
+  | "image"
+  | "practice";
 
 interface Lesson {
   id: string;
@@ -37,7 +56,7 @@ interface Props {
   sensors: any;
   onDragEnd: (e: DragEndEvent) => void;
   onLessonClick: (id: string) => void;
-  onAddLesson: () => void;
+  onAddLesson: (type?: AddLessonType) => void;
   onOpenGitHubImport: () => void;
 }
 
@@ -118,15 +137,30 @@ function SidebarContent(props: Props) {
               <Plus className="w-4 h-4" /> Добавить урок
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="start" className="w-56">
-            <DropdownMenuItem onClick={onAddLesson}>
-              <FileText className="w-4 h-4 mr-2" /> Текстовый урок
+          <DropdownMenuContent align="start" className="w-60">
+            <DropdownMenuItem onClick={() => onAddLesson("text")}>
+              <FileText className="w-4 h-4 mr-2 text-sigma-blue" /> Текстовый урок
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={onAddLesson}>
-              <Video className="w-4 h-4 mr-2" /> Видео урок
+            <DropdownMenuItem onClick={() => onAddLesson("video")}>
+              <Video className="w-4 h-4 mr-2 text-sigma-purple" /> Видео урок
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={onAddLesson}>
-              <HelpCircle className="w-4 h-4 mr-2" /> Тест
+            <DropdownMenuItem onClick={() => onAddLesson("test")}>
+              <HelpCircle className="w-4 h-4 mr-2 text-sigma-green" /> Тест
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => onAddLesson("ai_avatar")}>
+              <Sparkles className="w-4 h-4 mr-2 text-fuchsia-500" /> ИИ-преподаватель
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => onAddLesson("slider")}>
+              <Presentation className="w-4 h-4 mr-2 text-amber-500" /> Слайды
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => onAddLesson("audio")}>
+              <Headphones className="w-4 h-4 mr-2 text-emerald-500" /> Аудио урок
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => onAddLesson("feedback")}>
+              <MessageSquare className="w-4 h-4 mr-2 text-blue-500" /> Обратная связь
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => onAddLesson("homework")}>
+              <BookCheck className="w-4 h-4 mr-2 text-indigo-500" /> Задание
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={onOpenGitHubImport}>
