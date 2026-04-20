@@ -127,189 +127,205 @@ export function SortableBlockItem({ block, isFocused, onFocus, onUpdate, onDelet
       <div className="min-w-0">
         <BlockContent block={block} onUpdate={onUpdate} courseTitle={courseTitle} lessonTitle={lessonTitle} existingContent={existingContent} organizationId={organizationId} courseId={courseId} lessonId={lessonId} />
       </div>
-      <div className="flex items-center justify-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity py-1">
-        <div className="flex items-center gap-0.5 bg-foreground/80 backdrop-blur-sm text-background rounded-full px-2 py-1 shadow-lg">
-          <div {...attributes} {...listeners} className="cursor-grab active:cursor-grabbing hover:bg-white/20 rounded-full h-8 w-8 flex items-center justify-center touch-none transition-colors">
-            <GripVertical className="w-4 h-4" />
-          </div>
-          {canConvert && (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <button className="h-8 w-8 flex items-center justify-center hover:bg-white/20 rounded-full transition-colors" title="Обернуть / Преобразовать"><Wand2 className="w-4 h-4" /></button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="center" className="w-52">
-                {wrapOtherTargets.filter(t => t.type !== block.type).map((t) => (
-                  <DropdownMenuItem key={t.type} onClick={() => handleConvert(t.type)}><t.icon className={cn("w-4 h-4 mr-2", t.color)} />{t.label}</DropdownMenuItem>
-                ))}
-                <DropdownMenuSeparator />
-                <DropdownMenuSub>
-                  <DropdownMenuSubTrigger><Highlighter className="w-4 h-4 mr-2 text-yellow-500" />Выделение</DropdownMenuSubTrigger>
-                  <DropdownMenuPortal>
-                    <DropdownMenuSubContent className="w-48">
-                      {wrapCalloutTargets.filter(t => t.type !== block.type).map((t) => (
-                        <DropdownMenuItem key={t.type} onClick={() => handleConvert(t.type)}><t.icon className={cn("w-4 h-4 mr-2", t.color)} />{t.label}</DropdownMenuItem>
-                      ))}
-                    </DropdownMenuSubContent>
-                  </DropdownMenuPortal>
-                </DropdownMenuSub>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          )}
-          {canStyle && (
-            <Popover>
-              <PopoverTrigger asChild>
-                <button className="h-8 w-8 flex items-center justify-center hover:bg-white/20 rounded-full transition-colors" title="Стиль блока"><Pencil className="w-4 h-4" /></button>
-              </PopoverTrigger>
-              <PopoverContent className="w-72 p-3" align="center">
-                <Tabs defaultValue="style">
-                  <TabsList className="w-full h-8 p-0.5">
-                    <TabsTrigger value="style" className="text-xs px-2 py-1 h-7">Стиль</TabsTrigger>
-                    <TabsTrigger value="font" className="text-xs px-2 py-1 h-7">Шрифт</TabsTrigger>
-                    <TabsTrigger value="border" className="text-xs px-2 py-1 h-7">Рамка</TabsTrigger>
-                    <TabsTrigger value="presets" className="text-xs px-2 py-1 h-7">Шаблоны</TabsTrigger>
-                  </TabsList>
-                  <TabsContent value="style" className="mt-2 space-y-3">
-                    <div>
-                      <p className="text-xs font-medium text-muted-foreground mb-1.5">Выравнивание</p>
-                      <div className="flex gap-1">
-                        <Button variant={(!block.textAlign || block.textAlign === 'left') ? "default" : "outline"} size="icon" className="h-7 w-7" onClick={() => onUpdate({ textAlign: undefined })}><AlignLeft className="w-3.5 h-3.5" /></Button>
-                        <Button variant={block.textAlign === 'center' ? "default" : "outline"} size="icon" className="h-7 w-7" onClick={() => onUpdate({ textAlign: 'center' })}><AlignCenter className="w-3.5 h-3.5" /></Button>
-                        <Button variant={block.textAlign === 'right' ? "default" : "outline"} size="icon" className="h-7 w-7" onClick={() => onUpdate({ textAlign: 'right' })}><AlignRight className="w-3.5 h-3.5" /></Button>
-                      </div>
-                    </div>
-                    <div>
-                      <p className="text-xs font-medium text-muted-foreground mb-1.5">Форматирование</p>
-                      <div className="flex gap-1">
-                        <Button variant={block.bold ? "default" : "outline"} size="icon" className="h-7 w-7" onClick={() => onUpdate({ bold: !block.bold })} title="Жирный"><Bold className="w-3.5 h-3.5" /></Button>
-                        <Button variant={block.italic ? "default" : "outline"} size="icon" className="h-7 w-7" onClick={() => onUpdate({ italic: !block.italic })} title="Курсив"><Italic className="w-3.5 h-3.5" /></Button>
-                        <Button variant={block.strikethrough ? "default" : "outline"} size="icon" className="h-7 w-7" onClick={() => onUpdate({ strikethrough: !block.strikethrough })} title="Зачёркнутый"><Strikethrough className="w-3.5 h-3.5" /></Button>
-                        <Button variant={block.underline ? "default" : "outline"} size="icon" className="h-7 w-7" onClick={() => onUpdate({ underline: !block.underline })} title="Подчёркнутый"><Underline className="w-3.5 h-3.5" /></Button>
-                        <Button variant={block.uppercase ? "default" : "outline"} size="icon" className="h-7 w-7" onClick={() => onUpdate({ uppercase: !block.uppercase })} title="UPPERCASE"><CaseSensitive className="w-3.5 h-3.5" /></Button>
-                      </div>
-                    </div>
-                    <div>
-                      <p className="text-xs font-medium text-muted-foreground mb-1.5">Цвет текста</p>
-                      <div className="flex gap-1.5">
-                        {textColorPresets.map((preset) => <button key={preset.value} onClick={() => onUpdate({ textColor: preset.value || undefined })} className={cn("w-6 h-6 rounded-full transition-all", preset.dot, (block.textColor || "") === preset.value && "ring-2 ring-primary ring-offset-1")} title={preset.label} />)}
-                      </div>
-                    </div>
-                    <div>
-                      <p className="text-xs font-medium text-muted-foreground mb-1.5">Фон блока</p>
-                      <div className="flex gap-1.5">
-                        {bgColorPresets.map((preset) => <button key={preset.value} onClick={() => onUpdate({ bgColor: preset.value || undefined })} className={cn("w-6 h-6 rounded-full transition-all", bgColorDotStyles[preset.value], (block.bgColor || "") === preset.value && "ring-2 ring-primary ring-offset-1")} title={preset.label} />)}
-                      </div>
-                    </div>
-                  </TabsContent>
-                  <TabsContent value="font" className="mt-2 space-y-3">
-                    <div>
-                      <p className="text-xs font-medium text-muted-foreground mb-1.5">Шрифт</p>
-                      <div className="flex gap-1">
-                        {([['sans', 'Обычный'], ['mono', 'Моно']] as const).map(([ff, label]) => <Button key={ff} variant={(block.fontFamily || 'sans') === ff ? "default" : "outline"} size="sm" className="h-7 px-2.5 text-xs" onClick={() => onUpdate({ fontFamily: ff === 'sans' ? undefined : ff })}>{label}</Button>)}
-                      </div>
-                    </div>
-                    <div>
-                      <p className="text-xs font-medium text-muted-foreground mb-1.5">Размер текста</p>
-                      <div className="flex gap-1">
-                        {([['sm', 'A-'], ['base', 'A'], ['lg', 'A+']] as const).map(([size, label]) => <Button key={size} variant={(block.textSize || 'base') === size ? "default" : "outline"} size="sm" className="h-7 px-2.5 text-xs" onClick={() => onUpdate({ textSize: size === 'base' ? undefined : size })}>{label}</Button>)}
-                      </div>
-                    </div>
-                    <div>
-                      <p className="text-xs font-medium text-muted-foreground mb-1.5">Межстрочный интервал</p>
-                      <div className="flex gap-1">
-                        {([['tight', 'Плотный'], ['normal', 'Обычный'], ['relaxed', 'Свободный']] as const).map(([lh, label]) => <Button key={lh} variant={(block.lineHeight || 'normal') === lh ? "default" : "outline"} size="sm" className="h-7 px-2.5 text-xs" onClick={() => onUpdate({ lineHeight: lh === 'normal' ? undefined : lh })}>{label}</Button>)}
-                      </div>
-                    </div>
-                  </TabsContent>
-                  <TabsContent value="border" className="mt-2 space-y-3">
-                    <div>
-                      <p className="text-xs font-medium text-muted-foreground mb-1.5">Рамка</p>
-                      <div className="flex gap-1">
-                        {([['none', 'Нет'], ['thin', 'Тонкая'], ['bold', 'Жирная'], ['dashed', 'Пунктир']] as const).map(([bs, label]) => <Button key={bs} variant={(block.borderStyle || 'none') === bs ? "default" : "outline"} size="sm" className="h-7 px-2.5 text-xs" onClick={() => onUpdate({ borderStyle: bs === 'none' ? undefined : bs })}>{label}</Button>)}
-                      </div>
-                    </div>
-                    <div>
-                      <p className="text-xs font-medium text-muted-foreground mb-1.5">Скругление</p>
-                      <div className="flex gap-1">
-                        {([['none', '⬜'], ['md', '◻️'], ['xl', '⭕']] as const).map(([br, label]) => <Button key={br} variant={(block.borderRadius || 'none') === br ? "default" : "outline"} size="sm" className="h-7 px-2.5 text-xs" onClick={() => onUpdate({ borderRadius: br === 'none' ? undefined : br })}>{label}</Button>)}
-                      </div>
-                    </div>
-                  </TabsContent>
-                  <TabsContent value="presets" className="mt-2 space-y-3">
-                    <div>
-                      <p className="text-xs font-medium text-muted-foreground mb-1.5">Готовые стили</p>
-                      <div className="grid grid-cols-3 gap-1">
-                        {quickStyles.map((qs) => <button key={qs.name} onClick={() => onUpdate(qs.style)} className="flex flex-col items-center gap-0.5 p-1.5 rounded-md border border-border hover:border-primary/50 hover:bg-primary/5 transition-all text-xs"><span>{qs.icon}</span><span className="truncate w-full text-center">{qs.name}</span></button>)}
-                      </div>
-                    </div>
-                  </TabsContent>
-                </Tabs>
-              </PopoverContent>
-            </Popover>
-          )}
-          {canStyle && (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <button className={cn("h-8 w-8 flex items-center justify-center hover:bg-white/20 rounded-full transition-colors", presets.length > 0 && "text-yellow-400")} title="Пресеты стиля"><Star className="w-4 h-4" /></button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="center" className="w-56">
-                <DropdownMenuItem onClick={() => { const s = extractStyle(block); const name = describeStyle(s); const np = [...presets, { name, style: s }]; onPresetsChange(np); import("sonner").then(({ toast }) => toast.success(`Пресет сохранён: ${name}`)); }}>
-                  <Star className="w-4 h-4 mr-2 text-yellow-500" />Сохранить текущий стиль
-                </DropdownMenuItem>
-                {presets.length > 0 && <DropdownMenuSeparator />}
-                {presets.map((p, i) => (
-                  <DropdownMenuItem key={i} className="flex items-center justify-between group/preset" onClick={() => { const applied = { ...p.style, textSize: p.style.textSize === 'base' ? undefined : p.style.textSize, lineHeight: p.style.lineHeight === 'normal' ? undefined : p.style.lineHeight }; onUpdate(applied); }}>
-                    <span className="flex-1 truncate text-xs">{p.name}</span>
-                    <button className="ml-2 opacity-0 group-hover/preset:opacity-100 h-5 w-5 flex items-center justify-center hover:bg-destructive/20 rounded transition-all" onClick={(e) => { e.preventDefault(); e.stopPropagation(); onPresetsChange(presets.filter((_, j) => j !== i)); }}>
-                      <X className="w-3 h-3" />
-                    </button>
-                  </DropdownMenuItem>
-                ))}
-              </DropdownMenuContent>
-            </DropdownMenu>
-          )}
-          {canStyle && <button className="h-8 w-8 flex items-center justify-center hover:bg-white/20 rounded-full transition-colors" title="Сбросить стиль" onClick={() => onUpdate({ textAlign: undefined, bgColor: undefined, textColor: undefined, textSize: undefined, bold: undefined, italic: undefined, strikethrough: undefined, underline: undefined, uppercase: undefined, lineHeight: undefined, fontFamily: undefined, borderStyle: undefined, borderRadius: undefined })}><Eraser className="w-4 h-4" /></button>}
-          {canStyle && (
-            <>
-              <button className="h-8 w-8 flex items-center justify-center hover:bg-white/20 rounded-full transition-colors" title="Вставить ссылку" onMouseDown={(e) => {
-                e.preventDefault(); e.stopPropagation();
-                const sel = window.getSelection();
-                const hasSelection = !!(sel && !sel.isCollapsed && sel.rangeCount > 0);
-                if (hasSelection) savedLinkRange.current = sel!.getRangeAt(0).cloneRange();
-                else savedLinkRange.current = null;
-                setLinkHasSelection(hasSelection); setLinkUrl(""); setLinkText(""); setLinkPopoverOpen(true);
-              }}><Link2 className="w-4 h-4" /></button>
-              <Dialog open={linkPopoverOpen} onOpenChange={(open) => { if (!open) { setLinkPopoverOpen(false); setLinkUrl(""); setLinkText(""); savedLinkRange.current = null; } }}>
-                <DialogContent className="sm:max-w-sm" onOpenAutoFocus={(e) => e.preventDefault()}>
-                  <DialogHeader><DialogTitle className="text-sm">{linkHasSelection ? "Обернуть выделенный текст в ссылку" : "Вставить ссылку"}</DialogTitle></DialogHeader>
-                  <div className="space-y-2">
-                    {!linkHasSelection && <Input placeholder="Текст ссылки" value={linkText} onChange={(e) => setLinkText(e.target.value)} className="h-8 text-sm" autoFocus />}
-                    <Input placeholder="https://example.com" value={linkUrl} onChange={(e) => setLinkUrl(e.target.value)} className="h-8 text-sm" autoFocus={linkHasSelection} onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); (e.currentTarget.closest('[role="dialog"]')?.querySelector('[data-link-apply]') as HTMLButtonElement)?.click(); } }} />
-                    <Button size="sm" className="w-full h-8 text-xs" data-link-apply disabled={!linkUrl.trim()} onClick={() => {
-                      const url = linkUrl.trim(); if (!url) return;
-                      const blockId = block.id; const hadSelection = linkHasSelection; const rangeClone = savedLinkRange.current?.cloneRange() || null; const text = linkText.trim() || url;
-                      setLinkPopoverOpen(false); setLinkUrl(""); setLinkText(""); savedLinkRange.current = null;
-                      setTimeout(() => {
-                        const blockEl = document.querySelector(`[data-block-id="${blockId}"] [contenteditable]`) as HTMLElement;
-                        if (!blockEl) return; blockEl.focus();
-                        if (hadSelection && rangeClone) {
-                          const anchor = document.createElement('a'); anchor.href = url; anchor.target = '_blank'; anchor.rel = 'noopener noreferrer';
-                          try { rangeClone.surroundContents(anchor); } catch { const fragment = rangeClone.extractContents(); anchor.appendChild(fragment); rangeClone.insertNode(anchor); }
-                        } else {
-                          const anchor = document.createElement('a'); anchor.href = url; anchor.target = '_blank'; anchor.rel = 'noopener noreferrer'; anchor.textContent = text;
-                          const range = document.createRange(); range.selectNodeContents(blockEl); range.collapse(false); range.insertNode(anchor);
-                          const space = document.createTextNode('\u00A0'); anchor.after(space);
-                        }
-                        blockEl.dispatchEvent(new Event('input', { bubbles: true }));
-                      }, 150);
-                    }}>{linkHasSelection ? "Применить" : "Вставить ссылку"}</Button>
-                  </div>
-                </DialogContent>
-              </Dialog>
-            </>
-          )}
-          <button className="h-8 w-8 flex items-center justify-center hover:bg-red-500/30 rounded-full transition-colors" onClick={(e) => { e.stopPropagation(); onDelete(); }} title="Удалить блок"><Trash2 className="w-4 h-4" /></button>
-        </div>
+      {/* Right gutter: drag handle + "..." actions menu */}
+      <div className="absolute right-2 top-1 opacity-0 group-hover:opacity-100 transition-opacity z-20 flex items-center gap-1">
+        <button
+          {...attributes}
+          {...listeners}
+          className="cursor-grab active:cursor-grabbing w-7 h-9 rounded-md flex items-center justify-center text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors touch-none"
+          title="Перетащить"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <GripVertical className="w-4 h-4" />
+        </button>
+        <Popover open={actionsMenuOpen} onOpenChange={(o) => { setActionsMenuOpen(o); if (!o) setActionsQuery(""); }}>
+          <PopoverTrigger asChild>
+            <button
+              className="w-9 h-9 rounded-full bg-muted/60 hover:bg-primary/15 text-muted-foreground hover:text-primary flex items-center justify-center transition-colors"
+              title="Действия с блоком"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <MoreHorizontal className="w-4 h-4" />
+            </button>
+          </PopoverTrigger>
+          <PopoverContent className="w-60 p-2" align="end" onOpenAutoFocus={(e) => e.preventDefault()}>
+            <div className="relative mb-1.5">
+              <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+              <Input
+                value={actionsQuery}
+                onChange={(e) => setActionsQuery(e.target.value)}
+                placeholder="Поиск"
+                className="h-8 pl-7 text-sm"
+                autoFocus
+              />
+            </div>
+            <div className="flex flex-col">
+              {filteredActions.map((a) => (
+                <button
+                  key={a.key}
+                  disabled={a.disabled}
+                  onClick={() => { a.onClick(); if (a.key !== 'convert' && a.key !== 'style' && a.key !== 'presets') setActionsMenuOpen(false); }}
+                  className={cn(
+                    "flex items-center gap-2 px-2 py-1.5 rounded-md text-sm text-left transition-colors",
+                    "hover:bg-accent disabled:opacity-40 disabled:pointer-events-none",
+                    (a as any).danger && "text-destructive hover:bg-destructive/10"
+                  )}
+                >
+                  <a.icon className="w-4 h-4 shrink-0" />
+                  <span className="flex-1 truncate">{a.label}</span>
+                  {(a.key === 'convert' || a.key === 'presets') && <ChevronRight className="w-3.5 h-3.5 opacity-60" />}
+                </button>
+              ))}
+              {filteredActions.length === 0 && (
+                <p className="text-xs text-muted-foreground text-center py-3">Ничего не найдено</p>
+              )}
+            </div>
+          </PopoverContent>
+        </Popover>
       </div>
+
+      {/* Convert dialog */}
+      {canConvert && (
+        <Dialog open={convertOpen} onOpenChange={setConvertOpen}>
+          <DialogContent className="sm:max-w-sm">
+            <DialogHeader><DialogTitle className="text-sm flex items-center gap-2"><Wand2 className="w-4 h-4" />Преобразовать в…</DialogTitle></DialogHeader>
+            <div className="space-y-1 max-h-[60vh] overflow-y-auto">
+              {wrapOtherTargets.filter(t => t.type !== block.type).map((t) => (
+                <button key={t.type} onClick={() => { handleConvert(t.type); setConvertOpen(false); setActionsMenuOpen(false); }} className="w-full flex items-center gap-2 px-2 py-2 rounded-md hover:bg-accent text-sm text-left">
+                  <t.icon className={cn("w-4 h-4", t.color)} />{t.label}
+                </button>
+              ))}
+              <div className="border-t my-1" />
+              <p className="text-xs font-medium text-muted-foreground px-2 py-1">Выделение</p>
+              {wrapCalloutTargets.filter(t => t.type !== block.type).map((t) => (
+                <button key={t.type} onClick={() => { handleConvert(t.type); setConvertOpen(false); setActionsMenuOpen(false); }} className="w-full flex items-center gap-2 px-2 py-2 rounded-md hover:bg-accent text-sm text-left">
+                  <t.icon className={cn("w-4 h-4", t.color)} />{t.label}
+                </button>
+              ))}
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
+
+      {/* Block style dialog */}
+      {canStyle && (
+        <Dialog open={styleDialogOpen} onOpenChange={setStyleDialogOpen}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader><DialogTitle className="text-sm flex items-center gap-2"><Pencil className="w-4 h-4" />Стиль блока</DialogTitle></DialogHeader>
+            <Tabs defaultValue="style">
+              <TabsList className="w-full h-8 p-0.5">
+                <TabsTrigger value="style" className="text-xs px-2 py-1 h-7">Стиль</TabsTrigger>
+                <TabsTrigger value="font" className="text-xs px-2 py-1 h-7">Шрифт</TabsTrigger>
+                <TabsTrigger value="border" className="text-xs px-2 py-1 h-7">Рамка</TabsTrigger>
+                <TabsTrigger value="presets" className="text-xs px-2 py-1 h-7">Шаблоны</TabsTrigger>
+              </TabsList>
+              <TabsContent value="style" className="mt-2 space-y-3">
+                <div>
+                  <p className="text-xs font-medium text-muted-foreground mb-1.5">Выравнивание</p>
+                  <div className="flex gap-1">
+                    <Button variant={(!block.textAlign || block.textAlign === 'left') ? "default" : "outline"} size="icon" className="h-7 w-7" onClick={() => onUpdate({ textAlign: undefined })}><AlignLeft className="w-3.5 h-3.5" /></Button>
+                    <Button variant={block.textAlign === 'center' ? "default" : "outline"} size="icon" className="h-7 w-7" onClick={() => onUpdate({ textAlign: 'center' })}><AlignCenter className="w-3.5 h-3.5" /></Button>
+                    <Button variant={block.textAlign === 'right' ? "default" : "outline"} size="icon" className="h-7 w-7" onClick={() => onUpdate({ textAlign: 'right' })}><AlignRight className="w-3.5 h-3.5" /></Button>
+                  </div>
+                </div>
+                <div>
+                  <p className="text-xs font-medium text-muted-foreground mb-1.5">Форматирование</p>
+                  <div className="flex gap-1">
+                    <Button variant={block.bold ? "default" : "outline"} size="icon" className="h-7 w-7" onClick={() => onUpdate({ bold: !block.bold })} title="Жирный"><Bold className="w-3.5 h-3.5" /></Button>
+                    <Button variant={block.italic ? "default" : "outline"} size="icon" className="h-7 w-7" onClick={() => onUpdate({ italic: !block.italic })} title="Курсив"><Italic className="w-3.5 h-3.5" /></Button>
+                    <Button variant={block.strikethrough ? "default" : "outline"} size="icon" className="h-7 w-7" onClick={() => onUpdate({ strikethrough: !block.strikethrough })} title="Зачёркнутый"><Strikethrough className="w-3.5 h-3.5" /></Button>
+                    <Button variant={block.underline ? "default" : "outline"} size="icon" className="h-7 w-7" onClick={() => onUpdate({ underline: !block.underline })} title="Подчёркнутый"><Underline className="w-3.5 h-3.5" /></Button>
+                    <Button variant={block.uppercase ? "default" : "outline"} size="icon" className="h-7 w-7" onClick={() => onUpdate({ uppercase: !block.uppercase })} title="UPPERCASE"><CaseSensitive className="w-3.5 h-3.5" /></Button>
+                  </div>
+                </div>
+                <div>
+                  <p className="text-xs font-medium text-muted-foreground mb-1.5">Цвет текста</p>
+                  <div className="flex gap-1.5">
+                    {textColorPresets.map((preset) => <button key={preset.value} onClick={() => onUpdate({ textColor: preset.value || undefined })} className={cn("w-6 h-6 rounded-full transition-all", preset.dot, (block.textColor || "") === preset.value && "ring-2 ring-primary ring-offset-1")} title={preset.label} />)}
+                  </div>
+                </div>
+                <div>
+                  <p className="text-xs font-medium text-muted-foreground mb-1.5">Фон блока</p>
+                  <div className="flex gap-1.5">
+                    {bgColorPresets.map((preset) => <button key={preset.value} onClick={() => onUpdate({ bgColor: preset.value || undefined })} className={cn("w-6 h-6 rounded-full transition-all", bgColorDotStyles[preset.value], (block.bgColor || "") === preset.value && "ring-2 ring-primary ring-offset-1")} title={preset.label} />)}
+                  </div>
+                </div>
+              </TabsContent>
+              <TabsContent value="font" className="mt-2 space-y-3">
+                <div>
+                  <p className="text-xs font-medium text-muted-foreground mb-1.5">Шрифт</p>
+                  <div className="flex gap-1">
+                    {([['sans', 'Обычный'], ['mono', 'Моно']] as const).map(([ff, label]) => <Button key={ff} variant={(block.fontFamily || 'sans') === ff ? "default" : "outline"} size="sm" className="h-7 px-2.5 text-xs" onClick={() => onUpdate({ fontFamily: ff === 'sans' ? undefined : ff })}>{label}</Button>)}
+                  </div>
+                </div>
+                <div>
+                  <p className="text-xs font-medium text-muted-foreground mb-1.5">Размер текста</p>
+                  <div className="flex gap-1">
+                    {([['sm', 'A-'], ['base', 'A'], ['lg', 'A+']] as const).map(([size, label]) => <Button key={size} variant={(block.textSize || 'base') === size ? "default" : "outline"} size="sm" className="h-7 px-2.5 text-xs" onClick={() => onUpdate({ textSize: size === 'base' ? undefined : size })}>{label}</Button>)}
+                  </div>
+                </div>
+                <div>
+                  <p className="text-xs font-medium text-muted-foreground mb-1.5">Межстрочный интервал</p>
+                  <div className="flex gap-1">
+                    {([['tight', 'Плотный'], ['normal', 'Обычный'], ['relaxed', 'Свободный']] as const).map(([lh, label]) => <Button key={lh} variant={(block.lineHeight || 'normal') === lh ? "default" : "outline"} size="sm" className="h-7 px-2.5 text-xs" onClick={() => onUpdate({ lineHeight: lh === 'normal' ? undefined : lh })}>{label}</Button>)}
+                  </div>
+                </div>
+              </TabsContent>
+              <TabsContent value="border" className="mt-2 space-y-3">
+                <div>
+                  <p className="text-xs font-medium text-muted-foreground mb-1.5">Рамка</p>
+                  <div className="flex gap-1">
+                    {([['none', 'Нет'], ['thin', 'Тонкая'], ['bold', 'Жирная'], ['dashed', 'Пунктир']] as const).map(([bs, label]) => <Button key={bs} variant={(block.borderStyle || 'none') === bs ? "default" : "outline"} size="sm" className="h-7 px-2.5 text-xs" onClick={() => onUpdate({ borderStyle: bs === 'none' ? undefined : bs })}>{label}</Button>)}
+                  </div>
+                </div>
+                <div>
+                  <p className="text-xs font-medium text-muted-foreground mb-1.5">Скругление</p>
+                  <div className="flex gap-1">
+                    {([['none', '⬜'], ['md', '◻️'], ['xl', '⭕']] as const).map(([br, label]) => <Button key={br} variant={(block.borderRadius || 'none') === br ? "default" : "outline"} size="sm" className="h-7 px-2.5 text-xs" onClick={() => onUpdate({ borderRadius: br === 'none' ? undefined : br })}>{label}</Button>)}
+                  </div>
+                </div>
+              </TabsContent>
+              <TabsContent value="presets" className="mt-2 space-y-3">
+                <div>
+                  <p className="text-xs font-medium text-muted-foreground mb-1.5">Готовые стили</p>
+                  <div className="grid grid-cols-3 gap-1">
+                    {quickStyles.map((qs) => <button key={qs.name} onClick={() => onUpdate(qs.style)} className="flex flex-col items-center gap-0.5 p-1.5 rounded-md border border-border hover:border-primary/50 hover:bg-primary/5 transition-all text-xs"><span>{qs.icon}</span><span className="truncate w-full text-center">{qs.name}</span></button>)}
+                  </div>
+                </div>
+              </TabsContent>
+            </Tabs>
+          </DialogContent>
+        </Dialog>
+      )}
+
+      {/* Style presets dialog */}
+      {canStyle && (
+        <Dialog open={presetsOpen} onOpenChange={setPresetsOpen}>
+          <DialogContent className="sm:max-w-sm">
+            <DialogHeader><DialogTitle className="text-sm flex items-center gap-2"><Star className="w-4 h-4" />Пресеты стиля</DialogTitle></DialogHeader>
+            <div className="space-y-1">
+              <button
+                onClick={() => { const s = extractStyle(block); const name = describeStyle(s); const np = [...presets, { name, style: s }]; onPresetsChange(np); import("sonner").then(({ toast }) => toast.success(`Пресет сохранён: ${name}`)); }}
+                className="w-full flex items-center gap-2 px-2 py-2 rounded-md hover:bg-accent text-sm text-left"
+              >
+                <Star className="w-4 h-4 text-yellow-500" />Сохранить текущий стиль
+              </button>
+              {presets.length > 0 && <div className="border-t my-1" />}
+              {presets.map((p, i) => (
+                <div key={i} className="flex items-center justify-between gap-2 px-2 py-1.5 rounded-md hover:bg-accent group/preset">
+                  <button className="flex-1 truncate text-sm text-left" onClick={() => { const applied = { ...p.style, textSize: p.style.textSize === 'base' ? undefined : p.style.textSize, lineHeight: p.style.lineHeight === 'normal' ? undefined : p.style.lineHeight }; onUpdate(applied); setPresetsOpen(false); setActionsMenuOpen(false); }}>
+                    {p.name}
+                  </button>
+                  <button className="opacity-0 group-hover/preset:opacity-100 h-5 w-5 flex items-center justify-center hover:bg-destructive/20 rounded transition-all" onClick={(e) => { e.stopPropagation(); onPresetsChange(presets.filter((_, j) => j !== i)); }}>
+                    <X className="w-3 h-3" />
+                  </button>
+                </div>
+              ))}
+              {presets.length === 0 && <p className="text-xs text-muted-foreground text-center py-2">Пока нет сохранённых пресетов</p>}
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
       <Dialog open={ttsVoiceDialogOpen} onOpenChange={setTtsVoiceDialogOpen}>
         <DialogContent className="sm:max-w-sm">
           <DialogHeader><DialogTitle className="flex items-center gap-2"><Headphones className="w-5 h-5" />Выбор голоса для озвучивания</DialogTitle></DialogHeader>
