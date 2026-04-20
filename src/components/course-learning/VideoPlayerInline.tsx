@@ -183,6 +183,16 @@ export const VideoPlayerInline = ({
     };
   }, [resolvedContent]);
 
+  // Determine player mode (native vs embed) once and report up.
+  // Native = HTML5 <video> with timeupdate; Embed = iframe (Kinescope, KonturTalk, YouTube etc.)
+  const _isKinescope = !!getKinescopeVideoId(content);
+  const _isIframe = isIframeEmbed(content);
+  const _isExternalEmbed = !!embedResult && !directVideoSrc;
+  const _isEmbedMode = _isKinescope || _isIframe || _isExternalEmbed;
+  useEffect(() => {
+    onPlayerTypeDetected?.(_isEmbedMode ? 'embed' : 'native');
+  }, [_isEmbedMode, onPlayerTypeDetected]);
+
   if (!content) return null;
 
   // Kinescope video with DRM auth (uses shared helpers)
