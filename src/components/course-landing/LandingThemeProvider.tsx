@@ -5,6 +5,7 @@ import {
   fontHeadingClass,
   getAuroraGradient,
   getDecorBackground,
+  getSectionBackgroundImage,
   radiusValue,
 } from "@/lib/landing-templates/themeTokens";
 import { cn } from "@/lib/utils";
@@ -55,9 +56,21 @@ export function LandingThemeProvider({ theme, accent, bare, className, style, ch
       "--landing-radius": radiusValue[merged.radius],
     };
     if (accentColor) {
-      // accentColor — это hex; для совместимости с Tailwind hsl(var(--primary)) подменять не будем
-      // вместо этого пробрасываем как самостоятельную переменную.
       vars["--landing-accent"] = accentColor;
+    }
+    // Фоновые картинки секций — пробрасываем как готовые background-image-строки
+    // (linear-gradient overlay + url). Используются CSS-классами .landing-bg-*.
+    const overlayHex = merged.scheme === "dark" ? "#0a0a0a" : "#ffffff";
+    const overlay = merged.section_bg_overlay ?? 0.85;
+    if (merged.section_bg_url) {
+      vars["--landing-section-bg"] = getSectionBackgroundImage(merged.section_bg_url, overlayHex, overlay);
+    }
+    if (merged.pricing_bg_url) {
+      vars["--landing-pricing-bg"] = getSectionBackgroundImage(merged.pricing_bg_url, overlayHex, Math.max(0, overlay - 0.05));
+    }
+    if (merged.cta_bg_url) {
+      // CTA — более выразительный, overlay чуть прозрачнее
+      vars["--landing-cta-bg"] = getSectionBackgroundImage(merged.cta_bg_url, overlayHex, Math.max(0, overlay - 0.15));
     }
     return vars as CSSProperties;
   }, [merged, accentColor]);
