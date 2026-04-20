@@ -53,6 +53,7 @@ const TAB_TITLES: Record<AdminTabType, string> = {
   ai: "ИИ-провайдеры",
   broadcast: "Рассылка",
   chats: "Чаты",
+  "support-chats": "Поддержка ИИ",
   referrals: "Партнёры",
   users: "Пользователи",
   content: "Контент",
