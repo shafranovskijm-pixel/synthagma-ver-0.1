@@ -16,7 +16,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import {
   GripVertical, Trash2, Wand2, Pencil, AlignLeft, AlignCenter, AlignRight,
   Bold, Italic, Strikethrough, Underline, CaseSensitive, Star, X, Eraser,
-  Highlighter, Plus, Link2, Headphones, Volume2 } from "lucide-react";
+  Highlighter, Plus, Link2, Headphones, Volume2, MoreHorizontal, ArrowUp, ArrowDown, Search, ChevronRight } from "lucide-react";
 import { SALUTE_VOICES } from "@/components/student/TTSSettingsDialog";
 import type { BlockType, ContentBlock, StylePreset } from "../types";
 import {
