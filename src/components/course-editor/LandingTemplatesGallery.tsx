@@ -155,12 +155,13 @@ export function LandingTemplatesGallery({ courseId, accentColor }: Props) {
           const tierMeta = TIER_META[tpl.tier];
           const TierIcon = tierMeta.icon;
           const isActive = appliedTemplateId === tpl.id;
+          const categoryLabel = tpl.category ? CATEGORY_META[tpl.category] : null;
 
           return (
             <article
               key={tpl.id}
               className={cn(
-                "group flex flex-col rounded-2xl border bg-card overflow-hidden transition-all hover:shadow-lg",
+                "group relative flex flex-col rounded-2xl border bg-card overflow-hidden transition-all hover:shadow-lg hover:-translate-y-0.5",
                 isActive ? "border-primary ring-2 ring-primary/30" : "border-border hover:border-primary/40",
               )}
             >
@@ -194,6 +195,21 @@ export function LandingTemplatesGallery({ courseId, accentColor }: Props) {
                     </Badge>
                   )}
                 </div>
+                {/* Категория шаблона — справа сверху, цветной чип в тон акцента */}
+                {categoryLabel && !isActive && (
+                  <div className="absolute top-3 right-3 z-10">
+                    <span
+                      className="inline-flex items-center text-[10px] uppercase tracking-wider font-semibold px-2 py-1 rounded-full backdrop-blur-sm border"
+                      style={{
+                        background: `${tpl.accent_color}1f`,
+                        color: tpl.accent_color,
+                        borderColor: `${tpl.accent_color}55`,
+                      }}
+                    >
+                      {categoryLabel}
+                    </span>
+                  </div>
+                )}
                 {isActive && (
                   <div className="absolute top-3 right-3 z-10">
                     <Badge className="bg-primary text-primary-foreground gap-1 shadow">
@@ -208,6 +224,13 @@ export function LandingTemplatesGallery({ courseId, accentColor }: Props) {
                     Нажмите, чтобы посмотреть
                   </span>
                 </div>
+                {/* Цветной индикатор-полоса по нижнему краю превью — фирменный цвет шаблона */}
+                <div
+                  className="absolute left-0 right-0 bottom-0 h-1 z-10"
+                  style={{
+                    background: `linear-gradient(90deg, ${tpl.accent_color}, ${tpl.surface_tint ?? tpl.accent_color})`,
+                  }}
+                />
               </button>
 
               <div className="flex flex-col flex-1 p-4 gap-3">
