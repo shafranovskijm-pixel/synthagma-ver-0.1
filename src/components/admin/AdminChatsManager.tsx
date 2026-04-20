@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import { MessageCircle, Search, Send, Building2, ArrowLeft } from "lucide-react";
+import { MessageCircle, Search, Send, Building2, ArrowLeft, Bot, Users, ClipboardList, Contact, Settings, Headset } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -10,6 +10,7 @@ import { ru } from "date-fns/locale";
 import { toast } from "sonner";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useAuth } from "@/hooks/useAuth";
+import { useSupportUnread } from "@/hooks/useSupportUnread";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 import { AiChatPanel } from "@/components/chat/AiChatPanel";
 import { ColleagueChatPanel } from "@/components/chat/ColleagueChatPanel";
@@ -19,6 +20,7 @@ import { ChatSettingsPanel } from "@/components/chat/ChatSettingsPanel";
 import { ChatRequestsPanel } from "@/components/chat/ChatRequestsPanel";
 import { ChatContactsPanel } from "@/components/chat/ChatContactsPanel";
 import { ChatNotificationToggle } from "@/components/chat/ChatNotificationToggle";
+import { AdminSupportChats } from "@/components/admin/AdminSupportChats";
 
 interface Organization {
   id: string;
@@ -49,6 +51,7 @@ interface OrgConversation {
 export function AdminChatsManager() {
   const { user } = useAuth();
   const isMobile = useIsMobile();
+  const supportUnread = useSupportUnread();
   const [activeSection, setActiveSection] = useState<ChatSection>("chats");
   const [organizations, setOrganizations] = useState<Organization[]>([]);
   const [conversations, setConversations] = useState<OrgConversation[]>([]);
@@ -336,6 +339,11 @@ export function AdminChatsManager() {
   function renderContent() {
     switch (activeSection) {
       case "chats": return renderOrgChats();
+      case "support": return (
+        <div className="border border-border rounded-xl bg-card overflow-hidden h-full">
+          <AdminSupportChats />
+        </div>
+      );
       case "ai": return (
         <div className="border border-border rounded-xl bg-card p-4 h-full">
           <AiChatPanel />
@@ -363,22 +371,28 @@ export function AdminChatsManager() {
     }
   }
 
+  const sidebarItems = [
+    { id: "chats" as ChatSection, label: "Организации", icon: MessageCircle },
+    { id: "support" as ChatSection, label: "Поддержка ИИ", icon: Headset, badge: supportUnread },
+    { id: "ai" as ChatSection, label: "ИИ-помощник", icon: Bot },
+    { id: "colleagues" as ChatSection, label: "Коллеги", icon: Users },
+    { id: "requests" as ChatSection, label: "Заявки", icon: ClipboardList },
+    { id: "contacts" as ChatSection, label: "Контакты", icon: Contact },
+    { id: "settings" as ChatSection, label: "Настройки", icon: Settings },
+  ];
+
   // Mobile: horizontal tabs instead of sidebar
   if (isMobile) {
     return (
       <div className="space-y-3">
         <div className="flex gap-1 overflow-x-auto bg-muted/50 p-1 rounded-xl">
-          {[
-            { id: "chats" as ChatSection, label: "Чаты" },
-            { id: "ai" as ChatSection, label: "ИИ" },
-            { id: "colleagues" as ChatSection, label: "Коллеги" },
-            { id: "requests" as ChatSection, label: "Заявки" },
-            { id: "contacts" as ChatSection, label: "Контакты" },
-            { id: "settings" as ChatSection, label: "⚙️" },
-          ].map(item => (
+          {sidebarItems.map(item => (
             <Button key={item.id} variant={activeSection === item.id ? "default" : "ghost"} size="sm"
-              onClick={() => setActiveSection(item.id)} className="rounded-lg text-xs shrink-0">
+              onClick={() => setActiveSection(item.id)} className="rounded-lg text-xs shrink-0 relative">
               {item.label}
+              {(item.badge ?? 0) > 0 && (
+                <Badge variant="destructive" className="ml-1 h-4 min-w-[16px] px-1 text-[10px]">{item.badge}</Badge>
+              )}
             </Button>
           ))}
         </div>
@@ -394,6 +408,7 @@ export function AdminChatsManager() {
         onSectionChange={setActiveSection}
         userName={userName}
         avatarUrl={userAvatar}
+        items={sidebarItems}
       />
       <div className="flex-1 overflow-hidden p-4">
         {renderContent()}

@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { 
-  Building2, Users, LogOut, Store, Briefcase, MessageSquare, CreditCard, HardDrive, Headset
+  Building2, Users, LogOut, Store, Briefcase, MessageSquare, CreditCard, HardDrive
 } from "lucide-react";
 import { SigmaLogo } from "@/components/ui/SigmaLogo";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -86,8 +86,7 @@ export function AdminSidebar({
     { id: "sales", icon: Briefcase, label: "Продажи" },
     { id: "finance", icon: CreditCard, label: "Финансы" },
     { id: "storage", icon: HardDrive, label: "Хранилище и Kinescope" },
-    { id: "chats", icon: MessageSquare, label: "Чаты", badge: unreadChats },
-    { id: "support-chats", icon: Headset, label: "Поддержка ИИ", badge: unreadSupport },
+    { id: "chats", icon: MessageSquare, label: "Чаты", badge: unreadChats + unreadSupport },
   ];
 
   const brandHsl = themeAccent || "220 70% 50%";

@@ -1,9 +1,9 @@
-import { MessageCircle, Bot, Users, ClipboardList, Contact, Settings } from "lucide-react";
+import { MessageCircle, Bot, Users, ClipboardList, Contact, Settings, Headset } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ChatAvatar } from "./ChatAvatar";
 import { Badge } from "@/components/ui/badge";
 
-export type ChatSection = "chats" | "general" | "ai" | "colleagues" | "requests" | "contacts" | "settings";
+export type ChatSection = "chats" | "general" | "ai" | "colleagues" | "requests" | "contacts" | "settings" | "support";
 
 interface ChatSidebarItem {
   id: ChatSection;
