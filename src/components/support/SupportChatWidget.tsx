@@ -283,9 +283,13 @@ export function SupportChatWidget() {
                       <Headset className="h-3 w-3" /> {msg.sender_name || 'Оператор'}
                     </p>
                   )}
-                  <div className="prose prose-sm dark:prose-invert max-w-none break-words">
-                    <ReactMarkdown>{msg.content}</ReactMarkdown>
-                  </div>
+                  {msg.role === 'user' ? (
+                    <p className="whitespace-pre-wrap break-words">{msg.content}</p>
+                  ) : (
+                    <div className="prose prose-sm dark:prose-invert max-w-none break-words prose-p:my-1 prose-headings:my-2">
+                      <ReactMarkdown>{msg.content}</ReactMarkdown>
+                    </div>
+                  )}
                 </div>
               </div>
             ))}
