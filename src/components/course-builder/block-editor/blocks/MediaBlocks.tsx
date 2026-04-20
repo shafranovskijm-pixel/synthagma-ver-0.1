@@ -107,19 +107,30 @@ export function ImageBlock({ block, onUpdate }: { block: ContentBlock; onUpdate:
     if (!(await checkAiLimitGlobal())) return;
     setIsGenerating(true);
     try {
-      const { data, error } = await safeInvoke<any>("generate-image", { body: { prompt: aiPrompt.trim(), provider: "gigachat", slotIndex: Date.now() } });
-      if (error) throw error;
-      if (data?.error) throw new Error(data.error);
-      if (!data?.url) throw new Error("Изображение не было сгенерировано");
-      onUpdate({ imageSrc: data.url, imageAlt: aiPrompt.trim() });
+      // Try Lovable AI Gateway first (Nano Banana), fallback to gigachat
+      let url: string | null = null;
+      let lastError: string | null = null;
+      try {
+        const { data, error } = await safeInvoke<any>("generate-block-image", { body: { prompt: aiPrompt.trim() } });
+        if (!error && data?.url) url = data.url;
+        else lastError = error?.message || data?.error || null;
+      } catch (e) { lastError = e instanceof Error ? e.message : null; }
+      if (!url) {
+        const { data, error } = await safeInvoke<any>("generate-image", { body: { prompt: aiPrompt.trim(), provider: "gigachat", slotIndex: Date.now() } });
+        if (error) throw error;
+        if (data?.error) throw new Error(data.error);
+        if (!data?.url) throw new Error(lastError || "Изображение не было сгенерировано");
+        url = data.url;
+      }
+      onUpdate({ imageSrc: url, imageAlt: aiPrompt.trim() });
       await incrementAiLimitGlobal();
       setAiPrompt(""); setShowAiInput(false);
     } catch (err) {
       console.error("AI image generation error:", err);
       const { toast } = await import("sonner");
       const message = err instanceof Error ? err.message : "Ошибка генерации изображения";
-      if (message.includes("429")) toast.error("GigaChat перегружен, повторите попытку через 10–20 секунд");
-      else if (message.includes("402")) toast.error("Лимит генерации исчерпан, повторите попытку позже");
+      if (message.includes("429")) toast.error("ИИ перегружен, повторите через 10–20 секунд");
+      else if (message.includes("402")) toast.error("Лимит генерации исчерпан, повторите позже");
       else toast.error(message);
     } finally { setIsGenerating(false); }
   };
