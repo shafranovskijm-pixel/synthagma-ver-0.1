@@ -170,6 +170,56 @@ export const blockCategories = {
   },
 };
 
+export const blockDescriptions: Record<BlockType, string> = {
+  paragraph: "Обычный текст для основного содержания урока.",
+  heading1: "Крупный заголовок раздела для разделения смысловых частей.",
+  heading2: "Подзаголовок для группировки связанных абзацев.",
+  heading3: "Заголовок третьего уровня для подразделов.",
+  heading4: "Самый мелкий заголовок — для коротких смысловых блоков.",
+  bulletList: "Маркированный список — перечисление без порядка.",
+  numberedList: "Нумерованный список — пошаговая инструкция или порядок.",
+  quote: "Цитата — выделенный текст со ссылкой на источник или мысль.",
+  "callout-info": "Информационный блок для важных пояснений.",
+  "callout-warning": "Предупреждение — обращает внимание на риски и важные моменты.",
+  "callout-tip": "Совет — полезная подсказка или рекомендация.",
+  "callout-success": "Подтверждение — отметка о выполненном или верном.",
+  "callout-danger": "Ошибка — выделяет критичную информацию или запрет.",
+  highlight: "Выделение — подсветка ключевой фразы цветом.",
+  accordion: "Сворачиваемая секция для длинных пояснений и FAQ.",
+  quiz: "Мини-квиз с вариантами ответа и пояснением.",
+  image: "Изображение из библиотеки или загруженный файл.",
+  video: "Видеоплеер с поддержкой Kinescope, YouTube и прямых ссылок.",
+  audio: "Аудиоблок — подкаст, озвучка или фрагмент лекции.",
+  slider: "Слайдер презентации с пошаговым переключением.",
+  divider: "Горизонтальный разделитель между смысловыми блоками.",
+  document: "Документ для скачивания: PDF, DOCX и другие файлы.",
+};
+
+export const blockIconBg: Partial<Record<BlockType, string>> = {
+  paragraph: "text-primary bg-primary/10",
+  heading1: "text-primary bg-primary/10",
+  heading2: "text-primary bg-primary/10",
+  heading3: "text-primary bg-primary/10",
+  heading4: "text-primary bg-primary/10",
+  bulletList: "text-primary bg-primary/10",
+  numberedList: "text-primary bg-primary/10",
+  quote: "text-muted-foreground bg-muted",
+  "callout-info": "text-blue-500 bg-blue-500/10",
+  "callout-warning": "text-amber-500 bg-amber-500/10",
+  "callout-tip": "text-green-500 bg-green-500/10",
+  "callout-success": "text-emerald-500 bg-emerald-500/10",
+  "callout-danger": "text-red-500 bg-red-500/10",
+  highlight: "text-yellow-500 bg-yellow-500/10",
+  accordion: "text-purple-500 bg-purple-500/10",
+  quiz: "text-primary bg-primary/10",
+  image: "text-green-500 bg-green-500/10",
+  video: "text-red-500 bg-red-500/10",
+  audio: "text-teal-500 bg-teal-500/10",
+  slider: "text-orange-500 bg-orange-500/10",
+  divider: "text-muted-foreground bg-muted",
+  document: "text-indigo-500 bg-indigo-500/10",
+};
+
 export const convertibleTypes: BlockType[] = ["paragraph", "heading1", "heading2", "heading3", "heading4", "bulletList", "numberedList", "quote", "callout-info", "callout-warning", "callout-tip", "callout-success", "callout-danger", "highlight", "accordion", "audio"];
 
 export const textStyleableTypes: BlockType[] = ["paragraph", "heading1", "heading2", "heading3", "heading4", "bulletList", "numberedList", "quote", "callout-info", "callout-warning", "callout-tip", "callout-success", "callout-danger", "highlight"];
