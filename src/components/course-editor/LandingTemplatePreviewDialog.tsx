@@ -17,6 +17,8 @@ import { LandingFaqSection } from "@/components/course-landing/LandingFaqSection
 import { LandingCtaSection } from "@/components/course-landing/LandingCtaSection";
 import { LandingThemeProvider } from "@/components/course-landing/LandingThemeProvider";
 import { APP_VERSION } from "@/lib/appVersion";
+import { forceClientRefresh } from "@/utils/forceClientRefresh";
+import { RefreshCw } from "lucide-react";
 
 interface Props {
   open: boolean;
@@ -187,6 +189,16 @@ export function LandingTemplatePreviewDialog({
             </div>
           </div>
           <div className="flex items-center gap-2 shrink-0">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => forceClientRefresh()}
+              className="gap-1 text-muted-foreground hover:text-foreground"
+              title="Сбросить кэш и перезагрузить превью"
+            >
+              <RefreshCw className="w-4 h-4" />
+              Сбросить кэш
+            </Button>
             <Button variant="outline" size="sm" onClick={() => onOpenChange(false)} className="gap-1">
               <X className="w-4 h-4" />
               Закрыть
@@ -198,15 +210,31 @@ export function LandingTemplatePreviewDialog({
           </div>
         </DialogHeader>
 
+        {/* Диагностический бейдж — показывает реальные layout-ключи активного шаблона.
+            Если здесь видно "wide-feature-row", а ниже отрисованы 3 одинаковые карточки —
+            значит проблема не в шаблоне, а в кэше браузера: жми «Сбросить кэш». */}
+        <div className="px-5 py-2 border-b bg-muted/30 shrink-0 flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px] font-mono text-muted-foreground">
+          <span className="font-semibold text-foreground">{template.id}</span>
+          <span>· v{APP_VERSION}</span>
+          <span>· audience: <b className="text-foreground">{template.theme?.audience_layout ?? "default"}</b></span>
+          <span>· benefits: <b className="text-foreground">{template.theme?.benefits_layout ?? "default"}</b></span>
+          <span>· pricing: <b className="text-foreground">{template.theme?.pricing_layout ?? "default"}</b></span>
+          <span>· reviews: <b className="text-foreground">{template.theme?.reviews_layout ?? "default"}</b></span>
+          <span>· faq: <b className="text-foreground">{template.theme?.faq_layout ?? "default"}</b></span>
+          <span>· cta: <b className="text-foreground">{template.theme?.cta_layout ?? "default"}</b></span>
+        </div>
+
         <ScrollArea ref={scrollRef} className="flex-1">
-          <LandingThemeProvider
-            key={`${template.id}-${APP_VERSION}`}
-            theme={template.theme}
-            accent={accentColor}
-            style={accentColor ? ({ ["--primary" as any]: accentColor } as React.CSSProperties) : undefined}
-          >
-            {order.map(renderSection)}
-          </LandingThemeProvider>
+          <div key={`preview-tree-${template.id}-${APP_VERSION}`}>
+            <LandingThemeProvider
+              key={`${template.id}-${APP_VERSION}`}
+              theme={template.theme}
+              accent={accentColor}
+              style={accentColor ? ({ ["--primary" as any]: accentColor } as React.CSSProperties) : undefined}
+            >
+              {order.map(renderSection)}
+            </LandingThemeProvider>
+          </div>
         </ScrollArea>
       </DialogContent>
     </Dialog>

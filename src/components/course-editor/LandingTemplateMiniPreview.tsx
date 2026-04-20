@@ -11,6 +11,7 @@ import { LandingPricingSection } from "@/components/course-landing/LandingPricin
 import { LandingFaqSection } from "@/components/course-landing/LandingFaqSection";
 import { LandingCtaSection } from "@/components/course-landing/LandingCtaSection";
 import { LandingThemeProvider } from "@/components/course-landing/LandingThemeProvider";
+import { APP_VERSION } from "@/lib/appVersion";
 
 /**
  * Мини-рендер реального лендинга в карточке шаблона.
@@ -176,7 +177,7 @@ export function LandingTemplateMiniPreview({
             pointerEvents: "none",
           }}
         >
-          <LandingThemeProvider theme={template.theme} accent={accentColor} bare>
+          <LandingThemeProvider key={`${template.id}-${APP_VERSION}`} theme={template.theme} accent={accentColor} bare>
             {order.map(renderSection)}
           </LandingThemeProvider>
         </div>
