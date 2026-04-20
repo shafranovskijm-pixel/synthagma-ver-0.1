@@ -1,4 +1,4 @@
-import { createContext, useContext, useMemo, type ReactNode, type CSSProperties } from "react";
+import { createContext, useContext, useEffect, useMemo, useRef, type ReactNode, type CSSProperties } from "react";
 import { defaultLandingTheme, type LandingTheme } from "@/lib/landing-templates/types";
 import {
   fontBodyClass,
@@ -9,6 +9,7 @@ import {
   radiusValue,
 } from "@/lib/landing-templates/themeTokens";
 import { getTemplateStyle } from "@/lib/landing-templates/templateStyles";
+import { useRevealOnScroll } from "@/hooks/useRevealOnScroll";
 import { cn } from "@/lib/utils";
 
 interface LandingThemeContextValue {
