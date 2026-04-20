@@ -111,30 +111,52 @@ async function sendToTelegramTopic(
   text: string,
   conversationId: string,
   isUser: boolean,
-  userLabel: string
+  userLabel: string,
+  source?: string,
+  contact?: string
 ): Promise<{ topic_id?: number; message_id?: number } | null> {
   const botToken = Deno.env.get("TELEGRAM_BOT_TOKEN");
   const chatId = Deno.env.get("TELEGRAM_SUPPORT_CHAT_ID");
-  if (!botToken || !chatId) return null;
+  if (!botToken || !chatId) {
+    console.log("[Telegram] skipped — TELEGRAM_BOT_TOKEN or TELEGRAM_SUPPORT_CHAT_ID missing");
+    return null;
+  }
 
   let activeTopicId = topicId;
 
   // Если темы нет — создаём
   if (!activeTopicId) {
+    const sourceLabel = source === 'organization' ? 'Организация'
+      : source === 'student' ? 'Ученик'
+      : source === 'company' ? 'Компания'
+      : source === 'partner' ? 'Партнёр'
+      : 'Гость с сайта';
+    const titleParts = [`💬 ${userLabel}`, sourceLabel];
+    if (contact) titleParts.push(contact);
+    const topicName = titleParts.join(' · ').slice(0, 128);
+
     const createResp = await fetch(`https://api.telegram.org/bot${botToken}/createForumTopic`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        chat_id: chatId,
-        name: `💬 ${userLabel}`.slice(0, 128),
-      }),
+      body: JSON.stringify({ chat_id: chatId, name: topicName }),
     });
     const createData = await createResp.json();
     if (createData.ok) {
       activeTopicId = createData.result.message_thread_id;
+      console.log(`[Telegram] created topic ${activeTopicId} "${topicName}"`);
+      // Стартовое системное сообщение со ссылкой на админку
+      await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          chat_id: chatId,
+          message_thread_id: activeTopicId,
+          text: `🆕 Новый диалог поддержки\n${sourceLabel}: ${userLabel}${contact ? `\nКонтакт: ${contact}` : ''}\nID: ${conversationId}\n\nОтвечайте здесь — сообщения попадут пользователю в чат на сайте.`,
+        }),
+      });
     } else {
-      // Топики не включены в чате — шлём как обычное сообщение
-      console.warn("Cannot create topic, fallback to plain message:", createData.description);
+      console.error("[Telegram] createForumTopic failed:", createData.description, "— проверьте: 1) бот админ группы, 2) Topics включены, 3) TELEGRAM_SUPPORT_CHAT_ID правильный (-100…)");
+      // Fallback — шлём в общий чат с разделителем
     }
   }
 
@@ -142,7 +164,6 @@ async function sendToTelegramTopic(
   const body: Record<string, unknown> = {
     chat_id: chatId,
     text: `${prefix} ${text}`,
-    parse_mode: "HTML",
   };
   if (activeTopicId) body.message_thread_id = activeTopicId;
 
@@ -153,7 +174,7 @@ async function sendToTelegramTopic(
   });
   const sendData = await sendResp.json();
   if (!sendData.ok) {
-    console.error("Telegram send error:", sendData);
+    console.error("[Telegram] sendMessage error:", sendData);
     return null;
   }
   return { topic_id: activeTopicId ?? undefined, message_id: sendData.result.message_id };

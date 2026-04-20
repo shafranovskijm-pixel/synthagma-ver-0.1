@@ -55,13 +55,13 @@ export function SupportChatWidget() {
   const [unread, setUnread] = useState(0);
   const endRef = useRef<HTMLDivElement>(null);
 
-  // Скрываем виджет в админке (там есть свой раздел чатов) и на странице авторизации
+  // Скрываем виджет в админке (там есть свой раздел чатов), на страницах авторизации и подписания
   const hidden =
     location.pathname.startsWith('/admin') ||
     location.pathname.startsWith('/auth') ||
     location.pathname === '/login' ||
     location.pathname.startsWith('/email-response') ||
-    location.pathname.startsWith('/c/') === false && location.pathname.startsWith('/sign/');
+    location.pathname.startsWith('/sign/');
 
   // Загрузка истории
   const loadHistory = useCallback(async (convId: string) => {
