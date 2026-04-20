@@ -77,7 +77,7 @@ export function CourseSidebarContent({
                     {lesson.type === 'feedback' && 'Обратная связь'}
                     {lesson.type === 'homework' && 'Задание'}
                     {!isAccessible && lesson.locked_until && new Date(lesson.locked_until).getTime() > Date.now() ? (
-                      <span className="ml-1 text-amber-500">• Откроется {new Date(lesson.locked_until).toLocaleDateString('ru-RU')}</span>
+                      <span className="ml-1 text-primary">• Откроется {new Date(lesson.locked_until).toLocaleDateString('ru-RU')}</span>
                     ) : !isAccessible ? (
                       <span className="ml-1">• Заблокировано</span>
                     ) : null}
