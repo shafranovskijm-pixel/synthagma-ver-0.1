@@ -213,7 +213,7 @@ export function useLandingEditor(courseId: string) {
   const publicUrl = course?.slug ? `/c/${course.slug}` : `/course/${courseId}/landing`;
 
   return {
-    loading, saving, course, lessons, orgName, landing, setLanding, fileInputRef,
+    loading, saving, course, setCourse, lessons, orgName, landing, setLanding, fileInputRef,
     aiDialogOpen, setAiDialogOpen, aiDialogSection, navigate,
     handleSave, handleBackgroundUpload, moveSection, toggleSection,
     updateArrayItem, addArrayItem, removeArrayItem,
