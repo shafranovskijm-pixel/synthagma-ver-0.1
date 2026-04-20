@@ -94,6 +94,17 @@ export function BlockEditor({ blocks, onChange, readOnly = false, courseTitle, l
     onChangeWithHistory(blocks.filter(b => b.id !== id));
   }, [blocks, onChangeWithHistory]);
 
+  const duplicateBlock = useCallback((id: string) => {
+    const idx = blocks.findIndex(b => b.id === id);
+    if (idx < 0) return;
+    const clone: ContentBlock = JSON.parse(JSON.stringify(blocks[idx]));
+    clone.id = crypto.randomUUID();
+    const next = [...blocks];
+    next.splice(idx + 1, 0, clone);
+    onChangeWithHistory(next);
+    setFocusedBlockId(clone.id);
+  }, [blocks, onChangeWithHistory]);
+
   const moveBlock = useCallback((id: string, dir: -1 | 1) => {
     const idx = blocks.findIndex(b => b.id === id);
     if (idx < 0) return;
@@ -168,6 +179,7 @@ export function BlockEditor({ blocks, onChange, readOnly = false, courseTitle, l
                 onFocus={() => setFocusedBlockId(block.id)}
                 onUpdate={(updates) => updateBlock(block.id, updates)}
                 onDelete={() => deleteBlock(block.id)}
+                onDuplicate={() => duplicateBlock(block.id)}
                 onAddAfter={(type, pendingAI) => addBlock(type, index, pendingAI)}
                 onMoveUp={index > 0 ? () => moveBlock(block.id, -1) : undefined}
                 onMoveDown={index < blocks.length - 1 ? () => moveBlock(block.id, 1) : undefined}

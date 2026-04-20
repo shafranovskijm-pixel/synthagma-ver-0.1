@@ -9,7 +9,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
-  GripVertical, Trash2, Headphones, Volume2, MoreHorizontal, ArrowUp, ArrowDown, Search } from "lucide-react";
+  GripVertical, Trash2, Headphones, Volume2, MoreHorizontal, ArrowUp, ArrowDown, Search, Copy } from "lucide-react";
 import { SALUTE_VOICES } from "@/components/student/TTSSettingsDialog";
 import type { BlockType, ContentBlock, StylePreset, AIShortcutType } from "../types";
 import { BlockContent } from "./BlockContent";
@@ -22,6 +22,7 @@ interface SortableBlockItemProps {
   onFocus: () => void;
   onUpdate: (updates: Partial<ContentBlock>) => void;
   onDelete: () => void;
+  onDuplicate?: () => void;
   onAddAfter: (type: BlockType, pendingAI?: AIShortcutType) => void;
   onMoveUp?: () => void;
   onMoveDown?: () => void;
@@ -35,7 +36,7 @@ interface SortableBlockItemProps {
   onPresetsChange: (presets: { name: string; style: StylePreset }[]) => void;
 }
 
-export function SortableBlockItem({ block, isFocused, onFocus, onUpdate, onDelete, onAddAfter, onMoveUp, onMoveDown, courseTitle, lessonTitle, organizationId, courseId, lessonId, existingContent, presets, onPresetsChange }: SortableBlockItemProps) {
+export function SortableBlockItem({ block, isFocused, onFocus, onUpdate, onDelete, onDuplicate, onAddAfter, onMoveUp, onMoveDown, courseTitle, lessonTitle, organizationId, courseId, lessonId, existingContent, presets, onPresetsChange }: SortableBlockItemProps) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: block.id });
   const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.5 : 1, zIndex: isDragging ? 1000 : 'auto' as any };
 
@@ -48,6 +49,7 @@ export function SortableBlockItem({ block, isFocused, onFocus, onUpdate, onDelet
   const baseActions = [
     { key: 'up', label: 'Вверх', icon: ArrowUp, onClick: () => onMoveUp?.(), disabled: !onMoveUp },
     { key: 'down', label: 'Вниз', icon: ArrowDown, onClick: () => onMoveDown?.(), disabled: !onMoveDown },
+    { key: 'duplicate', label: 'Дублировать', icon: Copy, onClick: () => onDuplicate?.(), disabled: !onDuplicate },
     { key: 'delete', label: 'Удалить', icon: Trash2, onClick: () => onDelete(), disabled: false, danger: true },
   ];
   const filteredActions = baseActions.filter(a => a.label.toLowerCase().includes(actionsQuery.toLowerCase()));

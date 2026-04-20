@@ -143,6 +143,12 @@ export function CalloutBlock({ block, onUpdate, courseTitle, lessonTitle, existi
         <Icon className={cn("w-5 h-5 flex-shrink-0", style.iconColor)} />
         <AIGenerateButton isGenerating={isGenerating} onClick={handleGenerate} />
       </div>
+      <Input
+        value={block.calloutTitle || ""}
+        onChange={(e) => onUpdate({ calloutTitle: e.target.value })}
+        placeholder="Заголовок (необязательно)"
+        className="font-semibold border-0 bg-transparent p-0 h-auto mb-1.5 focus-visible:ring-0 placeholder:text-muted-foreground/60"
+      />
       <RichTextEditor {...(blockCtrlProps || {})} value={block.content} onChange={(val) => onUpdate({ content: val })} placeholder="Введите текст..." minHeight="40px" />
     </div>
   );
