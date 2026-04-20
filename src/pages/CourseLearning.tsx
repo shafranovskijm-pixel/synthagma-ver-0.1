@@ -365,7 +365,17 @@ const CourseLearning = () => {
           <div className="text-sm text-muted-foreground">{isLessonCompleted(currentLesson?.id || '') && <span className="flex items-center gap-2 text-sigma-green font-medium"><CheckCircle2 className="w-4 h-4" />{!isMobile && "Урок завершён"}</span>}</div>
           <div className="flex gap-2 md:gap-3">
             {currentLesson?.type === 'test' && !testSubmitted && <Button onClick={submitTest} disabled={Object.keys(answers).length !== testQuestions.length} className={cn("btn-gradient rounded-xl", isMobile && "text-sm px-3")}>{isMobile ? "Отправить" : "Отправить ответы"}</Button>}
-            {currentLesson?.type !== 'test' && currentLesson?.type !== 'feedback' && currentLesson?.type !== 'homework' && !isLessonCompleted(currentLesson?.id || '') && (currentLesson?.type !== 'video' || videoWatchProgress >= 90) && <Button onClick={() => markLessonComplete()} className={cn("btn-gradient rounded-xl", isMobile && "text-sm px-3")}>{isMobile ? "Завершить" : "Завершить урок"}<ChevronRight className="w-4 h-4 ml-1" /></Button>}
+            {currentLesson?.type !== 'test' && currentLesson?.type !== 'feedback' && currentLesson?.type !== 'homework' && !isLessonCompleted(currentLesson?.id || '') && (
+              <Button
+                onClick={() => markLessonComplete()}
+                disabled={currentLesson?.type === 'video' && hasNativeVideoTracking && videoWatchProgress < 90}
+                title={currentLesson?.type === 'video' && hasNativeVideoTracking && videoWatchProgress < 90 ? `Просмотрите минимум 90% видео (сейчас ${Math.floor(videoWatchProgress)}%)` : currentLesson?.type === 'video' ? 'Подтвердить просмотр и завершить урок' : undefined}
+                className={cn("btn-gradient rounded-xl", isMobile && "text-sm px-3")}
+              >
+                {isMobile ? "Завершить" : currentLesson?.type === 'video' && !hasNativeVideoTracking ? "Подтвердить просмотр" : "Завершить урок"}
+                <ChevronRight className="w-4 h-4 ml-1" />
+              </Button>
+            )}
             {isLessonCompleted(currentLesson?.id || '') && currentLessonIndex < lessons.length - 1 && <Button onClick={goToNextLesson} className={cn("btn-gradient rounded-xl", isMobile && "text-sm px-3")}>{isMobile ? "Далее" : "Следующий урок"}<ChevronRight className="w-4 h-4 ml-1" /></Button>}
             {isLessonCompleted(currentLesson?.id || '') && currentLessonIndex === lessons.length - 1 && <Button onClick={() => navigate('/student')} className={cn("btn-gradient rounded-xl", isMobile && "text-sm px-3")}><Trophy className="w-4 h-4 mr-1" />{isMobile ? "Готово!" : "Курс завершён!"}</Button>}
           </div>
