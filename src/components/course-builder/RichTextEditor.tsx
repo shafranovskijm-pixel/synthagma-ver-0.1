@@ -149,7 +149,7 @@ export function RichTextEditor({
     const afterLinkify = linkify(before);
     const cleaned = sanitize(afterLinkify);
 
-    const normalized = cleaned.replace(
+    const normalized = normalizeLineBreaks(cleaned.replace(
       /<a\s+([^>]*?)>/gi,
       (_match, attrs: string) => {
         let href = '';
@@ -158,7 +158,7 @@ export function RichTextEditor({
         if (!href) return _match;
         return `<a href="${href}" target="_blank" rel="noopener noreferrer">`;
       }
-    );
+    ));
 
     if (normalized !== before) {
       const sel = window.getSelection();
@@ -175,7 +175,7 @@ export function RichTextEditor({
     lastEmittedHtml.current = el.innerHTML;
     isInternalChange.current = true;
     onChange(el.innerHTML);
-  }, [onChange, styleMenuOpen, listMenuOpen, paletteOpen, linkOpen, convertOpen, advancedOpen]);
+  }, [onChange, styleMenuOpen, listMenuOpen, paletteOpen, linkOpen, convertOpen, advancedOpen, normalizeLineBreaks]);
 
   const updateActiveFormats = useCallback(() => {
     try {
