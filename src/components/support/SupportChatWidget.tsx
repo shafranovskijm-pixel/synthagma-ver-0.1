@@ -15,6 +15,17 @@ import { AuroraBackground } from "@/components/support/chat-backgrounds/Aurora";
 import { WavesBackground } from "@/components/support/chat-backgrounds/Waves";
 import { ChatThemePicker } from "@/components/support/ChatThemePicker";
 import { useChatTheme, type ChatBgId } from "@/hooks/useChatTheme";
+import { APP_VERSION } from "@/lib/appVersion";
+
+function VersionFooter() {
+  return (
+    <div className="shrink-0 border-t border-border/50 bg-muted/30 px-3 py-1.5 text-center">
+      <p className="text-[10px] text-muted-foreground/70 font-mono tracking-wide">
+        Синтагма · v{APP_VERSION}
+      </p>
+    </div>
+  );
+}
 
 function HeaderBackground({ bgId }: { bgId: ChatBgId }) {
   if (bgId === "stars") {
