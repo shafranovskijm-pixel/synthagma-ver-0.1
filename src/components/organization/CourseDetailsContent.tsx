@@ -87,84 +87,126 @@ export function CourseDetailsContent({ course, courseStudents, organizationId, a
   const isFrdoEnabled = isEnabled('frdo');
   const h = useCourseDetails(course, courseStudents, organizationId, onCourseUpdated, onRefreshStudents, onCourseDeleted);
 
-  const learningTabs = [
-    { value: "editor" as const, label: "Конструктор", icon: Edit, color: "text-primary" },
-    { value: "students" as const, label: "Ученики", icon: Users, color: "text-primary" },
-    { value: "requests" as const, label: "Заявки", icon: ClipboardCheck, color: "text-orange-500" },
-    { value: "materials" as const, label: "Материалы", icon: FileText, color: "text-amber-500" },
-    { value: "history" as const, label: "История", icon: History, color: "text-violet-500" },
-    { value: "tests" as const, label: "Тесты", icon: CheckSquare, color: "text-emerald-500" },
-    { value: "groups" as const, label: "Группы", icon: Users, color: "text-blue-500" },
-    { value: "achievements" as const, label: "Достижения", icon: Trophy, color: "text-amber-500" },
-  ];
-  const settingsTabs = [
-    { value: "preview" as const, label: "Просмотр", icon: Eye, color: "text-sigma-cyan" },
-    { value: "landing" as const, label: "Страница курса", icon: Globe, color: "text-rose-500" },
-    { value: "settings" as const, label: "Настройки", icon: Settings, color: "text-muted-foreground" },
-    { value: "reminders" as const, label: "Напоминания", icon: Bell, color: "text-orange-500" },
-  ];
+  const activeGroup = getGroupForTab(activeTab);
+
+  const handleGroupClick = (group: GroupKey) => {
+    if (group === "editor") {
+      onTabChange("editor");
+      return;
+    }
+    const g = TAB_GROUPS.find(x => x.key === group);
+    if (!g || g.subTabs.length === 0) return;
+    // If we're already in this group, do nothing; else jump to its first sub-tab
+    if (activeGroup !== group) onTabChange(g.subTabs[0]);
+  };
+
+  const currentGroupDef = TAB_GROUPS.find(g => g.key === activeGroup);
+  const showSubTabs = !!currentGroupDef && currentGroupDef.subTabs.length > 0;
 
   return (
     <>
-      {/* Course header (compact) */}
-      <div className="border-b border-border bg-gradient-to-br from-primary/10 to-accent/10 rounded-t-2xl">
-        <div className="p-6">
-          <div className="flex items-start justify-between gap-4 flex-wrap">
-            <div>
-              <h2 className="text-2xl font-semibold mb-2">{course.title}</h2>
-              <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                <span className={`px-2 py-1 rounded-full text-xs ${course.is_published ? 'bg-sigma-green/10 text-sigma-green' : 'bg-muted text-muted-foreground'}`}>
-                  {course.is_published ? 'Опубликован' : 'Черновик'}
-                </span>
-                <div className="flex items-center gap-1"><Users className="w-4 h-4" />{course.studentsCount} учеников</div>
-                <div className="flex items-center gap-1"><BookOpen className="w-4 h-4" />{course.lessonsCount} уроков</div>
+      {/* Hero banner with course cover */}
+      <div className="relative overflow-hidden rounded-2xl border border-border/40 mb-4">
+        <div
+          className="relative h-44 md:h-56 w-full"
+          style={
+            course.cover_image_url
+              ? { backgroundImage: `url(${course.cover_image_url})`, backgroundSize: "cover", backgroundPosition: "center" }
+              : undefined
+          }
+        >
+          {!course.cover_image_url && (
+            <div className="absolute inset-0 bg-gradient-to-br from-primary/30 via-accent/20 to-primary/40" />
+          )}
+          <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/40 to-black/20" />
+
+          {onBack && (
+            <button
+              onClick={onBack}
+              className="absolute top-4 left-4 inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white/15 backdrop-blur-md text-white text-sm font-medium hover:bg-white/25 transition-colors border border-white/20"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              Все курсы
+            </button>
+          )}
+
+          <div className="absolute inset-x-0 bottom-0 p-5 md:p-6">
+            <div className="flex items-end justify-between gap-4 flex-wrap">
+              <div className="min-w-0">
+                <h2 className="text-white text-2xl md:text-3xl font-semibold drop-shadow-md mb-2 truncate">{course.title}</h2>
+                <div className="flex items-center gap-3 text-sm text-white/90 flex-wrap">
+                  <span className={cn(
+                    "px-2 py-1 rounded-full text-xs font-medium backdrop-blur-md border",
+                    course.is_published ? "bg-sigma-green/30 text-white border-white/30" : "bg-white/15 text-white/90 border-white/20"
+                  )}>
+                    {course.is_published ? 'Опубликован' : 'Черновик'}
+                  </span>
+                  <div className="flex items-center gap-1"><Users className="w-4 h-4" />{course.studentsCount} учеников</div>
+                  <div className="flex items-center gap-1"><BookOpen className="w-4 h-4" />{course.lessonsCount} уроков</div>
+                </div>
+              </div>
+              <div className="flex gap-2 flex-wrap">
+                <Button variant="outline" className="rounded-xl gap-2 bg-white/90 hover:bg-white border-white/40" onClick={() => onTabChange("preview")}><Eye className="w-4 h-4" />Просмотр</Button>
+                <Button className="rounded-xl gap-2 btn-gradient" onClick={() => onTabChange("editor")}><Edit className="w-4 h-4" />Редактировать</Button>
+                <Button variant="outline" className="rounded-xl gap-2 bg-white/90 hover:bg-destructive hover:text-destructive-foreground border-white/40 text-destructive" onClick={() => h.setShowDeleteConfirm(true)}><Trash2 className="w-4 h-4" />Удалить</Button>
               </div>
             </div>
-            <div className="flex gap-2 flex-wrap">
-              <Button variant="outline" className="rounded-xl gap-2" onClick={() => onTabChange("preview")}><Eye className="w-4 h-4" />Просмотр</Button>
-              <Button className="rounded-xl gap-2 btn-gradient" onClick={() => onTabChange("editor")}><Edit className="w-4 h-4" />Редактировать</Button>
-              <Button variant="outline" className="rounded-xl gap-2 text-destructive hover:bg-destructive hover:text-destructive-foreground" onClick={() => h.setShowDeleteConfirm(true)}><Trash2 className="w-4 h-4" />Удалить</Button>
-            </div>
-          </div>
-        </div>
-
-        {/* Horizontal tab bar: Обучение | Настройки */}
-        <div className="px-3 sm:px-6 pb-3">
-          <div className="flex items-center gap-1 overflow-x-auto bg-background/40 backdrop-blur-sm rounded-xl p-1.5 border border-border/40">
-            {learningTabs.map(item => (
-              <button
-                key={item.value}
-                onClick={() => onTabChange(item.value)}
-                className={cn(
-                  "flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 whitespace-nowrap shrink-0",
-                  activeTab === item.value
-                    ? "bg-primary/15 text-primary shadow-sm"
-                    : "text-muted-foreground hover:bg-primary/10 hover:text-primary"
-                )}
-              >
-                <item.icon className={cn("w-4 h-4 shrink-0", activeTab === item.value ? "text-primary" : item.color)} />
-                {item.label}
-              </button>
-            ))}
-            <div className="w-px h-6 bg-border/60 mx-1.5 shrink-0" />
-            {settingsTabs.map(item => (
-              <button
-                key={item.value}
-                onClick={() => onTabChange(item.value)}
-                className={cn(
-                  "flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 whitespace-nowrap shrink-0",
-                  activeTab === item.value
-                    ? "bg-primary/15 text-primary shadow-sm"
-                    : "text-muted-foreground hover:bg-primary/10 hover:text-primary"
-                )}
-              >
-                <item.icon className={cn("w-4 h-4 shrink-0", activeTab === item.value ? "text-primary" : item.color)} />
-                {item.label}
-              </button>
-            ))}
           </div>
         </div>
       </div>
+
+      {/* Top-level tabs (4 groups) */}
+      <div className="mb-3 flex items-center justify-center">
+        <div className="inline-flex items-center gap-1 bg-muted/60 backdrop-blur-sm rounded-xl p-1.5 border border-border/40 flex-wrap">
+          {TAB_GROUPS.map(g => {
+            const Icon = g.icon;
+            const isActive = activeGroup === g.key;
+            return (
+              <button
+                key={g.key}
+                onClick={() => handleGroupClick(g.key)}
+                className={cn(
+                  "flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 whitespace-nowrap",
+                  isActive
+                    ? "bg-background text-primary shadow-sm"
+                    : "text-muted-foreground hover:text-foreground hover:bg-background/60"
+                )}
+              >
+                <Icon className="w-4 h-4 shrink-0" />
+                {g.label}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Sub-tabs (only for groups that have sub-sections) */}
+      {showSubTabs && (
+        <div className="mb-4 flex items-center justify-center">
+          <div className="inline-flex items-center gap-1 overflow-x-auto bg-background/60 rounded-lg p-1 border border-border/40">
+            {currentGroupDef!.subTabs.map(st => {
+              const meta = SUB_TAB_META[st];
+              const Icon = meta.icon;
+              const isActive = activeTab === st;
+              return (
+                <button
+                  key={st}
+                  onClick={() => onTabChange(st)}
+                  className={cn(
+                    "flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all whitespace-nowrap",
+                    isActive
+                      ? "bg-primary/15 text-primary"
+                      : "text-muted-foreground hover:text-foreground hover:bg-muted/60"
+                  )}
+                >
+                  <Icon className="w-3.5 h-3.5 shrink-0" />
+                  {meta.label}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* Content panel (full width — left nav of lessons lives inside CourseBuilder embedded mode) */}
       <div className={cn("flex-1 min-w-0", activeTab === "editor" ? "" : "p-6")}>
