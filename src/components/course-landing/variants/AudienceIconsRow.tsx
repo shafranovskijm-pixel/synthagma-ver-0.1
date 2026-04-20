@@ -2,7 +2,7 @@ import { Trash2 } from "lucide-react";
 import { icons } from "lucide-react";
 import React, { useState } from "react";
 import { IconPickerDialog } from "../IconPickerDialog";
-import { useLandingTheme } from "../LandingThemeProvider";
+import { useLandingTheme, useTemplateStyle } from "../LandingThemeProvider";
 import { sectionSpacingClass } from "@/lib/landing-templates/themeTokens";
 import type { AudienceItem } from "../LandingAudienceSection";
 
@@ -23,26 +23,29 @@ interface Props {
 }
 
 /**
- * Audience «Icons Row» — иконки в горизонтальной ленте без рамок,
- * минималистично, для языков и образовательных шаблонов.
+ * Audience «Icons Row» — иконки в горизонтальной ленте.
+ * Этап 6: применён `useTemplateStyle()` — обёртка иконки и заголовок секции
+ * получают шаблон-специфичные классы (Lab — неоновый dot, Language — оттиск кисти и т.д.).
  */
 export function AudienceIconsRow({
   title, description, items, isEditing,
   onTitleChange, onDescriptionChange, onItemChange, onAddItem, onRemoveItem,
 }: Props) {
   const { theme, accent } = useLandingTheme();
+  const skin = useTemplateStyle();
   const [iconPicker, setIconPicker] = useState<number | null>(null);
   const accentColor = accent || "hsl(var(--primary))";
+  const iconUsesSkinColor = !!skin.iconWrap;
 
   return (
-    <section className={`${sectionSpacingClass[theme.section_spacing]} px-6`}>
+    <section className={`${sectionSpacingClass[theme.section_spacing]} px-6 ${skin.accentBg}`}>
       <div className="max-w-6xl mx-auto text-center">
         {isEditing ? (
           <h2 contentEditable suppressContentEditableWarning
-            className="landing-heading text-2xl md:text-3xl font-bold mb-3 outline-none"
+            className={`landing-heading text-2xl md:text-3xl font-bold mb-3 outline-none ${skin.sectionTitle}`}
             onBlur={(e) => onTitleChange?.(e.currentTarget.textContent || "")}>{title}</h2>
         ) : (
-          <h2 className="landing-heading text-2xl md:text-3xl font-bold mb-3">{title}</h2>
+          <h2 className={`landing-heading text-2xl md:text-3xl font-bold mb-3 ${skin.sectionTitle}`}>{title}</h2>
         )}
         {isEditing ? (
           <p contentEditable suppressContentEditableWarning
@@ -56,20 +59,26 @@ export function AudienceIconsRow({
           {items.map((item, i) => {
             const compName = toIconComponentName(item.icon || "user");
             const IconComp = (icons as any)[compName];
+            const wrapStyle = skin.iconWrap
+              ? undefined
+              : { background: `${accentColor}18`, boxShadow: `0 8px 24px -8px ${accentColor}55` };
             return (
               <div key={i} className="relative group flex flex-col items-center px-4">
                 <div
-                  className={`w-16 h-16 flex items-center justify-center mb-5 rounded-full ${isEditing ? "cursor-pointer hover:scale-110 transition-transform" : ""}`}
-                  style={{ background: `${accentColor}18`, boxShadow: `0 8px 24px -8px ${accentColor}55` }}
+                  className={`w-16 h-16 flex items-center justify-center mb-5 ${skin.iconWrap || "rounded-full"} ${isEditing ? "cursor-pointer hover:scale-110 transition-transform" : ""}`}
+                  style={wrapStyle}
                   onClick={() => isEditing && setIconPicker(i)}
                 >
-                  {IconComp ? React.createElement(IconComp, { className: "w-8 h-8", style: { color: accentColor } }) : <span style={{ color: accentColor }} className="text-xl">•</span>}
+                  {IconComp ? React.createElement(IconComp, {
+                    className: "w-8 h-8",
+                    style: iconUsesSkinColor ? undefined : { color: accentColor },
+                  }) : <span style={iconUsesSkinColor ? undefined : { color: accentColor }} className="text-xl">•</span>}
                 </div>
                 {isEditing ? (
                   <h3 contentEditable suppressContentEditableWarning className="landing-heading font-semibold text-lg mb-2 outline-none"
                     onBlur={(e) => onItemChange?.(i, "title", e.currentTarget.textContent || "")}>{item.title}</h3>
                 ) : (
-                  <h3 className="landing-heading font-semibold text-lg mb-2">{item.title}</h3>
+                  <h3 className="landing-heading font-semibold text-lg mb-2">{skin.cardTitlePrefix}{item.title}</h3>
                 )}
                 {isEditing ? (
                   <p contentEditable suppressContentEditableWarning className="text-sm text-muted-foreground max-w-[260px] outline-none"

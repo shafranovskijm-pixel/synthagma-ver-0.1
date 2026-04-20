@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {} from "lucide-react";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
+import { useTemplateStyle } from "./LandingThemeProvider";
 
 interface Props {
   title: string;
@@ -31,6 +32,7 @@ export function LandingCtaSection({
   const [phone, setPhone] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const accent = accentColor || undefined;
+  const skin = useTemplateStyle();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -53,13 +55,13 @@ export function LandingCtaSection({
           <h2
             contentEditable
             suppressContentEditableWarning
-            className="text-2xl md:text-3xl font-bold mb-3 outline-none border-b-2 border-dashed border-muted-foreground/20 focus:border-primary/40"
+            className={`text-2xl md:text-3xl font-bold mb-3 outline-none border-b-2 border-dashed border-muted-foreground/20 focus:border-primary/40 ${skin.sectionTitle}`}
             onBlur={(e) => onTitleChange?.(e.currentTarget.textContent || "")}
           >
             {title}
           </h2>
         ) : (
-          <h2 className="text-2xl md:text-3xl font-bold mb-3">{title}</h2>
+          <h2 className={`text-2xl md:text-3xl font-bold mb-3 ${skin.sectionTitle}`}>{title}</h2>
         )}
 
         {isEditing ? (
@@ -83,9 +85,9 @@ export function LandingCtaSection({
             <Button
               type="submit"
               size="lg"
-              className="w-full"
+              className={`w-full ${skin.button}`}
               disabled={submitting}
-              style={accent ? { backgroundColor: accent } : undefined}
+              style={accent && !skin.button ? { backgroundColor: accent } : undefined}
             >
               {submitting ? <SigmaSpinner /> : (price > 0 ? "Оставить заявку" : "Оставить заявку")}
             </Button>

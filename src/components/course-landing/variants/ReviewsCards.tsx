@@ -1,5 +1,5 @@
 import { Trash2, Star } from "lucide-react";
-import { useLandingTheme } from "../LandingThemeProvider";
+import { useLandingTheme, useTemplateStyle } from "../LandingThemeProvider";
 import { cardStyleClass, radiusCardClass, sectionSpacingClass } from "@/lib/landing-templates/themeTokens";
 import type { ReviewItem } from "../LandingReviewsSection";
 
@@ -13,27 +13,29 @@ interface Props {
   onRemoveReview?: (index: number) => void;
 }
 
-/** Reviews «Cards» — равные карточки в сетке. Базовый вариант. */
+/** Reviews «Cards» — равные карточки в сетке. Этап 6: используют skin.card. */
 export function ReviewsCards({
   title, reviews, isEditing, onTitleChange, onReviewChange, onAddReview, onRemoveReview,
 }: Props) {
   const { theme } = useLandingTheme();
+  const skin = useTemplateStyle();
   if (reviews.length === 0 && !isEditing) return null;
+  const cardClasses = skin.card || cardStyleClass[theme.card_style];
 
   return (
-    <section className={`${sectionSpacingClass[theme.section_spacing]} px-6 bg-muted/30`}>
+    <section className={`${sectionSpacingClass[theme.section_spacing]} px-6 ${skin.accentBg || "bg-muted/30"}`}>
       <div className="max-w-5xl mx-auto">
         {isEditing ? (
           <h2 contentEditable suppressContentEditableWarning
-            className="landing-heading text-2xl md:text-3xl font-bold mb-8 outline-none"
+            className={`landing-heading text-2xl md:text-3xl font-bold mb-8 outline-none ${skin.sectionTitle}`}
             onBlur={(e) => onTitleChange?.(e.currentTarget.textContent || "")}>{title}</h2>
         ) : (
-          <h2 className="landing-heading text-2xl md:text-3xl font-bold mb-8">{title}</h2>
+          <h2 className={`landing-heading text-2xl md:text-3xl font-bold mb-8 ${skin.sectionTitle}`}>{title}</h2>
         )}
 
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
           {reviews.map((r, i) => (
-            <div key={i} className={`relative p-6 group ${radiusCardClass[theme.radius]} ${cardStyleClass[theme.card_style]}`}>
+            <div key={i} className={`relative p-6 group ${radiusCardClass[theme.radius]} ${cardClasses}`}>
               {isEditing && (
                 <button onClick={() => onRemoveReview?.(i)} className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 text-destructive transition">
                   <Trash2 className="w-4 h-4" />

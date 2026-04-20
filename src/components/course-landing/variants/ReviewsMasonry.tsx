@@ -1,5 +1,5 @@
 import { Trash2, Star, Quote } from "lucide-react";
-import { useLandingTheme } from "../LandingThemeProvider";
+import { useLandingTheme, useTemplateStyle } from "../LandingThemeProvider";
 import { cardStyleClass, radiusCardClass, sectionSpacingClass } from "@/lib/landing-templates/themeTokens";
 import type { ReviewItem } from "../LandingReviewsSection";
 
@@ -13,26 +13,25 @@ interface Props {
   onRemoveReview?: (index: number) => void;
 }
 
-/**
- * Reviews «Masonry» — кладка с разной высотой карточек,
- * крупная цитата у первой. Подходит для бьюти/языков/IT.
- */
+/** Reviews «Masonry» — кладка с разной высотой. Этап 6: skin.card. */
 export function ReviewsMasonry({
   title, reviews, isEditing, onTitleChange, onReviewChange, onAddReview, onRemoveReview,
 }: Props) {
   const { theme, accent } = useLandingTheme();
+  const skin = useTemplateStyle();
   if (reviews.length === 0 && !isEditing) return null;
   const accentColor = accent || "hsl(var(--primary))";
+  const cardClasses = skin.card || cardStyleClass[theme.card_style];
 
   return (
-    <section className={`${sectionSpacingClass[theme.section_spacing]} px-6`}>
+    <section className={`${sectionSpacingClass[theme.section_spacing]} px-6 ${skin.accentBg}`}>
       <div className="max-w-6xl mx-auto">
         {isEditing ? (
           <h2 contentEditable suppressContentEditableWarning
-            className="landing-heading text-3xl md:text-4xl font-bold mb-12 text-center outline-none"
+            className={`landing-heading text-3xl md:text-4xl font-bold mb-12 text-center outline-none ${skin.sectionTitle}`}
             onBlur={(e) => onTitleChange?.(e.currentTarget.textContent || "")}>{title}</h2>
         ) : (
-          <h2 className="landing-heading text-3xl md:text-4xl font-bold mb-12 text-center">{title}</h2>
+          <h2 className={`landing-heading text-3xl md:text-4xl font-bold mb-12 text-center ${skin.sectionTitle}`}>{title}</h2>
         )}
 
         <div className="columns-1 md:columns-2 lg:columns-3 gap-6 [&>*]:mb-6 [&>*]:break-inside-avoid">
@@ -41,8 +40,8 @@ export function ReviewsMasonry({
             return (
               <div
                 key={i}
-                className={`relative p-6 group ${radiusCardClass[theme.radius]} ${cardStyleClass[theme.card_style]}`}
-                style={isFeatured ? { borderLeft: `4px solid ${accentColor}`, paddingLeft: "1.75rem" } : undefined}
+                className={`relative p-6 group ${radiusCardClass[theme.radius]} ${cardClasses}`}
+                style={isFeatured && !skin.card ? { borderLeft: `4px solid ${accentColor}`, paddingLeft: "1.75rem" } : undefined}
               >
                 {isEditing && (
                   <button onClick={() => onRemoveReview?.(i)} className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 text-destructive transition">
