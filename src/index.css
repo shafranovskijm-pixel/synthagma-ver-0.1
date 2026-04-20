@@ -435,6 +435,31 @@
   .mask-gradient-b {
     mask-image: linear-gradient(to bottom, black 60%, transparent 100%);
   }
+
+  /*
+   * Тематические фоны секций лендингов.
+   * Переменные --landing-section-bg / --landing-pricing-bg / --landing-cta-bg
+   * выставляются провайдером LandingThemeProvider из выбранного шаблона
+   * и содержат полную CSS-строку background-image (overlay + url).
+   */
+  .landing-bg-section {
+    background-image: var(--landing-section-bg, none);
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+  }
+  .landing-bg-pricing {
+    background-image: var(--landing-pricing-bg, var(--landing-section-bg, none));
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+  }
+  .landing-bg-cta {
+    background-image: var(--landing-cta-bg, var(--landing-section-bg, none));
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+  }
 }
 
 /* Keyframes */
