@@ -546,3 +546,15 @@ html {
   0%, 100% { box-shadow: 0 0 0 4px hsl(var(--primary) / 0.15), 0 0 20px 4px hsl(var(--primary) / 0.25); }
   50% { box-shadow: 0 0 0 6px hsl(var(--primary) / 0.25), 0 0 30px 8px hsl(var(--primary) / 0.35); }
 }
+
+/* Lesson Ctrl+F search highlight */
+[data-block-id].lesson-search-hit {
+  outline: 2px solid hsl(var(--primary) / 0.45);
+  outline-offset: 4px;
+  border-radius: 8px;
+  transition: outline-color 0.15s ease, background-color 0.15s ease;
+}
+[data-block-id].lesson-search-active {
+  outline-color: hsl(var(--primary));
+  background-color: hsl(var(--primary) / 0.08);
+}
