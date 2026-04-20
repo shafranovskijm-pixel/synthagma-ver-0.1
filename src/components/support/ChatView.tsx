@@ -5,7 +5,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 import ReactMarkdown from "react-markdown";
 import { cn } from "@/lib/utils";
-import { ChatThemePicker } from "@/components/support/ChatThemePicker";
+
 import { HeaderBackground } from "@/components/support/HeaderBackground";
 import { VersionFooter } from "@/components/support/VersionFooter";
 import { useChatTheme } from "@/hooks/useChatTheme";
@@ -68,7 +68,6 @@ export function ChatView({
             </div>
           </div>
           <div className="relative z-20 flex items-center gap-1.5">
-            <ChatThemePicker />
             <button
               type="button"
               onClick={(e) => { e.stopPropagation(); onClose(); }}
