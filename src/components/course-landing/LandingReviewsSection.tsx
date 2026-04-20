@@ -5,6 +5,7 @@ import { ReviewsCarouselMini } from "./variants/ReviewsCarouselMini";
 import { ReviewsPostcards } from "./variants/ReviewsPostcards";
 import { ReviewsCommitLog } from "./variants/ReviewsCommitLog";
 import { ReviewsProtocols } from "./variants/ReviewsProtocols";
+import { ReviewsAuroraQuotes } from "./variants/ReviewsAuroraQuotes";
 
 export interface ReviewItem {
   name: string;
@@ -26,6 +27,7 @@ interface Props {
 export function LandingReviewsSection(props: Props) {
   const { theme } = useLandingTheme();
   switch (theme.reviews_layout) {
+    case "aurora-quotes": return <ReviewsAuroraQuotes {...props} />;
     case "masonry": return <ReviewsMasonry {...props} />;
     case "carousel-mini": return <ReviewsCarouselMini {...props} />;
     case "postcards": return <ReviewsPostcards {...props} />;

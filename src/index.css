@@ -953,6 +953,41 @@
   100% { background-position: 200% 0; }
 }
 
+/* ================ AURORA-only motion ================ */
+@keyframes aurora-float-kf {
+  0%, 100% { transform: translate3d(0, 0, 0) scale(1); }
+  50%      { transform: translate3d(0, -18px, 0) scale(1.04); }
+}
+@keyframes aurora-float-delay-kf {
+  0%, 100% { transform: translate3d(0, 0, 0) scale(1); }
+  50%      { transform: translate3d(0, 22px, 0) scale(1.06); }
+}
+@keyframes aurora-pulse-kf {
+  0%, 100% { opacity: .55; transform: translate(-50%, -50%) scale(1); }
+  50%      { opacity: .8;  transform: translate(-50%, -50%) scale(1.08); }
+}
+@keyframes aurora-pulse-soft-kf {
+  0%, 100% { box-shadow: 0 30px 80px -20px rgba(34,184,166,.55), inset 0 1px 0 rgba(255,255,255,.1); }
+  50%      { box-shadow: 0 36px 100px -16px rgba(34,184,166,.85), inset 0 1px 0 rgba(255,255,255,.18); }
+}
+.aurora-float       { animation: aurora-float-kf       12s ease-in-out infinite; }
+.aurora-float-delay { animation: aurora-float-delay-kf 14s ease-in-out infinite; }
+.aurora-pulse       { animation: aurora-pulse-kf        8s ease-in-out infinite; }
+.aurora-pulse-soft  { animation: aurora-pulse-soft-kf   6s ease-in-out infinite; }
+
+.aurora-card-showcase {
+  transition: transform .4s ease, border-color .4s ease, box-shadow .4s ease;
+}
+.aurora-card-showcase:hover {
+  transform: translateY(-6px);
+  border-color: rgba(34,184,166,.55) !important;
+  box-shadow: 0 30px 70px -25px rgba(34,184,166,.55);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .aurora-float, .aurora-float-delay, .aurora-pulse, .aurora-pulse-soft { animation: none; }
+}
+
 /* Density: Compact */
 html.density-compact {
   font-size: 14px;
