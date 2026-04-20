@@ -6,7 +6,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { FileText, Video, HelpCircle, Plus, Trash2, Sparkles, Settings, Upload, FolderOpen, FileSpreadsheet, Lock, RotateCcw, Save, Eye, FileType2, Clock, Hash } from "lucide-react";
+import { FileText, Video, HelpCircle, Plus, Trash2, Sparkles, Settings, Upload, FolderOpen, FileSpreadsheet, Lock, RotateCcw, Save, Eye, FileType2, Clock, Hash, Search } from "lucide-react";
 import { AIAvatarLessonEditor, type AIAvatarConfig } from "@/components/course-builder/AIAvatarLessonEditor";
 import { BlockEditor } from "@/components/course-builder/BlockEditor";
 import { TestImportDialog } from "@/components/course-builder/TestImportDialog";
@@ -165,16 +165,30 @@ export const LessonEditor = ({
           <DialogHeader>
             <div className="flex items-center justify-between gap-3">
               <DialogTitle className="font-display text-xl">{lesson ? "Редактировать урок" : "Новый урок"}</DialogTitle>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => setPreviewOpen(true)}
-                className="gap-1.5 mr-8"
-                title="Посмотреть, как урок выглядит у студента"
-              >
-                <Eye className="w-4 h-4" />Превью
-              </Button>
+              <div className="flex items-center gap-2 mr-8">
+                {e.type === 'text' && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setSearchOpen(true)}
+                    className="gap-1.5"
+                    title="Поиск по уроку (Ctrl+F)"
+                  >
+                    <Search className="w-4 h-4" />Поиск
+                  </Button>
+                )}
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setPreviewOpen(true)}
+                  className="gap-1.5"
+                  title="Посмотреть, как урок выглядит у студента"
+                >
+                  <Eye className="w-4 h-4" />Превью
+                </Button>
+              </div>
             </div>
           </DialogHeader>
 
