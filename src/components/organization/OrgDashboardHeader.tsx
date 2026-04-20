@@ -209,19 +209,21 @@ export function OrgDashboardHeader() {
         </div>
       </div>
 
-      {/* Hero banner with theme swiper */}
-      <HeroBannerSwiper>
-        <div className="absolute bottom-4 left-6 flex items-end gap-3 z-10">
-          {logoUrl && (
-            <img src={logoUrl} alt="" className="w-12 h-12 rounded-xl object-contain bg-white/90 p-1 shadow-md" />
-          )}
-          <div className="text-white">
-            <span className="text-xs font-medium opacity-70 block mb-0.5">Онлайн-обучение</span>
-            <h2 className="text-lg lg:text-2xl font-bold drop-shadow-md leading-tight">{customName || organizationName}</h2>
-            {customSubtitle && <p className="text-xs lg:text-sm opacity-80 mt-0.5">{customSubtitle}</p>}
+      {/* Hero banner with theme swiper — hidden on course details page (course banner takes its place) */}
+      {activeTab !== "course-details" && (
+        <HeroBannerSwiper>
+          <div className="absolute bottom-4 left-6 flex items-end gap-3 z-10">
+            {logoUrl && (
+              <img src={logoUrl} alt="" className="w-12 h-12 rounded-xl object-contain bg-white/90 p-1 shadow-md" />
+            )}
+            <div className="text-white">
+              <span className="text-xs font-medium opacity-70 block mb-0.5">Онлайн-обучение</span>
+              <h2 className="text-lg lg:text-2xl font-bold drop-shadow-md leading-tight">{customName || organizationName}</h2>
+              {customSubtitle && <p className="text-xs lg:text-sm opacity-80 mt-0.5">{customSubtitle}</p>}
+            </div>
           </div>
-        </div>
-      </HeroBannerSwiper>
+        </HeroBannerSwiper>
+      )}
 
       {/* Sub-header: page title + action buttons */}
       <div className="flex items-center justify-between px-4 lg:px-6 h-12 border-t border-border/50 bg-card/95 backdrop-blur-sm">
