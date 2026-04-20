@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
-import { BookOpen, Users, Edit, Eye, EyeOff, MoreVertical, MoveRight, Video, VideoOff, Lock, Unlock, FastForward, Copy } from "lucide-react";
+import { BookOpen, Users, Edit, Eye, EyeOff, MoreVertical, MoveRight, Video, VideoOff, Lock, Unlock, FastForward, Copy, ArrowRightLeft } from "lucide-react";
 import type { Course } from "@/types";
 
 interface Props {
@@ -16,9 +16,11 @@ interface Props {
   onToggleSetting: (course: Course, setting: 'skip_video_identification' | 'sequential_lessons' | 'allow_video_seek' | 'hidden_from_catalog', e: React.MouseEvent) => void;
   onDuplicate: (courseId: string) => void;
   onMove: (course: Course, e?: React.MouseEvent) => void;
+  isAdminView?: boolean;
+  onTransfer?: (course: Course) => void;
 }
 
-export const CourseCard = React.memo(function CourseCard({ course, compact = false, isSelected, onToggleSelect, onCourseClick, onToggleSetting, onDuplicate, onMove }: Props) {
+export const CourseCard = React.memo(function CourseCard({ course, compact = false, isSelected, onToggleSelect, onCourseClick, onToggleSetting, onDuplicate, onMove, isAdminView = false, onTransfer }: Props) {
   const navigate = useNavigate();
 
   return (
