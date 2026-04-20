@@ -354,7 +354,7 @@ export function useCourseBuilder(propCourseId?: string) {
       if (lessons.length > 0 && savedCourseId) {
         const currentLessonIds = lessons.map(l => l.id);
         if (courseId) await supabase.from("lessons").delete().eq("course_id", courseId).not("id", "in", `(${currentLessonIds.join(",")})`);
-        const lessonsToSave = lessons.map((lesson, index) => ({ id: lesson.id, course_id: savedCourseId!, title: lesson.title, type: lesson.type, content: lesson.content || null, order_index: index, test_passing_score: lesson.testPassingScore ?? 60, test_questions_to_show: lesson.testQuestionsToShow ?? null }));
+        const lessonsToSave = lessons.map((lesson, index) => ({ id: lesson.id, course_id: savedCourseId!, title: lesson.title, type: lesson.type, content: lesson.content || null, order_index: index, test_passing_score: lesson.testPassingScore ?? 60, test_questions_to_show: lesson.testQuestionsToShow ?? null, module_id: lesson.module_id ?? null }));
         const { error: batchError } = await supabase.from("lessons").upsert(lessonsToSave, { onConflict: "id" });
         if (batchError && !batchError.message?.includes('AbortError')) console.error("Error saving lessons:", batchError);
 
