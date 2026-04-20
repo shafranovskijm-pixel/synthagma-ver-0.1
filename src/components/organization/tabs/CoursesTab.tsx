@@ -493,6 +493,14 @@ export const CoursesTab = React.memo(function CoursesTab({ organizationId, onCou
       <CreateCourseDialog open={showCreateCourseDialog} onOpenChange={setShowCreateCourseDialog} title={newCourseTitle} setTitle={setNewCourseTitle} description={newCourseDescription} setDescription={setNewCourseDescription} categoryId={newCourseCategoryId} setCategoryId={setNewCourseCategoryId} categories={categories} showInlineNewCategory={showInlineNewCategory} setShowInlineNewCategory={setShowInlineNewCategory} inlineNewCategoryName={inlineNewCategoryName} setInlineNewCategoryName={setInlineNewCategoryName} inlineNewCategoryColor={inlineNewCategoryColor} setInlineNewCategoryColor={setInlineNewCategoryColor} isCreating={isCreatingCourse} onSubmit={handleCreateCourse} />
       <MoveCourseDialog open={showMoveCourseDialog} onOpenChange={setShowMoveCourseDialog} movingCourse={movingCourse} targetCategoryId={targetCategoryId} setTargetCategoryId={setTargetCategoryId} categories={categories} isMoving={isMovingCourse} onSubmit={handleMoveCourse} />
       <BulkDeleteDialog open={showBulkDeleteConfirm} onOpenChange={setShowBulkDeleteConfirm} count={selectedCourseIds.size} isDeleting={isDeletingCourses} onConfirm={handleBulkDelete} />
+      <TransferCourseDialog
+        open={!!transferCourse}
+        onOpenChange={(o) => { if (!o) setTransferCourse(null); }}
+        courseId={transferCourse?.id || null}
+        courseTitle={transferCourse?.title || null}
+        currentOrganizationId={organizationId}
+        onTransferred={refresh}
+      />
       </>}
     </div>
   );
