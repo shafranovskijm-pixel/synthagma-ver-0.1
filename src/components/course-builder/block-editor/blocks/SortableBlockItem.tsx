@@ -35,6 +35,8 @@ interface SortableBlockItemProps {
   onUpdate: (updates: Partial<ContentBlock>) => void;
   onDelete: () => void;
   onAddAfter: (type: BlockType) => void;
+  onMoveUp?: () => void;
+  onMoveDown?: () => void;
   courseTitle?: string;
   lessonTitle?: string;
   organizationId?: string;
@@ -45,7 +47,7 @@ interface SortableBlockItemProps {
   onPresetsChange: (presets: { name: string; style: StylePreset }[]) => void;
 }
 
-export function SortableBlockItem({ block, isFocused, onFocus, onUpdate, onDelete, onAddAfter, courseTitle, lessonTitle, organizationId, courseId, lessonId, existingContent, presets, onPresetsChange }: SortableBlockItemProps) {
+export function SortableBlockItem({ block, isFocused, onFocus, onUpdate, onDelete, onAddAfter, onMoveUp, onMoveDown, courseTitle, lessonTitle, organizationId, courseId, lessonId, existingContent, presets, onPresetsChange }: SortableBlockItemProps) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: block.id });
   const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.5 : 1, zIndex: isDragging ? 1000 : 'auto' as any };
   const canConvert = convertibleTypes.includes(block.type);
