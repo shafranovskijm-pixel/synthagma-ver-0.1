@@ -51,12 +51,29 @@ export function CourseDetailsContent({ course, courseStudents, organizationId, a
   const isFrdoEnabled = isEnabled('frdo');
   const h = useCourseDetails(course, courseStudents, organizationId, onCourseUpdated, onRefreshStudents, onCourseDeleted);
 
+  const learningTabs = [
+    { value: "editor" as const, label: "Конструктор", icon: Edit, color: "text-primary" },
+    { value: "students" as const, label: "Ученики", icon: Users, color: "text-primary" },
+    { value: "requests" as const, label: "Заявки", icon: ClipboardCheck, color: "text-orange-500" },
+    { value: "materials" as const, label: "Материалы", icon: FileText, color: "text-amber-500" },
+    { value: "history" as const, label: "История", icon: History, color: "text-violet-500" },
+    { value: "tests" as const, label: "Тесты", icon: CheckSquare, color: "text-emerald-500" },
+    { value: "groups" as const, label: "Группы", icon: Users, color: "text-blue-500" },
+    { value: "achievements" as const, label: "Достижения", icon: Trophy, color: "text-amber-500" },
+  ];
+  const settingsTabs = [
+    { value: "preview" as const, label: "Просмотр", icon: Eye, color: "text-sigma-cyan" },
+    { value: "landing" as const, label: "Страница курса", icon: Globe, color: "text-rose-500" },
+    { value: "settings" as const, label: "Настройки", icon: Settings, color: "text-muted-foreground" },
+    { value: "reminders" as const, label: "Напоминания", icon: Bell, color: "text-orange-500" },
+  ];
+
   return (
     <>
-      {/* Course header with stats */}
+      {/* Course header (compact) */}
       <div className="border-b border-border bg-gradient-to-br from-primary/10 to-accent/10 rounded-t-2xl">
         <div className="p-6">
-          <div className="flex items-start justify-between">
+          <div className="flex items-start justify-between gap-4 flex-wrap">
             <div>
               <h2 className="text-2xl font-semibold mb-2">{course.title}</h2>
               <div className="flex items-center gap-4 text-sm text-muted-foreground">
@@ -67,116 +84,102 @@ export function CourseDetailsContent({ course, courseStudents, organizationId, a
                 <div className="flex items-center gap-1"><BookOpen className="w-4 h-4" />{course.lessonsCount} уроков</div>
               </div>
             </div>
-            <div className="flex gap-2">
+            <div className="flex gap-2 flex-wrap">
               <Button variant="outline" className="rounded-xl gap-2" onClick={() => onTabChange("preview")}><Eye className="w-4 h-4" />Просмотр</Button>
               <Button className="rounded-xl gap-2 btn-gradient" onClick={() => onTabChange("editor")}><Edit className="w-4 h-4" />Редактировать</Button>
               <Button variant="outline" className="rounded-xl gap-2 text-destructive hover:bg-destructive hover:text-destructive-foreground" onClick={() => h.setShowDeleteConfirm(true)}><Trash2 className="w-4 h-4" />Удалить</Button>
             </div>
           </div>
-          <div className="grid grid-cols-3 gap-4 mt-4">
-            <div className="bg-background/50 backdrop-blur-sm rounded-xl p-4 border border-border/50">
-              <div className="flex items-center gap-3"><div className="p-2 rounded-lg bg-primary/10"><TrendingUp className="w-5 h-5 text-primary" /></div><div><div className="text-2xl font-bold">{h.avgProgress}%</div><div className="text-xs text-muted-foreground">Средний прогресс</div></div></div>
-              <Progress value={h.avgProgress} className="mt-3 h-1.5" />
-            </div>
-            <div className="bg-background/50 backdrop-blur-sm rounded-xl p-4 border border-border/50">
-              <div className="flex items-center gap-3"><div className="p-2 rounded-lg bg-sigma-green/10"><Users className="w-5 h-5 text-sigma-green" /></div><div><div className="text-2xl font-bold">{h.activeStudents}</div><div className="text-xs text-muted-foreground">Активных учеников</div></div></div>
-              <div className="mt-3 text-xs text-muted-foreground">из {h.totalStudents} зачисленных</div>
-            </div>
-            <div className="bg-background/50 backdrop-blur-sm rounded-xl p-4 border border-border/50">
-              <div className="flex items-center gap-3"><div className="p-2 rounded-lg bg-accent/10"><CheckCircle2 className="w-5 h-5 text-accent" /></div><div><div className="text-2xl font-bold">{h.completionRate}%</div><div className="text-xs text-muted-foreground">Завершаемость</div></div></div>
-              <div className="mt-3 text-xs text-muted-foreground">{h.completedStudents} из {h.totalStudents} завершили</div>
-            </div>
+        </div>
+
+        {/* Horizontal tab bar: Обучение | Настройки */}
+        <div className="px-3 sm:px-6 pb-3">
+          <div className="flex items-center gap-1 overflow-x-auto bg-background/40 backdrop-blur-sm rounded-xl p-1.5 border border-border/40">
+            {learningTabs.map(item => (
+              <button
+                key={item.value}
+                onClick={() => onTabChange(item.value)}
+                className={cn(
+                  "flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 whitespace-nowrap shrink-0",
+                  activeTab === item.value
+                    ? "bg-primary/15 text-primary shadow-sm"
+                    : "text-muted-foreground hover:bg-primary/10 hover:text-primary"
+                )}
+              >
+                <item.icon className={cn("w-4 h-4 shrink-0", activeTab === item.value ? "text-primary" : item.color)} />
+                {item.label}
+              </button>
+            ))}
+            <div className="w-px h-6 bg-border/60 mx-1.5 shrink-0" />
+            {settingsTabs.map(item => (
+              <button
+                key={item.value}
+                onClick={() => onTabChange(item.value)}
+                className={cn(
+                  "flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 whitespace-nowrap shrink-0",
+                  activeTab === item.value
+                    ? "bg-primary/15 text-primary shadow-sm"
+                    : "text-muted-foreground hover:bg-primary/10 hover:text-primary"
+                )}
+              >
+                <item.icon className={cn("w-4 h-4 shrink-0", activeTab === item.value ? "text-primary" : item.color)} />
+                {item.label}
+              </button>
+            ))}
           </div>
         </div>
       </div>
 
-      <div className="flex flex-col lg:flex-row flex-1">
-        {/* Sidebar navigation — hidden in editor mode (lessons nav takes its place) */}
-        {activeTab !== "editor" && (
-          <nav className="lg:w-64 shrink-0 border-b lg:border-b-0 lg:border-r border-border bg-gradient-to-b from-card to-muted/20">
-            <div className="p-4 space-y-1 overflow-x-auto lg:overflow-x-visible flex lg:flex-col gap-1">
-              <div className="hidden lg:block"><p className="text-[11px] font-semibold text-muted-foreground/70 uppercase tracking-wider px-3 mb-2">Обучение</p></div>
-              {([
-                { value: "students" as const, label: "Ученики", icon: Users, color: "text-primary" },
-                { value: "requests" as const, label: "Заявки", icon: ClipboardCheck, color: "text-orange-500" },
-                { value: "materials" as const, label: "Материалы", icon: FileText, color: "text-amber-500" },
-                { value: "history" as const, label: "История", icon: History, color: "text-violet-500" },
-                { value: "tests" as const, label: "Тесты", icon: CheckSquare, color: "text-emerald-500" },
-                { value: "groups" as const, label: "Группы", icon: Users, color: "text-blue-500" },
-                { value: "achievements" as const, label: "Достижения", icon: Trophy, color: "text-amber-500" },
-              ]).map(item => (
-                <button key={item.value} onClick={() => onTabChange(item.value)} className={cn("flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 whitespace-nowrap hover:bg-primary/10 hover:text-primary hover:translate-x-0.5", activeTab === item.value ? "bg-primary/15 text-primary lg:border-r-2 lg:border-primary" : "text-muted-foreground")}>
-                  <item.icon className={cn("w-4 h-4 shrink-0", activeTab === item.value ? "text-primary" : item.color)} />{item.label}
-                </button>
-              ))}
-              <div className="hidden lg:block mt-4"><div className="border-t border-border/50 mb-3" /><p className="text-[11px] font-semibold text-muted-foreground/70 uppercase tracking-wider px-3 mb-2">Настройки</p></div>
-              <div className="lg:hidden w-px bg-border/50 mx-1 shrink-0" />
-              {([
-                { value: "preview" as const, label: "Просмотр", icon: Eye, color: "text-sigma-cyan" },
-                { value: "editor" as const, label: "Редактор", icon: Edit, color: "text-primary" },
-                { value: "landing" as const, label: "Страница курса", icon: Globe, color: "text-rose-500" },
-                { value: "settings" as const, label: "Настройки", icon: Settings, color: "text-muted-foreground" },
-                { value: "reminders" as const, label: "Напоминания", icon: Bell, color: "text-orange-500" },
-              ]).map(item => (
-                <button key={item.value} onClick={() => onTabChange(item.value)} className={cn("flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 whitespace-nowrap hover:bg-primary/10 hover:text-primary hover:translate-x-0.5", activeTab === item.value ? "bg-primary/15 text-primary lg:border-r-2 lg:border-primary" : "text-muted-foreground")}>
-                  <item.icon className={cn("w-4 h-4 shrink-0", activeTab === item.value ? "text-primary" : item.color)} />{item.label}
-                </button>
-              ))}
-            </div>
-          </nav>
-        )}
-
-        {/* Content panel */}
-        <div className={cn("flex-1 min-w-0", activeTab === "editor" ? "" : "p-6")}>
-          {activeTab === "students" && <StudentsSection h={h} courseStudents={courseStudents} />}
-          {activeTab === "requests" && <EnrollmentRequestsTab courseId={course.id} defaultAccessDays={h.defaultAccessDays} onRefreshStudents={onRefreshStudents} />}
-          {activeTab === "materials" && <CourseDocumentsManager courseId={course.id} courseName={course.title} embedded={true} />}
-          {activeTab === "history" && <EnrollmentHistory courseId={course.id} organizationId={organizationId || ""} courseName={course.title} />}
-          {activeTab === "tests" && <CourseTestReport courseId={course.id} courseName={course.title} organizationId={organizationId || ""} />}
-          {activeTab === "landing" && (
-            <div className="space-y-4">
-              <div className="bg-gradient-to-r from-primary/10 to-accent/10 rounded-xl p-4 border border-primary/20 cursor-pointer hover:shadow-md transition-all" onClick={() => h.navigate(`/course/${course.id}/landing-editor`)}>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3"><div className="p-2 rounded-lg bg-primary/20"><Globe className="w-5 h-5 text-primary" /></div><div><h4 className="font-semibold text-sm">Визуальный редактор</h4><p className="text-xs text-muted-foreground">Настройте продающую страницу курса</p></div></div>
-                  <Button variant="outline" size="sm" className="rounded-lg gap-2"><ExternalLink className="w-4 h-4" />Открыть редактор</Button>
-                </div>
+      {/* Content panel (full width — left nav of lessons lives inside CourseBuilder embedded mode) */}
+      <div className={cn("flex-1 min-w-0", activeTab === "editor" ? "" : "p-6")}>
+        {activeTab === "students" && <StudentsSection h={h} courseStudents={courseStudents} />}
+        {activeTab === "requests" && <EnrollmentRequestsTab courseId={course.id} defaultAccessDays={h.defaultAccessDays} onRefreshStudents={onRefreshStudents} />}
+        {activeTab === "materials" && <CourseDocumentsManager courseId={course.id} courseName={course.title} embedded={true} />}
+        {activeTab === "history" && <EnrollmentHistory courseId={course.id} organizationId={organizationId || ""} courseName={course.title} />}
+        {activeTab === "tests" && <CourseTestReport courseId={course.id} courseName={course.title} organizationId={organizationId || ""} />}
+        {activeTab === "landing" && (
+          <div className="space-y-4">
+            <div className="bg-gradient-to-r from-primary/10 to-accent/10 rounded-xl p-4 border border-primary/20 cursor-pointer hover:shadow-md transition-all" onClick={() => h.navigate(`/course/${course.id}/landing-editor`)}>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3"><div className="p-2 rounded-lg bg-primary/20"><Globe className="w-5 h-5 text-primary" /></div><div><h4 className="font-semibold text-sm">Визуальный редактор</h4><p className="text-xs text-muted-foreground">Настройте продающую страницу курса</p></div></div>
+                <Button variant="outline" size="sm" className="rounded-lg gap-2"><ExternalLink className="w-4 h-4" />Открыть редактор</Button>
               </div>
-              <CoursePageSettingsContent courseId={course.id} courseTitle={course.title} courseDescription={course.description || undefined} />
             </div>
-          )}
-          {activeTab === "settings" && (
-            <CourseSettingsTabbed course={course} isFrdoEnabled={isFrdoEnabled} isSavingSettings={h.isSavingSettings}
-              skipVideoId={h.skipVideoId} onToggleSkipVideoId={h.handleToggleSkipVideoId}
-              sequentialLessons={h.sequentialLessons} onToggleSequentialLessons={h.handleToggleSequentialLessons}
-              allowVideoSeek={h.allowVideoSeek} onToggleAllowVideoSeek={h.handleToggleAllowVideoSeek}
-              copyProtection={h.copyProtection} onToggleCopyProtection={h.handleToggleCopyProtection}
-              videoWatermark={h.videoWatermark} onToggleVideoWatermark={h.handleToggleVideoWatermark}
-              externalCardUrl={h.externalCardUrl} setExternalCardUrl={h.setExternalCardUrl}
-              onUpdateExternalCardUrl={h.handleUpdateExternalCardUrl}
-              defaultAccessDays={h.defaultAccessDays} setDefaultAccessDays={h.setDefaultAccessDays}
-              onUpdateDefaultAccessDays={h.handleUpdateDefaultAccessDays}
-              requireEnrollmentApproval={h.requireEnrollmentApproval} onToggleRequireEnrollmentApproval={h.handleToggleRequireEnrollmentApproval}
-              trainingForm={h.trainingForm} onUpdateTrainingForm={h.handleUpdateTrainingForm}
-              frdoSettings={h.frdoSettings} onUpdateFrdoSettings={h.handleUpdateFrdoSettings}
-            />
-          )}
-          {activeTab === "reminders" && (
-            <CourseRemindersTab courseId={course.id} organizationId={organizationId || ""}
-              retrainingPeriodMonths={h.retrainingPeriod}
-              reminderAdvanceDays={h.reminderAdvanceDays}
-              onPeriodChange={async (months) => { h.setRetrainingPeriod(months); await h.updateCourseSetting("retraining_period_months", months, months ? `Периодичность: ${months} мес.` : "Периодичность отключена"); }}
-              onAdvanceDaysChange={async (days) => { h.setReminderAdvanceDays(days); await h.updateCourseSetting("reminder_advance_days", days, `Напоминание за ${days} дней`); }}
-              notifyOnCompletion={h.notifyOnCompletion}
-              completionNotifyEmails={h.completionNotifyEmails}
-              onNotifyOnCompletionChange={async (v) => { h.setNotifyOnCompletion(v); await h.updateCourseSetting("notify_on_completion", v, v ? "Уведомления включены" : "Уведомления отключены"); }}
-              onCompletionNotifyEmailsChange={async (v) => { h.setCompletionNotifyEmails(v || null); try { const { error } = await supabase.from("courses").update({ completion_notify_emails: v || null } as any).eq("id", course.id); if (error) throw error; onCourseUpdated?.(); } catch (e) { console.error(e); } }}
-            />
-          )}
-          {activeTab === "groups" && <CourseGroupsTab courseId={course.id} organizationId={organizationId || ""} onRefreshStudents={onRefreshStudents} />}
-          {activeTab === "achievements" && organizationId && <CourseAchievementsTab courseId={course.id} organizationId={organizationId} />}
-          {activeTab === "editor" && <Suspense fallback={<div className="flex items-center justify-center py-16"><SigmaSpinner size="lg" /></div>}><CourseBuilder embedded embeddedCourseId={course.id} onExitEditor={() => onTabChange("students")} /></Suspense>}
-          {activeTab === "preview" && <Suspense fallback={<div className="flex items-center justify-center py-16"><SigmaSpinner size="lg" /></div>}><CoursePreviewView courseId={course.id} embedded onNavigateToEditor={() => onTabChange("editor")} /></Suspense>}
-        </div>
+            <CoursePageSettingsContent courseId={course.id} courseTitle={course.title} courseDescription={course.description || undefined} />
+          </div>
+        )}
+        {activeTab === "settings" && (
+          <CourseSettingsTabbed course={course} isFrdoEnabled={isFrdoEnabled} isSavingSettings={h.isSavingSettings}
+            skipVideoId={h.skipVideoId} onToggleSkipVideoId={h.handleToggleSkipVideoId}
+            sequentialLessons={h.sequentialLessons} onToggleSequentialLessons={h.handleToggleSequentialLessons}
+            allowVideoSeek={h.allowVideoSeek} onToggleAllowVideoSeek={h.handleToggleAllowVideoSeek}
+            copyProtection={h.copyProtection} onToggleCopyProtection={h.handleToggleCopyProtection}
+            videoWatermark={h.videoWatermark} onToggleVideoWatermark={h.handleToggleVideoWatermark}
+            externalCardUrl={h.externalCardUrl} setExternalCardUrl={h.setExternalCardUrl}
+            onUpdateExternalCardUrl={h.handleUpdateExternalCardUrl}
+            defaultAccessDays={h.defaultAccessDays} setDefaultAccessDays={h.setDefaultAccessDays}
+            onUpdateDefaultAccessDays={h.handleUpdateDefaultAccessDays}
+            requireEnrollmentApproval={h.requireEnrollmentApproval} onToggleRequireEnrollmentApproval={h.handleToggleRequireEnrollmentApproval}
+            trainingForm={h.trainingForm} onUpdateTrainingForm={h.handleUpdateTrainingForm}
+            frdoSettings={h.frdoSettings} onUpdateFrdoSettings={h.handleUpdateFrdoSettings}
+          />
+        )}
+        {activeTab === "reminders" && (
+          <CourseRemindersTab courseId={course.id} organizationId={organizationId || ""}
+            retrainingPeriodMonths={h.retrainingPeriod}
+            reminderAdvanceDays={h.reminderAdvanceDays}
+            onPeriodChange={async (months) => { h.setRetrainingPeriod(months); await h.updateCourseSetting("retraining_period_months", months, months ? `Периодичность: ${months} мес.` : "Периодичность отключена"); }}
+            onAdvanceDaysChange={async (days) => { h.setReminderAdvanceDays(days); await h.updateCourseSetting("reminder_advance_days", days, `Напоминание за ${days} дней`); }}
+            notifyOnCompletion={h.notifyOnCompletion}
+            completionNotifyEmails={h.completionNotifyEmails}
+            onNotifyOnCompletionChange={async (v) => { h.setNotifyOnCompletion(v); await h.updateCourseSetting("notify_on_completion", v, v ? "Уведомления включены" : "Уведомления отключены"); }}
+            onCompletionNotifyEmailsChange={async (v) => { h.setCompletionNotifyEmails(v || null); try { const { error } = await supabase.from("courses").update({ completion_notify_emails: v || null } as any).eq("id", course.id); if (error) throw error; onCourseUpdated?.(); } catch (e) { console.error(e); } }}
+          />
+        )}
+        {activeTab === "groups" && <CourseGroupsTab courseId={course.id} organizationId={organizationId || ""} onRefreshStudents={onRefreshStudents} />}
+        {activeTab === "achievements" && organizationId && <CourseAchievementsTab courseId={course.id} organizationId={organizationId} />}
+        {activeTab === "editor" && <Suspense fallback={<div className="flex items-center justify-center py-16"><SigmaSpinner size="lg" /></div>}><CourseBuilder embedded embeddedCourseId={course.id} onExitEditor={() => onTabChange("students")} /></Suspense>}
+        {activeTab === "preview" && <Suspense fallback={<div className="flex items-center justify-center py-16"><SigmaSpinner size="lg" /></div>}><CoursePreviewView courseId={course.id} embedded onNavigateToEditor={() => onTabChange("editor")} /></Suspense>}
       </div>
 
       {/* Reset Progress */}

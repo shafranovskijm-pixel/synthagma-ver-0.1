@@ -105,7 +105,12 @@ export function useCourseBuilder(propCourseId?: string) {
               }
             }
           }
-          setLessons(normalizeLessonsFromDB(lessonsData, questionsMap, attachmentsMap));
+          const normalized = normalizeLessonsFromDB(lessonsData, questionsMap, attachmentsMap);
+          setLessons(normalized);
+          // Автовыбор первого урока, если ни один не выбран
+          if (normalized.length > 0) {
+            setActiveLessonId(prev => prev ?? normalized[0].id);
+          }
         }
         setIsLoading(false);
       } else { setIsLoading(false); }

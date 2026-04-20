@@ -13,8 +13,13 @@ export function CourseDetailsTab() {
 
   const [course, setCourse] = useState<any>(null);
   const [courseStudents, setCourseStudents] = useState<any[]>([]);
-  const [activeTab, setActiveTab] = useState<"students" | "materials" | "history" | "tests" | "landing" | "settings" | "reminders" | "groups" | "requests" | "achievements" | "editor" | "preview">("students");
+  const [activeTab, setActiveTab] = useState<"students" | "materials" | "history" | "tests" | "landing" | "settings" | "reminders" | "groups" | "requests" | "achievements" | "editor" | "preview">("editor");
   const [loading, setLoading] = useState(true);
+
+  // Reset to editor whenever a different course is opened
+  useEffect(() => {
+    setActiveTab("editor");
+  }, [courseId]);
 
   useEffect(() => {
     if (!courseId) return;

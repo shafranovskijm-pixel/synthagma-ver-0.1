@@ -209,59 +209,63 @@ export function OrgDashboardHeader() {
         </div>
       </div>
 
-      {/* Hero banner with theme swiper */}
-      <HeroBannerSwiper>
-        <div className="absolute bottom-4 left-6 flex items-end gap-3 z-10">
-          {logoUrl && (
-            <img src={logoUrl} alt="" className="w-12 h-12 rounded-xl object-contain bg-white/90 p-1 shadow-md" />
-          )}
-          <div className="text-white">
-            <span className="text-xs font-medium opacity-70 block mb-0.5">Онлайн-обучение</span>
-            <h2 className="text-lg lg:text-2xl font-bold drop-shadow-md leading-tight">{customName || organizationName}</h2>
-            {customSubtitle && <p className="text-xs lg:text-sm opacity-80 mt-0.5">{customSubtitle}</p>}
+      {/* Hero banner with theme swiper — hidden on course details page (course banner takes its place) */}
+      {activeTab !== "course-details" && (
+        <HeroBannerSwiper>
+          <div className="absolute bottom-4 left-6 flex items-end gap-3 z-10">
+            {logoUrl && (
+              <img src={logoUrl} alt="" className="w-12 h-12 rounded-xl object-contain bg-white/90 p-1 shadow-md" />
+            )}
+            <div className="text-white">
+              <span className="text-xs font-medium opacity-70 block mb-0.5">Онлайн-обучение</span>
+              <h2 className="text-lg lg:text-2xl font-bold drop-shadow-md leading-tight">{customName || organizationName}</h2>
+              {customSubtitle && <p className="text-xs lg:text-sm opacity-80 mt-0.5">{customSubtitle}</p>}
+            </div>
           </div>
-        </div>
-      </HeroBannerSwiper>
+        </HeroBannerSwiper>
+      )}
 
       {/* Sub-header: page title + action buttons */}
-      <div className="flex items-center justify-between px-4 lg:px-6 h-12 border-t border-border/50 bg-card/95 backdrop-blur-sm">
-        <h1 className="font-display text-base font-semibold text-foreground/80">
-          {getPageTitle()}
-        </h1>
+      {activeTab !== "course-details" && (
+        <div className="flex items-center justify-between px-4 lg:px-6 h-12 border-t border-border/50 bg-card/95 backdrop-blur-sm">
+          <h1 className="font-display text-base font-semibold text-foreground/80">
+            {getPageTitle()}
+          </h1>
 
-        <div className="flex items-center gap-2">
-          {activeTab === "links" && (
-            <Button className="btn-gradient rounded-xl gap-2 text-xs" size="sm" onClick={() => d.registrationLinks.setShowCreateLinkDialog(true)}>
-              <Plus className="w-4 h-4" />
-              <span className="hidden sm:inline">Создать ссылку</span>
-            </Button>
-          )}
-          {activeTab === "students" && (
-            <>
-              <Button variant="outline" className="rounded-xl gap-2 text-xs" size="sm" onClick={() => handleStudentAction(() => d.setShowImportDialog(true))}>
-                <FileSpreadsheet className="w-4 h-4" />
-                <span className="hidden sm:inline">Импорт</span>
-              </Button>
-              <Button className="btn-gradient rounded-xl gap-2 text-xs" size="sm" onClick={() => handleStudentAction(() => d.studentManagement.setShowAddStudentDialog(true))}>
+          <div className="flex items-center gap-2">
+            {activeTab === "links" && (
+              <Button className="btn-gradient rounded-xl gap-2 text-xs" size="sm" onClick={() => d.registrationLinks.setShowCreateLinkDialog(true)}>
                 <Plus className="w-4 h-4" />
-                <span className="hidden sm:inline">Добавить</span>
+                <span className="hidden sm:inline">Создать ссылку</span>
               </Button>
-            </>
-          )}
-          {activeTab === "courses" && (
-            <div className="flex items-center gap-2">
-              <Button variant="outline" size="sm" className="rounded-xl gap-2 text-xs" onClick={() => d.tabNavigation.setActiveTab("services")}>
-                <ShoppingBag className="w-4 h-4" />
-                <span className="hidden sm:inline">Добавить из магазина</span>
-              </Button>
-              <Button className="btn-gradient rounded-xl gap-2 text-xs" size="sm" onClick={() => navigate("/course-builder")}>
-                <Plus className="w-4 h-4" />
-                <span className="hidden sm:inline">Создать курс</span>
-              </Button>
-            </div>
-          )}
+            )}
+            {activeTab === "students" && (
+              <>
+                <Button variant="outline" className="rounded-xl gap-2 text-xs" size="sm" onClick={() => handleStudentAction(() => d.setShowImportDialog(true))}>
+                  <FileSpreadsheet className="w-4 h-4" />
+                  <span className="hidden sm:inline">Импорт</span>
+                </Button>
+                <Button className="btn-gradient rounded-xl gap-2 text-xs" size="sm" onClick={() => handleStudentAction(() => d.studentManagement.setShowAddStudentDialog(true))}>
+                  <Plus className="w-4 h-4" />
+                  <span className="hidden sm:inline">Добавить</span>
+                </Button>
+              </>
+            )}
+            {activeTab === "courses" && (
+              <div className="flex items-center gap-2">
+                <Button variant="outline" size="sm" className="rounded-xl gap-2 text-xs" onClick={() => d.tabNavigation.setActiveTab("services")}>
+                  <ShoppingBag className="w-4 h-4" />
+                  <span className="hidden sm:inline">Добавить из магазина</span>
+                </Button>
+                <Button className="btn-gradient rounded-xl gap-2 text-xs" size="sm" onClick={() => navigate("/course-builder")}>
+                  <Plus className="w-4 h-4" />
+                  <span className="hidden sm:inline">Создать курс</span>
+                </Button>
+              </div>
+            )}
+          </div>
         </div>
-      </div>
+      )}
     </header>
   );
 }
