@@ -182,13 +182,15 @@ export function RichTextEditor({
     savedRange.current = range.cloneRange();
     const rect = range.getBoundingClientRect();
     const editorRect = editor.getBoundingClientRect();
-    // Position toolbar in the LEFT GUTTER (same column as the "+" button on the left of the block).
-    // Vertical: aligned with the selected text line (not below).
-    // Horizontal: shifted left into the gutter zone (-52px from editor left edge).
-    setToolbarPos({
-      top: rect.top - editorRect.top - 4,
-      left: -52,
-    });
+    // Centered above the text selection. Flip below when too close to the viewport top.
+    const TOOLBAR_HEIGHT = 44;
+    const GAP = 10;
+    const flipBelow = rect.top < TOOLBAR_HEIGHT + GAP + 8;
+    const top = flipBelow
+      ? rect.bottom - editorRect.top + GAP
+      : rect.top - editorRect.top - TOOLBAR_HEIGHT - GAP;
+    const left = rect.left + rect.width / 2 - editorRect.left;
+    setToolbarPos({ top, left });
     setShowToolbar(true);
     updateActiveFormats();
   }, [styleMenuOpen, listMenuOpen, paletteOpen, linkOpen, updateActiveFormats]);
@@ -293,7 +295,7 @@ export function RichTextEditor({
     <div className="relative">
       {showToolbar && (
         <div
-          className="absolute z-50 flex items-center gap-0.5 bg-slate-800/95 backdrop-blur-md text-white rounded-2xl shadow-xl border border-white/10 px-1.5 py-1 pointer-events-auto"
+          className="absolute z-50 flex items-center gap-0.5 bg-slate-800/95 backdrop-blur-md text-white rounded-2xl shadow-2xl border border-white/10 px-2 py-1.5 h-11 pointer-events-auto -translate-x-1/2"
           style={{ top: toolbarPos.top, left: toolbarPos.left }}
           onMouseDown={(e) => e.preventDefault()}
         >
