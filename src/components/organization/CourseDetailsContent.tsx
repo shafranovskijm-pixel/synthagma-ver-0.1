@@ -189,11 +189,39 @@ export function CourseDetailsContent({ course, courseStudents, organizationId, a
                   <div className="flex items-center gap-1"><BookOpen className="w-4 h-4" />{course.lessonsCount} уроков</div>
                 </div>
               </div>
-              <div className="flex gap-2 flex-wrap">
-                <Button variant="outline" className="rounded-xl gap-2 bg-white/90 hover:bg-white border-white/40" onClick={() => onTabChange("preview")}><Eye className="w-4 h-4" />Просмотр</Button>
-                <Button className="rounded-xl gap-2 btn-gradient" onClick={() => onTabChange("editor")}><Edit className="w-4 h-4" />Редактировать</Button>
-                <Button variant="outline" className="rounded-xl gap-2 bg-white/90 hover:bg-destructive hover:text-destructive-foreground border-white/40 text-destructive" onClick={() => h.setShowDeleteConfirm(true)}><Trash2 className="w-4 h-4" />Удалить</Button>
-              </div>
+            </div>
+          </div>
+
+          <input ref={coverInputRef} type="file" accept="image/*" hidden onChange={handleCoverUpload} />
+
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button
+                className="absolute top-4 right-4 inline-flex items-center justify-center h-9 w-9 rounded-full bg-white/15 backdrop-blur-md text-white hover:bg-white/25 transition-colors border border-white/20"
+                aria-label="Действия"
+              >
+                <MoreVertical className="w-4 h-4" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-56">
+              <DropdownMenuItem onClick={() => onTabChange("preview")}>
+                <Eye className="w-4 h-4 mr-2" />Просмотр
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => onTabChange("editor")}>
+                <Edit className="w-4 h-4 mr-2" />Редактировать
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => coverInputRef.current?.click()}>
+                <ImagePlus className="w-4 h-4 mr-2" />Изменить обложку
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={handleGenerateCover} disabled={isGeneratingCover}>
+                <Wand2 className="w-4 h-4 mr-2" />{isGeneratingCover ? "Генерируем…" : "Сгенерировать с ИИ"}
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={() => h.setShowDeleteConfirm(true)}>
+                <Trash2 className="w-4 h-4 mr-2" />Удалить курс
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
             </div>
           </div>
         </div>
