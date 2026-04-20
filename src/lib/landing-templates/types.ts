@@ -55,6 +55,8 @@ export interface LandingTheme {
     | "postcards"
     | "commit-log"
     | "protocols";
+  /** Расширенные layout-опции pricing для уникальных шаблонов */
+  pricing_layout_ext?: "package-json" | "language-levels" | "hero-focus";
   benefits_layout:
     | "grid"
     | "icon-list"
