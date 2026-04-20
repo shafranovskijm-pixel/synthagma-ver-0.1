@@ -10,6 +10,7 @@ import { LandingReviewsSection } from "@/components/course-landing/LandingReview
 import { LandingPricingSection } from "@/components/course-landing/LandingPricingSection";
 import { LandingFaqSection } from "@/components/course-landing/LandingFaqSection";
 import { LandingCtaSection } from "@/components/course-landing/LandingCtaSection";
+import { LandingThemeProvider } from "@/components/course-landing/LandingThemeProvider";
 
 /**
  * Мини-рендер реального лендинга в карточке шаблона.
