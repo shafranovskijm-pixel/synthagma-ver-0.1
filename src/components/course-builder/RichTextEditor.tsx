@@ -183,7 +183,7 @@ export function RichTextEditor({
     const rect = range.getBoundingClientRect();
     const editorRect = editor.getBoundingClientRect();
     // Centered above the text selection. Flip below when too close to the viewport top.
-    const TOOLBAR_HEIGHT = 44;
+    const TOOLBAR_HEIGHT = 48;
     const GAP = 10;
     const flipBelow = rect.top < TOOLBAR_HEIGHT + GAP + 8;
     const top = flipBelow
@@ -269,13 +269,42 @@ export function RichTextEditor({
     setLinkOpen(false);
   };
 
+  // Inline font-size cycling on the current selection via <span style="font-size">.
+  const FONT_SIZES = [12, 14, 16, 18, 20, 24, 28, 32];
   const cycleSize = (dir: 1 | -1) => {
-    if (!onStyleUpdate) return;
-    const order: Array<'sm' | 'base' | 'lg'> = ['sm', 'base', 'lg'];
-    const cur = currentTextSize || 'base';
-    const idx = Math.max(0, Math.min(order.length - 1, order.indexOf(cur) + dir));
-    const next = order[idx];
-    onStyleUpdate({ textSize: next === 'base' ? undefined : next });
+    restoreSelection();
+    const sel = window.getSelection();
+    if (!sel || sel.rangeCount === 0) return;
+
+    // Detect current font-size on selection (anchor element).
+    let cur = 16;
+    const anchorEl = (sel.anchorNode?.nodeType === 1
+      ? (sel.anchorNode as HTMLElement)
+      : (sel.anchorNode?.parentElement as HTMLElement | null)) || null;
+    if (anchorEl) {
+      const cs = window.getComputedStyle(anchorEl).fontSize;
+      const parsed = parseInt(cs, 10);
+      if (!Number.isNaN(parsed)) cur = parsed;
+    }
+    // Snap to nearest size in our scale, then move by dir.
+    let idx = FONT_SIZES.findIndex((s) => s >= cur);
+    if (idx === -1) idx = FONT_SIZES.length - 1;
+    if (FONT_SIZES[idx] !== cur) idx = Math.max(0, idx - (dir === 1 ? 0 : 1));
+    const nextIdx = Math.max(0, Math.min(FONT_SIZES.length - 1, idx + dir));
+    const nextSize = FONT_SIZES[nextIdx];
+
+    // Apply via execCommand fontSize then convert <font size> → <span style="font-size">.
+    document.execCommand('fontSize', false, '7');
+    const editor = editorRef.current;
+    if (editor) {
+      editor.querySelectorAll('font[size="7"]').forEach((node) => {
+        const span = document.createElement('span');
+        span.style.fontSize = `${nextSize}px`;
+        while (node.firstChild) span.appendChild(node.firstChild);
+        node.parentNode?.replaceChild(span, node);
+      });
+    }
+    handleInput();
   };
 
   const setBlockType = (type: BlockType) => {
@@ -284,8 +313,10 @@ export function RichTextEditor({
   };
 
   const styleMenuItems: Array<{ type: BlockType; label: string; preview: string }> = [
-    { type: "heading1", label: "Заголовок 1", preview: "text-2xl font-bold" },
-    { type: "heading2", label: "Заголовок 2", preview: "text-xl font-semibold" },
+    { type: "heading1", label: "Заголовок 1", preview: "text-3xl font-bold" },
+    { type: "heading2", label: "Заголовок 2", preview: "text-2xl font-bold" },
+    { type: "heading3", label: "Заголовок 3", preview: "text-xl font-semibold" },
+    { type: "heading4", label: "Заголовок 4", preview: "text-lg font-semibold" },
     { type: "paragraph", label: "Текст", preview: "text-sm" },
   ];
 
@@ -295,99 +326,95 @@ export function RichTextEditor({
     <div className="relative">
       {showToolbar && (
         <div
-          className="absolute z-50 flex items-center gap-0.5 bg-slate-800/95 backdrop-blur-md text-white rounded-2xl shadow-2xl border border-white/10 px-2 py-1.5 h-11 pointer-events-auto -translate-x-1/2"
+          className="absolute z-50 flex items-center gap-0.5 bg-slate-800/95 backdrop-blur-md text-white rounded-2xl shadow-2xl border border-white/10 px-2 py-1.5 h-12 pointer-events-auto -translate-x-1/2"
           style={{ top: toolbarPos.top, left: toolbarPos.left }}
           onMouseDown={(e) => e.preventDefault()}
         >
-          {/* Size + Style */}
-          {hasBlockControls && onStyleUpdate && (
-            <>
-              <button
-                onMouseDown={(e) => { e.preventDefault(); cycleSize(-1); }}
-                className="h-8 w-8 flex items-center justify-center hover:bg-white/10 rounded-lg transition-colors"
-                title="Уменьшить"
-              >
-                <Minus className="w-4 h-4" />
-              </button>
-              {onConvertType && (
-                <Popover open={styleMenuOpen} onOpenChange={setStyleMenuOpen}>
-                  <PopoverTrigger asChild>
-                    <button
-                      onMouseDown={(e) => e.preventDefault()}
-                      className="h-7 px-2 flex items-center gap-1 hover:bg-white/10 rounded-lg transition-colors text-xs"
-                      title="Стиль"
-                    >
-                      <Type className="w-4 h-4" />
-                      <ChevronDown className="w-3 h-3 opacity-70" />
-                    </button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-44 p-1" align="start" onOpenAutoFocus={(e) => e.preventDefault()}>
-                    {styleMenuItems.map((item) => (
-                      <button
-                        key={item.type}
-                        onMouseDown={(e) => { e.preventDefault(); setBlockType(item.type); }}
-                        className="w-full flex items-center justify-between gap-2 px-2 py-1.5 rounded-md hover:bg-accent transition-colors text-left"
-                      >
-                        <span className={cn(item.preview)}>{item.label}</span>
-                        {currentBlockType === item.type && <Check className="w-4 h-4 text-primary" />}
-                      </button>
-                    ))}
-                  </PopoverContent>
-                </Popover>
-              )}
-              <button
-                onMouseDown={(e) => { e.preventDefault(); cycleSize(1); }}
-                className="h-8 w-8 flex items-center justify-center hover:bg-white/10 rounded-lg transition-colors"
-                title="Увеличить"
-              >
-                <Plus className="w-4 h-4" />
-              </button>
-              <div className="w-px h-6 bg-white/15 mx-0.5" />
-            </>
+          {/* Size − / Style T / Size + */}
+          <button
+            onMouseDown={(e) => { e.preventDefault(); cycleSize(-1); }}
+            className="h-9 w-9 flex items-center justify-center hover:bg-white/10 rounded-lg transition-colors"
+            title="Уменьшить"
+          >
+            <Minus className="w-[18px] h-[18px]" />
+          </button>
+          {onConvertType && (
+            <Popover open={styleMenuOpen} onOpenChange={setStyleMenuOpen}>
+              <PopoverTrigger asChild>
+                <button
+                  onMouseDown={(e) => e.preventDefault()}
+                  className="h-9 px-2 flex items-center gap-1 hover:bg-white/10 rounded-lg transition-colors"
+                  title="Стиль текста"
+                >
+                  <Type className="w-[18px] h-[18px]" />
+                  <ChevronDown className="w-3 h-3 opacity-70" />
+                </button>
+              </PopoverTrigger>
+              <PopoverContent className="w-48 p-1 bg-slate-800 border-white/10 text-white" align="center" onOpenAutoFocus={(e) => e.preventDefault()}>
+                {styleMenuItems.map((item) => (
+                  <button
+                    key={item.type}
+                    onMouseDown={(e) => { e.preventDefault(); setBlockType(item.type); }}
+                    className="w-full flex items-center justify-between gap-2 px-2 py-1.5 rounded-md hover:bg-white/10 transition-colors text-left"
+                  >
+                    <span className={cn(item.preview)}>{item.label}</span>
+                    {currentBlockType === item.type && <Check className="w-4 h-4 text-primary" />}
+                  </button>
+                ))}
+              </PopoverContent>
+            </Popover>
           )}
+          <button
+            onMouseDown={(e) => { e.preventDefault(); cycleSize(1); }}
+            className="h-9 w-9 flex items-center justify-center hover:bg-white/10 rounded-lg transition-colors"
+            title="Увеличить"
+          >
+            <Plus className="w-[18px] h-[18px]" />
+          </button>
+          <div className="w-px h-7 bg-white/15 mx-1" />
 
           {/* Inline formatting */}
           <button
             onMouseDown={(e) => { e.preventDefault(); execFormat('bold'); }}
-            className={cn("h-8 w-8 flex items-center justify-center rounded-lg transition-colors", activeFormats.bold ? "bg-primary text-primary-foreground" : "hover:bg-white/10")}
+            className={cn("h-9 w-9 flex items-center justify-center rounded-lg transition-colors", activeFormats.bold ? "bg-primary text-primary-foreground" : "hover:bg-white/10")}
             title="Жирный (Ctrl+B)"
           >
-            <Bold className="w-4 h-4" />
+            <Bold className="w-[18px] h-[18px]" />
           </button>
           <button
             onMouseDown={(e) => { e.preventDefault(); execFormat('italic'); }}
-            className={cn("h-8 w-8 flex items-center justify-center rounded-lg transition-colors", activeFormats.italic ? "bg-primary text-primary-foreground" : "hover:bg-white/10")}
+            className={cn("h-9 w-9 flex items-center justify-center rounded-lg transition-colors", activeFormats.italic ? "bg-primary text-primary-foreground" : "hover:bg-white/10")}
             title="Курсив (Ctrl+I)"
           >
-            <Italic className="w-4 h-4" />
+            <Italic className="w-[18px] h-[18px]" />
           </button>
           <button
             onMouseDown={(e) => { e.preventDefault(); toggleCode(); }}
-            className={cn("h-8 w-8 flex items-center justify-center rounded-lg transition-colors", activeFormats.code ? "bg-primary text-primary-foreground" : "hover:bg-white/10")}
+            className={cn("h-9 w-9 flex items-center justify-center rounded-lg transition-colors", activeFormats.code ? "bg-primary text-primary-foreground" : "hover:bg-white/10")}
             title="Код"
           >
-            <Code className="w-4 h-4" />
+            <Code className="w-[18px] h-[18px]" />
           </button>
           <button
             onMouseDown={(e) => { e.preventDefault(); execFormat('underline'); }}
-            className={cn("h-8 w-8 flex items-center justify-center rounded-lg transition-colors", activeFormats.underline ? "bg-primary text-primary-foreground" : "hover:bg-white/10")}
+            className={cn("h-9 w-9 flex items-center justify-center rounded-lg transition-colors", activeFormats.underline ? "bg-primary text-primary-foreground" : "hover:bg-white/10")}
             title="Подчёркнутый (Ctrl+U)"
           >
-            <Underline className="w-4 h-4" />
+            <Underline className="w-[18px] h-[18px]" />
           </button>
 
           {hasBlockControls && onConvertType && (
             <>
-              <div className="w-px h-6 bg-white/15 mx-0.5" />
+              <div className="w-px h-7 bg-white/15 mx-1" />
               {/* Lists */}
               <Popover open={listMenuOpen} onOpenChange={setListMenuOpen}>
                 <PopoverTrigger asChild>
                   <button
                     onMouseDown={(e) => e.preventDefault()}
-                    className="h-8 w-8 flex items-center justify-center hover:bg-white/10 rounded-lg transition-colors"
+                    className="h-9 w-9 flex items-center justify-center hover:bg-white/10 rounded-lg transition-colors"
                     title="Список"
                   >
-                    <List className="w-4 h-4" />
+                    <List className="w-[18px] h-[18px]" />
                   </button>
                 </PopoverTrigger>
                 <PopoverContent className="w-44 p-1" align="start" onOpenAutoFocus={(e) => e.preventDefault()}>
@@ -412,7 +439,7 @@ export function RichTextEditor({
 
           {hasBlockControls && onStyleUpdate && (
             <>
-              <div className="w-px h-6 bg-white/15 mx-0.5" />
+              <div className="w-px h-7 bg-white/15 mx-1" />
               {/* Alignment */}
               {([
                 { v: undefined, icon: AlignLeft, key: 'left', title: 'По левому краю' },
@@ -425,10 +452,10 @@ export function RichTextEditor({
                   <button
                     key={key}
                     onMouseDown={(e) => { e.preventDefault(); onStyleUpdate({ textAlign: v }); }}
-                    className={cn("h-8 w-8 flex items-center justify-center rounded-lg transition-colors", isActive ? "bg-primary text-primary-foreground" : "hover:bg-white/10")}
+                    className={cn("h-9 w-9 flex items-center justify-center rounded-lg transition-colors", isActive ? "bg-primary text-primary-foreground" : "hover:bg-white/10")}
                     title={title}
                   >
-                    <Icon className="w-4 h-4" />
+                    <Icon className="w-[18px] h-[18px]" />
                   </button>
                 );
               })}
@@ -439,10 +466,10 @@ export function RichTextEditor({
                 <PopoverTrigger asChild>
                   <button
                     onMouseDown={(e) => e.preventDefault()}
-                    className="h-8 w-8 flex items-center justify-center hover:bg-white/10 rounded-lg transition-colors"
+                    className="h-9 w-9 flex items-center justify-center hover:bg-white/10 rounded-lg transition-colors"
                     title="Цвет"
                   >
-                    <Palette className="w-4 h-4" />
+                    <Palette className="w-[18px] h-[18px]" />
                   </button>
                 </PopoverTrigger>
                 <PopoverContent className="w-60 p-3" align="start" onOpenAutoFocus={(e) => e.preventDefault()}>
@@ -493,10 +520,10 @@ export function RichTextEditor({
             <PopoverTrigger asChild>
               <button
                 onMouseDown={(e) => e.preventDefault()}
-                className="h-8 w-8 flex items-center justify-center hover:bg-white/10 rounded-lg transition-colors"
+                className="h-9 w-9 flex items-center justify-center hover:bg-white/10 rounded-lg transition-colors"
                 title="Ссылка"
               >
-                <Link2 className="w-4 h-4" />
+                <Link2 className="w-[18px] h-[18px]" />
               </button>
             </PopoverTrigger>
             <PopoverContent className="w-72 p-2" align="start" onOpenAutoFocus={(e) => e.preventDefault()}>

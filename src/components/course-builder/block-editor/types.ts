@@ -1,5 +1,5 @@
 import {
-  Type, Heading1, Heading2, List, ListOrdered, Quote,
+  Type, Heading1, Heading2, Heading3, Heading4, List, ListOrdered, Quote,
   AlertCircle, Lightbulb, HelpCircle, ChevronDown,
   Image as ImageIcon, Video, Headphones, Presentation,
   Minus, BookOpen, CheckCircle, XCircle, Highlighter,
@@ -9,6 +9,8 @@ export type BlockType =
   | "paragraph"
   | "heading1"
   | "heading2"
+  | "heading3"
+  | "heading4"
   | "bulletList"
   | "numberedList"
   | "quote"
@@ -86,6 +88,8 @@ export const blockTypeConfig: Record<BlockType, { icon: any; label: string; colo
   paragraph: { icon: Type, label: "Параграф", color: "text-foreground" },
   heading1: { icon: Heading1, label: "Заголовок 1", color: "text-foreground" },
   heading2: { icon: Heading2, label: "Заголовок 2", color: "text-foreground" },
+  heading3: { icon: Heading3, label: "Заголовок 3", color: "text-foreground" },
+  heading4: { icon: Heading4, label: "Заголовок 4", color: "text-foreground" },
   bulletList: { icon: List, label: "Маркированный список", color: "text-foreground" },
   numberedList: { icon: ListOrdered, label: "Нумерованный список", color: "text-foreground" },
   quote: { icon: Quote, label: "Цитата", color: "text-muted-foreground" },
@@ -166,9 +170,9 @@ export const blockCategories = {
   },
 };
 
-export const convertibleTypes: BlockType[] = ["paragraph", "heading1", "heading2", "bulletList", "numberedList", "quote", "callout-info", "callout-warning", "callout-tip", "callout-success", "callout-danger", "highlight", "accordion", "audio"];
+export const convertibleTypes: BlockType[] = ["paragraph", "heading1", "heading2", "heading3", "heading4", "bulletList", "numberedList", "quote", "callout-info", "callout-warning", "callout-tip", "callout-success", "callout-danger", "highlight", "accordion", "audio"];
 
-export const textStyleableTypes: BlockType[] = ["paragraph", "heading1", "heading2", "bulletList", "numberedList", "quote", "callout-info", "callout-warning", "callout-tip", "callout-success", "callout-danger", "highlight"];
+export const textStyleableTypes: BlockType[] = ["paragraph", "heading1", "heading2", "heading3", "heading4", "bulletList", "numberedList", "quote", "callout-info", "callout-warning", "callout-tip", "callout-success", "callout-danger", "highlight"];
 
 export const bgColorPresets = [
   { value: "", label: "Без фона", class: "" },
@@ -223,6 +227,10 @@ export const wrapCalloutTargets: { type: BlockType; icon: any; label: string; co
 
 export const wrapOtherTargets: { type: BlockType; icon: any; label: string; color: string }[] = [
   { type: "paragraph", icon: Type, label: "Обычный текст", color: "text-foreground" },
+  { type: "heading1", icon: Heading1, label: "Заголовок 1", color: "text-foreground" },
+  { type: "heading2", icon: Heading2, label: "Заголовок 2", color: "text-foreground" },
+  { type: "heading3", icon: Heading3, label: "Заголовок 3", color: "text-foreground" },
+  { type: "heading4", icon: Heading4, label: "Заголовок 4", color: "text-foreground" },
   { type: "accordion", icon: ChevronDown, label: "Сворачиваемая секция", color: "text-purple-500" },
   { type: "audio", icon: Headphones, label: "Аудио (TTS)", color: "text-teal-500" },
 ];
