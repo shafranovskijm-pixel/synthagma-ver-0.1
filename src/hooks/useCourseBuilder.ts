@@ -402,22 +402,22 @@ export function useCourseBuilder(propCourseId?: string) {
             const activeQuestions = lesson.questions.filter(q => !q.isDeleted);
             const toDelete = lesson.questions.filter(q => q.isDeleted && !q.isNew);
             for (const q of toDelete) {
-              testOps.push(supabase.from("test_questions").delete().eq("id", q.id));
+              testOps.push(Promise.resolve(supabase.from("test_questions").delete().eq("id", q.id)));
             }
             if (activeQuestions.length > 0) {
               const rows = activeQuestions.map((q, i) => ({ id: q.id, lesson_id: lesson.id, question: q.question.trim(), options: q.options.filter(o => o.text.trim()), correct_answer: q.correct_answer, order_index: i, explanation: q.explanation || null, image_url: q.image_url || null }));
-              testOps.push(supabase.from("test_questions").upsert(rows, { onConflict: "id" }));
+              testOps.push(Promise.resolve(supabase.from("test_questions").upsert(rows, { onConflict: "id" })));
             }
           }
           if (lesson.attachments && lesson.attachments.length > 0) {
             const toDelete = lesson.attachments.filter(a => a.isDeleted && !a.isNew);
             const toInsert = lesson.attachments.filter(a => a.isNew && !a.isDeleted);
             for (const a of toDelete) {
-              attachOps.push(supabase.from("lesson_attachments").delete().eq("id", a.id));
+              attachOps.push(Promise.resolve(supabase.from("lesson_attachments").delete().eq("id", a.id)));
             }
             if (toInsert.length > 0) {
               const rows = toInsert.map((a, i) => ({ id: a.id, lesson_id: lesson.id, name: a.name, file_url: a.file_url, file_type: a.file_type, file_size: a.file_size, category: a.category, order_index: i }));
-              attachOps.push(supabase.from("lesson_attachments").upsert(rows, { onConflict: "id" }));
+              attachOps.push(Promise.resolve(supabase.from("lesson_attachments").upsert(rows, { onConflict: "id" })));
             }
           }
         }
