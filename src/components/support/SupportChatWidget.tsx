@@ -458,6 +458,7 @@ function HomeView({
 function ChatView({
   onClose, onBack, messages, isLoading, status, input, setInput, handleSend, requestOperator,
   needsGuestInfo, setNeedsGuestInfo, guestName, setGuestName, guestContact, setGuestContact, endRef,
+  themeId, setThemeId, bgId, setBgId,
 }: {
   onClose: () => void;
   onBack: () => void;
@@ -475,19 +476,26 @@ function ChatView({
   guestContact: string;
   setGuestContact: (v: string) => void;
   endRef: React.RefObject<HTMLDivElement>;
+  themeId: import("@/hooks/useChatTheme").ChatThemeId;
+  setThemeId: (id: import("@/hooks/useChatTheme").ChatThemeId) => void;
+  bgId: ChatBgId;
+  setBgId: (id: ChatBgId) => void;
 }) {
   return (
     <>
-      {/* Compact header with stars */}
-      <div className="relative h-16 shrink-0 overflow-hidden bg-gradient-to-r from-primary to-[hsl(174_72%_32%)]">
-        <div className="absolute inset-0 opacity-40 pointer-events-none">
-          <StarfieldCanvas />
-        </div>
+      {/* Compact header with animated background */}
+      <div
+        className="relative h-16 shrink-0 overflow-hidden"
+        style={{
+          background: `linear-gradient(90deg, hsl(var(--chat-accent)), hsl(var(--chat-accent-dark)))`,
+        }}
+      >
+        <HeaderBackground bgId={bgId} />
         <div className="absolute inset-0 bg-gradient-to-b from-transparent to-black/10 pointer-events-none" />
         <div className="relative z-10 h-full flex items-center justify-between px-3">
           <button
             onClick={onBack}
-            className="h-8 w-8 flex items-center justify-center rounded-full text-white hover:bg-white/15 transition-colors"
+            className="relative z-20 h-8 w-8 flex items-center justify-center rounded-full text-white hover:bg-white/15 transition-colors"
             aria-label="Назад"
           >
             <ArrowLeft className="h-4 w-4" />
@@ -503,13 +511,16 @@ function ChatView({
               </p>
             </div>
           </div>
-          <button
-            onClick={onClose}
-            className="h-8 w-8 flex items-center justify-center rounded-full text-white hover:bg-white/15 transition-colors"
-            aria-label="Свернуть"
-          >
-            <ChevronDown className="h-4 w-4" />
-          </button>
+          <div className="relative z-20 flex items-center gap-1.5">
+            <ChatThemePicker themeId={themeId} setThemeId={setThemeId} bgId={bgId} setBgId={setBgId} />
+            <button
+              onClick={onClose}
+              className="h-8 w-8 flex items-center justify-center rounded-full text-white hover:bg-white/15 transition-colors"
+              aria-label="Свернуть"
+            >
+              <ChevronDown className="h-4 w-4" />
+            </button>
+          </div>
         </div>
       </div>
 
