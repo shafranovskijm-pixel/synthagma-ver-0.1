@@ -194,8 +194,8 @@ export function StarfieldCanvas() {
   }, [initStars, draw]);
 
   return (
-    <div ref={containerRef} className="absolute inset-0 z-0">
-      <canvas ref={canvasRef} className="absolute inset-0" />
+    <div ref={containerRef} className="absolute inset-0 z-0 pointer-events-none select-none" aria-hidden="true">
+      <canvas ref={canvasRef} className="absolute inset-0 pointer-events-none" />
     </div>
   );
 }
