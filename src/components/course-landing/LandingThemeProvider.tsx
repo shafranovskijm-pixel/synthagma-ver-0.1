@@ -97,9 +97,12 @@ export function LandingThemeProvider({ theme, accent, bare, className, style, ch
     [merged.decor, accentColor],
   );
 
+  const skin = getTemplateStyle(merged.template_id);
+
   return (
     <LandingThemeContext.Provider value={{ theme: merged, accent: accentColor }}>
       <div
+        data-template-skin={skin.dataSkin || undefined}
         className={cn(
           "relative",
           fontBodyClass[merged.font_body],
