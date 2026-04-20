@@ -1,6 +1,9 @@
 import type { LandingTemplate } from "./types";
 import { ALL_SECTIONS } from "@/hooks/useLandingEditor";
 import labHero from "@/assets/landing-templates/lab-hero.jpg";
+import labSectionBg from "@/assets/landing-templates/decor/lab-section.webp";
+import labPricingBg from "@/assets/landing-templates/decor/lab-pricing.webp";
+import labCtaBg from "@/assets/landing-templates/decor/lab-cta.webp";
 
 export const labTemplate: LandingTemplate = {
   id: "lab",
@@ -26,6 +29,11 @@ export const labTemplate: LandingTemplate = {
     reviews_layout: "masonry",
     benefits_layout: "icon-list",
     scheme: "dark",
+    section_bg_url: labSectionBg,
+    pricing_bg_url: labPricingBg,
+    cta_bg_url: labCtaBg,
+    // На тёмной теме overlay тёмный, чтобы фон-картинка проступала, но текст читался.
+    section_bg_overlay: 0.7,
   },
   data: {
     hero: {

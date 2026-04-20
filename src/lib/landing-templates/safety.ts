@@ -1,6 +1,9 @@
 import type { LandingTemplate } from "./types";
 import { ALL_SECTIONS } from "@/hooks/useLandingEditor";
 import safetyHero from "@/assets/landing-templates/safety-hero.jpg";
+import safetySectionBg from "@/assets/landing-templates/decor/safety-section.webp";
+import safetyPricingBg from "@/assets/landing-templates/decor/safety-pricing.webp";
+import safetyCtaBg from "@/assets/landing-templates/decor/safety-cta.webp";
 
 export const safetyTemplate: LandingTemplate = {
   id: "safety",
@@ -26,6 +29,10 @@ export const safetyTemplate: LandingTemplate = {
     reviews_layout: "cards",
     benefits_layout: "icon-list",
     scheme: "light",
+    section_bg_url: safetySectionBg,
+    pricing_bg_url: safetyPricingBg,
+    cta_bg_url: safetyCtaBg,
+    section_bg_overlay: 0.92,
   },
   data: {
     hero: {

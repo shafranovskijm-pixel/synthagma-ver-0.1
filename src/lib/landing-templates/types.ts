@@ -32,6 +32,16 @@ export interface LandingTheme {
   benefits_layout: "grid" | "icon-list";
   /** Цветовая схема секций — светлая (по умолчанию) или тёмная */
   scheme: "light" | "dark";
+  /**
+   * Тематические фоны секций. Опциональны — если не заданы, секции остаются на
+   * сплошном фоне без фоновой иллюстрации (обратная совместимость).
+   * Все картинки лежат в `src/assets/landing-templates/decor/` и подключаются через ES6 import.
+   */
+  section_bg_url?: string;
+  pricing_bg_url?: string;
+  cta_bg_url?: string;
+  /** Прозрачность overlay поверх фона секции (0–1). По умолчанию 0.85 для читаемости. */
+  section_bg_overlay?: number;
 }
 
 export const defaultLandingTheme: LandingTheme = {
