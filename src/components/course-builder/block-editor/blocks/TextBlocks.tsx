@@ -28,6 +28,7 @@ interface BlockAIProps {
   courseTitle?: string;
   lessonTitle?: string;
   existingContent?: string;
+  blockCtrlProps?: Record<string, any>;
 }
 
 export function ParagraphBlock({ block, onUpdate, courseTitle, lessonTitle, existingContent, editorStyleClasses }: BlockAIProps & { editorStyleClasses: string }) {
