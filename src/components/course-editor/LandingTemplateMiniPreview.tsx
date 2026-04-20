@@ -51,6 +51,8 @@ export function LandingTemplateMiniPreview({
 
   const data = template.data as Partial<LandingData>;
   const accentColor = template.accent_color || courseAccentColor || null;
+  // Шаблон может иметь собственную обложку — она имеет приоритет в превью карточки.
+  const effectiveCoverUrl = template.cover_image_url ?? coverImageUrl;
   const order = data.sections_order ?? ALL_SECTIONS;
   const hidden = new Set(data.sections_hidden ?? []);
 
@@ -89,7 +91,7 @@ export function LandingTemplateMiniPreview({
             subtitle={data.hero?.subtitle ?? ""}
             orgName={orgName}
             backgroundUrl={data.hero?.background_url ?? null}
-            coverImageUrl={coverImageUrl}
+            coverImageUrl={effectiveCoverUrl}
             accentColor={accentColor}
             price={price}
             showPrice={data.hero?.show_price ?? true}

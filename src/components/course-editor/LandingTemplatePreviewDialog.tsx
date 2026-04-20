@@ -63,6 +63,7 @@ export function LandingTemplatePreviewDialog({
 
   const data = template.data as Partial<LandingData>;
   const accentColor = template.accent_color || courseAccentColor || null;
+  const effectiveCoverUrl = template.cover_image_url ?? coverImageUrl;
   const order = data.sections_order ?? ALL_SECTIONS;
   const hidden = new Set(data.sections_hidden ?? []);
 
@@ -78,7 +79,7 @@ export function LandingTemplatePreviewDialog({
             subtitle={data.hero?.subtitle ?? ""}
             orgName={orgName}
             backgroundUrl={data.hero?.background_url ?? null}
-            coverImageUrl={coverImageUrl}
+            coverImageUrl={effectiveCoverUrl}
             accentColor={accentColor}
             price={price}
             showPrice={data.hero?.show_price ?? true}
