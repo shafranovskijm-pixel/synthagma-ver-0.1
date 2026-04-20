@@ -48,9 +48,9 @@ type GroupKey = "editor" | "students" | "page" | "settings";
 
 const TAB_GROUPS: { key: GroupKey; label: string; icon: any; subTabs: CourseTabKey[] }[] = [
   { key: "editor",   label: "Конструктор",     icon: Edit,     subTabs: [] },
-  { key: "students", label: "Ученики",         icon: Users,    subTabs: ["students", "requests", "groups", "history", "achievements", "reminders"] },
+  { key: "students", label: "Ученики",         icon: Users,    subTabs: ["students", "requests", "groups", "history", "tests", "achievements", "reminders"] },
   { key: "page",     label: "Страница курса",  icon: Globe,    subTabs: ["landing", "preview", "materials"] },
-  { key: "settings", label: "Настройки",       icon: Settings, subTabs: ["settings", "tests"] },
+  { key: "settings", label: "Настройки",       icon: Settings, subTabs: ["settings"] },
 ];
 
 const SUB_TAB_META: Record<CourseTabKey, { label: string; icon: any; description?: string }> = {
@@ -65,7 +65,7 @@ const SUB_TAB_META: Record<CourseTabKey, { label: string; icon: any; description
   preview:      { label: "Просмотр",      icon: Eye },
   materials:    { label: "Материалы",     icon: FileText },
   settings:     { label: "Настройки",     icon: Settings },
-  tests:        { label: "Тесты",         icon: CheckSquare },
+  tests:        { label: "Результаты тестов", icon: CheckSquare, description: "Отчёт по результатам тестирования учеников" },
 };
 
 function getGroupForTab(tab: CourseTabKey): GroupKey {
