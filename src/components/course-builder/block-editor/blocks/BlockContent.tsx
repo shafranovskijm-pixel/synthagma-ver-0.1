@@ -6,6 +6,11 @@ import { ParagraphBlock, QuoteBlock, CalloutBlock, HighlightBlock, AccordionBloc
 import { QuizBlock } from "./QuizBlock";
 import { ImageBlock, VideoBlock, AudioBlock, DocumentBlock } from "./MediaBlocks";
 import { SliderBlock } from "./SliderBlock";
+import { TableBlock } from "./TableBlock";
+import { ButtonBlock } from "./ButtonBlock";
+import { EmbedBlock } from "./EmbedBlock";
+import { CodeBlock } from "./CodeBlock";
+import { FormulaBlock } from "./FormulaBlock";
 
 export function BlockContent({ block, onUpdate, courseTitle, lessonTitle, existingContent, organizationId, courseId, lessonId, presets, onPresetsChange }: { block: ContentBlock; onUpdate: (updates: Partial<ContentBlock>) => void; courseTitle?: string; lessonTitle?: string; existingContent?: string; organizationId?: string; courseId?: string; lessonId?: string; presets?: { name: string; style: StylePreset }[]; onPresetsChange?: (p: { name: string; style: StylePreset }[]) => void }) {
   const editorStyleClasses = (() => {
@@ -75,6 +80,11 @@ export function BlockContent({ block, onUpdate, courseTitle, lessonTitle, existi
     case "audio": return <AudioBlock block={block} onUpdate={onUpdate} />;
     case "slider": return <SliderBlock block={block} onUpdate={onUpdate} />;
     case "document": return <DocumentBlock block={block} onUpdate={onUpdate} />;
+    case "table": return <TableBlock block={block} onUpdate={onUpdate} />;
+    case "button": return <ButtonBlock block={block} onUpdate={onUpdate} />;
+    case "embed": return <EmbedBlock block={block} onUpdate={onUpdate} />;
+    case "code": return <CodeBlock block={block} onUpdate={onUpdate} />;
+    case "formula": return <FormulaBlock block={block} onUpdate={onUpdate} />;
     case "divider": return <div className="py-4"><hr className="border-border" /></div>;
     default: return null;
   }
