@@ -33,11 +33,21 @@ export function BlockContent({ block, onUpdate, courseTitle, lessonTitle, existi
     return classes.join(' ');
   })();
 
+  const blockCtrlProps = {
+    onConvertType: (type: any) => onUpdate({ type }),
+    onStyleUpdate: (updates: any) => onUpdate(updates),
+    currentBlockType: block.type,
+    currentTextAlign: block.textAlign,
+    currentTextColor: block.textColor,
+    currentBgColor: block.bgColor,
+    currentTextSize: block.textSize,
+  };
+
   switch (block.type) {
     case "paragraph": return <ParagraphBlock block={block} onUpdate={onUpdate} courseTitle={courseTitle} lessonTitle={lessonTitle} existingContent={existingContent} editorStyleClasses={editorStyleClasses} />;
-    case "heading1": return <RichTextEditor value={block.content} onChange={(val) => onUpdate({ content: val })} placeholder="Заголовок 1" className={cn("text-2xl font-bold", editorStyleClasses)} minHeight="40px" />;
-    case "heading2": return <RichTextEditor value={block.content} onChange={(val) => onUpdate({ content: val })} placeholder="Заголовок 2" className={cn("text-xl font-semibold", editorStyleClasses)} minHeight="36px" />;
-    case "bulletList": case "numberedList": return <div className={cn("space-y-1 py-2", editorStyleClasses)}><RichTextEditor value={(block.content || "").replace(/<\/?li>/gi, "")} onChange={(val) => onUpdate({ content: val })} placeholder="Элемент списка (каждая строка — отдельный пункт)" className="text-sm" minHeight="60px" /></div>;
+    case "heading1": return <RichTextEditor {...blockCtrlProps} value={block.content} onChange={(val) => onUpdate({ content: val })} placeholder="Заголовок 1" className={cn("text-2xl font-bold", editorStyleClasses)} minHeight="40px" />;
+    case "heading2": return <RichTextEditor {...blockCtrlProps} value={block.content} onChange={(val) => onUpdate({ content: val })} placeholder="Заголовок 2" className={cn("text-xl font-semibold", editorStyleClasses)} minHeight="36px" />;
+    case "bulletList": case "numberedList": return <div className={cn("space-y-1 py-2", editorStyleClasses)}><RichTextEditor {...blockCtrlProps} value={(block.content || "").replace(/<\/?li>/gi, "")} onChange={(val) => onUpdate({ content: val })} placeholder="Элемент списка (каждая строка — отдельный пункт)" className="text-sm" minHeight="60px" /></div>;
     case "quote": return <QuoteBlock block={block} onUpdate={onUpdate} courseTitle={courseTitle} lessonTitle={lessonTitle} existingContent={existingContent} />;
     case "callout-info": case "callout-warning": case "callout-tip": case "callout-success": case "callout-danger": return <CalloutBlock block={block} onUpdate={onUpdate} courseTitle={courseTitle} lessonTitle={lessonTitle} existingContent={existingContent} />;
     case "highlight": return <HighlightBlock block={block} onUpdate={onUpdate} courseTitle={courseTitle} lessonTitle={lessonTitle} existingContent={existingContent} />;
