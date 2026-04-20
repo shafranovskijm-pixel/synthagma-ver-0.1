@@ -29,6 +29,7 @@ const CoursePreviewView = lazy(() => import("@/components/course-preview/CourseP
 interface Course {
   id: string; title: string; description: string | null; is_published: boolean; created_at: string;
   lessonsCount?: number; studentsCount?: number; duration?: string; category_id?: string | null;
+  cover_image_url?: string | null;
   skip_video_identification?: boolean; sequential_lessons?: boolean; allow_video_seek?: boolean;
   training_form?: string | null; retraining_period_months?: number | null;
   frdo_program_type?: string | null; frdo_document_type?: string | null; frdo_professional_area?: string | null;
@@ -39,14 +40,49 @@ interface Course {
 
 interface Student { id: string; user_id: string; enrollment_id: string | null; name: string; email: string; progress: number; status: string | null; }
 
-interface CourseDetailsContentProps {
-  course: Course; courseStudents: Student[]; organizationId: string | null;
-  activeTab: "students" | "materials" | "history" | "tests" | "landing" | "settings" | "reminders" | "groups" | "requests" | "achievements" | "editor" | "preview";
-  onTabChange: (tab: CourseDetailsContentProps["activeTab"]) => void;
-  onEnrollStudent: () => void; onCourseDeleted?: () => void; onCourseUpdated?: () => void; onRefreshStudents?: () => void;
+type CourseTabKey = "students" | "materials" | "history" | "tests" | "landing" | "settings" | "reminders" | "groups" | "requests" | "achievements" | "editor" | "preview";
+
+type GroupKey = "editor" | "students" | "page" | "settings";
+
+const TAB_GROUPS: { key: GroupKey; label: string; icon: any; subTabs: CourseTabKey[] }[] = [
+  { key: "editor",   label: "Конструктор",     icon: Edit,     subTabs: [] },
+  { key: "students", label: "Ученики",         icon: Users,    subTabs: ["students", "requests", "groups", "history", "achievements", "reminders"] },
+  { key: "page",     label: "Страница курса",  icon: Globe,    subTabs: ["landing", "preview", "materials"] },
+  { key: "settings", label: "Настройки",       icon: Settings, subTabs: ["settings", "tests"] },
+];
+
+const SUB_TAB_META: Record<CourseTabKey, { label: string; icon: any }> = {
+  editor:       { label: "Конструктор",   icon: Edit },
+  students:     { label: "Ученики",       icon: Users },
+  requests:     { label: "Заявки",        icon: ClipboardCheck },
+  groups:       { label: "Группы",        icon: Users },
+  history:      { label: "История",       icon: History },
+  achievements: { label: "Достижения",    icon: Trophy },
+  reminders:    { label: "Напоминания",   icon: Bell },
+  landing:      { label: "Страница курса",icon: Globe },
+  preview:      { label: "Просмотр",      icon: Eye },
+  materials:    { label: "Материалы",     icon: FileText },
+  settings:     { label: "Настройки",     icon: Settings },
+  tests:        { label: "Тесты",         icon: CheckSquare },
+};
+
+function getGroupForTab(tab: CourseTabKey): GroupKey {
+  for (const g of TAB_GROUPS) {
+    if (g.key === "editor" && tab === "editor") return "editor";
+    if (g.subTabs.includes(tab)) return g.key;
+  }
+  return "editor";
 }
 
-export function CourseDetailsContent({ course, courseStudents, organizationId, activeTab, onTabChange, onEnrollStudent, onCourseDeleted, onCourseUpdated, onRefreshStudents }: CourseDetailsContentProps) {
+interface CourseDetailsContentProps {
+  course: Course; courseStudents: Student[]; organizationId: string | null;
+  activeTab: CourseTabKey;
+  onTabChange: (tab: CourseTabKey) => void;
+  onEnrollStudent: () => void; onCourseDeleted?: () => void; onCourseUpdated?: () => void; onRefreshStudents?: () => void;
+  onBack?: () => void;
+}
+
+export function CourseDetailsContent({ course, courseStudents, organizationId, activeTab, onTabChange, onEnrollStudent, onCourseDeleted, onCourseUpdated, onRefreshStudents, onBack }: CourseDetailsContentProps) {
   const { isEnabled } = useOrgFeatures(organizationId);
   const isFrdoEnabled = isEnabled('frdo');
   const h = useCourseDetails(course, courseStudents, organizationId, onCourseUpdated, onRefreshStudents, onCourseDeleted);
