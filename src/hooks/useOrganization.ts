@@ -104,11 +104,27 @@ export function useOrganization(): UseOrganizationReturn {
         let orgId: string | null = null;
 
         if (adminViewData) {
-          const adminView = JSON.parse(adminViewData);
-          orgId = adminView.id;
-          setAdminViewOrgId(adminView.id);
-          setOrganizationName(adminView.name);
-          setIsAdminView(true);
+          // Verify the current user actually has admin role before trusting the localStorage flag.
+          // This prevents non-admin users from spoofing admin-only UI (e.g. "Перенести в другую организацию").
+          const { data: isAdmin } = await supabase.rpc('has_role', {
+            _role: 'admin',
+            _user_id: user.id,
+          });
+
+          if (isAdmin) {
+            const adminView = JSON.parse(adminViewData);
+            orgId = adminView.id;
+            setAdminViewOrgId(adminView.id);
+            setOrganizationName(adminView.name);
+            setIsAdminView(true);
+          } else {
+            // Not actually an admin — clear the spoofed flag and fall back to normal flow.
+            localStorage.removeItem("adminViewAsOrg");
+            const result = await fetchOrganizationByUserId(user.id);
+            orgId = result.organizationId;
+            setOrganizationName(result.organizationName);
+            setIsFrdoEnabled(result.isFrdoEnabled);
+          }
         } else {
           const result = await fetchOrganizationByUserId(user.id);
           orgId = result.organizationId;
