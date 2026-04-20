@@ -1,6 +1,6 @@
 import { Bot, Headset, ChevronDown, Pencil, Send, ExternalLink } from "lucide-react";
 import { SigmaLogo } from "@/components/ui/SigmaLogo";
-import { ChatThemePicker } from "@/components/support/ChatThemePicker";
+
 import { HeaderBackground } from "@/components/support/HeaderBackground";
 import { VersionFooter } from "@/components/support/VersionFooter";
 import { useChatTheme } from "@/hooks/useChatTheme";
@@ -31,7 +31,6 @@ export function HomeView({ onClose, onWrite, hasHistory, messages, status }: Pro
         <div className="absolute inset-0 bg-gradient-to-b from-black/10 via-transparent to-black/30 pointer-events-none" />
 
         <div className="absolute top-3 right-3 z-20 flex items-center gap-2">
-          <ChatThemePicker />
           <button
             type="button"
             onClick={(e) => {
