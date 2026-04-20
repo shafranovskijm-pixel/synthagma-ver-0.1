@@ -99,14 +99,28 @@ export function RichTextEditor({
     }
   }, [value]);
 
+  const normalizeLineBreaks = useCallback((html: string): string => {
+    if (!html) return html;
+    let out = html;
+    // Boundaries between block containers → <br>
+    out = out.replace(/<\/(?:div|p)>\s*<(?:div|p)(?:\s[^>]*)?>/gi, '<br>');
+    // Strip remaining opening/closing div & p tags (keep inner text)
+    out = out.replace(/<(?:div|p)(?:\s[^>]*)?>/gi, '');
+    out = out.replace(/<\/(?:div|p)>/gi, '');
+    // Collapse 3+ consecutive <br> into 2
+    out = out.replace(/(?:<br\s*\/?>\s*){3,}/gi, '<br><br>');
+    return out;
+  }, []);
+
   const handleInput = useCallback(() => {
     const el = editorRef.current;
     if (!el) return;
     isInternalChange.current = true;
     const raw = el.innerHTML;
-    lastEmittedHtml.current = raw;
-    onChange(raw);
-  }, [onChange]);
+    const normalized = normalizeLineBreaks(raw);
+    lastEmittedHtml.current = normalized;
+    onChange(normalized);
+  }, [onChange, normalizeLineBreaks]);
 
   const handlePaste = useCallback((e: React.ClipboardEvent) => {
     e.preventDefault();
@@ -135,7 +149,7 @@ export function RichTextEditor({
     const afterLinkify = linkify(before);
     const cleaned = sanitize(afterLinkify);
 
-    const normalized = cleaned.replace(
+    const normalized = normalizeLineBreaks(cleaned.replace(
       /<a\s+([^>]*?)>/gi,
       (_match, attrs: string) => {
         let href = '';
@@ -144,7 +158,7 @@ export function RichTextEditor({
         if (!href) return _match;
         return `<a href="${href}" target="_blank" rel="noopener noreferrer">`;
       }
-    );
+    ));
 
     if (normalized !== before) {
       const sel = window.getSelection();
@@ -161,7 +175,7 @@ export function RichTextEditor({
     lastEmittedHtml.current = el.innerHTML;
     isInternalChange.current = true;
     onChange(el.innerHTML);
-  }, [onChange, styleMenuOpen, listMenuOpen, paletteOpen, linkOpen, convertOpen, advancedOpen]);
+  }, [onChange, styleMenuOpen, listMenuOpen, paletteOpen, linkOpen, convertOpen, advancedOpen, normalizeLineBreaks]);
 
   const updateActiveFormats = useCallback(() => {
     try {
