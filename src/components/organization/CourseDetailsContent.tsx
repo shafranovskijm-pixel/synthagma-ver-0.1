@@ -53,14 +53,14 @@ const TAB_GROUPS: { key: GroupKey; label: string; icon: any; subTabs: CourseTabK
   { key: "settings", label: "Настройки",       icon: Settings, subTabs: ["settings", "tests"] },
 ];
 
-const SUB_TAB_META: Record<CourseTabKey, { label: string; icon: any }> = {
+const SUB_TAB_META: Record<CourseTabKey, { label: string; icon: any; description?: string }> = {
   editor:       { label: "Конструктор",   icon: Edit },
-  students:     { label: "Ученики",       icon: Users },
-  requests:     { label: "Заявки",        icon: ClipboardCheck },
-  groups:       { label: "Группы",        icon: Users },
-  history:      { label: "История",       icon: History },
-  achievements: { label: "Достижения",    icon: Trophy },
-  reminders:    { label: "Напоминания",   icon: Bell },
+  students:     { label: "Ученики",       icon: Users,          description: "Список зачисленных, прогресс и управление доступом" },
+  requests:     { label: "Заявки",        icon: ClipboardCheck, description: "Запросы на запись, ожидающие подтверждения" },
+  groups:       { label: "Группы",        icon: Users,          description: "Группировка учеников по потокам и датам" },
+  history:      { label: "История",       icon: History,        description: "Хронология зачислений, завершений и отчислений" },
+  achievements: { label: "Достижения",    icon: Trophy,         description: "Награды и медали, выдаваемые на этом курсе" },
+  reminders:    { label: "Напоминания",   icon: Bell,           description: "Автоматические письма о сроках переаттестации" },
   landing:      { label: "Страница курса",icon: Globe },
   preview:      { label: "Просмотр",      icon: Eye },
   materials:    { label: "Материалы",     icon: FileText },
