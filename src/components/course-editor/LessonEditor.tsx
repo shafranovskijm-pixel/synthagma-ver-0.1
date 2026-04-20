@@ -478,6 +478,8 @@ export const LessonEditor = ({
         videoUrl={e.videoUrl}
         questions={e.questions}
       />
+
+      <LessonSearchPanel open={searchOpen} onClose={() => setSearchOpen(false)} blocks={e.blocks} />
     </>
   );
 };
