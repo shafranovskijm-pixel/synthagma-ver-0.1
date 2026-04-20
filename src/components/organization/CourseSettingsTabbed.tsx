@@ -31,6 +31,7 @@ import {
   FRDO_TRAINING_FORMS,
   type CourseFRDOSettings,
 } from "@/constants/frdo";
+import { ModuleAccessSchedule } from "./ModuleAccessSchedule";
 
 type SettingsSubTab = "general" | "access" | "frdo";
 
@@ -38,6 +39,7 @@ interface CourseSettingsTabbedProps {
   course: { id: string };
   isFrdoEnabled: boolean;
   isSavingSettings: boolean;
+  courseStudents?: Array<{ id?: string; user_id?: string; name?: string; full_name?: string; email?: string }>;
   skipVideoId: boolean;
   onToggleSkipVideoId: (v: boolean) => void;
   sequentialLessons: boolean;
@@ -71,6 +73,7 @@ const tabs: { value: SettingsSubTab; label: string; icon: React.ElementType }[] 
 export function CourseSettingsTabbed(props: CourseSettingsTabbedProps) {
   const [subTab, setSubTab] = useState<SettingsSubTab>("general");
   const {
+    course, courseStudents = [],
     isFrdoEnabled, isSavingSettings,
     skipVideoId, onToggleSkipVideoId,
     sequentialLessons, onToggleSequentialLessons,
@@ -174,6 +177,10 @@ export function CourseSettingsTabbed(props: CourseSettingsTabbedProps) {
             <SettingRow icon={ClipboardCheck} iconColor="bg-orange-500/10 text-orange-500" label="Запись по заявке" desc="Студенты отправляют заявку вместо автоматической записи. Вы получите уведомление для подтверждения">
               <Switch checked={requireEnrollmentApproval} onCheckedChange={onToggleRequireEnrollmentApproval} disabled={isSavingSettings} />
             </SettingRow>
+          </div>
+
+          <div className="bg-secondary/30 rounded-xl p-4">
+            <ModuleAccessSchedule courseId={course.id} courseStudents={courseStudents} />
           </div>
         </div>
       )}
