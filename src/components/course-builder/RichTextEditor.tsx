@@ -182,9 +182,12 @@ export function RichTextEditor({
     savedRange.current = range.cloneRange();
     const rect = range.getBoundingClientRect();
     const editorRect = editor.getBoundingClientRect();
+    // Position toolbar in the LEFT GUTTER (same column as the "+" button on the left of the block).
+    // Vertical: aligned with the selected text line (not below).
+    // Horizontal: shifted left into the gutter zone (-52px from editor left edge).
     setToolbarPos({
-      top: rect.bottom - editorRect.top + 8,
-      left: 0,
+      top: rect.top - editorRect.top - 4,
+      left: -52,
     });
     setShowToolbar(true);
     updateActiveFormats();
