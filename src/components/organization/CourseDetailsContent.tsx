@@ -273,46 +273,66 @@ export function CourseDetailsContent({ course, courseStudents, organizationId, a
       )}
 
       {/* Content panel — split layout for students group, full-width for others */}
-      {showSubTabs && activeGroup === "students" ? (
-        <div className="flex-1 min-w-0 grid grid-cols-1 md:grid-cols-[260px_1fr] gap-4 p-6">
-          {/* Vertical sub-nav with hints */}
-          <aside className="space-y-1.5">
-            {currentGroupDef!.subTabs.map(st => {
-              const meta = SUB_TAB_META[st];
-              const Icon = meta.icon;
-              const isActive = activeTab === st;
-              return (
-                <button
-                  key={st}
-                  onClick={() => onTabChange(st)}
-                  className={cn(
-                    "w-full text-left flex items-start gap-3 px-3 py-3 rounded-xl transition-all border",
-                    isActive
-                      ? "bg-primary/10 border-primary/30 text-foreground shadow-sm"
-                      : "bg-card/40 border-border/40 hover:border-border hover:bg-card text-foreground"
-                  )}
-                >
-                  <div className={cn(
-                    "shrink-0 w-9 h-9 rounded-lg flex items-center justify-center transition-colors",
-                    isActive ? "bg-primary/20 text-primary" : "bg-muted text-muted-foreground"
-                  )}>
-                    <Icon className="w-4 h-4" />
-                  </div>
-                  <div className="min-w-0 flex-1 pt-0.5">
-                    <div className={cn("text-sm font-medium leading-tight", isActive && "text-primary")}>{meta.label}</div>
-                    {meta.description && (
-                      <div className="text-[11px] text-muted-foreground leading-snug mt-0.5">{meta.description}</div>
+      {showSubTabs && activeGroup === "students" && (
+        <div className="mb-2 px-6">
+          <div className="grid grid-cols-1 md:grid-cols-[260px_1fr] gap-4">
+            <aside className="space-y-1.5">
+              {currentGroupDef!.subTabs.map(st => {
+                const meta = SUB_TAB_META[st];
+                const Icon = meta.icon;
+                const isActive = activeTab === st;
+                return (
+                  <button
+                    key={st}
+                    onClick={() => onTabChange(st)}
+                    className={cn(
+                      "w-full text-left flex items-start gap-3 px-3 py-3 rounded-xl transition-all border",
+                      isActive
+                        ? "bg-primary/10 border-primary/30 shadow-sm"
+                        : "bg-card/40 border-border/40 hover:border-border hover:bg-card"
                     )}
-                  </div>
-                </button>
-              );
-            })}
-          </aside>
-          <div className="min-w-0">
-            <StudentsGroupContent activeTab={activeTab} h={h} courseStudents={courseStudents} course={course} organizationId={organizationId} onRefreshStudents={onRefreshStudents} supabase={supabase} onCourseUpdated={onCourseUpdated} />
+                  >
+                    <div className={cn(
+                      "shrink-0 w-9 h-9 rounded-lg flex items-center justify-center transition-colors",
+                      isActive ? "bg-primary/20 text-primary" : "bg-muted text-muted-foreground"
+                    )}>
+                      <Icon className="w-4 h-4" />
+                    </div>
+                    <div className="min-w-0 flex-1 pt-0.5">
+                      <div className={cn("text-sm font-medium leading-tight", isActive && "text-primary")}>{meta.label}</div>
+                      {meta.description && (
+                        <div className="text-[11px] text-muted-foreground leading-snug mt-0.5">{meta.description}</div>
+                      )}
+                    </div>
+                  </button>
+                );
+              })}
+            </aside>
+            <div className="min-w-0">
+              {activeTab === "students" && <StudentsSection h={h} courseStudents={courseStudents} />}
+              {activeTab === "requests" && <EnrollmentRequestsTab courseId={course.id} defaultAccessDays={h.defaultAccessDays} onRefreshStudents={onRefreshStudents} />}
+              {activeTab === "history" && <EnrollmentHistory courseId={course.id} organizationId={organizationId || ""} courseName={course.title} />}
+              {activeTab === "groups" && <CourseGroupsTab courseId={course.id} organizationId={organizationId || ""} onRefreshStudents={onRefreshStudents} />}
+              {activeTab === "achievements" && organizationId && <CourseAchievementsTab courseId={course.id} organizationId={organizationId} />}
+              {activeTab === "reminders" && (
+                <CourseRemindersTab courseId={course.id} organizationId={organizationId || ""}
+                  retrainingPeriodMonths={h.retrainingPeriod}
+                  reminderAdvanceDays={h.reminderAdvanceDays}
+                  onPeriodChange={async (months) => { h.setRetrainingPeriod(months); await h.updateCourseSetting("retraining_period_months", months, months ? `Периодичность: ${months} мес.` : "Периодичность отключена"); }}
+                  onAdvanceDaysChange={async (days) => { h.setReminderAdvanceDays(days); await h.updateCourseSetting("reminder_advance_days", days, `Напоминание за ${days} дней`); }}
+                  notifyOnCompletion={h.notifyOnCompletion}
+                  completionNotifyEmails={h.completionNotifyEmails}
+                  onNotifyOnCompletionChange={async (v) => { h.setNotifyOnCompletion(v); await h.updateCourseSetting("notify_on_completion", v, v ? "Уведомления включены" : "Уведомления отключены"); }}
+                  onCompletionNotifyEmailsChange={async (v) => { h.setCompletionNotifyEmails(v || null); try { const { error } = await supabase.from("courses").update({ completion_notify_emails: v || null } as any).eq("id", course.id); if (error) throw error; onCourseUpdated?.(); } catch (e) { console.error(e); } }}
+                />
+              )}
+            </div>
           </div>
         </div>
-      ) : (
+      )}
+
+      {/* Content panel for non-students groups */}
+      {!(showSubTabs && activeGroup === "students") && (
         <div className={cn("flex-1 min-w-0", activeTab === "editor" ? "" : "p-6")}>
           {activeTab === "students" && <StudentsSection h={h} courseStudents={courseStudents} />}
         {activeTab === "requests" && <EnrollmentRequestsTab courseId={course.id} defaultAccessDays={h.defaultAccessDays} onRefreshStudents={onRefreshStudents} />}
