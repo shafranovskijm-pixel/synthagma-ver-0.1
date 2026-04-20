@@ -245,10 +245,15 @@ export function SupportChatWidget() {
           onClick={() => setOpen(true)}
           className={cn(
             "fixed bottom-6 right-6 z-40 flex h-14 w-14 items-center justify-center rounded-full",
-            "bg-gradient-to-br from-primary to-primary/70 text-primary-foreground shadow-2xl shadow-primary/30",
-            "hover:scale-105 transition-all duration-300",
-            "ring-4 ring-primary/15 hover:ring-primary/25"
+            "text-white shadow-2xl",
+            "hover:scale-105 transition-all duration-300 ring-4"
           )}
+          style={{
+            background: `linear-gradient(135deg, hsl(${theme.accent}), hsl(${theme.accentDark}))`,
+            boxShadow: `0 10px 30px -8px hsl(${theme.accent} / 0.5)`,
+            // @ts-expect-error CSS var
+            "--tw-ring-color": `hsl(${theme.accent} / 0.18)`,
+          }}
           aria-label="Открыть чат поддержки"
         >
           <MessageCircle className="h-6 w-6" />
@@ -257,7 +262,10 @@ export function SupportChatWidget() {
               {unread > 9 ? '9+' : unread}
             </span>
           )}
-          <span className="absolute inset-0 rounded-full animate-ping bg-primary/20 pointer-events-none" />
+          <span
+            className="absolute inset-0 rounded-full animate-ping pointer-events-none"
+            style={{ background: `hsl(${theme.accent} / 0.2)` }}
+          />
         </button>
       )}
 
@@ -267,9 +275,14 @@ export function SupportChatWidget() {
           className={cn(
             "fixed z-50 flex flex-col overflow-hidden bg-card animate-scale-in",
             "inset-0 sm:inset-auto",
-            "sm:bottom-6 sm:right-6 sm:w-[380px] sm:h-[580px] sm:rounded-3xl sm:shadow-2xl sm:shadow-primary/10"
+            "sm:bottom-6 sm:right-6 sm:w-[380px] sm:h-[580px] sm:rounded-3xl sm:shadow-2xl"
           )}
-          style={{ boxShadow: '0 20px 60px -10px hsl(var(--primary) / 0.25), 0 8px 24px -8px hsl(0 0% 0% / 0.15)' }}
+          style={{
+            boxShadow: `0 20px 60px -10px hsl(${theme.accent} / 0.3), 0 8px 24px -8px hsl(0 0% 0% / 0.15)`,
+            // @ts-expect-error CSS vars
+            "--chat-accent": theme.accent,
+            "--chat-accent-dark": theme.accentDark,
+          }}
         >
           {view === 'home' ? (
             <HomeView
@@ -278,6 +291,10 @@ export function SupportChatWidget() {
               hasHistory={messages.length > 0}
               messages={messages}
               status={status}
+              themeId={themeId}
+              setThemeId={setThemeId}
+              bgId={bgId}
+              setBgId={setBgId}
             />
           ) : (
             <ChatView
@@ -297,6 +314,10 @@ export function SupportChatWidget() {
               guestContact={guestContact}
               setGuestContact={setGuestContact}
               endRef={endRef}
+              themeId={themeId}
+              setThemeId={setThemeId}
+              bgId={bgId}
+              setBgId={setBgId}
             />
           )}
         </div>
