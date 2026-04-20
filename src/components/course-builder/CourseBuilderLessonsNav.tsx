@@ -5,9 +5,17 @@ import { CSS } from "@dnd-kit/utilities";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
-import { GripVertical, Menu, FileText, ArrowLeft } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuLabel,
+} from "@/components/ui/dropdown-menu";
+import { GripVertical, Menu, FileText, ArrowLeft, Plus, Video, CheckSquare, Presentation, Headphones, MessageSquare, BookCheck, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { lessonIcons, lessonColors, type Lesson } from "@/components/course-builder/LessonTypeConfig";
+import { lessonIcons, lessonColors, type Lesson, type LessonType } from "@/components/course-builder/LessonTypeConfig";
 
 interface Props {
   lessons: Lesson[];
@@ -19,6 +27,8 @@ interface Props {
   backLabel?: string;
   /** When true, sidebar uses embedded offsets (no global header above) */
   embedded?: boolean;
+  onAddLesson?: (type: LessonType) => void;
+  onOpenAIDialog?: () => void;
 }
 
 function SortableNavRow({
@@ -71,7 +81,73 @@ function SortableNavRow({
   );
 }
 
-function NavList({ lessons, activeLessonId, sensors, onDragEnd, onLessonClick, onBack, backLabel }: Props) {
+function AddLessonButton({
+  onAddLesson,
+  onOpenAIDialog,
+  afterAction,
+}: {
+  onAddLesson?: (type: LessonType) => void;
+  onOpenAIDialog?: () => void;
+  afterAction?: () => void;
+}) {
+  if (!onAddLesson && !onOpenAIDialog) return null;
+
+  const handleAdd = (type: LessonType) => {
+    onAddLesson?.(type);
+    afterAction?.();
+  };
+  const handleAI = () => {
+    onOpenAIDialog?.();
+    afterAction?.();
+  };
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button size="sm" className="btn-gradient w-full gap-2 rounded-xl shadow-sm">
+          <Plus className="w-4 h-4" /> Добавить урок
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="start" className="w-60 z-50 bg-popover">
+        <DropdownMenuLabel>Тип урока</DropdownMenuLabel>
+        <DropdownMenuItem onClick={() => handleAdd("text")}>
+          <FileText className="w-4 h-4 mr-2 text-primary" /> Текст
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={() => handleAdd("video")}>
+          <Video className="w-4 h-4 mr-2 text-sigma-purple" /> Видео
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={() => handleAdd("test")}>
+          <CheckSquare className="w-4 h-4 mr-2 text-sigma-orange" /> Тест
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={() => handleAdd("slider")}>
+          <Presentation className="w-4 h-4 mr-2 text-amber-500" /> Слайды
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={() => handleAdd("audio")}>
+          <Headphones className="w-4 h-4 mr-2 text-green-500" /> Аудио
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={() => handleAdd("feedback")}>
+          <MessageSquare className="w-4 h-4 mr-2 text-blue-500" /> Обратная связь
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={() => handleAdd("homework")}>
+          <BookCheck className="w-4 h-4 mr-2 text-indigo-500" /> Задание
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={() => handleAdd("ai_avatar")}>
+          <Sparkles className="w-4 h-4 mr-2 text-fuchsia-500" /> ИИ-преподаватель
+        </DropdownMenuItem>
+        {onOpenAIDialog && (
+          <>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={handleAI}>
+              <Sparkles className="w-4 h-4 mr-2 text-primary" /> Создать с помощью ИИ
+            </DropdownMenuItem>
+          </>
+        )}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
+function NavList({ lessons, activeLessonId, sensors, onDragEnd, onLessonClick, onBack, backLabel, onAddLesson, onOpenAIDialog, afterAction }: Props & { afterAction?: () => void }) {
   return (
     <div className="flex flex-col h-full">
       {onBack && (
@@ -82,6 +158,11 @@ function NavList({ lessons, activeLessonId, sensors, onDragEnd, onLessonClick, o
           <ArrowLeft className="w-4 h-4" />
           {backLabel || "Назад к разделам"}
         </button>
+      )}
+      {(onAddLesson || onOpenAIDialog) && (
+        <div className="px-3 pt-3 pb-2 shrink-0">
+          <AddLessonButton onAddLesson={onAddLesson} onOpenAIDialog={onOpenAIDialog} afterAction={afterAction} />
+        </div>
       )}
       <div className="px-4 py-3 border-b border-border/50 shrink-0">
         <p className="text-[11px] font-semibold text-muted-foreground/70 uppercase tracking-wider">
@@ -152,7 +233,7 @@ export function CourseBuilderLessonsNav(props: Props) {
           </SheetTrigger>
           <SheetContent side="left" className="w-80 p-0">
             <div className="h-full pt-6">
-              <NavList {...props} onLessonClick={handleClick} />
+              <NavList {...props} onLessonClick={handleClick} afterAction={() => setMobileOpen(false)} />
             </div>
           </SheetContent>
         </Sheet>
