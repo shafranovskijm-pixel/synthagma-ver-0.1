@@ -184,7 +184,7 @@ export function RichTextEditor({
     const editorRect = editor.getBoundingClientRect();
     setToolbarPos({
       top: rect.bottom - editorRect.top + 8,
-      left: Math.max(0, rect.left - editorRect.left),
+      left: 0,
     });
     setShowToolbar(true);
     updateActiveFormats();
