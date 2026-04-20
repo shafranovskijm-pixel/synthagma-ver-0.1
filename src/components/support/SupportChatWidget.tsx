@@ -428,7 +428,7 @@ function ChatView({
     <>
       {/* Compact header with stars */}
       <div className="relative h-16 shrink-0 overflow-hidden bg-gradient-to-r from-primary to-[hsl(174_72%_32%)]">
-        <div className="absolute inset-0 opacity-40">
+        <div className="absolute inset-0 opacity-40 pointer-events-none">
           <StarfieldCanvas />
         </div>
         <div className="absolute inset-0 bg-gradient-to-b from-transparent to-black/10 pointer-events-none" />
