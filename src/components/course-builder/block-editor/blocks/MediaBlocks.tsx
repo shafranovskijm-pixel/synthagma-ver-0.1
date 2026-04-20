@@ -107,19 +107,30 @@ export function ImageBlock({ block, onUpdate }: { block: ContentBlock; onUpdate:
     if (!(await checkAiLimitGlobal())) return;
     setIsGenerating(true);
     try {
-      const { data, error } = await safeInvoke<any>("generate-image", { body: { prompt: aiPrompt.trim(), provider: "gigachat", slotIndex: Date.now() } });
-      if (error) throw error;
-      if (data?.error) throw new Error(data.error);
-      if (!data?.url) throw new Error("Изображение не было сгенерировано");
-      onUpdate({ imageSrc: data.url, imageAlt: aiPrompt.trim() });
+      // Try Lovable AI Gateway first (Nano Banana), fallback to gigachat
+      let url: string | null = null;
+      let lastError: string | null = null;
+      try {
+        const { data, error } = await safeInvoke<any>("generate-block-image", { body: { prompt: aiPrompt.trim() } });
+        if (!error && data?.url) url = data.url;
+        else lastError = error?.message || data?.error || null;
+      } catch (e) { lastError = e instanceof Error ? e.message : null; }
+      if (!url) {
+        const { data, error } = await safeInvoke<any>("generate-image", { body: { prompt: aiPrompt.trim(), provider: "gigachat", slotIndex: Date.now() } });
+        if (error) throw error;
+        if (data?.error) throw new Error(data.error);
+        if (!data?.url) throw new Error(lastError || "Изображение не было сгенерировано");
+        url = data.url;
+      }
+      onUpdate({ imageSrc: url, imageAlt: aiPrompt.trim() });
       await incrementAiLimitGlobal();
       setAiPrompt(""); setShowAiInput(false);
     } catch (err) {
       console.error("AI image generation error:", err);
       const { toast } = await import("sonner");
       const message = err instanceof Error ? err.message : "Ошибка генерации изображения";
-      if (message.includes("429")) toast.error("GigaChat перегружен, повторите попытку через 10–20 секунд");
-      else if (message.includes("402")) toast.error("Лимит генерации исчерпан, повторите попытку позже");
+      if (message.includes("429")) toast.error("ИИ перегружен, повторите через 10–20 секунд");
+      else if (message.includes("402")) toast.error("Лимит генерации исчерпан, повторите позже");
       else toast.error(message);
     } finally { setIsGenerating(false); }
   };
@@ -392,7 +403,19 @@ export function VideoBlock({ block, onUpdate, organizationId, courseId, lessonId
 // ─── AudioBlock ─────────────────────────────────────────────────
 export function AudioBlock({ block, onUpdate }: { block: ContentBlock; onUpdate: (updates: Partial<ContentBlock>) => void }) {
   const [isUploading, setIsUploading] = useState(false);
+  const [isGeneratingTts, setIsGeneratingTts] = useState(false);
+  const [showTts, setShowTts] = useState(false);
+  const [ttsText, setTtsText] = useState("");
+  const [ttsVoice, setTtsVoice] = useState("Nec_24000");
   const audioUrl = block.audioUrl || "";
+
+  useEffect(() => {
+    if (block.pendingAI === "ai-audio" && !block.audioUrl) {
+      setShowTts(true);
+      onUpdate({ pendingAI: undefined });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [block.pendingAI]);
 
   const handleFileUpload = async (file: File) => {
     if (!file.type.startsWith("audio/") || file.size > 50 * 1024 * 1024) return;
@@ -414,6 +437,37 @@ export function AudioBlock({ block, onUpdate }: { block: ContentBlock; onUpdate:
     } finally { setIsUploading(false); }
   };
 
+  const handleGenerateTts = async () => {
+    const text = ttsText.trim();
+    if (!text) return;
+    if (!(await checkAiLimitGlobal())) return;
+    setIsGeneratingTts(true);
+    try {
+      const { supabase } = await import("@/integrations/supabase/client");
+      const { data, error } = await supabase.functions.invoke("salutespeech-tts", {
+        body: { text, voice: ttsVoice },
+      });
+      if (error) throw error;
+      const audioBase64: string | undefined = data?.audio || data?.audioContent;
+      if (!audioBase64) throw new Error("Озвучка не получена");
+      // Convert base64 → Blob → upload to storage
+      const bin = Uint8Array.from(atob(audioBase64), (c) => c.charCodeAt(0));
+      const fileName = `ai-audio/${crypto.randomUUID()}.mp3`;
+      const { error: upErr } = await supabase.storage.from("course-files").upload(fileName, bin, { contentType: "audio/mpeg", upsert: true });
+      if (upErr) throw upErr;
+      const publicUrl = `${import.meta.env.VITE_SUPABASE_URL}/storage/v1/object/public/course-files/${fileName}`;
+      onUpdate({ audioUrl: publicUrl });
+      await incrementAiLimitGlobal();
+      setShowTts(false);
+      const { toast } = await import("sonner");
+      toast.success("Аудио сгенерировано");
+    } catch (e) {
+      console.error("TTS generation error:", e);
+      const { toast } = await import("sonner");
+      toast.error(e instanceof Error ? e.message : "Ошибка генерации озвучки");
+    } finally { setIsGeneratingTts(false); }
+  };
+
   return (
     <div className="py-2">
       {audioUrl ? (
@@ -431,10 +485,33 @@ export function AudioBlock({ block, onUpdate }: { block: ContentBlock; onUpdate:
             <p className="text-sm text-muted-foreground mb-2">Добавьте аудио</p>
           </div>
           <div className="flex flex-col gap-2">
-            <Button variant="outline" size="sm" className="mx-auto" onClick={() => document.getElementById(`audio-upload-${block.id}`)?.click()} disabled={isUploading}>
-              {isUploading ? <SigmaSpinner size="sm" className="mr-2" /> : <Upload className="w-4 h-4 mr-2" />}Загрузить файл
-            </Button>
+            <div className="flex gap-2 justify-center flex-wrap">
+              <Button variant="outline" size="sm" onClick={() => document.getElementById(`audio-upload-${block.id}`)?.click()} disabled={isUploading || isGeneratingTts}>
+                {isUploading ? <SigmaSpinner size="sm" className="mr-2" /> : <Upload className="w-4 h-4 mr-2" />}Загрузить файл
+              </Button>
+              <Button variant="outline" size="sm" onClick={() => setShowTts(!showTts)} disabled={isUploading || isGeneratingTts} className={showTts ? "border-primary text-primary" : ""}>
+                <Sparkles className="w-4 h-4 mr-2" />ИИ озвучка
+              </Button>
+            </div>
             <input id={`audio-upload-${block.id}`} type="file" accept="audio/*" className="hidden" onChange={(e) => { if (e.target.files?.[0]) handleFileUpload(e.target.files[0]); }} />
+            {showTts && (
+              <div className="space-y-2 p-3 rounded-lg bg-background border border-border">
+                <Textarea value={ttsText} onChange={(e) => setTtsText(e.target.value)} placeholder="Введите текст для озвучки..." className="text-sm min-h-[80px]" disabled={isGeneratingTts} />
+                <div className="flex gap-2 items-center">
+                  <select value={ttsVoice} onChange={(e) => setTtsVoice(e.target.value)} disabled={isGeneratingTts} className="text-xs px-2 py-1.5 rounded-md border border-input bg-background flex-shrink-0">
+                    <option value="Nec_24000">Наталья (ж)</option>
+                    <option value="Bys_24000">Борис (м)</option>
+                    <option value="May_24000">Майя (ж)</option>
+                    <option value="Tur_24000">Тарас (м)</option>
+                    <option value="Ost_24000">Остап (м)</option>
+                    <option value="Pon_24000">Полина (ж)</option>
+                  </select>
+                  <Button size="sm" onClick={handleGenerateTts} disabled={!ttsText.trim() || isGeneratingTts} className="flex-1">
+                    {isGeneratingTts ? <><SigmaSpinner size="sm" className="mr-1" /> Генерация...</> : <><Wand2 className="w-4 h-4 mr-1" /> Озвучить</>}
+                  </Button>
+                </div>
+              </div>
+            )}
             <div className="text-center text-xs text-muted-foreground">или</div>
             <Input value={audioUrl} onChange={(e) => onUpdate({ audioUrl: e.target.value })} placeholder="https://example.com/audio.mp3" className="text-sm" />
           </div>

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { checkAiLimitGlobal, incrementAiLimitGlobal } from "@/hooks/useAiGenerationLimit";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -9,6 +9,7 @@ import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 
 export function QuizBlock({ block, onUpdate, courseTitle, lessonTitle, existingContent }: { block: ContentBlock; onUpdate: (updates: Partial<ContentBlock>) => void; courseTitle?: string; lessonTitle?: string; existingContent?: string }) {
   const [isGenerating, setIsGenerating] = useState(false);
+  const autoTriggeredRef = useRef(false);
   const options = block.quizOptions || [{ text: "", isCorrect: true }, { text: "", isCorrect: false }];
 
   const updateOption = (index: number, updates: Partial<{ text: string; isCorrect: boolean }>) => {
@@ -52,6 +53,16 @@ export function QuizBlock({ block, onUpdate, courseTitle, lessonTitle, existingC
       toast.error("Ошибка генерации квиза");
     } finally { setIsGenerating(false); }
   };
+
+  // Auto-trigger AI generation if block was created via the "AI-тест" shortcut
+  useEffect(() => {
+    if (block.pendingAI === "ai-quiz" && !autoTriggeredRef.current && !block.quizQuestion) {
+      autoTriggeredRef.current = true;
+      onUpdate({ pendingAI: undefined });
+      handleGenerateWithAI();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [block.pendingAI]);
 
   return (
     <div className="rounded-xl border border-primary/30 bg-primary/5 p-4 space-y-3">
