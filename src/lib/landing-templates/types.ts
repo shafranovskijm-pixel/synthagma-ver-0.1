@@ -33,10 +33,39 @@ export interface LandingTheme {
   decor: "none" | "dots" | "grid" | "noise" | "aurora" | "sparkles";
   section_spacing: "compact" | "normal" | "roomy";
   hero_layout: "overlay" | "split-right" | "split-left" | "centered-photo" | "dark-promo";
-  pricing_layout: "cards" | "comparison" | "highlight-middle";
-  audience_layout: "grid" | "icons-row" | "stacked-cards";
-  reviews_layout: "cards" | "masonry" | "carousel-mini";
-  benefits_layout: "grid" | "icon-list";
+  pricing_layout:
+    | "cards"
+    | "comparison"
+    | "highlight-middle"
+    | "hero-focus"
+    | "language-levels"
+    | "package-json";
+  audience_layout:
+    | "grid"
+    | "icons-row"
+    | "stacked-cards"
+    | "wide-feature-row"
+    | "safety-table"
+    | "terminal-strip"
+    | "passport-cards";
+  reviews_layout:
+    | "cards"
+    | "masonry"
+    | "carousel-mini"
+    | "postcards"
+    | "commit-log"
+    | "protocols";
+  benefits_layout:
+    | "grid"
+    | "icon-list"
+    | "petals"
+    | "blueprint-list"
+    | "code-stack"
+    | "route-stamps";
+  /** Layout секции FAQ. По умолчанию — обычный аккордеон. */
+  faq_layout?: "default" | "console" | "paper-cards" | "regulation";
+  /** Layout секции CTA. По умолчанию — стандартная форма. */
+  cta_layout?: "default" | "terminal" | "beauty-banner" | "editorial-travel" | "stamped-form" | "shimmer-panel";
   /**
    * Layout секции «Что вы освоите». Опционально — если не задан,
    * используется базовый «icon-cards» (двухколоночная сетка карточек с иконками).
