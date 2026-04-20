@@ -89,6 +89,48 @@ export function CourseDetailsContent({ course, courseStudents, organizationId, a
   const isFrdoEnabled = isEnabled('frdo');
   const h = useCourseDetails(course, courseStudents, organizationId, onCourseUpdated, onRefreshStudents, onCourseDeleted);
 
+  const coverInputRef = useRef<HTMLInputElement>(null);
+  const [isGeneratingCover, setIsGeneratingCover] = useState(false);
+
+  const handleCoverUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    e.target.value = "";
+    const ext = file.name.split(".").pop() || "jpg";
+    const path = `covers/${course.id}/${Date.now()}.${ext}`;
+    const t = toast.loading("Загружаем обложку…");
+    try {
+      const { error: upErr } = await supabase.storage.from("course-files").upload(path, file, { upsert: true, contentType: file.type });
+      if (upErr) throw upErr;
+      const { data: pub } = supabase.storage.from("course-files").getPublicUrl(path);
+      const { error: updErr } = await supabase.from("courses").update({ cover_image_url: pub.publicUrl }).eq("id", course.id);
+      if (updErr) throw updErr;
+      toast.success("Обложка обновлена", { id: t });
+      onCourseUpdated?.();
+    } catch (err: any) {
+      console.error(err);
+      toast.error(err?.message || "Не удалось загрузить обложку", { id: t });
+    }
+  };
+
+  const handleGenerateCover = async () => {
+    if (isGeneratingCover) return;
+    setIsGeneratingCover(true);
+    const t = toast.loading("Генерируем обложку с ИИ…");
+    try {
+      const { data, error } = await supabase.functions.invoke("generate-cover", { body: { courseId: course.id, type: "course" } });
+      if (error) throw error;
+      if (!data?.url) throw new Error("Не получили URL обложки");
+      toast.success("Обложка сгенерирована", { id: t });
+      onCourseUpdated?.();
+    } catch (err: any) {
+      console.error(err);
+      toast.error(err?.message || "Не удалось сгенерировать обложку", { id: t });
+    } finally {
+      setIsGeneratingCover(false);
+    }
+  };
+
   const activeGroup = getGroupForTab(activeTab);
 
   const handleGroupClick = (group: GroupKey) => {
