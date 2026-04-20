@@ -244,8 +244,8 @@ export function CourseDetailsContent({ course, courseStudents, organizationId, a
         </div>
       </div>
 
-      {/* Sub-tabs (only for groups that have sub-sections) */}
-      {showSubTabs && (
+      {/* Sub-tabs (only for groups that have sub-sections) — vertical for students, horizontal for others */}
+      {showSubTabs && activeGroup !== "students" && (
         <div className="mb-4 flex items-center justify-center">
           <div className="inline-flex items-center gap-1 overflow-x-auto bg-background/60 rounded-lg p-1 border border-border/40">
             {currentGroupDef!.subTabs.map(st => {
@@ -272,9 +272,49 @@ export function CourseDetailsContent({ course, courseStudents, organizationId, a
         </div>
       )}
 
-      {/* Content panel (full width — left nav of lessons lives inside CourseBuilder embedded mode) */}
-      <div className={cn("flex-1 min-w-0", activeTab === "editor" ? "" : "p-6")}>
-        {activeTab === "students" && <StudentsSection h={h} courseStudents={courseStudents} />}
+      {/* Content panel — split layout for students group, full-width for others */}
+      {showSubTabs && activeGroup === "students" ? (
+        <div className="flex-1 min-w-0 grid grid-cols-1 md:grid-cols-[260px_1fr] gap-4 p-6">
+          {/* Vertical sub-nav with hints */}
+          <aside className="space-y-1.5">
+            {currentGroupDef!.subTabs.map(st => {
+              const meta = SUB_TAB_META[st];
+              const Icon = meta.icon;
+              const isActive = activeTab === st;
+              return (
+                <button
+                  key={st}
+                  onClick={() => onTabChange(st)}
+                  className={cn(
+                    "w-full text-left flex items-start gap-3 px-3 py-3 rounded-xl transition-all border",
+                    isActive
+                      ? "bg-primary/10 border-primary/30 text-foreground shadow-sm"
+                      : "bg-card/40 border-border/40 hover:border-border hover:bg-card text-foreground"
+                  )}
+                >
+                  <div className={cn(
+                    "shrink-0 w-9 h-9 rounded-lg flex items-center justify-center transition-colors",
+                    isActive ? "bg-primary/20 text-primary" : "bg-muted text-muted-foreground"
+                  )}>
+                    <Icon className="w-4 h-4" />
+                  </div>
+                  <div className="min-w-0 flex-1 pt-0.5">
+                    <div className={cn("text-sm font-medium leading-tight", isActive && "text-primary")}>{meta.label}</div>
+                    {meta.description && (
+                      <div className="text-[11px] text-muted-foreground leading-snug mt-0.5">{meta.description}</div>
+                    )}
+                  </div>
+                </button>
+              );
+            })}
+          </aside>
+          <div className="min-w-0">
+            <StudentsGroupContent activeTab={activeTab} h={h} courseStudents={courseStudents} course={course} organizationId={organizationId} onRefreshStudents={onRefreshStudents} supabase={supabase} onCourseUpdated={onCourseUpdated} />
+          </div>
+        </div>
+      ) : (
+        <div className={cn("flex-1 min-w-0", activeTab === "editor" ? "" : "p-6")}>
+          {activeTab === "students" && <StudentsSection h={h} courseStudents={courseStudents} />}
         {activeTab === "requests" && <EnrollmentRequestsTab courseId={course.id} defaultAccessDays={h.defaultAccessDays} onRefreshStudents={onRefreshStudents} />}
         {activeTab === "materials" && <CourseDocumentsManager courseId={course.id} courseName={course.title} embedded={true} />}
         {activeTab === "history" && <EnrollmentHistory courseId={course.id} organizationId={organizationId || ""} courseName={course.title} />}
