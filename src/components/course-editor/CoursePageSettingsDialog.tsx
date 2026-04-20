@@ -12,7 +12,7 @@ interface Props {
 export function CoursePageSettingsDialog({ open, onOpenChange, courseId, courseTitle }: Props) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+      <DialogContent className="max-w-4xl max-h-[85vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Настройки страницы курса</DialogTitle>
         </DialogHeader>

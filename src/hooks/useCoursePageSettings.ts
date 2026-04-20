@@ -13,6 +13,13 @@ export interface PromoCode {
   valid_until: string | null;
 }
 
+export interface PricingTier {
+  name: string;
+  price: number;
+  features: string[];
+  is_popular: boolean;
+}
+
 export interface LandingContent {
   enrollment_form?: {
     subtitle?: string;
@@ -33,6 +40,10 @@ export interface LandingContent {
     keywords?: string;
     og_image_url?: string;
     canonical_url?: string;
+  };
+  pricing?: {
+    title?: string;
+    tiers?: PricingTier[];
   };
   blocks?: any[];
   external_url?: string;
@@ -162,6 +173,88 @@ export function useCoursePageSettings(courseId: string, courseTitle: string, cou
     }));
   };
 
+  // Pricing tiers
+  const ensurePricing = (lc: LandingContent): LandingContent => ({
+    ...lc,
+    pricing: {
+      title: lc.pricing?.title || "Выберите подходящий тариф",
+      tiers: lc.pricing?.tiers || [],
+    },
+  });
+
+  const updatePricingTitle = (value: string) => {
+    setLandingContent((prev) => {
+      const lc = ensurePricing(prev);
+      return { ...lc, pricing: { ...lc.pricing, title: value } };
+    });
+  };
+
+  const addTier = () => {
+    setLandingContent((prev) => {
+      const lc = ensurePricing(prev);
+      const tiers = lc.pricing!.tiers || [];
+      if (tiers.length >= 4) return prev;
+      return {
+        ...lc,
+        pricing: {
+          ...lc.pricing,
+          tiers: [...tiers, { name: "Новый тариф", price: 0, features: ["Доступ к курсу"], is_popular: false }],
+        },
+      };
+    });
+  };
+
+  const removeTier = (index: number) => {
+    setLandingContent((prev) => {
+      const lc = ensurePricing(prev);
+      return {
+        ...lc,
+        pricing: { ...lc.pricing, tiers: (lc.pricing!.tiers || []).filter((_, i) => i !== index) },
+      };
+    });
+  };
+
+  const updateTier = (index: number, field: keyof PricingTier, value: any) => {
+    setLandingContent((prev) => {
+      const lc = ensurePricing(prev);
+      const tiers = [...(lc.pricing!.tiers || [])];
+      tiers[index] = { ...tiers[index], [field]: value };
+      return { ...lc, pricing: { ...lc.pricing, tiers } };
+    });
+  };
+
+  const addTierFeature = (tierIndex: number) => {
+    setLandingContent((prev) => {
+      const lc = ensurePricing(prev);
+      const tiers = [...(lc.pricing!.tiers || [])];
+      tiers[tierIndex] = { ...tiers[tierIndex], features: [...tiers[tierIndex].features, "Новый пункт"] };
+      return { ...lc, pricing: { ...lc.pricing, tiers } };
+    });
+  };
+
+  const removeTierFeature = (tierIndex: number, featureIndex: number) => {
+    setLandingContent((prev) => {
+      const lc = ensurePricing(prev);
+      const tiers = [...(lc.pricing!.tiers || [])];
+      tiers[tierIndex] = {
+        ...tiers[tierIndex],
+        features: tiers[tierIndex].features.filter((_, i) => i !== featureIndex),
+      };
+      return { ...lc, pricing: { ...lc.pricing, tiers } };
+    });
+  };
+
+  const updateTierFeature = (tierIndex: number, featureIndex: number, value: string) => {
+    setLandingContent((prev) => {
+      const lc = ensurePricing(prev);
+      const tiers = [...(lc.pricing!.tiers || [])];
+      const features = [...tiers[tierIndex].features];
+      features[featureIndex] = value;
+      tiers[tierIndex] = { ...tiers[tierIndex], features };
+      return { ...lc, pricing: { ...lc.pricing, tiers } };
+    });
+  };
+
   const handleAiGenerate = async (type: "seo" | "form") => {
     setAiLoading(type);
     try {
@@ -217,5 +310,7 @@ export function useCoursePageSettings(courseId: string, courseTitle: string, cou
     handleSave, addPromoCode, deletePromoCode, togglePromoCode,
     updateEnrollmentForm, updateAnalytics, updateSeo,
     handleAiGenerate, copyUrl,
+    updatePricingTitle, addTier, removeTier, updateTier,
+    addTierFeature, removeTierFeature, updateTierFeature,
   };
 }
