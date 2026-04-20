@@ -21,8 +21,12 @@ export function TableBlock({ block, onUpdate }: { block: ContentBlock; onUpdate:
   const addRow = () => {
     onUpdate({ tableRows: [...rows, Array(colsCount).fill("")] });
   };
+  const isRowNonEmpty = (rIdx: number) => (rows[rIdx] || []).some((c) => (c || "").trim().length > 0);
+  const isColumnNonEmpty = (cIdx: number) => rows.some((r) => ((r[cIdx] || "").trim().length > 0));
+
   const removeRow = (rIdx: number) => {
     if (rows.length <= 1) return;
+    if (isRowNonEmpty(rIdx) && !window.confirm("Удалить строку с данными? Это действие можно отменить через Ctrl+Z.")) return;
     onUpdate({ tableRows: rows.filter((_, i) => i !== rIdx) });
   };
   const addColumn = () => {
@@ -30,6 +34,7 @@ export function TableBlock({ block, onUpdate }: { block: ContentBlock; onUpdate:
   };
   const removeColumn = (cIdx: number) => {
     if (colsCount <= 1) return;
+    if (isColumnNonEmpty(cIdx) && !window.confirm("Удалить колонку с данными? Это действие можно отменить через Ctrl+Z.")) return;
     onUpdate({ tableRows: rows.map((r) => r.filter((_, i) => i !== cIdx)) });
   };
 

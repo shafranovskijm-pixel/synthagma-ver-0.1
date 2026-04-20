@@ -55,10 +55,32 @@ export function ImageBlock({ block, onUpdate }: { block: ContentBlock; onUpdate:
   const [isUploading, setIsUploading] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
+  const [isGeneratingAlt, setIsGeneratingAlt] = useState(false);
   const [aiPrompt, setAiPrompt] = useState("");
   const [editPrompt, setEditPrompt] = useState("");
   const [showAiInput, setShowAiInput] = useState(false);
   const [showEditInput, setShowEditInput] = useState(false);
+
+  const handleGenerateAlt = async () => {
+    if (!block.imageSrc) return;
+    setIsGeneratingAlt(true);
+    try {
+      const { data, error } = await safeInvoke<any>("generate-image-alt", { body: { imageUrl: block.imageSrc } });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      const alt = (data?.alt || "").trim();
+      if (!alt) throw new Error("Описание не получено");
+      onUpdate({ imageAlt: alt });
+      const { toast } = await import("sonner");
+      toast.success("Описание сгенерировано");
+    } catch (err) {
+      const { toast } = await import("sonner");
+      const msg = err instanceof Error ? err.message : "Ошибка генерации описания";
+      toast.error(msg);
+    } finally {
+      setIsGeneratingAlt(false);
+    }
+  };
 
   useEffect(() => {
     if (block.pendingAI === "ai-image" && !block.imageSrc) {
@@ -186,7 +208,21 @@ export function ImageBlock({ block, onUpdate }: { block: ContentBlock; onUpdate:
               </Button>
             </div>
           )}
-          <Input value={block.imageAlt || ""} onChange={(e) => onUpdate({ imageAlt: e.target.value })} placeholder="Подпись к изображению..." className="text-sm border-0 bg-secondary/30 focus-visible:ring-1 rounded-lg" />
+          <div className="flex gap-2">
+            <Input value={block.imageAlt || ""} onChange={(e) => onUpdate({ imageAlt: e.target.value })} placeholder="Подпись к изображению (alt) — важно для SEO и доступности" className="text-sm border-0 bg-secondary/30 focus-visible:ring-1 rounded-lg flex-1" />
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="gap-1.5 shrink-0"
+              onClick={handleGenerateAlt}
+              disabled={isGeneratingAlt}
+              title="Сгенерировать описание ИИ"
+            >
+              {isGeneratingAlt ? <SigmaSpinner size="sm" /> : <Sparkles className="w-3.5 h-3.5" />}
+              <span className="hidden sm:inline">{isGeneratingAlt ? "..." : "ИИ"}</span>
+            </Button>
+          </div>
         </div>
       ) : (
         <div className="bg-muted rounded-xl p-6 space-y-4">
