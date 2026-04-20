@@ -8,7 +8,7 @@ import { safeInvoke } from "@/utils/safeInvoke";
 import { ContentBlock, blocksToJson, markdownToBlocks } from "@/components/course-builder/BlockEditor";
 import { closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent } from "@dnd-kit/core";
 import { arrayMove, sortableKeyboardCoordinates } from "@dnd-kit/sortable";
-import { type LessonType, type TestQuestionLocal, type Lesson, type LessonAttachmentLocal } from "@/components/course-builder/LessonTypeConfig";
+import { type LessonType, type TestQuestionLocal, type Lesson, type LessonAttachmentLocal, type CourseModule } from "@/components/course-builder/LessonTypeConfig";
 import { AIGenerateType } from "@/components/course-builder/AIGenerateDialog";
 import {
   saveDraftToLocal, loadDraftFromLocal, clearDraftFromLocal,
@@ -23,6 +23,7 @@ export function useCourseBuilder(propCourseId?: string) {
   const [courseTitle, setCourseTitle] = useState("");
   const [courseDescription, setCourseDescription] = useState("");
   const [lessons, setLessons] = useState<Lesson[]>([]);
+  const [modules, setModules] = useState<CourseModule[]>([]);
   const [isGenerating, setIsGenerating] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isLoading, setIsLoading] = useState(!!externalCourseId);
@@ -78,6 +79,19 @@ export function useCourseBuilder(propCourseId?: string) {
       if (courseId) {
         const { data: course } = await supabase.from("courses").select("*").eq("id", courseId).single();
         if (course) { setCourseTitle(course.title); setCourseDescription(course.description || ""); if (!profile?.organization_id && course.organization_id) setOrganizationId(course.organization_id); }
+
+        // Load modules
+        const { data: modulesData } = await supabase
+          .from("course_modules" as any)
+          .select("*")
+          .eq("course_id", courseId)
+          .order("order_index");
+        if (modulesData) {
+          setModules((modulesData as any[]).map(m => ({
+            id: m.id, course_id: m.course_id, title: m.title, order_index: m.order_index, collapsed: false,
+          })));
+        }
+
         const { data: lessonsData } = await supabase.from("lessons").select("*").eq("course_id", courseId).order("order_index");
         if (lessonsData) {
           const testLessonIds = lessonsData.filter(l => l.type === 'test').map(l => l.id);
@@ -150,11 +164,19 @@ export function useCourseBuilder(propCourseId?: string) {
     return () => { window.removeEventListener('beforeunload', handleBeforeUnload); document.removeEventListener('visibilitychange', handleVisibility); };
   }, [courseId, hasUnsavedChanges]);
 
-  const addLesson = (type: LessonType) => {
+  const addLesson = (type: LessonType, moduleId?: string | null) => {
     const typeNames: Record<LessonType, string> = { text: "урок", video: "видеоурок", image: "материал", test: "тест", audio: "аудиолекция", lesson: "урок", slider: "презентация", practice: "ситуационное задание", feedback: "обратная связь", homework: "задание", ai_avatar: "ИИ-аватар" };
-    const newLesson: Lesson = { id: crypto.randomUUID(), type, title: `Новый ${typeNames[type]}`, content: "", expanded: true, blocks: (type === "text" || type === "practice") ? [] : undefined };
+    const newLesson: Lesson = {
+      id: crypto.randomUUID(), type, title: `Новый ${typeNames[type]}`, content: "", expanded: true,
+      blocks: (type === "text" || type === "practice") ? [] : undefined,
+      module_id: moduleId ?? null,
+    };
     // Accordion: новый урок раскрыт, остальные свёрнуты
     setLessons(prev => [...prev.map(l => ({ ...l, expanded: false })), newLesson]);
+    // Если урок добавляется в модуль — раскрыть этот модуль
+    if (moduleId) {
+      setModules(prev => prev.map(m => m.id === moduleId ? { ...m, collapsed: false } : m));
+    }
     setActiveLessonId(newLesson.id);
     markAsChanged();
     // Прокрутка правой колонки к новой карточке (не трогаем левую навигацию)
@@ -163,6 +185,86 @@ export function useCourseBuilder(propCourseId?: string) {
       if (el && 'scrollIntoView' in el) (el as HTMLElement).scrollIntoView({ behavior: 'smooth', block: 'start' });
     }, 50);
   };
+
+  // ===== MODULES CRUD =====
+  const ensureCourseId = async (): Promise<string | null> => {
+    if (courseId) return courseId;
+    const orgId = await ensureOrganizationId();
+    if (!orgId) return null;
+    if (!courseTitle.trim()) setCourseTitle("Новый курс");
+    const { data: newCourse, error } = await supabase
+      .from("courses")
+      .insert({ title: courseTitle.trim() || "Новый курс", description: courseDescription.trim() || null, organization_id: orgId })
+      .select()
+      .single();
+    if (error || !newCourse) return null;
+    setSavedCourseIdState(newCourse.id);
+    window.history.replaceState(null, '', `/course-builder/${newCourse.id}`);
+    return newCourse.id;
+  };
+
+  const createModule = async () => {
+    const cId = await ensureCourseId();
+    if (!cId) { toast.error("Не удалось определить курс"); return; }
+    const nextOrder = modules.length > 0 ? Math.max(...modules.map(m => m.order_index)) + 1 : 0;
+    const { data, error } = await supabase
+      .from("course_modules" as any)
+      .insert({ course_id: cId, title: `Модуль ${modules.length + 1}`, order_index: nextOrder })
+      .select()
+      .single();
+    if (error || !data) { toast.error("Не удалось создать модуль"); return; }
+    const m = data as any;
+    setModules(prev => [...prev, { id: m.id, course_id: m.course_id, title: m.title, order_index: m.order_index, collapsed: false }]);
+    toast.success("Модуль создан");
+  };
+
+  const renameModule = async (id: string, title: string) => {
+    setModules(prev => prev.map(m => m.id === id ? { ...m, title } : m));
+    const { error } = await supabase.from("course_modules" as any).update({ title }).eq("id", id);
+    if (error) toast.error("Не удалось переименовать модуль");
+  };
+
+  const toggleModuleCollapsed = (id: string) => {
+    setModules(prev => prev.map(m => m.id === id ? { ...m, collapsed: !m.collapsed } : m));
+  };
+
+  const deleteModule = async (id: string, deleteLessons: boolean) => {
+    if (deleteLessons) {
+      // Каскадно удалить уроки в этом модуле
+      const lessonIds = lessons.filter(l => l.module_id === id).map(l => l.id);
+      if (lessonIds.length > 0) {
+        await supabase.from("lessons").delete().in("id", lessonIds);
+      }
+      setLessons(prev => prev.filter(l => l.module_id !== id));
+    } else {
+      // Перенести уроки в корень
+      const lessonIds = lessons.filter(l => l.module_id === id).map(l => l.id);
+      if (lessonIds.length > 0) {
+        await supabase.from("lessons").update({ module_id: null }).in("id", lessonIds);
+      }
+      setLessons(prev => prev.map(l => l.module_id === id ? { ...l, module_id: null } : l));
+    }
+    const { error } = await supabase.from("course_modules" as any).delete().eq("id", id);
+    if (error) { toast.error("Не удалось удалить модуль"); return; }
+    setModules(prev => prev.filter(m => m.id !== id));
+    toast.success("Модуль удалён");
+  };
+
+  const reorderModules = async (newOrder: CourseModule[]) => {
+    setModules(newOrder.map((m, i) => ({ ...m, order_index: i })));
+    // Сохраняем порядок в БД асинхронно
+    for (let i = 0; i < newOrder.length; i++) {
+      await supabase.from("course_modules" as any).update({ order_index: i }).eq("id", newOrder[i].id);
+    }
+  };
+
+  const moveLessonToModule = (lessonId: string, moduleId: string | null) => {
+    setLessons(prev => prev.map(l => l.id === lessonId ? { ...l, module_id: moduleId } : l));
+    markAsChanged();
+  };
+
+  const collapseAllModules = () => setModules(prev => prev.map(m => ({ ...m, collapsed: true })));
+  const expandAllModules = () => setModules(prev => prev.map(m => ({ ...m, collapsed: false })));
 
   const handleGenerateStructure = async () => {
     if (!courseTitle.trim()) { toast.error("Введите название курса"); return; }
@@ -252,7 +354,7 @@ export function useCourseBuilder(propCourseId?: string) {
       if (lessons.length > 0 && savedCourseId) {
         const currentLessonIds = lessons.map(l => l.id);
         if (courseId) await supabase.from("lessons").delete().eq("course_id", courseId).not("id", "in", `(${currentLessonIds.join(",")})`);
-        const lessonsToSave = lessons.map((lesson, index) => ({ id: lesson.id, course_id: savedCourseId!, title: lesson.title, type: lesson.type, content: lesson.content || null, order_index: index, test_passing_score: lesson.testPassingScore ?? 60, test_questions_to_show: lesson.testQuestionsToShow ?? null }));
+        const lessonsToSave = lessons.map((lesson, index) => ({ id: lesson.id, course_id: savedCourseId!, title: lesson.title, type: lesson.type, content: lesson.content || null, order_index: index, test_passing_score: lesson.testPassingScore ?? 60, test_questions_to_show: lesson.testQuestionsToShow ?? null, module_id: lesson.module_id ?? null }));
         const { error: batchError } = await supabase.from("lessons").upsert(lessonsToSave, { onConflict: "id" });
         if (batchError && !batchError.message?.includes('AbortError')) console.error("Error saving lessons:", batchError);
 
@@ -304,8 +406,8 @@ export function useCourseBuilder(propCourseId?: string) {
         if (error) throw error; savedCourseId = newCourse.id; setSavedCourseIdState(newCourse.id); window.history.replaceState(null, '', `/course-builder/${savedCourseId}`);
       }
       const { data: existing } = await supabase.from("lessons").select("id").eq("id", lesson.id).maybeSingle();
-      if (existing) { const { error } = await supabase.from("lessons").update({ title: lesson.title, type: lesson.type, content: lesson.content || null, order_index: orderIndex, test_passing_score: lesson.testPassingScore ?? 60, test_questions_to_show: lesson.testQuestionsToShow ?? null }).eq("id", lesson.id); if (error) throw error; toast.success("Лекция обновлена"); }
-      else { const { error } = await supabase.from("lessons").insert({ id: lesson.id, course_id: savedCourseId, title: lesson.title, type: lesson.type, content: lesson.content || null, order_index: orderIndex, test_passing_score: lesson.testPassingScore ?? 60, test_questions_to_show: lesson.testQuestionsToShow ?? null }); if (error) throw error; toast.success("Лекция сохранена"); }
+      if (existing) { const { error } = await supabase.from("lessons").update({ title: lesson.title, type: lesson.type, content: lesson.content || null, order_index: orderIndex, test_passing_score: lesson.testPassingScore ?? 60, test_questions_to_show: lesson.testQuestionsToShow ?? null, module_id: lesson.module_id ?? null }).eq("id", lesson.id); if (error) throw error; toast.success("Лекция обновлена"); }
+      else { const { error } = await supabase.from("lessons").insert({ id: lesson.id, course_id: savedCourseId, title: lesson.title, type: lesson.type, content: lesson.content || null, order_index: orderIndex, test_passing_score: lesson.testPassingScore ?? 60, test_questions_to_show: lesson.testQuestionsToShow ?? null, module_id: lesson.module_id ?? null }); if (error) throw error; toast.success("Лекция сохранена"); }
     } catch (error: unknown) { toast.error("Ошибка сохранения: " + (error instanceof Error ? error.message : String(error))); }
     finally { setIsSaving(false); }
   };
@@ -320,5 +422,8 @@ export function useCourseBuilder(propCourseId?: string) {
     updateLesson, deleteLesson, toggleLesson,
     sensors, handleDragEnd, saveCourse, saveSingleLesson, organizationId,
     activeLessonId, setActiveLessonId, scrollToLesson, expandLesson,
+    // Modules
+    modules, createModule, renameModule, deleteModule, toggleModuleCollapsed,
+    reorderModules, moveLessonToModule, collapseAllModules, expandAllModules,
   };
 }

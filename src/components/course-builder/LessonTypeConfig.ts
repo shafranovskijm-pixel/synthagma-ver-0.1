@@ -45,6 +45,15 @@ export interface Lesson {
   testQuestionsToShow?: number | null;
   questions?: TestQuestionLocal[];
   attachments?: LessonAttachmentLocal[];
+  module_id?: string | null;
+}
+
+export interface CourseModule {
+  id: string;
+  course_id?: string;
+  title: string;
+  order_index: number;
+  collapsed?: boolean;
 }
 
 export interface GeneratedQuestion {

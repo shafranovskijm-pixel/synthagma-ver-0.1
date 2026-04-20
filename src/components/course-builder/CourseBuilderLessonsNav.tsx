@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { DndContext, closestCenter, type DragEndEvent } from "@dnd-kit/core";
 import { SortableContext, verticalListSortingStrategy, useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
@@ -13,9 +13,16 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { GripVertical, Menu, FileText, ArrowLeft, Plus, CheckSquare, Presentation, Headphones, MessageSquare, BookCheck, Sparkles, type LucideIcon } from "lucide-react";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { GripVertical, Menu, FileText, ArrowLeft, Plus, CheckSquare, Presentation, Headphones, MessageSquare, BookCheck, Sparkles, ChevronDown, ChevronRight, MoreVertical, Pencil, Trash2, FolderPlus, type LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { lessonIcons, lessonColors, type Lesson, type LessonType } from "@/components/course-builder/LessonTypeConfig";
+import { lessonIcons, lessonColors, type Lesson, type LessonType, type CourseModule } from "@/components/course-builder/LessonTypeConfig";
 
 type LessonTypeOption = { type: LessonType; icon: LucideIcon; label: string; description: string; iconClass: string };
 
@@ -31,16 +38,23 @@ const LESSON_TYPE_OPTIONS: LessonTypeOption[] = [
 
 interface Props {
   lessons: Lesson[];
+  modules?: CourseModule[];
   activeLessonId: string | null;
   sensors: any;
   onDragEnd: (e: DragEndEvent) => void;
   onLessonClick: (id: string) => void;
   onBack?: () => void;
   backLabel?: string;
-  /** When true, sidebar uses embedded offsets (no global header above) */
   embedded?: boolean;
-  onAddLesson?: (type: LessonType) => void;
+  onAddLesson?: (type: LessonType, moduleId?: string | null) => void;
   onOpenAIDialog?: () => void;
+  // Module CRUD
+  onCreateModule?: () => void;
+  onRenameModule?: (id: string, title: string) => void;
+  onDeleteModule?: (id: string, deleteLessons: boolean) => void;
+  onToggleModuleCollapsed?: (id: string) => void;
+  onCollapseAll?: () => void;
+  onExpandAll?: () => void;
 }
 
 function SortableNavRow({
@@ -97,10 +111,16 @@ function AddLessonButton({
   onAddLesson,
   onOpenAIDialog,
   afterAction,
+  variant = "primary",
+  moduleId = null,
+  label = "Добавить урок",
 }: {
-  onAddLesson?: (type: LessonType) => void;
+  onAddLesson?: (type: LessonType, moduleId?: string | null) => void;
   onOpenAIDialog?: () => void;
   afterAction?: () => void;
+  variant?: "primary" | "ghost";
+  moduleId?: string | null;
+  label?: string;
 }) {
   const [open, setOpen] = useState(false);
   const [selectedType, setSelectedType] = useState<LessonType>("text");
@@ -110,7 +130,7 @@ function AddLessonButton({
   const selected = LESSON_TYPE_OPTIONS.find((o) => o.type === selectedType) ?? LESSON_TYPE_OPTIONS[0];
 
   const handleConfirm = () => {
-    onAddLesson?.(selectedType);
+    onAddLesson?.(selectedType, moduleId);
     setOpen(false);
     afterAction?.();
   };
@@ -123,13 +143,20 @@ function AddLessonButton({
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <Button
-        size="sm"
-        className="btn-gradient w-full gap-2 rounded-xl shadow-sm"
-        onClick={() => setOpen(true)}
-      >
-        <Plus className="w-4 h-4" /> Добавить урок
-      </Button>
+      {variant === "primary" ? (
+        <Button size="sm" className="btn-gradient w-full gap-2 rounded-xl shadow-sm" onClick={() => setOpen(true)}>
+          <Plus className="w-4 h-4" /> {label}
+        </Button>
+      ) : (
+        <Button
+          size="sm"
+          variant="ghost"
+          className="w-full justify-start gap-2 text-xs text-muted-foreground hover:text-primary hover:bg-primary/5 rounded-lg"
+          onClick={() => setOpen(true)}
+        >
+          <Plus className="w-3.5 h-3.5" /> {label}
+        </Button>
+      )}
 
       <DialogContent className="sm:max-w-2xl">
         <DialogHeader>
@@ -151,9 +178,7 @@ function AddLessonButton({
                 className={cn(
                   "group flex flex-col items-center justify-center gap-2 rounded-xl border-2 p-4 text-center transition-all",
                   "hover:border-primary/40 hover:bg-primary/5",
-                  isActive
-                    ? "border-primary bg-primary/10 shadow-sm"
-                    : "border-border/60 bg-card",
+                  isActive ? "border-primary bg-primary/10 shadow-sm" : "border-border/60 bg-card",
                 )}
               >
                 <div className={cn("w-11 h-11 rounded-xl flex items-center justify-center", opt.iconClass)}>
@@ -183,19 +208,203 @@ function AddLessonButton({
         )}
 
         <DialogFooter className="gap-2 sm:gap-2">
-          <Button variant="outline" onClick={() => setOpen(false)}>
-            Отмена
-          </Button>
-          <Button className="btn-gradient" onClick={handleConfirm} disabled={!onAddLesson}>
-            Далее
-          </Button>
+          <Button variant="outline" onClick={() => setOpen(false)}>Отмена</Button>
+          <Button className="btn-gradient" onClick={handleConfirm} disabled={!onAddLesson}>Далее</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
   );
 }
 
-function NavList({ lessons, activeLessonId, sensors, onDragEnd, onLessonClick, onBack, backLabel, onAddLesson, onOpenAIDialog, afterAction }: Props & { afterAction?: () => void }) {
+function ModuleHeaderRow({
+  module,
+  lessonCount,
+  onToggle,
+  onRename,
+  onDelete,
+  onCollapseAll,
+  onExpandAll,
+}: {
+  module: CourseModule;
+  lessonCount: number;
+  onToggle: () => void;
+  onRename: (title: string) => void;
+  onDelete: (deleteLessons: boolean) => void;
+  onCollapseAll?: () => void;
+  onExpandAll?: () => void;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(module.title);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [deleteWithLessons, setDeleteWithLessons] = useState(false);
+
+  const commitRename = () => {
+    const t = draft.trim() || "Без названия";
+    if (t !== module.title) onRename(t);
+    setEditing(false);
+  };
+
+  return (
+    <>
+      <div
+        className={cn(
+          "group flex items-center gap-1 rounded-xl px-2 py-2 text-sm transition-colors",
+          "bg-muted/40 hover:bg-muted/60",
+        )}
+      >
+        <button
+          onClick={onToggle}
+          className="p-1 shrink-0 text-muted-foreground hover:text-primary transition-colors"
+          aria-label={module.collapsed ? "Развернуть модуль" : "Свернуть модуль"}
+        >
+          {module.collapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+        </button>
+
+        {editing ? (
+          <input
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            onBlur={commitRename}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") commitRename();
+              if (e.key === "Escape") { setDraft(module.title); setEditing(false); }
+            }}
+            autoFocus
+            className="flex-1 bg-background border border-primary/40 rounded-md px-2 py-1 text-sm font-semibold focus:outline-none focus:ring-1 focus:ring-primary"
+          />
+        ) : (
+          <button
+            onClick={onToggle}
+            onDoubleClick={() => { setDraft(module.title); setEditing(true); }}
+            className="flex-1 text-left font-semibold text-foreground min-w-0 truncate"
+            title={module.title}
+          >
+            {module.title}
+          </button>
+        )}
+
+        <span className="text-xs text-muted-foreground tabular-nums shrink-0 px-1">{lessonCount}</span>
+
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button
+              className="p-1 rounded-md opacity-0 group-hover:opacity-100 hover:bg-background transition-opacity shrink-0"
+              onClick={(e) => e.stopPropagation()}
+              aria-label="Меню модуля"
+            >
+              <MoreVertical className="w-4 h-4 text-muted-foreground" />
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem onClick={() => { setDraft(module.title); setEditing(true); }}>
+              <Pencil className="w-4 h-4 mr-2" /> Переименовать
+            </DropdownMenuItem>
+            {onCollapseAll && (
+              <DropdownMenuItem onClick={onCollapseAll}>
+                <ChevronRight className="w-4 h-4 mr-2" /> Свернуть все модули
+              </DropdownMenuItem>
+            )}
+            {onExpandAll && (
+              <DropdownMenuItem onClick={onExpandAll}>
+                <ChevronDown className="w-4 h-4 mr-2" /> Развернуть все модули
+              </DropdownMenuItem>
+            )}
+            <DropdownMenuSeparator />
+            <DropdownMenuItem
+              onClick={() => { setDeleteWithLessons(false); setConfirmOpen(true); }}
+              className="text-destructive focus:text-destructive"
+            >
+              <Trash2 className="w-4 h-4 mr-2" /> Удалить модуль
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
+
+      <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Удалить модуль «{module.title}»?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {lessonCount > 0
+                ? `В модуле ${lessonCount} уроков. Выберите, что с ними сделать.`
+                : "В модуле нет уроков."}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          {lessonCount > 0 && (
+            <div className="space-y-2 pt-2">
+              <label className="flex items-start gap-2 text-sm cursor-pointer">
+                <input
+                  type="radio"
+                  name="del-mode"
+                  checked={!deleteWithLessons}
+                  onChange={() => setDeleteWithLessons(false)}
+                  className="mt-1"
+                />
+                <span><b>Перенести уроки в корень</b> — модуль удалится, уроки останутся.</span>
+              </label>
+              <label className="flex items-start gap-2 text-sm cursor-pointer">
+                <input
+                  type="radio"
+                  name="del-mode"
+                  checked={deleteWithLessons}
+                  onChange={() => setDeleteWithLessons(true)}
+                  className="mt-1"
+                />
+                <span className="text-destructive"><b>Удалить модуль вместе с уроками</b> — действие необратимо.</span>
+              </label>
+            </div>
+          )}
+          <AlertDialogFooter>
+            <AlertDialogCancel>Отмена</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => { onDelete(deleteWithLessons); setConfirmOpen(false); }}
+              className={deleteWithLessons ? "bg-destructive text-destructive-foreground hover:bg-destructive/90" : ""}
+            >
+              Удалить
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
+  );
+}
+
+function NavList(props: Props & { afterAction?: () => void }) {
+  const {
+    lessons, modules = [], activeLessonId, sensors, onDragEnd, onLessonClick,
+    onBack, backLabel, onAddLesson, onOpenAIDialog, afterAction,
+    onCreateModule, onRenameModule, onDeleteModule, onToggleModuleCollapsed,
+    onCollapseAll, onExpandAll,
+  } = props;
+
+  const handleClick = (id: string) => {
+    onLessonClick(id);
+    afterAction?.();
+  };
+
+  // Группировка: уроки без модуля + по каждому модулю
+  const grouped = useMemo(() => {
+    const orphans = lessons.filter(l => !l.module_id);
+    const byModule = new Map<string, Lesson[]>();
+    for (const m of modules) byModule.set(m.id, []);
+    for (const l of lessons) {
+      if (l.module_id && byModule.has(l.module_id)) byModule.get(l.module_id)!.push(l);
+    }
+    return { orphans, byModule };
+  }, [lessons, modules]);
+
+  // Глобальный индекс урока в общем списке (для нумерации)
+  const lessonIndex = useMemo(() => {
+    const map = new Map<string, number>();
+    let i = 0;
+    grouped.orphans.forEach(l => map.set(l.id, i++));
+    for (const m of modules) {
+      const arr = grouped.byModule.get(m.id) ?? [];
+      arr.forEach(l => map.set(l.id, i++));
+    }
+    return map;
+  }, [grouped, modules]);
+
   return (
     <div className="flex flex-col h-full">
       {onBack && (
@@ -207,36 +416,106 @@ function NavList({ lessons, activeLessonId, sensors, onDragEnd, onLessonClick, o
           {backLabel || "Назад к разделам"}
         </button>
       )}
-      {(onAddLesson || onOpenAIDialog) && (
-        <div className="px-3 pt-3 pb-2 shrink-0">
+
+      <div className="px-3 pt-3 pb-2 shrink-0 space-y-2">
+        {(onAddLesson || onOpenAIDialog) && (
           <AddLessonButton onAddLesson={onAddLesson} onOpenAIDialog={onOpenAIDialog} afterAction={afterAction} />
-        </div>
-      )}
+        )}
+        {onCreateModule && (
+          <Button
+            size="sm"
+            variant="outline"
+            className="w-full gap-2 rounded-xl"
+            onClick={() => { onCreateModule(); afterAction?.(); }}
+          >
+            <FolderPlus className="w-4 h-4" /> Добавить модуль
+          </Button>
+        )}
+      </div>
+
       <div className="px-4 py-3 border-b border-border/50 shrink-0">
         <p className="text-[11px] font-semibold text-muted-foreground/70 uppercase tracking-wider">
           Уроки ({lessons.length})
+          {modules.length > 0 && <span className="ml-2 normal-case font-normal">· модулей: {modules.length}</span>}
         </p>
       </div>
+
       <ScrollArea className="flex-1 min-h-0">
-        <div className="p-2">
-          {lessons.length === 0 ? (
+        <div className="p-2 space-y-3">
+          {lessons.length === 0 && modules.length === 0 ? (
             <p className="text-xs text-muted-foreground text-center py-6 px-4">
-              Уроков пока нет. Добавьте первый — он появится здесь.
+              Уроков пока нет. Добавьте модуль или урок — они появятся здесь.
             </p>
           ) : (
             <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
               <SortableContext items={lessons.map((l) => l.id)} strategy={verticalListSortingStrategy}>
-                <div className="space-y-0.5">
-                  {lessons.map((lesson, i) => (
-                    <SortableNavRow
-                      key={lesson.id}
-                      lesson={lesson}
-                      index={i}
-                      isActive={activeLessonId === lesson.id}
-                      onClick={() => onLessonClick(lesson.id)}
-                    />
-                  ))}
-                </div>
+                {/* Уроки без модуля */}
+                {grouped.orphans.length > 0 && (
+                  <div className="space-y-0.5">
+                    {modules.length > 0 && (
+                      <p className="px-2 pb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/60">
+                        Без модуля
+                      </p>
+                    )}
+                    {grouped.orphans.map((lesson) => (
+                      <SortableNavRow
+                        key={lesson.id}
+                        lesson={lesson}
+                        index={lessonIndex.get(lesson.id) ?? 0}
+                        isActive={activeLessonId === lesson.id}
+                        onClick={() => handleClick(lesson.id)}
+                      />
+                    ))}
+                  </div>
+                )}
+
+                {/* Модули */}
+                {modules.map((m) => {
+                  const items = grouped.byModule.get(m.id) ?? [];
+                  return (
+                    <div key={m.id} className="space-y-1">
+                      <ModuleHeaderRow
+                        module={m}
+                        lessonCount={items.length}
+                        onToggle={() => onToggleModuleCollapsed?.(m.id)}
+                        onRename={(title) => onRenameModule?.(m.id, title)}
+                        onDelete={(del) => onDeleteModule?.(m.id, del)}
+                        onCollapseAll={onCollapseAll}
+                        onExpandAll={onExpandAll}
+                      />
+                      {!m.collapsed && (
+                        <div className="pl-3 space-y-0.5 border-l-2 border-border/40 ml-3">
+                          {items.length === 0 ? (
+                            <p className="text-xs text-muted-foreground/60 italic px-2 py-2">
+                              Уроков в модуле нет
+                            </p>
+                          ) : (
+                            items.map((lesson) => (
+                              <SortableNavRow
+                                key={lesson.id}
+                                lesson={lesson}
+                                index={lessonIndex.get(lesson.id) ?? 0}
+                                isActive={activeLessonId === lesson.id}
+                                onClick={() => handleClick(lesson.id)}
+                              />
+                            ))
+                          )}
+                          {onAddLesson && (
+                            <div className="pt-1">
+                              <AddLessonButton
+                                onAddLesson={onAddLesson}
+                                afterAction={afterAction}
+                                variant="ghost"
+                                moduleId={m.id}
+                                label="Добавить урок в модуль"
+                              />
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
               </SortableContext>
             </DndContext>
           )}
@@ -248,20 +527,12 @@ function NavList({ lessons, activeLessonId, sensors, onDragEnd, onLessonClick, o
 
 export function CourseBuilderLessonsNav(props: Props) {
   const [mobileOpen, setMobileOpen] = useState(false);
-  const handleClick = (id: string) => {
-    props.onLessonClick(id);
-    setMobileOpen(false);
-  };
 
-  // Embedded: панель встроена в /organization, над ней sticky-хедер ~316px.
-  // Standalone: только собственный sticky-хедер ~96px.
-  // Используем dvh с минимальным запасом, чтобы длинные списки уроков (40+) полностью скроллились.
   const stickyTop = props.embedded ? "top-[180px]" : "top-24";
   const stickyMaxH = props.embedded ? "max-h-[calc(100dvh-200px)]" : "max-h-[calc(100dvh-7rem)]";
 
   return (
     <>
-      {/* Desktop sticky panel — в стиле штатного сайдбара курса */}
       <aside
         className={cn(
           "hidden lg:flex flex-col sticky self-start w-72 shrink-0 rounded-2xl border border-border/60 bg-gradient-to-b from-card to-muted/20 shadow-sm overflow-hidden",
@@ -269,10 +540,9 @@ export function CourseBuilderLessonsNav(props: Props) {
           stickyMaxH,
         )}
       >
-        <NavList {...props} onLessonClick={handleClick} />
+        <NavList {...props} />
       </aside>
 
-      {/* Mobile floating trigger + sheet */}
       <div className="lg:hidden fixed bottom-24 left-4 z-40">
         <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
           <SheetTrigger asChild>
@@ -282,7 +552,7 @@ export function CourseBuilderLessonsNav(props: Props) {
           </SheetTrigger>
           <SheetContent side="left" className="w-80 p-0">
             <div className="h-full pt-6">
-              <NavList {...props} onLessonClick={handleClick} afterAction={() => setMobileOpen(false)} />
+              <NavList {...props} afterAction={() => setMobileOpen(false)} />
             </div>
           </SheetContent>
         </Sheet>

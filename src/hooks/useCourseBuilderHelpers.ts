@@ -80,6 +80,7 @@ export function normalizeLessonsFromDB(
       testQuestionsToShow: (l as any).test_questions_to_show ?? null,
       questions: l.type === 'test' ? (questionsMap[l.id] || []) : undefined,
       attachments: attachmentsMap[l.id] || [],
+      module_id: (l as any).module_id ?? null,
     };
   });
 }

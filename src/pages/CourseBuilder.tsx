@@ -42,7 +42,9 @@ export default function CourseBuilder({ embedded, embeddedCourseId, onExitEditor
     sensors, handleDragEnd, saveCourse, autoSaveStatus,
     courseId: resolvedCourseId,
     organizationId,
-    activeLessonId, setActiveLessonId, scrollToLesson } = useCourseBuilder(embeddedCourseId);
+    activeLessonId, setActiveLessonId, scrollToLesson,
+    modules, createModule, renameModule, deleteModule, toggleModuleCollapsed,
+    collapseAllModules, expandAllModules } = useCourseBuilder(embeddedCourseId);
 
   const {
     isReviewing, reviewResult, activeFindings, dismissedIds,
@@ -147,6 +149,7 @@ export default function CourseBuilder({ embedded, embeddedCourseId, onExitEditor
           {/* LEFT: sticky lessons navigation (desktop) */}
           <CourseBuilderLessonsNav
             lessons={lessons}
+            modules={modules}
             activeLessonId={activeLessonId}
             sensors={sensors}
             onDragEnd={handleDragEnd}
@@ -156,6 +159,12 @@ export default function CourseBuilder({ embedded, embeddedCourseId, onExitEditor
             embedded={embedded}
             onAddLesson={addLesson}
             onOpenAIDialog={() => setShowAIGenerateDialog(true)}
+            onCreateModule={createModule}
+            onRenameModule={renameModule}
+            onDeleteModule={deleteModule}
+            onToggleModuleCollapsed={toggleModuleCollapsed}
+            onCollapseAll={collapseAllModules}
+            onExpandAll={expandAllModules}
           />
 
           {/* CENTER: main content */}
