@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-import { ContentBlock } from "@/components/course-builder/BlockEditor";
+import { ContentBlock, parseLessonContent } from "@/components/course-builder/BlockEditor";
 import { safeInvoke } from "@/utils/safeInvoke";
 import { useExternalStorageWithProgress } from "@/hooks/useExternalStorageWithProgress";
 import { toast } from "sonner";
@@ -60,25 +60,9 @@ export function useLessonEditor({
   const isUploading = videoUploadProgress !== null;
 
   const parseContent = useCallback((content: string | null, lessonType: string) => {
-    if (!content) { setBlocks([]); setVideoUrl(""); return; }
-    if (lessonType === "video") { setVideoUrl(content); setBlocks([]); return; }
-    try {
-      const parsed = JSON.parse(content);
-      if (Array.isArray(parsed)) { setBlocks(parsed); return; }
-    } catch {
-      const lines = content.split('\n').filter(line => line.trim());
-      const convertedBlocks: ContentBlock[] = lines.map((line) => {
-        const id = crypto.randomUUID();
-        if (line.startsWith('# ')) return { id, type: 'heading1' as const, content: line.slice(2) };
-        if (line.startsWith('## ') || line.startsWith('### ')) return { id, type: 'heading2' as const, content: line.replace(/^#{2,3}\s/, '') };
-        if (line.startsWith('> ')) return { id, type: 'quote' as const, content: line.slice(2) };
-        if (line.startsWith('- ') || line.startsWith('* ')) return { id, type: 'bulletList' as const, content: line.slice(2) };
-        if (/^\d+\.\s/.test(line)) return { id, type: 'numberedList' as const, content: line.replace(/^\d+\.\s/, '') };
-        if (line.startsWith('![')) { const match = line.match(/!\[.*?\]\((.*?)\)/); return { id, type: 'image' as const, content: '', imageSrc: match?.[1] || '' }; }
-        return { id, type: 'paragraph' as const, content: line };
-      });
-      setBlocks(convertedBlocks.length > 0 ? convertedBlocks : []);
-    }
+    if (lessonType === "video") { setVideoUrl(content || ""); setBlocks([]); return; }
+    setVideoUrl("");
+    setBlocks(parseLessonContent(content));
   }, []);
 
   useEffect(() => {
