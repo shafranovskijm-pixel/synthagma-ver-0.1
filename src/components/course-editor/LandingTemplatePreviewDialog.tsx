@@ -197,13 +197,15 @@ export function LandingTemplatePreviewDialog({
         </DialogHeader>
 
         <ScrollArea ref={scrollRef} className="flex-1">
-          <div
+          <LandingThemeProvider
             key={template.id}
+            theme={template.theme}
+            accent={accentColor}
             className="bg-background"
             style={accentColor ? ({ ["--primary" as any]: accentColor } as React.CSSProperties) : undefined}
           >
             {order.map(renderSection)}
-          </div>
+          </LandingThemeProvider>
         </ScrollArea>
       </DialogContent>
     </Dialog>

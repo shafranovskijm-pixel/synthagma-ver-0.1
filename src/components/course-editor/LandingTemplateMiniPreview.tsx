@@ -177,7 +177,9 @@ export function LandingTemplateMiniPreview({
             pointerEvents: "none",
           }}
         >
-          {order.map(renderSection)}
+          <LandingThemeProvider theme={template.theme} accent={accentColor} bare>
+            {order.map(renderSection)}
+          </LandingThemeProvider>
         </div>
       </div>
 
