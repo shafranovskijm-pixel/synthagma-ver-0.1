@@ -338,7 +338,7 @@ function HomeView({
           </button>
 
           <a
-            href="https://t.me/sintagma_support"
+            href="https://t.me/+SVTbxqnGmF1iMzIy"
             target="_blank"
             rel="noopener noreferrer"
             className="group flex flex-col items-center gap-2.5 p-4 rounded-2xl bg-muted/60 hover:bg-muted transition-all hover:-translate-y-0.5"

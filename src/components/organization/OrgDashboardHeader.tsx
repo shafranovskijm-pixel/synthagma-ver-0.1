@@ -195,7 +195,7 @@ export function OrgDashboardHeader() {
                 <Sparkles className="w-4 h-4" />
                 Что нового?
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => window.open("https://t.me/sintagma_support", "_blank")} className="rounded-lg gap-2.5 py-2.5 focus:bg-primary/10 focus:text-primary">
+              <DropdownMenuItem onClick={() => window.open("https://t.me/+SVTbxqnGmF1iMzIy", "_blank")} className="rounded-lg gap-2.5 py-2.5 focus:bg-primary/10 focus:text-primary">
                 <HelpCircle className="w-4 h-4" />
                 Помощь
               </DropdownMenuItem>
