@@ -6,16 +6,28 @@ import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import {
-  DropdownMenu,
-  DropdownMenuTrigger,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuLabel,
-} from "@/components/ui/dropdown-menu";
-import { GripVertical, Menu, FileText, ArrowLeft, Plus, Video, CheckSquare, Presentation, Headphones, MessageSquare, BookCheck, Sparkles } from "lucide-react";
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import { GripVertical, Menu, FileText, ArrowLeft, Plus, CheckSquare, Presentation, Headphones, MessageSquare, BookCheck, Sparkles, type LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { lessonIcons, lessonColors, type Lesson, type LessonType } from "@/components/course-builder/LessonTypeConfig";
+
+type LessonTypeOption = { type: LessonType; icon: LucideIcon; label: string; description: string; iconClass: string };
+
+const LESSON_TYPE_OPTIONS: LessonTypeOption[] = [
+  { type: "text", icon: FileText, label: "Текст", description: "Форматированный текст с видео, аудио и изображениями. Прикрепляйте файлы для скачивания.", iconClass: "text-primary bg-primary/10" },
+  { type: "test", icon: CheckSquare, label: "Тест", description: "Проверка знаний с вариантами ответов, изображениями и пояснениями. Настраиваемый проходной балл.", iconClass: "text-sigma-orange bg-sigma-orange/10" },
+  { type: "slider", icon: Presentation, label: "Слайды", description: "Презентация с переключаемыми слайдами. Удобно для пошагового объяснения материала.", iconClass: "text-amber-500 bg-amber-500/10" },
+  { type: "audio", icon: Headphones, label: "Аудио", description: "Аудиоурок: подкаст, лекция или интервью. Поддержка фоновой обложки и описания.", iconClass: "text-green-500 bg-green-500/10" },
+  { type: "feedback", icon: MessageSquare, label: "Обратная связь", description: "Студент отправляет текстовый ответ — он попадает в чат организации. Урок засчитывается автоматически.", iconClass: "text-blue-500 bg-blue-500/10" },
+  { type: "homework", icon: BookCheck, label: "Задание", description: "Домашнее задание с проверкой преподавателем. Студент прикрепляет текст и файлы, ждёт одобрения.", iconClass: "text-indigo-500 bg-indigo-500/10" },
+  { type: "ai_avatar", icon: Sparkles, label: "ИИ-преподаватель", description: "Голосовой диалог с ИИ-аватаром на тему урока. По умолчанию ограничен 5 минутами.", iconClass: "text-fuchsia-500 bg-gradient-to-br from-fuchsia-500/10 to-pink-500/10" },
+];
 
 interface Props {
   lessons: Lesson[];
