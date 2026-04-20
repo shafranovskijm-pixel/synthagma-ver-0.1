@@ -32,7 +32,12 @@ interface Nebula {
   speedY: number;
 }
 
-export function StarfieldCanvas() {
+interface StarfieldCanvasProps {
+  /** 'low' — облегчённый рендер для маленьких контейнеров (например, шапка чата) */
+  density?: "low" | "high";
+}
+
+export function StarfieldCanvas({ density = "high" }: StarfieldCanvasProps = {}) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const animationRef = useRef<number>(0);
@@ -43,9 +48,12 @@ export function StarfieldCanvas() {
   const timeRef = useRef(0);
   const lastShootingRef = useRef(0);
 
+  const isLow = density === "low";
+
   const initStars = useCallback((w: number, h: number) => {
     const stars: Star[] = [];
-    for (let i = 0; i < 180; i++) {
+    const count = isLow ? 50 : 180;
+    for (let i = 0; i < count; i++) {
       stars.push({
         x: Math.random() * w,
         y: Math.random() * h,
