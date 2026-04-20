@@ -253,10 +253,11 @@ export function CourseBuilderLessonsNav(props: Props) {
     setMobileOpen(false);
   };
 
-  // Embedded: панель встроена в /organization, над ней sticky-хедер ~316px (h-14 + h-48 hero + h-12).
+  // Embedded: панель встроена в /organization, над ней sticky-хедер ~316px.
   // Standalone: только собственный sticky-хедер ~96px.
-  const stickyTop = props.embedded ? "top-[332px]" : "top-24";
-  const stickyMaxH = props.embedded ? "max-h-[calc(100dvh-348px)]" : "max-h-[calc(100dvh-7rem)]";
+  // Используем dvh с минимальным запасом, чтобы длинные списки уроков (40+) полностью скроллились.
+  const stickyTop = props.embedded ? "top-[180px]" : "top-24";
+  const stickyMaxH = props.embedded ? "max-h-[calc(100dvh-200px)]" : "max-h-[calc(100dvh-7rem)]";
 
   return (
     <>
