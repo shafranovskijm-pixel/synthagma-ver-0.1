@@ -37,6 +37,16 @@ export interface LandingTheme {
   audience_layout: "grid" | "icons-row" | "stacked-cards";
   reviews_layout: "cards" | "masonry" | "carousel-mini";
   benefits_layout: "grid" | "icon-list";
+  /**
+   * Layout секции «Что вы освоите». Опционально — если не задан,
+   * используется базовый «icon-cards» (двухколоночная сетка карточек с иконками).
+   */
+  learn_layout?: "icon-cards" | "aurora-numbers" | "beauty-polaroids" | "safety-checklist" | "lab-terminal" | "language-book";
+  /**
+   * Layout секции «Как проходит обучение». Опционально — если не задан,
+   * используется базовый «numbered-list» (нумерованный список 1–N).
+   */
+  process_layout?: "numbered-list" | "aurora-timeline" | "beauty-steps" | "safety-blueprint" | "lab-ascii" | "language-route";
   /** Цветовая схема секций — светлая (по умолчанию) или тёмная */
   scheme: "light" | "dark";
   /**
