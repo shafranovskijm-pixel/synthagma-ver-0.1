@@ -7,6 +7,7 @@ export {
   jsonToBlocks,
   markdownToBlocks,
   htmlToBlocks,
+  parseLessonContent,
 } from "./block-editor";
 
 export type {
