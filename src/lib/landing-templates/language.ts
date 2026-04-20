@@ -30,6 +30,8 @@ export const languageTemplate: LandingTemplate = {
     reviews_layout: "carousel-mini",
     benefits_layout: "grid",
     scheme: "light",
+    learn_layout: "language-book",
+    process_layout: "language-route",
     section_bg_url: languageSectionBg,
     pricing_bg_url: languagePricingBg,
     cta_bg_url: languageCtaBg,

@@ -30,6 +30,8 @@ export const labTemplate: LandingTemplate = {
     reviews_layout: "masonry",
     benefits_layout: "icon-list",
     scheme: "dark",
+    learn_layout: "lab-terminal",
+    process_layout: "lab-ascii",
     section_bg_url: labSectionBg,
     pricing_bg_url: labPricingBg,
     cta_bg_url: labCtaBg,
