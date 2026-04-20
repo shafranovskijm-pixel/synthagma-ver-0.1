@@ -79,6 +79,19 @@ export function useCourseBuilder(propCourseId?: string) {
       if (courseId) {
         const { data: course } = await supabase.from("courses").select("*").eq("id", courseId).single();
         if (course) { setCourseTitle(course.title); setCourseDescription(course.description || ""); if (!profile?.organization_id && course.organization_id) setOrganizationId(course.organization_id); }
+
+        // Load modules
+        const { data: modulesData } = await supabase
+          .from("course_modules" as any)
+          .select("*")
+          .eq("course_id", courseId)
+          .order("order_index");
+        if (modulesData) {
+          setModules((modulesData as any[]).map(m => ({
+            id: m.id, course_id: m.course_id, title: m.title, order_index: m.order_index, collapsed: false,
+          })));
+        }
+
         const { data: lessonsData } = await supabase.from("lessons").select("*").eq("course_id", courseId).order("order_index");
         if (lessonsData) {
           const testLessonIds = lessonsData.filter(l => l.type === 'test').map(l => l.id);
