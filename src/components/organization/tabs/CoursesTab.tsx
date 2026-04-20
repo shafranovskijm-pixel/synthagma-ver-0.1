@@ -430,6 +430,10 @@ export const CoursesTab = React.memo(function CoursesTab({ organizationId, onCou
               onMoveCourse={openMoveCourseDialog}
               isAdminView={isAdminView}
               onTransfer={handleTransfer}
+              onCoverUpload={(id) => { setCoverUploadCourseId(id); setTimeout(() => coverInputRef.current?.click(), 100); }}
+              onGenerateCover={handleGenerateCourseCover}
+              generatingCoverForCourse={generatingCoverForCourse}
+              onDeleteCourse={handleSingleDelete}
             />
           ))}
           {coursesByCategory.uncategorized.length > 0 && (
@@ -449,6 +453,10 @@ export const CoursesTab = React.memo(function CoursesTab({ organizationId, onCou
               onMoveCourse={openMoveCourseDialog}
               isAdminView={isAdminView}
               onTransfer={handleTransfer}
+              onCoverUpload={(id) => { setCoverUploadCourseId(id); setTimeout(() => coverInputRef.current?.click(), 100); }}
+              onGenerateCover={handleGenerateCourseCover}
+              generatingCoverForCourse={generatingCoverForCourse}
+              onDeleteCourse={handleSingleDelete}
             />
           )}
         </div>
