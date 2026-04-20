@@ -1,17 +1,20 @@
 import type { LandingTemplate } from "./types";
 import { ALL_SECTIONS } from "@/hooks/useLandingEditor";
+import safetyHero from "@/assets/landing-templates/safety-hero.jpg";
 
 export const safetyTemplate: LandingTemplate = {
   id: "safety",
   name: "Эталон",
   tagline: "Корпоративный лендинг для курсов охраны труда, ПБ и профобучения",
   accent_color: "#2563eb",
+  surface_tint: "#dbeafe",
+  cover_image_url: safetyHero,
   tier: "free",
   category: "safety",
   is_new: true,
   data: {
     hero: {
-      background_url: null,
+      background_url: safetyHero,
       subtitle:
         "Дистанционное обучение по 273-ФЗ с занесением в реестр ФИС ФРДО. Удостоверение готово к проверке Ростехнадзора и инспекции труда уже на 5-й рабочий день.",
       show_price: true,

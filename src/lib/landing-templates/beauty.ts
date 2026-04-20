@@ -1,17 +1,20 @@
 import type { LandingTemplate } from "./types";
 import { ALL_SECTIONS } from "@/hooks/useLandingEditor";
+import beautyHero from "@/assets/landing-templates/beauty-hero.jpg";
 
 export const beautyTemplate: LandingTemplate = {
   id: "beauty",
   name: "Атéлье",
   tagline: "Тёплый бьюти-лендинг для курсов маникюра, визажа и парикмахерского искусства",
   accent_color: "#e879a6",
+  surface_tint: "#fce7f3",
+  cover_image_url: beautyHero,
   tier: "free",
   category: "beauty",
   is_new: true,
   data: {
     hero: {
-      background_url: null,
+      background_url: beautyHero,
       subtitle:
         "Освойте востребованную бьюти-профессию за 2 месяца. Реальные модели, авторские техники мастера с 10-летним опытом и помощь в трудоустройстве после выпуска.",
       show_price: true,

@@ -1,15 +1,19 @@
 import type { LandingTemplate } from "./types";
 import { ALL_SECTIONS } from "@/hooks/useLandingEditor";
+import auroraHero from "@/assets/landing-templates/aurora-hero.jpg";
 
 export const auroraTemplate: LandingTemplate = {
   id: "aurora",
   name: "Аврора",
   tagline: "Премиальный продающий лендинг с фокусом на конверсию",
   accent_color: "#22b8a6",
+  surface_tint: "#22b8a6",
+  cover_image_url: auroraHero,
   tier: "free",
+  category: "business",
   data: {
     hero: {
-      background_url: null,
+      background_url: auroraHero,
       subtitle:
         "Системное обучение от практиков индустрии. Получите востребованные навыки, диплом установленного образца и сопровождение наставника на каждом шаге.",
       show_price: true,
