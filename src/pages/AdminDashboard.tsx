@@ -16,7 +16,7 @@ import { SalesManager } from "@/components/admin/SalesManager";
 import { AISettingsManager } from "@/components/admin/AISettingsManager";
 import { BroadcastManager } from "@/components/admin/BroadcastManager";
 import { AdminChatsManager } from "@/components/admin/AdminChatsManager";
-import { AdminSupportChats } from "@/components/admin/AdminSupportChats";
+
 import { ReferralsManager } from "@/components/admin/ReferralsManager";
 import { PlatformUpdatesManager } from "@/components/admin/PlatformUpdatesManager";
 import { AdminBillingOverview } from "@/components/admin/AdminBillingOverview";
@@ -180,7 +180,6 @@ const AdminDashboard = () => {
           {activeTab === "support" && <SupportRequestsManager />}
           {activeTab === "broadcast" && <BroadcastManager />}
           {activeTab === "chats" && <AdminChatsManager />}
-          {activeTab === "support-chats" && <AdminSupportChats />}
           {activeTab === "referrals" && <ReferralsManager />}
           
           {activeTab === "devtools" && <DevToolsPanel />}
