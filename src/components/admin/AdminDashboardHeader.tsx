@@ -204,7 +204,7 @@ export function AdminDashboardHeader({
                 <Sparkles className="w-4 h-4" />
                 Что нового?
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={helpDialog.openHelp} className="rounded-lg gap-2.5 py-2.5 focus:bg-primary/10 focus:text-primary">
+              <DropdownMenuItem onClick={() => window.dispatchEvent(new CustomEvent('open-support-chat'))} className="rounded-lg gap-2.5 py-2.5 focus:bg-primary/10 focus:text-primary">
                 <HelpCircle className="w-4 h-4" />
                 Помощь
               </DropdownMenuItem>
