@@ -10,7 +10,7 @@ import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 
 export function AudioBlock({ block, onUpdate }: { block: ContentBlock; onUpdate: (updates: Partial<ContentBlock>) => void }) {
   const [isUploading, setIsUploading] = useState(false);
-  const [isGeneratingTts, setIsGeneratingTts] = useState(false);
+  const { isGenerating: isGeneratingTts, run: runTts } = useBlockAIGenerate();
   const [showTts, setShowTts] = useState(false);
   const [ttsText, setTtsText] = useState("");
   const [ttsVoice, setTtsVoice] = useState("Nec_24000");
