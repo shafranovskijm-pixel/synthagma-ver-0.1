@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import { MessageCircle, Search, Send, Building2, ArrowLeft } from "lucide-react";
+import { MessageCircle, Search, Send, Building2, ArrowLeft, Bot, Users, ClipboardList, Contact, Settings, Headset } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -10,6 +10,7 @@ import { ru } from "date-fns/locale";
 import { toast } from "sonner";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useAuth } from "@/hooks/useAuth";
+import { useSupportUnread } from "@/hooks/useSupportUnread";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 import { AiChatPanel } from "@/components/chat/AiChatPanel";
 import { ColleagueChatPanel } from "@/components/chat/ColleagueChatPanel";
@@ -19,6 +20,7 @@ import { ChatSettingsPanel } from "@/components/chat/ChatSettingsPanel";
 import { ChatRequestsPanel } from "@/components/chat/ChatRequestsPanel";
 import { ChatContactsPanel } from "@/components/chat/ChatContactsPanel";
 import { ChatNotificationToggle } from "@/components/chat/ChatNotificationToggle";
+import { AdminSupportChats } from "@/components/admin/AdminSupportChats";
 
 interface Organization {
   id: string;
@@ -336,6 +338,11 @@ export function AdminChatsManager() {
   function renderContent() {
     switch (activeSection) {
       case "chats": return renderOrgChats();
+      case "support": return (
+        <div className="border border-border rounded-xl bg-card overflow-hidden h-full">
+          <AdminSupportChats />
+        </div>
+      );
       case "ai": return (
         <div className="border border-border rounded-xl bg-card p-4 h-full">
           <AiChatPanel />
