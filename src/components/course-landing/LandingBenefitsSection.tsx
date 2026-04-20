@@ -5,6 +5,7 @@ import { BenefitsPetals } from "./variants/BenefitsPetals";
 import { BenefitsBlueprintList } from "./variants/BenefitsBlueprintList";
 import { BenefitsCodeStack } from "./variants/BenefitsCodeStack";
 import { BenefitsRouteStamps } from "./variants/BenefitsRouteStamps";
+import { BenefitsAuroraShowcase } from "./variants/BenefitsAuroraShowcase";
 
 export interface BenefitItem {
   icon: string;
@@ -23,6 +24,10 @@ interface Props {
 /** Диспетчер Benefits — выбирает variant по `theme.benefits_layout`. */
 export function LandingBenefitsSection(props: Props) {
   const { theme } = useLandingTheme();
+  // Aurora-showcase сама рендерит тёмный фон — без обёртки .landing-bg-section.
+  if (theme.benefits_layout === "aurora-showcase") {
+    return <BenefitsAuroraShowcase {...props} />;
+  }
   const Variant = (() => {
     switch (theme.benefits_layout) {
       case "petals": return BenefitsPetals;

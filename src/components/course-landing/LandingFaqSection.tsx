@@ -4,6 +4,7 @@ import { useLandingTheme, useTemplateStyle } from "./LandingThemeProvider";
 import { FaqConsole } from "./variants/FaqConsole";
 import { FaqPaperCards } from "./variants/FaqPaperCards";
 import { FaqRegulation } from "./variants/FaqRegulation";
+import { FaqAuroraGlass } from "./variants/FaqAuroraGlass";
 
 export interface FaqItem {
   question: string;
@@ -24,6 +25,7 @@ interface Props {
 export function LandingFaqSection(props: Props) {
   const { theme } = useLandingTheme();
   switch (theme.faq_layout) {
+    case "aurora-glass": return <FaqAuroraGlass {...props} />;
     case "console": return <FaqConsole {...props} />;
     case "paper-cards": return <FaqPaperCards {...props} />;
     case "regulation": return <FaqRegulation {...props} />;

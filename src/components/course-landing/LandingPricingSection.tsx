@@ -5,6 +5,7 @@ import { PricingComparison } from "./variants/PricingComparison";
 import { PricingHeroFocus } from "./variants/PricingHeroFocus";
 import { PricingLanguageLevels } from "./variants/PricingLanguageLevels";
 import { PricingPackageJson } from "./variants/PricingPackageJson";
+import { PricingAuroraSpotlight } from "./variants/PricingAuroraSpotlight";
 
 export interface PricingTier {
   name: string;
@@ -29,6 +30,10 @@ interface Props {
 /** Диспетчер Pricing — выбирает variant по `theme.pricing_layout`. */
 export function LandingPricingSection(props: Props) {
   const { theme } = useLandingTheme();
+  // Aurora-spotlight рендерит тёмный фон сама
+  if (theme.pricing_layout === "aurora-spotlight") {
+    return <PricingAuroraSpotlight {...props} />;
+  }
   const Variant = (() => {
     switch (theme.pricing_layout) {
       case "highlight-middle": return PricingHighlightMiddle;
