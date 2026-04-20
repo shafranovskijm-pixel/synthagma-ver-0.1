@@ -382,7 +382,8 @@ export function CourseDetailsContent({ course, courseStudents, organizationId, a
         {activeTab === "achievements" && organizationId && <CourseAchievementsTab courseId={course.id} organizationId={organizationId} />}
         {activeTab === "editor" && <Suspense fallback={<div className="flex items-center justify-center py-16"><SigmaSpinner size="lg" /></div>}><CourseBuilder embedded embeddedCourseId={course.id} onExitEditor={() => onTabChange("students")} /></Suspense>}
         {activeTab === "preview" && <Suspense fallback={<div className="flex items-center justify-center py-16"><SigmaSpinner size="lg" /></div>}><CoursePreviewView courseId={course.id} embedded onNavigateToEditor={() => onTabChange("editor")} /></Suspense>}
-      </div>
+        </div>
+      )}
 
       {/* Reset Progress */}
       <AlertDialog open={!!h.resetConfirmStudent} onOpenChange={(open) => !open && h.setResetConfirmStudent(null)}>
