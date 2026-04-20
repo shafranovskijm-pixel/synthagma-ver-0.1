@@ -1,4 +1,3 @@
-import safetyPreview from "@/assets/landing-templates/safety.jpg";
 import type { LandingTemplate } from "./types";
 import { ALL_SECTIONS } from "@/hooks/useLandingEditor";
 
@@ -6,7 +5,6 @@ export const safetyTemplate: LandingTemplate = {
   id: "safety",
   name: "Эталон",
   tagline: "Корпоративный лендинг для курсов охраны труда, ПБ и профобучения",
-  preview_image: safetyPreview,
   accent_color: "#2563eb",
   tier: "free",
   category: "safety",
