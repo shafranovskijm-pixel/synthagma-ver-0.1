@@ -8,8 +8,7 @@ import {
 import { motion } from "framer-motion";
 import { Link } from "react-router-dom";
 import { FloatingParticles } from "./FloatingParticles";
-import mobileMockup from "@/assets/mobile-app-mockup.jpg";
-import mobileBg from "@/assets/mobile-app-bg.jpg";
+import mobileMockup from "@/assets/mobile-app-mockup.png";
 
 const mobileFeatures = [
   { icon: BookOpen, text: "Курсы офлайн" },
@@ -26,15 +25,6 @@ export function MobileApp() {
 
       {/* Background */}
       <div className="absolute inset-0 bg-gradient-to-b from-background via-secondary/20 to-background" />
-      <div
-        className="absolute inset-0 opacity-30 mix-blend-screen pointer-events-none"
-        style={{
-          backgroundImage: `url(${mobileBg})`,
-          backgroundSize: 'cover',
-          backgroundPosition: 'center',
-        }}
-      />
-      <div className="absolute inset-0 bg-gradient-to-b from-background/60 via-transparent to-background/80 pointer-events-none" />
       <div className="absolute inset-0 opacity-[0.012]" style={{
         backgroundImage: `radial-gradient(circle at 1px 1px, currentColor 1px, transparent 0)`,
         backgroundSize: '32px 32px'
