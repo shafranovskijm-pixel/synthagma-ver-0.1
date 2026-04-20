@@ -3,7 +3,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { ArrowLeft, Plus, Save, Eye, EyeOff, Globe, FileText, Video, HelpCircle, Github } from "lucide-react";
+import { ArrowLeft, Plus, Save, Eye, EyeOff, Globe, FileText, BookOpen } from "lucide-react";
 import { SigmaLogo } from "@/components/ui/SigmaLogo";
 import { getAdminAwareBackPath } from "@/lib/utils";
 import { DndContext, closestCenter } from "@dnd-kit/core";
@@ -13,7 +13,7 @@ import { LessonEditor } from "@/components/course-editor/LessonEditor";
 import { GitHubImportDialog } from "@/components/course-editor/GitHubImportDialog";
 import { CoursePageSettingsDialog } from "@/components/course-editor/CoursePageSettingsDialog";
 import { CourseLessonsSidebar } from "@/components/course-editor/CourseLessonsSidebar";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
+import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from "@/components/ui/accordion";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { useCourseEditor } from "@/hooks/useCourseEditor";
@@ -89,51 +89,50 @@ const CourseEditor = () => {
         onOpenGitHubImport={() => h.setIsGitHubImportOpen(true)}
       />
 
-      <main className="max-w-5xl mx-auto p-6 pb-32 lg:pl-[18.5rem]">
-        <div className="feature-card rounded-2xl p-6 mb-8">
-          <h2 className="font-display text-xl font-semibold mb-6">Информация о курсе</h2>
-          <div className="grid sm:grid-cols-2 gap-6">
-            <div className="space-y-2 sm:col-span-2"><Label>Название курса *</Label><Input value={h.title} onChange={e => h.setTitle(e.target.value)} placeholder="Введите название курса" /></div>
-            <div className="space-y-2 sm:col-span-2"><Label>Описание</Label><Textarea value={h.description} onChange={e => h.setDescription(e.target.value)} placeholder="Краткое описание курса" className="min-h-[100px]" /></div>
-            <div className="space-y-2"><Label>Продолжительность</Label><Input value={h.duration} onChange={e => h.setDuration(e.target.value)} placeholder="Например: 2 недели" /></div>
-            <div className="space-y-2"><Label>Академические часы</Label><Input type="number" min="0" value={h.durationHours ?? ""} onChange={e => h.setDurationHours(e.target.value ? parseInt(e.target.value) : null)} placeholder="Например: 40" /></div>
-            <div className="space-y-2"><Label>Стоимость (₽)</Label><Input type="number" min="0" value={h.price || ""} onChange={e => h.setPrice(e.target.value ? parseFloat(e.target.value) : 0)} placeholder="0 — бесплатный" /><p className="text-xs text-muted-foreground">Оставьте 0 для бесплатного курса</p></div>
-            <div className="space-y-2"><Label>Статус</Label><div className={`inline-flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium ${h.course.is_published ? "bg-sigma-green/10 text-sigma-green" : "bg-muted text-muted-foreground"}`}>{h.course.is_published ? <><Eye className="w-4 h-4" />Опубликован</> : <><EyeOff className="w-4 h-4" />Черновик</>}</div></div>
-          </div>
-          <div className="mt-6 pt-6 border-t border-border space-y-4">
-            <h3 className="font-medium text-sm text-muted-foreground">Настройки прохождения</h3>
-            <div className="flex items-center justify-between gap-4 p-4 bg-muted/50 rounded-xl">
-              <div className="space-y-0.5"><Label htmlFor="sequential-lessons" className="font-medium">Последовательное прохождение</Label><p className="text-sm text-muted-foreground">Студенты должны пройти все уроки по порядку</p></div>
-              <Switch id="sequential-lessons" checked={h.sequentialLessons} onCheckedChange={h.setSequentialLessons} />
-            </div>
-            {h.sequentialLessons && (
-              <div className="flex items-center justify-between gap-4 p-4 bg-muted/50 rounded-xl">
-                <div className="space-y-0.5"><Label htmlFor="allow-video-seek" className="font-medium">Разрешить перемотку видео</Label><p className="text-sm text-muted-foreground">Если выключено, студенты не смогут перематывать видео</p></div>
-                <Switch id="allow-video-seek" checked={h.allowVideoSeek} onCheckedChange={h.setAllowVideoSeek} />
+      <main className="max-w-6xl mx-auto p-6 pb-32 lg:pl-[19rem]">
+        <Accordion type="single" collapsible className="mb-6">
+          <AccordionItem value="course-info" className="feature-card rounded-2xl border-0 px-6">
+            <AccordionTrigger className="hover:no-underline py-4">
+              <div className="flex items-center gap-2">
+                <BookOpen className="w-5 h-5 text-primary" />
+                <span className="font-display text-base font-semibold">Информация о курсе</span>
               </div>
-            )}
-          </div>
-        </div>
+            </AccordionTrigger>
+            <AccordionContent className="pb-6">
+              <div className="grid sm:grid-cols-2 gap-6">
+                <div className="space-y-2 sm:col-span-2"><Label>Название курса *</Label><Input value={h.title} onChange={e => h.setTitle(e.target.value)} placeholder="Введите название курса" /></div>
+                <div className="space-y-2 sm:col-span-2"><Label>Описание</Label><Textarea value={h.description} onChange={e => h.setDescription(e.target.value)} placeholder="Краткое описание курса" className="min-h-[100px]" /></div>
+                <div className="space-y-2"><Label>Продолжительность</Label><Input value={h.duration} onChange={e => h.setDuration(e.target.value)} placeholder="Например: 2 недели" /></div>
+                <div className="space-y-2"><Label>Академические часы</Label><Input type="number" min="0" value={h.durationHours ?? ""} onChange={e => h.setDurationHours(e.target.value ? parseInt(e.target.value) : null)} placeholder="Например: 40" /></div>
+                <div className="space-y-2"><Label>Стоимость (₽)</Label><Input type="number" min="0" value={h.price || ""} onChange={e => h.setPrice(e.target.value ? parseFloat(e.target.value) : 0)} placeholder="0 — бесплатный" /><p className="text-xs text-muted-foreground">Оставьте 0 для бесплатного курса</p></div>
+                <div className="space-y-2"><Label>Статус</Label><div className={`inline-flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium ${h.course.is_published ? "bg-sigma-green/10 text-sigma-green" : "bg-muted text-muted-foreground"}`}>{h.course.is_published ? <><Eye className="w-4 h-4" />Опубликован</> : <><EyeOff className="w-4 h-4" />Черновик</>}</div></div>
+              </div>
+              <div className="mt-6 pt-6 border-t border-border space-y-4">
+                <h3 className="font-medium text-sm text-muted-foreground">Настройки прохождения</h3>
+                <div className="flex items-center justify-between gap-4 p-4 bg-muted/50 rounded-xl">
+                  <div className="space-y-0.5"><Label htmlFor="sequential-lessons" className="font-medium">Последовательное прохождение</Label><p className="text-sm text-muted-foreground">Студенты должны пройти все уроки по порядку</p></div>
+                  <Switch id="sequential-lessons" checked={h.sequentialLessons} onCheckedChange={h.setSequentialLessons} />
+                </div>
+                {h.sequentialLessons && (
+                  <div className="flex items-center justify-between gap-4 p-4 bg-muted/50 rounded-xl">
+                    <div className="space-y-0.5"><Label htmlFor="allow-video-seek" className="font-medium">Разрешить перемотку видео</Label><p className="text-sm text-muted-foreground">Если выключено, студенты не смогут перематывать видео</p></div>
+                    <Switch id="allow-video-seek" checked={h.allowVideoSeek} onCheckedChange={h.setAllowVideoSeek} />
+                  </div>
+                )}
+              </div>
+            </AccordionContent>
+          </AccordionItem>
+        </Accordion>
 
         <div className="feature-card rounded-2xl p-6">
           <div className="flex items-center justify-between mb-6">
-            <h2 className="font-display text-xl font-semibold">Уроки ({h.lessons.length})</h2>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild><Button className="btn-gradient gap-2"><Plus className="w-4 h-4" />Добавить урок</Button></DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={() => h.handleAddLesson()}><FileText className="w-4 h-4 mr-2" />Текстовый урок</DropdownMenuItem>
-                <DropdownMenuItem onClick={() => h.handleAddLesson()}><Video className="w-4 h-4 mr-2" />Видео урок</DropdownMenuItem>
-                <DropdownMenuItem onClick={() => h.handleAddLesson()}><HelpCircle className="w-4 h-4 mr-2" />Тест</DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={() => h.setIsGitHubImportOpen(true)}><Github className="w-4 h-4 mr-2" />Импорт с GitHub</DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+            <h2 className="font-display text-xl font-semibold">Содержание курса ({h.lessons.length})</h2>
           </div>
 
           {h.lessons.length === 0 ? (
             <div className="text-center py-12 bg-muted/30 rounded-xl">
               <FileText className="w-12 h-12 text-muted-foreground/50 mx-auto mb-4" /><h3 className="font-semibold mb-2">Нет уроков</h3>
-              <p className="text-muted-foreground mb-4">Добавьте первый урок в курс</p>
+              <p className="text-muted-foreground mb-4">Используйте кнопку «Добавить урок» в левом меню</p>
               <Button variant="outline" onClick={() => h.handleAddLesson()} className="gap-2"><Plus className="w-4 h-4" />Добавить урок</Button>
             </div>
           ) : (
