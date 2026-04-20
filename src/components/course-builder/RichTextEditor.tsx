@@ -124,7 +124,7 @@ export function RichTextEditor({
   const handleBlur = useCallback(() => {
     setTimeout(() => {
       // Only hide if no popover is open
-      if (!styleMenuOpen && !listMenuOpen && !paletteOpen && !linkOpen) {
+      if (!styleMenuOpen && !listMenuOpen && !paletteOpen && !linkOpen && !convertOpen && !advancedOpen) {
         setShowToolbar(false);
       }
     }, 200);
