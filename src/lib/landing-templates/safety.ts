@@ -12,6 +12,21 @@ export const safetyTemplate: LandingTemplate = {
   tier: "free",
   category: "safety",
   is_new: true,
+  theme: {
+    font_heading: "inter",
+    font_body: "inter",
+    radius: "sharp",
+    button_style: "solid",
+    card_style: "bordered",
+    decor: "grid",
+    section_spacing: "normal",
+    hero_layout: "split-right",
+    pricing_layout: "comparison",
+    audience_layout: "grid",
+    reviews_layout: "cards",
+    benefits_layout: "icon-list",
+    scheme: "light",
+  },
   data: {
     hero: {
       background_url: safetyHero,

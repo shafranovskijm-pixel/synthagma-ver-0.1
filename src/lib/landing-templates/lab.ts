@@ -12,6 +12,21 @@ export const labTemplate: LandingTemplate = {
   tier: "free",
   category: "it",
   is_new: true,
+  theme: {
+    font_heading: "jetbrains",
+    font_body: "inter",
+    radius: "sharp",
+    button_style: "neon",
+    card_style: "flat",
+    decor: "dots",
+    section_spacing: "roomy",
+    hero_layout: "dark-promo",
+    pricing_layout: "cards",
+    audience_layout: "icons-row",
+    reviews_layout: "masonry",
+    benefits_layout: "icon-list",
+    scheme: "dark",
+  },
   data: {
     hero: {
       background_url: labHero,

@@ -15,6 +15,7 @@ import { LandingReviewsSection } from "@/components/course-landing/LandingReview
 import { LandingPricingSection } from "@/components/course-landing/LandingPricingSection";
 import { LandingFaqSection } from "@/components/course-landing/LandingFaqSection";
 import { LandingCtaSection } from "@/components/course-landing/LandingCtaSection";
+import { LandingThemeProvider } from "@/components/course-landing/LandingThemeProvider";
 
 interface Props {
   open: boolean;
@@ -197,13 +198,15 @@ export function LandingTemplatePreviewDialog({
         </DialogHeader>
 
         <ScrollArea ref={scrollRef} className="flex-1">
-          <div
+          <LandingThemeProvider
             key={template.id}
+            theme={template.theme}
+            accent={accentColor}
             className="bg-background"
             style={accentColor ? ({ ["--primary" as any]: accentColor } as React.CSSProperties) : undefined}
           >
             {order.map(renderSection)}
-          </div>
+          </LandingThemeProvider>
         </ScrollArea>
       </DialogContent>
     </Dialog>

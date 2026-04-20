@@ -19,6 +19,7 @@ import { LandingTeachersSection } from "@/components/course-landing/LandingTeach
 import { LandingReviewsSection } from "@/components/course-landing/LandingReviewsSection";
 import { LandingPricingSection } from "@/components/course-landing/LandingPricingSection";
 import { LandingFaqSection } from "@/components/course-landing/LandingFaqSection";
+import { LandingThemeProvider } from "@/components/course-landing/LandingThemeProvider";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 
 interface CourseData {
@@ -422,7 +423,9 @@ export default function CourseLanding() {
         {ogImage && <meta name="twitter:image" content={ogImage} />}
         <script type="application/ld+json">{JSON.stringify(jsonLd)}</script>
       </Helmet>
-      {sectionsOrder.map((sectionId) => renderPublicSection(sectionId))}
+      <LandingThemeProvider theme={landingContent?.theme} accent={course.accent_color}>
+        {sectionsOrder.map((sectionId) => renderPublicSection(sectionId))}
+      </LandingThemeProvider>
     </div>
   );
 }

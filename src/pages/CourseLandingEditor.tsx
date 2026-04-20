@@ -15,6 +15,7 @@ import { LandingReviewsSection } from "@/components/course-landing/LandingReview
 import { LandingPricingSection } from "@/components/course-landing/LandingPricingSection";
 import { LandingFaqSection } from "@/components/course-landing/LandingFaqSection";
 import { SectionToolbar } from "@/components/course-landing/SectionToolbar";
+import { LandingThemeProvider } from "@/components/course-landing/LandingThemeProvider";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 import { useLandingEditor, SECTION_LABELS } from "@/hooks/useLandingEditor";
 import { getCourseDetailsPath } from "@/lib/utils";
@@ -53,6 +54,8 @@ export function CourseLandingEditorContent({ courseId, embedded = false }: Cours
 
   const aiDialog = <LandingAIGenerateDialog open={h.aiDialogOpen} onOpenChange={h.setAiDialogOpen} sectionId={h.aiDialogSection} courseTitle={h.course.title} courseDescription={h.course.description} courseId={courseId} onTextGenerated={h.handleAITextGenerated} onImageGenerated={h.handleAIImageGenerated} />;
 
+  const themeFromContent = (h.course?.landing_content as any)?.theme;
+
   if (embedded) {
     return (
       <div className="space-y-4">
@@ -65,7 +68,9 @@ export function CourseLandingEditorContent({ courseId, embedded = false }: Cours
           </div>
         </div>
         <input ref={h.fileInputRef} type="file" accept="image/*" className="hidden" onChange={h.handleBackgroundUpload} />
-        {h.landing.sections_order.map((sectionId, index) => renderSection(sectionId, index))}
+        <LandingThemeProvider theme={themeFromContent} accent={h.course.accent_color}>
+          {h.landing.sections_order.map((sectionId, index) => renderSection(sectionId, index))}
+        </LandingThemeProvider>
         {aiDialog}
       </div>
     );
@@ -87,7 +92,9 @@ export function CourseLandingEditorContent({ courseId, embedded = false }: Cours
         </div>
       </div>
       <input ref={h.fileInputRef} type="file" accept="image/*" className="hidden" onChange={h.handleBackgroundUpload} />
-      {h.landing.sections_order.map((sectionId, index) => renderSection(sectionId, index))}
+      <LandingThemeProvider theme={themeFromContent} accent={h.course.accent_color}>
+        {h.landing.sections_order.map((sectionId, index) => renderSection(sectionId, index))}
+      </LandingThemeProvider>
       {aiDialog}
     </div>
   );
