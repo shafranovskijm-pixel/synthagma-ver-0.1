@@ -128,32 +128,40 @@ export const CoursesTab = React.memo(function CoursesTab({ organizationId, onCou
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set(["uncategorized"]));
   const menuSettings = dashboard?.dashboardSettings.menuSettings;
 
-  const initializedRef = React.useRef(false);
-  const [folderViewMode, setFolderViewModeLocal] = useState<"folders" | "flat">(
-    (menuSettings?.courseFolderMode as "folders" | "flat") || "folders"
+  // Per-user view preferences (localStorage). Default: grid + folders.
+  // First open ever → grid view. After user changes it → remember choice.
+  const viewPrefsKey = React.useMemo(
+    () => `org-courses-view:${organizationId || 'default'}`,
+    [organizationId]
   );
 
-  React.useEffect(() => {
-    if (menuSettings && !initializedRef.current) {
-      initializedRef.current = true;
-      if (menuSettings.courseViewMode) setViewMode(menuSettings.courseViewMode as CourseViewMode);
-      if (menuSettings.courseFolderMode) setFolderViewModeLocal(menuSettings.courseFolderMode as "folders" | "flat");
-    }
-  }, [menuSettings]);
+  const initializedRef = React.useRef(false);
+  const [folderViewMode, setFolderViewModeLocal] = useState<"folders" | "flat">("folders");
 
-  const saveViewPrefs = React.useCallback(async (courseViewMode: string, courseFolderMode: string) => {
-    if (!organizationId) return;
+  React.useEffect(() => {
+    if (initializedRef.current) return;
+    initializedRef.current = true;
     try {
-      const { data } = await supabase.from('organizations').select('menu_settings').eq('id', organizationId).single();
-      const current = (data?.menu_settings as Record<string, unknown>) || {};
-      const { error } = await supabase.from('organizations').update({ menu_settings: { ...current, courseViewMode, courseFolderMode } as any }).eq('id', organizationId);
-      if (error) { toast.error("Ошибка сохранения вида"); } else { toast.success("Вид отображения сохранён"); }
-    } catch { toast.error("Ошибка сохранения вида"); }
-  }, [organizationId]);
+      const raw = localStorage.getItem(viewPrefsKey);
+      if (raw) {
+        const saved = JSON.parse(raw) as { courseViewMode?: CourseViewMode; courseFolderMode?: "folders" | "flat" };
+        if (saved.courseViewMode === "grid" || saved.courseViewMode === "list") {
+          setViewMode(saved.courseViewMode);
+        }
+        if (saved.courseFolderMode === "folders" || saved.courseFolderMode === "flat") {
+          setFolderViewModeLocal(saved.courseFolderMode);
+        }
+      }
+    } catch { /* ignore */ }
+  }, [viewPrefsKey, setViewMode]);
 
   const setViewAndFolder = React.useCallback((vm: CourseViewMode, fm: "folders" | "flat") => {
-    setViewMode(vm); setFolderViewModeLocal(fm); saveViewPrefs(vm, fm);
-  }, [setViewMode, saveViewPrefs]);
+    setViewMode(vm);
+    setFolderViewModeLocal(fm);
+    try {
+      localStorage.setItem(viewPrefsKey, JSON.stringify({ courseViewMode: vm, courseFolderMode: fm }));
+    } catch { /* ignore */ }
+  }, [setViewMode, viewPrefsKey]);
 
   // Grouping
   const coursesByCategory = useMemo(() => {
