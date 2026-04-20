@@ -61,6 +61,7 @@ export function RichTextEditor({
   value, onChange, placeholder, className, minHeight = "60px",
   onConvertType, onStyleUpdate, currentBlockType, currentTextAlign,
   currentTextColor, currentBgColor, currentTextSize,
+  onConvertBlockType, canConvert, canStyle, currentBlock, presets, onPresetsChange,
 }: RichTextEditorProps) {
   const editorRef = useRef<HTMLDivElement>(null);
   const [showToolbar, setShowToolbar] = useState(false);
@@ -69,6 +70,8 @@ export function RichTextEditor({
   const [listMenuOpen, setListMenuOpen] = useState(false);
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [linkOpen, setLinkOpen] = useState(false);
+  const [convertOpen, setConvertOpen] = useState(false);
+  const [advancedOpen, setAdvancedOpen] = useState(false);
   const [linkInput, setLinkInput] = useState("");
   const [activeFormats, setActiveFormats] = useState({ bold: false, italic: false, underline: false, code: false });
   const isInternalChange = useRef(false);
