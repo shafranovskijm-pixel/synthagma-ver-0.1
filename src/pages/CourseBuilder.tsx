@@ -56,6 +56,20 @@ export default function CourseBuilder({ embedded, embeddedCourseId, onExitEditor
   // Автоматическое отслеживание видимости при скролле отключено намеренно —
   // оно создавало ощущение, что список «сам ездит» при прокрутке колесом.
 
+  // Ctrl/Cmd+S — мгновенное сохранение курса
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
+        e.preventDefault();
+        if (!isSaving) {
+          saveCourse(false);
+        }
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [isSaving, saveCourse]);
+
 
   const handleStartReview = async () => {
     if (!resolvedCourseId) {

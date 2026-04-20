@@ -59,7 +59,7 @@ export function useLessonDraft<T>(lessonKey: string | null, current: T, isOpen: 
       } catch {
         // quota exceeded — silently ignore
       }
-    }, 1500);
+    }, 800);
     return () => window.clearTimeout(timer);
   }, [current, isOpen, lessonKey]);
 
