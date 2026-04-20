@@ -204,12 +204,6 @@ export function CourseDetailsContent({ course, courseStudents, organizationId, a
               </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-56">
-              <DropdownMenuItem onClick={() => onTabChange("preview")}>
-                <Eye className="w-4 h-4 mr-2" />Просмотр
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => onTabChange("editor")}>
-                <Edit className="w-4 h-4 mr-2" />Редактировать
-              </DropdownMenuItem>
               <DropdownMenuItem onClick={() => coverInputRef.current?.click()}>
                 <ImagePlus className="w-4 h-4 mr-2" />Изменить обложку
               </DropdownMenuItem>
