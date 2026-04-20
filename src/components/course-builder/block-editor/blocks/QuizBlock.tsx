@@ -1,5 +1,5 @@
-import { useState, useEffect, useRef } from "react";
-import { checkAiLimitGlobal, incrementAiLimitGlobal } from "@/hooks/useAiGenerationLimit";
+import { useEffect, useRef } from "react";
+import { useBlockAIGenerate } from "@/hooks/useBlockAIGenerate";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
