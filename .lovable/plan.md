@@ -1,36 +1,65 @@
 
 
-## Перенести все кнопки из «нижнего» toolbar в основной floating toolbar
+## Перенос «Преобразовать» и недостающих частей «Стиль блока» в основной floating toolbar
 
-На скрине видно, что сейчас есть **два toolbar**: маленький сверху (`− + B i <> U 🔗`) и большой снизу (`− T + B i {} U ☰ ⬅⬄➡ 🎨 🔗`). Нужен **один** — как нижний, и он должен появляться над выделением.
+### Что убираю из «...» меню (SortableBlockItem.tsx)
+Убираю 4 пункта и связанные диалоги:
+- `Преобразовать в…` → переезжает в основной toolbar
+- `Стиль блока…` → недостающие подразделы переезжают в основной toolbar, остальное удаляется как дубль
+- `Пресеты стиля` → переезжает в основной toolbar
+- `Сбросить стиль` → переезжает в основной toolbar
 
-### Причина дублирования
-В `RichTextEditor.tsx` сейчас две версии toolbar:
-1. **Старый «компактный»** — рендерится при выделении (то, что на скрине сверху).
-2. **Новый «большой»** с группой `− T +` — рендерится отдельно (то, что на скрине снизу).
+В «...» меню остаётся только: **Вверх / Вниз / Удалить** (+ поиск).
 
-Прошлый шаг добавил большой toolbar, но не удалил старый — поэтому показываются оба.
+Удаляю также диалоги `convertOpen`, `styleDialogOpen`, `presetsOpen` и связанные стейты.
 
-### Что сделаю
+### Что добавляю в основной toolbar (RichTextEditor.tsx)
 
-**`src/components/course-builder/RichTextEditor.tsx`:**
-- Удалить старый компактный toolbar полностью.
-- Оставить только большой (h-12, кнопки 36×36) с полным составом:
-  ```
-  [ − T + ] | [ B i {} U ] | [ ☰ списки ] | [ ⬅ ⬄ ➡ ] | [ 🎨 ] | [ 🔗 ]
-  ```
-- Все обработчики (B/I/U/code/lists/align/color/link) — переключить на единственный оставшийся toolbar.
-- Popover «Списки» (Маркированный / Нумерованный) — как на скрине 2, открывается из кнопки `☰`.
-- Popover «Стиль текста» (H1/H2/H3/H4/Текст) — из кнопки `T`.
-- Popover «Цвет» — из кнопки `🎨`.
-- Popover «Ссылка» — из кнопки `🔗`.
-- Позиционирование: центр над выделением, авто-флип вниз при нехватке места сверху.
+Добавляю **2 новые popover-кнопки** в правой части (после палитры, перед ссылкой), чтобы не раздувать линейку:
 
-### Файлы
-- `src/components/course-builder/RichTextEditor.tsx` — удалить старый toolbar, оставить один большой со всеми кнопками.
+**1. Кнопка `Wand2` — «Преобразовать»** (только при `onConvertType` и для блоков из `convertibleTypes`):
+- Popover со списком из `wrapOtherTargets` + раздел «Выделение» с `wrapCalloutTargets` (как было в Dialog).
+- Передаю наружу через новый проп `onConvertBlockType?: (type: BlockType) => void` (отдельный от `onConvertType`, который сейчас используется для смены H1/H2/paragraph). На уровне `BlockContent` мапим оба к одному `onUpdate({ type })`.
+
+**2. Кнопка `Sliders` — «Доп. оформление»** (только при `onStyleUpdate` и `canStyle`):
+Popover с разделами, которых нет в текущем toolbar:
+- **Доп. форматирование:** Зачёркнутый, UPPERCASE
+- **Шрифт:** Обычный / Моно
+- **Межстрочный интервал:** Плотный / Обычный / Свободный
+- **Рамка:** Нет / Тонкая / Жирная / Пунктир
+- **Скругление:** Нет / Md / Xl
+- **Готовые стили:** сетка `quickStyles` 3 колонки
+- **Пресеты:** «Сохранить текущий стиль» + список сохранённых (берём через новые пропсы `presets`, `onPresetsChange`)
+- Внизу — **«Сбросить стиль»** (та же логика что была в `...`)
+
+### Новые пропсы RichTextEditor
+```ts
+onConvertBlockType?: (type: BlockType) => void;   // для меню «Преобразовать»
+canConvert?: boolean;                              // показывать ли кнопку Wand2
+canStyle?: boolean;                                // показывать ли кнопку Sliders
+presets?: { name: string; style: StylePreset }[];
+onPresetsChange?: (p: { name: string; style: StylePreset }[]) => void;
+currentBlock?: ContentBlock;                       // для extractStyle/describeStyle при сохранении пресета
+```
+
+### Проброс в `BlockContent.tsx` / `TextBlocks.tsx`
+В `BlockContent.tsx` расширяю `blockCtrlProps`:
+```ts
+onConvertBlockType: (type) => onUpdate({ type, ...(type === 'accordion' && !block.accordionTitle ? { accordionTitle: 'Заголовок секции', accordionOpen: true } : {}) }),
+canConvert: convertibleTypes.includes(block.type),
+canStyle: textStyleableTypes.includes(block.type),
+currentBlock: block,
+```
+И принимаю/прокидываю `presets` / `onPresetsChange` из `SortableBlockItem` → `BlockContent` → `*Block` → `RichTextEditor`.
+
+### Файлы под изменение
+- `src/components/course-builder/RichTextEditor.tsx` — 2 новые кнопки/popover (Преобразовать, Доп. оформление + пресеты + сброс).
+- `src/components/course-builder/block-editor/blocks/SortableBlockItem.tsx` — убрать 4 пункта из «...», удалить 3 Dialog'а, прокинуть `presets`/`onPresetsChange` и расширенные `blockCtrlProps`.
+- `src/components/course-builder/block-editor/blocks/BlockContent.tsx` — расширить `blockCtrlProps`, принять `presets`/`onPresetsChange`.
+- `src/components/course-builder/block-editor/blocks/TextBlocks.tsx` — пропускает `blockCtrlProps` дальше (уже сделано в прошлый раз, без изменений интерфейса).
 
 ### Результат
-- Один floating toolbar над выделением (как нижний на скрине).
-- Все кнопки работают: размер шрифта, стиль H1–H4, B/I/U/code, списки с popover, выравнивание, цвет, ссылка.
-- Никакого дублирования.
+- В «...» меню остаётся: Поиск, Вверх, Вниз, Удалить.
+- В основном floating toolbar добавляются 2 кнопки: «Преобразовать в…» и «Доп. оформление» (зачёркнутый/UPPERCASE/шрифт/интервал/рамка/скругление/пресеты/сброс).
+- Никаких дубликатов с тем, что уже есть (B/I/U, размер, выравнивание, цвет, H1-H4).
 
