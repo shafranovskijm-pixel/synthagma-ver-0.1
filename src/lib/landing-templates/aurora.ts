@@ -11,6 +11,21 @@ export const auroraTemplate: LandingTemplate = {
   cover_image_url: auroraHero,
   tier: "free",
   category: "business",
+  theme: {
+    font_heading: "unbounded",
+    font_body: "inter",
+    radius: "soft",
+    button_style: "gradient",
+    card_style: "glass",
+    decor: "aurora",
+    section_spacing: "roomy",
+    hero_layout: "overlay",
+    pricing_layout: "highlight-middle",
+    audience_layout: "grid",
+    reviews_layout: "masonry",
+    benefits_layout: "grid",
+    scheme: "light",
+  },
   data: {
     hero: {
       background_url: auroraHero,

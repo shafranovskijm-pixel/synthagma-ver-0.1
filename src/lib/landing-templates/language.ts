@@ -12,6 +12,21 @@ export const languageTemplate: LandingTemplate = {
   tier: "free",
   category: "lang",
   is_new: true,
+  theme: {
+    font_heading: "manrope",
+    font_body: "pt-serif",
+    radius: "soft",
+    button_style: "outline",
+    card_style: "shadow",
+    decor: "noise",
+    section_spacing: "normal",
+    hero_layout: "split-left",
+    pricing_layout: "highlight-middle",
+    audience_layout: "icons-row",
+    reviews_layout: "carousel-mini",
+    benefits_layout: "grid",
+    scheme: "light",
+  },
   data: {
     hero: {
       background_url: languageHero,

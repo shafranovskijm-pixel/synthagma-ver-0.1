@@ -12,6 +12,21 @@ export const beautyTemplate: LandingTemplate = {
   tier: "free",
   category: "beauty",
   is_new: true,
+  theme: {
+    font_heading: "playfair",
+    font_body: "inter",
+    radius: "pill",
+    button_style: "solid",
+    card_style: "shadow",
+    decor: "sparkles",
+    section_spacing: "normal",
+    hero_layout: "centered-photo",
+    pricing_layout: "cards",
+    audience_layout: "stacked-cards",
+    reviews_layout: "carousel-mini",
+    benefits_layout: "grid",
+    scheme: "light",
+  },
   data: {
     hero: {
       background_url: beautyHero,
