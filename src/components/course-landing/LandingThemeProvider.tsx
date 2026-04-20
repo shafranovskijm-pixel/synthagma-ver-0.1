@@ -8,6 +8,7 @@ import {
   getSectionBackgroundImage,
   radiusValue,
 } from "@/lib/landing-templates/themeTokens";
+import { getTemplateStyle } from "@/lib/landing-templates/templateStyles";
 import { cn } from "@/lib/utils";
 
 interface LandingThemeContextValue {
@@ -22,6 +23,16 @@ const LandingThemeContext = createContext<LandingThemeContextValue>({
 
 export function useLandingTheme() {
   return useContext(LandingThemeContext);
+}
+
+/**
+ * Возвращает per-template скин (CSS-классы карточек/кнопок/заголовков) для
+ * текущего шаблона. Если `template_id` не задан — вернёт нейтральные пустые
+ * классы и компонент использует базовые токены темы.
+ */
+export function useTemplateStyle() {
+  const { theme } = useContext(LandingThemeContext);
+  return getTemplateStyle(theme.template_id);
 }
 
 interface Props {
@@ -86,9 +97,12 @@ export function LandingThemeProvider({ theme, accent, bare, className, style, ch
     [merged.decor, accentColor],
   );
 
+  const skin = getTemplateStyle(merged.template_id);
+
   return (
     <LandingThemeContext.Provider value={{ theme: merged, accent: accentColor }}>
       <div
+        data-template-skin={skin.dataSkin || undefined}
         className={cn(
           "relative",
           fontBodyClass[merged.font_body],

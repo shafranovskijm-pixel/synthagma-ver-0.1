@@ -2,7 +2,7 @@ import { Trash2 } from "lucide-react";
 import { icons } from "lucide-react";
 import React, { useState } from "react";
 import { IconPickerDialog } from "../IconPickerDialog";
-import { useLandingTheme } from "../LandingThemeProvider";
+import { useLandingTheme, useTemplateStyle } from "../LandingThemeProvider";
 import { cardStyleClass, radiusCardClass, sectionSpacingClass } from "@/lib/landing-templates/themeTokens";
 import type { AudienceItem } from "../LandingAudienceSection";
 
@@ -28,6 +28,7 @@ export function AudienceGrid({
   onTitleChange, onDescriptionChange, onItemChange, onAddItem, onRemoveItem,
 }: Props) {
   const { theme, accent } = useLandingTheme();
+  const skin = useTemplateStyle();
   const [iconPicker, setIconPicker] = useState<number | null>(null);
   const accentColor = accent || "hsl(var(--primary))";
 
@@ -39,7 +40,7 @@ export function AudienceGrid({
             className="landing-heading text-2xl md:text-3xl font-bold mb-4 outline-none"
             onBlur={(e) => onTitleChange?.(e.currentTarget.textContent || "")}>{title}</h2>
         ) : (
-          <h2 className="landing-heading text-2xl md:text-3xl font-bold mb-4">{title}</h2>
+          <h2 className={`landing-heading text-2xl md:text-3xl font-bold mb-4 ${skin.sectionTitle}`}>{title}</h2>
         )}
         {isEditing ? (
           <p contentEditable suppressContentEditableWarning
@@ -54,7 +55,7 @@ export function AudienceGrid({
             const compName = toIconComponentName(item.icon || "user");
             const IconComp = (icons as any)[compName];
             return (
-              <div key={i} className={`relative p-5 group ${radiusCardClass[theme.radius]} ${cardStyleClass[theme.card_style]}`}>
+              <div key={i} data-clause={`п.${i + 1}.1`} className={`relative p-5 group ${radiusCardClass[theme.radius]} ${skin.card || cardStyleClass[theme.card_style]}`}>
                 <div
                   className={`w-12 h-12 flex items-center justify-center mb-4 ${isEditing ? "cursor-pointer hover:opacity-80 transition" : ""} ${radiusCardClass[theme.radius]}`}
                   style={{ background: `${accentColor}15` }}
@@ -66,7 +67,7 @@ export function AudienceGrid({
                   <h3 contentEditable suppressContentEditableWarning className="landing-heading font-semibold mb-2 outline-none"
                     onBlur={(e) => onItemChange?.(i, "title", e.currentTarget.textContent || "")}>{item.title}</h3>
                 ) : (
-                  <h3 className="landing-heading font-semibold mb-2">{item.title}</h3>
+                  <h3 className="landing-heading font-semibold mb-2">{skin.cardTitlePrefix && <span className="text-primary opacity-70">{skin.cardTitlePrefix}</span>}{item.title}</h3>
                 )}
                 {isEditing ? (
                   <p contentEditable suppressContentEditableWarning className="text-sm text-muted-foreground outline-none"

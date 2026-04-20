@@ -1,5 +1,5 @@
 import { Trash2, Check, Sparkles } from "lucide-react";
-import { useLandingTheme } from "../LandingThemeProvider";
+import { useLandingTheme, useTemplateStyle } from "../LandingThemeProvider";
 import { cardStyleClass, radiusCardClass, radiusButtonClass } from "@/lib/landing-templates/themeTokens";
 import type { PricingTier } from "../LandingPricingSection";
 
@@ -23,6 +23,7 @@ interface Props {
 export function PricingHighlightMiddle(props: Props) {
   const { title, tiers, isEditing, onTitleChange, onTierChange, onTierFeatureChange, onAddTierFeature, onRemoveTierFeature, onAddTier, onRemoveTier } = props;
   const { theme, accent } = useLandingTheme();
+  const skin = useTemplateStyle();
   if (tiers.length === 0 && !isEditing) return null;
   const accentColor = accent || "hsl(var(--primary))";
 
@@ -40,7 +41,7 @@ export function PricingHighlightMiddle(props: Props) {
             onBlur={(e) => onTitleChange?.(e.currentTarget.textContent || "")}
           >{title}</h2>
         ) : (
-          <h2 className="landing-heading text-3xl md:text-4xl font-bold mb-12 text-center">{title}</h2>
+          <h2 className={`landing-heading text-3xl md:text-4xl font-bold mb-12 text-center ${skin.sectionTitle}`}>{title}</h2>
         )}
 
         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 items-center">
@@ -49,9 +50,10 @@ export function PricingHighlightMiddle(props: Props) {
             return (
               <div
                 key={i}
-                className={`relative p-7 group ${radiusCardClass[theme.radius]} ${cardStyleClass[theme.card_style]} transition-transform`}
+                data-clause={`п.${i + 1}.0`}
+                className={`relative p-7 group ${radiusCardClass[theme.radius]} ${skin.card || cardStyleClass[theme.card_style]} ${isHighlight ? skin.cardHighlight : ""} transition-transform`}
                 style={
-                  isHighlight
+                  isHighlight && !skin.cardHighlight
                     ? {
                         transform: "scale(1.06)",
                         background: `linear-gradient(180deg, ${accentColor}10 0%, transparent 100%)`,
@@ -60,6 +62,8 @@ export function PricingHighlightMiddle(props: Props) {
                         boxShadow: `0 25px 60px -20px ${accentColor}55`,
                         zIndex: 1,
                       }
+                    : isHighlight
+                    ? { transform: "scale(1.06)", zIndex: 1 }
                     : undefined
                 }
               >

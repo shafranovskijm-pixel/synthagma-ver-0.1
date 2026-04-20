@@ -16,6 +16,7 @@ export const languageTemplate: LandingTemplate = {
   category: "lang",
   is_new: true,
   theme: {
+    template_id: "language",
     font_heading: "manrope",
     font_body: "pt-serif",
     radius: "soft",

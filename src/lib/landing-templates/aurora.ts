@@ -15,6 +15,7 @@ export const auroraTemplate: LandingTemplate = {
   tier: "free",
   category: "business",
   theme: {
+    template_id: "aurora",
     font_heading: "unbounded",
     font_body: "inter",
     radius: "soft",

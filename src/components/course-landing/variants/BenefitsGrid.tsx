@@ -2,7 +2,7 @@ import { Trash2 } from "lucide-react";
 import { icons } from "lucide-react";
 import React, { useState } from "react";
 import { IconPickerDialog } from "../IconPickerDialog";
-import { useLandingTheme } from "../LandingThemeProvider";
+import { useLandingTheme, useTemplateStyle } from "../LandingThemeProvider";
 import { cardStyleClass, radiusCardClass, sectionSpacingClass } from "@/lib/landing-templates/themeTokens";
 import type { BenefitItem } from "../LandingBenefitsSection";
 
@@ -21,6 +21,7 @@ interface Props {
 /** Benefits «Grid» — равная сетка иконок по центру. Базовый вариант. */
 export function BenefitsGrid({ benefits, isEditing, onBenefitChange, onAddBenefit, onRemoveBenefit }: Props) {
   const { theme, accent } = useLandingTheme();
+  const skin = useTemplateStyle();
   const [iconPicker, setIconPicker] = useState<number | null>(null);
   const accentColor = accent || "hsl(var(--primary))";
 
@@ -29,13 +30,13 @@ export function BenefitsGrid({ benefits, isEditing, onBenefitChange, onAddBenefi
   return (
     <section className={`${sectionSpacingClass[theme.section_spacing]} px-6`}>
       <div className="max-w-5xl mx-auto">
-        <h2 className="landing-heading text-2xl md:text-3xl font-bold mb-8">Преимущества</h2>
+        <h2 className={`landing-heading text-2xl md:text-3xl font-bold mb-8 ${skin.sectionTitle}`}>Преимущества</h2>
         <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
           {benefits.map((b, i) => {
             const compName = toIconComponentName(b.icon);
             const IconComp = (icons as any)[compName];
             return (
-              <div key={i} className={`relative p-6 text-center group ${radiusCardClass[theme.radius]} ${cardStyleClass[theme.card_style]}`}>
+              <div key={i} data-clause={`п.${i + 1}.2`} className={`relative p-6 text-center group ${radiusCardClass[theme.radius]} ${skin.card || cardStyleClass[theme.card_style]}`}>
                 {isEditing && (
                   <button onClick={() => onRemoveBenefit?.(i)} className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 text-destructive transition">
                     <Trash2 className="w-4 h-4" />
