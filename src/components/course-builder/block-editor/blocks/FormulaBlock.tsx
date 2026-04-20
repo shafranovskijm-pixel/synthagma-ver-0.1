@@ -67,15 +67,5 @@ export function FormulaBlock({ block, onUpdate }: { block: ContentBlock; onUpdat
   );
 }
 
-export function FormulaRender({ tex, displayMode }: { tex: string; displayMode: boolean }) {
-  const ref = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    if (!ref.current) return;
-    try {
-      katex.render(tex || "", ref.current, { displayMode, throwOnError: false, output: "html" });
-    } catch {
-      if (ref.current) ref.current.textContent = tex;
-    }
-  }, [tex, displayMode]);
-  return <div ref={ref} className={cn("overflow-x-auto", displayMode ? "py-2" : "inline-block")} />;
-}
+// Re-export for backward compatibility
+export { FormulaRender } from "../FormulaRender";
