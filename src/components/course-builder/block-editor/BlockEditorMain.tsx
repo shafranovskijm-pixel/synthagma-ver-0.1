@@ -8,7 +8,7 @@ import {
 import {
   arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy } from "@dnd-kit/sortable";
 
-import type { BlockType, ContentBlock, BlockEditorProps } from "./types";
+import type { BlockType, ContentBlock, BlockEditorProps, AIShortcutType } from "./types";
 import { createBlock } from "./types";
 import { summarizeExistingContent, loadPresets, savePresets } from "./utils";
 import { BlockRenderer } from "./BlockRenderer";
@@ -69,8 +69,9 @@ export function BlockEditor({ blocks, onChange, readOnly = false, courseTitle, l
   const canUndo = historyIndexRef.current > 0;
   const canRedo = historyIndexRef.current < historyRef.current.length - 1;
 
-  const addBlock = useCallback((type: BlockType, afterIndex?: number) => {
+  const addBlock = useCallback((type: BlockType, afterIndex?: number, pendingAI?: AIShortcutType) => {
     const newBlock = createBlock(type);
+    if (pendingAI) (newBlock as ContentBlock).pendingAI = pendingAI;
     const newBlocks = [...blocks];
     if (afterIndex !== undefined) newBlocks.splice(afterIndex + 1, 0, newBlock);
     else newBlocks.push(newBlock);
@@ -146,7 +147,7 @@ export function BlockEditor({ blocks, onChange, readOnly = false, courseTitle, l
         <div className="text-center py-8 text-muted-foreground border-2 border-dashed border-border rounded-xl">
           <Type className="w-8 h-8 mx-auto mb-2 opacity-50" />
           <p className="text-sm mb-3">Начните добавлять контент</p>
-          <AddBlockButton onAdd={(type) => addBlock(type)} />
+          <AddBlockButton onAdd={(type, pendingAI) => addBlock(type, undefined, pendingAI)} />
         </div>
       )}
       {blocks.length > 0 && (
@@ -160,7 +161,7 @@ export function BlockEditor({ blocks, onChange, readOnly = false, courseTitle, l
                 onFocus={() => setFocusedBlockId(block.id)}
                 onUpdate={(updates) => updateBlock(block.id, updates)}
                 onDelete={() => deleteBlock(block.id)}
-                onAddAfter={(type) => addBlock(type, index)}
+                onAddAfter={(type, pendingAI) => addBlock(type, index, pendingAI)}
                 onMoveUp={index > 0 ? () => moveBlock(block.id, -1) : undefined}
                 onMoveDown={index < blocks.length - 1 ? () => moveBlock(block.id, 1) : undefined}
                 courseTitle={courseTitle}
@@ -177,7 +178,7 @@ export function BlockEditor({ blocks, onChange, readOnly = false, courseTitle, l
         </DndContext>
       )}
       {blocks.length > 0 && (
-        <div className="flex justify-center pt-2"><AddBlockButton onAdd={(type) => addBlock(type)} /></div>
+        <div className="flex justify-center pt-2"><AddBlockButton onAdd={(type, pendingAI) => addBlock(type, undefined, pendingAI)} /></div>
       )}
     </div>
   );

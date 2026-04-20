@@ -3,6 +3,7 @@ import {
   AlertCircle, Lightbulb, HelpCircle, ChevronDown,
   Image as ImageIcon, Video, Headphones, Presentation,
   Minus, BookOpen, CheckCircle, XCircle, Highlighter,
+  Table as TableIcon, MousePointerClick, Code as CodeIcon, Sigma, Globe, Sparkles,
 } from "lucide-react";
 
 export type BlockType =
@@ -27,7 +28,15 @@ export type BlockType =
   | "audio"
   | "slider"
   | "divider"
-  | "document";
+  | "document"
+  | "table"
+  | "button"
+  | "embed"
+  | "code"
+  | "formula";
+
+// Special "shortcut" types — not real blocks. They map to a real block + open AI dialog.
+export type AIShortcutType = "ai-image" | "ai-audio" | "ai-quiz";
 
 export interface QuizOption {
   text: string;
@@ -58,6 +67,22 @@ export interface ContentBlock {
   documentName?: string;
   sliderSlides?: SliderSlide[];
   sliderCurrentIndex?: number;
+  // Table
+  tableRows?: string[][];
+  tableHasHeader?: boolean;
+  // Button
+  buttonLabel?: string;
+  buttonUrl?: string;
+  buttonVariant?: 'primary' | 'outline' | 'ghost';
+  buttonAlign?: 'left' | 'center' | 'right';
+  // Embed
+  embedUrl?: string;
+  embedHeight?: number;
+  // Code
+  codeLanguage?: string;
+  // Formula
+  formulaDisplayMode?: 'inline' | 'block';
+  // Common style
   textAlign?: 'left' | 'center' | 'right';
   bgColor?: string;
   textSize?: 'sm' | 'base' | 'lg';
@@ -71,6 +96,8 @@ export interface ContentBlock {
   fontFamily?: 'sans' | 'mono';
   borderStyle?: 'none' | 'thin' | 'bold' | 'dashed';
   borderRadius?: 'none' | 'md' | 'xl';
+  // Pending AI action — set when block was created via AI shortcut
+  pendingAI?: AIShortcutType;
 }
 
 export interface BlockEditorProps {
@@ -85,7 +112,7 @@ export interface BlockEditorProps {
 }
 
 export const blockTypeConfig: Record<BlockType, { icon: any; label: string; color: string }> = {
-  paragraph: { icon: Type, label: "Параграф", color: "text-foreground" },
+  paragraph: { icon: Type, label: "Текст", color: "text-foreground" },
   heading1: { icon: Heading1, label: "Заголовок 1", color: "text-foreground" },
   heading2: { icon: Heading2, label: "Заголовок 2", color: "text-foreground" },
   heading3: { icon: Heading3, label: "Заголовок 3", color: "text-foreground" },
@@ -101,12 +128,17 @@ export const blockTypeConfig: Record<BlockType, { icon: any; label: string; colo
   highlight: { icon: Highlighter, label: "Выделение", color: "text-yellow-500" },
   accordion: { icon: ChevronDown, label: "Сворачиваемая секция", color: "text-purple-500" },
   quiz: { icon: HelpCircle, label: "Мини-квиз", color: "text-primary" },
-  image: { icon: ImageIcon, label: "Изображение", color: "text-green-500" },
+  image: { icon: ImageIcon, label: "Картинка", color: "text-green-500" },
   video: { icon: Video, label: "Видео", color: "text-red-500" },
   audio: { icon: Headphones, label: "Аудио", color: "text-teal-500" },
-  slider: { icon: Presentation, label: "Слайдер презентации", color: "text-orange-500" },
+  slider: { icon: Presentation, label: "Презентация", color: "text-orange-500" },
   divider: { icon: Minus, label: "Разделитель", color: "text-muted-foreground" },
-  document: { icon: BookOpen, label: "Документ", color: "text-indigo-500" },
+  document: { icon: BookOpen, label: "Файл", color: "text-indigo-500" },
+  table: { icon: TableIcon, label: "Таблица", color: "text-blue-500" },
+  button: { icon: MousePointerClick, label: "Кнопка", color: "text-primary" },
+  embed: { icon: Globe, label: "Embed", color: "text-purple-500" },
+  code: { icon: CodeIcon, label: "Код", color: "text-green-600" },
+  formula: { icon: Sigma, label: "Формула", color: "text-orange-500" },
 };
 
 export const createBlock = (type: BlockType): ContentBlock => ({
@@ -127,44 +159,66 @@ export const createBlock = (type: BlockType): ContentBlock => ({
   ...(type === "audio" && { audioUrl: "" }),
   ...(type === "slider" && { sliderSlides: [], sliderCurrentIndex: 0 }),
   ...(type === "document" && { documentUrl: "", documentName: "" }),
+  ...(type === "table" && {
+    tableHasHeader: true,
+    tableRows: [
+      ["Колонка 1", "Колонка 2", "Колонка 3"],
+      ["", "", ""],
+      ["", "", ""],
+    ],
+  }),
+  ...(type === "button" && {
+    buttonLabel: "Нажмите",
+    buttonUrl: "",
+    buttonVariant: "primary",
+    buttonAlign: "left",
+  }),
+  ...(type === "embed" && { embedUrl: "", embedHeight: 480 }),
+  ...(type === "code" && { codeLanguage: "plaintext", fontFamily: "mono" }),
+  ...(type === "formula" && { formulaDisplayMode: "block" }),
 });
 
-export const calloutItems = [
-  { type: "callout-info" as BlockType, icon: AlertCircle, label: "Информация", color: "text-blue-500" },
-  { type: "callout-warning" as BlockType, icon: AlertCircle, label: "Предупреждение", color: "text-amber-500" },
-  { type: "callout-tip" as BlockType, icon: Lightbulb, label: "Совет", color: "text-green-500" },
-  { type: "callout-success" as BlockType, icon: CheckCircle, label: "Выполнено", color: "text-emerald-500" },
-  { type: "callout-danger" as BlockType, icon: XCircle, label: "Ошибка", color: "text-red-500" },
-  { type: "highlight" as BlockType, icon: Highlighter, label: "Выделение", color: "text-yellow-500" },
-  { type: "quote" as BlockType, icon: Quote, label: "Цитата", color: "text-muted-foreground" },
+// Legacy export — kept to avoid breaking imports. Empty list → not used in the new picker.
+export const calloutItems: { type: BlockType; icon: any; label: string; color?: string }[] = [];
+
+// AI shortcuts — display in the picker, but on click create a real block + trigger AI flow.
+export interface AIShortcut {
+  type: AIShortcutType;
+  realType: BlockType;
+  icon: any;
+  label: string;
+  description: string;
+}
+
+export const aiShortcuts: AIShortcut[] = [
+  { type: "ai-image", realType: "image", icon: Sparkles, label: "AI-картинка", description: "Сгенерируйте уникальное изображение через ИИ по описанию." },
+  { type: "ai-audio", realType: "paragraph", icon: Sparkles, label: "AI-озвучка", description: "Введите или сгенерируйте текст и превратите его в аудио." },
+  { type: "ai-quiz", realType: "quiz", icon: Sparkles, label: "AI-тест", description: "ИИ создаст вопрос с вариантами ответа по теме урока." },
 ];
 
+// New block picker layout — clean, SkillSpace-style.
 export const blockCategories = {
-  text: {
-    label: "Текст",
+  basic: {
+    label: "Основные",
     items: [
-      { type: "paragraph" as BlockType, icon: Type, label: "Параграф" },
-      { type: "heading1" as BlockType, icon: Heading1, label: "Заголовок 1" },
-      { type: "heading2" as BlockType, icon: Heading2, label: "Заголовок 2" },
-      { type: "bulletList" as BlockType, icon: List, label: "Маркир. список" },
-      { type: "numberedList" as BlockType, icon: ListOrdered, label: "Нумер. список" },
-    ],
-  },
-  media: {
-    label: "Медиа",
-    items: [
-      { type: "image" as BlockType, icon: ImageIcon, label: "Изображение", color: "text-green-500" },
+      { type: "paragraph" as BlockType, icon: Type, label: "Текст" },
       { type: "video" as BlockType, icon: Video, label: "Видео", color: "text-red-500" },
+      { type: "image" as BlockType, icon: ImageIcon, label: "Картинка", color: "text-green-500" },
+      { type: "document" as BlockType, icon: BookOpen, label: "Файл", color: "text-indigo-500" },
+      { type: "slider" as BlockType, icon: Presentation, label: "Презентация", color: "text-orange-500" },
       { type: "audio" as BlockType, icon: Headphones, label: "Аудио", color: "text-teal-500" },
-      { type: "slider" as BlockType, icon: Presentation, label: "Слайдер", color: "text-orange-500" },
-      { type: "document" as BlockType, icon: BookOpen, label: "Документ", color: "text-indigo-500" },
+      { type: "table" as BlockType, icon: TableIcon, label: "Таблица", color: "text-blue-500" },
+      { type: "button" as BlockType, icon: MousePointerClick, label: "Кнопка", color: "text-primary" },
+      { type: "embed" as BlockType, icon: Globe, label: "Embed", color: "text-purple-500" },
+      { type: "code" as BlockType, icon: CodeIcon, label: "Код", color: "text-green-600" },
+      { type: "formula" as BlockType, icon: Sigma, label: "Формула", color: "text-orange-500" },
     ],
   },
-  other: {
-    label: "Ещё",
+  interactive: {
+    label: "Интерактив",
     items: [
-      { type: "accordion" as BlockType, icon: ChevronDown, label: "Свор. секция", color: "text-purple-500" },
       { type: "quiz" as BlockType, icon: HelpCircle, label: "Мини-квиз", color: "text-primary" },
+      { type: "accordion" as BlockType, icon: ChevronDown, label: "Свор. секция", color: "text-purple-500" },
       { type: "divider" as BlockType, icon: Minus, label: "Разделитель", color: "text-muted-foreground" },
     ],
   },
@@ -193,9 +247,14 @@ export const blockDescriptions: Record<BlockType, string> = {
   slider: "Слайдер презентации с пошаговым переключением.",
   divider: "Горизонтальный разделитель между смысловыми блоками.",
   document: "Документ для скачивания: PDF, DOCX и другие файлы.",
+  table: "Таблица с заголовками и редактируемыми ячейками.",
+  button: "Кнопка с текстом и ссылкой — призыв к действию.",
+  embed: "Вставка внешнего контента: YouTube, Figma, Miro, CodePen и другие.",
+  code: "Блок кода с моноширинным шрифтом и подсветкой языка.",
+  formula: "Математическая формула в формате LaTeX (KaTeX).",
 };
 
-export const blockIconBg: Partial<Record<BlockType, string>> = {
+export const blockIconBg: Partial<Record<BlockType | AIShortcutType, string>> = {
   paragraph: "text-primary bg-primary/10",
   heading1: "text-primary bg-primary/10",
   heading2: "text-primary bg-primary/10",
@@ -218,6 +277,14 @@ export const blockIconBg: Partial<Record<BlockType, string>> = {
   slider: "text-orange-500 bg-orange-500/10",
   divider: "text-muted-foreground bg-muted",
   document: "text-indigo-500 bg-indigo-500/10",
+  table: "text-blue-500 bg-blue-500/10",
+  button: "text-primary bg-primary/10",
+  embed: "text-purple-500 bg-purple-500/10",
+  code: "text-green-600 bg-green-600/10",
+  formula: "text-orange-500 bg-orange-500/10",
+  "ai-image": "text-primary bg-gradient-to-br from-primary/20 to-purple-500/20",
+  "ai-audio": "text-primary bg-gradient-to-br from-primary/20 to-teal-500/20",
+  "ai-quiz": "text-primary bg-gradient-to-br from-primary/20 to-amber-500/20",
 };
 
 export const convertibleTypes: BlockType[] = ["paragraph", "heading1", "heading2", "heading3", "heading4", "bulletList", "numberedList", "quote", "callout-info", "callout-warning", "callout-tip", "callout-success", "callout-danger", "highlight", "accordion", "audio"];

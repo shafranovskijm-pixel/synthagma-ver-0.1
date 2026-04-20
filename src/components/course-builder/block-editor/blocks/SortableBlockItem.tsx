@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import {
   GripVertical, Trash2, Headphones, Volume2, MoreHorizontal, ArrowUp, ArrowDown, Search } from "lucide-react";
 import { SALUTE_VOICES } from "@/components/student/TTSSettingsDialog";
-import type { BlockType, ContentBlock, StylePreset } from "../types";
+import type { BlockType, ContentBlock, StylePreset, AIShortcutType } from "../types";
 import { BlockContent } from "./BlockContent";
 import { InlineAddBlockButton } from "./AddBlockButton";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
@@ -22,7 +22,7 @@ interface SortableBlockItemProps {
   onFocus: () => void;
   onUpdate: (updates: Partial<ContentBlock>) => void;
   onDelete: () => void;
-  onAddAfter: (type: BlockType) => void;
+  onAddAfter: (type: BlockType, pendingAI?: AIShortcutType) => void;
   onMoveUp?: () => void;
   onMoveDown?: () => void;
   courseTitle?: string;
@@ -89,7 +89,7 @@ export function SortableBlockItem({ block, isFocused, onFocus, onUpdate, onDelet
     <div ref={setNodeRef} style={style} data-block-id={block.id} className={cn("group relative rounded-lg transition-all pl-14 pr-14", isFocused && "bg-secondary/30")} onClick={onFocus}>
       {/* Left gutter: "+" add-block button */}
       <div className="absolute left-2 top-1 opacity-0 group-hover:opacity-100 transition-opacity z-20">
-        <InlineAddBlockButton onAdd={(type) => onAddAfter(type)} />
+        <InlineAddBlockButton onAdd={(type, pendingAI) => onAddAfter(type, pendingAI)} />
       </div>
       <div className="min-w-0">
         <BlockContent block={block} onUpdate={onUpdate} courseTitle={courseTitle} lessonTitle={lessonTitle} existingContent={existingContent} organizationId={organizationId} courseId={courseId} lessonId={lessonId} presets={presets} onPresetsChange={onPresetsChange} />

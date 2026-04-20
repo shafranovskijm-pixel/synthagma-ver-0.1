@@ -11,6 +11,8 @@ import { VideoPreviewInline } from "@/components/course-builder/VideoPreviewInli
 import type { ContentBlock } from "./types";
 import { bgColorPresets, textColorPresets } from "./types";
 import { renderHtml } from "./utils";
+import { getEmbedSrc } from "./blocks/EmbedBlock";
+import { FormulaRender } from "./blocks/FormulaBlock";
 
 function RenderBlock({ block, quizAnswer, quizSubmitted, onQuizAnswer, onQuizSubmit, sliderIndex, onSliderChange }: { 
   block: ContentBlock; 
@@ -218,6 +220,61 @@ function RenderBlock({ block, quizAnswer, quizSubmitted, onQuizAnswer, onQuizSub
           </audio>
         </div>
       ) : null;
+    case "table": {
+      const rows = block.tableRows || [];
+      if (rows.length === 0) return null;
+      const hasHeader = block.tableHasHeader !== false;
+      return (
+        <div className="overflow-x-auto not-prose">
+          <table className="w-full border-collapse rounded-lg overflow-hidden border border-border">
+            {hasHeader && rows[0] && (
+              <thead className="bg-muted/60">
+                <tr>{rows[0].map((cell, i) => <th key={i} className="border border-border px-3 py-2 text-left text-sm font-semibold">{cell}</th>)}</tr>
+              </thead>
+            )}
+            <tbody>
+              {(hasHeader ? rows.slice(1) : rows).map((row, rIdx) => (
+                <tr key={rIdx}>{row.map((cell, cIdx) => <td key={cIdx} className="border border-border px-3 py-2 text-sm">{cell}</td>)}</tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      );
+    }
+    case "button": {
+      const variant = block.buttonVariant || "primary";
+      const align = block.buttonAlign || "left";
+      const url = block.buttonUrl || "#";
+      const label = block.buttonLabel || "Нажмите";
+      const cls = cn(
+        "inline-flex items-center justify-center px-5 h-10 rounded-md text-sm font-medium transition-colors",
+        variant === "primary" && "bg-primary text-primary-foreground hover:bg-primary/90",
+        variant === "outline" && "border border-input bg-background hover:bg-accent",
+        variant === "ghost" && "hover:bg-accent text-foreground"
+      );
+      const wrap = cn("flex not-prose", align === "center" && "justify-center", align === "right" && "justify-end");
+      return (
+        <div className={wrap}>
+          <a href={url} target="_blank" rel="noopener noreferrer" className={cls}>{label}</a>
+        </div>
+      );
+    }
+    case "embed": {
+      const src = getEmbedSrc(block.embedUrl || "");
+      if (!src) return null;
+      const height = block.embedHeight || 480;
+      return (
+        <div className="rounded-lg overflow-hidden border border-border bg-black not-prose" style={{ height }}>
+          <iframe src={src} className="w-full h-full border-0" allow="autoplay; fullscreen; picture-in-picture; encrypted-media; clipboard-write" allowFullScreen referrerPolicy="no-referrer-when-downgrade" />
+        </div>
+      );
+    }
+    case "code":
+      return (
+        <pre className="not-prose rounded-lg border border-border bg-muted/40 p-4 overflow-x-auto"><code className={`language-${block.codeLanguage || "plaintext"} font-mono text-sm`}>{block.content || ""}</code></pre>
+      );
+    case "formula":
+      return <div className="not-prose"><FormulaRender tex={block.content || ""} displayMode={block.formulaDisplayMode !== "inline"} /></div>;
     default:
       return null;
   }
