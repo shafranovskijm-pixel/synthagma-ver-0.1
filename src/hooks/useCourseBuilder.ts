@@ -387,26 +387,45 @@ export function useCourseBuilder(propCourseId?: string) {
         if (courseId) await supabase.from("lessons").delete().eq("course_id", courseId).not("id", "in", `(${currentLessonIds.join(",")})`);
         const lessonsToSave = lessons.map((lesson, index) => ({ id: lesson.id, course_id: savedCourseId!, title: lesson.title, type: lesson.type, content: lesson.content || null, order_index: index, test_passing_score: lesson.testPassingScore ?? 60, test_questions_to_show: lesson.testQuestionsToShow ?? null, module_id: lesson.module_id ?? null }));
         const { error: batchError } = await supabase.from("lessons").upsert(lessonsToSave, { onConflict: "id" });
-        if (batchError && !batchError.message?.includes('AbortError')) console.error("Error saving lessons:", batchError);
+        if (batchError && !batchError.message?.includes('AbortError')) {
+          console.error("Error saving lessons:", batchError);
+          if (!silent) toast.error("Ошибка сохранения уроков: " + batchError.message);
+          throw batchError;
+        }
+
+        // Параллельная обработка тестовых вопросов и вложений для скорости
+        const testOps: Promise<unknown>[] = [];
+        const attachOps: Promise<unknown>[] = [];
 
         for (const lesson of lessons) {
           if (lesson.type === "test" && lesson.questions && lesson.questions.length > 0) {
             const activeQuestions = lesson.questions.filter(q => !q.isDeleted);
             const toDelete = lesson.questions.filter(q => q.isDeleted && !q.isNew);
-            for (const q of toDelete) await supabase.from("test_questions").delete().eq("id", q.id);
-            for (let i = 0; i < activeQuestions.length; i++) {
-              const q = activeQuestions[i];
-              await supabase.from("test_questions").upsert([{ id: q.id, lesson_id: lesson.id, question: q.question.trim(), options: q.options.filter(o => o.text.trim()), correct_answer: q.correct_answer, order_index: i, explanation: q.explanation || null, image_url: q.image_url || null }], { onConflict: "id" });
+            for (const q of toDelete) {
+              testOps.push(supabase.from("test_questions").delete().eq("id", q.id));
+            }
+            if (activeQuestions.length > 0) {
+              const rows = activeQuestions.map((q, i) => ({ id: q.id, lesson_id: lesson.id, question: q.question.trim(), options: q.options.filter(o => o.text.trim()), correct_answer: q.correct_answer, order_index: i, explanation: q.explanation || null, image_url: q.image_url || null }));
+              testOps.push(supabase.from("test_questions").upsert(rows, { onConflict: "id" }));
             }
           }
-        }
-        for (const lesson of lessons) {
           if (lesson.attachments && lesson.attachments.length > 0) {
             const toDelete = lesson.attachments.filter(a => a.isDeleted && !a.isNew);
             const toInsert = lesson.attachments.filter(a => a.isNew && !a.isDeleted);
-            for (const a of toDelete) await supabase.from("lesson_attachments").delete().eq("id", a.id);
-            if (toInsert.length > 0) { const rows = toInsert.map((a, i) => ({ id: a.id, lesson_id: lesson.id, name: a.name, file_url: a.file_url, file_type: a.file_type, file_size: a.file_size, category: a.category, order_index: i })); await supabase.from("lesson_attachments").upsert(rows, { onConflict: "id" }); }
+            for (const a of toDelete) {
+              attachOps.push(supabase.from("lesson_attachments").delete().eq("id", a.id));
+            }
+            if (toInsert.length > 0) {
+              const rows = toInsert.map((a, i) => ({ id: a.id, lesson_id: lesson.id, name: a.name, file_url: a.file_url, file_type: a.file_type, file_size: a.file_size, category: a.category, order_index: i }));
+              attachOps.push(supabase.from("lesson_attachments").upsert(rows, { onConflict: "id" }));
+            }
           }
+        }
+        const results = await Promise.allSettled([...testOps, ...attachOps]);
+        const failed = results.filter(r => r.status === 'rejected');
+        if (failed.length > 0) {
+          console.error("Some lesson sub-records failed to save:", failed);
+          if (!silent) toast.warning(`Не удалось сохранить ${failed.length} элементов (вопросы/файлы)`);
         }
       }
       if (!silent) toast.success(courseId ? "Курс обновлён" : "Курс создан");
