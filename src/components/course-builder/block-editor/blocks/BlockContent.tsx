@@ -44,16 +44,16 @@ export function BlockContent({ block, onUpdate, courseTitle, lessonTitle, existi
   };
 
   switch (block.type) {
-    case "paragraph": return <ParagraphBlock block={block} onUpdate={onUpdate} courseTitle={courseTitle} lessonTitle={lessonTitle} existingContent={existingContent} editorStyleClasses={editorStyleClasses} />;
+    case "paragraph": return <ParagraphBlock block={block} onUpdate={onUpdate} courseTitle={courseTitle} lessonTitle={lessonTitle} existingContent={existingContent} editorStyleClasses={editorStyleClasses} blockCtrlProps={blockCtrlProps} />;
     case "heading1": return <RichTextEditor {...blockCtrlProps} value={block.content} onChange={(val) => onUpdate({ content: val })} placeholder="Заголовок 1" className={cn("text-3xl font-bold", editorStyleClasses)} minHeight="44px" />;
     case "heading2": return <RichTextEditor {...blockCtrlProps} value={block.content} onChange={(val) => onUpdate({ content: val })} placeholder="Заголовок 2" className={cn("text-2xl font-bold", editorStyleClasses)} minHeight="40px" />;
     case "heading3": return <RichTextEditor {...blockCtrlProps} value={block.content} onChange={(val) => onUpdate({ content: val })} placeholder="Заголовок 3" className={cn("text-xl font-semibold", editorStyleClasses)} minHeight="36px" />;
     case "heading4": return <RichTextEditor {...blockCtrlProps} value={block.content} onChange={(val) => onUpdate({ content: val })} placeholder="Заголовок 4" className={cn("text-lg font-semibold", editorStyleClasses)} minHeight="32px" />;
     case "bulletList": case "numberedList": return <div className={cn("space-y-1 py-2", editorStyleClasses)}><RichTextEditor {...blockCtrlProps} value={(block.content || "").replace(/<\/?li>/gi, "")} onChange={(val) => onUpdate({ content: val })} placeholder="Элемент списка (каждая строка — отдельный пункт)" className="text-sm" minHeight="60px" /></div>;
-    case "quote": return <QuoteBlock block={block} onUpdate={onUpdate} courseTitle={courseTitle} lessonTitle={lessonTitle} existingContent={existingContent} />;
-    case "callout-info": case "callout-warning": case "callout-tip": case "callout-success": case "callout-danger": return <CalloutBlock block={block} onUpdate={onUpdate} courseTitle={courseTitle} lessonTitle={lessonTitle} existingContent={existingContent} />;
-    case "highlight": return <HighlightBlock block={block} onUpdate={onUpdate} courseTitle={courseTitle} lessonTitle={lessonTitle} existingContent={existingContent} />;
-    case "accordion": return <AccordionBlock block={block} onUpdate={onUpdate} courseTitle={courseTitle} lessonTitle={lessonTitle} existingContent={existingContent} />;
+    case "quote": return <QuoteBlock block={block} onUpdate={onUpdate} courseTitle={courseTitle} lessonTitle={lessonTitle} existingContent={existingContent} blockCtrlProps={blockCtrlProps} />;
+    case "callout-info": case "callout-warning": case "callout-tip": case "callout-success": case "callout-danger": return <CalloutBlock block={block} onUpdate={onUpdate} courseTitle={courseTitle} lessonTitle={lessonTitle} existingContent={existingContent} blockCtrlProps={blockCtrlProps} />;
+    case "highlight": return <HighlightBlock block={block} onUpdate={onUpdate} courseTitle={courseTitle} lessonTitle={lessonTitle} existingContent={existingContent} blockCtrlProps={blockCtrlProps} />;
+    case "accordion": return <AccordionBlock block={block} onUpdate={onUpdate} courseTitle={courseTitle} lessonTitle={lessonTitle} existingContent={existingContent} blockCtrlProps={blockCtrlProps} />;
     case "quiz": return <QuizBlock block={block} onUpdate={onUpdate} courseTitle={courseTitle} lessonTitle={lessonTitle} existingContent={existingContent} />;
     case "image": return <ImageBlock block={block} onUpdate={onUpdate} />;
     case "video": return <VideoBlock block={block} onUpdate={onUpdate} organizationId={organizationId} courseId={courseId} lessonId={lessonId} />;
