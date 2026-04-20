@@ -13,6 +13,13 @@ export interface PromoCode {
   valid_until: string | null;
 }
 
+export interface PricingTier {
+  name: string;
+  price: number;
+  features: string[];
+  is_popular: boolean;
+}
+
 export interface LandingContent {
   enrollment_form?: {
     subtitle?: string;
@@ -33,6 +40,10 @@ export interface LandingContent {
     keywords?: string;
     og_image_url?: string;
     canonical_url?: string;
+  };
+  pricing?: {
+    title?: string;
+    tiers?: PricingTier[];
   };
   blocks?: any[];
   external_url?: string;
