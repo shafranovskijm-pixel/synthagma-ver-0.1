@@ -452,6 +452,16 @@ export const LessonEditor = ({
           </div>
         </DialogContent>
       </Dialog>
+
+      <LessonPreviewDialog
+        open={previewOpen}
+        onClose={() => setPreviewOpen(false)}
+        title={e.title}
+        type={e.type}
+        blocks={e.blocks}
+        videoUrl={e.videoUrl}
+        questions={e.questions}
+      />
     </>
   );
 };
