@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Textarea } from "@/components/ui/textarea";
 import { Sigma } from "lucide-react";
-import { cn } from "@/lib/utils";
 import katex from "katex";
 import "katex/dist/katex.min.css";
 import type { ContentBlock } from "../types";
