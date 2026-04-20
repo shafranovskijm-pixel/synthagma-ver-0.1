@@ -125,3 +125,9 @@ verify_jwt = false
 
 [functions.robokassa-result]
 verify_jwt = false
+
+[functions.support-chat]
+verify_jwt = false
+
+[functions.support-telegram-poll]
+verify_jwt = false

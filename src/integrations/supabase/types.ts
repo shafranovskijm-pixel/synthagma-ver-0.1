@@ -5980,6 +5980,118 @@ export type Database = {
           },
         ]
       }
+      support_conversations: {
+        Row: {
+          ai_failures_count: number
+          created_at: string
+          guest_email: string | null
+          guest_name: string | null
+          guest_phone: string | null
+          guest_token: string | null
+          id: string
+          last_message_at: string
+          organization_id: string | null
+          source: string
+          status: string
+          telegram_topic_id: number | null
+          title: string | null
+          unread_for_admin: number
+          unread_for_user: number
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          ai_failures_count?: number
+          created_at?: string
+          guest_email?: string | null
+          guest_name?: string | null
+          guest_phone?: string | null
+          guest_token?: string | null
+          id?: string
+          last_message_at?: string
+          organization_id?: string | null
+          source?: string
+          status?: string
+          telegram_topic_id?: number | null
+          title?: string | null
+          unread_for_admin?: number
+          unread_for_user?: number
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          ai_failures_count?: number
+          created_at?: string
+          guest_email?: string | null
+          guest_name?: string | null
+          guest_phone?: string | null
+          guest_token?: string | null
+          id?: string
+          last_message_at?: string
+          organization_id?: string | null
+          source?: string
+          status?: string
+          telegram_topic_id?: number | null
+          title?: string | null
+          unread_for_admin?: number
+          unread_for_user?: number
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "support_conversations_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      support_messages: {
+        Row: {
+          content: string
+          conversation_id: string
+          created_at: string
+          id: string
+          is_read: boolean
+          role: string
+          sender_name: string | null
+          sender_user_id: string | null
+          telegram_message_id: number | null
+        }
+        Insert: {
+          content: string
+          conversation_id: string
+          created_at?: string
+          id?: string
+          is_read?: boolean
+          role: string
+          sender_name?: string | null
+          sender_user_id?: string | null
+          telegram_message_id?: number | null
+        }
+        Update: {
+          content?: string
+          conversation_id?: string
+          created_at?: string
+          id?: string
+          is_read?: boolean
+          role?: string
+          sender_name?: string | null
+          sender_user_id?: string | null
+          telegram_message_id?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "support_messages_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "support_conversations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       support_requests: {
         Row: {
           admin_notes: string | null
@@ -6034,6 +6146,24 @@ export type Database = {
           user_id?: string
           user_name?: string | null
           user_role?: string | null
+        }
+        Relationships: []
+      }
+      support_telegram_state: {
+        Row: {
+          id: number
+          update_offset: number
+          updated_at: string
+        }
+        Insert: {
+          id: number
+          update_offset?: number
+          updated_at?: string
+        }
+        Update: {
+          id?: number
+          update_offset?: number
+          updated_at?: string
         }
         Relationships: []
       }
