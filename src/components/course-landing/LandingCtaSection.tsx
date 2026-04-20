@@ -45,8 +45,8 @@ export function LandingCtaSection({
 
   return (
     <section
-      className="py-20 px-6"
-      style={{ background: accent ? `linear-gradient(135deg, ${accent}08, ${accent}15)` : undefined }}
+      className="py-20 px-6 landing-bg-cta"
+      style={{ backgroundColor: accent ? `${accent}10` : undefined }}
     >
       <div className="max-w-xl mx-auto text-center">
         {isEditing ? (
