@@ -161,7 +161,7 @@ export function RichTextEditor({
     lastEmittedHtml.current = el.innerHTML;
     isInternalChange.current = true;
     onChange(el.innerHTML);
-  }, [onChange, styleMenuOpen, listMenuOpen, paletteOpen, linkOpen]);
+  }, [onChange, styleMenuOpen, listMenuOpen, paletteOpen, linkOpen, convertOpen, advancedOpen]);
 
   const updateActiveFormats = useCallback(() => {
     try {
