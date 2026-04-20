@@ -289,7 +289,6 @@ export function SortableBlockItem({ block, isFocused, onFocus, onUpdate, onDelet
               </Dialog>
             </>
           )}
-          <InlineAddBlockButton onAdd={(type) => onAddAfter(type)} />
           <button className="h-8 w-8 flex items-center justify-center hover:bg-red-500/30 rounded-full transition-colors" onClick={(e) => { e.stopPropagation(); onDelete(); }} title="Удалить блок"><Trash2 className="w-4 h-4" /></button>
         </div>
       </div>
