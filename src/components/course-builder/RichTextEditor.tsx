@@ -366,7 +366,11 @@ export function RichTextEditor({
                 {styleMenuItems.map((item) => (
                   <button
                     key={item.type}
-                    onMouseDown={(e) => { e.preventDefault(); setBlockType(item.type); }}
+                    onMouseDown={(e) => {
+                      e.preventDefault();
+                      const isActive = currentBlockType === item.type;
+                      setBlockType(isActive && item.type !== "paragraph" ? "paragraph" : item.type);
+                    }}
                     className="w-full flex items-center justify-between gap-2 px-2 py-1.5 rounded-md hover:bg-white/10 transition-colors text-left"
                   >
                     <span className={cn(item.preview)}>{item.label}</span>
@@ -431,14 +435,22 @@ export function RichTextEditor({
                 </PopoverTrigger>
                 <PopoverContent className="w-44 p-1" align="start" onOpenAutoFocus={(e) => e.preventDefault()}>
                   <button
-                    onMouseDown={(e) => { e.preventDefault(); onConvertType("bulletList"); setListMenuOpen(false); }}
+                    onMouseDown={(e) => {
+                      e.preventDefault();
+                      onConvertType(currentBlockType === "bulletList" ? "paragraph" : "bulletList");
+                      setListMenuOpen(false);
+                    }}
                     className="w-full flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-accent transition-colors text-sm text-left"
                   >
                     <List className="w-4 h-4" />Маркированный
                     {currentBlockType === "bulletList" && <Check className="w-4 h-4 text-primary ml-auto" />}
                   </button>
                   <button
-                    onMouseDown={(e) => { e.preventDefault(); onConvertType("numberedList"); setListMenuOpen(false); }}
+                    onMouseDown={(e) => {
+                      e.preventDefault();
+                      onConvertType(currentBlockType === "numberedList" ? "paragraph" : "numberedList");
+                      setListMenuOpen(false);
+                    }}
                     className="w-full flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-accent transition-colors text-sm text-left"
                   >
                     <ListOrdered className="w-4 h-4" />Нумерованный
