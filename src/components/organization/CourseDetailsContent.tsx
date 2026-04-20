@@ -1,4 +1,6 @@
-import React, { lazy, Suspense } from "react";
+import React, { lazy, Suspense, useRef, useState } from "react";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { MoreVertical, ImagePlus, Wand2 } from "lucide-react";
 import { useOrgFeatures } from "@/hooks/useOrgFeatures";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
@@ -87,6 +89,48 @@ export function CourseDetailsContent({ course, courseStudents, organizationId, a
   const isFrdoEnabled = isEnabled('frdo');
   const h = useCourseDetails(course, courseStudents, organizationId, onCourseUpdated, onRefreshStudents, onCourseDeleted);
 
+  const coverInputRef = useRef<HTMLInputElement>(null);
+  const [isGeneratingCover, setIsGeneratingCover] = useState(false);
+
+  const handleCoverUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    e.target.value = "";
+    const ext = file.name.split(".").pop() || "jpg";
+    const path = `covers/${course.id}/${Date.now()}.${ext}`;
+    const t = toast.loading("Загружаем обложку…");
+    try {
+      const { error: upErr } = await supabase.storage.from("course-files").upload(path, file, { upsert: true, contentType: file.type });
+      if (upErr) throw upErr;
+      const { data: pub } = supabase.storage.from("course-files").getPublicUrl(path);
+      const { error: updErr } = await supabase.from("courses").update({ cover_image_url: pub.publicUrl }).eq("id", course.id);
+      if (updErr) throw updErr;
+      toast.success("Обложка обновлена", { id: t });
+      onCourseUpdated?.();
+    } catch (err: any) {
+      console.error(err);
+      toast.error(err?.message || "Не удалось загрузить обложку", { id: t });
+    }
+  };
+
+  const handleGenerateCover = async () => {
+    if (isGeneratingCover) return;
+    setIsGeneratingCover(true);
+    const t = toast.loading("Генерируем обложку с ИИ…");
+    try {
+      const { data, error } = await supabase.functions.invoke("generate-cover", { body: { courseId: course.id, type: "course" } });
+      if (error) throw error;
+      if (!data?.url) throw new Error("Не получили URL обложки");
+      toast.success("Обложка сгенерирована", { id: t });
+      onCourseUpdated?.();
+    } catch (err: any) {
+      console.error(err);
+      toast.error(err?.message || "Не удалось сгенерировать обложку", { id: t });
+    } finally {
+      setIsGeneratingCover(false);
+    }
+  };
+
   const activeGroup = getGroupForTab(activeTab);
 
   const handleGroupClick = (group: GroupKey) => {
@@ -145,13 +189,39 @@ export function CourseDetailsContent({ course, courseStudents, organizationId, a
                   <div className="flex items-center gap-1"><BookOpen className="w-4 h-4" />{course.lessonsCount} уроков</div>
                 </div>
               </div>
-              <div className="flex gap-2 flex-wrap">
-                <Button variant="outline" className="rounded-xl gap-2 bg-white/90 hover:bg-white border-white/40" onClick={() => onTabChange("preview")}><Eye className="w-4 h-4" />Просмотр</Button>
-                <Button className="rounded-xl gap-2 btn-gradient" onClick={() => onTabChange("editor")}><Edit className="w-4 h-4" />Редактировать</Button>
-                <Button variant="outline" className="rounded-xl gap-2 bg-white/90 hover:bg-destructive hover:text-destructive-foreground border-white/40 text-destructive" onClick={() => h.setShowDeleteConfirm(true)}><Trash2 className="w-4 h-4" />Удалить</Button>
-              </div>
             </div>
           </div>
+
+          <input ref={coverInputRef} type="file" accept="image/*" hidden onChange={handleCoverUpload} />
+
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button
+                className="absolute top-4 right-4 inline-flex items-center justify-center h-9 w-9 rounded-full bg-white/15 backdrop-blur-md text-white hover:bg-white/25 transition-colors border border-white/20"
+                aria-label="Действия"
+              >
+                <MoreVertical className="w-4 h-4" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-56">
+              <DropdownMenuItem onClick={() => onTabChange("preview")}>
+                <Eye className="w-4 h-4 mr-2" />Просмотр
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => onTabChange("editor")}>
+                <Edit className="w-4 h-4 mr-2" />Редактировать
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => coverInputRef.current?.click()}>
+                <ImagePlus className="w-4 h-4 mr-2" />Изменить обложку
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={handleGenerateCover} disabled={isGeneratingCover}>
+                <Wand2 className="w-4 h-4 mr-2" />{isGeneratingCover ? "Генерируем…" : "Сгенерировать с ИИ"}
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={() => h.setShowDeleteConfirm(true)}>
+                <Trash2 className="w-4 h-4 mr-2" />Удалить курс
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
 
