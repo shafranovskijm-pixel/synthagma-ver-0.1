@@ -30,13 +30,17 @@ interface Props {
   onMoveCourse: (course: Course, e?: React.MouseEvent) => void;
   isAdminView?: boolean;
   onTransfer?: (course: Course) => void;
+  onCoverUpload?: (courseId: string) => void;
+  onGenerateCover?: (courseId: string) => void;
+  generatingCoverForCourse?: string | null;
+  onDeleteCourse?: (courseId: string) => void;
 }
 
 export const CategoryFolder = React.memo(function CategoryFolder({
   categoryId, categoryName, categoryColor, courses, isSystem = false, hiddenFromCatalog = false,
   isExpanded, onToggleExpand, onEditCategory, onDeleteCategory, onToggleCategoryVisibility,
   organizationId, selectedCourseIds, onToggleCourseSelect, onCourseClick, onToggleCourseSetting, onDuplicate, onMoveCourse,
-  isAdminView, onTransfer
+  isAdminView, onTransfer, onCoverUpload, onGenerateCover, generatingCoverForCourse, onDeleteCourse,
 }: Props) {
   const courseCount = courses.length;
 
@@ -106,6 +110,10 @@ export const CategoryFolder = React.memo(function CategoryFolder({
                   onMove={onMoveCourse}
                   isAdminView={isAdminView}
                   onTransfer={onTransfer}
+                  onCoverUpload={onCoverUpload}
+                  onGenerateCover={onGenerateCover}
+                  generatingCoverForCourse={generatingCoverForCourse}
+                  onDelete={onDeleteCourse}
                 />
               ))}
             </div>
