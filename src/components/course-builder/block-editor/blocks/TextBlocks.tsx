@@ -31,7 +31,7 @@ interface BlockAIProps {
   blockCtrlProps?: Record<string, any>;
 }
 
-export function ParagraphBlock({ block, onUpdate, courseTitle, lessonTitle, existingContent, editorStyleClasses }: BlockAIProps & { editorStyleClasses: string }) {
+export function ParagraphBlock({ block, onUpdate, courseTitle, lessonTitle, existingContent, editorStyleClasses, blockCtrlProps }: BlockAIProps & { editorStyleClasses: string }) {
   const [isGenerating, setIsGenerating] = useState(false);
   const [showPrompt, setShowPrompt] = useState(false);
   const [customPrompt, setCustomPrompt] = useState("");
@@ -77,12 +77,12 @@ export function ParagraphBlock({ block, onUpdate, courseTitle, lessonTitle, exis
           <SigmaSpinner size="sm" />Генерация текста...
         </div>
       )}
-      <RichTextEditor value={block.content} onChange={(val) => onUpdate({ content: val })} placeholder="Введите текст..." className={editorStyleClasses} />
+      <RichTextEditor {...(blockCtrlProps || {})} value={block.content} onChange={(val) => onUpdate({ content: val })} placeholder="Введите текст..." className={editorStyleClasses} />
     </div>
   );
 }
 
-export function QuoteBlock({ block, onUpdate, courseTitle, lessonTitle, existingContent }: BlockAIProps) {
+export function QuoteBlock({ block, onUpdate, courseTitle, lessonTitle, existingContent, blockCtrlProps }: BlockAIProps) {
   const [isGenerating, setIsGenerating] = useState(false);
   const handleGenerate = async () => {
     if (!(await checkAiLimitGlobal())) return;
@@ -102,12 +102,12 @@ export function QuoteBlock({ block, onUpdate, courseTitle, lessonTitle, existing
   return (
     <div className="border-l-4 border-muted-foreground/30 pl-4 py-2 space-y-2">
       <div className="flex justify-end"><AIGenerateButton isGenerating={isGenerating} onClick={handleGenerate} /></div>
-      <RichTextEditor value={block.content} onChange={(val) => onUpdate({ content: val })} placeholder="Введите цитату..." className="italic text-muted-foreground" />
+      <RichTextEditor {...(blockCtrlProps || {})} value={block.content} onChange={(val) => onUpdate({ content: val })} placeholder="Введите цитату..." className="italic text-muted-foreground" />
     </div>
   );
 }
 
-export function CalloutBlock({ block, onUpdate, courseTitle, lessonTitle, existingContent }: BlockAIProps) {
+export function CalloutBlock({ block, onUpdate, courseTitle, lessonTitle, existingContent, blockCtrlProps }: BlockAIProps) {
   const [isGenerating, setIsGenerating] = useState(false);
   const styles = {
     "callout-info": { bg: "bg-blue-500/10", border: "border-blue-500/30", icon: AlertCircle, iconColor: "text-blue-500" },
@@ -143,12 +143,12 @@ export function CalloutBlock({ block, onUpdate, courseTitle, lessonTitle, existi
         <Icon className={cn("w-5 h-5 flex-shrink-0", style.iconColor)} />
         <AIGenerateButton isGenerating={isGenerating} onClick={handleGenerate} />
       </div>
-      <RichTextEditor value={block.content} onChange={(val) => onUpdate({ content: val })} placeholder="Введите текст..." minHeight="40px" />
+      <RichTextEditor {...(blockCtrlProps || {})} value={block.content} onChange={(val) => onUpdate({ content: val })} placeholder="Введите текст..." minHeight="40px" />
     </div>
   );
 }
 
-export function HighlightBlock({ block, onUpdate, courseTitle, lessonTitle, existingContent }: BlockAIProps) {
+export function HighlightBlock({ block, onUpdate, courseTitle, lessonTitle, existingContent, blockCtrlProps }: BlockAIProps) {
   const [isGenerating, setIsGenerating] = useState(false);
   const handleGenerate = async () => {
     if (!(await checkAiLimitGlobal())) return;
@@ -176,13 +176,13 @@ export function HighlightBlock({ block, onUpdate, courseTitle, lessonTitle, exis
           <Highlighter className="w-5 h-5 text-yellow-500 flex-shrink-0" />
           <AIGenerateButton isGenerating={isGenerating} onClick={handleGenerate} />
         </div>
-        <RichTextEditor value={block.content} onChange={(val) => onUpdate({ content: val })} placeholder="Введите текст выделения..." minHeight="40px" />
+        <RichTextEditor {...(blockCtrlProps || {})} value={block.content} onChange={(val) => onUpdate({ content: val })} placeholder="Введите текст выделения..." minHeight="40px" />
       </div>
     </div>
   );
 }
 
-export function AccordionBlock({ block, onUpdate, courseTitle, lessonTitle, existingContent }: BlockAIProps) {
+export function AccordionBlock({ block, onUpdate, courseTitle, lessonTitle, existingContent, blockCtrlProps }: BlockAIProps) {
   const [isGenerating, setIsGenerating] = useState(false);
   const isOpen = block.accordionOpen ?? true;
 
@@ -218,7 +218,7 @@ export function AccordionBlock({ block, onUpdate, courseTitle, lessonTitle, exis
       </div>
       {isOpen && (
         <div className="p-3 pt-0 border-t border-purple-500/20">
-          <RichTextEditor value={block.content} onChange={(val) => onUpdate({ content: val })} placeholder="Содержимое секции..." minHeight="60px" />
+          <RichTextEditor {...(blockCtrlProps || {})} value={block.content} onChange={(val) => onUpdate({ content: val })} placeholder="Содержимое секции..." minHeight="60px" />
         </div>
       )}
     </div>
