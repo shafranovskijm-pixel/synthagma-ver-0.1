@@ -326,99 +326,95 @@ export function RichTextEditor({
     <div className="relative">
       {showToolbar && (
         <div
-          className="absolute z-50 flex items-center gap-0.5 bg-slate-800/95 backdrop-blur-md text-white rounded-2xl shadow-2xl border border-white/10 px-2 py-1.5 h-11 pointer-events-auto -translate-x-1/2"
+          className="absolute z-50 flex items-center gap-0.5 bg-slate-800/95 backdrop-blur-md text-white rounded-2xl shadow-2xl border border-white/10 px-2 py-1.5 h-12 pointer-events-auto -translate-x-1/2"
           style={{ top: toolbarPos.top, left: toolbarPos.left }}
           onMouseDown={(e) => e.preventDefault()}
         >
-          {/* Size + Style */}
-          {hasBlockControls && onStyleUpdate && (
-            <>
-              <button
-                onMouseDown={(e) => { e.preventDefault(); cycleSize(-1); }}
-                className="h-8 w-8 flex items-center justify-center hover:bg-white/10 rounded-lg transition-colors"
-                title="Уменьшить"
-              >
-                <Minus className="w-4 h-4" />
-              </button>
-              {onConvertType && (
-                <Popover open={styleMenuOpen} onOpenChange={setStyleMenuOpen}>
-                  <PopoverTrigger asChild>
-                    <button
-                      onMouseDown={(e) => e.preventDefault()}
-                      className="h-7 px-2 flex items-center gap-1 hover:bg-white/10 rounded-lg transition-colors text-xs"
-                      title="Стиль"
-                    >
-                      <Type className="w-4 h-4" />
-                      <ChevronDown className="w-3 h-3 opacity-70" />
-                    </button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-44 p-1" align="start" onOpenAutoFocus={(e) => e.preventDefault()}>
-                    {styleMenuItems.map((item) => (
-                      <button
-                        key={item.type}
-                        onMouseDown={(e) => { e.preventDefault(); setBlockType(item.type); }}
-                        className="w-full flex items-center justify-between gap-2 px-2 py-1.5 rounded-md hover:bg-accent transition-colors text-left"
-                      >
-                        <span className={cn(item.preview)}>{item.label}</span>
-                        {currentBlockType === item.type && <Check className="w-4 h-4 text-primary" />}
-                      </button>
-                    ))}
-                  </PopoverContent>
-                </Popover>
-              )}
-              <button
-                onMouseDown={(e) => { e.preventDefault(); cycleSize(1); }}
-                className="h-8 w-8 flex items-center justify-center hover:bg-white/10 rounded-lg transition-colors"
-                title="Увеличить"
-              >
-                <Plus className="w-4 h-4" />
-              </button>
-              <div className="w-px h-6 bg-white/15 mx-0.5" />
-            </>
+          {/* Size − / Style T / Size + */}
+          <button
+            onMouseDown={(e) => { e.preventDefault(); cycleSize(-1); }}
+            className="h-9 w-9 flex items-center justify-center hover:bg-white/10 rounded-lg transition-colors"
+            title="Уменьшить"
+          >
+            <Minus className="w-[18px] h-[18px]" />
+          </button>
+          {onConvertType && (
+            <Popover open={styleMenuOpen} onOpenChange={setStyleMenuOpen}>
+              <PopoverTrigger asChild>
+                <button
+                  onMouseDown={(e) => e.preventDefault()}
+                  className="h-9 px-2 flex items-center gap-1 hover:bg-white/10 rounded-lg transition-colors"
+                  title="Стиль текста"
+                >
+                  <Type className="w-[18px] h-[18px]" />
+                  <ChevronDown className="w-3 h-3 opacity-70" />
+                </button>
+              </PopoverTrigger>
+              <PopoverContent className="w-48 p-1 bg-slate-800 border-white/10 text-white" align="center" onOpenAutoFocus={(e) => e.preventDefault()}>
+                {styleMenuItems.map((item) => (
+                  <button
+                    key={item.type}
+                    onMouseDown={(e) => { e.preventDefault(); setBlockType(item.type); }}
+                    className="w-full flex items-center justify-between gap-2 px-2 py-1.5 rounded-md hover:bg-white/10 transition-colors text-left"
+                  >
+                    <span className={cn(item.preview)}>{item.label}</span>
+                    {currentBlockType === item.type && <Check className="w-4 h-4 text-primary" />}
+                  </button>
+                ))}
+              </PopoverContent>
+            </Popover>
           )}
+          <button
+            onMouseDown={(e) => { e.preventDefault(); cycleSize(1); }}
+            className="h-9 w-9 flex items-center justify-center hover:bg-white/10 rounded-lg transition-colors"
+            title="Увеличить"
+          >
+            <Plus className="w-[18px] h-[18px]" />
+          </button>
+          <div className="w-px h-7 bg-white/15 mx-1" />
 
           {/* Inline formatting */}
           <button
             onMouseDown={(e) => { e.preventDefault(); execFormat('bold'); }}
-            className={cn("h-8 w-8 flex items-center justify-center rounded-lg transition-colors", activeFormats.bold ? "bg-primary text-primary-foreground" : "hover:bg-white/10")}
+            className={cn("h-9 w-9 flex items-center justify-center rounded-lg transition-colors", activeFormats.bold ? "bg-primary text-primary-foreground" : "hover:bg-white/10")}
             title="Жирный (Ctrl+B)"
           >
-            <Bold className="w-4 h-4" />
+            <Bold className="w-[18px] h-[18px]" />
           </button>
           <button
             onMouseDown={(e) => { e.preventDefault(); execFormat('italic'); }}
-            className={cn("h-8 w-8 flex items-center justify-center rounded-lg transition-colors", activeFormats.italic ? "bg-primary text-primary-foreground" : "hover:bg-white/10")}
+            className={cn("h-9 w-9 flex items-center justify-center rounded-lg transition-colors", activeFormats.italic ? "bg-primary text-primary-foreground" : "hover:bg-white/10")}
             title="Курсив (Ctrl+I)"
           >
-            <Italic className="w-4 h-4" />
+            <Italic className="w-[18px] h-[18px]" />
           </button>
           <button
             onMouseDown={(e) => { e.preventDefault(); toggleCode(); }}
-            className={cn("h-8 w-8 flex items-center justify-center rounded-lg transition-colors", activeFormats.code ? "bg-primary text-primary-foreground" : "hover:bg-white/10")}
+            className={cn("h-9 w-9 flex items-center justify-center rounded-lg transition-colors", activeFormats.code ? "bg-primary text-primary-foreground" : "hover:bg-white/10")}
             title="Код"
           >
-            <Code className="w-4 h-4" />
+            <Code className="w-[18px] h-[18px]" />
           </button>
           <button
             onMouseDown={(e) => { e.preventDefault(); execFormat('underline'); }}
-            className={cn("h-8 w-8 flex items-center justify-center rounded-lg transition-colors", activeFormats.underline ? "bg-primary text-primary-foreground" : "hover:bg-white/10")}
+            className={cn("h-9 w-9 flex items-center justify-center rounded-lg transition-colors", activeFormats.underline ? "bg-primary text-primary-foreground" : "hover:bg-white/10")}
             title="Подчёркнутый (Ctrl+U)"
           >
-            <Underline className="w-4 h-4" />
+            <Underline className="w-[18px] h-[18px]" />
           </button>
 
           {hasBlockControls && onConvertType && (
             <>
-              <div className="w-px h-6 bg-white/15 mx-0.5" />
+              <div className="w-px h-7 bg-white/15 mx-1" />
               {/* Lists */}
               <Popover open={listMenuOpen} onOpenChange={setListMenuOpen}>
                 <PopoverTrigger asChild>
                   <button
                     onMouseDown={(e) => e.preventDefault()}
-                    className="h-8 w-8 flex items-center justify-center hover:bg-white/10 rounded-lg transition-colors"
+                    className="h-9 w-9 flex items-center justify-center hover:bg-white/10 rounded-lg transition-colors"
                     title="Список"
                   >
-                    <List className="w-4 h-4" />
+                    <List className="w-[18px] h-[18px]" />
                   </button>
                 </PopoverTrigger>
                 <PopoverContent className="w-44 p-1" align="start" onOpenAutoFocus={(e) => e.preventDefault()}>
@@ -443,7 +439,7 @@ export function RichTextEditor({
 
           {hasBlockControls && onStyleUpdate && (
             <>
-              <div className="w-px h-6 bg-white/15 mx-0.5" />
+              <div className="w-px h-7 bg-white/15 mx-1" />
               {/* Alignment */}
               {([
                 { v: undefined, icon: AlignLeft, key: 'left', title: 'По левому краю' },
@@ -456,10 +452,10 @@ export function RichTextEditor({
                   <button
                     key={key}
                     onMouseDown={(e) => { e.preventDefault(); onStyleUpdate({ textAlign: v }); }}
-                    className={cn("h-8 w-8 flex items-center justify-center rounded-lg transition-colors", isActive ? "bg-primary text-primary-foreground" : "hover:bg-white/10")}
+                    className={cn("h-9 w-9 flex items-center justify-center rounded-lg transition-colors", isActive ? "bg-primary text-primary-foreground" : "hover:bg-white/10")}
                     title={title}
                   >
-                    <Icon className="w-4 h-4" />
+                    <Icon className="w-[18px] h-[18px]" />
                   </button>
                 );
               })}
