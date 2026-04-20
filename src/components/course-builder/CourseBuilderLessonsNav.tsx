@@ -151,7 +151,7 @@ function AddLessonButton({
         <Button
           size="sm"
           variant="ghost"
-          className="w-full justify-start gap-2 text-xs text-muted-foreground hover:text-primary hover:bg-primary/5 rounded-lg"
+          className="w-full justify-center gap-2 text-xs font-medium text-primary bg-primary/10 hover:bg-primary/15 hover:text-primary rounded-lg border border-primary/20"
           onClick={() => setOpen(true)}
         >
           <Plus className="w-3.5 h-3.5" /> {label}
@@ -417,22 +417,6 @@ function NavList(props: Props & { afterAction?: () => void }) {
         </button>
       )}
 
-      <div className="px-3 pt-3 pb-2 shrink-0 space-y-2">
-        {(onAddLesson || onOpenAIDialog) && (
-          <AddLessonButton onAddLesson={onAddLesson} onOpenAIDialog={onOpenAIDialog} afterAction={afterAction} />
-        )}
-        {onCreateModule && (
-          <Button
-            size="sm"
-            variant="outline"
-            className="w-full gap-2 rounded-xl"
-            onClick={() => { onCreateModule(); afterAction?.(); }}
-          >
-            <FolderPlus className="w-4 h-4" /> Добавить модуль
-          </Button>
-        )}
-      </div>
-
       <div className="px-4 py-3 border-b border-border/50 shrink-0">
         <p className="text-[11px] font-semibold text-muted-foreground/70 uppercase tracking-wider">
           Уроки ({lessons.length})
@@ -442,34 +426,19 @@ function NavList(props: Props & { afterAction?: () => void }) {
 
       <ScrollArea className="flex-1 min-h-0">
         <div className="p-2 space-y-3">
-          {lessons.length === 0 && modules.length === 0 ? (
-            <p className="text-xs text-muted-foreground text-center py-6 px-4">
-              Уроков пока нет. Добавьте модуль или урок — они появятся здесь.
-            </p>
+          {modules.length === 0 ? (
+            <div className="flex flex-col items-center justify-center text-center py-10 px-4 gap-3">
+              <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center">
+                <FolderPlus className="w-6 h-6 text-primary" />
+              </div>
+              <p className="text-sm font-medium text-foreground">Создайте первый модуль</p>
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                Уроки добавляются внутрь модулей. Сначала создайте модуль, затем — занятия в нём.
+              </p>
+            </div>
           ) : (
             <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
               <SortableContext items={lessons.map((l) => l.id)} strategy={verticalListSortingStrategy}>
-                {/* Уроки без модуля */}
-                {grouped.orphans.length > 0 && (
-                  <div className="space-y-0.5">
-                    {modules.length > 0 && (
-                      <p className="px-2 pb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/60">
-                        Без модуля
-                      </p>
-                    )}
-                    {grouped.orphans.map((lesson) => (
-                      <SortableNavRow
-                        key={lesson.id}
-                        lesson={lesson}
-                        index={lessonIndex.get(lesson.id) ?? 0}
-                        isActive={activeLessonId === lesson.id}
-                        onClick={() => handleClick(lesson.id)}
-                      />
-                    ))}
-                  </div>
-                )}
-
-                {/* Модули */}
                 {modules.map((m) => {
                   const items = grouped.byModule.get(m.id) ?? [];
                   return (
@@ -485,29 +454,23 @@ function NavList(props: Props & { afterAction?: () => void }) {
                       />
                       {!m.collapsed && (
                         <div className="pl-3 space-y-0.5 border-l-2 border-border/40 ml-3">
-                          {items.length === 0 ? (
-                            <p className="text-xs text-muted-foreground/60 italic px-2 py-2">
-                              Уроков в модуле нет
-                            </p>
-                          ) : (
-                            items.map((lesson) => (
-                              <SortableNavRow
-                                key={lesson.id}
-                                lesson={lesson}
-                                index={lessonIndex.get(lesson.id) ?? 0}
-                                isActive={activeLessonId === lesson.id}
-                                onClick={() => handleClick(lesson.id)}
-                              />
-                            ))
-                          )}
+                          {items.map((lesson) => (
+                            <SortableNavRow
+                              key={lesson.id}
+                              lesson={lesson}
+                              index={lessonIndex.get(lesson.id) ?? 0}
+                              isActive={activeLessonId === lesson.id}
+                              onClick={() => handleClick(lesson.id)}
+                            />
+                          ))}
                           {onAddLesson && (
-                            <div className="pt-1">
+                            <div className="pt-1.5">
                               <AddLessonButton
                                 onAddLesson={onAddLesson}
                                 afterAction={afterAction}
                                 variant="ghost"
                                 moduleId={m.id}
-                                label="Добавить урок в модуль"
+                                label="Занятие"
                               />
                             </div>
                           )}
@@ -521,6 +484,18 @@ function NavList(props: Props & { afterAction?: () => void }) {
           )}
         </div>
       </ScrollArea>
+
+      {onCreateModule && (
+        <div className="px-3 py-3 border-t border-border/50 shrink-0">
+          <Button
+            size="lg"
+            className="btn-gradient w-full gap-2 rounded-xl shadow-sm h-11 font-semibold"
+            onClick={() => { onCreateModule(); afterAction?.(); }}
+          >
+            <FolderPlus className="w-4 h-4" /> Модуль
+          </Button>
+        </div>
+      )}
     </div>
   );
 }

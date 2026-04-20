@@ -145,6 +145,36 @@ export function useCourseBuilder(propCourseId?: string) {
     }
   }, [isDataLoaded]);
 
+  // Auto-migrate orphan lessons (без module_id) → переложить в первый модуль или создать «Основной»
+  const migrationDoneRef = useRef(false);
+  useEffect(() => {
+    if (!isDataLoaded || !courseId || migrationDoneRef.current) return;
+    const orphans = lessons.filter(l => !l.module_id);
+    if (orphans.length === 0) { migrationDoneRef.current = true; return; }
+    migrationDoneRef.current = true;
+    (async () => {
+      let targetModuleId: string | null = null;
+      if (modules.length > 0) {
+        const sorted = [...modules].sort((a, b) => a.order_index - b.order_index);
+        targetModuleId = sorted[0].id;
+      } else {
+        const { data, error } = await supabase
+          .from("course_modules" as any)
+          .insert({ course_id: courseId, title: "Основной", order_index: 0 })
+          .select()
+          .single();
+        if (error || !data) return;
+        const m = data as any;
+        targetModuleId = m.id;
+        setModules([{ id: m.id, course_id: m.course_id, title: m.title, order_index: m.order_index, collapsed: false }]);
+      }
+      if (!targetModuleId) return;
+      const orphanIds = orphans.map(l => l.id);
+      await supabase.from("lessons").update({ module_id: targetModuleId }).in("id", orphanIds);
+      setLessons(prev => prev.map(l => !l.module_id ? { ...l, module_id: targetModuleId } : l));
+    })();
+  }, [isDataLoaded, courseId, lessons, modules]);
+
   // Debounced autosave
   useEffect(() => {
     if (!hasUnsavedChanges || !isDataLoaded) return;
