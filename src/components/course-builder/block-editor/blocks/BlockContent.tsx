@@ -1,13 +1,13 @@
 import { RichTextEditor } from "../../RichTextEditor";
 import { cn } from "@/lib/utils";
-import { bgColorPresets, textColorPresets } from "../types";
-import type { ContentBlock } from "../types";
+import { bgColorPresets, textColorPresets, convertibleTypes, textStyleableTypes } from "../types";
+import type { ContentBlock, BlockType, StylePreset } from "../types";
 import { ParagraphBlock, QuoteBlock, CalloutBlock, HighlightBlock, AccordionBlock } from "./TextBlocks";
 import { QuizBlock } from "./QuizBlock";
 import { ImageBlock, VideoBlock, AudioBlock, DocumentBlock } from "./MediaBlocks";
 import { SliderBlock } from "./SliderBlock";
 
-export function BlockContent({ block, onUpdate, courseTitle, lessonTitle, existingContent, organizationId, courseId, lessonId }: { block: ContentBlock; onUpdate: (updates: Partial<ContentBlock>) => void; courseTitle?: string; lessonTitle?: string; existingContent?: string; organizationId?: string; courseId?: string; lessonId?: string }) {
+export function BlockContent({ block, onUpdate, courseTitle, lessonTitle, existingContent, organizationId, courseId, lessonId, presets, onPresetsChange }: { block: ContentBlock; onUpdate: (updates: Partial<ContentBlock>) => void; courseTitle?: string; lessonTitle?: string; existingContent?: string; organizationId?: string; courseId?: string; lessonId?: string; presets?: { name: string; style: StylePreset }[]; onPresetsChange?: (p: { name: string; style: StylePreset }[]) => void }) {
   const editorStyleClasses = (() => {
     const classes: string[] = [];
     if (block.textAlign === 'center') classes.push('text-center');
@@ -33,6 +33,15 @@ export function BlockContent({ block, onUpdate, courseTitle, lessonTitle, existi
     return classes.join(' ');
   })();
 
+  const handleConvertBlockType = (type: BlockType) => {
+    const updates: Partial<ContentBlock> = { type };
+    if (type === "accordion" && !block.accordionTitle) {
+      updates.accordionTitle = "Заголовок секции";
+      updates.accordionOpen = true;
+    }
+    onUpdate(updates);
+  };
+
   const blockCtrlProps = {
     onConvertType: (type: any) => onUpdate({ type }),
     onStyleUpdate: (updates: any) => onUpdate(updates),
@@ -41,6 +50,12 @@ export function BlockContent({ block, onUpdate, courseTitle, lessonTitle, existi
     currentTextColor: block.textColor,
     currentBgColor: block.bgColor,
     currentTextSize: block.textSize,
+    onConvertBlockType: handleConvertBlockType,
+    canConvert: convertibleTypes.includes(block.type),
+    canStyle: textStyleableTypes.includes(block.type),
+    currentBlock: block,
+    presets,
+    onPresetsChange,
   };
 
   switch (block.type) {
