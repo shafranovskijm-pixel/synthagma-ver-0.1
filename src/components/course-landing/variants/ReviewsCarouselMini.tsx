@@ -1,5 +1,5 @@
 import { Trash2, Star } from "lucide-react";
-import { useLandingTheme } from "../LandingThemeProvider";
+import { useLandingTheme, useTemplateStyle } from "../LandingThemeProvider";
 import { cardStyleClass, radiusCardClass, sectionSpacingClass } from "@/lib/landing-templates/themeTokens";
 import type { ReviewItem } from "../LandingReviewsSection";
 
@@ -14,25 +14,26 @@ interface Props {
 }
 
 /**
- * Reviews «Carousel Mini» — горизонтальная полоса с прокруткой по оси X.
- * На десктопе видно 2.5 карточки, на мобильном — одну.
+ * Reviews «Carousel Mini» — горизонтальная полоса. Этап 6: skin.card.
  */
 export function ReviewsCarouselMini({
   title, reviews, isEditing, onTitleChange, onReviewChange, onAddReview, onRemoveReview,
 }: Props) {
   const { theme, accent } = useLandingTheme();
+  const skin = useTemplateStyle();
   if (reviews.length === 0 && !isEditing) return null;
   const accentColor = accent || "hsl(var(--primary))";
+  const cardClasses = skin.card || cardStyleClass[theme.card_style];
 
   return (
-    <section className={`${sectionSpacingClass[theme.section_spacing]}`}>
+    <section className={`${sectionSpacingClass[theme.section_spacing]} ${skin.accentBg}`}>
       <div className="max-w-6xl mx-auto px-6 mb-8">
         {isEditing ? (
           <h2 contentEditable suppressContentEditableWarning
-            className="landing-heading text-2xl md:text-3xl font-bold outline-none"
+            className={`landing-heading text-2xl md:text-3xl font-bold outline-none ${skin.sectionTitle}`}
             onBlur={(e) => onTitleChange?.(e.currentTarget.textContent || "")}>{title}</h2>
         ) : (
-          <h2 className="landing-heading text-2xl md:text-3xl font-bold">{title}</h2>
+          <h2 className={`landing-heading text-2xl md:text-3xl font-bold ${skin.sectionTitle}`}>{title}</h2>
         )}
       </div>
 
@@ -41,8 +42,8 @@ export function ReviewsCarouselMini({
           {reviews.map((r, i) => (
             <div
               key={i}
-              className={`relative shrink-0 w-[320px] md:w-[380px] p-6 group ${radiusCardClass[theme.radius]} ${cardStyleClass[theme.card_style]}`}
-              style={{ borderTop: `3px solid ${accentColor}` }}
+              className={`relative shrink-0 w-[320px] md:w-[380px] p-6 group ${radiusCardClass[theme.radius]} ${cardClasses}`}
+              style={skin.card ? undefined : { borderTop: `3px solid ${accentColor}` }}
             >
               {isEditing && (
                 <button onClick={() => onRemoveReview?.(i)} className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 text-destructive transition">
