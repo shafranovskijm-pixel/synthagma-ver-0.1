@@ -1,99 +1,69 @@
 
 
-## Поэтапная прокачка шаблонов: реальная визуальная уникальность
+## Этап 6 — Реальная визуальная разница (фикс): шрифты, скины везде, тёмный Lab
 
-Сейчас у каждого шаблона различается только hero и обложка. Все остальные секции — pricing/audience/reviews/benefits/learn/process/faq/cta — одинаково выглядят, потому что используют общую палитру токенов (`cardStyleClass`, `radiusCardClass`) без шаблон-специфичных стилей. Нужна не косметика, а характер: уникальные фоны секций, формы, иллюстрации, акцентные элементы, анимации.
+После Этапов 1–5 каждый шаблон имеет уникальный hero, но вся «средняя» часть (audience, benefits, reviews, pricing, faq, cta) всё ещё выглядит одинаково. Причина — три недоделки. Этот этап их закрывает.
 
-Делим работу на **5 этапов**. После каждого вы пишете «продолжить», я делаю следующий.
+### Корневые причины проблемы
 
----
+1. **Шрифты Unbounded / Playfair / JetBrains / Manrope / PT Serif НЕ загружаются в проект.** В `index.html` нет `<link>` на Google Fonts, а `font-family: 'Unbounded'` без подключённого файла молча падает на системный sans-serif. Поэтому у всех 5 шаблонов заголовки выглядят одним шрифтом.
+2. **Половина вариантов секций не использует `useTemplateStyle()`.** `AudienceIconsRow` (Lab, Language), `AudienceStackedCards` (Beauty), `BenefitsIconList` (Safety, Lab), `ReviewsCards/Carousel/Masonry`, `LandingFaqSection`, `LandingCtaSection` — все рендерят базовые `cardStyleClass` без `tpl-*-card`. Поэтому даже там, где layout разный, **сами карточки выглядят одинаково**.
+3. **Hero у Lab светлый, хотя `scheme: "dark"`.** На скрине у «Лаборатория» виден светлый блок «Кому подойдёт курс» поверх тёмного фона — это значит, классы `bg-zinc-950 text-zinc-100` из провайдера применяются только к корневому `<div>`, а секции внутри не наследуют тёмную палитру (у них собственный `bg-card/background`).
 
-### Этап 1 — Тематические фоновые иллюстрации для секций (5 наборов)
+### Что делаем
 
-Для каждого шаблона генерируем по 3 уникальных декор-изображения (через ИИ Nano Banana Pro):
+**1. Подключаем шрифты (index.html)**
+Добавляем один `<link>` Google Fonts c подмножеством кириллицы:
+```html
+<link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@500;700&family=Playfair+Display:ital,wght@0,500;0,700;1,500&family=JetBrains+Mono:wght@400;600&family=Manrope:wght@500;700&family=PT+Serif:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet" crossorigin>
+```
+Сразу заголовки получают узнаваемый характер: Aurora — геометричный Unbounded, Beauty — каллиграфический Playfair Italic, Lab — моноширинный JetBrains, Language — мягкий PT Serif с курсивом, Safety — строгий Inter Bold.
 
-- **Aurora** — туманная северная дымка, тонкие световые лучи, премиальная абстракция (для CTA, pricing, footer-блока).
-- **Beauty** — мягкие пудровые градиенты, элементы make-up флакон/перо/кисть, мраморные текстуры.
-- **Safety** — чертёжная сетка, силуэты каски/планшета, технические схемы синим тоном.
-- **Lab** — неоновые волны/код-ленты, тёмный шум, голографические шарики.
-- **Language** — бумажная текстура с пометками от руки, цитаты на разных языках, силуэты книг/глобуса.
+**2. Применяем `useTemplateStyle()` ко всем оставшимся вариантам**
+Добавляем `skin.card`, `skin.button`, `skin.sectionTitle`, `skin.cardTitlePrefix` в:
+- `AudienceIconsRow.tsx` — обёртка иконки + подпись получают `skin.card` (для Lab — тёмный квадрат с неоновым свечением; для Language — карточка-страница с закладкой).
+- `AudienceStackedCards.tsx` — заменяем общий `cardStyleClass` на `skin.card` (Beauty получает свой волнистый низ + розовую тень).
+- `BenefitsGrid.tsx` — заменяем заголовок «Преимущества» на `skin.sectionTitle` и `skin.cardTitlePrefix`.
+- `BenefitsIconList.tsx` — иконка + строка получают тематический фон/border (Safety — синий border, Lab — неоновое свечение).
+- `PricingComparison.tsx` — таблица получает `skin.card` для шапки.
+- `ReviewsCards / ReviewsCarouselMini / ReviewsMasonry` — отзывы рендерятся на `skin.card` (для Beauty — наклонённые «фотокарточки», для Lab — тёмные с моноширинным никнеймом, для Language — на бумажной текстуре).
+- `LandingFaqSection.tsx` — каждый вопрос-аккордеон получает `skin.card` + `skin.cardTitlePrefix` (для Lab — `> question_01`).
+- `LandingCtaSection.tsx` — CTA-кнопка получает `skin.button` (Aurora shimmer, Beauty pill+heart, Safety sharp, Lab terminal, Language outline italic).
 
-Все изображения — `.webp` 1600×900, ≤120 КБ, в `src/assets/landing-templates/decor/`.
+**3. Lab — настоящая тёмная схема**
+В `LandingThemeProvider.tsx` при `scheme === "dark"` дополнительно выставляем CSS-переменные:
+```css
+--background: 222 47% 7%;    /* zinc-950 */
+--foreground: 210 20% 96%;
+--card: 222 40% 11%;
+--muted-foreground: 215 16% 65%;
+--border: 215 20% 22%;
+```
+Тогда **все** дочерние секции (audience, benefits, reviews, faq, pricing) автоматически становятся тёмными, без правок отдельных компонентов. Шаблон Lab получает целиком тёмный лендинг — как в референсах IT-курсов.
 
-В `LandingTheme` добавляем поля `section_bg_url`, `cta_bg_url`, `pricing_bg_url`. Выводим как фон секций (с overlay для читаемости).
+**4. Дополнительные шаблон-специфичные акценты в `templateStyles.ts`**
+- Добавляем поле `iconWrap` (классы для обёртки иконки): Aurora — gradient pill, Beauty — soft circle с тенью, Safety — sharp square с border, Lab — неоновый dot, Language — оттиск кисти.
+- Добавляем поле `accentBg` (фон активной/highlight-секции).
+- Применяем эти классы во всех вариантах через тот же хук.
 
-Файлы: 15 новых картинок + правка `types.ts` + 5 файлов шаблонов + `themeTokens.ts` (хелпер для overlay).
+### Файлы
 
----
+- `index.html` — добавление `<link>` Google Fonts.
+- `src/lib/landing-templates/templateStyles.ts` — расширение `TemplateStyle` (`iconWrap`, `accentBg`).
+- `src/index.css` — `tpl-*-icon-wrap`, `tpl-*-accent-bg` классы; для `[data-template-skin="lab"]` — переопределение CSS-переменных темы.
+- `src/components/course-landing/LandingThemeProvider.tsx` — инжекция тёмных CSS-переменных при `scheme === "dark"`.
+- `src/components/course-landing/variants/AudienceIconsRow.tsx`, `AudienceStackedCards.tsx`, `BenefitsGrid.tsx`, `BenefitsIconList.tsx`, `PricingComparison.tsx`, `ReviewsCards.tsx`, `ReviewsCarouselMini.tsx`, `ReviewsMasonry.tsx` — подключение `useTemplateStyle()`.
+- `src/components/course-landing/LandingFaqSection.tsx`, `LandingCtaSection.tsx` — то же самое.
+- `src/lib/appVersion.ts` → `1.0.26`.
 
-### Этап 2 — Уникальные «личности» карточек и кнопок
+### Что получится (визуально)
 
-Сейчас `cardStyleClass`/`radiusButtonClass` дают 4 варианта на всех. Делаем **шаблон-специфичные» классы вариантов:
+В галерее карточек:
+- **Aurora** — заголовки геометричным Unbounded, glass-карточки с shimmer-кнопкой, мягкое тиал-свечение.
+- **Beauty** — каллиграфический Playfair Italic в заголовках, наклонённые карточки-фотокарточки, розовый pill-CTA с сердечком.
+- **Safety** — строгий Inter Bold, прямоугольные карточки с угловым бейджем «п.X.X» и синим border, sharp-кнопка УТВЕРДИТЬ.
+- **Lab** — **полностью чёрный лендинг**, моноширинный JetBrains во всех заголовках, неоновые тёмные карточки, кнопка `> ./apply.sh`, заголовки с префиксом `> `.
+- **Language** — мягкий PT Serif Italic, карточки на бежевой бумаге с уголком-загибом, outline-кнопки с подчёркиванием курсивом.
 
-- **Aurora**: glass-карточки с гра­диентной рамкой + кнопка с бегущим бликом (CSS shimmer animation).
-- **Beauty**: карточки с мягкой розовой тенью и волнистым нижним краем (clip-path), кнопки pill с эмодзи-сердечком при hover.
-- **Safety**: жёсткие прямоугольные карточки с угловыми бейджами «п.X.X», подчёркиванием заголовка, кнопки sharp с диагональной штриховкой при hover.
-- **Lab**: тёмные карточки с тонкой кодовой строкой `> ` перед заголовком и неоновым свечением border при hover, кнопка-кнопка терминала (`> ./apply.sh`).
-- **Language**: карточки с «закладкой» (уголок-загиб бумаги), кнопки outline с подчёркиванием в стиле курсивной подписи.
-
-Файлы: новый `src/lib/landing-templates/templateStyles.ts` (per-template CSS-классы и keyframes), правка `index.css` (CSS-переменные/keyframes), правка вариантов `PricingCards`, `PricingHighlightMiddle`, `AudienceGrid`, `BenefitsGrid` для подстановки этих классов через хук `useTemplateStyle()`.
-
----
-
-### Этап 3 — Уникальные секции «Что вы освоите» (learn) и «Как проходит» (process)
-
-Сейчас `learn` и `process` рендерятся одинаковым компонентом для всех. Создаём 5 вариантов:
-
-- **Aurora** — нумерованная сетка 2×3 с большими цифрами `01–06` градиентом.
-- **Beauty** — горизонтальная лента «карточки-фотокарточки» с поворотом ±2°, штрихи как от пастельного маркера.
-- **Safety** — вертикальный «чек-лист с печатями» (галочка в круге, подпись справа, под пунктом тонкая линия как в бланке).
-- **Lab** — терминальная панель (фон чёрный, моноширинный шрифт, каждая строка `[01] feature_name() // description`).
-- **Language** — раскрытая книга на 2 разворота, пункты как «уроки» с подчёркиванием от руки.
-
-Аналогично для `process`: timeline для Aurora, шаги-следы для Beauty, нумерованные блоки-чертежи для Safety, ASCII-arrow для Lab, «маршрут поездки» для Language.
-
-Файлы: 10 новых вариантов в `variants/learn/` и `variants/process/`, диспетчеры `LandingLearnSection.tsx` и `LandingProcessSection.tsx` (или продолжение существующих). Расширение `LandingTheme` полями `learn_layout` и `process_layout`.
-
----
-
-### Этап 4 — Анимации и микровзаимодействия
-
-Для каждого шаблона свой набор:
-
-- **Aurora** — параллакс hero, плавное появление секций fade-up при скролле (Intersection Observer), мягкое мерцание акцент-точек.
-- **Beauty** — sparkles-частицы при hover на CTA, лёгкое покачивание (sway) карточек аудитории.
-- **Safety** — печать «УТВЕРЖДАЮ» появляется штампом (scale+rotate) когда секция видна, прогресс-бары заполняются.
-- **Lab** — typing-эффект в hero-подзаголовке, glitch-hover на заголовках секций, бегущая каретка `_`.
-- **Language** — флипающие карточки (front/back), подчёркивание заголовка анимированной кистью (SVG stroke-dashoffset).
-
-Все анимации уважают `prefers-reduced-motion: reduce`.
-
-Файлы: `src/lib/landing-templates/animations.ts`, расширение `index.css` keyframes, правка `LandingThemeProvider` (применение CSS-классов root по `theme.id`/анимация-набору), доработка вариантов hero и секций.
-
----
-
-### Этап 5 — Финальная полировка превью + QA
-
-- Mini-preview карточки в галерее: добавляем «лента-индикатор» (цветная полоска внизу карточки = surface_tint) и бейдж-чип с типом шаблона (Бизнес / Бьюти / IT / Языки / Охрана труда).
-- Полный preview-dialog: скролл с подсветкой, плавный fade-in на open.
-- Проверка всех 5 шаблонов на 1440px / 768px / 375px viewport (через browser-tool или session replay).
-- Бамп `appVersion.ts` → `1.0.21` после каждого этапа.
-
-Файлы: правка `LandingTemplateMiniPreview.tsx`, `LandingTemplatePreviewDialog.tsx`, `LandingTemplatesGallery.tsx`.
-
----
-
-## Технические детали (для ревью)
-
-- **Расширение `LandingTheme`**: поля `section_bg_url?`, `cta_bg_url?`, `pricing_bg_url?`, `learn_layout`, `process_layout`, `animation_set?`. Все опциональные — сохраняется обратная совместимость.
-- **Кеш картинок**: `.webp` через `import` (Vite сам оптимизирует и хеширует). Lazy-load для секций ниже первого экрана.
-- **Per-template стили**: храним в одном файле `templateStyles.ts` как объект `{ [templateId]: { card, button, sectionWrap } }`, читаем через хук `useTemplateStyle(templateId)`. Никакой динамики Tailwind — только статичные классы и inline `style={{}}` для градиентов из `accent`.
-- **Lazy heavy variants**: терминал Lab и книга Language через `React.lazy` + `Suspense`, чтобы не тянуть SVG/keyframes на других шаблонах.
-- **Edge-кейсы**: если у курса уже сохранён `landing_content.theme` без новых полей — фоллбек на текущее поведение. Картинки не показываются, layout по умолчанию.
-
-## Что вы получаете
-
-После всех 5 этапов в галерее каждый шаблон выглядит как **отдельная дизайн-работа уровня референсов**: разные фоны, формы карточек, типографические приёмы, анимации, иконография. Применение шаблона приносит на лендинг полностью отличающийся визуальный язык.
-
-**Скажите «продолжить» — начну с Этапа 1.**
+После этого этапа разница между шаблонами — не только в hero, а во **всём контенте сверху донизу**.
 
