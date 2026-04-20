@@ -38,26 +38,7 @@ interface RichTextEditorProps {
   onPresetsChange?: (p: { name: string; style: StylePreset }[]) => void;
 }
 
-const ALLOWED_TAGS = ['strong', 'b', 'em', 'i', 'u', 's', 'br', 'p', 'span', 'div', 'a', 'code'];
-const ALLOWED_ATTR = ['style', 'href', 'target', 'rel'];
-
-function sanitize(html: string): string {
-  return DOMPurify.sanitize(html, { ALLOWED_TAGS, ALLOWED_ATTR, ALLOW_DATA_ATTR: false });
-}
-
-function linkify(html: string): string {
-  const parts = html.split(/(<a\s[^>]*>.*?<\/a>)/gi);
-  return parts.map((part) => {
-    if (/^<a\s/i.test(part)) return part;
-    return part.replace(
-      /(?:https?:\/\/|www\.)[^\s<>"']+/gi,
-      (url) => {
-        const href = url.startsWith('www.') ? `https://${url}` : url;
-        return `<a href="${href}" target="_blank" rel="noopener noreferrer">${url}</a>`;
-      }
-    );
-  }).join('');
-}
+// sanitize/linkify imported from ./rich-text/htmlSanitize
 
 export function RichTextEditor({
   value, onChange, placeholder, className, minHeight = "60px",
