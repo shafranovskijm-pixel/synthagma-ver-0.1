@@ -7,6 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useLocation } from "react-router-dom";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
+import { SigmaLogo } from "@/components/ui/SigmaLogo";
 import ReactMarkdown from "react-markdown";
 import { cn } from "@/lib/utils";
 import { StarfieldCanvas } from "@/components/landing/StarfieldCanvas";
@@ -314,10 +315,8 @@ function HomeView({
         </button>
 
         <div className="relative z-10 h-full flex flex-col items-center justify-center text-white px-6">
-          <h2 className="text-3xl font-bold tracking-tight" style={{ fontFamily: "'Playfair Display', serif" }}>
-            Sintagma
-          </h2>
-          <p className="text-xs text-white/80 mt-1.5 font-medium">Мы на связи — поможем за минуту</p>
+          <SigmaLogo size="sm" variant="white" className="scale-90" />
+          <p className="text-xs text-white/80 mt-2 font-medium">Мы на связи — поможем за минуту</p>
         </div>
       </div>
 
@@ -445,7 +444,7 @@ function ChatView({
               {status === 'human' ? <Headset className="h-3.5 w-3.5" /> : <Bot className="h-3.5 w-3.5" />}
             </div>
             <div className="text-center">
-              <p className="text-sm font-semibold leading-tight">Поддержка Sintagma</p>
+              <p className="text-sm font-semibold leading-tight">Поддержка Синтагмы</p>
               <p className="text-[10px] text-white/80 leading-tight">
                 {status === 'human' ? 'Оператор отвечает' : status === 'closed' ? 'Закрыт' : 'ИИ на связи'}
               </p>
