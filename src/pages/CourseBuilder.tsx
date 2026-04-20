@@ -11,8 +11,6 @@ import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from "@/
 import { ArrowLeft, Save, Eye, Plus, FileUp, Wand2, Check, AlertCircle, BookOpen, Layers, SearchCheck } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { DndContext, closestCenter, useSensor, useSensors, PointerSensor, KeyboardSensor } from "@dnd-kit/core";
-import { SortableContext, verticalListSortingStrategy, sortableKeyboardCoordinates } from "@dnd-kit/sortable";
 import { SortableLessonItem } from "@/components/course-builder/SortableLessonItem";
 import { CourseBuilderLessonsNav } from "@/components/course-builder/CourseBuilderLessonsNav";
 import { AIGenerateDialog } from "@/components/course-builder/AIGenerateDialog";
