@@ -130,6 +130,12 @@ export function useCourseLearning() {
   const isLessonCompleted = (lessonId: string) => lessonProgress.some(p => p.lesson_id === lessonId && p.completed);
 
   const isLessonAccessible = (index: number): boolean => {
+    const lesson = lessons[index];
+    if (lesson?.is_locked) return false;
+    if (lesson?.locked_until) {
+      const unlockAt = new Date(lesson.locked_until).getTime();
+      if (unlockAt > Date.now()) return false;
+    }
     if (!course?.sequential_lessons) return true;
     if (index === 0) return true;
     for (let i = 0; i < index; i++) {
