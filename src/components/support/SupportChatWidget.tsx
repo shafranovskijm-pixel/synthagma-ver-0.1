@@ -41,7 +41,7 @@ function detectSource(pathname: string): 'landing' | 'student' | 'organization' 
 }
 
 export function SupportChatWidget() {
-  const { user, profile } = useAuth();
+  const { user } = useAuth();
   const location = useLocation();
   const [open, setOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
