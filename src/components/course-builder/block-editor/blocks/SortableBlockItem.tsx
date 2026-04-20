@@ -61,6 +61,22 @@ export function SortableBlockItem({ block, isFocused, onFocus, onUpdate, onDelet
   const [linkText, setLinkText] = useState("");
   const [linkHasSelection, setLinkHasSelection] = useState(false);
   const savedLinkRange = useRef<Range | null>(null);
+  const [actionsMenuOpen, setActionsMenuOpen] = useState(false);
+  const [actionsQuery, setActionsQuery] = useState("");
+  const [styleDialogOpen, setStyleDialogOpen] = useState(false);
+  const [convertOpen, setConvertOpen] = useState(false);
+  const [presetsOpen, setPresetsOpen] = useState(false);
+
+  const baseActions = [
+    { key: 'up', label: 'Вверх', icon: ArrowUp, onClick: () => onMoveUp?.(), disabled: !onMoveUp },
+    { key: 'down', label: 'Вниз', icon: ArrowDown, onClick: () => onMoveDown?.(), disabled: !onMoveDown },
+    ...(canConvert ? [{ key: 'convert', label: 'Преобразовать в…', icon: Wand2, onClick: () => setConvertOpen(true), disabled: false }] : []),
+    ...(canStyle ? [{ key: 'style', label: 'Стиль блока…', icon: Pencil, onClick: () => setStyleDialogOpen(true), disabled: false }] : []),
+    ...(canStyle ? [{ key: 'presets', label: 'Пресеты стиля', icon: Star, onClick: () => setPresetsOpen(true), disabled: false }] : []),
+    ...(canStyle ? [{ key: 'reset', label: 'Сбросить стиль', icon: Eraser, onClick: () => onUpdate({ textAlign: undefined, bgColor: undefined, textColor: undefined, textSize: undefined, bold: undefined, italic: undefined, strikethrough: undefined, underline: undefined, uppercase: undefined, lineHeight: undefined, fontFamily: undefined, borderStyle: undefined, borderRadius: undefined }), disabled: false }] : []),
+    { key: 'delete', label: 'Удалить', icon: Trash2, onClick: () => onDelete(), disabled: false, danger: true },
+  ];
+  const filteredActions = baseActions.filter(a => a.label.toLowerCase().includes(actionsQuery.toLowerCase()));
 
   const handleTtsGenerate = async () => {
     const plainText = (block.content || "").replace(/<[^>]+>/g, "").trim();
