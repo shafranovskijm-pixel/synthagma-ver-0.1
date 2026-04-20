@@ -33,12 +33,12 @@ const defaultMenuSettings: MenuSettings = {
   showServices: true,
   showLaborSafety: false,
   showCourses: true,
-  showCompanies: true,
+  showCompanies: false,
   showStudents: true,
   showJournals: true,
   showFrdo: true,
   showSubscription: true,
-  showAITutors: true,
+  showAITutors: false,
   courseViewMode: 'grid',
   courseFolderMode: 'folders',
 };
@@ -53,14 +53,15 @@ function normalizeMenuSettings(raw: Record<string, unknown> | null | undefined):
     showLibrary: raw.showLibrary !== false,
     showServices: raw.showServices !== false,
     showLaborSafety: raw.showLaborSafety !== false,
-    // Critical items — always true unless explicitly set to false
     showCourses: raw.showCourses !== false,
-    showCompanies: raw.showCompanies !== false,
+    // Off by default — user must explicitly enable in settings
+    showCompanies: raw.showCompanies === true,
     showStudents: raw.showStudents !== false,
     showJournals: raw.showJournals !== false,
     showFrdo: raw.showFrdo !== false,
     showSubscription: raw.showSubscription !== false,
-    showAITutors: raw.showAITutors !== false,
+    // Off by default — user must explicitly enable in settings
+    showAITutors: raw.showAITutors === true,
     courseViewMode: (raw.courseViewMode === 'list' ? 'list' : 'grid') as 'grid' | 'list',
     courseFolderMode: (raw.courseFolderMode === 'flat' ? 'flat' : 'folders') as 'folders' | 'flat',
   };
