@@ -21,6 +21,7 @@ import { CategoryDialog, CreateCourseDialog, MoveCourseDialog, BulkDeleteDialog 
 import { CourseCard } from "./courses/CourseCardView";
 import { CourseCatalogCard } from "./courses/CourseCatalogCard";
 import { CategoryFolder } from "./courses/CategoryFolder";
+import { TransferCourseDialog } from "@/components/organization/dialogs/TransferCourseDialog";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 
 interface CoursesTabProps {
@@ -95,6 +96,13 @@ export const CoursesTab = React.memo(function CoursesTab({ organizationId, onCou
     setIsDuplicating(true);
     try { await duplicate(courseId); } finally { setIsDuplicating(false); }
   };
+
+  // Transfer course (admin-only)
+  const isAdminView = !!dashboard.isAdminView;
+  const [transferCourse, setTransferCourse] = useState<Course | null>(null);
+  const handleTransfer = useCallback((course: Course) => {
+    setTransferCourse(course);
+  }, []);
 
   // Dialog states
   const [showCategoryDialog, setShowCategoryDialog] = useState(false);
