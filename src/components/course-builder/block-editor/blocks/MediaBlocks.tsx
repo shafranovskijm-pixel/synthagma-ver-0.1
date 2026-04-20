@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import DOMPurify from "dompurify";
 import { useNavigate } from "react-router-dom";
 import { checkAiLimitGlobal, incrementAiLimitGlobal } from "@/hooks/useAiGenerationLimit";
@@ -59,6 +59,14 @@ export function ImageBlock({ block, onUpdate }: { block: ContentBlock; onUpdate:
   const [editPrompt, setEditPrompt] = useState("");
   const [showAiInput, setShowAiInput] = useState(false);
   const [showEditInput, setShowEditInput] = useState(false);
+
+  useEffect(() => {
+    if (block.pendingAI === "ai-image" && !block.imageSrc) {
+      setShowAiInput(true);
+      onUpdate({ pendingAI: undefined });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [block.pendingAI]);
 
   const handleFileUpload = async (file: File) => {
     if (!file.type.startsWith("image/")) return;
