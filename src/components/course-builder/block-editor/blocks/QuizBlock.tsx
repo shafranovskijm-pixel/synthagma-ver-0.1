@@ -8,7 +8,7 @@ import type { ContentBlock } from "../types";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 
 export function QuizBlock({ block, onUpdate, courseTitle, lessonTitle, existingContent }: { block: ContentBlock; onUpdate: (updates: Partial<ContentBlock>) => void; courseTitle?: string; lessonTitle?: string; existingContent?: string }) {
-  const [isGenerating, setIsGenerating] = useState(false);
+  const { isGenerating, run } = useBlockAIGenerate();
   const autoTriggeredRef = useRef(false);
   const options = block.quizOptions || [{ text: "", isCorrect: true }, { text: "", isCorrect: false }];
 
@@ -32,27 +32,18 @@ export function QuizBlock({ block, onUpdate, courseTitle, lessonTitle, existingC
     onUpdate({ quizOptions: newOptions });
   };
 
-  const handleGenerateWithAI = async () => {
-    if (!(await checkAiLimitGlobal())) return;
-    setIsGenerating(true);
-    try {
-      const { supabase } = await import("@/integrations/supabase/client");
-      const { data, error } = await supabase.functions.invoke("generate-course-content", {
-        body: { contentType: "quiz", lessonTitle: lessonTitle || "Общая тема", courseTitle: courseTitle || "Курс", existingContent } });
-      if (error) throw error;
-      if (data?.quiz) {
-        onUpdate({
-          quizQuestion: data.quiz.question,
-          quizOptions: data.quiz.options.map((o: any, i: number) => ({ text: o, isCorrect: i === data.quiz.correctIndex })),
-          quizExplanation: data.quiz.explanation || "" });
-        await incrementAiLimitGlobal();
-      }
-    } catch (e) {
-      console.error("Quiz AI generation error:", e);
-      const { toast } = await import("sonner");
-      toast.error("Ошибка генерации квиза");
-    } finally { setIsGenerating(false); }
-  };
+  const handleGenerateWithAI = () => run(async () => {
+    const { supabase } = await import("@/integrations/supabase/client");
+    const { data, error } = await supabase.functions.invoke("generate-course-content", {
+      body: { contentType: "quiz", lessonTitle: lessonTitle || "Общая тема", courseTitle: courseTitle || "Курс", existingContent } });
+    if (error) throw error;
+    if (!data?.quiz) return null;
+    onUpdate({
+      quizQuestion: data.quiz.question,
+      quizOptions: data.quiz.options.map((o: any, i: number) => ({ text: o, isCorrect: i === data.quiz.correctIndex })),
+      quizExplanation: data.quiz.explanation || "" });
+    return data.quiz;
+  }, "Ошибка генерации квиза");
 
   // Auto-trigger AI generation if block was created via the "AI-тест" shortcut
   useEffect(() => {
