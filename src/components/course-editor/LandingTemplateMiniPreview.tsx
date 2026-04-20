@@ -185,12 +185,12 @@ export function LandingTemplateMiniPreview({
       {/* Hover-анимация и accessibility */}
       <style>{`
         .group:hover .mini-preview-scroll {
-          animation: miniPreviewScroll 7s ease-in-out forwards;
+          animation: miniPreviewScroll 12s ease-in-out forwards;
         }
         @keyframes miniPreviewScroll {
           0% { transform: translateY(0); }
-          15% { transform: translateY(0); }
-          85% { transform: translateY(var(--mini-max)); }
+          8% { transform: translateY(0); }
+          92% { transform: translateY(var(--mini-max)); }
           100% { transform: translateY(var(--mini-max)); }
         }
         @media (prefers-reduced-motion: reduce) {
