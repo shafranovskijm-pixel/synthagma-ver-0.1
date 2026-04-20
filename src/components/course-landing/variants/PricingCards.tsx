@@ -1,5 +1,5 @@
 import { Trash2, Check } from "lucide-react";
-import { useLandingTheme } from "../LandingThemeProvider";
+import { useLandingTheme, useTemplateStyle } from "../LandingThemeProvider";
 import { cardStyleClass, radiusCardClass, radiusButtonClass } from "@/lib/landing-templates/themeTokens";
 import type { PricingTier } from "../LandingPricingSection";
 
@@ -24,6 +24,7 @@ export function PricingCards({
   onTierFeatureChange, onAddTierFeature, onRemoveTierFeature, onAddTier, onRemoveTier,
 }: Props) {
   const { theme, accent } = useLandingTheme();
+  const skin = useTemplateStyle();
   if (tiers.length === 0 && !isEditing) return null;
   const accentColor = accent || "hsl(var(--primary))";
 
@@ -43,8 +44,9 @@ export function PricingCards({
           {tiers.map((tier, i) => (
             <div
               key={i}
-              className={`relative p-6 group ${radiusCardClass[theme.radius]} ${cardStyleClass[theme.card_style]}`}
-              style={tier.is_popular ? { borderColor: accentColor, background: `${accentColor}08` } : undefined}
+              data-clause={`п.${i + 1}.0`}
+              className={`relative p-6 group ${radiusCardClass[theme.radius]} ${skin.card || cardStyleClass[theme.card_style]} ${tier.is_popular ? skin.cardHighlight : ""}`}
+              style={tier.is_popular && !skin.cardHighlight ? { borderColor: accentColor, background: `${accentColor}08` } : undefined}
             >
               {isEditing && (
                 <button onClick={() => onRemoveTier?.(i)} className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 text-destructive transition">
