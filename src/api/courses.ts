@@ -195,7 +195,10 @@ export async function publishCourse(courseId: string, isPublished: boolean): Pro
   return !error;
 }
 
-export async function duplicateCourse(courseId: string): Promise<Course | null> {
+export async function duplicateCourse(
+  courseId: string,
+  targetOrganizationId?: string
+): Promise<Course | null> {
   // Get original course
   const { data: original } = await supabase
     .from("courses")
@@ -205,12 +208,15 @@ export async function duplicateCourse(courseId: string): Promise<Course | null> 
 
   if (!original) return null;
 
+  const destOrgId = targetOrganizationId || original.organization_id;
+  const isTransfer = !!targetOrganizationId && targetOrganizationId !== original.organization_id;
+
   // Create new course
   const { data: newCourse, error } = await supabase
     .from("courses")
     .insert({
-      organization_id: original.organization_id,
-      title: `${original.title} (копия)`,
+      organization_id: destOrgId,
+      title: isTransfer ? original.title : `${original.title} (копия)`,
       description: original.description,
       category_id: original.category_id,
       duration: original.duration,

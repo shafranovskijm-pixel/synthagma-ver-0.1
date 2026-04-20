@@ -21,6 +21,7 @@ import { CategoryDialog, CreateCourseDialog, MoveCourseDialog, BulkDeleteDialog 
 import { CourseCard } from "./courses/CourseCardView";
 import { CourseCatalogCard } from "./courses/CourseCatalogCard";
 import { CategoryFolder } from "./courses/CategoryFolder";
+import { TransferCourseDialog } from "@/components/organization/dialogs/TransferCourseDialog";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 
 interface CoursesTabProps {
@@ -95,6 +96,13 @@ export const CoursesTab = React.memo(function CoursesTab({ organizationId, onCou
     setIsDuplicating(true);
     try { await duplicate(courseId); } finally { setIsDuplicating(false); }
   };
+
+  // Transfer course (admin-only)
+  const isAdminView = !!dashboard.isAdminView;
+  const [transferCourse, setTransferCourse] = useState<Course | null>(null);
+  const handleTransfer = useCallback((course: Course) => {
+    setTransferCourse(course);
+  }, []);
 
   // Dialog states
   const [showCategoryDialog, setShowCategoryDialog] = useState(false);
@@ -392,6 +400,8 @@ export const CoursesTab = React.memo(function CoursesTab({ organizationId, onCou
               onToggleCourseSetting={handleToggleCourseSetting}
               onDuplicate={handleDuplicate}
               onMoveCourse={openMoveCourseDialog}
+              isAdminView={isAdminView}
+              onTransfer={handleTransfer}
             />
           ))}
           {coursesByCategory.uncategorized.length > 0 && (
@@ -409,6 +419,8 @@ export const CoursesTab = React.memo(function CoursesTab({ organizationId, onCou
               onToggleCourseSetting={handleToggleCourseSetting}
               onDuplicate={handleDuplicate}
               onMoveCourse={openMoveCourseDialog}
+              isAdminView={isAdminView}
+              onTransfer={handleTransfer}
             />
           )}
         </div>
@@ -436,6 +448,8 @@ export const CoursesTab = React.memo(function CoursesTab({ organizationId, onCou
                     onCoverUpload={(id) => { setCoverUploadCourseId(id); setTimeout(() => coverInputRef.current?.click(), 100); }}
                     onGenerateCover={handleGenerateCourseCover} generatingCoverForCourse={generatingCoverForCourse}
                     getCategoryById={getCategoryById}
+                    isAdminView={isAdminView}
+                    onTransfer={handleTransfer}
                   />
                 ))}
               </div>
@@ -479,6 +493,14 @@ export const CoursesTab = React.memo(function CoursesTab({ organizationId, onCou
       <CreateCourseDialog open={showCreateCourseDialog} onOpenChange={setShowCreateCourseDialog} title={newCourseTitle} setTitle={setNewCourseTitle} description={newCourseDescription} setDescription={setNewCourseDescription} categoryId={newCourseCategoryId} setCategoryId={setNewCourseCategoryId} categories={categories} showInlineNewCategory={showInlineNewCategory} setShowInlineNewCategory={setShowInlineNewCategory} inlineNewCategoryName={inlineNewCategoryName} setInlineNewCategoryName={setInlineNewCategoryName} inlineNewCategoryColor={inlineNewCategoryColor} setInlineNewCategoryColor={setInlineNewCategoryColor} isCreating={isCreatingCourse} onSubmit={handleCreateCourse} />
       <MoveCourseDialog open={showMoveCourseDialog} onOpenChange={setShowMoveCourseDialog} movingCourse={movingCourse} targetCategoryId={targetCategoryId} setTargetCategoryId={setTargetCategoryId} categories={categories} isMoving={isMovingCourse} onSubmit={handleMoveCourse} />
       <BulkDeleteDialog open={showBulkDeleteConfirm} onOpenChange={setShowBulkDeleteConfirm} count={selectedCourseIds.size} isDeleting={isDeletingCourses} onConfirm={handleBulkDelete} />
+      <TransferCourseDialog
+        open={!!transferCourse}
+        onOpenChange={(o) => { if (!o) setTransferCourse(null); }}
+        courseId={transferCourse?.id || null}
+        courseTitle={transferCourse?.title || null}
+        currentOrganizationId={organizationId}
+        onTransferred={refresh}
+      />
       </>}
     </div>
   );

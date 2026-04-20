@@ -1,8 +1,8 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { BookOpen, Users, Edit, MoreVertical, Copy, ImagePlus, Wand2, CheckCircle } from "lucide-react";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { BookOpen, Users, Edit, MoreVertical, Copy, ImagePlus, Wand2, CheckCircle, ArrowRightLeft } from "lucide-react";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 import type { Course, CourseCategory } from "@/types";
 
@@ -14,9 +14,11 @@ interface Props {
   onGenerateCover: (courseId: string) => void;
   generatingCoverForCourse: string | null;
   getCategoryById: (id: string | null | undefined) => CourseCategory | undefined;
+  isAdminView?: boolean;
+  onTransfer?: (course: Course) => void;
 }
 
-export const CourseCatalogCard = React.memo(function CourseCatalogCard({ course, onCourseClick, onDuplicate, onCoverUpload, onGenerateCover, generatingCoverForCourse, getCategoryById }: Props) {
+export const CourseCatalogCard = React.memo(function CourseCatalogCard({ course, onCourseClick, onDuplicate, onCoverUpload, onGenerateCover, generatingCoverForCourse, getCategoryById, isAdminView, onTransfer }: Props) {
   const navigate = useNavigate();
   const category = getCategoryById(course.category_id);
 
@@ -46,9 +48,28 @@ export const CourseCatalogCard = React.memo(function CourseCatalogCard({ course,
                 {generatingCoverForCourse === course.id ? <SigmaSpinner size="sm" className="mr-2" /> : <Wand2 className="w-4 h-4 mr-2" />}
                 {generatingCoverForCourse === course.id ? "Генерация..." : "Сгенерировать с ИИ"}
               </DropdownMenuItem>
+              {isAdminView && onTransfer && (
+                <>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem className="text-primary focus:text-primary" onClick={e => { e.stopPropagation(); onTransfer(course); }}>
+                    <ArrowRightLeft className="w-4 h-4 mr-2" />Перенести в другую организацию
+                  </DropdownMenuItem>
+                </>
+              )}
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
+        {isAdminView && onTransfer && (
+          <button
+            type="button"
+            onClick={e => { e.stopPropagation(); onTransfer(course); }}
+            className="absolute top-2 left-2 inline-flex items-center gap-1.5 h-8 px-2.5 rounded-lg shadow-md bg-primary text-primary-foreground hover:bg-primary/90 text-xs font-medium opacity-0 group-hover:opacity-100 transition-opacity"
+            title="Перенести копию в другую организацию (админ)"
+          >
+            <ArrowRightLeft className="w-3.5 h-3.5" />
+            Перенести
+          </button>
+        )}
       </div>
 
       <div className="p-4 space-y-2.5">

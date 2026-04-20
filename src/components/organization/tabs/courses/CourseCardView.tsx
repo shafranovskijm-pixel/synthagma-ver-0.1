@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
-import { BookOpen, Users, Edit, Eye, EyeOff, MoreVertical, MoveRight, Video, VideoOff, Lock, Unlock, FastForward, Copy } from "lucide-react";
+import { BookOpen, Users, Edit, Eye, EyeOff, MoreVertical, MoveRight, Video, VideoOff, Lock, Unlock, FastForward, Copy, ArrowRightLeft } from "lucide-react";
 import type { Course } from "@/types";
 
 interface Props {
@@ -16,9 +16,11 @@ interface Props {
   onToggleSetting: (course: Course, setting: 'skip_video_identification' | 'sequential_lessons' | 'allow_video_seek' | 'hidden_from_catalog', e: React.MouseEvent) => void;
   onDuplicate: (courseId: string) => void;
   onMove: (course: Course, e?: React.MouseEvent) => void;
+  isAdminView?: boolean;
+  onTransfer?: (course: Course) => void;
 }
 
-export const CourseCard = React.memo(function CourseCard({ course, compact = false, isSelected, onToggleSelect, onCourseClick, onToggleSetting, onDuplicate, onMove }: Props) {
+export const CourseCard = React.memo(function CourseCard({ course, compact = false, isSelected, onToggleSelect, onCourseClick, onToggleSetting, onDuplicate, onMove, isAdminView = false, onTransfer }: Props) {
   const navigate = useNavigate();
 
   return (
@@ -65,7 +67,10 @@ export const CourseCard = React.memo(function CourseCard({ course, compact = fal
                   <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" className="h-7 w-7" onClick={e => { e.stopPropagation(); navigate(`/course-builder/${course.id}`); }}><Edit className="w-3.5 h-3.5" /></Button></TooltipTrigger><TooltipContent>Редактировать</TooltipContent></Tooltip>
                   <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" className="h-7 w-7" onClick={e => { e.stopPropagation(); navigate(`/course-preview/${course.id}`); }}><Eye className="w-3.5 h-3.5" /></Button></TooltipTrigger><TooltipContent>Просмотр</TooltipContent></Tooltip>
                   <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" className={`h-7 w-7 ${course.hidden_from_catalog ? 'text-muted-foreground' : 'text-sigma-green'}`} onClick={e => onToggleSetting(course, 'hidden_from_catalog', e)}>{course.hidden_from_catalog ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}</Button></TooltipTrigger><TooltipContent>{course.hidden_from_catalog ? 'Скрыт из витрины' : 'Виден в витрине'}</TooltipContent></Tooltip>
-                  <CourseDropdownMenu course={course} onToggleSetting={onToggleSetting} onDuplicate={onDuplicate} onMove={onMove} />
+                  {isAdminView && onTransfer && (
+                    <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" className="h-7 w-7 text-primary hover:text-primary hover:bg-primary/10" onClick={e => { e.stopPropagation(); onTransfer(course); }}><ArrowRightLeft className="w-3.5 h-3.5" /></Button></TooltipTrigger><TooltipContent>Перенести копию в другую организацию</TooltipContent></Tooltip>
+                  )}
+                  <CourseDropdownMenu course={course} onToggleSetting={onToggleSetting} onDuplicate={onDuplicate} onMove={onMove} isAdminView={isAdminView} onTransfer={onTransfer} />
                 </div>
               </div>
             </div>
@@ -91,9 +96,12 @@ export const CourseCard = React.memo(function CourseCard({ course, compact = fal
             <div className="absolute top-3 right-12 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1">
               <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" className="h-7 w-7 bg-background/80 backdrop-blur-sm" onClick={e => { e.stopPropagation(); navigate(`/course-builder/${course.id}`); }}><Edit className="w-3.5 h-3.5" /></Button></TooltipTrigger><TooltipContent>Редактировать</TooltipContent></Tooltip>
               <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" className={`h-7 w-7 bg-background/80 backdrop-blur-sm ${course.hidden_from_catalog ? 'text-muted-foreground' : 'text-sigma-green'}`} onClick={e => onToggleSetting(course, 'hidden_from_catalog', e)}>{course.hidden_from_catalog ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}</Button></TooltipTrigger><TooltipContent>{course.hidden_from_catalog ? 'Скрыт из витрины' : 'Виден в витрине'}</TooltipContent></Tooltip>
+              {isAdminView && onTransfer && (
+                <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" className="h-7 w-7 bg-background/80 backdrop-blur-sm text-primary hover:text-primary hover:bg-primary/10" onClick={e => { e.stopPropagation(); onTransfer(course); }}><ArrowRightLeft className="w-3.5 h-3.5" /></Button></TooltipTrigger><TooltipContent>Перенести копию в другую организацию (админ)</TooltipContent></Tooltip>
+              )}
             </div>
             <div className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity">
-              <CourseDropdownMenu course={course} onToggleSetting={onToggleSetting} onDuplicate={onDuplicate} onMove={onMove} />
+              <CourseDropdownMenu course={course} onToggleSetting={onToggleSetting} onDuplicate={onDuplicate} onMove={onMove} isAdminView={isAdminView} onTransfer={onTransfer} />
             </div>
           </>
         )}
@@ -102,11 +110,13 @@ export const CourseCard = React.memo(function CourseCard({ course, compact = fal
   );
 });
 
-function CourseDropdownMenu({ course, onToggleSetting, onDuplicate, onMove }: {
+function CourseDropdownMenu({ course, onToggleSetting, onDuplicate, onMove, isAdminView, onTransfer }: {
   course: Course;
   onToggleSetting: (course: Course, setting: any, e: React.MouseEvent) => void;
   onDuplicate: (courseId: string) => void;
   onMove: (course: Course, e?: React.MouseEvent) => void;
+  isAdminView?: boolean;
+  onTransfer?: (course: Course) => void;
 }) {
   const navigate = useNavigate();
   return (
@@ -124,6 +134,14 @@ function CourseDropdownMenu({ course, onToggleSetting, onDuplicate, onMove }: {
         <DropdownMenuSeparator />
         <DropdownMenuItem onClick={e => { e.stopPropagation(); onDuplicate(course.id); }}><Copy className="w-4 h-4 mr-2" />Дублировать курс</DropdownMenuItem>
         <DropdownMenuItem onClick={e => onMove(course, e)}><MoveRight className="w-4 h-4 mr-2" />Переместить в категорию</DropdownMenuItem>
+        {isAdminView && onTransfer && (
+          <>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem className="text-primary focus:text-primary" onClick={e => { e.stopPropagation(); onTransfer(course); }}>
+              <ArrowRightLeft className="w-4 h-4 mr-2" />Перенести в другую организацию
+            </DropdownMenuItem>
+          </>
+        )}
       </DropdownMenuContent>
     </DropdownMenu>
   );
