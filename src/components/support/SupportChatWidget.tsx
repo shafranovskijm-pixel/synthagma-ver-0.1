@@ -76,6 +76,8 @@ export function SupportChatWidget() {
   const [unread, setUnread] = useState(0);
   const endRef = useRef<HTMLDivElement>(null);
 
+  const { theme, themeId, setThemeId, bgId, setBgId } = useChatTheme();
+
   const closeChat = useCallback(() => {
     setOpen(false);
     setNeedsGuestInfo(false);
