@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { checkAiLimitGlobal, incrementAiLimitGlobal } from "@/hooks/useAiGenerationLimit";
+import { useBlockAIGenerate } from "@/hooks/useBlockAIGenerate";
 import { LazyMediaPreview } from "@/components/course-builder/LazyMediaPreview";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
