@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef } from "react";
+import { useState, useMemo, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -17,6 +17,7 @@ import { HlsVideoPlayer } from "@/components/video/HlsVideoPlayer";
 import { LazyMediaPreview } from "@/components/course-builder/LazyMediaPreview";
 import { UploadProgressBlock } from "@/components/course-builder/UploadProgressBlock";
 import { LessonPreviewDialog } from "./LessonPreviewDialog";
+import { LessonSearchPanel } from "./LessonSearchPanel";
 import { EditorDropZone } from "@/components/course-builder/block-editor/blocks/EditorDropZone";
 import { useLessonEditor, type TestQuestion } from "@/hooks/useLessonEditor";
 import { useLessonMedia } from "@/hooks/useLessonMedia";
@@ -71,7 +72,21 @@ export const LessonEditor = ({
 
   const [previewOpen, setPreviewOpen] = useState(false);
   const [importingDocx, setImportingDocx] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
   const docxInputRef = useRef<HTMLInputElement>(null);
+
+  // Ctrl+F / Cmd+F inside the lesson editor opens the search panel
+  useEffect(() => {
+    if (!isOpen) return;
+    const handler = (ev: KeyboardEvent) => {
+      if ((ev.ctrlKey || ev.metaKey) && ev.key.toLowerCase() === 'f' && e.type === 'text') {
+        ev.preventDefault();
+        setSearchOpen(true);
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [isOpen, e.type]);
 
   const lessonIdForMedia = useMemo(() => lesson?.id || `new-${Date.now()}`, [lesson?.id]);
   const media = useLessonMedia(
