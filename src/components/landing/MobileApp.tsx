@@ -4,11 +4,12 @@ import {
   MessageCircle,
   Volume2,
   Download,
-  Smartphone,
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { Link } from "react-router-dom";
 import { FloatingParticles } from "./FloatingParticles";
+import mobileMockup from "@/assets/mobile-app-mockup.jpg";
+import mobileBg from "@/assets/mobile-app-bg.jpg";
 
 const mobileFeatures = [
   { icon: BookOpen, text: "Курсы офлайн" },
@@ -25,6 +26,15 @@ export function MobileApp() {
 
       {/* Background */}
       <div className="absolute inset-0 bg-gradient-to-b from-background via-secondary/20 to-background" />
+      <div
+        className="absolute inset-0 opacity-30 mix-blend-screen pointer-events-none"
+        style={{
+          backgroundImage: `url(${mobileBg})`,
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
+        }}
+      />
+      <div className="absolute inset-0 bg-gradient-to-b from-background/60 via-transparent to-background/80 pointer-events-none" />
       <div className="absolute inset-0 opacity-[0.012]" style={{
         backgroundImage: `radial-gradient(circle at 1px 1px, currentColor 1px, transparent 0)`,
         backgroundSize: '32px 32px'
@@ -154,7 +164,7 @@ export function MobileApp() {
             </div>
           </motion.div>
 
-          {/* Phone mockup */}
+          {/* Phone mockup — realistic photo */}
           <motion.div
             initial={{ opacity: 0, x: 40 }}
             whileInView={{ opacity: 1, x: 0 }}
@@ -163,62 +173,20 @@ export function MobileApp() {
             className="order-1 lg:order-2 flex justify-center"
           >
             <div className="relative">
-              {/* Glow effect */}
-              <div className="absolute inset-0 bg-accent/10 rounded-[3rem] blur-3xl scale-90" />
+              {/* Glow halo behind device */}
+              <div className="absolute inset-0 bg-accent/20 rounded-full blur-3xl scale-75 pointer-events-none" />
+              <div className="absolute -inset-8 bg-gradient-to-br from-accent/10 via-transparent to-accent/5 rounded-[3rem] blur-2xl pointer-events-none" />
 
-              {/* Phone frame */}
-              <div className="relative w-[280px] bg-foreground rounded-[3rem] p-3 shadow-2xl">
-                {/* Screen */}
-                <div className="bg-background rounded-[2.5rem] overflow-hidden aspect-[9/19]">
-                  {/* Status bar */}
-                  <div className="h-7 bg-secondary flex items-center justify-center">
-                    <div className="w-20 h-4 bg-foreground/10 rounded-full" />
-                  </div>
-
-                  {/* App content */}
-                  <div className="p-4 space-y-4">
-                    {/* Header */}
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <div className="text-[10px] text-muted-foreground">Добро пожаловать</div>
-                        <div className="font-medium text-xs">Иван Петров</div>
-                      </div>
-                      <div className="w-8 h-8 rounded-full bg-accent/20" />
-                    </div>
-
-                    {/* Progress card */}
-                    <div className="bg-secondary/50 rounded-xl p-3 border border-border/30">
-                      <div className="text-[10px] text-muted-foreground mb-1">Прогресс</div>
-                      <div className="font-medium text-sm mb-2">78%</div>
-                      <div className="h-1.5 bg-muted rounded-full overflow-hidden">
-                        <div className="h-full w-[78%] bg-accent rounded-full" />
-                      </div>
-                    </div>
-
-                    {/* Course cards */}
-                    <div className="space-y-2">
-                      <div className="text-xs font-medium">Мои курсы</div>
-                      {[
-                        { title: "Охрана труда", progress: 100 },
-                        { title: "Пожарная безопасность", progress: 65 },
-                        { title: "Электробезопасность", progress: 30 },
-                      ].map((course) => (
-                        <div key={course.title} className="bg-card rounded-lg p-2.5 border border-border/30">
-                          <div className="flex items-center gap-2">
-                            <div className="w-8 h-8 rounded-lg bg-secondary flex items-center justify-center">
-                              <BookOpen className="w-4 h-4 text-muted-foreground" />
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <div className="font-medium text-[10px] truncate">{course.title}</div>
-                              <div className="text-[10px] text-muted-foreground">{course.progress}%</div>
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              </div>
+              <motion.img
+                src={mobileMockup}
+                alt="Мобильное приложение СИНТАГМА — обучение в смартфоне"
+                width={1024}
+                height={1280}
+                loading="lazy"
+                className="relative w-[340px] md:w-[400px] h-auto drop-shadow-2xl"
+                animate={{ y: [0, -12, 0] }}
+                transition={{ duration: 6, repeat: Infinity, ease: "easeInOut" }}
+              />
             </div>
           </motion.div>
         </div>
