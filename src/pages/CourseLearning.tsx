@@ -53,10 +53,14 @@ const CourseLearning = () => {
     isOfflineMode, offlineCachedAt } = useCourseLearning();
 
   const [previewFile, setPreviewFile] = useReactState<{ url: string; name: string; type: string | null } | null>(null);
+  const [hasNativeVideoTracking, setHasNativeVideoTracking] = useReactState(false);
   const handleSwipeLeft = () => { if (currentLessonIndex < lessons.length - 1) goToNextLesson(); };
   const handleSwipeRight = () => { if (currentLessonIndex > 0) goToPrevLesson(); };
   const isTestActive = currentLesson?.type === 'test' && !testSubmitted;
   const [reviewOpen, setReviewOpen] = useReactState(false);
+
+  // Reset native-tracking flag whenever the lesson changes; VideoPlayerInline re-reports
+  useEffect(() => { setHasNativeVideoTracking(false); }, [currentLesson?.id]);
 
   useEffect(() => {
     if (currentLesson?.type === 'slider' && !isLessonCompleted(currentLesson.id)) {
@@ -186,7 +190,7 @@ const CourseLearning = () => {
                 </div>
                 <div className="aspect-video bg-muted rounded-2xl flex items-center justify-center overflow-hidden shadow-lg relative">
                   {isVideoProgressLoading ? <div className="flex items-center justify-center"><SigmaSpinner size="lg" /></div> : currentLesson.content ? (
-                    <VideoPlayerInline key={`${currentLesson.id}-${course?.allow_video_seek !== false ? "seek" : "no-seek"}`} content={currentLesson.content} allowSeek={course?.allow_video_seek !== false} userId={user?.id} lessonId={currentLesson.id} courseId={course?.id} savedPosition={savedPosition} onSavePosition={saveVideoPosition} onProgressChange={setVideoWatchProgress} onFinishLesson={() => markLessonComplete()} onVideoComplete={async () => { if (!isLessonCompleted(currentLesson.id)) markLessonComplete(); }} />
+                    <VideoPlayerInline key={`${currentLesson.id}-${course?.allow_video_seek !== false ? "seek" : "no-seek"}`} content={currentLesson.content} allowSeek={course?.allow_video_seek !== false} userId={user?.id} lessonId={currentLesson.id} courseId={course?.id} savedPosition={savedPosition} onSavePosition={saveVideoPosition} onProgressChange={setVideoWatchProgress} onFinishLesson={() => markLessonComplete()} onVideoComplete={async () => { if (!isLessonCompleted(currentLesson.id)) markLessonComplete(); }} onPlayerTypeDetected={(t) => setHasNativeVideoTracking(t === 'native')} />
                   ) : <div className="text-center text-muted-foreground"><Video className="w-16 h-16 mx-auto mb-4" /><p>Видео не загружено</p></div>}
                   {(course as any)?.landing_content?.video_watermark && user?.email && (
                     <div className="absolute inset-0 pointer-events-none flex items-center justify-center z-10">
