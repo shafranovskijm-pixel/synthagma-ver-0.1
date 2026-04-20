@@ -11,6 +11,23 @@ import { SigmaLogo } from "@/components/ui/SigmaLogo";
 import ReactMarkdown from "react-markdown";
 import { cn } from "@/lib/utils";
 import { StarfieldCanvas } from "@/components/landing/StarfieldCanvas";
+import { AuroraBackground } from "@/components/support/chat-backgrounds/Aurora";
+import { WavesBackground } from "@/components/support/chat-backgrounds/Waves";
+import { ChatThemePicker } from "@/components/support/ChatThemePicker";
+import { useChatTheme, type ChatBgId } from "@/hooks/useChatTheme";
+
+function HeaderBackground({ bgId }: { bgId: ChatBgId }) {
+  if (bgId === "stars") {
+    return (
+      <div className="absolute inset-0 opacity-60 pointer-events-none">
+        <StarfieldCanvas />
+      </div>
+    );
+  }
+  if (bgId === "aurora") return <AuroraBackground />;
+  if (bgId === "waves") return <WavesBackground />;
+  return null;
+}
 
 interface Message {
   id: string;
