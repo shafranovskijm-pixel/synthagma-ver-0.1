@@ -59,6 +59,11 @@ export function SupportChatWidget() {
   const [unread, setUnread] = useState(0);
   const endRef = useRef<HTMLDivElement>(null);
 
+  const closeChat = useCallback(() => {
+    setOpen(false);
+    setNeedsGuestInfo(false);
+  }, []);
+
   const hidden =
     location.pathname.startsWith('/auth') ||
     location.pathname === '/login' ||
