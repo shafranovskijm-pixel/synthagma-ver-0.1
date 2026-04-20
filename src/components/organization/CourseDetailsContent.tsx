@@ -352,6 +352,7 @@ export function CourseDetailsContent({ course, courseStudents, organizationId, a
         )}
         {activeTab === "settings" && (
           <CourseSettingsTabbed course={course} isFrdoEnabled={isFrdoEnabled} isSavingSettings={h.isSavingSettings}
+            courseStudents={courseStudents}
             skipVideoId={h.skipVideoId} onToggleSkipVideoId={h.handleToggleSkipVideoId}
             sequentialLessons={h.sequentialLessons} onToggleSequentialLessons={h.handleToggleSequentialLessons}
             allowVideoSeek={h.allowVideoSeek} onToggleAllowVideoSeek={h.handleToggleAllowVideoSeek}

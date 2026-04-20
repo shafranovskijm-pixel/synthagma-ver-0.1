@@ -4,7 +4,9 @@ export interface Lesson {
   type: string;
   content: string | null;
   order_index: number;
+  module_id?: string | null;
   is_locked?: boolean;
+  locked_until?: string | null;
   ai_avatar_name?: string | null;
   ai_avatar_image_url?: string | null;
   ai_avatar_voice_id?: string | null;
