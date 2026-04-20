@@ -8,6 +8,26 @@ export function jsonToBlocks(json: string): ContentBlock[] {
   try { return JSON.parse(json); } catch { return []; }
 }
 
+/**
+ * Universal lesson-content parser. Used by editor, learner and preview to keep behaviour identical.
+ * 1. Empty → []
+ * 2. Valid JSON array → as-is
+ * 3. Plain markdown / legacy text → markdownToBlocks fallback
+ */
+export function parseLessonContent(content: string | null | undefined): ContentBlock[] {
+  if (!content) return [];
+  const trimmed = content.trim();
+  if (!trimmed) return [];
+  if (trimmed.startsWith("[")) {
+    try {
+      const parsed = JSON.parse(trimmed);
+      if (Array.isArray(parsed)) return parsed;
+    } catch { /* fall through */ }
+  }
+  // Legacy fallback: markdown / plain lines
+  return markdownToBlocks(trimmed);
+}
+
 /** Normalize a single line: trim leading whitespace, split compound lines like "--- ### Heading" */
 function normalizeLines(rawLines: string[]): string[] {
   const out: string[] = [];
