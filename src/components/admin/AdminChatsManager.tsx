@@ -51,6 +51,7 @@ interface OrgConversation {
 export function AdminChatsManager() {
   const { user } = useAuth();
   const isMobile = useIsMobile();
+  const supportUnread = useSupportUnread();
   const [activeSection, setActiveSection] = useState<ChatSection>("chats");
   const [organizations, setOrganizations] = useState<Organization[]>([]);
   const [conversations, setConversations] = useState<OrgConversation[]>([]);
