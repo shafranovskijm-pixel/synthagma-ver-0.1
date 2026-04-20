@@ -99,15 +99,11 @@ function RenderBlock({ block, quizAnswer, quizSubmitted, onQuizAnswer, onQuizSub
     case "quote":
       return <blockquote className={cn("border-l-4 border-muted-foreground/30 pl-4 italic text-muted-foreground", styleClasses)} dangerouslySetInnerHTML={{ __html: renderHtml(block.content) }} />;
     case "callout-info":
-      return <div className={cn("rounded-xl p-4 bg-blue-500/10 border border-blue-500/30 flex gap-3 not-prose [&_a]:text-primary [&_a]:underline", styleClasses)}><AlertCircle className="w-5 h-5 text-blue-500 flex-shrink-0 mt-0.5" /><div className="flex-1 min-w-0">{block.calloutTitle && <p className="text-sm font-semibold mb-1">{block.calloutTitle}</p>}<p className="text-sm" dangerouslySetInnerHTML={{ __html: renderHtml(block.content) }} /></div></div>;
     case "callout-warning":
-      return <div className={cn("rounded-xl p-4 bg-amber-500/10 border border-amber-500/30 flex gap-3 not-prose [&_a]:text-primary [&_a]:underline", styleClasses)}><AlertCircle className="w-5 h-5 text-amber-500 flex-shrink-0 mt-0.5" /><div className="flex-1 min-w-0">{block.calloutTitle && <p className="text-sm font-semibold mb-1">{block.calloutTitle}</p>}<p className="text-sm" dangerouslySetInnerHTML={{ __html: renderHtml(block.content) }} /></div></div>;
     case "callout-tip":
-      return <div className={cn("rounded-xl p-4 bg-green-500/10 border border-green-500/30 flex gap-3 not-prose [&_a]:text-primary [&_a]:underline", styleClasses)}><Lightbulb className="w-5 h-5 text-green-500 flex-shrink-0 mt-0.5" /><div className="flex-1 min-w-0">{block.calloutTitle && <p className="text-sm font-semibold mb-1">{block.calloutTitle}</p>}<p className="text-sm" dangerouslySetInnerHTML={{ __html: renderHtml(block.content) }} /></div></div>;
     case "callout-success":
-      return <div className={cn("rounded-xl p-4 bg-emerald-500/10 border border-emerald-500/30 flex gap-3 not-prose [&_a]:text-primary [&_a]:underline", styleClasses)}><CheckCircle className="w-5 h-5 text-emerald-500 flex-shrink-0 mt-0.5" /><div className="flex-1 min-w-0">{block.calloutTitle && <p className="text-sm font-semibold mb-1">{block.calloutTitle}</p>}<p className="text-sm" dangerouslySetInnerHTML={{ __html: renderHtml(block.content) }} /></div></div>;
     case "callout-danger":
-      return <div className={cn("rounded-xl p-4 bg-red-500/10 border border-red-500/30 flex gap-3 not-prose [&_a]:text-primary [&_a]:underline", styleClasses)}><XCircle className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" /><div className="flex-1 min-w-0">{block.calloutTitle && <p className="text-sm font-semibold mb-1">{block.calloutTitle}</p>}<p className="text-sm" dangerouslySetInnerHTML={{ __html: renderHtml(block.content) }} /></div></div>;
+      return <CalloutBox kind={block.type} block={block} styleClasses={styleClasses} />;
     case "highlight":
       return (
         <div className={cn("rounded-xl p-4 border border-yellow-400/40 bg-gradient-to-r from-yellow-400/10 via-amber-400/5 to-transparent relative overflow-hidden not-prose [&_a]:text-primary [&_a]:underline", styleClasses)}>
