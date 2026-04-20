@@ -183,7 +183,7 @@ export function RichTextEditor({
     const rect = range.getBoundingClientRect();
     const editorRect = editor.getBoundingClientRect();
     // Centered above the text selection. Flip below when too close to the viewport top.
-    const TOOLBAR_HEIGHT = 44;
+    const TOOLBAR_HEIGHT = 48;
     const GAP = 10;
     const flipBelow = rect.top < TOOLBAR_HEIGHT + GAP + 8;
     const top = flipBelow
@@ -269,13 +269,42 @@ export function RichTextEditor({
     setLinkOpen(false);
   };
 
+  // Inline font-size cycling on the current selection via <span style="font-size">.
+  const FONT_SIZES = [12, 14, 16, 18, 20, 24, 28, 32];
   const cycleSize = (dir: 1 | -1) => {
-    if (!onStyleUpdate) return;
-    const order: Array<'sm' | 'base' | 'lg'> = ['sm', 'base', 'lg'];
-    const cur = currentTextSize || 'base';
-    const idx = Math.max(0, Math.min(order.length - 1, order.indexOf(cur) + dir));
-    const next = order[idx];
-    onStyleUpdate({ textSize: next === 'base' ? undefined : next });
+    restoreSelection();
+    const sel = window.getSelection();
+    if (!sel || sel.rangeCount === 0) return;
+
+    // Detect current font-size on selection (anchor element).
+    let cur = 16;
+    const anchorEl = (sel.anchorNode?.nodeType === 1
+      ? (sel.anchorNode as HTMLElement)
+      : (sel.anchorNode?.parentElement as HTMLElement | null)) || null;
+    if (anchorEl) {
+      const cs = window.getComputedStyle(anchorEl).fontSize;
+      const parsed = parseInt(cs, 10);
+      if (!Number.isNaN(parsed)) cur = parsed;
+    }
+    // Snap to nearest size in our scale, then move by dir.
+    let idx = FONT_SIZES.findIndex((s) => s >= cur);
+    if (idx === -1) idx = FONT_SIZES.length - 1;
+    if (FONT_SIZES[idx] !== cur) idx = Math.max(0, idx - (dir === 1 ? 0 : 1));
+    const nextIdx = Math.max(0, Math.min(FONT_SIZES.length - 1, idx + dir));
+    const nextSize = FONT_SIZES[nextIdx];
+
+    // Apply via execCommand fontSize then convert <font size> → <span style="font-size">.
+    document.execCommand('fontSize', false, '7');
+    const editor = editorRef.current;
+    if (editor) {
+      editor.querySelectorAll('font[size="7"]').forEach((node) => {
+        const span = document.createElement('span');
+        span.style.fontSize = `${nextSize}px`;
+        while (node.firstChild) span.appendChild(node.firstChild);
+        node.parentNode?.replaceChild(span, node);
+      });
+    }
+    handleInput();
   };
 
   const setBlockType = (type: BlockType) => {
@@ -284,8 +313,10 @@ export function RichTextEditor({
   };
 
   const styleMenuItems: Array<{ type: BlockType; label: string; preview: string }> = [
-    { type: "heading1", label: "Заголовок 1", preview: "text-2xl font-bold" },
-    { type: "heading2", label: "Заголовок 2", preview: "text-xl font-semibold" },
+    { type: "heading1", label: "Заголовок 1", preview: "text-3xl font-bold" },
+    { type: "heading2", label: "Заголовок 2", preview: "text-2xl font-bold" },
+    { type: "heading3", label: "Заголовок 3", preview: "text-xl font-semibold" },
+    { type: "heading4", label: "Заголовок 4", preview: "text-lg font-semibold" },
     { type: "paragraph", label: "Текст", preview: "text-sm" },
   ];
 
