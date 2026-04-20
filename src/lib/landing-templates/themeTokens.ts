@@ -85,3 +85,33 @@ export function getDecorBackground(decor: LandingTheme["decor"], accent: string)
 export function getAuroraGradient(accent: string): string {
   return `radial-gradient(circle at 20% 10%, ${accent}22 0%, transparent 50%), radial-gradient(circle at 80% 70%, ${accent}1a 0%, transparent 55%)`;
 }
+
+/**
+ * Возвращает CSS background-image для секции с фоновой иллюстрацией темы.
+ * Накладывает полупрозрачный слой цвета фона страницы поверх картинки,
+ * чтобы текст оставался читаемым.
+ *
+ * @param bgUrl URL фоновой картинки (через ES6 import)
+ * @param overlayColor цвет overlay (hex с альфа или rgba)
+ * @param overlayOpacity 0–1, по умолчанию 0.85
+ */
+export function getSectionBackgroundImage(
+  bgUrl: string,
+  overlayColor = "#ffffff",
+  overlayOpacity = 0.85,
+): string {
+  // Конвертируем hex+opacity в rgba для overlay
+  const o = Math.max(0, Math.min(1, overlayOpacity));
+  const rgba = hexToRgba(overlayColor, o);
+  return `linear-gradient(${rgba}, ${rgba}), url("${bgUrl}")`;
+}
+
+function hexToRgba(hex: string, alpha: number): string {
+  const m = hex.replace("#", "");
+  if (m.length !== 6 && m.length !== 3) return `rgba(255,255,255,${alpha})`;
+  const full = m.length === 3 ? m.split("").map((c) => c + c).join("") : m;
+  const r = parseInt(full.slice(0, 2), 16);
+  const g = parseInt(full.slice(2, 4), 16);
+  const b = parseInt(full.slice(4, 6), 16);
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+}

@@ -1,6 +1,9 @@
 import type { LandingTemplate } from "./types";
 import { ALL_SECTIONS } from "@/hooks/useLandingEditor";
 import languageHero from "@/assets/landing-templates/language-hero.jpg";
+import languageSectionBg from "@/assets/landing-templates/decor/language-section.webp";
+import languagePricingBg from "@/assets/landing-templates/decor/language-pricing.webp";
+import languageCtaBg from "@/assets/landing-templates/decor/language-cta.webp";
 
 export const languageTemplate: LandingTemplate = {
   id: "language",
@@ -26,6 +29,10 @@ export const languageTemplate: LandingTemplate = {
     reviews_layout: "carousel-mini",
     benefits_layout: "grid",
     scheme: "light",
+    section_bg_url: languageSectionBg,
+    pricing_bg_url: languagePricingBg,
+    cta_bg_url: languageCtaBg,
+    section_bg_overlay: 0.85,
   },
   data: {
     hero: {

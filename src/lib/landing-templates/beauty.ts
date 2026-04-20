@@ -1,6 +1,9 @@
 import type { LandingTemplate } from "./types";
 import { ALL_SECTIONS } from "@/hooks/useLandingEditor";
 import beautyHero from "@/assets/landing-templates/beauty-hero.jpg";
+import beautySectionBg from "@/assets/landing-templates/decor/beauty-section.webp";
+import beautyPricingBg from "@/assets/landing-templates/decor/beauty-pricing.webp";
+import beautyCtaBg from "@/assets/landing-templates/decor/beauty-cta.webp";
 
 export const beautyTemplate: LandingTemplate = {
   id: "beauty",
@@ -26,6 +29,10 @@ export const beautyTemplate: LandingTemplate = {
     reviews_layout: "carousel-mini",
     benefits_layout: "grid",
     scheme: "light",
+    section_bg_url: beautySectionBg,
+    pricing_bg_url: beautyPricingBg,
+    cta_bg_url: beautyCtaBg,
+    section_bg_overlay: 0.82,
   },
   data: {
     hero: {

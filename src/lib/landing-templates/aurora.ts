@@ -1,6 +1,9 @@
 import type { LandingTemplate } from "./types";
 import { ALL_SECTIONS } from "@/hooks/useLandingEditor";
 import auroraHero from "@/assets/landing-templates/aurora-hero.jpg";
+import auroraSectionBg from "@/assets/landing-templates/decor/aurora-section.webp";
+import auroraPricingBg from "@/assets/landing-templates/decor/aurora-pricing.webp";
+import auroraCtaBg from "@/assets/landing-templates/decor/aurora-cta.webp";
 
 export const auroraTemplate: LandingTemplate = {
   id: "aurora",
@@ -25,6 +28,10 @@ export const auroraTemplate: LandingTemplate = {
     reviews_layout: "masonry",
     benefits_layout: "grid",
     scheme: "light",
+    section_bg_url: auroraSectionBg,
+    pricing_bg_url: auroraPricingBg,
+    cta_bg_url: auroraCtaBg,
+    section_bg_overlay: 0.78,
   },
   data: {
     hero: {

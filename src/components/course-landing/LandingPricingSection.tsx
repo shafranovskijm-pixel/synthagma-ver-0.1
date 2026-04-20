@@ -26,13 +26,15 @@ interface Props {
 /** Диспетчер Pricing. Выбирает variant по `theme.pricing_layout`. */
 export function LandingPricingSection(props: Props) {
   const { theme } = useLandingTheme();
-  switch (theme.pricing_layout) {
-    case "highlight-middle":
-      return <PricingHighlightMiddle {...props} />;
-    case "comparison":
-      return <PricingComparison {...props} />;
-    case "cards":
-    default:
-      return <PricingCards {...props} />;
-  }
+  const Variant =
+    theme.pricing_layout === "highlight-middle"
+      ? PricingHighlightMiddle
+      : theme.pricing_layout === "comparison"
+      ? PricingComparison
+      : PricingCards;
+  return (
+    <div className="landing-bg-pricing">
+      <Variant {...props} />
+    </div>
+  );
 }
