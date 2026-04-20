@@ -127,41 +127,45 @@ export const CoursesTab = React.memo(function CoursesTab({ organizationId, onCou
   const [isDeletingCourses, setIsDeletingCourses] = useState(false);
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set(["uncategorized"]));
   const menuSettings = dashboard?.dashboardSettings.menuSettings;
+  const setMenuSettings = dashboard?.dashboardSettings.setMenuSettings;
 
-  // Per-user view preferences (localStorage). Default: grid + folders.
-  // First open ever → grid view. After user changes it → remember choice.
-  const viewPrefsKey = React.useMemo(
-    () => `org-courses-view:${organizationId || 'default'}`,
-    [organizationId]
+  // Source of truth = organization menu_settings. Default: grid + folders.
+  // Clean up legacy localStorage key that used to override org settings.
+  React.useEffect(() => {
+    try {
+      localStorage.removeItem(`org-courses-view:${organizationId || 'default'}`);
+    } catch { /* ignore */ }
+  }, [organizationId]);
+
+  const [folderViewMode, setFolderViewModeLocal] = useState<"folders" | "flat">(
+    menuSettings?.courseFolderMode === "flat" ? "flat" : "folders"
   );
 
-  const initializedRef = React.useRef(false);
-  const [folderViewMode, setFolderViewModeLocal] = useState<"folders" | "flat">("folders");
-
+  // Sync local view state with org settings (initial load + realtime updates)
   React.useEffect(() => {
-    if (initializedRef.current) return;
-    initializedRef.current = true;
-    try {
-      const raw = localStorage.getItem(viewPrefsKey);
-      if (raw) {
-        const saved = JSON.parse(raw) as { courseViewMode?: CourseViewMode; courseFolderMode?: "folders" | "flat" };
-        if (saved.courseViewMode === "grid" || saved.courseViewMode === "list") {
-          setViewMode(saved.courseViewMode);
-        }
-        if (saved.courseFolderMode === "folders" || saved.courseFolderMode === "flat") {
-          setFolderViewModeLocal(saved.courseFolderMode);
-        }
-      }
-    } catch { /* ignore */ }
-  }, [viewPrefsKey, setViewMode]);
+    if (!menuSettings) return;
+    const orgViewMode: CourseViewMode = menuSettings.courseViewMode === "list" ? "list" : "grid";
+    const orgFolderMode: "folders" | "flat" = menuSettings.courseFolderMode === "flat" ? "flat" : "folders";
+    setViewMode(orgViewMode);
+    setFolderViewModeLocal(orgFolderMode);
+  }, [menuSettings?.courseViewMode, menuSettings?.courseFolderMode, setViewMode]);
 
   const setViewAndFolder = React.useCallback((vm: CourseViewMode, fm: "folders" | "flat") => {
     setViewMode(vm);
     setFolderViewModeLocal(fm);
-    try {
-      localStorage.setItem(viewPrefsKey, JSON.stringify({ courseViewMode: vm, courseFolderMode: fm }));
-    } catch { /* ignore */ }
-  }, [setViewMode, viewPrefsKey]);
+    // Persist to organization menu_settings so all staff see the same view
+    if (organizationId && menuSettings && setMenuSettings) {
+      const next = { ...menuSettings, courseViewMode: vm, courseFolderMode: fm };
+      setMenuSettings(next);
+      supabase
+        .from('organizations')
+        .update({ menu_settings: next as any })
+        .eq('id', organizationId)
+        .then(({ error }) => {
+          if (error) console.error('Failed to save courses view preference:', error);
+        });
+    }
+  }, [setViewMode, organizationId, menuSettings, setMenuSettings]);
 
   // Grouping
   const coursesByCategory = useMemo(() => {
