@@ -198,39 +198,57 @@ export default function CourseBuilder({ embedded, embeddedCourseId, onExitEditor
                 </div>
               </div>
 
-              <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-                <SortableContext items={lessons.map(l => l.id)} strategy={verticalListSortingStrategy}>
-                  <div className="space-y-4">
-                    {lessons.map((lesson, index) => (
-                      <SortableLessonItem
-                        key={lesson.id}
-                        lesson={lesson}
-                        index={index}
-                        onUpdate={(updates) => updateLesson(lesson.id, updates)}
-                        onDelete={() => deleteLesson(lesson.id)}
-                        onToggle={() => toggleLesson(lesson.id)}
-                        courseId={resolvedCourseId}
-                        courseTitle={courseTitle}
-                        courseDescription={courseDescription}
-                        organizationId={organizationId}
-                      />
-                    ))}
-                  </div>
-                </SortableContext>
-              </DndContext>
+              {(() => {
+                const activeLesson = lessons.find(l => l.id === activeLessonId) ?? null;
+                const activeIndex = activeLesson ? lessons.findIndex(l => l.id === activeLesson.id) : -1;
 
-              {lessons.length === 0 && (
-                <div className="text-center py-10 sm:py-16 border-2 border-dashed border-border rounded-xl">
-                  <Layers className="w-12 h-12 sm:w-16 sm:h-16 mx-auto text-primary/20 mb-4" />
-                  <h3 className="text-lg font-semibold mb-2">Начните создавать курс</h3>
-                  <p className="text-muted-foreground mb-6 max-w-md mx-auto text-sm">Добавьте уроки вручную, импортируйте из файлов или сгенерируйте структуру с помощью AI</p>
-                  <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 justify-center px-4">
-                    <Button variant="outline" onClick={() => addLesson('text')} className="gap-2" size="sm"><Plus className="w-4 h-4" />Добавить урок</Button>
-                    <Button variant="outline" onClick={() => fileInputRef.current?.click()} className="gap-2" size="sm"><FileUp className="w-4 h-4" />Импорт</Button>
-                    <Button onClick={handleGenerateStructure} variant="outline" className="gap-2" size="sm"><Wand2 className="w-4 h-4" />AI Структура</Button>
-                  </div>
-                </div>
-              )}
+                if (lessons.length === 0) {
+                  return (
+                    <div className="text-center py-10 sm:py-16 border-2 border-dashed border-border rounded-xl">
+                      <Layers className="w-12 h-12 sm:w-16 sm:h-16 mx-auto text-primary/20 mb-4" />
+                      <h3 className="text-lg font-semibold mb-2">Начните создавать курс</h3>
+                      <p className="text-muted-foreground mb-6 max-w-md mx-auto text-sm">Добавьте первый урок через кнопку слева, импортируйте файлы или сгенерируйте структуру с помощью AI</p>
+                      <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 justify-center px-4">
+                        <Button variant="outline" onClick={() => addLesson('text')} className="gap-2" size="sm"><Plus className="w-4 h-4" />Добавить урок</Button>
+                        <Button variant="outline" onClick={() => fileInputRef.current?.click()} className="gap-2" size="sm"><FileUp className="w-4 h-4" />Импорт</Button>
+                        <Button onClick={handleGenerateStructure} variant="outline" className="gap-2" size="sm"><Wand2 className="w-4 h-4" />AI Структура</Button>
+                      </div>
+                    </div>
+                  );
+                }
+
+                if (!activeLesson) {
+                  return (
+                    <div className="text-center py-10 sm:py-16 border-2 border-dashed border-border rounded-xl">
+                      <BookOpen className="w-12 h-12 sm:w-16 sm:h-16 mx-auto text-primary/20 mb-4" />
+                      <h3 className="text-lg font-semibold mb-2">Выберите урок слева</h3>
+                      <p className="text-muted-foreground max-w-md mx-auto text-sm">
+                        Нажмите на урок в боковом меню, чтобы открыть его редактор. Или создайте новый через кнопку «+ Добавить урок».
+                      </p>
+                    </div>
+                  );
+                }
+
+                return (
+                  <SortableLessonItem
+                    key={activeLesson.id}
+                    lesson={activeLesson}
+                    index={activeIndex}
+                    onUpdate={(updates) => updateLesson(activeLesson.id, updates)}
+                    onDelete={() => {
+                      const idx = activeIndex;
+                      deleteLesson(activeLesson.id);
+                      const next = lessons[idx + 1] ?? lessons[idx - 1] ?? null;
+                      setActiveLessonId(next ? next.id : null);
+                    }}
+                    onToggle={() => toggleLesson(activeLesson.id)}
+                    courseId={resolvedCourseId}
+                    courseTitle={courseTitle}
+                    courseDescription={courseDescription}
+                    organizationId={organizationId}
+                  />
+                );
+              })()}
             </div>
 
             {/* Embedded save bar — внутри центральной колонки, чтобы не перекрывать боковые sticky-панели */}
