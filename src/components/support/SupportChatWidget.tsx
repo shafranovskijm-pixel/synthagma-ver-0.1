@@ -11,6 +11,23 @@ import { SigmaLogo } from "@/components/ui/SigmaLogo";
 import ReactMarkdown from "react-markdown";
 import { cn } from "@/lib/utils";
 import { StarfieldCanvas } from "@/components/landing/StarfieldCanvas";
+import { AuroraBackground } from "@/components/support/chat-backgrounds/Aurora";
+import { WavesBackground } from "@/components/support/chat-backgrounds/Waves";
+import { ChatThemePicker } from "@/components/support/ChatThemePicker";
+import { useChatTheme, type ChatBgId } from "@/hooks/useChatTheme";
+
+function HeaderBackground({ bgId }: { bgId: ChatBgId }) {
+  if (bgId === "stars") {
+    return (
+      <div className="absolute inset-0 opacity-60 pointer-events-none">
+        <StarfieldCanvas />
+      </div>
+    );
+  }
+  if (bgId === "aurora") return <AuroraBackground />;
+  if (bgId === "waves") return <WavesBackground />;
+  return null;
+}
 
 interface Message {
   id: string;
@@ -58,6 +75,8 @@ export function SupportChatWidget() {
   const [status, setStatus] = useState<'ai' | 'human' | 'closed'>('ai');
   const [unread, setUnread] = useState(0);
   const endRef = useRef<HTMLDivElement>(null);
+
+  const { theme, themeId, setThemeId, bgId, setBgId } = useChatTheme();
 
   const closeChat = useCallback(() => {
     setOpen(false);
@@ -226,10 +245,15 @@ export function SupportChatWidget() {
           onClick={() => setOpen(true)}
           className={cn(
             "fixed bottom-6 right-6 z-40 flex h-14 w-14 items-center justify-center rounded-full",
-            "bg-gradient-to-br from-primary to-primary/70 text-primary-foreground shadow-2xl shadow-primary/30",
-            "hover:scale-105 transition-all duration-300",
-            "ring-4 ring-primary/15 hover:ring-primary/25"
+            "text-white shadow-2xl",
+            "hover:scale-105 transition-all duration-300 ring-4"
           )}
+          style={{
+            background: `linear-gradient(135deg, hsl(${theme.accent}), hsl(${theme.accentDark}))`,
+            boxShadow: `0 10px 30px -8px hsl(${theme.accent} / 0.5)`,
+            // @ts-expect-error CSS var
+            "--tw-ring-color": `hsl(${theme.accent} / 0.18)`,
+          }}
           aria-label="Открыть чат поддержки"
         >
           <MessageCircle className="h-6 w-6" />
@@ -238,7 +262,10 @@ export function SupportChatWidget() {
               {unread > 9 ? '9+' : unread}
             </span>
           )}
-          <span className="absolute inset-0 rounded-full animate-ping bg-primary/20 pointer-events-none" />
+          <span
+            className="absolute inset-0 rounded-full animate-ping pointer-events-none"
+            style={{ background: `hsl(${theme.accent} / 0.2)` }}
+          />
         </button>
       )}
 
@@ -248,9 +275,14 @@ export function SupportChatWidget() {
           className={cn(
             "fixed z-50 flex flex-col overflow-hidden bg-card animate-scale-in",
             "inset-0 sm:inset-auto",
-            "sm:bottom-6 sm:right-6 sm:w-[380px] sm:h-[580px] sm:rounded-3xl sm:shadow-2xl sm:shadow-primary/10"
+            "sm:bottom-6 sm:right-6 sm:w-[380px] sm:h-[580px] sm:rounded-3xl sm:shadow-2xl"
           )}
-          style={{ boxShadow: '0 20px 60px -10px hsl(var(--primary) / 0.25), 0 8px 24px -8px hsl(0 0% 0% / 0.15)' }}
+          style={{
+            boxShadow: `0 20px 60px -10px hsl(${theme.accent} / 0.3), 0 8px 24px -8px hsl(0 0% 0% / 0.15)`,
+            // @ts-expect-error CSS vars
+            "--chat-accent": theme.accent,
+            "--chat-accent-dark": theme.accentDark,
+          }}
         >
           {view === 'home' ? (
             <HomeView
@@ -259,6 +291,10 @@ export function SupportChatWidget() {
               hasHistory={messages.length > 0}
               messages={messages}
               status={status}
+              themeId={themeId}
+              setThemeId={setThemeId}
+              bgId={bgId}
+              setBgId={setBgId}
             />
           ) : (
             <ChatView
@@ -278,6 +314,10 @@ export function SupportChatWidget() {
               guestContact={guestContact}
               setGuestContact={setGuestContact}
               endRef={endRef}
+              themeId={themeId}
+              setThemeId={setThemeId}
+              bgId={bgId}
+              setBgId={setBgId}
             />
           )}
         </div>
@@ -289,33 +329,43 @@ export function SupportChatWidget() {
 /* -------------------- HOME VIEW -------------------- */
 
 function HomeView({
-  onClose, onWrite, hasHistory, messages, status,
+  onClose, onWrite, hasHistory, messages, status, themeId, setThemeId, bgId, setBgId,
 }: {
   onClose: () => void;
   onWrite: () => void;
   hasHistory: boolean;
   messages: Message[];
   status: 'ai' | 'human' | 'closed';
+  themeId: import("@/hooks/useChatTheme").ChatThemeId;
+  setThemeId: (id: import("@/hooks/useChatTheme").ChatThemeId) => void;
+  bgId: ChatBgId;
+  setBgId: (id: ChatBgId) => void;
 }) {
   const lastMsg = hasHistory ? messages[messages.length - 1] : null;
 
   return (
     <>
-      {/* Branded header with starfield */}
-      <div className="relative h-44 shrink-0 overflow-hidden bg-gradient-to-br from-primary via-primary to-[hsl(174_72%_28%)]">
-        <div className="absolute inset-0 opacity-60 pointer-events-none">
-          <StarfieldCanvas />
-        </div>
+      {/* Branded header with animated background */}
+      <div
+        className="relative h-44 shrink-0 overflow-hidden"
+        style={{
+          background: `linear-gradient(135deg, hsl(var(--chat-accent)), hsl(var(--chat-accent-dark)))`,
+        }}
+      >
+        <HeaderBackground bgId={bgId} />
         {/* Soft vignette for text readability */}
         <div className="absolute inset-0 bg-gradient-to-b from-black/10 via-transparent to-black/30 pointer-events-none" />
 
-        <button
-          onClick={onClose}
-          className="absolute top-3 right-3 z-10 h-8 w-8 flex items-center justify-center rounded-full bg-white/15 hover:bg-white/25 text-white backdrop-blur-sm transition-colors"
-          aria-label="Свернуть"
-        >
-          <ChevronDown className="h-4 w-4" />
-        </button>
+        <div className="absolute top-3 right-3 z-20 flex items-center gap-2">
+          <ChatThemePicker themeId={themeId} setThemeId={setThemeId} bgId={bgId} setBgId={setBgId} />
+          <button
+            onClick={onClose}
+            className="h-8 w-8 flex items-center justify-center rounded-full bg-white/15 hover:bg-white/25 text-white backdrop-blur-sm transition-colors"
+            aria-label="Свернуть"
+          >
+            <ChevronDown className="h-4 w-4" />
+          </button>
+        </div>
 
         <div className="relative z-10 h-full flex flex-col items-center justify-center text-white px-6">
           <SigmaLogo size="sm" variant="white" className="scale-90" />
@@ -408,6 +458,7 @@ function HomeView({
 function ChatView({
   onClose, onBack, messages, isLoading, status, input, setInput, handleSend, requestOperator,
   needsGuestInfo, setNeedsGuestInfo, guestName, setGuestName, guestContact, setGuestContact, endRef,
+  themeId, setThemeId, bgId, setBgId,
 }: {
   onClose: () => void;
   onBack: () => void;
@@ -425,19 +476,26 @@ function ChatView({
   guestContact: string;
   setGuestContact: (v: string) => void;
   endRef: React.RefObject<HTMLDivElement>;
+  themeId: import("@/hooks/useChatTheme").ChatThemeId;
+  setThemeId: (id: import("@/hooks/useChatTheme").ChatThemeId) => void;
+  bgId: ChatBgId;
+  setBgId: (id: ChatBgId) => void;
 }) {
   return (
     <>
-      {/* Compact header with stars */}
-      <div className="relative h-16 shrink-0 overflow-hidden bg-gradient-to-r from-primary to-[hsl(174_72%_32%)]">
-        <div className="absolute inset-0 opacity-40 pointer-events-none">
-          <StarfieldCanvas />
-        </div>
+      {/* Compact header with animated background */}
+      <div
+        className="relative h-16 shrink-0 overflow-hidden"
+        style={{
+          background: `linear-gradient(90deg, hsl(var(--chat-accent)), hsl(var(--chat-accent-dark)))`,
+        }}
+      >
+        <HeaderBackground bgId={bgId} />
         <div className="absolute inset-0 bg-gradient-to-b from-transparent to-black/10 pointer-events-none" />
         <div className="relative z-10 h-full flex items-center justify-between px-3">
           <button
             onClick={onBack}
-            className="h-8 w-8 flex items-center justify-center rounded-full text-white hover:bg-white/15 transition-colors"
+            className="relative z-20 h-8 w-8 flex items-center justify-center rounded-full text-white hover:bg-white/15 transition-colors"
             aria-label="Назад"
           >
             <ArrowLeft className="h-4 w-4" />
@@ -453,13 +511,16 @@ function ChatView({
               </p>
             </div>
           </div>
-          <button
-            onClick={onClose}
-            className="h-8 w-8 flex items-center justify-center rounded-full text-white hover:bg-white/15 transition-colors"
-            aria-label="Свернуть"
-          >
-            <ChevronDown className="h-4 w-4" />
-          </button>
+          <div className="relative z-20 flex items-center gap-1.5">
+            <ChatThemePicker themeId={themeId} setThemeId={setThemeId} bgId={bgId} setBgId={setBgId} />
+            <button
+              onClick={onClose}
+              className="h-8 w-8 flex items-center justify-center rounded-full text-white hover:bg-white/15 transition-colors"
+              aria-label="Свернуть"
+            >
+              <ChevronDown className="h-4 w-4" />
+            </button>
+          </div>
         </div>
       </div>
 
