@@ -9,7 +9,7 @@ import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 
 export function ImageBlock({ block, onUpdate }: { block: ContentBlock; onUpdate: (updates: Partial<ContentBlock>) => void }) {
   const [isUploading, setIsUploading] = useState(false);
-  const [isGenerating, setIsGenerating] = useState(false);
+  const { isGenerating, run: runGenerate } = useBlockAIGenerate();
   const [isEditing, setIsEditing] = useState(false);
   const [isGeneratingAlt, setIsGeneratingAlt] = useState(false);
   const [aiPrompt, setAiPrompt] = useState("");
