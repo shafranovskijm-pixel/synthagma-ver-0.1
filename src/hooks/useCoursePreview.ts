@@ -3,7 +3,7 @@ import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { getAdminAwareBackPath } from "@/lib/utils";
+import { getAdminAwareBackPath, getCourseDetailsPath } from "@/lib/utils";
 
 export interface Lesson {
   id: string;
@@ -142,7 +142,8 @@ export function useCoursePreview(options: UseCoursePreviewOptions = {}) {
 
   const navigateBack = () => {
     if (options.onNavigateBack) return options.onNavigateBack();
-    return fromStore ? navigate(getAdminAwareBackPath()) : navigate(`/course-builder/${courseId}`);
+    if (fromStore) return navigate(getAdminAwareBackPath());
+    return courseId ? navigate(getCourseDetailsPath(courseId)) : navigate(getAdminAwareBackPath());
   };
   const navigateToEditor = () => {
     if (options.onNavigateToEditor) return options.onNavigateToEditor();

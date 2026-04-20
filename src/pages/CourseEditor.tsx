@@ -5,7 +5,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { ArrowLeft, Plus, Save, Eye, EyeOff, Globe, FileText, BookOpen } from "lucide-react";
 import { SigmaLogo } from "@/components/ui/SigmaLogo";
-import { getAdminAwareBackPath } from "@/lib/utils";
+import { getAdminAwareBackPath, getCourseDetailsPath } from "@/lib/utils";
 import { DndContext, closestCenter } from "@dnd-kit/core";
 import { SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { LessonItem } from "@/components/course-editor/LessonItem";
@@ -56,7 +56,7 @@ const CourseEditor = () => {
       <header className="border-b border-border bg-card px-6 py-4 sticky top-0 z-10">
         <div className="max-w-5xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <Button variant="ghost" size="icon" onClick={() => h.navigate(getAdminAwareBackPath())}><ArrowLeft className="w-5 h-5" /></Button>
+            <Button variant="ghost" size="icon" onClick={() => h.navigate(h.courseId ? getCourseDetailsPath(h.courseId) : getAdminAwareBackPath())}><ArrowLeft className="w-5 h-5" /></Button>
             <SigmaLogo size="sm" />
           </div>
           <div className="flex items-center gap-3">

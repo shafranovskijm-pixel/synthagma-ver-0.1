@@ -17,6 +17,7 @@ import { LandingFaqSection } from "@/components/course-landing/LandingFaqSection
 import { SectionToolbar } from "@/components/course-landing/SectionToolbar";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 import { useLandingEditor, SECTION_LABELS } from "@/hooks/useLandingEditor";
+import { getCourseDetailsPath } from "@/lib/utils";
 
 interface CourseLandingEditorContentProps { courseId: string; embedded?: boolean; }
 
@@ -75,7 +76,7 @@ export function CourseLandingEditorContent({ courseId, embedded = false }: Cours
       <div className="sticky top-0 z-50 bg-background/95 backdrop-blur border-b border-border">
         <div className="max-w-7xl mx-auto px-4 h-14 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <Button variant="ghost" size="sm" onClick={() => h.navigate(`/course/${courseId}/edit`)} className="gap-1.5"><ArrowLeft className="w-4 h-4" />Редактор курса</Button>
+            <Button variant="ghost" size="sm" onClick={() => h.navigate(getCourseDetailsPath(courseId))} className="gap-1.5"><ArrowLeft className="w-4 h-4" />К курсу</Button>
             <span className="text-sm font-medium text-muted-foreground hidden sm:block">{h.course.title}</span>
           </div>
           <div className="flex items-center gap-2">
