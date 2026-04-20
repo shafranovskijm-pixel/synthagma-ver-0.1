@@ -25,7 +25,7 @@ import {
   blockCategories, calloutItems } from "../types";
 import { extractStyle, describeStyle } from "../utils";
 import { BlockContent } from "./BlockContent";
-import { BlockCategoryGrid } from "./AddBlockButton";
+import { BlockCategoryGrid, InlineAddBlockButton } from "./AddBlockButton";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 
 interface SortableBlockItemProps {
@@ -285,15 +285,7 @@ export function SortableBlockItem({ block, isFocused, onFocus, onUpdate, onDelet
               </Dialog>
             </>
           )}
-          <Popover>
-            <PopoverTrigger asChild><button className="h-8 w-8 flex items-center justify-center hover:bg-white/20 rounded-full transition-colors" title="Добавить блок"><Plus className="w-4 h-4" /></button></PopoverTrigger>
-            <PopoverContent align="center" className="w-72 p-2">
-              <Tabs defaultValue="text">
-                <TabsList className="w-full h-8 p-0.5">{Object.entries(blockCategories).map(([key, cat]) => <TabsTrigger key={key} value={key} className="text-xs px-2 py-1 h-7">{cat.label}</TabsTrigger>)}</TabsList>
-                {Object.entries(blockCategories).map(([key, cat]) => <TabsContent key={key} value={key} className="mt-2"><BlockCategoryGrid items={cat.items} onSelect={(type) => onAddAfter(type)} calloutItems={key === "other" ? calloutItems : undefined} /></TabsContent>)}
-              </Tabs>
-            </PopoverContent>
-          </Popover>
+          <InlineAddBlockButton onAdd={(type) => onAddAfter(type)} />
           <button className="h-8 w-8 flex items-center justify-center hover:bg-red-500/30 rounded-full transition-colors" onClick={(e) => { e.stopPropagation(); onDelete(); }} title="Удалить блок"><Trash2 className="w-4 h-4" /></button>
         </div>
       </div>
