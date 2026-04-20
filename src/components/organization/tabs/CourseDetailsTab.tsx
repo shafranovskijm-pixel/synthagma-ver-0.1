@@ -3,8 +3,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { useOrgDashboard } from "@/contexts/OrgDashboardContext";
 import { CourseDetailsContent } from "@/components/organization/CourseDetailsContent";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
-import { Button } from "@/components/ui/button";
-import { ArrowLeft } from "lucide-react";
 
 export function CourseDetailsTab() {
   const d = useOrgDashboard();
@@ -119,10 +117,6 @@ export function CourseDetailsTab() {
 
   return (
     <div className="animate-in fade-in duration-300">
-      <Button variant="ghost" size="sm" onClick={handleBack} className="mb-4 gap-2">
-        <ArrowLeft className="w-4 h-4" />
-        Назад к курсам
-      </Button>
       <CourseDetailsContent
         course={course}
         courseStudents={courseStudents}
@@ -133,6 +127,7 @@ export function CourseDetailsTab() {
         onCourseDeleted={handleBack}
         onCourseUpdated={refreshStudents}
         onRefreshStudents={refreshStudents}
+        onBack={handleBack}
       />
     </div>
   );
