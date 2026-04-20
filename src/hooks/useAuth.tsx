@@ -245,6 +245,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setSession(null);
     setUserRole(null);
     localStorage.removeItem('user_role');
+    // Сбрасываем гостевую сессию виджета поддержки, чтобы после logout
+    // не «наследовалась» переписка предыдущего гостя в этом браузере.
+    localStorage.removeItem('sintagma_support_guest_token');
+    localStorage.removeItem('sintagma_support_conv_id');
   };
 
   const refreshUserRole = async (userId?: string): Promise<AuthContextType['userRole']> => {
