@@ -299,7 +299,7 @@ function HomeView({
     <>
       {/* Branded header with starfield */}
       <div className="relative h-44 shrink-0 overflow-hidden bg-gradient-to-br from-primary via-primary to-[hsl(174_72%_28%)]">
-        <div className="absolute inset-0 opacity-60">
+        <div className="absolute inset-0 opacity-60 pointer-events-none">
           <StarfieldCanvas />
         </div>
         {/* Soft vignette for text readability */}
