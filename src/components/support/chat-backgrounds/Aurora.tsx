@@ -1,6 +1,12 @@
-export function AuroraBackground() {
+import { forwardRef } from "react";
+
+export const AuroraBackground = forwardRef<HTMLDivElement>((_, ref) => {
   return (
-    <div className="absolute inset-0 overflow-hidden pointer-events-none select-none" aria-hidden="true">
+    <div
+      ref={ref}
+      className="absolute inset-0 overflow-hidden pointer-events-none select-none"
+      aria-hidden="true"
+    >
       <div
         className="absolute -inset-1/4 rounded-full opacity-50 blur-3xl"
         style={{
@@ -38,4 +44,5 @@ export function AuroraBackground() {
       `}</style>
     </div>
   );
-}
+});
+AuroraBackground.displayName = "AuroraBackground";

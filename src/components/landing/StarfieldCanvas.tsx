@@ -32,7 +32,12 @@ interface Nebula {
   speedY: number;
 }
 
-export function StarfieldCanvas() {
+interface StarfieldCanvasProps {
+  /** 'low' — облегчённый рендер для маленьких контейнеров (например, шапка чата) */
+  density?: "low" | "high";
+}
+
+export function StarfieldCanvas({ density = "high" }: StarfieldCanvasProps = {}) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const animationRef = useRef<number>(0);
@@ -43,9 +48,12 @@ export function StarfieldCanvas() {
   const timeRef = useRef(0);
   const lastShootingRef = useRef(0);
 
+  const isLow = density === "low";
+
   const initStars = useCallback((w: number, h: number) => {
     const stars: Star[] = [];
-    for (let i = 0; i < 180; i++) {
+    const count = isLow ? 50 : 180;
+    for (let i = 0; i < count; i++) {
       stars.push({
         x: Math.random() * w,
         y: Math.random() * h,
@@ -58,13 +66,13 @@ export function StarfieldCanvas() {
     }
     starsRef.current = stars;
 
-    nebulaeRef.current = [
+    nebulaeRef.current = isLow ? [] : [
       { x: w * 0.2, y: h * 0.3, radius: 180, color: [0, 200, 180], phaseX: 0, phaseY: 0.5, speedX: 0.3, speedY: 0.2 },
       { x: w * 0.7, y: h * 0.6, radius: 220, color: [100, 60, 220], phaseX: 1, phaseY: 0, speedX: 0.2, speedY: 0.35 },
       { x: w * 0.5, y: h * 0.15, radius: 150, color: [0, 180, 220], phaseX: 2, phaseY: 1.5, speedX: 0.25, speedY: 0.15 },
       { x: w * 0.85, y: h * 0.8, radius: 160, color: [50, 140, 200], phaseX: 0.5, phaseY: 2, speedX: 0.15, speedY: 0.3 },
     ];
-  }, []);
+  }, [isLow]);
 
   const spawnShootingStar = useCallback((w: number, h: number) => {
     shootingStarsRef.current.push({

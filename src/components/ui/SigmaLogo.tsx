@@ -1,3 +1,4 @@
+import { forwardRef } from "react";
 import { cn } from "@/lib/utils";
 
 interface SigmaLogoProps {
@@ -22,15 +23,16 @@ const textSizeClasses = {
   xl: "text-4xl",
 };
 
-export function SigmaLogo({
-  className,
-  size = "md",
-  showText = true,
-  variant = "default",
-  onClick,
-}: SigmaLogoProps) {
+export const SigmaLogo = forwardRef<HTMLDivElement, SigmaLogoProps>(function SigmaLogo(
+  { className, size = "md", showText = true, variant = "default", onClick },
+  ref
+) {
   return (
-    <div className={cn("flex items-center gap-3", onClick && "cursor-pointer", className)} onClick={onClick}>
+    <div
+      ref={ref}
+      className={cn("flex items-center gap-3", onClick && "cursor-pointer", className)}
+      onClick={onClick}
+    >
       <div
         className={cn(
           "flex items-center justify-center rounded-lg",
@@ -62,4 +64,4 @@ export function SigmaLogo({
       )}
     </div>
   );
-}
+});
