@@ -156,14 +156,26 @@ export default function CourseBuilder({ embedded, embeddedCourseId, onExitEditor
             onBack={onExitEditor}
             backLabel="Назад к разделам курса"
             embedded={embedded}
+            onAddLesson={addLesson}
+            onOpenAIDialog={() => setShowAIGenerateDialog(true)}
           />
 
           {/* CENTER: main content */}
           <div className="flex-1 min-w-0 space-y-6">
-            <div className="bg-card rounded-2xl border border-border border-t-2 border-t-primary/30 p-4 sm:p-6 space-y-4">
-              <h2 className="font-display text-xl font-semibold mb-4 flex items-center gap-2"><BookOpen className="w-5 h-5 text-primary" />Информация о курсе</h2>
-              <div className="space-y-2"><Label>Название курса</Label><Input value={courseTitle} onChange={e => setCourseTitle(e.target.value)} placeholder="Введите название курса" className="text-lg font-medium" /></div>
-              <div className="space-y-2"><Label>Описание</Label><Textarea value={courseDescription} onChange={e => setCourseDescription(e.target.value)} placeholder="О чем этот курс?" className="min-h-[100px]" /></div>
+            <div className="bg-card rounded-2xl border border-border border-t-2 border-t-primary/30">
+              <Accordion type="single" collapsible>
+                <AccordionItem value="info" className="border-b-0">
+                  <AccordionTrigger className="px-4 sm:px-6 py-3 hover:no-underline">
+                    <span className="flex items-center gap-2 font-display text-base font-semibold">
+                      <BookOpen className="w-5 h-5 text-primary" />Информация о курсе
+                    </span>
+                  </AccordionTrigger>
+                  <AccordionContent className="px-4 sm:px-6 pb-4 sm:pb-6 space-y-4">
+                    <div className="space-y-2"><Label>Название курса</Label><Input value={courseTitle} onChange={e => setCourseTitle(e.target.value)} placeholder="Введите название курса" className="text-lg font-medium" /></div>
+                    <div className="space-y-2"><Label>Описание</Label><Textarea value={courseDescription} onChange={e => setCourseDescription(e.target.value)} placeholder="О чем этот курс?" className="min-h-[100px]" /></div>
+                  </AccordionContent>
+                </AccordionItem>
+              </Accordion>
             </div>
 
             <div className="bg-card rounded-2xl border border-border p-4 sm:p-6">
@@ -239,48 +251,12 @@ export default function CourseBuilder({ embedded, embeddedCourseId, onExitEditor
               </div>
             )}
           </div>
-
-          {/* RIGHT: sticky "Добавить урок" panel (desktop)
-              embedded: учитываем высоту OrgDashboardHeader (h-14 + h-48 hero + h-12 = ~316px)
-              standalone: только собственный header (~96px) */}
-          <aside
-            className={cn(
-              "hidden lg:flex flex-col sticky self-start w-72 shrink-0 rounded-2xl border border-border bg-card shadow-sm overflow-hidden",
-              embedded
-                ? "top-[332px] max-h-[calc(100dvh-348px)]"
-                : "top-24 max-h-[calc(100dvh-7rem)]"
-            )}
-          >
-            <div className="px-4 sm:px-6 pt-4 sm:pt-6 pb-3 shrink-0 border-b border-border/50">
-              <h3 className="font-semibold">Добавить урок</h3>
-            </div>
-            <div className="flex-1 min-h-0 overflow-y-auto p-4 sm:p-6">
-              <AddLessonGrid
-                addLesson={addLesson}
-                openAIDialog={() => setShowAIGenerateDialog(true)}
-              />
-            </div>
-          </aside>
         </div>
       </div>
 
-      {/* Mobile floating "+" trigger for Add Lesson */}
-      <div className="lg:hidden fixed bottom-24 right-4 z-40">
-        <Sheet open={addLessonSheetOpen} onOpenChange={setAddLessonSheetOpen}>
-          <SheetTrigger asChild>
-            <Button size="sm" className="btn-gradient shadow-lg gap-2 rounded-full">
-              <Plus className="w-4 h-4" /> Добавить
-            </Button>
-          </SheetTrigger>
-          <SheetContent side="right" className="w-80 p-6">
-            <h3 className="font-semibold mb-4 mt-6">Добавить урок</h3>
-            <AddLessonGrid
-              addLesson={(t) => { addLesson(t); setAddLessonSheetOpen(false); }}
-              openAIDialog={() => { setShowAIGenerateDialog(true); setAddLessonSheetOpen(false); }}
-            />
-          </SheetContent>
-        </Sheet>
-      </div>
+      {/* placeholder removed: right aside and mobile add-lesson sheet */}
+      <div className="hidden">
+        </div>
 
       <AlertDialog open={showExitDialog} onOpenChange={setShowExitDialog}>
         <AlertDialogContent>
