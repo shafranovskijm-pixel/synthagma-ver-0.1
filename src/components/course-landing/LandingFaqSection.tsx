@@ -1,6 +1,9 @@
 import { Trash2, ChevronDown } from "lucide-react";
 import { useState } from "react";
-import { useTemplateStyle } from "./LandingThemeProvider";
+import { useLandingTheme, useTemplateStyle } from "./LandingThemeProvider";
+import { FaqConsole } from "./variants/FaqConsole";
+import { FaqPaperCards } from "./variants/FaqPaperCards";
+import { FaqRegulation } from "./variants/FaqRegulation";
 
 export interface FaqItem {
   question: string;
@@ -17,16 +20,25 @@ interface Props {
   onRemoveItem?: (index: number) => void;
 }
 
-export function LandingFaqSection({
+/** Диспетчер FAQ — выбирает variant по `theme.faq_layout`. */
+export function LandingFaqSection(props: Props) {
+  const { theme } = useLandingTheme();
+  switch (theme.faq_layout) {
+    case "console": return <FaqConsole {...props} />;
+    case "paper-cards": return <FaqPaperCards {...props} />;
+    case "regulation": return <FaqRegulation {...props} />;
+    default: return <FaqDefault {...props} />;
+  }
+}
+
+/** Default аккордеон (исходная реализация). */
+function FaqDefault({
   title, items, isEditing, onTitleChange, onItemChange, onAddItem, onRemoveItem,
 }: Props) {
   const [openIndex, setOpenIndex] = useState<number | null>(null);
   const skin = useTemplateStyle();
 
   if (items.length === 0 && !isEditing) return null;
-
-  // Если есть skin.card — используем его (Aurora glass / Beauty pink / Lab dark и т.д.)
-  // Иначе — нейтральный card с border (как было).
   const itemClass = skin.card || "rounded-xl border border-border bg-card";
 
   return (
@@ -52,7 +64,6 @@ export function LandingFaqSection({
                     <Trash2 className="w-4 h-4" />
                   </button>
                 )}
-
                 <button
                   className="w-full flex items-center justify-between p-4 text-left font-medium"
                   onClick={() => !isEditing && setOpenIndex(isOpen ? null : i)}
@@ -66,9 +77,7 @@ export function LandingFaqSection({
                     >{item.question}</span>
                   ) : (
                     <span>
-                      {skin.cardTitlePrefix && (
-                        <span className="opacity-60 mr-1">{skin.cardTitlePrefix}</span>
-                      )}
+                      {skin.cardTitlePrefix && (<span className="opacity-60 mr-1">{skin.cardTitlePrefix}</span>)}
                       {item.question}
                     </span>
                   )}
@@ -76,7 +85,6 @@ export function LandingFaqSection({
                     <ChevronDown className={`w-5 h-5 text-muted-foreground transition-transform ${isOpen ? "rotate-180" : ""}`} />
                   )}
                 </button>
-
                 {isOpen && (
                   <div className="px-4 pb-4">
                     {isEditing ? (

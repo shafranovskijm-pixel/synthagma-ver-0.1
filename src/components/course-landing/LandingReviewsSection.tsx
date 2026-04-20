@@ -2,6 +2,9 @@ import { useLandingTheme } from "./LandingThemeProvider";
 import { ReviewsCards } from "./variants/ReviewsCards";
 import { ReviewsMasonry } from "./variants/ReviewsMasonry";
 import { ReviewsCarouselMini } from "./variants/ReviewsCarouselMini";
+import { ReviewsPostcards } from "./variants/ReviewsPostcards";
+import { ReviewsCommitLog } from "./variants/ReviewsCommitLog";
+import { ReviewsProtocols } from "./variants/ReviewsProtocols";
 
 export interface ReviewItem {
   name: string;
@@ -23,12 +26,12 @@ interface Props {
 export function LandingReviewsSection(props: Props) {
   const { theme } = useLandingTheme();
   switch (theme.reviews_layout) {
-    case "masonry":
-      return <ReviewsMasonry {...props} />;
-    case "carousel-mini":
-      return <ReviewsCarouselMini {...props} />;
+    case "masonry": return <ReviewsMasonry {...props} />;
+    case "carousel-mini": return <ReviewsCarouselMini {...props} />;
+    case "postcards": return <ReviewsPostcards {...props} />;
+    case "commit-log": return <ReviewsCommitLog {...props} />;
+    case "protocols": return <ReviewsProtocols {...props} />;
     case "cards":
-    default:
-      return <ReviewsCards {...props} />;
+    default: return <ReviewsCards {...props} />;
   }
 }
