@@ -53,14 +53,14 @@ const TAB_GROUPS: { key: GroupKey; label: string; icon: any; subTabs: CourseTabK
   { key: "settings", label: "Настройки",       icon: Settings, subTabs: ["settings", "tests"] },
 ];
 
-const SUB_TAB_META: Record<CourseTabKey, { label: string; icon: any }> = {
+const SUB_TAB_META: Record<CourseTabKey, { label: string; icon: any; description?: string }> = {
   editor:       { label: "Конструктор",   icon: Edit },
-  students:     { label: "Ученики",       icon: Users },
-  requests:     { label: "Заявки",        icon: ClipboardCheck },
-  groups:       { label: "Группы",        icon: Users },
-  history:      { label: "История",       icon: History },
-  achievements: { label: "Достижения",    icon: Trophy },
-  reminders:    { label: "Напоминания",   icon: Bell },
+  students:     { label: "Ученики",       icon: Users,          description: "Список зачисленных, прогресс и управление доступом" },
+  requests:     { label: "Заявки",        icon: ClipboardCheck, description: "Запросы на запись, ожидающие подтверждения" },
+  groups:       { label: "Группы",        icon: Users,          description: "Группировка учеников по потокам и датам" },
+  history:      { label: "История",       icon: History,        description: "Хронология зачислений, завершений и отчислений" },
+  achievements: { label: "Достижения",    icon: Trophy,         description: "Награды и медали, выдаваемые на этом курсе" },
+  reminders:    { label: "Напоминания",   icon: Bell,           description: "Автоматические письма о сроках переаттестации" },
   landing:      { label: "Страница курса",icon: Globe },
   preview:      { label: "Просмотр",      icon: Eye },
   materials:    { label: "Материалы",     icon: FileText },
@@ -244,8 +244,8 @@ export function CourseDetailsContent({ course, courseStudents, organizationId, a
         </div>
       </div>
 
-      {/* Sub-tabs (only for groups that have sub-sections) */}
-      {showSubTabs && (
+      {/* Sub-tabs (only for groups that have sub-sections) — vertical for students, horizontal for others */}
+      {showSubTabs && activeGroup !== "students" && (
         <div className="mb-4 flex items-center justify-center">
           <div className="inline-flex items-center gap-1 overflow-x-auto bg-background/60 rounded-lg p-1 border border-border/40">
             {currentGroupDef!.subTabs.map(st => {
@@ -272,9 +272,69 @@ export function CourseDetailsContent({ course, courseStudents, organizationId, a
         </div>
       )}
 
-      {/* Content panel (full width — left nav of lessons lives inside CourseBuilder embedded mode) */}
-      <div className={cn("flex-1 min-w-0", activeTab === "editor" ? "" : "p-6")}>
-        {activeTab === "students" && <StudentsSection h={h} courseStudents={courseStudents} />}
+      {/* Content panel — split layout for students group, full-width for others */}
+      {showSubTabs && activeGroup === "students" && (
+        <div className="mb-2 px-6">
+          <div className="grid grid-cols-1 md:grid-cols-[260px_1fr] gap-4">
+            <aside className="space-y-1.5">
+              {currentGroupDef!.subTabs.map(st => {
+                const meta = SUB_TAB_META[st];
+                const Icon = meta.icon;
+                const isActive = activeTab === st;
+                return (
+                  <button
+                    key={st}
+                    onClick={() => onTabChange(st)}
+                    className={cn(
+                      "w-full text-left flex items-start gap-3 px-3 py-3 rounded-xl transition-all border",
+                      isActive
+                        ? "bg-primary/10 border-primary/30 shadow-sm"
+                        : "bg-card/40 border-border/40 hover:border-border hover:bg-card"
+                    )}
+                  >
+                    <div className={cn(
+                      "shrink-0 w-9 h-9 rounded-lg flex items-center justify-center transition-colors",
+                      isActive ? "bg-primary/20 text-primary" : "bg-muted text-muted-foreground"
+                    )}>
+                      <Icon className="w-4 h-4" />
+                    </div>
+                    <div className="min-w-0 flex-1 pt-0.5">
+                      <div className={cn("text-sm font-medium leading-tight", isActive && "text-primary")}>{meta.label}</div>
+                      {meta.description && (
+                        <div className="text-[11px] text-muted-foreground leading-snug mt-0.5">{meta.description}</div>
+                      )}
+                    </div>
+                  </button>
+                );
+              })}
+            </aside>
+            <div className="min-w-0">
+              {activeTab === "students" && <StudentsSection h={h} courseStudents={courseStudents} />}
+              {activeTab === "requests" && <EnrollmentRequestsTab courseId={course.id} defaultAccessDays={h.defaultAccessDays} onRefreshStudents={onRefreshStudents} />}
+              {activeTab === "history" && <EnrollmentHistory courseId={course.id} organizationId={organizationId || ""} courseName={course.title} />}
+              {activeTab === "groups" && <CourseGroupsTab courseId={course.id} organizationId={organizationId || ""} onRefreshStudents={onRefreshStudents} />}
+              {activeTab === "achievements" && organizationId && <CourseAchievementsTab courseId={course.id} organizationId={organizationId} />}
+              {activeTab === "reminders" && (
+                <CourseRemindersTab courseId={course.id} organizationId={organizationId || ""}
+                  retrainingPeriodMonths={h.retrainingPeriod}
+                  reminderAdvanceDays={h.reminderAdvanceDays}
+                  onPeriodChange={async (months) => { h.setRetrainingPeriod(months); await h.updateCourseSetting("retraining_period_months", months, months ? `Периодичность: ${months} мес.` : "Периодичность отключена"); }}
+                  onAdvanceDaysChange={async (days) => { h.setReminderAdvanceDays(days); await h.updateCourseSetting("reminder_advance_days", days, `Напоминание за ${days} дней`); }}
+                  notifyOnCompletion={h.notifyOnCompletion}
+                  completionNotifyEmails={h.completionNotifyEmails}
+                  onNotifyOnCompletionChange={async (v) => { h.setNotifyOnCompletion(v); await h.updateCourseSetting("notify_on_completion", v, v ? "Уведомления включены" : "Уведомления отключены"); }}
+                  onCompletionNotifyEmailsChange={async (v) => { h.setCompletionNotifyEmails(v || null); try { const { error } = await supabase.from("courses").update({ completion_notify_emails: v || null } as any).eq("id", course.id); if (error) throw error; onCourseUpdated?.(); } catch (e) { console.error(e); } }}
+                />
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Content panel for non-students groups */}
+      {!(showSubTabs && activeGroup === "students") && (
+        <div className={cn("flex-1 min-w-0", activeTab === "editor" ? "" : "p-6")}>
+          {activeTab === "students" && <StudentsSection h={h} courseStudents={courseStudents} />}
         {activeTab === "requests" && <EnrollmentRequestsTab courseId={course.id} defaultAccessDays={h.defaultAccessDays} onRefreshStudents={onRefreshStudents} />}
         {activeTab === "materials" && <CourseDocumentsManager courseId={course.id} courseName={course.title} embedded={true} />}
         {activeTab === "history" && <EnrollmentHistory courseId={course.id} organizationId={organizationId || ""} courseName={course.title} />}
@@ -322,7 +382,8 @@ export function CourseDetailsContent({ course, courseStudents, organizationId, a
         {activeTab === "achievements" && organizationId && <CourseAchievementsTab courseId={course.id} organizationId={organizationId} />}
         {activeTab === "editor" && <Suspense fallback={<div className="flex items-center justify-center py-16"><SigmaSpinner size="lg" /></div>}><CourseBuilder embedded embeddedCourseId={course.id} onExitEditor={() => onTabChange("students")} /></Suspense>}
         {activeTab === "preview" && <Suspense fallback={<div className="flex items-center justify-center py-16"><SigmaSpinner size="lg" /></div>}><CoursePreviewView courseId={course.id} embedded onNavigateToEditor={() => onTabChange("editor")} /></Suspense>}
-      </div>
+        </div>
+      )}
 
       {/* Reset Progress */}
       <AlertDialog open={!!h.resetConfirmStudent} onOpenChange={(open) => !open && h.setResetConfirmStudent(null)}>
