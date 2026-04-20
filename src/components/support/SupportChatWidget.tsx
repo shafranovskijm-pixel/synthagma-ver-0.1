@@ -247,16 +247,14 @@ export function SupportChatWidget() {
         <div
           className={cn(
             "fixed z-50 flex flex-col overflow-hidden bg-card animate-scale-in",
-            // Mobile: full screen
             "inset-0 sm:inset-auto",
-            // Desktop: compact card
             "sm:bottom-6 sm:right-6 sm:w-[380px] sm:h-[580px] sm:rounded-3xl sm:shadow-2xl sm:shadow-primary/10"
           )}
           style={{ boxShadow: '0 20px 60px -10px hsl(var(--primary) / 0.25), 0 8px 24px -8px hsl(0 0% 0% / 0.15)' }}
         >
           {view === 'home' ? (
             <HomeView
-              onClose={() => setOpen(false)}
+              onClose={closeChat}
               onWrite={() => setView('chat')}
               hasHistory={messages.length > 0}
               messages={messages}
@@ -264,7 +262,7 @@ export function SupportChatWidget() {
             />
           ) : (
             <ChatView
-              onClose={() => setOpen(false)}
+              onClose={closeChat}
               onBack={() => setView('home')}
               messages={messages}
               isLoading={isLoading}
