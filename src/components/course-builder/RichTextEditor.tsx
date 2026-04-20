@@ -78,24 +78,28 @@ export function RichTextEditor({
   const lastEmittedHtml = useRef(value || "");
   const savedRange = useRef<Range | null>(null);
 
+  // Унифицированный sync value → DOM. Защищён от рекурсии (внутренний ввод не триггерит перезапись)
+  // и корректно подхватывает поздно прилетевший value (например, после загрузки урока с медленной сетью).
   useEffect(() => {
     const el = editorRef.current;
-    if (el) {
-      el.innerHTML = value || "";
-      lastEmittedHtml.current = value || "";
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  useEffect(() => {
+    if (!el) return;
     if (isInternalChange.current) {
       isInternalChange.current = false;
       return;
     }
-    const el = editorRef.current;
-    if (el && value !== lastEmittedHtml.current) {
-      el.innerHTML = value || "";
-      lastEmittedHtml.current = value || "";
+    const incoming = value || "";
+    const currentDom = el.innerHTML;
+    // Перезаписываем DOM, только если внешнее значение действительно отличается
+    // от того, что мы последний раз отправили наружу И от того, что в DOM сейчас.
+    if (incoming !== lastEmittedHtml.current || incoming !== currentDom) {
+      // Не трогаем DOM, если редактор сейчас в фокусе и пользователь печатает
+      // (иначе курсор прыгнет). Но при первой загрузке (DOM пустой) — обязательно ставим.
+      const isFocused = document.activeElement === el;
+      const domEmpty = !currentDom || currentDom === "<br>" || currentDom === "";
+      if (!isFocused || domEmpty) {
+        el.innerHTML = incoming;
+        lastEmittedHtml.current = incoming;
+      }
     }
   }, [value]);
 
