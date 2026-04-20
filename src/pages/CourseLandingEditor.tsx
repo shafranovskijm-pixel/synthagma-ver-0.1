@@ -1,7 +1,9 @@
-import React from "react";
+import React, { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Save, ExternalLink, Sparkles } from "lucide-react";
+import { ArrowLeft, Save, ExternalLink, Sparkles, Palette } from "lucide-react";
+import { LandingThemePanel } from "@/components/course-landing/LandingThemePanel";
+import type { LandingTheme } from "@/lib/landing-templates/types";
 import { LandingHeroSection } from "@/components/course-landing/LandingHeroSection";
 import { LandingAIGenerateDialog } from "@/components/course-landing/LandingAIGenerateDialog";
 import { LandingAudienceSection } from "@/components/course-landing/LandingAudienceSection";
