@@ -31,6 +31,19 @@ const TIER_META: Record<TemplateTier, { label: string; icon: typeof Sparkles; cl
   premium: { label: "Premium", icon: Crown, className: "bg-amber-500/10 text-amber-600 border-amber-500/20" },
 };
 
+/**
+ * Локализованные подписи категорий шаблонов для бейджа на карточке.
+ * Помогают пользователю с одного взгляда понять нишу шаблона.
+ */
+const CATEGORY_META: Record<string, string> = {
+  business: "Бизнес",
+  beauty: "Бьюти",
+  edu: "Образование",
+  lang: "Языки",
+  it: "IT / Tech",
+  safety: "Охрана труда",
+};
+
 interface CourseSnapshot {
   title: string;
   cover_image_url: string | null;
