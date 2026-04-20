@@ -1,3 +1,4 @@
+import { useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -47,6 +48,17 @@ export function LandingTemplatePreviewDialog({
   courseAccentColor,
   onApply,
 }: Props) {
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  // При смене шаблона возвращаем скролл наверх, чтобы превью всегда начиналось с hero.
+  useEffect(() => {
+    if (!template || !scrollRef.current) return;
+    const viewport = scrollRef.current.querySelector<HTMLElement>(
+      "[data-radix-scroll-area-viewport]",
+    );
+    if (viewport) viewport.scrollTop = 0;
+  }, [template?.id]);
+
   if (!template) return null;
 
   const data = template.data as Partial<LandingData>;
@@ -183,8 +195,9 @@ export function LandingTemplatePreviewDialog({
           </div>
         </DialogHeader>
 
-        <ScrollArea className="flex-1">
+        <ScrollArea ref={scrollRef} className="flex-1">
           <div
+            key={template.id}
             className="bg-background"
             style={accentColor ? ({ ["--primary" as any]: accentColor } as React.CSSProperties) : undefined}
           >

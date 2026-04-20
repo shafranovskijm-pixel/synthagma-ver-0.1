@@ -1,4 +1,3 @@
-import beautyPreview from "@/assets/landing-templates/beauty.jpg";
 import type { LandingTemplate } from "./types";
 import { ALL_SECTIONS } from "@/hooks/useLandingEditor";
 
@@ -6,7 +5,6 @@ export const beautyTemplate: LandingTemplate = {
   id: "beauty",
   name: "Атéлье",
   tagline: "Тёплый бьюти-лендинг для курсов маникюра, визажа и парикмахерского искусства",
-  preview_image: beautyPreview,
   accent_color: "#e879a6",
   tier: "free",
   category: "beauty",
