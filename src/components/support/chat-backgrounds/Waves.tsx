@@ -1,6 +1,12 @@
-export function WavesBackground() {
+import { forwardRef } from "react";
+
+export const WavesBackground = forwardRef<HTMLDivElement>((_, ref) => {
   return (
-    <div className="absolute inset-0 overflow-hidden pointer-events-none select-none" aria-hidden="true">
+    <div
+      ref={ref}
+      className="absolute inset-0 overflow-hidden pointer-events-none select-none"
+      aria-hidden="true"
+    >
       <svg
         className="absolute bottom-0 left-0 w-[200%] h-full"
         viewBox="0 0 1200 200"
@@ -46,4 +52,5 @@ export function WavesBackground() {
       `}</style>
     </div>
   );
-}
+});
+WavesBackground.displayName = "WavesBackground";
