@@ -16,6 +16,7 @@ import { captureRefFromUrl } from "@/utils/referralCookie";
 import { BackgroundUploadsProvider } from "@/contexts/BackgroundUploadsContext";
 import { BackgroundUploadsTray } from "@/components/uploads/BackgroundUploadsTray";
 import { SupportChatWidget } from "@/components/support/SupportChatWidget";
+import { AdminSupportFloatingWidget } from "@/components/admin/AdminSupportFloatingWidget";
 import {
   publicRoutes,
   studentRoutes,
@@ -60,6 +61,7 @@ const App = () => (
                   <SpecialOfferPopup />
                   <BackgroundUploadsTray />
                   <SupportChatWidget />
+                  <AdminSupportFloatingWidget />
                   <Suspense fallback={<LazyLoadFallback />}>
                     <Routes>
                       {publicRoutes}
