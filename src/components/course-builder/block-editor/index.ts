@@ -29,7 +29,7 @@ export {
   describeStyle,
 } from "./utils";
 
-export { blocksToJson, jsonToBlocks, markdownToBlocks, htmlToBlocks } from "./parsers";
+export { blocksToJson, jsonToBlocks, markdownToBlocks, htmlToBlocks, parseLessonContent } from "./parsers";
 
 export { BlockRenderer } from "./BlockRenderer";
 export { BlockEditor } from "./BlockEditorMain";

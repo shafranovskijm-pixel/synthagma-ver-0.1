@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import DOMPurify from "dompurify";
 import {
   AlertCircle, Lightbulb, HelpCircle, ChevronDown, ChevronRight, ChevronLeft,
@@ -8,11 +8,34 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { LazyMediaPreview } from "@/components/course-builder/LazyMediaPreview";
 import { VideoPreviewInline } from "@/components/course-builder/VideoPreviewInline";
-import type { ContentBlock } from "./types";
+import type { ContentBlock, BlockType } from "./types";
 import { bgColorPresets, textColorPresets } from "./types";
 import { renderHtml } from "./utils";
 import { getEmbedSrc } from "./embedSrc";
 import { FormulaRender } from "./FormulaRender";
+
+// ── Callout config: maps callout type → icon + colour scheme. Kills 6 duplicate cases.
+type CalloutKind = Extract<BlockType, "callout-info" | "callout-warning" | "callout-tip" | "callout-success" | "callout-danger">;
+const calloutConfig: Record<CalloutKind, { Icon: any; bg: string; border: string; iconColor: string }> = {
+  "callout-info":    { Icon: AlertCircle, bg: "bg-blue-500/10",    border: "border-blue-500/30",    iconColor: "text-blue-500" },
+  "callout-warning": { Icon: AlertCircle, bg: "bg-amber-500/10",   border: "border-amber-500/30",   iconColor: "text-amber-500" },
+  "callout-tip":     { Icon: Lightbulb,   bg: "bg-green-500/10",   border: "border-green-500/30",   iconColor: "text-green-500" },
+  "callout-success": { Icon: CheckCircle, bg: "bg-emerald-500/10", border: "border-emerald-500/30", iconColor: "text-emerald-500" },
+  "callout-danger":  { Icon: XCircle,     bg: "bg-red-500/10",     border: "border-red-500/30",     iconColor: "text-red-500" },
+};
+
+function CalloutBox({ kind, block, styleClasses }: { kind: CalloutKind; block: ContentBlock; styleClasses: string }) {
+  const cfg = calloutConfig[kind];
+  return (
+    <div className={cn("rounded-xl p-4 flex gap-3 not-prose [&_a]:text-primary [&_a]:underline border", cfg.bg, cfg.border, styleClasses)}>
+      <cfg.Icon className={cn("w-5 h-5 flex-shrink-0 mt-0.5", cfg.iconColor)} />
+      <div className="flex-1 min-w-0">
+        {block.calloutTitle && <p className="text-sm font-semibold mb-1">{block.calloutTitle}</p>}
+        <p className="text-sm" dangerouslySetInnerHTML={{ __html: renderHtml(block.content) }} />
+      </div>
+    </div>
+  );
+}
 
 function RenderBlock({ block, quizAnswer, quizSubmitted, onQuizAnswer, onQuizSubmit, sliderIndex, onSliderChange }: { 
   block: ContentBlock; 
@@ -76,15 +99,11 @@ function RenderBlock({ block, quizAnswer, quizSubmitted, onQuizAnswer, onQuizSub
     case "quote":
       return <blockquote className={cn("border-l-4 border-muted-foreground/30 pl-4 italic text-muted-foreground", styleClasses)} dangerouslySetInnerHTML={{ __html: renderHtml(block.content) }} />;
     case "callout-info":
-      return <div className={cn("rounded-xl p-4 bg-blue-500/10 border border-blue-500/30 flex gap-3 not-prose [&_a]:text-primary [&_a]:underline", styleClasses)}><AlertCircle className="w-5 h-5 text-blue-500 flex-shrink-0 mt-0.5" /><div className="flex-1 min-w-0">{block.calloutTitle && <p className="text-sm font-semibold mb-1">{block.calloutTitle}</p>}<p className="text-sm" dangerouslySetInnerHTML={{ __html: renderHtml(block.content) }} /></div></div>;
     case "callout-warning":
-      return <div className={cn("rounded-xl p-4 bg-amber-500/10 border border-amber-500/30 flex gap-3 not-prose [&_a]:text-primary [&_a]:underline", styleClasses)}><AlertCircle className="w-5 h-5 text-amber-500 flex-shrink-0 mt-0.5" /><div className="flex-1 min-w-0">{block.calloutTitle && <p className="text-sm font-semibold mb-1">{block.calloutTitle}</p>}<p className="text-sm" dangerouslySetInnerHTML={{ __html: renderHtml(block.content) }} /></div></div>;
     case "callout-tip":
-      return <div className={cn("rounded-xl p-4 bg-green-500/10 border border-green-500/30 flex gap-3 not-prose [&_a]:text-primary [&_a]:underline", styleClasses)}><Lightbulb className="w-5 h-5 text-green-500 flex-shrink-0 mt-0.5" /><div className="flex-1 min-w-0">{block.calloutTitle && <p className="text-sm font-semibold mb-1">{block.calloutTitle}</p>}<p className="text-sm" dangerouslySetInnerHTML={{ __html: renderHtml(block.content) }} /></div></div>;
     case "callout-success":
-      return <div className={cn("rounded-xl p-4 bg-emerald-500/10 border border-emerald-500/30 flex gap-3 not-prose [&_a]:text-primary [&_a]:underline", styleClasses)}><CheckCircle className="w-5 h-5 text-emerald-500 flex-shrink-0 mt-0.5" /><div className="flex-1 min-w-0">{block.calloutTitle && <p className="text-sm font-semibold mb-1">{block.calloutTitle}</p>}<p className="text-sm" dangerouslySetInnerHTML={{ __html: renderHtml(block.content) }} /></div></div>;
     case "callout-danger":
-      return <div className={cn("rounded-xl p-4 bg-red-500/10 border border-red-500/30 flex gap-3 not-prose [&_a]:text-primary [&_a]:underline", styleClasses)}><XCircle className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" /><div className="flex-1 min-w-0">{block.calloutTitle && <p className="text-sm font-semibold mb-1">{block.calloutTitle}</p>}<p className="text-sm" dangerouslySetInnerHTML={{ __html: renderHtml(block.content) }} /></div></div>;
+      return <CalloutBox kind={block.type} block={block} styleClasses={styleClasses} />;
     case "highlight":
       return (
         <div className={cn("rounded-xl p-4 border border-yellow-400/40 bg-gradient-to-r from-yellow-400/10 via-amber-400/5 to-transparent relative overflow-hidden not-prose [&_a]:text-primary [&_a]:underline", styleClasses)}>

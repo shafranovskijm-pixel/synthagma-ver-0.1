@@ -74,6 +74,8 @@ export function RichTextEditor({
   const [convertOpen, setConvertOpen] = useState(false);
   const [advancedOpen, setAdvancedOpen] = useState(false);
   const [linkInput, setLinkInput] = useState("");
+  const [presetNameOpen, setPresetNameOpen] = useState(false);
+  const [presetNameInput, setPresetNameInput] = useState("");
   const [activeFormats, setActiveFormats] = useState({ bold: false, italic: false, underline: false, code: false });
   const isInternalChange = useRef(false);
   const lastEmittedHtml = useRef(value || "");
@@ -693,18 +695,55 @@ export function RichTextEditor({
                   {presets && onPresetsChange && currentBlock && (
                     <div>
                       <p className="text-[10px] uppercase font-semibold text-muted-foreground mb-1.5">Пресеты</p>
-                      <button
-                        onMouseDown={(e) => {
-                          e.preventDefault();
-                          const s = extractStyle(currentBlock);
-                          const name = describeStyle(s);
-                          onPresetsChange([...presets, { name, style: s }]);
-                          import("sonner").then(({ toast }) => toast.success(`Пресет сохранён: ${name}`));
-                        }}
-                        className="w-full flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-accent text-sm text-left"
-                      >
-                        <Star className="w-4 h-4 text-yellow-500" />Сохранить текущий стиль
-                      </button>
+                      {presetNameOpen ? (
+                        <div className="flex gap-1 mb-1">
+                          <Input
+                            autoFocus
+                            value={presetNameInput}
+                            onChange={(e) => setPresetNameInput(e.target.value)}
+                            placeholder="Название пресета"
+                            className="h-7 text-xs"
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') {
+                                e.preventDefault();
+                                const name = presetNameInput.trim() || describeStyle(extractStyle(currentBlock));
+                                onPresetsChange([...presets, { name, style: extractStyle(currentBlock) }]);
+                                toast.success(`Пресет сохранён: ${name}`);
+                                setPresetNameInput("");
+                                setPresetNameOpen(false);
+                              } else if (e.key === 'Escape') {
+                                setPresetNameOpen(false);
+                                setPresetNameInput("");
+                              }
+                            }}
+                          />
+                          <Button
+                            size="sm"
+                            className="h-7 px-2 text-xs"
+                            onMouseDown={(e) => {
+                              e.preventDefault();
+                              const name = presetNameInput.trim() || describeStyle(extractStyle(currentBlock));
+                              onPresetsChange([...presets, { name, style: extractStyle(currentBlock) }]);
+                              toast.success(`Пресет сохранён: ${name}`);
+                              setPresetNameInput("");
+                              setPresetNameOpen(false);
+                            }}
+                          >
+                            ОК
+                          </Button>
+                        </div>
+                      ) : (
+                        <button
+                          onMouseDown={(e) => {
+                            e.preventDefault();
+                            setPresetNameInput(describeStyle(extractStyle(currentBlock)));
+                            setPresetNameOpen(true);
+                          }}
+                          className="w-full flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-accent text-sm text-left"
+                        >
+                          <Star className="w-4 h-4 text-yellow-500" />Сохранить текущий стиль
+                        </button>
+                      )}
                       {presets.length > 0 && (
                         <div className="mt-1 space-y-0.5">
                           {presets.map((p, i) => (

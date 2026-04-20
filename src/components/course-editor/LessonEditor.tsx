@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef } from "react";
+import { useState, useMemo, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -6,7 +6,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { FileText, Video, HelpCircle, Plus, Trash2, Sparkles, Settings, Upload, FolderOpen, FileSpreadsheet, Lock, RotateCcw, Save, Eye, FileType2, Clock, Hash } from "lucide-react";
+import { FileText, Video, HelpCircle, Plus, Trash2, Sparkles, Settings, Upload, FolderOpen, FileSpreadsheet, Lock, RotateCcw, Save, Eye, FileType2, Clock, Hash, Search } from "lucide-react";
 import { AIAvatarLessonEditor, type AIAvatarConfig } from "@/components/course-builder/AIAvatarLessonEditor";
 import { BlockEditor } from "@/components/course-builder/BlockEditor";
 import { TestImportDialog } from "@/components/course-builder/TestImportDialog";
@@ -17,6 +17,7 @@ import { HlsVideoPlayer } from "@/components/video/HlsVideoPlayer";
 import { LazyMediaPreview } from "@/components/course-builder/LazyMediaPreview";
 import { UploadProgressBlock } from "@/components/course-builder/UploadProgressBlock";
 import { LessonPreviewDialog } from "./LessonPreviewDialog";
+import { LessonSearchPanel } from "./LessonSearchPanel";
 import { EditorDropZone } from "@/components/course-builder/block-editor/blocks/EditorDropZone";
 import { useLessonEditor, type TestQuestion } from "@/hooks/useLessonEditor";
 import { useLessonMedia } from "@/hooks/useLessonMedia";
@@ -71,7 +72,21 @@ export const LessonEditor = ({
 
   const [previewOpen, setPreviewOpen] = useState(false);
   const [importingDocx, setImportingDocx] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
   const docxInputRef = useRef<HTMLInputElement>(null);
+
+  // Ctrl+F / Cmd+F inside the lesson editor opens the search panel
+  useEffect(() => {
+    if (!isOpen) return;
+    const handler = (ev: KeyboardEvent) => {
+      if ((ev.ctrlKey || ev.metaKey) && ev.key.toLowerCase() === 'f' && e.type === 'text') {
+        ev.preventDefault();
+        setSearchOpen(true);
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [isOpen, e.type]);
 
   const lessonIdForMedia = useMemo(() => lesson?.id || `new-${Date.now()}`, [lesson?.id]);
   const media = useLessonMedia(
@@ -150,16 +165,30 @@ export const LessonEditor = ({
           <DialogHeader>
             <div className="flex items-center justify-between gap-3">
               <DialogTitle className="font-display text-xl">{lesson ? "Редактировать урок" : "Новый урок"}</DialogTitle>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => setPreviewOpen(true)}
-                className="gap-1.5 mr-8"
-                title="Посмотреть, как урок выглядит у студента"
-              >
-                <Eye className="w-4 h-4" />Превью
-              </Button>
+              <div className="flex items-center gap-2 mr-8">
+                {e.type === 'text' && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setSearchOpen(true)}
+                    className="gap-1.5"
+                    title="Поиск по уроку (Ctrl+F)"
+                  >
+                    <Search className="w-4 h-4" />Поиск
+                  </Button>
+                )}
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setPreviewOpen(true)}
+                  className="gap-1.5"
+                  title="Посмотреть, как урок выглядит у студента"
+                >
+                  <Eye className="w-4 h-4" />Превью
+                </Button>
+              </div>
             </div>
           </DialogHeader>
 
@@ -463,6 +492,8 @@ export const LessonEditor = ({
         videoUrl={e.videoUrl}
         questions={e.questions}
       />
+
+      <LessonSearchPanel open={searchOpen} onClose={() => setSearchOpen(false)} blocks={e.blocks} />
     </>
   );
 };
