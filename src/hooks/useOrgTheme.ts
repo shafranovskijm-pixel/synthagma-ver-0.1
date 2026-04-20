@@ -20,6 +20,7 @@ const DEFAULT_THEME: OrgThemeSettings = {
 };
 
 const cacheKey = (orgId: string) => `org-theme-cache:${orgId}`;
+const ENFORCE_FLAG_KEY = "org-theme-enforce-active";
 
 /**
  * Apply the organization's theme on the current device.
@@ -35,6 +36,9 @@ export function applyOrgTheme(theme: OrgThemeSettings) {
 
   // Animation level
   storeAnimationLevel(theme.animLevel);
+  window.dispatchEvent(
+    new CustomEvent("visual-animation-change", { detail: theme.animLevel })
+  );
 
   // Light / dark mode
   const root = document.documentElement;
@@ -60,7 +64,7 @@ function readBrandingTheme(branding: any): OrgThemeSettings {
 
 /**
  * Loads the org theme from DB, applies it (only if enforce=true), and exposes a saver.
- * If no orgId is provided, this hook is a no-op (returns defaults).
+ * Subscribes to realtime changes so other staff devices update without reload.
  */
 export function useOrgTheme(organizationId: string | null | undefined) {
   const [theme, setTheme] = useState<OrgThemeSettings>(() => {
@@ -73,11 +77,33 @@ export function useOrgTheme(organizationId: string | null | undefined) {
   });
   const [loaded, setLoaded] = useState(false);
 
-  // Fetch from DB on mount/orgId change
+  // Apply enforced theme + cache
+  const applyAndCache = useCallback(
+    (next: OrgThemeSettings, orgId: string) => {
+      setTheme(next);
+      try {
+        sessionStorage.setItem(cacheKey(orgId), JSON.stringify(next));
+      } catch {}
+      if (next.enforce) {
+        try {
+          localStorage.setItem(ENFORCE_FLAG_KEY, "1");
+        } catch {}
+        applyOrgTheme(next);
+      } else {
+        try {
+          localStorage.removeItem(ENFORCE_FLAG_KEY);
+        } catch {}
+      }
+    },
+    []
+  );
+
+  // Fetch from DB on mount/orgId change + subscribe to realtime
   useEffect(() => {
     if (!organizationId) return;
     let cancelled = false;
-    (async () => {
+
+    const load = async () => {
       const { data } = await supabase
         .from("organizations")
         .select("branding")
@@ -85,20 +111,36 @@ export function useOrgTheme(organizationId: string | null | undefined) {
         .maybeSingle();
       if (cancelled) return;
       const next = readBrandingTheme(data?.branding);
-      setTheme(next);
+      applyAndCache(next, organizationId);
       setLoaded(true);
-      try {
-        sessionStorage.setItem(cacheKey(organizationId), JSON.stringify(next));
-      } catch {}
-      // Apply to device only if organization enforces shared theme
-      if (next.enforce) {
-        applyOrgTheme(next);
-      }
-    })();
+    };
+
+    load();
+
+    // Realtime subscription: pick up branding changes from other devices
+    const channel = supabase
+      .channel(`org-theme:${organizationId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "organizations",
+          filter: `id=eq.${organizationId}`,
+        },
+        (payload) => {
+          if (cancelled) return;
+          const next = readBrandingTheme((payload.new as any)?.branding);
+          applyAndCache(next, organizationId);
+        }
+      )
+      .subscribe();
+
     return () => {
       cancelled = true;
+      supabase.removeChannel(channel);
     };
-  }, [organizationId]);
+  }, [organizationId, applyAndCache]);
 
   const saveTheme = useCallback(
     async (next: Partial<OrgThemeSettings>) => {
@@ -117,17 +159,19 @@ export function useOrgTheme(organizationId: string | null | undefined) {
         .update({ branding: newBranding as any })
         .eq("id", organizationId);
       if (error) throw error;
-      setTheme(merged);
-      try {
-        sessionStorage.setItem(cacheKey(organizationId), JSON.stringify(merged));
-      } catch {}
-      // Apply on this device only if enforcement is on (shared org theme)
-      if (merged.enforce) {
-        applyOrgTheme(merged);
-      }
+      applyAndCache(merged, organizationId);
     },
-    [organizationId, theme]
+    [organizationId, theme, applyAndCache]
   );
 
   return { theme, saveTheme, loaded };
+}
+
+/** True when the current org enforces a shared theme on this device. */
+export function isOrgThemeEnforced(): boolean {
+  try {
+    return localStorage.getItem(ENFORCE_FLAG_KEY) === "1";
+  } catch {
+    return false;
+  }
 }
