@@ -1,31 +1,19 @@
-import { useState, useRef } from "react";
+import { useState } from "react";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
-import {
-  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator,
-  DropdownMenuTrigger, DropdownMenuSub, DropdownMenuSubTrigger, DropdownMenuSubContent,
-  DropdownMenuPortal } from "@/components/ui/dropdown-menu";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
-  GripVertical, Trash2, Wand2, Pencil, AlignLeft, AlignCenter, AlignRight,
-  Bold, Italic, Strikethrough, Underline, CaseSensitive, Star, X, Eraser,
-  Highlighter, Plus, Link2, Headphones, Volume2, MoreHorizontal, ArrowUp, ArrowDown, Search, ChevronRight } from "lucide-react";
+  GripVertical, Trash2, Headphones, Volume2, MoreHorizontal, ArrowUp, ArrowDown, Search } from "lucide-react";
 import { SALUTE_VOICES } from "@/components/student/TTSSettingsDialog";
 import type { BlockType, ContentBlock, StylePreset } from "../types";
-import {
-  convertibleTypes, textStyleableTypes, bgColorPresets, bgColorDotStyles,
-  textColorPresets, quickStyles, wrapCalloutTargets, wrapOtherTargets,
-  blockCategories, calloutItems } from "../types";
-import { extractStyle, describeStyle } from "../utils";
 import { BlockContent } from "./BlockContent";
-import { BlockCategoryGrid, InlineAddBlockButton } from "./AddBlockButton";
+import { InlineAddBlockButton } from "./AddBlockButton";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 
 interface SortableBlockItemProps {
