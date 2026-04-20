@@ -226,44 +226,46 @@ export function OrgDashboardHeader() {
       )}
 
       {/* Sub-header: page title + action buttons */}
-      <div className="flex items-center justify-between px-4 lg:px-6 h-12 border-t border-border/50 bg-card/95 backdrop-blur-sm">
-        <h1 className="font-display text-base font-semibold text-foreground/80">
-          {getPageTitle()}
-        </h1>
+      {activeTab !== "course-details" && (
+        <div className="flex items-center justify-between px-4 lg:px-6 h-12 border-t border-border/50 bg-card/95 backdrop-blur-sm">
+          <h1 className="font-display text-base font-semibold text-foreground/80">
+            {getPageTitle()}
+          </h1>
 
-        <div className="flex items-center gap-2">
-          {activeTab === "links" && (
-            <Button className="btn-gradient rounded-xl gap-2 text-xs" size="sm" onClick={() => d.registrationLinks.setShowCreateLinkDialog(true)}>
-              <Plus className="w-4 h-4" />
-              <span className="hidden sm:inline">Создать ссылку</span>
-            </Button>
-          )}
-          {activeTab === "students" && (
-            <>
-              <Button variant="outline" className="rounded-xl gap-2 text-xs" size="sm" onClick={() => handleStudentAction(() => d.setShowImportDialog(true))}>
-                <FileSpreadsheet className="w-4 h-4" />
-                <span className="hidden sm:inline">Импорт</span>
-              </Button>
-              <Button className="btn-gradient rounded-xl gap-2 text-xs" size="sm" onClick={() => handleStudentAction(() => d.studentManagement.setShowAddStudentDialog(true))}>
+          <div className="flex items-center gap-2">
+            {activeTab === "links" && (
+              <Button className="btn-gradient rounded-xl gap-2 text-xs" size="sm" onClick={() => d.registrationLinks.setShowCreateLinkDialog(true)}>
                 <Plus className="w-4 h-4" />
-                <span className="hidden sm:inline">Добавить</span>
+                <span className="hidden sm:inline">Создать ссылку</span>
               </Button>
-            </>
-          )}
-          {activeTab === "courses" && (
-            <div className="flex items-center gap-2">
-              <Button variant="outline" size="sm" className="rounded-xl gap-2 text-xs" onClick={() => d.tabNavigation.setActiveTab("services")}>
-                <ShoppingBag className="w-4 h-4" />
-                <span className="hidden sm:inline">Добавить из магазина</span>
-              </Button>
-              <Button className="btn-gradient rounded-xl gap-2 text-xs" size="sm" onClick={() => navigate("/course-builder")}>
-                <Plus className="w-4 h-4" />
-                <span className="hidden sm:inline">Создать курс</span>
-              </Button>
-            </div>
-          )}
+            )}
+            {activeTab === "students" && (
+              <>
+                <Button variant="outline" className="rounded-xl gap-2 text-xs" size="sm" onClick={() => handleStudentAction(() => d.setShowImportDialog(true))}>
+                  <FileSpreadsheet className="w-4 h-4" />
+                  <span className="hidden sm:inline">Импорт</span>
+                </Button>
+                <Button className="btn-gradient rounded-xl gap-2 text-xs" size="sm" onClick={() => handleStudentAction(() => d.studentManagement.setShowAddStudentDialog(true))}>
+                  <Plus className="w-4 h-4" />
+                  <span className="hidden sm:inline">Добавить</span>
+                </Button>
+              </>
+            )}
+            {activeTab === "courses" && (
+              <div className="flex items-center gap-2">
+                <Button variant="outline" size="sm" className="rounded-xl gap-2 text-xs" onClick={() => d.tabNavigation.setActiveTab("services")}>
+                  <ShoppingBag className="w-4 h-4" />
+                  <span className="hidden sm:inline">Добавить из магазина</span>
+                </Button>
+                <Button className="btn-gradient rounded-xl gap-2 text-xs" size="sm" onClick={() => navigate("/course-builder")}>
+                  <Plus className="w-4 h-4" />
+                  <span className="hidden sm:inline">Создать курс</span>
+                </Button>
+              </div>
+            )}
+          </div>
         </div>
-      </div>
+      )}
     </header>
   );
 }
