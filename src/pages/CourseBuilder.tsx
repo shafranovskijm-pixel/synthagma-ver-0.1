@@ -19,7 +19,7 @@ import { AIGenerateDialog } from "@/components/course-builder/AIGenerateDialog";
 import { CourseReviewDialog } from "@/components/course-builder/CourseReviewDialog";
 import { useCourseBuilder } from "@/hooks/useCourseBuilder";
 import { useCourseReview } from "@/hooks/useCourseReview";
-import { LessonType } from "@/components/course-builder/LessonTypeConfig";
+
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 
 interface CourseBuilderProps {
@@ -50,7 +50,7 @@ export default function CourseBuilder({ embedded, embeddedCourseId, onExitEditor
     isReviewing, reviewResult, activeFindings, dismissedIds,
     startReview, dismissFinding, dismissAll, resetReview } = useCourseReview();
   const [showReviewDialog, setShowReviewDialog] = useState(false);
-  const [addLessonSheetOpen, setAddLessonSheetOpen] = useState(false);
+  
 
   // Подсветка активного урока в левом меню обновляется только по клику пользователя.
   // Автоматическое отслеживание видимости при скролле отключено намеренно —
