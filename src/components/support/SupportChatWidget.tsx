@@ -329,33 +329,43 @@ export function SupportChatWidget() {
 /* -------------------- HOME VIEW -------------------- */
 
 function HomeView({
-  onClose, onWrite, hasHistory, messages, status,
+  onClose, onWrite, hasHistory, messages, status, themeId, setThemeId, bgId, setBgId,
 }: {
   onClose: () => void;
   onWrite: () => void;
   hasHistory: boolean;
   messages: Message[];
   status: 'ai' | 'human' | 'closed';
+  themeId: import("@/hooks/useChatTheme").ChatThemeId;
+  setThemeId: (id: import("@/hooks/useChatTheme").ChatThemeId) => void;
+  bgId: ChatBgId;
+  setBgId: (id: ChatBgId) => void;
 }) {
   const lastMsg = hasHistory ? messages[messages.length - 1] : null;
 
   return (
     <>
-      {/* Branded header with starfield */}
-      <div className="relative h-44 shrink-0 overflow-hidden bg-gradient-to-br from-primary via-primary to-[hsl(174_72%_28%)]">
-        <div className="absolute inset-0 opacity-60 pointer-events-none">
-          <StarfieldCanvas />
-        </div>
+      {/* Branded header with animated background */}
+      <div
+        className="relative h-44 shrink-0 overflow-hidden"
+        style={{
+          background: `linear-gradient(135deg, hsl(var(--chat-accent)), hsl(var(--chat-accent-dark)))`,
+        }}
+      >
+        <HeaderBackground bgId={bgId} />
         {/* Soft vignette for text readability */}
         <div className="absolute inset-0 bg-gradient-to-b from-black/10 via-transparent to-black/30 pointer-events-none" />
 
-        <button
-          onClick={onClose}
-          className="absolute top-3 right-3 z-10 h-8 w-8 flex items-center justify-center rounded-full bg-white/15 hover:bg-white/25 text-white backdrop-blur-sm transition-colors"
-          aria-label="Свернуть"
-        >
-          <ChevronDown className="h-4 w-4" />
-        </button>
+        <div className="absolute top-3 right-3 z-20 flex items-center gap-2">
+          <ChatThemePicker themeId={themeId} setThemeId={setThemeId} bgId={bgId} setBgId={setBgId} />
+          <button
+            onClick={onClose}
+            className="h-8 w-8 flex items-center justify-center rounded-full bg-white/15 hover:bg-white/25 text-white backdrop-blur-sm transition-colors"
+            aria-label="Свернуть"
+          >
+            <ChevronDown className="h-4 w-4" />
+          </button>
+        </div>
 
         <div className="relative z-10 h-full flex flex-col items-center justify-center text-white px-6">
           <SigmaLogo size="sm" variant="white" className="scale-90" />
