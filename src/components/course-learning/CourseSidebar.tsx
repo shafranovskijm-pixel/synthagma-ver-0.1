@@ -13,6 +13,7 @@ interface Lesson {
   id: string;
   title: string;
   type: string;
+  locked_until?: string | null;
 }
 
 interface CourseSidebarProps {
@@ -75,7 +76,11 @@ export function CourseSidebarContent({
                     {lesson.type === 'audio' && 'Аудио'}
                     {lesson.type === 'feedback' && 'Обратная связь'}
                     {lesson.type === 'homework' && 'Задание'}
-                    {!isAccessible && <span className="ml-1">• Заблокировано</span>}
+                    {!isAccessible && lesson.locked_until && new Date(lesson.locked_until).getTime() > Date.now() ? (
+                      <span className="ml-1 text-amber-500">• Откроется {new Date(lesson.locked_until).toLocaleDateString('ru-RU')}</span>
+                    ) : !isAccessible ? (
+                      <span className="ml-1">• Заблокировано</span>
+                    ) : null}
                   </div>
                 </div>
               </button>

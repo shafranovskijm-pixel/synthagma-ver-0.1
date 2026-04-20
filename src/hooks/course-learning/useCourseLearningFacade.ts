@@ -291,7 +291,28 @@ export function useCourseLearning() {
         }
       }
       if (lessonsResult.error) throw lessonsResult.error;
-      const lessonsData = lessonsResult.data || [];
+      let lessonsData = lessonsResult.data || [];
+
+      // Apply module access schedules + per-user overrides
+      try {
+        const moduleIds = Array.from(new Set(lessonsData.map((l: any) => l.module_id).filter(Boolean)));
+        if (moduleIds.length > 0 && user) {
+          const [schedRes, ovrRes] = await Promise.all([
+            supabase.from("module_access_schedules" as never).select("module_id, unlock_at").in("module_id", moduleIds as string[]),
+            supabase.from("module_access_overrides" as never).select("module_id, unlock_at").in("module_id", moduleIds as string[]).eq("user_id", user.id),
+          ]);
+          const schedMap = new Map<string, string>();
+          ((schedRes.data as any[]) || []).forEach((r) => schedMap.set(r.module_id, r.unlock_at));
+          const ovrMap = new Map<string, string | null>();
+          ((ovrRes.data as any[]) || []).forEach((r) => ovrMap.set(r.module_id, r.unlock_at));
+          lessonsData = lessonsData.map((l: any) => {
+            if (!l.module_id) return l;
+            const effective = ovrMap.has(l.module_id) ? ovrMap.get(l.module_id)! : (schedMap.get(l.module_id) || null);
+            return effective ? { ...l, locked_until: effective } : l;
+          });
+        }
+      } catch (e) { console.warn("[module access] load failed", e); }
+
       setLessons(lessonsData);
 
       let enrollment = enrollmentResult.data;
