@@ -49,7 +49,7 @@ type GroupKey = "editor" | "students" | "page" | "settings";
 const TAB_GROUPS: { key: GroupKey; label: string; icon: any; subTabs: CourseTabKey[] }[] = [
   { key: "editor",   label: "Конструктор",     icon: Edit,     subTabs: [] },
   { key: "students", label: "Ученики",         icon: Users,    subTabs: ["students", "requests", "groups", "history", "tests", "achievements", "reminders"] },
-  { key: "page",     label: "Страница курса",  icon: Globe,    subTabs: ["landing", "preview", "materials"] },
+  { key: "page",     label: "Страница курса",  icon: Globe,    subTabs: ["landing"] },
   { key: "settings", label: "Настройки",       icon: Settings, subTabs: ["settings"] },
 ];
 
