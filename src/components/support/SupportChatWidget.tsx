@@ -460,6 +460,7 @@ function HomeView({
           <ChevronDown className="h-4 w-4 text-muted-foreground -rotate-90" />
         </a>
       </div>
+      <VersionFooter />
     </>
   );
 }
@@ -621,6 +622,7 @@ function ChatView({
           <Send className="h-4 w-4" />
         </Button>
       </div>
+      <VersionFooter />
     </>
   );
 }
