@@ -19,6 +19,7 @@ import { LandingTemplateMiniPreview } from "./LandingTemplateMiniPreview";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { APP_VERSION } from "@/lib/appVersion";
 
 interface Props {
   courseId: string;
@@ -159,7 +160,7 @@ export function LandingTemplatesGallery({ courseId, accentColor }: Props) {
 
           return (
             <article
-              key={tpl.id}
+              key={`${tpl.id}-${APP_VERSION}`}
               className={cn(
                 "group relative flex flex-col rounded-2xl border bg-card overflow-hidden transition-all hover:shadow-lg hover:-translate-y-0.5",
                 isActive ? "border-primary ring-2 ring-primary/30" : "border-border hover:border-primary/40",
