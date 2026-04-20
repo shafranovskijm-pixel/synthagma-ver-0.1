@@ -26,9 +26,19 @@ interface CourseLandingEditorContentProps { courseId: string; embedded?: boolean
 
 export function CourseLandingEditorContent({ courseId, embedded = false }: CourseLandingEditorContentProps) {
   const h = useLandingEditor(courseId);
+  const [themePanelOpen, setThemePanelOpen] = useState(false);
 
   if (h.loading) return <div className="min-h-screen flex items-center justify-center"><SigmaSpinner size="lg" /></div>;
   if (!h.course) return null;
+
+  const themeFromContent: Partial<LandingTheme> | undefined = (h.course?.landing_content as any)?.theme;
+
+  const handleThemeChange = (next: LandingTheme) => {
+    h.setCourse((c: any) => c ? {
+      ...c,
+      landing_content: { ...(c.landing_content ?? {}), theme: next },
+    } : c);
+  };
 
   const renderSection = (sectionId: string, index: number) => {
     const isHidden = h.landing.sections_hidden.includes(sectionId);
