@@ -8,6 +8,7 @@ import {
   getSectionBackgroundImage,
   radiusValue,
 } from "@/lib/landing-templates/themeTokens";
+import { getTemplateStyle } from "@/lib/landing-templates/templateStyles";
 import { cn } from "@/lib/utils";
 
 interface LandingThemeContextValue {
@@ -22,6 +23,16 @@ const LandingThemeContext = createContext<LandingThemeContextValue>({
 
 export function useLandingTheme() {
   return useContext(LandingThemeContext);
+}
+
+/**
+ * Возвращает per-template скин (CSS-классы карточек/кнопок/заголовков) для
+ * текущего шаблона. Если `template_id` не задан — вернёт нейтральные пустые
+ * классы и компонент использует базовые токены темы.
+ */
+export function useTemplateStyle() {
+  const { theme } = useContext(LandingThemeContext);
+  return getTemplateStyle(theme.template_id);
 }
 
 interface Props {
