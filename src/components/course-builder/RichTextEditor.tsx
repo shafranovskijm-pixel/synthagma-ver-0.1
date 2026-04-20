@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { textColorPresets, bgColorPresets, bgColorDotStyles, wrapCalloutTargets, wrapOtherTargets, quickStyles } from "./block-editor/types";
 import type { BlockType, ContentBlock, StylePreset } from "./block-editor/types";
 import { extractStyle, describeStyle } from "./block-editor/utils";
+import { sanitizeRichHtml as sanitize, linkifyHtml as linkify, normalizeRichLineBreaks, finalizeRichHtml } from "./rich-text/htmlSanitize";
 import { toast } from "sonner";
 
 interface RichTextEditorProps {
