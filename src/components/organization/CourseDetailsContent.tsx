@@ -1,4 +1,6 @@
-import React, { lazy, Suspense } from "react";
+import React, { lazy, Suspense, useRef, useState } from "react";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { MoreVertical, ImagePlus, Wand2 } from "lucide-react";
 import { useOrgFeatures } from "@/hooks/useOrgFeatures";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
