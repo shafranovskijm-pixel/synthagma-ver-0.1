@@ -180,7 +180,8 @@ export function useCourseBuilder(propCourseId?: string) {
     if (!hasUnsavedChanges || !isDataLoaded) return;
     saveDraftToLocal(courseId, courseTitle, courseDescription, lessons);
     if (draftTimerRef.current) clearTimeout(draftTimerRef.current);
-    draftTimerRef.current = setTimeout(() => { saveCourse(true); }, 3000);
+    // Уменьшен debounce: 1.5с вместо 3с — данные сохраняются быстрее
+    draftTimerRef.current = setTimeout(() => { saveCourse(true); }, 1500);
     return () => { if (draftTimerRef.current) clearTimeout(draftTimerRef.current); };
   }, [hasUnsavedChanges, courseTitle, courseDescription, lessons]);
 
