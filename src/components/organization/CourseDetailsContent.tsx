@@ -145,7 +145,7 @@ export function CourseDetailsContent({ course, courseStudents, organizationId, a
   };
 
   const currentGroupDef = TAB_GROUPS.find(g => g.key === activeGroup);
-  const showSubTabs = !!currentGroupDef && currentGroupDef.subTabs.length > 0;
+  const showSubTabs = !!currentGroupDef && currentGroupDef.subTabs.length > 1;
 
   return (
     <>
