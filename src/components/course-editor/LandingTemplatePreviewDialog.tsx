@@ -112,7 +112,7 @@ export function LandingTemplatePreviewDialog({
           <LandingReviewsSection
             key={id}
             title={data.reviews.title}
-            items={data.reviews.items}
+            reviews={data.reviews.items}
           />
         );
       case "pricing":
@@ -140,6 +140,8 @@ export function LandingTemplatePreviewDialog({
             key={id}
             title={data.cta.title}
             subtitle={data.cta.subtitle}
+            accentColor={accentColor}
+            price={price}
           />
         );
       // teachers и program не показываем в preview шаблона — они зависят от данных курса
