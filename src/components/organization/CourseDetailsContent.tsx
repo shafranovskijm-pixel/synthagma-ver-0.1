@@ -94,7 +94,7 @@ export function CourseDetailsContent({ course, courseStudents, organizationId, a
 
         {/* Horizontal tab bar: Обучение | Настройки */}
         <div className="px-3 sm:px-6 pb-3">
-          <div className="flex items-center gap-1 overflow-x-auto no-scrollbar bg-background/40 backdrop-blur-sm rounded-xl p-1.5 border border-border/40">
+          <div className="flex items-center gap-1 overflow-x-auto bg-background/40 backdrop-blur-sm rounded-xl p-1.5 border border-border/40">
             {learningTabs.map(item => (
               <button
                 key={item.value}
