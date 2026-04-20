@@ -39,7 +39,8 @@ export interface LandingTheme {
     | "highlight-middle"
     | "hero-focus"
     | "language-levels"
-    | "package-json";
+    | "package-json"
+    | "aurora-spotlight";
   audience_layout:
     | "grid"
     | "icons-row"
@@ -54,7 +55,8 @@ export interface LandingTheme {
     | "carousel-mini"
     | "postcards"
     | "commit-log"
-    | "protocols";
+    | "protocols"
+    | "aurora-quotes";
   /** Расширенные layout-опции pricing для уникальных шаблонов */
   pricing_layout_ext?: "package-json" | "language-levels" | "hero-focus";
   benefits_layout:
@@ -63,9 +65,10 @@ export interface LandingTheme {
     | "petals"
     | "blueprint-list"
     | "code-stack"
-    | "route-stamps";
+    | "route-stamps"
+    | "aurora-showcase";
   /** Layout секции FAQ. По умолчанию — обычный аккордеон. */
-  faq_layout?: "default" | "console" | "paper-cards" | "regulation";
+  faq_layout?: "default" | "console" | "paper-cards" | "regulation" | "aurora-glass";
   /** Layout секции CTA. По умолчанию — стандартная форма. */
   cta_layout?: "default" | "terminal" | "beauty-banner" | "editorial-travel" | "stamped-form" | "shimmer-panel";
   /**
