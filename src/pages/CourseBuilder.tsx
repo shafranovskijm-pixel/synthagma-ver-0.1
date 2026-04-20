@@ -42,7 +42,9 @@ export default function CourseBuilder({ embedded, embeddedCourseId, onExitEditor
     sensors, handleDragEnd, saveCourse, autoSaveStatus,
     courseId: resolvedCourseId,
     organizationId,
-    activeLessonId, setActiveLessonId, scrollToLesson } = useCourseBuilder(embeddedCourseId);
+    activeLessonId, setActiveLessonId, scrollToLesson,
+    modules, createModule, renameModule, deleteModule, toggleModuleCollapsed,
+    collapseAllModules, expandAllModules } = useCourseBuilder(embeddedCourseId);
 
   const {
     isReviewing, reviewResult, activeFindings, dismissedIds,
