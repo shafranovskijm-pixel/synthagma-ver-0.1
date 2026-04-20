@@ -406,8 +406,8 @@ export function useCourseBuilder(propCourseId?: string) {
         if (error) throw error; savedCourseId = newCourse.id; setSavedCourseIdState(newCourse.id); window.history.replaceState(null, '', `/course-builder/${savedCourseId}`);
       }
       const { data: existing } = await supabase.from("lessons").select("id").eq("id", lesson.id).maybeSingle();
-      if (existing) { const { error } = await supabase.from("lessons").update({ title: lesson.title, type: lesson.type, content: lesson.content || null, order_index: orderIndex, test_passing_score: lesson.testPassingScore ?? 60, test_questions_to_show: lesson.testQuestionsToShow ?? null }).eq("id", lesson.id); if (error) throw error; toast.success("Лекция обновлена"); }
-      else { const { error } = await supabase.from("lessons").insert({ id: lesson.id, course_id: savedCourseId, title: lesson.title, type: lesson.type, content: lesson.content || null, order_index: orderIndex, test_passing_score: lesson.testPassingScore ?? 60, test_questions_to_show: lesson.testQuestionsToShow ?? null }); if (error) throw error; toast.success("Лекция сохранена"); }
+      if (existing) { const { error } = await supabase.from("lessons").update({ title: lesson.title, type: lesson.type, content: lesson.content || null, order_index: orderIndex, test_passing_score: lesson.testPassingScore ?? 60, test_questions_to_show: lesson.testQuestionsToShow ?? null, module_id: lesson.module_id ?? null }).eq("id", lesson.id); if (error) throw error; toast.success("Лекция обновлена"); }
+      else { const { error } = await supabase.from("lessons").insert({ id: lesson.id, course_id: savedCourseId, title: lesson.title, type: lesson.type, content: lesson.content || null, order_index: orderIndex, test_passing_score: lesson.testPassingScore ?? 60, test_questions_to_show: lesson.testQuestionsToShow ?? null, module_id: lesson.module_id ?? null }); if (error) throw error; toast.success("Лекция сохранена"); }
     } catch (error: unknown) { toast.error("Ошибка сохранения: " + (error instanceof Error ? error.message : String(error))); }
     finally { setIsSaving(false); }
   };
@@ -422,5 +422,8 @@ export function useCourseBuilder(propCourseId?: string) {
     updateLesson, deleteLesson, toggleLesson,
     sensors, handleDragEnd, saveCourse, saveSingleLesson, organizationId,
     activeLessonId, setActiveLessonId, scrollToLesson, expandLesson,
+    // Modules
+    modules, createModule, renameModule, deleteModule, toggleModuleCollapsed,
+    reorderModules, moveLessonToModule, collapseAllModules, expandAllModules,
   };
 }
