@@ -10,12 +10,14 @@ import { DemoLinksManager } from './sales/DemoLinksManager';
 import { CompanyCard } from './sales/CompanyCard';
 import { DocumentSigning } from './sales/DocumentSigning';
 import { SalesSidebar } from './sales/SalesSidebar';
+import { CompaniesDatabase } from './sales/CompaniesDatabase';
 
 const TABS: Record<string, React.ReactNode> = {
   proposals: <CommercialProposals />,
   services: <SalesServices />,
   managers: <SalesManagersList />,
   leads: <LeadsManager />,
+  'companies-db': <CompaniesDatabase />,
   contracts: <SalesContracts />,
   signing: <DocumentSigning />,
   control: <SalesControlPanel />,

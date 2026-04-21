@@ -1,11 +1,12 @@
-import { FileText, Package, Users, Building2, BarChart3, ScrollText, GitCompareArrows, Link2, CreditCard, PenTool } from 'lucide-react';
+import { FileText, Package, Users, Building2, BarChart3, ScrollText, GitCompareArrows, Link2, CreditCard, PenTool, Database } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const menuItems = [
   { id: 'proposals', label: 'КП', icon: FileText },
   { id: 'services', label: 'Услуги', icon: Package },
   { id: 'managers', label: 'Менеджеры', icon: Users },
-  { id: 'leads', label: 'База компаний', icon: Building2 },
+  { id: 'leads', label: 'Лиды', icon: Building2 },
+  { id: 'companies-db', label: 'База компаний', icon: Database },
   { id: 'contracts', label: 'Договоры', icon: ScrollText },
   { id: 'signing', label: 'Подписание', icon: PenTool },
   { id: 'control', label: 'Контроль', icon: BarChart3 },
