@@ -1,18 +1,23 @@
 import { useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
-import { Mail, Settings, Users, FileText, Briefcase, FileCode, Sparkles } from "lucide-react";
+import { Mail, Settings, Users, FileText, Briefcase, FileCode, Sparkles, Boxes } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { OrgEmailCampaigns } from "./OrgEmailCampaigns";
 import { OrgSmtpSettings } from "./OrgSmtpSettings";
+import { OrgServicesManager } from "./OrgServicesManager";
+import { OrgProposalsManager } from "./OrgProposalsManager";
+import { OrgContractsManager } from "./OrgContractsManager";
+import { EmailTemplatesManager } from "@/components/shared/sales/EmailTemplatesManager";
 import { useOrgDashboard } from "@/contexts/OrgDashboardContext";
 
-type Section = "campaigns" | "templates" | "proposals" | "contracts" | "leads" | "smtp";
+type Section = "campaigns" | "templates" | "proposals" | "services" | "contracts" | "leads" | "smtp";
 
 const sections: { id: Section; label: string; icon: any; soon?: boolean }[] = [
   { id: "campaigns", label: "Рассылки", icon: Mail },
-  { id: "templates", label: "Шаблоны писем", icon: FileCode, soon: true },
-  { id: "proposals", label: "КП", icon: FileText, soon: true },
-  { id: "contracts", label: "Договоры", icon: Briefcase, soon: true },
+  { id: "templates", label: "Шаблоны писем", icon: FileCode },
+  { id: "proposals", label: "КП", icon: FileText },
+  { id: "services", label: "Каталог услуг", icon: Boxes },
+  { id: "contracts", label: "Договоры", icon: Briefcase },
   { id: "leads", label: "Лиды", icon: Users, soon: true },
   { id: "smtp", label: "SMTP", icon: Settings },
 ];
@@ -61,12 +66,16 @@ export function OrgSalesLayout() {
       {section === "campaigns" && (
         <OrgEmailCampaigns organizationId={organizationId} onGoToSmtp={() => setSection("smtp")} />
       )}
+      {section === "templates" && <EmailTemplatesManager scope="org" organizationId={organizationId} />}
+      {section === "services" && <OrgServicesManager organizationId={organizationId} />}
+      {section === "proposals" && <OrgProposalsManager organizationId={organizationId} onGoToSmtp={() => setSection("smtp")} />}
+      {section === "contracts" && <OrgContractsManager organizationId={organizationId} />}
       {section === "smtp" && <OrgSmtpSettings organizationId={organizationId} />}
-      {(section === "templates" || section === "proposals" || section === "contracts" || section === "leads") && (
+      {section === "leads" && (
         <Card>
           <CardContent className="p-8 text-center text-muted-foreground space-y-2">
-            <p className="font-medium">Раздел в разработке</p>
-            <p className="text-sm">Шаблоны писем, КП и договоры через документооборот появятся в следующем релизе. База данных уже готова.</p>
+            <p className="font-medium">Лиды — следующий релиз</p>
+            <p className="text-sm">Канбан-доска лидов с интеграцией в КП появится в ближайшем обновлении.</p>
           </CardContent>
         </Card>
       )}
