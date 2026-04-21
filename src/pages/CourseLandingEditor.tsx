@@ -103,6 +103,7 @@ export function CourseLandingEditorContent({ courseId, embedded = false }: Cours
           <h3 className="font-semibold">Редактор страницы курса</h3>
           <div className="flex items-center gap-2">
             <Button variant="outline" size="sm" onClick={() => setThemePanelOpen(true)} className="gap-1.5"><Palette className="w-4 h-4" />Оформление</Button>
+            <Button variant="outline" size="sm" onClick={() => setRegistrationPanelOpen(true)} className="gap-1.5"><UserPlus className="w-4 h-4" />Регистрация</Button>
             <Button variant="outline" size="sm" onClick={() => h.openAIDialog(null)} className="gap-1.5"><Sparkles className="w-4 h-4" />ИИ</Button>
             <Button variant="outline" size="sm" onClick={() => window.open(h.publicUrl, "_blank")} className="gap-1.5"><ExternalLink className="w-4 h-4" />Просмотр</Button>
             <Button size="sm" onClick={h.handleSave} disabled={h.saving} className="gap-1.5">{h.saving ? <SigmaSpinner size="sm" /> : <Save className="w-4 h-4" />}Сохранить</Button>
@@ -114,6 +115,7 @@ export function CourseLandingEditorContent({ courseId, embedded = false }: Cours
         </LandingThemeProvider>
         {aiDialog}
         {themePanel}
+        {registrationPanel}
       </div>
     );
   }
@@ -128,6 +130,7 @@ export function CourseLandingEditorContent({ courseId, embedded = false }: Cours
           </div>
           <div className="flex items-center gap-2">
             <Button variant="outline" size="sm" onClick={() => setThemePanelOpen(true)} className="gap-1.5"><Palette className="w-4 h-4" /><span className="hidden sm:inline">Оформление</span></Button>
+            <Button variant="outline" size="sm" onClick={() => setRegistrationPanelOpen(true)} className="gap-1.5"><UserPlus className="w-4 h-4" /><span className="hidden sm:inline">Регистрация</span></Button>
             <Button variant="outline" size="sm" onClick={() => h.openAIDialog(null)} className="gap-1.5"><Sparkles className="w-4 h-4" /><span className="hidden sm:inline">Сгенерировать с ИИ</span></Button>
             <Button variant="outline" size="sm" onClick={() => window.open(h.publicUrl, "_blank")} className="gap-1.5"><ExternalLink className="w-4 h-4" /><span className="hidden sm:inline">Просмотр</span></Button>
             <Button size="sm" onClick={h.handleSave} disabled={h.saving} className="gap-1.5">{h.saving ? <SigmaSpinner size="sm" /> : <Save className="w-4 h-4" />}Сохранить</Button>
@@ -140,6 +143,7 @@ export function CourseLandingEditorContent({ courseId, embedded = false }: Cours
       </LandingThemeProvider>
       {aiDialog}
       {themePanel}
+      {registrationPanel}
     </div>
   );
 }
