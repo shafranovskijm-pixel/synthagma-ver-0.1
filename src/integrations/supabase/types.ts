@@ -1306,6 +1306,44 @@ export type Database = {
           },
         ]
       }
+      course_landing_history: {
+        Row: {
+          course_id: string
+          created_at: string
+          created_by: string | null
+          id: string
+          organization_id: string
+          snapshot: Json
+          source: string | null
+        }
+        Insert: {
+          course_id: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          organization_id: string
+          snapshot: Json
+          source?: string | null
+        }
+        Update: {
+          course_id?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          organization_id?: string
+          snapshot?: Json
+          source?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "course_landing_history_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "courses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       course_modules: {
         Row: {
           course_id: string
@@ -7075,6 +7113,10 @@ export type Database = {
       become_referral_partner:
         | { Args: never; Returns: string }
         | { Args: { p_referred_by?: string }; Returns: string }
+      can_use_template: {
+        Args: { p_plan: string; p_tier: string }
+        Returns: boolean
+      }
       count_org_completions_this_month: {
         Args: { org_id: string }
         Returns: number
