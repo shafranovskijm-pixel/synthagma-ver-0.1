@@ -82,9 +82,11 @@ export default function CourseLanding() {
   const [promoDiscount, setPromoDiscount] = useState<{ value: number; type: string } | null>(null);
   const [promoChecking, setPromoChecking] = useState(false);
   const [hasPendingRequest, setHasPendingRequest] = useState(false);
+  const [justSubmitted, setJustSubmitted] = useState(false);
 
   const landingContent = course?.landing_content as Record<string, any> | null;
   const analytics = landingContent?.analytics;
+  const enrollmentConfig = getEnrollmentConfig(landingContent);
   useAnalytics(analytics);
 
   useEffect(() => {
@@ -159,12 +161,46 @@ export default function CourseLanding() {
     return Math.max(0, course.price - promoDiscount.value);
   };
 
-  const handleEnroll = async (formData?: { name: string; email: string; phone: string }) => {
+  const handleEnroll = async (formData?: { name: string; email: string; phone: string; extra?: Record<string, string> }) => {
+    if (!course) return;
+
+    // ── Режим INSTANT — самозачисление через edge-функцию (не требует логина) ──
+    if (enrollmentConfig.mode === "instant" && formData?.email && formData?.name) {
+      try {
+        const { data, error } = await supabase.functions.invoke("landing-self-enroll", {
+          body: {
+            course_id: course.id,
+            full_name: formData.name,
+            email: formData.email,
+            phone: formData.phone || undefined,
+            extra: formData.extra,
+            consent: true,
+          },
+        });
+        if (error) throw error;
+        if ((data as any)?.error) {
+          toast.error((data as any).error);
+          return;
+        }
+        // Редирект на success_url, если задан
+        if (enrollmentConfig.success_url) {
+          window.location.href = enrollmentConfig.success_url;
+          return;
+        }
+        setJustSubmitted(true);
+        toast.success((data as any)?.message || "Вы зачислены на курс");
+      } catch (e: any) {
+        console.error("self-enroll error:", e);
+        toast.error("Не удалось завершить запись", { description: e.message });
+      }
+      return;
+    }
+
+    // ── Режим REQUEST / PAYMENT — старая логика заявки ─────────
     if (!user) {
       navigate("/login");
       return;
     }
-    if (!course) return;
 
     const finalPrice = promoDiscount ? getDiscountedPrice() : course.price;
 
@@ -178,8 +214,6 @@ export default function CourseLanding() {
           .maybeSingle();
 
         const studentName = formData?.name || profile?.full_name || profile?.email || "Ученик";
-        const studentEmail = formData?.email || profile?.email || "";
-        const studentPhone = formData?.phone || "";
 
         const { data: existingRequest } = await supabase
           .from("enrollment_requests")
