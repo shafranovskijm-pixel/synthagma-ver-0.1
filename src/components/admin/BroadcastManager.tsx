@@ -15,6 +15,7 @@ import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 import { getEmailHtml, getEmailSubject } from "./broadcast/emailTemplates";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { CampaignsManager } from "./broadcast/CampaignsManager";
+import { EmailTemplatesManager } from "@/components/shared/sales/EmailTemplatesManager";
 
 interface Announcement {
   id: string;
@@ -239,10 +240,14 @@ export function BroadcastManager() {
       <Tabs defaultValue="campaigns" className="w-full">
         <TabsList>
           <TabsTrigger value="campaigns">Email-кампании</TabsTrigger>
+          <TabsTrigger value="templates">Шаблоны писем</TabsTrigger>
           <TabsTrigger value="legacy">Уведомления и быстрые письма</TabsTrigger>
         </TabsList>
         <TabsContent value="campaigns" className="mt-4">
           <CampaignsManager scope="platform" organizationId={null} />
+        </TabsContent>
+        <TabsContent value="templates" className="mt-4">
+          <EmailTemplatesManager scope="platform" organizationId={null} />
         </TabsContent>
         <TabsContent value="legacy" className="mt-4 space-y-6">
       {/* Original announcements section */}

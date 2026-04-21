@@ -17,6 +17,8 @@ serve(async (req: Request) => {
   try {
     const url = new URL(req.url);
     const token = url.searchParams.get("t");
+    const purpose = url.searchParams.get("purpose") || "campaign";
+
     if (!token) {
       return new Response(TRACKING_PIXEL, {
         headers: { ...corsHeaders, "Content-Type": "image/gif", "Cache-Control": "no-store" },
@@ -27,25 +29,51 @@ serve(async (req: Request) => {
     const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const admin = createClient(SUPABASE_URL, SERVICE_KEY);
 
-    const { data: rec } = await admin
-      .from("email_campaign_recipients")
-      .select("id, campaign_id, opened_at, status")
-      .eq("open_token", token)
-      .maybeSingle();
+    if (purpose === "signing") {
+      // Открытие письма с договором/подписанием
+      const { data: sig } = await admin
+        .from("document_signatures")
+        .select("id, email_opened_at")
+        .eq("email_open_token", token)
+        .maybeSingle();
+      if (sig && !sig.email_opened_at) {
+        await admin.from("document_signatures").update({
+          email_opened_at: new Date().toISOString(),
+        }).eq("id", sig.id);
+      }
+    } else if (purpose === "proposal") {
+      // Открытие письма с КП
+      const { data: prop } = await admin
+        .from("commercial_proposals")
+        .select("id, status")
+        .eq("id", token)
+        .maybeSingle();
+      if (prop && prop.status === "sent") {
+        await admin.from("commercial_proposals").update({
+          status: "viewed",
+        }).eq("id", prop.id);
+      }
+    } else {
+      // Открытие письма из кампании рассылки
+      const { data: rec } = await admin
+        .from("email_campaign_recipients")
+        .select("id, campaign_id, opened_at, status")
+        .eq("open_token", token)
+        .maybeSingle();
 
-    if (rec && !rec.opened_at) {
-      await admin.from("email_campaign_recipients").update({
-        opened_at: new Date().toISOString(),
-        status: rec.status === "sent" ? "opened" : rec.status,
-      }).eq("id", rec.id);
+      if (rec && !rec.opened_at) {
+        await admin.from("email_campaign_recipients").update({
+          opened_at: new Date().toISOString(),
+          status: rec.status === "sent" ? "opened" : rec.status,
+        }).eq("id", rec.id);
 
-      // Инкрементируем open_count в кампании
-      const { data: camp } = await admin
-        .from("email_campaigns").select("open_count").eq("id", rec.campaign_id).maybeSingle();
-      if (camp) {
-        await admin.from("email_campaigns").update({
-          open_count: (camp.open_count || 0) + 1,
-        }).eq("id", rec.campaign_id);
+        const { data: camp } = await admin
+          .from("email_campaigns").select("open_count").eq("id", rec.campaign_id).maybeSingle();
+        if (camp) {
+          await admin.from("email_campaigns").update({
+            open_count: (camp.open_count || 0) + 1,
+          }).eq("id", rec.campaign_id);
+        }
       }
     }
 
