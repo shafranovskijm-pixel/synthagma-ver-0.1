@@ -246,6 +246,7 @@ export async function exportFRDOExcel(
   const headers = exportType === "dpo" ? DPO_HEADERS : PO_HEADERS;
   const validations = exportType === "dpo" ? DPO_VALIDATIONS : PO_VALIDATIONS;
 
+  const { default: ExcelJS } = await import("exceljs");
   const workbook = new ExcelJS.Workbook();
   const worksheet = workbook.addWorksheet("Шаблон");
 
