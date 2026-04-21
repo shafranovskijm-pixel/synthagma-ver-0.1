@@ -61,7 +61,7 @@ const TAB_TITLES: Record<AdminTabType, string> = {
   devtools: "Developer Tools",
   updates: "Обновления",
   settings: "Настройки",
-  storage: "Хранилище и Kinescope",
+  "webinars-admin": "Вебинары",
   staff: "Сотрудники" };
 
 function getInitials(email?: string): string {

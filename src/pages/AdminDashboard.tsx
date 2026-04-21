@@ -22,7 +22,7 @@ import { PlatformUpdatesManager } from "@/components/admin/PlatformUpdatesManage
 import { AdminBillingOverview } from "@/components/admin/AdminBillingOverview";
 import { AdminFinanceOverview } from "@/components/admin/AdminFinanceOverview";
 import { AdminStaffTab } from "@/components/admin/AdminStaffTab";
-import { AdminStorageOverview } from "@/components/admin/AdminStorageOverview";
+import { AdminWebinarsOverview } from "@/components/admin/AdminWebinarsOverview";
 import { useAdminBranding } from "@/hooks/useAdminBranding";
 import { supabase } from "@/integrations/supabase/client";
 import { getStoredThemeId, getThemeById, type AdminTheme } from "@/constants/admin-themes";
@@ -184,7 +184,7 @@ const AdminDashboard = () => {
           
           {activeTab === "devtools" && <DevToolsPanel />}
           {activeTab === "updates" && <PlatformUpdatesManager />}
-          {activeTab === "storage" && <AdminStorageOverview />}
+          {activeTab === "webinars-admin" && <AdminWebinarsOverview />}
           {activeTab === "settings" && <AdminSettings />}
         </div>
 

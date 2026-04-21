@@ -62,11 +62,6 @@ export interface OrgDocument {
 export interface UsageData {
   storage_bytes: number;
   ai_generations_count: number;
-  // Kinescope split (optional, fetched separately)
-  kinescope_bytes?: number;
-  kinescope_seconds?: number;
-  kinescope_videos_count?: number;
-  kinescope_estimated_rub?: number;
 }
 
 export interface UsageHistoryItem {
@@ -90,10 +85,6 @@ export function useOrgDetailsView(organization: Organization) {
   const [usage, setUsage] = useState<UsageData>({
     storage_bytes: 0,
     ai_generations_count: 0,
-    kinescope_bytes: 0,
-    kinescope_seconds: 0,
-    kinescope_videos_count: 0,
-    kinescope_estimated_rub: 0,
   });
   const [usageHistory, setUsageHistory] = useState<UsageHistoryItem[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
@@ -294,29 +285,9 @@ export function useOrgDetailsView(organization: Organization) {
       }
     } catch { /* external not configured */ }
 
-    // Kinescope storage for this organization
-    let kBytes = 0, kSec = 0, kCount = 0, kRub = 0;
-    try {
-      const { data: kData } = await safeInvoke<any>("kinescope-storage-stats", {
-        body: { organization_id: organization.id },
-      });
-      if (kData && !kData.error) {
-        kBytes = kData.total_bytes || 0;
-        kSec = kData.total_seconds || 0;
-        kCount = kData.videos_count || 0;
-        kRub = kData.billing?.total_rub || 0;
-      }
-    } catch (e) {
-      console.warn("Kinescope stats unavailable:", e);
-    }
-
     setUsage({
-      storage_bytes: totalBytes + kBytes,
+      storage_bytes: totalBytes,
       ai_generations_count: aiCount,
-      kinescope_bytes: kBytes,
-      kinescope_seconds: kSec,
-      kinescope_videos_count: kCount,
-      kinescope_estimated_rub: kRub,
     });
   }, [organization.id]);
 
