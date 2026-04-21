@@ -152,6 +152,9 @@ export function useStudentDetailCardLogic({
   const [newLogin, setNewLogin] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [isUpdatingCredentials, setIsUpdatingCredentials] = useState(false);
+  const [isEditingName, setIsEditingName] = useState(false);
+  const [newFullName, setNewFullName] = useState("");
+  const [isUpdatingName, setIsUpdatingName] = useState(false);
   const [copiedField, setCopiedField] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
   const [isSendingReminder, setIsSendingReminder] = useState(false);
@@ -217,6 +220,29 @@ export function useStudentDetailCardLogic({
       toast.success("Учетные данные обновлены"); setIsEditingCredentials(false); setNewLogin(""); setNewPassword(""); onStudentUpdated?.();
     } catch (error: unknown) { toast.error(error instanceof Error ? error.message : "Ошибка обновления"); }
     finally { setIsUpdatingCredentials(false); }
+  };
+
+  const handleUpdateFullName = async () => {
+    if (!student) return;
+    const trimmed = (newFullName || "").trim();
+    if (!trimmed) { toast.error("ФИО не может быть пустым"); return; }
+    if (trimmed.length > 100) { toast.error("ФИО не должно превышать 100 символов"); return; }
+    setIsUpdatingName(true);
+    try {
+      const { error } = await supabase
+        .from("profiles")
+        .update({ full_name: trimmed })
+        .eq("user_id", student.user_id);
+      if (error) throw error;
+      toast.success("ФИО обновлено");
+      setIsEditingName(false);
+      onStudentUpdated?.();
+    } catch (error: unknown) {
+      console.error("Update full_name error:", error);
+      toast.error(error instanceof Error ? error.message : "Ошибка обновления ФИО");
+    } finally {
+      setIsUpdatingName(false);
+    }
   };
 
   const handleUploadClick = (docType: string) => { setSelectedDocType(docType); fileInputRef.current?.click(); };
@@ -331,6 +357,7 @@ export function useStudentDetailCardLogic({
     viewConsentDialog, setViewConsentDialog,
     isEditingCredentials, setIsEditingCredentials, newLogin, setNewLogin, newPassword, setNewPassword,
     isUpdatingCredentials, copiedField, showPassword, setShowPassword,
+    isEditingName, setIsEditingName, newFullName, setNewFullName, isUpdatingName, handleUpdateFullName,
     handleUpdateCredentials, copyToClipboard,
     handleUploadClick, handleFileChange, handleDeleteIdentityDoc, handlePreviewDoc, handleDownloadDoc,
     formatDate, formatDuration, latestConsent, latestVerification, getIdentityDocByType, getMissingDocuments,
