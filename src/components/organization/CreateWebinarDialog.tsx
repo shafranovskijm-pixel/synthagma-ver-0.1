@@ -38,8 +38,11 @@ export function CreateWebinarDialog({ open, onOpenChange, organizationId, userId
   const [description, setDescription] = useState("");
   const [scheduledAt, setScheduledAt] = useState("");
   const [durationMinutes, setDurationMinutes] = useState("60");
-  const [sourceType, setSourceType] = useState<"livekit" | "external">("livekit");
+  const [sourceType, setSourceType] = useState<"livekit" | "external" | "kinescope">("livekit");
   const [externalUrl, setExternalUrl] = useState("");
+  const [kinescopeEmbedId, setKinescopeEmbedId] = useState("");
+  const [kinescopeRtmpUrl, setKinescopeRtmpUrl] = useState("");
+  const [kinescopeRtmpKey, setKinescopeRtmpKey] = useState("");
   const [coverUrl, setCoverUrl] = useState("");
   const [courseId, setCourseId] = useState<string>("none");
   const [saving, setSaving] = useState(false);
@@ -65,6 +68,9 @@ export function CreateWebinarDialog({ open, onOpenChange, organizationId, userId
       setDurationMinutes(String(editWebinar.duration_minutes || 60));
       setSourceType((editWebinar.source_type as any) || "livekit");
       setExternalUrl(editWebinar.external_url || "");
+      setKinescopeEmbedId((editWebinar as any).kinescope_live_id || "");
+      setKinescopeRtmpUrl((editWebinar as any).rtmp_url || "");
+      setKinescopeRtmpKey((editWebinar as any).rtmp_key || "");
       setCoverUrl(editWebinar.cover_url || "");
       setCourseId(editWebinar.course_id || "none");
     } else if (open && !editWebinar) {
@@ -79,12 +85,18 @@ export function CreateWebinarDialog({ open, onOpenChange, organizationId, userId
     setDurationMinutes("60");
     setSourceType("livekit");
     setExternalUrl("");
+    setKinescopeEmbedId("");
+    setKinescopeRtmpUrl("");
+    setKinescopeRtmpKey("");
     setCoverUrl("");
     setCourseId("none");
   };
 
   const handleSubmit = async () => {
     if (!title.trim()) { toast.error("Введите название"); return; }
+    if (!isEdit && sourceType === "kinescope" && !kinescopeEmbedId.trim()) {
+      toast.error("Введите Kinescope Embed ID (создайте Live в Kinescope)"); return;
+    }
     setSaving(true);
 
     try {
@@ -99,6 +111,14 @@ export function CreateWebinarDialog({ open, onOpenChange, organizationId, userId
         if (editWebinar!.source_type === "external") {
           updateData.external_url = externalUrl.trim() || null;
           updateData.embed_url = externalUrl.trim() || null;
+        }
+        if (editWebinar!.source_type === "kinescope") {
+          updateData.kinescope_live_id = kinescopeEmbedId.trim() || null;
+          updateData.embed_url = kinescopeEmbedId.trim()
+            ? `https://kinescope.io/embed/${kinescopeEmbedId.trim()}`
+            : null;
+          updateData.rtmp_url = kinescopeRtmpUrl.trim() || null;
+          updateData.rtmp_key = kinescopeRtmpKey.trim() || null;
         }
         const { error } = await supabase.from("webinars").update(updateData as any).eq("id", editWebinar!.id);
         if (error) throw error;
@@ -124,6 +144,11 @@ export function CreateWebinarDialog({ open, onOpenChange, organizationId, userId
           webinarData.player_settings = {
             livekit: { roomName: data.roomName, wsUrl: data.wsUrl },
           };
+        } else if (sourceType === "kinescope") {
+          webinarData.kinescope_live_id = kinescopeEmbedId.trim();
+          webinarData.embed_url = `https://kinescope.io/embed/${kinescopeEmbedId.trim()}`;
+          webinarData.rtmp_url = kinescopeRtmpUrl.trim() || null;
+          webinarData.rtmp_key = kinescopeRtmpKey.trim() || null;
         } else {
           webinarData.external_url = externalUrl.trim() || null;
           webinarData.embed_url = externalUrl.trim() || null;
@@ -199,7 +224,8 @@ export function CreateWebinarDialog({ open, onOpenChange, organizationId, userId
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="livekit">Встроенный плеер LiveKit (рекомендуется)</SelectItem>
+                  <SelectItem value="livekit">Встроенный плеер LiveKit (браузер, без OBS)</SelectItem>
+                  <SelectItem value="kinescope">Kinescope Live (профи: RTMP + OBS, DRM, запись)</SelectItem>
                   <SelectItem value="external">Внешняя ссылка (Zoom, VK, Rutube, YouTube)</SelectItem>
                 </SelectContent>
               </Select>
@@ -211,6 +237,50 @@ export function CreateWebinarDialog({ open, onOpenChange, organizationId, userId
               Мы создадим комнату прямо в платформе. Подключение видео и звука происходит без перехода на сторонние сервисы.
             </p>
           )}
+
+          {((!isEdit && sourceType === "kinescope") || (isEdit && editWebinar?.source_type === "kinescope")) && (
+            <div className="space-y-3">
+              <div className="rounded-md bg-muted border border-border p-3 text-xs space-y-1">
+                <p className="font-medium">Создайте Live в дашборде Kinescope</p>
+                <p className="text-muted-foreground">
+                  Kinescope не позволяет создавать прямой эфир через API. Создайте Live вручную, скопируйте Embed ID и (опционально) RTMP-данные. Эфир ведите через OBS / vMix.
+                </p>
+                <a
+                  href="https://app.kinescope.io/lives"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-primary hover:underline"
+                >
+                  Открыть Kinescope Live →
+                </a>
+              </div>
+              <div>
+                <Label>Embed ID *</Label>
+                <Input
+                  value={kinescopeEmbedId}
+                  onChange={(e) => setKinescopeEmbedId(e.target.value)}
+                  placeholder="например: 3xxxxxxxxxxxxxxxxxxxxxxxx"
+                />
+              </div>
+              <div>
+                <Label>RTMP URL (опционально)</Label>
+                <Input
+                  value={kinescopeRtmpUrl}
+                  onChange={(e) => setKinescopeRtmpUrl(e.target.value)}
+                  placeholder="rtmps://live.kinescope.io/live"
+                />
+              </div>
+              <div>
+                <Label>Stream Key (опционально)</Label>
+                <Input
+                  value={kinescopeRtmpKey}
+                  onChange={(e) => setKinescopeRtmpKey(e.target.value)}
+                  placeholder="секретный ключ потока для OBS"
+                />
+              </div>
+            </div>
+          )}
+
           {((!isEdit && sourceType === "external") || (isEdit && editWebinar?.source_type === "external")) && (
             <div>
               <Label>Ссылка на трансляцию</Label>
