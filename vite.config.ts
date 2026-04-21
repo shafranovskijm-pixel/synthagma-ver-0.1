@@ -113,6 +113,37 @@ export default defineConfig(({ mode }) => ({
   },
   build: {
     chunkSizeWarningLimit: 2000,
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          // Core React vendor
+          "react-vendor": ["react", "react-dom", "react-router-dom"],
+          // Supabase client
+          "supabase-vendor": ["@supabase/supabase-js"],
+          // Data fetching / state
+          "query-vendor": ["@tanstack/react-query"],
+          // Heavy UI: Radix primitives
+          "radix-vendor": [
+            "@radix-ui/react-dialog",
+            "@radix-ui/react-dropdown-menu",
+            "@radix-ui/react-select",
+            "@radix-ui/react-tabs",
+            "@radix-ui/react-popover",
+            "@radix-ui/react-tooltip",
+            "@radix-ui/react-accordion",
+            "@radix-ui/react-checkbox",
+            "@radix-ui/react-switch",
+            "@radix-ui/react-toast",
+          ],
+          // Forms
+          "forms-vendor": ["react-hook-form", "@hookform/resolvers", "zod"],
+          // Charts (recharts is heavy)
+          "charts-vendor": ["recharts"],
+          // Icons
+          "icons-vendor": ["lucide-react"],
+        },
+      },
+    },
   },
   test: {
     globals: true,
