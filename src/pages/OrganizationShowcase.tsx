@@ -109,7 +109,8 @@ export default function OrganizationShowcase() {
   const canonicalUrl = `${getBaseUrl()}/o/${org.public_slug}`;
   const metaTitle = `${org.name} — каталог курсов`;
   const metaDesc = org.description?.slice(0, 160) || `Все курсы школы ${org.name}: программы обучения, повышение квалификации, профессиональная переподготовка`;
-  const ogImage = org.logo_url || "";
+  const orgLogo: string | null = org.branding?.logo_url || org.branding?.logo || null;
+  const ogImage = orgLogo || "";
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-background via-background to-muted/20">
