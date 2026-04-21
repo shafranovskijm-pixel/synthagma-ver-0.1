@@ -12,7 +12,6 @@ interface Org {
   id: string;
   name: string;
   public_slug: string | null;
-  logo_url: string | null;
   description: string | null;
 }
 
@@ -44,7 +43,7 @@ export default function OrganizationShowcase() {
       setLoading(true);
       const { data: orgData } = await supabase
         .from("organizations")
-        .select("id, name, public_slug, logo_url, description")
+        .select("id, name, public_slug, description")
         .eq("public_slug", slug)
         .maybeSingle();
 
@@ -100,7 +99,6 @@ export default function OrganizationShowcase() {
         <meta property="og:title" content={metaTitle} />
         <meta property="og:description" content={metaDesc} />
         <meta property="og:url" content={canonicalUrl} />
-        {org.logo_url && <meta property="og:image" content={org.logo_url} />}
       </Helmet>
 
       {/* Hero / Header */}
@@ -113,9 +111,6 @@ export default function OrganizationShowcase() {
         </button>
 
         <div className="max-w-5xl mx-auto text-center">
-          {org.logo_url && (
-            <img src={org.logo_url} alt={org.name} className="h-16 md:h-20 mx-auto mb-6 object-contain" loading="eager" />
-          )}
           <h1 className="text-3xl md:text-5xl font-bold mb-4 tracking-tight">{org.name}</h1>
           {org.description && (
             <p className="text-base md:text-lg text-muted-foreground max-w-2xl mx-auto">{org.description}</p>
