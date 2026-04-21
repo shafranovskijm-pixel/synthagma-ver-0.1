@@ -94,6 +94,9 @@ export function CreateWebinarDialog({ open, onOpenChange, organizationId, userId
 
   const handleSubmit = async () => {
     if (!title.trim()) { toast.error("Введите название"); return; }
+    if (!isEdit && sourceType === "kinescope" && !kinescopeEmbedId.trim()) {
+      toast.error("Введите Kinescope Embed ID (создайте Live в Kinescope)"); return;
+    }
     setSaving(true);
 
     try {
@@ -108,6 +111,14 @@ export function CreateWebinarDialog({ open, onOpenChange, organizationId, userId
         if (editWebinar!.source_type === "external") {
           updateData.external_url = externalUrl.trim() || null;
           updateData.embed_url = externalUrl.trim() || null;
+        }
+        if (editWebinar!.source_type === "kinescope") {
+          updateData.kinescope_live_id = kinescopeEmbedId.trim() || null;
+          updateData.embed_url = kinescopeEmbedId.trim()
+            ? `https://kinescope.io/embed/${kinescopeEmbedId.trim()}`
+            : null;
+          updateData.rtmp_url = kinescopeRtmpUrl.trim() || null;
+          updateData.rtmp_key = kinescopeRtmpKey.trim() || null;
         }
         const { error } = await supabase.from("webinars").update(updateData as any).eq("id", editWebinar!.id);
         if (error) throw error;
@@ -133,6 +144,11 @@ export function CreateWebinarDialog({ open, onOpenChange, organizationId, userId
           webinarData.player_settings = {
             livekit: { roomName: data.roomName, wsUrl: data.wsUrl },
           };
+        } else if (sourceType === "kinescope") {
+          webinarData.kinescope_live_id = kinescopeEmbedId.trim();
+          webinarData.embed_url = `https://kinescope.io/embed/${kinescopeEmbedId.trim()}`;
+          webinarData.rtmp_url = kinescopeRtmpUrl.trim() || null;
+          webinarData.rtmp_key = kinescopeRtmpKey.trim() || null;
         } else {
           webinarData.external_url = externalUrl.trim() || null;
           webinarData.embed_url = externalUrl.trim() || null;
