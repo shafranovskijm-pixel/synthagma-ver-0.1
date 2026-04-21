@@ -225,6 +225,43 @@ serve(async (req) => {
       }
     }
 
+    // ── Лид-магнит (PDF) на email — best-effort ───────────────
+    const leadMagnetUrl: string | undefined = enrollmentCfg.lead_magnet_url;
+    const leadMagnetLabel: string | undefined = enrollmentCfg.lead_magnet_label;
+    if (leadMagnetUrl) {
+      try {
+        await admin.functions.invoke("send-lead-magnet", {
+          body: {
+            email: body.email,
+            full_name: body.full_name,
+            organization_name: (orgData as any)?.name ?? "Школа",
+            file_url: leadMagnetUrl,
+            file_label: leadMagnetLabel ?? "Подарок",
+          },
+        });
+      } catch (e) {
+        console.warn("send-lead-magnet invoke err:", e);
+      }
+    }
+
+    // ── Telegram-уведомление организации — best-effort ────────
+    if (enrollmentCfg.notify_telegram !== false) {
+      try {
+        const courseTitle = ((course as any).landing_content?.hero?.title) || "(без названия)";
+        const message = `🎓 <b>Новая регистрация на лендинге</b>\n\n` +
+          `<b>Курс:</b> ${courseTitle}\n` +
+          `<b>Имя:</b> ${body.full_name}\n` +
+          `<b>Email:</b> ${body.email}\n` +
+          (body.phone ? `<b>Телефон:</b> ${body.phone}\n` : "") +
+          `<b>Режим:</b> мгновенное зачисление`;
+        await admin.functions.invoke("send-telegram-notification", {
+          body: { organization_id: course.organization_id, message },
+        });
+      } catch (e) {
+        console.warn("telegram notify err:", e);
+      }
+    }
+
     return json({
       ok: true,
       created_new: createdNew,

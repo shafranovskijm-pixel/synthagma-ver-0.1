@@ -52,6 +52,12 @@ export interface EnrollmentConfig {
   success_url?: string;
   /** Слать ли пароль на email при instant-режиме. */
   send_credentials_email: boolean;
+  /** URL PDF/файла-«лид-магнита», который высылается на email после сабмита. */
+  lead_magnet_url?: string;
+  /** Подпись для лид-магнита (например, «Чек-лист по охране труда.pdf»). */
+  lead_magnet_label?: string;
+  /** Слать ли уведомление в Telegram организации (включается отдельно в настройках школы). */
+  notify_telegram: boolean;
 }
 
 export const DEFAULT_ENROLLMENT_FIELDS: EnrollmentField[] = [
@@ -68,6 +74,9 @@ export const DEFAULT_ENROLLMENT_CONFIG: EnrollmentConfig = {
   consent_url: "/personal-data",
   success_message: "Спасибо! Ваша заявка принята.",
   send_credentials_email: true,
+  lead_magnet_url: undefined,
+  lead_magnet_label: undefined,
+  notify_telegram: true,
 };
 
 /** Безопасное чтение конфига с дефолтами. */
@@ -84,6 +93,9 @@ export function getEnrollmentConfig(landingContent: any): EnrollmentConfig {
     success_message: raw.success_message || DEFAULT_ENROLLMENT_CONFIG.success_message,
     success_url: raw.success_url || undefined,
     send_credentials_email: raw.send_credentials_email !== false,
+    lead_magnet_url: raw.lead_magnet_url || undefined,
+    lead_magnet_label: raw.lead_magnet_label || undefined,
+    notify_telegram: raw.notify_telegram !== false,
   };
 }
 

@@ -19,6 +19,7 @@ import { useOrgTheme, applyOrgTheme } from "@/hooks/useOrgTheme";
 import { AvatarLocationHint, OrgIconLocationHint, HintBlock } from "@/components/organization/BrandingHints";
 import { SettingsStudentDashboardTab } from "@/components/organization/SettingsStudentDashboardTab";
 import { StaffManager } from "@/components/organization/StaffManager";
+import { OrgShowcaseAndTelegramSection } from "@/components/organization/OrgShowcaseAndTelegramSection";
 
 interface ProfileData {
   full_name: string;
@@ -51,12 +52,13 @@ const DEFAULT_NOTIFS: NotifRow[] = [
   { key: "student_paid", label: "Ученик оплатил курс", platform: true, browser: true, email: true, telegram: false, app: false },
 ];
 
-type SectionKey = "profile" | "theme" | "branding" | "login-branding" | "signin" | "notifications" | "partner" | "menu" | "student-dashboard" | "staff";
+type SectionKey = "profile" | "theme" | "branding" | "showcase" | "login-branding" | "signin" | "notifications" | "partner" | "menu" | "student-dashboard" | "staff";
 
 const SECTIONS: { key: SectionKey; label: string; icon: React.ElementType; color: string }[] = [
   { key: "profile", label: "Мой профиль", icon: User, color: "text-blue-500" },
   { key: "theme", label: "Тема оформления", icon: Palette, color: "text-violet-500" },
   { key: "branding", label: "Брендирование", icon: ImageIcon, color: "text-teal-500" },
+  { key: "showcase", label: "Витрина и Telegram", icon: ShoppingBag, color: "text-fuchsia-500" },
   { key: "login-branding", label: "Бренд. страницы входа", icon: LogIn, color: "text-cyan-500" },
   { key: "signin", label: "Вход", icon: KeyRound, color: "text-orange-500" },
   { key: "notifications", label: "Уведомления", icon: Bell, color: "text-amber-500" },
@@ -607,6 +609,9 @@ export function OrgProfileTab({ organizationId, initialSubTab }: ProfileTabProps
         return user?.id
           ? <ProfileBrandingTab organizationId={organizationId} userId={user.id} />
           : <div className="text-center py-16 text-muted-foreground">Организация не найдена</div>;
+
+      case "showcase":
+        return <OrgShowcaseAndTelegramSection organizationId={organizationId} />;
 
       case "login-branding":
         return user?.id
