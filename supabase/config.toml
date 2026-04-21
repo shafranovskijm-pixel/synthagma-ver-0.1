@@ -134,3 +134,6 @@ verify_jwt = false
 
 [functions.landing-self-enroll]
 verify_jwt = false
+
+[functions.checko-daily-enrich]
+verify_jwt = false
