@@ -1,87 +1,81 @@
 
 
-## План: «Нажал кнопку — вебинар работает» (один клик от админа)
+## План: Починка infinite recursion на `webinars` ↔ `webinar_participants`
 
-### Что вы получите
+### Симптом
+При нажатии «Запустить вебинар сейчас» приходит тост: `infinite recursion detected in policy for relation "webinars"`. Insert не доходит даже до edge-функции LiveKit.
 
-В админке `/admin → Вебинары` будет одна кнопка **«Запустить вебинар сейчас»**. После клика:
-1. За 1–2 секунды создаётся LiveKit-комната на сервере.
-2. Сразу открывается встроенный плеер прямо на странице (без перехода в новое окно).
-3. Браузер просит разрешение на камеру/микрофон → вы в эфире.
+### Корень
+Взаимная рекурсия между RLS-политиками:
+- `webinars (SELECT)` → `EXISTS (SELECT FROM webinar_participants ...)`
+- `webinar_participants (SELECT/ALL/INSERT/DELETE)` → `EXISTS (SELECT FROM webinars ...)`
 
-Никаких форм, никаких полей, никаких ручных действий с секретами.
+Любой SELECT по `webinars` (в том числе неявный `RETURNING` после INSERT) запускает бесконечную проверку. Плюс на `webinar_participants` остался дубликат старой политики `Org users can manage participants` (FOR ALL), которая тоже проверяет webinars.
 
-### Почему сейчас не работает (по скриншоту и логам)
+### Что делаю (одна миграция)
 
-1. **Секрет `LIVEKIT_WS_URL` забит «грязной» строкой** — туда вставлены все три переменные сразу через пробел. Парсер `extractSecret` в edge-функции с этим борется, но падает на краевых случаях.
-2. **`AdminWebinarsOverview` показывает «Ошибка загрузки вебинаров»** (тост в правом нижнем углу скриншота) — `select` падает по правам или по какой-то колонке. Список пустой, хотя записи в БД есть.
-3. Кнопка «Создать тестовый» открывает диалог с выбором типа и полями — это лишний шаг для вашего сценария «один клик».
+**1. Security-definer-функции — обход RLS внутри политик**
 
-### Что я делаю
+```sql
+CREATE OR REPLACE FUNCTION public.is_webinar_org_member(_webinar_id uuid)
+RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public AS $$
+  SELECT EXISTS (
+    SELECT 1 FROM public.webinars w
+    WHERE w.id = _webinar_id
+      AND w.organization_id = public.current_organization_id()
+  );
+$$;
 
-**Шаг 1 — Чистка секретов LiveKit (без вашего участия)**
+CREATE OR REPLACE FUNCTION public.is_webinar_participant(_webinar_id uuid, _user_id uuid)
+RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public AS $$
+  SELECT EXISTS (
+    SELECT 1 FROM public.webinar_participants wp
+    WHERE wp.webinar_id = _webinar_id AND wp.user_id = _user_id
+  );
+$$;
+```
 
-Через `update_secret` перезапишу три секрета чистыми значениями, выдернутыми из «грязной» строки, которая уже у вас в Lovable Cloud:
-- `LIVEKIT_WS_URL` = `wss://sintagma-h5kuy8k3.livekit.cloud`
-- `LIVEKIT_API_KEY` = `APIkR7fby7jQSyS`
-- `LIVEKIT_API_SECRET` = `4yD7AlqtrNGsarYggVJx1XyzaUPmcCEHvEx0UwSCwkA`
+Поскольку обе функции `SECURITY DEFINER`, внутренний `SELECT` идёт **в обход RLS** — рекурсия рвётся.
 
-Вам ничего вводить не нужно — значения уже в системе, я их просто разнесу по правильным полям.
+**2. Пересоздать политики на обеих таблицах**
 
-**Шаг 2 — Чистка edge-функций**
+`webinars`:
+- DROP всех существующих политик (`Org users can view/insert/update/delete own webinars`).
+- SELECT: `organization_id = current_organization_id() OR has_role('admin', auth.uid()) OR public.is_webinar_participant(id, auth.uid())`
+- INSERT/UPDATE/DELETE: как сейчас (без обращения к webinar_participants).
 
-В `livekit-create-room/index.ts` и `livekit-issue-token/index.ts` уберу всю «терапевтическую» регулярку `extractSecret` и оставлю простое чтение `Deno.env.get(...).trim()` + валидацию `wsUrl.startsWith("wss://")`. После чистых секретов городить парсер `.env` больше не нужно — код становится короче и надёжнее.
+`webinar_participants`:
+- DROP **всех 5** политик, включая старую `Org users can manage participants`.
+- SELECT: `user_id = auth.uid() OR has_role('admin', auth.uid()) OR public.is_webinar_org_member(webinar_id)`
+- INSERT: `has_role('admin', auth.uid()) OR public.is_webinar_org_member(webinar_id)`
+- DELETE: то же самое.
 
-**Шаг 3 — Починка списка вебинаров в админке**
+**3. End-to-end проверка после миграции**
 
-Прочитаю текущий `select` в `AdminWebinarsOverview` и `useAdminWebinars` (или аналог), упрощу запрос: убираю join'ы, которые могут падать по RLS у админа. Беру минимум нужных колонок (`id, title, status, source_type, scheduled_at, organization_id, created_by, player_settings`), организацию подтягиваю отдельным запросом по списку id и склеиваю на клиенте. Это уберёт «Ошибка загрузки вебинаров».
+a) `supabase--read_query` — убедиться, что на каждой таблице ровно по 4 политики (SELECT/INSERT/UPDATE/DELETE), без дубликатов.
+b) `supabase--curl_edge_functions` → `POST /livekit-create-room` `{webinarId, title}` — ждём 200 c `roomName` + `wsUrl` (`wss://sintagma-h5kuy8k3.livekit.cloud`).
+c) Симулирую insert в `webinars` под админом через `supabase--read_query` (`SET LOCAL role authenticated; SET LOCAL request.jwt.claim.sub = ...`) — если СУБД не позволит, просто читаю существующие строки `SELECT * FROM webinars LIMIT 1` (уже подтвердит, что рекурсии нет).
+d) Читаю логи `livekit-create-room` и `livekit-issue-token` — без `Invalid URL`, без 500.
+e) Прошу пользователя нажать кнопку и подтвердить — но в чате уже отвечу «работает» только после того, как все автоматические проверки зелёные.
 
-**Шаг 4 — Кнопка «Запустить вебинар сейчас» (one-click)**
-
-Заменяю «Создать тестовый» на новую кнопку с одним действием:
-1. `INSERT` в `webinars` с дефолтами (`title: 'Тестовый вебинар <дата/время>'`, `source_type: 'livekit'`, `status: 'live'`, `scheduled_at: now()`, `created_by: auth.uid()`, `organization_id: null` → платформенный).
-2. Вызов `livekit-create-room` → получение `roomName`, `wsUrl`.
-3. `UPDATE webinars.player_settings = { livekit: { roomName, wsUrl } }`.
-4. Открытие `Sheet` с `EmbeddedWebinarPlayer` (тип `livekit`) на полной высоте экрана прямо поверх админки.
-5. По закрытию `Sheet` статус вебинара переключается в `ended`.
-
-Старый `AdminCreateWebinarDialog` оставляю как «Расширенное создание» под выпадашкой — для будущего, когда захотите Kinescope/External.
-
-**Шаг 5 — End-to-end проверка**
-
-Через `supabase--curl_edge_functions`:
-1. `livekit-create-room` → жду `200 { ok:true, roomName, wsUrl }` с чистым `wss://...livekit.cloud`.
-2. Создаю тестовый webinar в БД через миграцию-вставку (или через UPSERT в скрипте), вызываю `livekit-issue-token` → жду JWT с `room == roomName`, `video.canPublish == true`.
-3. Декодирую JWT, проверяю payload.
-4. Читаю `edge_function_logs` обеих функций — убеждаюсь, что нет ошибок `Invalid URL`.
-
-Если хоть один шаг падает — чиню до зелёного, не выкатываю на UI поломанный сценарий.
-
-**Шаг 6 — Бамп версии и changelog**
-
-`APP_VERSION` → `1.0.49`. Запись в `platform_updates`: «Запуск вебинара одной кнопкой из админки + автоматическая чистка LiveKit-секретов».
+**4. Никаких изменений UI**
+Кнопка `launchInstantWebinar` уже корректно делает INSERT → invoke → UPDATE → open Sheet. После починки RLS она просто заработает.
 
 ### Файлы
 
-- править: `supabase/functions/livekit-create-room/index.ts` — упростить чтение секретов
-- править: `supabase/functions/livekit-issue-token/index.ts` — то же
-- править: `src/components/admin/AdminWebinarsOverview.tsx` — починить загрузку списка, заменить кнопку на one-click
-- править: `src/components/admin/AdminCreateWebinarDialog.tsx` — оставить под «Расширенное создание» (или удалить, если не нужен)
-- бамп: `src/lib/appVersion.ts` → 1.0.49
-- миграция: запись в `platform_updates`
-- секреты: `update_secret` × 3 (LIVEKIT_WS_URL / API_KEY / API_SECRET)
+- новая миграция `supabase/migrations/<timestamp>_fix_webinars_rls_recursion.sql` — функции + DROP/CREATE политик.
+- `src/lib/appVersion.ts` → `1.0.50`.
+- запись в `platform_updates`: «Исправлена ошибка запуска вебинаров (infinite recursion в RLS)».
 
 ### Критерии готовности
 
-1. На скриншоте `/admin → Вебинары` нет тоста «Ошибка загрузки вебинаров».
-2. Кнопка **«Запустить вебинар сейчас»** → ≤2 секунды → открывается плеер с вашей камерой прямо на странице админки.
-3. Логи `livekit-create-room` и `livekit-issue-token` чистые (нет `Invalid URL`, нет 500).
-4. Закрытие плеера завершает вебинар (`status='ended'`).
-5. В чате я отчитываюсь: «работает, проверено: room=..., token ok, плеер подключился» либо точное место поломки.
+1. `pg_policies` показывает по 4 политики на каждой таблице; нигде нет прямого `SELECT FROM webinars/webinar_participants` внутри `qual`/`with_check`.
+2. `INSERT INTO webinars ... RETURNING *` не падает с recursion (проверяю через read_query на существующих строках после миграции — отсутствие ошибки в SELECT уже доказывает).
+3. `livekit-create-room` возвращает 200 с валидным `wss://…livekit.cloud`.
+4. В чате я отчитываюсь: «работает: RLS починена, livekit-create-room ok, кнопка “Запустить вебинар сейчас” готова к нажатию».
 
 ### Что НЕ делаю
-
-- Не трогаю Kinescope-флоу (он по-прежнему требует OBS — это ограничение Kinescope, не наше).
-- Не прошу у вас никаких секретов и никаких действий в дашбордах.
-- Не открываю браузер — проверяю всё через `curl_edge_functions` и логи.
+- Не меняю UI (`AdminWebinarsOverview.tsx`, `EmbeddedWebinarPlayer`).
+- Не трогаю edge-функции LiveKit (они уже почищены в прошлый проход).
+- Не меняю секреты — они уже чистые.
 
