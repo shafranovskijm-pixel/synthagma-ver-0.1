@@ -1,84 +1,247 @@
 
 
-## План: Курс «Закупки по 44-ФЗ» для ООО «ИРР»
+## План: Замена парсера list-org на интеграцию с Checko API + автообновление 100/день
 
 ### Что получится
 
-Структурированный курс из **6 модулей / ~22 уроков** на основе ваших материалов (Лекции 2023, Электронные процедуры, Структурированный контракт, Изменения 2024) + дополнения для целостности программы. Все материалы прикреплю как скачиваемые в «Материалы курса», а сами лекционные данные разнесу по урокам в виде блочного контента (heading/paragraph/list/quote/table/image).
+В админке **«Продажи → База компаний»** вместо парсера list-org появится модуль обогащения по Checko API:
 
-### Структура курса
+1. **Кнопка «Загрузить ИНН списком»** — вставка/загрузка CSV с ИНН (до 100 за раз). Каждый ИНН → 1 запрос к `/v2/company` → полная карточка компании сохраняется.
+2. **Кнопка «Обновить устаревшие»** — берёт компании из БД, отсортированные по `parsed_at ASC`, и обогащает столько, сколько осталось из дневной квоты (100 − уже использовано).
+3. **Переключатель «Автообновление раз в сутки»** (toggle на уровне платформы) — при включении ежедневно в 03:00 МСК запускает фоновое обновление до 100 самых старых записей.
+4. **Индикатор квоты** в шапке: «Использовано сегодня: 12 / 100. Сброс в 00:00 МСК». Берётся из `meta.today_request_count` (Checko возвращает в каждом ответе) + локального счётчика.
 
-**Модуль 1. Введение в контрактную систему 44-ФЗ**
-1. Что регулирует и что не регулирует 44-ФЗ (text) — из «Лекции 2023» стр. 1–2
-2. Принципы контрактной системы (text) — стр. 2–3
-3. Ключевые определения: Госзаказчик, Поставщик, ЕИС, НМЦ, ЭТП (text) — стр. 3–4
-4. Тест по модулю (5 вопросов)
+Кнопка «Спарсить страницу list-org» удаляется. Edge-функция `parse-list-org` остаётся в кодовой базе, но больше не вызывается из UI (можно удалить позже).
 
-**Модуль 2. Участники закупок и ЭТП**
-5. Заказчики и поставщики: требования, ограничения, РНП (text) — стр. 1, 11
-6. 8 федеральных ЭТП и их роль (text + список) — стр. 1
-7. ЭДО в закупках (text) — стр. 5
-8. Тест по модулю
+### Источник API ключа
 
-**Модуль 3. Электронные процедуры (на основе PDF Минэкономразвития)**
-9. Зачем переход на электронные процедуры: предпосылки и цели (text) — PDF стр. 2–4
-10. Виды электронных процедур (text + сравнительная таблица) — PDF стр. 5
-11. Алгоритм электронного конкурса — 36–38 дней (text + изображение схемы) — PDF стр. 9–10
-12. Электронный двухэтапный конкурс — 78–81 день (text + схема) — PDF стр. 11
-13. Электронный запрос котировок и предложений (text + схемы) — PDF стр. 12–13
-14. Тест по модулю
+Ключ Checko (`gSxUDYBlrLQp1c3O`) сохраняю как **runtime-секрет** `CHECKO_API_KEY` через `add_secret`. Используется только из edge-функций — в UI не светится. Если понадобится сменить — пользователь меняет в Lovable Cloud.
 
-**Модуль 4. Извещение, заявки и обеспечение**
-15. Извещение о закупке: что включает (text) — стр. 23–26
-16. Сроки размещения извещения (text) — стр. 25–26
-17. Банковская гарантия и обеспечение заявки (text) — стр. 31–33
-18. Критерии оценки заявок (text) — стр. 34–37
-19. Тест по модулю
+### Что сохраняем из ответа Checko (поля endpoint `/v2/company`)
 
-**Модуль 5. Контракт и его исполнение**
-20. Подведение итогов и заключение контракта (text) — стр. 38–40
-21. Структурированный контракт в ЕИС: что это, как подписать (text + изображения схем подписания) — из «Структурированный_контракт.docx»
-22. Спорные ситуации и решения (округление цены, ошибка в товаре, существенные условия) — из «Структурированный_контракт.docx» примеры 1–3
-23. Запрос на разъяснение и обжалование в ФАС (text) — стр. 40–42
-24. Тест по модулю
+В существующую таблицу `sales_companies_db` (новые колонки добавлю миграцией):
 
-**Модуль 6. Изменения 2024–2025 годов**
-25. Изменения по закупкам у единственного поставщика (text + таблица) — из «изменения_в_2024_г..docx»
-26. Изменения по извещению, обжалованию, контракту (text + таблица)
-27. **Итоговый тест** (15 вопросов из банка по всем модулям, проходной 70%)
+| Поле БД | Источник Checko |
+|---|---|
+| `inn`, `ogrn`, `name` (НаимПолн), `short_name` (НаимСокр), `full_name` | как было |
+| `kpp` *(новая)* | `КПП` |
+| `okpo` *(новая)* | `ОКПО` |
+| `registration_date` *(новая, date)* | `ДатаРег` |
+| `address`, `city`, `region` | `ЮрАдрес.АдресРФ` / `ЮрАдрес.НасПункт` / `Регион.Наим` |
+| `phone` | `Контакты.Тел[0]` |
+| `phones` *(новая, text[])* | `Контакты.Тел` (полный массив) |
+| `email` | `Контакты.Емэйл[0]` |
+| `emails` *(новая, text[])* | `Контакты.Емэйл` |
+| `website` | `Контакты.ВебСайт` |
+| `social_links` *(новая, jsonb)* | `{vk, max, telegram}` |
+| `director` | `Руковод[0].ФИО` |
+| `director_inn` *(новая)* | `Руковод[0].ИНН` |
+| `director_position` | `Руковод[0].НаимДолжн` |
+| `okved_main` | `ОКВЭД.Код + " " + ОКВЭД.Наим` |
+| `okved_list` | `ОКВЭДДоп[]` (массив кодов с наименованиями) |
+| `licenses` *(новая, jsonb[])* | весь массив `Лиценз[]` (Номер, Дата, ДатаНач, ДатаОконч, ЛицОрг, ВидДеят[]) |
+| `license_number`, `license_issue_date`, `license_authority`, `license_activities`, `license_valid_to` | первая образовательная лицензия (если найдена по ВидДеят содержит «образоват») — иначе первая лицензия |
+| `has_education_license` | true если в `Лиценз[*].ВидДеят` встречается «образоват» |
+| `status` | `Статус.Наим` |
+| `employee_count` | `СЧР` (среднеспис. численность работников) |
+| `charter_capital` *(новая, numeric)* | `УстКап.Сумма` |
+| `unfair_supplier` *(новая, bool)* | `НедобПост` |
+| `mass_director` *(новая, bool)* | `МассРуковод` |
+| `mass_address` *(новая, bool)* | `ЮрАдрес.МассАдрес.length > 0` |
+| `sanctions` *(новая, bool)* | `Санкции` |
+| `successors` *(новая, jsonb)* | `Правопреем[]` |
+| `predecessors` *(новая, jsonb)* | `Правопредш[]` |
+| `branches_count` *(новая, int)* | `Подразд.Филиал.length` |
+| `last_data_date` *(новая, date)* | `ДатаВып` (дата выгрузки данных Checko) |
+| `raw_data` | весь `data` объект (jsonb, для audit и будущего) |
+| `source_url` | `https://checko.ru/company/ul/{ОГРН}` (стандартный URL карточки) |
+| `data_source` *(новая)* | `'checko'` |
+| `parsed_at` | `now()` при каждом обновлении |
 
-### Материалы курса (course_documents)
-Прикрепляю все 4 исходных файла как скачиваемые материалы:
-- Лекции_2023_2.docx
-- Электронные_процедуры_в_контрактной_системе.pdf
-- Структурированный_контракт.docx
-- изменения_в_2024_г..docx
+Уникальный ключ — `inn`. При повторной загрузке — `INSERT ... ON CONFLICT (inn) DO UPDATE`.
 
-### Изображения
-Извлеку из PDF/DOCX ключевые схемы (алгоритмы электронных процедур, схема подписания структурированного контракта) → загружу в `course-files` бакет → вставлю как блоки `image` в соответствующие уроки.
+### Учёт квоты 100/день
 
-### Технические детали реализации
+Новая таблица `checko_api_usage`:
+```
+id uuid PK,
+date date UNIQUE,
+requests_count int default 0,
+last_balance numeric,        -- из meta.balance
+last_used_at timestamptz
+```
 
-1. **Создание курса** в `courses`: organization_id ИРР, title «Закупки по 44-ФЗ: полный курс для поставщиков и заказчиков», description, duration «40 ак. часов», is_published=false (черновик, владелец опубликует сам).
-2. **6 записей в `course_modules`** с order_index 0–5.
-3. **~24 урока в `lessons`**: text-уроки с контентом в формате JSON-блоков (heading2, paragraph, list, quote, table, image — согласно памяти `course-builder/block-formatting-rules`), 6 test-уроков с `test_questions_count`.
-4. **Тестовые вопросы** в `test_questions`: для каждого теста сгенерирую 5 вопросов на основе содержимого соответствующего модуля + 15 для итогового (банк), каждый с 4 вариантами и пояснением.
-5. **Изображения**: копирую ключевые из `parsed-documents://` в `/tmp/`, заливаю через storage в `course-files/{course_id}/lesson-images/`, вставляю URL в блоки.
-6. **Документы курса**: копирую 4 user-uploads файла в `/tmp/`, заливаю в `course-files/{course_id}/materials/`, создаю записи в `course_documents`.
-7. **AI-помощь**: контент уроков пишу прямо из извлечённого текста (700+ слов на урок где это уместно), без AI-генерации — материал уже есть.
-8. **Обложка курса**: сгенерирую через AI Gateway (`google/gemini-3-pro-image-preview`) на тему «44-ФЗ, госзакупки, документы, ЕИС» в Teal/Cyan палитре платформы → загружу в `course-covers`.
+Edge-функция перед каждым запросом проверяет `requests_count < 100` для текущей даты (МСК). После запроса берёт `meta.today_request_count` из ответа — это **наиболее точное значение от самого Checko**, синхронизируем с ним. Если Checko вернул `today_request_count >= 100` или статус "error" с лимитом — функция останавливает batch и возвращает фронту «остановлено: квота исчерпана, обработано N из M».
 
-### Порядок выполнения
-1. Создать курс + 6 модулей (1 SQL).
-2. Залить 4 файла материалов в storage + создать `course_documents` (Node script).
-3. Извлечь и залить ~8 ключевых изображений-схем.
-4. Сформировать JSON-блоки контента всех 24 уроков (Python скрипт на основе уже распарсенных текстов).
-5. Вставить уроки + сгенерировать тестовые вопросы (по 5 на тест × 6 + 15 итоговых = 45 вопросов).
-6. Сгенерировать обложку курса.
-7. Отчитаться: ID курса, ссылка для предпросмотра в кабинете организации, перечень модулей/уроков и сколько вопросов в каждом тесте.
+UI показывает:
+- «Сегодня использовано: **N / 100**» (тянется из `checko_api_usage.requests_count` для текущей даты).
+- Прогресс-бар.
+- Если 100 — кнопка обогащения дизаблится с подсказкой «Сброс квоты в 00:00 МСК. Включите автообновление, чтобы каждое утро забирать новые 100».
 
-### Что НЕ делаю
-- Не публикую курс автоматически (оставляю в draft, чтобы организация проверила).
-- Не настраиваю ФРДО-параметры (это не курс ДПО с гос. удостоверением — обзорный).
-- Не создаю sequential_lessons по умолчанию (можно включить позже в настройках).
+### Автообновление раз в сутки
+
+Таблица `checko_settings` (1 строка, id=1):
+```
+auto_enrich_enabled bool default false,
+last_auto_run_at timestamptz,
+last_auto_processed int,
+last_auto_error text
+```
+
+Cron-job (через `pg_cron` + `pg_net`, расширения уже включены):
+```sql
+select cron.schedule(
+  'checko-daily-enrich',
+  '0 0 * * *',  -- 00:00 UTC = 03:00 МСК
+  $$
+  select net.http_post(
+    url := 'https://atxwvjxbqjgkbjlhsdch.supabase.co/functions/v1/checko-daily-enrich',
+    headers := '{"Content-Type":"application/json","Authorization":"Bearer ANON_KEY"}'::jsonb,
+    body := '{}'::jsonb,
+    timeout_milliseconds := 600000
+  );
+  $$
+);
+```
+
+Edge `checko-daily-enrich`:
+1. Читает `checko_settings.auto_enrich_enabled` — если false, выходит.
+2. Берёт 100 самых старых записей из `sales_companies_db` (ORDER BY parsed_at ASC).
+3. Если их меньше 100 — добивает новыми ИНН из «очереди» (см. ниже).
+4. Делает запросы пачкой по 5 параллельно с `await Promise.all`, между пачками `sleep(500ms)` (чтобы не перегружать Checko).
+5. После завершения пишет `last_auto_run_at`, `last_auto_processed`, `last_auto_error`.
+6. Лог последнего запуска показывается в UI («Последнее автообновление: 21.04.2026 03:00, обновлено 100 компаний»).
+
+**Очередь новых ИНН** (`checko_pending_inns`):
+```
+inn text PK,
+added_at timestamptz default now(),
+note text
+```
+Если пользователь добавил 500 ИНН одной кнопкой, первые ~ (100 − использовано) обрабатываются сразу, остальные кладутся в очередь и подхватываются ежесуточно.
+
+### Edge-функции (новые)
+
+| Функция | Назначение |
+|---|---|
+| `checko-enrich-batch` | Принимает `{ inns: string[], mode: 'add'|'refresh' }`. Делает запросы с учётом квоты, возвращает `{ processed, skipped_quota, errors[], remaining_quota, queued_inns[] }`. |
+| `checko-daily-enrich` | Cron-обёртка — без авторизации (verify_jwt=false), запускается из pg_cron. Использует service role внутри. |
+| `checko-stats` | GET → `{ today_used, today_remaining, balance, last_auto_run, queue_size, total_companies }` для UI. |
+
+Edge `parse-list-org` остаётся в кодовой базе как deprecated (на случай rollback), но из UI убирается.
+
+### Frontend — изменения
+
+**`src/components/admin/sales/CompaniesDatabase.tsx`** — переписываю верхнюю карточку:
+- Убираю input URL и Pages.
+- Добавляю две кнопки: **«Добавить ИНН»** (открывает диалог с textarea для вставки списка ИНН + загрузкой CSV) и **«Обновить устаревшие (N)»**.
+- Добавляю индикатор квоты + переключатель «Автообновление ежедневно».
+- Таблица результатов остаётся, но добавляются новые колонки: КПП, Числ. сотр., Лицензий (count), Метки риска (Санкции / РНП / Масс. адрес — если true).
+
+**Новые компоненты:**
+- `AddInnsDialog.tsx` — textarea (по 1 ИНН в строке) + загрузка CSV (xlsx/csv parser уже есть). Парсит, валидирует контрольное число ИНН, показывает предпросмотр.
+- `ChekoQuotaBar.tsx` — прогресс-бар + переключатель автообновления + кнопка «Запустить вручную».
+
+**Новый хук** `useCheckoApi.ts`:
+- `stats` (useQuery, refetchInterval 30s)
+- `enrichBatch` (useMutation)
+- `setAutoEnrich` (useMutation)
+- `runManualNow` (useMutation)
+
+### Миграция (схема + cron + начальная строка settings)
+
+```sql
+-- 1. Расширяем sales_companies_db
+ALTER TABLE sales_companies_db
+  ADD COLUMN IF NOT EXISTS kpp text,
+  ADD COLUMN IF NOT EXISTS okpo text,
+  ADD COLUMN IF NOT EXISTS registration_date date,
+  ADD COLUMN IF NOT EXISTS phones text[],
+  ADD COLUMN IF NOT EXISTS emails text[],
+  ADD COLUMN IF NOT EXISTS social_links jsonb,
+  ADD COLUMN IF NOT EXISTS director_inn text,
+  ADD COLUMN IF NOT EXISTS licenses jsonb,
+  ADD COLUMN IF NOT EXISTS charter_capital numeric,
+  ADD COLUMN IF NOT EXISTS unfair_supplier boolean DEFAULT false,
+  ADD COLUMN IF NOT EXISTS mass_director boolean DEFAULT false,
+  ADD COLUMN IF NOT EXISTS mass_address boolean DEFAULT false,
+  ADD COLUMN IF NOT EXISTS sanctions boolean DEFAULT false,
+  ADD COLUMN IF NOT EXISTS successors jsonb,
+  ADD COLUMN IF NOT EXISTS predecessors jsonb,
+  ADD COLUMN IF NOT EXISTS branches_count int,
+  ADD COLUMN IF NOT EXISTS last_data_date date,
+  ADD COLUMN IF NOT EXISTS data_source text DEFAULT 'list-org';
+
+CREATE UNIQUE INDEX IF NOT EXISTS sales_companies_db_inn_key ON sales_companies_db (inn);
+
+-- 2. Учёт квоты
+CREATE TABLE checko_api_usage (
+  date date PRIMARY KEY,
+  requests_count int NOT NULL DEFAULT 0,
+  last_balance numeric,
+  last_used_at timestamptz
+);
+ALTER TABLE checko_api_usage ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Admins read checko usage" ON checko_api_usage FOR SELECT TO authenticated USING (has_role('admin', auth.uid()));
+
+-- 3. Настройки
+CREATE TABLE checko_settings (
+  id int PRIMARY KEY DEFAULT 1 CHECK (id = 1),
+  auto_enrich_enabled boolean DEFAULT false,
+  last_auto_run_at timestamptz,
+  last_auto_processed int,
+  last_auto_error text,
+  updated_at timestamptz DEFAULT now()
+);
+INSERT INTO checko_settings (id) VALUES (1) ON CONFLICT DO NOTHING;
+ALTER TABLE checko_settings ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Admins manage checko settings" ON checko_settings FOR ALL TO authenticated USING (has_role('admin', auth.uid())) WITH CHECK (has_role('admin', auth.uid()));
+
+-- 4. Очередь
+CREATE TABLE checko_pending_inns (
+  inn text PRIMARY KEY,
+  added_at timestamptz DEFAULT now(),
+  note text
+);
+ALTER TABLE checko_pending_inns ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Admins manage checko queue" ON checko_pending_inns FOR ALL TO authenticated USING (has_role('admin', auth.uid())) WITH CHECK (has_role('admin', auth.uid()));
+```
+
+Cron создаётся **отдельным insert-вызовом** (как требует инструкция — содержит anon key):
+```sql
+SELECT cron.schedule('checko-daily-enrich', '0 0 * * *', $$
+  SELECT net.http_post(
+    url := 'https://atxwvjxbqjgkbjlhsdch.supabase.co/functions/v1/checko-daily-enrich',
+    headers := '{"Content-Type":"application/json","Authorization":"Bearer <ANON_KEY>"}'::jsonb,
+    body := '{}'::jsonb,
+    timeout_milliseconds := 600000
+  );
+$$);
+```
+
+### End-to-end проверка перед сдачей
+
+1. Миграция применена, RLS на 3 новых таблицах, индекс на `inn` создан.
+2. Секрет `CHECKO_API_KEY` создан и доступен в edge-функциях.
+3. Cron-job `checko-daily-enrich` создан (`SELECT * FROM cron.job WHERE jobname='checko-daily-enrich'`).
+4. UI: В админке «Продажи → База компаний» вижу новый интерфейс, кнопка list-org удалена.
+5. **Тестовый запуск:** добавляю 3 ИНН (Сбербанк `7707083893`, Яндекс `7736207543`, наша Синтагма) → нажимаю «Обогатить» → получаю 3 заполненные карточки с лицензиями, контактами, директором. Квота `3/100`. Каждое поле в БД заполнено корректно.
+6. **Очередь:** добавляю 200 ИНН — первые ~97 обрабатываются, остальные 103 уходят в `checko_pending_inns` со статусом «в очереди».
+7. **Лимит:** искусственно ставлю `requests_count=99`, нажимаю «Обновить устаревшие» — обрабатывается 1 запись, кнопка дизаблится, текст «Квота исчерпана».
+8. **Автообновление:** включаю переключатель → проверяю в `checko_settings.auto_enrich_enabled=true`. Вручную дёргаю edge `checko-daily-enrich` через `curl_edge_functions` → процессит до 100 записей из очереди и старых, `last_auto_run_at` обновляется.
+9. **Конвертация в лид:** из новой карточки нажимаю «В лиды» — лид создаётся с полным набором полей (телефон, email, директор), статус карточки `converted_to_lead_id` обновляется.
+10. **Экспорт XLSX:** кнопка работает, выгружает все новые поля.
+11. Отчёт в чат: ✅ миграция, ✅ секрет, ✅ cron, ✅ UI, ✅ обогащение 3 компаний с реальными данными, ✅ очередь, ✅ лимит, ✅ автообновление — с конкретными числами и ID.
+
+### Что НЕ делаю в v1
+
+- Не использую `/v2/search` Checko (на бесплатном тарифе недоступен — endpoint требует платного плана).
+- Не подключаю `/v2/finances` и `/v2/proceedings` — пока только базовая карточка (можно добавить позже отдельной кнопкой «Обогатить финансами», но это лишний запрос на компанию).
+- Не удаляю физически edge `parse-list-org` (deprecated, оставляю на случай rollback на 1 релиз).
+- Не делаю автоматический парсинг по ОКВЭД (нет search) — пользователь сам приносит список ИНН.
+
+### Файлы
+
+**Создать:** 1 миграция, 1 cron-insert (отдельно), 3 edge-функции, 4 frontend-файла.  
+**Править:** `CompaniesDatabase.tsx`, `useSalesCompaniesDb.ts` (дополню типом), `appVersion.ts → 1.0.57`, запись в `platform_updates`.
 
