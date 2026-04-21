@@ -2115,6 +2115,160 @@ export type Database = {
           },
         ]
       }
+      email_campaign_recipients: {
+        Row: {
+          campaign_id: string
+          email: string
+          error: string | null
+          id: string
+          open_token: string
+          opened_at: string | null
+          recipient_name: string | null
+          sent_at: string | null
+          status: string
+        }
+        Insert: {
+          campaign_id: string
+          email: string
+          error?: string | null
+          id?: string
+          open_token?: string
+          opened_at?: string | null
+          recipient_name?: string | null
+          sent_at?: string | null
+          status?: string
+        }
+        Update: {
+          campaign_id?: string
+          email?: string
+          error?: string | null
+          id?: string
+          open_token?: string
+          opened_at?: string | null
+          recipient_name?: string | null
+          sent_at?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "email_campaign_recipients_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "email_campaigns"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      email_campaigns: {
+        Row: {
+          completed_at: string | null
+          created_at: string
+          created_by: string | null
+          failed_count: number
+          from_name: string | null
+          html_body: string
+          id: string
+          manual_emails: string[] | null
+          name: string
+          open_count: number
+          organization_id: string | null
+          recipient_filter: Json | null
+          recipient_source: string
+          reply_to: string | null
+          scheduled_at: string | null
+          scope: string
+          sent_count: number
+          started_at: string | null
+          status: string
+          subject: string
+          total_recipients: number
+          updated_at: string
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          failed_count?: number
+          from_name?: string | null
+          html_body: string
+          id?: string
+          manual_emails?: string[] | null
+          name: string
+          open_count?: number
+          organization_id?: string | null
+          recipient_filter?: Json | null
+          recipient_source: string
+          reply_to?: string | null
+          scheduled_at?: string | null
+          scope: string
+          sent_count?: number
+          started_at?: string | null
+          status?: string
+          subject: string
+          total_recipients?: number
+          updated_at?: string
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          failed_count?: number
+          from_name?: string | null
+          html_body?: string
+          id?: string
+          manual_emails?: string[] | null
+          name?: string
+          open_count?: number
+          organization_id?: string | null
+          recipient_filter?: Json | null
+          recipient_source?: string
+          reply_to?: string | null
+          scheduled_at?: string | null
+          scope?: string
+          sent_count?: number
+          started_at?: string | null
+          status?: string
+          subject?: string
+          total_recipients?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "email_campaigns_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      email_warmup_state: {
+        Row: {
+          scope_key: string
+          sent_today: number
+          sent_today_date: string
+          started_at: string
+          total_sent: number
+          updated_at: string
+        }
+        Insert: {
+          scope_key: string
+          sent_today?: number
+          sent_today_date?: string
+          started_at?: string
+          total_sent?: number
+          updated_at?: string
+        }
+        Update: {
+          scope_key?: string
+          sent_today?: number
+          sent_today_date?: string
+          started_at?: string
+          total_sent?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       enrollment_history: {
         Row: {
           action: string
@@ -3589,6 +3743,62 @@ export type Database = {
             foreignKeyName: "org_payers_organization_id_fkey"
             columns: ["organization_id"]
             isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      org_smtp_settings: {
+        Row: {
+          created_at: string
+          encryption: string
+          from_email: string
+          from_name: string | null
+          host: string
+          is_verified: boolean
+          last_test_at: string | null
+          last_test_error: string | null
+          organization_id: string
+          password_encrypted: string
+          port: number
+          updated_at: string
+          username: string
+        }
+        Insert: {
+          created_at?: string
+          encryption?: string
+          from_email: string
+          from_name?: string | null
+          host: string
+          is_verified?: boolean
+          last_test_at?: string | null
+          last_test_error?: string | null
+          organization_id: string
+          password_encrypted: string
+          port?: number
+          updated_at?: string
+          username: string
+        }
+        Update: {
+          created_at?: string
+          encryption?: string
+          from_email?: string
+          from_name?: string | null
+          host?: string
+          is_verified?: boolean
+          last_test_at?: string | null
+          last_test_error?: string | null
+          organization_id?: string
+          password_encrypted?: string
+          port?: number
+          updated_at?: string
+          username?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "org_smtp_settings_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: true
             referencedRelation: "organizations"
             referencedColumns: ["id"]
           },
@@ -7200,6 +7410,7 @@ export type Database = {
       }
     }
     Functions: {
+      _email_daily_limit: { Args: { _day: number }; Returns: number }
       _get_pw_key: { Args: never; Returns: string }
       add_signature_comment_by_token: {
         Args: {
@@ -7250,6 +7461,10 @@ export type Database = {
       can_use_template: {
         Args: { p_plan: string; p_tier: string }
         Returns: boolean
+      }
+      consume_email_quota: {
+        Args: { p_count: number; p_scope_key: string }
+        Returns: Json
       }
       count_org_completions_this_month: {
         Args: { org_id: string }
@@ -7359,6 +7574,18 @@ export type Database = {
           login_password: string
         }[]
       }
+      get_decrypted_org_smtp: {
+        Args: { p_organization_id: string }
+        Returns: {
+          encryption: string
+          from_email: string
+          from_name: string
+          host: string
+          password: string
+          port: number
+          username: string
+        }[]
+      }
       get_decrypted_payment_settings: {
         Args: { p_organization_id: string }
         Returns: {
@@ -7464,6 +7691,7 @@ export type Database = {
           mime_type: string
         }[]
       }
+      get_warmup_status: { Args: { p_scope_key: string }; Returns: Json }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
