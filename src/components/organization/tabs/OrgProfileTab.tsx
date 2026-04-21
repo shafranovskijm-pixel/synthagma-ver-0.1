@@ -51,12 +51,13 @@ const DEFAULT_NOTIFS: NotifRow[] = [
   { key: "student_paid", label: "Ученик оплатил курс", platform: true, browser: true, email: true, telegram: false, app: false },
 ];
 
-type SectionKey = "profile" | "theme" | "branding" | "login-branding" | "signin" | "notifications" | "partner" | "menu" | "student-dashboard" | "staff";
+type SectionKey = "profile" | "theme" | "branding" | "showcase" | "login-branding" | "signin" | "notifications" | "partner" | "menu" | "student-dashboard" | "staff";
 
 const SECTIONS: { key: SectionKey; label: string; icon: React.ElementType; color: string }[] = [
   { key: "profile", label: "Мой профиль", icon: User, color: "text-blue-500" },
   { key: "theme", label: "Тема оформления", icon: Palette, color: "text-violet-500" },
   { key: "branding", label: "Брендирование", icon: ImageIcon, color: "text-teal-500" },
+  { key: "showcase", label: "Витрина и Telegram", icon: ShoppingBag, color: "text-fuchsia-500" },
   { key: "login-branding", label: "Бренд. страницы входа", icon: LogIn, color: "text-cyan-500" },
   { key: "signin", label: "Вход", icon: KeyRound, color: "text-orange-500" },
   { key: "notifications", label: "Уведомления", icon: Bell, color: "text-amber-500" },
