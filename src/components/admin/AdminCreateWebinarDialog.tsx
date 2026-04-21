@@ -173,7 +173,7 @@ export function AdminCreateWebinarDialog({ open, onOpenChange, onCreated, userId
 
           {type === "kinescope" && (
             <div className="space-y-3">
-              <div className="rounded-md bg-amber-500/10 border border-amber-500/30 p-3 text-xs space-y-1">
+              <div className="rounded-md bg-muted border border-border p-3 text-xs space-y-1">
                 <p className="font-medium">Kinescope не позволяет создавать Live через API.</p>
                 <p className="text-muted-foreground">
                   1. Зайдите в дашборд Kinescope → раздел «Прямые эфиры» → создайте новый Live.<br/>

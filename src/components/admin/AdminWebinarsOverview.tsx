@@ -6,7 +6,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Radio, Search, Trash2, ExternalLink, Calendar, Building2 } from "lucide-react";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
+import { Radio, Search, Trash2, ExternalLink, Calendar, Building2, Plus, Play } from "lucide-react";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import { toast } from "sonner";
@@ -15,6 +16,9 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { useAuth } from "@/hooks/useAuth";
+import { AdminCreateWebinarDialog } from "./AdminCreateWebinarDialog";
+import { EmbeddedWebinarPlayer } from "@/components/webinars/EmbeddedWebinarPlayer";
 
 interface AdminWebinar {
   id: string;
@@ -24,6 +28,9 @@ interface AdminWebinar {
   status: string;
   source_type: string;
   external_url: string | null;
+  embed_url: string | null;
+  kinescope_live_id: string | null;
+  kinescope_video_id: string | null;
   organization_id: string;
   created_at: string;
   organizations: { name: string } | null;
@@ -41,18 +48,25 @@ const SOURCE_LABELS: Record<string, string> = {
   kinescope: "Kinescope RTMP",
 };
 
+const SELECT_FIELDS =
+  "id, title, scheduled_at, duration_minutes, status, source_type, external_url, embed_url, kinescope_live_id, kinescope_video_id, organization_id, created_at, organizations(name)";
+
 export function AdminWebinarsOverview() {
+  const { user } = useAuth();
   const [webinars, setWebinars] = useState<AdminWebinar[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [sourceFilter, setSourceFilter] = useState("all");
   const [deleteTarget, setDeleteTarget] = useState<AdminWebinar | null>(null);
+  const [showCreate, setShowCreate] = useState(false);
+  const [playerWebinar, setPlayerWebinar] = useState<AdminWebinar | null>(null);
 
   const fetchWebinars = async () => {
     setLoading(true);
     const { data, error } = await supabase
       .from("webinars")
-      .select("id, title, scheduled_at, duration_minutes, status, source_type, external_url, organization_id, created_at, organizations(name)")
+      .select(SELECT_FIELDS)
       .order("scheduled_at", { ascending: false, nullsFirst: false })
       .limit(500);
     if (error) {
@@ -71,6 +85,7 @@ export function AdminWebinarsOverview() {
   const filtered = useMemo(() => {
     let result = webinars;
     if (statusFilter !== "all") result = result.filter((w) => w.status === statusFilter);
+    if (sourceFilter !== "all") result = result.filter((w) => w.source_type === sourceFilter);
     if (search.trim()) {
       const q = search.toLowerCase();
       result = result.filter(
@@ -80,7 +95,7 @@ export function AdminWebinarsOverview() {
       );
     }
     return result;
-  }, [webinars, statusFilter, search]);
+  }, [webinars, statusFilter, sourceFilter, search]);
 
   const stats = useMemo(() => {
     return {
@@ -103,27 +118,40 @@ export function AdminWebinarsOverview() {
     setDeleteTarget(null);
   };
 
-  const openLive = (w: AdminWebinar) => {
-    if (w.source_type === "livekit") {
-      window.open(`/webinar/${w.id}/live`, "_blank");
-    } else if (w.source_type === "external" && w.external_url) {
-      window.open(w.external_url, "_blank");
-    }
+  const openPlayer = (w: AdminWebinar) => {
+    setPlayerWebinar(w);
+  };
+
+  const handleCreated = async (webinarId: string) => {
+    await fetchWebinars();
+    // Авто-открытие плеера для свежесозданного вебинара
+    const { data } = await supabase
+      .from("webinars")
+      .select(SELECT_FIELDS)
+      .eq("id", webinarId)
+      .maybeSingle();
+    if (data) setPlayerWebinar(data as any);
   };
 
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center gap-3">
-        <div className="h-12 w-12 rounded-xl bg-primary/10 flex items-center justify-center">
-          <Radio className="h-6 w-6 text-primary" />
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <div className="h-12 w-12 rounded-xl bg-primary/10 flex items-center justify-center">
+            <Radio className="h-6 w-6 text-primary" />
+          </div>
+          <div>
+            <h2 className="text-2xl font-semibold">Вебинары платформы</h2>
+            <p className="text-sm text-muted-foreground">
+              Все вебинары всех организаций — просмотр, тестирование плеера и модерация
+            </p>
+          </div>
         </div>
-        <div>
-          <h2 className="text-2xl font-semibold">Вебинары платформы</h2>
-          <p className="text-sm text-muted-foreground">
-            Все вебинары всех организаций — просмотр и модерация
-          </p>
-        </div>
+        <Button onClick={() => setShowCreate(true)} className="shrink-0">
+          <Plus className="h-4 w-4 mr-2" />
+          Создать тестовый
+        </Button>
       </div>
 
       {/* Stats cards */}
@@ -160,9 +188,17 @@ export function AdminWebinarsOverview() {
         <Tabs value={statusFilter} onValueChange={setStatusFilter}>
           <TabsList>
             <TabsTrigger value="all">Все</TabsTrigger>
-            <TabsTrigger value="planned">Запланирован</TabsTrigger>
-            <TabsTrigger value="live">В эфире</TabsTrigger>
+            <TabsTrigger value="planned">План</TabsTrigger>
+            <TabsTrigger value="live">Эфир</TabsTrigger>
             <TabsTrigger value="ended">Завершён</TabsTrigger>
+          </TabsList>
+        </Tabs>
+        <Tabs value={sourceFilter} onValueChange={setSourceFilter}>
+          <TabsList>
+            <TabsTrigger value="all">Все источники</TabsTrigger>
+            <TabsTrigger value="livekit">LiveKit</TabsTrigger>
+            <TabsTrigger value="kinescope">Kinescope</TabsTrigger>
+            <TabsTrigger value="external">Внешний</TabsTrigger>
           </TabsList>
         </Tabs>
       </div>
@@ -185,7 +221,7 @@ export function AdminWebinarsOverview() {
                 <TableHead>Название</TableHead>
                 <TableHead>Организация</TableHead>
                 <TableHead>Дата</TableHead>
-                <TableHead>Длительность</TableHead>
+                <TableHead>Длит.</TableHead>
                 <TableHead>Источник</TableHead>
                 <TableHead>Статус</TableHead>
                 <TableHead className="text-right">Действия</TableHead>
@@ -194,6 +230,10 @@ export function AdminWebinarsOverview() {
             <TableBody>
               {filtered.map((w) => {
                 const status = STATUS_LABELS[w.status] || { label: w.status, variant: "outline" as const };
+                const canPlay =
+                  w.source_type === "livekit" ||
+                  (w.source_type === "kinescope" && (w.kinescope_live_id || w.kinescope_video_id)) ||
+                  (w.source_type === "external" && (w.embed_url || w.external_url));
                 return (
                   <TableRow key={w.id}>
                     <TableCell className="font-medium max-w-[280px] truncate">{w.title}</TableCell>
@@ -226,14 +266,26 @@ export function AdminWebinarsOverview() {
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex items-center justify-end gap-1">
-                        {(w.source_type === "livekit" || (w.source_type === "external" && w.external_url)) && (
+                        {canPlay && (
                           <Button
                             size="sm"
                             variant="ghost"
-                            onClick={() => openLive(w)}
-                            title="Открыть"
+                            onClick={() => openPlayer(w)}
+                            title="Открыть встроенный плеер"
                           >
-                            <ExternalLink className="h-4 w-4" />
+                            <Play className="h-4 w-4" />
+                          </Button>
+                        )}
+                        {w.source_type === "external" && w.external_url && (
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            asChild
+                            title="Открыть в новой вкладке"
+                          >
+                            <a href={w.external_url} target="_blank" rel="noopener noreferrer">
+                              <ExternalLink className="h-4 w-4" />
+                            </a>
                           </Button>
                         )}
                         <Button
@@ -254,6 +306,59 @@ export function AdminWebinarsOverview() {
           </Table>
         )}
       </Card>
+
+      {/* Embedded player Sheet */}
+      <Sheet open={!!playerWebinar} onOpenChange={(o) => !o && setPlayerWebinar(null)}>
+        <SheetContent side="right" className="w-full sm:max-w-3xl overflow-y-auto">
+          <SheetHeader>
+            <SheetTitle className="flex items-center gap-2">
+              <Radio className="h-4 w-4 text-primary" />
+              {playerWebinar?.title}
+            </SheetTitle>
+            <SheetDescription>
+              {playerWebinar?.organizations?.name && (
+                <span className="flex items-center gap-1.5">
+                  <Building2 className="h-3.5 w-3.5" />
+                  {playerWebinar.organizations.name}
+                </span>
+              )}
+            </SheetDescription>
+          </SheetHeader>
+          <div className="mt-6 space-y-4">
+            {playerWebinar && (
+              <>
+                <EmbeddedWebinarPlayer
+                  webinarId={playerWebinar.id}
+                  sourceType={playerWebinar.source_type}
+                  kinescopeLiveId={playerWebinar.kinescope_live_id}
+                  kinescopeVideoId={playerWebinar.kinescope_video_id}
+                  embedUrl={playerWebinar.embed_url}
+                  externalUrl={playerWebinar.external_url}
+                />
+                <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
+                  <Badge variant="outline">{SOURCE_LABELS[playerWebinar.source_type] || playerWebinar.source_type}</Badge>
+                  <Badge variant={STATUS_LABELS[playerWebinar.status]?.variant || "outline"}>
+                    {STATUS_LABELS[playerWebinar.status]?.label || playerWebinar.status}
+                  </Badge>
+                  {playerWebinar.scheduled_at && (
+                    <span className="flex items-center gap-1">
+                      <Calendar className="h-3 w-3" />
+                      {format(new Date(playerWebinar.scheduled_at), "d MMM yyyy, HH:mm", { locale: ru })}
+                    </span>
+                  )}
+                </div>
+              </>
+            )}
+          </div>
+        </SheetContent>
+      </Sheet>
+
+      <AdminCreateWebinarDialog
+        open={showCreate}
+        onOpenChange={setShowCreate}
+        onCreated={handleCreated}
+        userId={user?.id}
+      />
 
       <AlertDialog open={!!deleteTarget} onOpenChange={(o) => !o && setDeleteTarget(null)}>
         <AlertDialogContent>
