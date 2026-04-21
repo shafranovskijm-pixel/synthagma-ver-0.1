@@ -6,9 +6,6 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-// LiveKit REST API: создаёт комнату через серверный JWT (admin-grant: roomCreate).
-// Доки: https://docs.livekit.io/home/server/managing-rooms/
-
 function base64url(input: Uint8Array | string): string {
   const bytes = typeof input === "string" ? new TextEncoder().encode(input) : input;
   let binary = "";
@@ -24,13 +21,7 @@ async function signLiveKitJwt(
 ): Promise<string> {
   const now = Math.floor(Date.now() / 1000);
   const header = { alg: "HS256", typ: "JWT" };
-  const body = {
-    iss: apiKey,
-    nbf: now - 5,
-    iat: now,
-    exp: now + ttlSeconds,
-    ...payload,
-  };
+  const body = { iss: apiKey, nbf: now - 5, iat: now, exp: now + ttlSeconds, ...payload };
   const headerB64 = base64url(JSON.stringify(header));
   const bodyB64 = base64url(JSON.stringify(body));
   const data = `${headerB64}.${bodyB64}`;
@@ -49,45 +40,12 @@ function lkHttpUrl(wsUrl: string): string {
   return wsUrl.replace(/^wss?:\/\//, (m) => (m === "wss://" ? "https://" : "http://"));
 }
 
-/**
- * Терпимый разбор секрета: если кто-то вставил в поле целый .env-блок
- * (например "LIVEKIT_URL=wss://... LIVEKIT_API_KEY=... LIVEKIT_API_SECRET=..."),
- * вытаскиваем нужное значение по имени переменной или по http(s)/ws(s)-схеме.
- */
-function sanitizeUrl(value: string): string {
-  // Берём только до первого пробела/перевода строки/запятой/точки с запятой и срезаем кавычки.
-  return value.split(/[\s,;]/)[0].replace(/^["']+|["']+$/g, "").trim();
-}
-
-function extractSecret(raw: string | undefined, varName: string, kind: "url" | "token"): string | undefined {
-  if (!raw) return undefined;
-  const trimmed = raw.trim();
-  if (kind === "url" && /^wss?:\/\/\S+$/i.test(trimmed)) return sanitizeUrl(trimmed);
-  if (kind === "token" && !/\s/.test(trimmed) && !trimmed.includes("=")) return trimmed;
-
-  // Ищем "VARNAME=VALUE". Допускаем начало строки без разделителя.
-  const re = new RegExp(`(?:^|[\\s;,])?${varName}\\s*=\\s*("([^"]+)"|'([^']+)'|(\\S+))`, "i");
-  const m = trimmed.match(re);
-  if (m) {
-    const v = (m[2] || m[3] || m[4] || "").trim();
-    return kind === "url" ? sanitizeUrl(v) : v;
-  }
-
-  if (kind === "url") {
-    const u = trimmed.match(/wss?:\/\/\S+/i);
-    if (u) return sanitizeUrl(u[0]);
-  }
-  return kind === "url" ? sanitizeUrl(trimmed) : trimmed;
-}
-
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
     const authHeader = req.headers.get("Authorization");
-    if (!authHeader?.startsWith("Bearer ")) {
-      return json({ error: "Unauthorized" }, 401);
-    }
+    if (!authHeader?.startsWith("Bearer ")) return json({ error: "Unauthorized" }, 401);
 
     const supabase = createClient(
       Deno.env.get("SUPABASE_URL")!,
@@ -97,21 +55,16 @@ Deno.serve(async (req) => {
     const { data: userData } = await supabase.auth.getUser();
     if (!userData?.user?.id) return json({ error: "Unauthorized" }, 401);
 
-    const apiKey = extractSecret(Deno.env.get("LIVEKIT_API_KEY"), "LIVEKIT_API_KEY", "token");
-    const apiSecret = extractSecret(Deno.env.get("LIVEKIT_API_SECRET"), "LIVEKIT_API_SECRET", "token");
-    const wsUrl = extractSecret(
-      Deno.env.get("LIVEKIT_WS_URL") || Deno.env.get("LIVEKIT_URL"),
-      "LIVEKIT_URL",
-      "url",
-    );
+    const apiKey = (Deno.env.get("LIVEKIT_API_KEY") ?? "").trim();
+    const apiSecret = (Deno.env.get("LIVEKIT_API_SECRET") ?? "").trim();
+    const wsUrl = ((Deno.env.get("LIVEKIT_WS_URL") || Deno.env.get("LIVEKIT_URL")) ?? "").trim();
+
     if (!apiKey || !apiSecret || !wsUrl) {
       return json({ error: "LiveKit secrets не настроены" }, 500);
     }
-    if (!/^wss?:\/\//i.test(wsUrl)) {
+    if (!/^wss?:\/\/[^\s]+$/i.test(wsUrl)) {
       return json({
-        error:
-          "LIVEKIT_WS_URL должен начинаться с wss:// (например wss://your-project.livekit.cloud). Текущее значение: " +
-          wsUrl.slice(0, 80),
+        error: `LIVEKIT_WS_URL должен быть чистым wss://... URL. Текущее: "${wsUrl.slice(0, 80)}"`,
       }, 500);
     }
 
@@ -133,7 +86,7 @@ Deno.serve(async (req) => {
       },
       body: JSON.stringify({
         name: roomName,
-        empty_timeout: 600, // комната уйдёт через 10 мин пустоты
+        empty_timeout: 600,
         max_participants: 100,
         metadata: JSON.stringify({ title: titleHint, webinarId: webinarId ?? null }),
       }),

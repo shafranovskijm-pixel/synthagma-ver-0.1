@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -7,7 +7,10 @@ import { Input } from "@/components/ui/input";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
-import { Radio, Search, Trash2, ExternalLink, Calendar, Building2, Plus, Play } from "lucide-react";
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Radio, Search, Trash2, ExternalLink, Calendar, Building2, Plus, Play, ChevronDown, Zap } from "lucide-react";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import { toast } from "sonner";
@@ -33,11 +36,13 @@ interface AdminWebinar {
   kinescope_video_id: string | null;
   organization_id: string;
   created_at: string;
-  organizations: { name: string } | null;
+  player_settings: any;
+  organization_name?: string | null;
 }
 
 const STATUS_LABELS: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
   planned: { label: "Запланирован", variant: "outline" },
+  scheduled: { label: "Запланирован", variant: "outline" },
   live: { label: "В эфире", variant: "destructive" },
   ended: { label: "Завершён", variant: "secondary" },
 };
@@ -48,8 +53,9 @@ const SOURCE_LABELS: Record<string, string> = {
   kinescope: "Kinescope RTMP",
 };
 
+// БЕЗ джойнов — джойн organizations(name) у админа иногда падает по RLS
 const SELECT_FIELDS =
-  "id, title, scheduled_at, duration_minutes, status, source_type, external_url, embed_url, kinescope_live_id, kinescope_video_id, organization_id, created_at, organizations(name)";
+  "id, title, scheduled_at, duration_minutes, status, source_type, external_url, embed_url, kinescope_live_id, kinescope_video_id, organization_id, created_at, player_settings";
 
 export function AdminWebinarsOverview() {
   const { user } = useAuth();
@@ -61,50 +67,69 @@ export function AdminWebinarsOverview() {
   const [deleteTarget, setDeleteTarget] = useState<AdminWebinar | null>(null);
   const [showCreate, setShowCreate] = useState(false);
   const [playerWebinar, setPlayerWebinar] = useState<AdminWebinar | null>(null);
+  const [launching, setLaunching] = useState(false);
 
-  const fetchWebinars = async () => {
+  const fetchWebinars = useCallback(async () => {
     setLoading(true);
-    const { data, error } = await supabase
-      .from("webinars")
-      .select(SELECT_FIELDS)
-      .order("scheduled_at", { ascending: false, nullsFirst: false })
-      .limit(500);
-    if (error) {
-      toast.error("Ошибка загрузки вебинаров");
-      console.error(error);
-    } else {
-      setWebinars((data as any[]) || []);
+    try {
+      const { data, error } = await supabase
+        .from("webinars")
+        .select(SELECT_FIELDS)
+        .order("created_at", { ascending: false })
+        .limit(500);
+      if (error) throw error;
+
+      const list = (data as any[]) || [];
+      // Подтягиваем имена организаций отдельно — чтобы не падать на RLS-джойне
+      const orgIds = Array.from(new Set(list.map((w) => w.organization_id).filter(Boolean)));
+      let orgsMap: Record<string, string> = {};
+      if (orgIds.length > 0) {
+        const { data: orgs } = await supabase
+          .from("organizations")
+          .select("id, name")
+          .in("id", orgIds);
+        orgsMap = Object.fromEntries((orgs || []).map((o: any) => [o.id, o.name]));
+      }
+      setWebinars(list.map((w) => ({ ...w, organization_name: orgsMap[w.organization_id] ?? null })));
+    } catch (e: any) {
+      console.error("[AdminWebinarsOverview] fetch error", e);
+      toast.error("Не удалось загрузить вебинары: " + (e?.message || "ошибка"));
+      setWebinars([]);
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
-  };
+  }, []);
 
   useEffect(() => {
     fetchWebinars();
-  }, []);
+  }, [fetchWebinars]);
 
   const filtered = useMemo(() => {
     let result = webinars;
-    if (statusFilter !== "all") result = result.filter((w) => w.status === statusFilter);
+    if (statusFilter !== "all") {
+      result = result.filter((w) => {
+        if (statusFilter === "planned") return w.status === "planned" || w.status === "scheduled";
+        return w.status === statusFilter;
+      });
+    }
     if (sourceFilter !== "all") result = result.filter((w) => w.source_type === sourceFilter);
     if (search.trim()) {
       const q = search.toLowerCase();
       result = result.filter(
         (w) =>
           w.title.toLowerCase().includes(q) ||
-          (w.organizations?.name || "").toLowerCase().includes(q),
+          (w.organization_name || "").toLowerCase().includes(q),
       );
     }
     return result;
   }, [webinars, statusFilter, sourceFilter, search]);
 
-  const stats = useMemo(() => {
-    return {
-      total: webinars.length,
-      live: webinars.filter((w) => w.status === "live").length,
-      planned: webinars.filter((w) => w.status === "planned").length,
-      ended: webinars.filter((w) => w.status === "ended").length,
-    };
-  }, [webinars]);
+  const stats = useMemo(() => ({
+    total: webinars.length,
+    live: webinars.filter((w) => w.status === "live").length,
+    planned: webinars.filter((w) => w.status === "planned" || w.status === "scheduled").length,
+    ended: webinars.filter((w) => w.status === "ended").length,
+  }), [webinars]);
 
   const handleDelete = async () => {
     if (!deleteTarget) return;
@@ -118,19 +143,102 @@ export function AdminWebinarsOverview() {
     setDeleteTarget(null);
   };
 
-  const openPlayer = (w: AdminWebinar) => {
-    setPlayerWebinar(w);
+  /**
+   * One-click: создаёт LiveKit-вебинар и сразу открывает плеер.
+   * 1) Берём первую доступную организацию (organization_id NOT NULL в схеме).
+   * 2) INSERT webinars.
+   * 3) Вызов livekit-create-room → roomName/wsUrl.
+   * 4) UPDATE player_settings.
+   * 5) Открываем Sheet с плеером.
+   */
+  const launchInstantWebinar = async () => {
+    if (!user?.id) {
+      toast.error("Нужно авторизоваться");
+      return;
+    }
+    setLaunching(true);
+    try {
+      // Берём любую существующую организацию (organization_id NOT NULL)
+      const { data: anyOrg, error: orgErr } = await supabase
+        .from("organizations")
+        .select("id")
+        .order("created_at", { ascending: true })
+        .limit(1)
+        .maybeSingle();
+      if (orgErr) throw orgErr;
+      if (!anyOrg?.id) throw new Error("Нет ни одной организации в системе");
+
+      const now = new Date();
+      const title = `Тестовый вебинар ${format(now, "dd.MM HH:mm", { locale: ru })}`;
+
+      // INSERT webinar
+      const { data: created, error: insErr } = await supabase
+        .from("webinars")
+        .insert({
+          title,
+          source_type: "livekit",
+          status: "live",
+          scheduled_at: now.toISOString(),
+          duration_minutes: 60,
+          organization_id: anyOrg.id,
+          host_user_id: user.id,
+          created_by: user.id,
+          access_type: "free",
+          player_settings: {},
+        })
+        .select(SELECT_FIELDS)
+        .single();
+      if (insErr) throw insErr;
+
+      // Создаём LiveKit комнату
+      const { data: roomData, error: roomErr } = await supabase.functions.invoke(
+        "livekit-create-room",
+        { body: { webinarId: created.id, title } },
+      );
+      if (roomErr) throw new Error(roomErr.message);
+      if (!roomData?.ok) throw new Error(roomData?.error || "LiveKit room creation failed");
+
+      // UPDATE player_settings
+      const playerSettings = {
+        livekit: { roomName: roomData.roomName, wsUrl: roomData.wsUrl },
+      };
+      const { data: updated, error: updErr } = await supabase
+        .from("webinars")
+        .update({ player_settings: playerSettings })
+        .eq("id", created.id)
+        .select(SELECT_FIELDS)
+        .single();
+      if (updErr) throw updErr;
+
+      // Обновляем список и открываем плеер
+      await fetchWebinars();
+      setPlayerWebinar({ ...(updated as any), organization_name: null });
+      toast.success("Вебинар запущен — вы в эфире");
+    } catch (e: any) {
+      console.error("[launchInstantWebinar]", e);
+      toast.error("Не удалось запустить: " + (e?.message || "ошибка"));
+    } finally {
+      setLaunching(false);
+    }
+  };
+
+  // По закрытию Sheet помечаем вебинар как завершённый
+  const closePlayer = async () => {
+    if (playerWebinar && playerWebinar.status === "live") {
+      await supabase.from("webinars").update({ status: "ended" }).eq("id", playerWebinar.id);
+      fetchWebinars();
+    }
+    setPlayerWebinar(null);
   };
 
   const handleCreated = async (webinarId: string) => {
     await fetchWebinars();
-    // Авто-открытие плеера для свежесозданного вебинара
     const { data } = await supabase
       .from("webinars")
       .select(SELECT_FIELDS)
       .eq("id", webinarId)
       .maybeSingle();
-    if (data) setPlayerWebinar(data as any);
+    if (data) setPlayerWebinar({ ...(data as any), organization_name: null });
   };
 
   return (
@@ -148,10 +256,25 @@ export function AdminWebinarsOverview() {
             </p>
           </div>
         </div>
-        <Button onClick={() => setShowCreate(true)} className="shrink-0">
-          <Plus className="h-4 w-4 mr-2" />
-          Создать тестовый
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button onClick={launchInstantWebinar} disabled={launching} className="shrink-0">
+            <Zap className="h-4 w-4 mr-2" />
+            {launching ? "Запускаю…" : "Запустить вебинар сейчас"}
+          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="icon" title="Расширенное создание">
+                <ChevronDown className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => setShowCreate(true)}>
+                <Plus className="h-4 w-4 mr-2" />
+                Расширенное создание (Kinescope / внешний)
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
       </div>
 
       {/* Stats cards */}
@@ -212,7 +335,7 @@ export function AdminWebinarsOverview() {
         ) : filtered.length === 0 ? (
           <div className="p-12 text-center text-muted-foreground">
             <Radio className="w-12 h-12 mx-auto mb-3 opacity-30" />
-            Вебинаров не найдено
+            Вебинаров не найдено — нажмите «Запустить вебинар сейчас» вверху страницы
           </div>
         ) : (
           <Table>
@@ -240,7 +363,7 @@ export function AdminWebinarsOverview() {
                     <TableCell>
                       <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
                         <Building2 className="h-3.5 w-3.5" />
-                        <span className="truncate max-w-[180px]">{w.organizations?.name || "—"}</span>
+                        <span className="truncate max-w-[180px]">{w.organization_name || "—"}</span>
                       </div>
                     </TableCell>
                     <TableCell className="text-sm">
@@ -270,19 +393,14 @@ export function AdminWebinarsOverview() {
                           <Button
                             size="sm"
                             variant="ghost"
-                            onClick={() => openPlayer(w)}
+                            onClick={() => setPlayerWebinar(w)}
                             title="Открыть встроенный плеер"
                           >
                             <Play className="h-4 w-4" />
                           </Button>
                         )}
                         {w.source_type === "external" && w.external_url && (
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            asChild
-                            title="Открыть в новой вкладке"
-                          >
+                          <Button size="sm" variant="ghost" asChild title="Открыть в новой вкладке">
                             <a href={w.external_url} target="_blank" rel="noopener noreferrer">
                               <ExternalLink className="h-4 w-4" />
                             </a>
@@ -308,7 +426,7 @@ export function AdminWebinarsOverview() {
       </Card>
 
       {/* Embedded player Sheet */}
-      <Sheet open={!!playerWebinar} onOpenChange={(o) => !o && setPlayerWebinar(null)}>
+      <Sheet open={!!playerWebinar} onOpenChange={(o) => !o && closePlayer()}>
         <SheetContent side="right" className="w-full sm:max-w-3xl overflow-y-auto">
           <SheetHeader>
             <SheetTitle className="flex items-center gap-2">
@@ -316,10 +434,10 @@ export function AdminWebinarsOverview() {
               {playerWebinar?.title}
             </SheetTitle>
             <SheetDescription>
-              {playerWebinar?.organizations?.name && (
+              {playerWebinar?.organization_name && (
                 <span className="flex items-center gap-1.5">
                   <Building2 className="h-3.5 w-3.5" />
-                  {playerWebinar.organizations.name}
+                  {playerWebinar.organization_name}
                 </span>
               )}
             </SheetDescription>

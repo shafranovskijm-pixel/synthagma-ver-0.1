@@ -14,27 +14,7 @@ function base64url(input: Uint8Array | string): string {
 }
 
 
-function sanitizeUrl(value: string): string {
-  return value.split(/[\s,;]/)[0].replace(/^["']+|["']+$/g, "").trim();
-}
-
-function extractSecret(raw: string | undefined, varName: string, kind: "url" | "token"): string | undefined {
-  if (!raw) return undefined;
-  const trimmed = raw.trim();
-  if (kind === "url" && /^wss?:\/\/\S+$/i.test(trimmed)) return sanitizeUrl(trimmed);
-  if (kind === "token" && !/\s/.test(trimmed) && !trimmed.includes("=")) return trimmed;
-  const re = new RegExp(`(?:^|[\\s;,])?${varName}\\s*=\\s*("([^"]+)"|'([^']+)'|(\\S+))`, "i");
-  const m = trimmed.match(re);
-  if (m) {
-    const v = (m[2] || m[3] || m[4] || "").trim();
-    return kind === "url" ? sanitizeUrl(v) : v;
-  }
-  if (kind === "url") {
-    const u = trimmed.match(/wss?:\/\/\S+/i);
-    if (u) return sanitizeUrl(u[0]);
-  }
-  return kind === "url" ? sanitizeUrl(trimmed) : trimmed;
-}
+// Секреты читаются напрямую — никаких .env-парсеров.
 
 async function signLiveKitAccessToken(
   apiKey: string,
@@ -99,17 +79,13 @@ Deno.serve(async (req) => {
     const user = userData?.user;
     if (!user?.id) return json({ error: "Unauthorized" }, 401);
 
-    const apiKey = extractSecret(Deno.env.get("LIVEKIT_API_KEY"), "LIVEKIT_API_KEY", "token");
-    const apiSecret = extractSecret(Deno.env.get("LIVEKIT_API_SECRET"), "LIVEKIT_API_SECRET", "token");
-    const wsUrl = extractSecret(
-      Deno.env.get("LIVEKIT_WS_URL") || Deno.env.get("LIVEKIT_URL"),
-      "LIVEKIT_URL",
-      "url",
-    );
+    const apiKey = (Deno.env.get("LIVEKIT_API_KEY") ?? "").trim();
+    const apiSecret = (Deno.env.get("LIVEKIT_API_SECRET") ?? "").trim();
+    const wsUrl = ((Deno.env.get("LIVEKIT_WS_URL") || Deno.env.get("LIVEKIT_URL")) ?? "").trim();
     if (!apiKey || !apiSecret || !wsUrl) return json({ error: "LiveKit не настроен" }, 500);
-    if (!/^wss?:\/\//i.test(wsUrl)) {
+    if (!/^wss?:\/\/[^\s]+$/i.test(wsUrl)) {
       return json({
-        error: "LIVEKIT_WS_URL должен начинаться с wss:// (текущее: " + wsUrl.slice(0, 80) + ")",
+        error: `LIVEKIT_WS_URL должен быть чистым wss://... URL. Текущее: "${wsUrl.slice(0, 80)}"`,
       }, 500);
     }
 
