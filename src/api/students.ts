@@ -7,58 +7,67 @@ import type { Student, StudentFRDOStatus, StudentEnrollment } from "@/types";
 export async function fetchStudents(
   organizationId: string,
   courseIds: string[]
-): Promise<{ students: Student[]; allProfiles: Student[] }> {
-  // Get all enrollments for org courses (with pagination to bypass 1000-row limit)
-  let allEnrollments: any[] = [];
-  if (courseIds.length > 0) {
-    allEnrollments = await fetchAllRows<any>(({ from, to }) =>
-      supabase
-        .from("enrollments")
-        .select("*")
-        .in("course_id", courseIds)
-        .range(from, to)
-        .then(r => ({ data: r.data as any[] | null, error: r.error }))
-    );
-  }
+): Promise<{ students: Student[]; allProfiles: Student[]; groupMap: Map<string, string | null> }> {
+  // Run independent queries in parallel to cut waterfall latency.
+  // - profiles: include student_group_id so we don't need a second profiles roundtrip
+  // - enrollments: trim select to only the columns we actually use
+  // - passwords + courses: kick off in parallel
+  const enrollmentsPromise = courseIds.length > 0
+    ? fetchAllRows<any>(({ from, to }) =>
+        supabase
+          .from("enrollments")
+          .select("id, user_id, course_id, progress, status, started_at, completed_at, time_spent")
+          .in("course_id", courseIds)
+          .range(from, to)
+          .then(r => ({ data: r.data as any[] | null, error: r.error }))
+      )
+    : Promise.resolve([] as any[]);
 
-  // Fetch all profiles for the organization (without generated_password - it's encrypted)
-  // Fetch all profiles with pagination
-  const allProfilesData: any[] = await fetchAllRows<any>(({ from, to }) =>
+  const profilesPromise = fetchAllRows<any>(({ from, to }) =>
     supabase
       .from("profiles")
-      .select("id, user_id, full_name, email, login, company_id, last_visit_at")
+      .select("id, user_id, full_name, email, login, company_id, last_visit_at, student_group_id")
       .eq("organization_id", organizationId)
       .range(from, to)
       .then(r => ({ data: r.data as any[] | null, error: r.error }))
   );
 
-  // Fetch decrypted passwords via secure RPC
-  const { data: decryptedPasswords } = await supabase
+  const passwordsPromise = supabase
     .rpc("get_decrypted_student_passwords", { p_organization_id: organizationId });
+
+  const coursesPromise = supabase
+    .from("courses")
+    .select("id, title")
+    .eq("organization_id", organizationId);
+
+  const [allEnrollments, allProfilesData, passwordsRes, coursesRes] = await Promise.all([
+    enrollmentsPromise,
+    profilesPromise,
+    passwordsPromise,
+    coursesPromise,
+  ]);
+
   const passwordMap = new Map<string, string>();
-  (decryptedPasswords || []).forEach((row: any) => {
+  (passwordsRes.data || []).forEach((row: any) => {
     if (row.decrypted_password) passwordMap.set(row.user_id, row.decrypted_password);
   });
 
-  // Fetch user roles to exclude organization/admin users from student list
+  // Fetch user roles only for users that actually have enrollments OR appear once -
+  // but we still need to filter out org/admin from the full profile list.
   const userIds = (allProfilesData || []).map(p => p.user_id);
   let orgAdminUserIds = new Set<string>();
-  
+
   if (userIds.length > 0) {
     const { data: rolesData } = await supabase
       .from("user_roles")
       .select("user_id, role")
       .in("user_id", userIds)
       .in("role", ["organization", "admin"]);
-    
+
     orgAdminUserIds = new Set((rolesData || []).map(r => r.user_id));
   }
 
-  // Fetch courses for mapping
-  const { data: coursesData } = await supabase
-    .from("courses")
-    .select("id, title")
-    .eq("organization_id", organizationId);
+  const coursesData = coursesRes.data;
 
   // Build enrollment map by user
   const userEnrollmentsMap: Record<string, any[]> = {};
