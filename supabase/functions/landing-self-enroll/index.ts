@@ -19,6 +19,9 @@ interface Payload {
   phone?: string;
   extra?: Record<string, string>;
   consent: boolean;
+  source?: string | null;
+  utm?: Record<string, string>;
+  landing_referrer?: string | null;
 }
 
 function json(body: unknown, status = 200) {
@@ -97,7 +100,7 @@ serve(async (req) => {
     };
     const { data: orgData } = await admin
       .from("organizations")
-      .select("subscription_plan, custom_max_students, name")
+      .select("subscription_plan, custom_max_students, name, telegram_notify_enabled, telegram_notify_chat_id")
       .eq("id", course.organization_id)
       .maybeSingle();
 
@@ -245,17 +248,24 @@ serve(async (req) => {
     }
 
     // ── Telegram-уведомление организации — best-effort ────────
-    if (enrollmentCfg.notify_telegram !== false) {
+    const tgEnabled = (orgData as any)?.telegram_notify_enabled === true;
+    const tgChatId = (orgData as any)?.telegram_notify_chat_id;
+    if (enrollmentCfg.notify_telegram !== false && tgEnabled && tgChatId) {
       try {
         const courseTitle = ((course as any).landing_content?.hero?.title) || "(без названия)";
+        const utmStr = body.utm && Object.keys(body.utm).length > 0
+          ? `\n<b>UTM:</b> ${Object.entries(body.utm).map(([k, v]) => `${k}=${v}`).join(", ")}`
+          : "";
+        const sourceStr = body.source ? `\n<b>Источник:</b> ${body.source}` : "";
         const message = `🎓 <b>Новая регистрация на лендинге</b>\n\n` +
           `<b>Курс:</b> ${courseTitle}\n` +
           `<b>Имя:</b> ${body.full_name}\n` +
           `<b>Email:</b> ${body.email}\n` +
           (body.phone ? `<b>Телефон:</b> ${body.phone}\n` : "") +
-          `<b>Режим:</b> мгновенное зачисление`;
+          `<b>Режим:</b> мгновенное зачисление` +
+          sourceStr + utmStr;
         await admin.functions.invoke("send-telegram-notification", {
-          body: { organization_id: course.organization_id, message },
+          body: { chat_id: tgChatId, message },
         });
       } catch (e) {
         console.warn("telegram notify err:", e);
