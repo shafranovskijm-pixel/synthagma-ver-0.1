@@ -210,6 +210,29 @@ export function LandingRegistrationPanel({ open, onOpenChange, organizationId, c
             )}
           </div>
 
+          {/* Lead-magnet */}
+          <div className="space-y-2 rounded-md border p-3 bg-muted/20">
+            <Label className="text-xs uppercase tracking-wide text-muted-foreground">Лид-магнит (PDF/файл)</Label>
+            <p className="text-xs text-muted-foreground">
+              Высылается на email сразу после сабмита формы. Например, чек-лист или памятка для стимулирования регистрации.
+            </p>
+            <LeadMagnetUploader
+              organizationId={organizationId}
+              currentUrl={cfg.lead_magnet_url}
+              currentLabel={cfg.lead_magnet_label}
+              onChange={(url, label) => onChange({ ...cfg, lead_magnet_url: url, lead_magnet_label: label })}
+            />
+          </div>
+
+          {/* Telegram */}
+          <label className="flex items-center justify-between gap-3 p-3 border rounded-md">
+            <div>
+              <div className="text-sm font-medium">Уведомлять в Telegram</div>
+              <div className="text-xs text-muted-foreground">Будет отправлено боту, привязанному к школе. Настройте chat&nbsp;ID в профиле организации.</div>
+            </div>
+            <Switch checked={cfg.notify_telegram} onCheckedChange={(v) => update("notify_telegram", v)} />
+          </label>
+
           {/* Success */}
           <div className="space-y-2">
             <Label className="text-xs uppercase tracking-wide text-muted-foreground">Успешный сабмит</Label>
