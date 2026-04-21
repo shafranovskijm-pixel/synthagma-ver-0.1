@@ -133,7 +133,6 @@ export default defineConfig(({ mode }) => ({
             "@radix-ui/react-accordion",
             "@radix-ui/react-checkbox",
             "@radix-ui/react-switch",
-            "@radix-ui/react-toast",
           ],
           // Forms
           "forms-vendor": ["react-hook-form", "@hookform/resolvers", "zod"],
