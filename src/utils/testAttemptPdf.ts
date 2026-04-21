@@ -1,4 +1,4 @@
-import jsPDF from "jspdf";
+// jsPDF is loaded dynamically (~500 KB) — only when the user clicks "Download PDF".
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 
@@ -23,7 +23,8 @@ interface TestAttemptPdfData {
   answers: Record<string, number>;
 }
 
-export function generateTestAttemptPdf(data: TestAttemptPdfData) {
+export async function generateTestAttemptPdf(data: TestAttemptPdfData) {
+  const { default: jsPDF } = await import("jspdf");
   const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
 
   // Register and use a font that supports Cyrillic — jsPDF default doesn't.

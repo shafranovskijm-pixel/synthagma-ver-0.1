@@ -1,4 +1,4 @@
-import ExcelJS from "exceljs";
+// ExcelJS (~1 MB) is loaded dynamically inside `exportFRDOExcel`, not on import.
 import { format } from "date-fns";
 
 // ===================== DPO HEADERS (exact match to official template, 41 columns) =====================
