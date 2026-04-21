@@ -65,69 +65,117 @@ export function useCourseBuilder(propCourseId?: string) {
     finally { setIsImporting(false); if (fileInputRef.current) fileInputRef.current.value = ''; }
   };
 
-  // Load data
+  // Load data — parallelize independent queries to cut waterfall latency.
+  // Before: profile → org → course → modules → lessons → (questions + attachments)  [6 sequential round-trips]
+  // After:  [profile, course, modules, lessons] in parallel, then [questions, attachments] in parallel.
+  //         Subscription plan is fetched in the background (doesn't block UI).
   useEffect(() => {
     const fetchData = async () => {
       if (!user || isDataLoaded) return;
-      const { data: profile } = await supabase.from("profiles").select("organization_id").eq("user_id", user.id).maybeSingle();
-      if (profile?.organization_id) {
-        setOrganizationId(profile.organization_id);
-        const { data: org } = await supabase.from("organizations").select("subscription_plan").eq("id", profile.organization_id).single();
-        if (org?.subscription_plan) { setSubscriptionPlan(org.subscription_plan); setAiLimitContext(profile.organization_id, org.subscription_plan); }
-        else setAiLimitContext(profile.organization_id, 'free');
+
+      const profilePromise = supabase
+        .from("profiles")
+        .select("organization_id")
+        .eq("user_id", user.id)
+        .maybeSingle();
+
+      const coursePromise = courseId
+        ? supabase.from("courses").select("*").eq("id", courseId).single()
+        : Promise.resolve({ data: null, error: null } as any);
+
+      const modulesPromise = courseId
+        ? supabase
+            .from("course_modules" as any)
+            .select("*")
+            .eq("course_id", courseId)
+            .order("order_index")
+        : Promise.resolve({ data: null, error: null } as any);
+
+      const lessonsPromise = courseId
+        ? supabase.from("lessons").select("*").eq("course_id", courseId).order("order_index")
+        : Promise.resolve({ data: null, error: null } as any);
+
+      const [{ data: profile }, courseRes, modulesRes, lessonsRes] = await Promise.all([
+        profilePromise, coursePromise, modulesPromise, lessonsPromise,
+      ]);
+
+      const course = courseRes?.data ?? null;
+      const modulesData = modulesRes?.data ?? null;
+      const lessonsData = lessonsRes?.data ?? null;
+
+      if (course) {
+        setCourseTitle(course.title);
+        setCourseDescription(course.description || "");
       }
-      if (courseId) {
-        const { data: course } = await supabase.from("courses").select("*").eq("id", courseId).single();
-        if (course) { setCourseTitle(course.title); setCourseDescription(course.description || ""); if (!profile?.organization_id && course.organization_id) setOrganizationId(course.organization_id); }
+      if (modulesData) {
+        setModules((modulesData as any[]).map((m: any) => ({
+          id: m.id, course_id: m.course_id, title: m.title, order_index: m.order_index, collapsed: false,
+        })));
+      }
 
-        // Load modules
-        const { data: modulesData } = await supabase
-          .from("course_modules" as any)
-          .select("*")
-          .eq("course_id", courseId)
-          .order("order_index");
-        if (modulesData) {
-          setModules((modulesData as any[]).map(m => ({
-            id: m.id, course_id: m.course_id, title: m.title, order_index: m.order_index, collapsed: false,
-          })));
+      // Resolve organization id (prefer profile, fall back to course's org).
+      const orgId = profile?.organization_id || course?.organization_id || null;
+      if (orgId) {
+        setOrganizationId(orgId);
+        // Subscription plan is only needed for AI limits — fetch in background.
+        supabase
+          .from("organizations")
+          .select("subscription_plan")
+          .eq("id", orgId)
+          .single()
+          .then(({ data: org }) => {
+            if (org?.subscription_plan) {
+              setSubscriptionPlan(org.subscription_plan);
+              setAiLimitContext(orgId, org.subscription_plan);
+            } else {
+              setAiLimitContext(orgId, 'free');
+            }
+          });
+      }
+
+      if (lessonsData) {
+        const testLessonIds = lessonsData.filter((l: any) => l.type === 'test').map((l: any) => l.id);
+        const allLessonIds = lessonsData.map((l: any) => l.id);
+
+        const questionsPromise = testLessonIds.length > 0
+          ? supabase.from("test_questions").select("*").in("lesson_id", testLessonIds).order("order_index")
+          : Promise.resolve({ data: [], error: null } as any);
+
+        const attachmentsPromise = allLessonIds.length > 0
+          ? supabase.from("lesson_attachments").select("*").in("lesson_id", allLessonIds).order("order_index")
+          : Promise.resolve({ data: [], error: null } as any);
+
+        const [{ data: questionsData }, { data: attachmentsData }] = await Promise.all([
+          questionsPromise, attachmentsPromise,
+        ]);
+
+        const questionsMap: Record<string, TestQuestionLocal[]> = {};
+        if (questionsData) {
+          for (const q of questionsData as any[]) {
+            if (!questionsMap[q.lesson_id]) questionsMap[q.lesson_id] = [];
+            let rawOpts = q.options as unknown;
+            if (typeof rawOpts === 'string') { try { rawOpts = JSON.parse(rawOpts); } catch { rawOpts = []; } }
+            const normalizedOptions = Array.isArray(rawOpts) ? (rawOpts as any[]).map(o => typeof o === 'string' ? { text: o } : o) : [];
+            questionsMap[q.lesson_id].push({ id: q.id, question: q.question, options: normalizedOptions, correct_answer: q.correct_answer, order_index: q.order_index, explanation: (q as any).explanation || '', image_url: q.image_url || null, isNew: false, isDeleted: false });
+          }
         }
 
-        const { data: lessonsData } = await supabase.from("lessons").select("*").eq("course_id", courseId).order("order_index");
-        if (lessonsData) {
-          const testLessonIds = lessonsData.filter(l => l.type === 'test').map(l => l.id);
-          let questionsMap: Record<string, TestQuestionLocal[]> = {};
-          if (testLessonIds.length > 0) {
-            const { data: questionsData } = await supabase.from("test_questions").select("*").in("lesson_id", testLessonIds).order("order_index");
-            if (questionsData) {
-              for (const q of questionsData) {
-                if (!questionsMap[q.lesson_id]) questionsMap[q.lesson_id] = [];
-                let rawOpts = q.options as unknown;
-                if (typeof rawOpts === 'string') { try { rawOpts = JSON.parse(rawOpts); } catch { rawOpts = []; } }
-                const normalizedOptions = Array.isArray(rawOpts) ? (rawOpts as any[]).map(o => typeof o === 'string' ? { text: o } : o) : [];
-                questionsMap[q.lesson_id].push({ id: q.id, question: q.question, options: normalizedOptions, correct_answer: q.correct_answer, order_index: q.order_index, explanation: (q as any).explanation || '', image_url: q.image_url || null, isNew: false, isDeleted: false });
-              }
-            }
-          }
-          const allLessonIds = lessonsData.map(l => l.id);
-          let attachmentsMap: Record<string, LessonAttachmentLocal[]> = {};
-          if (allLessonIds.length > 0) {
-            const { data: attachmentsData } = await supabase.from("lesson_attachments").select("*").in("lesson_id", allLessonIds).order("order_index");
-            if (attachmentsData) {
-              for (const a of attachmentsData) {
-                if (!attachmentsMap[a.lesson_id]) attachmentsMap[a.lesson_id] = [];
-                attachmentsMap[a.lesson_id].push({ id: a.id, lesson_id: a.lesson_id, name: a.name, file_url: a.file_url, file_type: a.file_type, file_size: a.file_size ? Number(a.file_size) : null, category: a.category, order_index: a.order_index, isNew: false, isDeleted: false });
-              }
-            }
-          }
-          const normalized = normalizeLessonsFromDB(lessonsData, questionsMap, attachmentsMap);
-          setLessons(normalized);
-          // Автовыбор первого урока, если ни один не выбран
-          if (normalized.length > 0) {
-            setActiveLessonId(prev => prev ?? normalized[0].id);
+        const attachmentsMap: Record<string, LessonAttachmentLocal[]> = {};
+        if (attachmentsData) {
+          for (const a of attachmentsData as any[]) {
+            if (!attachmentsMap[a.lesson_id]) attachmentsMap[a.lesson_id] = [];
+            attachmentsMap[a.lesson_id].push({ id: a.id, lesson_id: a.lesson_id, name: a.name, file_url: a.file_url, file_type: a.file_type, file_size: a.file_size ? Number(a.file_size) : null, category: a.category, order_index: a.order_index, isNew: false, isDeleted: false });
           }
         }
-        setIsLoading(false);
-      } else { setIsLoading(false); }
+
+        const normalized = normalizeLessonsFromDB(lessonsData, questionsMap, attachmentsMap);
+        setLessons(normalized);
+        if (normalized.length > 0) {
+          setActiveLessonId(prev => prev ?? normalized[0].id);
+        }
+      }
+
+      setIsLoading(false);
       setIsDataLoaded(true);
     };
     fetchData();
