@@ -186,9 +186,14 @@ serve(async (req) => {
     try {
       await admin.from("student_consents").insert({
         organization_id: course.organization_id,
-        student_user_id: userId,
+        user_id: userId,
         consent_type: "personal_data",
         full_name: body.full_name.trim(),
+        email: body.email.toLowerCase(),
+        phone: body.phone ?? null,
+        signed_at: new Date().toISOString(),
+        ip_address: req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? null,
+        user_agent: req.headers.get("user-agent") ?? null,
       });
     } catch (e) {
       console.warn("consent log skip:", e);
