@@ -2157,29 +2157,41 @@ export type Database = {
         Row: {
           course_id: string
           created_at: string
+          extra_fields: Json | null
           id: string
+          landing_referrer: string | null
           resolved_at: string | null
           resolved_by: string | null
+          source: string | null
           status: string
           user_id: string
+          utm: Json | null
         }
         Insert: {
           course_id: string
           created_at?: string
+          extra_fields?: Json | null
           id?: string
+          landing_referrer?: string | null
           resolved_at?: string | null
           resolved_by?: string | null
+          source?: string | null
           status?: string
           user_id: string
+          utm?: Json | null
         }
         Update: {
           course_id?: string
           created_at?: string
+          extra_fields?: Json | null
           id?: string
+          landing_referrer?: string | null
           resolved_at?: string | null
           resolved_by?: string | null
+          source?: string | null
           status?: string
           user_id?: string
+          utm?: Json | null
         }
         Relationships: [
           {
@@ -4084,6 +4096,8 @@ export type Database = {
           tariff_custom_label: string | null
           tariff_type: string | null
           telegram_chat_id: string | null
+          telegram_notify_chat_id: string | null
+          telegram_notify_enabled: boolean
           updated_at: string
           website_url: string | null
         }
@@ -4140,6 +4154,8 @@ export type Database = {
           tariff_custom_label?: string | null
           tariff_type?: string | null
           telegram_chat_id?: string | null
+          telegram_notify_chat_id?: string | null
+          telegram_notify_enabled?: boolean
           updated_at?: string
           website_url?: string | null
         }
@@ -4196,6 +4212,8 @@ export type Database = {
           tariff_custom_label?: string | null
           tariff_type?: string | null
           telegram_chat_id?: string | null
+          telegram_notify_chat_id?: string | null
+          telegram_notify_enabled?: boolean
           updated_at?: string
           website_url?: string | null
         }
@@ -4544,6 +4562,8 @@ export type Database = {
           generated_password: string | null
           id: string
           last_visit_at: string | null
+          lead_source: string | null
+          lead_utm: Json | null
           login: string | null
           onboarding_completed: boolean
           organization_id: string | null
@@ -4566,6 +4586,8 @@ export type Database = {
           generated_password?: string | null
           id?: string
           last_visit_at?: string | null
+          lead_source?: string | null
+          lead_utm?: Json | null
           login?: string | null
           onboarding_completed?: boolean
           organization_id?: string | null
@@ -4588,6 +4610,8 @@ export type Database = {
           generated_password?: string | null
           id?: string
           last_visit_at?: string | null
+          lead_source?: string | null
+          lead_utm?: Json | null
           login?: string | null
           onboarding_completed?: boolean
           organization_id?: string | null
