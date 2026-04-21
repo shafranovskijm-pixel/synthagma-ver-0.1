@@ -79,17 +79,13 @@ Deno.serve(async (req) => {
     const user = userData?.user;
     if (!user?.id) return json({ error: "Unauthorized" }, 401);
 
-    const apiKey = extractSecret(Deno.env.get("LIVEKIT_API_KEY"), "LIVEKIT_API_KEY", "token");
-    const apiSecret = extractSecret(Deno.env.get("LIVEKIT_API_SECRET"), "LIVEKIT_API_SECRET", "token");
-    const wsUrl = extractSecret(
-      Deno.env.get("LIVEKIT_WS_URL") || Deno.env.get("LIVEKIT_URL"),
-      "LIVEKIT_URL",
-      "url",
-    );
+    const apiKey = (Deno.env.get("LIVEKIT_API_KEY") ?? "").trim();
+    const apiSecret = (Deno.env.get("LIVEKIT_API_SECRET") ?? "").trim();
+    const wsUrl = ((Deno.env.get("LIVEKIT_WS_URL") || Deno.env.get("LIVEKIT_URL")) ?? "").trim();
     if (!apiKey || !apiSecret || !wsUrl) return json({ error: "LiveKit не настроен" }, 500);
-    if (!/^wss?:\/\//i.test(wsUrl)) {
+    if (!/^wss?:\/\/[^\s]+$/i.test(wsUrl)) {
       return json({
-        error: "LIVEKIT_WS_URL должен начинаться с wss:// (текущее: " + wsUrl.slice(0, 80) + ")",
+        error: `LIVEKIT_WS_URL должен быть чистым wss://... URL. Текущее: "${wsUrl.slice(0, 80)}"`,
       }, 500);
     }
 
