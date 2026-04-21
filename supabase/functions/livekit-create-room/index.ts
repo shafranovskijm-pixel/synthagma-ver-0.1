@@ -49,6 +49,31 @@ function lkHttpUrl(wsUrl: string): string {
   return wsUrl.replace(/^wss?:\/\//, (m) => (m === "wss://" ? "https://" : "http://"));
 }
 
+/**
+ * Терпимый разбор секрета: если кто-то вставил в поле целый .env-блок
+ * (например "LIVEKIT_URL=wss://... LIVEKIT_API_KEY=... LIVEKIT_API_SECRET=..."),
+ * вытаскиваем нужное значение по имени переменной или по http(s)/ws(s)-схеме.
+ */
+function extractSecret(raw: string | undefined, varName: string, kind: "url" | "token"): string | undefined {
+  if (!raw) return undefined;
+  const trimmed = raw.trim();
+  // Если это именно URL/токен без мусора — вернуть как есть.
+  if (kind === "url" && /^wss?:\/\/\S+$/i.test(trimmed)) return trimmed;
+  if (kind === "token" && !/\s/.test(trimmed) && !trimmed.includes("=")) return trimmed;
+
+  // Иначе ищем "VARNAME=VALUE" в строке, разделители — пробел/перевод строки/;
+  const re = new RegExp(`(?:^|[\\s;,])${varName}\\s*=\\s*("([^"]+)"|'([^']+)'|(\\S+))`, "i");
+  const m = trimmed.match(re);
+  if (m) return (m[2] || m[3] || m[4] || "").trim();
+
+  // Для URL — попробуем найти первый wss:// в строке.
+  if (kind === "url") {
+    const u = trimmed.match(/wss?:\/\/\S+/i);
+    if (u) return u[0].replace(/[",;]+$/g, "");
+  }
+  return trimmed;
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
@@ -66,11 +91,22 @@ Deno.serve(async (req) => {
     const { data: userData } = await supabase.auth.getUser();
     if (!userData?.user?.id) return json({ error: "Unauthorized" }, 401);
 
-    const apiKey = Deno.env.get("LIVEKIT_API_KEY");
-    const apiSecret = Deno.env.get("LIVEKIT_API_SECRET");
-    const wsUrl = Deno.env.get("LIVEKIT_WS_URL");
+    const apiKey = extractSecret(Deno.env.get("LIVEKIT_API_KEY"), "LIVEKIT_API_KEY", "token");
+    const apiSecret = extractSecret(Deno.env.get("LIVEKIT_API_SECRET"), "LIVEKIT_API_SECRET", "token");
+    const wsUrl = extractSecret(
+      Deno.env.get("LIVEKIT_WS_URL") || Deno.env.get("LIVEKIT_URL"),
+      "LIVEKIT_URL",
+      "url",
+    );
     if (!apiKey || !apiSecret || !wsUrl) {
       return json({ error: "LiveKit secrets не настроены" }, 500);
+    }
+    if (!/^wss?:\/\//i.test(wsUrl)) {
+      return json({
+        error:
+          "LIVEKIT_WS_URL должен начинаться с wss:// (например wss://your-project.livekit.cloud). Текущее значение: " +
+          wsUrl.slice(0, 80),
+      }, 500);
     }
 
     const body = await req.json().catch(() => ({}));

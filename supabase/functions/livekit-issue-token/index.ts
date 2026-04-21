@@ -13,6 +13,22 @@ function base64url(input: Uint8Array | string): string {
   return btoa(binary).replace(/=/g, "").replace(/\+/g, "-").replace(/\//g, "_");
 }
 
+
+function extractSecret(raw: string | undefined, varName: string, kind: "url" | "token"): string | undefined {
+  if (!raw) return undefined;
+  const trimmed = raw.trim();
+  if (kind === "url" && /^wss?:\/\/\S+$/i.test(trimmed)) return trimmed;
+  if (kind === "token" && !/\s/.test(trimmed) && !trimmed.includes("=")) return trimmed;
+  const re = new RegExp(`(?:^|[\\s;,])${varName}\\s*=\\s*("([^"]+)"|'([^']+)'|(\\S+))`, "i");
+  const m = trimmed.match(re);
+  if (m) return (m[2] || m[3] || m[4] || "").trim();
+  if (kind === "url") {
+    const u = trimmed.match(/wss?:\/\/\S+/i);
+    if (u) return u[0].replace(/[",;]+$/g, "");
+  }
+  return trimmed;
+}
+
 async function signLiveKitAccessToken(
   apiKey: string,
   apiSecret: string,
@@ -76,10 +92,19 @@ Deno.serve(async (req) => {
     const user = userData?.user;
     if (!user?.id) return json({ error: "Unauthorized" }, 401);
 
-    const apiKey = Deno.env.get("LIVEKIT_API_KEY");
-    const apiSecret = Deno.env.get("LIVEKIT_API_SECRET");
-    const wsUrl = Deno.env.get("LIVEKIT_WS_URL");
+    const apiKey = extractSecret(Deno.env.get("LIVEKIT_API_KEY"), "LIVEKIT_API_KEY", "token");
+    const apiSecret = extractSecret(Deno.env.get("LIVEKIT_API_SECRET"), "LIVEKIT_API_SECRET", "token");
+    const wsUrl = extractSecret(
+      Deno.env.get("LIVEKIT_WS_URL") || Deno.env.get("LIVEKIT_URL"),
+      "LIVEKIT_URL",
+      "url",
+    );
     if (!apiKey || !apiSecret || !wsUrl) return json({ error: "LiveKit не настроен" }, 500);
+    if (!/^wss?:\/\//i.test(wsUrl)) {
+      return json({
+        error: "LIVEKIT_WS_URL должен начинаться с wss:// (текущее: " + wsUrl.slice(0, 80) + ")",
+      }, 500);
+    }
 
     const body = await req.json().catch(() => ({}));
     const webinarId: string | undefined = body.webinarId;
