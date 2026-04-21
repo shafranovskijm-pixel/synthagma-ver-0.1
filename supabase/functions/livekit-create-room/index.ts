@@ -91,11 +91,22 @@ Deno.serve(async (req) => {
     const { data: userData } = await supabase.auth.getUser();
     if (!userData?.user?.id) return json({ error: "Unauthorized" }, 401);
 
-    const apiKey = Deno.env.get("LIVEKIT_API_KEY");
-    const apiSecret = Deno.env.get("LIVEKIT_API_SECRET");
-    const wsUrl = Deno.env.get("LIVEKIT_WS_URL");
+    const apiKey = extractSecret(Deno.env.get("LIVEKIT_API_KEY"), "LIVEKIT_API_KEY", "token");
+    const apiSecret = extractSecret(Deno.env.get("LIVEKIT_API_SECRET"), "LIVEKIT_API_SECRET", "token");
+    const wsUrl = extractSecret(
+      Deno.env.get("LIVEKIT_WS_URL") || Deno.env.get("LIVEKIT_URL"),
+      "LIVEKIT_URL",
+      "url",
+    );
     if (!apiKey || !apiSecret || !wsUrl) {
       return json({ error: "LiveKit secrets не настроены" }, 500);
+    }
+    if (!/^wss?:\/\//i.test(wsUrl)) {
+      return json({
+        error:
+          "LIVEKIT_WS_URL должен начинаться с wss:// (например wss://your-project.livekit.cloud). Текущее значение: " +
+          wsUrl.slice(0, 80),
+      }, 500);
     }
 
     const body = await req.json().catch(() => ({}));
