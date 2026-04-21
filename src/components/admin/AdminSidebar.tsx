@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { 
-  Building2, Users, LogOut, Store, Briefcase, MessageSquare, CreditCard, HardDrive
+  Building2, Users, LogOut, Store, Briefcase, MessageSquare, CreditCard, Radio
 } from "lucide-react";
 import { SigmaLogo } from "@/components/ui/SigmaLogo";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -28,7 +28,7 @@ export type AdminTabType =
   | "devtools"
   | "updates"
   | "staff"
-  | "storage"
+  | "webinars-admin"
   | "settings";
 
 interface NavItem {
@@ -85,7 +85,7 @@ export function AdminSidebar({
     { id: "marketplace", icon: Store, label: "Маркетплейс" },
     { id: "sales", icon: Briefcase, label: "Продажи" },
     { id: "finance", icon: CreditCard, label: "Финансы" },
-    { id: "storage", icon: HardDrive, label: "Хранилище и Kinescope" },
+    { id: "webinars-admin", icon: Radio, label: "Вебинары" },
     { id: "chats", icon: MessageSquare, label: "Чаты", badge: unreadChats + unreadSupport },
   ];
 
