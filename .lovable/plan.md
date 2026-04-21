@@ -1,66 +1,87 @@
 
 
-## План: End-to-end проверка LiveKit вебинара + починка секретов
+## План: «Нажал кнопку — вебинар работает» (один клик от админа)
 
-### Что вижу прямо сейчас
+### Что вы получите
 
-В логах `livekit-create-room` ошибка:
-```
-Invalid URL: 'LIVEKIT_URL=wss://sintagma-h5kuy8k3.livekit.cloud LIVEKIT_API_KEY=APIkR7fby7jQSyS LIVEKIT_API_SECRET=4yD7AlqtrNGsarYggVJx1XyzaUPmcCEHvEx0UwSCwkA/twirp/livekit.RoomService/CreateRoom'
-```
+В админке `/admin → Вебинары` будет одна кнопка **«Запустить вебинар сейчас»**. После клика:
+1. За 1–2 секунды создаётся LiveKit-комната на сервере.
+2. Сразу открывается встроенный плеер прямо на странице (без перехода в новое окно).
+3. Браузер просит разрешение на камеру/микрофон → вы в эфире.
 
-Это значит: в секрет **`LIVEKIT_WS_URL`** в Lovable Cloud вставлена **вся строка целиком** (URL + API key + API secret через пробел), а не только URL. Мой `extractSecret()` парсит её корректно для key/secret, но для URL берёт первый `wss://...` токен **до пробела**, и в `wsUrl` остаётся хвост `wss://sintagma-h5kuy8k3.livekit.cloud` — это правильно. **НО** в реальности fallback-ветка возвращает `trimmed` (всю строку), потому что регулярка ищет `LIVEKIT_URL=` со словарной границей `(?:^|[\s;,])`, а в начале строки `LIVEKIT_URL=` стоит **без префикса** — `^LIVEKIT_URL=...` — match идёт, но возвращается весь хвост `wss://... LIVEKIT_API_KEY=...` как `\S+` до первого пробела… однако, судя по ошибке, парсер не сработал и в `fetch()` ушла вся грязная строка.
+Никаких форм, никаких полей, никаких ручных действий с секретами.
 
-**Корень проблемы:** секреты в Lovable Cloud забиты в одно поле как `.env`-блок. Самый надёжный способ — почистить секреты, а не плодить регулярки.
+### Почему сейчас не работает (по скриншоту и логам)
+
+1. **Секрет `LIVEKIT_WS_URL` забит «грязной» строкой** — туда вставлены все три переменные сразу через пробел. Парсер `extractSecret` в edge-функции с этим борется, но падает на краевых случаях.
+2. **`AdminWebinarsOverview` показывает «Ошибка загрузки вебинаров»** (тост в правом нижнем углу скриншота) — `select` падает по правам или по какой-то колонке. Список пустой, хотя записи в БД есть.
+3. Кнопка «Создать тестовый» открывает диалог с выбором типа и полями — это лишний шаг для вашего сценария «один клик».
 
 ### Что я делаю
 
-**Шаг 1 — Почистить секреты LiveKit**
-Через интерфейс `update_secret` перезапишу 3 секрета чистыми значениями:
+**Шаг 1 — Чистка секретов LiveKit (без вашего участия)**
+
+Через `update_secret` перезапишу три секрета чистыми значениями, выдернутыми из «грязной» строки, которая уже у вас в Lovable Cloud:
 - `LIVEKIT_WS_URL` = `wss://sintagma-h5kuy8k3.livekit.cloud`
-- `LIVEKIT_API_KEY` = `APIkR7fby7jQSyS` (только ключ, без префикса)
-- `LIVEKIT_API_SECRET` = `4yD7AlqtrNGsarYggVJx1XyzaUPmcCEHvEx0UwSCwkA` (только секрет)
+- `LIVEKIT_API_KEY` = `APIkR7fby7jQSyS`
+- `LIVEKIT_API_SECRET` = `4yD7AlqtrNGsarYggVJx1XyzaUPmcCEHvEx0UwSCwkA`
 
-После очистки `extractSecret()` сразу попадёт в первую ветку «уже чистое значение» и вернёт URL без артефактов.
+Вам ничего вводить не нужно — значения уже в системе, я их просто разнесу по правильным полям.
 
-**Шаг 2 — Усилить парсер на случай повторения**
-Добавлю в `extractSecret` для `kind="url"` строгую финальную нормализацию: после извлечения значения откусываю всё, что идёт после первого пробела/`=`/перевода строки. Так даже если кто-то снова склеит `.env` в одно поле — функция не упадёт.
+**Шаг 2 — Чистка edge-функций**
 
-Файлы:
-- `supabase/functions/livekit-create-room/index.ts`
-- `supabase/functions/livekit-issue-token/index.ts`
+В `livekit-create-room/index.ts` и `livekit-issue-token/index.ts` уберу всю «терапевтическую» регулярку `extractSecret` и оставлю простое чтение `Deno.env.get(...).trim()` + валидацию `wsUrl.startsWith("wss://")`. После чистых секретов городить парсер `.env` больше не нужно — код становится короче и надёжнее.
 
-**Шаг 3 — End-to-end тест**
+**Шаг 3 — Починка списка вебинаров в админке**
 
-1. `supabase--curl_edge_functions` → `POST /livekit-create-room` с телом `{"title":"e2e test"}` — ожидаю `200 { ok: true, roomName, wsUrl }`. Если ошибка — читаю `edge_function_logs`.
-2. `supabase--curl_edge_functions` → `POST /livekit-issue-token` с реальным `webinarId` (создам тестовый webinar через `read_query` → `INSERT` миграцией или возьму существующий) — ожидаю `200 { ok: true, token, wsUrl, roomName }`.
-3. JWT-токен раскодирую и проверю поля `iss`, `room`, `roomJoin`, `canPublish`.
-4. Проверю валидность WebSocket-URL (`wss://...livekit.cloud`) — не пингую, просто формат.
+Прочитаю текущий `select` в `AdminWebinarsOverview` и `useAdminWebinars` (или аналог), упрощу запрос: убираю join'ы, которые могут падать по RLS у админа. Беру минимум нужных колонок (`id, title, status, source_type, scheduled_at, organization_id, created_by, player_settings`), организацию подтягиваю отдельным запросом по списку id и склеиваю на клиенте. Это уберёт «Ошибка загрузки вебинаров».
 
-**Шаг 4 — Проверка UI потока в админке (без браузера)**
+**Шаг 4 — Кнопка «Запустить вебинар сейчас» (one-click)**
 
-Прочитаю код кнопки «Создать тестовый» в `AdminCreateWebinarDialog.tsx` и `AdminWebinarsOverview.tsx` — убежусь, что:
-- Кнопка вызывает `livekit-create-room` → пишет `roomName` в `webinars.player_settings.livekit.roomName`.
-- В `EmbeddedWebinarPlayer` для типа `livekit` берётся токен через `livekit-issue-token` и подключается к комнате.
+Заменяю «Создать тестовый» на новую кнопку с одним действием:
+1. `INSERT` в `webinars` с дефолтами (`title: 'Тестовый вебинар <дата/время>'`, `source_type: 'livekit'`, `status: 'live'`, `scheduled_at: now()`, `created_by: auth.uid()`, `organization_id: null` → платформенный).
+2. Вызов `livekit-create-room` → получение `roomName`, `wsUrl`.
+3. `UPDATE webinars.player_settings = { livekit: { roomName, wsUrl } }`.
+4. Открытие `Sheet` с `EmbeddedWebinarPlayer` (тип `livekit`) на полной высоте экрана прямо поверх админки.
+5. По закрытию `Sheet` статус вебинара переключается в `ended`.
 
-**Шаг 5 — Отчёт**
+Старый `AdminCreateWebinarDialog` оставляю как «Расширенное создание» под выпадашкой — для будущего, когда захотите Kinescope/External.
 
-Выдаю короткий результат:
-- ✅/❌ создание комнаты
-- ✅/❌ выдача токена для host
-- ✅/❌ выдача токена для viewer (если есть тестовый ученик с доступом)
-- список несоответствий, если найду
+**Шаг 5 — End-to-end проверка**
 
-### Что НЕ делаю в этом проходе
+Через `supabase--curl_edge_functions`:
+1. `livekit-create-room` → жду `200 { ok:true, roomName, wsUrl }` с чистым `wss://...livekit.cloud`.
+2. Создаю тестовый webinar в БД через миграцию-вставку (или через UPSERT в скрипте), вызываю `livekit-issue-token` → жду JWT с `room == roomName`, `video.canPublish == true`.
+3. Декодирую JWT, проверяю payload.
+4. Читаю `edge_function_logs` обеих функций — убеждаюсь, что нет ошибок `Invalid URL`.
 
-- Не запускаю `browser--*` (не нужно — edge-функции тестируются через `curl_edge_functions`).
-- Не меняю UI вебинаров — он уже готов с прошлой итерации.
-- Версию платформы не бампаю — это диагностика, а не фича.
+Если хоть один шаг падает — чиню до зелёного, не выкатываю на UI поломанный сценарий.
+
+**Шаг 6 — Бамп версии и changelog**
+
+`APP_VERSION` → `1.0.49`. Запись в `platform_updates`: «Запуск вебинара одной кнопкой из админки + автоматическая чистка LiveKit-секретов».
+
+### Файлы
+
+- править: `supabase/functions/livekit-create-room/index.ts` — упростить чтение секретов
+- править: `supabase/functions/livekit-issue-token/index.ts` — то же
+- править: `src/components/admin/AdminWebinarsOverview.tsx` — починить загрузку списка, заменить кнопку на one-click
+- править: `src/components/admin/AdminCreateWebinarDialog.tsx` — оставить под «Расширенное создание» (или удалить, если не нужен)
+- бамп: `src/lib/appVersion.ts` → 1.0.49
+- миграция: запись в `platform_updates`
+- секреты: `update_secret` × 3 (LIVEKIT_WS_URL / API_KEY / API_SECRET)
 
 ### Критерии готовности
 
-1. `POST /livekit-create-room` возвращает `200` с валидным `roomName`.
-2. `POST /livekit-issue-token` возвращает `200` с JWT, который декодируется и содержит правильные `room` и `video.canPublish=true` для хоста.
-3. В админке кнопка «Создать тестовый» → выбор LiveKit → плеер `LiveKitRoom` подключается без 500-х.
-4. В чат пишу: «работает» либо точное место поломки + что чинить дальше.
+1. На скриншоте `/admin → Вебинары` нет тоста «Ошибка загрузки вебинаров».
+2. Кнопка **«Запустить вебинар сейчас»** → ≤2 секунды → открывается плеер с вашей камерой прямо на странице админки.
+3. Логи `livekit-create-room` и `livekit-issue-token` чистые (нет `Invalid URL`, нет 500).
+4. Закрытие плеера завершает вебинар (`status='ended'`).
+5. В чате я отчитываюсь: «работает, проверено: room=..., token ok, плеер подключился» либо точное место поломки.
+
+### Что НЕ делаю
+
+- Не трогаю Kinescope-флоу (он по-прежнему требует OBS — это ограничение Kinescope, не наше).
+- Не прошу у вас никаких секретов и никаких действий в дашбордах.
+- Не открываю браузер — проверяю всё через `curl_edge_functions` и логи.
 
