@@ -1,5 +1,4 @@
 import { PDFDocument } from "pdf-lib";
-import html2canvas from "html2canvas";
 
 /**
  * Рендерит HTML договора через браузер (html2canvas) → нарезает на страницы A4
@@ -77,6 +76,7 @@ export async function appendHtmlAsRenderedPages(
       }
     }
 
+    const { default: html2canvas } = await import("html2canvas");
     const canvas = await html2canvas(container, {
       scale: 2,
       useCORS: true,

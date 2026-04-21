@@ -1,4 +1,4 @@
-import ExcelJS from "exceljs";
+// ExcelJS (~1 MB) is loaded dynamically inside `exportFRDOExcel`, not on import.
 import { format } from "date-fns";
 
 // ===================== DPO HEADERS (exact match to official template, 41 columns) =====================
@@ -246,6 +246,7 @@ export async function exportFRDOExcel(
   const headers = exportType === "dpo" ? DPO_HEADERS : PO_HEADERS;
   const validations = exportType === "dpo" ? DPO_VALIDATIONS : PO_VALIDATIONS;
 
+  const { default: ExcelJS } = await import("exceljs");
   const workbook = new ExcelJS.Workbook();
   const worksheet = workbook.addWorksheet("Шаблон");
 

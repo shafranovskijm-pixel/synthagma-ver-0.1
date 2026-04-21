@@ -22,7 +22,7 @@ import { HomeworkReviewTab } from "@/components/organization/HomeworkReviewTab";
 import { StaffManager } from "@/components/organization/StaffManager";
 import { WebinarsManager } from "@/components/organization/WebinarsManager";
 import { AIAvatarManager } from "@/components/organization/AIAvatarManager";
-import { ProfileTab } from "@/components/organization/tabs/ProfileTab";
+import { OrgProfileTab as ProfileTab } from "@/components/organization/tabs/OrgProfileTab";
 import { OrgSettingsContent } from "@/components/organization/tabs/OrgSettingsContent";
 import { WhatsNewTab } from "@/components/organization/tabs/WhatsNewTab";
 import { OrgDocumentsTab } from "@/components/organization/tabs/OrgDocumentsTab";

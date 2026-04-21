@@ -44,7 +44,7 @@ export function TestAttemptDetail({ attempt, studentName }: TestAttemptDetailPro
 
   const handleDownloadPdf = (e: React.MouseEvent) => {
     e.stopPropagation();
-    generateTestAttemptPdf({
+    void generateTestAttemptPdf({
       studentName,
       courseTitle: attempt.course_title,
       testTitle: attempt.lesson_title,

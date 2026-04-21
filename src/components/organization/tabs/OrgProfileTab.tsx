@@ -86,7 +86,7 @@ interface ProfileTabProps {
   initialSubTab?: string;
 }
 
-export function ProfileTab({ organizationId, initialSubTab }: ProfileTabProps) {
+export function OrgProfileTab({ organizationId, initialSubTab }: ProfileTabProps) {
   const { user } = useAuth();
   const initialKey = (SECTIONS.find(s => s.key === initialSubTab)?.key as SectionKey) || "profile";
   const [activeSection, setActiveSection] = useState<SectionKey>(initialKey);
