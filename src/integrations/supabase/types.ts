@@ -7373,6 +7373,11 @@ export type Database = {
         Returns: undefined
       }
       increment_promo_usage: { Args: { p_code: string }; Returns: undefined }
+      is_webinar_org_member: { Args: { _webinar_id: string }; Returns: boolean }
+      is_webinar_participant: {
+        Args: { _user_id: string; _webinar_id: string }
+        Returns: boolean
+      }
       lookup_profile_by_login: {
         Args: { p_login: string }
         Returns: {
