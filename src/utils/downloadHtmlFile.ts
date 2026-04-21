@@ -1,15 +1,19 @@
-import { jsPDF } from "jspdf";
-import html2canvas from "html2canvas";
-
 /**
  * Downloads HTML content as a PDF file. Fetches HTML from a signed URL,
  * renders it via html2canvas, and converts to PDF via jsPDF.
+ *
+ * jsPDF and html2canvas are loaded dynamically to keep them out of the
+ * main bundle — they total ~1 MB and are only used on download click.
  */
 export async function downloadHtmlFile(url: string, fileName: string) {
+  const [{ jsPDF }, { default: html2canvas }] = await Promise.all([
+    import("jspdf"),
+    import("html2canvas"),
+  ]);
+
   const res = await fetch(url);
   const html = await res.text();
 
-  // Create off-screen container with A4 width
   const container = document.createElement("div");
   container.style.width = "794px";
   container.style.position = "fixed";
@@ -17,11 +21,9 @@ export async function downloadHtmlFile(url: string, fileName: string) {
   container.style.top = "0";
   container.style.background = "white";
 
-  // Parse HTML and inject styles + body content
   const parser = new DOMParser();
   const doc = parser.parseFromString(html, "text/html");
 
-  // Copy style tags
   const styles = doc.querySelectorAll("style");
   styles.forEach((s) => {
     const style = document.createElement("style");
@@ -29,7 +31,6 @@ export async function downloadHtmlFile(url: string, fileName: string) {
     container.appendChild(style);
   });
 
-  // Copy body content
   container.innerHTML += doc.body.innerHTML;
   document.body.appendChild(container);
 

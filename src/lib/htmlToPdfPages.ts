@@ -1,5 +1,4 @@
 import { PDFDocument } from "pdf-lib";
-import html2canvas from "html2canvas";
 
 /**
  * Рендерит HTML договора через браузер (html2canvas) → нарезает на страницы A4

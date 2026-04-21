@@ -1,4 +1,3 @@
-import mammoth from "mammoth";
 import { htmlToBlocks } from "@/components/course-builder/block-editor/parsers";
 import type { ContentBlock } from "@/components/course-builder/BlockEditor";
 
@@ -9,9 +8,10 @@ export interface DocxImportResult {
 
 /**
  * Convert a .docx File into ContentBlock[] via mammoth → HTML → htmlToBlocks.
- * Inline images become base64 data URLs (later can be uploaded separately).
+ * mammoth (~1 MB) is loaded dynamically — only when the user actually imports a Word file.
  */
 export async function importDocxFile(file: File): Promise<DocxImportResult> {
+  const { default: mammoth } = await import("mammoth");
   const arrayBuffer = await file.arrayBuffer();
   const result = await mammoth.convertToHtml(
     { arrayBuffer },
