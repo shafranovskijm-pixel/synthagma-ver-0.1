@@ -14,7 +14,7 @@ interface Org {
   name: string;
   public_slug: string | null;
   description: string | null;
-  logo_url?: string | null;
+  branding: any;
 }
 
 interface Course {
@@ -49,7 +49,7 @@ export default function OrganizationShowcase() {
       setLoading(true);
       const { data: orgData } = await supabase
         .from("organizations")
-        .select("id, name, public_slug, description, logo_url")
+        .select("id, name, public_slug, description, branding")
         .eq("public_slug", slug)
         .maybeSingle();
 
@@ -139,9 +139,9 @@ export default function OrganizationShowcase() {
         </button>
 
         <div className="max-w-5xl mx-auto text-center">
-          {org.logo_url && (
+          {orgLogo && (
             <img
-              src={org.logo_url}
+              src={orgLogo}
               alt={org.name}
               className="w-20 h-20 mx-auto mb-5 rounded-2xl object-cover border border-border shadow-sm"
               loading="eager"
