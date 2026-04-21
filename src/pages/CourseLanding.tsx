@@ -21,6 +21,7 @@ import { LandingPricingSection } from "@/components/course-landing/LandingPricin
 import { LandingFaqSection } from "@/components/course-landing/LandingFaqSection";
 import { LandingThemeProvider } from "@/components/course-landing/LandingThemeProvider";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
+import { getEnrollmentConfig } from "@/lib/landing-enrollment";
 
 interface CourseData {
   id: string;
