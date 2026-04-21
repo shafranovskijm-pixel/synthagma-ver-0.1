@@ -44,6 +44,45 @@ export function ProfileTab({ student, enrollmentsCount, h, orgPlan }: ProfileTab
 
   return (
     <div className="space-y-6">
+      {/* Personal Data — editable full name */}
+      <div className="bg-card rounded-2xl border border-border p-6">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="font-semibold flex items-center gap-2"><User className="w-5 h-5 text-primary" />Личные данные</h3>
+          {!h.isEditingName && (
+            <Button size="sm" variant="outline" className="rounded-lg gap-2" onClick={() => { h.setNewFullName(student.name || ""); h.setIsEditingName(true); }}>
+              <Pencil className="w-4 h-4" />Изменить
+            </Button>
+          )}
+        </div>
+        {h.isEditingName ? (
+          <div className="space-y-3">
+            <div className="space-y-2">
+              <Label htmlFor="newFullName">ФИО</Label>
+              <Input
+                id="newFullName"
+                value={h.newFullName}
+                onChange={(e: any) => h.setNewFullName(e.target.value)}
+                placeholder="Иванов Иван Иванович"
+                maxLength={100}
+                className="rounded-lg"
+              />
+              <p className="text-xs text-muted-foreground">До 100 символов. Имя обновится в карточке и в списке учеников.</p>
+            </div>
+            <div className="flex gap-2">
+              <Button size="sm" className="rounded-lg gap-2" onClick={h.handleUpdateFullName} disabled={h.isUpdatingName}>
+                {h.isUpdatingName ? <SigmaSpinner size="sm" /> : <Check className="w-4 h-4" />}Сохранить
+              </Button>
+              <Button size="sm" variant="outline" className="rounded-lg" onClick={() => { h.setIsEditingName(false); h.setNewFullName(""); }} disabled={h.isUpdatingName}>Отмена</Button>
+            </div>
+          </div>
+        ) : (
+          <div className="p-3 rounded-lg bg-muted/50">
+            <div className="text-xs text-muted-foreground mb-1">ФИО</div>
+            <div className="font-medium">{student.name || "—"}</div>
+          </div>
+        )}
+      </div>
+
       <div className="grid grid-cols-2 gap-4">
         <div className="p-4 rounded-xl bg-muted/50">
           <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1"><Mail className="w-4 h-4" />Email</div>
