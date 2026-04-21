@@ -9,15 +9,24 @@ export interface SalesCompanyDbRow {
   name: string;
   short_name: string | null;
   full_name: string | null;
+  kpp: string | null;
+  okpo: string | null;
+  registration_date: string | null;
   address: string | null;
   city: string | null;
   region: string | null;
   phone: string | null;
+  phones: string[] | null;
   email: string | null;
+  emails: string[] | null;
   website: string | null;
+  social_links: Record<string, string | null> | null;
   director: string | null;
+  director_inn: string | null;
   director_position: string | null;
   okved_main: string | null;
+  okved_list: any | null;
+  licenses: any | null;
   license_number: string | null;
   license_issue_date: string | null;
   license_authority: string | null;
@@ -25,7 +34,16 @@ export interface SalesCompanyDbRow {
   license_valid_to: string | null;
   has_education_license: boolean;
   status: string | null;
+  employee_count: number | null;
+  charter_capital: number | null;
+  unfair_supplier: boolean | null;
+  mass_director: boolean | null;
+  mass_address: boolean | null;
+  sanctions: boolean | null;
+  branches_count: number | null;
+  last_data_date: string | null;
   source_url: string | null;
+  data_source: string | null;
   parsed_at: string;
   converted_to_lead_id: string | null;
   created_at: string;
@@ -43,30 +61,7 @@ export function useSalesCompaniesDb() {
         .order('parsed_at', { ascending: false })
         .limit(2000);
       if (error) throw error;
-      return (data || []) as SalesCompanyDbRow[];
-    },
-  });
-
-  const parsePages = useMutation({
-    mutationFn: async ({ searchUrl, pages }: { searchUrl: string; pages: number }) => {
-      const { data, error } = await supabase.functions.invoke('parse-list-org', {
-        body: { searchUrl, pages },
-      });
-      if (error) throw error;
-      if (data?.error) throw new Error(data.error);
-      return data as { found: number; inserted: number; updated: number; skipped: number; errors: string[] };
-    },
-    onSuccess: (data) => {
-      toast.success(
-        `Парсинг готов: найдено ${data.found}, добавлено ${data.inserted}, обновлено ${data.updated}, пропущено ${data.skipped}`,
-      );
-      if (data.errors?.length) {
-        console.warn('[parse-list-org] errors:', data.errors);
-      }
-      qc.invalidateQueries({ queryKey: ['sales_companies_db'] });
-    },
-    onError: (err: Error) => {
-      toast.error(`Ошибка парсинга: ${err.message}`);
+      return (data || []) as unknown as SalesCompanyDbRow[];
     },
   });
 
@@ -99,5 +94,5 @@ export function useSalesCompaniesDb() {
     },
   });
 
-  return { list, parsePages, convertToLead, remove };
+  return { list, convertToLead, remove };
 }
