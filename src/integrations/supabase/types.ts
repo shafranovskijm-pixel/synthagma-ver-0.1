@@ -5179,6 +5179,113 @@ export type Database = {
           },
         ]
       }
+      sales_companies_db: {
+        Row: {
+          address: string | null
+          city: string | null
+          converted_to_lead_id: string | null
+          created_at: string | null
+          director: string | null
+          director_position: string | null
+          email: string | null
+          employee_count: number | null
+          full_name: string | null
+          has_education_license: boolean | null
+          id: string
+          inn: string
+          license_activities: string[] | null
+          license_authority: string | null
+          license_issue_date: string | null
+          license_number: string | null
+          license_valid_to: string | null
+          name: string
+          ogrn: string | null
+          okved_list: string[] | null
+          okved_main: string | null
+          parsed_at: string | null
+          phone: string | null
+          raw_data: Json | null
+          region: string | null
+          short_name: string | null
+          source_url: string | null
+          status: string | null
+          updated_at: string | null
+          website: string | null
+        }
+        Insert: {
+          address?: string | null
+          city?: string | null
+          converted_to_lead_id?: string | null
+          created_at?: string | null
+          director?: string | null
+          director_position?: string | null
+          email?: string | null
+          employee_count?: number | null
+          full_name?: string | null
+          has_education_license?: boolean | null
+          id?: string
+          inn: string
+          license_activities?: string[] | null
+          license_authority?: string | null
+          license_issue_date?: string | null
+          license_number?: string | null
+          license_valid_to?: string | null
+          name: string
+          ogrn?: string | null
+          okved_list?: string[] | null
+          okved_main?: string | null
+          parsed_at?: string | null
+          phone?: string | null
+          raw_data?: Json | null
+          region?: string | null
+          short_name?: string | null
+          source_url?: string | null
+          status?: string | null
+          updated_at?: string | null
+          website?: string | null
+        }
+        Update: {
+          address?: string | null
+          city?: string | null
+          converted_to_lead_id?: string | null
+          created_at?: string | null
+          director?: string | null
+          director_position?: string | null
+          email?: string | null
+          employee_count?: number | null
+          full_name?: string | null
+          has_education_license?: boolean | null
+          id?: string
+          inn?: string
+          license_activities?: string[] | null
+          license_authority?: string | null
+          license_issue_date?: string | null
+          license_number?: string | null
+          license_valid_to?: string | null
+          name?: string
+          ogrn?: string | null
+          okved_list?: string[] | null
+          okved_main?: string | null
+          parsed_at?: string | null
+          phone?: string | null
+          raw_data?: Json | null
+          region?: string | null
+          short_name?: string | null
+          source_url?: string | null
+          status?: string | null
+          updated_at?: string | null
+          website?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sales_companies_db_converted_to_lead_id_fkey"
+            columns: ["converted_to_lead_id"]
+            isOneToOne: false
+            referencedRelation: "sales_leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       sales_contracts: {
         Row: {
           company_address: string | null
