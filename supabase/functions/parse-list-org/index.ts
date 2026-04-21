@@ -85,12 +85,13 @@ async function scrapeWithFirecrawl(url: string, apiKey: string): Promise<string>
       url,
       formats: ['html'],
       onlyMainContent: false,
-      waitFor: 3000,
-      timeout: 40000,
+      waitFor: 5000,
+      timeout: 60000,
       blockAds: true,
-      proxy: 'auto',
+      proxy: 'stealth',
       headers: {
         'Accept-Language': 'ru-RU,ru;q=0.9,en;q=0.8',
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
       },
     }),
   });
