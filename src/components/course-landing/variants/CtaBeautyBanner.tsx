@@ -4,7 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Sparkles } from "lucide-react";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 import { useTemplateStyle } from "../LandingThemeProvider";
-import beautyInline from "@/assets/landing-templates/decor/beauty-inline.png";
+import beautyInline from "@/assets/landing-templates/decor/beauty-inline.webp";
 
 interface Props {
   title: string;

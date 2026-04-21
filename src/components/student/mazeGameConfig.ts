@@ -1,4 +1,4 @@
-import monster1Url from "@/assets/monster1.png";
+import monster1Url from "@/assets/monster1.webp";
 import monster2Url from "@/assets/monster2.jpg";
 import monster3Url from "@/assets/monster3.png";
 import monster4Url from "@/assets/monster4.jpg";

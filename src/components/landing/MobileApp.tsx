@@ -8,7 +8,7 @@ import {
 import { motion } from "framer-motion";
 import { Link } from "react-router-dom";
 import { FloatingParticles } from "./FloatingParticles";
-import mobileMockup from "@/assets/mobile-app-mockup.png";
+import mobileMockup from "@/assets/mobile-app-mockup.webp";
 
 const mobileFeatures = [
   { icon: BookOpen, text: "Курсы офлайн" },

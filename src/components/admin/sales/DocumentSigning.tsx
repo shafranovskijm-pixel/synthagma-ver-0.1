@@ -1,6 +1,4 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
-import { PDFDocument } from 'pdf-lib';
-import * as pdfjsLib from 'pdfjs-dist';
 import { Upload, FileText, Download, Trash2, ChevronLeft, ChevronRight, Move, Stamp, PenTool } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -10,7 +8,19 @@ import { toast } from 'sonner';
 import stampUrl from '@/assets/stamp-shafranovskiy.png';
 import signatureUrl from '@/assets/signature-shafranovskiy.png';
 
-pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js`;
+// Ленивая загрузка тяжёлых PDF-библиотек (pdfjs-dist ~3 МБ, pdf-lib ~500 КБ).
+// Загружаются только при первом использовании компонента, не на старте приложения.
+let _pdfjsLib: typeof import('pdfjs-dist') | null = null;
+async function getPdfJs() {
+  if (_pdfjsLib) return _pdfjsLib;
+  const lib = await import('pdfjs-dist');
+  lib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js`;
+  _pdfjsLib = lib;
+  return lib;
+}
+async function getPdfLib() {
+  return (await import('pdf-lib')).PDFDocument;
+}
 
 interface PdfFile {
   id: string;
@@ -96,6 +106,7 @@ export function DocumentSigning() {
 
   const loadPdf = useCallback(async (file: File) => {
     const buf = await file.arrayBuffer();
+    const pdfjsLib = await getPdfJs();
     const doc = await pdfjsLib.getDocument({ data: buf.slice(0) }).promise;
     return { id: makeId(), name: file.name, data: buf, pageCount: doc.numPages } as PdfFile;
   }, []);
@@ -148,6 +159,7 @@ export function DocumentSigning() {
     let cancelled = false;
 
     (async () => {
+      const pdfjsLib = await getPdfJs();
       const doc = await pdfjsLib.getDocument({ data: f.data.slice(0) }).promise;
       const page = await doc.getPage(activePage + 1);
       const vp = page.getViewport({ scale: 1.2 });
@@ -286,6 +298,8 @@ export function DocumentSigning() {
         fetch(stampUrl).then(r => r.arrayBuffer()),
         fetch(signatureUrl).then(r => r.arrayBuffer()),
       ]);
+
+      const PDFDocument = await getPdfLib();
 
       for (const file of files) {
         const fileOverlays = overlays.filter(o => o.fileId === file.id);
