@@ -49,6 +49,31 @@ function lkHttpUrl(wsUrl: string): string {
   return wsUrl.replace(/^wss?:\/\//, (m) => (m === "wss://" ? "https://" : "http://"));
 }
 
+/**
+ * Терпимый разбор секрета: если кто-то вставил в поле целый .env-блок
+ * (например "LIVEKIT_URL=wss://... LIVEKIT_API_KEY=... LIVEKIT_API_SECRET=..."),
+ * вытаскиваем нужное значение по имени переменной или по http(s)/ws(s)-схеме.
+ */
+function extractSecret(raw: string | undefined, varName: string, kind: "url" | "token"): string | undefined {
+  if (!raw) return undefined;
+  const trimmed = raw.trim();
+  // Если это именно URL/токен без мусора — вернуть как есть.
+  if (kind === "url" && /^wss?:\/\/\S+$/i.test(trimmed)) return trimmed;
+  if (kind === "token" && !/\s/.test(trimmed) && !trimmed.includes("=")) return trimmed;
+
+  // Иначе ищем "VARNAME=VALUE" в строке, разделители — пробел/перевод строки/;
+  const re = new RegExp(`(?:^|[\\s;,])${varName}\\s*=\\s*("([^"]+)"|'([^']+)'|(\\S+))`, "i");
+  const m = trimmed.match(re);
+  if (m) return (m[2] || m[3] || m[4] || "").trim();
+
+  // Для URL — попробуем найти первый wss:// в строке.
+  if (kind === "url") {
+    const u = trimmed.match(/wss?:\/\/\S+/i);
+    if (u) return u[0].replace(/[",;]+$/g, "");
+  }
+  return trimmed;
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
