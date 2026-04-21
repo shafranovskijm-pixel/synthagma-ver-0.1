@@ -96,6 +96,21 @@ export function CourseDetailsContent({ course, courseStudents, organizationId, a
   const isFrdoEnabled = isEnabled('frdo');
   const h = useCourseDetails(course, courseStudents, organizationId, onCourseUpdated, onRefreshStudents, onCourseDeleted);
 
+  // Prefetch heavy chunks (course builder + preview) in the background as soon
+  // as the course card mounts. By the time the user clicks "Конструктор" or
+  // "Превью" the JS is already cached, so the tab opens almost instantly.
+  useEffect(() => {
+    const idle = (cb: () => void) => {
+      if (typeof (window as any).requestIdleCallback === "function") {
+        (window as any).requestIdleCallback(cb, { timeout: 1500 });
+      } else {
+        setTimeout(cb, 200);
+      }
+    };
+    idle(() => { importCourseBuilder().catch(() => {}); });
+    idle(() => { importCoursePreviewView().catch(() => {}); });
+  }, []);
+
   const coverInputRef = useRef<HTMLInputElement>(null);
   const [isGeneratingCover, setIsGeneratingCover] = useState(false);
 
