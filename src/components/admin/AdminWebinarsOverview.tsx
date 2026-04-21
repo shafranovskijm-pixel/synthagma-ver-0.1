@@ -183,7 +183,7 @@ export function AdminWebinarsOverview() {
           organization_id: anyOrg.id,
           host_user_id: user.id,
           created_by: user.id,
-          access_type: "free",
+          access_type: "org_all",
           player_settings: {},
         })
         .select(SELECT_FIELDS)
