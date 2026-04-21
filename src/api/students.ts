@@ -141,9 +141,17 @@ export async function fetchStudents(
     return a.name.localeCompare(b.name);
   });
 
+  // Build groupMap from the same profiles fetch (avoids a second roundtrip)
+  const groupMap = new Map<string, string | null>();
+  for (const profile of allProfilesData || []) {
+    if (orgAdminUserIds.has(profile.user_id)) continue;
+    groupMap.set(profile.user_id, profile.student_group_id ?? null);
+  }
+
   return {
     students: studentsList,
-    allProfiles: studentsList.filter(s => !s.enrollments || s.enrollments.length === 0)
+    allProfiles: studentsList.filter(s => !s.enrollments || s.enrollments.length === 0),
+    groupMap,
   };
 }
 
