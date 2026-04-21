@@ -480,6 +480,8 @@ export function BroadcastManager() {
           </CardContent>
         </Card>
       )}
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
