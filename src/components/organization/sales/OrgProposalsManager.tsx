@@ -7,11 +7,12 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Plus, Trash2, Pencil, Send, FileText, Mail } from "lucide-react";
+import { Plus, Trash2, Pencil, Send, FileText, Mail, Briefcase } from "lucide-react";
 import { useOrgProposals, type OrgProposal, type OrgProposalServiceItem } from "@/hooks/useOrgProposals";
 import { useOrgServices } from "@/hooks/useOrgServices";
 import { useEmailTemplates } from "@/hooks/useEmailTemplates";
 import { useOrgSmtp } from "@/hooks/useOrgSmtp";
+import { CreateContractDialog } from "./CreateContractDialog";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 
@@ -36,6 +37,7 @@ export function OrgProposalsManager({ organizationId, onGoToSmtp }: Props) {
 
   const [editor, setEditor] = useState<{ proposal: Partial<OrgProposal>; items: OrgProposalServiceItem[] } | null>(null);
   const [sendDialog, setSendDialog] = useState<{ proposal: OrgProposal; email: string; templateId: string } | null>(null);
+  const [contractFromCP, setContractFromCP] = useState<OrgProposal | null>(null);
   const [busy, setBusy] = useState(false);
 
   const proposalTemplates = templates.filter(t => t.category === "proposal");
@@ -116,6 +118,7 @@ export function OrgProposalsManager({ organizationId, onGoToSmtp }: Props) {
                   <div className="flex gap-1">
                     <Button size="icon" variant="outline" onClick={() => openEdit(p)} title="Редактировать"><Pencil className="w-4 h-4" /></Button>
                     <Button size="icon" variant="outline" onClick={() => openSend(p)} title="Отправить"><Mail className="w-4 h-4" /></Button>
+                    <Button size="icon" variant="outline" onClick={() => setContractFromCP(p)} title="Создать договор по КП"><Briefcase className="w-4 h-4" /></Button>
                     <Button size="icon" variant="ghost" onClick={() => remove(p.id)}><Trash2 className="w-4 h-4 text-destructive" /></Button>
                   </div>
                 </div>
@@ -210,6 +213,21 @@ export function OrgProposalsManager({ organizationId, onGoToSmtp }: Props) {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+      )}
+
+      {/* CP → Contract */}
+      {contractFromCP && (
+        <CreateContractDialog
+          open={true}
+          onOpenChange={(o) => !o && setContractFromCP(null)}
+          organizationId={organizationId}
+          prefill={{
+            documentTitle: `Договор оказания услуг для ${contractFromCP.company_name}`,
+            recipientName: contractFromCP.contact_person || contractFromCP.company_name,
+            recipientEmail: contractFromCP.company_email || "",
+            linkedProposalId: contractFromCP.id,
+          }}
+        />
       )}
     </div>
   );
