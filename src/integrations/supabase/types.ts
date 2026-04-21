@@ -757,6 +757,72 @@ export type Database = {
         }
         Relationships: []
       }
+      checko_api_usage: {
+        Row: {
+          date: string
+          last_balance: number | null
+          last_used_at: string | null
+          requests_count: number
+        }
+        Insert: {
+          date: string
+          last_balance?: number | null
+          last_used_at?: string | null
+          requests_count?: number
+        }
+        Update: {
+          date?: string
+          last_balance?: number | null
+          last_used_at?: string | null
+          requests_count?: number
+        }
+        Relationships: []
+      }
+      checko_pending_inns: {
+        Row: {
+          added_at: string
+          inn: string
+          note: string | null
+        }
+        Insert: {
+          added_at?: string
+          inn: string
+          note?: string | null
+        }
+        Update: {
+          added_at?: string
+          inn?: string
+          note?: string | null
+        }
+        Relationships: []
+      }
+      checko_settings: {
+        Row: {
+          auto_enrich_enabled: boolean
+          id: number
+          last_auto_error: string | null
+          last_auto_processed: number | null
+          last_auto_run_at: string | null
+          updated_at: string
+        }
+        Insert: {
+          auto_enrich_enabled?: boolean
+          id?: number
+          last_auto_error?: string | null
+          last_auto_processed?: number | null
+          last_auto_run_at?: string | null
+          updated_at?: string
+        }
+        Update: {
+          auto_enrich_enabled?: boolean
+          id?: number
+          last_auto_error?: string | null
+          last_auto_processed?: number | null
+          last_auto_run_at?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       commercial_proposal_services: {
         Row: {
           custom_description: string | null
@@ -5601,97 +5667,151 @@ export type Database = {
       sales_companies_db: {
         Row: {
           address: string | null
+          branches_count: number | null
+          charter_capital: number | null
           city: string | null
           converted_to_lead_id: string | null
           created_at: string | null
+          data_source: string | null
           director: string | null
+          director_inn: string | null
           director_position: string | null
           email: string | null
+          emails: string[] | null
           employee_count: number | null
           full_name: string | null
           has_education_license: boolean | null
           id: string
           inn: string
+          kpp: string | null
+          last_data_date: string | null
           license_activities: string[] | null
           license_authority: string | null
           license_issue_date: string | null
           license_number: string | null
           license_valid_to: string | null
+          licenses: Json | null
+          mass_address: boolean | null
+          mass_director: boolean | null
           name: string
           ogrn: string | null
+          okpo: string | null
           okved_list: string[] | null
           okved_main: string | null
           parsed_at: string | null
           phone: string | null
+          phones: string[] | null
+          predecessors: Json | null
           raw_data: Json | null
           region: string | null
+          registration_date: string | null
+          sanctions: boolean | null
           short_name: string | null
+          social_links: Json | null
           source_url: string | null
           status: string | null
+          successors: Json | null
+          unfair_supplier: boolean | null
           updated_at: string | null
           website: string | null
         }
         Insert: {
           address?: string | null
+          branches_count?: number | null
+          charter_capital?: number | null
           city?: string | null
           converted_to_lead_id?: string | null
           created_at?: string | null
+          data_source?: string | null
           director?: string | null
+          director_inn?: string | null
           director_position?: string | null
           email?: string | null
+          emails?: string[] | null
           employee_count?: number | null
           full_name?: string | null
           has_education_license?: boolean | null
           id?: string
           inn: string
+          kpp?: string | null
+          last_data_date?: string | null
           license_activities?: string[] | null
           license_authority?: string | null
           license_issue_date?: string | null
           license_number?: string | null
           license_valid_to?: string | null
+          licenses?: Json | null
+          mass_address?: boolean | null
+          mass_director?: boolean | null
           name: string
           ogrn?: string | null
+          okpo?: string | null
           okved_list?: string[] | null
           okved_main?: string | null
           parsed_at?: string | null
           phone?: string | null
+          phones?: string[] | null
+          predecessors?: Json | null
           raw_data?: Json | null
           region?: string | null
+          registration_date?: string | null
+          sanctions?: boolean | null
           short_name?: string | null
+          social_links?: Json | null
           source_url?: string | null
           status?: string | null
+          successors?: Json | null
+          unfair_supplier?: boolean | null
           updated_at?: string | null
           website?: string | null
         }
         Update: {
           address?: string | null
+          branches_count?: number | null
+          charter_capital?: number | null
           city?: string | null
           converted_to_lead_id?: string | null
           created_at?: string | null
+          data_source?: string | null
           director?: string | null
+          director_inn?: string | null
           director_position?: string | null
           email?: string | null
+          emails?: string[] | null
           employee_count?: number | null
           full_name?: string | null
           has_education_license?: boolean | null
           id?: string
           inn?: string
+          kpp?: string | null
+          last_data_date?: string | null
           license_activities?: string[] | null
           license_authority?: string | null
           license_issue_date?: string | null
           license_number?: string | null
           license_valid_to?: string | null
+          licenses?: Json | null
+          mass_address?: boolean | null
+          mass_director?: boolean | null
           name?: string
           ogrn?: string | null
+          okpo?: string | null
           okved_list?: string[] | null
           okved_main?: string | null
           parsed_at?: string | null
           phone?: string | null
+          phones?: string[] | null
+          predecessors?: Json | null
           raw_data?: Json | null
           region?: string | null
+          registration_date?: string | null
+          sanctions?: boolean | null
           short_name?: string | null
+          social_links?: Json | null
           source_url?: string | null
           status?: string | null
+          successors?: Json | null
+          unfair_supplier?: boolean | null
           updated_at?: string | null
           website?: string | null
         }
