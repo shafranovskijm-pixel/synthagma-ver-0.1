@@ -77,7 +77,9 @@ serve(async (req: Request) => {
     // Подставляем имя получателя в шаблон
     const personalizedHtml = htmlWithPixel
       .replace(/\{\{name\}\}/g, recipient.recipient_name || "")
-      .replace(/\{\{email\}\}/g, recipient.email);
+      .replace(/\{\{recipient_name\}\}/g, recipient.recipient_name || "")
+      .replace(/\{\{email\}\}/g, recipient.email)
+      .replace(/\{\{company\}\}/g, recipient.recipient_name || "");
 
     const fromOverride = campaign.from_name
       ? `${campaign.from_name} <${smtp.from_email}>`
