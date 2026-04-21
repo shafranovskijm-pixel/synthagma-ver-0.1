@@ -207,6 +207,7 @@ function SupportChatWidgetInner() {
           type="button"
           onClick={() => setOpen(true)}
           className={cn(
+            "support-chat-scope",
             "fixed bottom-6 right-6 z-40 flex h-14 w-14 items-center justify-center rounded-full",
             "text-white shadow-2xl",
             "hover:scale-105 transition-all duration-300 ring-4"
@@ -235,7 +236,8 @@ function SupportChatWidgetInner() {
       {open && (
         <div
           className={cn(
-            "fixed z-50 flex flex-col overflow-hidden bg-card animate-scale-in",
+            "support-chat-scope",
+            "fixed z-50 flex flex-col overflow-hidden bg-card text-foreground animate-scale-in",
             "inset-0 sm:inset-auto",
             "sm:bottom-6 sm:right-6 sm:w-[380px] sm:h-[580px] sm:rounded-3xl sm:shadow-2xl"
           )}
