@@ -21,6 +21,7 @@ interface MenuSettings {
   showFrdo?: boolean;
   showSubscription?: boolean;
   showAITutors?: boolean;
+  showSales?: boolean;
   courseViewMode?: 'grid' | 'list';
   courseFolderMode?: 'folders' | 'flat';
 }
@@ -39,6 +40,7 @@ const defaultMenuSettings: MenuSettings = {
   showFrdo: true,
   showSubscription: true,
   showAITutors: false,
+  showSales: false,
   courseViewMode: 'grid',
   courseFolderMode: 'folders',
 };
@@ -62,6 +64,8 @@ function normalizeMenuSettings(raw: Record<string, unknown> | null | undefined):
     showSubscription: raw.showSubscription !== false,
     // Off by default — user must explicitly enable in settings
     showAITutors: raw.showAITutors === true,
+    // Off by default — admin or hidden URL toggle to enable
+    showSales: raw.showSales === true,
     courseViewMode: (raw.courseViewMode === 'list' ? 'list' : 'grid') as 'grid' | 'list',
     courseFolderMode: (raw.courseFolderMode === 'flat' ? 'flat' : 'folders') as 'folders' | 'flat',
   };

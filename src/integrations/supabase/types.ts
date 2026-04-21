@@ -817,12 +817,17 @@ export type Database = {
           custom_note: string | null
           discount_percent: number | null
           id: string
+          last_sent_at: string | null
+          linked_signature_id: string | null
           manager_id: string | null
+          organization_id: string | null
+          scope: string
           sender_email: string | null
           sender_name: string | null
           sender_website: string | null
           status: string
           tariff_plan: string | null
+          template_id: string | null
           total_amount: number
           updated_at: string
           valid_until: string | null
@@ -838,12 +843,17 @@ export type Database = {
           custom_note?: string | null
           discount_percent?: number | null
           id?: string
+          last_sent_at?: string | null
+          linked_signature_id?: string | null
           manager_id?: string | null
+          organization_id?: string | null
+          scope?: string
           sender_email?: string | null
           sender_name?: string | null
           sender_website?: string | null
           status?: string
           tariff_plan?: string | null
+          template_id?: string | null
           total_amount?: number
           updated_at?: string
           valid_until?: string | null
@@ -859,22 +869,48 @@ export type Database = {
           custom_note?: string | null
           discount_percent?: number | null
           id?: string
+          last_sent_at?: string | null
+          linked_signature_id?: string | null
           manager_id?: string | null
+          organization_id?: string | null
+          scope?: string
           sender_email?: string | null
           sender_name?: string | null
           sender_website?: string | null
           status?: string
           tariff_plan?: string | null
+          template_id?: string | null
           total_amount?: number
           updated_at?: string
           valid_until?: string | null
         }
         Relationships: [
           {
+            foreignKeyName: "commercial_proposals_linked_signature_id_fkey"
+            columns: ["linked_signature_id"]
+            isOneToOne: false
+            referencedRelation: "document_signatures"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "commercial_proposals_manager_id_fkey"
             columns: ["manager_id"]
             isOneToOne: false
             referencedRelation: "sales_managers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "commercial_proposals_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "commercial_proposals_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "email_templates"
             referencedColumns: ["id"]
           },
         ]
@@ -1853,11 +1889,14 @@ export type Database = {
           document_snapshot_url: string | null
           document_title: string
           document_type: string
+          email_open_token: string | null
+          email_opened_at: string | null
           expires_at: string
           handwritten_scan_path: string | null
           hidden_for_recipient: boolean
           hidden_for_sender: boolean
           id: string
+          linked_proposal_id: string | null
           mode: string
           organization_id: string
           pep_agreement_id: string | null
@@ -1893,11 +1932,14 @@ export type Database = {
           document_snapshot_url?: string | null
           document_title: string
           document_type: string
+          email_open_token?: string | null
+          email_opened_at?: string | null
           expires_at?: string
           handwritten_scan_path?: string | null
           hidden_for_recipient?: boolean
           hidden_for_sender?: boolean
           id?: string
+          linked_proposal_id?: string | null
           mode?: string
           organization_id: string
           pep_agreement_id?: string | null
@@ -1933,11 +1975,14 @@ export type Database = {
           document_snapshot_url?: string | null
           document_title?: string
           document_type?: string
+          email_open_token?: string | null
+          email_opened_at?: string | null
           expires_at?: string
           handwritten_scan_path?: string | null
           hidden_for_recipient?: boolean
           hidden_for_sender?: boolean
           id?: string
+          linked_proposal_id?: string | null
           mode?: string
           organization_id?: string
           pep_agreement_id?: string | null
@@ -1965,6 +2010,13 @@ export type Database = {
           viewed_at?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "document_signatures_linked_proposal_id_fkey"
+            columns: ["linked_proposal_id"]
+            isOneToOne: false
+            referencedRelation: "commercial_proposals"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "document_signatures_organization_id_fkey"
             columns: ["organization_id"]
@@ -2181,6 +2233,7 @@ export type Database = {
           started_at: string | null
           status: string
           subject: string
+          template_id: string | null
           total_recipients: number
           updated_at: string
         }
@@ -2205,6 +2258,7 @@ export type Database = {
           started_at?: string | null
           status?: string
           subject: string
+          template_id?: string | null
           total_recipients?: number
           updated_at?: string
         }
@@ -2229,12 +2283,76 @@ export type Database = {
           started_at?: string | null
           status?: string
           subject?: string
+          template_id?: string | null
           total_recipients?: number
           updated_at?: string
         }
         Relationships: [
           {
             foreignKeyName: "email_campaigns_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "email_campaigns_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "email_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      email_templates: {
+        Row: {
+          category: string
+          created_at: string
+          created_by: string | null
+          deleted_at: string | null
+          html_body: string
+          id: string
+          is_default: boolean
+          name: string
+          organization_id: string | null
+          scope: string
+          subject: string
+          updated_at: string
+          variables: Json
+        }
+        Insert: {
+          category?: string
+          created_at?: string
+          created_by?: string | null
+          deleted_at?: string | null
+          html_body: string
+          id?: string
+          is_default?: boolean
+          name: string
+          organization_id?: string | null
+          scope: string
+          subject: string
+          updated_at?: string
+          variables?: Json
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          created_by?: string | null
+          deleted_at?: string | null
+          html_body?: string
+          id?: string
+          is_default?: boolean
+          name?: string
+          organization_id?: string | null
+          scope?: string
+          subject?: string
+          updated_at?: string
+          variables?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "email_templates_organization_id_fkey"
             columns: ["organization_id"]
             isOneToOne: false
             referencedRelation: "organizations"
@@ -3531,6 +3649,47 @@ export type Database = {
           },
         ]
       }
+      org_contract_templates: {
+        Row: {
+          body_html: string
+          created_at: string
+          id: string
+          is_default: boolean
+          name: string
+          organization_id: string
+          updated_at: string
+          variables: Json
+        }
+        Insert: {
+          body_html: string
+          created_at?: string
+          id?: string
+          is_default?: boolean
+          name: string
+          organization_id: string
+          updated_at?: string
+          variables?: Json
+        }
+        Update: {
+          body_html?: string
+          created_at?: string
+          id?: string
+          is_default?: boolean
+          name?: string
+          organization_id?: string
+          updated_at?: string
+          variables?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "org_contract_templates_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       org_contracts: {
         Row: {
           contract_date: string | null
@@ -3748,6 +3907,53 @@ export type Database = {
           },
         ]
       }
+      org_services: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          is_active: boolean
+          name: string
+          organization_id: string
+          price: number
+          sort_order: number
+          unit: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name: string
+          organization_id: string
+          price?: number
+          sort_order?: number
+          unit?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          organization_id?: string
+          price?: number
+          sort_order?: number
+          unit?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "org_services_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       org_smtp_settings: {
         Row: {
           created_at: string
@@ -3761,6 +3967,7 @@ export type Database = {
           organization_id: string
           password_encrypted: string
           port: number
+          provider_daily_limit: number
           updated_at: string
           username: string
         }
@@ -3776,6 +3983,7 @@ export type Database = {
           organization_id: string
           password_encrypted: string
           port?: number
+          provider_daily_limit?: number
           updated_at?: string
           username: string
         }
@@ -3791,6 +3999,7 @@ export type Database = {
           organization_id?: string
           password_encrypted?: string
           port?: number
+          provider_daily_limit?: number
           updated_at?: string
           username?: string
         }
@@ -7463,7 +7672,7 @@ export type Database = {
         Returns: boolean
       }
       consume_email_quota: {
-        Args: { p_count: number; p_scope_key: string }
+        Args: { p_count: number; p_scope_key: string; p_skip_warmup?: boolean }
         Returns: Json
       }
       count_org_completions_this_month: {

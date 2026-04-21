@@ -55,6 +55,18 @@ export default function OrganizationDashboard() {
     const tab = searchParams.get('tab');
     const courseId = searchParams.get('courseId');
     const studentId = searchParams.get('studentId');
+    const enableSales = searchParams.get('enableSales');
+
+    // Hidden URL toggle: ?enableSales=1 enables Sales menu permanently
+    if (enableSales === '1' && d.organizationId) {
+      (async () => {
+        const { supabase } = await import('@/integrations/supabase/client');
+        const { data: org } = await supabase.from('organizations').select('menu_settings').eq('id', d.organizationId!).maybeSingle();
+        const current = (org?.menu_settings as any) || {};
+        await supabase.from('organizations').update({ menu_settings: { ...current, showSales: true } as any }).eq('id', d.organizationId!);
+      })();
+    }
+
     if (tab) {
       if (tab === 'course-details' && courseId) {
         d.tabNavigation.setSelectedCourseId(courseId);
@@ -64,8 +76,10 @@ export default function OrganizationDashboard() {
       }
       d.tabNavigation.setActiveTab(tab as any);
       setSearchParams({}, { replace: true });
+    } else if (enableSales === '1') {
+      setSearchParams({}, { replace: true });
     }
-  }, [searchParams]);
+  }, [searchParams, d.organizationId]);
 
   const exitAdminView = () => { localStorage.removeItem("adminViewAsOrg"); navigate("/admin"); };
 
