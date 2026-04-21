@@ -84,18 +84,10 @@ export function WebinarsManager({ organizationId }: Props) {
   };
 
   const handleStopLive = async (w: Webinar) => {
-    if (!w.kinescope_live_id) return;
     setActionLoading(w.id);
     try {
-      await supabase.functions.invoke("kinescope-proxy", {
-        body: { action: "stop_live", live_id: w.kinescope_live_id } });
       await supabase.from("webinars").update({ status: "ended" } as any).eq("id", w.id);
-      const { data: liveData } = await supabase.functions.invoke("kinescope-proxy", {
-        body: { action: "get_live", live_id: w.kinescope_live_id } });
-      if (liveData?.data?.video_id) {
-        await supabase.from("webinars").update({ kinescope_video_id: liveData.data.video_id } as any).eq("id", w.id);
-      }
-      toast.success("Трансляция остановлена");
+      toast.success("Эфир завершён. Если есть запись — введите Kinescope Video ID вручную.");
       fetchWebinars();
     } catch (e: any) {
       toast.error(e.message || "Ошибка остановки трансляции");
@@ -167,25 +159,10 @@ export function WebinarsManager({ organizationId }: Props) {
   };
 
   const handleRefreshRecording = async (w: Webinar) => {
-    if (!w.kinescope_live_id) return;
-    setActionLoading(w.id);
-    try {
-      const { data } = await supabase.functions.invoke("kinescope-proxy", {
-        body: { action: "get_live", live_id: w.kinescope_live_id } });
-      if (data?.data?.video_id) {
-        await supabase.from("webinars").update({
-          kinescope_video_id: data.data.video_id,
-          embed_url: `https://kinescope.io/embed/${data.data.video_id}` } as any).eq("id", w.id);
-        toast.success("Запись найдена!");
-        fetchWebinars();
-      } else {
-        toast.info("Запись ещё не готова");
-      }
-    } catch {
-      toast.error("Ошибка получения записи");
-    } finally {
-      setActionLoading(null);
-    }
+    // Kinescope не отдаёт video_id Live через публичный API.
+    // Менеджер вручную копирует Video ID из дашборда Kinescope и вставляет его через настройки плеера ниже.
+    toast.info("Скопируйте Video ID записи из дашборда Kinescope и вставьте его в настройках плеера.");
+    void w;
   };
 
   const handleDuplicate = async (w: Webinar) => {
