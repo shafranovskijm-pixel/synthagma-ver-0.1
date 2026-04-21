@@ -131,20 +131,21 @@ export function useCourseDetails(
     setIsLoadingAvailable(true);
     try {
       const enrolledUserIds = new Set(courseStudents.map(s => s.user_id));
-      // Fetch profiles and the org/admin role list in parallel — the role query
-      // doesn't depend on the profile rows, only on organization_id.
-      const [profilesRes, rolesRes] = await Promise.all([
-        supabase.from("profiles")
-          .select("id, user_id, full_name, email")
-          .eq("organization_id", organizationId),
-        supabase.from("user_roles")
+      const { data: allProfiles } = await supabase
+        .from("profiles")
+        .select("id, user_id, full_name, email")
+        .eq("organization_id", organizationId);
+      const profileUserIds = (allProfiles || []).map(p => p.user_id);
+      let excludedUserIds = new Set<string>();
+      if (profileUserIds.length > 0) {
+        const { data: rolesData } = await supabase
+          .from("user_roles")
           .select("user_id, role")
-          .eq("organization_id", organizationId)
-          .in("role", ["organization", "admin"]),
-      ]);
-      const allProfiles = profilesRes.data || [];
-      const excludedUserIds = new Set((rolesRes.data || []).map(r => r.user_id));
-      const available = allProfiles
+          .in("user_id", profileUserIds)
+          .in("role", ["organization", "admin"]);
+        excludedUserIds = new Set((rolesData || []).map(r => r.user_id));
+      }
+      const available = (allProfiles || [])
         .filter(p => !enrolledUserIds.has(p.user_id) && !excludedUserIds.has(p.user_id))
         .map(p => ({ id: p.id, user_id: p.user_id, name: p.full_name || "Без имени", email: p.email || "" }));
       setAvailableStudents(available);
