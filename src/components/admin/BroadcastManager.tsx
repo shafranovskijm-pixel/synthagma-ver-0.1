@@ -13,6 +13,8 @@ import { format, differenceInDays } from "date-fns";
 import { ru } from "date-fns/locale";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 import { getEmailHtml, getEmailSubject } from "./broadcast/emailTemplates";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { CampaignsManager } from "./broadcast/CampaignsManager";
 
 interface Announcement {
   id: string;
@@ -234,6 +236,15 @@ export function BroadcastManager() {
 
   return (
     <div className="space-y-6">
+      <Tabs defaultValue="campaigns" className="w-full">
+        <TabsList>
+          <TabsTrigger value="campaigns">Email-кампании</TabsTrigger>
+          <TabsTrigger value="legacy">Уведомления и быстрые письма</TabsTrigger>
+        </TabsList>
+        <TabsContent value="campaigns" className="mt-4">
+          <CampaignsManager scope="platform" organizationId={null} />
+        </TabsContent>
+        <TabsContent value="legacy" className="mt-4 space-y-6">
       {/* Original announcements section */}
       <Card>
         <CardHeader>
@@ -469,6 +480,8 @@ export function BroadcastManager() {
           </CardContent>
         </Card>
       )}
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
