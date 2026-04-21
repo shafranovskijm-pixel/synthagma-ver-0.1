@@ -1,218 +1,260 @@
 
 
-## План: Сервис Email-рассылок для админа и организаций (со своим SMTP, прогревом и шифрованием)
+## План: Полный CRM-комплекс для организаций — КП, Шаблоны писем, Договоры через документооборот
 
-### Что вы получите
+### Часть 1. Меню «Продажи» — скрыть по умолчанию
 
-**Для администратора** (`/admin → Рассылка → Кампании`):
-- Кампании с шаблонами писем (тема + HTML), массовая отправка по сегментам
-- 3 источника получателей: организации, спарсенные компании из «Базы компаний», ручной импорт CSV/вставка email
-- Прогрев SMTP с жёсткими лимитами (см. ниже)
-- Статистика: отправлено / ошибок / открытий (через пиксель), история по каждой кампании
+- `defaultMenuSettings` в `useDashboardSettings.ts` → добавить `showSales: false`.
+- `normalizeMenuSettings` → `showSales: raw.showSales === true` (off by default).
+- `OrgSidebar.tsx` → пункт «Продажи» рендерится **только** если `menuSettings.showSales === true`.
+- В **«Профиль организации»** (`OrgProfileTab.tsx`) убираю переключатель «Компании» (`showCompanies`) **и не добавляю** свитч «Продажи» (по запросу — раздел спрятан и в настройках не светится; включается через админ-панель платформы или скрытый URL `?enableSales=1`, который ставит флаг в БД).
+- На странице раздела «Продажи» (когда включён) — баннер «Beta. Хотите включить постоянно? Напишите в поддержку».
 
-**Для организации** (`/organization → новая вкладка «Продажи»`):
-- Раздел «Продажи» с под-разделами: «Рассылки» (на старте), задел под «Лиды», «КП», «Договоры» (пока заглушки — раздел растёт под будущее).
-- Свои SMTP-настройки + кнопка «Тест соединения»
-- Кампании по своим студентам, компаниям-клиентам, ручному списку email
-- Те же шаблоны, прогрев, статистика
+### Часть 2. Под-сайдбар «Продажи» в организации
 
-### Источники получателей
-- **Организация:** студенты (`profiles`), компании-клиенты (`companies` с email), ручной импорт CSV/вставка email
-- **Админ:** организации (`organizations`), компании из «Базы компаний» (`sales_companies_db.email`), ручной импорт
-
-Везде явный чекбокс «У меня есть согласие получателей на рассылки» — без галки кнопка «Отправить» неактивна.
-
-### SMTP-настройки
-
-**Для организации** — новая вкладка «SMTP» внутри «Продажи → Рассылки»:
-- Поля: host, port (587/465/2525), user, **password** (шифруется через `pgp_sym_encrypt`, как студенческие пароли), from_email, from_name, encryption (TLS/SSL/STARTTLS)
-- Кнопка «Тест соединения» → edge `test-org-smtp` отправляет тестовое письмо самой организации
-- Если SMTP не настроен — рассылки недоступны, показывается onboarding-инструкция (как получить SMTP у Timeweb/Beget/Yandex 360/Mail.ru для бизнеса)
-
-**Для админа** — рассылка идёт через существующие глобальные SMTP-секреты (`SMTP_HOST/USER/PASS` платформы). Никаких дополнительных настроек.
-
-### Прогрев (жёсткие авто-лимиты)
-
-Таблица `email_warmup_state` хранит на каждую SMTP-конфигурацию (org_id или 'platform'):
-- `started_at` — день первой отправки
-- `sent_today`, `sent_today_date` — счётчик за сегодня (сброс на новый день в МСК)
-- `total_sent` — всего за всё время
-
-График лимитов (день с момента `started_at`):
-
-```text
-День 1:  10 писем/день
-День 2:  20
-День 3:  40
-День 4:  70
-День 5:  100
-День 6:  150
-День 7:  200
-День 8:  300
-День 9:  400
-День 10: 500
-День 11: 700
-День 12: 1000
-День 13: 1500
-День 14+: 2000/день (потолок)
+Внутри `OrgSalesLayout.tsx` под-вкладки:
 ```
+[Рассылки] [Шаблоны писем] [КП] [Договоры] [Лиды] [SMTP]
+```
+Все под одним layout, переключение по `?tab=sales&section=...`.
 
-Серверная RPC `consume_email_quota(org_id, count)`:
-- Проверяет лимит на текущий день
-- Если `sent_today + count > daily_limit` → возвращает `false` + остаток
-- Иначе атомарно увеличивает `sent_today` и возвращает `true`
+### Часть 3. Шаблоны HTML-писем (новое, для админа и организации)
 
-Frontend перед запуском кампании показывает: «Сегодня доступно: X из Y. Это N-й день прогрева». Если запросили больше — кнопка блокируется с подсказкой «разделите на N дней» (NB: ученик #3 в опросе — Жёсткие лимиты).
+**Таблица `email_templates`:**
+```sql
+id uuid PK
+scope text CHECK ('platform','org')   -- platform = админ, org = организация
+organization_id uuid                  -- NULL для platform
+name text                             -- "Холодное знакомство", "После КП", "Повтор"
+category text                         -- 'cold','followup','proposal','contract','custom'
+subject text
+html_body text                        -- HTML с переменными {{name}} {{company}} {{link}} {{proposal_url}} {{contract_url}}
+variables jsonb                       -- список доступных переменных + примеры
+is_default bool                       -- системные шаблоны (нельзя удалять, можно копировать)
+created_by uuid, created_at, updated_at
+```
+RLS: scope='platform' → admin only; scope='org' → своя организация + admin.
 
-Также техническая пауза 1.5 сек между письмами в одной кампании (защита от ban'а SMTP-сервера).
+**Системные шаблоны (seed, scope='platform', is_default=true):**
+1. «Знакомство — холодное» (для рассылки по списку компаний)
+2. «Отправка КП» (с переменной `{{proposal_url}}`)
+3. «Напоминание после КП» (через 3 дня)
+4. «Отправка договора» (с переменной `{{signing_url}}`)
+5. «Договор подписан — благодарность»
+6. «Реактивация спящего клиента»
 
-### Архитектура БД (одна миграция)
+Организация при создании автоматически клонирует системные шаблоны в свой scope='org' (через триггер `seed_org_email_templates` на `INSERT INTO organizations`).
+
+**UI** `EmailTemplatesManager.tsx` (общий для admin/org):
+- Список шаблонов с фильтром по category
+- Редактор: название, категория, тема, **HTML-textarea с live-preview справа** (iframe), кнопка «Вставить переменную»
+- Кнопка «Тестовая отправка на мой email» (через `send-campaign-email` с одним получателем)
+- Привязка к кампаниям рассылок и к КП/договорам — везде, где есть отправка email, появляется выбор шаблона.
+
+**Интеграция с уже сделанными кампаниями:**  
+В `email_campaigns` добавить колонку `template_id uuid REFERENCES email_templates(id)`. Если выбран шаблон — `subject` и `html_body` копируются из него при создании, дальше живут отдельно (snapshot).
+
+### Часть 4. КП в организации (новый раздел `OrgProposalsManager`)
+
+**Не плодим новые таблицы.** Расширяем существующую `commercial_proposals`:
+```sql
+ALTER TABLE commercial_proposals 
+  ADD COLUMN scope text NOT NULL DEFAULT 'platform' CHECK (scope IN ('platform','org')),
+  ADD COLUMN organization_id uuid REFERENCES organizations(id) ON DELETE CASCADE;
+
+-- RLS: scope='org' → org users + admin; scope='platform' остаётся как было.
+CREATE POLICY "Org access to own proposals" ON commercial_proposals
+  FOR ALL TO authenticated
+  USING (scope = 'org' AND organization_id = current_organization_id())
+  WITH CHECK (scope = 'org' AND organization_id = current_organization_id());
+```
+То же для `commercial_proposal_services` (через JOIN).
+
+**OrgProposalsManager.tsx** — клон `CommercialProposals.tsx`, но:
+- Все запросы фильтруют по `scope='org' AND organization_id=current`.
+- Услуги тянутся не из `sales_services` (это сервисы платформы), а из `org_services` (новая таблица — каталог услуг организации с тарифами/обучением). Минимальная: `id, organization_id, name, description, price, unit, is_active`.
+- Шаблон письма для отправки КП — выбирается из `email_templates` scope='org'.
+- Отправка через `send-campaign-email` (используется уже **org SMTP** из `org_smtp_settings`); подставляется ссылка `proposal_url = https://.../proposal/:id`.
+- Лимиты прогрева — те же `consume_email_quota(org_id::text, 1)` (КП считается 1 письмом в дневной квоте).
+
+### Часть 5. Договоры через документооборот (главное)
+
+**Решение:** НЕ создаём отдельную таблицу контрактов в org. Используем уже существующий **полноценный документооборот** платформы:
+- `document_signatures` — кто кому, статус, токен подписи, expires_at
+- `signature_revisions` — версионирование с change_summary
+- `signature_comments` — правки/возражения с резолюцией
+- RPC `add_signature_revision`, `set_signature_comment_resolution`, `org_finalize_signature_review`
+- Edge `send-signing-email`, `finalize-signature` (всё уже работает у админа в «Договорах с организациями»)
+
+**Что добавляем:**
+1. **`OrgContractsManager.tsx`** — раздел в «Продажи → Договоры»:
+   - Таб «Шаблоны договоров» — таблица `org_contract_templates(id, organization_id, name, body_html, variables jsonb, created_at)`. UI редактор: HTML + переменные `{{client_name}}, {{client_inn}}, {{amount}}, {{date}}, {{director}}, ...`.
+   - Таб «На подписание» — список `document_signatures` где `organization_id = current` И `document_type = 'sales_contract'` (новый тип). Колонки: контрагент, статус (`draft → sent → in_review → signed/changes_requested`), последняя версия, кнопки «Открыть переписку», «Скачать подписанный PDF».
+   - Кнопка **«Создать договор»** → диалог:
+     - Выбор шаблона из `org_contract_templates` (или свой HTML)
+     - Выбор контрагента: из «Базы компаний» (`sales_companies_db`), из своих `companies`, или ручной ввод (ИНН → DaData автозаполнение через уже существующий `dadata-company`)
+     - Заполнение переменных шаблона
+     - Preview HTML
+     - Кнопка «Отправить на подписание» → создаёт запись в `document_signatures` через `create_external_contract_signature` (RPC уже есть!) → автоматически создаёт первую `signature_revisions` → Edge `send-signing-email` шлёт письмо с токеном.
+   - Получатель открывает `/sign/:token` (страница уже работает на платформе) → подписывает или присылает правки → организация видит в «Документообороте» и в «Продажи → Договоры → На подписание» (одна и та же запись, два входа).
+
+2. **Шаблон письма для договора** берётся из `email_templates` (категория `contract`) и переопределяет дефолтный текст в `send-signing-email`. Функцию правлю: если в payload `template_id` — рендерит HTML из шаблона с подстановкой `{{signing_url}}`, `{{document_title}}`, `{{recipient_name}}`, `{{sender_name}}`.
+
+3. **Связь КП → Договор:** в открытом КП кнопка «Создать договор на основе КП» — подставляет компанию, услуги, сумму, открывает диалог создания договора. В `commercial_proposals` добавить `linked_signature_id uuid` для трекинга.
+
+### Часть 6. Узкие места и что закрываю заранее
+
+| Проблема | Решение |
+|---|---|
+| **Лимиты прогрева** при массовой отправке КП/договоров через org SMTP | КП и договор — **транзакционные**, не подпадают под прогрев. RPC `consume_email_quota` принимает доп. параметр `p_skip_warmup boolean default false`. Для КП/договоров вызываем с `true` — расходуем общий счётчик `total_sent`, но не блокируем. |
+| **org SMTP не настроен**, а пользователь отправляет КП | Перед отправкой проверка: если `org_smtp_settings` нет или `is_verified=false` → диалог «Настройте SMTP» с кнопкой → редирект на «Продажи → SMTP». КП сохраняется как `draft`. |
+| **Шаблон ссылается на несуществующую переменную** | Серверный валидатор в `send-campaign-email`: парсит `{{var}}`, если переменной нет в payload — заменяет на пустую строку, пишет warning в `email_send_log`. |
+| **Договор с правками — клиент не понимает статус** | UI «На подписание» отображает таймлайн: `Отправлен → Получены правки (3 шт.) → Принято: 2, Отклонено: 1, Отправлена v2 → Подписан`. Берётся из `signature_revisions` + `signature_comments`. |
+| **Двойная отправка одного и того же КП** | На `commercial_proposals` уникальное поле `last_sent_at`; кнопка «Отправить» в течение 60 сек после клика заменяется на «Отправлено ✓», retry разрешён только через 5 мин. |
+| **Шаблоны писем — пользователь сломает HTML** | Live-preview через `<iframe srcdoc>` (изоляция). Перед сохранением sanitize через DOMPurify в браузере. |
+| **Org SMTP rate-limit от провайдера** (Yandex 360 = 500/сутки) | В `org_smtp_settings` поле `provider_daily_limit int` (юзер сам выставляет). `consume_email_quota` дополнительно сверяется с этим лимитом (берётся `MIN(warmup_limit, provider_daily_limit)`). |
+| **Бесконечная рассылка в БД** при лагах кампании | В `run-email-campaign` лимит «не больше 5000 писем за 1 запуск», иначе кампания паузится. |
+| **Договор подписан, но KP остался в статусе sent** | Триггер `on document_signatures UPDATE WHEN status='signed'` → если `linked_proposal_id` не NULL → ставит `commercial_proposals.status='accepted'`. |
+| **Контрагент не получил письмо** (попало в спам) | В `email_campaign_recipients` уже есть трек открытий. Для договоров — добавить в `document_signatures` колонку `email_opened_at` (заполняется через тот же `track-email-open` с типом `?type=signing&id=...`). UI показывает «📩 Открыто» на карточке договора. |
+| **Производительность списка кампаний** при 10к получателей | Не грузим всех получателей в `CampaignsManager`, только агрегаты из `email_campaigns` (sent_count, failed_count, open_count). Детали — пагинация в `CampaignReport`. |
+| **Удаление шаблона, который используется в 30 отправленных КП** | Soft delete: `email_templates.deleted_at`. Использованные снапшоты в `email_campaigns.html_body` живут отдельно. |
+| **Доступ другого админа org к чужим SMTP-паролям** | RPC `get_decrypted_org_smtp` отдаёт пароль только для своей `current_organization_id()` — это уже сделано в прошлой миграции. |
+| **CORS / трекинг открытия** для писем подписания | `track-email-open` уже без JWT, расширяем — принимает `purpose=signing`/`campaign` и пишет в нужную таблицу. |
+
+### Часть 7. Архитектура БД (одна миграция)
 
 ```sql
--- 1) SMTP организаций (пароль шифруется триггером)
-CREATE TABLE org_smtp_settings (
-  organization_id uuid PRIMARY KEY REFERENCES organizations(id) ON DELETE CASCADE,
-  host text NOT NULL,
-  port int NOT NULL DEFAULT 587,
-  username text NOT NULL,
-  password_encrypted text NOT NULL,  -- pgp_sym_encrypt
-  from_email text NOT NULL,
-  from_name text,
-  encryption text NOT NULL DEFAULT 'tls',  -- tls|ssl|starttls
-  is_verified boolean DEFAULT false,
-  last_test_at timestamptz,
-  last_test_error text,
-  created_at, updated_at
-);
--- триггер trigger_encrypt_smtp_password (по образцу trigger_encrypt_org_cred_password)
--- RPC get_decrypted_org_smtp(org_id) — только админ или своя организация
-
--- 2) Кампании
-CREATE TABLE email_campaigns (
+-- 1. Шаблоны писем
+CREATE TABLE email_templates (
   id uuid PK,
-  scope text NOT NULL CHECK (scope IN ('platform','org')),  -- админ или организация
-  organization_id uuid,  -- NULL для platform
+  scope text CHECK ('platform','org'),
+  organization_id uuid REFERENCES organizations(id) ON DELETE CASCADE,
   name text NOT NULL,
+  category text NOT NULL DEFAULT 'custom',
   subject text NOT NULL,
   html_body text NOT NULL,
-  from_name text,
-  reply_to text,
-  recipient_source text NOT NULL,  -- 'students'|'companies'|'organizations'|'companies_db'|'manual'
-  recipient_filter jsonb,           -- {city, hasLicense, ids[]}
-  manual_emails text[],             -- для source='manual'
-  status text NOT NULL DEFAULT 'draft',  -- draft|sending|completed|failed|paused
-  scheduled_at timestamptz,
-  started_at, completed_at,
-  total_recipients int DEFAULT 0,
-  sent_count int DEFAULT 0,
-  failed_count int DEFAULT 0,
-  open_count int DEFAULT 0,
+  variables jsonb DEFAULT '[]',
+  is_default boolean DEFAULT false,
+  deleted_at timestamptz,
   created_by uuid, created_at, updated_at
 );
+CREATE INDEX ON email_templates(scope, organization_id, category);
 
--- 3) Получатели/события (по одной строке на email)
-CREATE TABLE email_campaign_recipients (
+-- 2. Услуги организации (для КП)
+CREATE TABLE org_services (
   id uuid PK,
-  campaign_id uuid REFERENCES email_campaigns(id) ON DELETE CASCADE,
-  email text NOT NULL,
-  recipient_name text,
-  status text NOT NULL DEFAULT 'pending',  -- pending|sent|failed|bounced|opened
-  error text,
-  sent_at, opened_at,
-  open_token uuid DEFAULT gen_random_uuid()  -- для трекинг-пикселя
-);
-CREATE INDEX ON email_campaign_recipients(campaign_id, status);
-
--- 4) Прогрев
-CREATE TABLE email_warmup_state (
-  scope_key text PRIMARY KEY,  -- 'platform' или org_id::text
-  started_at date NOT NULL DEFAULT CURRENT_DATE,
-  sent_today int NOT NULL DEFAULT 0,
-  sent_today_date date NOT NULL DEFAULT CURRENT_DATE,
-  total_sent int NOT NULL DEFAULT 0,
-  updated_at timestamptz
+  organization_id uuid REFERENCES organizations(id) ON DELETE CASCADE,
+  name, description, price numeric, unit text DEFAULT 'шт',
+  is_active boolean DEFAULT true,
+  created_at, updated_at
 );
 
--- RPC consume_email_quota(scope_key text, count int) RETURNS jsonb
--- RPC get_warmup_status(scope_key text) RETURNS jsonb { day, daily_limit, sent_today, remaining }
+-- 3. Шаблоны договоров организации
+CREATE TABLE org_contract_templates (
+  id uuid PK,
+  organization_id uuid REFERENCES organizations(id) ON DELETE CASCADE,
+  name text NOT NULL,
+  body_html text NOT NULL,
+  variables jsonb DEFAULT '[]',
+  is_default boolean DEFAULT false,
+  created_at, updated_at
+);
+
+-- 4. Расширяем КП на org
+ALTER TABLE commercial_proposals
+  ADD COLUMN scope text NOT NULL DEFAULT 'platform' CHECK (scope IN ('platform','org')),
+  ADD COLUMN organization_id uuid REFERENCES organizations(id) ON DELETE CASCADE,
+  ADD COLUMN linked_signature_id uuid REFERENCES document_signatures(id) ON DELETE SET NULL,
+  ADD COLUMN last_sent_at timestamptz;
+
+-- 5. Расширяем кампании
+ALTER TABLE email_campaigns ADD COLUMN template_id uuid REFERENCES email_templates(id);
+
+-- 6. Org SMTP лимит провайдера
+ALTER TABLE org_smtp_settings ADD COLUMN provider_daily_limit int DEFAULT 500;
+
+-- 7. Трекинг открытия для договоров
+ALTER TABLE document_signatures
+  ADD COLUMN email_opened_at timestamptz,
+  ADD COLUMN email_open_token uuid DEFAULT gen_random_uuid(),
+  ADD COLUMN linked_proposal_id uuid REFERENCES commercial_proposals(id) ON DELETE SET NULL;
+
+-- 8. Прогрев — параметр пропуска
+DROP FUNCTION consume_email_quota(text, int);
+CREATE FUNCTION consume_email_quota(
+  p_scope_key text, p_count int, p_skip_warmup boolean DEFAULT false
+) RETURNS jsonb ...;
+
+-- 9. Триггер автоклонирования системных шаблонов в org
+CREATE TRIGGER seed_org_email_templates
+  AFTER INSERT ON organizations
+  FOR EACH ROW EXECUTE FUNCTION clone_default_email_templates();
+
+-- 10. Триггер: договор подписан → КП accepted
+CREATE TRIGGER on_signature_signed_update_proposal
+  AFTER UPDATE ON document_signatures
+  FOR EACH ROW WHEN (NEW.status = 'signed' AND OLD.status <> 'signed')
+  EXECUTE FUNCTION mark_proposal_accepted_on_signing();
+
+-- 11. RLS на все новые таблицы по образцу email_campaigns:
+-- admin = всё; org users — только свои.
 ```
 
-**RLS:** 
-- `org_smtp_settings`: SELECT/UPDATE только своя организация + admin (через `has_role` и `current_organization_id`)
-- `email_campaigns`/`email_campaign_recipients`: scope='platform' → admin only; scope='org' → своя организация + admin
-- `email_warmup_state`: SELECT/UPDATE через SECURITY DEFINER RPC, прямого доступа нет
+### Часть 8. Edge Functions (новые/правки)
 
-### Edge Functions
+| Функция | Действие |
+|---|---|
+| `send-campaign-email` | + поддержка `template_id` (рендер из БД), + параметр `purpose: 'campaign'\|'proposal'\|'contract'`, + skip_warmup для proposal/contract |
+| `send-signing-email` | + опциональный `template_id` для рендера письма из шаблона организации, + трекинг-пиксель `track-email-open?purpose=signing&id=...` |
+| `track-email-open` | + ветка `purpose=signing` → пишет `document_signatures.email_opened_at` |
+| `send-test-email` (новая) | Принимает `{ template_id, to_email }` → рендерит шаблон с тестовыми переменными → шлёт через org SMTP или platform SMTP |
+| `org-create-contract-signature` (новая) | Обёртка над `create_external_contract_signature` + `add_signature_revision` + `send-signing-email` в одной транзакции, чтобы UI не делал 3 запроса |
 
-1. **`send-campaign-email`** (новая) — универсальный отправитель:
-   - Принимает `{ campaignId, recipientId }`
-   - Загружает кампанию + получателя + SMTP-настройки (org_smtp при scope='org', иначе ENV `SMTP_*`)
-   - Расшифровывает пароль через `decrypt_password`
-   - Подставляет в HTML трекинг-пиксель `<img src=".../track-open?t={open_token}" width="1" height="1">`
-   - Шлёт через тот же deno-TLS-сокет, что в `send-email/index.ts` (UTF-8 base64 для темы/тела, encodeFromHeader)
-   - Обновляет статус получателя в `email_campaign_recipients`
+### Часть 9. Frontend — новые/изменённые файлы
 
-2. **`run-email-campaign`** (новая) — воркер кампании:
-   - `{ campaignId }` → проверяет квоту через `consume_email_quota`, ставит status='sending'
-   - Цикл по получателям (pending), 1.5 сек между письмами, инвокает `send-campaign-email`
-   - Если квота кончилась → status='paused', записывает «продолжить завтра»
-   - По завершении → status='completed', обновляет агрегаты
-   - Хранит ID в `running_campaigns` (in-memory) для retry
+**Создать:**
+- `src/components/shared/sales/EmailTemplatesManager.tsx` (общий для admin/org)
+- `src/components/shared/sales/EmailTemplateEditor.tsx` (HTML editor + iframe preview + переменные)
+- `src/components/organization/sales/OrgProposalsManager.tsx`
+- `src/components/organization/sales/OrgContractsManager.tsx`
+- `src/components/organization/sales/OrgServicesManager.tsx`
+- `src/components/organization/sales/OrgContractTemplateEditor.tsx`
+- `src/components/organization/sales/CreateContractDialog.tsx` (выбор контрагента + шаблона + переменных + preview + send)
+- `src/hooks/useEmailTemplates.ts`
+- `src/hooks/useOrgProposals.ts`
+- `src/hooks/useOrgContracts.ts`
+- `src/hooks/useOrgServices.ts`
 
-3. **`test-org-smtp`** (новая) — `{ organizationId }` шлёт тестовое письмо самой организации через её SMTP, обновляет `is_verified` + `last_test_error`.
-
-4. **`track-email-open`** (новая, без JWT) — `GET /track-email-open?t={token}` → ставит `opened_at`, увеличивает `open_count`, отдаёт 1×1 GIF.
-
-### Frontend
-
-**Новые файлы:**
-- `src/components/admin/broadcast/CampaignsManager.tsx` — список кампаний + создание (для админа)
-- `src/components/admin/broadcast/CampaignEditor.tsx` — редактор: название, тема, HTML (textarea + preview), выбор источника, фильтры
-- `src/components/admin/broadcast/RecipientPicker.tsx` — переиспользуется в org/admin: выбор source + manual import (CSV/textarea)
-- `src/components/admin/broadcast/WarmupBadge.tsx` — карточка с днём прогрева, лимитом, остатком на сегодня
-- `src/components/admin/broadcast/CampaignReport.tsx` — таблица получателей со статусами + графики
-- `src/components/organization/sales/OrgSalesLayout.tsx` — каркас раздела «Продажи» (под-сайдбар: Рассылки | Лиды (soon) | КП (soon))
-- `src/components/organization/sales/OrgEmailCampaigns.tsx` — кампании организации (использует те же ниже-уровневые компоненты)
-- `src/components/organization/sales/OrgSmtpSettings.tsx` — форма SMTP + кнопка «Тест»
-- `src/hooks/useEmailCampaigns.ts`, `useEmailWarmup.ts`, `useOrgSmtp.ts`
-
-**Изменения:**
-- `src/components/admin/BroadcastManager.tsx` → добавить вкладки внутри: «Уведомления» (как сейчас), **новое** «Email-кампании» (`<CampaignsManager />`)
-- `src/components/organization/OrgSidebar.tsx` → новый пункт `sales` (иконка `Briefcase`), TabType += `"sales"`
-- `src/components/organization/tabs/TabContentRenderer.tsx` → case `"sales"` → `<OrgSalesLayout />`
-- `src/lib/appVersion.ts` → `1.0.53`
+**Править:**
+- `src/hooks/useDashboardSettings.ts` — `showSales: false` по умолчанию
+- `src/components/organization/OrgSidebar.tsx` — фильтр по `showSales`
+- `src/components/organization/tabs/OrgProfileTab.tsx` — убрать «Компании»-свитч (showCompanies)
+- `src/components/organization/sales/OrgSalesLayout.tsx` — добавить новые секции
+- `src/components/admin/BroadcastManager.tsx` — добавить таб «Шаблоны писем»
+- `src/components/admin/sales/CommercialProposals.tsx` — выбор шаблона при отправке
+- `src/components/signing/SendForSigningDialog.tsx` — выбор шаблона письма (опционально)
+- `src/lib/appVersion.ts` → `1.0.54`
 - запись в `platform_updates`
 
-### Меню «Продажи» в организации (под-сайдбар)
-```text
-[Рассылки]   ← v1, реализуется сейчас
- Лиды        ← soon (заглушка)
- КП          ← soon
- Договоры    ← soon
- SMTP        ← внутри «Рассылки» как саб-вкладка
-```
-URL: `/organization?tab=sales&section=campaigns|smtp`.
+### Часть 10. End-to-end проверка перед сдачей
 
-### End-to-end проверка перед сдачей
-
-1. Миграция применена: `org_smtp_settings`, `email_campaigns`, `email_campaign_recipients`, `email_warmup_state`, RPC `consume_email_quota`, `get_warmup_status`, `get_decrypted_org_smtp`, триггер шифрования. `supabase--linter` без ошибок.
-2. RLS-проверка через `supabase--read_query`: SELECT из всех 4 таблиц не падает с recursion, политики применены (по 4 на таблицу, без дубликатов).
-3. `supabase--curl_edge_functions` → `test-org-smtp` для тестовой организации (если есть тестовые SMTP) → 200 + `is_verified=true` или понятная ошибка.
-4. `consume_email_quota('platform', 5)` → возвращает `{allowed:true, remaining: 5}` на день 1.
-5. Создание кампании из UI админа → 1 получатель (мой email) → письмо приходит, статус в `email_campaign_recipients` = `sent`, открытие пикселем фиксируется как `opened`.
-6. Для организации: попытка отправить без SMTP → блокируется с подсказкой; после ввода SMTP + теста → отправка работает.
-7. Превышение лимита: попытка отправить 11 писем в день 1 → блокировка с сообщением «Доступно 10, разделите на 2 дня».
-8. В чате отчитываюсь: «работает: миграция OK, RLS OK, SMTP-тест OK, отправка OK, прогрев OK, открытия трекаются» — с конкретными цифрами.
+1. Миграция применена, `supabase--linter` чистый. RLS на всех 6 новых/изменённых таблицах.
+2. Системные шаблоны seedнуты (6 штук, scope='platform').
+3. При создании новой организации триггер `seed_org_email_templates` склонировал шаблоны → проверяю SELECT.
+4. **Меню скрыто:** новый orgowner не видит «Продажи». Через `?enableSales=1` или ручной UPDATE — видит.
+5. **Шаблоны писем (org):** создал шаблон «Тест» → отправил тестовое письмо себе → пришло, переменные подставлены, открытие зафиксировано в `email_send_log`.
+6. **КП (org):** создал КП → отправил клиенту через org SMTP с шаблоном «Отправка КП» → клиент открыл ссылку `/proposal/:id` → статус сменился на `viewed` → счётчик `consume_email_quota` увеличился на 1, прогрев НЕ блокировал (skip_warmup=true).
+7. **Договор (org):** создал шаблон договора → создал договор по КП → отправил → клиент открыл `/sign/:token` → прислал правки → организация увидела в «Документообороте» И в «Продажи → Договоры» → ответила «принять/отклонить» → отправила v2 → клиент подписал → `document_signatures.status='signed'` → триггер сработал → `commercial_proposals.status='accepted'` автоматом.
+8. **Прогрев:** запустил рассылку из 11 писем в день 1 → блок с сообщением «доступно 10».
+9. **SMTP не настроен:** попытка отправить КП → диалог редиректа в SMTP-настройки.
+10. **Удалён шаблон, использованный в КП:** соft delete, отправленные КП в истории не сломались.
+11. Отчёт в чат: ✅ миграция, ✅ RLS, ✅ seed, ✅ меню, ✅ шаблоны, ✅ КП e2e, ✅ договор e2e с правками, ✅ прогрев, ✅ SMTP-валидация — c конкретными ID и цифрами.
 
 ### Что НЕ делаю в v1
 
-- Без визуального drag-and-drop редактора писем — только HTML textarea + live preview (можно усилить позже).
-- Без отложенного запуска по cron (только «Запустить сейчас»; продолжение «завтра» при исчерпании квоты — да, через ручной клик).
-- Без сегментации по поведению (последний логин, открыл ли прошлое письмо) — только базовые фильтры.
-- Без bounce-обработки через webhook (это требует поддержки от SMTP-провайдера; добавим, когда придёт явный запрос).
-
-### Файлы
-
-**Создать:** 1 миграция, 4 edge-функции, 9 frontend-файлов (см. выше).
-**Править:** `BroadcastManager.tsx`, `OrgSidebar.tsx`, `TabContentRenderer.tsx`, `appVersion.ts`, запись в `platform_updates`.
+- Без визуального drag-n-drop редактора писем (HTML + preview достаточно).
+- Без планировщика отправки по расписанию (cron) — только «отправить сейчас».
+- Без многоязычных шаблонов — пока только русский.
+- Без bounce-webhook от SMTP-провайдеров — статусы `sent/failed/opened` достаточно.
+- Без редактора **визуального** конструктора договоров (как у DocuSign) — только HTML с переменными.
 
