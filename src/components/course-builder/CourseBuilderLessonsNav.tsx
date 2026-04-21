@@ -425,7 +425,7 @@ function NavList(props: Props & { afterAction?: () => void }) {
       </div>
 
       <ScrollArea className="flex-1 min-h-0">
-        <div className="p-2 pb-10 space-y-3">
+        <div className="p-2 space-y-3">
           {modules.length === 0 ? (
             <div className="flex flex-col items-center justify-center text-center py-10 px-4 gap-3">
               <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center">
@@ -503,8 +503,12 @@ function NavList(props: Props & { afterAction?: () => void }) {
 export function CourseBuilderLessonsNav(props: Props) {
   const [mobileOpen, setMobileOpen] = useState(false);
 
-  const stickyTop = props.embedded ? "top-[180px]" : "top-24";
-  const stickyMaxH = props.embedded ? "max-h-[calc(100dvh-200px)]" : "max-h-[calc(100dvh-7rem)]";
+  // Жёстко задаём и высоту, и max-high — иначе flex-1 min-h-0 у ScrollArea
+  // не получает «потолка» и список выталкивает футер с кнопкой «+ Модуль».
+  const stickyTop = props.embedded ? "top-[120px]" : "top-24";
+  const stickyHeight = props.embedded
+    ? "h-[calc(100dvh-140px)] max-h-[calc(100dvh-140px)]"
+    : "h-[calc(100dvh-7rem)] max-h-[calc(100dvh-7rem)]";
 
   return (
     <>
@@ -512,7 +516,7 @@ export function CourseBuilderLessonsNav(props: Props) {
         className={cn(
           "hidden lg:flex flex-col sticky self-start w-72 shrink-0 rounded-2xl border border-border/60 bg-gradient-to-b from-card to-muted/20 shadow-sm overflow-hidden",
           stickyTop,
-          stickyMaxH,
+          stickyHeight,
         )}
       >
         <NavList {...props} />
