@@ -54,24 +54,30 @@ function lkHttpUrl(wsUrl: string): string {
  * (например "LIVEKIT_URL=wss://... LIVEKIT_API_KEY=... LIVEKIT_API_SECRET=..."),
  * вытаскиваем нужное значение по имени переменной или по http(s)/ws(s)-схеме.
  */
+function sanitizeUrl(value: string): string {
+  // Берём только до первого пробела/перевода строки/запятой/точки с запятой и срезаем кавычки.
+  return value.split(/[\s,;]/)[0].replace(/^["']+|["']+$/g, "").trim();
+}
+
 function extractSecret(raw: string | undefined, varName: string, kind: "url" | "token"): string | undefined {
   if (!raw) return undefined;
   const trimmed = raw.trim();
-  // Если это именно URL/токен без мусора — вернуть как есть.
-  if (kind === "url" && /^wss?:\/\/\S+$/i.test(trimmed)) return trimmed;
+  if (kind === "url" && /^wss?:\/\/\S+$/i.test(trimmed)) return sanitizeUrl(trimmed);
   if (kind === "token" && !/\s/.test(trimmed) && !trimmed.includes("=")) return trimmed;
 
-  // Иначе ищем "VARNAME=VALUE" в строке, разделители — пробел/перевод строки/;
-  const re = new RegExp(`(?:^|[\\s;,])${varName}\\s*=\\s*("([^"]+)"|'([^']+)'|(\\S+))`, "i");
+  // Ищем "VARNAME=VALUE". Допускаем начало строки без разделителя.
+  const re = new RegExp(`(?:^|[\\s;,])?${varName}\\s*=\\s*("([^"]+)"|'([^']+)'|(\\S+))`, "i");
   const m = trimmed.match(re);
-  if (m) return (m[2] || m[3] || m[4] || "").trim();
+  if (m) {
+    const v = (m[2] || m[3] || m[4] || "").trim();
+    return kind === "url" ? sanitizeUrl(v) : v;
+  }
 
-  // Для URL — попробуем найти первый wss:// в строке.
   if (kind === "url") {
     const u = trimmed.match(/wss?:\/\/\S+/i);
-    if (u) return u[0].replace(/[",;]+$/g, "");
+    if (u) return sanitizeUrl(u[0]);
   }
-  return trimmed;
+  return kind === "url" ? sanitizeUrl(trimmed) : trimmed;
 }
 
 Deno.serve(async (req) => {
