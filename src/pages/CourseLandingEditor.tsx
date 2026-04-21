@@ -1,9 +1,11 @@
 import React, { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Save, ExternalLink, Sparkles, Palette } from "lucide-react";
+import { ArrowLeft, Save, ExternalLink, Sparkles, Palette, UserPlus } from "lucide-react";
 import { LandingThemePanel } from "@/components/course-landing/LandingThemePanel";
+import { LandingRegistrationPanel } from "@/components/course-landing/LandingRegistrationPanel";
 import type { LandingTheme } from "@/lib/landing-templates/types";
+import { getEnrollmentConfig, type EnrollmentConfig } from "@/lib/landing-enrollment";
 import { LandingHeroSection } from "@/components/course-landing/LandingHeroSection";
 import { LandingAIGenerateDialog } from "@/components/course-landing/LandingAIGenerateDialog";
 import { LandingAudienceSection } from "@/components/course-landing/LandingAudienceSection";
@@ -27,16 +29,25 @@ interface CourseLandingEditorContentProps { courseId: string; embedded?: boolean
 export function CourseLandingEditorContent({ courseId, embedded = false }: CourseLandingEditorContentProps) {
   const h = useLandingEditor(courseId);
   const [themePanelOpen, setThemePanelOpen] = useState(false);
+  const [registrationPanelOpen, setRegistrationPanelOpen] = useState(false);
 
   if (h.loading) return <div className="min-h-screen flex items-center justify-center"><SigmaSpinner size="lg" /></div>;
   if (!h.course) return null;
 
   const themeFromContent: Partial<LandingTheme> | undefined = (h.course?.landing_content as any)?.theme;
+  const enrollmentCfg = getEnrollmentConfig(h.course?.landing_content);
 
   const handleThemeChange = (next: LandingTheme) => {
     h.setCourse((c: any) => c ? {
       ...c,
       landing_content: { ...(c.landing_content ?? {}), theme: next },
+    } : c);
+  };
+
+  const handleEnrollmentChange = (next: EnrollmentConfig) => {
+    h.setCourse((c: any) => c ? {
+      ...c,
+      landing_content: { ...(c.landing_content ?? {}), enrollment: next },
     } : c);
   };
 
@@ -72,6 +83,16 @@ export function CourseLandingEditorContent({ courseId, embedded = false }: Cours
       onOpenChange={setThemePanelOpen}
       theme={themeFromContent}
       onChange={handleThemeChange}
+    />
+  );
+
+  const registrationPanel = (
+    <LandingRegistrationPanel
+      open={registrationPanelOpen}
+      onOpenChange={setRegistrationPanelOpen}
+      organizationId={h.course.organization_id}
+      config={enrollmentCfg}
+      onChange={handleEnrollmentChange}
     />
   );
 
