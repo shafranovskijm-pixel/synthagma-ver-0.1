@@ -1,9 +1,11 @@
 import React, { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Save, ExternalLink, Sparkles, Palette } from "lucide-react";
+import { ArrowLeft, Save, ExternalLink, Sparkles, Palette, UserPlus } from "lucide-react";
 import { LandingThemePanel } from "@/components/course-landing/LandingThemePanel";
+import { LandingRegistrationPanel } from "@/components/course-landing/LandingRegistrationPanel";
 import type { LandingTheme } from "@/lib/landing-templates/types";
+import { getEnrollmentConfig, type EnrollmentConfig } from "@/lib/landing-enrollment";
 import { LandingHeroSection } from "@/components/course-landing/LandingHeroSection";
 import { LandingAIGenerateDialog } from "@/components/course-landing/LandingAIGenerateDialog";
 import { LandingAudienceSection } from "@/components/course-landing/LandingAudienceSection";
@@ -27,16 +29,25 @@ interface CourseLandingEditorContentProps { courseId: string; embedded?: boolean
 export function CourseLandingEditorContent({ courseId, embedded = false }: CourseLandingEditorContentProps) {
   const h = useLandingEditor(courseId);
   const [themePanelOpen, setThemePanelOpen] = useState(false);
+  const [registrationPanelOpen, setRegistrationPanelOpen] = useState(false);
 
   if (h.loading) return <div className="min-h-screen flex items-center justify-center"><SigmaSpinner size="lg" /></div>;
   if (!h.course) return null;
 
   const themeFromContent: Partial<LandingTheme> | undefined = (h.course?.landing_content as any)?.theme;
+  const enrollmentCfg = getEnrollmentConfig(h.course?.landing_content);
 
   const handleThemeChange = (next: LandingTheme) => {
     h.setCourse((c: any) => c ? {
       ...c,
       landing_content: { ...(c.landing_content ?? {}), theme: next },
+    } : c);
+  };
+
+  const handleEnrollmentChange = (next: EnrollmentConfig) => {
+    h.setCourse((c: any) => c ? {
+      ...c,
+      landing_content: { ...(c.landing_content ?? {}), enrollment: next },
     } : c);
   };
 
@@ -75,6 +86,16 @@ export function CourseLandingEditorContent({ courseId, embedded = false }: Cours
     />
   );
 
+  const registrationPanel = (
+    <LandingRegistrationPanel
+      open={registrationPanelOpen}
+      onOpenChange={setRegistrationPanelOpen}
+      organizationId={h.course.organization_id}
+      config={enrollmentCfg}
+      onChange={handleEnrollmentChange}
+    />
+  );
+
   if (embedded) {
     return (
       <div className="space-y-4">
@@ -82,6 +103,7 @@ export function CourseLandingEditorContent({ courseId, embedded = false }: Cours
           <h3 className="font-semibold">Редактор страницы курса</h3>
           <div className="flex items-center gap-2">
             <Button variant="outline" size="sm" onClick={() => setThemePanelOpen(true)} className="gap-1.5"><Palette className="w-4 h-4" />Оформление</Button>
+            <Button variant="outline" size="sm" onClick={() => setRegistrationPanelOpen(true)} className="gap-1.5"><UserPlus className="w-4 h-4" />Регистрация</Button>
             <Button variant="outline" size="sm" onClick={() => h.openAIDialog(null)} className="gap-1.5"><Sparkles className="w-4 h-4" />ИИ</Button>
             <Button variant="outline" size="sm" onClick={() => window.open(h.publicUrl, "_blank")} className="gap-1.5"><ExternalLink className="w-4 h-4" />Просмотр</Button>
             <Button size="sm" onClick={h.handleSave} disabled={h.saving} className="gap-1.5">{h.saving ? <SigmaSpinner size="sm" /> : <Save className="w-4 h-4" />}Сохранить</Button>
@@ -93,6 +115,7 @@ export function CourseLandingEditorContent({ courseId, embedded = false }: Cours
         </LandingThemeProvider>
         {aiDialog}
         {themePanel}
+        {registrationPanel}
       </div>
     );
   }
@@ -107,6 +130,7 @@ export function CourseLandingEditorContent({ courseId, embedded = false }: Cours
           </div>
           <div className="flex items-center gap-2">
             <Button variant="outline" size="sm" onClick={() => setThemePanelOpen(true)} className="gap-1.5"><Palette className="w-4 h-4" /><span className="hidden sm:inline">Оформление</span></Button>
+            <Button variant="outline" size="sm" onClick={() => setRegistrationPanelOpen(true)} className="gap-1.5"><UserPlus className="w-4 h-4" /><span className="hidden sm:inline">Регистрация</span></Button>
             <Button variant="outline" size="sm" onClick={() => h.openAIDialog(null)} className="gap-1.5"><Sparkles className="w-4 h-4" /><span className="hidden sm:inline">Сгенерировать с ИИ</span></Button>
             <Button variant="outline" size="sm" onClick={() => window.open(h.publicUrl, "_blank")} className="gap-1.5"><ExternalLink className="w-4 h-4" /><span className="hidden sm:inline">Просмотр</span></Button>
             <Button size="sm" onClick={h.handleSave} disabled={h.saving} className="gap-1.5">{h.saving ? <SigmaSpinner size="sm" /> : <Save className="w-4 h-4" />}Сохранить</Button>
@@ -119,6 +143,7 @@ export function CourseLandingEditorContent({ courseId, embedded = false }: Cours
       </LandingThemeProvider>
       {aiDialog}
       {themePanel}
+      {registrationPanel}
     </div>
   );
 }

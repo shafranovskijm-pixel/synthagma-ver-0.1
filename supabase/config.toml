@@ -131,3 +131,6 @@ verify_jwt = false
 
 [functions.support-telegram-poll]
 verify_jwt = false
+
+[functions.landing-self-enroll]
+verify_jwt = false
