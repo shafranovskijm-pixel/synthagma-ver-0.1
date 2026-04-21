@@ -227,7 +227,7 @@ function CompanyRow({ row, onConvert, onDelete, converting }: {
         {row.license_number ? (
           <div>
             <div className="flex items-center gap-1 font-medium">
-              <BadgeCheck className="w-3.5 h-3.5 text-green-600" />
+              <BadgeCheck className="w-3.5 h-3.5 text-primary" />
               {row.license_number}
             </div>
             {row.license_issue_date && <div className="text-muted-foreground">от {row.license_issue_date}</div>}
