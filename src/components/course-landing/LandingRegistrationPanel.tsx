@@ -12,6 +12,7 @@ import {
   DEFAULT_ENROLLMENT_CONFIG, DEFAULT_ENROLLMENT_FIELDS,
 } from "@/lib/landing-enrollment";
 import { cn } from "@/lib/utils";
+import { LeadMagnetUploader } from "./LeadMagnetUploader";
 
 interface Props {
   open: boolean;
