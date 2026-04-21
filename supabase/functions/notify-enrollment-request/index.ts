@@ -78,7 +78,7 @@ serve(async (req) => {
       ? `📋 Заявка на запись: ${studentName} хочет записаться на курс «${course.title}» (${formattedPrice} ₽)`
       : `📋 Заявка на запись: ${studentName} хочет записаться на курс «${course.title}»`;
 
-    const [chatResult, notificationResult] = await Promise.all([
+    const [chatResult, notificationResult, orgRes] = await Promise.all([
       supabaseAdmin.from("org_general_messages").insert({
         organization_id: course.organization_id,
         sender_user_id: user.id,
@@ -93,7 +93,30 @@ serve(async (req) => {
         related_id: course.id,
         is_read: false,
       }),
+      supabaseAdmin
+        .from("organizations")
+        .select("telegram_notify_enabled, telegram_notify_chat_id")
+        .eq("id", course.organization_id)
+        .maybeSingle(),
     ]);
+
+    // Telegram-уведомление организации (best-effort)
+    const tgEnabled = (orgRes.data as any)?.telegram_notify_enabled === true;
+    const tgChatId = (orgRes.data as any)?.telegram_notify_chat_id;
+    if (tgEnabled && tgChatId) {
+      try {
+        const message = `📋 <b>Новая заявка на запись</b>\n\n` +
+          `<b>Курс:</b> ${course.title}\n` +
+          `<b>Ученик:</b> ${studentName}\n` +
+          (course.price > 0 ? `<b>Цена:</b> ${formattedPrice} ₽\n` : `<b>Цена:</b> Бесплатно\n`) +
+          `<b>Email:</b> ${profile?.email || user.email || "—"}`;
+        await supabaseAdmin.functions.invoke("send-telegram-notification", {
+          body: { chat_id: tgChatId, message },
+        });
+      } catch (e) {
+        console.warn("telegram notify err:", e);
+      }
+    }
 
     if (chatResult.error) {
       console.error("Failed to create org chat message:", chatResult.error);
