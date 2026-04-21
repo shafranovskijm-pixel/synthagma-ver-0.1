@@ -38,8 +38,11 @@ export function CreateWebinarDialog({ open, onOpenChange, organizationId, userId
   const [description, setDescription] = useState("");
   const [scheduledAt, setScheduledAt] = useState("");
   const [durationMinutes, setDurationMinutes] = useState("60");
-  const [sourceType, setSourceType] = useState<"livekit" | "external">("livekit");
+  const [sourceType, setSourceType] = useState<"livekit" | "external" | "kinescope">("livekit");
   const [externalUrl, setExternalUrl] = useState("");
+  const [kinescopeEmbedId, setKinescopeEmbedId] = useState("");
+  const [kinescopeRtmpUrl, setKinescopeRtmpUrl] = useState("");
+  const [kinescopeRtmpKey, setKinescopeRtmpKey] = useState("");
   const [coverUrl, setCoverUrl] = useState("");
   const [courseId, setCourseId] = useState<string>("none");
   const [saving, setSaving] = useState(false);
@@ -65,6 +68,9 @@ export function CreateWebinarDialog({ open, onOpenChange, organizationId, userId
       setDurationMinutes(String(editWebinar.duration_minutes || 60));
       setSourceType((editWebinar.source_type as any) || "livekit");
       setExternalUrl(editWebinar.external_url || "");
+      setKinescopeEmbedId((editWebinar as any).kinescope_live_id || "");
+      setKinescopeRtmpUrl((editWebinar as any).rtmp_url || "");
+      setKinescopeRtmpKey((editWebinar as any).rtmp_key || "");
       setCoverUrl(editWebinar.cover_url || "");
       setCourseId(editWebinar.course_id || "none");
     } else if (open && !editWebinar) {
@@ -79,6 +85,9 @@ export function CreateWebinarDialog({ open, onOpenChange, organizationId, userId
     setDurationMinutes("60");
     setSourceType("livekit");
     setExternalUrl("");
+    setKinescopeEmbedId("");
+    setKinescopeRtmpUrl("");
+    setKinescopeRtmpKey("");
     setCoverUrl("");
     setCourseId("none");
   };
