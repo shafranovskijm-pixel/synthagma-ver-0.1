@@ -5,7 +5,7 @@ import { IconPickerDialog } from "../IconPickerDialog";
 import { useLandingTheme, useTemplateStyle } from "../LandingThemeProvider";
 import { sectionSpacingClass } from "@/lib/landing-templates/themeTokens";
 import type { AudienceItem } from "../LandingAudienceSection";
-import languageInline from "@/assets/landing-templates/decor/language-inline.png";
+import languageInline from "@/assets/landing-templates/decor/language-inline.webp";
 
 function toIconComponentName(kebab: string): string {
   return kebab.split("-").map((s) => s.charAt(0).toUpperCase() + s.slice(1)).join("");

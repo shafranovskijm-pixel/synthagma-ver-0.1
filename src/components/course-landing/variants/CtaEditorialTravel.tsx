@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 import { useTemplateStyle } from "../LandingThemeProvider";
-import languageInline from "@/assets/landing-templates/decor/language-inline.png";
+import languageInline from "@/assets/landing-templates/decor/language-inline.webp";
 
 interface Props {
   title: string;
