@@ -3,6 +3,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 import { useTemplateStyle } from "../LandingThemeProvider";
+import labCtaBg from "@/assets/landing-templates/decor/lab-cta.webp";
+import labInline from "@/assets/landing-templates/decor/lab-inline.webp";
 
 interface Props {
   title: string;
@@ -38,8 +40,15 @@ export function CtaTerminalPanel({
   };
 
   return (
-    <section className="py-20 px-6 landing-bg-cta" style={{ backgroundColor: "#0a0a0a" }}>
-      <div className="max-w-2xl mx-auto bg-zinc-950 border border-cyan-500/30 font-mono"
+    <section
+      className="py-20 px-6 relative overflow-hidden"
+      style={{ backgroundColor: "#0a0a0a", minHeight: "420px" }}
+    >
+      {/* Полноценный фон lab-cta + inline backdrop */}
+      <img src={labCtaBg} alt="" aria-hidden className="absolute inset-0 w-full h-full object-cover opacity-25 pointer-events-none" />
+      <img src={labInline} alt="" aria-hidden className="absolute inset-0 w-full h-full object-cover opacity-[0.06] pointer-events-none" style={{ mixBlendMode: "screen" }} />
+      <div className="absolute inset-0 bg-gradient-to-b from-transparent via-zinc-950/40 to-zinc-950 pointer-events-none" />
+      <div className="relative z-10 max-w-2xl mx-auto bg-zinc-950 border border-cyan-500/30 font-mono"
         style={{ boxShadow: `0 0 0 1px ${accent}22, 0 30px 60px -20px ${accent}55` }}>
         {/* Title bar */}
         <div className="flex items-center gap-2 px-4 py-2 border-b border-cyan-500/20 bg-black/60">
@@ -65,7 +74,12 @@ export function CtaTerminalPanel({
               className="text-zinc-400 mb-6 outline-none text-sm"
               onBlur={(e) => onSubtitleChange?.(e.currentTarget.textContent || "")}>{subtitle}</p>
           ) : (
-            subtitle && <p className="text-zinc-400 mb-6 text-sm"><span className="text-zinc-600"># </span>{subtitle}</p>
+            subtitle && (
+              <p className="text-zinc-400 mb-6 text-sm">
+                <span className="text-zinc-600"># </span>{subtitle}
+                <span className="inline-block w-2 h-3.5 align-middle ml-1 animate-pulse" style={{ background: accent }} aria-hidden />
+              </p>
+            )
           )}
 
           {!isEditing && !isEnrolled && (
