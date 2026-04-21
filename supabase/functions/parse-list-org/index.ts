@@ -24,13 +24,26 @@ function sleep(ms: number) {
 /** Очень терпимый парсер html со страницы поиска list-org.com */
 function parseListOrgHtml(html: string): ParsedCompany[] {
   const companies: ParsedCompany[] = [];
-  // Каждая карточка организации обёрнута в <div class="org"> ... </div>
-  const orgBlocks = html.split(/<div\s+class="org[^"]*"/i).slice(1);
-  console.log(`[parse-list-org] found ${orgBlocks.length} org blocks`);
+  // На list-org карточки чаще выглядят как <div class="org_list ..."> или просто блоки со ссылкой /company/
+  // Используем простой подход: ищем все <a href="/company/...">Название</a> и берём окружающий контекст.
+  const linkRe = /<a\s+href="(\/company\/[^"]+)"[^>]*>([^<]{3,200})<\/a>/gi;
+  const matches = [...html.matchAll(linkRe)];
+  console.log(`[parse-list-org] found ${matches.length} company links in html (length=${html.length})`);
+  if (matches.length === 0) {
+    console.log('[parse-list-org] html sample:', html.slice(0, 1500));
+  }
 
-  for (const blockRaw of orgBlocks) {
-    // Берём только до закрытия следующего блока org
-    const block = blockRaw.split(/<div\s+class="org[^"]*"/i)[0];
+  const seen = new Set<string>();
+  for (const m of matches) {
+    const link = m[1];
+    if (seen.has(link)) continue;
+    seen.add(link);
+    const name = m[2].trim().replace(/\s+/g, ' ');
+    if (!name || /компания|компании|предприят/i.test(name) && name.length < 8) continue;
+
+    // Берём ~2000 символов вокруг ссылки как «блок» компании
+    const idx = m.index || 0;
+    const block = html.slice(idx, idx + 2500);
 
     // Название и URL карточки
     const linkMatch = block.match(/<a[^>]+href="(\/company\/[^"]+)"[^>]*>([^<]+)<\/a>/i);
