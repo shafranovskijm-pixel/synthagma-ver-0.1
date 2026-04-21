@@ -126,6 +126,39 @@
     --sidebar-border: 0 0% 15%;
     --sidebar-ring: 40 15% 95%;
   }
+
+  /*
+   * Виджет поддержки имеет собственный фирменный вид и НЕ зависит от
+   * текущей темы организации, light/dark mode или пользовательских
+   * настроек. Эти токены переопределяют все цвета внутри `.support-chat-scope`
+   * — включая случаи, когда контейнер размещён внутри `.dark` или
+   * кастомизированного оформления школы.
+   * Палитра — light + бирюза/циан (как в подвале главной страницы).
+   */
+  .support-chat-scope,
+  .dark .support-chat-scope {
+    --background: 40 20% 98%;
+    --foreground: 0 0% 8%;
+    --card: 40 15% 99%;
+    --card-foreground: 0 0% 8%;
+    --popover: 40 15% 99%;
+    --popover-foreground: 0 0% 8%;
+    --primary: 174 72% 46%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 40 25% 96%;
+    --secondary-foreground: 0 0% 8%;
+    --muted: 40 15% 92%;
+    --muted-foreground: 0 0% 45%;
+    --accent: 174 72% 46%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 40 15% 90%;
+    --input: 40 15% 90%;
+    --ring: 174 72% 46%;
+    color: hsl(0 0% 8%);
+    color-scheme: light;
+  }
 }
 
 @layer base {
