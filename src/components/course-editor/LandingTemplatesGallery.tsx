@@ -1,7 +1,7 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Sparkles, Check, Crown, Lock, Eye } from "lucide-react";
+import { Sparkles, Check, Crown, Lock, Eye, AlertTriangle } from "lucide-react";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 import {
   AlertDialog,
@@ -13,13 +13,13 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { LANDING_TEMPLATES, type LandingTemplate, type TemplateTier } from "@/lib/landing-templates";
+import { LANDING_TEMPLATES, type LandingTemplate, type TemplateTier, type TemplateCategory } from "@/lib/landing-templates";
 import { LandingTemplatePreviewDialog } from "./LandingTemplatePreviewDialog";
 import { LandingTemplateMiniPreview } from "./LandingTemplateMiniPreview";
+import { LandingHistoryButton } from "./LandingHistoryButton";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
-import { APP_VERSION } from "@/lib/appVersion";
 
 interface Props {
   courseId: string;
@@ -33,10 +33,10 @@ const TIER_META: Record<TemplateTier, { label: string; icon: typeof Sparkles; cl
 };
 
 /**
- * Локализованные подписи категорий шаблонов для бейджа на карточке.
- * Помогают пользователю с одного взгляда понять нишу шаблона.
+ * Локализованные подписи категорий шаблонов для бейджа на карточке и фильтра.
+ * При добавлении новой категории — расширить `TemplateCategory` и этот словарь.
  */
-const CATEGORY_META: Record<string, string> = {
+const CATEGORY_META: Record<TemplateCategory, string> = {
   business: "Бизнес",
   beauty: "Бьюти",
   edu: "Образование",
@@ -54,14 +54,30 @@ interface CourseSnapshot {
   landing_content: any;
 }
 
+/** Какие планы могут применять шаблоны какого уровня. Должно совпадать с RPC `can_use_template`. */
+const TIER_PLAN_REQUIREMENTS: Record<TemplateTier, string[]> = {
+  free: [], // доступно всем
+  pro: ["start", "standard", "professional", "maximum"],
+  premium: ["professional", "maximum"],
+};
+
+const TIER_UPGRADE_COPY: Record<TemplateTier, string> = {
+  free: "",
+  pro: "Доступно с тарифа «Старт» и выше",
+  premium: "Доступно с тарифа «Профессиональный»",
+};
+
 export function LandingTemplatesGallery({ courseId, accentColor }: Props) {
   const [pending, setPending] = useState<LandingTemplate | null>(null);
   const [previewing, setPreviewing] = useState<LandingTemplate | null>(null);
   const [applying, setApplying] = useState(false);
   const [course, setCourse] = useState<CourseSnapshot | null>(null);
   const [orgName, setOrgName] = useState("");
+  const [orgPlan, setOrgPlan] = useState<string>("free");
   const [lessonsCount, setLessonsCount] = useState(0);
   const [appliedTemplateId, setAppliedTemplateId] = useState<string | null>(null);
+  const [activeCategory, setActiveCategory] = useState<TemplateCategory | "all">("all");
+  const [reloadKey, setReloadKey] = useState(0);
 
   // Грузим минимум данных курса для подстановки в превью.
   useEffect(() => {
@@ -77,20 +93,51 @@ export function LandingTemplatesGallery({ courseId, accentColor }: Props) {
       setAppliedTemplateId((c.landing_content as any)?.applied_template_id ?? null);
 
       const [orgRes, lessonsRes] = await Promise.all([
-        supabase.from("organizations").select("name").eq("id", c.organization_id).maybeSingle(),
+        supabase.from("organizations").select("name, subscription_plan").eq("id", c.organization_id).maybeSingle(),
         supabase.from("lessons").select("id", { count: "exact", head: true }).eq("course_id", courseId),
       ]);
       if (cancelled) return;
       setOrgName(orgRes.data?.name ?? "");
+      setOrgPlan((orgRes.data as any)?.subscription_plan ?? "free");
       setLessonsCount(lessonsRes.count ?? 0);
     })();
     return () => {
       cancelled = true;
     };
-  }, [courseId]);
+  }, [courseId, reloadKey]);
+
+  /** Какие категории присутствуют среди доступных шаблонов — для рендера фильтра. */
+  const availableCategories = useMemo(() => {
+    const set = new Set<TemplateCategory>();
+    LANDING_TEMPLATES.forEach((t) => {
+      if (t.category) set.add(t.category);
+    });
+    return Array.from(set);
+  }, []);
+
+  const visibleTemplates = useMemo(() => {
+    if (activeCategory === "all") return LANDING_TEMPLATES;
+    return LANDING_TEMPLATES.filter((t) => t.category === activeCategory);
+  }, [activeCategory]);
+
+  /** Проверка: может ли текущий тариф организации использовать шаблон такого уровня. */
+  const canUseTemplate = (tier: TemplateTier): boolean => {
+    const allowed = TIER_PLAN_REQUIREMENTS[tier];
+    if (allowed.length === 0) return true;
+    return allowed.includes(orgPlan);
+  };
+
+  /** Защита: не даём применить шаблон, если у курса нет нормального названия. */
+  const courseTitleIsPlaceholder = !course?.title || /^(название курса|новый курс|без названия)\s*$/i.test(course.title.trim());
 
   const handleApply = async () => {
     if (!pending) return;
+    if (!canUseTemplate(pending.tier)) {
+      toast.error("Этот шаблон недоступен на вашем тарифе", {
+        description: TIER_UPGRADE_COPY[pending.tier],
+      });
+      return;
+    }
     setApplying(true);
     try {
       const { data: courseData, error: fetchErr } = await supabase
@@ -123,7 +170,7 @@ export function LandingTemplatesGallery({ courseId, accentColor }: Props) {
       setAppliedTemplateId(pending.id);
       setCourse((c) => (c ? { ...c, landing_content: merged } : c));
       toast.success(`Шаблон «${pending.name}» применён`, {
-        description: "Откройте вкладку «Конструктор страницы», чтобы доработать содержимое.",
+        description: "Откройте вкладку «Конструктор страницы», чтобы доработать содержимое. Старая версия сохранена в истории.",
       });
       setPending(null);
       setPreviewing(null);
@@ -135,32 +182,71 @@ export function LandingTemplatesGallery({ courseId, accentColor }: Props) {
     }
   };
 
-  // Слот «Скоро» прячем, когда шаблонов уже достаточно.
-  const showComingSoonSlot = LANDING_TEMPLATES.length < 3;
+  // Слот «Скоро» прячем, когда шаблонов уже достаточно или активен фильтр.
+  const showComingSoonSlot = activeCategory === "all" && LANDING_TEMPLATES.length < 3;
 
   return (
     <div className="space-y-5">
-      <div className="space-y-1">
-        <h3 className="text-base font-semibold flex items-center gap-2">
-          <Sparkles className="w-4 h-4 text-primary" />
-          Готовые шаблоны страниц
-        </h3>
-        <p className="text-xs text-muted-foreground">
-          Один клик — и страница курса наполняется продающей структурой: заголовки, блоки, тарифы и FAQ.
-          Все тексты можно изменить позже в «Конструкторе страницы». SEO, аналитика и форма записи сохраняются.
-        </p>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="space-y-1 min-w-0 flex-1">
+          <h3 className="text-base font-semibold flex items-center gap-2">
+            <Sparkles className="w-4 h-4 text-primary" />
+            Готовые шаблоны страниц
+          </h3>
+          <p className="text-xs text-muted-foreground">
+            Один клик — и страница курса наполняется продающей структурой: заголовки, блоки, тарифы и FAQ.
+            Все тексты можно изменить позже в «Конструкторе страницы». SEO, аналитика и форма записи сохраняются.
+          </p>
+        </div>
+        <LandingHistoryButton courseId={courseId} onReverted={() => setReloadKey((k) => k + 1)} />
       </div>
 
+      {/* Чипы фильтров категорий */}
+      {availableCategories.length > 1 && (
+        <div className="flex flex-wrap gap-1.5" role="tablist" aria-label="Фильтр по категории">
+          <button
+            role="tab"
+            aria-selected={activeCategory === "all"}
+            onClick={() => setActiveCategory("all")}
+            className={cn(
+              "px-3 py-1 text-xs rounded-full border transition-colors",
+              activeCategory === "all"
+                ? "bg-primary text-primary-foreground border-primary"
+                : "bg-background text-muted-foreground border-border hover:border-primary/40",
+            )}
+          >
+            Все
+          </button>
+          {availableCategories.map((cat) => (
+            <button
+              key={cat}
+              role="tab"
+              aria-selected={activeCategory === cat}
+              onClick={() => setActiveCategory(cat)}
+              className={cn(
+                "px-3 py-1 text-xs rounded-full border transition-colors",
+                activeCategory === cat
+                  ? "bg-primary text-primary-foreground border-primary"
+                  : "bg-background text-muted-foreground border-border hover:border-primary/40",
+              )}
+            >
+              {CATEGORY_META[cat]}
+            </button>
+          ))}
+        </div>
+      )}
+
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-        {LANDING_TEMPLATES.map((tpl) => {
+        {visibleTemplates.map((tpl) => {
           const tierMeta = TIER_META[tpl.tier];
           const TierIcon = tierMeta.icon;
           const isActive = appliedTemplateId === tpl.id;
           const categoryLabel = tpl.category ? CATEGORY_META[tpl.category] : null;
+          const isLocked = !canUseTemplate(tpl.tier);
 
           return (
             <article
-              key={`${tpl.id}-${APP_VERSION}`}
+              key={tpl.id}
               className={cn(
                 "group relative flex flex-col rounded-2xl border bg-card overflow-hidden transition-all hover:shadow-lg hover:-translate-y-0.5",
                 isActive ? "border-primary ring-2 ring-primary/30" : "border-border hover:border-primary/40",
@@ -185,6 +271,14 @@ export function LandingTemplatesGallery({ courseId, accentColor }: Props) {
                   duration={course?.duration ?? null}
                   courseAccentColor={accentColor ?? null}
                 />
+                {isLocked && (
+                  <div className="absolute inset-0 bg-background/70 backdrop-blur-[2px] flex items-center justify-center z-20">
+                    <div className="bg-card border border-border rounded-xl px-3 py-2 shadow-lg flex items-center gap-2">
+                      <Lock className="w-3.5 h-3.5 text-amber-500" />
+                      <span className="text-xs font-medium">{TIER_UPGRADE_COPY[tpl.tier]}</span>
+                    </div>
+                  </div>
+                )}
                 <div className="absolute top-3 left-3 flex flex-wrap gap-1.5 z-10">
                   <Badge variant="outline" className={cn("backdrop-blur-sm font-medium gap-1", tierMeta.className)}>
                     <TierIcon className="w-3 h-3" />
@@ -255,16 +349,23 @@ export function LandingTemplatesGallery({ courseId, accentColor }: Props) {
                     size="sm"
                     className="gap-1.5"
                     onClick={() => setPending(tpl)}
-                    disabled={applying}
+                    disabled={applying || isLocked}
+                    title={isLocked ? TIER_UPGRADE_COPY[tpl.tier] : undefined}
                   >
-                    <Sparkles className="w-3.5 h-3.5" />
-                    {isActive ? "Применить снова" : "Применить"}
+                    {isLocked ? <Lock className="w-3.5 h-3.5" /> : <Sparkles className="w-3.5 h-3.5" />}
+                    {isLocked ? "Недоступно" : isActive ? "Применить снова" : "Применить"}
                   </Button>
                 </div>
               </div>
             </article>
           );
         })}
+
+        {visibleTemplates.length === 0 && (
+          <div className="col-span-full py-12 text-center text-sm text-muted-foreground">
+            В этой категории пока нет шаблонов. Сбросьте фильтр или подождите обновления.
+          </div>
+        )}
 
         {showComingSoonSlot && (
           <article className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-border/70 bg-muted/20 p-6 text-center min-h-[280px]">
@@ -299,10 +400,25 @@ export function LandingTemplatesGallery({ courseId, accentColor }: Props) {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Применить шаблон «{pending?.name}»?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Текстовое содержимое страницы курса будет заменено структурой выбранного шаблона.
-              Акцентный цвет, URL-адрес, настройки SEO, аналитика и форма записи сохранятся.
-              Это действие нельзя отменить автоматически — если вам нужны отдельные блоки текущей версии, скопируйте их заранее.
+            <AlertDialogDescription asChild>
+              <div className="space-y-3">
+                <p>
+                  Текстовое содержимое страницы курса будет заменено структурой выбранного шаблона.
+                  Акцентный цвет, URL-адрес, настройки SEO, аналитика и форма записи сохранятся.
+                </p>
+                <p className="text-foreground font-medium">
+                  Старая версия автоматически сохранится в истории — её можно вернуть кнопкой «История версий».
+                </p>
+                {courseTitleIsPlaceholder && (
+                  <div className="flex items-start gap-2 rounded-lg border border-amber-500/40 bg-amber-500/10 p-3 text-amber-700 dark:text-amber-400">
+                    <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0" />
+                    <span className="text-xs leading-relaxed">
+                      У курса не задано осмысленное название. Шаблон применится с заголовком-заглушкой.
+                      Сначала задайте название курса, чтобы лендинг выглядел по-настоящему.
+                    </span>
+                  </div>
+                )}
+              </div>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
