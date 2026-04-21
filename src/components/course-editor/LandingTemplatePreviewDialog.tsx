@@ -63,6 +63,19 @@ export function LandingTemplatePreviewDialog({
     if (viewport) viewport.scrollTop = 0;
   }, [template?.id]);
 
+  // Прелоад тяжёлых webp-фонов шаблона при открытии — устраняет «белый миг» 0.5–1с.
+  useEffect(() => {
+    if (!open || !template?.theme) return;
+    const urls = [template.theme.section_bg_url, template.theme.pricing_bg_url, template.theme.cta_bg_url].filter(Boolean) as string[];
+    const links: HTMLLinkElement[] = urls.map((href) => {
+      const l = document.createElement("link");
+      l.rel = "preload"; l.as = "image"; l.href = href;
+      document.head.appendChild(l);
+      return l;
+    });
+    return () => { links.forEach((l) => l.remove()); };
+  }, [open, template?.id]);
+
   if (!template) return null;
 
   const data = template.data as Partial<LandingData>;
@@ -167,9 +180,11 @@ export function LandingTemplatePreviewDialog({
     }
   };
 
+  const isDark = template.theme?.scheme === "dark";
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-6xl w-[96vw] h-[92vh] p-0 flex flex-col gap-0 overflow-hidden">
+      <DialogContent className={`max-w-6xl w-[96vw] h-[92vh] p-0 flex flex-col gap-0 overflow-hidden ${isDark ? "bg-zinc-950 text-zinc-100 border-zinc-800" : ""}`}>
         <DialogHeader className="px-5 py-3 border-b shrink-0 flex-row items-center justify-between space-y-0">
           <div className="flex items-center gap-3 min-w-0">
             <div

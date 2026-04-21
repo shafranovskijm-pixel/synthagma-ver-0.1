@@ -95,6 +95,11 @@ export function AudienceTerminalStrip({
                       <span className="text-zinc-600"># </span>{item.description}
                     </p>
                   )}
+                  {/* bottom-bar [ENTER] */}
+                  <div className="mt-3 pt-2 border-t border-cyan-500/10 flex items-center justify-between text-[10px] text-zinc-500 uppercase tracking-wider">
+                    <span>status: ready</span>
+                    <span style={{ color: accentColor }}>[ENTER] to continue</span>
+                  </div>
                 </div>
                 {isEditing && (
                   <button onClick={() => onRemoveItem?.(i)} className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 text-destructive transition">
@@ -106,7 +111,7 @@ export function AudienceTerminalStrip({
           })}
         </div>
 
-        {isEditing && (
+        {isEditing && items.length < 9 && (
           <button onClick={onAddItem} className="mt-4 text-sm text-cyan-400 hover:underline font-mono">+ ./add_target.sh</button>
         )}
 

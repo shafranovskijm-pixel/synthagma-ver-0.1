@@ -1,4 +1,5 @@
 import { Badge } from "@/components/ui/badge";
+import { BookOpen, Clock } from "lucide-react";
 import { useLandingTheme } from "../LandingThemeProvider";
 import { radiusButtonClass } from "@/lib/landing-templates/themeTokens";
 
@@ -48,6 +49,19 @@ export function HeroDarkPromo({
             backgroundSize: "32px 32px",
           }}
         />
+        {/* SVG-сетка как в Aurora hero — для глубины */}
+        <svg
+          className="absolute inset-0 w-full h-full opacity-[0.07] pointer-events-none"
+          xmlns="http://www.w3.org/2000/svg"
+          aria-hidden
+        >
+          <defs>
+            <pattern id="lab-hero-grid" width="64" height="64" patternUnits="userSpaceOnUse">
+              <path d="M 64 0 L 0 0 0 64" fill="none" stroke={accent} strokeWidth="0.5" />
+            </pattern>
+          </defs>
+          <rect width="100%" height="100%" fill="url(#lab-hero-grid)" />
+        </svg>
       </div>
 
       {isEditing && onBackgroundChange && (
@@ -102,9 +116,9 @@ export function HeroDarkPromo({
           )}
         </div>
 
-        <div className="flex gap-6 text-zinc-500 text-sm font-mono">
-          {duration && <span>⏱ {duration}</span>}
-          <span>📚 {lessonsCount} модулей</span>
+        <div className="flex gap-6 text-zinc-500 text-sm font-mono items-center">
+          {duration && <span className="inline-flex items-center gap-1.5"><Clock className="w-3.5 h-3.5" />{duration}</span>}
+          <span className="inline-flex items-center gap-1.5"><BookOpen className="w-3.5 h-3.5" />{lessonsCount} модулей</span>
         </div>
       </div>
     </section>

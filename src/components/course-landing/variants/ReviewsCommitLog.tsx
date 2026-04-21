@@ -59,7 +59,31 @@ export function ReviewsCommitLog({
                   <span className="text-zinc-300">{r.name}</span>
                 )} <span className="text-zinc-600">&lt;student@lab.dev&gt;</span>
               </div>
-              <div className="text-xs text-zinc-500 mb-3">Date: 2025-{String(11 - i).padStart(2, "0")}-{String(15 + i).padStart(2, "0")} · ⭐ {r.rating}/5</div>
+              {(() => {
+                // Циклически распределяем месяцы (1..12) и дни (1..28) — корректно при любом количестве отзывов.
+                const month = ((i % 12) + 1).toString().padStart(2, "0");
+                const day = ((i * 3) % 28 + 1).toString().padStart(2, "0");
+                const initials = (r.name || "??")
+                  .split(/\s+/)
+                  .filter(Boolean)
+                  .slice(0, 2)
+                  .map((s) => s[0]?.toUpperCase() ?? "")
+                  .join("") || "??";
+                return (
+                  <>
+                    <div className="text-xs text-zinc-500 mb-3 flex items-center gap-2">
+                      <span
+                        className="inline-flex items-center justify-center w-5 h-5 rounded-full text-[10px] font-bold text-zinc-900"
+                        style={{ background: accentColor }}
+                        aria-hidden
+                      >
+                        {initials}
+                      </span>
+                      <span>Date: 2025-{month}-{day} · ⭐ {r.rating}/5</span>
+                    </div>
+                  </>
+                );
+              })()}
               <div className="pl-4 border-l-2" style={{ borderColor: `${accentColor}55` }}>
                 <div className="text-zinc-300 leading-relaxed">
                   <span style={{ color: accentColor }}>feat:</span>{" "}
