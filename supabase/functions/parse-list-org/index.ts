@@ -39,28 +39,19 @@ function parseListOrgHtml(html: string): ParsedCompany[] {
     if (seen.has(link)) continue;
     seen.add(link);
     const name = m[2].trim().replace(/\s+/g, ' ');
-    if (!name || /компания|компании|предприят/i.test(name) && name.length < 8) continue;
+    if (!name || name.length < 3) continue;
 
-    // Берём ~2000 символов вокруг ссылки как «блок» компании
     const idx = m.index || 0;
-    const block = html.slice(idx, idx + 2500);
+    const block = html.slice(idx, idx + 3000);
+    const sourceUrl = `https://www.list-org.com${link}`;
 
-    // Название и URL карточки
-    const linkMatch = block.match(/<a[^>]+href="(\/company\/[^"]+)"[^>]*>([^<]+)<\/a>/i);
-    const name = linkMatch ? linkMatch[2].trim().replace(/\s+/g, ' ') : '';
-    const sourceUrl = linkMatch ? `https://www.list-org.com${linkMatch[1]}` : undefined;
-    if (!name) continue;
-
-    // ИНН
-    const innMatch = block.match(/ИНН[:\s]*<\/?[^>]*>?\s*(\d{10,12})/i) || block.match(/ИНН[\s:]*(\d{10,12})/i);
+    const innMatch = block.match(/ИНН[^\d]{0,20}(\d{10,12})/i);
     const inn = innMatch ? innMatch[1] : undefined;
 
-    // ОГРН
-    const ogrnMatch = block.match(/ОГРН[:\s]*<\/?[^>]*>?\s*(\d{13,15})/i) || block.match(/ОГРН[\s:]*(\d{13,15})/i);
+    const ogrnMatch = block.match(/ОГРН[^\d]{0,20}(\d{13,15})/i);
     const ogrn = ogrnMatch ? ogrnMatch[1] : undefined;
 
-    // Город / адрес
-    const addrMatch = block.match(/Адрес[:\s]*<\/?[^>]*>?\s*([^<]+)</i);
+    const addrMatch = block.match(/Адрес[^<]{0,30}<[^>]+>([^<]+)</i) || block.match(/Адрес[:\s]*([^<]{5,200})</i);
     let city: string | undefined;
     if (addrMatch) {
       const addr = addrMatch[1].trim();
@@ -68,16 +59,13 @@ function parseListOrgHtml(html: string): ParsedCompany[] {
       city = cityMatch ? cityMatch[1] : addr.split(',')[1]?.trim();
     }
 
-    // Телефон
     const phoneMatch = block.match(/(\+7[\s\-(]?\d{3}[\s\-)]?\s?\d{3}[\s\-]?\d{2}[\s\-]?\d{2}|8[\s\-(]?\d{3}[\s\-)]?\s?\d{3}[\s\-]?\d{2}[\s\-]?\d{2})/);
     const phone = phoneMatch ? phoneMatch[1].replace(/\s+/g, ' ') : undefined;
 
-    // Email
     const emailMatch = block.match(/([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/);
     const email = emailMatch ? emailMatch[1] : undefined;
 
-    // Сайт
-    const siteMatch = block.match(/href="(https?:\/\/(?!www\.list-org\.com)[^"]+)"/i);
+    const siteMatch = block.match(/href="(https?:\/\/(?!(?:www\.)?list-org\.com)[^"]+)"/i);
     const website = siteMatch ? siteMatch[1] : undefined;
 
     companies.push({ name, inn, ogrn, city, phone, email, website, source_url: sourceUrl });
