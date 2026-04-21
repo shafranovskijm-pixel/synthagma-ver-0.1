@@ -3,7 +3,7 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { 
   BookOpen, Users, Settings, LogOut, Upload,
   Building2, HardHat, HardDrive, CreditCard, Lock, MessageCircle, Wallet,
-  BarChart3, Link, ShoppingBag, FileText, ClipboardList, FileSpreadsheet, BookCheck, Radio, Sparkles
+  BarChart3, Link, ShoppingBag, FileText, ClipboardList, FileSpreadsheet, BookCheck, Radio, Sparkles, Briefcase
 } from "lucide-react";
 import { SigmaLogo } from "@/components/ui/SigmaLogo";
 import { useOrgDashboard } from "@/contexts/OrgDashboardContext";
@@ -48,6 +48,7 @@ export type TabType =
   | "staff"
   | "webinars"
   | "frdo"
+  | "sales"
   | "profile"
   | "whats-new"
   | "org-documents"
@@ -183,6 +184,7 @@ export function OrgSidebar() {
   
   if (menuSettings.showLaborSafety !== false) navItems.push({ id: "labor-safety", icon: HardHat, label: "Охрана труда", category: "labor_safety" });
   navItems.push({ id: "payments", icon: Wallet, label: "Финансы" });
+  navItems.push({ id: "sales", icon: Briefcase, label: "Продажи" });
 
   navItems.push({ id: "homework-review", icon: BookCheck, label: "Задания" });
 

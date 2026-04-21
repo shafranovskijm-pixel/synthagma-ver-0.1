@@ -28,6 +28,7 @@ import { WhatsNewTab } from "@/components/organization/tabs/WhatsNewTab";
 import { OrgDocumentsTab } from "@/components/organization/tabs/OrgDocumentsTab";
 import { ContractEditorTab } from "@/components/organization/tabs/ContractEditorTab";
 import { OrgSecondaryNavTabs } from "@/components/organization/OrgSecondaryNavTabs";
+import { OrgSalesLayout } from "@/components/organization/sales/OrgSalesLayout";
 
 import { useOrgDashboard } from "@/contexts/OrgDashboardContext";
 
@@ -53,6 +54,7 @@ export function TabContentRenderer() {
     activeTab !== "ai-tutors" &&
     activeTab !== "staff" &&
     activeTab !== "webinars" &&
+    activeTab !== "sales" &&
     activeTab !== "profile" &&
     activeTab !== "settings" &&
     activeTab !== "whats-new" &&
@@ -209,6 +211,9 @@ export function TabContentRenderer() {
 
       {/* Payments Tab */}
       {activeTab === "payments" && <PaymentsTab />}
+
+      {/* Sales Tab (рассылки + SMTP, заглушки лидов/КП/договоров) */}
+      {activeTab === ("sales" as any) && organizationId && <OrgSalesLayout />}
 
       {/* Subscription Tab */}
       {activeTab === "subscription" && <SubscriptionTab />}
