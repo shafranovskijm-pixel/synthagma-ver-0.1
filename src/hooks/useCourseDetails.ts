@@ -131,11 +131,18 @@ export function useCourseDetails(
     setIsLoadingAvailable(true);
     try {
       const enrolledUserIds = new Set(courseStudents.map(s => s.user_id));
-      const { data: allProfiles } = await supabase.from("profiles").select("id, user_id, full_name, email").eq("organization_id", organizationId);
+      const { data: allProfiles } = await supabase
+        .from("profiles")
+        .select("id, user_id, full_name, email")
+        .eq("organization_id", organizationId);
       const profileUserIds = (allProfiles || []).map(p => p.user_id);
       let excludedUserIds = new Set<string>();
       if (profileUserIds.length > 0) {
-        const { data: rolesData } = await supabase.from("user_roles").select("user_id, role").in("user_id", profileUserIds).in("role", ["organization", "admin"]);
+        const { data: rolesData } = await supabase
+          .from("user_roles")
+          .select("user_id, role")
+          .in("user_id", profileUserIds)
+          .in("role", ["organization", "admin"]);
         excludedUserIds = new Set((rolesData || []).map(r => r.user_id));
       }
       const available = (allProfiles || [])

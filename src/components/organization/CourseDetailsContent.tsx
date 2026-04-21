@@ -1,4 +1,4 @@
-import React, { lazy, Suspense, useRef, useState } from "react";
+import React, { lazy, Suspense, useRef, useState, useEffect } from "react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { MoreVertical, ImagePlus, Wand2 } from "lucide-react";
 import { useOrgFeatures } from "@/hooks/useOrgFeatures";
@@ -25,8 +25,15 @@ import { EnrollmentRequestsTab } from "@/components/organization/EnrollmentReque
 import { CourseAchievementsTab } from "@/components/organization/CourseAchievementsTab";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 import { useCourseDetails } from "@/hooks/useCourseDetails";
-const CourseBuilder = lazy(() => import("@/pages/CourseBuilder"));
-const CoursePreviewView = lazy(() => import("@/components/course-preview/CoursePreviewView").then(m => ({ default: m.CoursePreviewView })));
+// Lazy-loaded heavy chunks. We expose the import factories so we can also
+// prefetch them in the background as soon as the course card opens — this
+// makes the "Конструктор" / "Превью" tabs feel instant instead of waiting
+// for the chunk to download on click.
+const importCourseBuilder = () => import("@/pages/CourseBuilder");
+const importCoursePreviewView = () =>
+  import("@/components/course-preview/CoursePreviewView").then(m => ({ default: m.CoursePreviewView }));
+const CourseBuilder = lazy(importCourseBuilder);
+const CoursePreviewView = lazy(importCoursePreviewView);
 
 interface Course {
   id: string; title: string; description: string | null; is_published: boolean; created_at: string;
@@ -88,6 +95,21 @@ export function CourseDetailsContent({ course, courseStudents, organizationId, a
   const { isEnabled } = useOrgFeatures(organizationId);
   const isFrdoEnabled = isEnabled('frdo');
   const h = useCourseDetails(course, courseStudents, organizationId, onCourseUpdated, onRefreshStudents, onCourseDeleted);
+
+  // Prefetch heavy chunks (course builder + preview) in the background as soon
+  // as the course card mounts. By the time the user clicks "Конструктор" or
+  // "Превью" the JS is already cached, so the tab opens almost instantly.
+  useEffect(() => {
+    const idle = (cb: () => void) => {
+      if (typeof (window as any).requestIdleCallback === "function") {
+        (window as any).requestIdleCallback(cb, { timeout: 1500 });
+      } else {
+        setTimeout(cb, 200);
+      }
+    };
+    idle(() => { importCourseBuilder().catch(() => {}); });
+    idle(() => { importCoursePreviewView().catch(() => {}); });
+  }, []);
 
   const coverInputRef = useRef<HTMLInputElement>(null);
   const [isGeneratingCover, setIsGeneratingCover] = useState(false);
