@@ -160,8 +160,8 @@ serve(async (req) => {
       const pageUrl = p === 1 ? searchUrl : `${searchUrl}${sep}p=${p}`;
       try {
         const html = await scrapeWithFirecrawl(pageUrl, FIRECRAWL_API_KEY);
-        if (!html) {
-          errors.push(`page ${p}: empty html`);
+        if (!html || html.includes('403 Forbidden') || html.length < 1000) {
+          errors.push(`page ${p}: list-org заблокировал датацентр-IP (403). Использую DaData fallback по ОКВЭД.`);
           continue;
         }
         const parsed = parseListOrgHtml(html);
@@ -171,6 +171,53 @@ serve(async (req) => {
         errors.push(`page ${p}: ${(e as Error).message}`);
       }
       if (p < pagesNum) await sleep(1500);
+    }
+
+    // Fallback: если list-org не отдал данные, ищем напрямую через DaData по ОКВЭД из URL
+    if (allParsed.length === 0) {
+      const okvedMatch = searchUrl.match(/okved=([^&]+)/);
+      const okveds = okvedMatch
+        ? decodeURIComponent(okvedMatch[1]).split(',').map(s => s.trim()).filter(Boolean)
+        : ['85.41.9'];
+      console.log(`[parse-list-org] fallback to DaData by OKVED: ${okveds.join(', ')}`);
+
+      const DADATA_API_KEY = Deno.env.get('DADATA_API_KEY');
+      if (DADATA_API_KEY) {
+        for (const okved of okveds.slice(0, 3)) {
+          try {
+            const r = await fetch('https://suggestions.dadata.ru/suggestions/api/4_1/rs/suggest/party', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+                'Authorization': `Token ${DADATA_API_KEY}`,
+              },
+              body: JSON.stringify({
+                query: okved,
+                count: 100 * pagesNum,
+                status: ['ACTIVE'],
+                type: 'LEGAL',
+              }),
+            });
+            const j = await r.json();
+            const sug = j?.suggestions || [];
+            console.log(`[parse-list-org] DaData okved=${okved} got ${sug.length}`);
+            for (const s of sug) {
+              const inn = s.data?.inn;
+              if (!inn) continue;
+              allParsed.push({
+                name: s.value,
+                inn,
+                ogrn: s.data?.ogrn,
+                city: s.data?.address?.data?.city || s.data?.address?.data?.region,
+              });
+            }
+          } catch (e) {
+            errors.push(`dadata okved ${okved}: ${(e as Error).message}`);
+          }
+          await sleep(400);
+        }
+      }
     }
 
     let inserted = 0, updated = 0, skipped = 0;
