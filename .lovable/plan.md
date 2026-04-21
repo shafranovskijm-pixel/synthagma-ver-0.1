@@ -1,81 +1,124 @@
 
 
-## План: Починка infinite recursion на `webinars` ↔ `webinar_participants`
+## План: «База компаний» в карточке Продажи + парсер list-org.com
 
-### Симптом
-При нажатии «Запустить вебинар сейчас» приходит тост: `infinite recursion detected in policy for relation "webinars"`. Insert не доходит даже до edge-функции LiveKit.
+### Что вы получите
 
-### Корень
-Взаимная рекурсия между RLS-политиками:
-- `webinars (SELECT)` → `EXISTS (SELECT FROM webinar_participants ...)`
-- `webinar_participants (SELECT/ALL/INSERT/DELETE)` → `EXISTS (SELECT FROM webinars ...)`
+В админке `/admin → Продажи` появится новый раздел в сайдбаре **«База компаний»**. Внутри:
 
-Любой SELECT по `webinars` (в том числе неявный `RETURNING` после INSERT) запускает бесконечную проверку. Плюс на `webinar_participants` остался дубликат старой политики `Org users can manage participants` (FOR ALL), которая тоже проверяет webinars.
+1. Поле «URL поиска list-org.com» (по умолчанию подставлен ваш URL с фильтром по ОКВЭД 85.3 / 85.41.9 / 85.42.9 + телефон + email).
+2. Кнопка **«Спарсить страницу»** + поле «Сколько страниц подряд» (1–20).
+3. Таблица с компаниями: Название, ИНН, ОГРН, Город, Телефон, Email, **Лицензия (№ + дата + орган)**, ОКВЭД, Директор, Сайт, Дата добавления.
+4. Фильтры: по наличию лицензии, по городу, по наличию email/телефона.
+5. Экспорт в Excel/CSV.
+6. Кнопка «Создать лид» рядом с компанией → добавляет её в существующий раздел `LeadsManager` одним кликом.
 
-### Что делаю (одна миграция)
+### Как обходим антибот list-org.com
 
-**1. Security-definer-функции — обход RLS внутри политик**
+list-org.com защищён Cloudflare + JS-челленджем + rate-limit по IP. Простой `fetch` из edge-функции получит 403/503. Решение — комбинированный подход:
 
-```sql
-CREATE OR REPLACE FUNCTION public.is_webinar_org_member(_webinar_id uuid)
-RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public AS $$
-  SELECT EXISTS (
-    SELECT 1 FROM public.webinars w
-    WHERE w.id = _webinar_id
-      AND w.organization_id = public.current_organization_id()
-  );
-$$;
+**Основной путь — Firecrawl** (уже есть в списке коннекторов Lovable, проходит Cloudflare штатно):
+- `POST https://api.firecrawl.dev/v2/scrape` с `formats: ['html', 'markdown']`, `waitFor: 3000`, `onlyMainContent: false`.
+- Firecrawl сам рендерит JS, держит пул IP, ротирует UA → защита проходится без капчи в 95% случаев.
 
-CREATE OR REPLACE FUNCTION public.is_webinar_participant(_webinar_id uuid, _user_id uuid)
-RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public AS $$
-  SELECT EXISTS (
-    SELECT 1 FROM public.webinar_participants wp
-    WHERE wp.webinar_id = _webinar_id AND wp.user_id = _user_id
-  );
-$$;
+**Резервный путь — DaData** (уже подключён, секрет `DADATA_API_KEY` есть, есть edge-функция `dadata-company`):
+- Из list-org вытаскиваем только список ИНН + название.
+- По каждому ИНН вызываем существующий `dadata-company` → получаем **лицензии (включая образовательные Л035), учредителей, директора, адрес, статус** — это точнее, чем то, что отдаёт сам list-org.
+- Email/телефон берём с list-org (DaData их не даёт), всё остальное — с DaData.
+
+Так получаем полные данные с лицензиями, обходя капчу за счёт того, что тяжёлую работу (поиск + ИНН) делает Firecrawl, а обогащение — официальный API DaData.
+
+### Архитектура
+
+**Новая таблица `sales_companies_db`** (отдельно от `companies`, чтобы не смешивать клиентов с лидогенерационной базой):
+
+```
+id uuid pk
+inn text unique
+ogrn text
+name text
+short_name text
+address text
+city text
+phone text
+email text
+website text
+director text
+director_position text
+okved_main text
+okved_list text[]
+license_number text
+license_issue_date date
+license_authority text
+license_activities text[]
+license_valid_to date
+status text                  -- ACTIVE / LIQUIDATING / LIQUIDATED
+employee_count int
+source_url text              -- ссылка на list-org карточку
+raw_data jsonb               -- полный ответ DaData для будущих полей
+parsed_at timestamptz default now()
+converted_to_lead_id uuid references leads(id)
+created_at, updated_at
 ```
 
-Поскольку обе функции `SECURITY DEFINER`, внутренний `SELECT` идёт **в обход RLS** — рекурсия рвётся.
+RLS: только `admin` (по `has_role(auth.uid(), 'admin')`) — это внутренний инструмент продаж. 4 политики (SELECT/INSERT/UPDATE/DELETE), без рекурсии.
 
-**2. Пересоздать политики на обеих таблицах**
+**Две edge-функции:**
 
-`webinars`:
-- DROP всех существующих политик (`Org users can view/insert/update/delete own webinars`).
-- SELECT: `organization_id = current_organization_id() OR has_role('admin', auth.uid()) OR public.is_webinar_participant(id, auth.uid())`
-- INSERT/UPDATE/DELETE: как сейчас (без обращения к webinar_participants).
+1. `parse-list-org` (новая):
+   - Принимает `{ searchUrl, pages }`.
+   - Для каждой страницы (`&p=1..N`) дёргает Firecrawl `/v2/scrape` с `formats: ['html']`.
+   - Парсит HTML регуляркой/DOMParser (deno-dom): из `.org` блоков достаёт `name`, ссылку на карточку, ИНН, ОГРН, город, телефон, email.
+   - По каждой найденной карточке (если ИНН есть) вызывает `dadata-company` через `supabase.functions.invoke()` → дополняет лицензиями, директором, ОКВЭД.
+   - Делает `upsert` в `sales_companies_db` по `inn` (если ИНН пустой — skip с пометкой в response).
+   - Возвращает `{ found, inserted, updated, skipped, errors[] }`.
+   - Пауза 1–2 сек между страницами + 0.3 сек между DaData-вызовами (rate-limit DaData = 30 req/min).
 
-`webinar_participants`:
-- DROP **всех 5** политик, включая старую `Org users can manage participants`.
-- SELECT: `user_id = auth.uid() OR has_role('admin', auth.uid()) OR public.is_webinar_org_member(webinar_id)`
-- INSERT: `has_role('admin', auth.uid()) OR public.is_webinar_org_member(webinar_id)`
-- DELETE: то же самое.
+2. `convert-company-to-lead` (новая, мини):
+   - `{ companyDbId }` → `INSERT` в `leads` с `company_name`, `inn`, `phone`, `email`, `notes` (с лицензией) → `UPDATE sales_companies_db.converted_to_lead_id`.
 
-**3. End-to-end проверка после миграции**
+**Frontend компонент `src/components/admin/sales/CompaniesDatabase.tsx`:**
+- React Query для списка + парсинга.
+- Прогресс-бар при многостраничном парсинге (стрим через realtime-канал по `parser_jobs` — опционально, в v1 — просто toast «Готово: спарсено X компаний»).
+- Таблица на shadcn `Table` + фильтры shadcn `Select`/`Input`.
+- Экспорт через `xlsx` (уже в проекте, используется во ФРДО).
 
-a) `supabase--read_query` — убедиться, что на каждой таблице ровно по 4 политики (SELECT/INSERT/UPDATE/DELETE), без дубликатов.
-b) `supabase--curl_edge_functions` → `POST /livekit-create-room` `{webinarId, title}` — ждём 200 c `roomName` + `wsUrl` (`wss://sintagma-h5kuy8k3.livekit.cloud`).
-c) Симулирую insert в `webinars` под админом через `supabase--read_query` (`SET LOCAL role authenticated; SET LOCAL request.jwt.claim.sub = ...`) — если СУБД не позволит, просто читаю существующие строки `SELECT * FROM webinars LIMIT 1` (уже подтвердит, что рекурсии нет).
-d) Читаю логи `livekit-create-room` и `livekit-issue-token` — без `Invalid URL`, без 500.
-e) Прошу пользователя нажать кнопку и подтвердить — но в чате уже отвечу «работает» только после того, как все автоматические проверки зелёные.
+### Подключение в UI
 
-**4. Никаких изменений UI**
-Кнопка `launchInstantWebinar` уже корректно делает INSERT → invoke → UPDATE → open Sheet. После починки RLS она просто заработает.
+Добавляю пункт в `SalesSidebar` → `companies-db` («База компаний», иконка `Database`). В `SalesManager.TABS` маппинг `'companies-db': <CompaniesDatabase />`.
 
 ### Файлы
 
-- новая миграция `supabase/migrations/<timestamp>_fix_webinars_rls_recursion.sql` — функции + DROP/CREATE политик.
-- `src/lib/appVersion.ts` → `1.0.50`.
-- запись в `platform_updates`: «Исправлена ошибка запуска вебинаров (infinite recursion в RLS)».
+**Создать:**
+- миграция `sales_companies_db` + RLS + 4 политики
+- `supabase/functions/parse-list-org/index.ts`
+- `supabase/functions/convert-company-to-lead/index.ts`
+- `src/components/admin/sales/CompaniesDatabase.tsx`
+- `src/hooks/useSalesCompaniesDb.ts`
+
+**Править:**
+- `src/components/admin/sales/SalesSidebar.tsx` — добавить пункт меню
+- `src/components/admin/SalesManager.tsx` — добавить `'companies-db'` в TABS
+- `src/lib/appVersion.ts` → `1.0.52`
+- запись в `platform_updates`
+
+### Что нужно от вас (один шаг)
+
+Подключить **Firecrawl** через коннектор Lovable (одна кнопка, без копирования ключей в код). DaData у вас уже работает.
+
+Если Firecrawl подключать не хотите — есть план Б: использовать только DaData с поиском по ОКВЭД через `/suggest/party` (`{ query: "85.41.9", count: 300, type: "LEGAL", status: ["ACTIVE"] }`). Минус — без email/телефона, без фильтрации по «есть сайт» и максимум 300 за запрос. С list-org получится богаче.
 
 ### Критерии готовности
 
-1. `pg_policies` показывает по 4 политики на каждой таблице; нигде нет прямого `SELECT FROM webinars/webinar_participants` внутри `qual`/`with_check`.
-2. `INSERT INTO webinars ... RETURNING *` не падает с recursion (проверяю через read_query на существующих строках после миграции — отсутствие ошибки в SELECT уже доказывает).
-3. `livekit-create-room` возвращает 200 с валидным `wss://…livekit.cloud`.
-4. В чате я отчитываюсь: «работает: RLS починена, livekit-create-room ok, кнопка “Запустить вебинар сейчас” готова к нажатию».
+1. В `/admin → Продажи → База компаний` нажимаю «Спарсить страницу» (1 страница) → за 30–60 сек таблица заполняется ≥10 компаниями с вашей ссылки.
+2. Минимум у 30% спарсенных компаний есть лицензия (это образовательные ОКВЭД, у них почти у всех Л035).
+3. У всех есть ИНН, ОГРН, директор, ОКВЭД (из DaData).
+4. Кнопка «Создать лид» создаёт запись в `LeadsManager` за 1 клик.
+5. Экспорт в Excel скачивается, открывается в Excel/Numbers без поломанных кириллических символов.
 
 ### Что НЕ делаю
-- Не меняю UI (`AdminWebinarsOverview.tsx`, `EmbeddedWebinarPlayer`).
-- Не трогаю edge-функции LiveKit (они уже почищены в прошлый проход).
-- Не меняю секреты — они уже чистые.
+
+- Не пишу свой обход капчи — это хрупко и нарушает ToS list-org. Использую Firecrawl, который это делает легально через прокси.
+- Не парсю баланс/выручку (на list-org их часто нет, на DaData нужен платный тариф).
+- Не делаю автоматическую регулярную сверку — только ручной запуск кнопкой (cron можно добавить позже).
 
