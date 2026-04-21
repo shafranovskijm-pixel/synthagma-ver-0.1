@@ -85,7 +85,14 @@ async function scrapeWithFirecrawl(url: string, apiKey: string): Promise<string>
       url,
       formats: ['html'],
       onlyMainContent: false,
-      waitFor: 2500,
+      waitFor: 4000,
+      timeout: 45000,
+      blockAds: true,
+      proxy: 'stealth',
+      mobile: false,
+      headers: {
+        'Accept-Language': 'ru-RU,ru;q=0.9,en;q=0.8',
+      },
     }),
   });
 
@@ -93,7 +100,6 @@ async function scrapeWithFirecrawl(url: string, apiKey: string): Promise<string>
   if (!res.ok) {
     throw new Error(`Firecrawl ${res.status}: ${JSON.stringify(data).slice(0, 300)}`);
   }
-  // SDK v2: result.html  | REST: data.html  | иногда data.data.html
   return (data.html as string) || (data.data?.html as string) || '';
 }
 
