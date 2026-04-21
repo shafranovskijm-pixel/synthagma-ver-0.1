@@ -1,78 +1,66 @@
 
 
-## План: Полноценная вкладка «Вебинары» в админке + встроенный плеер Kinescope
+## План: End-to-end проверка LiveKit вебинара + починка секретов
 
-### Что вы хотите
-Кликнуть в админке на «Вебинары» → сразу увидеть рабочий интерфейс, где можно создать/запустить вебинар через Kinescope и смотреть его **прямо на платформе** (не в новой вкладке).
+### Что вижу прямо сейчас
 
-### Что говорит документация Kinescope (повторная проверка)
-
-Я перечитал присланный Postman-док и проверил наш код `kinescope-proxy`. Подтверждаю предыдущий анализ:
-
-| Возможность | Доступно через API? |
-|---|---|
-| Получить список Live-стримов | ❌ нет в публичной доке |
-| Создать Live-стрим (получить RTMP-ключ) | ❌ нет |
-| Запустить трансляцию из браузера (WebRTC) | ❌ нет — Kinescope требует **OBS/RTMP-клиент** |
-| Получить embed-плеер по ID и встроить в `<iframe>` | ✅ да, формат `https://kinescope.io/embed/{id}` |
-| Получить запись после эфира | ✅ через `GET /v1/videos/{id}` |
-
-**Вывод:** «кликнул и пошёл прямой эфир из браузера» **через Kinescope невозможно** — это техническое ограничение их платформы, а не наше. Для Kinescope-эфира всегда нужен OBS на стороне ведущего.
-
-**Что МОЖНО сделать встроенным:** plug'n'play **просмотр** Kinescope-эфира внутри платформы через iframe-плеер `https://kinescope.io/embed/{kinescope_live_id}` — без перехода в Kinescope.
-
-### Что я делаю в этой итерации
-
-**1. Расширяю админскую вкладку «Вебинары» (`AdminWebinarsOverview`)**
-
-Сейчас там просто список всех вебинаров платформы. Добавлю:
-
-- **Кнопку «Создать тестовый вебинар»** с выбором типа: `livekit` (браузерный, работает мгновенно) или `kinescope` (RTMP + OBS).
-- **Встроенный плеер прямо в карточке/модалке**:
-  - Для `livekit`: открывается панель `LiveKitRoom` поверх таблицы (как в `WebinarLive`, но без перехода на отдельную страницу).
-  - Для `kinescope`: `<iframe src="https://kinescope.io/embed/{kinescope_live_id}" allow="autoplay; fullscreen; picture-in-picture">` — встроенный плеер прямо в админке.
-  - Для `external` (Zoom/VK/Rutube): тоже `<iframe>` со ссылкой, если она embed-friendly; иначе fallback на «Открыть в новой вкладке».
-- **Inline-форма для Kinescope-эфира**: 3 поля (RTMP URL, Stream Key, Embed ID) + ссылка-инструкция «Создать Live в дашборде Kinescope». После сохранения вебинара плеер сразу подключается по `kinescope_live_id`.
-- Все действия не уводят со страницы `/admin` — открываются в `Sheet`/`Dialog`.
-
-**2. Возвращаю режим `kinescope` в `CreateWebinarDialog`**
-
-В обычном кабинете организации (`WebinarsManager`) тоже снова разрешаю выбор `kinescope` — поля для RTMP уже в БД. Убираю «мёртвые» вызовы `kinescope-proxy.stop_live/get_live` (их нет в API), заменяю на ручное переключение статуса (`Начать эфир` / `Завершить эфир`) — это просто UPDATE статуса в БД, плеер при этом продолжает играть, пока ведущий ведёт OBS-стрим.
-
-**3. Новый компонент `EmbeddedWebinarPlayer`**
-
-Универсальный плеер с авто-роутингом по типу:
+В логах `livekit-create-room` ошибка:
 ```
-type === 'kinescope' → <iframe kinescope.io/embed/{id}>
-type === 'livekit'   → <LiveKitRoom> (компактный режим)
-type === 'external'  → <iframe url> или fallback ссылка
+Invalid URL: 'LIVEKIT_URL=wss://sintagma-h5kuy8k3.livekit.cloud LIVEKIT_API_KEY=APIkR7fby7jQSyS LIVEKIT_API_SECRET=4yD7AlqtrNGsarYggVJx1XyzaUPmcCEHvEx0UwSCwkA/twirp/livekit.RoomService/CreateRoom'
 ```
-Используется и в админке, и в дашборде ученика — одинаково.
 
-**4. Версия**
+Это значит: в секрет **`LIVEKIT_WS_URL`** в Lovable Cloud вставлена **вся строка целиком** (URL + API key + API secret через пробел), а не только URL. Мой `extractSecret()` парсит её корректно для key/secret, но для URL берёт первый `wss://...` токен **до пробела**, и в `wsUrl` остаётся хвост `wss://sintagma-h5kuy8k3.livekit.cloud` — это правильно. **НО** в реальности fallback-ветка возвращает `trimmed` (всю строку), потому что регулярка ищет `LIVEKIT_URL=` со словарной границей `(?:^|[\s;,])`, а в начале строки `LIVEKIT_URL=` стоит **без префикса** — `^LIVEKIT_URL=...` — match идёт, но возвращается весь хвост `wss://... LIVEKIT_API_KEY=...` как `\S+` до первого пробела… однако, судя по ошибке, парсер не сработал и в `fetch()` ушла вся грязная строка.
 
-`APP_VERSION` → `1.0.48`. Запись в `/whats-new`: «Встроенный плеер вебинаров и админ-управление Kinescope-эфирами».
+**Корень проблемы:** секреты в Lovable Cloud забиты в одно поле как `.env`-блок. Самый надёжный способ — почистить секреты, а не плодить регулярки.
 
-### Файлы
+### Что я делаю
 
-- править: `src/components/admin/AdminWebinarsOverview.tsx` — кнопка создания, inline-плеер, фильтры по типу
-- создать: `src/components/webinars/EmbeddedWebinarPlayer.tsx` — универсальный плеер
-- создать: `src/components/admin/AdminCreateWebinarDialog.tsx` — упрощённая форма для тестового вебинара
-- править: `src/components/webinars/CreateWebinarDialog.tsx` — вернуть опцию `kinescope`
-- править: `src/components/webinars/WebinarsManager.tsx` — упростить кнопки старта/стопа Kinescope (убрать API-вызовы)
-- править: `src/lib/appVersion.ts` → 1.0.48
-- миграция: запись в `platform_updates`
+**Шаг 1 — Почистить секреты LiveKit**
+Через интерфейс `update_secret` перезапишу 3 секрета чистыми значениями:
+- `LIVEKIT_WS_URL` = `wss://sintagma-h5kuy8k3.livekit.cloud`
+- `LIVEKIT_API_KEY` = `APIkR7fby7jQSyS` (только ключ, без префикса)
+- `LIVEKIT_API_SECRET` = `4yD7AlqtrNGsarYggVJx1XyzaUPmcCEHvEx0UwSCwkA` (только секрет)
+
+После очистки `extractSecret()` сразу попадёт в первую ветку «уже чистое значение» и вернёт URL без артефактов.
+
+**Шаг 2 — Усилить парсер на случай повторения**
+Добавлю в `extractSecret` для `kind="url"` строгую финальную нормализацию: после извлечения значения откусываю всё, что идёт после первого пробела/`=`/перевода строки. Так даже если кто-то снова склеит `.env` в одно поле — функция не упадёт.
+
+Файлы:
+- `supabase/functions/livekit-create-room/index.ts`
+- `supabase/functions/livekit-issue-token/index.ts`
+
+**Шаг 3 — End-to-end тест**
+
+1. `supabase--curl_edge_functions` → `POST /livekit-create-room` с телом `{"title":"e2e test"}` — ожидаю `200 { ok: true, roomName, wsUrl }`. Если ошибка — читаю `edge_function_logs`.
+2. `supabase--curl_edge_functions` → `POST /livekit-issue-token` с реальным `webinarId` (создам тестовый webinar через `read_query` → `INSERT` миграцией или возьму существующий) — ожидаю `200 { ok: true, token, wsUrl, roomName }`.
+3. JWT-токен раскодирую и проверю поля `iss`, `room`, `roomJoin`, `canPublish`.
+4. Проверю валидность WebSocket-URL (`wss://...livekit.cloud`) — не пингую, просто формат.
+
+**Шаг 4 — Проверка UI потока в админке (без браузера)**
+
+Прочитаю код кнопки «Создать тестовый» в `AdminCreateWebinarDialog.tsx` и `AdminWebinarsOverview.tsx` — убежусь, что:
+- Кнопка вызывает `livekit-create-room` → пишет `roomName` в `webinars.player_settings.livekit.roomName`.
+- В `EmbeddedWebinarPlayer` для типа `livekit` берётся токен через `livekit-issue-token` и подключается к комнате.
+
+**Шаг 5 — Отчёт**
+
+Выдаю короткий результат:
+- ✅/❌ создание комнаты
+- ✅/❌ выдача токена для host
+- ✅/❌ выдача токена для viewer (если есть тестовый ученик с доступом)
+- список несоответствий, если найду
+
+### Что НЕ делаю в этом проходе
+
+- Не запускаю `browser--*` (не нужно — edge-функции тестируются через `curl_edge_functions`).
+- Не меняю UI вебинаров — он уже готов с прошлой итерации.
+- Версию платформы не бампаю — это диагностика, а не фича.
 
 ### Критерии готовности
 
-1. В `/admin` → вкладка «Вебинары» → кнопка «Создать тестовый» → выбор LiveKit → мгновенный запуск, плеер с камерой открывается в той же странице.
-2. Та же кнопка → выбор Kinescope → форма с 3 полями → после сохранения плеер `kinescope.io/embed/...` показывает эфир в iframe прямо в админке (если ведущий стримит OBS на указанный RTMP).
-3. Существующие вебинары в списке — кнопка «Открыть плеер» открывает `Sheet` с встроенным плеером без перехода.
-4. В кабинете организации снова доступен тип Kinescope при создании вебинара.
-
-### Что остаётся ограничением Kinescope (не нашим)
-
-- Создание Live-стрима в Kinescope = ручное действие в их дашборде (ввести RTMP/Stream Key один раз).
-- Ведение эфира = обязательный OBS/vMix на компьютере ведущего.
-- «Кнопкой из браузера» эфир запускается **только в режиме LiveKit**.
+1. `POST /livekit-create-room` возвращает `200` с валидным `roomName`.
+2. `POST /livekit-issue-token` возвращает `200` с JWT, который декодируется и содержит правильные `room` и `video.canPublish=true` для хоста.
+3. В админке кнопка «Создать тестовый» → выбор LiveKit → плеер `LiveKitRoom` подключается без 500-х.
+4. В чат пишу: «работает» либо точное место поломки + что чинить дальше.
 
