@@ -5,6 +5,7 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { checkRateLimit, rateLimitResponse } from "../_shared/rate-limiter.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -41,13 +42,17 @@ async function generateLogin(admin: ReturnType<typeof createClient>): Promise<st
     const { data: existing } = await admin.from("profiles").select("id").eq("login", login).maybeSingle();
     if (!existing) return login;
   }
-  // Fallback — добавим timestamp
   return `student_${Date.now()}`;
 }
 
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
   if (req.method !== "POST") return json({ error: "Method not allowed" }, 405);
+
+  // ── Rate limit: 5 попыток / минуту с одного IP ─────────────
+  const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
+  const rl = checkRateLimit(`self-enroll:${ip}`, { maxRequests: 5, windowSeconds: 60 });
+  if (!rl.allowed) return rateLimitResponse(rl, corsHeaders);
 
   try {
     const body = await req.json() as Payload;
@@ -192,7 +197,7 @@ serve(async (req) => {
         email: body.email.toLowerCase(),
         phone: body.phone ?? null,
         signed_at: new Date().toISOString(),
-        ip_address: req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? null,
+        ip_address: ip,
         user_agent: req.headers.get("user-agent") ?? null,
       });
     } catch (e) {

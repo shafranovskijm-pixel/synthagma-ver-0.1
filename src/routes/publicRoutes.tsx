@@ -34,6 +34,7 @@ const WhatsNew = lazyWithRetry(() => import("@/pages/WhatsNew"));
 const HelpCenter = lazyWithRetry(() => import("@/pages/HelpCenter"));
 const JoinByLink = lazyWithRetry(() => import("@/pages/JoinByLink"));
 const CourseLanding = lazyWithRetry(() => import("@/pages/CourseLanding"));
+const OrganizationShowcase = lazyWithRetry(() => import("@/pages/OrganizationShowcase"));
 const DemoJoin = lazyWithRetry(() => import("@/pages/DemoJoin"));
 const DemoDashboard = lazyWithRetry(() => import("@/components/demo/DemoDashboard"));
 const PublicCompanyCard = lazyWithRetry(() => import("@/pages/PublicCompanyCard"));
@@ -53,6 +54,7 @@ export const publicRoutes = (
     <Route path="/join/:token" element={<JoinByLink />} />
     <Route path="/course/:courseId/landing" element={<CourseLanding />} />
     <Route path="/c/:slug" element={<CourseLanding />} />
+    <Route path="/o/:slug" element={<OrganizationShowcase />} />
     <Route path="/features" element={<Features />} />
     <Route path="/about" element={<About />} />
     <Route path="/blog" element={<Blog />} />

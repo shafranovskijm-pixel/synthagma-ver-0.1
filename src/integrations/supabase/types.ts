@@ -4075,6 +4075,7 @@ export type Database = {
           paid_until: string | null
           phone: string | null
           promo_code: string | null
+          public_slug: string | null
           signature_url: string | null
           stamp_url: string | null
           storage_limit_bytes: number
@@ -4130,6 +4131,7 @@ export type Database = {
           paid_until?: string | null
           phone?: string | null
           promo_code?: string | null
+          public_slug?: string | null
           signature_url?: string | null
           stamp_url?: string | null
           storage_limit_bytes?: number
@@ -4185,6 +4187,7 @@ export type Database = {
           paid_until?: string | null
           phone?: string | null
           promo_code?: string | null
+          public_slug?: string | null
           signature_url?: string | null
           stamp_url?: string | null
           storage_limit_bytes?: number
@@ -7188,6 +7191,7 @@ export type Database = {
           title: string
         }[]
       }
+      generate_org_slug: { Args: { p_name: string }; Returns: string }
       get_all_decrypted_passwords: {
         Args: never
         Returns: {
