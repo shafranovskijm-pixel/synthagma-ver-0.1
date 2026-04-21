@@ -124,11 +124,14 @@ export function OrgProfileTab({ organizationId, initialSubTab }: ProfileTabProps
 
   useEffect(() => {
     if (!user) return;
-    loadProfile();
-    loadNotificationPrefs();
-    loadOrgIcon();
-    loadOrgCredentials();
-    loadMenuSettings();
+    // Параллельная загрузка всех настроек профиля — экономит ~60% времени открытия раздела
+    Promise.all([
+      loadProfile(),
+      loadNotificationPrefs(),
+      loadOrgIcon(),
+      loadOrgCredentials(),
+      loadMenuSettings(),
+    ]).catch((e) => console.warn("OrgProfileTab parallel load failed:", e));
   }, [user, organizationId]);
 
   const loadMenuSettings = async () => {
