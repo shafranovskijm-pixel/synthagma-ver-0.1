@@ -13,6 +13,22 @@ function base64url(input: Uint8Array | string): string {
   return btoa(binary).replace(/=/g, "").replace(/\+/g, "-").replace(/\//g, "_");
 }
 
+
+function extractSecret(raw: string | undefined, varName: string, kind: "url" | "token"): string | undefined {
+  if (!raw) return undefined;
+  const trimmed = raw.trim();
+  if (kind === "url" && /^wss?:\/\/\S+$/i.test(trimmed)) return trimmed;
+  if (kind === "token" && !/\s/.test(trimmed) && !trimmed.includes("=")) return trimmed;
+  const re = new RegExp(`(?:^|[\\s;,])${varName}\\s*=\\s*("([^"]+)"|'([^']+)'|(\\S+))`, "i");
+  const m = trimmed.match(re);
+  if (m) return (m[2] || m[3] || m[4] || "").trim();
+  if (kind === "url") {
+    const u = trimmed.match(/wss?:\/\/\S+/i);
+    if (u) return u[0].replace(/[",;]+$/g, "");
+  }
+  return trimmed;
+}
+
 async function signLiveKitAccessToken(
   apiKey: string,
   apiSecret: string,
