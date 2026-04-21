@@ -224,7 +224,8 @@ export function CreateWebinarDialog({ open, onOpenChange, organizationId, userId
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="livekit">Встроенный плеер LiveKit (рекомендуется)</SelectItem>
+                  <SelectItem value="livekit">Встроенный плеер LiveKit (браузер, без OBS)</SelectItem>
+                  <SelectItem value="kinescope">Kinescope Live (профи: RTMP + OBS, DRM, запись)</SelectItem>
                   <SelectItem value="external">Внешняя ссылка (Zoom, VK, Rutube, YouTube)</SelectItem>
                 </SelectContent>
               </Select>
@@ -236,6 +237,50 @@ export function CreateWebinarDialog({ open, onOpenChange, organizationId, userId
               Мы создадим комнату прямо в платформе. Подключение видео и звука происходит без перехода на сторонние сервисы.
             </p>
           )}
+
+          {((!isEdit && sourceType === "kinescope") || (isEdit && editWebinar?.source_type === "kinescope")) && (
+            <div className="space-y-3">
+              <div className="rounded-md bg-muted border border-border p-3 text-xs space-y-1">
+                <p className="font-medium">Создайте Live в дашборде Kinescope</p>
+                <p className="text-muted-foreground">
+                  Kinescope не позволяет создавать прямой эфир через API. Создайте Live вручную, скопируйте Embed ID и (опционально) RTMP-данные. Эфир ведите через OBS / vMix.
+                </p>
+                <a
+                  href="https://app.kinescope.io/lives"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-primary hover:underline"
+                >
+                  Открыть Kinescope Live →
+                </a>
+              </div>
+              <div>
+                <Label>Embed ID *</Label>
+                <Input
+                  value={kinescopeEmbedId}
+                  onChange={(e) => setKinescopeEmbedId(e.target.value)}
+                  placeholder="например: 3xxxxxxxxxxxxxxxxxxxxxxxx"
+                />
+              </div>
+              <div>
+                <Label>RTMP URL (опционально)</Label>
+                <Input
+                  value={kinescopeRtmpUrl}
+                  onChange={(e) => setKinescopeRtmpUrl(e.target.value)}
+                  placeholder="rtmps://live.kinescope.io/live"
+                />
+              </div>
+              <div>
+                <Label>Stream Key (опционально)</Label>
+                <Input
+                  value={kinescopeRtmpKey}
+                  onChange={(e) => setKinescopeRtmpKey(e.target.value)}
+                  placeholder="секретный ключ потока для OBS"
+                />
+              </div>
+            </div>
+          )}
+
           {((!isEdit && sourceType === "external") || (isEdit && editWebinar?.source_type === "external")) && (
             <div>
               <Label>Ссылка на трансляцию</Label>
