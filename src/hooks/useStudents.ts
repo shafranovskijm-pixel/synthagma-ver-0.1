@@ -92,7 +92,9 @@ export function useStudents(
   // Memoize courseIds join to prevent infinite loops
   const courseIdsKey = useMemo(() => courseIds.join(","), [courseIds]);
 
-  // Load students, groups, and group assignments in parallel
+  // Load students + groups in a single parallel batch.
+  // groupMap now comes for free from fetchStudents (same profiles query),
+  // so we no longer issue a duplicate /profiles request just to read student_group_id.
   useEffect(() => {
     const load = async () => {
       if (!organizationId) {
@@ -102,43 +104,32 @@ export function useStudents(
 
       setIsLoading(true);
       try {
-        // Run all 3 queries in parallel instead of 3 sequential useEffects
-        const [studentsResult, groupsResult, groupMapResult] = await Promise.all([
+        const [studentsResult, groupsResult] = await Promise.all([
           fetchStudents(organizationId, courseIds),
           supabase
             .from("student_groups")
-            .select("*")
+            .select("id, name, color, organization_id, created_at, start_date, end_date")
             .eq("organization_id", organizationId)
             .order("name"),
-          supabase
-            .from("profiles")
-            .select("user_id, student_group_id")
-            .eq("organization_id", organizationId),
         ]);
 
-        const { students: studentsData, allProfiles: profilesData } = studentsResult;
+        const { students: studentsData, allProfiles: profilesData, groupMap } = studentsResult;
         setStudents(studentsData);
         setAllProfiles(profilesData);
-
-        // Groups
         setStudentGroups((groupsResult.data as StudentGroup[]) || []);
+        setStudentGroupMap(groupMap);
 
-        // Group map
-        const map = new Map<string, string | null>();
-        (groupMapResult.data || []).forEach((p: { user_id: string; student_group_id: string | null }) => 
-          map.set(p.user_id, p.student_group_id)
-        );
-        setStudentGroupMap(map);
+        // UI is already usable — render now, then enrich with FRDO status in background.
+        setIsLoading(false);
 
-        // Fetch FRDO status
         const userIds = [...new Set(studentsData.map(s => s.user_id))];
         if (userIds.length > 0) {
-          const status = await fetchFRDOStatus(organizationId, userIds);
-          setFrdoStatus(status);
+          fetchFRDOStatus(organizationId, userIds)
+            .then(setFrdoStatus)
+            .catch(err => console.error("Error loading FRDO status:", err));
         }
       } catch (error) {
         console.error("Error loading students:", error);
-      } finally {
         setIsLoading(false);
       }
     };
