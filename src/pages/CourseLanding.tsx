@@ -22,6 +22,7 @@ import { LandingFaqSection } from "@/components/course-landing/LandingFaqSection
 import { LandingThemeProvider } from "@/components/course-landing/LandingThemeProvider";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 import { getEnrollmentConfig } from "@/lib/landing-enrollment";
+import { captureLeadSource, getLeadTracking } from "@/lib/leadTracking";
 
 interface CourseData {
   id: string;
@@ -88,6 +89,10 @@ export default function CourseLanding() {
   const analytics = landingContent?.analytics;
   const enrollmentConfig = getEnrollmentConfig(landingContent);
   useAnalytics(analytics);
+
+  useEffect(() => {
+    captureLeadSource();
+  }, []);
 
   useEffect(() => {
     if (courseId || slug) loadCourse();
@@ -164,6 +169,8 @@ export default function CourseLanding() {
   const handleEnroll = async (formData?: { name: string; email: string; phone: string; extra?: Record<string, string> }) => {
     if (!course) return;
 
+    const tracking = getLeadTracking();
+
     // ── Режим INSTANT — самозачисление через edge-функцию (не требует логина) ──
     if (enrollmentConfig.mode === "instant" && formData?.email && formData?.name) {
       try {
@@ -175,6 +182,9 @@ export default function CourseLanding() {
             phone: formData.phone || undefined,
             extra: formData.extra,
             consent: true,
+            source: tracking.source,
+            utm: tracking.utm,
+            landing_referrer: tracking.landing_referrer,
           },
         });
         if (error) throw error;
@@ -232,7 +242,11 @@ export default function CourseLanding() {
         const { error: requestError } = await supabase.from("enrollment_requests").insert({
           user_id: user.id,
           course_id: course.id,
-          status: "pending"
+          status: "pending",
+          source: tracking.source,
+          utm: tracking.utm,
+          landing_referrer: tracking.landing_referrer,
+          extra_fields: formData?.extra ?? null,
         } as any);
         if (requestError) throw requestError;
 
@@ -257,7 +271,11 @@ export default function CourseLanding() {
       const { error } = await supabase.from("enrollment_requests").insert({ 
         user_id: user.id, 
         course_id: course.id,
-        status: "pending"
+        status: "pending",
+        source: tracking.source,
+        utm: tracking.utm,
+        landing_referrer: tracking.landing_referrer,
+        extra_fields: formData?.extra ?? null,
       } as any);
       if (error) {
         if (error.code === "23505") {
