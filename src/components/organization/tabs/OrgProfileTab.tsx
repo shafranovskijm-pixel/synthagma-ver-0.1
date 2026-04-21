@@ -19,6 +19,7 @@ import { useOrgTheme, applyOrgTheme } from "@/hooks/useOrgTheme";
 import { AvatarLocationHint, OrgIconLocationHint, HintBlock } from "@/components/organization/BrandingHints";
 import { SettingsStudentDashboardTab } from "@/components/organization/SettingsStudentDashboardTab";
 import { StaffManager } from "@/components/organization/StaffManager";
+import { OrgShowcaseAndTelegramSection } from "@/components/organization/OrgShowcaseAndTelegramSection";
 
 interface ProfileData {
   full_name: string;
@@ -608,6 +609,9 @@ export function OrgProfileTab({ organizationId, initialSubTab }: ProfileTabProps
         return user?.id
           ? <ProfileBrandingTab organizationId={organizationId} userId={user.id} />
           : <div className="text-center py-16 text-muted-foreground">Организация не найдена</div>;
+
+      case "showcase":
+        return <OrgShowcaseAndTelegramSection organizationId={organizationId} />;
 
       case "login-branding":
         return user?.id
