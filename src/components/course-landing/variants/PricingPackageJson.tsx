@@ -112,6 +112,20 @@ export function PricingPackageJson(props: Props) {
                   <div>{"}"}</div>
                 </div>
 
+                {/* install.sh — псевдо-кнопка применения тарифа в стиле bash */}
+                {!isEditing && (
+                  <div className="mt-4 pt-3 border-t border-cyan-500/15">
+                    <div className="flex items-center gap-2 text-[11px] font-mono">
+                      <span className="text-zinc-500">$</span>
+                      <span className="text-cyan-300/80">./install.sh</span>
+                      <span style={{ color: accentColor }}>--{slug}</span>
+                      <span className="ml-auto inline-flex items-center gap-1 text-emerald-400">
+                        <Check className="w-3 h-3" /> ready
+                      </span>
+                    </div>
+                  </div>
+                )}
+
                 {isEditing && (
                   <div className="mt-3 flex items-center justify-between">
                     <label className="text-[10px] text-zinc-500 flex items-center gap-1 cursor-pointer">
