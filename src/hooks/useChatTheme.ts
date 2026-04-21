@@ -29,16 +29,36 @@ export const CHAT_BACKGROUNDS: { id: ChatBgId; name: string }[] = [
 
 const THEME_KEY = "sintagma_chat_theme";
 const BG_KEY = "sintagma_chat_bg";
+// Bump this when we want to force-reset everyone's chat appearance to the new defaults
+// (e.g. to align the chat header with the landing footer's starfield look).
+const DEFAULTS_VERSION_KEY = "sintagma_chat_defaults_v";
+const CURRENT_DEFAULTS_VERSION = "2";
+const DEFAULT_THEME: ChatThemeId = "teal";
+const DEFAULT_BG: ChatBgId = "stars";
+
+function readInitialPrefs(): { theme: ChatThemeId; bg: ChatBgId } {
+  if (typeof window === "undefined") return { theme: DEFAULT_THEME, bg: DEFAULT_BG };
+  try {
+    const storedVersion = localStorage.getItem(DEFAULTS_VERSION_KEY);
+    if (storedVersion !== CURRENT_DEFAULTS_VERSION) {
+      // One-time reset so existing users get the new default look (matches landing footer).
+      localStorage.setItem(THEME_KEY, DEFAULT_THEME);
+      localStorage.setItem(BG_KEY, DEFAULT_BG);
+      localStorage.setItem(DEFAULTS_VERSION_KEY, CURRENT_DEFAULTS_VERSION);
+      return { theme: DEFAULT_THEME, bg: DEFAULT_BG };
+    }
+  } catch {}
+  const t = (typeof window !== "undefined" && localStorage.getItem(THEME_KEY)) as ChatThemeId | null;
+  const b = (typeof window !== "undefined" && localStorage.getItem(BG_KEY)) as ChatBgId | null;
+  return {
+    theme: t && CHAT_THEMES.some((x) => x.id === t) ? t : DEFAULT_THEME,
+    bg: b && CHAT_BACKGROUNDS.some((x) => x.id === b) ? b : DEFAULT_BG,
+  };
+}
 
 export function useChatTheme() {
-  const [themeId, setThemeIdState] = useState<ChatThemeId>(() => {
-    const v = (typeof window !== "undefined" && localStorage.getItem(THEME_KEY)) as ChatThemeId | null;
-    return v && CHAT_THEMES.some((t) => t.id === v) ? v : "teal";
-  });
-  const [bgId, setBgIdState] = useState<ChatBgId>(() => {
-    const v = (typeof window !== "undefined" && localStorage.getItem(BG_KEY)) as ChatBgId | null;
-    return v && CHAT_BACKGROUNDS.some((b) => b.id === v) ? v : "stars";
-  });
+  const [themeId, setThemeIdState] = useState<ChatThemeId>(() => readInitialPrefs().theme);
+  const [bgId, setBgIdState] = useState<ChatBgId>(() => readInitialPrefs().bg);
 
   const setThemeId = useCallback((id: ChatThemeId) => {
     setThemeIdState(id);
