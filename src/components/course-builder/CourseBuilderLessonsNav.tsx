@@ -425,7 +425,7 @@ function NavList(props: Props & { afterAction?: () => void }) {
       </div>
 
       <ScrollArea className="flex-1 min-h-0">
-        <div className="p-2 pb-10 space-y-3">
+        <div className="p-2 space-y-3">
           {modules.length === 0 ? (
             <div className="flex flex-col items-center justify-center text-center py-10 px-4 gap-3">
               <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center">
