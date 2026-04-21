@@ -405,6 +405,8 @@ export default function CourseLanding() {
             onSubmit={handleEnroll}
             isEnrolled={isEnrolled}
             price={finalPrice}
+            enrollmentConfig={enrollmentConfig}
+            submitted={justSubmitted}
           />
         );
       default:
