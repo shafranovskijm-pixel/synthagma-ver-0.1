@@ -32,8 +32,14 @@ export function ConstructorSection({
   stampUrl, signatureUrl, onStampUpload, onSignatureUpload, onStampRemove, onSignatureRemove,
   onOpenContractEditor,
 }: ConstructorSectionProps) {
+  const [showBulkGen, setShowBulkGen] = useState(false);
   return (
     <div className="relative">
+      <BulkDocumentGenerator
+        isOpen={showBulkGen}
+        onClose={() => setShowBulkGen(false)}
+        organizationId={organizationId}
+      />
       <Tabs value={constructorTab} onValueChange={setConstructorTab}>
         <TabsList className="flex flex-wrap h-auto gap-1 bg-muted/50 p-1 rounded-xl mb-4">
           <TabsTrigger value="requisites" className="rounded-lg text-xs gap-1.5 px-2.5 py-1.5"><Building2 className="w-3.5 h-3.5" /><span className="hidden sm:inline">Реквизиты</span></TabsTrigger>
