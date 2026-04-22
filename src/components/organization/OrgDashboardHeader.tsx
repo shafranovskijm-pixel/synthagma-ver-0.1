@@ -78,25 +78,35 @@ export function OrgDashboardHeader() {
     switch (activeTab) {
       case "courses": return "Курсы";
       case "students": return "Ученики";
-      case "organizations": return "Компании";
+      case "organizations": return "Клиенты-компании";
       case "library": return "Хранилище";
       case "stats": return "Статистика";
       case "links": return "Ссылки регистрации";
-      case "documents": return "Документооборот";
+      case "documents": return "Документы учеников";
       case "journals": return "Журналы";
       case "labor-safety": return "Охрана труда";
-      case "services": return "Магазин курсов";
+      case "services": return "Готовые программы";
       case "settings": return "Настройки";
       case "payments": return "Финансы";
       case "subscription": return "Тариф";
       case "chats": return "Чаты";
       case "frdo": return "ФИС ФРДО";
       case "profile": return "Профиль";
+      case "homework-review": return "Домашние работы";
+      case "ai-tutors": return "ИИ-уроки";
+      case "sales": return "Продажи";
+      case "org-documents": return "Документы школы";
+      case "whats-new": return "Что нового";
       default: return "";
     }
   };
 
-  
+  const openCommandPalette = () => {
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', metaKey: true, ctrlKey: true, bubbles: true }));
+  };
+
+  const isMac = typeof navigator !== 'undefined' && /Mac|iPhone|iPad|iPod/.test(navigator.platform);
+
 
   return (
     <header data-org-sticky-header className="sticky top-0 z-30 bg-card border-b border-border">
