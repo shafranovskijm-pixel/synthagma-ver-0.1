@@ -241,27 +241,32 @@ export function OrgSidebar() {
   const rawItems: NavItem[] = [];
 
   // === ОБУЧЕНИЕ ===
-  if (menuSettings.showCourses !== false) rawItems.push({ id: "courses", icon: BookOpen, label: "Курсы", category: "courses", section: "learning" });
-  rawItems.push({ id: "homework-review", icon: BookCheck, label: "Домашние работы", section: "learning" });
+  if (menuSettings.showCourses !== false) rawItems.push({ id: "courses", icon: BookOpen, label: "Курсы", description: "Создание и редактирование учебных программ", category: "courses", section: "learning" });
+  rawItems.push({ id: "homework-review", icon: BookCheck, label: "Домашние работы", description: "Проверка ответов учеников", hasNew: newIndicators.homework > 0, section: "learning" });
   if (menuSettings.showAITutors !== false) {
-    rawItems.push({ id: "ai-tutors", icon: Sparkles, label: "ИИ-уроки", section: "learning" });
+    rawItems.push({ id: "ai-tutors", icon: Sparkles, label: "ИИ-уроки", description: "Голосовые ИИ-преподаватели для уроков", section: "learning" });
   }
-  if (menuSettings.showLaborSafety !== false) rawItems.push({ id: "labor-safety", icon: HardHat, label: "Охрана труда", category: "labor_safety", section: "learning" });
+  if (menuSettings.showLaborSafety !== false) rawItems.push({ id: "labor-safety", icon: HardHat, label: "Охрана труда", description: "Изолированный модуль обучения по ОТ", category: "labor_safety", section: "learning" });
 
   // === КЛИЕНТЫ ===
-  if (menuSettings.showStudents !== false) rawItems.push({ id: "students", icon: Users, label: "Ученики", category: "students", section: "clients" });
-  if (menuSettings.showCompanies !== false) rawItems.push({ id: "organizations", icon: Building2, label: "Клиенты-компании", category: "companies", section: "clients" });
+  if (menuSettings.showStudents !== false) rawItems.push({ id: "students", icon: Users, label: "Ученики", description: "Список учеников и их прогресс", category: "students", section: "clients" });
+  if (menuSettings.showCompanies !== false) rawItems.push({ id: "organizations", icon: Building2, label: "Клиенты-компании", description: "Корпоративные клиенты и их сотрудники", category: "companies", section: "clients" });
   // «Продажи» всегда видны (видимость регулируется правами sales.read).
-  rawItems.push({ id: "sales", icon: Briefcase, label: "Продажи", section: "clients" });
-  rawItems.push({ id: "chats", icon: MessageCircle, label: "Чаты", badge: d.unreadChatsCount, section: "clients" });
+  rawItems.push({ id: "sales", icon: Briefcase, label: "Продажи", description: "Лиды, КП, договоры, канбан сделок", hasNew: newIndicators.sales > 0, section: "clients" });
+  rawItems.push({ id: "chats", icon: MessageCircle, label: "Чаты", description: "Переписка с учениками и компаниями", badge: d.unreadChatsCount, section: "clients" });
 
   // === ИНСТРУМЕНТЫ ===
-  if (menuSettings.showStats) rawItems.push({ id: "stats", icon: BarChart3, label: "Статистика", section: "tools" });
-  if (menuSettings.showLinks) rawItems.push({ id: "links", icon: Link, label: "Ссылки", category: "links", section: "tools" });
+  if (menuSettings.showStats) rawItems.push({ id: "stats", icon: BarChart3, label: "Статистика", description: "Аналитика обучения и доходов", section: "tools" });
+  if (menuSettings.showLinks) rawItems.push({ id: "links", icon: Link, label: "Ссылки", description: "Ссылки регистрации на курсы и группы", category: "links", section: "tools" });
   // «Финансы» убраны — открываются изнутри «Тариф».
 
   // Фильтр по правам сотрудника
   const navItems: NavItem[] = permsLoading ? rawItems : rawItems.filter(item => canSeeOrgTab(item.id));
+
+  // Pinned items (preserve order from `pinned` array)
+  const pinnedItems = pinned
+    .map((id) => navItems.find((i) => i.id === id))
+    .filter((i): i is NavItem => !!i);
 
   // Group preserving section order
   const sectionOrder: SectionId[] = ["learning", "clients", "tools"];
