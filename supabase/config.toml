@@ -147,3 +147,9 @@ verify_jwt = false
 [functions.upload-demo-asset]
 verify_jwt = false
 
+[functions.webinar-public-info]
+verify_jwt = false
+
+[functions.livekit-issue-token]
+verify_jwt = false
+
