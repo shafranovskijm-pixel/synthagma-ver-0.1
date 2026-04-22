@@ -17,7 +17,7 @@ import { CompaniesUnified } from '@/components/admin/sales/CompaniesUnified';
 import { LogActivityDialog } from '@/components/admin/sales/LogActivityDialog';
 import { SalesKanban } from '@/components/admin/sales/SalesKanban';
 import { LeadsManager } from '@/components/admin/sales/LeadsManager';
-import { CompetitorComparison } from '@/components/admin/sales/CompetitorComparison';
+
 import { SalesSegments } from '@/components/admin/sales/SalesSegments';
 import { OrgDemoLinksManager } from './OrgDemoLinksManager';
 import { useOrgSmtp } from '@/hooks/useOrgSmtp';
