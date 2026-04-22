@@ -102,10 +102,6 @@ export const DocumentsTab = React.memo(function DocumentsTab({ organizationId, o
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  if (!organizationId) {
-    return <div className="text-center py-12 text-muted-foreground">Организация не найдена</div>;
-  }
-
   const visibleOrgSubs = useMemo(
     () => ORG_DOCS_SUBITEMS.filter(i => !i.ordersOnly || isOrdersEnabled),
     [isOrdersEnabled]
@@ -132,6 +128,10 @@ export const DocumentsTab = React.memo(function DocumentsTab({ organizationId, o
     return { label: "Сводка", icon: BarChart3 };
   }, [h.activeTab]);
   const ActiveIcon = activeItemMeta.icon;
+
+  if (!organizationId) {
+    return <div className="text-center py-12 text-muted-foreground">Организация не найдена</div>;
+  }
 
   const handleRootClick = (value: RootValue) => {
     if (value === "org_docs") {
