@@ -22,7 +22,7 @@ import {
 import { useAuth } from "@/hooks/useAuth";
 import { AdminCreateWebinarDialog } from "./AdminCreateWebinarDialog";
 import { EmbeddedWebinarPlayer } from "@/components/webinars/EmbeddedWebinarPlayer";
-import { WebinarLiveOverlay } from "@/components/webinars/WebinarLiveOverlay";
+import { WebinarLiveInline } from "@/components/webinars/WebinarLiveInline";
 import { WebinarRecordingUploader } from "@/components/webinars/WebinarRecordingUploader";
 import { Paperclip } from "lucide-react";
 
@@ -432,32 +432,7 @@ export function AdminWebinarsOverview() {
         )}
       </Card>
 
-      {/* Live webinar — full overlay over the admin dashboard (как редактор курсов) */}
-      <WebinarLiveOverlay
-        open={!!playerWebinar}
-        onClose={closePlayer}
-        webinar={
-          playerWebinar
-            ? {
-                id: playerWebinar.id,
-                title: playerWebinar.title,
-                source_type: playerWebinar.source_type,
-                kinescope_live_id: playerWebinar.kinescope_live_id,
-                kinescope_video_id: playerWebinar.kinescope_video_id,
-                embed_url: playerWebinar.embed_url,
-                external_url: playerWebinar.external_url,
-                public_token: playerWebinar.public_token,
-                allow_guests: playerWebinar.allow_guests,
-                guest_password: playerWebinar.guest_password,
-                status: playerWebinar.status,
-                recording_url: (playerWebinar as any).recording_url ?? null,
-                organization_name: playerWebinar.organization_name,
-              }
-            : null
-        }
-        expandHref={playerWebinar ? `/webinar/${playerWebinar.id}/live` : undefined}
-        onShareUpdated={fetchWebinars}
-      />
+      {/* Live webinar теперь рендерится inline сверху (ранний return), отдельный overlay не нужен */}
 
       <AdminCreateWebinarDialog
         open={showCreate}
