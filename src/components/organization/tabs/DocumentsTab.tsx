@@ -87,6 +87,18 @@ export const DocumentsTab = React.memo(function DocumentsTab({ organizationId, o
     try { localStorage.setItem("documents.sidebar.collapsed", sidebarCollapsed ? "1" : "0"); } catch {}
   }, [sidebarCollapsed]);
 
+  // Deep-link from Sales: pick up requested sub-tab and clear the marker
+  useEffect(() => {
+    try {
+      const dl = localStorage.getItem("documents.deepLink");
+      if (dl === "proposals" || dl === "sales_contracts") {
+        h.setActiveTab(dl as DocumentSubTab);
+        localStorage.removeItem("documents.deepLink");
+      }
+    } catch {}
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   if (!organizationId) {
     return <div className="text-center py-12 text-muted-foreground">Организация не найдена</div>;
   }
