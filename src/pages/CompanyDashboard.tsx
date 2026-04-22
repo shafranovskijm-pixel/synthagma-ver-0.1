@@ -6,7 +6,7 @@ import { SigmaLogo } from "@/components/ui/SigmaLogo";
 import {
   Building2, GraduationCap, UserPlus, LogOut,
   LayoutDashboard, Users, ClipboardList, FileText, Bell, Send,
-  Eye, X,
+  Eye, X, UsersRound,
 } from "lucide-react";
 import { useCompanyDashboard } from "@/hooks/useCompanyDashboard";
 import { useAuth } from "@/hooks/useAuth";
@@ -19,8 +19,9 @@ import { TrainingPlansTab } from "@/components/company/TrainingPlansTab";
 import { CompanyDocumentsTab } from "@/components/company/CompanyDocumentsTab";
 import { CompanyRemindersTab } from "@/components/company/CompanyRemindersTab";
 import { CompanyRequestsTab } from "@/components/company/CompanyRequestsTab";
+import { CompanyStaffManager } from "@/components/company/CompanyStaffManager";
 
-type TabId = "home" | "employees" | "planning" | "requests" | "documents" | "reminders";
+type TabId = "home" | "employees" | "planning" | "requests" | "documents" | "reminders" | "team";
 
 const tabs: { id: TabId; label: string; icon: React.ElementType }[] = [
   { id: "home", label: "Главная", icon: LayoutDashboard },
@@ -29,6 +30,7 @@ const tabs: { id: TabId; label: string; icon: React.ElementType }[] = [
   { id: "requests", label: "Заявки", icon: Send },
   { id: "documents", label: "Документы", icon: FileText },
   { id: "reminders", label: "Напоминания", icon: Bell },
+  { id: "team", label: "Команда", icon: UsersRound },
 ];
 
 const CompanyDashboard = () => {
@@ -203,6 +205,14 @@ const CompanyDashboard = () => {
           <CompanyRemindersTab
             companyId={company.id}
             employees={employees.map((e) => ({ user_id: e.user_id, full_name: e.full_name }))}
+          />
+        )}
+
+        {activeTab === "team" && company && (
+          <CompanyStaffManager
+            companyId={company.id}
+            companyName={company.name}
+            ownerUserId={company.user_id}
           />
         )}
       </main>

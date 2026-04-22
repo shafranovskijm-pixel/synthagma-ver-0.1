@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { StaffInvitationDialog, type StaffInvitationRole } from "@/components/staff/StaffInvitationDialog";
 import { RoleAuditLog } from "@/components/staff/RoleAuditLog";
 import { AdminPermissionMatrix } from "@/components/staff/PermissionMatrix";
+import { TwoFactorSetup } from "@/components/auth/TwoFactorSetup";
 import {
   Dialog,
   DialogContent,
@@ -268,6 +269,9 @@ export function AdminStaffTab() {
         </div>
         <AdminPermissionMatrix />
       </div>
+
+      {/* 2FA для текущего пользователя (super-admin) */}
+      <TwoFactorSetup />
 
       {/* Audit log */}
       <RoleAuditLog scope="admin" limit={30} />

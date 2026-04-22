@@ -10,6 +10,7 @@ interface CompanyData {
   email: string | null;
   director: string | null;
   organization_id: string;
+  user_id: string | null;
 }
 
 interface EmployeeWithProgress {
@@ -54,12 +55,31 @@ export function useCompanyDashboard(viewAsUserId?: string) {
     setLoading(true);
 
     try {
-      // Get company info
-      const { data: companyData } = await supabase
+      // 1) Try as company owner
+      let { data: companyData } = await supabase
         .from('companies')
-        .select('id, name, inn, email, director, organization_id')
+        .select('id, name, inn, email, director, organization_id, user_id')
         .eq('user_id', targetUserId)
-        .single();
+        .maybeSingle();
+
+      // 2) Fallback: find via company_staff (multi-user B2B access)
+      if (!companyData && !viewAsUserId) {
+        const { data: staffRow } = await supabase
+          .from('company_staff')
+          .select('company_id')
+          .eq('user_id', targetUserId)
+          .order('created_at', { ascending: true })
+          .limit(1)
+          .maybeSingle();
+        if (staffRow?.company_id) {
+          const { data } = await supabase
+            .from('companies')
+            .select('id, name, inn, email, director, organization_id, user_id')
+            .eq('id', staffRow.company_id)
+            .maybeSingle();
+          companyData = data;
+        }
+      }
 
       if (!companyData) {
         setLoading(false);
