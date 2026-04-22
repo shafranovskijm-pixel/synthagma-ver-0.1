@@ -1,10 +1,10 @@
-import { useState, useCallback, useRef, useEffect } from "react";
+import { useState, useCallback, useRef, useEffect, useMemo } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { 
   BookOpen, Users, Settings, LogOut, Upload,
   Building2, HardHat, HardDrive, CreditCard, Lock, MessageCircle, Wallet,
   BarChart3, Link, ShoppingBag, FileText, ClipboardList, FileSpreadsheet, BookCheck, Radio, Sparkles, Briefcase,
-  HelpCircle, Star, ChevronsLeft, ChevronsRight
+  HelpCircle, Star, ChevronsLeft, ChevronsRight, Pin, PinOff
 } from "lucide-react";
 import { SigmaLogo } from "@/components/ui/SigmaLogo";
 import { useOrgDashboard } from "@/contexts/OrgDashboardContext";
@@ -14,6 +14,14 @@ import { getStoredThemeId, getThemeById } from "@/constants/admin-themes";
 import { useTheme } from "next-themes";
 import { HelpCenterDialog } from "@/components/shared/HelpCenterDialog";
 import { useStaffPermissions } from "@/hooks/useStaffPermissions";
+import { useOrgNewIndicators } from "@/hooks/useOrgNewIndicators";
+import { useOrgSidebarPinned } from "@/hooks/useOrgSidebarPinned";
+import {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuTrigger,
+} from "@/components/ui/context-menu";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -107,8 +115,10 @@ interface NavItem {
   id: TabType;
   icon: typeof BookOpen;
   label: string;
+  description?: string;
   category?: string;
   badge?: number;
+  hasNew?: boolean;
   section: SectionId;
 }
 
@@ -139,6 +149,10 @@ export function OrgSidebar() {
   const planLabel = planName === 'free' ? 'Бесплатный' : planName === 'start' ? 'Старт' : planName === 'standard' ? 'Стандарт' : planName === 'professional' ? 'Профессиональный' : planName === 'maximum' ? 'Максимальный' : '';
   const { handleLogoUpload, isUploadingLogo } = d.branding;
   const logoInputRef = useRef<HTMLInputElement>(null);
+
+  // Pinned items + "new" indicators
+  const { pinned, toggle: togglePin, isPinned } = useOrgSidebarPinned();
+  const newIndicators = useOrgNewIndicators(d.organizationId);
 
   const [upgradeDialogOpen, setUpgradeDialogOpen] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
@@ -227,27 +241,32 @@ export function OrgSidebar() {
   const rawItems: NavItem[] = [];
 
   // === ОБУЧЕНИЕ ===
-  if (menuSettings.showCourses !== false) rawItems.push({ id: "courses", icon: BookOpen, label: "Курсы", category: "courses", section: "learning" });
-  rawItems.push({ id: "homework-review", icon: BookCheck, label: "Домашние работы", section: "learning" });
+  if (menuSettings.showCourses !== false) rawItems.push({ id: "courses", icon: BookOpen, label: "Курсы", description: "Создание и редактирование учебных программ", category: "courses", section: "learning" });
+  rawItems.push({ id: "homework-review", icon: BookCheck, label: "Домашние работы", description: "Проверка ответов учеников", hasNew: newIndicators.homework > 0, section: "learning" });
   if (menuSettings.showAITutors !== false) {
-    rawItems.push({ id: "ai-tutors", icon: Sparkles, label: "ИИ-уроки", section: "learning" });
+    rawItems.push({ id: "ai-tutors", icon: Sparkles, label: "ИИ-уроки", description: "Голосовые ИИ-преподаватели для уроков", section: "learning" });
   }
-  if (menuSettings.showLaborSafety !== false) rawItems.push({ id: "labor-safety", icon: HardHat, label: "Охрана труда", category: "labor_safety", section: "learning" });
+  if (menuSettings.showLaborSafety !== false) rawItems.push({ id: "labor-safety", icon: HardHat, label: "Охрана труда", description: "Изолированный модуль обучения по ОТ", category: "labor_safety", section: "learning" });
 
   // === КЛИЕНТЫ ===
-  if (menuSettings.showStudents !== false) rawItems.push({ id: "students", icon: Users, label: "Ученики", category: "students", section: "clients" });
-  if (menuSettings.showCompanies !== false) rawItems.push({ id: "organizations", icon: Building2, label: "Клиенты-компании", category: "companies", section: "clients" });
+  if (menuSettings.showStudents !== false) rawItems.push({ id: "students", icon: Users, label: "Ученики", description: "Список учеников и их прогресс", category: "students", section: "clients" });
+  if (menuSettings.showCompanies !== false) rawItems.push({ id: "organizations", icon: Building2, label: "Клиенты-компании", description: "Корпоративные клиенты и их сотрудники", category: "companies", section: "clients" });
   // «Продажи» всегда видны (видимость регулируется правами sales.read).
-  rawItems.push({ id: "sales", icon: Briefcase, label: "Продажи", section: "clients" });
-  rawItems.push({ id: "chats", icon: MessageCircle, label: "Чаты", badge: d.unreadChatsCount, section: "clients" });
+  rawItems.push({ id: "sales", icon: Briefcase, label: "Продажи", description: "Лиды, КП, договоры, канбан сделок", hasNew: newIndicators.sales > 0, section: "clients" });
+  rawItems.push({ id: "chats", icon: MessageCircle, label: "Чаты", description: "Переписка с учениками и компаниями", badge: d.unreadChatsCount, section: "clients" });
 
   // === ИНСТРУМЕНТЫ ===
-  if (menuSettings.showStats) rawItems.push({ id: "stats", icon: BarChart3, label: "Статистика", section: "tools" });
-  if (menuSettings.showLinks) rawItems.push({ id: "links", icon: Link, label: "Ссылки", category: "links", section: "tools" });
+  if (menuSettings.showStats) rawItems.push({ id: "stats", icon: BarChart3, label: "Статистика", description: "Аналитика обучения и доходов", section: "tools" });
+  if (menuSettings.showLinks) rawItems.push({ id: "links", icon: Link, label: "Ссылки", description: "Ссылки регистрации на курсы и группы", category: "links", section: "tools" });
   // «Финансы» убраны — открываются изнутри «Тариф».
 
   // Фильтр по правам сотрудника
   const navItems: NavItem[] = permsLoading ? rawItems : rawItems.filter(item => canSeeOrgTab(item.id));
+
+  // Pinned items (preserve order from `pinned` array)
+  const pinnedItems = pinned
+    .map((id) => navItems.find((i) => i.id === id))
+    .filter((i): i is NavItem => !!i);
 
   // Group preserving section order
   const sectionOrder: SectionId[] = ["learning", "clients", "tools"];
@@ -256,6 +275,113 @@ export function OrgSidebar() {
     .filter((g) => g.items.length > 0);
 
 
+
+  // Render single nav button (used by both pinned and section blocks)
+  const renderNavItem = (item: NavItem) => {
+    const isActive = activeTab === item.id;
+    const locked = item.category ? isLocked(item.category) : false;
+    const itemPinned = isPinned(item.id);
+
+    const button = (
+      <button
+        data-onboarding={item.id === "courses" ? "courses" : item.id === "students" ? "students" : item.id === "settings" ? "settings" : undefined}
+        onClick={() => handleTabClick(item.id)}
+        className={cn(
+          "relative rounded-lg transition-all duration-150 animate-fade-in",
+          expanded
+            ? "flex items-center gap-3 px-2.5 h-10 w-full text-left"
+            : cn(
+                "flex flex-col items-center justify-center w-[68px] px-1 py-1.5",
+                showLabels ? "gap-0.5" : "h-10"
+              ),
+          locked && "opacity-50",
+          isActive
+            ? "text-primary-foreground shadow-sm scale-[1.02]"
+            : "text-foreground/70 hover:text-foreground hover:bg-foreground/5 hover:scale-[1.02]"
+        )}
+        style={{
+          backgroundColor: isActive ? `hsl(${brandHsl})` : undefined,
+          ...(isActive ? { boxShadow: `0 2px 10px hsl(${brandHsl} / 0.3)` } : {}),
+        }}
+        aria-current={isActive ? "page" : undefined}
+        aria-label={item.label}
+      >
+        <span className="relative flex items-center justify-center shrink-0" style={{ width: 18, height: 18 }}>
+          <item.icon className="h-[18px] w-[18px]" />
+          {locked && <Lock className="absolute -top-1 -right-2 w-2.5 h-2.5 text-muted-foreground/60" />}
+          {(item.badge ?? 0) > 0 && (
+            <span className="absolute -top-1.5 -right-2 bg-destructive text-destructive-foreground text-[9px] font-bold rounded-full min-w-[16px] h-4 flex items-center justify-center px-1">
+              {item.badge! > 99 ? "99+" : item.badge}
+            </span>
+          )}
+          {/* "New" indicator dot */}
+          {!item.badge && item.hasNew && (
+            <span
+              className="absolute -top-0.5 -right-1 w-2 h-2 rounded-full ring-2 ring-card animate-pulse"
+              style={{ backgroundColor: "hsl(var(--warning))" }}
+              aria-label="Есть новое"
+            />
+          )}
+        </span>
+        {expanded ? (
+          <span
+            className={cn(
+              "text-[13px] font-medium truncate flex-1",
+              isActive ? "text-primary-foreground" : "text-foreground/85"
+            )}
+          >
+            {item.label}
+          </span>
+        ) : showLabels ? (
+          <span
+            className={cn(
+              "text-[9px] leading-tight font-medium text-center max-w-[64px] line-clamp-2",
+              isActive ? "text-primary-foreground/95" : "text-foreground/70"
+            )}
+          >
+            {item.label}
+          </span>
+        ) : null}
+        {expanded && itemPinned && (
+          <Pin className={cn("w-3 h-3 shrink-0", isActive ? "text-primary-foreground/90" : "text-muted-foreground/60")} />
+        )}
+      </button>
+    );
+
+    return (
+      <ContextMenu key={item.id}>
+        <ContextMenuTrigger asChild>
+          <Tooltip delayDuration={300}>
+            <TooltipTrigger asChild>{button}</TooltipTrigger>
+            {!expanded && (
+              <TooltipContent
+                side="right"
+                sideOffset={12}
+                className="z-[100] rounded-xl p-3 shadow-lg border-border/60 max-w-[240px] bg-card"
+              >
+                <div className="flex items-center gap-2 mb-1">
+                  <item.icon className="w-4 h-4" style={{ color: `hsl(${brandHsl})` }} />
+                  <span className="font-semibold text-sm text-foreground">{item.label}</span>
+                </div>
+                {item.description && (
+                  <p className="text-xs text-muted-foreground leading-snug">{item.description}</p>
+                )}
+                <div className="text-[10px] text-muted-foreground/70 mt-2 pt-2 border-t border-border/50">
+                  ПКМ — {itemPinned ? "открепить" : "закрепить"}
+                </div>
+              </TooltipContent>
+            )}
+          </Tooltip>
+        </ContextMenuTrigger>
+        <ContextMenuContent className="w-44 rounded-xl">
+          <ContextMenuItem onClick={() => togglePin(item.id)} className="rounded-lg gap-2 py-2">
+            {itemPinned ? <PinOff className="w-3.5 h-3.5" /> : <Pin className="w-3.5 h-3.5" />}
+            {itemPinned ? "Открепить" : "Закрепить наверху"}
+          </ContextMenuItem>
+        </ContextMenuContent>
+      </ContextMenu>
+    );
+  };
 
   return (
     <>
@@ -348,10 +474,28 @@ export function OrgSidebar() {
 
         {/* Navigation grouped by section */}
         <div className={cn("flex-1 flex flex-col overflow-y-auto scrollbar-hide py-2", expanded ? "px-2 gap-2" : "items-center gap-2 px-2")}>
+
+          {/* Pinned items (favorites) */}
+          {pinnedItems.length > 0 && (
+            <div className="w-full flex flex-col">
+              <div className={cn("px-1", expanded ? "text-left" : "text-center")}>
+                <span
+                  className="text-[9px] uppercase tracking-[0.08em] font-semibold text-muted-foreground/70 select-none inline-flex items-center gap-1"
+                  aria-hidden
+                >
+                  <Pin className="w-2.5 h-2.5" /> Закреплено
+                </span>
+              </div>
+              <nav className={cn("flex flex-col gap-0.5 mt-1", expanded ? "items-stretch" : "items-center")}>
+                {pinnedItems.map((item) => renderNavItem(item))}
+              </nav>
+            </div>
+          )}
+
           {grouped.map((group, gIdx) => (
             <div key={group.section} className="w-full flex flex-col">
               {/* Section heading: plain caps text, no plate */}
-              <div className={cn("px-1", gIdx > 0 ? "mt-2" : "mt-0", expanded ? "text-left" : "text-center")}>
+              <div className={cn("px-1", (gIdx > 0 || pinnedItems.length > 0) ? "mt-2" : "mt-0", expanded ? "text-left" : "text-center")}>
                 <span
                   className="text-[9px] uppercase tracking-[0.08em] font-semibold text-muted-foreground/70 select-none"
                   aria-hidden
@@ -361,83 +505,7 @@ export function OrgSidebar() {
               </div>
 
               <nav className={cn("flex flex-col gap-0.5 mt-1", expanded ? "items-stretch" : "items-center")}>
-                {group.items.map((item) => {
-                  const isActive = activeTab === item.id;
-                  const locked = item.category ? isLocked(item.category) : false;
-
-                  return (
-                    <Tooltip key={item.id} delayDuration={300}>
-                      <TooltipTrigger asChild>
-                        <button
-                          data-onboarding={item.id === "courses" ? "courses" : item.id === "students" ? "students" : item.id === "settings" ? "settings" : undefined}
-                          onClick={() => handleTabClick(item.id)}
-                          className={cn(
-                            "relative rounded-lg transition-all duration-150",
-                            expanded
-                              ? "flex items-center gap-3 px-2.5 h-10 w-full text-left"
-                              : cn(
-                                  "flex flex-col items-center justify-center w-[68px] px-1 py-1.5",
-                                  showLabels ? "gap-0.5" : "h-10"
-                                ),
-                            locked && "opacity-50",
-                            isActive
-                              ? "text-primary-foreground shadow-sm"
-                              : "text-foreground/70 hover:text-foreground hover:bg-foreground/5"
-                          )}
-                          style={{
-                            backgroundColor: isActive ? `hsl(${brandHsl})` : undefined,
-                            ...(isActive ? { boxShadow: `0 2px 10px hsl(${brandHsl} / 0.3)` } : {}),
-                          }}
-                          aria-current={isActive ? "page" : undefined}
-                          aria-label={item.label}
-                        >
-                          <span className="relative flex items-center justify-center shrink-0" style={{ width: 18, height: 18 }}>
-                            <item.icon className="h-[18px] w-[18px]" />
-                            {locked && <Lock className="absolute -top-1 -right-2 w-2.5 h-2.5 text-muted-foreground/60" />}
-                            {(item.badge ?? 0) > 0 && (
-                              <span className="absolute -top-1.5 -right-2 bg-destructive text-destructive-foreground text-[9px] font-bold rounded-full min-w-[16px] h-4 flex items-center justify-center px-1">
-                                {item.badge! > 99 ? "99+" : item.badge}
-                              </span>
-                            )}
-                          </span>
-                          {expanded ? (
-                            <span
-                              className={cn(
-                                "text-[13px] font-medium truncate flex-1",
-                                isActive ? "text-primary-foreground" : "text-foreground/85"
-                              )}
-                            >
-                              {item.label}
-                            </span>
-                          ) : showLabels ? (
-                            <span
-                              className={cn(
-                                "text-[9px] leading-tight font-medium text-center max-w-[64px] line-clamp-2",
-                                isActive ? "text-primary-foreground/95" : "text-foreground/70"
-                              )}
-                            >
-                              {item.label}
-                            </span>
-                          ) : null}
-                        </button>
-                      </TooltipTrigger>
-                      {!expanded && (
-                        <TooltipContent
-                          side="right"
-                          sideOffset={12}
-                          className="z-[100] rounded-xl px-4 py-2 text-sm font-medium shadow-lg border-border/60"
-                          style={{
-                            backgroundColor: `hsl(${brandHsl})`,
-                            color: 'white',
-                            boxShadow: `0 4px 20px hsl(${brandHsl} / 0.3)`,
-                          }}
-                        >
-                          {item.label}
-                        </TooltipContent>
-                      )}
-                    </Tooltip>
-                  );
-                })}
+                {group.items.map((item) => renderNavItem(item))}
               </nav>
             </div>
           ))}
@@ -465,15 +533,28 @@ export function OrgSidebar() {
           <Tooltip>
             <TooltipTrigger asChild>
               <button
-                onClick={() => handleTabClick("whats-new" as TabType)}
+                onClick={() => {
+                  try { localStorage.setItem("whats-new-last-seen", String(Date.now())); } catch {}
+                  handleTabClick("whats-new" as TabType);
+                }}
                 className={cn(
-                  "rounded-lg text-foreground/60 hover:text-primary hover:bg-primary/10 transition-colors",
+                  "relative rounded-lg text-foreground/60 hover:text-primary hover:bg-primary/10 transition-colors",
                   expanded ? "flex items-center gap-3 px-2.5 h-9 w-full text-left" : "flex h-9 w-9 items-center justify-center"
                 )}
                 aria-label="Что нового"
               >
                 <Star className="h-[18px] w-[18px] shrink-0" />
-                {expanded && <span className="text-[13px] font-medium">Что нового</span>}
+                {expanded && <span className="text-[13px] font-medium flex-1">Что нового</span>}
+                {newIndicators.whatsNew > 0 && (
+                  <span
+                    className={cn(
+                      "rounded-full ring-2 ring-card animate-pulse",
+                      expanded ? "w-2 h-2" : "absolute top-1.5 right-1.5 w-2 h-2"
+                    )}
+                    style={{ backgroundColor: "hsl(var(--warning))" }}
+                    aria-label="Есть новое"
+                  />
+                )}
               </button>
             </TooltipTrigger>
             {!expanded && <TooltipContent side="right" className="z-[100]">Что нового</TooltipContent>}
