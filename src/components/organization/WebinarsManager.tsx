@@ -198,6 +198,12 @@ export function WebinarsManager({ organizationId }: Props) {
   };
 
   const copyWebinarLink = (w: Webinar) => {
+    if (w.source_type === "livekit" && w.public_token) {
+      const link = `${getBaseUrl()}/w/${w.public_token}`;
+      navigator.clipboard.writeText(link);
+      toast.success("Публичная ссылка скопирована — отправьте участникам");
+      return;
+    }
     const link = w.embed_url || w.external_url;
     if (link) {
       navigator.clipboard.writeText(link);
