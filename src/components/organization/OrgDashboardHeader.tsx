@@ -101,6 +101,23 @@ export function OrgDashboardHeader() {
     }
   };
 
+  // Breadcrumbs: section group → page
+  const getBreadcrumb = (): { section: string; page: string } | null => {
+    const learning = ["courses", "homework-review", "ai-tutors", "labor-safety"];
+    const clients = ["students", "organizations", "sales", "chats"];
+    const tools = ["stats", "links", "library", "journals", "frdo", "documents", "services"];
+    const settings = ["profile", "subscription", "payments", "org-documents", "whats-new", "settings"];
+    const title = getPageTitle();
+    if (!title) return null;
+    if (learning.includes(activeTab)) return { section: "Обучение", page: title };
+    if (clients.includes(activeTab)) return { section: "Клиенты", page: title };
+    if (tools.includes(activeTab)) return { section: "Инструменты", page: title };
+    if (settings.includes(activeTab)) return { section: "Настройки", page: title };
+    return { section: "Школа", page: title };
+  };
+
+  const breadcrumb = getBreadcrumb();
+
   const openCommandPalette = () => {
     window.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', metaKey: true, ctrlKey: true, bubbles: true }));
   };
