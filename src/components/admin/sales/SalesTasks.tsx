@@ -204,6 +204,9 @@ function NewTaskForm({ managers, leads, onSubmit }:
           <label className="text-xs text-muted-foreground">Срок</label>
           <Input type="datetime-local" value={dueDate} onChange={e => setDueDate(e.target.value)}
             className="rounded-xl" />
+          <p className="text-[10px] text-muted-foreground mt-1">
+            В вашем часовом поясе ({Intl.DateTimeFormat().resolvedOptions().timeZone})
+          </p>
         </div>
       </div>
       <div>
