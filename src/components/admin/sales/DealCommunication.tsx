@@ -48,13 +48,30 @@ export function DealCommunication({ inn, companyName }: Props) {
   async function load() {
     setLoading(true);
     try {
-      // Find lead by inn or org_name
-      const { data: lead } = await supabase
-        .from('sales_leads')
-        .select('id')
-        .or(`inn.eq.${inn},org_name.ilike.${companyName.slice(0, 30)}%`)
-        .limit(1)
-        .maybeSingle();
+      // Безопасный поиск: 2 отдельных запроса вместо .or() с интерполяцией
+      // (запятые/скобки в названии компании ломают PostgREST-запрос).
+      const namePrefix = companyName.slice(0, 30).trim();
+
+      // 1) Найти лид: сначала по ИНН (если есть), иначе по началу названия.
+      let lead: { id: string } | null = null;
+      if (inn) {
+        const { data } = await supabase
+          .from('sales_leads')
+          .select('id')
+          .eq('inn', inn)
+          .limit(1)
+          .maybeSingle();
+        lead = data;
+      }
+      if (!lead && namePrefix) {
+        const { data } = await supabase
+          .from('sales_leads')
+          .select('id')
+          .ilike('org_name', `${namePrefix}%`)
+          .limit(1)
+          .maybeSingle();
+        lead = data;
+      }
 
       const collected: CommItem[] = [];
 
@@ -75,14 +92,35 @@ export function DealCommunication({ inn, companyName }: Props) {
         });
       }
 
-      // Proposals sent / viewed
-      const { data: props } = await supabase
-        .from('commercial_proposals')
-        .select('id, last_sent_at, view_count, last_viewed_at, total_amount, status')
-        .or(`company_inn.eq.${inn},company_name.ilike.${companyName.slice(0, 30)}%`)
-        .is('deleted_at', null)
-        .order('created_at', { ascending: false })
-        .limit(10);
+      // 2) КП: тоже 2 раздельных запроса, объединяем по id.
+      type ProposalRow = {
+        id: string; last_sent_at: string | null; view_count: number;
+        last_viewed_at: string | null; total_amount: number; status: string;
+      };
+      const proposalsMap = new Map<string, ProposalRow>();
+      if (inn) {
+        const { data } = await supabase
+          .from('commercial_proposals')
+          .select('id, last_sent_at, view_count, last_viewed_at, total_amount, status')
+          .eq('company_inn', inn)
+          .is('deleted_at', null)
+          .order('created_at', { ascending: false })
+          .limit(10);
+        (data || []).forEach((p: any) => proposalsMap.set(p.id, p));
+      }
+      if (namePrefix) {
+        const { data } = await supabase
+          .from('commercial_proposals')
+          .select('id, last_sent_at, view_count, last_viewed_at, total_amount, status')
+          .ilike('company_name', `${namePrefix}%`)
+          .is('deleted_at', null)
+          .order('created_at', { ascending: false })
+          .limit(10);
+        (data || []).forEach((p: any) => {
+          if (!proposalsMap.has(p.id)) proposalsMap.set(p.id, p);
+        });
+      }
+      const props = Array.from(proposalsMap.values());
 
       (props || []).forEach((p: any) => {
         if (p.last_sent_at) {
