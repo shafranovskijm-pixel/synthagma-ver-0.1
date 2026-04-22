@@ -14,7 +14,7 @@ import { CreateWebinarDialog } from "./CreateWebinarDialog";
 import { WebinarParticipantsDialog } from "./WebinarParticipantsDialog";
 import { ShareWebinarDialog } from "./ShareWebinarDialog";
 import { EmbeddedWebinarPlayer } from "@/components/webinars/EmbeddedWebinarPlayer";
-import { WebinarLiveOverlay } from "@/components/webinars/WebinarLiveOverlay";
+import { WebinarLiveInline } from "@/components/webinars/WebinarLiveInline";
 import { WebinarRecordingUploader } from "@/components/webinars/WebinarRecordingUploader";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
@@ -525,17 +525,7 @@ export function WebinarsManager({ organizationId }: Props) {
         onUpdated={fetchWebinars}
       />
 
-      {/* Live webinar — full overlay over the dashboard (как редактор курсов) */}
-      <WebinarLiveOverlay
-        open={!!liveSheetWebinar}
-        onClose={() => setLiveSheetWebinar(null)}
-        webinar={liveSheetWebinar}
-        expandHref={liveSheetWebinar ? `/webinar/${liveSheetWebinar.id}/live` : undefined}
-        onEnd={async () => {
-          if (liveSheetWebinar) await handleStopLive(liveSheetWebinar);
-        }}
-        onShareUpdated={fetchWebinars}
-      />
+      {/* Live webinar теперь рендерится inline сверху (ранний return), отдельный overlay не нужен */}
 
       {recordingTarget && (
         <WebinarRecordingUploader

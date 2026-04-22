@@ -6,9 +6,12 @@ import {
   VideoConference,
   RoomAudioRenderer,
   useParticipants,
+  useTracks,
 } from "@livekit/components-react";
+import { Track } from "livekit-client";
 import "@livekit/components-styles";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
+import { SigmaLogo } from "@/components/ui/SigmaLogo";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
@@ -241,6 +244,7 @@ function LiveKitEmbed({
             hasShareSettings={Boolean(publicToken)}
           />
           <VideoConference />
+          <WelcomeOverlay webinarTitle={webinarTitle} />
           <RoomAudioRenderer />
         </LiveKitRoom>
       </div>
@@ -304,7 +308,7 @@ function LiveKitTopBar({
   };
 
   return (
-    <div className="absolute top-2 left-2 right-2 z-10 flex flex-wrap items-center gap-2 rounded-md bg-background/85 backdrop-blur-sm border border-border px-3 py-2 shadow-sm">
+    <div className="absolute top-2 left-2 right-2 z-10 flex flex-wrap items-center gap-2 rounded-md bg-card border border-border px-3 py-2 shadow-md">
       <div className="flex items-center gap-2 min-w-0 mr-auto">
         <span className="relative flex h-2.5 w-2.5 shrink-0">
           <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-destructive opacity-75" />
@@ -314,13 +318,13 @@ function LiveKitTopBar({
           В эфире
         </span>
         {title && (
-          <span className="text-sm font-medium truncate max-w-[180px] sm:max-w-[260px]">
+          <span className="text-sm font-medium text-foreground truncate max-w-[180px] sm:max-w-[260px]">
             · {title}
           </span>
         )}
       </div>
 
-      <div className="flex items-center gap-1 text-xs text-muted-foreground px-2 py-1 rounded bg-muted">
+      <div className="flex items-center gap-1 text-xs text-foreground px-2 py-1 rounded bg-muted">
         <Users className="w-3.5 h-3.5" />
         <span className="font-medium tabular-nums">{participants.length}</span>
       </div>
@@ -335,11 +339,12 @@ function LiveKitTopBar({
 
           <Popover open={qrOpen} onOpenChange={setQrOpen}>
             <PopoverTrigger asChild>
-              <Button size="sm" variant="outline" className="h-8 px-2" title="QR-код">
-                <QrCode className="w-3.5 h-3.5" />
+              <Button size="sm" variant="secondary" className="h-8" title="QR-код">
+                <QrCode className="w-4 h-4 sm:mr-1.5" />
+                <span className="hidden sm:inline">QR</span>
               </Button>
             </PopoverTrigger>
-            <PopoverContent className="w-auto p-3 bg-white">
+            <PopoverContent className="w-auto p-3 bg-card">
               <canvas ref={qrCanvasRef} />
               <p className="text-xs text-center mt-2 text-muted-foreground max-w-[200px] break-all">
                 {publicLink}
@@ -350,8 +355,9 @@ function LiveKitTopBar({
       )}
 
       {hasShareSettings && (
-        <Button size="sm" variant="outline" onClick={onShare} className="h-8 px-2" title="Настройки доступа">
-          <Settings2 className="w-3.5 h-3.5" />
+        <Button size="sm" variant="secondary" onClick={onShare} className="h-8" title="Настройки доступа">
+          <Settings2 className="w-4 h-4 sm:mr-1.5" />
+          <span className="hidden sm:inline">Доступ</span>
         </Button>
       )}
 
@@ -361,6 +367,45 @@ function LiveKitTopBar({
           <span className="hidden sm:inline">Завершить</span>
         </Button>
       )}
+    </div>
+  );
+}
+
+/**
+ * Брендированный экран «Добро пожаловать на вебинар Синтагма».
+ * Показывается, пока ни один участник не публикует камеру/демонстрацию экрана.
+ * Должен быть смонтирован ВНУТРИ <LiveKitRoom>, чтобы useTracks() имел контекст.
+ */
+function WelcomeOverlay({ webinarTitle }: { webinarTitle: string | null }) {
+  const tracks = useTracks(
+    [
+      { source: Track.Source.Camera, withPlaceholder: false },
+      { source: Track.Source.ScreenShare, withPlaceholder: false },
+    ],
+    { onlySubscribed: false },
+  );
+
+  // Если есть хотя бы один реальный трек — скрываем заглушку
+  if (tracks.length > 0) return null;
+
+  return (
+    <div className="absolute inset-0 z-[5] flex flex-col items-center justify-center gap-6 bg-gradient-to-br from-primary/20 via-background to-primary/10 p-6 text-center">
+      <div className="animate-pulse">
+        <SigmaLogo size="xl" showText={false} />
+      </div>
+      <div className="space-y-2 max-w-lg">
+        <h2 className="text-2xl sm:text-3xl font-display font-medium text-foreground">
+          Добро пожаловать на вебинар Синтагма
+        </h2>
+        {webinarTitle && (
+          <p className="text-base sm:text-lg font-medium text-primary">
+            {webinarTitle}
+          </p>
+        )}
+        <p className="text-sm text-muted-foreground">
+          Эфир скоро начнётся. Ведущий подключает камеру…
+        </p>
+      </div>
     </div>
   );
 }
