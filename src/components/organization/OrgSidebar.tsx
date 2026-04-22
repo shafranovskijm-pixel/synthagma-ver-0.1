@@ -12,6 +12,7 @@ import { cn } from "@/lib/utils";
 import { getStoredThemeId, getThemeById } from "@/constants/admin-themes";
 import { useTheme } from "next-themes";
 import { HelpCenterDialog } from "@/components/shared/HelpCenterDialog";
+import { useStaffPermissions } from "@/hooks/useStaffPermissions";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -109,6 +110,7 @@ interface NavItem {
 
 export function OrgSidebar() {
   const d = useOrgDashboard();
+  const { canSeeOrgTab, loading: permsLoading } = useStaffPermissions();
   const activeTab = d.tabNavigation.activeTab;
   const setActiveTab = d.tabNavigation.setActiveTab;
   const logoUrl = d.branding.brandingSettings.logoUrl;
@@ -173,28 +175,31 @@ export function OrgSidebar() {
   };
 
   // Build nav items dynamically based on menu settings
-  const navItems: NavItem[] = [];
+  const rawItems: NavItem[] = [];
   
-  if (menuSettings.showCourses !== false) navItems.push({ id: "courses", icon: BookOpen, label: "Курсы", category: "courses" });
-  if (menuSettings.showCompanies !== false) navItems.push({ id: "organizations", icon: Building2, label: "Компании", category: "companies" });
-  if (menuSettings.showStudents !== false) navItems.push({ id: "students", icon: Users, label: "Ученики", category: "students" });
+  if (menuSettings.showCourses !== false) rawItems.push({ id: "courses", icon: BookOpen, label: "Курсы", category: "courses" });
+  if (menuSettings.showCompanies !== false) rawItems.push({ id: "organizations", icon: Building2, label: "Компании", category: "companies" });
+  if (menuSettings.showStudents !== false) rawItems.push({ id: "students", icon: Users, label: "Ученики", category: "students" });
   
-  if (menuSettings.showStats) navItems.push({ id: "stats", icon: BarChart3, label: "Статистика" });
-  if (menuSettings.showLinks) navItems.push({ id: "links", icon: Link, label: "Ссылки", category: "links" });
+  if (menuSettings.showStats) rawItems.push({ id: "stats", icon: BarChart3, label: "Статистика" });
+  if (menuSettings.showLinks) rawItems.push({ id: "links", icon: Link, label: "Ссылки", category: "links" });
   
-  if (menuSettings.showLaborSafety !== false) navItems.push({ id: "labor-safety", icon: HardHat, label: "Охрана труда", category: "labor_safety" });
-  navItems.push({ id: "payments", icon: Wallet, label: "Финансы" });
+  if (menuSettings.showLaborSafety !== false) rawItems.push({ id: "labor-safety", icon: HardHat, label: "Охрана труда", category: "labor_safety" });
+  rawItems.push({ id: "payments", icon: Wallet, label: "Финансы" });
   if (menuSettings.showSales === true) {
-    navItems.push({ id: "sales", icon: Briefcase, label: "Продажи" });
+    rawItems.push({ id: "sales", icon: Briefcase, label: "Продажи" });
   }
 
-  navItems.push({ id: "homework-review", icon: BookCheck, label: "Задания" });
+  rawItems.push({ id: "homework-review", icon: BookCheck, label: "Задания" });
 
   if (menuSettings.showAITutors !== false) {
-    navItems.push({ id: "ai-tutors", icon: Sparkles, label: "ИИ-преподаватели" });
+    rawItems.push({ id: "ai-tutors", icon: Sparkles, label: "ИИ-преподаватели" });
   }
 
-  navItems.push({ id: "chats", icon: MessageCircle, label: "Чаты", badge: d.unreadChatsCount });
+  rawItems.push({ id: "chats", icon: MessageCircle, label: "Чаты", badge: d.unreadChatsCount });
+
+  // Фильтр по правам сотрудника. Пока загружаются — показываем всё, чтобы избежать вспышки пустого меню.
+  const navItems: NavItem[] = permsLoading ? rawItems : rawItems.filter(item => canSeeOrgTab(item.id));
 
 
 

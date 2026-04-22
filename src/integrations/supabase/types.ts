@@ -8845,6 +8845,7 @@ export type Database = {
         }[]
       }
       generate_org_slug: { Args: { p_name: string }; Returns: string }
+      get_admin_staff_role: { Args: { _user_id: string }; Returns: string }
       get_all_decrypted_passwords: {
         Args: never
         Returns: {
@@ -8923,6 +8924,10 @@ export type Database = {
           ready_for_export: number
           total_documents: number
         }[]
+      }
+      get_org_staff_permissions: {
+        Args: { _organization_id: string; _user_id: string }
+        Returns: string[]
       }
       get_registration_link_by_token: {
         Args: { link_token: string }
@@ -9011,6 +9016,18 @@ export type Database = {
         }[]
       }
       get_warmup_status: { Args: { p_scope_key: string }; Returns: Json }
+      has_admin_staff_role: {
+        Args: { _role: string; _user_id: string }
+        Returns: boolean
+      }
+      has_org_staff_permission: {
+        Args: {
+          _organization_id: string
+          _permission: string
+          _user_id: string
+        }
+        Returns: boolean
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -9066,6 +9083,10 @@ export type Database = {
       org_finalize_signature_review: {
         Args: { p_action: string; p_message?: string; p_signature_id: string }
         Returns: undefined
+      }
+      org_role_default_permissions: {
+        Args: { _role: string }
+        Returns: string[]
       }
       public_get_organization_by_slug: {
         Args: { p_slug: string }

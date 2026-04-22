@@ -6,6 +6,7 @@ import { BrowserRouter, HashRouter, Routes } from "react-router-dom";
 import { ThemeProvider } from "next-themes";
 import { HelmetProvider } from "react-helmet-async";
 import { AuthProvider } from "@/hooks/useAuth";
+import { StaffPermissionsProvider } from "@/hooks/useStaffPermissions";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { LazyLoadFallback } from "@/components/LazyLoadFallback";
 import { ScrollToTop } from "./components/ScrollToTop";
@@ -52,6 +53,7 @@ const App = () => (
         <QueryClientProvider client={queryClient}>
           <Router>
             <AuthProvider>
+              <StaffPermissionsProvider>
               <BackgroundUploadsProvider>
                 <ThemeInit />
                 <ScrollToTop />
@@ -74,6 +76,7 @@ const App = () => (
                   </Suspense>
                 </TooltipProvider>
               </BackgroundUploadsProvider>
+              </StaffPermissionsProvider>
             </AuthProvider>
           </Router>
         </QueryClientProvider>
