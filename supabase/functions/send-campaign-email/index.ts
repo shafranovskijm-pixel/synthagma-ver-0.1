@@ -127,6 +127,57 @@ serve(async (req: Request) => {
       }
     } catch (_) { /* optional */ }
 
+    // ============ Переменные курса (linked_course_id) ============
+    let courseName = "";
+    let courseDuration = "";
+    let coursePrice = "";
+    let courseUrl = "";
+    if ((campaign as any).linked_course_id) {
+      try {
+        const { data: course } = await admin
+          .from("courses")
+          .select("title, duration, price, slug, organization_id")
+          .eq("id", (campaign as any).linked_course_id)
+          .maybeSingle();
+        if (course) {
+          courseName = (course as any).title || "";
+          courseDuration = (course as any).duration || "";
+          const p = (course as any).price;
+          coursePrice = (p !== null && p !== undefined && Number(p) > 0)
+            ? `${Number(p).toLocaleString("ru-RU")} ₽`
+            : "Бесплатно";
+          const slug = (course as any).slug;
+          courseUrl = slug
+            ? `https://sintagma.com.ru/c/${slug}`
+            : `https://sintagma.com.ru/course/${(campaign as any).linked_course_id}`;
+        }
+      } catch (_) { /* optional */ }
+    }
+
+    // ============ Переменные вебинара (linked_webinar_id) ============
+    let webinarTitle = "";
+    let webinarDate = "";
+    let webinarTime = "";
+    let webinarUrl = "";
+    if ((campaign as any).linked_webinar_id) {
+      try {
+        const { data: web } = await admin
+          .from("webinars")
+          .select("title, scheduled_at, stream_url, kinescope_room_id")
+          .eq("id", (campaign as any).linked_webinar_id)
+          .maybeSingle();
+        if (web) {
+          webinarTitle = (web as any).title || "";
+          const sa = (web as any).scheduled_at;
+          if (sa) {
+            webinarDate = new Intl.DateTimeFormat("ru-RU", { day: "numeric", month: "long", year: "numeric" }).format(new Date(sa));
+            webinarTime = new Intl.DateTimeFormat("ru-RU", { hour: "2-digit", minute: "2-digit", hour12: false }).format(new Date(sa));
+          }
+          webinarUrl = (web as any).stream_url || ((web as any).kinescope_room_id ? `https://kinescope.io/live/${(web as any).kinescope_room_id}` : "");
+        }
+      } catch (_) { /* optional */ }
+    }
+
     // last_login через профиль (если email совпадает)
     try {
       const { data: prof } = await admin
