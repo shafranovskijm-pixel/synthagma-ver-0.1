@@ -42,14 +42,59 @@ export function OrgProposalsManager({ organizationId, onGoToSmtp }: Props) {
   const [editor, setEditor] = useState<{ proposal: Partial<OrgProposal>; items: OrgProposalServiceItem[] } | null>(null);
   const [sendDialog, setSendDialog] = useState<{ proposal: OrgProposal; email: string; templateId: string } | null>(null);
   const [contractFromCP, setContractFromCP] = useState<OrgProposal | null>(null);
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const [orgCourses, setOrgCourses] = useState<Array<{ id: string; title: string; duration: string | null; price: number | null; slug: string | null }>>([]);
   const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    if (!organizationId) return;
+    supabase
+      .from("courses")
+      .select("id, title, duration, price, slug")
+      .eq("organization_id", organizationId)
+      .eq("is_published", true)
+      .order("title")
+      .then(({ data }) => setOrgCourses((data || []) as any));
+  }, [organizationId]);
 
   const proposalTemplates = templates.filter(t => t.category === "proposal");
 
-  const openCreate = () => {
+  const openCreate = () => setPickerOpen(true);
+
+  const handlePresetPick = (preset: ProposalPreset | null) => {
+    setPickerOpen(false);
+    if (!preset) {
+      setEditor({
+        proposal: { company_name: "", company_email: "", company_inn: "", contact_person: "", custom_note: "", discount_percent: 0, total_amount: 0 },
+        items: [],
+      });
+      return;
+    }
+    // Заполняем редактор данными из пресета
+    const items: OrgProposalServiceItem[] = (preset.default_services || []).map((s, idx) => ({
+      service_id: null,
+      custom_name: s.name,
+      custom_description: s.description || null,
+      price: s.price,
+      quantity: s.quantity,
+      sort_order: idx,
+    }));
     setEditor({
-      proposal: { company_name: "", company_email: "", company_inn: "", contact_person: "", custom_note: "", discount_percent: 0, total_amount: 0 },
-      items: [],
+      proposal: {
+        company_name: "",
+        company_email: "",
+        company_inn: "",
+        contact_person: "",
+        custom_note: "",
+        discount_percent: preset.default_discount_percent || 0,
+        total_amount: 0,
+        preset_id: preset.id,
+        intro_html: preset.intro_html || null,
+        outro_html: preset.outro_html || null,
+        // @ts-ignore — техническое поле для UI, не сохраняется в БД
+        linked_course_id: preset.linked_course_id || null,
+      },
+      items,
     });
   };
 
