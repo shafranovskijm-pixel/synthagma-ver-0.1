@@ -6,12 +6,14 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
-import { Plus, Radio, Video, Calendar, Users, Copy, ExternalLink, Square, Trash2, RefreshCw, Pencil, CopyPlus, Link, Search, Clock, Zap, Share2, QrCode } from "lucide-react";
+import { Plus, Radio, Video, Calendar, Users, Copy, ExternalLink, Square, Trash2, RefreshCw, Pencil, CopyPlus, Link, Search, Clock, Zap, Share2, QrCode, Maximize2 } from "lucide-react";
 import { CreateWebinarDialog } from "./CreateWebinarDialog";
 import { WebinarParticipantsDialog } from "./WebinarParticipantsDialog";
 import { ShareWebinarDialog } from "./ShareWebinarDialog";
+import { EmbeddedWebinarPlayer } from "@/components/webinars/EmbeddedWebinarPlayer";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
@@ -58,6 +60,7 @@ export function WebinarsManager({ organizationId }: Props) {
   const [statusFilter, setStatusFilter] = useState("all");
   const [search, setSearch] = useState("");
   const [shareWebinar, setShareWebinar] = useState<Webinar | null>(null);
+  const [liveSheetWebinar, setLiveSheetWebinar] = useState<Webinar | null>(null);
 
   const fetchWebinars = useCallback(async () => {
     const { data } = await supabase
@@ -144,10 +147,11 @@ export function WebinarsManager({ organizationId }: Props) {
         .single();
       if (insertErr) throw insertErr;
 
-      toast.success("Вебинар начат");
+      toast.success("Вебинар начат — открываю эфир в окне");
       await fetchWebinars();
       if (inserted) {
-        window.location.href = `/webinar/${(inserted as any).id}/live`;
+        // Открываем эфир в Sheet поверх дашборда (а не редиректом)
+        setLiveSheetWebinar(inserted as any);
       }
     } catch (e: any) {
       toast.error(e.message || "Не удалось начать вебинар");
@@ -278,10 +282,8 @@ export function WebinarsManager({ organizationId }: Props) {
               </div>
             </div>
             <div className="flex flex-wrap gap-2">
-              <Button size="sm" variant="default" asChild>
-                <a href={`/webinar/${w.id}/live`} target="_blank" rel="noreferrer">
-                  <Video className="w-4 h-4 mr-1" /> Войти как ведущий
-                </a>
+              <Button size="sm" variant="default" onClick={() => setLiveSheetWebinar(w)}>
+                <Video className="w-4 h-4 mr-1" /> Войти как ведущий
               </Button>
               <Button size="sm" variant="outline" onClick={() => copyWebinarLink(w)}>
                 <Copy className="w-4 h-4 mr-1" /> Скопировать ссылку
@@ -409,10 +411,8 @@ export function WebinarsManager({ organizationId }: Props) {
                   </Button>
                 )}
                 {w.source_type === "livekit" && (
-                  <Button size="sm" variant="default" asChild>
-                    <a href={`/webinar/${w.id}/live`}>
-                      <Video className="w-3 h-3 mr-1" />Войти в эфир
-                    </a>
+                  <Button size="sm" variant="default" onClick={() => setLiveSheetWebinar(w)}>
+                    <Video className="w-3 h-3 mr-1" />Войти в эфир
                   </Button>
                 )}
                 {getEmbedUrl(w) && w.source_type !== "livekit" && (
@@ -515,6 +515,66 @@ export function WebinarsManager({ organizationId }: Props) {
         webinar={shareWebinar}
         onUpdated={fetchWebinars}
       />
+
+      {/* Live webinar in a Sheet — host stays on the dashboard */}
+      <Sheet
+        open={!!liveSheetWebinar}
+        onOpenChange={(o) => {
+          if (!o) setLiveSheetWebinar(null);
+        }}
+      >
+        <SheetContent
+          side="right"
+          className="w-full sm:max-w-4xl overflow-y-auto"
+          onInteractOutside={(e) => e.preventDefault()}
+        >
+          <SheetHeader className="pr-10">
+            <SheetTitle className="flex items-center gap-2">
+              <Radio className="w-4 h-4 text-destructive" />
+              {liveSheetWebinar?.title}
+            </SheetTitle>
+            <SheetDescription className="flex items-center gap-2">
+              <span>Эфир идёт в окне поверх рабочего стола</span>
+              {liveSheetWebinar && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 px-2"
+                  onClick={() => window.open(`/webinar/${liveSheetWebinar.id}/live`, "_blank")}
+                  title="Открыть на отдельной странице"
+                >
+                  <Maximize2 className="w-3.5 h-3.5 mr-1" />
+                  На весь экран
+                </Button>
+              )}
+            </SheetDescription>
+          </SheetHeader>
+          {liveSheetWebinar && (
+            <div className="mt-4">
+              <EmbeddedWebinarPlayer
+                webinarId={liveSheetWebinar.id}
+                sourceType={liveSheetWebinar.source_type}
+                kinescopeLiveId={liveSheetWebinar.kinescope_live_id}
+                kinescopeVideoId={liveSheetWebinar.kinescope_video_id}
+                embedUrl={liveSheetWebinar.embed_url}
+                externalUrl={liveSheetWebinar.external_url}
+                webinarTitle={liveSheetWebinar.title}
+                publicToken={liveSheetWebinar.public_token}
+                allowGuests={liveSheetWebinar.allow_guests ?? true}
+                guestPassword={liveSheetWebinar.guest_password}
+                onEnd={async () => {
+                  await handleStopLive(liveSheetWebinar);
+                  setLiveSheetWebinar(null);
+                }}
+                onShareUpdated={fetchWebinars}
+              />
+              <p className="text-xs text-muted-foreground mt-3">
+                Закрытие окна не завершает эфир — другие участники остаются. Чтобы остановить трансляцию, нажмите «Завершить» в шапке плеера.
+              </p>
+            </div>
+          )}
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }

@@ -37,6 +37,9 @@ interface AdminWebinar {
   organization_id: string;
   created_at: string;
   player_settings: any;
+  public_token: string | null;
+  allow_guests: boolean;
+  guest_password: string | null;
   organization_name?: string | null;
 }
 
@@ -55,7 +58,7 @@ const SOURCE_LABELS: Record<string, string> = {
 
 // БЕЗ джойнов — джойн organizations(name) у админа иногда падает по RLS
 const SELECT_FIELDS =
-  "id, title, scheduled_at, duration_minutes, status, source_type, external_url, embed_url, kinescope_live_id, kinescope_video_id, organization_id, created_at, player_settings";
+  "id, title, scheduled_at, duration_minutes, status, source_type, external_url, embed_url, kinescope_live_id, kinescope_video_id, organization_id, created_at, player_settings, public_token, allow_guests, guest_password";
 
 export function AdminWebinarsOverview() {
   const { user } = useAuth();
@@ -452,6 +455,12 @@ export function AdminWebinarsOverview() {
                   kinescopeVideoId={playerWebinar.kinescope_video_id}
                   embedUrl={playerWebinar.embed_url}
                   externalUrl={playerWebinar.external_url}
+                  webinarTitle={playerWebinar.title}
+                  publicToken={playerWebinar.public_token}
+                  allowGuests={playerWebinar.allow_guests ?? true}
+                  guestPassword={playerWebinar.guest_password}
+                  onEnd={closePlayer}
+                  onShareUpdated={fetchWebinars}
                 />
                 <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
                   <Badge variant="outline">{SOURCE_LABELS[playerWebinar.source_type] || playerWebinar.source_type}</Badge>
