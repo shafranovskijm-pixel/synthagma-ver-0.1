@@ -87,8 +87,8 @@ export function ProposalVariablesCheckDialog({
 
         <div className="space-y-4">
           {hasMissingCourse && (
-            <div className="flex items-start gap-2 p-3 rounded-md bg-orange-500/10 border border-orange-500/30 text-sm">
-              <AlertCircle className="w-4 h-4 text-orange-500 shrink-0 mt-0.5" />
+            <div className="flex items-start gap-2 p-3 rounded-md bg-destructive/5 border border-destructive/30 text-sm">
+              <AlertCircle className="w-4 h-4 text-destructive shrink-0 mt-0.5" />
               <div>
                 <strong>Курс не выбран.</strong> Переменные {`{{course_name}}`}, {`{{course_duration}}`}, {`{{course_price}}`}, {`{{course_url}}`} останутся пустыми. Выберите курс в селекте «Курс для подстановки переменных» выше.
               </div>
