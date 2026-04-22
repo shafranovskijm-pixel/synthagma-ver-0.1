@@ -71,7 +71,7 @@ export function BulkSendForSigningDialog({ open, onOpenChange, payload, organiza
       });
 
       // Students of this org
-      const { data: enrollments } = await supabase
+      const { data: enrollments } = await (supabase as any)
         .from("enrollments")
         .select("user_id")
         .eq("organization_id", organizationId)
