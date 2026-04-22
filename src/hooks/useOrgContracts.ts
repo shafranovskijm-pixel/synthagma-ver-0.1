@@ -9,6 +9,9 @@ export interface OrgContractTemplate {
   body_html: string;
   variables: any;
   is_default: boolean;
+  version?: number;
+  is_active?: boolean;
+  archived_at?: string | null;
   created_at: string;
   updated_at: string;
 }
