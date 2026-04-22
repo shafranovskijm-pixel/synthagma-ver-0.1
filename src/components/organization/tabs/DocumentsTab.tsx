@@ -171,9 +171,9 @@ export const DocumentsTab = React.memo(function DocumentsTab({ organizationId, o
             {h.activeTab === "org" && <OrgDocumentsManager organizationId={organizationId} />}
             {h.activeTab === "orders" && isOrdersEnabled && <DocumentArchiveView organizationId={organizationId} categoryId="enrollment_orders" title="Приказы о зачислении / отчислении" docTypes={["enrollment_order", "expulsion_order"]} />}
             {h.activeTab === "protocols" && <DocumentArchiveView organizationId={organizationId} categoryId="attestation_protocols" title="Протоколы аттестационной комиссии" docTypes={["attestation_protocol"]} />}
-            {h.activeTab === "certificates" && <EducationDocumentsJournal organizationId={organizationId} onClose={() => {}} documentTypeFilter="certificate" />}
-            {h.activeTab === "diplomas" && <EducationDocumentsJournal organizationId={organizationId} onClose={() => {}} documentTypeFilter="diploma" />}
-            {h.activeTab === "testimonials" && <EducationDocumentsJournal organizationId={organizationId} onClose={() => {}} documentTypeFilter="qualification" />}
+            {h.activeTab === "certificates" && <EducationDocumentsJournal organizationId={organizationId} onClose={() => {}} documentTypeFilter="certificate" onOpenFrdoTab={() => h.setActiveTab("frdo")} />}
+            {h.activeTab === "diplomas" && <EducationDocumentsJournal organizationId={organizationId} onClose={() => {}} documentTypeFilter="diploma" onOpenFrdoTab={() => h.setActiveTab("frdo")} />}
+            {h.activeTab === "testimonials" && <EducationDocumentsJournal organizationId={organizationId} onClose={() => {}} documentTypeFilter="qualification" onOpenFrdoTab={() => h.setActiveTab("frdo")} />}
             {h.activeTab === "programs" && <CourseProgramsList organizationId={organizationId} />}
             {h.activeTab === "journals" && <div className="bg-card rounded-xl lg:rounded-2xl border border-border p-4 lg:p-6"><JournalsManager organizationId={organizationId!} /></div>}
             {h.activeTab === "frdo" && <div className="bg-card rounded-xl lg:rounded-2xl border border-border p-4 lg:p-6"><FRDOManager organizationId={organizationId!} /></div>}
