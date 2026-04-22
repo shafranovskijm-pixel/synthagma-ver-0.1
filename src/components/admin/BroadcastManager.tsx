@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Megaphone, Send, Trash2, Mail, Clock, MessageSquare, CheckCircle2 } from "lucide-react";
+import { Megaphone, Send, Trash2, Mail, Clock, MessageSquare, CheckCircle2, Flame } from "lucide-react";
 import { toast } from "sonner";
 import { format, differenceInDays } from "date-fns";
 import { ru } from "date-fns/locale";
@@ -47,7 +47,7 @@ interface EmailToken {
   used_at: string | null;
 }
 
-type TemplateType = "inactive" | "welcome" | null;
+type TemplateType = "inactive" | "welcome" | "frdo_pain" | null;
 
 export function BroadcastManager() {
   const [title, setTitle] = useState("");
@@ -211,8 +211,8 @@ export function BroadcastManager() {
 
         const publishedUrl = "https://sintagma.com.ru";
         const actionUrl = `${publishedUrl}/email-response?token=${tokenData.id}`;
-        const html = getEmailHtml(selectedTemplate as "inactive" | "welcome", org.name, actionUrl);
-        const subject = getEmailSubject(selectedTemplate as "inactive" | "welcome");
+        const html = getEmailHtml(selectedTemplate as any, org.name, actionUrl);
+        const subject = getEmailSubject(selectedTemplate as any);
 
         await supabase.functions.invoke("send-email", {
           body: {
@@ -336,7 +336,7 @@ export function BroadcastManager() {
             Выберите шаблон письма. Организации получат email с кнопкой — при нажатии вам придёт уведомление в чат и Telegram.
           </p>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
             <button
               onClick={() => setSelectedTemplate(selectedTemplate === "inactive" ? null : "inactive")}
               className={`p-4 rounded-xl border-2 text-left transition-all ${
@@ -368,6 +368,26 @@ export function BroadcastManager() {
               </div>
               <p className="text-xs text-muted-foreground">
                 «Спасибо за регистрацию! Нужна консультация?»
+              </p>
+            </button>
+
+            <button
+              onClick={() => setSelectedTemplate(selectedTemplate === "frdo_pain" ? null : "frdo_pain")}
+              className={`p-4 rounded-xl border-2 text-left transition-all relative ${
+                selectedTemplate === "frdo_pain"
+                  ? "border-destructive bg-destructive/5"
+                  : "border-border hover:border-destructive/40"
+              }`}
+            >
+              <div className="absolute -top-2 -right-2 px-2 py-0.5 rounded-full bg-destructive text-destructive-foreground text-[10px] font-bold uppercase tracking-wide shadow">
+                🔥 Продающий
+              </div>
+              <div className="flex items-center gap-2 mb-2">
+                <Flame className="w-5 h-5 text-destructive" />
+                <span className="font-medium text-sm">Боль ФИС ФРДО</span>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                «Устали от ошибок ФРДО? Мы их убрали» — холодная продажа
               </p>
             </button>
           </div>

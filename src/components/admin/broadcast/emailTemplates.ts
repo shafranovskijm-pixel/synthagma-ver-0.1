@@ -225,6 +225,82 @@ export function getReactivationEmailHtml(orgName: string, actionUrl: string): st
   `);
 }
 
+// ───────────────── Шаблон 8: FRDO Pain — продающий, бьёт в больное ─────────────────
+export function getFrdoPainEmailHtml(orgName: string, actionUrl: string): string {
+  // Стилизованный «скриншот» ошибок ФИС ФРДО — таблицей, чтобы работало без внешних картинок
+  const errorRow = (line: string, msg: string) => `
+    <tr>
+      <td style="padding: 6px 12px; border-bottom: 1px solid #FECACA; font-family: 'SF Mono', Menlo, Consolas, monospace; font-size: 12px; color: #7F1D1D; white-space: nowrap;">${line}</td>
+      <td style="padding: 6px 12px; border-bottom: 1px solid #FECACA; font-family: 'SF Mono', Menlo, Consolas, monospace; font-size: 12px; color: #991B1B;">${msg}</td>
+    </tr>
+  `;
+
+  return shell(`
+    <div style="text-align: center; margin: 0 0 20px;">
+      <div style="display: inline-block; background: linear-gradient(135deg, #DC2626, #F59E0B); color: white; font-size: 12px; font-weight: 700; letter-spacing: 1px; padding: 7px 16px; border-radius: 999px; text-transform: uppercase;">
+        ⚠️ Знакомо?
+      </div>
+    </div>
+
+    <h1 style="font-size: 24px; color: ${INK}; margin: 0 0 14px; font-weight: 700; text-align: center; line-height: 1.3;">
+      Сколько часов в месяц вы тратите на чистку ФИС ФРДО?
+    </h1>
+
+    <p style="font-size: 15px; color: ${SOFT}; line-height: 1.7; margin: 0 0 20px;">
+      ${orgName ? `Здравствуйте, <strong style="color:${INK}">${orgName}</strong>! ` : ""}Каждый месяц одно и то же — десятки строк <em>«недопустимый символ»</em>, невидимые пробелы в СНИЛС, неправильные форматы дат. Вы наверняка узнаёте эту картину:
+    </p>
+
+    <!-- Стилизованный «скриншот» ошибок -->
+    <div style="background: #FEF2F2; border: 1px solid #FECACA; border-radius: 12px; padding: 14px 0 8px; margin: 0 0 20px;">
+      <div style="padding: 0 14px 10px; border-bottom: 1px solid #FECACA; font-size: 12px; font-weight: 700; color: #991B1B; text-transform: uppercase; letter-spacing: 0.5px;">
+        ❌ Лог ошибок валидатора ФИС ФРДО
+      </div>
+      <table cellpadding="0" cellspacing="0" border="0" style="width: 100%; border-collapse: collapse;">
+        ${errorRow("Строка: 3", "К3 недопустимый символ")}
+        ${errorRow("Строка: 16", "К16 недопустимый символ")}
+        ${errorRow("Строка: 17", "К17 недопустимый символ")}
+        ${errorRow("Строка: 24", "К24 недопустимый символ")}
+        ${errorRow("Строка: 31", "К31 недопустимый символ")}
+        ${errorRow("Строка: 47", "К47 недопустимый символ")}
+        ${errorRow("Строка: 58", "К58 недопустимый символ")}
+        ${errorRow("Строка: 62", "К62 недопустимый символ")}
+        <tr>
+          <td colspan="2" style="padding: 8px 14px; font-size: 11px; color: #7F1D1D; font-style: italic;">… и так каждый месяц.</td>
+        </tr>
+      </table>
+    </div>
+
+    <p style="font-size: 15px; color: ${SOFT}; line-height: 1.7; margin: 0 0 20px;">
+      <strong style="color:${INK}">С Sintagma — ноль ошибок.</strong> Платформа автоматически приводит данные к формату ФИС ФРДО ещё до выгрузки:
+    </p>
+
+    <table cellpadding="0" cellspacing="0" border="0" style="width: 100%; margin: 0 0 8px;">
+      ${feature("✨", "Авто-форматирование СНИЛС, дат, ФИО", "Маски, регистры, разделители — приводятся автоматически.")}
+      ${feature("🛡", "Очистка скрытых пробелов и табуляций", "Те самые «невидимки», из-за которых валидатор ругается.")}
+      ${feature("✅", "Проверка полноты данных ДО выгрузки", "Платформа покажет, чего не хватает, прежде чем вы откроете ФИС ФРДО.")}
+      ${feature("📊", "Шаблоны 35 и 41 столбец", "Под актуальные требования для ДПО и ПО — без ручных правок.")}
+    </table>
+
+    ${sectionTitle("🚀 А ещё мы автоматизируем")}
+    <ul style="font-size: 14px; color: ${SOFT}; line-height: 1.8; padding-left: 20px; margin: 8px 0 0;">
+      <li><strong style="color:${INK}">Авто-выпуск удостоверений</strong> при достижении 100% прогресса учеником</li>
+      <li><strong style="color:${INK}">Электронную подпись (63-ФЗ)</strong> — двусторонние документы и ПЭП</li>
+      <li><strong style="color:${INK}">Договоры, КП, счета</strong> — генерация Word/PDF из реквизитов в один клик</li>
+      <li><strong style="color:${INK}">Журналы регистрации</strong> и корзину документов с восстановлением 30 дней</li>
+    </ul>
+
+    <p style="font-size: 15px; color: ${SOFT}; line-height: 1.7; margin: 20px 0 0; text-align: center;">
+      Посмотрите, как это выглядит в боевом интерфейсе:
+    </p>
+
+    ${ctaButton(actionUrl, "Посмотреть, как это работает")}
+
+    <p style="font-size: 13px; color: ${MUTED}; line-height: 1.6; margin: 16px 0 0; text-align: center;">
+      P.S. Бесплатный тариф — до 10 учеников без срока. Можно проверить ФРДО на своих данных без оплаты.
+    </p>
+  `);
+}
+
 // ───────────────── Роутер шаблонов ─────────────────
 export type BroadcastTemplate =
   | "inactive"
@@ -233,7 +309,8 @@ export type BroadcastTemplate =
   | "presentation"
   | "followup"
   | "proposal"
-  | "reactivation";
+  | "reactivation"
+  | "frdo_pain";
 
 export function getEmailHtml(template: BroadcastTemplate, orgName: string, actionUrl: string): string {
   switch (template) {
@@ -244,6 +321,7 @@ export function getEmailHtml(template: BroadcastTemplate, orgName: string, actio
     case "followup": return getFollowupEmailHtml(orgName, actionUrl);
     case "proposal": return getProposalEmailHtml(orgName, actionUrl);
     case "reactivation": return getReactivationEmailHtml(orgName, actionUrl);
+    case "frdo_pain": return getFrdoPainEmailHtml(orgName, actionUrl);
   }
 }
 
@@ -256,5 +334,6 @@ export function getEmailSubject(template: BroadcastTemplate): string {
     case "followup": return "Материалы после встречи — Sintagma";
     case "proposal": return "Коммерческое предложение — Sintagma";
     case "reactivation": return "Что нового на Sintagma — возвращайтесь";
+    case "frdo_pain": return "Устали от ошибок ФИС ФРДО? Мы их убрали";
   }
 }
