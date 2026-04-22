@@ -51,6 +51,11 @@ interface Props {
   /** Если эфир завершён и есть запись — показать нативный плеер вместо LiveKit-комнаты */
   status?: string | null;
   recordingUrl?: string | null;
+  /** Если переданы — пропустить вызов livekit-issue-token и использовать готовый JWT (гостевой режим) */
+  prefetchedToken?: string | null;
+  prefetchedWsUrl?: string | null;
+  /** read-only режим (для гостей): без кнопок «Завершить», «Доступ», QR, «Ссылка для участников» */
+  viewOnly?: boolean;
 }
 
 /**
@@ -74,6 +79,9 @@ export function EmbeddedWebinarPlayer({
   onShareUpdated,
   status,
   recordingUrl,
+  prefetchedToken,
+  prefetchedWsUrl,
+  viewOnly,
 }: Props) {
   // ============ Recording playback (LiveKit ended + recording attached) ============
   if (sourceType === "livekit" && status === "ended" && recordingUrl) {
@@ -155,6 +163,9 @@ export function EmbeddedWebinarPlayer({
       guestPassword={guestPassword ?? null}
       onEnd={onEnd}
       onShareUpdated={onShareUpdated}
+      prefetchedToken={prefetchedToken ?? null}
+      prefetchedWsUrl={prefetchedWsUrl ?? null}
+      viewOnly={viewOnly ?? false}
     />
   );
 }
@@ -167,6 +178,9 @@ function LiveKitEmbed({
   guestPassword,
   onEnd,
   onShareUpdated,
+  prefetchedToken,
+  prefetchedWsUrl,
+  viewOnly,
 }: {
   webinarId: string;
   webinarTitle: string | null;
@@ -175,14 +189,24 @@ function LiveKitEmbed({
   guestPassword: string | null;
   onEnd?: () => void;
   onShareUpdated?: () => void;
+  prefetchedToken: string | null;
+  prefetchedWsUrl: string | null;
+  viewOnly: boolean;
 }) {
-  const [token, setToken] = useState<string | null>(null);
-  const [wsUrl, setWsUrl] = useState<string | null>(null);
+  const [token, setToken] = useState<string | null>(prefetchedToken);
+  const [wsUrl, setWsUrl] = useState<string | null>(prefetchedWsUrl);
   const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(!prefetchedToken);
   const [shareOpen, setShareOpen] = useState(false);
 
   const fetchToken = useCallback(async () => {
+    // В гостевом режиме токен уже передан — не дёргаем функцию
+    if (prefetchedToken && prefetchedWsUrl) {
+      setToken(prefetchedToken);
+      setWsUrl(prefetchedWsUrl);
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     setError(null);
     try {
@@ -199,7 +223,7 @@ function LiveKitEmbed({
     } finally {
       setLoading(false);
     }
-  }, [webinarId]);
+  }, [webinarId, prefetchedToken, prefetchedWsUrl]);
 
   useEffect(() => {
     fetchToken();
@@ -232,16 +256,17 @@ function LiveKitEmbed({
           token={token}
           serverUrl={wsUrl}
           connect={true}
-          video={true}
-          audio={true}
+          video={!viewOnly}
+          audio={!viewOnly}
           style={{ height: "100%" }}
         >
           <LiveKitTopBar
             title={webinarTitle}
-            publicLink={publicLink}
+            publicLink={viewOnly ? null : publicLink}
             onShare={() => setShareOpen(true)}
             onEnd={onEnd}
-            hasShareSettings={Boolean(publicToken)}
+            hasShareSettings={!viewOnly && Boolean(publicToken)}
+            viewOnly={viewOnly}
           />
           <VideoConference />
           <WelcomeOverlay webinarTitle={webinarTitle} />
@@ -249,7 +274,7 @@ function LiveKitEmbed({
         </LiveKitRoom>
       </div>
 
-      {publicToken && (
+      {!viewOnly && publicToken && (
         <ShareWebinarDialog
           open={shareOpen}
           onOpenChange={setShareOpen}
@@ -277,12 +302,14 @@ function LiveKitTopBar({
   onShare,
   onEnd,
   hasShareSettings,
+  viewOnly = false,
 }: {
   title: string | null;
   publicLink: string | null;
   onShare: () => void;
   onEnd?: () => void;
   hasShareSettings: boolean;
+  viewOnly?: boolean;
 }) {
   const participants = useParticipants();
   const [copied, setCopied] = useState(false);
@@ -362,9 +389,15 @@ function LiveKitTopBar({
       )}
 
       {onEnd && (
-        <Button size="sm" variant="destructive" onClick={onEnd} className="h-8" title="Завершить эфир">
+        <Button
+          size="sm"
+          variant={viewOnly ? "secondary" : "destructive"}
+          onClick={onEnd}
+          className="h-8"
+          title={viewOnly ? "Покинуть эфир" : "Завершить эфир"}
+        >
           <Square className="w-3.5 h-3.5 sm:mr-1.5" />
-          <span className="hidden sm:inline">Завершить</span>
+          <span className="hidden sm:inline">{viewOnly ? "Покинуть" : "Завершить"}</span>
         </Button>
       )}
     </div>
