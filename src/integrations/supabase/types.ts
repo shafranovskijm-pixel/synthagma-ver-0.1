@@ -2415,6 +2415,51 @@ export type Database = {
           },
         ]
       }
+      email_campaign_clicks: {
+        Row: {
+          campaign_id: string
+          clicked_at: string
+          id: string
+          ip_address: string | null
+          recipient_id: string | null
+          url: string
+          user_agent: string | null
+        }
+        Insert: {
+          campaign_id: string
+          clicked_at?: string
+          id?: string
+          ip_address?: string | null
+          recipient_id?: string | null
+          url: string
+          user_agent?: string | null
+        }
+        Update: {
+          campaign_id?: string
+          clicked_at?: string
+          id?: string
+          ip_address?: string | null
+          recipient_id?: string | null
+          url?: string
+          user_agent?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "email_campaign_clicks_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "email_campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "email_campaign_clicks_recipient_id_fkey"
+            columns: ["recipient_id"]
+            isOneToOne: false
+            referencedRelation: "email_campaign_recipients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       email_campaign_recipients: {
         Row: {
           campaign_id: string
@@ -2461,6 +2506,7 @@ export type Database = {
       }
       email_campaigns: {
         Row: {
+          click_count: number
           completed_at: string | null
           created_at: string
           created_by: string | null
@@ -2483,10 +2529,13 @@ export type Database = {
           subject: string
           template_id: string | null
           total_recipients: number
+          unsubscribe_count: number
           updated_at: string
           user_paused: boolean
+          utm_enabled: boolean
         }
         Insert: {
+          click_count?: number
           completed_at?: string | null
           created_at?: string
           created_by?: string | null
@@ -2509,10 +2558,13 @@ export type Database = {
           subject: string
           template_id?: string | null
           total_recipients?: number
+          unsubscribe_count?: number
           updated_at?: string
           user_paused?: boolean
+          utm_enabled?: boolean
         }
         Update: {
+          click_count?: number
           completed_at?: string | null
           created_at?: string
           created_by?: string | null
@@ -2535,8 +2587,10 @@ export type Database = {
           subject?: string
           template_id?: string | null
           total_recipients?: number
+          unsubscribe_count?: number
           updated_at?: string
           user_paused?: boolean
+          utm_enabled?: boolean
         }
         Relationships: [
           {
@@ -2551,6 +2605,47 @@ export type Database = {
             columns: ["template_id"]
             isOneToOne: false
             referencedRelation: "email_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      email_suppressions: {
+        Row: {
+          created_at: string
+          email: string
+          id: string
+          ip_address: string | null
+          reason: string
+          scope: string
+          source_campaign_id: string | null
+          user_agent: string | null
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          id?: string
+          ip_address?: string | null
+          reason?: string
+          scope?: string
+          source_campaign_id?: string | null
+          user_agent?: string | null
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          id?: string
+          ip_address?: string | null
+          reason?: string
+          scope?: string
+          source_campaign_id?: string | null
+          user_agent?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "email_suppressions_source_campaign_id_fkey"
+            columns: ["source_campaign_id"]
+            isOneToOne: false
+            referencedRelation: "email_campaigns"
             referencedColumns: ["id"]
           },
         ]
@@ -9322,6 +9417,10 @@ export type Database = {
         Returns: undefined
       }
       increment_promo_usage: { Args: { p_code: string }; Returns: undefined }
+      is_email_suppressed: {
+        Args: { p_email: string; p_scope: string }
+        Returns: boolean
+      }
       is_webinar_org_member: { Args: { _webinar_id: string }; Returns: boolean }
       is_webinar_participant: {
         Args: { _user_id: string; _webinar_id: string }

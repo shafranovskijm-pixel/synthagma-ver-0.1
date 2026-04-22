@@ -2,6 +2,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { sendSmtpEmail, type SmtpConfig, type Attachment } from "../_shared/smtp-sender.ts";
 import { buildIcs } from "../_shared/ics.ts";
+import { processCampaignHtml } from "../_shared/email-html-utils.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -38,6 +39,27 @@ serve(async (req: Request) => {
       .from("email_campaign_recipients").select("*").eq("id", recipientId).single();
     if (rErr || !recipient) throw new Error("Получатель не найден");
 
+    // ============ Suppression check ============
+    const scopeKey = campaign.scope === "platform" ? "platform" : (campaign.organization_id || "platform");
+    const { data: isSupp } = await admin.rpc("is_email_suppressed", {
+      p_email: recipient.email,
+      p_scope: scopeKey,
+    });
+    if (isSupp === true) {
+      await admin.from("email_campaign_recipients").update({
+        status: "failed",
+        error: "Адрес в списке отписавшихся",
+      }).eq("id", recipientId);
+      const { data: c2 } = await admin.from("email_campaigns")
+        .select("failed_count").eq("id", campaignId).single();
+      await admin.from("email_campaigns").update({
+        failed_count: (c2?.failed_count || 0) + 1,
+      }).eq("id", campaignId);
+      return new Response(JSON.stringify({ success: false, suppressed: true }), {
+        status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     // Получаем SMTP-конфигурацию
     let smtp: SmtpConfig;
     if (campaign.scope === "platform") {
@@ -70,12 +92,6 @@ serve(async (req: Request) => {
       };
     }
 
-    // Подставляем трекинг-пиксель в HTML
-    const trackUrl = `${SUPABASE_URL}/functions/v1/track-email-open?t=${recipient.open_token}`;
-    const htmlWithPixel = campaign.html_body
-      + `<img src="${trackUrl}" width="1" height="1" alt="" style="display:none" />`;
-
-    // Подставляем переменные (включая meeting-данные из recipient_filter.meeting)
     const meeting = (campaign.recipient_filter as any)?.meeting || null;
     const dateLabel = meeting?.scheduled_at
       ? new Intl.DateTimeFormat("ru-RU", { day: "numeric", month: "long", year: "numeric" }).format(new Date(meeting.scheduled_at))
@@ -83,7 +99,11 @@ serve(async (req: Request) => {
     const timeLabel = meeting?.scheduled_at
       ? new Intl.DateTimeFormat("ru-RU", { hour: "2-digit", minute: "2-digit", hour12: false }).format(new Date(meeting.scheduled_at))
       : "";
-    const personalizedHtml = htmlWithPixel
+
+    const unsubscribeUrl = `${SUPABASE_URL}/functions/v1/email-unsubscribe?t=${recipient.open_token}`;
+    const trackUrl = `${SUPABASE_URL}/functions/v1/track-email-open?t=${recipient.open_token}`;
+
+    let personalizedHtml = (campaign.html_body as string)
       .replace(/\{\{name\}\}/g, recipient.recipient_name || "")
       .replace(/\{\{recipient_name\}\}/g, recipient.recipient_name || "")
       .replace(/\{\{email\}\}/g, recipient.email)
@@ -91,7 +111,21 @@ serve(async (req: Request) => {
       .replace(/\{\{webinar_url\}\}/g, meeting?.url || "")
       .replace(/\{\{date\}\}/g, dateLabel)
       .replace(/\{\{time\}\}/g, timeLabel)
-      .replace(/\{\{host_name\}\}/g, meeting?.host_name || campaign.from_name || "");
+      .replace(/\{\{host_name\}\}/g, meeting?.host_name || campaign.from_name || "")
+      .replace(/\{\{unsubscribe_url\}\}/g, unsubscribeUrl);
+
+    personalizedHtml = processCampaignHtml(personalizedHtml, {
+      campaignId: campaign.id,
+      campaignName: campaign.name,
+      recipientToken: recipient.open_token,
+      supabaseUrl: SUPABASE_URL,
+      utmEnabled: campaign.utm_enabled !== false,
+      trackClicks: true,
+      unsubscribeUrl,
+      fromEmail: smtp.from_email,
+    });
+
+    personalizedHtml += `<img src="${trackUrl}" width="1" height="1" alt="" style="display:none" />`;
 
     // iCal-приглашение, если включено и есть meeting с датой
     const attachments: Attachment[] = [];
@@ -125,6 +159,11 @@ serve(async (req: Request) => {
       fromOverride,
       replyTo: campaign.reply_to || undefined,
       attachments: attachments.length ? attachments : undefined,
+      extraHeaders: {
+        "List-Unsubscribe": `<${unsubscribeUrl}>, <mailto:${smtp.from_email}?subject=unsubscribe>`,
+        "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
+        "Precedence": "bulk",
+      },
     });
 
     // Помечаем как отправленное
