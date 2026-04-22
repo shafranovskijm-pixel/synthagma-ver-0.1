@@ -208,7 +208,8 @@ serve(async (req) => {
       token,
       expires_at: expiresAt,
       invited_by: inviter.id,
-      recipient_name: recipient_name || null,
+      invited_by_name: inviterName,
+      full_name: recipient_name || null,
     } as any);
 
     if (insertError) {

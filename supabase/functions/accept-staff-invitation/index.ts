@@ -86,7 +86,7 @@ serve(async (req) => {
       .select("full_name, email")
       .eq("user_id", user.id)
       .maybeSingle();
-    const fullName = profile?.full_name || inv.recipient_name || userEmail;
+    const fullName = profile?.full_name || inv.full_name || userEmail;
 
     // В зависимости от типа приглашения создаём запись
     let redirectPath = "/";
@@ -156,7 +156,11 @@ serve(async (req) => {
     // Помечаем приглашение принятым
     await admin
       .from("staff_invitations")
-      .update({ accepted_at: new Date().toISOString(), accepted_by: user.id })
+      .update({
+        accepted_at: new Date().toISOString(),
+        accepted_user_id: user.id,
+        status: 'accepted',
+      })
       .eq("id", inv.id);
 
     return new Response(JSON.stringify({ success: true, redirect: redirectPath }), {
