@@ -135,30 +135,25 @@ export function SignaturesJournal({ organizationId }: Props) {
     load(next);
   };
 
-  const filtered = useMemo(() => {
-    return rows.filter((r) => {
-      if (statusFilter !== "all" && r.status !== statusFilter) return false;
-      if (typeFilter !== "all" && r.document_type !== typeFilter) return false;
-      if (dateFrom && new Date(r.created_at) < new Date(dateFrom)) return false;
-      if (dateTo && new Date(r.created_at) > new Date(dateTo + "T23:59:59")) return false;
-      if (search) {
-        const s = search.toLowerCase();
-        if (!r.document_title.toLowerCase().includes(s) &&
-            !r.recipient_name.toLowerCase().includes(s) &&
-            !r.recipient_email.toLowerCase().includes(s)) return false;
-      }
-      return true;
-    });
-  }, [rows, statusFilter, typeFilter, dateFrom, dateTo, search]);
+  // Серверная фильтрация — отображаем все полученные строки
+  const filtered = rows;
 
+  // Счётчики статусов считаются по уже отфильтрованной выборке.
+  // Когда фильтр активен — показываем totalCount для активного таба, остальные — 0.
   const counts = useMemo(() => {
-    const c: Record<string, number> = { all: rows.length, sent: 0, signed: 0, viewed: 0, rejected: 0, expired: 0, in_review: 0, changes_requested: 0, external_upload: 0 };
-    rows.forEach((r) => {
-      c[r.status] = (c[r.status] || 0) + 1;
-      if (r.document_type === "external_upload") c.external_upload++;
-    });
+    const c: Record<string, number> = { all: 0, sent: 0, signed: 0, viewed: 0, rejected: 0, expired: 0, in_review: 0, changes_requested: 0, external_upload: 0 };
+    if (statusFilter === "all") {
+      c.all = totalCount;
+      rows.forEach((r) => {
+        c[r.status] = (c[r.status] || 0) + 1;
+        if (r.document_type === "external_upload") c.external_upload++;
+      });
+    } else {
+      c.all = totalCount;
+      c[statusFilter] = totalCount;
+    }
     return c;
-  }, [rows]);
+  }, [rows, totalCount, statusFilter]);
 
   const copyLink = (token: string) => {
     const link = `${window.location.origin}/sign/${token}`;
