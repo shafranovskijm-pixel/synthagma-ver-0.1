@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import { useOrgDashboard } from "@/contexts/OrgDashboardContext";
 import { SUBSCRIPTION_PLANS, type SubscriptionPlan, formatStorageSize } from "@/constants/subscriptionPlans";
 import { ORG_FEATURE_CATALOG } from "@/constants/orgFeatureCatalog";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -11,7 +12,7 @@ import { Textarea } from "@/components/ui/textarea";
 import {
   Crown, BookOpen, Users, HardDrive, Sparkles, Check, X,
   ArrowRight, Calendar, AlertTriangle,
-  ExternalLink, CreditCard
+  ExternalLink, CreditCard, Wallet
 } from "lucide-react";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
@@ -33,9 +34,30 @@ const FEATURE_HIGHLIGHTS = ORG_FEATURE_CATALOG.map((f) => ({
 
 export function SubscriptionTab() {
   const s = useSubscriptionTab();
+  const d = useOrgDashboard();
 
   return (
     <div className="space-y-6">
+      {/* Быстрая ссылка на Финансовые операции (раньше жила в боковом меню) */}
+      <Card className="border-primary/20 bg-primary/5">
+        <CardContent className="p-4 flex items-center justify-between gap-3 flex-wrap">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-primary/15 text-primary flex items-center justify-center">
+              <Wallet className="w-5 h-5" />
+            </div>
+            <div>
+              <p className="font-semibold text-sm">Финансовые операции</p>
+              <p className="text-xs text-muted-foreground">Платежи, транзакции и история операций по подписке</p>
+            </div>
+          </div>
+          <Button variant="outline" size="sm" className="rounded-xl gap-2"
+            onClick={() => d.tabNavigation.setActiveTab("payments" as any)}>
+            Открыть
+            <ArrowRight className="w-4 h-4" />
+          </Button>
+        </CardContent>
+      </Card>
+
       <Accordion type="single" collapsible defaultValue="tariff" className="w-full">
         <AccordionItem value="tariff" className="border rounded-lg">
           <AccordionTrigger className="px-6 py-4 hover:no-underline">

@@ -7012,6 +7012,7 @@ export type Database = {
           is_active: boolean
           kinescope_live_id: string | null
           label: string
+          organization_id: string | null
           token: string
         }
         Insert: {
@@ -7022,6 +7023,7 @@ export type Database = {
           is_active?: boolean
           kinescope_live_id?: string | null
           label?: string
+          organization_id?: string | null
           token: string
         }
         Update: {
@@ -7032,9 +7034,18 @@ export type Database = {
           is_active?: boolean
           kinescope_live_id?: string | null
           label?: string
+          organization_id?: string | null
           token?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "sales_demo_links_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       sales_demo_sessions: {
         Row: {

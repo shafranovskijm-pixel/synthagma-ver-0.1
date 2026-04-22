@@ -44,7 +44,7 @@ export type Permission =
   // Продажи (CRM-модуль)
   | 'sales.read' | 'sales.write';
 
-export type OrgStaffRole = 'owner' | 'admin' | 'school_editor' | 'course_editor' | 'teacher';
+export type OrgStaffRole = 'owner' | 'admin' | 'school_editor' | 'course_editor' | 'teacher' | 'sales_manager';
 export type AdminStaffRole = 'super_admin' | 'admin' | 'sales_manager' | 'viewer';
 
 // ===== Org-staff matrix =====
@@ -105,12 +105,22 @@ const ORG_TEACHER: Permission[] = [
   'documents.read', 'journals.read',
 ];
 
+const ORG_SALES_MANAGER: Permission[] = [
+  'sales.read', 'sales.write',
+  'companies.read', 'companies.write',
+  'services.read',
+  'documents.read',
+  'chats.read', 'chats.write',
+  'students.read',
+];
+
 export const ORG_ROLE_PERMISSIONS: Record<OrgStaffRole, Permission[]> = {
   owner: ORG_OWNER,
   admin: ORG_ADMIN,
   school_editor: ORG_SCHOOL_EDITOR,
   course_editor: ORG_COURSE_EDITOR,
   teacher: ORG_TEACHER,
+  sales_manager: ORG_SALES_MANAGER,
 };
 
 // ===== Admin-staff matrix (платформа) =====

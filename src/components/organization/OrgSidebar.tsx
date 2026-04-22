@@ -185,10 +185,9 @@ export function OrgSidebar() {
   if (menuSettings.showLinks) rawItems.push({ id: "links", icon: Link, label: "Ссылки", category: "links" });
   
   if (menuSettings.showLaborSafety !== false) rawItems.push({ id: "labor-safety", icon: HardHat, label: "Охрана труда", category: "labor_safety" });
-  rawItems.push({ id: "payments", icon: Wallet, label: "Финансы" });
-  if (menuSettings.showSales === true) {
-    rawItems.push({ id: "sales", icon: Briefcase, label: "Продажи" });
-  }
+  // «Финансы» убраны из сайдбара — открываются изнутри раздела «Тариф».
+  // «Продажи» теперь всегда видны (видимость регулируется правами сотрудника `sales.read`).
+  rawItems.push({ id: "sales", icon: Briefcase, label: "Продажи" });
 
   rawItems.push({ id: "homework-review", icon: BookCheck, label: "Задания" });
 
