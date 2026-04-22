@@ -193,7 +193,12 @@ export const DocumentsTab = React.memo(function DocumentsTab({ organizationId, o
           </div>
 
           <div className="p-4 lg:p-6">
-            {h.activeTab === "kpi" && <DocumentsKpiDashboard organizationId={organizationId} />}
+            {h.activeTab === "kpi" && (
+              <DocumentsKpiDashboard
+                organizationId={organizationId}
+                onNavigate={(tab, prefilter) => h.setActiveTab(tab as DocumentSubTab, prefilter)}
+              />
+            )}
             {h.activeTab === "constructor" && (
               <ConstructorSection
                 organizationId={organizationId}
