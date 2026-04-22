@@ -59,10 +59,16 @@ export function ConstructorSection({
               <h4 className="font-semibold text-sm mb-1">Конструктор шаблона договора</h4>
               <p className="text-xs text-muted-foreground max-w-sm">Полноэкранный редактор с подсветкой переменных, панелью вставки и предпросмотром</p>
             </div>
-            <Button className="rounded-xl gap-2" onClick={onOpenContractEditor}>
-              <ExternalLink className="w-4 h-4" />
-              Открыть конструктор
-            </Button>
+            <div className="flex flex-wrap gap-2 justify-center">
+              <Button className="rounded-xl gap-2" onClick={onOpenContractEditor}>
+                <ExternalLink className="w-4 h-4" />
+                Открыть конструктор
+              </Button>
+              <Button variant="outline" className="rounded-xl gap-2" onClick={() => setShowBulkGen(true)}>
+                <FileStack className="w-4 h-4" />
+                Массовая генерация
+              </Button>
+            </div>
           </div>
         </TabsContent>
 
