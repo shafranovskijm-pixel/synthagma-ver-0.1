@@ -519,7 +519,7 @@ export function OrgSidebar() {
           ))}
         </div>
 
-        {/* Footer: Help, What's new, Logout (collapse moved to header) */}
+        {/* Footer: Help, What's new, Collapse toggle, Aa labels, Logout */}
         <div className={cn("py-3 border-t border-border/40", effectiveExpanded ? "px-2 flex flex-col gap-1" : "flex flex-col items-center gap-1.5")}>
           <Tooltip>
             <TooltipTrigger asChild>
