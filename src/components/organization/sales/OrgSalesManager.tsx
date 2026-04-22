@@ -207,6 +207,7 @@ export function OrgSalesManager() {
           )}
           {section === 'contracts' && <OrgContractsManager organizationId={organizationId} />}
           {section === 'smtp' && <OrgSmtpSettings organizationId={organizationId} />}
+          {section === 'demo-links' && <OrgDemoLinksManager organizationId={organizationId} />}
         </div>
       </div>
 
