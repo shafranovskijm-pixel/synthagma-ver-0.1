@@ -318,6 +318,13 @@ export function OrgProposalsManager({ organizationId, onGoToSmtp }: Props) {
           }}
         />
       )}
+
+      <ProposalPresetPicker
+        open={pickerOpen}
+        organizationId={organizationId}
+        onClose={() => setPickerOpen(false)}
+        onPick={handlePresetPick}
+      />
     </div>
   );
 }
