@@ -91,7 +91,7 @@ export function SalesOverview({ onJump, organizationId, availableSections }: Pro
         ),
         applyOrg(
           supabase.from('sales_lead_activities')
-            .select('id, type, created_at')
+            .select('id, activity_type, created_at')
             .gte('created_at', weekAgo)
             .limit(500)
         ),
@@ -174,9 +174,9 @@ export function SalesOverview({ onJump, organizationId, availableSections }: Pro
 
       // Week activity
       const weekActivity = {
-        calls: activities.filter((a: any) => a.type === 'call').length,
-        emails: activities.filter((a: any) => a.type === 'email').length,
-        meetings: activities.filter((a: any) => a.type === 'meeting').length,
+        calls: activities.filter((a: any) => a.activity_type === 'call').length,
+        emails: activities.filter((a: any) => a.activity_type === 'email').length,
+        meetings: activities.filter((a: any) => a.activity_type === 'meeting').length,
       };
 
       // Leaderboard
