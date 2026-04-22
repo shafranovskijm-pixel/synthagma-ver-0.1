@@ -186,9 +186,9 @@ export function SalesTasks({ organizationId, prefillCompany, onPrefillConsumed }
   );
 }
 
-function NewTaskForm({ managers, leads, onSubmit }:
-  { managers: any[]; leads: any[]; onSubmit: (i: any) => Promise<void> }) {
-  const [title, setTitle] = useState('');
+function NewTaskForm({ managers, leads, onSubmit, initialTitle = '' }:
+  { managers: any[]; leads: any[]; onSubmit: (i: any) => Promise<void>; initialTitle?: string }) {
+  const [title, setTitle] = useState(initialTitle);
   const [description, setDescription] = useState('');
   const [type, setType] = useState<'call' | 'email' | 'meeting' | 'followup' | 'other'>('call');
   const [dueDate, setDueDate] = useState(format(new Date(Date.now() + 24 * 3600 * 1000), "yyyy-MM-dd'T'HH:mm"));
