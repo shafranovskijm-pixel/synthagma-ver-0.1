@@ -235,6 +235,7 @@ export function CommercialProposals({ prefillCompany, onPrefillConsumed }: Comme
           onClose={handleCloseEditor}
           editProposal={editingProposal}
           editServices={editingServices}
+          prefillCompany={prefillForEditor}
         />
       )}
 

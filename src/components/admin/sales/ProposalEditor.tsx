@@ -17,6 +17,7 @@ interface Props {
   onClose: () => void;
   editProposal?: CommercialProposal | null;
   editServices?: ProposalServiceItem[];
+  prefillCompany?: { name: string; inn?: string | null } | null;
 }
 
 interface ServiceLine {
@@ -27,12 +28,12 @@ interface ServiceLine {
   service_id?: string;
 }
 
-export function ProposalEditor({ onClose, editProposal, editServices }: Props) {
+export function ProposalEditor({ onClose, editProposal, editServices, prefillCompany }: Props) {
   const { services, fetchServices, managers, fetchManagers, createProposal, updateProposal } = useSalesManager();
   const isEditing = !!editProposal;
 
-  const [companyName, setCompanyName] = useState(editProposal?.company_name || '');
-  const [companyInn, setCompanyInn] = useState(editProposal?.company_inn || '');
+  const [companyName, setCompanyName] = useState(editProposal?.company_name || prefillCompany?.name || '');
+  const [companyInn, setCompanyInn] = useState(editProposal?.company_inn || prefillCompany?.inn || '');
   const [companyEmail, setCompanyEmail] = useState(editProposal?.company_email || '');
   const [companyPhone, setCompanyPhone] = useState(editProposal?.company_phone || '');
   const [contactPerson, setContactPerson] = useState(editProposal?.contact_person || '');
