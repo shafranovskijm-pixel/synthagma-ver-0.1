@@ -155,14 +155,7 @@ export function BulkDocumentGenerator({ organizationId, isOpen, onClose }: BulkD
         setSelectedTemplateId(tpls.find(t => t.is_default)?.id || tpls[0].id);
       }
 
-      // Догружаем банковские реквизиты из ContractGenerator-style таблицы (если есть)
-      const baseOrg = (orgRes.data || {}) as any;
-      const { data: req } = await supabase
-        .from("organization_requisites" as any)
-        .select("*")
-        .eq("organization_id", organizationId)
-        .maybeSingle();
-      setOrgRequisites({ ...baseOrg, ...(req || {}) });
+      setOrgRequisites((orgRes.data || {}) as OrgRequisites);
 
       setCompanies((compRes.data || []) as Company[]);
       setStudents((studRes.data || []) as Student[]);
