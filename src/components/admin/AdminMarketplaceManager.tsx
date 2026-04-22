@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import {
-  Plus, Sparkles, BookOpen, Upload, ShoppingCart, Library, Settings, History
+  Plus, Sparkles, BookOpen, Upload, ShoppingCart, Library, Settings, History, Download
 } from "lucide-react";
 import { BulkCourseImporter } from "./BulkCourseImporter";
 import { BulkContentGenerator } from "./BulkContentGenerator";
@@ -11,6 +11,7 @@ import { KnowledgeBankTab } from "./KnowledgeBankTab";
 import { MarketplaceSettingsTab, type ValidationRules, type AiPrompts } from "./MarketplaceSettingsTab";
 import { ProgramsTab } from "./ProgramsTab";
 import { MarketplaceOrdersList } from "./MarketplaceOrdersList";
+import { IpoImportTab } from "./marketplace/IpoImportTab";
 import { supabase } from "@/integrations/supabase/client";
 import { Package } from "lucide-react";
 
@@ -103,6 +104,7 @@ export function AdminMarketplaceManager() {
     { value: "create", icon: Plus, label: "Создать курс" },
     { value: "generator", icon: Sparkles, label: "Генератор" },
     { value: "import", icon: Upload, label: "Импорт" },
+    { value: "ipo-import", icon: Download, label: "Импорт ИПО" },
     { value: "knowledge", icon: Library, label: "Банк знаний" },
     { value: "orders", icon: ShoppingCart, label: "Заявки" },
     { value: "history", icon: History, label: "История" },
@@ -165,6 +167,10 @@ export function AdminMarketplaceManager() {
         <TabsContent value="import" className="space-y-6">
           <ProgramListImporter onComplete={() => { h.fetchData(); h.setActiveTab("catalog"); }} />
           <BulkCourseImporter onComplete={() => { h.fetchData(); h.setActiveTab("catalog"); }} />
+        </TabsContent>
+
+        <TabsContent value="ipo-import" className="space-y-6">
+          <IpoImportTab />
         </TabsContent>
 
         <TabsContent value="programs" className="space-y-6"><ProgramsTab /></TabsContent>
