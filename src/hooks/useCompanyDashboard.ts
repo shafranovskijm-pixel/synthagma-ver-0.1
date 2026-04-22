@@ -10,6 +10,7 @@ interface CompanyData {
   email: string | null;
   director: string | null;
   organization_id: string;
+  user_id: string | null;
 }
 
 interface EmployeeWithProgress {
