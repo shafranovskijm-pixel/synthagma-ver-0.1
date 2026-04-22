@@ -181,6 +181,7 @@ export type Database = {
         Row: {
           created_at: string
           email: string
+          expires_at: string | null
           full_name: string
           id: string
           role: string
@@ -190,6 +191,7 @@ export type Database = {
         Insert: {
           created_at?: string
           email?: string
+          expires_at?: string | null
           full_name?: string
           id?: string
           role?: string
@@ -199,6 +201,7 @@ export type Database = {
         Update: {
           created_at?: string
           email?: string
+          expires_at?: string | null
           full_name?: string
           id?: string
           role?: string
@@ -4703,7 +4706,9 @@ export type Database = {
         Row: {
           bio: string | null
           created_at: string
+          custom_role_id: string | null
           display_name: string
+          expires_at: string | null
           id: string
           organization_id: string
           role: string
@@ -4715,7 +4720,9 @@ export type Database = {
         Insert: {
           bio?: string | null
           created_at?: string
+          custom_role_id?: string | null
           display_name?: string
+          expires_at?: string | null
           id?: string
           organization_id: string
           role?: string
@@ -4727,7 +4734,9 @@ export type Database = {
         Update: {
           bio?: string | null
           created_at?: string
+          custom_role_id?: string | null
           display_name?: string
+          expires_at?: string | null
           id?: string
           organization_id?: string
           role?: string
@@ -4737,6 +4746,13 @@ export type Database = {
           visibility?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "org_staff_custom_role_id_fkey"
+            columns: ["custom_role_id"]
+            isOneToOne: false
+            referencedRelation: "org_custom_roles"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "org_staff_organization_id_fkey"
             columns: ["organization_id"]
@@ -9024,6 +9040,13 @@ export type Database = {
       }
       encrypt_password: { Args: { p_text: string }; Returns: string }
       expire_staff_invitations: { Args: never; Returns: number }
+      expire_temporary_staff_roles: {
+        Args: never
+        Returns: {
+          count: number
+          scope: string
+        }[]
+      }
       find_knowledge_bank_content: {
         Args: { p_min_similarity?: number; p_title: string }
         Returns: {

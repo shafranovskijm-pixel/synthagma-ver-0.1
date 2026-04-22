@@ -14,6 +14,7 @@ import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 import { StaffInvitationDialog, type StaffInvitationRole } from "@/components/staff/StaffInvitationDialog";
 import { RoleAuditLog } from "@/components/staff/RoleAuditLog";
 import { OrgPermissionMatrix } from "@/components/staff/PermissionMatrix";
+import { OrgCustomRolesManager } from "@/components/staff/OrgCustomRolesManager";
 
 interface StaffMember {
   id: string;
@@ -220,6 +221,9 @@ export function StaffManager({ organizationId }: StaffManagerProps) {
           </div>
           <OrgPermissionMatrix />
         </div>
+
+        {/* Custom roles */}
+        <OrgCustomRolesManager organizationId={organizationId} />
 
         {/* Audit log */}
         <RoleAuditLog scope="organization" organizationId={organizationId} limit={30} />
