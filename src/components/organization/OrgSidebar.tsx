@@ -4,7 +4,7 @@ import {
   BookOpen, Users, Settings, LogOut, Upload,
   Building2, HardHat, HardDrive, CreditCard, Lock, MessageCircle, Wallet,
   BarChart3, Link, ShoppingBag, FileText, ClipboardList, FileSpreadsheet, BookCheck, Radio, Sparkles, Briefcase,
-  HelpCircle, Star
+  HelpCircle, Star, ChevronsLeft, ChevronsRight
 } from "lucide-react";
 import { SigmaLogo } from "@/components/ui/SigmaLogo";
 import { useOrgDashboard } from "@/contexts/OrgDashboardContext";
@@ -119,6 +119,7 @@ const SECTION_LABELS: Record<SectionId, string> = {
 };
 
 const SHOW_LABELS_KEY = "org-sidebar-show-labels";
+const EXPANDED_KEY = "org-sidebar-expanded";
 
 export function OrgSidebar() {
   const d = useOrgDashboard();
@@ -150,6 +151,16 @@ export function OrgSidebar() {
   useEffect(() => {
     try { localStorage.setItem(SHOW_LABELS_KEY, showLabels ? "1" : "0"); } catch {}
   }, [showLabels]);
+
+  // Expanded mode (icon+text full panel)
+  const [expanded, setExpanded] = useState<boolean>(() => {
+    try { return localStorage.getItem(EXPANDED_KEY) === "1"; } catch { return false; }
+  });
+  useEffect(() => {
+    try { localStorage.setItem(EXPANDED_KEY, expanded ? "1" : "0"); } catch {}
+    // Notify layout to adjust main content margin
+    window.dispatchEvent(new CustomEvent("org-sidebar-expanded-change", { detail: expanded }));
+  }, [expanded]);
 
   // Theme-aware accent
   const [themeAccent, setThemeAccent] = useState<string | null>(() => {
