@@ -9,7 +9,7 @@ import { SUBSCRIPTION_PLANS } from "@/constants/subscriptionPlans";
 import { type OrgRequisites } from "@/hooks/useCompanyLinksAndGenerators";
 import { toast } from "sonner";
 
-export type DocumentSubTab = "constructor" | "programs" | "org" | "orders" | "protocols" | "certificates" | "diplomas" | "testimonials" | "journals" | "frdo" | "counterparties" | "signatures";
+export type DocumentSubTab = "constructor" | "programs" | "org" | "orders" | "protocols" | "certificates" | "diplomas" | "testimonials" | "journals" | "frdo" | "counterparties" | "signatures" | "pd_requests";
 export type CounterpartySubTab = "contracts" | "invoices" | "closing";
 export type CounterpartyType = "platform" | "company" | "payer";
 
