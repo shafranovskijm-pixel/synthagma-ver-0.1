@@ -6,12 +6,14 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { supabase } from "@/integrations/supabase/client";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
+import { openPrivateFile } from "@/utils/storageHelpers";
 
 interface CompanyDoc {
   id: string;
   name: string;
   type: string;
   file_url: string | null;
+  file_path: string | null;
   amount: number | null;
   is_paid: boolean | null;
   uploaded_at: string;
@@ -31,7 +33,7 @@ export function CompanyDocumentsTab({ companyId }: Props) {
     setLoading(true);
     const { data } = await supabase
       .from("company_documents")
-      .select("id, name, type, file_url, amount, is_paid, uploaded_at, contract_number, contract_date")
+      .select("id, name, type, file_url, file_path, amount, is_paid, uploaded_at, contract_number, contract_date")
       .eq("company_id", companyId)
       .order("uploaded_at", { ascending: false });
     setDocuments(data || []);
@@ -81,13 +83,21 @@ export function CompanyDocumentsTab({ companyId }: Props) {
                   </TableCell>
                 )}
                 <TableCell>
-                  {doc.file_url && (
+                  {doc.file_path ? (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => openPrivateFile("billing-documents", doc.file_path!)}
+                    >
+                      <Download className="w-4 h-4" />
+                    </Button>
+                  ) : doc.file_url ? (
                     <Button variant="ghost" size="icon" asChild>
                       <a href={doc.file_url} target="_blank" rel="noopener noreferrer">
                         <Download className="w-4 h-4" />
                       </a>
                     </Button>
-                  )}
+                  ) : null}
                 </TableCell>
               </TableRow>
             ))}
