@@ -36,6 +36,9 @@ interface Webinar {
   cover_url: string | null;
   course_id: string | null;
   created_at: string;
+  public_token: string | null;
+  allow_guests: boolean;
+  guest_password: string | null;
 }
 
 interface Props {
