@@ -481,7 +481,7 @@ export function OrgSidebar() {
         </div>
 
         {/* Navigation grouped by section */}
-        <div className={cn("flex-1 flex flex-col overflow-y-auto scrollbar-hide py-2", effectiveExpanded ? "px-2 gap-2" : "items-center gap-2 px-2")}>
+        <div className={cn("flex-1 flex flex-col overflow-y-auto scrollbar-hide py-2 justify-center", effectiveExpanded ? "px-2 gap-2" : "items-center gap-2 px-2")}>
 
           {/* Pinned items (favorites) */}
           {pinnedItems.length > 0 && (
