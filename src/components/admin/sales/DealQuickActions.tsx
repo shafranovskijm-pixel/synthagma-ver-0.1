@@ -1,6 +1,6 @@
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { FileText, ScrollText, Receipt, Phone, StickyNote, ListTodo, Mail, Copy, Globe } from 'lucide-react';
+import { FileText, ScrollText, Receipt, Phone, StickyNote, ListTodo, Mail, Copy, Globe, FileSignature } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface ContactInfo {
@@ -19,12 +19,13 @@ interface DealQuickActionsProps {
   onAddCall?: () => void;
   onAddNote?: () => void;
   onAddTask?: () => void;
+  onSendForSigning?: () => void;
 }
 
 export function DealQuickActions({
   companyName, inn, contact,
   onCreateProposal, onCreateContract, onCreateInvoice,
-  onAddCall, onAddNote, onAddTask,
+  onAddCall, onAddNote, onAddTask, onSendForSigning,
 }: DealQuickActionsProps) {
   const copy = async (txt: string, label: string) => {
     await navigator.clipboard.writeText(txt);
@@ -88,6 +89,9 @@ export function DealQuickActions({
             <ActionBtn icon={FileText} label="Создать КП" onClick={onCreateProposal} />
             <ActionBtn icon={ScrollText} label="Создать договор" onClick={onCreateContract} />
             <ActionBtn icon={Receipt} label="Выставить счёт" onClick={onCreateInvoice} />
+            {onSendForSigning && (
+              <ActionBtn icon={FileSignature} label="На ПЭП" onClick={onSendForSigning} />
+            )}
             <ActionBtn icon={Phone} label="Записать звонок" onClick={onAddCall} />
             <ActionBtn icon={StickyNote} label="Заметка" onClick={onAddNote} />
             <ActionBtn icon={ListTodo} label="Задача" onClick={onAddTask} />

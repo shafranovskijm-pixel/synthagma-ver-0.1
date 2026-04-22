@@ -82,6 +82,7 @@ interface Deals360Props {
   onAddCall?: (company: { name: string; inn: string }) => void;
   onAddNote?: (company: { name: string; inn: string }) => void;
   onAddTask?: (company: { name: string; inn: string }) => void;
+  onSendForSigning?: (company: { name: string; inn: string; email?: string | null }) => void;
   /** Изменение значения вызовет refetch истории общения у выбранной компании */
   communicationRefreshKey?: number;
   /** Если задан — карточка автоматически выберется при загрузке/смене значения */
@@ -91,7 +92,7 @@ interface Deals360Props {
 export function Deals360({
   organizationId,
   onCreateProposal, onCreateContract, onCreateInvoice,
-  onAddCall, onAddNote, onAddTask,
+  onAddCall, onAddNote, onAddTask, onSendForSigning,
   communicationRefreshKey,
   initialSelectedInn,
 }: Deals360Props = {}) {
@@ -493,6 +494,7 @@ export function Deals360({
               onAddCall={onAddCall ? () => onAddCall({ name: selected.name, inn: selected.inn }) : undefined}
               onAddNote={onAddNote ? () => onAddNote({ name: selected.name, inn: selected.inn }) : undefined}
               onAddTask={onAddTask ? () => onAddTask({ name: selected.name, inn: selected.inn }) : undefined}
+              onSendForSigning={onSendForSigning ? () => onSendForSigning({ name: selected.name, inn: selected.inn, email: contactsByInn[selected.inn]?.email }) : undefined}
             />
             <DealCommunication
               inn={selected.inn}

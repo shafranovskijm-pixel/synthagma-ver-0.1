@@ -1,7 +1,7 @@
 import { useState, useCallback } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Sparkles, FileText, FileCode, Briefcase, Boxes, Settings, ListTodo, Send, Building2, Target, Mail, Kanban, UserPlus } from 'lucide-react';
+import { Sparkles, FileText, FileCode, Briefcase, Boxes, Settings, ListTodo, Send, Building2, Target, Mail, Kanban, UserPlus, Trophy } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useOrgDashboard } from '@/contexts/OrgDashboardContext';
 import { OrgEmailCampaigns } from './OrgEmailCampaigns';
@@ -17,6 +17,7 @@ import { CompaniesUnified } from '@/components/admin/sales/CompaniesUnified';
 import { LogActivityDialog } from '@/components/admin/sales/LogActivityDialog';
 import { SalesKanban } from '@/components/admin/sales/SalesKanban';
 import { LeadsManager } from '@/components/admin/sales/LeadsManager';
+import { CompetitorComparison } from '@/components/admin/sales/CompetitorComparison';
 import { useOrgSmtp } from '@/hooks/useOrgSmtp';
 
 interface MenuItem { id: string; label: string; icon: any; soon?: boolean }
@@ -28,6 +29,7 @@ const menuGroups: MenuGroup[] = [
     items: [
       { id: 'overview', label: 'Обзор', icon: Target },
       { id: 'tasks', label: 'Задачи', icon: ListTodo },
+      { id: 'comparison', label: 'Сравнение', icon: Trophy },
     ],
   },
   {
@@ -62,7 +64,7 @@ const menuGroups: MenuGroup[] = [
   },
 ];
 
-const AVAILABLE_SECTIONS = ['overview','tasks','kanban','deals','leads','companies','proposals','contracts','services','templates','campaigns','smtp'];
+const AVAILABLE_SECTIONS = ['overview','tasks','comparison','kanban','deals','leads','companies','proposals','contracts','services','templates','campaigns','smtp'];
 
 export function OrgSalesManager() {
   const d = useOrgDashboard();
@@ -177,12 +179,14 @@ export function OrgSalesManager() {
               onAddCall={openActivity('call')}
               onAddNote={openActivity('note')}
               onAddTask={(c) => { setTaskPrefill(c); setSection('tasks'); }}
+              onSendForSigning={() => setSection('contracts')}
               communicationRefreshKey={commRefresh}
               initialSelectedInn={dealSelectedInn}
             />
           )}
           {section === 'leads' && <LeadsManager organizationId={organizationId} />}
           {section === 'companies' && <CompaniesUnified organizationId={organizationId} hideColdBase />}
+          {section === 'comparison' && <CompetitorComparison />}
           {section === 'campaigns' && (
             <OrgEmailCampaigns organizationId={organizationId} onGoToSmtp={() => setSection('smtp')} />
           )}
