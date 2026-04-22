@@ -22,6 +22,8 @@ import {
 import { useAuth } from "@/hooks/useAuth";
 import { AdminCreateWebinarDialog } from "./AdminCreateWebinarDialog";
 import { EmbeddedWebinarPlayer } from "@/components/webinars/EmbeddedWebinarPlayer";
+import { WebinarRecordingUploader } from "@/components/webinars/WebinarRecordingUploader";
+import { Paperclip } from "lucide-react";
 
 interface AdminWebinar {
   id: string;
@@ -71,6 +73,7 @@ export function AdminWebinarsOverview() {
   const [showCreate, setShowCreate] = useState(false);
   const [playerWebinar, setPlayerWebinar] = useState<AdminWebinar | null>(null);
   const [launching, setLaunching] = useState(false);
+  const [recordingTarget, setRecordingTarget] = useState<AdminWebinar | null>(null);
 
   const fetchWebinars = useCallback(async () => {
     setLoading(true);
@@ -428,12 +431,16 @@ export function AdminWebinarsOverview() {
         )}
       </Card>
 
-      {/* Embedded player Sheet */}
+      {/* Embedded player Sheet — wide overlay over admin dashboard */}
       <Sheet open={!!playerWebinar} onOpenChange={(o) => !o && closePlayer()}>
-        <SheetContent side="right" className="w-full sm:max-w-3xl overflow-y-auto">
-          <SheetHeader>
+        <SheetContent
+          side="right"
+          className="w-full sm:max-w-[min(1100px,95vw)] overflow-y-auto"
+          onInteractOutside={(e) => e.preventDefault()}
+        >
+          <SheetHeader className="pr-10">
             <SheetTitle className="flex items-center gap-2">
-              <Radio className="h-4 w-4 text-primary" />
+              <Radio className="h-4 w-4 text-destructive" />
               {playerWebinar?.title}
             </SheetTitle>
             <SheetDescription>
@@ -474,6 +481,9 @@ export function AdminWebinarsOverview() {
                     </span>
                   )}
                 </div>
+                <p className="text-xs text-muted-foreground">
+                  Окно открыто поверх админки — закройте, чтобы вернуться к таблице. Эфир продолжится для остальных участников.
+                </p>
               </>
             )}
           </div>

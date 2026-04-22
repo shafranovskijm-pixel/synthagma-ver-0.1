@@ -9,11 +9,12 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
-import { Plus, Radio, Video, Calendar, Users, Copy, ExternalLink, Square, Trash2, RefreshCw, Pencil, CopyPlus, Link, Search, Clock, Zap, Share2, QrCode, Maximize2 } from "lucide-react";
+import { Plus, Radio, Video, Calendar, Users, Copy, ExternalLink, Square, Trash2, RefreshCw, Pencil, CopyPlus, Link, Search, Clock, Zap, Share2, QrCode, Maximize2, Paperclip } from "lucide-react";
 import { CreateWebinarDialog } from "./CreateWebinarDialog";
 import { WebinarParticipantsDialog } from "./WebinarParticipantsDialog";
 import { ShareWebinarDialog } from "./ShareWebinarDialog";
 import { EmbeddedWebinarPlayer } from "@/components/webinars/EmbeddedWebinarPlayer";
+import { WebinarRecordingUploader } from "@/components/webinars/WebinarRecordingUploader";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
@@ -41,6 +42,7 @@ interface Webinar {
   public_token: string | null;
   allow_guests: boolean;
   guest_password: string | null;
+  recording_url?: string | null;
 }
 
 interface Props {
@@ -61,6 +63,7 @@ export function WebinarsManager({ organizationId }: Props) {
   const [search, setSearch] = useState("");
   const [shareWebinar, setShareWebinar] = useState<Webinar | null>(null);
   const [liveSheetWebinar, setLiveSheetWebinar] = useState<Webinar | null>(null);
+  const [recordingTarget, setRecordingTarget] = useState<Webinar | null>(null);
 
   const fetchWebinars = useCallback(async () => {
     const { data } = await supabase
@@ -385,7 +388,7 @@ export function WebinarsManager({ organizationId }: Props) {
                 </div>
               )}
 
-              {w.kinescope_video_id && (
+              {(w.kinescope_video_id || w.recording_url) && (
                 <div className="flex items-center gap-2 text-xs">
                   <Video className="w-3 h-3 text-primary" />
                   <span className="text-primary font-medium">Запись доступна</span>
@@ -436,6 +439,11 @@ export function WebinarsManager({ organizationId }: Props) {
                 {w.source_type === "livekit" && (
                   <Button size="sm" variant="ghost" onClick={() => setShareWebinar(w)} title="Поделиться (QR-код, настройки гостей)">
                     <Share2 className="w-3 h-3" />
+                  </Button>
+                )}
+                {w.source_type === "livekit" && w.status === "ended" && (
+                  <Button size="sm" variant="ghost" onClick={() => setRecordingTarget(w)} title="Прикрепить запись (MP4)">
+                    <Paperclip className="w-3 h-3" />
                   </Button>
                 )}
                 <Button size="sm" variant="ghost" className="text-destructive" onClick={() => setDeleteTarget(w)}>
@@ -525,7 +533,7 @@ export function WebinarsManager({ organizationId }: Props) {
       >
         <SheetContent
           side="right"
-          className="w-full sm:max-w-4xl overflow-y-auto"
+          className="w-full sm:max-w-[min(1100px,95vw)] overflow-y-auto"
           onInteractOutside={(e) => e.preventDefault()}
         >
           <SheetHeader className="pr-10">
@@ -540,8 +548,12 @@ export function WebinarsManager({ organizationId }: Props) {
                   variant="ghost"
                   size="sm"
                   className="h-7 px-2"
-                  onClick={() => window.open(`/webinar/${liveSheetWebinar.id}/live`, "_blank")}
-                  title="Открыть на отдельной странице"
+                  onClick={() => {
+                    const id = liveSheetWebinar.id;
+                    setLiveSheetWebinar(null);
+                    window.location.href = `/webinar/${id}/live`;
+                  }}
+                  title="Открыть на отдельной странице (в этой же вкладке)"
                 >
                   <Maximize2 className="w-3.5 h-3.5 mr-1" />
                   На весь экран
@@ -562,6 +574,8 @@ export function WebinarsManager({ organizationId }: Props) {
                 publicToken={liveSheetWebinar.public_token}
                 allowGuests={liveSheetWebinar.allow_guests ?? true}
                 guestPassword={liveSheetWebinar.guest_password}
+                status={liveSheetWebinar.status}
+                recordingUrl={liveSheetWebinar.recording_url ?? null}
                 onEnd={async () => {
                   await handleStopLive(liveSheetWebinar);
                   setLiveSheetWebinar(null);
@@ -575,6 +589,17 @@ export function WebinarsManager({ organizationId }: Props) {
           )}
         </SheetContent>
       </Sheet>
+
+      {recordingTarget && (
+        <WebinarRecordingUploader
+          open={!!recordingTarget}
+          onOpenChange={(o) => !o && setRecordingTarget(null)}
+          webinarId={recordingTarget.id}
+          webinarTitle={recordingTarget.title}
+          currentRecordingUrl={recordingTarget.recording_url ?? null}
+          onUploaded={fetchWebinars}
+        />
+      )}
     </div>
   );
 }

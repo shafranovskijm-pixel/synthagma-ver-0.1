@@ -45,6 +45,9 @@ interface Props {
   onEnd?: () => void;
   /** Коллбэк после сохранения настроек доступа в ShareWebinarDialog */
   onShareUpdated?: () => void;
+  /** Если эфир завершён и есть запись — показать нативный плеер вместо LiveKit-комнаты */
+  status?: string | null;
+  recordingUrl?: string | null;
 }
 
 /**
@@ -66,7 +69,23 @@ export function EmbeddedWebinarPlayer({
   guestPassword,
   onEnd,
   onShareUpdated,
+  status,
+  recordingUrl,
 }: Props) {
+  // ============ Recording playback (LiveKit ended + recording attached) ============
+  if (sourceType === "livekit" && status === "ended" && recordingUrl) {
+    return (
+      <div className="aspect-video w-full rounded-lg overflow-hidden bg-black">
+        <video
+          controls
+          src={recordingUrl}
+          className="w-full h-full"
+          preload="metadata"
+        />
+      </div>
+    );
+  }
+
   // ============ Kinescope ============
   if (sourceType === "kinescope") {
     const id = kinescopeLiveId || kinescopeVideoId;

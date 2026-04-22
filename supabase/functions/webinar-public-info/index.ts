@@ -24,7 +24,7 @@ Deno.serve(async (req) => {
     const { data: w, error } = await admin
       .from("webinars")
       .select(
-        "id, title, description, scheduled_at, status, source_type, allow_guests, guest_password, cover_image_url, embed_url, external_url",
+        "id, title, description, scheduled_at, status, source_type, allow_guests, guest_password, cover_url, embed_url, external_url",
       )
       .eq("public_token", token)
       .maybeSingle();
@@ -42,7 +42,7 @@ Deno.serve(async (req) => {
         source_type: w.source_type,
         allow_guests: w.allow_guests,
         requires_password: !!w.guest_password,
-        cover_image_url: w.cover_image_url,
+        cover_image_url: w.cover_url,
         // For external/kinescope webinars, we expose the embed link too
         embed_url: w.source_type === "external" ? w.embed_url || w.external_url : null,
       },
