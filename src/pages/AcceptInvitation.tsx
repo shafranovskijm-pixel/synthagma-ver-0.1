@@ -130,7 +130,7 @@ export default function AcceptInvitation() {
 
         {stage === "success" && (
           <div className="flex flex-col items-center gap-3 py-4 text-center">
-            <CheckCircle2 className="w-12 h-12 text-emerald-500" />
+            <CheckCircle2 className="w-12 h-12 text-primary" />
             <p className="font-medium">Готово! Перенаправляем…</p>
             <Button asChild variant="outline" size="sm">
               <Link to={redirectPath}>Перейти сейчас</Link>
