@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import {
@@ -12,6 +12,7 @@ import {
   Search,
   Eye,
   Download,
+  Link2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -40,6 +41,7 @@ import {
 } from "@/hooks/useIncomingDocuments";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { IncomingDocumentLinkDialog } from "./IncomingDocumentLinkDialog";
 
 interface Props {
   organizationId: string;
