@@ -15,6 +15,7 @@ import { downloadSignatureProtocol, exportSignaturesToCSV } from "@/utils/signat
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { SignatureRevisionUploader } from "@/components/signing/SignatureRevisionUploader";
 import { Upload, PenLine } from "lucide-react";
+import { LoadMoreControls } from "@/components/ui/LoadMoreControls";
 
 interface SignatureRow {
   id: string;
@@ -79,19 +80,31 @@ export function SignaturesJournal({ organizationId }: Props) {
   const [dateTo, setDateTo] = useState<string>("");
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState<SignatureRow | null>(null);
+  const [pageSize, setPageSize] = useState(200);
+  const [totalCount, setTotalCount] = useState(0);
 
-  const load = async () => {
+  const load = async (limit = pageSize) => {
     setLoading(true);
+    // Серверные фильтры (статус, тип, даты) + поиск по ILIKE через .or()
     let q = supabase
       .from("document_signatures")
-      .select("*")
+      .select("*", { count: "exact" })
       .order("created_at", { ascending: false })
-      .limit(1000);
+      .limit(limit);
     if (organizationId) q = q.eq("organization_id", organizationId);
-    const { data, error } = await q;
+    if (statusFilter !== "all") q = q.eq("status", statusFilter);
+    if (typeFilter !== "all") q = q.eq("document_type", typeFilter);
+    if (dateFrom) q = q.gte("created_at", dateFrom);
+    if (dateTo) q = q.lte("created_at", dateTo + "T23:59:59");
+    if (search.trim()) {
+      const s = search.trim().replace(/[,()]/g, " ");
+      q = q.or(`document_title.ilike.%${s}%,recipient_name.ilike.%${s}%,recipient_email.ilike.%${s}%`);
+    }
+    const { data, error, count } = await q;
     if (error) { toast.error("Ошибка загрузки журнала"); setLoading(false); return; }
     const list = (data as any) || [];
     setRows(list);
+    setTotalCount(count || list.length);
 
     // Подгружаем названия организаций (для админки — все, для орг-кабинета — одна)
     const orgIds = Array.from(new Set(list.map((r: any) => r.organization_id))) as string[];
@@ -104,32 +117,44 @@ export function SignaturesJournal({ organizationId }: Props) {
     setLoading(false);
   };
 
-  useEffect(() => { load(); }, [organizationId]);
+  // Перезагрузка при смене организации, фильтров, диапазона дат и debounced-поиска
+  useEffect(() => {
+    setPageSize(200);
+    load(200);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [organizationId, statusFilter, typeFilter, dateFrom, dateTo]);
 
-  const filtered = useMemo(() => {
-    return rows.filter((r) => {
-      if (statusFilter !== "all" && r.status !== statusFilter) return false;
-      if (typeFilter !== "all" && r.document_type !== typeFilter) return false;
-      if (dateFrom && new Date(r.created_at) < new Date(dateFrom)) return false;
-      if (dateTo && new Date(r.created_at) > new Date(dateTo + "T23:59:59")) return false;
-      if (search) {
-        const s = search.toLowerCase();
-        if (!r.document_title.toLowerCase().includes(s) &&
-            !r.recipient_name.toLowerCase().includes(s) &&
-            !r.recipient_email.toLowerCase().includes(s)) return false;
-      }
-      return true;
-    });
-  }, [rows, statusFilter, typeFilter, dateFrom, dateTo, search]);
+  useEffect(() => {
+    const t = setTimeout(() => { setPageSize(200); load(200); }, 350);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [search]);
 
+  const loadMore = (extra: number) => {
+    const next = pageSize + extra;
+    setPageSize(next);
+    load(next);
+  };
+
+  // Серверная фильтрация — отображаем все полученные строки
+  const filtered = rows;
+
+  // Счётчики статусов считаются по уже отфильтрованной выборке.
+  // Когда фильтр активен — показываем totalCount для активного таба, остальные — 0.
   const counts = useMemo(() => {
-    const c: Record<string, number> = { all: rows.length, sent: 0, signed: 0, viewed: 0, rejected: 0, expired: 0, in_review: 0, changes_requested: 0, external_upload: 0 };
-    rows.forEach((r) => {
-      c[r.status] = (c[r.status] || 0) + 1;
-      if (r.document_type === "external_upload") c.external_upload++;
-    });
+    const c: Record<string, number> = { all: 0, sent: 0, signed: 0, viewed: 0, rejected: 0, expired: 0, in_review: 0, changes_requested: 0, external_upload: 0 };
+    if (statusFilter === "all") {
+      c.all = totalCount;
+      rows.forEach((r) => {
+        c[r.status] = (c[r.status] || 0) + 1;
+        if (r.document_type === "external_upload") c.external_upload++;
+      });
+    } else {
+      c.all = totalCount;
+      c[statusFilter] = totalCount;
+    }
     return c;
-  }, [rows]);
+  }, [rows, totalCount, statusFilter]);
 
   const copyLink = (token: string) => {
     const link = `${window.location.origin}/sign/${token}`;
@@ -321,6 +346,14 @@ export function SignaturesJournal({ organizationId }: Props) {
             </TableBody>
           </Table>
         </div>
+      )}
+
+      {filtered.length > 0 && (
+        <LoadMoreControls
+          visibleCount={rows.length}
+          totalCount={totalCount}
+          onLoadMore={loadMore}
+        />
       )}
 
       <Dialog open={!!selected} onOpenChange={(v) => !v && setSelected(null)}>

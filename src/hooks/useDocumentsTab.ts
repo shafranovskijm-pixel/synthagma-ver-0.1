@@ -127,51 +127,51 @@ export function useDocumentsTab(organizationId: string | null, organizationName?
 
   useEffect(() => {
     if (!organizationId) return;
-    supabase
-      .from('organizations')
-      .select('stamp_url, signature_url, inn, director_name, director_position, custom_price, custom_discount, subscription_plan')
-      .eq('id', organizationId)
-      .single()
-      .then(({ data }) => {
-        if (data) {
-          setStampUrl(data.stamp_url);
-          setSignatureUrl(data.signature_url);
+    setCounterpartyLoading(true);
+
+    // Параллельная загрузка всех независимых запросов вкладки документов
+    Promise.all([
+      supabase
+        .from('organizations')
+        .select('stamp_url, signature_url, inn, director_name, director_position, custom_price, custom_discount, subscription_plan')
+        .eq('id', organizationId)
+        .single(),
+      supabase
+        .from("org_billing_documents" as any)
+        .select("*")
+        .eq("organization_id", organizationId)
+        .order("created_at", { ascending: false }),
+      supabase
+        .from("subscription_invoices")
+        .select("*")
+        .eq("organization_id", organizationId)
+        .order("created_at", { ascending: false }),
+      supabase
+        .from("companies")
+        .select("id, name")
+        .eq("organization_id", organizationId),
+    ])
+      .then(async ([orgRes, billingRes, invoicesRes, companiesRes]) => {
+        // 1) Реквизиты
+        if (orgRes.data) {
+          setStampUrl(orgRes.data.stamp_url);
+          setSignatureUrl(orgRes.data.signature_url);
           setOrgDetails({
-            inn: data.inn,
-            director_name: data.director_name,
-            director_position: (data as any).director_position,
-            custom_price: (data as any).custom_price,
-            custom_discount: (data as any).custom_discount,
-            subscription_plan: data.subscription_plan,
+            inn: orgRes.data.inn,
+            director_name: orgRes.data.director_name,
+            director_position: (orgRes.data as any).director_position,
+            custom_price: (orgRes.data as any).custom_price,
+            custom_discount: (orgRes.data as any).custom_discount,
+            subscription_plan: orgRes.data.subscription_plan,
           });
         }
-      });
-
-    supabase
-      .from("org_billing_documents" as any)
-      .select("*")
-      .eq("organization_id", organizationId)
-      .order("created_at", { ascending: false })
-      .then(({ data }) => {
-        if (data) setBillingDocs(data as any[]);
-      });
-
-    supabase
-      .from("subscription_invoices")
-      .select("*")
-      .eq("organization_id", organizationId)
-      .order("created_at", { ascending: false })
-      .then(({ data }) => {
-        if (data) setInvoices(data as InvoiceRow[]);
-      });
-
-    setCounterpartyLoading(true);
-    supabase
-      .from("companies")
-      .select("id, name")
-      .eq("organization_id", organizationId)
-      .then(async ({ data: companies }) => {
-        if (!companies || companies.length === 0) {
+        // 2) Billing-документы
+        if (billingRes.data) setBillingDocs(billingRes.data as any[]);
+        // 3) Счета
+        if (invoicesRes.data) setInvoices(invoicesRes.data as InvoiceRow[]);
+        // 4) Контрагенты + их документы
+        const companies = companiesRes.data || [];
+        if (companies.length === 0) {
           setCounterpartyDocs([]);
           setCounterpartyLoading(false);
           return;
@@ -186,6 +186,10 @@ export function useDocumentsTab(organizationId: string | null, organizationName?
         setCounterpartyDocs(
           (docs || []).map((d: any) => ({ ...d, company_name: companyMap[d.company_id] || "—" }))
         );
+        setCounterpartyLoading(false);
+      })
+      .catch((e) => {
+        console.error("Ошибка загрузки данных вкладки документов:", e);
         setCounterpartyLoading(false);
       });
   }, [organizationId]);
