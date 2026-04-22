@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Eye, FileText, Search, Send, CheckCircle2, XCircle, AlertTriangle, Copy, Download, FileDown, MessageCircle, Edit3, Award } from "lucide-react";
+import { Eye, FileText, Search, Send, CheckCircle2, XCircle, AlertTriangle, Copy, Download, FileDown, MessageCircle, Edit3, Award, Bell, Ban } from "lucide-react";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 import { toast } from "sonner";
 import { format } from "date-fns";
@@ -170,6 +170,38 @@ export function SignaturesJournal({ organizationId, initialStatus }: Props) {
     const link = `${window.location.origin}/sign/${token}`;
     navigator.clipboard.writeText(link);
     toast.success("Ссылка скопирована");
+  };
+
+  const remindRecipient = async (r: SignatureRow) => {
+    const t = toast.loading("Отправляем напоминание...");
+    try {
+      const { error } = await supabase.functions.invoke("send-signing-email", {
+        body: {
+          signatureId: r.id,
+          isReminder: true,
+        },
+      });
+      if (error) throw error;
+      toast.success("Напоминание отправлено", { id: t, description: r.recipient_email });
+    } catch (e: any) {
+      toast.error("Не удалось отправить напоминание", { id: t, description: e?.message || String(e) });
+    }
+  };
+
+  const cancelSignature = async (r: SignatureRow) => {
+    if (!confirm(`Отменить подписание документа «${r.document_title}»? Получатель больше не сможет его подписать.`)) return;
+    const t = toast.loading("Отменяем подписание...");
+    try {
+      const { error } = await supabase
+        .from("document_signatures")
+        .update({ status: "expired", rejected_at: new Date().toISOString(), rejection_reason: "Отменено отправителем" })
+        .eq("id", r.id);
+      if (error) throw error;
+      toast.success("Подписание отменено", { id: t });
+      load();
+    } catch (e: any) {
+      toast.error("Не удалось отменить", { id: t, description: e?.message || String(e) });
+    }
   };
 
   const handleDownloadProtocol = (r: SignatureRow) => {
@@ -348,8 +380,12 @@ export function SignaturesJournal({ organizationId, initialStatus }: Props) {
                         >
                           <MessageCircle className="w-4 h-4" />
                         </Button>
-                        {(r.status === "sent" || r.status === "in_review" || r.status === "changes_requested") && (
-                          <Button variant="ghost" size="icon" title="Скопировать ссылку" onClick={() => copyLink(r.signature_token)}><Copy className="w-4 h-4" /></Button>
+                        {(r.status === "sent" || r.status === "viewed" || r.status === "in_review" || r.status === "changes_requested") && (
+                          <>
+                            <Button variant="ghost" size="icon" title="Скопировать ссылку" onClick={() => copyLink(r.signature_token)}><Copy className="w-4 h-4" /></Button>
+                            <Button variant="ghost" size="icon" title="Напомнить (повторно отправить email)" onClick={() => remindRecipient(r)}><Bell className="w-4 h-4 text-amber-600" /></Button>
+                            <Button variant="ghost" size="icon" title="Отменить подписание" onClick={() => cancelSignature(r)}><Ban className="w-4 h-4 text-destructive" /></Button>
+                          </>
                         )}
                         {r.status === "signed" && (
                           <>

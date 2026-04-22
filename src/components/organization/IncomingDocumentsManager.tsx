@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import {
@@ -9,6 +9,9 @@ import {
   Trash2,
   Calendar,
   Building2,
+  Search,
+  Eye,
+  Download,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -59,6 +62,10 @@ const DOC_TYPE_VARIANTS: Record<IncomingDocType, any> = {
 export function IncomingDocumentsManager({ organizationId }: Props) {
   const { items, loading, uploading, upload, remove } = useIncomingDocuments(organizationId);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [search, setSearch] = useState("");
+  const [typeFilter, setTypeFilter] = useState<IncomingDocType | "all">("all");
+  const [previewDoc, setPreviewDoc] = useState<IncomingDocument | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [form, setForm] = useState({
     doc_type: "contract" as IncomingDocType,
     title: "",
@@ -69,6 +76,63 @@ export function IncomingDocumentsManager({ organizationId }: Props) {
     notes: "",
   });
   const [file, setFile] = useState<File | null>(null);
+
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return items.filter((d) => {
+      if (typeFilter !== "all" && d.doc_type !== typeFilter) return false;
+      if (!q) return true;
+      return (
+        d.title.toLowerCase().includes(q) ||
+        (d.counterparty_name || "").toLowerCase().includes(q) ||
+        (d.counterparty_inn || "").toLowerCase().includes(q) ||
+        (d.doc_number || "").toLowerCase().includes(q)
+      );
+    });
+  }, [items, search, typeFilter]);
+
+  const getSignedUrl = async (doc: IncomingDocument): Promise<string | null> => {
+    if (doc.file_path) {
+      const { data, error } = await supabase.storage
+        .from("incoming-documents")
+        .createSignedUrl(doc.file_path, 3600);
+      if (error || !data?.signedUrl) {
+        toast.error("Не удалось получить ссылку", { description: error?.message });
+        return null;
+      }
+      return data.signedUrl;
+    }
+    return doc.file_url || null;
+  };
+
+  const openPreview = async (doc: IncomingDocument) => {
+    const url = await getSignedUrl(doc);
+    if (!url) return;
+    setPreviewDoc(doc);
+    setPreviewUrl(url);
+  };
+
+  const downloadFile = async (doc: IncomingDocument) => {
+    const url = await getSignedUrl(doc);
+    if (!url) return;
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = doc.title;
+    a.target = "_blank";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+  };
+
+  const isPreviewable = (doc: IncomingDocument | null) => {
+    if (!doc) return false;
+    const name = (doc.file_path || doc.title || "").toLowerCase();
+    return name.endsWith(".pdf") || /\.(jpe?g|png|webp|gif)$/i.test(name);
+  };
+  const isImage = (doc: IncomingDocument | null) => {
+    if (!doc) return false;
+    return /\.(jpe?g|png|webp|gif)$/i.test((doc.file_path || doc.title || "").toLowerCase());
+  };
 
   const reset = () => {
     setForm({
@@ -120,6 +184,34 @@ export function IncomingDocumentsManager({ organizationId }: Props) {
           </Button>
         </div>
 
+        {!loading && items.length > 0 && (
+          <div className="flex flex-wrap items-center gap-2 px-4 py-3 border-b bg-muted/20">
+            <div className="relative flex-1 min-w-[200px]">
+              <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Поиск по названию, ИНН, контрагенту, номеру..."
+                className="pl-9 h-9"
+              />
+            </div>
+            <Select value={typeFilter} onValueChange={(v) => setTypeFilter(v as any)}>
+              <SelectTrigger className="w-[160px] h-9">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Все типы</SelectItem>
+                {Object.entries(DOC_TYPE_LABELS).map(([k, v]) => (
+                  <SelectItem key={k} value={k}>{v}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <span className="text-xs text-muted-foreground ml-auto">
+              {filtered.length} из {items.length}
+            </span>
+          </div>
+        )}
+
         {loading ? (
           <div className="p-8 text-center text-muted-foreground">Загрузка...</div>
         ) : items.length === 0 ? (
@@ -138,9 +230,13 @@ export function IncomingDocumentsManager({ organizationId }: Props) {
               Загрузить первый документ
             </Button>
           </div>
+        ) : filtered.length === 0 ? (
+          <div className="p-12 text-center text-sm text-muted-foreground">
+            Ничего не найдено по заданным фильтрам
+          </div>
         ) : (
           <div className="divide-y">
-            {items.map((doc) => (
+            {filtered.map((doc) => (
               <div
                 key={doc.id}
                 className="p-4 flex items-center justify-between gap-4 hover:bg-muted/30 transition-colors"
@@ -175,34 +271,37 @@ export function IncomingDocumentsManager({ organizationId }: Props) {
                   </div>
                 </div>
                 <div className="flex gap-1 shrink-0">
+                  {isPreviewable(doc) && (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      title="Предпросмотр"
+                      className="rounded-xl"
+                      onClick={() => openPreview(doc)}
+                    >
+                      <Eye className="w-4 h-4" />
+                    </Button>
+                  )}
                   <Button
                     variant="ghost"
-                    size="sm"
-                    className="rounded-xl gap-1"
+                    size="icon"
+                    title="Скачать"
+                    className="rounded-xl"
+                    onClick={() => downloadFile(doc)}
+                  >
+                    <Download className="w-4 h-4" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    title="Открыть в новой вкладке"
+                    className="rounded-xl"
                     onClick={async () => {
-                      // Always generate fresh signed URL — file_url stored at upload time may have expired
-                      const path = doc.file_path;
-                      if (!path) {
-                        // fallback: legacy records may only have file_url
-                        if (doc.file_url) {
-                          window.open(doc.file_url, "_blank");
-                          return;
-                        }
-                        toast.error("Файл не найден");
-                        return;
-                      }
-                      const { data, error } = await supabase.storage
-                        .from("incoming-documents")
-                        .createSignedUrl(path, 3600);
-                      if (error || !data?.signedUrl) {
-                        toast.error("Не удалось открыть файл", { description: error?.message });
-                        return;
-                      }
-                      window.open(data.signedUrl, "_blank");
+                      const url = await getSignedUrl(doc);
+                      if (url) window.open(url, "_blank");
                     }}
                   >
                     <ExternalLink className="w-4 h-4" />
-                    Открыть
                   </Button>
                   <Button
                     variant="ghost"
@@ -211,6 +310,7 @@ export function IncomingDocumentsManager({ organizationId }: Props) {
                       if (confirm(`Переместить документ "${doc.title}" в корзину? Срок хранения 30 дней.`)) remove(doc);
                     }}
                     className="rounded-xl"
+                    title="В корзину"
                   >
                     <Trash2 className="w-4 h-4 text-destructive" />
                   </Button>
@@ -220,6 +320,38 @@ export function IncomingDocumentsManager({ organizationId }: Props) {
           </div>
         )}
       </CardContent>
+
+      <Dialog open={!!previewDoc} onOpenChange={(v) => { if (!v) { setPreviewDoc(null); setPreviewUrl(null); } }}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden p-0 rounded-2xl">
+          <DialogHeader className="px-5 pt-5">
+            <DialogTitle className="truncate pr-6">{previewDoc?.title}</DialogTitle>
+          </DialogHeader>
+          <div className="px-5 pb-5">
+            {previewUrl && previewDoc && (
+              isImage(previewDoc) ? (
+                <img src={previewUrl} alt={previewDoc.title} className="w-full max-h-[75vh] object-contain rounded-lg border bg-muted" />
+              ) : (
+                <iframe src={previewUrl} title={previewDoc.title} className="w-full h-[75vh] rounded-lg border bg-white" />
+              )
+            )}
+            <div className="flex justify-end gap-2 mt-3">
+              {previewDoc && (
+                <>
+                  <Button variant="outline" size="sm" className="gap-2" onClick={() => previewDoc && downloadFile(previewDoc)}>
+                    <Download className="w-4 h-4" />Скачать
+                  </Button>
+                  <Button variant="outline" size="sm" className="gap-2" onClick={async () => {
+                    const url = await getSignedUrl(previewDoc);
+                    if (url) window.open(url, "_blank");
+                  }}>
+                    <ExternalLink className="w-4 h-4" />В новой вкладке
+                  </Button>
+                </>
+              )}
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="max-w-lg rounded-2xl">

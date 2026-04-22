@@ -10,18 +10,24 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger
 } from "@/components/ui/alert-dialog";
-import { Trash2, RotateCcw, Search, AlertTriangle, Clock } from "lucide-react";
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuLabel, DropdownMenuSeparator,
+} from "@/components/ui/dropdown-menu";
+import { Trash2, RotateCcw, Search, AlertTriangle, Clock, ChevronDown } from "lucide-react";
 import { format, formatDistanceToNow } from "date-fns";
 import { ru } from "date-fns/locale";
 import { LoadMoreControls } from "@/components/ui/LoadMoreControls";
+import { toast } from "sonner";
 
 interface Props {
   organizationId: string;
 }
 
 export function RecycleBinManager({ organizationId }: Props) {
-  const { items, total, loading, search, setSearch, hasMore, restore, restoreMany, purgeOne, loadMore } = useRecycleBin(organizationId);
+  const { items, total, loading, search, setSearch, hasMore, restore, restoreMany, purgeOne, loadMore, refresh } = useRecycleBin(organizationId);
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [purging, setPurging] = useState(false);
+  const [confirmDays, setConfirmDays] = useState<number | null>(null);
 
   const key = (it: RecycleBinItem) => `${it.source_table}:${it.id}`;
   const filtered = items;
@@ -50,6 +56,29 @@ export function RecycleBinManager({ organizationId }: Props) {
   const daysLeft = (deletedAt: string) => {
     const ms = new Date(deletedAt).getTime() + 30 * 24 * 60 * 60 * 1000 - Date.now();
     return Math.max(0, Math.ceil(ms / (24 * 60 * 60 * 1000)));
+  };
+
+  const purgeOlderThan = async (days: number) => {
+    const cutoff = Date.now() - days * 24 * 60 * 60 * 1000;
+    const targets = items.filter(
+      it => it.organization_id === organizationId && new Date(it.deleted_at).getTime() < cutoff
+    );
+    if (targets.length === 0) {
+      toast.info(`Нет документов старше ${days} дн. в текущей выборке`);
+      setConfirmDays(null);
+      return;
+    }
+    setPurging(true);
+    let ok = 0;
+    for (const it of targets) {
+      const success = await purgeOne(it);
+      if (success) ok++;
+    }
+    setPurging(false);
+    setConfirmDays(null);
+    setSelected(new Set());
+    toast.success(`Удалено окончательно: ${ok} из ${targets.length}`);
+    refresh();
   };
 
   if (loading) {
@@ -89,7 +118,45 @@ export function RecycleBinManager({ organizationId }: Props) {
                 Восстановить ({selectedItems.length})
               </Button>
             )}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button size="sm" variant="outline" className="gap-1.5" disabled={purging || items.length === 0}>
+                  <Trash2 className="w-3.5 h-3.5" />
+                  Очистить старее
+                  <ChevronDown className="w-3.5 h-3.5 opacity-60" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuLabel className="text-xs">Удалить окончательно документы</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={() => setConfirmDays(7)}>Старее 7 дней</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setConfirmDays(14)}>Старее 14 дней</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setConfirmDays(30)}>Старее 30 дней</DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
+
+          <AlertDialog open={confirmDays !== null} onOpenChange={(v) => !v && setConfirmDays(null)}>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Удалить окончательно документы старее {confirmDays} дн.?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Будут безвозвратно удалены все документы из вашей корзины, попавшие туда более {confirmDays} дней назад. Восстановить их будет невозможно.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel disabled={purging}>Отмена</AlertDialogCancel>
+                <AlertDialogAction
+                  disabled={purging}
+                  onClick={(e) => { e.preventDefault(); if (confirmDays !== null) purgeOlderThan(confirmDays); }}
+                  className="bg-destructive hover:bg-destructive/90"
+                >
+                  {purging ? "Удаление..." : "Удалить навсегда"}
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+
 
           {filtered.length === 0 ? (
             items.length === 0 ? (
