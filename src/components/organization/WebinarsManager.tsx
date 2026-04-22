@@ -515,6 +515,66 @@ export function WebinarsManager({ organizationId }: Props) {
         webinar={shareWebinar}
         onUpdated={fetchWebinars}
       />
+
+      {/* Live webinar in a Sheet — host stays on the dashboard */}
+      <Sheet
+        open={!!liveSheetWebinar}
+        onOpenChange={(o) => {
+          if (!o) setLiveSheetWebinar(null);
+        }}
+      >
+        <SheetContent
+          side="right"
+          className="w-full sm:max-w-4xl overflow-y-auto"
+          onInteractOutside={(e) => e.preventDefault()}
+        >
+          <SheetHeader className="pr-10">
+            <SheetTitle className="flex items-center gap-2">
+              <Radio className="w-4 h-4 text-destructive" />
+              {liveSheetWebinar?.title}
+            </SheetTitle>
+            <SheetDescription className="flex items-center gap-2">
+              <span>Эфир идёт в окне поверх рабочего стола</span>
+              {liveSheetWebinar && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 px-2"
+                  onClick={() => window.open(`/webinar/${liveSheetWebinar.id}/live`, "_blank")}
+                  title="Открыть на отдельной странице"
+                >
+                  <Maximize2 className="w-3.5 h-3.5 mr-1" />
+                  На весь экран
+                </Button>
+              )}
+            </SheetDescription>
+          </SheetHeader>
+          {liveSheetWebinar && (
+            <div className="mt-4">
+              <EmbeddedWebinarPlayer
+                webinarId={liveSheetWebinar.id}
+                sourceType={liveSheetWebinar.source_type}
+                kinescopeLiveId={liveSheetWebinar.kinescope_live_id}
+                kinescopeVideoId={liveSheetWebinar.kinescope_video_id}
+                embedUrl={liveSheetWebinar.embed_url}
+                externalUrl={liveSheetWebinar.external_url}
+                webinarTitle={liveSheetWebinar.title}
+                publicToken={liveSheetWebinar.public_token}
+                allowGuests={liveSheetWebinar.allow_guests ?? true}
+                guestPassword={liveSheetWebinar.guest_password}
+                onEnd={async () => {
+                  await handleStopLive(liveSheetWebinar);
+                  setLiveSheetWebinar(null);
+                }}
+                onShareUpdated={fetchWebinars}
+              />
+              <p className="text-xs text-muted-foreground mt-3">
+                Закрытие окна не завершает эфир — другие участники остаются. Чтобы остановить трансляцию, нажмите «Завершить» в шапке плеера.
+              </p>
+            </div>
+          )}
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }
