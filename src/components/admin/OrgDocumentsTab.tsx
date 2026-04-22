@@ -61,6 +61,12 @@ export function OrgDocumentsTab({ organizationId, documents, onDocumentsChange }
   const [isUploadOpen, setIsUploadOpen] = useState(false);
   const [uploadingType, setUploadingType] = useState<string | null>(null);
 
+export function OrgDocumentsTab({ organizationId, documents, onDocumentsChange }: OrgDocumentsTabProps) {
+  const [isUploadOpen, setIsUploadOpen] = useState(false);
+  const [uploadingType, setUploadingType] = useState<string | null>(null);
+  const [versionsDoc, setVersionsDoc] = useState<OrgDocument | null>(null);
+  const [shareDoc, setShareDoc] = useState<OrgDocument | null>(null);
+
   const getTypeConfig = (type: string) => {
     return DOCUMENT_TYPES.find(t => t.value === type) || DOCUMENT_TYPES[3];
   };
