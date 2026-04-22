@@ -7972,6 +7972,7 @@ export type Database = {
       webinars: {
         Row: {
           access_type: string
+          allow_guests: boolean
           company_id: string | null
           course_id: string | null
           cover_url: string | null
@@ -7981,6 +7982,7 @@ export type Database = {
           duration_minutes: number
           embed_url: string | null
           external_url: string | null
+          guest_password: string | null
           host_user_id: string
           id: string
           kinescope_live_id: string | null
@@ -7988,6 +7990,7 @@ export type Database = {
           max_participants: number | null
           organization_id: string
           player_settings: Json | null
+          public_token: string | null
           recording_size_bytes: number | null
           recording_url: string | null
           room_name: string | null
@@ -8004,6 +8007,7 @@ export type Database = {
         }
         Insert: {
           access_type?: string
+          allow_guests?: boolean
           company_id?: string | null
           course_id?: string | null
           cover_url?: string | null
@@ -8013,6 +8017,7 @@ export type Database = {
           duration_minutes?: number
           embed_url?: string | null
           external_url?: string | null
+          guest_password?: string | null
           host_user_id: string
           id?: string
           kinescope_live_id?: string | null
@@ -8020,6 +8025,7 @@ export type Database = {
           max_participants?: number | null
           organization_id: string
           player_settings?: Json | null
+          public_token?: string | null
           recording_size_bytes?: number | null
           recording_url?: string | null
           room_name?: string | null
@@ -8036,6 +8042,7 @@ export type Database = {
         }
         Update: {
           access_type?: string
+          allow_guests?: boolean
           company_id?: string | null
           course_id?: string | null
           cover_url?: string | null
@@ -8045,6 +8052,7 @@ export type Database = {
           duration_minutes?: number
           embed_url?: string | null
           external_url?: string | null
+          guest_password?: string | null
           host_user_id?: string
           id?: string
           kinescope_live_id?: string | null
@@ -8052,6 +8060,7 @@ export type Database = {
           max_participants?: number | null
           organization_id?: string
           player_settings?: Json | null
+          public_token?: string | null
           recording_size_bytes?: number | null
           recording_url?: string | null
           room_name?: string | null

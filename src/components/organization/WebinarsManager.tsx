@@ -8,14 +8,16 @@ import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
-import { Plus, Radio, Video, Calendar, Users, Copy, ExternalLink, Square, Trash2, RefreshCw, Pencil, CopyPlus, Link, Search, Clock, Zap } from "lucide-react";
+import { Plus, Radio, Video, Calendar, Users, Copy, ExternalLink, Square, Trash2, RefreshCw, Pencil, CopyPlus, Link, Search, Clock, Zap, Share2, QrCode } from "lucide-react";
 import { CreateWebinarDialog } from "./CreateWebinarDialog";
 import { WebinarParticipantsDialog } from "./WebinarParticipantsDialog";
+import { ShareWebinarDialog } from "./ShareWebinarDialog";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { InlinePlayerSettings, buildKinescopeEmbedUrl } from "./WebinarPlayerSettings";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
+import { getBaseUrl } from "@/utils/getBaseUrl";
 
 interface Webinar {
   id: string;
@@ -34,6 +36,9 @@ interface Webinar {
   cover_url: string | null;
   course_id: string | null;
   created_at: string;
+  public_token: string | null;
+  allow_guests: boolean;
+  guest_password: string | null;
 }
 
 interface Props {
@@ -52,6 +57,7 @@ export function WebinarsManager({ organizationId }: Props) {
   const [embedWebinar, setEmbedWebinar] = useState<Webinar | null>(null);
   const [statusFilter, setStatusFilter] = useState("all");
   const [search, setSearch] = useState("");
+  const [shareWebinar, setShareWebinar] = useState<Webinar | null>(null);
 
   const fetchWebinars = useCallback(async () => {
     const { data } = await supabase
@@ -192,6 +198,12 @@ export function WebinarsManager({ organizationId }: Props) {
   };
 
   const copyWebinarLink = (w: Webinar) => {
+    if (w.source_type === "livekit" && w.public_token) {
+      const link = `${getBaseUrl()}/w/${w.public_token}`;
+      navigator.clipboard.writeText(link);
+      toast.success("Публичная ссылка скопирована — отправьте участникам");
+      return;
+    }
     const link = w.embed_url || w.external_url;
     if (link) {
       navigator.clipboard.writeText(link);
@@ -249,7 +261,41 @@ export function WebinarsManager({ organizationId }: Props) {
           <Button onClick={() => { setEditWebinar(null); setShowCreate(true); }} size="sm" variant="outline">
             <Plus className="w-4 h-4 mr-2" />Создать вебинар
           </Button>
-        </div>
+      </div>
+
+      {/* Live now banner */}
+      {webinars.filter(w => w.status === "live" && w.source_type === "livekit").map(w => (
+        <Card key={`live-${w.id}`} className="p-4 border-destructive/40 bg-destructive/5">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-3 justify-between">
+            <div className="flex items-center gap-3 min-w-0">
+              <span className="relative flex h-3 w-3 shrink-0">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-destructive opacity-75" />
+                <span className="relative inline-flex rounded-full h-3 w-3 bg-destructive" />
+              </span>
+              <div className="min-w-0">
+                <div className="text-xs font-semibold text-destructive uppercase tracking-wide">Сейчас в эфире</div>
+                <div className="font-medium truncate">{w.title}</div>
+              </div>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <Button size="sm" variant="default" asChild>
+                <a href={`/webinar/${w.id}/live`} target="_blank" rel="noreferrer">
+                  <Video className="w-4 h-4 mr-1" /> Войти как ведущий
+                </a>
+              </Button>
+              <Button size="sm" variant="outline" onClick={() => copyWebinarLink(w)}>
+                <Copy className="w-4 h-4 mr-1" /> Скопировать ссылку
+              </Button>
+              <Button size="sm" variant="outline" onClick={() => setShareWebinar(w)}>
+                <QrCode className="w-4 h-4 mr-1" /> QR-код
+              </Button>
+              <Button size="sm" variant="destructive" onClick={() => handleStopLive(w)} disabled={actionLoading === w.id}>
+                <Square className="w-4 h-4 mr-1" /> Завершить
+              </Button>
+            </div>
+          </div>
+        </Card>
+      ))}
       </div>
 
       {webinars.length > 0 && (
@@ -387,6 +433,11 @@ export function WebinarsManager({ organizationId }: Props) {
                 <Button size="sm" variant="ghost" onClick={() => copyWebinarLink(w)} title="Скопировать ссылку">
                   <Link className="w-3 h-3" />
                 </Button>
+                {w.source_type === "livekit" && (
+                  <Button size="sm" variant="ghost" onClick={() => setShareWebinar(w)} title="Поделиться (QR-код, настройки гостей)">
+                    <Share2 className="w-3 h-3" />
+                  </Button>
+                )}
                 <Button size="sm" variant="ghost" className="text-destructive" onClick={() => setDeleteTarget(w)}>
                   <Trash2 className="w-3 h-3" />
                 </Button>
@@ -457,6 +508,13 @@ export function WebinarsManager({ organizationId }: Props) {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <ShareWebinarDialog
+        open={!!shareWebinar}
+        onOpenChange={(o) => !o && setShareWebinar(null)}
+        webinar={shareWebinar}
+        onUpdated={fetchWebinars}
+      />
     </div>
   );
 }

@@ -13,16 +13,13 @@ function base64url(input: Uint8Array | string): string {
   return btoa(binary).replace(/=/g, "").replace(/\+/g, "-").replace(/\//g, "_");
 }
 
-
-// Секреты читаются напрямую — никаких .env-парсеров.
-
 async function signLiveKitAccessToken(
   apiKey: string,
   apiSecret: string,
   identity: string,
   name: string,
   roomName: string,
-  isHost: boolean,
+  perms: { canPublish: boolean; isHost: boolean },
   ttlSeconds = 6 * 3600,
 ): Promise<string> {
   const now = Math.floor(Date.now() / 1000);
@@ -37,11 +34,11 @@ async function signLiveKitAccessToken(
     video: {
       room: roomName,
       roomJoin: true,
-      canPublish: isHost, // ученики только смотрят/чатятся
+      canPublish: perms.canPublish,
       canSubscribe: true,
       canPublishData: true,
       canUpdateOwnMetadata: true,
-      ...(isHost ? { roomAdmin: true, roomRecord: true } : {}),
+      ...(perms.isHost ? { roomAdmin: true, roomRecord: true } : {}),
     },
   };
   const headerB64 = base64url(JSON.stringify(header));
@@ -62,6 +59,61 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
+    const apiKey = (Deno.env.get("LIVEKIT_API_KEY") ?? "").trim();
+    const apiSecret = (Deno.env.get("LIVEKIT_API_SECRET") ?? "").trim();
+    const wsUrl = ((Deno.env.get("LIVEKIT_WS_URL") || Deno.env.get("LIVEKIT_URL")) ?? "").trim();
+    if (!apiKey || !apiSecret || !wsUrl) return json({ error: "LiveKit не настроен" }, 500);
+    if (!/^wss?:\/\/[^\s]+$/i.test(wsUrl)) {
+      return json({ error: `LIVEKIT_WS_URL должен быть чистым wss://... URL.` }, 500);
+    }
+
+    const admin = createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+    );
+
+    const body = await req.json().catch(() => ({}));
+    const webinarId: string | undefined = body.webinarId;
+    const aiTutorSessionId: string | undefined = body.aiTutorSessionId;
+    const publicToken: string | undefined = body.publicToken;
+    const guestName: string | undefined = body.guestName;
+    const guestPassword: string | undefined = body.guestPassword;
+
+    // ====== GUEST BRANCH (no auth required) ======
+    if (publicToken) {
+      const { data: webinar } = await admin
+        .from("webinars")
+        .select("id, allow_guests, guest_password, status, player_settings, source_type")
+        .eq("public_token", publicToken)
+        .maybeSingle();
+
+      if (!webinar) return json({ error: "Вебинар не найден" }, 404);
+      if (!webinar.allow_guests) return json({ error: "Гостевой вход выключен" }, 403);
+      if (webinar.source_type !== "livekit") return json({ error: "Не LiveKit-вебинар" }, 400);
+      if (webinar.guest_password && webinar.guest_password !== guestPassword) {
+        return json({ error: "Неверный пароль" }, 401);
+      }
+
+      const ps = (webinar.player_settings ?? {}) as Record<string, any>;
+      const roomName = ps?.livekit?.roomName ?? null;
+      if (!roomName) return json({ error: "Комната ещё не создана" }, 400);
+
+      const guestId = "guest_" + crypto.randomUUID().replace(/-/g, "").slice(0, 12);
+      const displayName = (guestName || "").toString().trim().slice(0, 60) || "Гость";
+
+      const token = await signLiveKitAccessToken(
+        apiKey,
+        apiSecret,
+        guestId,
+        displayName,
+        roomName,
+        { canPublish: false, isHost: false },
+      );
+
+      return json({ ok: true, token, wsUrl, roomName, isHost: false, isGuest: true });
+    }
+
+    // ====== AUTHENTICATED BRANCH ======
     const authHeader = req.headers.get("Authorization");
     if (!authHeader?.startsWith("Bearer ")) return json({ error: "Unauthorized" }, 401);
 
@@ -70,34 +122,15 @@ Deno.serve(async (req) => {
       Deno.env.get("SUPABASE_ANON_KEY")!,
       { global: { headers: { Authorization: authHeader } } },
     );
-    const admin = createClient(
-      Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
-    );
 
     const { data: userData } = await supabase.auth.getUser();
     const user = userData?.user;
     if (!user?.id) return json({ error: "Unauthorized" }, 401);
 
-    const apiKey = (Deno.env.get("LIVEKIT_API_KEY") ?? "").trim();
-    const apiSecret = (Deno.env.get("LIVEKIT_API_SECRET") ?? "").trim();
-    const wsUrl = ((Deno.env.get("LIVEKIT_WS_URL") || Deno.env.get("LIVEKIT_URL")) ?? "").trim();
-    if (!apiKey || !apiSecret || !wsUrl) return json({ error: "LiveKit не настроен" }, 500);
-    if (!/^wss?:\/\/[^\s]+$/i.test(wsUrl)) {
-      return json({
-        error: `LIVEKIT_WS_URL должен быть чистым wss://... URL. Текущее: "${wsUrl.slice(0, 80)}"`,
-      }, 500);
-    }
-
-    const body = await req.json().catch(() => ({}));
-    const webinarId: string | undefined = body.webinarId;
-    const aiTutorSessionId: string | undefined = body.aiTutorSessionId;
-
     let roomName: string | null = null;
     let isHost = false;
     let displayName = user.email ?? "Участник";
 
-    // Подтягиваем имя из профиля
     const { data: profile } = await admin
       .from("profiles")
       .select("full_name, email, organization_id")
@@ -109,18 +142,16 @@ Deno.serve(async (req) => {
     if (webinarId) {
       const { data: webinar } = await admin
         .from("webinars")
-        .select("id, organization_id, created_by, player_settings, source_type")
+        .select("id, organization_id, created_by, player_settings, source_type, course_id")
         .eq("id", webinarId)
         .maybeSingle();
       if (!webinar) return json({ error: "Вебинар не найден" }, 404);
 
-      // Авторизация: либо менеджер этой организации (host), либо участник/ученик курса
       const isOrgManager =
         profile?.organization_id && profile.organization_id === webinar.organization_id;
       isHost = !!isOrgManager || webinar.created_by === user.id;
 
       if (!isHost) {
-        // Проверяем что ученик имеет право смотреть
         const { count: directCount } = await admin
           .from("webinar_participants")
           .select("id", { count: "exact", head: true })
@@ -129,21 +160,14 @@ Deno.serve(async (req) => {
 
         let allowed = (directCount ?? 0) > 0;
 
-        if (!allowed) {
-          const { data: webinarRow } = await admin
-            .from("webinars")
-            .select("course_id")
-            .eq("id", webinarId)
-            .maybeSingle();
-          if (webinarRow?.course_id) {
-            const { count: enrollCount } = await admin
-              .from("enrollments")
-              .select("id", { count: "exact", head: true })
-              .eq("user_id", user.id)
-              .eq("course_id", webinarRow.course_id)
-              .in("status", ["active", "completed"]);
-            allowed = (enrollCount ?? 0) > 0;
-          }
+        if (!allowed && webinar.course_id) {
+          const { count: enrollCount } = await admin
+            .from("enrollments")
+            .select("id", { count: "exact", head: true })
+            .eq("user_id", user.id)
+            .eq("course_id", webinar.course_id)
+            .in("status", ["active", "completed"]);
+          allowed = (enrollCount ?? 0) > 0;
         }
         if (!allowed) return json({ error: "Нет доступа к этому вебинару" }, 403);
       }
@@ -172,9 +196,9 @@ Deno.serve(async (req) => {
       }
 
       roomName = session.room_name;
-      isHost = true; // ученик — host своей AI-сессии (может говорить)
+      isHost = true;
     } else {
-      return json({ error: "Нужен webinarId или aiTutorSessionId" }, 400);
+      return json({ error: "Нужен webinarId, aiTutorSessionId или publicToken" }, 400);
     }
 
     const token = await signLiveKitAccessToken(
@@ -183,7 +207,7 @@ Deno.serve(async (req) => {
       user.id,
       displayName,
       roomName!,
-      isHost,
+      { canPublish: isHost, isHost },
     );
 
     return json({ ok: true, token, wsUrl, roomName, isHost });
