@@ -2,7 +2,7 @@ import React from "react";
 import {
   Users, ClipboardList, Award, GraduationCap, FileCheck,
   FileText, Upload, BookOpen, Wrench, Building2, ScrollText,
-  Lock, ArrowUpRight, FolderOpen, Receipt, Database, FileSignature, ShieldCheck
+  Lock, ArrowUpRight, FolderOpen, Receipt, Database, FileSignature, ShieldCheck, Inbox
 } from "lucide-react";
 import { JournalsManager } from "@/components/organization/JournalsManager";
 import { FRDOManager } from "@/components/organization/FRDOManager";
@@ -14,6 +14,7 @@ import { CourseProgramsList } from "@/components/organization/CourseProgramsList
 import { ContractGenerator } from "@/components/organization/ContractGenerator";
 import { SignaturesJournal } from "@/components/signing/SignaturesJournal";
 import { DataSubjectRequestsManager } from "@/components/organization/DataSubjectRequestsManager";
+import { IncomingDocumentsManager } from "@/components/organization/IncomingDocumentsManager";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -24,6 +25,7 @@ import { DocumentDialogs } from "./documents/DocumentDialogs";
 
 const NAV_ITEMS: { value: DocumentSubTab; label: string; icon: React.ElementType; ordersOnly?: boolean; iconColor?: string; group?: string }[] = [
   { value: "counterparties", label: "Контрагенты", icon: Building2, group: "platform" },
+  { value: "incoming", label: "Входящие", icon: Inbox, iconColor: "text-cyan-500", group: "platform" },
   { value: "orders", label: "Приказы", icon: ScrollText, ordersOnly: true, iconColor: "text-amber-500", group: "docs" },
   { value: "protocols", label: "Протоколы АК", icon: ClipboardList, iconColor: "text-violet-500", group: "docs" },
   { value: "certificates", label: "Удостоверения", icon: Award, iconColor: "text-emerald-500", group: "docs" },
@@ -52,6 +54,7 @@ const SECTION_DESCRIPTIONS: Partial<Record<DocumentSubTab, string>> = {
   counterparties: "Договоры, счета и закрывающие документы с контрагентами",
   signatures: "Журнал отправленных на подписание документов и доказательства подписей",
   pd_requests: "Запросы субъектов ПД по 152-ФЗ — отзыв согласия, удаление, копия данных. Срок ответа 30 дней.",
+  incoming: "Сканы подписанных контрагентом экземпляров — для двустороннего документооборота",
 };
 
 interface DocumentsTabProps {
@@ -169,6 +172,7 @@ export const DocumentsTab = React.memo(function DocumentsTab({ organizationId, o
             {h.activeTab === "frdo" && <div className="bg-card rounded-xl lg:rounded-2xl border border-border p-4 lg:p-6"><FRDOManager organizationId={organizationId!} /></div>}
             {h.activeTab === "signatures" && <SignaturesJournal organizationId={organizationId} />}
             {h.activeTab === "pd_requests" && <DataSubjectRequestsManager organizationId={organizationId} />}
+            {h.activeTab === "incoming" && <IncomingDocumentsManager organizationId={organizationId} />}
             {h.activeTab === "counterparties" && (
               <CounterpartiesSection
                 organizationId={organizationId}
