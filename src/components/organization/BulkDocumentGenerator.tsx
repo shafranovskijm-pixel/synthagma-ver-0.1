@@ -423,6 +423,15 @@ export function BulkDocumentGenerator({ organizationId, isOpen, onClose }: BulkD
 
             {step === "preview" && (
               <div className="space-y-3">
+                {duplicateNumbers.length > 0 && (
+                  <Alert variant="destructive" className="rounded-xl">
+                    <AlertTriangle className="w-4 h-4" />
+                    <AlertDescription>
+                      Найдены дубли номеров ({duplicateNumbers.length}): {duplicateNumbers.slice(0, 5).join(", ")}
+                      {duplicateNumbers.length > 5 ? "…" : ""}. Измените префикс или начальный номер, чтобы избежать конфликтов.
+                    </AlertDescription>
+                  </Alert>
+                )}
                 {missingVariables.length > 0 && (
                   <Alert variant="destructive" className="rounded-xl">
                     <AlertTriangle className="w-4 h-4" />
@@ -441,6 +450,29 @@ export function BulkDocumentGenerator({ organizationId, isOpen, onClose }: BulkD
                     className="w-full h-[500px]"
                     title="Предпросмотр"
                   />
+                </div>
+              </div>
+            )}
+
+            {step === "running" && (
+              <div className="space-y-4 py-4">
+                <div className="flex items-center justify-center">
+                  <SigmaSpinner size="lg" />
+                </div>
+                <div className="text-center text-sm text-muted-foreground">
+                  Генерируем документы… {results.length} из {selectedIds.size}
+                </div>
+                <Progress value={progress} className="h-2" />
+                <div className="flex justify-center">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => { cancelRef.current = true; }}
+                    className="rounded-xl"
+                  >
+                    Остановить
+                  </Button>
                 </div>
               </div>
             )}
