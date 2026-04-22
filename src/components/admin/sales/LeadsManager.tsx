@@ -35,22 +35,23 @@ export function LeadsManager({ organizationId }: LeadsManagerProps = {}) {
   const [detailLead, setDetailLead] = useState<SalesLead | null>(null);
   const [activityNote, setActivityNote] = useState('');
 
-  useEffect(() => { fetchLeads(); fetchManagers(); }, [fetchLeads, fetchManagers, organizationId]);
+  // Server-side фильтрация по организации (защита от лимита 1000 строк).
+  useEffect(() => {
+    fetchLeads(organizationId ? { organizationId } : undefined);
+    fetchManagers();
+  }, [fetchLeads, fetchManagers, organizationId]);
 
-  // фильтрация по orgId на клиенте (RLS уже сужает на сервере, но для админа делаем явно)
-  const orgFilteredLeads = organizationId
-    ? leads.filter((l: any) => l.organization_id === organizationId)
-    : leads;
+  const regions = [...new Set(leads.map(l => l.region).filter(Boolean))] as string[];
 
-  const regions = [...new Set(orgFilteredLeads.map(l => l.region).filter(Boolean))] as string[];
-
-  const filtered = orgFilteredLeads.filter(l => {
+  const filtered = leads.filter(l => {
     if (search && !l.org_name.toLowerCase().includes(search.toLowerCase()) && !l.inn?.includes(search)) return false;
     if (regionFilter !== 'all' && l.region !== regionFilter) return false;
     if (statusFilter !== 'all' && l.status !== statusFilter) return false;
     if (managerFilter !== 'all' && l.assigned_manager_id !== managerFilter) return false;
     return true;
   });
+
+  const hasManagers = managers.length > 0;
 
   const toggleSelect = (id: string) => {
     setSelectedIds(prev => {
