@@ -109,9 +109,41 @@ export function SalesManager() {
     comparison: <CompetitorComparison />,
   };
 
+  const currentItem = salesMenuGroups
+    .flatMap(g => g.items)
+    .find(i => i.id === activeTab) ?? salesMenuGroups[0].items[0];
+  const CurrentIcon = currentItem.icon;
+
   return (
-    <div className="flex gap-4">
+    <div className="flex flex-col md:flex-row gap-4">
       <SalesSidebar activeTab={activeTab} onTabChange={setActiveTab} />
+
+      {/* Мобильный триггер навигации */}
+      <Sheet open={mobileNavOpen} onOpenChange={setMobileNavOpen}>
+        <SheetTrigger asChild>
+          <Button
+            variant="outline"
+            className="md:hidden w-full justify-between rounded-xl"
+          >
+            <span className="flex items-center gap-2">
+              <Menu className="w-4 h-4" />
+              <CurrentIcon className="w-4 h-4 text-primary" />
+              <span className="font-medium">{currentItem.label}</span>
+            </span>
+            <span className="text-xs text-muted-foreground">Меню</span>
+          </Button>
+        </SheetTrigger>
+        <SheetContent side="left" className="w-72 overflow-y-auto">
+          <SheetHeader className="mb-4">
+            <SheetTitle>Разделы продаж</SheetTitle>
+          </SheetHeader>
+          <SalesSidebarContent
+            activeTab={activeTab}
+            onTabChange={(tab) => { setActiveTab(tab); setMobileNavOpen(false); }}
+          />
+        </SheetContent>
+      </Sheet>
+
       <div className="flex-1 min-w-0">
         {/* Header with quick "Our details" button */}
         <div className="flex justify-end mb-3">
