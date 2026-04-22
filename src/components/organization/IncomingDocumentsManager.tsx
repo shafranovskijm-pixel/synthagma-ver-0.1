@@ -62,12 +62,14 @@ const DOC_TYPE_VARIANTS: Record<IncomingDocType, any> = {
 };
 
 export function IncomingDocumentsManager({ organizationId }: Props) {
-  const { items, loading, uploading, upload, remove } = useIncomingDocuments(organizationId);
+  const { items, loading, uploading, upload, remove, refresh } = useIncomingDocuments(organizationId);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [search, setSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState<IncomingDocType | "all">("all");
   const [previewDoc, setPreviewDoc] = useState<IncomingDocument | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [linkDialogFor, setLinkDialogFor] = useState<IncomingDocument | null>(null);
+  const [linkedTitles, setLinkedTitles] = useState<Record<string, string>>({});
   const [form, setForm] = useState({
     doc_type: "contract" as IncomingDocType,
     title: "",
@@ -78,6 +80,21 @@ export function IncomingDocumentsManager({ organizationId }: Props) {
     notes: "",
   });
   const [file, setFile] = useState<File | null>(null);
+
+  // Подгружаем названия связанных подписаний для бейджа
+  useEffect(() => {
+    const ids = Array.from(new Set(items.map((i) => i.related_signature_id).filter(Boolean))) as string[];
+    if (ids.length === 0) { setLinkedTitles({}); return; }
+    (async () => {
+      const { data } = await supabase
+        .from("document_signatures")
+        .select("id, document_title")
+        .in("id", ids);
+      const map: Record<string, string> = {};
+      (data || []).forEach((r: any) => { map[r.id] = r.document_title; });
+      setLinkedTitles(map);
+    })();
+  }, [items]);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
