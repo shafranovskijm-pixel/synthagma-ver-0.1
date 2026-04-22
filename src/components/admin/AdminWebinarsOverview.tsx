@@ -22,6 +22,8 @@ import {
 import { useAuth } from "@/hooks/useAuth";
 import { AdminCreateWebinarDialog } from "./AdminCreateWebinarDialog";
 import { EmbeddedWebinarPlayer } from "@/components/webinars/EmbeddedWebinarPlayer";
+import { WebinarRecordingUploader } from "@/components/webinars/WebinarRecordingUploader";
+import { Paperclip } from "lucide-react";
 
 interface AdminWebinar {
   id: string;
@@ -71,6 +73,7 @@ export function AdminWebinarsOverview() {
   const [showCreate, setShowCreate] = useState(false);
   const [playerWebinar, setPlayerWebinar] = useState<AdminWebinar | null>(null);
   const [launching, setLaunching] = useState(false);
+  const [recordingTarget, setRecordingTarget] = useState<AdminWebinar | null>(null);
 
   const fetchWebinars = useCallback(async () => {
     setLoading(true);
