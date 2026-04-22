@@ -15,6 +15,9 @@ import { StaffInvitationDialog, type StaffInvitationRole } from "@/components/st
 import { RoleAuditLog } from "@/components/staff/RoleAuditLog";
 import { OrgPermissionMatrix } from "@/components/staff/PermissionMatrix";
 import { OrgCustomRolesManager } from "@/components/staff/OrgCustomRolesManager";
+import { StaffExpirationButton } from "@/components/staff/StaffExpirationButton";
+import { OwnershipTransfer } from "@/components/staff/OwnershipTransfer";
+import { useAuth } from "@/hooks/useAuth";
 
 interface StaffMember {
   id: string;
@@ -23,6 +26,7 @@ interface StaffMember {
   display_name: string;
   bio: string | null;
   visibility: string;
+  expires_at: string | null;
   created_at: string;
 }
 
@@ -51,6 +55,8 @@ interface StaffManagerProps {
 }
 
 export function StaffManager({ organizationId }: StaffManagerProps) {
+  const { user, userRole } = useAuth();
+  const isOwner = userRole === "organization";
   const [staff, setStaff] = useState<StaffMember[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -160,6 +166,7 @@ export function StaffManager({ organizationId }: StaffManagerProps) {
                   <TableRow>
                     <TableHead>Имя</TableHead>
                     <TableHead>Роль</TableHead>
+                    <TableHead>Срок действия</TableHead>
                     <TableHead>Видимость</TableHead>
                     <TableHead className="w-[80px]"></TableHead>
                   </TableRow>
@@ -190,6 +197,14 @@ export function StaffManager({ organizationId }: StaffManagerProps) {
                               <p className="text-xs text-muted-foreground">{rc.description}</p>
                             </TooltipContent>
                           </Tooltip>
+                        </TableCell>
+                        <TableCell>
+                          <StaffExpirationButton
+                            table="org_staff"
+                            staffId={s.id}
+                            expiresAt={s.expires_at}
+                            onChange={loadStaff}
+                          />
                         </TableCell>
                         <TableCell>
                           <span className="text-sm text-muted-foreground flex items-center gap-1">
@@ -227,6 +242,11 @@ export function StaffManager({ organizationId }: StaffManagerProps) {
 
         {/* Audit log */}
         <RoleAuditLog scope="organization" organizationId={organizationId} limit={30} />
+
+        {/* Ownership transfer (only for current owner) */}
+        {isOwner && user && (
+          <OwnershipTransfer organizationId={organizationId} currentOwnerId={user.id} />
+        )}
 
         {/* Invitation dialog */}
         <StaffInvitationDialog
