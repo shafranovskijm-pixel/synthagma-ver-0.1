@@ -63,7 +63,7 @@ export function CampaignsManager({ scope, organizationId }: Props) {
                         <TooltipProvider>
                           <Tooltip>
                             <TooltipTrigger asChild>
-                              <Badge variant="outline" className="gap-1 bg-blue-500/10 text-blue-600 border-blue-500/30">
+                              <Badge variant="outline" className="gap-1 bg-primary/10 text-primary border-primary/30">
                                 <RefreshCw className="w-3 h-3 animate-spin" style={{ animationDuration: '3s' }} />
                                 Продолжается автоматически
                               </Badge>
