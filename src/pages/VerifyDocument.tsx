@@ -212,6 +212,35 @@ export default function VerifyDocument() {
                 />
               )}
             </CardContent>
+            <div className="border-t bg-muted/30 p-6 flex flex-col md:flex-row items-center gap-6 print:bg-white">
+              <div className="bg-white p-3 rounded-xl border border-border shrink-0">
+                <QRCodeSVG
+                  value={`${window.location.origin}/verify/${encodeURIComponent(doc.reg_number)}`}
+                  size={132}
+                  level="M"
+                  includeMargin={false}
+                />
+              </div>
+              <div className="flex-1 text-center md:text-left space-y-2">
+                <div className="flex items-center justify-center md:justify-start gap-2 text-primary font-medium">
+                  <QrCode className="w-4 h-4" />
+                  Проверка по QR-коду
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  Отсканируйте QR-код смартфоном — он откроет эту страницу с регистрационным номером{" "}
+                  <span className="font-mono">{doc.reg_number}</span>. QR можно распечатать на бланке документа.
+                </p>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => window.print()}
+                  className="rounded-lg print:hidden"
+                >
+                  <Printer className="w-4 h-4 mr-2" />
+                  Распечатать
+                </Button>
+              </div>
+            </div>
           </Card>
         )}
 
