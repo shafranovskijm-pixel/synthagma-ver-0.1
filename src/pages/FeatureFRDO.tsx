@@ -109,6 +109,90 @@ const FeatureFRDO = () => {
         </div>
       </section>
 
+      {/* Pain block — реальный скриншот ошибок ФИС ФРДО */}
+      <section className="py-20 bg-destructive/5 border-y border-destructive/10 relative overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-br from-destructive/[0.03] via-transparent to-amber-500/[0.03]" />
+        <div className="container mx-auto px-6 relative z-10">
+          <motion.div
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true, margin: "-100px" }}
+            variants={stagger}
+            className="max-w-6xl mx-auto grid lg:grid-cols-2 gap-12 items-center"
+          >
+            {/* Левая колонка — текст боли + чек-лист */}
+            <motion.div variants={fadeUp}>
+              <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-destructive/10 border border-destructive/20 mb-6">
+                <AlertTriangle className="w-4 h-4 text-destructive" />
+                <span className="text-sm font-medium text-destructive">Знакомо?</span>
+              </div>
+
+              <h2 className="font-display text-3xl md:text-4xl font-medium mb-5 tracking-tight leading-tight">
+                Десятки строк <span className="text-destructive">«недопустимый символ»</span> перед каждой загрузкой в ФИС ФРДО
+              </h2>
+
+              <p className="text-lg text-muted-foreground mb-8 leading-relaxed">
+                Невидимые пробелы в СНИЛС, неправильные форматы дат, лишние табуляции — и так каждый месяц. Часы ручной чистки Excel перед каждой выгрузкой.
+              </p>
+
+              <div className="space-y-3">
+                <p className="text-sm font-semibold text-foreground mb-3">С Синтагмой — ноль ошибок:</p>
+                {[
+                  { icon: Sparkles, text: "Авто-форматирование СНИЛС, дат, ФИО" },
+                  { icon: ShieldCheck, text: "Очистка скрытых пробелов и табуляций" },
+                  { icon: CheckCircle2, text: "Проверка полноты данных ДО выгрузки" },
+                  { icon: FileSpreadsheet, text: "Шаблоны 35/41 столбцов под актуальные требования" },
+                ].map((item, i) => (
+                  <div key={i} className="flex items-start gap-3 p-3 rounded-xl bg-card/80 backdrop-blur-sm border border-border/50">
+                    <div className="w-8 h-8 rounded-lg bg-accent/10 flex items-center justify-center shrink-0">
+                      <item.icon className="w-4 h-4 text-accent" />
+                    </div>
+                    <p className="text-sm text-foreground/90 pt-1.5 font-medium">{item.text}</p>
+                  </div>
+                ))}
+              </div>
+
+              <div className="mt-8">
+                <Link to="/register-organization">
+                  <Button size="lg" className="btn-accent px-7">
+                    Попробовать бесплатно
+                  </Button>
+                </Link>
+              </div>
+            </motion.div>
+
+            {/* Правая колонка — «скриншот» ошибок в рамке-браузере */}
+            <motion.div variants={fadeUp} className="relative">
+              <div
+                className="relative rounded-xl overflow-hidden shadow-2xl border border-border/50 bg-card"
+                style={{ transform: "rotate(1.5deg)" }}
+              >
+                {/* Псевдо-шапка браузера */}
+                <div className="flex items-center gap-1.5 px-4 py-3 bg-muted/60 border-b border-border/50">
+                  <div className="w-3 h-3 rounded-full bg-destructive/60" />
+                  <div className="w-3 h-3 rounded-full bg-amber-400/60" />
+                  <div className="w-3 h-3 rounded-full bg-emerald-500/60" />
+                  <div className="ml-3 px-3 py-1 rounded-md bg-background/80 text-xs text-muted-foreground font-mono truncate">
+                    fis-frdo.obrnadzor.gov.ru — лог ошибок
+                  </div>
+                </div>
+                <img
+                  src={frdoErrorsPain}
+                  alt="Реальный лог ошибок валидатора ФИС ФРДО — десятки строк «недопустимый символ»"
+                  className="w-full h-auto block"
+                  loading="lazy"
+                />
+              </div>
+
+              {/* Декоративный «штамп» сверху */}
+              <div className="absolute -top-4 -right-4 px-3 py-1.5 rounded-full bg-destructive text-destructive-foreground text-xs font-bold shadow-lg rotate-6">
+                Реальный кейс клиента
+              </div>
+            </motion.div>
+          </motion.div>
+        </div>
+      </section>
+
       {/* Типы программ */}
       <section className="py-16">
         <div className="container mx-auto px-6">
