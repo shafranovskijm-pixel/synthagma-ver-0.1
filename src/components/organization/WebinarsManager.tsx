@@ -388,7 +388,7 @@ export function WebinarsManager({ organizationId }: Props) {
                 </div>
               )}
 
-              {w.kinescope_video_id && (
+              {(w.kinescope_video_id || w.recording_url) && (
                 <div className="flex items-center gap-2 text-xs">
                   <Video className="w-3 h-3 text-primary" />
                   <span className="text-primary font-medium">Запись доступна</span>
@@ -439,6 +439,11 @@ export function WebinarsManager({ organizationId }: Props) {
                 {w.source_type === "livekit" && (
                   <Button size="sm" variant="ghost" onClick={() => setShareWebinar(w)} title="Поделиться (QR-код, настройки гостей)">
                     <Share2 className="w-3 h-3" />
+                  </Button>
+                )}
+                {w.source_type === "livekit" && w.status === "ended" && (
+                  <Button size="sm" variant="ghost" onClick={() => setRecordingTarget(w)} title="Прикрепить запись (MP4)">
+                    <Paperclip className="w-3 h-3" />
                   </Button>
                 )}
                 <Button size="sm" variant="ghost" className="text-destructive" onClick={() => setDeleteTarget(w)}>
@@ -569,6 +574,8 @@ export function WebinarsManager({ organizationId }: Props) {
                 publicToken={liveSheetWebinar.public_token}
                 allowGuests={liveSheetWebinar.allow_guests ?? true}
                 guestPassword={liveSheetWebinar.guest_password}
+                status={liveSheetWebinar.status}
+                recordingUrl={liveSheetWebinar.recording_url ?? null}
                 onEnd={async () => {
                   await handleStopLive(liveSheetWebinar);
                   setLiveSheetWebinar(null);
