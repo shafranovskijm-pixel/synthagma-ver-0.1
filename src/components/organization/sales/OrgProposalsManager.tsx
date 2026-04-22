@@ -105,11 +105,22 @@ export function OrgProposalsManager({ organizationId, onGoToSmtp }: Props) {
 
   const handleSave = async () => {
     if (!editor) return;
-    const subtotal = editor.items.reduce((s, i) => s + i.price * i.quantity, 0);
+    const linkedCourseId = (editor.proposal as any).linked_course_id || null;
+    const course = linkedCourseId ? orgCourses.find(c => c.id === linkedCourseId) : null;
+    // Подставляем переменные курса в названия услуг (для course_promo пресетов)
+    const items = editor.items.map(it => ({
+      ...it,
+      custom_name: course
+        ? it.custom_name.replace(/\{\{course_name\}\}/g, course.title)
+        : it.custom_name,
+    }));
+    const subtotal = items.reduce((s, i) => s + i.price * i.quantity, 0);
     const discount = (editor.proposal.discount_percent || 0) / 100;
     const total = Math.round(subtotal * (1 - discount));
+    // linked_course_id не сохраняется в БД — используется только для подстановки на момент сохранения
+    const { linked_course_id: _drop, ...proposalPayload } = editor.proposal as any;
     setBusy(true);
-    await upsertProposal({ ...(editor.proposal as any), total_amount: total }, editor.items);
+    await upsertProposal({ ...proposalPayload, total_amount: total }, items);
     setBusy(false);
     setEditor(null);
   };
