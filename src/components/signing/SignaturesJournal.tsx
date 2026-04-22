@@ -15,8 +15,9 @@ import { ru } from "date-fns/locale";
 import { downloadSignatureProtocol, exportSignaturesToCSV, buildProtocolHtml } from "@/utils/signatureProtocol";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { SignatureRevisionUploader } from "@/components/signing/SignatureRevisionUploader";
-import { Upload, PenLine } from "lucide-react";
+import { Upload, PenLine, Users } from "lucide-react";
 import { LoadMoreControls } from "@/components/ui/LoadMoreControls";
+import { BulkSendForSigningDialog } from "@/components/signing/BulkSendForSigningDialog";
 
 interface SignatureRow {
   id: string;
@@ -88,6 +89,7 @@ export function SignaturesJournal({ organizationId, initialStatus }: Props) {
   const [bulkBusy, setBulkBusy] = useState(false);
   const [pageSize, setPageSize] = useState(200);
   const [totalCount, setTotalCount] = useState(0);
+  const [bulkResendOpen, setBulkResendOpen] = useState(false);
 
   // React to initialStatus changes (when navigating from KPI between tabs)
   useEffect(() => {
