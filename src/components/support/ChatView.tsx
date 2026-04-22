@@ -100,8 +100,14 @@ export function ChatView({
                 msg.role === "user" && "text-white rounded-br-md",
                 msg.role === "ai" && "bg-card border border-border rounded-bl-md",
                 msg.role === "operator" && "bg-accent text-accent-foreground rounded-bl-md border border-primary/20",
-              msg.role === "system" && "bg-muted/60 text-muted-foreground italic text-xs mx-auto"
-            )}>
+                msg.role === "system" && "bg-muted/60 text-muted-foreground italic text-xs mx-auto"
+              )}
+              style={
+                msg.role === "user"
+                  ? { background: `linear-gradient(135deg, hsl(var(--chat-accent)), hsl(var(--chat-accent-dark)))` }
+                  : undefined
+              }
+            >
               {msg.role === "operator" && (
                 <p className="text-[10px] opacity-70 mb-1 flex items-center gap-1">
                   <Headset className="h-3 w-3" /> {msg.sender_name || "Оператор"}
