@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
-import { sendSmtpEmail, type SmtpConfig } from "../_shared/smtp-sender.ts";
+import { sendSmtpEmail, type SmtpConfig, type Attachment } from "../_shared/smtp-sender.ts";
+import { buildIcs } from "../_shared/ics.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -74,12 +75,44 @@ serve(async (req: Request) => {
     const htmlWithPixel = campaign.html_body
       + `<img src="${trackUrl}" width="1" height="1" alt="" style="display:none" />`;
 
-    // Подставляем имя получателя в шаблон
+    // Подставляем переменные (включая meeting-данные из recipient_filter.meeting)
+    const meeting = (campaign.recipient_filter as any)?.meeting || null;
+    const dateLabel = meeting?.scheduled_at
+      ? new Intl.DateTimeFormat("ru-RU", { day: "numeric", month: "long", year: "numeric" }).format(new Date(meeting.scheduled_at))
+      : "";
+    const timeLabel = meeting?.scheduled_at
+      ? new Intl.DateTimeFormat("ru-RU", { hour: "2-digit", minute: "2-digit", hour12: false }).format(new Date(meeting.scheduled_at))
+      : "";
     const personalizedHtml = htmlWithPixel
       .replace(/\{\{name\}\}/g, recipient.recipient_name || "")
       .replace(/\{\{recipient_name\}\}/g, recipient.recipient_name || "")
       .replace(/\{\{email\}\}/g, recipient.email)
-      .replace(/\{\{company\}\}/g, recipient.recipient_name || "");
+      .replace(/\{\{company\}\}/g, recipient.recipient_name || "")
+      .replace(/\{\{webinar_url\}\}/g, meeting?.url || "")
+      .replace(/\{\{date\}\}/g, dateLabel)
+      .replace(/\{\{time\}\}/g, timeLabel)
+      .replace(/\{\{host_name\}\}/g, meeting?.host_name || campaign.from_name || "");
+
+    // iCal-приглашение, если включено и есть meeting с датой
+    const attachments: Attachment[] = [];
+    if (meeting?.attach_ics && meeting?.scheduled_at && meeting?.url) {
+      const ics = buildIcs({
+        uid: `${campaignId}-${recipientId}@sintagma.com.ru`,
+        title: meeting.title || campaign.subject || "Презентация Sintagma",
+        description: `Ссылка на встречу: ${meeting.url}`,
+        url: meeting.url,
+        startISO: meeting.scheduled_at,
+        durationMinutes: meeting.duration_minutes || 60,
+        organizerEmail: smtp.from_email,
+        organizerName: meeting.host_name || campaign.from_name || smtp.from_name || undefined,
+        attendeeEmail: recipient.email,
+      });
+      attachments.push({
+        filename: "invite.ics",
+        content: ics,
+        contentType: "text/calendar; method=REQUEST; charset=UTF-8",
+      });
+    }
 
     const fromOverride = campaign.from_name
       ? `${campaign.from_name} <${smtp.from_email}>`
@@ -91,6 +124,7 @@ serve(async (req: Request) => {
       html: personalizedHtml,
       fromOverride,
       replyTo: campaign.reply_to || undefined,
+      attachments: attachments.length ? attachments : undefined,
     });
 
     // Помечаем как отправленное

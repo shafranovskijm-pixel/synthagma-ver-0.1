@@ -3,9 +3,10 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Pencil, Trash2, Copy, Mail, Lock } from "lucide-react";
+import { Plus, Pencil, Trash2, Copy, Mail, Lock, Send } from "lucide-react";
 import { useEmailTemplates, TEMPLATE_CATEGORIES, type EmailTemplate } from "@/hooks/useEmailTemplates";
 import { EmailTemplateEditor } from "./EmailTemplateEditor";
+import { CampaignEditor } from "@/components/admin/broadcast/CampaignEditor";
 
 interface Props {
   scope: "platform" | "org";
@@ -16,6 +17,7 @@ export function EmailTemplatesManager({ scope, organizationId }: Props) {
   const { templates, loading, upsert, remove, duplicate, sendTest } = useEmailTemplates(scope, organizationId);
   const [filterCat, setFilterCat] = useState<string>("all");
   const [editing, setEditing] = useState<Partial<EmailTemplate> | null>(null);
+  const [campaignFromTemplate, setCampaignFromTemplate] = useState<EmailTemplate | null>(null);
 
   const filtered = filterCat === "all" ? templates : templates.filter(t => t.category === filterCat);
 
@@ -57,6 +59,9 @@ export function EmailTemplatesManager({ scope, organizationId }: Props) {
                     {cat && <Badge variant="outline" className="text-[10px] mt-1">{cat.label}</Badge>}
                   </div>
                   <div className="flex gap-1 shrink-0">
+                    <Button size="icon" variant="ghost" onClick={() => setCampaignFromTemplate(t)} title="Запустить рассылку из шаблона">
+                      <Send className="w-4 h-4 text-primary" />
+                    </Button>
                     <Button size="icon" variant="ghost" onClick={() => setEditing(t)} title="Редактировать">
                       <Pencil className="w-4 h-4" />
                     </Button>
@@ -83,6 +88,21 @@ export function EmailTemplatesManager({ scope, organizationId }: Props) {
           onClose={() => setEditing(null)}
           onSave={upsert}
           onSendTest={sendTest}
+        />
+      )}
+
+      {campaignFromTemplate && (
+        <CampaignEditor
+          open={true}
+          onClose={() => setCampaignFromTemplate(null)}
+          scope={scope}
+          organizationId={organizationId}
+          onCreated={() => setCampaignFromTemplate(null)}
+          initial={{
+            name: campaignFromTemplate.name,
+            subject: campaignFromTemplate.subject,
+            html: campaignFromTemplate.html_body,
+          }}
         />
       )}
     </div>

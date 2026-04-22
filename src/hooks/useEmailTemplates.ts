@@ -21,6 +21,7 @@ export interface EmailTemplate {
 export const TEMPLATE_CATEGORIES = [
   { value: "cold", label: "Холодное знакомство" },
   { value: "followup", label: "Повторное касание" },
+  { value: "presentation", label: "Приглашение на презентацию" },
   { value: "proposal", label: "Отправка КП" },
   { value: "contract", label: "Отправка договора" },
   { value: "reactivation", label: "Реактивация" },

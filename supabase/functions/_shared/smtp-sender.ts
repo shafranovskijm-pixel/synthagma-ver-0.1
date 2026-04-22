@@ -26,12 +26,19 @@ export interface SmtpConfig {
   from_name?: string | null;
 }
 
+export interface Attachment {
+  filename: string;
+  content: string;       // raw text content (will be base64-encoded)
+  contentType: string;   // e.g. "text/calendar; method=REQUEST; charset=UTF-8"
+}
+
 export interface SendOptions {
   to: string;
   subject: string;
   html: string;
   fromOverride?: string; // "Имя <email>"
   replyTo?: string;
+  attachments?: Attachment[];
 }
 
 /**
@@ -44,22 +51,56 @@ export async function sendSmtpEmail(cfg: SmtpConfig, opts: SendOptions): Promise
   const encodedSubject = encodeSubject(opts.subject);
   const encodedFrom = encodeFromHeader(senderFrom);
   const encodedHtml = base64Encode(opts.html);
+  const hasAttachments = !!(opts.attachments && opts.attachments.length > 0);
 
-  const headers = [
+  const baseHeaders = [
     `From: ${encodedFrom}`,
     `To: ${opts.to}`,
     `Subject: ${encodedSubject}`,
     `MIME-Version: 1.0`,
-    `Content-Type: text/html; charset=UTF-8`,
-    `Content-Transfer-Encoding: base64`,
   ];
-  if (opts.replyTo) headers.push(`Reply-To: ${opts.replyTo}`);
+  if (opts.replyTo) baseHeaders.push(`Reply-To: ${opts.replyTo}`);
 
-  const rawEmail = [
-    ...headers,
-    ``,
-    encodedHtml.match(/.{1,76}/g)?.join("\r\n") || encodedHtml,
-  ].join("\r\n");
+  let rawEmail: string;
+  if (!hasAttachments) {
+    const headers = [
+      ...baseHeaders,
+      `Content-Type: text/html; charset=UTF-8`,
+      `Content-Transfer-Encoding: base64`,
+    ];
+    rawEmail = [
+      ...headers,
+      ``,
+      encodedHtml.match(/.{1,76}/g)?.join("\r\n") || encodedHtml,
+    ].join("\r\n");
+  } else {
+    const boundary = `=_b_${Math.random().toString(36).slice(2)}_${Date.now().toString(36)}`;
+    const parts: string[] = [];
+    parts.push(
+      `--${boundary}`,
+      `Content-Type: text/html; charset=UTF-8`,
+      `Content-Transfer-Encoding: base64`,
+      ``,
+      encodedHtml.match(/.{1,76}/g)?.join("\r\n") || encodedHtml,
+    );
+    for (const att of opts.attachments!) {
+      const encoded = base64Encode(att.content);
+      parts.push(
+        `--${boundary}`,
+        `Content-Type: ${att.contentType}; name="${att.filename}"`,
+        `Content-Transfer-Encoding: base64`,
+        `Content-Disposition: attachment; filename="${att.filename}"`,
+        ``,
+        encoded.match(/.{1,76}/g)?.join("\r\n") || encoded,
+      );
+    }
+    parts.push(`--${boundary}--`);
+    const headers = [
+      ...baseHeaders,
+      `Content-Type: multipart/mixed; boundary="${boundary}"`,
+    ];
+    rawEmail = [...headers, ``, ...parts].join("\r\n");
+  }
 
   // Подключение: TLS сразу для 465; для 587/2525 — STARTTLS.
   const useImplicitTls = cfg.port === 465 || cfg.encryption === "ssl";
