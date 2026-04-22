@@ -70,7 +70,7 @@ function BlacklistTab() {
   const { list, add, remove } = useSalesBlacklist();
   const [open, setOpen] = useState(false);
   const [inn, setInn] = useState('');
-  const [companyName, setCompanyName] = useState('');
+  const [orgName, setOrgName] = useState('');
   const [reason, setReason] = useState('');
 
   const items = list.data || [];
@@ -94,7 +94,7 @@ function BlacklistTab() {
               </div>
               <div>
                 <label className="text-xs text-muted-foreground">Название компании</label>
-                <Input value={companyName} onChange={e => setCompanyName(e.target.value)} className="rounded-xl" />
+                <Input value={orgName} onChange={e => setOrgName(e.target.value)} className="rounded-xl" />
               </div>
               <div>
                 <label className="text-xs text-muted-foreground">Причина</label>
@@ -103,8 +103,8 @@ function BlacklistTab() {
               </div>
               <Button className="w-full rounded-xl" disabled={!inn.trim()}
                 onClick={async () => {
-                  await add.mutateAsync({ inn: inn.trim(), company_name: companyName.trim() || null, reason: reason.trim() || null });
-                  setInn(''); setCompanyName(''); setReason('');
+                  await add.mutateAsync({ inn: inn.trim(), org_name: orgName.trim() || undefined, reason: reason.trim() || undefined });
+                  setInn(''); setOrgName(''); setReason('');
                   setOpen(false);
                 }}>
                 Добавить
@@ -128,7 +128,7 @@ function BlacklistTab() {
                 <div key={it.id} className="flex items-start gap-3 p-3 rounded-xl border hover:bg-muted/30">
                   <Ban className="w-4 h-4 text-rose-600 dark:text-rose-400 mt-0.5 shrink-0" />
                   <div className="flex-1 min-w-0">
-                    <div className="text-sm font-medium">{it.company_name || it.inn}</div>
+                    <div className="text-sm font-medium">{it.org_name || it.inn}</div>
                     <div className="text-xs text-muted-foreground">ИНН: {it.inn}</div>
                     {it.reason && (
                       <div className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{it.reason}</div>
