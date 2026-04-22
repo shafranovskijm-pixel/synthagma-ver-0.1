@@ -274,6 +274,34 @@ export function DocumentIssuanceLog({ organizationId }: DocumentIssuanceLogProps
         />
       </div>
 
+      {/* Bulk actions bar */}
+      {selectedIds.size > 0 && (
+        <div className="flex items-center justify-between gap-3 p-3 rounded-xl border border-primary/30 bg-primary/5">
+          <div className="text-sm font-medium">
+            Выбрано записей: <span className="text-primary">{selectedIds.size}</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" className="rounded-lg gap-2" onClick={handleBulkExport}>
+              <Download className="w-3.5 h-3.5" />
+              Выгрузить выбранные
+            </Button>
+            <Button
+              variant="destructive"
+              size="sm"
+              className="rounded-lg gap-2"
+              onClick={handleBulkDelete}
+              disabled={bulkDeleting}
+            >
+              {bulkDeleting ? <SigmaSpinner size="sm" /> : <Trash2 className="w-3.5 h-3.5" />}
+              Удалить
+            </Button>
+            <Button variant="ghost" size="sm" className="rounded-lg" onClick={() => setSelectedIds(new Set())}>
+              Снять выбор
+            </Button>
+          </div>
+        </div>
+      )}
+
       {/* Table */}
       {isLoading ? (
         <div className="flex items-center justify-center py-12">
@@ -290,6 +318,13 @@ export function DocumentIssuanceLog({ organizationId }: DocumentIssuanceLogProps
             <table className="w-full">
               <thead className="bg-muted/50">
                 <tr>
+                  <th className="px-4 py-3 w-10">
+                    <Checkbox
+                      checked={allSelected ? true : someSelected ? "indeterminate" : false}
+                      onCheckedChange={toggleAll}
+                      aria-label="Выбрать все"
+                    />
+                  </th>
                   <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">№</th>
                   <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">Дата</th>
                   <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">ФИО</th>
@@ -301,6 +336,13 @@ export function DocumentIssuanceLog({ organizationId }: DocumentIssuanceLogProps
               <tbody className="divide-y divide-border">
                 {filteredLogs.map((log, index) => (
                   <tr key={log.id} className="hover:bg-muted/30 transition-colors">
+                    <td className="px-4 py-3">
+                      <Checkbox
+                        checked={selectedIds.has(log.id)}
+                        onCheckedChange={() => toggleOne(log.id)}
+                        aria-label={`Выбрать запись ${log.user_name}`}
+                      />
+                    </td>
                     <td className="px-4 py-3 text-sm">{index + 1}</td>
                     <td className="px-4 py-3 text-sm">
                       {format(new Date(log.issued_at), "dd.MM.yyyy", { locale: ru })}
