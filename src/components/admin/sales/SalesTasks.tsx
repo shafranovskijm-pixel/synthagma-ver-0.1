@@ -169,6 +169,20 @@ export function SalesTasks({ organizationId, prefillCompany, onPrefillConsumed, 
                               {!overdue && !today && days > 0 && <span>• через {days} дн.</span>}
                             </div>
                           </div>
+                          {onOpenDeal && t.lead_id && (() => {
+                            const lead = leadById.get(t.lead_id);
+                            const innOrName = lead?.inn || lead?.org_name;
+                            if (!innOrName) return null;
+                            return (
+                              <Button
+                                size="sm" variant="ghost"
+                                onClick={() => onOpenDeal(innOrName)}
+                                className="rounded-lg h-8" title="Открыть сделку"
+                              >
+                                <ExternalLink className="w-4 h-4 text-primary" />
+                              </Button>
+                            );
+                          })()}
                           {t.status === 'pending' && (
                             <Button size="sm" variant="ghost" onClick={() => complete.mutate(t.id)}
                               className="rounded-lg h-8" title="Выполнено">
