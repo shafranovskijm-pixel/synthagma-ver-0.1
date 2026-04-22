@@ -889,11 +889,14 @@ export type Database = {
           discount_percent: number | null
           first_viewed_at: string | null
           id: string
+          intro_html: string | null
           last_sent_at: string | null
           last_viewed_at: string | null
           linked_signature_id: string | null
           manager_id: string | null
           organization_id: string | null
+          outro_html: string | null
+          preset_id: string | null
           scope: string
           sender_email: string | null
           sender_name: string | null
@@ -920,11 +923,14 @@ export type Database = {
           discount_percent?: number | null
           first_viewed_at?: string | null
           id?: string
+          intro_html?: string | null
           last_sent_at?: string | null
           last_viewed_at?: string | null
           linked_signature_id?: string | null
           manager_id?: string | null
           organization_id?: string | null
+          outro_html?: string | null
+          preset_id?: string | null
           scope?: string
           sender_email?: string | null
           sender_name?: string | null
@@ -951,11 +957,14 @@ export type Database = {
           discount_percent?: number | null
           first_viewed_at?: string | null
           id?: string
+          intro_html?: string | null
           last_sent_at?: string | null
           last_viewed_at?: string | null
           linked_signature_id?: string | null
           manager_id?: string | null
           organization_id?: string | null
+          outro_html?: string | null
+          preset_id?: string | null
           scope?: string
           sender_email?: string | null
           sender_name?: string | null
@@ -988,6 +997,13 @@ export type Database = {
             columns: ["organization_id"]
             isOneToOne: false
             referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "commercial_proposals_preset_id_fkey"
+            columns: ["preset_id"]
+            isOneToOne: false
+            referencedRelation: "proposal_presets"
             referencedColumns: ["id"]
           },
           {
@@ -2522,6 +2538,8 @@ export type Database = {
           from_name: string | null
           html_body: string
           id: string
+          linked_course_id: string | null
+          linked_webinar_id: string | null
           manual_emails: string[] | null
           name: string
           open_count: number
@@ -2557,6 +2575,8 @@ export type Database = {
           from_name?: string | null
           html_body: string
           id?: string
+          linked_course_id?: string | null
+          linked_webinar_id?: string | null
           manual_emails?: string[] | null
           name: string
           open_count?: number
@@ -2592,6 +2612,8 @@ export type Database = {
           from_name?: string | null
           html_body?: string
           id?: string
+          linked_course_id?: string | null
+          linked_webinar_id?: string | null
           manual_emails?: string[] | null
           name?: string
           open_count?: number
@@ -6276,6 +6298,94 @@ export type Database = {
           valid_until?: string | null
         }
         Relationships: []
+      }
+      proposal_presets: {
+        Row: {
+          category: string
+          cover_url: string | null
+          created_at: string
+          created_by: string | null
+          default_discount_percent: number
+          default_email_template_id: string | null
+          default_services: Json
+          deleted_at: string | null
+          description: string | null
+          id: string
+          intro_html: string
+          is_default: boolean
+          linked_course_id: string | null
+          name: string
+          organization_id: string | null
+          outro_html: string
+          scope: string
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          category?: string
+          cover_url?: string | null
+          created_at?: string
+          created_by?: string | null
+          default_discount_percent?: number
+          default_email_template_id?: string | null
+          default_services?: Json
+          deleted_at?: string | null
+          description?: string | null
+          id?: string
+          intro_html?: string
+          is_default?: boolean
+          linked_course_id?: string | null
+          name: string
+          organization_id?: string | null
+          outro_html?: string
+          scope: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          category?: string
+          cover_url?: string | null
+          created_at?: string
+          created_by?: string | null
+          default_discount_percent?: number
+          default_email_template_id?: string | null
+          default_services?: Json
+          deleted_at?: string | null
+          description?: string | null
+          id?: string
+          intro_html?: string
+          is_default?: boolean
+          linked_course_id?: string | null
+          name?: string
+          organization_id?: string | null
+          outro_html?: string
+          scope?: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "proposal_presets_default_email_template_id_fkey"
+            columns: ["default_email_template_id"]
+            isOneToOne: false
+            referencedRelation: "email_templates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "proposal_presets_linked_course_id_fkey"
+            columns: ["linked_course_id"]
+            isOneToOne: false
+            referencedRelation: "courses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "proposal_presets_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       radio_stations: {
         Row: {
