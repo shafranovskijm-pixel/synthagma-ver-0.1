@@ -150,24 +150,6 @@ function BlockCategoryGrid({ items, onSelect }: { items: { type: BlockType; icon
   );
 }
 
-// Backward-compat export — used by SortableBlockItem
-function BlockCategoryGrid({ items, onSelect }: { items: { type: BlockType; icon: any; label: string; color?: string }[]; onSelect: (type: BlockType) => void }) {
-  return (
-    <div className="grid grid-cols-3 gap-1.5">
-      {items.map((item) => (
-        <button
-          key={item.type}
-          onClick={() => onSelect(item.type)}
-          className="flex flex-col items-center justify-center gap-1.5 p-2.5 rounded-xl bg-muted/40 hover:bg-primary/10 border border-transparent hover:border-primary/30 transition-all aspect-square"
-        >
-          <item.icon className={cn("w-5 h-5 shrink-0", item.color || "text-primary")} />
-          <span className="text-[11px] font-medium text-foreground text-center leading-tight line-clamp-2">{item.label}</span>
-        </button>
-      ))}
-    </div>
-  );
-}
-
 export { BlockCategoryGrid };
 
 // Resolve picked item → BlockType + optional pendingAI flag for the new block.
