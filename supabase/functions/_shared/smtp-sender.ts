@@ -61,6 +61,12 @@ export async function sendSmtpEmail(cfg: SmtpConfig, opts: SendOptions): Promise
     `MIME-Version: 1.0`,
   ];
   if (opts.replyTo) baseHeaders.push(`Reply-To: ${opts.replyTo}`);
+  if (opts.extraHeaders) {
+    for (const [k, v] of Object.entries(opts.extraHeaders)) {
+      const safeVal = String(v).replace(/[\r\n]+/g, " ");
+      baseHeaders.push(`${k}: ${safeVal}`);
+    }
+  }
 
   let rawEmail: string;
   if (!hasAttachments) {
