@@ -2,24 +2,33 @@
  * Универсальный рендерер шаблонов с переменными {{variable}}.
  * Используется для массовой генерации договоров, актов и любых
  * документов из шаблонов организации (`org_contract_templates`).
+ *
+ * БЕЗОПАСНОСТЬ: По умолчанию все значения переменных HTML-экранируются,
+ * чтобы исключить XSS при попадании ввода ученика/менеджера в шаблон.
+ * Чтобы вставить заранее подготовленный безопасный HTML — используйте
+ * двойные фигурные с маркером `&` (например: `{{&signature_html}}`).
  */
 
 export type TemplateVariables = Record<string, string | number | null | undefined>;
 
+function escapeHtml(s: string): string {
+  return s.replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]!));
+}
+
 /**
  * Подставляет значения переменных в HTML-шаблон.
- * Заменяет {{key}} → value. Неизвестные переменные оставляет как есть,
- * чтобы было видно «дырки» в шаблоне.
+ * - {{key}} — значение HTML-экранируется (безопасно по умолчанию)
+ * - {{&key}} — значение вставляется как сырой HTML (use with caution)
+ * Неизвестные переменные оставляет как есть, чтобы было видно «дырки» в шаблоне.
  */
 export function renderTemplate(html: string, variables: TemplateVariables): string {
   if (!html) return "";
-  let result = html;
-  Object.entries(variables).forEach(([key, value]) => {
-    const safe = value === null || value === undefined ? "" : String(value);
-    const regex = new RegExp(`\\{\\{\\s*${escapeRegex(key)}\\s*\\}\\}`, "g");
-    result = result.replace(regex, safe);
+  return html.replace(/\{\{\s*(&)?\s*([a-zA-Z0-9_]+)\s*\}\}/g, (match, raw, key) => {
+    if (!(key in variables)) return match;
+    const value = variables[key];
+    const str = value === null || value === undefined ? "" : String(value);
+    return raw ? str : escapeHtml(str);
   });
-  return result;
 }
 
 /**
@@ -27,7 +36,7 @@ export function renderTemplate(html: string, variables: TemplateVariables): stri
  */
 export function extractVariables(html: string): string[] {
   if (!html) return [];
-  const matches = html.matchAll(/\{\{\s*([a-zA-Z0-9_]+)\s*\}\}/g);
+  const matches = html.matchAll(/\{\{\s*&?\s*([a-zA-Z0-9_]+)\s*\}\}/g);
   const set = new Set<string>();
   for (const m of matches) set.add(m[1]);
   return Array.from(set);
@@ -45,10 +54,6 @@ export function findMissingVariables(html: string, variables: TemplateVariables)
   });
 }
 
-function escapeRegex(s: string): string {
-  return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-}
-
 /**
  * Преобразует число в денежный формат с разделителями.
  */
@@ -57,12 +62,29 @@ export function formatMoney(value: number): string {
 }
 
 /**
- * Возвращает сумму прописью (упрощённый вариант для рублей и копеек).
+ * Возвращает корректное русское окончание по числу: рубль/рубля/рублей.
+ */
+function pluralRu(n: number, forms: [string, string, string]): string {
+  const abs = Math.abs(n) % 100;
+  const lastTwo = abs;
+  const last = abs % 10;
+  if (lastTwo >= 11 && lastTwo <= 14) return forms[2];
+  if (last === 1) return forms[0];
+  if (last >= 2 && last <= 4) return forms[1];
+  return forms[2];
+}
+
+/**
+ * Возвращает сумму прописью с правильным склонением «рубль/копейка».
+ * Пример: 1234.05 → «одна тысяча двести тридцать четыре рубля 05 копеек»
  */
 export function moneyToWords(amount: number): string {
-  const rubles = Math.floor(amount);
-  const kopecks = Math.round((amount - rubles) * 100);
-  return `${numberToWords(rubles)} рублей ${String(kopecks).padStart(2, "0")} копеек`;
+  const safe = Math.max(0, Number(amount) || 0);
+  const rubles = Math.floor(safe);
+  const kopecks = Math.round((safe - rubles) * 100);
+  const rubWord = pluralRu(rubles, ["рубль", "рубля", "рублей"]);
+  const kopWord = pluralRu(kopecks, ["копейка", "копейки", "копеек"]);
+  return `${numberToWords(rubles)} ${rubWord} ${String(kopecks).padStart(2, "0")} ${kopWord}`;
 }
 
 function numberToWords(num: number): string {
@@ -71,7 +93,6 @@ function numberToWords(num: number): string {
   const teens = ["десять", "одиннадцать", "двенадцать", "тринадцать", "четырнадцать", "пятнадцать", "шестнадцать", "семнадцать", "восемнадцать", "девятнадцать"];
   const tens = ["", "", "двадцать", "тридцать", "сорок", "пятьдесят", "шестьдесят", "семьдесят", "восемьдесят", "девяносто"];
   const hundreds = ["", "сто", "двести", "триста", "четыреста", "пятьсот", "шестьсот", "семьсот", "восемьсот", "девятьсот"];
-  const thousandsForms = ["тысяч", "тысяча", "тысячи", "тысячи", "тысячи", "тысяч", "тысяч", "тысяч", "тысяч", "тысяч"];
 
   function under1000(n: number, isFeminine = false): string {
     const localUnits = isFeminine ? ["", "одна", "две", "три", "четыре", "пять", "шесть", "семь", "восемь", "девять"] : units;
@@ -90,16 +111,11 @@ function numberToWords(num: number): string {
 
   if (millions > 0) {
     parts.push(under1000(millions));
-    parts.push(millions === 1 ? "миллион" : (millions % 10 >= 2 && millions % 10 <= 4 && (millions % 100 < 10 || millions % 100 >= 20)) ? "миллиона" : "миллионов");
+    parts.push(pluralRu(millions, ["миллион", "миллиона", "миллионов"]));
   }
   if (thousands > 0) {
     parts.push(under1000(thousands, true));
-    const lastDigit = thousands % 10;
-    const lastTwo = thousands % 100;
-    if (lastTwo >= 11 && lastTwo <= 14) parts.push("тысяч");
-    else if (lastDigit === 1) parts.push("тысяча");
-    else if (lastDigit >= 2 && lastDigit <= 4) parts.push("тысячи");
-    else parts.push("тысяч");
+    parts.push(pluralRu(thousands, ["тысяча", "тысячи", "тысяч"]));
   }
   if (remainder > 0) parts.push(under1000(remainder));
 
@@ -121,6 +137,8 @@ export interface OrgRequisitesInput {
   bank_bik?: string | null;
   bank_account?: string | null;
   bank_corr_account?: string | null;
+  email?: string | null;
+  phone?: string | null;
 }
 
 export function buildOrgVariables(org: OrgRequisitesInput): TemplateVariables {
@@ -137,6 +155,8 @@ export function buildOrgVariables(org: OrgRequisitesInput): TemplateVariables {
     org_bank_bik: org.bank_bik || "",
     org_bank_account: org.bank_account || "",
     org_bank_corr_account: org.bank_corr_account || "",
+    org_email: org.email || "",
+    org_phone: org.phone || "",
   };
 }
 
@@ -184,8 +204,4 @@ table, td, th { border: 1px solid #000; padding: 6px; }
 .no-print { display: none; }
 @media print { .no-print { display: none !important; } }
 </style></head><body>${bodyHtml}</body></html>`;
-}
-
-function escapeHtml(s: string): string {
-  return s.replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]!));
 }
