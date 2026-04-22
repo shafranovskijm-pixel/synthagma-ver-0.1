@@ -1,8 +1,8 @@
-import React from "react";
+import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { Building2, FileText, ScrollText, Award, UserCheck, Stamp, Lightbulb, ExternalLink, Eye, Users } from "lucide-react";
+import { Building2, FileText, ScrollText, Award, UserCheck, Stamp, Lightbulb, ExternalLink, Eye, Users, FileStack } from "lucide-react";
 import { OrgRequisitesForm } from "@/components/organization/OrgRequisitesForm";
 import { ProtocolTemplateEditor } from "@/components/organization/ProtocolTemplateEditor";
 import { CertificateTemplateEditor } from "@/components/organization/CertificateTemplateEditor";
@@ -11,6 +11,7 @@ import { StampSignatureUploader } from "@/components/organization/StampSignature
 import { DocumentPreview } from "@/components/organization/DocumentPreview";
 import { ContractLegalFaq } from "@/components/organization/ContractLegalFaq";
 import { OrgSignatoriesManager } from "@/components/organization/OrgSignatoriesManager";
+import { BulkDocumentGenerator } from "@/components/organization/BulkDocumentGenerator";
 
 interface ConstructorSectionProps {
   organizationId: string;
