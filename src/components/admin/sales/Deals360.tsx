@@ -84,6 +84,8 @@ interface Deals360Props {
   onAddTask?: (company: { name: string; inn: string }) => void;
   /** Изменение значения вызовет refetch истории общения у выбранной компании */
   communicationRefreshKey?: number;
+  /** Если задан — карточка автоматически выберется при загрузке/смене значения */
+  initialSelectedInn?: string | null;
 }
 
 export function Deals360({
@@ -91,11 +93,12 @@ export function Deals360({
   onCreateProposal, onCreateContract, onCreateInvoice,
   onAddCall, onAddNote, onAddTask,
   communicationRefreshKey,
+  initialSelectedInn,
 }: Deals360Props = {}) {
   const [companies, setCompanies] = useState<DealCompany[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
-  const [selectedInn, setSelectedInn] = useState<string | null>(null);
+  const [selectedInn, setSelectedInn] = useState<string | null>(initialSelectedInn ?? null);
   const [view, setView] = useState<'list' | 'kanban'>('list');
   const [contactsByInn, setContactsByInn] = useState<Record<string, CompanyContact>>({});
 
@@ -103,6 +106,11 @@ export function Deals360({
     void loadDeals();
     void loadContacts();
   }, [organizationId]);
+
+  // Реагируем на внешнее изменение initialSelectedInn (из Обзора → Топ-5)
+  useEffect(() => {
+    if (initialSelectedInn) setSelectedInn(initialSelectedInn);
+  }, [initialSelectedInn]);
 
   async function loadContacts() {
     let q = supabase
