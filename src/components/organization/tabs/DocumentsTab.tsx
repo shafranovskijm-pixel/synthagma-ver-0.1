@@ -37,6 +37,8 @@ const NAV_ITEMS: { value: DocumentSubTab; label: string; icon: React.ElementType
   { value: "certificates", label: "Удостоверения", icon: Award, iconColor: "text-emerald-500", group: "docs" },
   { value: "diplomas", label: "Дипломы", icon: GraduationCap, iconColor: "text-blue-500", group: "docs" },
   { value: "testimonials", label: "Свидетельства", icon: FileCheck, iconColor: "text-rose-500", group: "docs" },
+  { value: "proposals", label: "Коммерч. предложения", icon: Send, iconColor: "text-fuchsia-500", group: "commerce" },
+  { value: "sales_contracts", label: "Договоры (продажи)", icon: Briefcase, iconColor: "text-indigo-500", group: "commerce" },
   { value: "programs", label: "Программы", icon: BookOpen, group: "tools" },
   { value: "journals", label: "Журналы", icon: ClipboardList, iconColor: "text-amber-500", group: "tools" },
   { value: "frdo", label: "ФИС ФРДО", icon: Database, iconColor: "text-violet-500", group: "tools" },
