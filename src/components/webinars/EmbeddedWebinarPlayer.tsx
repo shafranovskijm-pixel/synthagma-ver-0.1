@@ -87,6 +87,9 @@ export function EmbeddedWebinarPlayer({
   prefetchedToken,
   prefetchedWsUrl,
   viewOnly,
+  showSidePanel,
+  guestIdentity,
+  guestDisplayName,
 }: Props) {
   // ============ Recording playback (LiveKit ended + recording attached) ============
   if (sourceType === "livekit" && status === "ended" && recordingUrl) {
@@ -171,6 +174,9 @@ export function EmbeddedWebinarPlayer({
       prefetchedToken={prefetchedToken ?? null}
       prefetchedWsUrl={prefetchedWsUrl ?? null}
       viewOnly={viewOnly ?? false}
+      showSidePanel={showSidePanel ?? false}
+      guestIdentity={guestIdentity ?? null}
+      guestDisplayName={guestDisplayName ?? null}
     />
   );
 }
