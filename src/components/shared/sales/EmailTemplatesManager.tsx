@@ -3,9 +3,10 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Pencil, Trash2, Copy, Mail, Lock, Send } from "lucide-react";
+import { Plus, Pencil, Trash2, Copy, Mail, Lock, Send, ChevronDown, ChevronUp } from "lucide-react";
 import { useEmailTemplates, TEMPLATE_CATEGORIES, type EmailTemplate } from "@/hooks/useEmailTemplates";
 import { EmailTemplateEditor } from "./EmailTemplateEditor";
+import { EmailTemplateGallery } from "./EmailTemplateGallery";
 import { CampaignEditor } from "@/components/admin/broadcast/CampaignEditor";
 
 interface Props {
@@ -14,17 +15,40 @@ interface Props {
 }
 
 export function EmailTemplatesManager({ scope, organizationId }: Props) {
-  const { templates, loading, upsert, remove, duplicate, sendTest } = useEmailTemplates(scope, organizationId);
+  const { templates, loading, upsert, remove, duplicate, sendTest, cloneFromPlatform } = useEmailTemplates(scope, organizationId);
   const [filterCat, setFilterCat] = useState<string>("all");
   const [editing, setEditing] = useState<Partial<EmailTemplate> | null>(null);
   const [campaignFromTemplate, setCampaignFromTemplate] = useState<EmailTemplate | null>(null);
+  const [galleryOpen, setGalleryOpen] = useState(true);
 
   const filtered = filterCat === "all" ? templates : templates.filter(t => t.category === filterCat);
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-4">
+      {scope === "org" && (
+        <Card className="border-primary/20 bg-primary/5">
+          <CardContent className="p-4">
+            <button
+              onClick={() => setGalleryOpen(o => !o)}
+              className="flex items-center justify-between w-full mb-2"
+            >
+              <div className="flex items-center gap-2 text-sm font-medium">
+                {galleryOpen ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                Галерея готовых продающих шаблонов
+              </div>
+              <span className="text-xs text-muted-foreground">
+                {galleryOpen ? "свернуть" : "раскрыть"}
+              </span>
+            </button>
+            {galleryOpen && <EmailTemplateGallery onClone={cloneFromPlatform} />}
+          </CardContent>
+        </Card>
+      )}
+
       <div className="flex items-center justify-between flex-wrap gap-2">
-        <h3 className="text-lg font-semibold">Шаблоны email</h3>
+        <h3 className="text-lg font-semibold">
+          {scope === "org" ? "Мои шаблоны" : "Шаблоны email"}
+        </h3>
         <div className="flex items-center gap-2">
           <Select value={filterCat} onValueChange={setFilterCat}>
             <SelectTrigger className="w-[200px]"><SelectValue /></SelectTrigger>
