@@ -33,7 +33,9 @@ const menuGroups: MenuGroup[] = [
   {
     label: 'Клиенты и сделки',
     items: [
+      { id: 'kanban', label: 'Канбан сделок', icon: Kanban },
       { id: 'deals', label: 'Сделки 360°', icon: Sparkles },
+      { id: 'leads', label: 'Лиды', icon: UserPlus },
       { id: 'companies', label: 'Компании', icon: Building2 },
     ],
   },
