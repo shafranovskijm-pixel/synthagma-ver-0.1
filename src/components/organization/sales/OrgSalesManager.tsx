@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
-import { Sparkles, Mail, FileText, FileCode, Briefcase, Boxes, Settings, Users, ListTodo, Send, Building2, Target } from 'lucide-react';
+import { Sparkles, FileText, FileCode, Briefcase, Boxes, Settings, ListTodo, Send, Building2, Target } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useOrgDashboard } from '@/contexts/OrgDashboardContext';
 import { OrgEmailCampaigns } from './OrgEmailCampaigns';
@@ -9,6 +9,10 @@ import { OrgServicesManager } from './OrgServicesManager';
 import { OrgProposalsManager } from './OrgProposalsManager';
 import { OrgContractsManager } from './OrgContractsManager';
 import { EmailTemplatesManager } from '@/components/shared/sales/EmailTemplatesManager';
+import { SalesOverview } from '@/components/admin/sales/SalesOverview';
+import { SalesTasks } from '@/components/admin/sales/SalesTasks';
+import { Deals360 } from '@/components/admin/sales/Deals360';
+import { CompaniesUnified } from '@/components/admin/sales/CompaniesUnified';
 
 interface MenuItem { id: string; label: string; icon: any; soon?: boolean }
 interface MenuGroup { label: string; items: MenuItem[] }
@@ -17,15 +21,15 @@ const menuGroups: MenuGroup[] = [
   {
     label: 'Главное',
     items: [
-      { id: 'overview', label: 'Обзор', icon: Target, soon: true },
-      { id: 'tasks', label: 'Задачи', icon: ListTodo, soon: true },
+      { id: 'overview', label: 'Обзор', icon: Target },
+      { id: 'tasks', label: 'Задачи', icon: ListTodo },
     ],
   },
   {
     label: 'Клиенты и сделки',
     items: [
-      { id: 'deals', label: 'Сделки 360°', icon: Sparkles, soon: true },
-      { id: 'companies', label: 'Компании', icon: Building2, soon: true },
+      { id: 'deals', label: 'Сделки 360°', icon: Sparkles },
+      { id: 'companies', label: 'Компании', icon: Building2 },
     ],
   },
   {
@@ -54,7 +58,7 @@ const menuGroups: MenuGroup[] = [
 export function OrgSalesManager() {
   const d = useOrgDashboard();
   const organizationId = d.organizationId;
-  const [section, setSection] = useState<string>('campaigns');
+  const [section, setSection] = useState<string>('overview');
 
   if (!organizationId) return null;
 
@@ -64,7 +68,7 @@ export function OrgSalesManager() {
         <CardContent className="p-3 flex items-center gap-2 text-sm">
           <Sparkles className="w-4 h-4 text-primary shrink-0" />
           <span>
-            <strong>Раздел «Продажи» — Beta.</strong> Новый «Кабинет менеджера»: единое место для КП, договоров, рассылок и общения с клиентами.
+            <strong>Кабинет менеджера продаж — Beta.</strong> Единое место для сделок, КП, договоров, задач и общения с клиентами вашей организации.
           </span>
         </CardContent>
       </Card>
@@ -103,6 +107,10 @@ export function OrgSalesManager() {
 
         {/* Контент */}
         <div className="flex-1 min-w-0">
+          {section === 'overview' && <SalesOverview onJump={(t) => setSection(t)} />}
+          {section === 'tasks' && <SalesTasks />}
+          {section === 'deals' && <Deals360 />}
+          {section === 'companies' && <CompaniesUnified />}
           {section === 'campaigns' && (
             <OrgEmailCampaigns organizationId={organizationId} onGoToSmtp={() => setSection('smtp')} />
           )}
