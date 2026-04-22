@@ -9,6 +9,7 @@ import { AuthProvider } from "@/hooks/useAuth";
 import { StaffPermissionsProvider } from "@/hooks/useStaffPermissions";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { LazyLoadFallback } from "@/components/LazyLoadFallback";
+import { TwoFactorChallenge } from "@/components/auth/TwoFactorChallenge";
 import { ScrollToTop } from "./components/ScrollToTop";
 import { SpecialOfferPopup } from "./components/landing/SpecialOfferPopup";
 import { OfflineIndicator } from "./components/OfflineIndicator";
@@ -63,6 +64,7 @@ const App = () => (
                   <SpecialOfferPopup />
                   <BackgroundUploadsTray />
                   <SupportChatWidget />
+                  <TwoFactorChallenge />
                   
                   <Suspense fallback={<LazyLoadFallback />}>
                     <Routes>
