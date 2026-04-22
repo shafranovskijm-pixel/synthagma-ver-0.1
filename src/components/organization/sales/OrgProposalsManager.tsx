@@ -230,7 +230,19 @@ export function OrgProposalsManager({ organizationId, onGoToSmtp }: Props) {
                       {orgCourses.map(c => <SelectItem key={c.id} value={c.id}>{c.title}</SelectItem>)}
                     </SelectContent>
                   </Select>
-                  <p className="text-[10px] text-muted-foreground mt-1">Подставит название, длительность и цену в маркетинговые блоки</p>
+                  <div className="flex items-center justify-between mt-1 gap-2">
+                    <p className="text-[10px] text-muted-foreground flex-1">Подставит название, длительность и цену в маркетинговые блоки</p>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      className="h-7 text-xs gap-1 shrink-0"
+                      onClick={() => setVariablesCheckOpen(true)}
+                    >
+                      <Wand2 className="w-3 h-3" />
+                      Проверить подстановку
+                    </Button>
+                  </div>
                 </div>
               </div>
               <div><Label>Примечание</Label><Textarea rows={2} value={editor.proposal.custom_note || ""} onChange={e => setEditor(s => s && ({ ...s, proposal: { ...s.proposal, custom_note: e.target.value } }))} /></div>
