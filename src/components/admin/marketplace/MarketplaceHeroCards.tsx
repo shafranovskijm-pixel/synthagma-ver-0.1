@@ -121,23 +121,28 @@ interface MarketplaceHeroCardsProps {
 export function MarketplaceHeroCards({ onCardClick }: MarketplaceHeroCardsProps) {
   return (
     <div className="space-y-5">
-      {/* НОВЫЕ КУРСЫ */}
-      <div className="space-y-3">
-        <div className="flex items-center gap-2">
-          <Sparkles className="w-5 h-5 text-warning" />
-          <h3 className="text-lg font-semibold">Новые курсы</h3>
-          <span className="text-[10px] uppercase tracking-wider font-bold bg-warning/15 text-warning px-2 py-0.5 rounded-full">
-            Только что добавлено
+      {/* НОВЫЕ КУРСЫ — крупный заметный блок сверху */}
+      <div className="space-y-3 rounded-3xl border-2 border-warning/30 bg-gradient-to-br from-warning/5 via-background to-primary/5 p-4 sm:p-5 shadow-md">
+        <div className="flex items-center gap-2 flex-wrap">
+          <div className="flex items-center justify-center w-9 h-9 rounded-xl bg-warning/15 ring-1 ring-warning/30">
+            <Sparkles className="w-5 h-5 text-warning" />
+          </div>
+          <h3 className="text-xl font-bold text-foreground">Новинки маркетплейса</h3>
+          <span className="text-[10px] uppercase tracking-wider font-bold bg-warning text-warning-foreground px-2.5 py-1 rounded-full shadow-sm animate-pulse">
+            Свежие программы
+          </span>
+          <span className="ml-auto text-xs text-muted-foreground hidden sm:inline">
+            6 новых курсов добавлено в апреле
           </span>
         </div>
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
           {NEW_CARDS.map((card) => {
             const Icon = card.icon;
             return (
               <button
                 key={card.title}
                 onClick={() => onCardClick?.(card.searchTitle)}
-                className="group relative rounded-2xl overflow-hidden aspect-[4/3] border border-border hover:shadow-lg transition-all"
+                className="group relative rounded-2xl overflow-hidden aspect-[16/10] border border-border hover:shadow-xl hover:-translate-y-0.5 transition-all"
               >
                 <img
                   src={card.image}
@@ -145,19 +150,20 @@ export function MarketplaceHeroCards({ onCardClick }: MarketplaceHeroCardsProps)
                   className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                   loading="lazy"
                   width={768}
-                  height={512}
+                  height={480}
                 />
-                <div className={`absolute inset-0 bg-gradient-to-t ${card.gradient} via-black/40 to-transparent`} />
-                {/* NEW бейдж */}
-                <div className="absolute top-1.5 right-1.5 bg-warning text-warning-foreground text-[9px] font-bold px-1.5 py-0.5 rounded-full shadow-md">
+                <div className={`absolute inset-0 bg-gradient-to-t ${card.gradient} via-black/50 to-transparent`} />
+                {/* NEW бейдж — крупный */}
+                <div className="absolute top-2 right-2 bg-warning text-warning-foreground text-[10px] font-bold px-2 py-0.5 rounded-full shadow-md flex items-center gap-1">
+                  <Sparkles className="w-2.5 h-2.5" />
                   NEW
                 </div>
-                <div className="absolute inset-0 flex flex-col justify-end p-2.5">
-                  <div className="flex items-center gap-1.5 mb-0.5">
-                    <Icon className="w-3.5 h-3.5 text-white drop-shadow" />
-                    <span className="text-white text-[11px] font-bold drop-shadow line-clamp-1">{card.title}</span>
+                <div className="absolute inset-0 flex flex-col justify-end p-3">
+                  <div className="flex items-center gap-1.5 mb-1">
+                    <Icon className="w-4 h-4 text-white drop-shadow" />
+                    <span className="text-white text-sm font-bold drop-shadow line-clamp-1">{card.title}</span>
                   </div>
-                  <span className="text-white/80 text-[10px] drop-shadow line-clamp-1">{card.subtitle}</span>
+                  <span className="text-white/85 text-[11px] drop-shadow line-clamp-2">{card.subtitle}</span>
                 </div>
               </button>
             );
