@@ -198,17 +198,17 @@ export function RichTextEditor({
       return;
     }
     savedRange.current = range.cloneRange();
+    // Position is computed in viewport coordinates (used with position:fixed) so the
+    // toolbar can never be clipped by parent containers (modals, overflow:hidden, etc).
     const rect = range.getBoundingClientRect();
-    const editorRect = editor.getBoundingClientRect();
-    // Centered above the text selection. Flip below when too close to the viewport top.
+    // Desired CENTER X over the selection in viewport coords
+    const centerX = rect.left + rect.width / 2;
+    // Vertical: above by default, flipped below if no room at top
     const TOOLBAR_HEIGHT = 48;
     const GAP = 10;
     const flipBelow = rect.top < TOOLBAR_HEIGHT + GAP + 8;
-    const top = flipBelow
-      ? rect.bottom - editorRect.top + GAP
-      : rect.top - editorRect.top - TOOLBAR_HEIGHT - GAP;
-    const left = rect.left + rect.width / 2 - editorRect.left;
-    setToolbarPos({ top, left });
+    const top = flipBelow ? rect.bottom + GAP : rect.top - TOOLBAR_HEIGHT - GAP;
+    setToolbarPos({ top, left: centerX });
     setShowToolbar(true);
     updateActiveFormats();
   }, [styleMenuOpen, listMenuOpen, paletteOpen, linkOpen, convertOpen, advancedOpen, updateActiveFormats]);
@@ -218,36 +218,58 @@ export function RichTextEditor({
     return () => document.removeEventListener("selectionchange", handleSelectionChange);
   }, [handleSelectionChange]);
 
-  // Clamp toolbar horizontally so it always stays fully visible in the viewport.
+  // Reposition on scroll/resize so the toolbar follows the selection and stays visible.
+  useEffect(() => {
+    if (!showToolbar) return;
+    const reposition = () => {
+      const range = savedRange.current;
+      const editor = editorRef.current;
+      if (!range || !editor) return;
+      // If selection scrolled out of editor entirely, keep toolbar where it is — clamp will handle.
+      const rect = range.getBoundingClientRect();
+      const centerX = rect.left + rect.width / 2;
+      const TOOLBAR_HEIGHT = 48;
+      const GAP = 10;
+      const flipBelow = rect.top < TOOLBAR_HEIGHT + GAP + 8;
+      const top = flipBelow ? rect.bottom + GAP : rect.top - TOOLBAR_HEIGHT - GAP;
+      setToolbarPos({ top, left: centerX });
+    };
+    window.addEventListener("scroll", reposition, true);
+    window.addEventListener("resize", reposition);
+    return () => {
+      window.removeEventListener("scroll", reposition, true);
+      window.removeEventListener("resize", reposition);
+    };
+  }, [showToolbar]);
+
+  // Clamp toolbar position so it always stays fully visible in the viewport.
   // Runs after the toolbar mounts/updates so we can measure its actual width.
   useLayoutEffect(() => {
     if (!showToolbar) return;
     const tb = toolbarRef.current;
-    const editor = editorRef.current;
-    if (!tb || !editor) return;
+    if (!tb) return;
 
-    const editorRect = editor.getBoundingClientRect();
     const tbWidth = tb.offsetWidth || 320;
     const tbHeight = tb.offsetHeight || 48;
     const MARGIN = 8;
+    const vpW = window.innerWidth;
+    const vpH = window.innerHeight;
 
-    // Desired center in viewport coords
-    const desiredCenterViewport = editorRect.left + toolbarPos.left;
-    // Clamp so toolbar's left/right edges stay within viewport with MARGIN
+    // Horizontal clamp (toolbar uses -translate-x-1/2, so left = center)
     const minCenter = MARGIN + tbWidth / 2;
-    const maxCenter = window.innerWidth - MARGIN - tbWidth / 2;
-    const clampedCenterViewport = Math.min(Math.max(desiredCenterViewport, minCenter), maxCenter);
-    const clampedLeftRelative = clampedCenterViewport - editorRect.left;
+    const maxCenter = vpW - MARGIN - tbWidth / 2;
+    // If toolbar wider than viewport (very narrow phone), pin to left edge with horizontal scroll
+    const clampedLeft = tbWidth + MARGIN * 2 > vpW
+      ? MARGIN + tbWidth / 2
+      : Math.min(Math.max(toolbarPos.left, minCenter), maxCenter);
 
-    // Vertical: if toolbar would go above the viewport, push it below the selection
-    let newTop = toolbarPos.top;
-    const topInViewport = editorRect.top + newTop;
-    if (topInViewport < MARGIN) {
-      newTop = MARGIN - editorRect.top + tbHeight + 10;
-    }
+    // Vertical clamp
+    let clampedTop = toolbarPos.top;
+    if (clampedTop < MARGIN) clampedTop = MARGIN;
+    if (clampedTop + tbHeight > vpH - MARGIN) clampedTop = vpH - MARGIN - tbHeight;
 
-    if (Math.abs(clampedLeftRelative - toolbarPos.left) > 0.5 || Math.abs(newTop - toolbarPos.top) > 0.5) {
-      setToolbarPos({ top: newTop, left: clampedLeftRelative });
+    if (Math.abs(clampedLeft - toolbarPos.left) > 0.5 || Math.abs(clampedTop - toolbarPos.top) > 0.5) {
+      setToolbarPos({ top: clampedTop, left: clampedLeft });
     }
   }, [showToolbar, toolbarPos.left, toolbarPos.top]);
 
