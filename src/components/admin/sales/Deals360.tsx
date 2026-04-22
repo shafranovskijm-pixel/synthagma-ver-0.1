@@ -71,9 +71,9 @@ export function Deals360() {
     setLoading(true);
     try {
       const [proposalsRes, contractsRes, signaturesRes, billingRes] = await Promise.all([
-        supabase.from('commercial_proposals').select('id, company_inn, company_name, status, total_amount, created_at, tariff_plan').order('created_at', { ascending: false }),
+        supabase.from('commercial_proposals').select('id, company_inn, company_name, status, total_amount, created_at, tariff_plan, last_sent_at').order('created_at', { ascending: false }),
         supabase.from('sales_contracts').select('id, company_inn, company_name, status, contract_number, total_amount, created_at').order('created_at', { ascending: false }),
-        supabase.from('document_signatures').select('id, recipient_name, status, document_title, document_type, created_at, signed_at').order('created_at', { ascending: false }).limit(500),
+        supabase.from('document_signatures').select('id, recipient_name, status, document_title, document_type, created_at, signed_at, sent_at, viewed_at').order('created_at', { ascending: false }).limit(500),
         supabase.from('subscription_invoices').select('id, status, invoice_number, amount, created_at, organization_id').order('created_at', { ascending: false }).limit(500),
       ]);
 
