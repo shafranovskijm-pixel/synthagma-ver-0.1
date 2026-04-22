@@ -23,8 +23,10 @@ interface Props {
 }
 
 export function RecycleBinManager({ organizationId }: Props) {
-  const { items, total, loading, search, setSearch, hasMore, restore, restoreMany, purgeOne, loadMore } = useRecycleBin(organizationId);
+  const { items, total, loading, search, setSearch, hasMore, restore, restoreMany, purgeOne, loadMore, refresh } = useRecycleBin(organizationId);
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [purging, setPurging] = useState(false);
+  const [confirmDays, setConfirmDays] = useState<number | null>(null);
 
   const key = (it: RecycleBinItem) => `${it.source_table}:${it.id}`;
   const filtered = items;
