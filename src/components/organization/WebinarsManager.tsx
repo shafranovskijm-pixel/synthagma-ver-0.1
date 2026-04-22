@@ -57,6 +57,7 @@ export function WebinarsManager({ organizationId }: Props) {
   const [embedWebinar, setEmbedWebinar] = useState<Webinar | null>(null);
   const [statusFilter, setStatusFilter] = useState("all");
   const [search, setSearch] = useState("");
+  const [shareWebinar, setShareWebinar] = useState<Webinar | null>(null);
 
   const fetchWebinars = useCallback(async () => {
     const { data } = await supabase
