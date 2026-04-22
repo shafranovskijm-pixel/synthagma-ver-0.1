@@ -100,20 +100,8 @@ export function OrgProfileTab({ organizationId, initialSubTab }: ProfileTabProps
   const avatarInputRef = useRef<HTMLInputElement>(null);
   const [isDarkMode, setIsDarkMode] = useState(() => document.documentElement.classList.contains('dark'));
 
-  // Org-wide theme (DB-backed, shared across all sessions/staff)
-  const { theme: orgTheme, saveTheme: saveOrgTheme } = useOrgTheme(organizationId);
-
-  // Org login credentials
-  const [orgLoginEmail, setOrgLoginEmail] = useState("");
-  const [newOrgEmail, setNewOrgEmail] = useState("");
-  const [newOrgPassword, setNewOrgPassword] = useState("");
-  const [confirmOrgPassword, setConfirmOrgPassword] = useState("");
-  const [showOrgPassword, setShowOrgPassword] = useState(false);
-  const [savingOrgEmail, setSavingOrgEmail] = useState(false);
-  const [savingOrgPassword, setSavingOrgPassword] = useState(false);
-
-  // Menu settings (sidebar visibility)
-  const [menuSettings, setMenuSettings] = useState<MenuSettingsLocal>(DEFAULT_MENU);
+  // Menu settings (sidebar visibility) — single source of truth: useDashboardSettings hook + DB
+  const { menuSettings, setMenuSettings, reloadMenuSettings: reloadMenu, resetMenuSettings: resetMenu } = useDashboardSettings(organizationId);
 
   useEffect(() => {
     if (!user) return;
@@ -123,21 +111,8 @@ export function OrgProfileTab({ organizationId, initialSubTab }: ProfileTabProps
       loadNotificationPrefs(),
       loadOrgIcon(),
       loadOrgCredentials(),
-      loadMenuSettings(),
     ]).catch((e) => console.warn("OrgProfileTab parallel load failed:", e));
   }, [user, organizationId]);
-
-  const loadMenuSettings = async () => {
-    if (!organizationId) return;
-    const { data: org } = await supabase.from("organizations").select("menu_settings").eq("id", organizationId).maybeSingle();
-    if (org?.menu_settings) {
-      const m = org.menu_settings as any;
-      setMenuSettings({
-        showStats: m.showStats ?? true, showLinks: m.showLinks ?? true, showLaborSafety: m.showLaborSafety ?? true,
-        showDocuments: m.showDocuments ?? true, showServices: m.showServices ?? true, showCompanies: m.showCompanies ?? true,
-      });
-    }
-  };
 
   const handleSaveMenuSettings = async () => {
     if (!organizationId) return;
@@ -146,7 +121,16 @@ export function OrgProfileTab({ organizationId, initialSubTab }: ProfileTabProps
     toast.success("Настройки меню сохранены");
   };
 
-  const resetMenuSettings = async () => {
+  const handleResetMenuSettings = async () => {
+    await resetMenu();
+    toast.success("Меню восстановлено по умолчанию");
+  };
+
+  const handleReloadMenuSettings = async () => {
+    await reloadMenu();
+    toast.success("Меню обновлено");
+  };
+
     if (!organizationId) return;
     setMenuSettings(DEFAULT_MENU);
     await supabase.from("organizations").update({ menu_settings: DEFAULT_MENU as any }).eq("id", organizationId);
