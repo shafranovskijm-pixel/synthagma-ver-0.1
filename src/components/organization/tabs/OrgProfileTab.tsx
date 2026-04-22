@@ -800,7 +800,7 @@ export function OrgProfileTab({ organizationId, initialSubTab }: ProfileTabProps
 
         const renderBadge = (b?: Badge) => {
           if (b === "beta") return <span className="text-[10px] uppercase tracking-wide px-1.5 py-0.5 rounded bg-primary/10 text-primary font-semibold">Beta</span>;
-          if (b === "paid") return <span className="text-[10px] uppercase tracking-wide px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-600 font-semibold">Платный</span>;
+          if (b === "paid") return <span className="text-[10px] uppercase tracking-wide px-1.5 py-0.5 rounded bg-accent/15 text-accent font-semibold">Платный</span>;
           if (b === "always") return <span className="text-[10px] uppercase tracking-wide px-1.5 py-0.5 rounded bg-muted text-muted-foreground font-semibold">Всегда</span>;
           return null;
         };
