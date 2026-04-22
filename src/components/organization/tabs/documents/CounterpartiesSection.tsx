@@ -5,12 +5,13 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { ScrollText, Receipt, FileCheck, Download, FileText, Lightbulb, Eye, Trash2, ExternalLink, Building2, User, Store, Plus, FolderOpen, ChevronDown, ChevronRight, X, Search, Send } from "lucide-react";
+import { ScrollText, Receipt, FileCheck, Download, FileText, Lightbulb, Eye, Trash2, ExternalLink, Building2, User, Store, Plus, FolderOpen, ChevronDown, ChevronRight, X, Search, Send, History } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { ContractLegalFaq } from "@/components/organization/ContractLegalFaq";
 import { SendForSigningDialog, type SendForSigningPayload } from "@/components/signing/SendForSigningDialog";
 import { ExternalContractUploader } from "@/components/signing/ExternalContractUploader";
 import { ContractReviewBody } from "@/components/signing/ContractReviewBody";
+import { CounterpartyTimeline } from "./CounterpartyTimeline";
 import { File, Upload } from "lucide-react";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
@@ -816,6 +817,9 @@ export function CounterpartiesSection({
           <TabsTrigger value="contracts" className="rounded-lg text-xs gap-1.5"><ScrollText className="w-3.5 h-3.5" />Договоры</TabsTrigger>
           <TabsTrigger value="invoices" className="rounded-lg text-xs gap-1.5"><Receipt className="w-3.5 h-3.5" />Счета</TabsTrigger>
           <TabsTrigger value="closing" className="rounded-lg text-xs gap-1.5"><FileCheck className="w-3.5 h-3.5" />Закрывающие</TabsTrigger>
+          {isCompany && (
+            <TabsTrigger value="history" className="rounded-lg text-xs gap-1.5"><History className="w-3.5 h-3.5" />История</TabsTrigger>
+          )}
         </TabsList>
 
         {isPlatform && (
@@ -836,6 +840,14 @@ export function CounterpartiesSection({
             </TabsContent>
             <TabsContent value="closing" className="mt-0">
               {renderCompanyDocList("act", <><FileCheck className="w-10 h-10 mx-auto mb-2 opacity-30" /></>, "Актов пока нет")}
+            </TabsContent>
+            <TabsContent value="history" className="mt-0">
+              <CounterpartyTimeline
+                organizationId={organizationId}
+                counterpartyId={selectedId}
+                counterpartyName={selected?.name || ""}
+                counterpartyType="company"
+              />
             </TabsContent>
           </>
         )}

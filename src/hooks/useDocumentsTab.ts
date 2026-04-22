@@ -10,7 +10,7 @@ import { type OrgRequisites } from "@/hooks/useCompanyLinksAndGenerators";
 import { toast } from "sonner";
 
 export type DocumentSubTab = "kpi" | "constructor" | "programs" | "org" | "orders" | "protocols" | "certificates" | "diplomas" | "testimonials" | "journals" | "frdo" | "counterparties" | "incoming" | "signatures" | "pd_requests" | "recycle_bin" | "proposals" | "sales_contracts";
-export type CounterpartySubTab = "contracts" | "invoices" | "closing";
+export type CounterpartySubTab = "contracts" | "invoices" | "closing" | "history";
 export type CounterpartyType = "platform" | "company" | "payer";
 
 export interface CounterpartyOption {
