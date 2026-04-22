@@ -44,7 +44,7 @@ export type Permission =
   // Продажи (CRM-модуль)
   | 'sales.read' | 'sales.write';
 
-export type OrgStaffRole = 'owner' | 'admin' | 'school_editor' | 'course_editor' | 'teacher';
+export type OrgStaffRole = 'owner' | 'admin' | 'school_editor' | 'course_editor' | 'teacher' | 'sales_manager';
 export type AdminStaffRole = 'super_admin' | 'admin' | 'sales_manager' | 'viewer';
 
 // ===== Org-staff matrix =====
