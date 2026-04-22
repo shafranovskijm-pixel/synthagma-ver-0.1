@@ -3,13 +3,16 @@ import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { Progress } from '@/components/ui/progress';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { toast } from 'sonner';
 import {
   TrendingUp, AlertCircle, Flame, Trophy, Activity, Target,
-  FileText, ScrollText, PenTool, Wallet, ArrowRight, Clock
+  FileText, ScrollText, PenTool, Wallet, ArrowRight, Clock, Pencil, Check, X
 } from 'lucide-react';
-import { format, differenceInDays, startOfMonth, endOfMonth } from 'date-fns';
+import { format, differenceInDays, startOfMonth, endOfMonth, subDays, startOfQuarter } from 'date-fns';
 import { ru } from 'date-fns/locale';
 import { SigmaSpinner } from '@/components/ui/SigmaSpinner';
 import { cn } from '@/lib/utils';
@@ -20,7 +23,7 @@ interface OverviewData {
   funnel: { leads: number; proposals: number; contracts: number; paid: number;
             leadsAmt: number; proposalsAmt: number; contractsAmt: number; paidAmt: number };
   alerts: {
-    staleProposals: Array<{ id: string; company_name: string; total_amount: number; days: number }>;
+    staleProposals: Array<{ id: string; company_name: string; company_inn: string | null; total_amount: number; days: number }>;
     coldLeads: Array<{ id: string; org_name: string; days: number }>;
     pendingSignatures: Array<{ id: string; document_title: string; recipient_name: string; days: number }>;
   };
@@ -29,10 +32,11 @@ interface OverviewData {
   leaderboard: Array<{ id: string; name: string; deals: number; revenue: number }>;
 }
 
-const MONTH_PLAN_DEFAULT = 500000; // ₽ — default plan
+const MONTH_PLAN_DEFAULT = 500000; // ₽ — fallback plan
+type LeaderboardPeriod = 'month' | '30d' | 'quarter';
 
 interface Props {
-  onJump?: (tab: string) => void;
+  onJump?: (tab: string, inn?: string | null) => void;
   organizationId?: string;
   /** какие из секций реально доступны при клике (если не указано — все) */
   availableSections?: string[];
@@ -41,12 +45,16 @@ interface Props {
 export function SalesOverview({ onJump, organizationId, availableSections }: Props) {
   const [data, setData] = useState<OverviewData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [leaderPeriod, setLeaderPeriod] = useState<LeaderboardPeriod>('month');
+  const [planEditing, setPlanEditing] = useState(false);
+  const [planDraft, setPlanDraft] = useState<string>('');
+  const [savingPlan, setSavingPlan] = useState(false);
 
-  useEffect(() => { void load(); }, [organizationId]);
+  useEffect(() => { void load(); }, [organizationId, leaderPeriod]);
 
-  const safeJump = (tab: string) => {
-    if (!availableSections || availableSections.includes(tab)) onJump?.(tab);
-    else onJump?.('deals'); // fallback
+  const safeJump = (tab: string, inn?: string | null) => {
+    if (!availableSections || availableSections.includes(tab)) onJump?.(tab, inn);
+    else onJump?.('deals', inn);
   };
 
   async function load() {
@@ -57,10 +65,17 @@ export function SalesOverview({ onJump, organizationId, availableSections }: Pro
       const weekAgo = new Date(Date.now() - 7 * 86400000).toISOString();
       const ninetyDaysAgo = new Date(Date.now() - 90 * 86400000).toISOString();
 
+      // Граница периода для лидерборда
+      const leaderSince = leaderPeriod === 'month'
+        ? startOfMonth(new Date()).toISOString()
+        : leaderPeriod === '30d'
+          ? subDays(new Date(), 30).toISOString()
+          : startOfQuarter(new Date()).toISOString();
+
       const applyOrg = <T extends { eq: any }>(q: T, col = 'organization_id'): T =>
         organizationId ? q.eq(col, organizationId) : q;
 
-      const [proposalsR, contractsR, leadsR, signaturesR, activitiesR, managersR] = await Promise.all([
+      const [proposalsR, contractsR, leadsR, signaturesR, activitiesR, managersR, planR] = await Promise.all([
         applyOrg(
           supabase.from('commercial_proposals')
             .select('id, company_inn, company_name, status, total_amount, created_at, last_sent_at, manager_id')
@@ -99,6 +114,10 @@ export function SalesOverview({ onJump, organizationId, availableSections }: Pro
         organizationId
           ? Promise.resolve({ data: [] as any[], error: null }) as any
           : supabase.from('sales_managers').select('id, full_name'),
+        // План месяца из app_settings (только для админ-режима)
+        organizationId
+          ? Promise.resolve({ data: null, error: null }) as any
+          : supabase.from('app_settings').select('setting_value').eq('setting_key', 'sales_month_plan').maybeSingle(),
       ]);
 
       const proposals = proposalsR.data || [];
@@ -107,6 +126,7 @@ export function SalesOverview({ onJump, organizationId, availableSections }: Pro
       const signatures = signaturesR.data || [];
       const activities = activitiesR.data || [];
       const managers = managersR.data || [];
+      const monthPlan = Number((planR as any)?.data?.setting_value) || MONTH_PLAN_DEFAULT;
 
       // Plan/fact: paid contracts in current month
       const monthRevenue = contracts
@@ -130,8 +150,13 @@ export function SalesOverview({ onJump, organizationId, availableSections }: Pro
       const now = new Date();
       const staleProposals = proposals
         .filter((p: any) => p.status === 'sent' && p.last_sent_at)
-        .map((p: any) => ({ id: p.id, company_name: p.company_name, total_amount: Number(p.total_amount || 0),
-                            days: differenceInDays(now, new Date(p.last_sent_at)) }))
+        .map((p: any) => ({
+          id: p.id,
+          company_name: p.company_name,
+          company_inn: p.company_inn || null,
+          total_amount: Number(p.total_amount || 0),
+          days: differenceInDays(now, new Date(p.last_sent_at)),
+        }))
         .filter(p => p.days >= 3)
         .sort((a, b) => b.days - a.days)
         .slice(0, 5);
@@ -179,11 +204,12 @@ export function SalesOverview({ onJump, organizationId, availableSections }: Pro
         meetings: activities.filter((a: any) => a.activity_type === 'meeting').length,
       };
 
-      // Leaderboard
+      // Leaderboard за выбранный период
       const mgrMap = new Map<string, { name: string; deals: number; revenue: number }>();
       managers.forEach((m: any) => mgrMap.set(m.id, { name: m.full_name, deals: 0, revenue: 0 }));
       proposals.forEach((p: any) => {
         if (!p.manager_id) return;
+        if (p.created_at < leaderSince) return;
         const e = mgrMap.get(p.manager_id);
         if (e && p.status === 'accepted') { e.deals += 1; e.revenue += Number(p.total_amount || 0); }
       });
@@ -193,7 +219,7 @@ export function SalesOverview({ onJump, organizationId, availableSections }: Pro
         .slice(0, 5);
 
       setData({
-        monthRevenue, monthPlan: MONTH_PLAN_DEFAULT,
+        monthRevenue, monthPlan,
         funnel, alerts: { staleProposals, coldLeads, pendingSignatures },
         topDeals, weekActivity, leaderboard,
       });
@@ -201,6 +227,28 @@ export function SalesOverview({ onJump, organizationId, availableSections }: Pro
       console.error('SalesOverview load', e);
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function savePlan() {
+    const num = Number(planDraft.replace(/\s/g, '').replace(',', '.'));
+    if (!Number.isFinite(num) || num <= 0) {
+      toast.error('Введите положительное число');
+      return;
+    }
+    setSavingPlan(true);
+    try {
+      const { error } = await supabase
+        .from('app_settings')
+        .upsert({ setting_key: 'sales_month_plan', setting_value: String(Math.round(num)) }, { onConflict: 'setting_key' });
+      if (error) throw error;
+      setData(d => d ? { ...d, monthPlan: Math.round(num) } : d);
+      setPlanEditing(false);
+      toast.success('План сохранён');
+    } catch (e: any) {
+      toast.error(e?.message || 'Не удалось сохранить план');
+    } finally {
+      setSavingPlan(false);
     }
   }
 
@@ -228,13 +276,44 @@ export function SalesOverview({ onJump, organizationId, availableSections }: Pro
           <CardContent className="p-5 space-y-3">
             <div className="flex items-center justify-between">
               <span className="text-sm text-muted-foreground">План на месяц</span>
-              <Badge variant={planPct >= 100 ? 'default' : 'secondary'} className="rounded-lg">
-                {planPct}%
-              </Badge>
+              <div className="flex items-center gap-1.5">
+                <Badge variant={planPct >= 100 ? 'default' : 'secondary'} className="rounded-lg">
+                  {planPct}%
+                </Badge>
+                {!organizationId && !planEditing && (
+                  <Button
+                    size="icon" variant="ghost" className="h-6 w-6"
+                    onClick={() => { setPlanDraft(String(data.monthPlan)); setPlanEditing(true); }}
+                    title="Изменить план"
+                  >
+                    <Pencil className="w-3.5 h-3.5" />
+                  </Button>
+                )}
+              </div>
             </div>
             <div>
               <div className="text-3xl font-semibold">{data.monthRevenue.toLocaleString('ru-RU')} ₽</div>
-              <div className="text-xs text-muted-foreground mt-1">из {data.monthPlan.toLocaleString('ru-RU')} ₽</div>
+              {planEditing ? (
+                <div className="flex items-center gap-1.5 mt-2">
+                  <Input
+                    value={planDraft}
+                    onChange={e => setPlanDraft(e.target.value)}
+                    placeholder="500000"
+                    className="h-8 text-sm"
+                    inputMode="numeric"
+                    autoFocus
+                    onKeyDown={e => { if (e.key === 'Enter') void savePlan(); if (e.key === 'Escape') setPlanEditing(false); }}
+                  />
+                  <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => void savePlan()} disabled={savingPlan}>
+                    <Check className="w-4 h-4 text-emerald-600" />
+                  </Button>
+                  <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => setPlanEditing(false)} disabled={savingPlan}>
+                    <X className="w-4 h-4 text-muted-foreground" />
+                  </Button>
+                </div>
+              ) : (
+                <div className="text-xs text-muted-foreground mt-1">из {data.monthPlan.toLocaleString('ru-RU')} ₽</div>
+              )}
             </div>
             <Progress value={planPct} className="h-2" />
             <div className="text-xs text-muted-foreground">
@@ -277,7 +356,7 @@ export function SalesOverview({ onJump, organizationId, availableSections }: Pro
                     title={p.company_name}
                     subtitle={`КП без ответа ${p.days} ${pluralDays(p.days)} • ${p.total_amount.toLocaleString('ru-RU')} ₽`}
                     icon={FileText} tone="amber"
-                    onClick={() => safeJump('proposals')}
+                    onClick={() => safeJump('deals', p.company_inn)}
                   />
                 ))}
                 {data.alerts.coldLeads.map(l => (
@@ -316,7 +395,7 @@ export function SalesOverview({ onJump, organizationId, availableSections }: Pro
               <div className="space-y-2 pr-2">
                 {data.topDeals.map((d, i) => (
                   <button key={d.inn}
-                    onClick={() => safeJump('deals')}
+                    onClick={() => safeJump('deals', d.inn !== '—' ? d.inn : null)}
                     className="w-full text-left p-3 rounded-xl border hover:bg-muted/30 transition-colors flex items-center gap-3">
                     <div className={cn(
                       "w-8 h-8 rounded-lg flex items-center justify-center text-sm font-semibold shrink-0",
@@ -364,9 +443,23 @@ export function SalesOverview({ onJump, organizationId, availableSections }: Pro
         {!hideLeaderboard && (
           <Card className="rounded-2xl">
             <CardContent className="p-5 space-y-3">
-              <div className="flex items-center gap-2">
-                <Trophy className="w-4 h-4 text-amber-500" />
-                <span className="text-sm font-medium">Лидерборд менеджеров</span>
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <Trophy className="w-4 h-4 text-amber-500" />
+                  <span className="text-sm font-medium">Лидерборд менеджеров</span>
+                </div>
+                {!organizationId && (
+                  <Select value={leaderPeriod} onValueChange={(v: LeaderboardPeriod) => setLeaderPeriod(v)}>
+                    <SelectTrigger className="h-7 text-xs w-[130px] rounded-lg">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="month">Этот месяц</SelectItem>
+                      <SelectItem value="30d">30 дней</SelectItem>
+                      <SelectItem value="quarter">Квартал</SelectItem>
+                    </SelectContent>
+                  </Select>
+                )}
               </div>
               <div className="space-y-1.5">
                 {data.leaderboard.length === 0 && (
