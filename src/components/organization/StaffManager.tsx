@@ -9,9 +9,11 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { toast } from "sonner";
-import { Plus, Trash2, Users, Shield, BookOpen, Edit3, Eye, HelpCircle, Settings } from "lucide-react";
-import { useOrgDashboard } from "@/contexts/OrgDashboardContext";
+import { Plus, Trash2, Users, Shield, BookOpen, Edit3, Eye, Mail } from "lucide-react";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
+import { StaffInvitationDialog, type StaffInvitationRole } from "@/components/staff/StaffInvitationDialog";
+import { RoleAuditLog } from "@/components/staff/RoleAuditLog";
+import { OrgPermissionMatrix } from "@/components/staff/PermissionMatrix";
 
 interface StaffMember {
   id: string;
@@ -24,12 +26,18 @@ interface StaffMember {
 }
 
 const ROLES = [
-  { value: "owner", label: "Владелец", icon: Shield, color: "bg-amber-500/10 text-amber-600", description: "Полный доступ ко всем разделам, управление школой и сотрудниками", accessLabel: "Все разделы" },
-  { value: "admin", label: "Администратор", icon: Shield, color: "bg-red-500/10 text-red-600", description: "Все разделы, управление курсами, учениками и настройками", accessLabel: "Все разделы" },
-  { value: "school_editor", label: "Редактор школы", icon: Edit3, color: "bg-blue-500/10 text-blue-600", description: "Редактирование страниц школы, лендингов, дизайна", accessLabel: "6 из 9 разделов" },
-  { value: "course_editor", label: "Редактор курсов", icon: BookOpen, color: "bg-green-500/10 text-green-600", description: "Создание и редактирование курсов и уроков", accessLabel: "4 из 9 разделов" },
-  { value: "teacher", label: "Преподаватель", icon: Users, color: "bg-indigo-500/10 text-indigo-600", description: "Проверка заданий, общение с учениками, доступ к курсам", accessLabel: "6 из 9 разделов" },
+  { value: "owner", label: "Владелец", icon: Shield, color: "bg-amber-500/10 text-amber-600", description: "Полный доступ ко всем разделам, управление школой и сотрудниками" },
+  { value: "admin", label: "Администратор", icon: Shield, color: "bg-red-500/10 text-red-600", description: "Все разделы, управление курсами, учениками и настройками" },
+  { value: "school_editor", label: "Редактор школы", icon: Edit3, color: "bg-blue-500/10 text-blue-600", description: "Редактирование страниц школы, лендингов, дизайна" },
+  { value: "course_editor", label: "Редактор курсов", icon: BookOpen, color: "bg-green-500/10 text-green-600", description: "Создание и редактирование курсов и уроков" },
+  { value: "teacher", label: "Преподаватель", icon: Users, color: "bg-indigo-500/10 text-indigo-600", description: "Проверка заданий, общение с учениками, доступ к курсам" },
 ];
+
+const INVITATION_ROLES: StaffInvitationRole[] = ROLES.map(r => ({
+  value: r.value,
+  label: r.label,
+  description: r.description,
+}));
 
 const VISIBILITY = [
   { value: "all", label: "Все ученики" },
@@ -45,6 +53,7 @@ export function StaffManager({ organizationId }: StaffManagerProps) {
   const [staff, setStaff] = useState<StaffMember[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [inviteOpen, setInviteOpen] = useState(false);
   const [email, setEmail] = useState("");
   const [displayName, setDisplayName] = useState("");
   const [role, setRole] = useState("teacher");
@@ -75,7 +84,7 @@ export function StaffManager({ organizationId }: StaffManagerProps) {
       .single();
 
     if (!profile) {
-      toast.error("Пользователь с таким email не найден");
+      toast.error("Пользователь с таким email не найден. Используйте «Пригласить» — мы пришлём ссылку на регистрацию.");
       setSaving(false);
       return;
     }
@@ -85,7 +94,8 @@ export function StaffManager({ organizationId }: StaffManagerProps) {
       user_id: profile.user_id,
       role,
       display_name: displayName.trim() || email.trim(),
-      visibility } as any);
+      visibility,
+    } as any);
 
     if (error) {
       if (error.code === "23505") toast.error("Этот сотрудник уже добавлен");
@@ -97,6 +107,12 @@ export function StaffManager({ organizationId }: StaffManagerProps) {
       await loadStaff();
     }
     setSaving(false);
+  };
+
+  const handleChangeRole = async (id: string, newRole: string) => {
+    const { error } = await supabase.from("org_staff").update({ role: newRole }).eq("id", id);
+    if (error) toast.error("Ошибка: " + error.message);
+    else { toast.success("Роль обновлена"); await loadStaff(); }
   };
 
   const handleDelete = async (id: string) => {
@@ -113,14 +129,19 @@ export function StaffManager({ organizationId }: StaffManagerProps) {
       <div className="space-y-8">
         {/* Staff list */}
         <div className="space-y-4">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between flex-wrap gap-3">
             <div>
               <h2 className="text-lg font-bold flex items-center gap-2"><Users className="w-5 h-5" />Сотрудники</h2>
               <p className="text-sm text-muted-foreground">Управление ролями и доступом сотрудников</p>
             </div>
-            <Button className="btn-gradient rounded-xl gap-2" onClick={() => setDialogOpen(true)}>
-              <Plus className="w-4 h-4" />Добавить
-            </Button>
+            <div className="flex gap-2">
+              <Button variant="outline" className="rounded-xl gap-2" onClick={() => setInviteOpen(true)}>
+                <Mail className="w-4 h-4" />Пригласить по email
+              </Button>
+              <Button className="btn-gradient rounded-xl gap-2" onClick={() => setDialogOpen(true)}>
+                <Plus className="w-4 h-4" />Добавить
+              </Button>
+            </div>
           </div>
 
           {loading ? (
@@ -149,9 +170,19 @@ export function StaffManager({ organizationId }: StaffManagerProps) {
                       <TableRow key={s.id}>
                         <TableCell className="font-medium">{s.display_name}</TableCell>
                         <TableCell>
+                          <Select value={s.role} onValueChange={(v) => handleChangeRole(s.id, v)}>
+                            <SelectTrigger className="w-44 h-8 text-xs">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {ROLES.map(r => (
+                                <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
                           <Tooltip>
                             <TooltipTrigger asChild>
-                              <Badge variant="outline" className={`${rc.color} cursor-help`}>{rc.label}</Badge>
+                              <Badge variant="outline" className={`${rc.color} mt-1 cursor-help`}>{rc.label}</Badge>
                             </TooltipTrigger>
                             <TooltipContent side="top" className="max-w-[250px]">
                               <p className="font-medium">{rc.label}</p>
@@ -179,65 +210,44 @@ export function StaffManager({ organizationId }: StaffManagerProps) {
           )}
         </div>
 
-        {/* Role settings table */}
+        {/* Permissions matrix */}
         <div className="space-y-4">
           <div>
-            <h2 className="text-lg font-bold flex items-center gap-2"><Settings className="w-5 h-5" />Настройка ролей в проекте</h2>
-            <p className="text-sm text-muted-foreground">Описание прав доступа для каждой роли</p>
+            <h2 className="text-lg font-bold">Что может каждая роль</h2>
+            <p className="text-sm text-muted-foreground">
+              Подробная матрица возможностей. Изменения вступают в силу мгновенно после смены роли.
+            </p>
           </div>
-          <div className="border border-border rounded-xl overflow-hidden">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Роль</TableHead>
-                  <TableHead>Доступ к разделам</TableHead>
-                  <TableHead className="text-right">Сотрудников</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {ROLES.map(r => {
-                  const Icon = r.icon;
-                  const count = staff.filter(s => s.role === r.value).length;
-                  return (
-                    <TableRow key={r.value}>
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          <Icon className="w-4 h-4 text-muted-foreground" />
-                          <span className="font-medium">{r.label}</span>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <HelpCircle className="w-3.5 h-3.5 text-muted-foreground cursor-help" />
-                            </TooltipTrigger>
-                            <TooltipContent side="right" className="max-w-[250px]">
-                              <p className="text-xs">{r.description}</p>
-                            </TooltipContent>
-                          </Tooltip>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <span className="text-sm text-muted-foreground">{r.accessLabel}</span>
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <Badge variant="secondary" className="min-w-[28px] justify-center">{count}</Badge>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
-          </div>
+          <OrgPermissionMatrix />
         </div>
+
+        {/* Audit log */}
+        <RoleAuditLog scope="organization" organizationId={organizationId} limit={30} />
+
+        {/* Invitation dialog */}
+        <StaffInvitationDialog
+          open={inviteOpen}
+          onOpenChange={setInviteOpen}
+          roles={INVITATION_ROLES}
+          defaultRole="teacher"
+          invitationType="organization"
+          organizationId={organizationId}
+          onInvited={loadStaff}
+        />
 
         {/* Add staff dialog */}
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
           <DialogContent className="sm:max-w-md">
             <DialogHeader>
-              <DialogTitle>Добавить сотрудника</DialogTitle>
+              <DialogTitle>Добавить существующего пользователя</DialogTitle>
             </DialogHeader>
             <div className="space-y-4">
               <div className="space-y-2">
                 <Label>Email пользователя</Label>
                 <Input value={email} onChange={e => setEmail(e.target.value)} placeholder="email@example.com" />
+                <p className="text-xs text-muted-foreground">
+                  Пользователь должен быть уже зарегистрирован. Иначе используйте «Пригласить по email».
+                </p>
               </div>
               <div className="space-y-2">
                 <Label>Отображаемое имя</Label>
@@ -254,7 +264,7 @@ export function StaffManager({ organizationId }: StaffManagerProps) {
                   </SelectContent>
                 </Select>
                 <p className="text-xs text-muted-foreground mt-1">
-                  {selectedRoleConfig.description} ({selectedRoleConfig.accessLabel})
+                  {selectedRoleConfig.description}
                 </p>
               </div>
               <div className="space-y-2">

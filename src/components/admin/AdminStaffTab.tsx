@@ -4,8 +4,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Plus, Trash2, UserCog, Shield, Eye, Briefcase, Mail } from "lucide-react";
 import { toast } from "sonner";
-import { StaffInvitationDialog } from "@/components/staff/StaffInvitationDialog";
+import { StaffInvitationDialog, type StaffInvitationRole } from "@/components/staff/StaffInvitationDialog";
 import { RoleAuditLog } from "@/components/staff/RoleAuditLog";
+import { AdminPermissionMatrix } from "@/components/staff/PermissionMatrix";
 import {
   Dialog,
   DialogContent,
