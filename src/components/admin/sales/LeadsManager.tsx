@@ -95,7 +95,7 @@ export function LeadsManager({ organizationId }: LeadsManagerProps = {}) {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between flex-wrap gap-2">
-        <h3 className="text-lg font-semibold">База компаний ({orgFilteredLeads.length})</h3>
+        <h3 className="text-lg font-semibold">База компаний ({leads.length})</h3>
         <Button size="sm" onClick={() => setImportOpen(true)}>
           <Upload className="w-4 h-4 mr-2" />Импорт из Excel
         </Button>
