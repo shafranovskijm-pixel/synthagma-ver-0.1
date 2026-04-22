@@ -202,7 +202,7 @@ export function Deals360() {
       {view === 'kanban' ? (
         <SalesKanban onSelectCompany={(inn) => { setView('list'); setSelectedInn(inn); }} />
       ) : (
-      <div className="grid grid-cols-1 lg:grid-cols-[340px_1fr] gap-4">
+      <div className="grid grid-cols-1 lg:grid-cols-[300px_minmax(0,1fr)_320px] gap-4">
         {/* Список компаний */}
         <Card className="rounded-2xl">
           <CardContent className="p-3 space-y-3">
@@ -380,7 +380,23 @@ export function Deals360() {
             )}
           </CardContent>
         </Card>
+
+        {/* Правая панель: контакты + быстрые действия + история */}
+        {selected ? (
+          <div className="space-y-4">
+            <DealQuickActions
+              companyName={selected.name}
+              inn={selected.inn}
+              contact={contactsByInn[selected.inn]}
+            />
+            <DealCommunication
+              inn={selected.inn}
+              companyName={selected.name}
+            />
+          </div>
+        ) : <div />}
       </div>
+      )}
     </div>
   );
 }
