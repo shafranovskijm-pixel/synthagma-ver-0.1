@@ -64,8 +64,13 @@ export function ContractTemplateEditor({
   const [history, setHistory] = useState<TemplateHistoryEntry[]>([]);
   const [showHistory, setShowHistory] = useState(false);
 
+  // Real requisites preview
+  const [realData, setRealData] = useState<RealRequisites>({});
+  const [previewMode, setPreviewMode] = useState<"real" | "demo">("real");
+
   useEffect(() => {
     loadTemplate();
+    loadRealRequisites(organizationId).then(setRealData).catch(() => setRealData({}));
   }, [organizationId]);
 
   const loadTemplate = async () => {
