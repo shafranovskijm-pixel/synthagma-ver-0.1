@@ -172,15 +172,20 @@ export function OrgSidebar() {
     try { localStorage.setItem(SHOW_LABELS_KEY, showLabels ? "1" : "0"); } catch {}
   }, [showLabels]);
 
-  // Expanded mode (icon+text full panel)
+  // Expanded mode (icon+text full panel) — desktop only.
+  // Raw `expanded` persists across devices so desktop users keep their pref;
+  // `effectiveExpanded` forces compact layout on mobile so the 220px panel
+  // doesn't overlap page content.
   const [expanded, setExpanded] = useState<boolean>(() => {
     try { return localStorage.getItem(EXPANDED_KEY) === "1"; } catch { return false; }
   });
+  const isMobile = useIsMobile();
+  const effectiveExpanded = expanded && !isMobile;
   useEffect(() => {
     try { localStorage.setItem(EXPANDED_KEY, expanded ? "1" : "0"); } catch {}
     // Notify layout to adjust main content margin
-    window.dispatchEvent(new CustomEvent("org-sidebar-expanded-change", { detail: expanded }));
-  }, [expanded]);
+    window.dispatchEvent(new CustomEvent("org-sidebar-expanded-change", { detail: effectiveExpanded }));
+  }, [expanded, effectiveExpanded]);
 
   // Auto-collapse on screens < 1280px to prevent content squeeze
   useEffect(() => {
@@ -192,6 +197,26 @@ export function OrgSidebar() {
     mq.addEventListener?.("change", handler);
     return () => mq.removeEventListener?.("change", handler);
   }, [expanded]);
+
+  // One-time hint to explain the expanded mode
+  const handleToggleExpanded = useCallback(() => {
+    setExpanded((v) => {
+      const next = !v;
+      if (next) {
+        try {
+          const shown = localStorage.getItem("org-sidebar-expanded-hint-shown");
+          if (!shown) {
+            toast("Меню развёрнуто", {
+              description: "Теперь видны полные названия пунктов. Свернуть обратно — той же кнопкой.",
+              duration: 5000,
+            });
+            localStorage.setItem("org-sidebar-expanded-hint-shown", "1");
+          }
+        } catch {}
+      }
+      return next;
+    });
+  }, []);
 
   // Theme-aware accent
   const [themeAccent, setThemeAccent] = useState<string | null>(() => {
