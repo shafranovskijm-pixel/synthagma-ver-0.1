@@ -162,6 +162,12 @@ export function OrgSalesManager() {
               onOpenDeal={(inn) => { setDealSelectedInn(inn); setSection('deals'); }}
             />
           )}
+          {section === 'kanban' && (
+            <SalesKanban
+              organizationId={organizationId}
+              onSelectCompany={(inn) => { setDealSelectedInn(inn); setSection('deals'); }}
+            />
+          )}
           {section === 'deals' && (
             <Deals360
               organizationId={organizationId}
@@ -175,6 +181,7 @@ export function OrgSalesManager() {
               initialSelectedInn={dealSelectedInn}
             />
           )}
+          {section === 'leads' && <LeadsManager organizationId={organizationId} />}
           {section === 'companies' && <CompaniesUnified organizationId={organizationId} hideColdBase />}
           {section === 'campaigns' && (
             <OrgEmailCampaigns organizationId={organizationId} onGoToSmtp={() => setSection('smtp')} />
