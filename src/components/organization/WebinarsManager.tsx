@@ -508,6 +508,13 @@ export function WebinarsManager({ organizationId }: Props) {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <ShareWebinarDialog
+        open={!!shareWebinar}
+        onOpenChange={(o) => !o && setShareWebinar(null)}
+        webinar={shareWebinar}
+        onUpdated={fetchWebinars}
+      />
     </div>
   );
 }
