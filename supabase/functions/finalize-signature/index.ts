@@ -121,6 +121,22 @@ serve(async (req) => {
       return new Response(JSON.stringify({ error: "Failed to finalize signature" }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
+    // Fire-and-forget: создаём сертификат подписания (PEP)
+    if (method === "pep") {
+      try {
+        await fetch(`${Deno.env.get("SUPABASE_URL")}/functions/v1/generate-signature-certificate`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}`,
+          },
+          body: JSON.stringify({ signatureId: sig.id }),
+        });
+      } catch (certErr) {
+        console.warn("certificate generation failed (non-blocking):", certErr);
+      }
+    }
+
     return new Response(JSON.stringify({
       success: true,
       signatureId: sig.id,

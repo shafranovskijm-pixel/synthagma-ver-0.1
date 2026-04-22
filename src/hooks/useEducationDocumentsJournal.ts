@@ -247,17 +247,29 @@ export function useEducationDocumentsJournal({
     setFormData(getDefaultFormData(documentTypeFilter));
   };
 
-  const generateRegNumber = () => {
+  const generateRegNumber = async () => {
     const year = formData.issue_date.getFullYear();
-    const sameYearCount = records.filter((r) => parseISO(r.issue_date).getFullYear() === year).length;
-    const nextNumber = sameYearCount + 1;
+    const docType = formData.document_type || "doc";
+    let nextNumber = 1;
+    try {
+      const { data, error } = await supabase.rpc("next_reg_number", {
+        p_org: organizationId,
+        p_doc_type: docType,
+        p_year: year,
+      });
+      if (error) throw error;
+      nextNumber = (data as number) || 1;
+    } catch (err) {
+      console.warn("next_reg_number RPC failed, falling back to client count:", err);
+      nextNumber = records.filter((r) => parseISO(r.issue_date).getFullYear() === year).length + 1;
+    }
 
     // Try to use settings from branding
     const settings = formData.document_type === "diploma" ? docSettings.diplomaSettings : docSettings.certificateSettings;
     if (settings?.regNumberFormat) {
       const regNum = settings.regNumberFormat
         .replace("{{year}}", year.toString())
-        .replace("{{number}}", ((settings.startNumber || 0) + sameYearCount).toString().padStart(4, "0"));
+        .replace("{{number}}", ((settings.startNumber || 0) + nextNumber - 1).toString().padStart(4, "0"));
       setFormData((prev) => ({
         ...prev,
         reg_number: regNum,
