@@ -65,10 +65,17 @@ export function SalesOverview({ onJump, organizationId, availableSections }: Pro
       const weekAgo = new Date(Date.now() - 7 * 86400000).toISOString();
       const ninetyDaysAgo = new Date(Date.now() - 90 * 86400000).toISOString();
 
+      // Граница периода для лидерборда
+      const leaderSince = leaderPeriod === 'month'
+        ? startOfMonth(new Date()).toISOString()
+        : leaderPeriod === '30d'
+          ? subDays(new Date(), 30).toISOString()
+          : startOfQuarter(new Date()).toISOString();
+
       const applyOrg = <T extends { eq: any }>(q: T, col = 'organization_id'): T =>
         organizationId ? q.eq(col, organizationId) : q;
 
-      const [proposalsR, contractsR, leadsR, signaturesR, activitiesR, managersR] = await Promise.all([
+      const [proposalsR, contractsR, leadsR, signaturesR, activitiesR, managersR, planR] = await Promise.all([
         applyOrg(
           supabase.from('commercial_proposals')
             .select('id, company_inn, company_name, status, total_amount, created_at, last_sent_at, manager_id')
@@ -107,6 +114,10 @@ export function SalesOverview({ onJump, organizationId, availableSections }: Pro
         organizationId
           ? Promise.resolve({ data: [] as any[], error: null }) as any
           : supabase.from('sales_managers').select('id, full_name'),
+        // План месяца из app_settings (только для админ-режима)
+        organizationId
+          ? Promise.resolve({ data: null, error: null }) as any
+          : supabase.from('app_settings').select('setting_value').eq('setting_key', 'sales_month_plan').maybeSingle(),
       ]);
 
       const proposals = proposalsR.data || [];
@@ -115,6 +126,7 @@ export function SalesOverview({ onJump, organizationId, availableSections }: Pro
       const signatures = signaturesR.data || [];
       const activities = activitiesR.data || [];
       const managers = managersR.data || [];
+      const monthPlan = Number((planR as any)?.data?.setting_value) || MONTH_PLAN_DEFAULT;
 
       // Plan/fact: paid contracts in current month
       const monthRevenue = contracts
@@ -138,8 +150,13 @@ export function SalesOverview({ onJump, organizationId, availableSections }: Pro
       const now = new Date();
       const staleProposals = proposals
         .filter((p: any) => p.status === 'sent' && p.last_sent_at)
-        .map((p: any) => ({ id: p.id, company_name: p.company_name, total_amount: Number(p.total_amount || 0),
-                            days: differenceInDays(now, new Date(p.last_sent_at)) }))
+        .map((p: any) => ({
+          id: p.id,
+          company_name: p.company_name,
+          company_inn: p.company_inn || null,
+          total_amount: Number(p.total_amount || 0),
+          days: differenceInDays(now, new Date(p.last_sent_at)),
+        }))
         .filter(p => p.days >= 3)
         .sort((a, b) => b.days - a.days)
         .slice(0, 5);
@@ -187,11 +204,12 @@ export function SalesOverview({ onJump, organizationId, availableSections }: Pro
         meetings: activities.filter((a: any) => a.activity_type === 'meeting').length,
       };
 
-      // Leaderboard
+      // Leaderboard за выбранный период
       const mgrMap = new Map<string, { name: string; deals: number; revenue: number }>();
       managers.forEach((m: any) => mgrMap.set(m.id, { name: m.full_name, deals: 0, revenue: 0 }));
       proposals.forEach((p: any) => {
         if (!p.manager_id) return;
+        if (p.created_at < leaderSince) return;
         const e = mgrMap.get(p.manager_id);
         if (e && p.status === 'accepted') { e.deals += 1; e.revenue += Number(p.total_amount || 0); }
       });
@@ -201,7 +219,7 @@ export function SalesOverview({ onJump, organizationId, availableSections }: Pro
         .slice(0, 5);
 
       setData({
-        monthRevenue, monthPlan: MONTH_PLAN_DEFAULT,
+        monthRevenue, monthPlan,
         funnel, alerts: { staleProposals, coldLeads, pendingSignatures },
         topDeals, weekActivity, leaderboard,
       });
@@ -209,6 +227,28 @@ export function SalesOverview({ onJump, organizationId, availableSections }: Pro
       console.error('SalesOverview load', e);
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function savePlan() {
+    const num = Number(planDraft.replace(/\s/g, '').replace(',', '.'));
+    if (!Number.isFinite(num) || num <= 0) {
+      toast.error('Введите положительное число');
+      return;
+    }
+    setSavingPlan(true);
+    try {
+      const { error } = await supabase
+        .from('app_settings')
+        .upsert({ setting_key: 'sales_month_plan', setting_value: String(Math.round(num)) }, { onConflict: 'setting_key' });
+      if (error) throw error;
+      setData(d => d ? { ...d, monthPlan: Math.round(num) } : d);
+      setPlanEditing(false);
+      toast.success('План сохранён');
+    } catch (e: any) {
+      toast.error(e?.message || 'Не удалось сохранить план');
+    } finally {
+      setSavingPlan(false);
     }
   }
 
