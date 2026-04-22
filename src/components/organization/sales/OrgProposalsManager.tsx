@@ -107,20 +107,28 @@ export function OrgProposalsManager({ organizationId, onGoToSmtp }: Props) {
     if (!editor) return;
     const linkedCourseId = (editor.proposal as any).linked_course_id || null;
     const course = linkedCourseId ? orgCourses.find(c => c.id === linkedCourseId) : null;
-    // Подставляем переменные курса в названия услуг (для course_promo пресетов)
+    const { applyProposalVariables } = await import("@/lib/proposalVariables");
+    const ctx = {
+      course: course
+        ? { title: course.title, duration: course.duration, price: course.price, slug: course.slug, id: course.id }
+        : null,
+      companyName: editor.proposal.company_name || "",
+      contactPerson: editor.proposal.contact_person || "",
+    };
+    // Подставляем переменные в маркетинговые блоки и в названия услуг
     const items = editor.items.map(it => ({
       ...it,
-      custom_name: course
-        ? it.custom_name.replace(/\{\{course_name\}\}/g, course.title)
-        : it.custom_name,
+      custom_name: applyProposalVariables(it.custom_name, ctx),
+      custom_description: it.custom_description ? applyProposalVariables(it.custom_description, ctx) : it.custom_description,
     }));
+    const intro_html = editor.proposal.intro_html ? applyProposalVariables(editor.proposal.intro_html, ctx) : null;
+    const outro_html = editor.proposal.outro_html ? applyProposalVariables(editor.proposal.outro_html, ctx) : null;
     const subtotal = items.reduce((s, i) => s + i.price * i.quantity, 0);
     const discount = (editor.proposal.discount_percent || 0) / 100;
     const total = Math.round(subtotal * (1 - discount));
-    // linked_course_id не сохраняется в БД — используется только для подстановки на момент сохранения
     const { linked_course_id: _drop, ...proposalPayload } = editor.proposal as any;
     setBusy(true);
-    await upsertProposal({ ...proposalPayload, total_amount: total }, items);
+    await upsertProposal({ ...proposalPayload, intro_html, outro_html, total_amount: total }, items);
     setBusy(false);
     setEditor(null);
   };
