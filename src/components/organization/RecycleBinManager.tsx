@@ -10,9 +10,10 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger
 } from "@/components/ui/alert-dialog";
-import { Trash2, RotateCcw, Search, AlertTriangle, Clock, ChevronDown } from "lucide-react";
+import { Trash2, RotateCcw, Search, AlertTriangle, Clock } from "lucide-react";
 import { format, formatDistanceToNow } from "date-fns";
 import { ru } from "date-fns/locale";
+import { LoadMoreControls } from "@/components/ui/LoadMoreControls";
 
 interface Props {
   organizationId: string;
@@ -158,6 +159,13 @@ export function RecycleBinManager({ organizationId }: Props) {
                   );
                 })}
               </div>
+              {hasMore && (
+                <LoadMoreControls
+                  visibleCount={items.length}
+                  totalCount={total}
+                  onLoadMore={() => loadMore()}
+                />
+              )}
             </>
           )}
         </CardContent>

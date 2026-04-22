@@ -79,19 +79,31 @@ export function SignaturesJournal({ organizationId }: Props) {
   const [dateTo, setDateTo] = useState<string>("");
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState<SignatureRow | null>(null);
+  const [pageSize, setPageSize] = useState(200);
+  const [totalCount, setTotalCount] = useState(0);
 
-  const load = async () => {
+  const load = async (limit = pageSize) => {
     setLoading(true);
+    // Серверные фильтры (статус, тип, даты) + поиск по ILIKE через .or()
     let q = supabase
       .from("document_signatures")
-      .select("*")
+      .select("*", { count: "exact" })
       .order("created_at", { ascending: false })
-      .limit(1000);
+      .limit(limit);
     if (organizationId) q = q.eq("organization_id", organizationId);
-    const { data, error } = await q;
+    if (statusFilter !== "all") q = q.eq("status", statusFilter);
+    if (typeFilter !== "all") q = q.eq("document_type", typeFilter);
+    if (dateFrom) q = q.gte("created_at", dateFrom);
+    if (dateTo) q = q.lte("created_at", dateTo + "T23:59:59");
+    if (search.trim()) {
+      const s = search.trim().replace(/[,()]/g, " ");
+      q = q.or(`document_title.ilike.%${s}%,recipient_name.ilike.%${s}%,recipient_email.ilike.%${s}%`);
+    }
+    const { data, error, count } = await q;
     if (error) { toast.error("Ошибка загрузки журнала"); setLoading(false); return; }
     const list = (data as any) || [];
     setRows(list);
+    setTotalCount(count || list.length);
 
     // Подгружаем названия организаций (для админки — все, для орг-кабинета — одна)
     const orgIds = Array.from(new Set(list.map((r: any) => r.organization_id))) as string[];
@@ -104,7 +116,24 @@ export function SignaturesJournal({ organizationId }: Props) {
     setLoading(false);
   };
 
-  useEffect(() => { load(); }, [organizationId]);
+  // Перезагрузка при смене организации, фильтров, диапазона дат и debounced-поиска
+  useEffect(() => {
+    setPageSize(200);
+    load(200);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [organizationId, statusFilter, typeFilter, dateFrom, dateTo]);
+
+  useEffect(() => {
+    const t = setTimeout(() => { setPageSize(200); load(200); }, 350);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [search]);
+
+  const loadMore = (extra: number) => {
+    const next = pageSize + extra;
+    setPageSize(next);
+    load(next);
+  };
 
   const filtered = useMemo(() => {
     return rows.filter((r) => {
