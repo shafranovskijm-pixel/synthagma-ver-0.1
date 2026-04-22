@@ -4173,6 +4173,50 @@ export type Database = {
           },
         ]
       }
+      org_custom_roles: {
+        Row: {
+          base_role: string | null
+          created_at: string
+          created_by: string | null
+          description: string | null
+          id: string
+          name: string
+          organization_id: string
+          permissions: Json
+          updated_at: string
+        }
+        Insert: {
+          base_role?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          name: string
+          organization_id: string
+          permissions?: Json
+          updated_at?: string
+        }
+        Update: {
+          base_role?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          name?: string
+          organization_id?: string
+          permissions?: Json
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "org_custom_roles_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       org_document_share_links: {
         Row: {
           created_at: string
@@ -6240,6 +6284,78 @@ export type Database = {
           },
         ]
       }
+      role_audit_log: {
+        Row: {
+          action: string
+          company_id: string | null
+          created_at: string
+          details: Json | null
+          id: string
+          new_role: string | null
+          new_sections_access: Json | null
+          old_role: string | null
+          old_sections_access: Json | null
+          organization_id: string | null
+          performed_by: string | null
+          performed_by_name: string | null
+          scope: string
+          target_email: string | null
+          target_name: string | null
+          target_user_id: string
+        }
+        Insert: {
+          action: string
+          company_id?: string | null
+          created_at?: string
+          details?: Json | null
+          id?: string
+          new_role?: string | null
+          new_sections_access?: Json | null
+          old_role?: string | null
+          old_sections_access?: Json | null
+          organization_id?: string | null
+          performed_by?: string | null
+          performed_by_name?: string | null
+          scope: string
+          target_email?: string | null
+          target_name?: string | null
+          target_user_id: string
+        }
+        Update: {
+          action?: string
+          company_id?: string | null
+          created_at?: string
+          details?: Json | null
+          id?: string
+          new_role?: string | null
+          new_sections_access?: Json | null
+          old_role?: string | null
+          old_sections_access?: Json | null
+          organization_id?: string | null
+          performed_by?: string | null
+          performed_by_name?: string | null
+          scope?: string
+          target_email?: string | null
+          target_name?: string | null
+          target_user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "role_audit_log_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "role_audit_log_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       sales_blacklist: {
         Row: {
           added_at: string
@@ -7098,6 +7214,87 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "skillspace_import_jobs_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      staff_invitations: {
+        Row: {
+          accepted_at: string | null
+          accepted_user_id: string | null
+          company_id: string | null
+          created_at: string
+          custom_role_id: string | null
+          email: string
+          expires_at: string
+          full_name: string | null
+          id: string
+          invitation_type: string
+          invited_by: string
+          invited_by_name: string | null
+          organization_id: string | null
+          revoked_at: string | null
+          role: string
+          sections_access: Json | null
+          status: string
+          token: string
+          updated_at: string
+        }
+        Insert: {
+          accepted_at?: string | null
+          accepted_user_id?: string | null
+          company_id?: string | null
+          created_at?: string
+          custom_role_id?: string | null
+          email: string
+          expires_at?: string
+          full_name?: string | null
+          id?: string
+          invitation_type: string
+          invited_by: string
+          invited_by_name?: string | null
+          organization_id?: string | null
+          revoked_at?: string | null
+          role: string
+          sections_access?: Json | null
+          status?: string
+          token?: string
+          updated_at?: string
+        }
+        Update: {
+          accepted_at?: string | null
+          accepted_user_id?: string | null
+          company_id?: string | null
+          created_at?: string
+          custom_role_id?: string | null
+          email?: string
+          expires_at?: string
+          full_name?: string | null
+          id?: string
+          invitation_type?: string
+          invited_by?: string
+          invited_by_name?: string | null
+          organization_id?: string | null
+          revoked_at?: string | null
+          role?: string
+          sections_access?: Json | null
+          status?: string
+          token?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "staff_invitations_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "staff_invitations_organization_id_fkey"
             columns: ["organization_id"]
             isOneToOne: false
             referencedRelation: "organizations"
@@ -8826,6 +9023,7 @@ export type Database = {
         Returns: undefined
       }
       encrypt_password: { Args: { p_text: string }; Returns: string }
+      expire_staff_invitations: { Args: never; Returns: number }
       find_knowledge_bank_content: {
         Args: { p_min_similarity?: number; p_title: string }
         Returns: {
