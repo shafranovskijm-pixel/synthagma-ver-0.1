@@ -156,7 +156,7 @@ export function SignaturesJournal({ organizationId, initialStatus }: Props) {
   // Счётчики статусов считаются по уже отфильтрованной выборке.
   // Когда фильтр активен — показываем totalCount для активного таба, остальные — 0.
   const counts = useMemo(() => {
-    const c: Record<string, number> = { all: 0, sent: 0, signed: 0, viewed: 0, rejected: 0, expired: 0, in_review: 0, changes_requested: 0, external_upload: 0 };
+    const c: Record<string, number> = { all: 0, sent: 0, signed: 0, viewed: 0, rejected: 0, revoked: 0, expired: 0, in_review: 0, changes_requested: 0, external_upload: 0 };
     if (statusFilter === "all") {
       c.all = totalCount;
       rows.forEach((r) => {
@@ -391,6 +391,7 @@ export function SignaturesJournal({ organizationId, initialStatus }: Props) {
           <TabsTrigger value="sent">Отправлено ({counts.sent || 0})</TabsTrigger>
           <TabsTrigger value="signed">Подписано ({counts.signed || 0})</TabsTrigger>
           <TabsTrigger value="rejected">Отклонено ({counts.rejected || 0})</TabsTrigger>
+          <TabsTrigger value="revoked">Отозвано ({counts.revoked || 0})</TabsTrigger>
           <TabsTrigger value="expired">Просрочено ({counts.expired || 0})</TabsTrigger>
           {!organizationId && (
             <TabsTrigger
@@ -501,7 +502,7 @@ export function SignaturesJournal({ organizationId, initialStatus }: Props) {
                           <>
                             <Button variant="ghost" size="icon" title="Скопировать ссылку" onClick={() => copyLink(r.signature_token)}><Copy className="w-4 h-4" /></Button>
                             <Button variant="ghost" size="icon" title="Напомнить (повторно отправить email)" onClick={() => remindRecipient(r)}><Bell className="w-4 h-4 text-amber-600" /></Button>
-                            <Button variant="ghost" size="icon" title="Отменить подписание" onClick={() => cancelSignature(r)}><Ban className="w-4 h-4 text-destructive" /></Button>
+                            <Button variant="ghost" size="icon" title="Отозвать документ" onClick={() => cancelSignature(r)}><Ban className="w-4 h-4 text-destructive" /></Button>
                           </>
                         )}
                         {r.status === "signed" && (
