@@ -1,111 +1,114 @@
 
 
-# Аудит «Продажи»: что ещё надо починить
+# Аудит документооборота: что починить и улучшить
 
-После прошлого спринта (4 итерации) я перепроверил код. Хорошая новость: основа теперь твёрдая — RLS по организациям подтверждена в БД, фильтрация прокинута, лимиты добавлены. Но я нашёл **новую партию узких мест**, которые точно «вылезут» у пользователя.
+Прошёл по всему функционалу: вкладки `kpi/counterparties/incoming/orders/protocols/certificates/diplomas/testimonials/programs/journals/frdo/constructor/org/signatures/pd_requests/recycle_bin`, хук `useDocumentsTab`, хук корзины, KPI-дашборд, edge-функции напоминаний и cron-задачи.
 
-## Состояние RLS в БД (проверил из postgres)
+## Узкие места по приоритетам
 
-✅ Все ключевые таблицы изолированы:
-- `sales_leads`, `sales_lead_activities`, `sales_companies_db`, `sales_contracts`, `sales_blacklist`, `sales_tasks` — политики `Org members manage own ...` с `organization_id = current_organization_id()` действуют.
-- `commercial_proposals`, `document_signatures` — политики org-area тоже на месте.
+### A. Критичные баги (точно сломаются у пользователя)
 
-⚠️ Но `sales_managers` — только админ + сам менеджер. У `org_manager` доступа нет → леaderboard и фильтр менеджера в орг-кабинете всегда пустые (это уже учтено в `SalesOverview`, но в `LeadsManager.managers` массив **пустой**, а интерфейс показывает фильтр и бейдж «Менеджер» с прочерком).
+1. **KPI-дашборд считает чужие договоры**. В `useDocumentsKpi` запросы `contracts_total/signed/pending` идут к `company_documents` **без `organization_id` фильтра** — берёт глобально (RLS отрежет, но JOIN с companies не делается). У организации с 0 контрагентов покажет 0, у админа — все договоры платформы. Нужно фильтровать через `companies!inner(organization_id)`.
 
-## Новые узкие места и баги
+2. **`org_billing_documents` без soft-delete и без deleted_at**. Удаление в `handleDeleteBillingDoc` — жёсткий DELETE из БД и Storage. В корзине эти документы **никогда не появятся**, восстановить нельзя. То же для `org_documents` при удалении из `DocumentArchiveView` и `OrgDocumentsManager` — обычный `.delete()` без `update({deleted_at: now()})`.
 
-### 1. Утечка через `useSalesManager` (КРИТ)
-- `LeadsManager` вызывает `fetchLeads()` без `organizationId`, фильтрует уже **на клиенте** (`l.organization_id === organizationId`). Для организаций с **>1000 лидов** Supabase вернёт максимум 1000 (default limit), и после клиентской фильтрации может получиться пусто или непредсказуемо обрезано. Нужно фильтровать на сервере.
-- Тот же `useSalesManager` используется в `NewTaskForm` (`SalesTasks`) — `fetchLeads` без org-фильтра загружает чужие лиды для админа (норм) и пустоту для орг (RLS отрежет, ок), но с лимитом 1000 для крупных аккаунтов.
-- `fetchActivities`, `fetchProposals` — нигде не фильтруются по `organization_id` явно (полагаемся только на RLS). На больших объёмах админ получит «всё подряд» и фриз.
+3. **`incoming_documents.file_url` хранит signed URL с TTL 1 год**. Через год ссылки протухнут — вкладка «Входящие» покажет битые `<a href>`. Открытие должно идти через `createSignedUrl(file_path, 3600)` каждый раз, как в `DocumentArchiveView`.
 
-### 2. `DealCommunication` — SQL-инъекция через `.or()` (КРИТ безопасность)
-- Строки `or('inn.eq.${inn},org_name.ilike.${companyName.slice(0,30)}%')` и `or('company_inn.eq.${inn},company_name.ilike.${companyName.slice(0,30)}%')` подставляют `companyName` без экранирования.
-- Если в названии компании есть `,` или `)`, запрос **сломается** или вернёт неожиданное.
-- Названия типа `ООО «Рога, и копыта»` гарантированно ломают URL-параметры PostgREST.
+4. **`process-document-expiry-reminders` шлёт только in-app уведомления**, не email. Документы организации (лицензии, аккредитации) истекают — ответственное лицо узнаёт только если зашло в кабинет. Для `org_documents` нет email-канала.
 
-### 3. `sales_companies_db` insert RLS — `INSERT` политика без проверки `WITH CHECK` для admin (нашёл дыру)
-- Политика `Admins can insert sales companies db` имеет `qual = NULL` для INSERT (это нормально для INSERT) но `with_check` требует `organization_id IS NOT NULL OR admin`. Это значит, что **админ при импорте через Чеко** может вставить строку **без `organization_id`** → она будет видна всем org как «осиротевшая»? Нет, RLS SELECT для org требует `organization_id = current_organization_id()`. Проверю: SELECT-политики org игнорируют NULL → ок.
-- Но `sales_companies_db_db` массовый импорт через `checko-enrich-batch` сохраняет данные **без** `organization_id` (это глобальная база, общее для всех админов). Для **орг.менеджера** Чёрная база будет пустой всегда → опция «обогатить из ИНН-базы» бесполезна. Нужно решить продуктово: либо **общая глобальная база** видна всем, либо орг ведёт свою.
+5. **Корзина игнорирует RLS-проверку при `purgeOne`**. Любой залогиненный пользователь, отправив правильный `id`, может прибить запись окончательно (RLS должна спасать, но `restore_document` SECURITY DEFINER не проверяет владение — `UPDATE ... WHERE id = $1` без `organization_id`). Это **дыра**: с валидным `id` чужой организации можно восстановить чужой документ. Нужно проверять `organization_id = current_organization_id() OR has_role('admin')`.
 
-### 4. `OrgSalesManager` — пустые данные и потерянный сценарий
-- Раздел `companies` грузит `LeadsManager` + `CompaniesDatabase` (Чеко-база). Поскольку Чеко-база **глобальная** (без `organization_id`), орг-менеджер видит пустоту → кнопка «Импорт из Excel» и «Добавить ИНН» ведёт на админский функционал, который для орг тоже не работает (RLS на `organization_id IS NOT NULL OR admin` для INSERT, но сам Edge `checko-enrich-batch` от service-role и не проставляет `organization_id`).
-- Решение: либо скрыть «Холодную базу» в орг-кабинете, либо хранить per-org копию (предпочтительно — скрыть и показывать сообщение «Холодная база ИНН доступна только администраторам платформы»).
+6. **`DocumentsTab` стартует на вкладке `counterparties`** (`useState<DocumentSubTab>("counterparties")`), но ссылка из уведомления KPI/корзина/expiry приземляется не туда. Нет deep-link через query-param (есть только sessionStorage `openSignatureId`). Из письма «Документ истекает через 7 дней» пользователь должен кликнуть и попасть на `org`-вкладку и подсветку — сейчас попадает на «Контрагентов».
 
-### 5. `Deals360.signatures` — старый O(N×M) substring match никуда не делся
-- В `Deals360.tsx:171-178` всё ещё есть код `Array.from(map.values()).find(x => x.name.toLowerCase().includes(s.recipient_name.slice(0,15)))`. Я починил это в `SalesKanban`, но `Deals360` — нет.
-- При 500 КП × 500 подписей = 250k операций сравнения строк = ~200ms заметного фриза.
-- Решение: построить `byNameLower: Map` и `byInn: Map` один раз, искать через `.get()`.
+### B. Перфоманс и масштабирование
 
-### 6. `Deals360.invoices` — массив всегда пустой
-- В `loadDeals()` есть `billingRes` (запрос `subscription_invoices`), но **результаты нигде не пишутся в `c.invoices`** — массив создаётся пустым в `ensure()`, и счётчик «Счета: 0» всегда.
-- В правой панели «Воронка этапов» иконка «Счета» всегда тёмная.
+7. **`useDocumentsKpi` делает 22 параллельных запроса** к Supabase каждый раз при открытии KPI и при `refresh`. На реальных данных (`org_documents` 375 строк, `education_document_records` 255 строк) — 22 round-trip × ~80мс = 1.7сек. Нужен **single RPC** `get_documents_kpi(p_organization_id)` с одним запросом и агрегатом.
 
-### 7. `SalesTasks` создание — `managers` массив всегда `[]` для орг
-- `useSalesManager().fetchManagers()` вызывает `select('*').from('sales_managers')` без `organization_id`. RLS не пускает org_manager → массив пустой.
-- В `NewTaskForm` `Select` с менеджерами **пуст**. Пользователь думает «нет менеджеров — нельзя создать задачу». Нужно показать info-сообщение «В вашей организации нет менеджеров продаж — задача будет без привязки».
+8. **`useRecycleBin` грузит 8 таблиц параллельно по 500 строк каждая** (макс 4000 объектов в память). Скролл и поиск работают через `filter` по всему массиву — на корзине с 2000+ записей будет тормозить ввод в поле поиска. Нужна **серверная пагинация** + RPC `list_recycle_bin(p_organization_id, p_search, p_limit, p_offset)`.
 
-### 8. `process-paused-campaigns` cron — может убить рассылку
-- Cron каждые 5 минут вызывает `run-email-campaign` для всех `paused`. Если пользователь сам поставил кампанию на паузу (вручную) — **cron её снова запустит**.
-- Сейчас в БД статус `paused` означает «зависла, надо продолжить». Но если в UI кнопка «Пауза» делает то же самое — конфликт.
-- Решение: добавить колонку `email_campaigns.paused_by_user boolean` и не ресюмить такие, ИЛИ заменить `paused` на `interrupted` для зависших.
+9. **`SignaturesJournal.load()`** — `select * limit 1000` без серверного фильтра по статусу/датам. Все фильтры работают в памяти. Для админа на платформе с 10k подписаниями: после 1000 строк остальное недоступно (silent truncation). Нужно прокинуть фильтры в `.from().select()` и убрать `limit(1000)` либо сделать пагинацию.
 
-### 9. `commercial_proposals` SELECT для anon (`Public can view sent proposals`)
-- Политика разрешает **анонимам** читать любые КП со статусом `sent`. Это **публичная утечка данных всех клиентов всех организаций** — ИНН, суммы, контактные данные.
-- Назначение, видимо: клиент по `proposal_token` видит своё КП. Но политика не ограничивает по токену!
-- **КРИТИЧНО**: переписать политику на `(status = 'sent' AND public_token IS NOT NULL)` и в коде на стороне клиента всегда читать через токен, либо вообще убрать публичный доступ и читать через edge-функцию.
+10. **`useDocumentsTab` в одном `useEffect` грузит 4 независимых запроса последовательно** (organizations × 2, billing, invoices, companies + company_documents). Нужно `Promise.all` или вообще использовать `react-query` для кэша.
 
-### 10. Мелочи UX
-- `Deals360` колонка «Подписи» считает только подписи, привязанные через имя (см. п. 5) — реальное число всегда занижено.
-- `SalesKanban` 5 колонок на 1366px (sm:3, lg:5) — последние 2 колонки горизонтально скроллятся, контент обрезается. Нужен `2xl:grid-cols-5`, на меньших — `lg:grid-cols-3 xl:grid-cols-5`.
-- Архив в `CompaniesUnified` группирует только `not_interested` лиды и `rejected` КП — а отклонённые договоры (status `cancelled`/`expired`) не попадают.
+### C. UX-баги и плавающие плашки
 
-## План: 3 итерации
+11. **Сайдбар вкладок `lg:w-56 xl:w-64` + правый контент `flex-1`**. На 1280px при открытом боковом меню организации остаётся ~640px на контент — KPI-дашборд `grid-cols-2 md:grid-cols-4` ломается, цифры жмутся. Нужно `md:grid-cols-2 xl:grid-cols-4`.
 
-### Итерация 1 — Безопасность (сделать срочно)
-1. Закрыть SQL-инъекцию в `DealCommunication`: использовать `.eq('inn', inn)` отдельным запросом и `.ilike('company_name', escapedName)` через `replace(',', '\\,')` либо переключиться на 2 отдельных запроса с `OR` через `.or()` корректно.
-2. Сузить политику `Public can view sent proposals` на `commercial_proposals` — добавить ограничение по `public_token IS NOT NULL` ИЛИ убрать политику и читать через edge-функцию `get-public-proposal`.
-3. Добавить флаг `email_campaigns.user_paused boolean` и в cron `process-paused-campaigns` пропускать `WHERE user_paused = false`.
+12. **`activeItem` через `find()` без фолбэка**: если пользователь переключил план и `orders` отключился (`ordersOnly`), а сохранённое состояние осталось `orders`, `find` вернёт `undefined`, и `<activeItem.icon>` рухнет с `Cannot read properties of undefined`. Нужен фолбэк на `kpi`.
 
-### Итерация 2 — Производительность и корректность данных
-4. `useSalesManager.fetchLeads/fetchProposals/fetchActivities` — принимают `organizationId`, добавляют `.eq('organization_id', orgId)` + `.limit(2000)`.
-5. `Deals360.tsx`: индекс `byInn` и `byNameLower`, замена substring-поиска подписей.
-6. `Deals360.tsx`: `billingRes` действительно пушим в `c.invoices` (привязка по `organization_id` для платформенных счетов или по `company_inn` если будет такое поле).
-7. `SalesKanban` сетка: `grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5`.
+13. **`ContractGenerator` сохраняет договор по `ilike(name, companyName)`** — если имя компании содержит `%` или `_` (служебные символы LIKE), запрос вернёт неверные строки или ноль. Нужен экранирование либо `eq` с точным совпадением.
 
-### Итерация 3 — UX и продуктовые улучшения
-8. `OrgSalesManager` → раздел «companies»: скрыть вкладку «Холодная база» (Чеко) для орг, показать карточку «Доступно администраторам платформы». Либо — отдельная per-org Чеко-база (большая работа, отложить).
-9. `SalesTasks NewTaskForm` для орг: если `managers.length === 0`, скрыть селект менеджера и показать подсказку «Задача будет создана без привязки к менеджеру».
-10. `LeadsManager` для орг: фильтр «Менеджер» скрыть, если `managers` пуст. Показать счётчик «Всего: N» вместо `(orgFilteredLeads.length)` после server-side фильтрации.
-11. `Архив` в `CompaniesUnified`: добавить договоры со статусом `cancelled`/`expired`.
+14. **`handleViewDoc` для billing-documents делает `fetch(url)` и пересоздаёт blob** — для PDF/DOC файлов это сломает рендер (откроет как text/html). Сейчас работает только потому что в billing-documents хранится HTML. Если когда-нибудь сохранят PDF — белый экран.
+
+15. **Просмотр входящих документов**: в `IncomingDocumentsManager` нет dialog-просмотра, только `<a target="_blank">`. Для сканов PDF/JPG это норм, но для DOCX браузер скачает файл вместо превью — пользователь думает «не открывается».
+
+16. **Дубль маршрута `/organization/documents`**: страница `OrganizationDocuments` редиректит на `/organization?tab=org-documents`, но саму вкладку `org-documents` в `OrgDashboardSidebar` уже не каждый видит — для большинства это под `tab=documents`. Прямые ссылки из писем ломаются.
+
+17. **В `DocumentsTab` при `activeTab='journals'` рендерится `JournalsManager` внутри ещё одного `bg-card border` контейнера** — двойная обводка с разными радиусами на 2k мониторе выглядит как баг.
+
+### D. Чего не хватает (фичи для следующего этапа)
+
+18. **Нет массового скачивания** в журналах (выделить чекбоксами 50 удостоверений → ZIP-архив с PDF). Сейчас только поштучно. Это самый частый запрос для подачи в ФРДО офлайн.
+
+19. **Нет тегов/категорий** для входящих документов кроме 4 базовых типов (`contract/act/invoice/other`). Нужны произвольные ярлыки («2026», «Минобрнауки», «На оплате»).
+
+20. **Нет полнотекстового поиска по содержимому** документов. Сейчас ищем только по name. Для договоров/протоколов критично искать по тексту (нужен `tsvector` индекс с триггером, либо клиентский OCR-индекс).
+
+21. **Нет связи КП → договор → счёт → акт** в одной карточке. В `Deals360` (продажи) она есть, в документообороте — нет. «Финансовая карточка контрагента» — сейчас «Контрагенты» показывает только договоры, без привязанных счетов и актов.
+
+22. **Нет аудита действий**. Кто и когда удалил документ из корзины окончательно — нигде не записывается. Триггер `auto_audit_log` для документов не настроен.
+
+23. **Нет уведомлений о просроченном договоре с компанией** (`company_documents.contract_date + access_days`). KPI считает «contracts_pending», но истёкшие договоры с клиентами не выделяются.
+
+24. **`org_billing_documents` хранит только Word/HTML**. Нет генерации **PDF с электронной печатью** — для отправки счёта клиенту приходится сначала скачать `.doc`, открыть в Word, преобразовать в PDF. Нужна интеграция с уже существующим `html-to-pdf` edge-функцией.
+
+25. **Нет корзины для `org_billing_documents`** — счета и акты удаляются окончательно (см. п.2).
+
+26. **Нет «Реестра уведомлений ПД (152-ФЗ)»** — для регулятора нужна отдельная страница с экспортом всех `data_subject_requests` за период в формате Роскомнадзора.
+
+## План работ
+
+### Итерация 1 — Критичные баги и безопасность
+1.1. Починить `useDocumentsKpi.contracts_*` через JOIN с `companies` и `organization_id` фильтр.
+1.2. Перевести удаление `org_billing_documents`, `org_documents` на soft-delete (миграция: добавить `deleted_at/deleted_by` в `org_billing_documents`, обновить `useDocumentsTab.handleDeleteBillingDoc`, `OrgDocumentsManager.handleDelete`, `DocumentArchiveView.handleDelete`). Добавить эти таблицы в `useRecycleBin`.
+1.3. Исправить дыру в `restore_document` — добавить проверку владения через `EXECUTE` с подзапросом по `organization_id`.
+1.4. `incoming_documents.file_url` — заменить на хранение `file_path` и генерацию signed URL при открытии (хук `useIncomingDocuments` уже хранит `file_path`, нужно в `IncomingDocumentsManager` открывать через signed URL вместо прямого `<a href>`).
+1.5. `process-document-expiry-reminders` — добавить отправку email через SMTP (как в `process-signature-expiry-reminders`) для `org_documents` со сроком ≤30/14/7/1 дней.
+1.6. Фолбэк `activeItem || NAV_ITEMS[0]` в `DocumentsTab`.
+
+### Итерация 2 — Производительность
+2.1. Создать RPC `get_documents_kpi(p_org_id)` (1 запрос вместо 22) — агрегирует все 22 счётчика + 6-месячные тренды через `generate_series`.
+2.2. Создать RPC `list_recycle_bin(p_org_id, p_search, p_limit, p_offset)` с UNION ALL по 8 таблицам и серверной пагинацией.
+2.3. `SignaturesJournal` — убрать `limit(1000)`, прокинуть фильтры (status, type, dateFrom, dateTo) в SQL `.eq()/.gte()/.lte()`, добавить пагинацию `Показать ещё`.
+2.4. `useDocumentsTab` — объединить 4 запроса в один `Promise.all`.
+
+### Итерация 3 — UX и чего не хватает
+3.1. KPI grid `md:grid-cols-2 xl:grid-cols-4` (исправить 1280px).
+3.2. Deep-link через `?tab=org&doc=<id>` — `useDocumentsTab` читает search-params на mount.
+3.3. `ContractGenerator.onSave` — экранирование `%/_` в `ilike` через `replaceAll`.
+3.4. Превью входящих в Dialog (PDF/JPG inline через iframe/img).
+3.5. Массовое скачивание ZIP в `EducationDocumentsJournal` (уже есть `BulkDocumentGenerator`-логика — переиспользовать).
+3.6. Связь «Контрагент → договоры/счета/акты в одной карточке»: расширить `CounterpartiesSection` чтобы при выборе компании показывал и `company_documents`, и `subscription_invoices`, и `org_billing_documents` с buyer_inn = ИНН компании.
+3.7. PDF-генерация счетов через `html-to-pdf` edge-функцию (флаг «Сохранить как PDF» в `handleSavePendingInvoice`).
+
+### Итерация 4 — Новые фичи (отложить, спросить)
+4.1. Полнотекстовый поиск (`tsvector` + GIN-индекс).
+4.2. Произвольные теги для входящих.
+4.3. Реестр 152-ФЗ для Роскомнадзора (отдельная страница экспорта).
+4.4. Аудит-лог удалений документов (триггер `auto_audit_log`).
 
 ## Что НЕ делаю
-- Не переделываю `commercial_proposals` на токен-based чтение (это отдельная задача — нужна edge-функция и редизайн страницы публичного просмотра КП).
-- Не делаю drag-n-drop в Канбане.
-- Не трогаю `useSalesManager` структурно (старый код с useState вместо react-query) — только добавляю org-фильтр.
-
-## Технические детали
-
-**Файлы для итерации 1:**
-- `src/components/admin/sales/DealCommunication.tsx` — переписать `.or()` запросы.
-- Миграция: `ALTER POLICY "Public can view sent proposals" ON commercial_proposals USING (status='sent' AND public_token IS NOT NULL)` (сначала проверю наличие `public_token` колонки).
-- Миграция: `ALTER TABLE email_campaigns ADD COLUMN user_paused boolean DEFAULT false`. Edge `process-paused-campaigns`: `WHERE status='paused' AND user_paused=false`.
-
-**Файлы для итерации 2:**
-- `src/hooks/useSalesManager.ts` — параметризация org-фильтра.
-- `src/components/admin/sales/Deals360.tsx` — рефакторинг `loadDeals`.
-- `src/components/admin/sales/SalesKanban.tsx` — сетка.
-
-**Файлы для итерации 3:**
-- `src/components/organization/sales/OrgSalesManager.tsx` — заглушка для холодной базы.
-- `src/components/admin/sales/SalesTasks.tsx`, `LeadsManager.tsx`, `CompaniesUnified.tsx` — UX.
+- Не переписываю `DocumentsTab` структурно (компонент уже хорошо разбит).
+- Не трогаю `JournalsManager`, `FRDOManager`, `EducationDocumentsJournal` логику — они в отдельной памяти.
+- Не делаю тяжёлый OCR/полнотекстовый поиск (Итерация 4 — отдельный спринт).
 
 ## Решение от вас
 
 Какой объём делаем?
 
-1. **Все 3 итерации** (рекомендую — закрывает безопасность + UX-косяки) — 1 крупный заход.
-2. **Только Итерация 1 (безопасность)** — обязательный минимум, особенно п.9 (утечка КП).
-3. **Итерации 1 + 2** (без UX-полировки).
-4. **Свой набор** — скажите номера пунктов.
+1. **Итерация 1 + 2** (рекомендую — критичные баги + производительность) — 1 крупный заход.
+2. **Только Итерация 1** (срочные баги и безопасность) — обязательный минимум.
+3. **Все 3 итерации** (1+2+3) — большой заход, плюс UX-полировка.
+4. **Все 4 итерации** — максимально, включая новые фичи.
+5. **Свой набор** — скажите номера пунктов.
 
