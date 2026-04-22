@@ -3686,6 +3686,65 @@ export type Database = {
           },
         ]
       }
+      marketplace_import_catalog: {
+        Row: {
+          course_id: string | null
+          created_at: string
+          description: string | null
+          error_message: string | null
+          hours: number | null
+          id: string
+          imported_at: string | null
+          parent_category: string
+          price_reference: number | null
+          source_url: string
+          status: string
+          sub_category: string | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          course_id?: string | null
+          created_at?: string
+          description?: string | null
+          error_message?: string | null
+          hours?: number | null
+          id?: string
+          imported_at?: string | null
+          parent_category: string
+          price_reference?: number | null
+          source_url: string
+          status?: string
+          sub_category?: string | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          course_id?: string | null
+          created_at?: string
+          description?: string | null
+          error_message?: string | null
+          hours?: number | null
+          id?: string
+          imported_at?: string | null
+          parent_category?: string
+          price_reference?: number | null
+          source_url?: string
+          status?: string
+          sub_category?: string | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "marketplace_import_catalog_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "courses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       marketplace_orders: {
         Row: {
           buyer_organization_id: string | null
