@@ -884,8 +884,10 @@ export type Database = {
           deleted_at: string | null
           deleted_by: string | null
           discount_percent: number | null
+          first_viewed_at: string | null
           id: string
           last_sent_at: string | null
+          last_viewed_at: string | null
           linked_signature_id: string | null
           manager_id: string | null
           organization_id: string | null
@@ -899,6 +901,7 @@ export type Database = {
           total_amount: number
           updated_at: string
           valid_until: string | null
+          view_count: number
         }
         Insert: {
           company_email?: string | null
@@ -912,8 +915,10 @@ export type Database = {
           deleted_at?: string | null
           deleted_by?: string | null
           discount_percent?: number | null
+          first_viewed_at?: string | null
           id?: string
           last_sent_at?: string | null
+          last_viewed_at?: string | null
           linked_signature_id?: string | null
           manager_id?: string | null
           organization_id?: string | null
@@ -927,6 +932,7 @@ export type Database = {
           total_amount?: number
           updated_at?: string
           valid_until?: string | null
+          view_count?: number
         }
         Update: {
           company_email?: string | null
@@ -940,8 +946,10 @@ export type Database = {
           deleted_at?: string | null
           deleted_by?: string | null
           discount_percent?: number | null
+          first_viewed_at?: string | null
           id?: string
           last_sent_at?: string | null
+          last_viewed_at?: string | null
           linked_signature_id?: string | null
           manager_id?: string | null
           organization_id?: string | null
@@ -955,6 +963,7 @@ export type Database = {
           total_amount?: number
           updated_at?: string
           valid_until?: string | null
+          view_count?: number
         }
         Relationships: [
           {
@@ -6099,6 +6108,33 @@ export type Database = {
           },
         ]
       }
+      sales_blacklist: {
+        Row: {
+          added_at: string
+          added_by: string | null
+          id: string
+          inn: string
+          org_name: string | null
+          reason: string | null
+        }
+        Insert: {
+          added_at?: string
+          added_by?: string | null
+          id?: string
+          inn: string
+          org_name?: string | null
+          reason?: string | null
+        }
+        Update: {
+          added_at?: string
+          added_by?: string | null
+          id?: string
+          inn?: string
+          org_name?: string | null
+          reason?: string | null
+        }
+        Relationships: []
+      }
       sales_companies_db: {
         Row: {
           address: string | null
@@ -6475,6 +6511,7 @@ export type Database = {
           last_contact_at: string | null
           license_date: string | null
           license_number: string | null
+          next_contact_date: string | null
           notes: string | null
           ogrn: string | null
           org_name: string
@@ -6496,6 +6533,7 @@ export type Database = {
           last_contact_at?: string | null
           license_date?: string | null
           license_number?: string | null
+          next_contact_date?: string | null
           notes?: string | null
           ogrn?: string | null
           org_name: string
@@ -6517,6 +6555,7 @@ export type Database = {
           last_contact_at?: string | null
           license_date?: string | null
           license_number?: string | null
+          next_contact_date?: string | null
           notes?: string | null
           ogrn?: string | null
           org_name?: string
@@ -6593,6 +6632,66 @@ export type Database = {
           sort_order?: number
         }
         Relationships: []
+      }
+      sales_tasks: {
+        Row: {
+          completed_at: string | null
+          created_at: string
+          created_by: string | null
+          description: string | null
+          due_date: string
+          id: string
+          lead_id: string | null
+          manager_id: string | null
+          status: string
+          title: string
+          type: string
+          updated_at: string
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          due_date: string
+          id?: string
+          lead_id?: string | null
+          manager_id?: string | null
+          status?: string
+          title: string
+          type?: string
+          updated_at?: string
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          due_date?: string
+          id?: string
+          lead_id?: string | null
+          manager_id?: string | null
+          status?: string
+          title?: string
+          type?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sales_tasks_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "sales_leads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sales_tasks_manager_id_fkey"
+            columns: ["manager_id"]
+            isOneToOne: false
+            referencedRelation: "sales_managers"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       service_orders: {
         Row: {
