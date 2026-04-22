@@ -3,15 +3,16 @@ import { supabase } from "@/integrations/supabase/client";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Eye, FileText, Search, Send, CheckCircle2, XCircle, AlertTriangle, Copy, Download, FileDown, MessageCircle, Edit3, Award, Bell, Ban } from "lucide-react";
+import { Eye, FileText, Search, Send, CheckCircle2, XCircle, AlertTriangle, Copy, Download, FileDown, MessageCircle, Edit3, Award, Bell, Ban, Archive } from "lucide-react";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
-import { downloadSignatureProtocol, exportSignaturesToCSV } from "@/utils/signatureProtocol";
+import { downloadSignatureProtocol, exportSignaturesToCSV, buildProtocolHtml } from "@/utils/signatureProtocol";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { SignatureRevisionUploader } from "@/components/signing/SignatureRevisionUploader";
 import { Upload, PenLine } from "lucide-react";
@@ -82,6 +83,8 @@ export function SignaturesJournal({ organizationId, initialStatus }: Props) {
   const [dateTo, setDateTo] = useState<string>("");
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState<SignatureRow | null>(null);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [bulkBusy, setBulkBusy] = useState(false);
   const [pageSize, setPageSize] = useState(200);
   const [totalCount, setTotalCount] = useState(0);
 
@@ -262,6 +265,87 @@ export function SignaturesJournal({ organizationId, initialStatus }: Props) {
     toast.success(`Экспортировано записей: ${filtered.length}`);
   };
 
+  const toggleSelect = (id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+
+  const toggleSelectAllVisible = () => {
+    setSelectedIds((prev) => {
+      const allIds = filtered.map((r) => r.id);
+      const allSelected = allIds.length > 0 && allIds.every((id) => prev.has(id));
+      const next = new Set(prev);
+      if (allSelected) {
+        allIds.forEach((id) => next.delete(id));
+      } else {
+        allIds.forEach((id) => next.add(id));
+      }
+      return next;
+    });
+  };
+
+  const clearSelection = () => setSelectedIds(new Set());
+
+  const downloadProtocolsZip = async () => {
+    const list = filtered.filter((r) => selectedIds.has(r.id));
+    if (!list.length) { toast.error("Не выбрано ни одной записи"); return; }
+    setBulkBusy(true);
+    const t = toast.loading(`Готовим архив протоколов: ${list.length} шт.`);
+    try {
+      const { default: JSZip } = await import("jszip");
+      const zip = new JSZip();
+      const usedNames = new Set<string>();
+      for (const r of list) {
+        const org = orgs[r.organization_id];
+        const html = buildProtocolHtml({
+          documentTitle: r.document_title,
+          documentType: r.document_type,
+          documentHash: r.document_hash,
+          organizationName: org?.name,
+          organizationInn: org?.inn,
+          senderName: r.sender_name,
+          recipientName: r.recipient_name,
+          recipientEmail: r.recipient_email,
+          recipientType: r.recipient_type,
+          status: r.status,
+          createdAt: r.created_at,
+          sentAt: r.sent_at,
+          signedAt: r.signed_at,
+          signedIp: r.signed_ip,
+          signedUserAgent: r.signed_user_agent,
+          rejectedAt: r.rejected_at,
+          rejectionReason: r.rejection_reason,
+          expiresAt: r.expires_at,
+          signatureToken: r.signature_token,
+        });
+        const safeTitle = (r.document_title || "document").replace(/[\\/:*?"<>|]+/g, "_").slice(0, 60);
+        let baseName = `${r.signature_token.slice(0, 8)}_${safeTitle}.html`;
+        let i = 2;
+        while (usedNames.has(baseName)) {
+          baseName = `${r.signature_token.slice(0, 8)}_${safeTitle}_${i}.html`;
+          i++;
+        }
+        usedNames.add(baseName);
+        zip.file(baseName, html);
+      }
+      const blob = await zip.generateAsync({ type: "blob" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `signature-protocols-${new Date().toISOString().slice(0, 10)}.zip`;
+      document.body.appendChild(a); a.click(); a.remove();
+      URL.revokeObjectURL(url);
+      toast.success(`Архив скачан: ${list.length} протокол(ов)`, { id: t });
+    } catch (e: any) {
+      toast.error("Не удалось сформировать ZIP", { id: t, description: e?.message || String(e) });
+    } finally {
+      setBulkBusy(false);
+    }
+  };
+
   const uniqueTypes = useMemo(() => {
     const set = new Set(rows.map((r) => r.document_type));
     return Array.from(set);
@@ -329,25 +413,53 @@ export function SignaturesJournal({ organizationId, initialStatus }: Props) {
           </div>
         </div>
       ) : (
-        <div className="rounded-xl border overflow-hidden">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Документ</TableHead>
-                <TableHead>Тип</TableHead>
-                <TableHead>Получатель</TableHead>
-                <TableHead>Статус</TableHead>
-                <TableHead>Отправлено</TableHead>
-                <TableHead>Подписано</TableHead>
-                <TableHead></TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filtered.map((r) => {
-                const st = STATUS_LABELS[r.status] || STATUS_LABELS.draft;
-                const StIcon = st.icon;
-                return (
-                  <TableRow key={r.id}>
+        <div className="space-y-3">
+          {selectedIds.size > 0 && (
+            <div className="flex items-center justify-between gap-3 px-4 py-2.5 rounded-xl border bg-primary/5 border-primary/20">
+              <div className="text-sm font-medium">
+                Выбрано: <span className="text-primary">{selectedIds.size}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <Button variant="outline" size="sm" className="gap-2" onClick={downloadProtocolsZip} disabled={bulkBusy}>
+                  <Archive className="w-4 h-4" />Скачать протоколы (ZIP)
+                </Button>
+                <Button variant="ghost" size="sm" onClick={clearSelection}>Сбросить</Button>
+              </div>
+            </div>
+          )}
+          <div className="rounded-xl border overflow-hidden">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-10">
+                    <Checkbox
+                      checked={filtered.length > 0 && filtered.every((r) => selectedIds.has(r.id))}
+                      onCheckedChange={toggleSelectAllVisible}
+                      aria-label="Выбрать все на странице"
+                    />
+                  </TableHead>
+                  <TableHead>Документ</TableHead>
+                  <TableHead>Тип</TableHead>
+                  <TableHead>Получатель</TableHead>
+                  <TableHead>Статус</TableHead>
+                  <TableHead>Отправлено</TableHead>
+                  <TableHead>Подписано</TableHead>
+                  <TableHead></TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filtered.map((r) => {
+                  const st = STATUS_LABELS[r.status] || STATUS_LABELS.draft;
+                  const StIcon = st.icon;
+                  return (
+                    <TableRow key={r.id} data-state={selectedIds.has(r.id) ? "selected" : undefined}>
+                      <TableCell>
+                        <Checkbox
+                          checked={selectedIds.has(r.id)}
+                          onCheckedChange={() => toggleSelect(r.id)}
+                          aria-label="Выбрать запись"
+                        />
+                      </TableCell>
                     <TableCell className="font-medium max-w-[280px] truncate">{r.document_title}</TableCell>
                     <TableCell className="text-sm text-muted-foreground">{TYPE_LABELS[r.document_type] || r.document_type}</TableCell>
                     <TableCell>
@@ -400,6 +512,7 @@ export function SignaturesJournal({ organizationId, initialStatus }: Props) {
               })}
             </TableBody>
           </Table>
+          </div>
         </div>
       )}
 

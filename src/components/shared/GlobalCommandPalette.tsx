@@ -10,12 +10,12 @@ import {
 } from '@/components/ui/command';
 import { supabase } from '@/integrations/supabase/client';
 import { useNavigate } from 'react-router-dom';
-import { FileText, ScrollText, PenTool, Building2, Users, Receipt, GraduationCap, Sparkles } from 'lucide-react';
+import { FileText, ScrollText, PenTool, Building2, Users, Receipt, GraduationCap, Sparkles, Inbox } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 
 interface SearchResult {
   id: string;
-  type: 'proposal' | 'contract' | 'signature' | 'company' | 'student' | 'invoice' | 'document';
+  type: 'proposal' | 'contract' | 'signature' | 'company' | 'student' | 'invoice' | 'document' | 'incoming' | 'billing';
   title: string;
   subtitle?: string;
   navigateTo?: string;
@@ -30,6 +30,8 @@ const TYPE_META: Record<SearchResult['type'], { label: string; icon: any }> = {
   student: { label: 'Ученики', icon: GraduationCap },
   invoice: { label: 'Счета', icon: Receipt },
   document: { label: 'Документы', icon: FileText },
+  incoming: { label: 'Входящие документы', icon: Inbox },
+  billing: { label: 'Счета и акты организации', icon: Receipt },
 };
 
 interface GlobalCommandPaletteProps {
@@ -111,11 +113,13 @@ export function GlobalCommandPalette({ scope = 'organization', organizationId }:
         }));
       } else if (organizationId) {
         // Organization: только своё
-        const [students, sigs, docs, companies] = await Promise.all([
+        const [students, sigs, docs, companies, incoming, billing] = await Promise.all([
           supabase.from('profiles').select('user_id, full_name, email, login').eq('organization_id', organizationId).or(`full_name.ilike.${like},email.ilike.${like},login.ilike.${like}`).limit(8),
           supabase.from('document_signatures').select('id, document_title, recipient_name, status').eq('organization_id', organizationId).or(`document_title.ilike.${like},recipient_name.ilike.${like}`).limit(8),
           supabase.from('education_document_records').select('id, full_name, reg_number, document_type').eq('organization_id', organizationId).or(`full_name.ilike.${like},reg_number.ilike.${like}`).limit(8),
           supabase.from('companies').select('id, name, inn, email').eq('organization_id', organizationId).or(`name.ilike.${like},inn.ilike.${like}`).limit(8),
+          supabase.from('incoming_documents').select('id, title, counterparty_name, counterparty_inn, doc_number, doc_type').eq('organization_id', organizationId).or(`title.ilike.${like},counterparty_name.ilike.${like},counterparty_inn.ilike.${like},doc_number.ilike.${like}`).limit(6),
+          supabase.from('org_billing_documents' as any).select('id, doc_kind, doc_number, buyer_name, buyer_inn, total_amount').eq('organization_id', organizationId).or(`doc_number.ilike.${like},buyer_name.ilike.${like},buyer_inn.ilike.${like}`).limit(6),
         ]);
 
         (students.data || []).forEach((r: any) => found.push({
@@ -139,6 +143,19 @@ export function GlobalCommandPalette({ scope = 'organization', organizationId }:
           title: r.name,
           subtitle: `ИНН ${r.inn || '—'}`,
         }));
+        (incoming.data || []).forEach((r: any) => found.push({
+          id: r.id, type: 'incoming',
+          title: r.title || `${r.doc_type} ${r.doc_number || ''}`.trim(),
+          subtitle: `${r.counterparty_name || '—'}${r.counterparty_inn ? ` • ИНН ${r.counterparty_inn}` : ''}${r.doc_number ? ` • № ${r.doc_number}` : ''}`,
+        }));
+        ((billing.data as any[]) || []).forEach((r: any) => {
+          const kindLabel = r.doc_kind === 'invoice' ? 'Счёт' : r.doc_kind === 'act' ? 'Акт' : r.doc_kind === 'contract' ? 'Договор' : r.doc_kind || 'Документ';
+          found.push({
+            id: r.id, type: 'billing',
+            title: `${kindLabel} № ${r.doc_number || 'б/н'}`,
+            subtitle: `${r.buyer_name || '—'}${r.buyer_inn ? ` • ИНН ${r.buyer_inn}` : ''}${r.total_amount ? ` • ${Number(r.total_amount).toLocaleString('ru-RU')} ₽` : ''}`,
+          });
+        });
       }
 
       setResults(found);
