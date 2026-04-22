@@ -841,6 +841,14 @@ export function CounterpartiesSection({
             <TabsContent value="closing" className="mt-0">
               {renderCompanyDocList("act", <><FileCheck className="w-10 h-10 mx-auto mb-2 opacity-30" /></>, "Актов пока нет")}
             </TabsContent>
+            <TabsContent value="history" className="mt-0">
+              <CounterpartyTimeline
+                organizationId={organizationId}
+                counterpartyId={selectedId}
+                counterpartyName={selected?.name || ""}
+                counterpartyType="company"
+              />
+            </TabsContent>
           </>
         )}
 
