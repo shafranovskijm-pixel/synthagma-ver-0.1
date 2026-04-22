@@ -48,7 +48,7 @@ export function GlobalCommandPalette({ scope = 'organization', organizationId }:
   const navigate = useNavigate();
   const { user } = useAuth();
 
-  // Cmd+K / Ctrl+K shortcut
+  // Cmd+K / Ctrl+K shortcut + custom event "open-command-palette"
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if ((e.key === 'k' || e.key === 'K' || e.key === 'л' || e.key === 'Л') && (e.metaKey || e.ctrlKey)) {
@@ -56,8 +56,13 @@ export function GlobalCommandPalette({ scope = 'organization', organizationId }:
         setOpen(o => !o);
       }
     };
+    const openHandler = () => setOpen(true);
     window.addEventListener('keydown', handler);
-    return () => window.removeEventListener('keydown', handler);
+    window.addEventListener('open-command-palette', openHandler);
+    return () => {
+      window.removeEventListener('keydown', handler);
+      window.removeEventListener('open-command-palette', openHandler);
+    };
   }, []);
 
   // Debounced search
