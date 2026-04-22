@@ -572,7 +572,7 @@ export function OrgSidebar() {
           {effectiveExpanded ? (
             <button
               onClick={handleToggleExpanded}
-              className="hidden lg:flex items-center justify-center gap-2 h-9 w-full rounded-lg border border-primary/20 bg-primary/5 text-primary/80 hover:bg-primary/15 hover:text-primary hover:border-primary/40 transition-colors text-[12px] font-medium"
+              className="hidden lg:flex items-center justify-center gap-2 h-9 w-full rounded-lg border border-primary/30 bg-transparent text-primary hover:bg-primary/10 hover:border-primary/50 transition-colors text-[12px] font-medium"
               aria-label="Свернуть меню в иконки"
             >
               <PanelLeftClose className="h-4 w-4" />
