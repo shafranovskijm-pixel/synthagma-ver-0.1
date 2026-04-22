@@ -253,7 +253,8 @@ export function OrgSidebar() {
         role="navigation"
         aria-label="Основная навигация"
         className={cn(
-          "fixed inset-y-0 left-0 z-50 w-[88px] shadow-[2px_0_8px_rgba(0,0,0,0.06)] flex flex-col transition-transform duration-300",
+          "fixed inset-y-0 left-0 z-50 shadow-[2px_0_8px_rgba(0,0,0,0.06)] flex flex-col transition-[transform,width] duration-300",
+          expanded ? "w-[220px]" : "w-[88px]",
           isMobileSidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
         )}
         style={{ backgroundColor: `hsl(${brandHsl} / 0.07)` }}
@@ -310,7 +311,7 @@ export function OrgSidebar() {
                 className="rounded-[24px] p-1.5 shadow-sm w-full"
                 style={{ backgroundColor: `hsl(${brandHsl} / 0.12)` }}
               >
-                <nav className="flex flex-col items-center gap-1">
+                <nav className={cn("flex flex-col gap-1", expanded ? "items-stretch" : "items-center")}>
                   {group.items.map((item) => {
                     const isActive = activeTab === item.id;
                     const locked = item.category ? isLocked(item.category) : false;
@@ -322,8 +323,13 @@ export function OrgSidebar() {
                             data-onboarding={item.id === "courses" ? "courses" : item.id === "students" ? "students" : item.id === "settings" ? "settings" : undefined}
                             onClick={() => handleTabClick(item.id)}
                             className={cn(
-                              "relative flex flex-col items-center justify-center w-[68px] rounded-xl transition-all duration-200 px-1 py-1.5",
-                              showLabels ? "gap-0.5" : "h-11",
+                              "relative rounded-xl transition-all duration-200",
+                              expanded
+                                ? "flex items-center gap-2.5 px-2.5 py-2 w-full text-left"
+                                : cn(
+                                    "flex flex-col items-center justify-center w-[68px] px-1 py-1.5",
+                                    showLabels ? "gap-0.5" : "h-11"
+                                  ),
                               locked && "opacity-50",
                               isActive
                                 ? "text-primary-foreground shadow-md"
@@ -347,7 +353,16 @@ export function OrgSidebar() {
                                 </span>
                               )}
                             </span>
-                            {showLabels && (
+                            {expanded ? (
+                              <span
+                                className={cn(
+                                  "text-xs font-medium truncate flex-1",
+                                  isActive ? "text-primary-foreground" : "text-foreground/85"
+                                )}
+                              >
+                                {item.label}
+                              </span>
+                            ) : showLabels ? (
                               <span
                                 className={cn(
                                   "text-[9px] leading-tight font-medium text-center max-w-[64px] line-clamp-2",
@@ -356,21 +371,23 @@ export function OrgSidebar() {
                               >
                                 {item.label}
                               </span>
-                            )}
+                            ) : null}
                           </button>
                         </TooltipTrigger>
-                        <TooltipContent
-                          side="right"
-                          sideOffset={12}
-                          className="z-[100] rounded-xl px-4 py-2 text-sm font-medium shadow-lg border-border/60"
-                          style={{
-                            backgroundColor: `hsl(${brandHsl})`,
-                            color: 'white',
-                            boxShadow: `0 4px 20px hsl(${brandHsl} / 0.3)`,
-                          }}
-                        >
-                          {item.label}
-                        </TooltipContent>
+                        {!expanded && (
+                          <TooltipContent
+                            side="right"
+                            sideOffset={12}
+                            className="z-[100] rounded-xl px-4 py-2 text-sm font-medium shadow-lg border-border/60"
+                            style={{
+                              backgroundColor: `hsl(${brandHsl})`,
+                              color: 'white',
+                              boxShadow: `0 4px 20px hsl(${brandHsl} / 0.3)`,
+                            }}
+                          >
+                            {item.label}
+                          </TooltipContent>
+                        )}
                       </Tooltip>
                     );
                   })}
