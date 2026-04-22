@@ -202,7 +202,9 @@ export function CampaignEditor({ open, onClose, scope, organizationId, onCreated
     setFromName(""); setReplyTo(""); setConsent(false);
     setMeetingMode("none"); setExternalUrl(""); setExternalDate(""); setExternalTime("");
     setSelectedWebinarId(""); setNewWebinarMeta(null);
+    setScheduleEnabled(false); setScheduledDate(""); setScheduledTime("");
     setRecipients({ source: scope === "platform" ? "organizations" : "students", manualEmails: [], count: 0 });
+    try { localStorage.removeItem(DRAFT_KEY); } catch { /* ignore */ }
   };
 
   const renderPreview = () => {
@@ -233,6 +235,32 @@ export function CampaignEditor({ open, onClose, scope, organizationId, onCreated
       toast.error("Подтвердите согласие получателей");
       return;
     }
+    // Базовая валидация HTML — баланс <p>/<div>/<a>
+    const openTags = (html.match(/<(p|div|a|span|table|tr|td)\b/gi) || []).length;
+    const closeTags = (html.match(/<\/(p|div|a|span|table|tr|td)>/gi) || []).length;
+    if (Math.abs(openTags - closeTags) > 2) {
+      const ok = confirm("В HTML обнаружены несбалансированные теги. Письмо может отображаться некорректно. Продолжить?");
+      if (!ok) return;
+    }
+
+    let scheduledAtISO: string | null = null;
+    if (scheduleEnabled) {
+      if (!scheduledDate || !scheduledTime) {
+        toast.error("Укажите дату и время отправки");
+        return;
+      }
+      const dt = new Date(`${scheduledDate}T${scheduledTime}:00`);
+      if (isNaN(dt.getTime())) {
+        toast.error("Некорректные дата/время");
+        return;
+      }
+      if (dt.getTime() < Date.now() + 30_000) {
+        toast.error("Дата отправки должна быть в будущем (минимум +30 сек)");
+        return;
+      }
+      scheduledAtISO = dt.toISOString();
+    }
+
     setSaving(true);
     try {
       const meta = meeting;
@@ -248,6 +276,7 @@ export function CampaignEditor({ open, onClose, scope, organizationId, onCreated
         };
       }
 
+      const isScheduled = !launch && !!scheduledAtISO;
       const payload: any = {
         scope,
         organization_id: scope === "org" ? organizationId : null,
@@ -259,14 +288,20 @@ export function CampaignEditor({ open, onClose, scope, organizationId, onCreated
         recipient_source: recipients.source,
         manual_emails: recipients.source === "manual" ? recipients.manualEmails : null,
         recipient_filter: Object.keys(recipientFilter).length ? recipientFilter : null,
-        status: "draft",
+        scheduled_at: scheduledAtISO,
+        status: isScheduled ? "scheduled" : "draft",
       };
       const { data: user } = await supabase.auth.getUser();
       if (user?.user) payload.created_by = user.user.id;
 
       const { data, error } = await supabase.from("email_campaigns").insert(payload).select("id").single();
       if (error) throw error;
-      toast.success("Кампания создана");
+
+      if (isScheduled) {
+        toast.success(`Кампания запланирована на ${format(new Date(scheduledAtISO!), "d MMM, HH:mm", { locale: ru })}`);
+      } else {
+        toast.success("Кампания создана");
+      }
 
       if (launch && data) {
         const { data: runRes, error: runErr } = await supabase.functions.invoke("run-email-campaign", {
