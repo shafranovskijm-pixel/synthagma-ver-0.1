@@ -69,20 +69,10 @@ const SECTIONS: { key: SectionKey; label: string; icon: React.ElementType; color
   { key: "partner", label: "Партнёрская программа", icon: Handshake, color: "text-emerald-500" },
 ];
 
-interface MenuSettingsLocal {
-  showStats: boolean;
-  showLinks: boolean;
-  showLaborSafety: boolean;
-  showDocuments: boolean;
-  showServices: boolean;
-  showCompanies: boolean;
-  [key: string]: boolean;
+interface ProfileTabProps {
+  organizationId: string;
+  initialSubTab?: string;
 }
-
-const DEFAULT_MENU: MenuSettingsLocal = {
-  showStats: true, showLinks: true, showLaborSafety: true,
-  showDocuments: true, showServices: true, showCompanies: true,
-};
 
 interface ProfileTabProps {
   organizationId: string;
