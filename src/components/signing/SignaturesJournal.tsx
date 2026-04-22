@@ -50,6 +50,7 @@ const STATUS_LABELS: Record<string, { label: string; cls: string; icon: any }> =
   viewed: { label: "Просмотрено", cls: "bg-amber-500/10 text-amber-600 border-amber-500/20", icon: Eye },
   signed: { label: "Подписано", cls: "bg-emerald-500/10 text-emerald-600 border-emerald-500/20", icon: CheckCircle2 },
   rejected: { label: "Отклонено", cls: "bg-destructive/10 text-destructive border-destructive/20", icon: XCircle },
+  revoked: { label: "Отозвано", cls: "bg-rose-500/10 text-rose-600 border-rose-500/20", icon: Ban },
   expired: { label: "Просрочено", cls: "bg-orange-500/10 text-orange-600 border-orange-500/20", icon: AlertTriangle },
   in_review: { label: "На согласовании", cls: "bg-violet-500/10 text-violet-600 border-violet-500/20", icon: Edit3 },
   changes_requested: { label: "Запрошены правки", cls: "bg-pink-500/10 text-pink-600 border-pink-500/20", icon: MessageCircle },
@@ -192,18 +193,22 @@ export function SignaturesJournal({ organizationId, initialStatus }: Props) {
   };
 
   const cancelSignature = async (r: SignatureRow) => {
-    if (!confirm(`Отменить подписание документа «${r.document_title}»? Получатель больше не сможет его подписать.`)) return;
-    const t = toast.loading("Отменяем подписание...");
+    const reason = window.prompt(
+      `Отозвать документ «${r.document_title}»?\n\nПолучатель больше не сможет его подписать. Укажите причину (необязательно):`,
+      "",
+    );
+    if (reason === null) return; // пользователь нажал «Отмена»
+    const t = toast.loading("Отзываем документ...");
     try {
-      const { error } = await supabase
-        .from("document_signatures")
-        .update({ status: "expired", rejected_at: new Date().toISOString(), rejection_reason: "Отменено отправителем" })
-        .eq("id", r.id);
+      const { error } = await (supabase as any).rpc("revoke_signature", {
+        p_signature_id: r.id,
+        p_reason: reason || null,
+      });
       if (error) throw error;
-      toast.success("Подписание отменено", { id: t });
+      toast.success("Документ отозван", { id: t });
       load();
     } catch (e: any) {
-      toast.error("Не удалось отменить", { id: t, description: e?.message || String(e) });
+      toast.error("Не удалось отозвать", { id: t, description: e?.message || String(e) });
     }
   };
 
