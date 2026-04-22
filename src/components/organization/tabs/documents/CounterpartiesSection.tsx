@@ -817,6 +817,9 @@ export function CounterpartiesSection({
           <TabsTrigger value="contracts" className="rounded-lg text-xs gap-1.5"><ScrollText className="w-3.5 h-3.5" />Договоры</TabsTrigger>
           <TabsTrigger value="invoices" className="rounded-lg text-xs gap-1.5"><Receipt className="w-3.5 h-3.5" />Счета</TabsTrigger>
           <TabsTrigger value="closing" className="rounded-lg text-xs gap-1.5"><FileCheck className="w-3.5 h-3.5" />Закрывающие</TabsTrigger>
+          {isCompany && (
+            <TabsTrigger value="history" className="rounded-lg text-xs gap-1.5"><History className="w-3.5 h-3.5" />История</TabsTrigger>
+          )}
         </TabsList>
 
         {isPlatform && (
