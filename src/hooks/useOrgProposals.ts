@@ -21,6 +21,9 @@ export interface OrgProposal {
   template_id: string | null;
   created_at: string;
   updated_at: string;
+  preset_id?: string | null;
+  intro_html?: string | null;
+  outro_html?: string | null;
 }
 
 export interface OrgProposalServiceItem {

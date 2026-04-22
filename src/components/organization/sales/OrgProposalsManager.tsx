@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -7,12 +7,15 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Plus, Trash2, Pencil, Send, FileText, Mail, Briefcase } from "lucide-react";
+import { Plus, Trash2, Pencil, Send, FileText, Mail, Briefcase, Sparkles } from "lucide-react";
 import { useOrgProposals, type OrgProposal, type OrgProposalServiceItem } from "@/hooks/useOrgProposals";
 import { useOrgServices } from "@/hooks/useOrgServices";
 import { useEmailTemplates } from "@/hooks/useEmailTemplates";
 import { useOrgSmtp } from "@/hooks/useOrgSmtp";
 import { CreateContractDialog } from "./CreateContractDialog";
+import { ProposalPresetPicker } from "./ProposalPresetPicker";
+import type { ProposalPreset } from "@/hooks/useProposalPresets";
+import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import { toast } from "sonner";
@@ -39,14 +42,59 @@ export function OrgProposalsManager({ organizationId, onGoToSmtp }: Props) {
   const [editor, setEditor] = useState<{ proposal: Partial<OrgProposal>; items: OrgProposalServiceItem[] } | null>(null);
   const [sendDialog, setSendDialog] = useState<{ proposal: OrgProposal; email: string; templateId: string } | null>(null);
   const [contractFromCP, setContractFromCP] = useState<OrgProposal | null>(null);
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const [orgCourses, setOrgCourses] = useState<Array<{ id: string; title: string; duration: string | null; price: number | null; slug: string | null }>>([]);
   const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    if (!organizationId) return;
+    supabase
+      .from("courses")
+      .select("id, title, duration, price, slug")
+      .eq("organization_id", organizationId)
+      .eq("is_published", true)
+      .order("title")
+      .then(({ data }) => setOrgCourses((data || []) as any));
+  }, [organizationId]);
 
   const proposalTemplates = templates.filter(t => t.category === "proposal");
 
-  const openCreate = () => {
+  const openCreate = () => setPickerOpen(true);
+
+  const handlePresetPick = (preset: ProposalPreset | null) => {
+    setPickerOpen(false);
+    if (!preset) {
+      setEditor({
+        proposal: { company_name: "", company_email: "", company_inn: "", contact_person: "", custom_note: "", discount_percent: 0, total_amount: 0 },
+        items: [],
+      });
+      return;
+    }
+    // Заполняем редактор данными из пресета
+    const items: OrgProposalServiceItem[] = (preset.default_services || []).map((s, idx) => ({
+      service_id: null,
+      custom_name: s.name,
+      custom_description: s.description || null,
+      price: s.price,
+      quantity: s.quantity,
+      sort_order: idx,
+    }));
     setEditor({
-      proposal: { company_name: "", company_email: "", company_inn: "", contact_person: "", custom_note: "", discount_percent: 0, total_amount: 0 },
-      items: [],
+      proposal: {
+        company_name: "",
+        company_email: "",
+        company_inn: "",
+        contact_person: "",
+        custom_note: "",
+        discount_percent: preset.default_discount_percent || 0,
+        total_amount: 0,
+        preset_id: preset.id,
+        intro_html: preset.intro_html || null,
+        outro_html: preset.outro_html || null,
+        // @ts-ignore — техническое поле для UI, не сохраняется в БД
+        linked_course_id: preset.linked_course_id || null,
+      },
+      items,
     });
   };
 
@@ -57,11 +105,30 @@ export function OrgProposalsManager({ organizationId, onGoToSmtp }: Props) {
 
   const handleSave = async () => {
     if (!editor) return;
-    const subtotal = editor.items.reduce((s, i) => s + i.price * i.quantity, 0);
+    const linkedCourseId = (editor.proposal as any).linked_course_id || null;
+    const course = linkedCourseId ? orgCourses.find(c => c.id === linkedCourseId) : null;
+    const { applyProposalVariables } = await import("@/lib/proposalVariables");
+    const ctx = {
+      course: course
+        ? { title: course.title, duration: course.duration, price: course.price, slug: course.slug, id: course.id }
+        : null,
+      companyName: editor.proposal.company_name || "",
+      contactPerson: editor.proposal.contact_person || "",
+    };
+    // Подставляем переменные в маркетинговые блоки и в названия услуг
+    const items = editor.items.map(it => ({
+      ...it,
+      custom_name: applyProposalVariables(it.custom_name, ctx),
+      custom_description: it.custom_description ? applyProposalVariables(it.custom_description, ctx) : it.custom_description,
+    }));
+    const intro_html = editor.proposal.intro_html ? applyProposalVariables(editor.proposal.intro_html, ctx) : null;
+    const outro_html = editor.proposal.outro_html ? applyProposalVariables(editor.proposal.outro_html, ctx) : null;
+    const subtotal = items.reduce((s, i) => s + i.price * i.quantity, 0);
     const discount = (editor.proposal.discount_percent || 0) / 100;
     const total = Math.round(subtotal * (1 - discount));
+    const { linked_course_id: _drop, ...proposalPayload } = editor.proposal as any;
     setBusy(true);
-    await upsertProposal({ ...(editor.proposal as any), total_amount: total }, editor.items);
+    await upsertProposal({ ...proposalPayload, intro_html, outro_html, total_amount: total }, items);
     setBusy(false);
     setEditor(null);
   };
@@ -137,12 +204,32 @@ export function OrgProposalsManager({ organizationId, onGoToSmtp }: Props) {
           <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
             <DialogHeader><DialogTitle>{editor.proposal.id ? "Редактировать КП" : "Новое КП"}</DialogTitle></DialogHeader>
             <div className="space-y-3">
+              {(editor.proposal as any).preset_id && (
+                <div className="flex items-center gap-2 p-2 bg-primary/5 border border-primary/20 rounded-md text-xs">
+                  <Sparkles className="w-4 h-4 text-primary" />
+                  <span className="text-muted-foreground">КП создано по шаблону. Маркетинговые блоки добавятся в публичную версию автоматически.</span>
+                </div>
+              )}
               <div className="grid grid-cols-2 gap-2">
                 <div><Label>Название компании</Label><Input value={editor.proposal.company_name || ""} onChange={e => setEditor(s => s && ({ ...s, proposal: { ...s.proposal, company_name: e.target.value } }))} /></div>
                 <div><Label>ИНН</Label><Input value={editor.proposal.company_inn || ""} onChange={e => setEditor(s => s && ({ ...s, proposal: { ...s.proposal, company_inn: e.target.value } }))} /></div>
                 <div><Label>Email</Label><Input type="email" value={editor.proposal.company_email || ""} onChange={e => setEditor(s => s && ({ ...s, proposal: { ...s.proposal, company_email: e.target.value } }))} /></div>
                 <div><Label>Контактное лицо</Label><Input value={editor.proposal.contact_person || ""} onChange={e => setEditor(s => s && ({ ...s, proposal: { ...s.proposal, contact_person: e.target.value } }))} /></div>
                 <div><Label>Скидка (%)</Label><Input type="number" min={0} max={100} value={editor.proposal.discount_percent || 0} onChange={e => setEditor(s => s && ({ ...s, proposal: { ...s.proposal, discount_percent: Number(e.target.value) } }))} /></div>
+                <div>
+                  <Label>Курс для подстановки переменных</Label>
+                  <Select
+                    value={(editor.proposal as any).linked_course_id || "none"}
+                    onValueChange={(v) => setEditor(s => s && ({ ...s, proposal: { ...s.proposal, ...({ linked_course_id: v === "none" ? null : v } as any) } }))}
+                  >
+                    <SelectTrigger><SelectValue placeholder="Не выбран" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">— Не выбран —</SelectItem>
+                      {orgCourses.map(c => <SelectItem key={c.id} value={c.id}>{c.title}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-[10px] text-muted-foreground mt-1">Подставит название, длительность и цену в маркетинговые блоки</p>
+                </div>
               </div>
               <div><Label>Примечание</Label><Textarea rows={2} value={editor.proposal.custom_note || ""} onChange={e => setEditor(s => s && ({ ...s, proposal: { ...s.proposal, custom_note: e.target.value } }))} /></div>
 
@@ -231,6 +318,13 @@ export function OrgProposalsManager({ organizationId, onGoToSmtp }: Props) {
           }}
         />
       )}
+
+      <ProposalPresetPicker
+        open={pickerOpen}
+        organizationId={organizationId}
+        onClose={() => setPickerOpen(false)}
+        onPick={handlePresetPick}
+      />
     </div>
   );
 }
