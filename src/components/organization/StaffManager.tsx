@@ -243,6 +243,11 @@ export function StaffManager({ organizationId }: StaffManagerProps) {
         {/* Audit log */}
         <RoleAuditLog scope="organization" organizationId={organizationId} limit={30} />
 
+        {/* Ownership transfer (only for current owner) */}
+        {isOwner && user && (
+          <OwnershipTransfer organizationId={organizationId} currentOwnerId={user.id} />
+        )}
+
         {/* Invitation dialog */}
         <StaffInvitationDialog
           open={inviteOpen}
