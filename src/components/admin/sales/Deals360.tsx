@@ -3,20 +3,21 @@ import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Search, Building2, FileText, ScrollText, PenTool, Receipt, CheckCircle2, Clock, XCircle, ArrowRight, Sparkles } from 'lucide-react';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import { Search, Building2, FileText, ScrollText, PenTool, Receipt, CheckCircle2, Clock, XCircle, ArrowRight, Sparkles, Activity, LayoutGrid } from 'lucide-react';
 import { format } from 'date-fns';
 import { ru } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { SigmaSpinner } from '@/components/ui/SigmaSpinner';
+import { CompanyTimeline } from './CompanyTimeline';
 
 interface DealCompany {
   inn: string;
   name: string;
-  proposals: Array<{ id: string; status: string; total_amount: number; created_at: string; tariff_plan: string | null }>;
+  proposals: Array<{ id: string; status: string; total_amount: number; created_at: string; tariff_plan: string | null; last_sent_at: string | null }>;
   contracts: Array<{ id: string; status: string; contract_number: string | null; total_amount: number; created_at: string }>;
-  signatures: Array<{ id: string; status: string; document_title: string; document_type: string; created_at: string; signed_at: string | null }>;
+  signatures: Array<{ id: string; status: string; document_title: string; document_type: string; created_at: string; signed_at: string | null; sent_at: string | null; viewed_at: string | null }>;
   invoices: Array<{ id: string; status: string; document_number: string | null; amount: number; created_at: string; type: string }>;
   totalRevenue: number;
   lastActivity: string;
@@ -70,9 +71,9 @@ export function Deals360() {
     setLoading(true);
     try {
       const [proposalsRes, contractsRes, signaturesRes, billingRes] = await Promise.all([
-        supabase.from('commercial_proposals').select('id, company_inn, company_name, status, total_amount, created_at, tariff_plan').order('created_at', { ascending: false }),
+        supabase.from('commercial_proposals').select('id, company_inn, company_name, status, total_amount, created_at, tariff_plan, last_sent_at').order('created_at', { ascending: false }),
         supabase.from('sales_contracts').select('id, company_inn, company_name, status, contract_number, total_amount, created_at').order('created_at', { ascending: false }),
-        supabase.from('document_signatures').select('id, recipient_name, status, document_title, document_type, created_at, signed_at').order('created_at', { ascending: false }).limit(500),
+        supabase.from('document_signatures').select('id, recipient_name, status, document_title, document_type, created_at, signed_at, sent_at, viewed_at').order('created_at', { ascending: false }).limit(500),
         supabase.from('subscription_invoices').select('id, status, invoice_number, amount, created_at, organization_id').order('created_at', { ascending: false }).limit(500),
       ]);
 
@@ -254,61 +255,85 @@ export function Deals360() {
                   })}
                 </div>
 
-                <ScrollArea className="h-[calc(100vh-440px)]">
-                  <div className="space-y-4 pr-2">
-                    {/* КП */}
-                    {selected.proposals.length > 0 && (
-                      <Section title="Коммерческие предложения" icon={FileText}>
-                        {selected.proposals.map(p => (
-                          <Row
-                            key={p.id}
-                            title={p.tariff_plan ? `КП — ${p.tariff_plan}` : 'Коммерческое предложение'}
-                            status={p.status}
-                            amount={p.total_amount}
-                            date={p.created_at}
-                          />
-                        ))}
-                      </Section>
-                    )}
+                <Tabs defaultValue="overview" className="w-full">
+                  <TabsList className="grid grid-cols-2 w-full max-w-xs rounded-xl">
+                    <TabsTrigger value="overview" className="rounded-lg gap-1.5">
+                      <LayoutGrid className="w-3.5 h-3.5" />
+                      Карточка
+                    </TabsTrigger>
+                    <TabsTrigger value="timeline" className="rounded-lg gap-1.5">
+                      <Activity className="w-3.5 h-3.5" />
+                      Тайм-лайн
+                    </TabsTrigger>
+                  </TabsList>
 
-                    {/* Договоры */}
-                    {selected.contracts.length > 0 && (
-                      <Section title="Договоры" icon={ScrollText}>
-                        {selected.contracts.map(c => (
-                          <Row
-                            key={c.id}
-                            title={`Договор ${c.contract_number || 'б/н'}`}
-                            status={c.status}
-                            amount={c.total_amount}
-                            date={c.created_at}
-                          />
-                        ))}
-                      </Section>
-                    )}
+                  <TabsContent value="overview" className="mt-4">
+                    <ScrollArea className="h-[calc(100vh-440px)]">
+                      <div className="space-y-4 pr-2">
+                        {/* КП */}
+                        {selected.proposals.length > 0 && (
+                          <Section title="Коммерческие предложения" icon={FileText}>
+                            {selected.proposals.map(p => (
+                              <Row
+                                key={p.id}
+                                title={p.tariff_plan ? `КП — ${p.tariff_plan}` : 'Коммерческое предложение'}
+                                status={p.status}
+                                amount={p.total_amount}
+                                date={p.created_at}
+                              />
+                            ))}
+                          </Section>
+                        )}
 
-                    {/* Подписи */}
-                    {selected.signatures.length > 0 && (
-                      <Section title="На подписании" icon={PenTool}>
-                        {selected.signatures.slice(0, 10).map(s => (
-                          <Row
-                            key={s.id}
-                            title={s.document_title}
-                            status={s.status}
-                            date={s.signed_at || s.created_at}
-                          />
-                        ))}
-                      </Section>
-                    )}
+                        {/* Договоры */}
+                        {selected.contracts.length > 0 && (
+                          <Section title="Договоры" icon={ScrollText}>
+                            {selected.contracts.map(c => (
+                              <Row
+                                key={c.id}
+                                title={`Договор ${c.contract_number || 'б/н'}`}
+                                status={c.status}
+                                amount={c.total_amount}
+                                date={c.created_at}
+                              />
+                            ))}
+                          </Section>
+                        )}
 
-                    {selected.proposals.length === 0 &&
-                     selected.contracts.length === 0 &&
-                     selected.signatures.length === 0 && (
-                      <div className="text-center text-muted-foreground py-8">
-                        Нет активных документов
+                        {/* Подписи */}
+                        {selected.signatures.length > 0 && (
+                          <Section title="На подписании" icon={PenTool}>
+                            {selected.signatures.slice(0, 10).map(s => (
+                              <Row
+                                key={s.id}
+                                title={s.document_title}
+                                status={s.status}
+                                date={s.signed_at || s.created_at}
+                              />
+                            ))}
+                          </Section>
+                        )}
+
+                        {selected.proposals.length === 0 &&
+                         selected.contracts.length === 0 &&
+                         selected.signatures.length === 0 && (
+                          <div className="text-center text-muted-foreground py-8">
+                            Нет активных документов
+                          </div>
+                        )}
                       </div>
-                    )}
-                  </div>
-                </ScrollArea>
+                    </ScrollArea>
+                  </TabsContent>
+
+                  <TabsContent value="timeline" className="mt-4">
+                    <CompanyTimeline
+                      proposals={selected.proposals}
+                      contracts={selected.contracts}
+                      signatures={selected.signatures}
+                      invoices={selected.invoices}
+                    />
+                  </TabsContent>
+                </Tabs>
               </div>
             )}
           </CardContent>
