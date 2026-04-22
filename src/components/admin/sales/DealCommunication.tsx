@@ -163,10 +163,84 @@ export function DealCommunication({ inn, companyName, refreshKey = 0 }: Props) {
         }
       });
 
+      // 3) Договоры по компании — отправлен / подписан
+      type ContractRow = {
+        id: string; status: string; updated_at: string; created_at: string;
+        contract_number: string | null; total_amount: number;
+      };
+      const contractsMap = new Map<string, ContractRow>();
+      if (inn) {
+        const { data } = await supabase
+          .from('sales_contracts')
+          .select('id, status, updated_at, created_at, contract_number, total_amount')
+          .eq('company_inn', inn)
+          .order('created_at', { ascending: false })
+          .limit(10);
+        (data || []).forEach((c: any) => contractsMap.set(c.id, c));
+      }
+      if (namePrefix) {
+        const { data } = await supabase
+          .from('sales_contracts')
+          .select('id, status, updated_at, created_at, contract_number, total_amount')
+          .ilike('company_name', `${namePrefix}%`)
+          .order('created_at', { ascending: false })
+          .limit(10);
+        (data || []).forEach((c: any) => {
+          if (!contractsMap.has(c.id)) contractsMap.set(c.id, c);
+        });
+      }
+      contractsMap.forEach((c) => {
+        const number = c.contract_number ? `№${c.contract_number}` : 'б/н';
+        const sum = Number(c.total_amount || 0).toLocaleString('ru-RU');
+        if (c.status === 'sent') {
+          collected.push({
+            id: `csent-${c.id}`, type: 'contract_sent',
+            text: `Договор ${number} отправлен на ${sum} ₽`,
+            created_at: c.updated_at || c.created_at,
+          });
+        }
+        if (['signed', 'active'].includes(c.status)) {
+          collected.push({
+            id: `csigned-${c.id}`, type: 'contract_signed',
+            text: `Договор ${number} подписан (${sum} ₽)`,
+            created_at: c.updated_at || c.created_at,
+          });
+        }
+      });
+
+      // 4) Подписания документов — на подписи / подписано
+      if (namePrefix) {
+        const { data } = await supabase
+          .from('document_signatures')
+          .select('id, document_title, status, sent_at, signed_at, created_at, recipient_name')
+          .ilike('recipient_name', `${namePrefix}%`)
+          .order('created_at', { ascending: false })
+          .limit(15);
+        (data || []).forEach((s: any) => {
+          if (s.status === 'signed' && s.signed_at) {
+            collected.push({
+              id: `ssigned-${s.id}`, type: 'signature_signed',
+              text: `Подписан документ «${s.document_title}»`,
+              created_at: s.signed_at,
+            });
+          } else if (['sent', 'viewed', 'in_review'].includes(s.status) && s.sent_at) {
+            collected.push({
+              id: `ssent-${s.id}`, type: 'signature_sent',
+              text: `Документ «${s.document_title}» отправлен на подпись`,
+              created_at: s.sent_at,
+            });
+          }
+        });
+      }
+
       collected.sort((a, b) => b.created_at.localeCompare(a.created_at));
-      setItems(collected.slice(0, 15));
+      setItems(collected.slice(0, 25));
     } catch (e) {
       console.error('DealCommunication load', e);
+    } finally {
+      setLoading(false);
+    }
+  }
     } finally {
       setLoading(false);
     }
