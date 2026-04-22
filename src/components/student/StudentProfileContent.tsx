@@ -13,6 +13,7 @@ import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/comp
 import { VideoIdentification } from "@/components/student/VideoIdentification";
 import { StudentConsentForm } from "@/components/student/StudentConsentForm";
 import { StudentDocumentsUpload } from "@/components/student/StudentDocumentsUpload";
+import { StudentDataSubjectRequests } from "@/components/student/StudentDataSubjectRequests";
 import { AchievementsPanel } from "@/components/student/AchievementsPanel";
 import { ThemeSelector } from "@/components/ui/ThemeSelector";
 import { StudentPartnerTab } from "@/components/student/StudentPartnerTab";
@@ -302,6 +303,14 @@ export function StudentProfileContent({ effectiveUserId, isAdminView = false }: 
               />
             </CardContent>
           </Card>
+
+          {!isAdminView && (
+            <StudentDataSubjectRequests
+              userId={effectiveUserId}
+              organizationId={sp.profile?.organization_id || ""}
+              userEmail={user?.email}
+            />
+          )}
         </div>
       )}
 
