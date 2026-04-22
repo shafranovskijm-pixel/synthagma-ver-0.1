@@ -289,8 +289,11 @@ const FeatureFRDO = () => {
             <motion.h2 variants={fadeUp} className="font-display text-3xl font-medium mb-4">
               Автоматизируйте работу с ФИС ФРДО
             </motion.h2>
-            <motion.p variants={fadeUp} className="text-muted-foreground mb-8 max-w-xl mx-auto">
-              Начните бесплатно и откройте доступ к ФРДО на тарифе «Максимальный»
+            <motion.p variants={fadeUp} className="text-muted-foreground mb-3 max-w-xl mx-auto">
+              Формирование XLSX-файла для ФРДО доступно на любом тарифе, включая <strong className="text-foreground">бесплатный</strong>. Прямая выгрузка в ФИС ФРДО — на тарифе <strong className="text-foreground">«Профессиональный»</strong>.
+            </motion.p>
+            <motion.p variants={fadeUp} className="text-sm text-muted-foreground mb-8 max-w-xl mx-auto">
+              Начните бесплатно — попробуйте подготовку реестра, а к выгрузке подключитесь, когда будете готовы.
             </motion.p>
             <motion.div variants={fadeUp}>
               <Link to="/register-organization">
