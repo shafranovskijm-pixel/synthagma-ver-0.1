@@ -82,6 +82,7 @@ interface Deals360Props {
   onAddCall?: (company: { name: string; inn: string }) => void;
   onAddNote?: (company: { name: string; inn: string }) => void;
   onAddTask?: (company: { name: string; inn: string }) => void;
+  onSendForSigning?: (company: { name: string; inn: string; email?: string | null }) => void;
   /** Изменение значения вызовет refetch истории общения у выбранной компании */
   communicationRefreshKey?: number;
   /** Если задан — карточка автоматически выберется при загрузке/смене значения */
@@ -91,7 +92,7 @@ interface Deals360Props {
 export function Deals360({
   organizationId,
   onCreateProposal, onCreateContract, onCreateInvoice,
-  onAddCall, onAddNote, onAddTask,
+  onAddCall, onAddNote, onAddTask, onSendForSigning,
   communicationRefreshKey,
   initialSelectedInn,
 }: Deals360Props = {}) {
