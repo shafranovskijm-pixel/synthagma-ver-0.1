@@ -24,17 +24,20 @@ import { printHtmlContent } from "@/utils/printHtmlToPdf";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 import { DocumentFormDialog } from "./education-documents/DocumentFormDialog";
 import { SelectStudentsDialog } from "./education-documents/SelectStudentsDialog";
+import { FrdoReadinessBanner } from "./FrdoReadinessBanner";
 
 interface EducationDocumentsJournalProps {
   organizationId: string;
   onClose: () => void;
   documentTypeFilter?: "certificate" | "diploma" | "qualification";
+  onOpenFrdoTab?: () => void;
 }
 
 export function EducationDocumentsJournal({
   organizationId,
   onClose,
-  documentTypeFilter }: EducationDocumentsJournalProps) {
+  documentTypeFilter,
+  onOpenFrdoTab }: EducationDocumentsJournalProps) {
   const {
     loading, saving, searchQuery, setSearchQuery,
     selectedDocType, setSelectedDocType, selectedStatus, setSelectedStatus,
@@ -119,7 +122,10 @@ export function EducationDocumentsJournal({
               <CheckCircle2 className="w-5 h-5 text-amber-500" />
             </div>
             <div><p className="text-2xl font-bold">{stats.originals}/{stats.duplicates}</p><p className="text-xs text-muted-foreground">Ориг./Дубл.</p></div>
-          </div>
+      </div>
+
+      {/* FRDO export readiness */}
+      <FrdoReadinessBanner organizationId={organizationId} onOpenFrdo={onOpenFrdoTab} />
         </div>
       </div>
 

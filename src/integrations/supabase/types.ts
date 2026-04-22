@@ -8325,6 +8325,17 @@ export type Database = {
           user_id: string
         }[]
       }
+      get_frdo_export_readiness: {
+        Args: { p_organization_id: string }
+        Returns: {
+          missing_birth_date: number
+          missing_frdo_data: number
+          missing_passport: number
+          missing_snils: number
+          ready_for_export: number
+          total_documents: number
+        }[]
+      }
       get_registration_link_by_token: {
         Args: { link_token: string }
         Returns: {
