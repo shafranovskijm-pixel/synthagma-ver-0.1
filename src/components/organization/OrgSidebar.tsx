@@ -140,6 +140,17 @@ export function OrgSidebar() {
   const { theme: currentTheme, setTheme } = useTheme();
   const toggleTheme = () => setTheme(currentTheme === "dark" ? "light" : "dark");
 
+  // Mini-labels under icons (for new orgs / sensor screens)
+  const [showLabels, setShowLabels] = useState<boolean>(() => {
+    try {
+      const v = localStorage.getItem(SHOW_LABELS_KEY);
+      return v === null ? true : v === "1";
+    } catch { return true; }
+  });
+  useEffect(() => {
+    try { localStorage.setItem(SHOW_LABELS_KEY, showLabels ? "1" : "0"); } catch {}
+  }, [showLabels]);
+
   // Theme-aware accent
   const [themeAccent, setThemeAccent] = useState<string | null>(() => {
     const id = getStoredThemeId();
@@ -186,31 +197,37 @@ export function OrgSidebar() {
     setIsMobileSidebarOpen(false);
   };
 
-  // Build nav items dynamically based on menu settings
+  // Build nav items grouped by section
   const rawItems: NavItem[] = [];
-  
-  if (menuSettings.showCourses !== false) rawItems.push({ id: "courses", icon: BookOpen, label: "Курсы", category: "courses" });
-  if (menuSettings.showCompanies !== false) rawItems.push({ id: "organizations", icon: Building2, label: "Компании", category: "companies" });
-  if (menuSettings.showStudents !== false) rawItems.push({ id: "students", icon: Users, label: "Ученики", category: "students" });
-  
-  if (menuSettings.showStats) rawItems.push({ id: "stats", icon: BarChart3, label: "Статистика" });
-  if (menuSettings.showLinks) rawItems.push({ id: "links", icon: Link, label: "Ссылки", category: "links" });
-  
-  if (menuSettings.showLaborSafety !== false) rawItems.push({ id: "labor-safety", icon: HardHat, label: "Охрана труда", category: "labor_safety" });
-  // «Финансы» убраны из сайдбара — открываются изнутри раздела «Тариф».
-  // «Продажи» теперь всегда видны (видимость регулируется правами сотрудника `sales.read`).
-  rawItems.push({ id: "sales", icon: Briefcase, label: "Продажи" });
 
-  rawItems.push({ id: "homework-review", icon: BookCheck, label: "Задания" });
-
+  // === ОБУЧЕНИЕ ===
+  if (menuSettings.showCourses !== false) rawItems.push({ id: "courses", icon: BookOpen, label: "Курсы", category: "courses", section: "learning" });
+  rawItems.push({ id: "homework-review", icon: BookCheck, label: "Домашние работы", section: "learning" });
   if (menuSettings.showAITutors !== false) {
-    rawItems.push({ id: "ai-tutors", icon: Sparkles, label: "ИИ-преподаватели" });
+    rawItems.push({ id: "ai-tutors", icon: Sparkles, label: "ИИ-уроки", section: "learning" });
   }
+  if (menuSettings.showLaborSafety !== false) rawItems.push({ id: "labor-safety", icon: HardHat, label: "Охрана труда", category: "labor_safety", section: "learning" });
 
-  rawItems.push({ id: "chats", icon: MessageCircle, label: "Чаты", badge: d.unreadChatsCount });
+  // === КЛИЕНТЫ ===
+  if (menuSettings.showStudents !== false) rawItems.push({ id: "students", icon: Users, label: "Ученики", category: "students", section: "clients" });
+  if (menuSettings.showCompanies !== false) rawItems.push({ id: "organizations", icon: Building2, label: "Клиенты-компании", category: "companies", section: "clients" });
+  // «Продажи» всегда видны (видимость регулируется правами sales.read).
+  rawItems.push({ id: "sales", icon: Briefcase, label: "Продажи", section: "clients" });
+  rawItems.push({ id: "chats", icon: MessageCircle, label: "Чаты", badge: d.unreadChatsCount, section: "clients" });
 
-  // Фильтр по правам сотрудника. Пока загружаются — показываем всё, чтобы избежать вспышки пустого меню.
+  // === ИНСТРУМЕНТЫ ===
+  if (menuSettings.showStats) rawItems.push({ id: "stats", icon: BarChart3, label: "Статистика", section: "tools" });
+  if (menuSettings.showLinks) rawItems.push({ id: "links", icon: Link, label: "Ссылки", category: "links", section: "tools" });
+  // «Финансы» убраны — открываются изнутри «Тариф».
+
+  // Фильтр по правам сотрудника
   const navItems: NavItem[] = permsLoading ? rawItems : rawItems.filter(item => canSeeOrgTab(item.id));
+
+  // Group preserving section order
+  const sectionOrder: SectionId[] = ["learning", "clients", "tools"];
+  const grouped = sectionOrder
+    .map((sec) => ({ section: sec, items: navItems.filter((i) => i.section === sec) }))
+    .filter((g) => g.items.length > 0);
 
 
 
