@@ -2,7 +2,7 @@ import React from "react";
 import {
   Users, ClipboardList, Award, GraduationCap, FileCheck,
   FileText, Upload, BookOpen, Wrench, Building2, ScrollText,
-  Lock, ArrowUpRight, FolderOpen, Receipt, Database, FileSignature, ShieldCheck, Inbox
+  Lock, ArrowUpRight, FolderOpen, Receipt, Database, FileSignature, ShieldCheck, Inbox, BarChart3
 } from "lucide-react";
 import { JournalsManager } from "@/components/organization/JournalsManager";
 import { FRDOManager } from "@/components/organization/FRDOManager";
@@ -15,6 +15,7 @@ import { ContractGenerator } from "@/components/organization/ContractGenerator";
 import { SignaturesJournal } from "@/components/signing/SignaturesJournal";
 import { DataSubjectRequestsManager } from "@/components/organization/DataSubjectRequestsManager";
 import { IncomingDocumentsManager } from "@/components/organization/IncomingDocumentsManager";
+import { DocumentsKpiDashboard } from "@/components/organization/DocumentsKpiDashboard";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -24,6 +25,7 @@ import { ConstructorSection } from "./documents/ConstructorSection";
 import { DocumentDialogs } from "./documents/DocumentDialogs";
 
 const NAV_ITEMS: { value: DocumentSubTab; label: string; icon: React.ElementType; ordersOnly?: boolean; iconColor?: string; group?: string }[] = [
+  { value: "kpi", label: "Сводка / KPI", icon: BarChart3, iconColor: "text-primary", group: "platform" },
   { value: "counterparties", label: "Контрагенты", icon: Building2, group: "platform" },
   { value: "incoming", label: "Входящие", icon: Inbox, iconColor: "text-cyan-500", group: "platform" },
   { value: "orders", label: "Приказы", icon: ScrollText, ordersOnly: true, iconColor: "text-amber-500", group: "docs" },
@@ -41,6 +43,7 @@ const NAV_ITEMS: { value: DocumentSubTab; label: string; icon: React.ElementType
 ];
 
 const SECTION_DESCRIPTIONS: Partial<Record<DocumentSubTab, string>> = {
+  kpi: "Ключевые метрики документооборота: подписания, выдачи, конверсии, истекающие сроки",
   constructor: "Настройте шаблоны документов — реквизиты, печать и подпись будут автоматически подставляться",
   org: "Загрузите обязательные документы организации по 273-ФЗ",
   orders: "Сгенерированные приказы о зачислении и отчислении",
@@ -146,6 +149,7 @@ export const DocumentsTab = React.memo(function DocumentsTab({ organizationId, o
           </div>
 
           <div className="p-4 lg:p-6">
+            {h.activeTab === "kpi" && <DocumentsKpiDashboard organizationId={organizationId} />}
             {h.activeTab === "constructor" && (
               <ConstructorSection
                 organizationId={organizationId}
