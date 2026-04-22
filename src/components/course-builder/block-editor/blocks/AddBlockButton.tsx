@@ -173,7 +173,7 @@ export function AddBlockButton({ onAdd }: { onAdd: (type: BlockType, pendingAI?:
       <PopoverTrigger asChild>
         <Button variant="outline" size="sm" className="rounded-lg gap-2"><Plus className="w-4 h-4" />Добавить блок</Button>
       </PopoverTrigger>
-      <PopoverContent align="center" className="w-[560px] max-w-[calc(100vw-2rem)] p-4">
+      <PopoverContent align="center" collisionPadding={16} className="w-[560px] max-w-[calc(100vw-2rem)] p-4">
         <BlockPicker onSelect={handleSelect} />
       </PopoverContent>
     </Popover>
