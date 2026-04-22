@@ -57,9 +57,6 @@ export async function loadRealRequisites(organizationId: string): Promise<RealRe
     org_bank_bik: data.bank_bik || "",
     org_bank_account: data.bank_account || "",
     org_bank_corr_account: data.bank_corr_account || "",
-    org_license_number: (data as any).license_number || "",
-    org_license_date: (data as any).license_date || "",
-    org_license_issuer: (data as any).license_issuer || "",
   };
 }
 
