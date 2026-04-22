@@ -1,7 +1,7 @@
 import { useState, useCallback } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Sparkles, FileText, FileCode, Briefcase, Boxes, Settings, ListTodo, Send, Building2, Target, Mail, Kanban, UserPlus, Trophy, Snowflake, MonitorPlay } from 'lucide-react';
+import { Sparkles, FileText, FileCode, Briefcase, Boxes, Settings, ListTodo, Send, Building2, Target, Mail, Kanban, UserPlus, Snowflake, MonitorPlay } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useOrgDashboard } from '@/contexts/OrgDashboardContext';
 import { OrgEmailCampaigns } from './OrgEmailCampaigns';
@@ -17,7 +17,7 @@ import { CompaniesUnified } from '@/components/admin/sales/CompaniesUnified';
 import { LogActivityDialog } from '@/components/admin/sales/LogActivityDialog';
 import { SalesKanban } from '@/components/admin/sales/SalesKanban';
 import { LeadsManager } from '@/components/admin/sales/LeadsManager';
-import { CompetitorComparison } from '@/components/admin/sales/CompetitorComparison';
+
 import { SalesSegments } from '@/components/admin/sales/SalesSegments';
 import { OrgDemoLinksManager } from './OrgDemoLinksManager';
 import { useOrgSmtp } from '@/hooks/useOrgSmtp';
@@ -31,7 +31,6 @@ const menuGroups: MenuGroup[] = [
     items: [
       { id: 'overview', label: 'Обзор', icon: Target },
       { id: 'tasks', label: 'Задачи', icon: ListTodo },
-      { id: 'comparison', label: 'Сравнение', icon: Trophy },
     ],
   },
   {
@@ -68,7 +67,7 @@ const menuGroups: MenuGroup[] = [
   },
 ];
 
-const AVAILABLE_SECTIONS = ['overview','tasks','comparison','kanban','deals','leads','companies','segments','proposals','contracts','services','templates','campaigns','demo-links','smtp'];
+const AVAILABLE_SECTIONS = ['overview','tasks','kanban','deals','leads','companies','segments','proposals','contracts','services','templates','campaigns','demo-links','smtp'];
 
 export function OrgSalesManager() {
   const d = useOrgDashboard();
@@ -196,7 +195,6 @@ export function OrgSalesManager() {
               onOpenDeal={(inn) => { if (inn) setDealSelectedInn(inn); setSection('deals'); }}
             />
           )}
-          {section === 'comparison' && <CompetitorComparison />}
           {section === 'campaigns' && (
             <OrgEmailCampaigns organizationId={organizationId} onGoToSmtp={() => setSection('smtp')} />
           )}
