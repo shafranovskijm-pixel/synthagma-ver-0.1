@@ -28,6 +28,8 @@ import {
 import { toast } from "sonner";
 import { getBaseUrl } from "@/utils/getBaseUrl";
 import { ShareWebinarDialog } from "@/components/organization/ShareWebinarDialog";
+import { WebinarSidebar } from "@/components/webinars/WebinarSidebar";
+import { cn } from "@/lib/utils";
 
 interface Props {
   webinarId: string;
