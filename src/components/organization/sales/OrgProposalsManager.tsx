@@ -67,7 +67,8 @@ export function OrgProposalsManager({ organizationId, onGoToSmtp }: Props) {
 
   const openSend = (p: OrgProposal) => {
     if (!smtp) {
-      onGoToSmtp();
+      if (onGoToSmtp) onGoToSmtp();
+      else toast.error("SMTP не настроен. Откройте раздел «Продажи → SMTP», чтобы настроить отправку.");
       return;
     }
     setSendDialog({
