@@ -15,6 +15,9 @@ import { StaffInvitationDialog, type StaffInvitationRole } from "@/components/st
 import { RoleAuditLog } from "@/components/staff/RoleAuditLog";
 import { OrgPermissionMatrix } from "@/components/staff/PermissionMatrix";
 import { OrgCustomRolesManager } from "@/components/staff/OrgCustomRolesManager";
+import { StaffExpirationButton } from "@/components/staff/StaffExpirationButton";
+import { OwnershipTransfer } from "@/components/staff/OwnershipTransfer";
+import { useAuth } from "@/hooks/useAuth";
 
 interface StaffMember {
   id: string;
@@ -23,6 +26,7 @@ interface StaffMember {
   display_name: string;
   bio: string | null;
   visibility: string;
+  expires_at: string | null;
   created_at: string;
 }
 
@@ -160,6 +164,7 @@ export function StaffManager({ organizationId }: StaffManagerProps) {
                   <TableRow>
                     <TableHead>Имя</TableHead>
                     <TableHead>Роль</TableHead>
+                    <TableHead>Срок действия</TableHead>
                     <TableHead>Видимость</TableHead>
                     <TableHead className="w-[80px]"></TableHead>
                   </TableRow>
