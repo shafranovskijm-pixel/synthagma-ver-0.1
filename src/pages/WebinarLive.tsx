@@ -1,24 +1,43 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { LiveKitRoom, VideoConference, RoomAudioRenderer } from "@livekit/components-react";
+import { LiveKitRoom, VideoConference, RoomAudioRenderer, useParticipants } from "@livekit/components-react";
 import "@livekit/components-styles";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, AlertCircle } from "lucide-react";
+import { ArrowLeft, AlertCircle, Copy, Users, QrCode } from "lucide-react";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 import { toast } from "sonner";
+import { getBaseUrl } from "@/utils/getBaseUrl";
+import QRCode from "qrcode";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+
+const ParticipantsCount = () => {
+  const participants = useParticipants();
+  return (
+    <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
+      <Users className="w-3 h-3" /> {participants.length}
+    </span>
+  );
+};
 
 const WebinarLive = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [params] = useSearchParams();
-  const sessionId = params.get("sessionId"); // для AI-преподавателя
+  const sessionId = params.get("sessionId");
 
   const [token, setToken] = useState<string | null>(null);
   const [wsUrl, setWsUrl] = useState<string | null>(null);
   const [title, setTitle] = useState("Эфир");
+  const [publicToken, setPublicToken] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const qrCanvasRef = useRef<HTMLCanvasElement | null>(null);
+
+  const publicLink = useMemo(
+    () => (publicToken ? `${getBaseUrl()}/w/${publicToken}` : ""),
+    [publicToken],
+  );
 
   const obtainToken = useCallback(async () => {
     setLoading(true);
@@ -28,9 +47,7 @@ const WebinarLive = () => {
       const { data, error: invokeError } = await supabase.functions.invoke(
         "livekit-issue-token",
         {
-          body: isTutor
-            ? { aiTutorSessionId: sessionId }
-            : { webinarId: id },
+          body: isTutor ? { aiTutorSessionId: sessionId } : { webinarId: id },
         },
       );
       if (invokeError) throw new Error(invokeError.message);
@@ -42,10 +59,11 @@ const WebinarLive = () => {
       if (!isTutor && id) {
         const { data: w } = await supabase
           .from("webinars")
-          .select("title")
+          .select("title, public_token")
           .eq("id", id)
           .maybeSingle();
         if (w?.title) setTitle(w.title);
+        if ((w as any)?.public_token) setPublicToken((w as any).public_token);
       } else if (isTutor) {
         setTitle("ИИ-преподаватель — сессия");
       }
@@ -81,14 +99,22 @@ const WebinarLive = () => {
             })
             .eq("id", sessionId);
         }
-      } catch {
-        /* ignore */
-      }
-      navigate(-1);
-    } else {
-      navigate(-1);
+      } catch { /* ignore */ }
     }
+    navigate(-1);
   }, [sessionId, navigate]);
+
+  const copyLink = () => {
+    if (!publicLink) return;
+    navigator.clipboard.writeText(publicLink);
+    toast.success("Публичная ссылка скопирована");
+  };
+
+  const renderQr = () => {
+    if (qrCanvasRef.current && publicLink) {
+      QRCode.toCanvas(qrCanvasRef.current, publicLink, { width: 200, margin: 1 }).catch(() => {});
+    }
+  };
 
   if (loading) {
     return (
@@ -116,12 +142,31 @@ const WebinarLive = () => {
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
-      <div className="flex items-center justify-between px-4 py-2 border-b">
+      <div className="flex items-center justify-between px-4 py-2 border-b gap-2 flex-wrap">
         <Button variant="ghost" size="sm" onClick={handleDisconnected}>
           <ArrowLeft className="w-4 h-4 mr-2" /> Завершить
         </Button>
-        <div className="text-sm font-medium truncate">{title}</div>
-        <div className="w-20" />
+        <div className="text-sm font-medium truncate flex-1 text-center">{title}</div>
+        <div className="flex items-center gap-2">
+          {!sessionId && publicLink && (
+            <>
+              <Button variant="outline" size="sm" onClick={copyLink}>
+                <Copy className="w-3.5 h-3.5 mr-1" /> Ссылка для участников
+              </Button>
+              <Popover onOpenChange={(o) => o && setTimeout(renderQr, 50)}>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" size="icon" className="h-8 w-8">
+                    <QrCode className="w-4 h-4" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-3 bg-white">
+                  <canvas ref={qrCanvasRef} />
+                  <p className="text-xs text-center text-muted-foreground mt-2 max-w-[200px] break-all">{publicLink}</p>
+                </PopoverContent>
+              </Popover>
+            </>
+          )}
+        </div>
       </div>
       <div className="flex-1" data-lk-theme="default">
         <LiveKitRoom
@@ -133,6 +178,9 @@ const WebinarLive = () => {
           onDisconnected={handleDisconnected}
           style={{ height: "100%" }}
         >
+          <div className="absolute top-2 right-2 z-10 bg-background/80 backdrop-blur-sm px-2 py-1 rounded-md border">
+            <ParticipantsCount />
+          </div>
           <VideoConference />
           <RoomAudioRenderer />
         </LiveKitRoom>
