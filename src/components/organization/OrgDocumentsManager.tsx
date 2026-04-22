@@ -11,6 +11,7 @@ import {
   FileText, Download, Trash2, Upload, Search, Eye,
   Building2, Scale, Award, ClipboardList, FileCheck, Users, GraduationCap,
   CheckCircle2, AlertCircle, FolderOpen, Sparkles, CheckCircle, ShoppingCart, Check,
+  Archive, Clock, AlertTriangle,
 } from "lucide-react";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
@@ -256,10 +257,10 @@ function DocumentRow({ docItem, h }: { docItem: any; h: ReturnType<typeof useOrg
 
   const expBadge = (() => {
     if (!uploadedDoc) return null;
-    if (exp.state === "archived") return <span className="text-xs px-1.5 py-0.5 rounded bg-muted text-muted-foreground flex-shrink-0">Архив</span>;
-    if (exp.state === "expired") return <span className="text-xs px-1.5 py-0.5 rounded bg-destructive/10 text-destructive flex-shrink-0">Просрочен</span>;
-    if (exp.state === "expiring") return <span className="text-xs px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-600 flex-shrink-0">Истекает через {exp.daysLeft} дн.</span>;
-    if (uploadedDoc.expires_at) return <span className="text-xs px-1.5 py-0.5 rounded bg-green-500/10 text-green-600 flex-shrink-0">Действует</span>;
+    if (exp.state === "archived") return <span className="inline-flex items-center gap-1 text-xs px-1.5 py-0.5 rounded bg-muted text-muted-foreground flex-shrink-0"><Archive className="w-3 h-3" />Архив</span>;
+    if (exp.state === "expired") return <span className="inline-flex items-center gap-1 text-xs px-1.5 py-0.5 rounded bg-destructive/10 text-destructive flex-shrink-0"><AlertTriangle className="w-3 h-3" />Просрочен</span>;
+    if (exp.state === "expiring") return <span className="inline-flex items-center gap-1 text-xs px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-600 flex-shrink-0"><Clock className="w-3 h-3" />Истекает через {exp.daysLeft} дн.</span>;
+    if (uploadedDoc.expires_at) return <span className="inline-flex items-center gap-1 text-xs px-1.5 py-0.5 rounded bg-green-500/10 text-green-600 flex-shrink-0"><Check className="w-3 h-3" />Действует</span>;
     return null;
   })();
 
