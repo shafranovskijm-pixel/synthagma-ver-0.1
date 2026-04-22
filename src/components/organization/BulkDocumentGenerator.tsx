@@ -15,7 +15,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 import JSZip from "jszip";
-import { openPrivateFile } from "@/lib/storage/privateFile";
+import { openPrivateFile } from "@/utils/storageHelpers";
 import {
   renderTemplate,
   buildOrgVariables,
