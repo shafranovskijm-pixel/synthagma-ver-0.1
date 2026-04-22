@@ -41,6 +41,7 @@ const PublicCompanyCard = lazyWithRetry(() => import("@/pages/PublicCompanyCard"
 const SignDocument = lazyWithRetry(() => import("@/pages/SignDocument"));
 const VerifyDocument = lazyWithRetry(() => import("@/pages/VerifyDocument"));
 const WebinarPublic = lazyWithRetry(() => import("@/pages/WebinarPublic"));
+const DocumentSharePage = lazyWithRetry(() => import("@/pages/DocumentSharePage"));
 const NotFound = lazyWithRetry(() => import("@/pages/NotFound"));
 
 export const publicRoutes = (
@@ -89,6 +90,7 @@ export const publicRoutes = (
     <Route path="/verify" element={<VerifyDocument />} />
     <Route path="/verify/:regNumber" element={<VerifyDocument />} />
     <Route path="/w/:token" element={<WebinarPublic />} />
+    <Route path="/document/share/:token" element={<DocumentSharePage />} />
     <Route path="*" element={<NotFound />} />
   </>
 );

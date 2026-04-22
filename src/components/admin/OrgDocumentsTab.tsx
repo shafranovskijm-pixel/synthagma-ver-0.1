@@ -27,10 +27,14 @@ import {
   Download,
   Loader2,
   Plus,
+  History,
+  Link2,
 } from "lucide-react";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import { DocumentDropZone } from "@/components/organization/DocumentDropZone";
+import { OrgDocumentVersionsDialog } from "@/components/organization/OrgDocumentVersionsDialog";
+import { OrgDocumentShareDialog } from "@/components/organization/OrgDocumentShareDialog";
 
 interface OrgDocument {
   id: string;
@@ -56,6 +60,8 @@ const DOCUMENT_TYPES = [
 export function OrgDocumentsTab({ organizationId, documents, onDocumentsChange }: OrgDocumentsTabProps) {
   const [isUploadOpen, setIsUploadOpen] = useState(false);
   const [uploadingType, setUploadingType] = useState<string | null>(null);
+  const [versionsDoc, setVersionsDoc] = useState<OrgDocument | null>(null);
+  const [shareDoc, setShareDoc] = useState<OrgDocument | null>(null);
 
   const getTypeConfig = (type: string) => {
     return DOCUMENT_TYPES.find(t => t.value === type) || DOCUMENT_TYPES[3];
@@ -192,11 +198,28 @@ export function OrgDocumentsTab({ organizationId, documents, onDocumentsChange }
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex items-center justify-end gap-1">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => setVersionsDoc(doc)}
+                          title="История версий"
+                        >
+                          <History className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => setShareDoc(doc)}
+                          title="Публичная ссылка"
+                        >
+                          <Link2 className="w-4 h-4" />
+                        </Button>
                         {doc.file_url && (
                           <Button
                             variant="ghost"
                             size="icon"
                             onClick={() => window.open(doc.file_url!, "_blank")}
+                            title="Скачать"
                           >
                             <Download className="w-4 h-4" />
                           </Button>
@@ -206,6 +229,7 @@ export function OrgDocumentsTab({ organizationId, documents, onDocumentsChange }
                           size="icon"
                           className="text-destructive"
                           onClick={() => handleDelete(doc)}
+                          title="Удалить"
                         >
                           <Trash2 className="w-4 h-4" />
                         </Button>
@@ -251,6 +275,23 @@ export function OrgDocumentsTab({ organizationId, documents, onDocumentsChange }
           </div>
         </DialogContent>
       </Dialog>
+
+      <OrgDocumentVersionsDialog
+        open={!!versionsDoc}
+        onOpenChange={(o) => !o && setVersionsDoc(null)}
+        documentId={versionsDoc?.id || null}
+        documentName={versionsDoc?.name || ""}
+        organizationId={organizationId}
+        onRestored={onDocumentsChange}
+      />
+
+      <OrgDocumentShareDialog
+        open={!!shareDoc}
+        onOpenChange={(o) => !o && setShareDoc(null)}
+        documentId={shareDoc?.id || null}
+        documentName={shareDoc?.name || ""}
+        organizationId={organizationId}
+      />
     </div>
   );
 }
