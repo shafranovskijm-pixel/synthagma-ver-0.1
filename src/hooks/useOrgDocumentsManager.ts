@@ -444,6 +444,10 @@ export function useOrgDocumentsManager(organizationId: string) {
     setActiveCategory,
     uploadDocType,
     selectedFile,
+    uploadIssueDate, setUploadIssueDate,
+    uploadExpiresAt, setUploadExpiresAt,
+    uploadResponsible, setUploadResponsible,
+    expiryFilter, setExpiryFilter,
     showQuiz,
     setShowQuiz,
     isSubmittingQuiz,
@@ -466,5 +470,8 @@ export function useOrgDocumentsManager(organizationId: string) {
     toggleDocForOrder,
     getDocumentForType,
     getDocumentsForCategory,
+    archiveDocument,
+    restoreDocument,
+    getExpiryStatus,
   };
 }
