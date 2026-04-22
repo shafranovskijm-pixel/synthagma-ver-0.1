@@ -96,13 +96,13 @@ function BlockPicker({ onSelect }: { onSelect: (item: GridItem) => void }) {
   };
 
   return (
-    <div className="space-y-3">
-      <div className="flex items-center justify-between gap-3">
+    <div className="flex flex-col gap-3 max-h-[calc(100vh-6rem)] sm:max-h-[calc(100vh-4rem)]">
+      <div className="flex items-center justify-between gap-3 shrink-0">
         <h3 className="text-base font-semibold text-foreground">Выберите блок</h3>
-        <span className="text-[11px] text-muted-foreground">Один клик — добавить</span>
+        <span className="text-[11px] text-muted-foreground hidden sm:inline">Один клик — добавить</span>
       </div>
 
-      <div className="relative">
+      <div className="relative shrink-0">
         <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
         <Input
           autoFocus
@@ -114,7 +114,7 @@ function BlockPicker({ onSelect }: { onSelect: (item: GridItem) => void }) {
         />
       </div>
 
-      <div className="max-h-[60vh] overflow-y-auto space-y-4 pr-1">
+      <div className="flex-1 min-h-0 overflow-y-auto space-y-4 pr-1 -mr-1">
         {grouped.map(({ group, items }) => (
           <div key={group}>
             <p className="text-[10px] uppercase tracking-wide font-semibold text-muted-foreground px-1 mb-2 flex items-center gap-1.5">
