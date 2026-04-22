@@ -111,7 +111,7 @@ const FeatureFRDO = () => {
 
       {/* Pain block — реальный скриншот ошибок ФИС ФРДО */}
       <section className="py-20 bg-destructive/5 border-y border-destructive/10 relative overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-br from-destructive/[0.03] via-transparent to-amber-500/[0.03]" />
+        <div className="absolute inset-0 bg-gradient-to-br from-destructive/[0.03] via-transparent to-accent/[0.03]" />
         <div className="container mx-auto px-6 relative z-10">
           <motion.div
             initial="hidden"
@@ -170,8 +170,8 @@ const FeatureFRDO = () => {
                 {/* Псевдо-шапка браузера */}
                 <div className="flex items-center gap-1.5 px-4 py-3 bg-muted/60 border-b border-border/50">
                   <div className="w-3 h-3 rounded-full bg-destructive/60" />
-                  <div className="w-3 h-3 rounded-full bg-amber-400/60" />
-                  <div className="w-3 h-3 rounded-full bg-emerald-500/60" />
+                  <div className="w-3 h-3 rounded-full bg-muted-foreground/40" />
+                  <div className="w-3 h-3 rounded-full bg-accent/60" />
                   <div className="ml-3 px-3 py-1 rounded-md bg-background/80 text-xs text-muted-foreground font-mono truncate">
                     fis-frdo.obrnadzor.gov.ru — лог ошибок
                   </div>
