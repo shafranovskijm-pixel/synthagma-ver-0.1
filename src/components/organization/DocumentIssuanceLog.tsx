@@ -5,6 +5,7 @@ import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Checkbox } from "@/components/ui/checkbox";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import {
@@ -15,7 +16,8 @@ import {
   Calendar,
   Send,
   Award,
-  BookOpen } from "lucide-react";
+  BookOpen,
+  Trash2 } from "lucide-react";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import { getXLSX } from "@/utils/xlsxHelper";
@@ -43,6 +45,8 @@ export function DocumentIssuanceLog({ organizationId }: DocumentIssuanceLogProps
   const [searchQuery, setSearchQuery] = useState("");
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [isAdding, setIsAdding] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [bulkDeleting, setBulkDeleting] = useState(false);
 
   // New entry form
   const [newEntry, setNewEntry] = useState({
@@ -170,6 +174,65 @@ export function DocumentIssuanceLog({ organizationId }: DocumentIssuanceLogProps
     (log.reg_number && log.reg_number.toLowerCase().includes(searchQuery.toLowerCase()))
   );
 
+  const allSelected = filteredLogs.length > 0 && filteredLogs.every(l => selectedIds.has(l.id));
+  const someSelected = selectedIds.size > 0 && !allSelected;
+
+  const toggleAll = () => {
+    if (allSelected) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(filteredLogs.map(l => l.id)));
+    }
+  };
+
+  const toggleOne = (id: string) => {
+    const next = new Set(selectedIds);
+    if (next.has(id)) next.delete(id); else next.add(id);
+    setSelectedIds(next);
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedIds.size === 0) return;
+    if (!confirm(`Удалить выбранные записи (${selectedIds.size})? Действие необратимо.`)) return;
+    setBulkDeleting(true);
+    try {
+      const ids = Array.from(selectedIds);
+      const { error } = await supabase
+        .from("document_issuance_log")
+        .delete()
+        .in("id", ids);
+      if (error) throw error;
+      toast.success(`Удалено: ${ids.length}`);
+      setSelectedIds(new Set());
+      await loadLogs();
+    } catch (e) {
+      console.error("Bulk delete error", e);
+      toast.error("Ошибка удаления");
+    } finally {
+      setBulkDeleting(false);
+    }
+  };
+
+  const handleBulkExport = async () => {
+    const items = filteredLogs.filter(l => selectedIds.has(l.id));
+    if (items.length === 0) return;
+    const XLSX = await getXLSX();
+    const exportData = items.map((log, index) => ({
+      "№": index + 1,
+      "Дата": format(new Date(log.issued_at), "dd.MM.yyyy", { locale: ru }),
+      "ФИО": log.user_name,
+      "Вид документа": getDocumentTypeLabel(log.document_type),
+      "Рег.номер": log.reg_number || "-",
+      "Способ отправки": log.send_method
+        ? `${getSendMethodLabel(log.send_method)}${log.send_number ? `: ${log.send_number}` : ""}`
+        : "-" }));
+    const ws = XLSX.utils.json_to_sheet(exportData);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Выбранные документы");
+    XLSX.writeFile(wb, `documents_selected_${format(new Date(), "yyyy-MM-dd")}.xlsx`);
+    toast.success(`Выгружено: ${items.length}`);
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -211,6 +274,34 @@ export function DocumentIssuanceLog({ organizationId }: DocumentIssuanceLogProps
         />
       </div>
 
+      {/* Bulk actions bar */}
+      {selectedIds.size > 0 && (
+        <div className="flex items-center justify-between gap-3 p-3 rounded-xl border border-primary/30 bg-primary/5">
+          <div className="text-sm font-medium">
+            Выбрано записей: <span className="text-primary">{selectedIds.size}</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" className="rounded-lg gap-2" onClick={handleBulkExport}>
+              <Download className="w-3.5 h-3.5" />
+              Выгрузить выбранные
+            </Button>
+            <Button
+              variant="destructive"
+              size="sm"
+              className="rounded-lg gap-2"
+              onClick={handleBulkDelete}
+              disabled={bulkDeleting}
+            >
+              {bulkDeleting ? <SigmaSpinner size="sm" /> : <Trash2 className="w-3.5 h-3.5" />}
+              Удалить
+            </Button>
+            <Button variant="ghost" size="sm" className="rounded-lg" onClick={() => setSelectedIds(new Set())}>
+              Снять выбор
+            </Button>
+          </div>
+        </div>
+      )}
+
       {/* Table */}
       {isLoading ? (
         <div className="flex items-center justify-center py-12">
@@ -227,6 +318,13 @@ export function DocumentIssuanceLog({ organizationId }: DocumentIssuanceLogProps
             <table className="w-full">
               <thead className="bg-muted/50">
                 <tr>
+                  <th className="px-4 py-3 w-10">
+                    <Checkbox
+                      checked={allSelected ? true : someSelected ? "indeterminate" : false}
+                      onCheckedChange={toggleAll}
+                      aria-label="Выбрать все"
+                    />
+                  </th>
                   <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">№</th>
                   <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">Дата</th>
                   <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">ФИО</th>
@@ -238,6 +336,13 @@ export function DocumentIssuanceLog({ organizationId }: DocumentIssuanceLogProps
               <tbody className="divide-y divide-border">
                 {filteredLogs.map((log, index) => (
                   <tr key={log.id} className="hover:bg-muted/30 transition-colors">
+                    <td className="px-4 py-3">
+                      <Checkbox
+                        checked={selectedIds.has(log.id)}
+                        onCheckedChange={() => toggleOne(log.id)}
+                        aria-label={`Выбрать запись ${log.user_name}`}
+                      />
+                    </td>
                     <td className="px-4 py-3 text-sm">{index + 1}</td>
                     <td className="px-4 py-3 text-sm">
                       {format(new Date(log.issued_at), "dd.MM.yyyy", { locale: ru })}

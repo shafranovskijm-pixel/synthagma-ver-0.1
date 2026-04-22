@@ -18,6 +18,7 @@ import { getStoredThemeId, getThemeById, type AdminTheme } from "@/constants/adm
 import { ThemeAnimations, getStoredAnimationLevel, type AnimationLevel } from "@/components/ui/ThemeAnimations";
 import { AtmosphericBleed } from "@/components/ui/AtmosphericBleed";
 import { useOrgTheme } from "@/hooks/useOrgTheme";
+import { GlobalCommandPalette } from "@/components/shared/GlobalCommandPalette";
 
 export default function OrganizationDashboard() {
   const navigate = useNavigate();
@@ -152,6 +153,9 @@ export default function OrganizationDashboard() {
         steps={organizationOnboardingSteps}
         onNavigateToTab={(tab) => d.tabNavigation.setActiveTab(tab as any)}
       />
+
+      {/* Global Cmd+K palette */}
+      <GlobalCommandPalette scope="organization" organizationId={d.organizationId} />
     </div>
   );
 }

@@ -28,6 +28,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { getStoredThemeId, getThemeById, type AdminTheme } from "@/constants/admin-themes";
 import { ThemeAnimations, getStoredAnimationLevel, type AnimationLevel } from "@/components/ui/ThemeAnimations";
 import { AtmosphericBleed } from "@/components/ui/AtmosphericBleed";
+import { GlobalCommandPalette } from "@/components/shared/GlobalCommandPalette";
 
 
 const AdminDashboard = () => {
@@ -192,6 +193,8 @@ const AdminDashboard = () => {
         <AdminDashboardFooter />
       </main>
 
+      {/* Global Cmd+K palette */}
+      <GlobalCommandPalette scope="admin" />
     </div>
   );
 };
