@@ -55,6 +55,8 @@ interface StaffManagerProps {
 }
 
 export function StaffManager({ organizationId }: StaffManagerProps) {
+  const { user, userRole } = useAuth();
+  const isOwner = userRole === "organization";
   const [staff, setStaff] = useState<StaffMember[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -195,6 +197,14 @@ export function StaffManager({ organizationId }: StaffManagerProps) {
                               <p className="text-xs text-muted-foreground">{rc.description}</p>
                             </TooltipContent>
                           </Tooltip>
+                        </TableCell>
+                        <TableCell>
+                          <StaffExpirationButton
+                            table="org_staff"
+                            staffId={s.id}
+                            expiresAt={s.expires_at}
+                            onChange={loadStaff}
+                          />
                         </TableCell>
                         <TableCell>
                           <span className="text-sm text-muted-foreground flex items-center gap-1">
