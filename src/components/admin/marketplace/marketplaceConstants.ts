@@ -3,6 +3,9 @@ import {
   GraduationCap, Award, ShieldCheck, Store, BookOpen,
   Factory, Zap, Flame, Leaf, Droplets, HardHat, Lightbulb, Building2,
   DollarSign, Briefcase, TrendingUp,
+  Brain, Heart, Cpu, Stethoscope, Scale, Truck, Wheat, Palette,
+  Megaphone, Wrench, Pickaxe, Calculator, Microscope, Plane,
+  Newspaper, Activity, Hammer, Users, BookMarked, Languages,
 } from "lucide-react";
 
 export const programTypeMetaAdmin: Record<string, { icon: React.ElementType; color: string; bgColor: string }> = {
@@ -42,7 +45,47 @@ export const ICON_OPTIONS: { name: string; icon: React.ElementType; label: strin
 export const iconMap: Record<string, React.ElementType> = {
   Factory, Zap, Flame, Leaf, Droplets, HardHat, ShieldCheck, BookOpen, Award, Lightbulb, Building2, GraduationCap,
   DollarSign, Briefcase, TrendingUp,
+  Brain, Heart, Cpu, Stethoscope, Scale, Truck, Wheat, Palette,
+  Megaphone, Wrench, Pickaxe, Calculator, Microscope, Plane,
+  Newspaper, Activity, Hammer, Users, BookMarked, Languages,
 };
+
+// Маппинг родительских направлений ПП на иконки и цвета (для ipo.msk.ru)
+export const ppCategoryMeta: Record<string, { icon: React.ElementType; color: string; bgColor: string }> = {
+  "Психология": { icon: Brain, color: "text-violet-600", bgColor: "bg-violet-500/10" },
+  "Медицина": { icon: Heart, color: "text-red-500", bgColor: "bg-red-500/10" },
+  "Информатика": { icon: Cpu, color: "text-blue-600", bgColor: "bg-blue-500/10" },
+  "Бухгалтерия": { icon: DollarSign, color: "text-emerald-600", bgColor: "bg-emerald-500/10" },
+  "Менеджмент": { icon: Briefcase, color: "text-indigo-600", bgColor: "bg-indigo-500/10" },
+  "Юриспруденция": { icon: Scale, color: "text-slate-700", bgColor: "bg-slate-500/10" },
+  "Логистика": { icon: Truck, color: "text-orange-600", bgColor: "bg-orange-500/10" },
+  "Агрономия": { icon: Wheat, color: "text-yellow-600", bgColor: "bg-yellow-500/10" },
+  "Архитектура и дизайн": { icon: Palette, color: "text-pink-600", bgColor: "bg-pink-500/10" },
+  "Маркетинг": { icon: TrendingUp, color: "text-cyan-600", bgColor: "bg-cyan-500/10" },
+  "Реклама и PR": { icon: Megaphone, color: "text-fuchsia-600", bgColor: "bg-fuchsia-500/10" },
+  "Машиностроение": { icon: Wrench, color: "text-slate-600", bgColor: "bg-slate-500/10" },
+  "Горная промышленность": { icon: Pickaxe, color: "text-amber-700", bgColor: "bg-amber-500/10" },
+  "Сметное дело": { icon: Calculator, color: "text-emerald-700", bgColor: "bg-emerald-500/10" },
+  "Метрология": { icon: Microscope, color: "text-teal-600", bgColor: "bg-teal-500/10" },
+  "Транспорт (БДД)": { icon: Plane, color: "text-sky-600", bgColor: "bg-sky-500/10" },
+  "Журналистика": { icon: Newspaper, color: "text-stone-600", bgColor: "bg-stone-500/10" },
+  "Спорт и фитнес": { icon: Activity, color: "text-lime-600", bgColor: "bg-lime-500/10" },
+  "Строительство": { icon: Hammer, color: "text-orange-500", bgColor: "bg-orange-500/10" },
+  "Соцработа": { icon: Users, color: "text-rose-600", bgColor: "bg-rose-500/10" },
+  "Педагогика": { icon: BookMarked, color: "text-blue-500", bgColor: "bg-blue-500/10" },
+  "Логопедия": { icon: Languages, color: "text-purple-600", bgColor: "bg-purple-500/10" },
+  "Охрана труда": { icon: ShieldCheck, color: "text-amber-600", bgColor: "bg-amber-500/10" },
+  "Экология": { icon: Leaf, color: "text-green-600", bgColor: "bg-green-500/10" },
+  "Электроэнергетика": { icon: Zap, color: "text-yellow-500", bgColor: "bg-yellow-500/10" },
+  "Теплоэнергетика": { icon: Flame, color: "text-red-600", bgColor: "bg-red-500/10" },
+  "Нефтегазовое дело": { icon: Droplets, color: "text-blue-700", bgColor: "bg-blue-500/10" },
+  "Экономика": { icon: TrendingUp, color: "text-emerald-600", bgColor: "bg-emerald-500/10" },
+  "ГМУ": { icon: Building2, color: "text-indigo-700", bgColor: "bg-indigo-500/10" },
+  "Закупки": { icon: Briefcase, color: "text-teal-700", bgColor: "bg-teal-500/10" },
+};
+
+export const getPpCategoryMeta = (name: string) =>
+  ppCategoryMeta[name] || { icon: GraduationCap, color: "text-primary", bgColor: "bg-primary/10" };
 
 // Shared between CourseStoreManager and AdminMarketplaceManager
 export const programTypeMeta: Record<string, { icon: React.ElementType; color: string; bgColor: string }> = {
