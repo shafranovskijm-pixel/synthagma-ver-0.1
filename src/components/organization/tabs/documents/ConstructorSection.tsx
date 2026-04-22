@@ -36,8 +36,8 @@ export function ConstructorSection({
   return (
     <div className="relative">
       <BulkDocumentGenerator
-        open={showBulkGen}
-        onOpenChange={setShowBulkGen}
+        isOpen={showBulkGen}
+        onClose={() => setShowBulkGen(false)}
         organizationId={organizationId}
       />
       <Tabs value={constructorTab} onValueChange={setConstructorTab}>
