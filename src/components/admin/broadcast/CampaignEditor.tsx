@@ -357,7 +357,7 @@ export function CampaignEditor({ open, onClose, scope, organizationId, onCreated
               <Label>Тема письма {abEnabled && <span className="text-xs text-muted-foreground">(вариант A)</span>}</Label>
               <Input value={subject} onChange={(e) => setSubject(e.target.value)} placeholder="Здравствуйте, {{name}}!" />
               <p className="text-xs text-muted-foreground mt-1">
-                Переменные: <code>{"{{name}}"}</code>, <code>{"{{email}}"}</code>, <code>{"{{org_name}}"}</code>, <code>{"{{plan}}"}</code>, <code>{"{{course_count}}"}</code>, <code>{"{{last_login}}"}</code>, <code>{"{{date}}"}</code>, <code>{"{{time}}"}</code>, <code>{"{{webinar_url\}\}"}</code>, <code>{"{{host_name}}"}</code>
+                Переменные: <code>{"{{name}}"}</code>, <code>{"{{email}}"}</code>, <code>{"{{org_name}}"}</code>, <code>{"{{plan}}"}</code>, <code>{"{{course_count}}"}</code>, <code>{"{{last_login}}"}</code>, <code>{"{{date}}"}</code>, <code>{"{{time}}"}</code>, <code>{"{{webinar_url}}"}</code>, <code>{"{{host_name}}"}</code>
               </p>
             </div>
 
