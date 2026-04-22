@@ -14,7 +14,7 @@ import { CreateWebinarDialog } from "./CreateWebinarDialog";
 import { WebinarParticipantsDialog } from "./WebinarParticipantsDialog";
 import { ShareWebinarDialog } from "./ShareWebinarDialog";
 import { EmbeddedWebinarPlayer } from "@/components/webinars/EmbeddedWebinarPlayer";
-import { WebinarLiveOverlay } from "@/components/webinars/WebinarLiveOverlay";
+import { WebinarLiveInline } from "@/components/webinars/WebinarLiveInline";
 import { WebinarRecordingUploader } from "@/components/webinars/WebinarRecordingUploader";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
