@@ -209,7 +209,7 @@ serve(async (req: Request) => {
 
     await sendSmtpEmail(smtp, {
       to: recipient.email,
-      subject: campaign.subject,
+      subject: subject,
       html: personalizedHtml,
       fromOverride,
       replyTo: campaign.reply_to || undefined,
