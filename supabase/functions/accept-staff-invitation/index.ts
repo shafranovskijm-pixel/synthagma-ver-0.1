@@ -126,19 +126,29 @@ serve(async (req) => {
 
     } else if (inv.invitation_type === "company") {
       if (!inv.company_id) throw new Error("Не указана компания");
-      // Глобальная роль company (на чтение раздела)
+      // Глобальная роль company (для входа в раздел)
       await admin.from("user_roles").upsert({
         user_id: user.id, role: "company",
       } as any, { onConflict: "user_id,role" });
-      // Этап 2: company_staff появится в Этапе 3.
-      // Пока что: если у компании ещё нет владельца — назначаем текущего пользователя.
+
+      // Если у компании ещё нет владельца и роль приглашения = owner — становимся владельцем
       const { data: company } = await admin
         .from("companies")
         .select("user_id")
         .eq("id", inv.company_id)
         .maybeSingle();
-      if (company && !company.user_id) {
+      if (company && !company.user_id && inv.role === "owner") {
         await admin.from("companies").update({ user_id: user.id }).eq("id", inv.company_id);
+      } else {
+        // Иначе — добавляем в company_staff с указанной ролью
+        const validRole = ["owner", "manager", "viewer"].includes(inv.role) ? inv.role : "viewer";
+        const { error } = await admin.from("company_staff").upsert({
+          company_id: inv.company_id,
+          user_id: user.id,
+          role: validRole,
+          invited_by: inv.invited_by,
+        } as any, { onConflict: "company_id,user_id" });
+        if (error) throw error;
       }
       redirectPath = "/company";
     }
