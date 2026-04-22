@@ -525,7 +525,7 @@ export function WebinarsManager({ organizationId }: Props) {
       >
         <SheetContent
           side="right"
-          className="w-full sm:max-w-4xl overflow-y-auto"
+          className="w-full sm:max-w-[min(1100px,95vw)] overflow-y-auto"
           onInteractOutside={(e) => e.preventDefault()}
         >
           <SheetHeader className="pr-10">
@@ -540,8 +540,12 @@ export function WebinarsManager({ organizationId }: Props) {
                   variant="ghost"
                   size="sm"
                   className="h-7 px-2"
-                  onClick={() => window.open(`/webinar/${liveSheetWebinar.id}/live`, "_blank")}
-                  title="Открыть на отдельной странице"
+                  onClick={() => {
+                    const id = liveSheetWebinar.id;
+                    setLiveSheetWebinar(null);
+                    window.location.href = `/webinar/${id}/live`;
+                  }}
+                  title="Открыть на отдельной странице (в этой же вкладке)"
                 >
                   <Maximize2 className="w-3.5 h-3.5 mr-1" />
                   На весь экран
