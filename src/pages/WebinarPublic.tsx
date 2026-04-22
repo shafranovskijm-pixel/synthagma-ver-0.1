@@ -1,15 +1,14 @@
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { LiveKitRoom, VideoConference, RoomAudioRenderer } from "@livekit/components-react";
-import "@livekit/components-styles";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { AlertCircle, Radio, Calendar, Lock, Video } from "lucide-react";
+import { AlertCircle, Calendar, Lock, Video } from "lucide-react";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 import { toast } from "sonner";
+import { EmbeddedWebinarPlayer } from "@/components/webinars/EmbeddedWebinarPlayer";
 
 type WebinarInfo = {
   id: string;
@@ -94,32 +93,20 @@ const WebinarPublic = () => {
     );
   }
 
-  // Already in live room
+  // Already in live room — рендерим брендированный плеер (как у админа), но в read-only режиме
   if (lkToken && wsUrl) {
     return (
-      <div className="min-h-screen flex flex-col bg-background">
-        <div className="flex items-center justify-between px-4 py-2 border-b">
-          <div className="flex items-center gap-2">
-            <Radio className="w-4 h-4 text-destructive animate-pulse" />
-            <span className="text-sm font-medium truncate">{info.title}</span>
-          </div>
-          <Button size="sm" variant="ghost" onClick={() => { setLkToken(null); setWsUrl(null); }}>
-            Покинуть
-          </Button>
-        </div>
-        <div className="flex-1" data-lk-theme="default">
-          <LiveKitRoom
-            token={lkToken}
-            serverUrl={wsUrl}
-            connect={true}
-            video={false}
-            audio={false}
-            onDisconnected={() => { setLkToken(null); setWsUrl(null); }}
-            style={{ height: "100%" }}
-          >
-            <VideoConference />
-            <RoomAudioRenderer />
-          </LiveKitRoom>
+      <div className="min-h-screen bg-background p-2 sm:p-4">
+        <div className="max-w-6xl mx-auto">
+          <EmbeddedWebinarPlayer
+            webinarId={info.id}
+            sourceType="livekit"
+            webinarTitle={info.title}
+            prefetchedToken={lkToken}
+            prefetchedWsUrl={wsUrl}
+            viewOnly
+            onEnd={() => { setLkToken(null); setWsUrl(null); }}
+          />
         </div>
       </div>
     );

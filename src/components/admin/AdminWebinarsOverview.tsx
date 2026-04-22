@@ -440,6 +440,16 @@ export function AdminWebinarsOverview() {
                             </a>
                           </Button>
                         )}
+                        {w.source_type === "livekit" && w.status === "ended" && (
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => setRecordingTarget(w)}
+                            title="Прикрепить запись вебинара"
+                          >
+                            <Paperclip className="h-4 w-4" />
+                          </Button>
+                        )}
                         <Button
                           size="sm"
                           variant="ghost"
