@@ -6,9 +6,12 @@ import {
   VideoConference,
   RoomAudioRenderer,
   useParticipants,
+  useTracks,
 } from "@livekit/components-react";
+import { Track } from "livekit-client";
 import "@livekit/components-styles";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
+import { SigmaLogo } from "@/components/ui/SigmaLogo";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
