@@ -115,8 +115,10 @@ interface NavItem {
   id: TabType;
   icon: typeof BookOpen;
   label: string;
+  description?: string;
   category?: string;
   badge?: number;
+  hasNew?: boolean;
   section: SectionId;
 }
 
@@ -147,6 +149,10 @@ export function OrgSidebar() {
   const planLabel = planName === 'free' ? 'Бесплатный' : planName === 'start' ? 'Старт' : planName === 'standard' ? 'Стандарт' : planName === 'professional' ? 'Профессиональный' : planName === 'maximum' ? 'Максимальный' : '';
   const { handleLogoUpload, isUploadingLogo } = d.branding;
   const logoInputRef = useRef<HTMLInputElement>(null);
+
+  // Pinned items + "new" indicators
+  const { pinned, toggle: togglePin, isPinned } = useOrgSidebarPinned();
+  const newIndicators = useOrgNewIndicators(d.organizationId);
 
   const [upgradeDialogOpen, setUpgradeDialogOpen] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
