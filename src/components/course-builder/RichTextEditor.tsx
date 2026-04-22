@@ -1,4 +1,4 @@
-import { useRef, useEffect, useState, useCallback } from "react";
+import { useRef, useEffect, useLayoutEffect, useState, useCallback } from "react";
 import {
   Bold, Italic, Underline, Code, Link2, Type, ChevronDown, Check,
   AlignLeft, AlignCenter, AlignRight, List, ListOrdered, Palette, Minus, Plus,
