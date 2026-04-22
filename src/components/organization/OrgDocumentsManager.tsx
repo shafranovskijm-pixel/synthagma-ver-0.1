@@ -82,6 +82,24 @@ export function OrgDocumentsManager({ organizationId }: OrgDocumentsManagerProps
                 </label>
               </div>
             </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label className="text-xs">Дата выдачи</Label>
+                <Input type="date" value={h.uploadIssueDate} onChange={(e) => h.setUploadIssueDate(e.target.value)} />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs">Срок действия до</Label>
+                <Input type="date" value={h.uploadExpiresAt} onChange={(e) => h.setUploadExpiresAt(e.target.value)} />
+              </div>
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs">Ответственное лицо</Label>
+              <Input
+                placeholder="ФИО ответственного"
+                value={h.uploadResponsible}
+                onChange={(e) => h.setUploadResponsible(e.target.value)}
+              />
+            </div>
             <Button className="w-full btn-gradient rounded-xl" onClick={h.handleUpload} disabled={h.isUploading || !h.selectedFile}>
               {h.isUploading ? (<><SigmaSpinner size="sm" className="mr-2" />Загрузка...</>) : (<><Upload className="w-4 h-4 mr-2" />Загрузить</>)}
             </Button>
@@ -205,6 +223,7 @@ function DocumentRow({ docItem, h }: { docItem: any; h: ReturnType<typeof useOrg
   const uploadedDoc = h.getDocumentForType(docItem.type);
   const hasFile = !!uploadedDoc?.file_url;
   const isAnnual = docItem.annual;
+  const exp = h.getExpiryStatus(uploadedDoc);
   let annualStatus: { needsUpdate: boolean; daysSince: number | null; daysUntil: number | null } | null = null;
   if (isAnnual && uploadedDoc) {
     const daysSince = Math.floor((Date.now() - new Date(uploadedDoc.updated_at).getTime()) / (1000 * 60 * 60 * 24));
@@ -212,21 +231,44 @@ function DocumentRow({ docItem, h }: { docItem: any; h: ReturnType<typeof useOrg
     annualStatus = { needsUpdate: daysSince >= 365, daysSince, daysUntil: daysUntil > 0 ? daysUntil : 0 };
   }
 
+  // Apply expiry filter — hide rows that don't match
+  if (h.expiryFilter !== "all" && uploadedDoc) {
+    if (h.expiryFilter === "active" && exp.state !== "active") return null;
+    if (h.expiryFilter === "expiring" && exp.state !== "expiring") return null;
+    if (h.expiryFilter === "expired" && exp.state !== "expired") return null;
+    if (h.expiryFilter === "archived" && exp.state !== "archived") return null;
+  } else if (h.expiryFilter !== "all" && !uploadedDoc) {
+    return null;
+  }
+
+  const expBadge = (() => {
+    if (!uploadedDoc) return null;
+    if (exp.state === "archived") return <span className="text-xs px-1.5 py-0.5 rounded bg-muted text-muted-foreground flex-shrink-0">Архив</span>;
+    if (exp.state === "expired") return <span className="text-xs px-1.5 py-0.5 rounded bg-destructive/10 text-destructive flex-shrink-0">Просрочен</span>;
+    if (exp.state === "expiring") return <span className="text-xs px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-600 flex-shrink-0">Истекает через {exp.daysLeft} дн.</span>;
+    if (uploadedDoc.expires_at) return <span className="text-xs px-1.5 py-0.5 rounded bg-green-500/10 text-green-600 flex-shrink-0">Действует</span>;
+    return null;
+  })();
+
   return (
     <div className="flex items-center justify-between p-4 hover:bg-secondary/30 transition-colors">
       <div className="flex items-center gap-3 flex-1 min-w-0">
-        <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${hasFile ? (annualStatus?.needsUpdate ? "bg-amber-500/10" : "bg-green-500/10") : docItem.required ? "bg-destructive/10" : "bg-secondary"}`}>
-          {hasFile ? (annualStatus?.needsUpdate ? <AlertCircle className="w-4 h-4 text-amber-500" /> : <CheckCircle2 className="w-4 h-4 text-green-500" />) : docItem.required ? <AlertCircle className="w-4 h-4 text-destructive" /> : <FileText className="w-4 h-4 text-muted-foreground" />}
+        <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${hasFile ? (annualStatus?.needsUpdate || exp.state === "expired" ? "bg-amber-500/10" : "bg-green-500/10") : docItem.required ? "bg-destructive/10" : "bg-secondary"}`}>
+          {hasFile ? (annualStatus?.needsUpdate || exp.state === "expired" ? <AlertCircle className="w-4 h-4 text-amber-500" /> : <CheckCircle2 className="w-4 h-4 text-green-500" />) : docItem.required ? <AlertCircle className="w-4 h-4 text-destructive" /> : <FileText className="w-4 h-4 text-muted-foreground" />}
         </div>
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2 flex-wrap">
             <span className="font-medium truncate">{docItem.label}</span>
             {docItem.required && <span className="text-xs px-1.5 py-0.5 rounded bg-destructive/10 text-destructive flex-shrink-0">Обязательный</span>}
             {isAnnual && <span className="text-xs px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-600 flex-shrink-0">Ежегодный</span>}
+            {expBadge}
           </div>
           {uploadedDoc && (
             <div className="text-xs text-muted-foreground mt-0.5 flex items-center gap-2 flex-wrap">
               <span>Загружен {format(new Date(uploadedDoc.updated_at), "d MMMM yyyy", { locale: ru })}</span>
+              {uploadedDoc.issue_date && <span>· Выдан {format(new Date(uploadedDoc.issue_date), "d MMM yyyy", { locale: ru })}</span>}
+              {uploadedDoc.expires_at && <span>· До {format(new Date(uploadedDoc.expires_at), "d MMM yyyy", { locale: ru })}</span>}
+              {uploadedDoc.responsible_person && <span>· Отв.: {uploadedDoc.responsible_person}</span>}
               {annualStatus && !annualStatus.needsUpdate && annualStatus.daysUntil !== null && <span className="text-blue-600">(до обновления: {annualStatus.daysUntil} дн.)</span>}
               {annualStatus?.needsUpdate && <span className="text-amber-600 font-medium">⚠️ Требуется обновление (прошло {annualStatus.daysSince} дн.)</span>}
             </div>
@@ -239,6 +281,11 @@ function DocumentRow({ docItem, h }: { docItem: any; h: ReturnType<typeof useOrg
           <>
             <Button variant="ghost" size="icon" onClick={() => window.open(uploadedDoc.file_url!, "_blank")} title="Просмотр"><Eye className="w-4 h-4" /></Button>
             <Button variant="ghost" size="icon" onClick={() => { const link = document.createElement("a"); link.href = uploadedDoc.file_url!; link.download = docItem.label; link.click(); }} title="Скачать"><Download className="w-4 h-4" /></Button>
+            {uploadedDoc.status === "archived" ? (
+              <Button variant="ghost" size="icon" onClick={() => h.restoreDocument(uploadedDoc.id)} title="Восстановить"><CheckCircle2 className="w-4 h-4 text-emerald-600" /></Button>
+            ) : (
+              <Button variant="ghost" size="icon" onClick={() => h.archiveDocument(uploadedDoc.id)} title="В архив"><FolderOpen className="w-4 h-4" /></Button>
+            )}
             <Button variant="ghost" size="icon" onClick={() => h.handleDelete(uploadedDoc.id)} className="text-destructive hover:text-destructive" title="Удалить"><Trash2 className="w-4 h-4" /></Button>
           </>
         )}
@@ -247,8 +294,8 @@ function DocumentRow({ docItem, h }: { docItem: any; h: ReturnType<typeof useOrg
             <Sparkles className="w-4 h-4 mr-2" />Сформировать за 3 500 ₽
           </Button>
         )}
-        <Button variant={hasFile ? (annualStatus?.needsUpdate ? "default" : "outline") : "default"} size="sm" onClick={() => h.openUploadDialog(docItem.type)} className={cn("rounded-lg", annualStatus?.needsUpdate && "bg-amber-500 hover:bg-amber-600")}>
-          <Upload className="w-4 h-4 mr-2" />{annualStatus?.needsUpdate ? "Обновить" : hasFile ? "Заменить" : "Загрузить"}
+        <Button variant={hasFile ? (annualStatus?.needsUpdate || exp.state === "expired" ? "default" : "outline") : "default"} size="sm" onClick={() => h.openUploadDialog(docItem.type)} className={cn("rounded-lg", (annualStatus?.needsUpdate || exp.state === "expired") && "bg-amber-500 hover:bg-amber-600")}>
+          <Upload className="w-4 h-4 mr-2" />{(annualStatus?.needsUpdate || exp.state === "expired") ? "Обновить" : hasFile ? "Заменить" : "Загрузить"}
         </Button>
       </div>
     </div>
