@@ -69,9 +69,8 @@ function BlockGrid({ items, onPick }: { items: GridItem[]; onPick: (item: GridIt
   );
 }
 
-function BlockPicker({ onSelect, onCancel }: { onSelect: (item: GridItem) => void; onCancel: () => void }) {
+function BlockPicker({ onSelect }: { onSelect: (item: GridItem) => void }) {
   const [search, setSearch] = useState("");
-  const [selected, setSelected] = useState<GridItem | null>(null);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -89,21 +88,18 @@ function BlockPicker({ onSelect, onCancel }: { onSelect: (item: GridItem) => voi
     return order.map((g) => ({ group: g, items: groups[g] }));
   }, [filtered]);
 
-  const description = selected
-    ? (selected.description || blockDescriptions[selected.type as BlockType] || "")
-    : "";
-
-  const handleConfirm = () => {
-    if (selected) onSelect(selected);
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter" && filtered.length === 1) {
+      e.preventDefault();
+      onSelect(filtered[0]);
+    }
   };
 
   return (
     <div className="space-y-3">
-      <div>
-        <h3 className="text-base font-semibold text-foreground">Выберите тип блока</h3>
-        <p className="text-xs text-muted-foreground mt-0.5">
-          Каждый блок подходит для своих задач — выберите подходящий формат.
-        </p>
+      <div className="flex items-center justify-between gap-3">
+        <h3 className="text-base font-semibold text-foreground">Выберите блок</h3>
+        <span className="text-[11px] text-muted-foreground">Один клик — добавить</span>
       </div>
 
       <div className="relative">
@@ -112,43 +108,44 @@ function BlockPicker({ onSelect, onCancel }: { onSelect: (item: GridItem) => voi
           autoFocus
           value={search}
           onChange={(e) => setSearch(e.target.value)}
+          onKeyDown={handleKeyDown}
           placeholder="Поиск блока"
           className="h-8 text-sm pl-8"
         />
       </div>
 
-      <div className="max-h-[420px] overflow-y-auto space-y-4 pr-1">
+      <div className="max-h-[60vh] overflow-y-auto space-y-4 pr-1">
         {grouped.map(({ group, items }) => (
           <div key={group}>
             <p className="text-[10px] uppercase tracking-wide font-semibold text-muted-foreground px-1 mb-2 flex items-center gap-1.5">
               {group === "ИИ" && <Sparkles className="w-3 h-3 text-primary" />}
               {group}
             </p>
-            <BlockGrid items={items} selected={selected?.type ?? null} onPick={setSelected} />
+            <BlockGrid items={items} onPick={onSelect} />
           </div>
         ))}
         {grouped.length === 0 && (
           <p className="text-xs text-muted-foreground text-center py-6">Ничего не найдено</p>
         )}
       </div>
+    </div>
+  );
+}
 
-      <div className="rounded-xl border border-border/60 bg-muted/30 p-3 min-h-[68px]">
-        {selected ? (
-          <>
-            <p className="text-sm font-semibold text-foreground mb-1">{selected.label}</p>
-            <p className="text-xs text-muted-foreground leading-relaxed">{description}</p>
-          </>
-        ) : (
-          <p className="text-xs text-muted-foreground leading-relaxed">
-            Выберите блок выше, чтобы увидеть описание и продолжить.
-          </p>
-        )}
-      </div>
-
-      <div className="flex justify-end gap-2 pt-1">
-        <Button variant="outline" size="sm" onClick={onCancel}>Отмена</Button>
-        <Button size="sm" className="btn-gradient" onClick={handleConfirm} disabled={!selected}>Далее</Button>
-      </div>
+// Backward-compat export — used by SortableBlockItem
+function BlockCategoryGrid({ items, onSelect }: { items: { type: BlockType; icon: any; label: string; color?: string }[]; onSelect: (type: BlockType) => void }) {
+  return (
+    <div className="grid grid-cols-3 gap-1.5">
+      {items.map((item) => (
+        <button
+          key={item.type}
+          onClick={() => onSelect(item.type)}
+          className="flex flex-col items-center justify-center gap-1.5 p-2.5 rounded-xl bg-muted/40 hover:bg-primary/10 border border-transparent hover:border-primary/30 transition-all aspect-square"
+        >
+          <item.icon className={cn("w-5 h-5 shrink-0", item.color || "text-primary")} />
+          <span className="text-[11px] font-medium text-foreground text-center leading-tight line-clamp-2">{item.label}</span>
+        </button>
+      ))}
     </div>
   );
 }
