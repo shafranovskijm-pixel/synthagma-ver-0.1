@@ -198,11 +198,28 @@ export function OrgDocumentsTab({ organizationId, documents, onDocumentsChange }
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex items-center justify-end gap-1">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => setVersionsDoc(doc)}
+                          title="История версий"
+                        >
+                          <History className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => setShareDoc(doc)}
+                          title="Публичная ссылка"
+                        >
+                          <Link2 className="w-4 h-4" />
+                        </Button>
                         {doc.file_url && (
                           <Button
                             variant="ghost"
                             size="icon"
                             onClick={() => window.open(doc.file_url!, "_blank")}
+                            title="Скачать"
                           >
                             <Download className="w-4 h-4" />
                           </Button>
@@ -212,6 +229,7 @@ export function OrgDocumentsTab({ organizationId, documents, onDocumentsChange }
                           size="icon"
                           className="text-destructive"
                           onClick={() => handleDelete(doc)}
+                          title="Удалить"
                         >
                           <Trash2 className="w-4 h-4" />
                         </Button>
