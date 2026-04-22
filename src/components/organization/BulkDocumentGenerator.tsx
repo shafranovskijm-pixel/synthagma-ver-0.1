@@ -297,17 +297,18 @@ export function BulkDocumentGenerator({ organizationId, isOpen, onClose }: BulkD
         const variables = buildVariables(i, id);
         const html = renderTemplate(selectedTemplate.body_html, variables);
         const fullDoc = wrapAsPrintableDocument(html, `${selectedTemplate.name} — ${recipient.name}`);
-        const blob = new Blob([fullDoc], { type: "text/html;charset=utf-8" });
-        const fileName = `${selectedTemplate.name.replace(/[^\w\u0400-\u04FF\s.-]/g, "_")}_${variables.contract_number}.html`;
-        const path = `${organizationId}/bulk/${Date.now()}_${i}_${fileName}`;
+        const safeName = selectedTemplate.name.replace(/[^\w\u0400-\u04FF\s.-]/g, "_");
+        const fileName = `${safeName}_${variables.contract_number}.pdf`;
+        const yearMonth = documentDate.slice(0, 7); // YYYY-MM
+        const storagePath = `${organizationId}/bulk/${yearMonth}/${Date.now()}_${i}_${fileName}`;
 
-        const { error: uploadErr } = await supabase.storage.from("billing-documents").upload(path, blob, {
-          contentType: "text/html",
-          upsert: false,
+        // PDF собирается в edge-функции и кладётся в приватный bucket billing-documents.
+        // Доступ — только через signed URL (openPrivateFile).
+        const { data: pdfRes, error: pdfErr } = await supabase.functions.invoke("html-to-pdf", {
+          body: { html: fullDoc, fileName, storagePath },
         });
-        if (uploadErr) throw uploadErr;
-
-        const { data: urlData } = supabase.storage.from("billing-documents").getPublicUrl(path);
+        if (pdfErr) throw pdfErr;
+        if (!pdfRes?.path) throw new Error("PDF не был сохранён");
 
         if (recipientType === "companies") {
           const totalAmount = perStudentPrice * studentsPerCompany;
@@ -319,11 +320,12 @@ export function BulkDocumentGenerator({ organizationId, isOpen, onClose }: BulkD
             contract_date: documentDate,
             amount: totalAmount,
             students_count: studentsPerCompany,
-            file_url: urlData.publicUrl,
-            file_path: path,
+            // file_url оставляем пустым — публичных URL у приватного bucket нет.
+            file_path: pdfRes.path,
           });
         } else {
           // Логируем студенческие документы в общий журнал выдачи документов.
+          // file_url не используем, т.к. это приватный bucket.
           await supabase.from("document_issuance_log").insert({
             organization_id: organizationId,
             user_id: id,
@@ -331,7 +333,7 @@ export function BulkDocumentGenerator({ organizationId, isOpen, onClose }: BulkD
             document_type: "contract",
             document_name: `${selectedTemplate.name} № ${variables.contract_number}`,
             reg_number: String(variables.contract_number),
-            file_url: urlData.publicUrl,
+            file_url: pdfRes.path,
             send_method: "bulk_generation",
           });
         }
@@ -474,18 +476,6 @@ export function BulkDocumentGenerator({ organizationId, isOpen, onClose }: BulkD
                     Остановить
                   </Button>
                 </div>
-              </div>
-            )}
-
-            {step === "running" && (
-              <div className="space-y-4 py-4">
-                <div className="flex items-center justify-center">
-                  <SigmaSpinner size="lg" />
-                </div>
-                <div className="text-center text-sm text-muted-foreground">
-                  Генерируем документы… {results.length} из {selectedIds.size}
-                </div>
-                <Progress value={progress} className="h-2" />
               </div>
             )}
 
