@@ -422,7 +422,7 @@ export function OrgSidebar() {
         aria-label="Основная навигация"
         className={cn(
           "fixed inset-y-0 left-0 z-50 bg-card border-r border-border/60 shadow-[2px_0_12px_rgba(0,0,0,0.04)] flex flex-col transition-[transform,width] duration-300",
-          expanded ? "w-[220px]" : "w-[88px]",
+          effectiveExpanded ? "w-[220px]" : "w-[88px]",
           isMobileSidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
         )}
         style={{
@@ -433,7 +433,7 @@ export function OrgSidebar() {
         }}
       >
         {/* Header: logo + (expanded) school name + collapse toggle */}
-        <div className={cn("px-3 pt-4 pb-3 border-b border-border/40", expanded ? "flex items-center gap-2.5" : "flex flex-col items-center gap-2")}>
+        <div className={cn("px-3 pt-4 pb-3 border-b border-border/40", effectiveExpanded ? "flex items-center gap-2.5" : "flex flex-col items-center gap-2")}>
           <input
             ref={logoInputRef}
             type="file"
@@ -466,7 +466,7 @@ export function OrgSidebar() {
             </TooltipContent>
           </Tooltip>
 
-          {expanded && (
+          {effectiveExpanded && (
             <div className="flex-1 min-w-0">
               <div className="text-[13px] font-semibold text-foreground leading-tight truncate">
                 {customName || organizationName || "Школа"}
@@ -478,34 +478,46 @@ export function OrgSidebar() {
               )}
             </div>
           )}
+        </div>
 
-          {/* Collapse / Expand toggle (desktop only) */}
+        {/* Collapse / Expand toggle (desktop only) — large, obvious button */}
+        {effectiveExpanded ? (
+          <button
+            onClick={handleToggleExpanded}
+            className="hidden lg:flex mx-2 mt-2 items-center justify-center gap-2 h-9 rounded-lg border border-border/60 bg-muted/40 text-foreground/80 hover:bg-primary/10 hover:text-primary hover:border-primary/40 transition-colors text-[12px] font-medium"
+            aria-label="Свернуть меню в иконки"
+          >
+            <PanelLeftClose className="h-4 w-4" />
+            <span>Свернуть в иконки</span>
+          </button>
+        ) : (
           <Tooltip>
             <TooltipTrigger asChild>
               <button
-                onClick={() => setExpanded((v) => !v)}
-                className={cn(
-                  "hidden lg:flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors",
-                  !expanded && "mt-1"
-                )}
-                aria-label={expanded ? "Свернуть меню" : "Развернуть меню"}
+                onClick={handleToggleExpanded}
+                className="hidden lg:flex mx-auto mt-2 items-center justify-center gap-1 h-8 w-[68px] rounded-lg border border-border/60 bg-muted/40 text-foreground/70 hover:bg-primary/10 hover:text-primary hover:border-primary/40 transition-colors"
+                aria-label="Развернуть меню — показать названия пунктов"
               >
-                {expanded ? <ChevronsLeft className="h-4 w-4" /> : <ChevronsRight className="h-4 w-4" />}
+                <PanelLeftOpen className="h-4 w-4" />
+                <span className="text-[10px] font-medium">Шире</span>
               </button>
             </TooltipTrigger>
-            <TooltipContent side="right" className="z-[100]">
-              {expanded ? "Свернуть меню" : "Развернуть меню"}
+            <TooltipContent side="right" className="z-[100] max-w-[220px]">
+              <div className="font-semibold text-sm mb-0.5">Развернуть меню</div>
+              <div className="text-xs text-muted-foreground">
+                Покажет полные названия пунктов рядом с иконками. Удобно для новых пользователей.
+              </div>
             </TooltipContent>
           </Tooltip>
-        </div>
+        )}
 
         {/* Navigation grouped by section */}
-        <div className={cn("flex-1 flex flex-col overflow-y-auto scrollbar-hide py-2", expanded ? "px-2 gap-2" : "items-center gap-2 px-2")}>
+        <div className={cn("flex-1 flex flex-col overflow-y-auto scrollbar-hide py-2", effectiveExpanded ? "px-2 gap-2" : "items-center gap-2 px-2")}>
 
           {/* Pinned items (favorites) */}
           {pinnedItems.length > 0 && (
             <div className="w-full flex flex-col">
-              <div className={cn("px-1", expanded ? "text-left" : "text-center")}>
+              <div className={cn("px-1", effectiveExpanded ? "text-left" : "text-center")}>
                 <span
                   className="text-[9px] uppercase tracking-[0.08em] font-semibold text-muted-foreground/70 select-none inline-flex items-center gap-1"
                   aria-hidden
@@ -513,7 +525,7 @@ export function OrgSidebar() {
                   <Pin className="w-2.5 h-2.5" /> Закреплено
                 </span>
               </div>
-              <nav className={cn("flex flex-col gap-0.5 mt-1", expanded ? "items-stretch" : "items-center")}>
+              <nav className={cn("flex flex-col gap-0.5 mt-1", effectiveExpanded ? "items-stretch" : "items-center")}>
                 {pinnedItems.map((item) => renderNavItem(item))}
               </nav>
             </div>
@@ -522,7 +534,7 @@ export function OrgSidebar() {
           {grouped.map((group, gIdx) => (
             <div key={group.section} className="w-full flex flex-col">
               {/* Section heading: plain caps text, no plate */}
-              <div className={cn("px-1", (gIdx > 0 || pinnedItems.length > 0) ? "mt-2" : "mt-0", expanded ? "text-left" : "text-center")}>
+              <div className={cn("px-1", (gIdx > 0 || pinnedItems.length > 0) ? "mt-2" : "mt-0", effectiveExpanded ? "text-left" : "text-center")}>
                 <span
                   className="text-[9px] uppercase tracking-[0.08em] font-semibold text-muted-foreground/70 select-none"
                   aria-hidden
@@ -531,7 +543,7 @@ export function OrgSidebar() {
                 </span>
               </div>
 
-              <nav className={cn("flex flex-col gap-0.5 mt-1", expanded ? "items-stretch" : "items-center")}>
+              <nav className={cn("flex flex-col gap-0.5 mt-1", effectiveExpanded ? "items-stretch" : "items-center")}>
                 {group.items.map((item) => renderNavItem(item))}
               </nav>
             </div>
@@ -539,22 +551,22 @@ export function OrgSidebar() {
         </div>
 
         {/* Footer: Help, What's new, Logout (collapse moved to header) */}
-        <div className={cn("py-3 border-t border-border/40", expanded ? "px-2 flex flex-col gap-1" : "flex flex-col items-center gap-1.5")}>
+        <div className={cn("py-3 border-t border-border/40", effectiveExpanded ? "px-2 flex flex-col gap-1" : "flex flex-col items-center gap-1.5")}>
           <Tooltip>
             <TooltipTrigger asChild>
               <button
                 onClick={() => window.dispatchEvent(new CustomEvent('open-support-chat'))}
                 className={cn(
                   "rounded-lg text-foreground/60 hover:text-primary hover:bg-primary/10 transition-colors",
-                  expanded ? "flex items-center gap-3 px-2.5 h-9 w-full text-left" : "flex h-9 w-9 items-center justify-center"
+                  effectiveExpanded ? "flex items-center gap-3 px-2.5 h-9 w-full text-left" : "flex h-9 w-9 items-center justify-center"
                 )}
                 aria-label="Помощь"
               >
                 <HelpCircle className="h-[18px] w-[18px] shrink-0" />
-                {expanded && <span className="text-[13px] font-medium">Помощь</span>}
+                {effectiveExpanded && <span className="text-[13px] font-medium">Помощь</span>}
               </button>
             </TooltipTrigger>
-            {!expanded && <TooltipContent side="right" className="z-[100]">Помощь</TooltipContent>}
+            {!effectiveExpanded && <TooltipContent side="right" className="z-[100]">Помощь</TooltipContent>}
           </Tooltip>
 
           <Tooltip>
@@ -566,17 +578,17 @@ export function OrgSidebar() {
                 }}
                 className={cn(
                   "relative rounded-lg text-foreground/60 hover:text-primary hover:bg-primary/10 transition-colors",
-                  expanded ? "flex items-center gap-3 px-2.5 h-9 w-full text-left" : "flex h-9 w-9 items-center justify-center"
+                  effectiveExpanded ? "flex items-center gap-3 px-2.5 h-9 w-full text-left" : "flex h-9 w-9 items-center justify-center"
                 )}
                 aria-label="Что нового"
               >
                 <Star className="h-[18px] w-[18px] shrink-0" />
-                {expanded && <span className="text-[13px] font-medium flex-1">Что нового</span>}
+                {effectiveExpanded && <span className="text-[13px] font-medium flex-1">Что нового</span>}
                 {newIndicators.whatsNew > 0 && (
                   <span
                     className={cn(
                       "rounded-full ring-2 ring-card animate-pulse",
-                      expanded ? "w-2 h-2" : "absolute top-1.5 right-1.5 w-2 h-2"
+                      effectiveExpanded ? "w-2 h-2" : "absolute top-1.5 right-1.5 w-2 h-2"
                     )}
                     style={{ backgroundColor: "hsl(var(--warning))" }}
                     aria-label="Есть новое"
@@ -584,10 +596,10 @@ export function OrgSidebar() {
                 )}
               </button>
             </TooltipTrigger>
-            {!expanded && <TooltipContent side="right" className="z-[100]">Что нового</TooltipContent>}
+            {!effectiveExpanded && <TooltipContent side="right" className="z-[100]">Что нового</TooltipContent>}
           </Tooltip>
 
-          {!expanded && (
+          {!effectiveExpanded && (
             <Tooltip>
               <TooltipTrigger asChild>
                 <button
@@ -610,15 +622,15 @@ export function OrgSidebar() {
                 onClick={onLogout}
                 className={cn(
                   "rounded-lg text-destructive hover:bg-destructive/10 transition-colors mt-1",
-                  expanded ? "flex items-center gap-3 px-2.5 h-9 w-full text-left" : "flex h-9 w-9 items-center justify-center"
+                  effectiveExpanded ? "flex items-center gap-3 px-2.5 h-9 w-full text-left" : "flex h-9 w-9 items-center justify-center"
                 )}
                 aria-label="Выйти"
               >
                 <LogOut className="h-[18px] w-[18px] shrink-0" />
-                {expanded && <span className="text-[13px] font-medium">Выйти</span>}
+                {effectiveExpanded && <span className="text-[13px] font-medium">Выйти</span>}
               </button>
             </TooltipTrigger>
-            {!expanded && <TooltipContent side="right" className="z-[100]">Выйти</TooltipContent>}
+            {!effectiveExpanded && <TooltipContent side="right" className="z-[100]">Выйти</TooltipContent>}
           </Tooltip>
         </div>
       </aside>
