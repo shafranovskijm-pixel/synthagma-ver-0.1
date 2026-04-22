@@ -39,6 +39,7 @@ export interface SendOptions {
   fromOverride?: string; // "Имя <email>"
   replyTo?: string;
   attachments?: Attachment[];
+  extraHeaders?: Record<string, string>; // дополнительные заголовки (List-Unsubscribe, etc.)
 }
 
 /**
