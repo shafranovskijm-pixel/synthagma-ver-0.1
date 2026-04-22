@@ -90,6 +90,7 @@ export const publicRoutes = (
     <Route path="/verify" element={<VerifyDocument />} />
     <Route path="/verify/:regNumber" element={<VerifyDocument />} />
     <Route path="/w/:token" element={<WebinarPublic />} />
+    <Route path="/document/share/:token" element={<DocumentSharePage />} />
     <Route path="*" element={<NotFound />} />
   </>
 );
