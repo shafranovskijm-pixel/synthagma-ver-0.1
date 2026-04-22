@@ -2,14 +2,21 @@ import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Phone, Mail, Calendar, FileText, MessageSquare, History } from 'lucide-react';
+import { Phone, Mail, Calendar, FileText, MessageSquare, History, ScrollText, PenTool, Receipt, CheckCircle2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { ru } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 
+type CommType =
+  | 'call' | 'email' | 'meeting' | 'note'
+  | 'proposal_sent' | 'proposal_viewed'
+  | 'contract_sent' | 'contract_signed'
+  | 'signature_sent' | 'signature_signed'
+  | 'invoice_issued' | 'invoice_paid';
+
 interface CommItem {
   id: string;
-  type: 'call' | 'email' | 'meeting' | 'note' | 'proposal_sent' | 'proposal_viewed';
+  type: CommType;
   text: string;
   created_at: string;
 }
@@ -21,23 +28,35 @@ interface Props {
   refreshKey?: number;
 }
 
-const ICONS = {
+const ICONS: Record<CommType, any> = {
   call: Phone,
   email: Mail,
   meeting: Calendar,
   note: MessageSquare,
   proposal_sent: FileText,
   proposal_viewed: FileText,
-} as const;
+  contract_sent: ScrollText,
+  contract_signed: CheckCircle2,
+  signature_sent: PenTool,
+  signature_signed: CheckCircle2,
+  invoice_issued: Receipt,
+  invoice_paid: CheckCircle2,
+};
 
-const COLORS = {
+const COLORS: Record<CommType, string> = {
   call: 'text-blue-600 bg-blue-500/10',
   email: 'text-purple-600 bg-purple-500/10',
   meeting: 'text-amber-600 bg-amber-500/10',
   note: 'text-slate-600 bg-slate-500/10 dark:text-slate-300',
   proposal_sent: 'text-emerald-600 bg-emerald-500/10',
   proposal_viewed: 'text-cyan-600 bg-cyan-500/10',
-} as const;
+  contract_sent: 'text-amber-600 bg-amber-500/10',
+  contract_signed: 'text-emerald-600 bg-emerald-500/10',
+  signature_sent: 'text-violet-600 bg-violet-500/10',
+  signature_signed: 'text-emerald-600 bg-emerald-500/10',
+  invoice_issued: 'text-amber-600 bg-amber-500/10',
+  invoice_paid: 'text-emerald-600 bg-emerald-500/10',
+};
 
 export function DealCommunication({ inn, companyName, refreshKey = 0 }: Props) {
   const [items, setItems] = useState<CommItem[]>([]);
