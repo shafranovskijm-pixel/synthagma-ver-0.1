@@ -96,13 +96,13 @@ function BlockPicker({ onSelect }: { onSelect: (item: GridItem) => void }) {
   };
 
   return (
-    <div className="space-y-3">
-      <div className="flex items-center justify-between gap-3">
+    <div className="flex flex-col gap-3 h-full max-h-[80vh]">
+      <div className="flex items-center justify-between gap-3 shrink-0">
         <h3 className="text-base font-semibold text-foreground">Выберите блок</h3>
-        <span className="text-[11px] text-muted-foreground">Один клик — добавить</span>
+        <span className="text-[11px] text-muted-foreground hidden sm:inline">Один клик — добавить</span>
       </div>
 
-      <div className="relative">
+      <div className="relative shrink-0">
         <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
         <Input
           autoFocus
@@ -114,7 +114,7 @@ function BlockPicker({ onSelect }: { onSelect: (item: GridItem) => void }) {
         />
       </div>
 
-      <div className="max-h-[60vh] overflow-y-auto space-y-4 pr-1">
+      <div className="flex-1 min-h-0 overflow-y-auto space-y-4 pr-1 -mr-1">
         {grouped.map(({ group, items }) => (
           <div key={group}>
             <p className="text-[10px] uppercase tracking-wide font-semibold text-muted-foreground px-1 mb-2 flex items-center gap-1.5">
@@ -173,7 +173,7 @@ export function AddBlockButton({ onAdd }: { onAdd: (type: BlockType, pendingAI?:
       <PopoverTrigger asChild>
         <Button variant="outline" size="sm" className="rounded-lg gap-2"><Plus className="w-4 h-4" />Добавить блок</Button>
       </PopoverTrigger>
-      <PopoverContent align="center" collisionPadding={16} className="w-[560px] max-w-[calc(100vw-2rem)] p-4">
+      <PopoverContent align="center" sideOffset={8} collisionPadding={16} avoidCollisions className="w-[560px] max-w-[calc(100vw-1rem)] max-h-[var(--radix-popover-content-available-height)] p-3 sm:p-4 overflow-hidden">
         <BlockPicker onSelect={handleSelect} />
       </PopoverContent>
     </Popover>
@@ -198,7 +198,7 @@ export function InlineAddBlockButton({ onAdd }: { onAdd: (type: BlockType, pendi
           <Plus className="w-5 h-5" strokeWidth={2.5} />
         </button>
       </PopoverTrigger>
-      <PopoverContent align="start" side="right" collisionPadding={16} className="w-[560px] max-w-[calc(100vw-2rem)] p-4">
+      <PopoverContent align="start" side="right" sideOffset={8} collisionPadding={16} avoidCollisions className="w-[560px] max-w-[calc(100vw-1rem)] max-h-[var(--radix-popover-content-available-height)] p-3 sm:p-4 overflow-hidden">
         <BlockPicker onSelect={handleSelect} />
       </PopoverContent>
     </Popover>
