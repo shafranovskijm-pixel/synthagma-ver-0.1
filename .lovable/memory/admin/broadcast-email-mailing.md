@@ -1,6 +1,6 @@
 ---
 name: Broadcast email mailing
-description: Система рассылок: SMTP, шаблоны, продающие письма, прогрев, suppression-лист, планировщик, click-tracking, UTM, dedup, RFC 8058 unsubscribe, A/B-тест тем, расширенные переменные, импорт CSV/Excel, inbox-превью, проверка SPF/DKIM/DMARC
+description: Система рассылок: SMTP, шаблоны, продающие письма, прогрев, suppression-лист, планировщик, click-tracking, UTM, dedup, RFC 8058 unsubscribe, A/B-тест тем, расширенные переменные, импорт CSV/Excel, inbox-превью, проверка SPF/DKIM/DMARC, drip-цепочки
 type: feature
 ---
 
