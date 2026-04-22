@@ -11,8 +11,10 @@ import { CompanyCard } from './sales/CompanyCard';
 import { DocumentSigning } from './sales/DocumentSigning';
 import { SalesSidebar } from './sales/SalesSidebar';
 import { CompaniesDatabase } from './sales/CompaniesDatabase';
+import { Deals360 } from './sales/Deals360';
 
 const TABS: Record<string, React.ReactNode> = {
+  deals: <Deals360 />,
   proposals: <CommercialProposals />,
   services: <SalesServices />,
   managers: <SalesManagersList />,
@@ -27,7 +29,7 @@ const TABS: Record<string, React.ReactNode> = {
 };
 
 export function SalesManager() {
-  const [activeTab, setActiveTab] = useState('proposals');
+  const [activeTab, setActiveTab] = useState('deals');
 
   return (
     <div className="flex gap-4">
