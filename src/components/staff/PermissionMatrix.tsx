@@ -15,6 +15,7 @@ const ORG_ROLE_LABELS: Record<OrgStaffRole, string> = {
   school_editor: "Редактор школы",
   course_editor: "Редактор курсов",
   teacher: "Преподаватель",
+  sales_manager: "Менеджер по продажам",
 };
 
 const ADMIN_ROLE_LABELS: Record<AdminStaffRole, string> = {
