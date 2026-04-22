@@ -45,6 +45,9 @@ interface Props {
   onEnd?: () => void;
   /** Коллбэк после сохранения настроек доступа в ShareWebinarDialog */
   onShareUpdated?: () => void;
+  /** Если эфир завершён и есть запись — показать нативный плеер вместо LiveKit-комнаты */
+  status?: string | null;
+  recordingUrl?: string | null;
 }
 
 /**
