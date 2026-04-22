@@ -1,6 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
-import { runEnrich } from "../checko-enrich-batch/index.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -24,20 +23,22 @@ serve(async (req) => {
       });
     }
 
-    // Process up to 100: 70 from queue, 30 stale (priority on new inns)
-    const result = await runEnrich({
-      maxFromQueue: 100,
-      maxFromStale: 100, // runEnrich will cap by remaining quota anyway
+    // Invoke sibling edge function via HTTP (cross-function imports are not supported).
+    const { data: result, error: invokeError } = await supabase.functions.invoke('checko-enrich-batch', {
+      body: { maxFromQueue: 100, maxFromStale: 100 },
     });
+
+    if (invokeError) throw invokeError;
+    if (result?.error) throw new Error(result.error);
 
     await supabase.from('checko_settings').update({
       last_auto_run_at: new Date().toISOString(),
-      last_auto_processed: result.processed,
-      last_auto_error: result.errors?.length ? `${result.errors.length} errors (first: ${result.errors[0]?.error})` : null,
+      last_auto_processed: result?.processed ?? 0,
+      last_auto_error: result?.errors?.length ? `${result.errors.length} errors (first: ${result.errors[0]?.error})` : null,
       updated_at: new Date().toISOString(),
     }).eq('id', 1);
 
-    return new Response(JSON.stringify({ success: true, ...result }), {
+    return new Response(JSON.stringify({ success: true, ...(result ?? {}) }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   } catch (e) {
