@@ -15,11 +15,12 @@ serve(async (req: Request) => {
     const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const admin = createClient(SUPABASE_URL, SERVICE_KEY);
 
-    // Найдём кампании в статусе paused
+    // Найдём кампании в статусе paused, КРОМЕ поставленных на паузу пользователем вручную
     const { data: paused, error: pErr } = await admin
       .from("email_campaigns")
       .select("id, name, scope, organization_id")
       .eq("status", "paused")
+      .eq("user_paused", false)
       .order("started_at", { ascending: true })
       .limit(20);
 

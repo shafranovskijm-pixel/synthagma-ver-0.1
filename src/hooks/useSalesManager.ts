@@ -105,23 +105,37 @@ export function useSalesManager() {
     if (data && !error) setManagers(data as unknown as SalesManager[]);
   }, []);
 
-  const fetchProposals = useCallback(async () => {
-    const { data, error } = await supabase.from('commercial_proposals').select('*').order('created_at', { ascending: false });
+  const fetchProposals = useCallback(async (organizationId?: string) => {
+    let query = supabase
+      .from('commercial_proposals')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .limit(2000);
+    if (organizationId) query = query.eq('organization_id', organizationId);
+    const { data, error } = await query;
     if (data && !error) setProposals(data as unknown as CommercialProposal[]);
   }, []);
 
-  const fetchLeads = useCallback(async (filters?: { region?: string; status?: string; managerId?: string }) => {
-    let query = supabase.from('sales_leads').select('*').order('created_at', { ascending: false });
+  const fetchLeads = useCallback(async (
+    filters?: { region?: string; status?: string; managerId?: string; organizationId?: string }
+  ) => {
+    let query = supabase
+      .from('sales_leads')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .limit(2000);
     if (filters?.region) query = query.eq('region', filters.region);
     if (filters?.status) query = query.eq('status', filters.status);
     if (filters?.managerId) query = query.eq('assigned_manager_id', filters.managerId);
+    if (filters?.organizationId) query = query.eq('organization_id', filters.organizationId);
     const { data, error } = await query;
     if (data && !error) setLeads(data as unknown as SalesLead[]);
   }, []);
 
-  const fetchActivities = useCallback(async (leadId?: string) => {
+  const fetchActivities = useCallback(async (leadId?: string, organizationId?: string) => {
     let query = supabase.from('sales_lead_activities').select('*').order('created_at', { ascending: false });
     if (leadId) query = query.eq('lead_id', leadId);
+    if (organizationId) query = query.eq('organization_id', organizationId);
     const { data, error } = await query.limit(200);
     if (data && !error) setActivities(data as unknown as LeadActivity[]);
   }, []);

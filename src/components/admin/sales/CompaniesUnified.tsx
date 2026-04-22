@@ -16,9 +16,11 @@ import { supabase } from '@/integrations/supabase/client';
 
 interface CompaniesUnifiedProps {
   organizationId?: string;
+  /** Если true — скрывает «Холодную базу» (она глобальная, доступна только админу платформы). */
+  hideColdBase?: boolean;
 }
 
-export function CompaniesUnified({ organizationId }: CompaniesUnifiedProps = {}) {
+export function CompaniesUnified({ organizationId, hideColdBase = false }: CompaniesUnifiedProps = {}) {
   const [tab, setTab] = useState<'in_work' | 'cold' | 'archive' | 'blacklist'>('in_work');
 
   return (
@@ -28,7 +30,7 @@ export function CompaniesUnified({ organizationId }: CompaniesUnifiedProps = {})
           <Building2 className="w-5 h-5 text-primary" />
           Компании
         </h2>
-        <p className="text-sm text-muted-foreground">Все компании: в работе, холодная база, архив и чёрный список</p>
+        <p className="text-sm text-muted-foreground">Все компании: в работе, {!hideColdBase && 'холодная база, '}архив и чёрный список</p>
       </div>
 
       <Tabs value={tab} onValueChange={(v) => setTab(v as any)}>
@@ -36,9 +38,11 @@ export function CompaniesUnified({ organizationId }: CompaniesUnifiedProps = {})
           <TabsTrigger value="in_work" className="rounded-lg gap-1.5">
             <Building2 className="w-3.5 h-3.5" /> В работе
           </TabsTrigger>
-          <TabsTrigger value="cold" className="rounded-lg gap-1.5">
-            <Snowflake className="w-3.5 h-3.5" /> Холодная база
-          </TabsTrigger>
+          {!hideColdBase && (
+            <TabsTrigger value="cold" className="rounded-lg gap-1.5">
+              <Snowflake className="w-3.5 h-3.5" /> Холодная база
+            </TabsTrigger>
+          )}
           <TabsTrigger value="archive" className="rounded-lg gap-1.5">
             <Archive className="w-3.5 h-3.5" /> Архив
           </TabsTrigger>
@@ -51,9 +55,11 @@ export function CompaniesUnified({ organizationId }: CompaniesUnifiedProps = {})
           <LeadsManager organizationId={organizationId} />
         </TabsContent>
 
-        <TabsContent value="cold" className="mt-4">
-          <CompaniesDatabase organizationId={organizationId} />
-        </TabsContent>
+        {!hideColdBase && (
+          <TabsContent value="cold" className="mt-4">
+            <CompaniesDatabase organizationId={organizationId} />
+          </TabsContent>
+        )}
 
         <TabsContent value="archive" className="mt-4">
           <ArchiveTab organizationId={organizationId} />
@@ -80,7 +86,7 @@ function ArchiveTab({ organizationId }: { organizationId?: string }) {
     try {
       const applyOrg = <T extends { eq: any }>(q: T): T =>
         organizationId ? q.eq('organization_id', organizationId) : q;
-      const [leadsR, proposalsR] = await Promise.all([
+      const [leadsR, proposalsR, contractsR] = await Promise.all([
         applyOrg(
           supabase.from('sales_leads')
             .select('id, org_name, status, updated_at')
@@ -95,10 +101,24 @@ function ArchiveTab({ organizationId }: { organizationId?: string }) {
             .order('updated_at', { ascending: false })
             .limit(200)
         ),
+        applyOrg(
+          supabase.from('sales_contracts')
+            .select('id, company_name, status, updated_at')
+            .in('status', ['cancelled', 'expired'])
+            .order('updated_at', { ascending: false })
+            .limit(200)
+        ),
       ]);
       const merged = [
         ...(leadsR.data || []).map((l: any) => ({ id: l.id, type: 'lead' as const, name: l.org_name, reason: 'Лид: отказ', date: l.updated_at })),
         ...(proposalsR.data || []).map((p: any) => ({ id: p.id, type: 'proposal' as const, name: p.company_name, reason: 'КП: отклонено', date: p.updated_at })),
+        ...(contractsR.data || []).map((c: any) => ({
+          id: c.id,
+          type: 'proposal' as const,
+          name: c.company_name,
+          reason: c.status === 'expired' ? 'Договор: истёк' : 'Договор: расторгнут',
+          date: c.updated_at,
+        })),
       ].sort((a, b) => (b.date || '').localeCompare(a.date || ''));
       setItems(merged);
     } finally {

@@ -211,13 +211,19 @@ function NewTaskForm({ managers, leads, onSubmit }:
       </div>
       <div>
         <label className="text-xs text-muted-foreground">Менеджер (необязательно)</label>
-        <Select value={managerId || 'none'} onValueChange={(v) => setManagerId(v === 'none' ? '' : v)}>
-          <SelectTrigger className="rounded-xl"><SelectValue placeholder="Без менеджера" /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="none">— Без менеджера —</SelectItem>
-            {managers.map((m: any) => <SelectItem key={m.id} value={m.id}>{m.full_name}</SelectItem>)}
-          </SelectContent>
-        </Select>
+        {managers.length === 0 ? (
+          <p className="text-xs text-muted-foreground p-2 rounded-lg bg-muted/40 border">
+            В вашей организации нет менеджеров продаж — задача будет создана без привязки к менеджеру.
+          </p>
+        ) : (
+          <Select value={managerId || 'none'} onValueChange={(v) => setManagerId(v === 'none' ? '' : v)}>
+            <SelectTrigger className="rounded-xl"><SelectValue placeholder="Без менеджера" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="none">— Без менеджера —</SelectItem>
+              {managers.map((m: any) => <SelectItem key={m.id} value={m.id}>{m.full_name}</SelectItem>)}
+            </SelectContent>
+          </Select>
+        )}
       </div>
       <div>
         <label className="text-xs text-muted-foreground">Лид (опционально)</label>

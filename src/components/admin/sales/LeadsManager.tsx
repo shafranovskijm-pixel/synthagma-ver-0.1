@@ -35,22 +35,23 @@ export function LeadsManager({ organizationId }: LeadsManagerProps = {}) {
   const [detailLead, setDetailLead] = useState<SalesLead | null>(null);
   const [activityNote, setActivityNote] = useState('');
 
-  useEffect(() => { fetchLeads(); fetchManagers(); }, [fetchLeads, fetchManagers, organizationId]);
+  // Server-side фильтрация по организации (защита от лимита 1000 строк).
+  useEffect(() => {
+    fetchLeads(organizationId ? { organizationId } : undefined);
+    fetchManagers();
+  }, [fetchLeads, fetchManagers, organizationId]);
 
-  // фильтрация по orgId на клиенте (RLS уже сужает на сервере, но для админа делаем явно)
-  const orgFilteredLeads = organizationId
-    ? leads.filter((l: any) => l.organization_id === organizationId)
-    : leads;
+  const regions = [...new Set(leads.map(l => l.region).filter(Boolean))] as string[];
 
-  const regions = [...new Set(orgFilteredLeads.map(l => l.region).filter(Boolean))] as string[];
-
-  const filtered = orgFilteredLeads.filter(l => {
+  const filtered = leads.filter(l => {
     if (search && !l.org_name.toLowerCase().includes(search.toLowerCase()) && !l.inn?.includes(search)) return false;
     if (regionFilter !== 'all' && l.region !== regionFilter) return false;
     if (statusFilter !== 'all' && l.status !== statusFilter) return false;
     if (managerFilter !== 'all' && l.assigned_manager_id !== managerFilter) return false;
     return true;
   });
+
+  const hasManagers = managers.length > 0;
 
   const toggleSelect = (id: string) => {
     setSelectedIds(prev => {
@@ -94,7 +95,7 @@ export function LeadsManager({ organizationId }: LeadsManagerProps = {}) {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between flex-wrap gap-2">
-        <h3 className="text-lg font-semibold">База компаний ({orgFilteredLeads.length})</h3>
+        <h3 className="text-lg font-semibold">База компаний ({leads.length})</h3>
         <Button size="sm" onClick={() => setImportOpen(true)}>
           <Upload className="w-4 h-4 mr-2" />Импорт из Excel
         </Button>
@@ -120,13 +121,15 @@ export function LeadsManager({ organizationId }: LeadsManagerProps = {}) {
             {Object.entries(LEAD_STATUS_MAP).map(([k, v]) => <SelectItem key={k} value={k}>{v.label}</SelectItem>)}
           </SelectContent>
         </Select>
-        <Select value={managerFilter} onValueChange={setManagerFilter}>
-          <SelectTrigger className="w-[180px]"><SelectValue placeholder="Менеджер" /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Все менеджеры</SelectItem>
-            {managers.map(m => <SelectItem key={m.id} value={m.id}>{m.full_name}</SelectItem>)}
-          </SelectContent>
-        </Select>
+        {hasManagers && (
+          <Select value={managerFilter} onValueChange={setManagerFilter}>
+            <SelectTrigger className="w-[180px]"><SelectValue placeholder="Менеджер" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Все менеджеры</SelectItem>
+              {managers.map(m => <SelectItem key={m.id} value={m.id}>{m.full_name}</SelectItem>)}
+            </SelectContent>
+          </Select>
+        )}
       </div>
 
       {/* Bulk actions */}
