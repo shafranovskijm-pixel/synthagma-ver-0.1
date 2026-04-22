@@ -30,7 +30,7 @@ export async function loadRealRequisites(organizationId: string): Promise<RealRe
   const { data } = await supabase
     .from("organizations")
     .select(
-      "name, inn, kpp, ogrn, legal_address, actual_address, director_name, director_position, director_gender, bank_name, bank_bik, bank_account, bank_corr_account, license_number, license_date, license_issuer, branding"
+      "name, inn, kpp, ogrn, legal_address, actual_address, director_name, director_position, director_gender, bank_name, bank_bik, bank_account, bank_corr_account, branding"
     )
     .eq("id", organizationId)
     .maybeSingle();
