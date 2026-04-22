@@ -212,6 +212,27 @@ export function BulkSendForSigningDialog({ open, onOpenChange, payload, organiza
     }
   };
 
+  if (!payload) {
+    return (
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Users className="w-5 h-5 text-primary" />
+              Массовая отправка на подписание
+            </DialogTitle>
+            <DialogDescription>
+              Чтобы запустить массовую рассылку, откройте нужный шаблон в Конструкторе договоров или выберите готовый документ в карточке контрагента и нажмите «Массовая отправка».
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button onClick={() => onOpenChange(false)}>Понятно</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    );
+  }
+
   return (
     <Dialog open={open} onOpenChange={(v) => !sending && onOpenChange(v)}>
       <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col">
