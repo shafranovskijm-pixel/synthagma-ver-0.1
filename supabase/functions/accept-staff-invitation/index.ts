@@ -130,25 +130,15 @@ serve(async (req) => {
       await admin.from("user_roles").upsert({
         user_id: user.id, role: "company",
       } as any, { onConflict: "user_id,role" });
-      // company_staff таблица создана в Этап 3, но запись в organization фиксируем через companies.user_id если поле пустое
-      // Этап 2: используем расширение через user_roles + privileges (без company_staff пока — сделаем upsert опционально)
-      try {
-        await admin.from("company_staff").upsert({
-          company_id: inv.company_id,
-          user_id: user.id,
-          role: inv.role,
-          display_name: fullName,
-        } as any, { onConflict: "company_id,user_id" });
-      } catch (e) {
-        // Если company_staff ещё не создан — fallback: первый пользователь становится владельцем company.user_id
-        const { data: company } = await admin
-          .from("companies")
-          .select("user_id")
-          .eq("id", inv.company_id)
-          .maybeSingle();
-        if (company && !company.user_id) {
-          await admin.from("companies").update({ user_id: user.id }).eq("id", inv.company_id);
-        }
+      // Этап 2: company_staff появится в Этапе 3.
+      // Пока что: если у компании ещё нет владельца — назначаем текущего пользователя.
+      const { data: company } = await admin
+        .from("companies")
+        .select("user_id")
+        .eq("id", inv.company_id)
+        .maybeSingle();
+      if (company && !company.user_id) {
+        await admin.from("companies").update({ user_id: user.id }).eq("id", inv.company_id);
       }
       redirectPath = "/company";
     }
