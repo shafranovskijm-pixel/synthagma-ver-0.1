@@ -195,7 +195,6 @@ export function OrgSalesManager() {
               onOpenDeal={(inn) => { if (inn) setDealSelectedInn(inn); setSection('deals'); }}
             />
           )}
-          {section === 'comparison' && <CompetitorComparison />}
           {section === 'campaigns' && (
             <OrgEmailCampaigns organizationId={organizationId} onGoToSmtp={() => setSection('smtp')} />
           )}
