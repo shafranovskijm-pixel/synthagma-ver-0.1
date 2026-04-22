@@ -20,6 +20,7 @@ import {
   DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { RadioPlayerButton } from "@/components/radio/RadioPlayerButton";
 import { SectionBreadcrumbDropdown } from "./SectionBreadcrumbDropdown";
+import { QuickActionChips } from "./QuickActionChips";
 
 function getUserInitials(email?: string | null, name?: string | null): string {
   if (name) {
