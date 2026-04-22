@@ -203,6 +203,13 @@ export function BulkDocumentGenerator({ organizationId, isOpen, onClose }: BulkD
     const number = `${contractNumberPrefix}${String(contractNumberStart + index).padStart(3, "0")}`;
     const totalAmount = perStudentPrice * studentsPerCompany;
 
+    const stampImg = orgRequisites?.stamp_url
+      ? `<img src="${orgRequisites.stamp_url}" alt="Печать" style="height:120px;display:inline-block;" />`
+      : "";
+    const signImg = orgRequisites?.signature_url
+      ? `<img src="${orgRequisites.signature_url}" alt="Подпись" style="height:60px;display:inline-block;" />`
+      : "";
+
     const baseVars: TemplateVariables = {
       ...orgVars,
       contract_number: number,
@@ -212,6 +219,8 @@ export function BulkDocumentGenerator({ organizationId, isOpen, onClose }: BulkD
       price: formatMoney(perStudentPrice),
       total_price: formatMoney(totalAmount),
       total_price_words: moneyToWords(totalAmount),
+      org_stamp_html: stampImg,
+      org_signature_html: signImg,
     };
 
     if (recipientType === "companies") {
