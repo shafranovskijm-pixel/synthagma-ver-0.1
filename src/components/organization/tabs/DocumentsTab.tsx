@@ -147,7 +147,7 @@ export const DocumentsTab = React.memo(function DocumentsTab({ organizationId, o
                 const Icon = item.icon;
                 const isActive = h.activeTab === item.value;
                 const showDivider = item.group && item.group !== lastGroup && idx > 0;
-                const groupLabel = item.group === "docs" && lastGroup !== "docs" ? "Документооборот" : item.group === "commerce" && lastGroup !== "commerce" ? "Коммерческие" : item.group === "tools" && lastGroup !== "tools" ? "Инструменты" : null;
+                const groupLabel = item.group === "sales" && lastGroup !== "sales" ? "Продажи" : item.group === "org_docs" && lastGroup !== "org_docs" ? "Документы организации" : item.group === "service" && lastGroup !== "service" ? "Служебное" : null;
                 lastGroup = item.group || "";
                 return (
                   <React.Fragment key={item.value}>
