@@ -60,10 +60,6 @@ const DOCUMENT_TYPES = [
 export function OrgDocumentsTab({ organizationId, documents, onDocumentsChange }: OrgDocumentsTabProps) {
   const [isUploadOpen, setIsUploadOpen] = useState(false);
   const [uploadingType, setUploadingType] = useState<string | null>(null);
-
-export function OrgDocumentsTab({ organizationId, documents, onDocumentsChange }: OrgDocumentsTabProps) {
-  const [isUploadOpen, setIsUploadOpen] = useState(false);
-  const [uploadingType, setUploadingType] = useState<string | null>(null);
   const [versionsDoc, setVersionsDoc] = useState<OrgDocument | null>(null);
   const [shareDoc, setShareDoc] = useState<OrgDocument | null>(null);
 
