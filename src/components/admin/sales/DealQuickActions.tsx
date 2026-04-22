@@ -19,12 +19,13 @@ interface DealQuickActionsProps {
   onAddCall?: () => void;
   onAddNote?: () => void;
   onAddTask?: () => void;
+  onSendForSigning?: () => void;
 }
 
 export function DealQuickActions({
   companyName, inn, contact,
   onCreateProposal, onCreateContract, onCreateInvoice,
-  onAddCall, onAddNote, onAddTask,
+  onAddCall, onAddNote, onAddTask, onSendForSigning,
 }: DealQuickActionsProps) {
   const copy = async (txt: string, label: string) => {
     await navigator.clipboard.writeText(txt);
