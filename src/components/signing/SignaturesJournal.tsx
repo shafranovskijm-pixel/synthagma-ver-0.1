@@ -37,6 +37,7 @@ interface SignatureRow {
   expires_at: string;
   rejected_at?: string | null;
   rejection_reason?: string | null;
+  signed_document_path?: string | null;
 }
 
 interface OrgInfo { name: string; inn: string | null; }
@@ -159,6 +160,33 @@ export function SignaturesJournal({ organizationId }: Props) {
       expiresAt: r.expires_at,
       signatureToken: r.signature_token,
     });
+  };
+
+  const handleDownloadCertificate = async (r: SignatureRow) => {
+    try {
+      let path = r.signed_document_path;
+      if (!path) {
+        // Попробуем сгенерировать сейчас (если ещё не сгенерирован)
+        const { data, error } = await supabase.functions.invoke("generate-signature-certificate", {
+          body: { signature_id: r.id },
+        });
+        if (error) throw error;
+        path = data?.path;
+        if (!path) throw new Error("Сертификат не сформирован");
+      }
+      const { data: signed, error: signErr } = await supabase.storage
+        .from("signed-documents")
+        .createSignedUrl(path, 600);
+      if (signErr || !signed?.signedUrl) throw signErr || new Error("URL не получен");
+      const a = document.createElement("a");
+      a.href = signed.signedUrl;
+      a.download = `signature-certificate-${r.id}.pdf`;
+      a.target = "_blank";
+      document.body.appendChild(a); a.click(); a.remove();
+      toast.success("Сертификат подписи загружен");
+    } catch (e: any) {
+      toast.error("Не удалось скачать сертификат", { description: e?.message || String(e) });
+    }
   };
 
   const handleExportCsv = () => {
