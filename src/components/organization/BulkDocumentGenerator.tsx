@@ -646,7 +646,31 @@ export function BulkDocumentGenerator({ organizationId, isOpen, onClose }: BulkD
                 </>
               )}
               {step === "done" && (
-                <Button onClick={handleClose} className="rounded-xl">Готово</Button>
+                <>
+                  {results.some(r => r.status === "error") && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={handleRetryErrors}
+                      className="rounded-xl gap-1.5"
+                    >
+                      <RefreshCw className="w-4 h-4" />
+                      Повторить ошибки ({results.filter(r => r.status === "error").length})
+                    </Button>
+                  )}
+                  {results.some(r => r.status === "success") && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={handleDownloadZip}
+                      className="rounded-xl gap-1.5"
+                    >
+                      <Archive className="w-4 h-4" />
+                      Скачать ZIP
+                    </Button>
+                  )}
+                  <Button onClick={handleClose} className="rounded-xl">Готово</Button>
+                </>
               )}
             </div>
           </div>
