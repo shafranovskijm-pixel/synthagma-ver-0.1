@@ -40,6 +40,8 @@ const STAGE_ICON: Record<string, any> = {
   invoice: Receipt,
 };
 
+const DEFAULT_STATUS_CLASS = 'bg-muted text-muted-foreground';
+
 const STATUS_COLORS: Record<string, string> = {
   draft: 'bg-muted text-muted-foreground',
   sent: 'bg-blue-500/10 text-blue-600 dark:text-blue-400',
@@ -51,6 +53,8 @@ const STATUS_COLORS: Record<string, string> = {
   paid: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400',
   rejected: 'bg-rose-500/10 text-rose-600 dark:text-rose-400',
   expired: 'bg-rose-500/10 text-rose-600 dark:text-rose-400',
+  archived: 'bg-slate-500/10 text-slate-600 dark:text-slate-400',
+  not_interested: 'bg-slate-500/10 text-slate-600 dark:text-slate-400',
 };
 
 const STATUS_LABELS: Record<string, string> = {
@@ -65,6 +69,8 @@ const STATUS_LABELS: Record<string, string> = {
   rejected: 'Отклонено',
   expired: 'Истёк',
   pending: 'Ожидает',
+  archived: 'В архиве',
+  not_interested: 'Не интересно',
 };
 
 interface Deals360Props {
