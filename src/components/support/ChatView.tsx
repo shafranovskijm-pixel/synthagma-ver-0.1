@@ -94,13 +94,20 @@ export function ChatView({
         )}
         {messages.map((msg) => (
           <div key={msg.id} className={cn("flex", msg.role === "user" ? "justify-end" : "justify-start")}>
-            <div className={cn(
-              "max-w-[85%] rounded-2xl px-3.5 py-2 text-sm shadow-sm",
-              msg.role === "user" && "bg-primary text-primary-foreground rounded-br-md",
-              msg.role === "ai" && "bg-card border border-border rounded-bl-md",
-              msg.role === "operator" && "bg-accent text-accent-foreground rounded-bl-md border border-primary/20",
-              msg.role === "system" && "bg-muted/60 text-muted-foreground italic text-xs mx-auto"
-            )}>
+            <div
+              className={cn(
+                "max-w-[85%] rounded-2xl px-3.5 py-2 text-sm shadow-sm",
+                msg.role === "user" && "text-white rounded-br-md",
+                msg.role === "ai" && "bg-card border border-border rounded-bl-md",
+                msg.role === "operator" && "bg-accent text-accent-foreground rounded-bl-md border border-primary/20",
+                msg.role === "system" && "bg-muted/60 text-muted-foreground italic text-xs mx-auto"
+              )}
+              style={
+                msg.role === "user"
+                  ? { background: `linear-gradient(135deg, hsl(var(--chat-accent)), hsl(var(--chat-accent-dark)))` }
+                  : undefined
+              }
+            >
               {msg.role === "operator" && (
                 <p className="text-[10px] opacity-70 mb-1 flex items-center gap-1">
                   <Headset className="h-3 w-3" /> {msg.sender_name || "Оператор"}
@@ -159,7 +166,11 @@ export function ChatView({
         />
         <Button
           size="icon"
-          className="rounded-full shrink-0 h-10 w-10 bg-gradient-to-br from-primary to-primary/80 shadow-md shadow-primary/30"
+          className="rounded-full shrink-0 h-10 w-10 text-white shadow-md"
+          style={{
+            background: `linear-gradient(135deg, hsl(var(--chat-accent)), hsl(var(--chat-accent-dark)))`,
+            boxShadow: `0 6px 16px -6px hsl(var(--chat-accent) / 0.5)`,
+          }}
           onClick={() => handleSend()}
           disabled={isLoading || !input.trim() || status === "closed"}
         >
