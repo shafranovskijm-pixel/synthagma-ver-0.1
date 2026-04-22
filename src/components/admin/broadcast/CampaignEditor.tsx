@@ -10,7 +10,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Plus, Calendar, Link as LinkIcon, Video } from "lucide-react";
+import { Plus, Calendar, Link as LinkIcon, Video, Clock, Save } from "lucide-react";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import { RecipientPicker, RecipientPickerValue } from "./RecipientPicker";
@@ -51,6 +51,21 @@ interface MeetingMeta {
 
 const DEFAULT_HTML = "<p>Здравствуйте, {{name}}!</p>\n<p>Текст письма...</p>";
 
+const DRAFT_KEY = "broadcast_campaign_draft_v1";
+
+interface DraftData {
+  name: string;
+  subject: string;
+  html: string;
+  fromName: string;
+  replyTo: string;
+  scheduledDate: string;
+  scheduledTime: string;
+  scope: string;
+  organizationId: string | null;
+  savedAt: number;
+}
+
 export function CampaignEditor({ open, onClose, scope, organizationId, onCreated, initial }: Props) {
   const [name, setName] = useState("");
   const [subject, setSubject] = useState("");
@@ -77,6 +92,12 @@ export function CampaignEditor({ open, onClose, scope, organizationId, onCreated
   const [createWebinarOpen, setCreateWebinarOpen] = useState(false);
   const [newWebinarMeta, setNewWebinarMeta] = useState<MeetingMeta | null>(null);
 
+  // Scheduling
+  const [scheduleEnabled, setScheduleEnabled] = useState(false);
+  const [scheduledDate, setScheduledDate] = useState("");
+  const [scheduledTime, setScheduledTime] = useState("");
+  const [draftRestored, setDraftRestored] = useState(false);
+
   const scopeKey = scope === "platform" ? "platform" : (organizationId || "");
   const { status: warmup } = useEmailWarmup(scopeKey || null);
   const tooMany = warmup && recipients.count > warmup.remaining;
@@ -89,6 +110,52 @@ export function CampaignEditor({ open, onClose, scope, organizationId, onCreated
       if (initial.html) setHtml(initial.html);
     }
   }, [open, initial]);
+
+  // Restore draft from localStorage when dialog opens (only if no initial data)
+  useEffect(() => {
+    if (!open || initial || draftRestored) return;
+    try {
+      const raw = localStorage.getItem(DRAFT_KEY);
+      if (!raw) return;
+      const draft: DraftData = JSON.parse(raw);
+      // Match scope/org and not older than 7 days
+      if (
+        draft.scope !== scope ||
+        draft.organizationId !== organizationId ||
+        Date.now() - draft.savedAt > 7 * 24 * 60 * 60 * 1000
+      ) return;
+      // Only restore if there's meaningful content
+      if (!draft.name && !draft.subject && draft.html === DEFAULT_HTML) return;
+      setName(draft.name || "");
+      setSubject(draft.subject || "");
+      setHtml(draft.html || DEFAULT_HTML);
+      setFromName(draft.fromName || "");
+      setReplyTo(draft.replyTo || "");
+      if (draft.scheduledDate) {
+        setScheduleEnabled(true);
+        setScheduledDate(draft.scheduledDate);
+        setScheduledTime(draft.scheduledTime || "");
+      }
+      setDraftRestored(true);
+      toast.info("Восстановлен черновик кампании");
+    } catch { /* ignore */ }
+  }, [open, initial, scope, organizationId, draftRestored]);
+
+  // Auto-save draft to localStorage (debounced)
+  useEffect(() => {
+    if (!open) return;
+    const t = setTimeout(() => {
+      try {
+        const draft: DraftData = {
+          name, subject, html, fromName, replyTo,
+          scheduledDate, scheduledTime,
+          scope, organizationId, savedAt: Date.now(),
+        };
+        localStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
+      } catch { /* ignore quota */ }
+    }, 800);
+    return () => clearTimeout(t);
+  }, [open, name, subject, html, fromName, replyTo, scheduledDate, scheduledTime, scope, organizationId]);
 
   // Load existing webinars when "existing" mode chosen
   useEffect(() => {
@@ -135,7 +202,9 @@ export function CampaignEditor({ open, onClose, scope, organizationId, onCreated
     setFromName(""); setReplyTo(""); setConsent(false);
     setMeetingMode("none"); setExternalUrl(""); setExternalDate(""); setExternalTime("");
     setSelectedWebinarId(""); setNewWebinarMeta(null);
+    setScheduleEnabled(false); setScheduledDate(""); setScheduledTime("");
     setRecipients({ source: scope === "platform" ? "organizations" : "students", manualEmails: [], count: 0 });
+    try { localStorage.removeItem(DRAFT_KEY); } catch { /* ignore */ }
   };
 
   const renderPreview = () => {
@@ -166,6 +235,32 @@ export function CampaignEditor({ open, onClose, scope, organizationId, onCreated
       toast.error("Подтвердите согласие получателей");
       return;
     }
+    // Базовая валидация HTML — баланс <p>/<div>/<a>
+    const openTags = (html.match(/<(p|div|a|span|table|tr|td)\b/gi) || []).length;
+    const closeTags = (html.match(/<\/(p|div|a|span|table|tr|td)>/gi) || []).length;
+    if (Math.abs(openTags - closeTags) > 2) {
+      const ok = confirm("В HTML обнаружены несбалансированные теги. Письмо может отображаться некорректно. Продолжить?");
+      if (!ok) return;
+    }
+
+    let scheduledAtISO: string | null = null;
+    if (scheduleEnabled) {
+      if (!scheduledDate || !scheduledTime) {
+        toast.error("Укажите дату и время отправки");
+        return;
+      }
+      const dt = new Date(`${scheduledDate}T${scheduledTime}:00`);
+      if (isNaN(dt.getTime())) {
+        toast.error("Некорректные дата/время");
+        return;
+      }
+      if (dt.getTime() < Date.now() + 30_000) {
+        toast.error("Дата отправки должна быть в будущем (минимум +30 сек)");
+        return;
+      }
+      scheduledAtISO = dt.toISOString();
+    }
+
     setSaving(true);
     try {
       const meta = meeting;
@@ -181,6 +276,7 @@ export function CampaignEditor({ open, onClose, scope, organizationId, onCreated
         };
       }
 
+      const isScheduled = !launch && !!scheduledAtISO;
       const payload: any = {
         scope,
         organization_id: scope === "org" ? organizationId : null,
@@ -192,14 +288,20 @@ export function CampaignEditor({ open, onClose, scope, organizationId, onCreated
         recipient_source: recipients.source,
         manual_emails: recipients.source === "manual" ? recipients.manualEmails : null,
         recipient_filter: Object.keys(recipientFilter).length ? recipientFilter : null,
-        status: "draft",
+        scheduled_at: scheduledAtISO,
+        status: isScheduled ? "scheduled" : "draft",
       };
       const { data: user } = await supabase.auth.getUser();
       if (user?.user) payload.created_by = user.user.id;
 
       const { data, error } = await supabase.from("email_campaigns").insert(payload).select("id").single();
       if (error) throw error;
-      toast.success("Кампания создана");
+
+      if (isScheduled) {
+        toast.success(`Кампания запланирована на ${format(new Date(scheduledAtISO!), "d MMM, HH:mm", { locale: ru })}`);
+      } else {
+        toast.success("Кампания создана");
+      }
 
       if (launch && data) {
         const { data: runRes, error: runErr } = await supabase.functions.invoke("run-email-campaign", {
@@ -387,19 +489,49 @@ export function CampaignEditor({ open, onClose, scope, organizationId, onCreated
               </div>
             )}
 
+            {/* Scheduling */}
+            <div className="border rounded-xl p-4 bg-muted/20 space-y-3">
+              <label className="flex items-center gap-2 text-sm font-semibold cursor-pointer">
+                <Checkbox checked={scheduleEnabled} onCheckedChange={(v) => setScheduleEnabled(!!v)} />
+                <Clock className="w-4 h-4 text-primary" />
+                <span>Запланировать отправку</span>
+              </label>
+              {scheduleEnabled && (
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <Label className="text-xs">Дата</Label>
+                    <Input type="date" value={scheduledDate} onChange={(e) => setScheduledDate(e.target.value)} />
+                  </div>
+                  <div>
+                    <Label className="text-xs">Время</Label>
+                    <Input type="time" value={scheduledTime} onChange={(e) => setScheduledTime(e.target.value)} />
+                  </div>
+                  <p className="col-span-2 text-xs text-muted-foreground">
+                    Кампания будет автоматически запущена в указанное время. Локальная зона: {Intl.DateTimeFormat().resolvedOptions().timeZone}.
+                  </p>
+                </div>
+              )}
+            </div>
+
             <label className="flex items-center gap-2 text-sm">
               <Checkbox checked={consent} onCheckedChange={(v) => setConsent(!!v)} />
               <span>У меня есть согласие получателей на email-рассылки</span>
             </label>
+
+            {draftRestored && (
+              <p className="text-xs text-muted-foreground flex items-center gap-1">
+                <Save className="w-3 h-3" /> Черновик автоматически сохраняется
+              </p>
+            )}
           </div>
 
           <DialogFooter>
             <Button variant="outline" onClick={onClose} disabled={saving}>Отмена</Button>
             <Button variant="secondary" onClick={() => handleSave(false)} disabled={saving}>
-              Сохранить как черновик
+              {scheduleEnabled ? "Запланировать" : "Сохранить как черновик"}
             </Button>
-            <Button onClick={() => handleSave(true)} disabled={saving || !!tooMany || recipients.count === 0 || !consent}>
-              {saving ? "Создание..." : `Запустить (${recipients.count})`}
+            <Button onClick={() => handleSave(true)} disabled={saving || !!tooMany || recipients.count === 0 || !consent || scheduleEnabled}>
+              {saving ? "Создание..." : `Запустить сейчас (${recipients.count})`}
             </Button>
           </DialogFooter>
         </DialogContent>

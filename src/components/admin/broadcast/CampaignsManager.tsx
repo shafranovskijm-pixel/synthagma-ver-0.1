@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Mail, Plus, Play, Trash2, BarChart2, RefreshCw } from "lucide-react";
+import { Mail, Plus, Play, Trash2, BarChart2, RefreshCw, Clock } from "lucide-react";
 import { useEmailCampaigns } from "@/hooks/useEmailCampaigns";
 import { CampaignEditor } from "./CampaignEditor";
 import { CampaignReport } from "./CampaignReport";
@@ -28,7 +28,16 @@ export function CampaignsManager({ scope, organizationId }: Props) {
     if (s === "completed") return "bg-green-500/10 text-green-600";
     if (s === "failed") return "bg-destructive/10 text-destructive";
     if (s === "paused") return "bg-orange-500/10 text-orange-600";
+    if (s === "scheduled") return "bg-purple-500/10 text-purple-600";
     return "bg-muted text-muted-foreground";
+  };
+
+  const statusLabel = (s: string) => {
+    const map: Record<string, string> = {
+      draft: "черновик", sending: "отправляется", completed: "завершено",
+      failed: "ошибка", paused: "пауза", scheduled: "запланировано",
+    };
+    return map[s] || s;
   };
 
   return (
@@ -61,7 +70,13 @@ export function CampaignsManager({ scope, organizationId }: Props) {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
                       <p className="font-medium text-sm truncate">{c.name}</p>
-                      <Badge className={statusColor(c.status)} variant="outline">{c.status}</Badge>
+                      <Badge className={statusColor(c.status)} variant="outline">{statusLabel(c.status)}</Badge>
+                      {c.status === "scheduled" && c.scheduled_at && (
+                        <Badge variant="outline" className="gap-1 bg-purple-500/10 text-purple-600 border-purple-500/30">
+                          <Clock className="w-3 h-3" />
+                          {format(new Date(c.scheduled_at), "d MMM, HH:mm", { locale: ru })}
+                        </Badge>
+                      )}
                       {c.status === "paused" && (
                         <TooltipProvider>
                           <Tooltip>
@@ -88,6 +103,9 @@ export function CampaignsManager({ scope, organizationId }: Props) {
                       {format(new Date(c.created_at), "d MMM yyyy HH:mm", { locale: ru })}
                       {" · "}
                       Получателей: {c.total_recipients} · Отправлено: {c.sent_count} · Ошибок: {c.failed_count} · Открытий: {c.open_count}
+                      {(c.click_count > 0 || c.unsubscribe_count > 0) && (
+                        <> · Кликов: {c.click_count} · Отписок: {c.unsubscribe_count}</>
+                      )}
                     </p>
                   </div>
                   <div className="flex items-center gap-1 shrink-0">
