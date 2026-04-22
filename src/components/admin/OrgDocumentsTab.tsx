@@ -275,6 +275,23 @@ export function OrgDocumentsTab({ organizationId, documents, onDocumentsChange }
           </div>
         </DialogContent>
       </Dialog>
+
+      <OrgDocumentVersionsDialog
+        open={!!versionsDoc}
+        onOpenChange={(o) => !o && setVersionsDoc(null)}
+        documentId={versionsDoc?.id || null}
+        documentName={versionsDoc?.name || ""}
+        organizationId={organizationId}
+        onRestored={onDocumentsChange}
+      />
+
+      <OrgDocumentShareDialog
+        open={!!shareDoc}
+        onOpenChange={(o) => !o && setShareDoc(null)}
+        documentId={shareDoc?.id || null}
+        documentName={shareDoc?.name || ""}
+        organizationId={organizationId}
+      />
     </div>
   );
 }
