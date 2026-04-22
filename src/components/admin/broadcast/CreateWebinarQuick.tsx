@@ -39,14 +39,13 @@ export function CreateWebinarQuick({ open, onClose, onCreated }: Props) {
       const { data: userData } = await supabase.auth.getUser();
       if (!userData?.user) throw new Error("Не авторизован");
 
-      // Найдём первую организацию пользователя (или Sintagma) для FK
-      const { data: roles } = await supabase
-        .from("user_roles")
+      // Найдём организацию пользователя через profiles
+      const { data: profile } = await supabase
+        .from("profiles")
         .select("organization_id")
-        .eq("user_id", userData.user.id)
-        .not("organization_id", "is", null)
-        .limit(1);
-      const organizationId = roles?.[0]?.organization_id;
+        .eq("id", userData.user.id)
+        .maybeSingle();
+      const organizationId = profile?.organization_id;
       if (!organizationId) throw new Error("Не найдена организация для размещения вебинара");
 
       const scheduledAt = new Date(`${date}T${time}:00`).toISOString();
