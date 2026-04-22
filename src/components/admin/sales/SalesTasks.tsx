@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -34,13 +34,28 @@ const TYPE_LABEL = {
 
 interface SalesTasksProps {
   organizationId?: string;
+  prefillCompany?: { name: string; inn?: string | null } | null;
+  onPrefillConsumed?: () => void;
 }
 
-export function SalesTasks({ organizationId }: SalesTasksProps = {}) {
+export function SalesTasks({ organizationId, prefillCompany, onPrefillConsumed }: SalesTasksProps = {}) {
   const { list, create, complete, remove } = useSalesTasks(organizationId ? { organizationId } : undefined);
   const { managers, fetchManagers, leads, fetchLeads } = useSalesManager();
   const [open, setOpen] = useState(false);
   const [tab, setTab] = useState<'open' | 'today' | 'overdue' | 'done'>('open');
+  const [prefillTitle, setPrefillTitle] = useState<string>('');
+
+  // Открыть форму с предзаполненной компанией
+  useEffect(() => {
+    if (prefillCompany?.name) {
+      setPrefillTitle(`Связаться с ${prefillCompany.name}`);
+      fetchManagers();
+      fetchLeads();
+      setOpen(true);
+      onPrefillConsumed?.();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [prefillCompany?.name]);
 
   const tasks = list.data || [];
   const filtered = tasks.filter(t => {
@@ -69,7 +84,7 @@ export function SalesTasks({ organizationId }: SalesTasksProps = {}) {
           </h2>
           <p className="text-sm text-muted-foreground">Звонки, встречи, касания и напоминания</p>
         </div>
-        <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (v) { fetchManagers(); fetchLeads(); } }}>
+        <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (v) { fetchManagers(); fetchLeads(); } if (!v) setPrefillTitle(''); }}>
           <DialogTrigger asChild>
             <Button size="sm" className="rounded-xl"><Plus className="w-4 h-4 mr-1" />Новая задача</Button>
           </DialogTrigger>
@@ -78,9 +93,11 @@ export function SalesTasks({ organizationId }: SalesTasksProps = {}) {
             <NewTaskForm
               managers={managers}
               leads={leads}
+              initialTitle={prefillTitle}
               onSubmit={async (input) => {
                 await create.mutateAsync(input);
                 setOpen(false);
+                setPrefillTitle('');
               }}
             />
           </DialogContent>
