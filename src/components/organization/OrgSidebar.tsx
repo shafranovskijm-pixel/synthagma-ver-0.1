@@ -367,10 +367,28 @@ export function OrgSidebar() {
 
         {/* Navigation grouped by section */}
         <div className={cn("flex-1 flex flex-col overflow-y-auto scrollbar-hide py-2", expanded ? "px-2 gap-2" : "items-center gap-2 px-2")}>
+
+          {/* Pinned items (favorites) */}
+          {pinnedItems.length > 0 && (
+            <div className="w-full flex flex-col">
+              <div className={cn("px-1", expanded ? "text-left" : "text-center")}>
+                <span
+                  className="text-[9px] uppercase tracking-[0.08em] font-semibold text-muted-foreground/70 select-none inline-flex items-center gap-1"
+                  aria-hidden
+                >
+                  <Pin className="w-2.5 h-2.5" /> Закреплено
+                </span>
+              </div>
+              <nav className={cn("flex flex-col gap-0.5 mt-1", expanded ? "items-stretch" : "items-center")}>
+                {pinnedItems.map((item) => renderNavItem(item))}
+              </nav>
+            </div>
+          )}
+
           {grouped.map((group, gIdx) => (
             <div key={group.section} className="w-full flex flex-col">
               {/* Section heading: plain caps text, no plate */}
-              <div className={cn("px-1", gIdx > 0 ? "mt-2" : "mt-0", expanded ? "text-left" : "text-center")}>
+              <div className={cn("px-1", (gIdx > 0 || pinnedItems.length > 0) ? "mt-2" : "mt-0", expanded ? "text-left" : "text-center")}>
                 <span
                   className="text-[9px] uppercase tracking-[0.08em] font-semibold text-muted-foreground/70 select-none"
                   aria-hidden
@@ -380,83 +398,7 @@ export function OrgSidebar() {
               </div>
 
               <nav className={cn("flex flex-col gap-0.5 mt-1", expanded ? "items-stretch" : "items-center")}>
-                {group.items.map((item) => {
-                  const isActive = activeTab === item.id;
-                  const locked = item.category ? isLocked(item.category) : false;
-
-                  return (
-                    <Tooltip key={item.id} delayDuration={300}>
-                      <TooltipTrigger asChild>
-                        <button
-                          data-onboarding={item.id === "courses" ? "courses" : item.id === "students" ? "students" : item.id === "settings" ? "settings" : undefined}
-                          onClick={() => handleTabClick(item.id)}
-                          className={cn(
-                            "relative rounded-lg transition-all duration-150",
-                            expanded
-                              ? "flex items-center gap-3 px-2.5 h-10 w-full text-left"
-                              : cn(
-                                  "flex flex-col items-center justify-center w-[68px] px-1 py-1.5",
-                                  showLabels ? "gap-0.5" : "h-10"
-                                ),
-                            locked && "opacity-50",
-                            isActive
-                              ? "text-primary-foreground shadow-sm"
-                              : "text-foreground/70 hover:text-foreground hover:bg-foreground/5"
-                          )}
-                          style={{
-                            backgroundColor: isActive ? `hsl(${brandHsl})` : undefined,
-                            ...(isActive ? { boxShadow: `0 2px 10px hsl(${brandHsl} / 0.3)` } : {}),
-                          }}
-                          aria-current={isActive ? "page" : undefined}
-                          aria-label={item.label}
-                        >
-                          <span className="relative flex items-center justify-center shrink-0" style={{ width: 18, height: 18 }}>
-                            <item.icon className="h-[18px] w-[18px]" />
-                            {locked && <Lock className="absolute -top-1 -right-2 w-2.5 h-2.5 text-muted-foreground/60" />}
-                            {(item.badge ?? 0) > 0 && (
-                              <span className="absolute -top-1.5 -right-2 bg-destructive text-destructive-foreground text-[9px] font-bold rounded-full min-w-[16px] h-4 flex items-center justify-center px-1">
-                                {item.badge! > 99 ? "99+" : item.badge}
-                              </span>
-                            )}
-                          </span>
-                          {expanded ? (
-                            <span
-                              className={cn(
-                                "text-[13px] font-medium truncate flex-1",
-                                isActive ? "text-primary-foreground" : "text-foreground/85"
-                              )}
-                            >
-                              {item.label}
-                            </span>
-                          ) : showLabels ? (
-                            <span
-                              className={cn(
-                                "text-[9px] leading-tight font-medium text-center max-w-[64px] line-clamp-2",
-                                isActive ? "text-primary-foreground/95" : "text-foreground/70"
-                              )}
-                            >
-                              {item.label}
-                            </span>
-                          ) : null}
-                        </button>
-                      </TooltipTrigger>
-                      {!expanded && (
-                        <TooltipContent
-                          side="right"
-                          sideOffset={12}
-                          className="z-[100] rounded-xl px-4 py-2 text-sm font-medium shadow-lg border-border/60"
-                          style={{
-                            backgroundColor: `hsl(${brandHsl})`,
-                            color: 'white',
-                            boxShadow: `0 4px 20px hsl(${brandHsl} / 0.3)`,
-                          }}
-                        >
-                          {item.label}
-                        </TooltipContent>
-                      )}
-                    </Tooltip>
-                  );
-                })}
+                {group.items.map((item) => renderNavItem(item))}
               </nav>
             </div>
           ))}
