@@ -389,9 +389,15 @@ function LiveKitTopBar({
       )}
 
       {onEnd && (
-        <Button size="sm" variant="destructive" onClick={onEnd} className="h-8" title="Завершить эфир">
+        <Button
+          size="sm"
+          variant={viewOnly ? "secondary" : "destructive"}
+          onClick={onEnd}
+          className="h-8"
+          title={viewOnly ? "Покинуть эфир" : "Завершить эфир"}
+        >
           <Square className="w-3.5 h-3.5 sm:mr-1.5" />
-          <span className="hidden sm:inline">Завершить</span>
+          <span className="hidden sm:inline">{viewOnly ? "Покинуть" : "Завершить"}</span>
         </Button>
       )}
     </div>
