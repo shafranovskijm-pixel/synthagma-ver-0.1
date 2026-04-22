@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Sparkles, FileText, FileCode, Briefcase, Boxes, Settings, ListTodo, Send, Building2, Target, Mail } from 'lucide-react';
@@ -14,6 +14,7 @@ import { SalesOverview } from '@/components/admin/sales/SalesOverview';
 import { SalesTasks } from '@/components/admin/sales/SalesTasks';
 import { Deals360 } from '@/components/admin/sales/Deals360';
 import { CompaniesUnified } from '@/components/admin/sales/CompaniesUnified';
+import { LogActivityDialog } from '@/components/admin/sales/LogActivityDialog';
 import { useOrgSmtp } from '@/hooks/useOrgSmtp';
 
 interface MenuItem { id: string; label: string; icon: any; soon?: boolean }
