@@ -168,7 +168,7 @@ export function DocumentsKpiDashboard({ organizationId }: Props) {
                 <Tooltip contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 8, fontSize: 12 }} />
                 <Legend wrapperStyle={{ fontSize: 12 }} />
                 <Line type="monotone" dataKey="sent" name="Отправлено" stroke="hsl(var(--primary))" strokeWidth={2} dot={{ r: 3 }} />
-                <Line type="monotone" dataKey="signed" name="Подписано" stroke="hsl(142 76% 36%)" strokeWidth={2} dot={{ r: 3 }} />
+                <Line type="monotone" dataKey="signed" name="Подписано" stroke="hsl(var(--accent))" strokeWidth={2} dot={{ r: 3 }} />
               </LineChart>
             </ResponsiveContainer>
           </CardContent>
