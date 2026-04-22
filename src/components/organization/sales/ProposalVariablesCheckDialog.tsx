@@ -119,7 +119,7 @@ export function ProposalVariablesCheckDialog({
                     {r.isPlaceholder ? (
                       <Badge variant="outline" className="text-[10px]">пусто</Badge>
                     ) : (
-                      <CheckCircle2 className="w-4 h-4 text-green-600 inline-block" />
+                      <CheckCircle2 className="w-4 h-4 text-primary inline-block" />
                     )}
                   </div>
                 </div>
