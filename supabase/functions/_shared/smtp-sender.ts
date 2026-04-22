@@ -26,12 +26,19 @@ export interface SmtpConfig {
   from_name?: string | null;
 }
 
+export interface Attachment {
+  filename: string;
+  content: string;       // raw text content (will be base64-encoded)
+  contentType: string;   // e.g. "text/calendar; method=REQUEST; charset=UTF-8"
+}
+
 export interface SendOptions {
   to: string;
   subject: string;
   html: string;
   fromOverride?: string; // "Имя <email>"
   replyTo?: string;
+  attachments?: Attachment[];
 }
 
 /**
