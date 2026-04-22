@@ -496,6 +496,18 @@ export function IncomingDocumentsManager({ organizationId }: Props) {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {linkDialogFor && (
+        <IncomingDocumentLinkDialog
+          open={!!linkDialogFor}
+          onOpenChange={(v) => { if (!v) setLinkDialogFor(null); }}
+          organizationId={organizationId}
+          incomingDocId={linkDialogFor.id}
+          currentLinkedId={linkDialogFor.related_signature_id}
+          hint={linkDialogFor.counterparty_name || linkDialogFor.title}
+          onLinked={refresh}
+        />
+      )}
     </Card>
   );
 }
