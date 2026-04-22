@@ -96,7 +96,7 @@ function BlockPicker({ onSelect }: { onSelect: (item: GridItem) => void }) {
   };
 
   return (
-    <div className="flex flex-col gap-3 max-h-[calc(100vh-6rem)] sm:max-h-[calc(100vh-4rem)]">
+    <div className="flex flex-col gap-3 h-full max-h-[80vh]">
       <div className="flex items-center justify-between gap-3 shrink-0">
         <h3 className="text-base font-semibold text-foreground">Выберите блок</h3>
         <span className="text-[11px] text-muted-foreground hidden sm:inline">Один клик — добавить</span>
