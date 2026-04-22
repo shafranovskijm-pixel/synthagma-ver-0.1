@@ -3978,6 +3978,8 @@ export type Database = {
       org_billing_documents: {
         Row: {
           created_at: string
+          deleted_at: string | null
+          deleted_by: string | null
           doc_type: string
           file_url: string
           id: string
@@ -3987,6 +3989,8 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          deleted_at?: string | null
+          deleted_by?: string | null
           doc_type?: string
           file_url: string
           id?: string
@@ -3996,6 +4000,8 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          deleted_at?: string | null
+          deleted_by?: string | null
           doc_type?: string
           file_url?: string
           id?: string
@@ -8783,6 +8789,7 @@ export type Database = {
           user_id: string
         }[]
       }
+      get_documents_kpi: { Args: { p_organization_id: string }; Returns: Json }
       get_frdo_export_readiness: {
         Args: { p_organization_id: string }
         Returns: {
@@ -8901,6 +8908,25 @@ export type Database = {
       is_webinar_participant: {
         Args: { _user_id: string; _webinar_id: string }
         Returns: boolean
+      }
+      list_recycle_bin: {
+        Args: {
+          p_limit?: number
+          p_offset?: number
+          p_organization_id: string
+          p_search?: string
+        }
+        Returns: {
+          deleted_at: string
+          deleted_by: string
+          display_name: string
+          id: string
+          meta: string
+          organization_id: string
+          source_table: string
+          total_count: number
+          type_label: string
+        }[]
       }
       lookup_profile_by_login: {
         Args: { p_login: string }
