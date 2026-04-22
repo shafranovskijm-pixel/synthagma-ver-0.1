@@ -27,10 +27,14 @@ import {
   Download,
   Loader2,
   Plus,
+  History,
+  Link2,
 } from "lucide-react";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import { DocumentDropZone } from "@/components/organization/DocumentDropZone";
+import { OrgDocumentVersionsDialog } from "@/components/organization/OrgDocumentVersionsDialog";
+import { OrgDocumentShareDialog } from "@/components/organization/OrgDocumentShareDialog";
 
 interface OrgDocument {
   id: string;
