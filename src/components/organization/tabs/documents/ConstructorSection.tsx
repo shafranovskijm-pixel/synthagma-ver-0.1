@@ -2,7 +2,7 @@ import React from "react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { Building2, FileText, ScrollText, Award, UserCheck, Stamp, Lightbulb, ExternalLink, Eye } from "lucide-react";
+import { Building2, FileText, ScrollText, Award, UserCheck, Stamp, Lightbulb, ExternalLink, Eye, Users } from "lucide-react";
 import { OrgRequisitesForm } from "@/components/organization/OrgRequisitesForm";
 import { ProtocolTemplateEditor } from "@/components/organization/ProtocolTemplateEditor";
 import { CertificateTemplateEditor } from "@/components/organization/CertificateTemplateEditor";
@@ -10,6 +10,7 @@ import { ConsentGenerator } from "@/components/organization/ConsentGenerator";
 import { StampSignatureUploader } from "@/components/organization/StampSignatureUploader";
 import { DocumentPreview } from "@/components/organization/DocumentPreview";
 import { ContractLegalFaq } from "@/components/organization/ContractLegalFaq";
+import { OrgSignatoriesManager } from "@/components/organization/OrgSignatoriesManager";
 
 interface ConstructorSectionProps {
   organizationId: string;
@@ -40,6 +41,7 @@ export function ConstructorSection({
           <TabsTrigger value="documents" className="rounded-lg text-xs gap-1.5 px-2.5 py-1.5"><Award className="w-3.5 h-3.5" /><span className="hidden sm:inline">Удост./Диплом</span></TabsTrigger>
           <TabsTrigger value="consent" className="rounded-lg text-xs gap-1.5 px-2.5 py-1.5"><UserCheck className="w-3.5 h-3.5" /><span className="hidden sm:inline">Согласие ПД</span></TabsTrigger>
           <TabsTrigger value="stamp" className="rounded-lg text-xs gap-1.5 px-2.5 py-1.5"><Stamp className="w-3.5 h-3.5" /><span className="hidden sm:inline">Печать</span></TabsTrigger>
+          <TabsTrigger value="signatories" className="rounded-lg text-xs gap-1.5 px-2.5 py-1.5"><Users className="w-3.5 h-3.5" /><span className="hidden sm:inline">Подписанты</span></TabsTrigger>
           <TabsTrigger value="info" className="rounded-lg text-xs gap-1.5 px-2.5 py-1.5"><Lightbulb className="w-3.5 h-3.5" /><span className="hidden sm:inline">Справка</span></TabsTrigger>
         </TabsList>
 
@@ -90,6 +92,10 @@ export function ConstructorSection({
               </AccordionContent>
             </AccordionItem>
           </Accordion>
+        </TabsContent>
+
+        <TabsContent value="signatories" className="mt-0">
+          <OrgSignatoriesManager organizationId={organizationId} />
         </TabsContent>
 
         <TabsContent value="info" className="mt-0">
