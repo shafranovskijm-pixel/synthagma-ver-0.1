@@ -166,7 +166,11 @@ export function ChatView({
         />
         <Button
           size="icon"
-          className="rounded-full shrink-0 h-10 w-10 bg-gradient-to-br from-primary to-primary/80 shadow-md shadow-primary/30"
+          className="rounded-full shrink-0 h-10 w-10 text-white shadow-md"
+          style={{
+            background: `linear-gradient(135deg, hsl(var(--chat-accent)), hsl(var(--chat-accent-dark)))`,
+            boxShadow: `0 6px 16px -6px hsl(var(--chat-accent) / 0.5)`,
+          }}
           onClick={() => handleSend()}
           disabled={isLoading || !input.trim() || status === "closed"}
         >
