@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import { Helmet } from "react-helmet-async";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { SigmaLogo } from "@/components/ui/SigmaLogo";
@@ -19,6 +20,17 @@ const stagger = {
 const FeatureFRDO = () => {
   return (
     <div className="min-h-screen bg-background">
+      <Helmet>
+        <title>Выпуск ФРДО и реестр документов об образовании — СИНТАГМА</title>
+        <meta name="description" content="Автоматизация ФИС ФРДО: подготовка XLSX-шаблонов 35/41, реестр документов об образовании, валидация СНИЛС/дат до выгрузки. Формирование файла — на любом тарифе, выгрузка — на «Профессиональном»." />
+        <meta name="keywords" content="выпуск ФРДО, реестр документов об образовании, ФИС ФРДО, выгрузка ФРДО, шаблон ФРДО 35 столбцов, шаблон ФРДО 41 столбец, автоматизация ФРДО, обрнадзор ФРДО, удостоверения о повышении квалификации, дипломы переподготовки" />
+        <link rel="canonical" href="https://sintagma.com.ru/feature/frdo" />
+        <meta property="og:title" content="Выпуск ФРДО и реестр документов об образовании — СИНТАГМА" />
+        <meta property="og:description" content="Готовый реестр документов об образовании и автоматическая выгрузка в ФИС ФРДО без ошибок «недопустимый символ». Формирование — бесплатно, выгрузка — на тарифе «Профессиональный»." />
+        <meta property="og:type" content="website" />
+        <meta property="og:url" content="https://sintagma.com.ru/feature/frdo" />
+        <meta property="og:image" content="https://sintagma.com.ru/og-image.png" />
+      </Helmet>
       {/* Header */}
       <header className="sticky top-0 z-50 bg-background/80 backdrop-blur-xl border-b border-border">
         <div className="container mx-auto px-6 py-4 flex items-center justify-between">
@@ -277,8 +289,11 @@ const FeatureFRDO = () => {
             <motion.h2 variants={fadeUp} className="font-display text-3xl font-medium mb-4">
               Автоматизируйте работу с ФИС ФРДО
             </motion.h2>
-            <motion.p variants={fadeUp} className="text-muted-foreground mb-8 max-w-xl mx-auto">
-              Начните бесплатно и откройте доступ к ФРДО на тарифе «Максимальный»
+            <motion.p variants={fadeUp} className="text-muted-foreground mb-3 max-w-xl mx-auto">
+              Формирование XLSX-файла для ФРДО доступно на любом тарифе, включая <strong className="text-foreground">бесплатный</strong>. Прямая выгрузка в ФИС ФРДО — на тарифе <strong className="text-foreground">«Профессиональный»</strong>.
+            </motion.p>
+            <motion.p variants={fadeUp} className="text-sm text-muted-foreground mb-8 max-w-xl mx-auto">
+              Начните бесплатно — попробуйте подготовку реестра, а к выгрузке подключитесь, когда будете готовы.
             </motion.p>
             <motion.div variants={fadeUp}>
               <Link to="/register-organization">
