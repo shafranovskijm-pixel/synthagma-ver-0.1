@@ -7,13 +7,14 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Plus, Trash2, Pencil, Send, FileText, Mail, Briefcase, Sparkles } from "lucide-react";
+import { Plus, Trash2, Pencil, Send, FileText, Mail, Briefcase, Sparkles, Wand2 } from "lucide-react";
 import { useOrgProposals, type OrgProposal, type OrgProposalServiceItem } from "@/hooks/useOrgProposals";
 import { useOrgServices } from "@/hooks/useOrgServices";
 import { useEmailTemplates } from "@/hooks/useEmailTemplates";
 import { useOrgSmtp } from "@/hooks/useOrgSmtp";
 import { CreateContractDialog } from "./CreateContractDialog";
 import { ProposalPresetPicker } from "./ProposalPresetPicker";
+import { ProposalVariablesCheckDialog } from "./ProposalVariablesCheckDialog";
 import type { ProposalPreset } from "@/hooks/useProposalPresets";
 import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
@@ -43,6 +44,7 @@ export function OrgProposalsManager({ organizationId, onGoToSmtp }: Props) {
   const [sendDialog, setSendDialog] = useState<{ proposal: OrgProposal; email: string; templateId: string } | null>(null);
   const [contractFromCP, setContractFromCP] = useState<OrgProposal | null>(null);
   const [pickerOpen, setPickerOpen] = useState(false);
+  const [variablesCheckOpen, setVariablesCheckOpen] = useState(false);
   const [orgCourses, setOrgCourses] = useState<Array<{ id: string; title: string; duration: string | null; price: number | null; slug: string | null }>>([]);
   const [busy, setBusy] = useState(false);
 
@@ -228,7 +230,19 @@ export function OrgProposalsManager({ organizationId, onGoToSmtp }: Props) {
                       {orgCourses.map(c => <SelectItem key={c.id} value={c.id}>{c.title}</SelectItem>)}
                     </SelectContent>
                   </Select>
-                  <p className="text-[10px] text-muted-foreground mt-1">Подставит название, длительность и цену в маркетинговые блоки</p>
+                  <div className="flex items-center justify-between mt-1 gap-2">
+                    <p className="text-[10px] text-muted-foreground flex-1">Подставит название, длительность и цену в маркетинговые блоки</p>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      className="h-7 text-xs gap-1 shrink-0"
+                      onClick={() => setVariablesCheckOpen(true)}
+                    >
+                      <Wand2 className="w-3 h-3" />
+                      Проверить подстановку
+                    </Button>
+                  </div>
                 </div>
               </div>
               <div><Label>Примечание</Label><Textarea rows={2} value={editor.proposal.custom_note || ""} onChange={e => setEditor(s => s && ({ ...s, proposal: { ...s.proposal, custom_note: e.target.value } }))} /></div>
@@ -325,6 +339,23 @@ export function OrgProposalsManager({ organizationId, onGoToSmtp }: Props) {
         onClose={() => setPickerOpen(false)}
         onPick={handlePresetPick}
       />
+
+      {editor && (
+        <ProposalVariablesCheckDialog
+          open={variablesCheckOpen}
+          onClose={() => setVariablesCheckOpen(false)}
+          course={
+            (editor.proposal as any).linked_course_id
+              ? orgCourses.find(c => c.id === (editor.proposal as any).linked_course_id) || null
+              : null
+          }
+          companyName={editor.proposal.company_name}
+          contactPerson={editor.proposal.contact_person}
+          introHtml={(editor.proposal as any).intro_html}
+          outroHtml={(editor.proposal as any).outro_html}
+          items={editor.items.map(i => ({ custom_name: i.custom_name, custom_description: i.custom_description }))}
+        />
+      )}
     </div>
   );
 }
