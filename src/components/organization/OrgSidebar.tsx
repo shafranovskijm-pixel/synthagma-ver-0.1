@@ -421,14 +421,15 @@ export function OrgSidebar() {
         role="navigation"
         aria-label="Основная навигация"
         className={cn(
-          "fixed inset-y-0 left-0 z-50 bg-card border-r border-border/60 shadow-[2px_0_12px_rgba(0,0,0,0.04)] flex flex-col transition-[transform,width] duration-300",
+          "fixed inset-y-0 left-0 z-50 shadow-[2px_0_12px_rgba(0,0,0,0.04)] flex flex-col transition-[transform,width] duration-300",
           effectiveExpanded ? "w-[220px]" : "w-[88px]",
           isMobileSidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
         )}
         style={{
           backdropFilter: "none",
           WebkitBackdropFilter: "none",
-          // Subtle vertical brand stripe for accent without losing opacity
+          backgroundColor: `hsl(${brandHsl} / 0.06)`,
+          // Subtle vertical brand stripe for accent + soft outer shadow
           boxShadow: `inset 3px 0 0 hsl(${brandHsl} / 0.5), 2px 0 12px rgba(0,0,0,0.04)`,
         }}
       >
@@ -445,7 +446,7 @@ export function OrgSidebar() {
             <TooltipTrigger asChild>
               <button
                 onClick={logoUrl ? () => logoInputRef.current?.click() : toggleTheme}
-                className="relative flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-card shadow-sm hover:ring-2 hover:ring-primary/40 transition-all group/logo"
+                className="relative flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-background/40 shadow-sm hover:ring-2 hover:ring-primary/40 transition-all group/logo"
               >
                 {isUploadingLogo ? (
                   <div className="animate-spin rounded-full h-5 w-5 border-2 border-primary border-t-transparent" />
