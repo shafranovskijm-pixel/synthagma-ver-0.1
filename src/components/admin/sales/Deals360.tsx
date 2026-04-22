@@ -494,6 +494,7 @@ export function Deals360({
               onAddCall={onAddCall ? () => onAddCall({ name: selected.name, inn: selected.inn }) : undefined}
               onAddNote={onAddNote ? () => onAddNote({ name: selected.name, inn: selected.inn }) : undefined}
               onAddTask={onAddTask ? () => onAddTask({ name: selected.name, inn: selected.inn }) : undefined}
+              onSendForSigning={onSendForSigning ? () => onSendForSigning({ name: selected.name, inn: selected.inn, email: contactsByInn[selected.inn]?.email }) : undefined}
             />
             <DealCommunication
               inn={selected.inn}
