@@ -433,6 +433,11 @@ export function WebinarsManager({ organizationId }: Props) {
                 <Button size="sm" variant="ghost" onClick={() => copyWebinarLink(w)} title="Скопировать ссылку">
                   <Link className="w-3 h-3" />
                 </Button>
+                {w.source_type === "livekit" && (
+                  <Button size="sm" variant="ghost" onClick={() => setShareWebinar(w)} title="Поделиться (QR-код, настройки гостей)">
+                    <Share2 className="w-3 h-3" />
+                  </Button>
+                )}
                 <Button size="sm" variant="ghost" className="text-destructive" onClick={() => setDeleteTarget(w)}>
                   <Trash2 className="w-3 h-3" />
                 </Button>
