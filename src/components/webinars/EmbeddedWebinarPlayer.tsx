@@ -256,16 +256,17 @@ function LiveKitEmbed({
           token={token}
           serverUrl={wsUrl}
           connect={true}
-          video={true}
-          audio={true}
+          video={!viewOnly}
+          audio={!viewOnly}
           style={{ height: "100%" }}
         >
           <LiveKitTopBar
             title={webinarTitle}
-            publicLink={publicLink}
+            publicLink={viewOnly ? null : publicLink}
             onShare={() => setShareOpen(true)}
             onEnd={onEnd}
-            hasShareSettings={Boolean(publicToken)}
+            hasShareSettings={!viewOnly && Boolean(publicToken)}
+            viewOnly={viewOnly}
           />
           <VideoConference />
           <WelcomeOverlay webinarTitle={webinarTitle} />
@@ -273,7 +274,7 @@ function LiveKitEmbed({
         </LiveKitRoom>
       </div>
 
-      {publicToken && (
+      {!viewOnly && publicToken && (
         <ShareWebinarDialog
           open={shareOpen}
           onOpenChange={setShareOpen}
