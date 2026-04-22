@@ -24,38 +24,48 @@ const allItems: GridItem[] = [
   ...aiShortcuts.map((s) => ({ type: s.type, icon: s.icon, label: s.label, group: "ИИ", isAI: true, description: s.description })),
 ];
 
-function BlockGrid({ items, selected, onPick }: { items: GridItem[]; selected: GridItem["type"] | null; onPick: (item: GridItem) => void }) {
+function BlockGrid({ items, onPick }: { items: GridItem[]; onPick: (item: GridItem) => void }) {
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-      {items.map((item) => {
-        const isActive = item.type === selected;
-        const iconClass = blockIconBg[item.type as BlockType] || "text-primary bg-primary/10";
-        return (
-          <button
-            key={item.type}
-            type="button"
-            onClick={() => onPick(item)}
-            className={cn(
-              "group flex flex-col items-center justify-center gap-2 rounded-xl border-2 p-4 text-center transition-all relative",
-              "hover:border-primary/40 hover:bg-primary/5",
-              isActive ? "border-primary bg-primary/10 shadow-sm" : "border-border/60 bg-card",
-            )}
-          >
-            {item.isAI && (
-              <span className="absolute top-1.5 right-1.5 text-[9px] font-semibold uppercase tracking-wide bg-gradient-to-r from-primary to-purple-500 text-primary-foreground rounded-full px-1.5 py-0.5 leading-none">
-                AI
-              </span>
-            )}
-            <div className={cn("w-11 h-11 rounded-xl flex items-center justify-center", iconClass)}>
-              <item.icon className="w-5 h-5" />
-            </div>
-            <span className={cn("text-sm font-medium leading-tight", isActive ? "text-primary" : "text-foreground")}>
-              {item.label}
-            </span>
-          </button>
-        );
-      })}
-    </div>
+    <TooltipProvider delayDuration={400}>
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        {items.map((item) => {
+          const iconClass = blockIconBg[item.type as BlockType] || "text-primary bg-primary/10";
+          const description = item.description || blockDescriptions[item.type as BlockType] || "";
+          return (
+            <Tooltip key={item.type}>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  onClick={() => onPick(item)}
+                  title={description}
+                  className={cn(
+                    "group flex flex-col items-center justify-center gap-2 rounded-xl border-2 p-4 text-center transition-all relative",
+                    "border-border/60 bg-card hover:border-primary hover:bg-primary/10 hover:shadow-sm hover:scale-[1.02]",
+                  )}
+                >
+                  {item.isAI && (
+                    <span className="absolute top-1.5 right-1.5 text-[9px] font-semibold uppercase tracking-wide bg-gradient-to-r from-primary to-purple-500 text-primary-foreground rounded-full px-1.5 py-0.5 leading-none">
+                      AI
+                    </span>
+                  )}
+                  <div className={cn("w-11 h-11 rounded-xl flex items-center justify-center", iconClass)}>
+                    <item.icon className="w-5 h-5" />
+                  </div>
+                  <span className="text-sm font-medium leading-tight text-foreground group-hover:text-primary">
+                    {item.label}
+                  </span>
+                </button>
+              </TooltipTrigger>
+              {description && (
+                <TooltipContent side="top" className="max-w-[240px] text-xs leading-relaxed">
+                  {description}
+                </TooltipContent>
+              )}
+            </Tooltip>
+          );
+        })}
+      </div>
+    </TooltipProvider>
   );
 }
 
