@@ -19,6 +19,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { RadioPlayerButton } from "@/components/radio/RadioPlayerButton";
+import { SectionBreadcrumbDropdown } from "./SectionBreadcrumbDropdown";
 
 function getUserInitials(email?: string | null, name?: string | null): string {
   if (name) {
@@ -306,7 +307,13 @@ export function OrgDashboardHeader() {
                   {customName || organizationName || "Школа"}
                 </button>
                 <span className="opacity-50">›</span>
-                <span className="text-muted-foreground/80 hidden sm:inline">{breadcrumb.section}</span>
+                <span className="hidden sm:inline">
+                  <SectionBreadcrumbDropdown
+                    section={getSectionId()}
+                    label={breadcrumb.section}
+                    activeTab={activeTab}
+                  />
+                </span>
                 <span className="opacity-50 hidden sm:inline">›</span>
                 <span className="font-display text-sm font-semibold text-foreground/85 truncate">
                   {breadcrumb.page}
