@@ -205,31 +205,6 @@ export function InlineAddBlockButton({ onAdd }: { onAdd: (type: BlockType, pendi
   );
 }
 
-// Compact "+" trigger used between blocks (left of block on hover)
-export function InlineAddBlockButton({ onAdd }: { onAdd: (type: BlockType, pendingAI?: AIShortcutType) => void }) {
-  const [open, setOpen] = useState(false);
-  const handleSelect = (item: GridItem) => {
-    setOpen(false);
-    const { type, pendingAI } = resolvePick(item);
-    onAdd(type, pendingAI);
-  };
-  return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
-        <button
-          className="h-10 w-10 rounded-full bg-primary text-primary-foreground hover:bg-primary/90 hover:scale-110 flex items-center justify-center transition-all shadow-lg shadow-primary/30 ring-2 ring-primary/20 hover:ring-primary/40"
-          title="Добавить блок"
-        >
-          <Plus className="w-5 h-5" strokeWidth={2.5} />
-        </button>
-      </PopoverTrigger>
-      <PopoverContent align="start" side="right" className="w-[560px] max-w-[calc(100vw-2rem)] p-4">
-        <BlockPicker onSelect={handleSelect} onCancel={() => setOpen(false)} />
-      </PopoverContent>
-    </Popover>
-  );
-}
-
 export function AIGenerateButton({ isGenerating, onClick }: { isGenerating: boolean; onClick: () => void }) {
   return (
     <Button variant="outline" size="sm" onClick={onClick} disabled={isGenerating} className="gap-2 text-xs">
