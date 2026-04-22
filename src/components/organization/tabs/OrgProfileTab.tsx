@@ -778,8 +778,7 @@ export function OrgProfileTab({ organizationId, initialSubTab }: ProfileTabProps
             title: "Бизнес",
             desc: "Финансы, маркетинг, продажи",
             items: [
-              { icon: Wallet, bg: "bg-primary/15", color: "text-primary", label: "Финансы", desc: "Подписка и оплаты", alwaysOn: true, badge: "always" },
-              { icon: Briefcase, bg: "bg-accent/15", color: "text-accent", label: "Продажи", desc: "CRM: воронка, лиды, КП, рассылки", key: "showSales", badge: "beta" },
+              { icon: Briefcase, bg: "bg-accent/15", color: "text-accent", label: "Продажи", desc: "CRM: воронка, лиды, КП, рассылки", alwaysOn: true, badge: "always" },
               { icon: Bot, bg: "bg-primary/15", color: "text-primary", label: "ИИ-преподаватели", desc: "Голосовые ИИ-аватары", key: "showAITutors", badge: "beta" },
               { icon: ShoppingBag, bg: "bg-accent/15", color: "text-accent", label: "Маркетплейс", desc: "Магазин курсов", key: "showServices" },
               { icon: Sparkles, bg: "bg-primary/15", color: "text-primary", label: "Витрина и Telegram", desc: "Публичная витрина курсов", alwaysOn: true, badge: "always" },
