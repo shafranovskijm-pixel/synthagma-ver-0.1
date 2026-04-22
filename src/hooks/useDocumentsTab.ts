@@ -56,7 +56,14 @@ export function useDocumentsTab(organizationId: string | null, organizationName?
   const { plan } = useSubscriptionLimits(organizationId);
   const isFreePlan = plan === 'free';
 
-  const [activeTab, setActiveTab] = useState<DocumentSubTab>("counterparties");
+  const [activeTab, setActiveTabRaw] = useState<DocumentSubTab>("counterparties");
+  // Prefilters allow KPI cards (or other shortcuts) to deep-link into a tab with a status/type filter applied
+  const [tabPrefilters, setTabPrefilters] = useState<Partial<Record<DocumentSubTab, Record<string, string>>>>({});
+  const setActiveTab = (tab: DocumentSubTab, prefilter?: Record<string, string>) => {
+    if (prefilter) setTabPrefilters((prev) => ({ ...prev, [tab]: prefilter }));
+    else setTabPrefilters((prev) => { const n = { ...prev }; delete n[tab]; return n; });
+    setActiveTabRaw(tab);
+  };
   const [constructorTab, setConstructorTab] = useState("requisites");
   const [stampUrl, setStampUrl] = useState<string | null>(null);
   const [signatureUrl, setSignatureUrl] = useState<string | null>(null);
@@ -461,7 +468,7 @@ export function useDocumentsTab(organizationId: string | null, organizationName?
 
   return {
     d, plan, isFreePlan,
-    activeTab, setActiveTab,
+    activeTab, setActiveTab, tabPrefilters,
     constructorTab, setConstructorTab,
     stampUrl, signatureUrl,
     handleStampUpload, handleSignatureUpload, handleStampRemove, handleSignatureRemove,

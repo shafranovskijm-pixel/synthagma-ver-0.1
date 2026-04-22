@@ -68,13 +68,15 @@ const TYPE_LABELS: Record<string, string> = {
 interface Props {
   /** Если задано — фильтруем по этой организации (орг-кабинет). Если undefined — показываем все (админка). */
   organizationId?: string;
+  /** Начальное значение фильтра по статусу — для deep-link из KPI-карточек */
+  initialStatus?: string;
 }
 
-export function SignaturesJournal({ organizationId }: Props) {
+export function SignaturesJournal({ organizationId, initialStatus }: Props) {
   const [rows, setRows] = useState<SignatureRow[]>([]);
   const [orgs, setOrgs] = useState<Record<string, OrgInfo>>({});
   const [loading, setLoading] = useState(true);
-  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [statusFilter, setStatusFilter] = useState<string>(initialStatus || "all");
   const [typeFilter, setTypeFilter] = useState<string>("all");
   const [dateFrom, setDateFrom] = useState<string>("");
   const [dateTo, setDateTo] = useState<string>("");
@@ -82,6 +84,14 @@ export function SignaturesJournal({ organizationId }: Props) {
   const [selected, setSelected] = useState<SignatureRow | null>(null);
   const [pageSize, setPageSize] = useState(200);
   const [totalCount, setTotalCount] = useState(0);
+
+  // React to initialStatus changes (when navigating from KPI between tabs)
+  useEffect(() => {
+    if (initialStatus && initialStatus !== statusFilter) {
+      setStatusFilter(initialStatus);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialStatus]);
 
   const load = async (limit = pageSize) => {
     setLoading(true);
