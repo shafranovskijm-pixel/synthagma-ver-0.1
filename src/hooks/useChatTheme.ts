@@ -13,7 +13,8 @@ export interface ChatTheme {
 }
 
 export const CHAT_THEMES: ChatTheme[] = [
-  { id: "teal",    name: "Бирюза",    accent: "174 72% 46%", accentDark: "174 72% 28%" },
+  // «footer» — тёмный фирменный фон главной страницы (#0a0e1a → чуть светлее для градиента)
+  { id: "teal",    name: "Подвал",    accent: "225 43% 7%",  accentDark: "222 40% 14%" },
   { id: "purple",  name: "Пурпур",    accent: "270 60% 55%", accentDark: "270 60% 35%" },
   { id: "sunset",  name: "Закат",     accent: "24 90% 55%",  accentDark: "16 80% 38%"  },
   { id: "ocean",   name: "Океан",     accent: "210 80% 50%", accentDark: "215 80% 30%" },
@@ -33,9 +34,9 @@ export const CHAT_BACKGROUNDS: { id: ChatBgId; name: string }[] = [
  *  - light/dark mode,
  *  - пользовательских настроек.
  *
- * Используется бирюза (teal) + звёздное поле — как в подвале главной страницы.
+ * Используется тёмно-синий цвет подвала главной страницы (#0a0e1a) + звёздное поле.
  */
-const FIXED_THEME = CHAT_THEMES[0]; // teal
+const FIXED_THEME = CHAT_THEMES[0];
 const FIXED_BG: ChatBgId = "stars";
 
 export function useChatTheme() {
