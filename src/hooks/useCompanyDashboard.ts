@@ -58,7 +58,7 @@ export function useCompanyDashboard(viewAsUserId?: string) {
       // 1) Try as company owner
       let { data: companyData } = await supabase
         .from('companies')
-        .select('id, name, inn, email, director, organization_id')
+        .select('id, name, inn, email, director, organization_id, user_id')
         .eq('user_id', targetUserId)
         .maybeSingle();
 
@@ -74,7 +74,7 @@ export function useCompanyDashboard(viewAsUserId?: string) {
         if (staffRow?.company_id) {
           const { data } = await supabase
             .from('companies')
-            .select('id, name, inn, email, director, organization_id')
+            .select('id, name, inn, email, director, organization_id, user_id')
             .eq('id', staffRow.company_id)
             .maybeSingle();
           companyData = data;
