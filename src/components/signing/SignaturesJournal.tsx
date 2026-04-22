@@ -83,6 +83,8 @@ export function SignaturesJournal({ organizationId, initialStatus }: Props) {
   const [dateTo, setDateTo] = useState<string>("");
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState<SignatureRow | null>(null);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [bulkBusy, setBulkBusy] = useState(false);
   const [pageSize, setPageSize] = useState(200);
   const [totalCount, setTotalCount] = useState(0);
 
