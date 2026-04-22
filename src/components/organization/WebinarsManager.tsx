@@ -261,7 +261,41 @@ export function WebinarsManager({ organizationId }: Props) {
           <Button onClick={() => { setEditWebinar(null); setShowCreate(true); }} size="sm" variant="outline">
             <Plus className="w-4 h-4 mr-2" />Создать вебинар
           </Button>
-        </div>
+      </div>
+
+      {/* Live now banner */}
+      {webinars.filter(w => w.status === "live" && w.source_type === "livekit").map(w => (
+        <Card key={`live-${w.id}`} className="p-4 border-destructive/40 bg-destructive/5">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-3 justify-between">
+            <div className="flex items-center gap-3 min-w-0">
+              <span className="relative flex h-3 w-3 shrink-0">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-destructive opacity-75" />
+                <span className="relative inline-flex rounded-full h-3 w-3 bg-destructive" />
+              </span>
+              <div className="min-w-0">
+                <div className="text-xs font-semibold text-destructive uppercase tracking-wide">Сейчас в эфире</div>
+                <div className="font-medium truncate">{w.title}</div>
+              </div>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <Button size="sm" variant="default" asChild>
+                <a href={`/webinar/${w.id}/live`} target="_blank" rel="noreferrer">
+                  <Video className="w-4 h-4 mr-1" /> Войти как ведущий
+                </a>
+              </Button>
+              <Button size="sm" variant="outline" onClick={() => copyWebinarLink(w)}>
+                <Copy className="w-4 h-4 mr-1" /> Скопировать ссылку
+              </Button>
+              <Button size="sm" variant="outline" onClick={() => setShareWebinar(w)}>
+                <QrCode className="w-4 h-4 mr-1" /> QR-код
+              </Button>
+              <Button size="sm" variant="destructive" onClick={() => handleStopLive(w)} disabled={actionLoading === w.id}>
+                <Square className="w-4 h-4 mr-1" /> Завершить
+              </Button>
+            </div>
+          </div>
+        </Card>
+      ))}
       </div>
 
       {webinars.length > 0 && (
