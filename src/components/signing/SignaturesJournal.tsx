@@ -380,8 +380,12 @@ export function SignaturesJournal({ organizationId, initialStatus }: Props) {
                         >
                           <MessageCircle className="w-4 h-4" />
                         </Button>
-                        {(r.status === "sent" || r.status === "in_review" || r.status === "changes_requested") && (
-                          <Button variant="ghost" size="icon" title="Скопировать ссылку" onClick={() => copyLink(r.signature_token)}><Copy className="w-4 h-4" /></Button>
+                        {(r.status === "sent" || r.status === "viewed" || r.status === "in_review" || r.status === "changes_requested") && (
+                          <>
+                            <Button variant="ghost" size="icon" title="Скопировать ссылку" onClick={() => copyLink(r.signature_token)}><Copy className="w-4 h-4" /></Button>
+                            <Button variant="ghost" size="icon" title="Напомнить (повторно отправить email)" onClick={() => remindRecipient(r)}><Bell className="w-4 h-4 text-amber-600" /></Button>
+                            <Button variant="ghost" size="icon" title="Отменить подписание" onClick={() => cancelSignature(r)}><Ban className="w-4 h-4 text-destructive" /></Button>
+                          </>
                         )}
                         {r.status === "signed" && (
                           <>
