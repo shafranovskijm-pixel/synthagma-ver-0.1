@@ -177,8 +177,8 @@ export function SignaturesJournal({ organizationId, initialStatus }: Props) {
     try {
       const { error } = await supabase.functions.invoke("send-signing-email", {
         body: {
-          signature_id: r.id,
-          is_reminder: true,
+          signatureId: r.id,
+          isReminder: true,
         },
       });
       if (error) throw error;
