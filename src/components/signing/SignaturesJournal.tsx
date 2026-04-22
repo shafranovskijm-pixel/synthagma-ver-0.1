@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Eye, FileText, Search, Send, CheckCircle2, XCircle, AlertTriangle, Copy, Download, FileDown, MessageCircle, Edit3 } from "lucide-react";
+import { Eye, FileText, Search, Send, CheckCircle2, XCircle, AlertTriangle, Copy, Download, FileDown, MessageCircle, Edit3, Award } from "lucide-react";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 import { toast } from "sonner";
 import { format } from "date-fns";
@@ -308,7 +308,10 @@ export function SignaturesJournal({ organizationId }: Props) {
                           <Button variant="ghost" size="icon" title="Скопировать ссылку" onClick={() => copyLink(r.signature_token)}><Copy className="w-4 h-4" /></Button>
                         )}
                         {r.status === "signed" && (
-                          <Button variant="ghost" size="icon" title="Скачать протокол" onClick={() => handleDownloadProtocol(r)}><Download className="w-4 h-4" /></Button>
+                          <>
+                            <Button variant="ghost" size="icon" title="Скачать протокол (HTML)" onClick={() => handleDownloadProtocol(r)}><Download className="w-4 h-4" /></Button>
+                            <Button variant="ghost" size="icon" title="Сертификат подписи (PDF)" onClick={() => handleDownloadCertificate(r)}><Award className="w-4 h-4 text-emerald-600" /></Button>
+                          </>
                         )}
                       </div>
                     </TableCell>
@@ -381,9 +384,14 @@ export function SignaturesJournal({ organizationId }: Props) {
                   </a>
                 </Button>
                 {selected.status === "signed" && (
-                  <Button variant="default" className="flex-1 gap-2 min-w-[180px]" onClick={() => handleDownloadProtocol(selected)}>
-                    <Download className="w-4 h-4" />Скачать протокол
-                  </Button>
+                  <>
+                    <Button variant="outline" className="flex-1 gap-2 min-w-[180px]" onClick={() => handleDownloadProtocol(selected)}>
+                      <Download className="w-4 h-4" />Протокол (HTML)
+                    </Button>
+                    <Button variant="default" className="flex-1 gap-2 min-w-[180px]" onClick={() => handleDownloadCertificate(selected)}>
+                      <Award className="w-4 h-4" />Сертификат подписи (PDF)
+                    </Button>
+                  </>
                 )}
               </div>
             </div>
