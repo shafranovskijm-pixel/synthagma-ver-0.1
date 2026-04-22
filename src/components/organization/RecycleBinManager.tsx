@@ -52,9 +52,27 @@ export function RecycleBinManager({ organizationId }: Props) {
 
   const selectedItems = filtered.filter(it => selected.has(key(it)));
 
-  const daysLeft = (deletedAt: string) => {
-    const ms = new Date(deletedAt).getTime() + 30 * 24 * 60 * 60 * 1000 - Date.now();
-    return Math.max(0, Math.ceil(ms / (24 * 60 * 60 * 1000)));
+  const purgeOlderThan = async (days: number) => {
+    const cutoff = Date.now() - days * 24 * 60 * 60 * 1000;
+    const targets = items.filter(
+      it => it.organization_id === organizationId && new Date(it.deleted_at).getTime() < cutoff
+    );
+    if (targets.length === 0) {
+      toast.info(`Нет документов старше ${days} дн. в текущей выборке`);
+      setConfirmDays(null);
+      return;
+    }
+    setPurging(true);
+    let ok = 0;
+    for (const it of targets) {
+      const success = await purgeOne(it);
+      if (success) ok++;
+    }
+    setPurging(false);
+    setConfirmDays(null);
+    setSelected(new Set());
+    toast.success(`Удалено окончательно: ${ok} из ${targets.length}`);
+    refresh();
   };
 
   if (loading) {
