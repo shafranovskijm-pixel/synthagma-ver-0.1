@@ -4173,6 +4173,129 @@ export type Database = {
           },
         ]
       }
+      org_document_share_links: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          created_by_name: string | null
+          document_id: string
+          download_count: number
+          expires_at: string | null
+          id: string
+          is_active: boolean
+          last_accessed_at: string | null
+          max_downloads: number | null
+          organization_id: string
+          password_hash: string | null
+          token: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          created_by_name?: string | null
+          document_id: string
+          download_count?: number
+          expires_at?: string | null
+          id?: string
+          is_active?: boolean
+          last_accessed_at?: string | null
+          max_downloads?: number | null
+          organization_id: string
+          password_hash?: string | null
+          token?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          created_by_name?: string | null
+          document_id?: string
+          download_count?: number
+          expires_at?: string | null
+          id?: string
+          is_active?: boolean
+          last_accessed_at?: string | null
+          max_downloads?: number | null
+          organization_id?: string
+          password_hash?: string | null
+          token?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "org_document_share_links_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "org_documents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "org_document_share_links_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      org_document_versions: {
+        Row: {
+          change_summary: string | null
+          created_at: string
+          document_id: string
+          file_name: string | null
+          file_path: string | null
+          file_size: number | null
+          file_url: string | null
+          id: string
+          organization_id: string
+          uploaded_by: string | null
+          uploaded_by_name: string | null
+          version_number: number
+        }
+        Insert: {
+          change_summary?: string | null
+          created_at?: string
+          document_id: string
+          file_name?: string | null
+          file_path?: string | null
+          file_size?: number | null
+          file_url?: string | null
+          id?: string
+          organization_id: string
+          uploaded_by?: string | null
+          uploaded_by_name?: string | null
+          version_number: number
+        }
+        Update: {
+          change_summary?: string | null
+          created_at?: string
+          document_id?: string
+          file_name?: string | null
+          file_path?: string | null
+          file_size?: number | null
+          file_url?: string | null
+          id?: string
+          organization_id?: string
+          uploaded_by?: string | null
+          uploaded_by_name?: string | null
+          version_number?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "org_document_versions_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "org_documents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "org_document_versions_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       org_documents: {
         Row: {
           created_at: string
@@ -9014,6 +9137,15 @@ export type Database = {
       upgrade_to_organization_role: {
         Args: { p_organization_id: string; p_user_id: string }
         Returns: undefined
+      }
+      validate_and_track_share_link: {
+        Args: { _token: string }
+        Returns: {
+          document_id: string
+          is_valid: boolean
+          organization_id: string
+          reason: string
+        }[]
       }
       verify_webinar_guest_password: {
         Args: { p_password: string; p_public_token: string }
