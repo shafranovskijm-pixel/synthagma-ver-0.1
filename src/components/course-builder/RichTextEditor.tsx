@@ -399,7 +399,8 @@ export function RichTextEditor({
     <div className="relative">
       {showToolbar && (
         <div
-          className="absolute z-50 flex items-center gap-0.5 bg-slate-800/95 backdrop-blur-md text-white rounded-2xl shadow-2xl border border-white/10 px-2 py-1.5 h-12 pointer-events-auto -translate-x-1/2"
+          ref={toolbarRef}
+          className="absolute z-50 flex items-center gap-0.5 bg-slate-800/95 backdrop-blur-md text-white rounded-2xl shadow-2xl border border-white/10 px-2 py-1.5 h-12 pointer-events-auto -translate-x-1/2 max-w-[calc(100vw-16px)]"
           style={{ top: toolbarPos.top, left: toolbarPos.left }}
           onMouseDown={(e) => e.preventDefault()}
         >
