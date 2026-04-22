@@ -1,7 +1,8 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Sparkles, FileText, FileCode, Briefcase, Boxes, Settings, ListTodo, Send, Building2, Target, Mail, Kanban, UserPlus, Snowflake, MonitorPlay } from 'lucide-react';
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
+import { Sparkles, FileText, FileCode, Briefcase, Boxes, Settings, ListTodo, Send, Building2, Target, Mail, Kanban, UserPlus, Snowflake, MonitorPlay, Menu } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useOrgDashboard } from '@/contexts/OrgDashboardContext';
 import { OrgEmailCampaigns } from './OrgEmailCampaigns';
@@ -69,11 +70,56 @@ const menuGroups: MenuGroup[] = [
 
 const AVAILABLE_SECTIONS = ['overview','tasks','kanban','deals','leads','companies','segments','proposals','contracts','services','templates','campaigns','demo-links','smtp'];
 
+interface NavListProps {
+  section: string;
+  onSelect: (id: string) => void;
+}
+
+function NavList({ section, onSelect }: NavListProps) {
+  return (
+    <div className="space-y-4">
+      {menuGroups.map((group, gi) => (
+        <div key={group.label} className="space-y-1">
+          <p className="px-3 pb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/60">
+            {group.label}
+          </p>
+          {group.items.map(item => (
+            <button
+              key={item.id}
+              onClick={() => !item.soon && onSelect(item.id)}
+              disabled={item.soon}
+              className={cn(
+                'w-full flex items-center gap-2.5 px-3 py-2.5 text-sm rounded-[28px] transition-all duration-200',
+                !item.soon && 'hover:scale-105',
+                section === item.id
+                  ? 'bg-primary/10 text-primary font-medium shadow-sm'
+                  : 'text-muted-foreground hover:bg-muted/50 hover:text-foreground',
+                item.soon && 'opacity-50 cursor-not-allowed'
+              )}
+            >
+              <item.icon className="w-4 h-4 shrink-0" />
+              <span className="flex-1 text-left">{item.label}</span>
+              {item.soon && <span className="text-[9px] uppercase tracking-wide">soon</span>}
+            </button>
+          ))}
+          {gi < menuGroups.length - 1 && <div className="h-px bg-border/50 mx-3 mt-3" />}
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export function OrgSalesManager() {
   const d = useOrgDashboard();
   const organizationId = d.organizationId;
   const [section, setSection] = useState<string>('overview');
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const { settings: smtp } = useOrgSmtp(organizationId);
+
+  // Защита: если по какой-то причине секция стала невалидной (удалённая вкладка) — сбрасываем.
+  useEffect(() => {
+    if (!AVAILABLE_SECTIONS.includes(section)) setSection('overview');
+  }, [section]);
 
   const [taskPrefill, setTaskPrefill] = useState<{ name: string; inn?: string | null } | null>(null);
   const [dealSelectedInn, setDealSelectedInn] = useState<string | null>(null);
@@ -86,49 +132,56 @@ export function OrgSalesManager() {
     setActivityDialog({ open: true, type, company: c });
   }, []);
 
+  const handleSelect = useCallback((id: string) => {
+    setSection(id);
+    setMobileNavOpen(false);
+  }, []);
+
   if (!organizationId) return null;
+
+  const currentItem = menuGroups
+    .flatMap(g => g.items)
+    .find(i => i.id === section) ?? menuGroups[0].items[0];
+  const CurrentIcon = currentItem.icon;
 
   return (
     <div className="space-y-4">
       <Card className="border-primary/30 bg-primary/5">
-        <CardContent className="p-3 flex items-center gap-2 text-sm">
-          <Sparkles className="w-4 h-4 text-primary shrink-0" />
+        <CardContent className="p-3 flex items-start sm:items-center gap-2 text-sm">
+          <Sparkles className="w-4 h-4 text-primary shrink-0 mt-0.5 sm:mt-0" />
           <span>
             <strong>Кабинет менеджера продаж — Beta.</strong> Единое место для сделок, КП, договоров, задач и общения с клиентами вашей организации.
           </span>
         </CardContent>
       </Card>
 
+      {/* Мобильный триггер навигации */}
+      <Sheet open={mobileNavOpen} onOpenChange={setMobileNavOpen}>
+        <SheetTrigger asChild>
+          <Button
+            variant="outline"
+            className="md:hidden w-full justify-between rounded-xl"
+          >
+            <span className="flex items-center gap-2">
+              <Menu className="w-4 h-4" />
+              <CurrentIcon className="w-4 h-4 text-primary" />
+              <span className="font-medium">{currentItem.label}</span>
+            </span>
+            <span className="text-xs text-muted-foreground">Меню</span>
+          </Button>
+        </SheetTrigger>
+        <SheetContent side="left" className="w-72 overflow-y-auto">
+          <SheetHeader className="mb-4">
+            <SheetTitle>Разделы продаж</SheetTitle>
+          </SheetHeader>
+          <NavList section={section} onSelect={handleSelect} />
+        </SheetContent>
+      </Sheet>
+
       <div className="flex gap-4">
-        {/* Сайдбар */}
-        <div className="w-56 shrink-0 py-2 pr-4 space-y-4">
-          {menuGroups.map((group, gi) => (
-            <div key={group.label} className="space-y-1">
-              <p className="px-3 pb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/60">
-                {group.label}
-              </p>
-              {group.items.map(item => (
-                <button
-                  key={item.id}
-                  onClick={() => !item.soon && setSection(item.id)}
-                  disabled={item.soon}
-                  className={cn(
-                    'w-full flex items-center gap-2.5 px-3 py-2.5 text-sm rounded-[28px] transition-all duration-200',
-                    !item.soon && 'hover:scale-105',
-                    section === item.id
-                      ? 'bg-primary/10 text-primary font-medium shadow-sm'
-                      : 'text-muted-foreground hover:bg-muted/50 hover:text-foreground',
-                    item.soon && 'opacity-50 cursor-not-allowed'
-                  )}
-                >
-                  <item.icon className="w-4 h-4 shrink-0" />
-                  <span className="flex-1 text-left">{item.label}</span>
-                  {item.soon && <span className="text-[9px] uppercase tracking-wide">soon</span>}
-                </button>
-              ))}
-              {gi < menuGroups.length - 1 && <div className="h-px bg-border/50 mx-3 mt-3" />}
-            </div>
-          ))}
+        {/* Сайдбар (desktop) */}
+        <div className="hidden md:block w-56 shrink-0 py-2 pr-4">
+          <NavList section={section} onSelect={setSection} />
         </div>
 
         {/* Контент */}
@@ -136,12 +189,12 @@ export function OrgSalesManager() {
           {/* Глобальное предупреждение SMTP, если используются разделы, требующие почту */}
           {!smtp && (section === 'campaigns' || section === 'proposals') && (
             <Card className="border-orange-500/30 bg-orange-500/5">
-              <CardContent className="p-3 flex items-center gap-2 text-sm">
+              <CardContent className="p-3 flex flex-col sm:flex-row sm:items-center gap-2 text-sm">
                 <Mail className="w-4 h-4 text-orange-500 shrink-0" />
                 <div className="flex-1">
                   <strong>SMTP не настроен.</strong> Письма получателям отправляться не будут.
                 </div>
-                <Button size="sm" variant="outline" className="rounded-lg" onClick={() => setSection('smtp')}>
+                <Button size="sm" variant="outline" className="rounded-lg w-full sm:w-auto" onClick={() => setSection('smtp')}>
                   Настроить
                 </Button>
               </CardContent>

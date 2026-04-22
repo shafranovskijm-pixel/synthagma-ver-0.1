@@ -1,7 +1,8 @@
 import { useState, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { CreditCard } from 'lucide-react';
+import { CreditCard, Menu } from 'lucide-react';
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { CommercialProposals } from './sales/CommercialProposals';
 import { SalesServices } from './sales/SalesServices';
 import { SalesManagersList } from './sales/SalesManagersList';
@@ -10,7 +11,7 @@ import { SalesContracts } from './sales/SalesContracts';
 import { CompetitorComparison } from './sales/CompetitorComparison';
 import { CompanyCard } from './sales/CompanyCard';
 import { DocumentSigning } from './sales/DocumentSigning';
-import { SalesSidebar } from './sales/SalesSidebar';
+import { SalesSidebar, SalesSidebarContent, salesMenuGroups } from './sales/SalesSidebar';
 import { Deals360 } from './sales/Deals360';
 import { BroadcastManager } from './BroadcastManager';
 import { SalesOverview } from './sales/SalesOverview';
@@ -23,6 +24,7 @@ type PendingCompany = { name: string; inn: string };
 export function SalesManager() {
   const [activeTab, setActiveTab] = useState('overview');
   const [cardOpen, setCardOpen] = useState(false);
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
   // Контекст компании, прокинутой из «Сделок 360°»
   const [proposalPrefill, setProposalPrefill] = useState<PendingCompany | null>(null);
@@ -107,9 +109,41 @@ export function SalesManager() {
     comparison: <CompetitorComparison />,
   };
 
+  const currentItem = salesMenuGroups
+    .flatMap(g => g.items)
+    .find(i => i.id === activeTab) ?? salesMenuGroups[0].items[0];
+  const CurrentIcon = currentItem.icon;
+
   return (
-    <div className="flex gap-4">
+    <div className="flex flex-col md:flex-row gap-4">
       <SalesSidebar activeTab={activeTab} onTabChange={setActiveTab} />
+
+      {/* Мобильный триггер навигации */}
+      <Sheet open={mobileNavOpen} onOpenChange={setMobileNavOpen}>
+        <SheetTrigger asChild>
+          <Button
+            variant="outline"
+            className="md:hidden w-full justify-between rounded-xl"
+          >
+            <span className="flex items-center gap-2">
+              <Menu className="w-4 h-4" />
+              <CurrentIcon className="w-4 h-4 text-primary" />
+              <span className="font-medium">{currentItem.label}</span>
+            </span>
+            <span className="text-xs text-muted-foreground">Меню</span>
+          </Button>
+        </SheetTrigger>
+        <SheetContent side="left" className="w-72 overflow-y-auto">
+          <SheetHeader className="mb-4">
+            <SheetTitle>Разделы продаж</SheetTitle>
+          </SheetHeader>
+          <SalesSidebarContent
+            activeTab={activeTab}
+            onTabChange={(tab) => { setActiveTab(tab); setMobileNavOpen(false); }}
+          />
+        </SheetContent>
+      </Sheet>
+
       <div className="flex-1 min-w-0">
         {/* Header with quick "Our details" button */}
         <div className="flex justify-end mb-3">
