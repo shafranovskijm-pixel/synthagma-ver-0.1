@@ -24,6 +24,7 @@ type PendingCompany = { name: string; inn: string };
 export function SalesManager() {
   const [activeTab, setActiveTab] = useState('overview');
   const [cardOpen, setCardOpen] = useState(false);
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
   // Контекст компании, прокинутой из «Сделок 360°»
   const [proposalPrefill, setProposalPrefill] = useState<PendingCompany | null>(null);
