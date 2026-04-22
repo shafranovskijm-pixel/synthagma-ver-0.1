@@ -432,64 +432,32 @@ export function AdminWebinarsOverview() {
         )}
       </Card>
 
-      {/* Embedded player Sheet — wide overlay over admin dashboard */}
-      <Sheet open={!!playerWebinar} onOpenChange={(o) => !o && closePlayer()}>
-        <SheetContent
-          side="right"
-          className="w-full sm:max-w-[min(1100px,95vw)] overflow-y-auto"
-          onInteractOutside={(e) => e.preventDefault()}
-        >
-          <SheetHeader className="pr-10">
-            <SheetTitle className="flex items-center gap-2">
-              <Radio className="h-4 w-4 text-destructive" />
-              {playerWebinar?.title}
-            </SheetTitle>
-            <SheetDescription>
-              {playerWebinar?.organization_name && (
-                <span className="flex items-center gap-1.5">
-                  <Building2 className="h-3.5 w-3.5" />
-                  {playerWebinar.organization_name}
-                </span>
-              )}
-            </SheetDescription>
-          </SheetHeader>
-          <div className="mt-6 space-y-4">
-            {playerWebinar && (
-              <>
-                <EmbeddedWebinarPlayer
-                  webinarId={playerWebinar.id}
-                  sourceType={playerWebinar.source_type}
-                  kinescopeLiveId={playerWebinar.kinescope_live_id}
-                  kinescopeVideoId={playerWebinar.kinescope_video_id}
-                  embedUrl={playerWebinar.embed_url}
-                  externalUrl={playerWebinar.external_url}
-                  webinarTitle={playerWebinar.title}
-                  publicToken={playerWebinar.public_token}
-                  allowGuests={playerWebinar.allow_guests ?? true}
-                  guestPassword={playerWebinar.guest_password}
-                  onEnd={closePlayer}
-                  onShareUpdated={fetchWebinars}
-                />
-                <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
-                  <Badge variant="outline">{SOURCE_LABELS[playerWebinar.source_type] || playerWebinar.source_type}</Badge>
-                  <Badge variant={STATUS_LABELS[playerWebinar.status]?.variant || "outline"}>
-                    {STATUS_LABELS[playerWebinar.status]?.label || playerWebinar.status}
-                  </Badge>
-                  {playerWebinar.scheduled_at && (
-                    <span className="flex items-center gap-1">
-                      <Calendar className="h-3 w-3" />
-                      {format(new Date(playerWebinar.scheduled_at), "d MMM yyyy, HH:mm", { locale: ru })}
-                    </span>
-                  )}
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  Окно открыто поверх админки — закройте, чтобы вернуться к таблице. Эфир продолжится для остальных участников.
-                </p>
-              </>
-            )}
-          </div>
-        </SheetContent>
-      </Sheet>
+      {/* Live webinar — full overlay over the admin dashboard (как редактор курсов) */}
+      <WebinarLiveOverlay
+        open={!!playerWebinar}
+        onClose={closePlayer}
+        webinar={
+          playerWebinar
+            ? {
+                id: playerWebinar.id,
+                title: playerWebinar.title,
+                source_type: playerWebinar.source_type,
+                kinescope_live_id: playerWebinar.kinescope_live_id,
+                kinescope_video_id: playerWebinar.kinescope_video_id,
+                embed_url: playerWebinar.embed_url,
+                external_url: playerWebinar.external_url,
+                public_token: playerWebinar.public_token,
+                allow_guests: playerWebinar.allow_guests,
+                guest_password: playerWebinar.guest_password,
+                status: playerWebinar.status,
+                recording_url: (playerWebinar as any).recording_url ?? null,
+                organization_name: playerWebinar.organization_name,
+              }
+            : null
+        }
+        expandHref={playerWebinar ? `/webinar/${playerWebinar.id}/live` : undefined}
+        onShareUpdated={fetchWebinars}
+      />
 
       <AdminCreateWebinarDialog
         open={showCreate}
