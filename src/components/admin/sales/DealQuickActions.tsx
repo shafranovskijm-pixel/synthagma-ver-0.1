@@ -89,6 +89,9 @@ export function DealQuickActions({
             <ActionBtn icon={FileText} label="Создать КП" onClick={onCreateProposal} />
             <ActionBtn icon={ScrollText} label="Создать договор" onClick={onCreateContract} />
             <ActionBtn icon={Receipt} label="Выставить счёт" onClick={onCreateInvoice} />
+            {onSendForSigning && (
+              <ActionBtn icon={FileSignature} label="На ПЭП" onClick={onSendForSigning} />
+            )}
             <ActionBtn icon={Phone} label="Записать звонок" onClick={onAddCall} />
             <ActionBtn icon={StickyNote} label="Заметка" onClick={onAddNote} />
             <ActionBtn icon={ListTodo} label="Задача" onClick={onAddTask} />
