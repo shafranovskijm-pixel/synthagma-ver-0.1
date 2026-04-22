@@ -276,7 +276,7 @@ export function useOrganizationDashboard() {
     showBulkUploadDialog, setShowBulkUploadDialog,
     studentStatusFilter, setStudentStatusFilter,
     studentCourseFilter, setStudentCourseFilter,
-    showOnboarding, handleOnboardingClose,
+    showOnboarding, setShowOnboarding, handleOnboardingClose,
     // Categories
     categoryActions, categories, showCategoryDialog, setShowCategoryDialog, isCreatingCategory, getCategoryById,
     // Registration links
