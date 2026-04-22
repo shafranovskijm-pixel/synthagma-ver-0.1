@@ -205,7 +205,7 @@ function LiveKitEmbed({
 
   return (
     <div className="space-y-3">
-      <div className="aspect-video w-full rounded-lg overflow-hidden bg-black" data-lk-theme="default">
+      <div className="relative aspect-video w-full rounded-lg overflow-hidden bg-black" data-lk-theme="default">
         <LiveKitRoom
           token={token}
           serverUrl={wsUrl}
