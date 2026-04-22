@@ -255,61 +255,85 @@ export function Deals360() {
                   })}
                 </div>
 
-                <ScrollArea className="h-[calc(100vh-440px)]">
-                  <div className="space-y-4 pr-2">
-                    {/* КП */}
-                    {selected.proposals.length > 0 && (
-                      <Section title="Коммерческие предложения" icon={FileText}>
-                        {selected.proposals.map(p => (
-                          <Row
-                            key={p.id}
-                            title={p.tariff_plan ? `КП — ${p.tariff_plan}` : 'Коммерческое предложение'}
-                            status={p.status}
-                            amount={p.total_amount}
-                            date={p.created_at}
-                          />
-                        ))}
-                      </Section>
-                    )}
+                <Tabs defaultValue="overview" className="w-full">
+                  <TabsList className="grid grid-cols-2 w-full max-w-xs rounded-xl">
+                    <TabsTrigger value="overview" className="rounded-lg gap-1.5">
+                      <LayoutGrid className="w-3.5 h-3.5" />
+                      Карточка
+                    </TabsTrigger>
+                    <TabsTrigger value="timeline" className="rounded-lg gap-1.5">
+                      <Activity className="w-3.5 h-3.5" />
+                      Тайм-лайн
+                    </TabsTrigger>
+                  </TabsList>
 
-                    {/* Договоры */}
-                    {selected.contracts.length > 0 && (
-                      <Section title="Договоры" icon={ScrollText}>
-                        {selected.contracts.map(c => (
-                          <Row
-                            key={c.id}
-                            title={`Договор ${c.contract_number || 'б/н'}`}
-                            status={c.status}
-                            amount={c.total_amount}
-                            date={c.created_at}
-                          />
-                        ))}
-                      </Section>
-                    )}
+                  <TabsContent value="overview" className="mt-4">
+                    <ScrollArea className="h-[calc(100vh-440px)]">
+                      <div className="space-y-4 pr-2">
+                        {/* КП */}
+                        {selected.proposals.length > 0 && (
+                          <Section title="Коммерческие предложения" icon={FileText}>
+                            {selected.proposals.map(p => (
+                              <Row
+                                key={p.id}
+                                title={p.tariff_plan ? `КП — ${p.tariff_plan}` : 'Коммерческое предложение'}
+                                status={p.status}
+                                amount={p.total_amount}
+                                date={p.created_at}
+                              />
+                            ))}
+                          </Section>
+                        )}
 
-                    {/* Подписи */}
-                    {selected.signatures.length > 0 && (
-                      <Section title="На подписании" icon={PenTool}>
-                        {selected.signatures.slice(0, 10).map(s => (
-                          <Row
-                            key={s.id}
-                            title={s.document_title}
-                            status={s.status}
-                            date={s.signed_at || s.created_at}
-                          />
-                        ))}
-                      </Section>
-                    )}
+                        {/* Договоры */}
+                        {selected.contracts.length > 0 && (
+                          <Section title="Договоры" icon={ScrollText}>
+                            {selected.contracts.map(c => (
+                              <Row
+                                key={c.id}
+                                title={`Договор ${c.contract_number || 'б/н'}`}
+                                status={c.status}
+                                amount={c.total_amount}
+                                date={c.created_at}
+                              />
+                            ))}
+                          </Section>
+                        )}
 
-                    {selected.proposals.length === 0 &&
-                     selected.contracts.length === 0 &&
-                     selected.signatures.length === 0 && (
-                      <div className="text-center text-muted-foreground py-8">
-                        Нет активных документов
+                        {/* Подписи */}
+                        {selected.signatures.length > 0 && (
+                          <Section title="На подписании" icon={PenTool}>
+                            {selected.signatures.slice(0, 10).map(s => (
+                              <Row
+                                key={s.id}
+                                title={s.document_title}
+                                status={s.status}
+                                date={s.signed_at || s.created_at}
+                              />
+                            ))}
+                          </Section>
+                        )}
+
+                        {selected.proposals.length === 0 &&
+                         selected.contracts.length === 0 &&
+                         selected.signatures.length === 0 && (
+                          <div className="text-center text-muted-foreground py-8">
+                            Нет активных документов
+                          </div>
+                        )}
                       </div>
-                    )}
-                  </div>
-                </ScrollArea>
+                    </ScrollArea>
+                  </TabsContent>
+
+                  <TabsContent value="timeline" className="mt-4">
+                    <CompanyTimeline
+                      proposals={selected.proposals}
+                      contracts={selected.contracts}
+                      signatures={selected.signatures}
+                      invoices={selected.invoices}
+                    />
+                  </TabsContent>
+                </Tabs>
               </div>
             )}
           </CardContent>
