@@ -95,9 +95,10 @@ const WebinarPublic = () => {
 
   // Already in live room — рендерим брендированный плеер (как у админа), но в read-only режиме
   if (lkToken && wsUrl) {
+    const guestIdentity = `guest-${token}-${name.trim().toLowerCase().replace(/\s+/g, "-")}`;
     return (
       <div className="min-h-screen bg-background p-2 sm:p-4">
-        <div className="max-w-6xl mx-auto">
+        <div className="max-w-7xl mx-auto">
           <EmbeddedWebinarPlayer
             webinarId={info.id}
             sourceType="livekit"
@@ -105,6 +106,9 @@ const WebinarPublic = () => {
             prefetchedToken={lkToken}
             prefetchedWsUrl={wsUrl}
             viewOnly
+            showSidePanel
+            guestIdentity={guestIdentity}
+            guestDisplayName={name.trim() || "Гость"}
             onEnd={() => { setLkToken(null); setWsUrl(null); }}
           />
         </div>

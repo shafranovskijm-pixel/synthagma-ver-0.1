@@ -98,6 +98,7 @@ export function WebinarLiveInline({
         guestPassword={webinar.guest_password ?? null}
         status={webinar.status ?? undefined}
         recordingUrl={webinar.recording_url ?? null}
+        showSidePanel={webinar.source_type === "livekit"}
         onEnd={async () => {
           if (onEnd) await onEnd();
           onBack();

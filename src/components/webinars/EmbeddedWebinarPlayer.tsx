@@ -28,6 +28,8 @@ import {
 import { toast } from "sonner";
 import { getBaseUrl } from "@/utils/getBaseUrl";
 import { ShareWebinarDialog } from "@/components/organization/ShareWebinarDialog";
+import { WebinarSidebar } from "@/components/webinars/WebinarSidebar";
+import { cn } from "@/lib/utils";
 
 interface Props {
   webinarId: string;
@@ -56,6 +58,11 @@ interface Props {
   prefetchedWsUrl?: string | null;
   /** read-only режим (для гостей): без кнопок «Завершить», «Доступ», QR, «Ссылка для участников» */
   viewOnly?: boolean;
+  /** Показывать боковую панель Q&A + Опросы рядом с плеером (для гостей и зрителей) */
+  showSidePanel?: boolean;
+  /** Имя/идентификатор зрителя для Q&A и опросов (используется в гостевом режиме) */
+  guestIdentity?: string | null;
+  guestDisplayName?: string | null;
 }
 
 /**
@@ -82,6 +89,9 @@ export function EmbeddedWebinarPlayer({
   prefetchedToken,
   prefetchedWsUrl,
   viewOnly,
+  showSidePanel,
+  guestIdentity,
+  guestDisplayName,
 }: Props) {
   // ============ Recording playback (LiveKit ended + recording attached) ============
   if (sourceType === "livekit" && status === "ended" && recordingUrl) {
@@ -166,6 +176,9 @@ export function EmbeddedWebinarPlayer({
       prefetchedToken={prefetchedToken ?? null}
       prefetchedWsUrl={prefetchedWsUrl ?? null}
       viewOnly={viewOnly ?? false}
+      showSidePanel={showSidePanel ?? false}
+      guestIdentity={guestIdentity ?? null}
+      guestDisplayName={guestDisplayName ?? null}
     />
   );
 }
@@ -181,6 +194,9 @@ function LiveKitEmbed({
   prefetchedToken,
   prefetchedWsUrl,
   viewOnly,
+  showSidePanel,
+  guestIdentity,
+  guestDisplayName,
 }: {
   webinarId: string;
   webinarTitle: string | null;
@@ -192,6 +208,9 @@ function LiveKitEmbed({
   prefetchedToken: string | null;
   prefetchedWsUrl: string | null;
   viewOnly: boolean;
+  showSidePanel: boolean;
+  guestIdentity: string | null;
+  guestDisplayName: string | null;
 }) {
   const [token, setToken] = useState<string | null>(prefetchedToken);
   const [wsUrl, setWsUrl] = useState<string | null>(prefetchedWsUrl);
@@ -251,28 +270,55 @@ function LiveKitEmbed({
 
   return (
     <div className="space-y-3">
-      <div className="relative aspect-video w-full rounded-lg overflow-hidden bg-black" data-lk-theme="default">
-        <LiveKitRoom
-          token={token}
-          serverUrl={wsUrl}
-          connect={true}
-          video={!viewOnly}
-          audio={!viewOnly}
-          style={{ height: "100%" }}
-        >
-          <LiveKitTopBar
-            title={webinarTitle}
-            publicLink={viewOnly ? null : publicLink}
-            onShare={() => setShareOpen(true)}
-            onEnd={onEnd}
-            hasShareSettings={!viewOnly && Boolean(publicToken)}
-            viewOnly={viewOnly}
+      <div
+        className={cn(
+          "grid gap-3",
+          showSidePanel ? "lg:grid-cols-[1fr_340px]" : "grid-cols-1",
+        )}
+      >
+        <div className="relative aspect-video w-full rounded-lg overflow-hidden bg-black" data-lk-theme="default">
+          <LiveKitRoom
+            token={token}
+            serverUrl={wsUrl}
+            connect={true}
+            video={!viewOnly}
+            audio={!viewOnly}
+            style={{ height: "100%" }}
+          >
+            <LiveKitTopBar
+              title={webinarTitle}
+              publicLink={viewOnly ? null : publicLink}
+              onShare={() => setShareOpen(true)}
+              onEnd={onEnd}
+              hasShareSettings={!viewOnly && Boolean(publicToken)}
+              viewOnly={viewOnly}
+            />
+            <VideoConference />
+            <WelcomeOverlay webinarTitle={webinarTitle} />
+            <RoomAudioRenderer />
+          </LiveKitRoom>
+        </div>
+
+        {showSidePanel && (
+          <WebinarSidebar
+            webinarId={webinarId}
+            isHost={!viewOnly}
+            participantIdentity={guestIdentity ?? `guest-${webinarId}`}
+            participantName={guestDisplayName ?? "Гость"}
+            className="hidden lg:flex flex-col h-[calc(100vh-200px)] min-h-[400px] max-h-[720px] rounded-lg border bg-background overflow-hidden"
           />
-          <VideoConference />
-          <WelcomeOverlay webinarTitle={webinarTitle} />
-          <RoomAudioRenderer />
-        </LiveKitRoom>
+        )}
       </div>
+
+      {showSidePanel && (
+        <WebinarSidebar
+          webinarId={webinarId}
+          isHost={!viewOnly}
+          participantIdentity={guestIdentity ?? `guest-${webinarId}`}
+          participantName={guestDisplayName ?? "Гость"}
+          className="lg:hidden flex flex-col h-[480px] rounded-lg border bg-background overflow-hidden"
+        />
+      )}
 
       {!viewOnly && publicToken && (
         <ShareWebinarDialog
