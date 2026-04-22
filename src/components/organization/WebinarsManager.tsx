@@ -60,6 +60,7 @@ export function WebinarsManager({ organizationId }: Props) {
   const [statusFilter, setStatusFilter] = useState("all");
   const [search, setSearch] = useState("");
   const [shareWebinar, setShareWebinar] = useState<Webinar | null>(null);
+  const [liveSheetWebinar, setLiveSheetWebinar] = useState<Webinar | null>(null);
 
   const fetchWebinars = useCallback(async () => {
     const { data } = await supabase
@@ -146,10 +147,11 @@ export function WebinarsManager({ organizationId }: Props) {
         .single();
       if (insertErr) throw insertErr;
 
-      toast.success("Вебинар начат");
+      toast.success("Вебинар начат — открываю эфир в окне");
       await fetchWebinars();
       if (inserted) {
-        window.location.href = `/webinar/${(inserted as any).id}/live`;
+        // Открываем эфир в Sheet поверх дашборда (а не редиректом)
+        setLiveSheetWebinar(inserted as any);
       }
     } catch (e: any) {
       toast.error(e.message || "Не удалось начать вебинар");
@@ -280,10 +282,8 @@ export function WebinarsManager({ organizationId }: Props) {
               </div>
             </div>
             <div className="flex flex-wrap gap-2">
-              <Button size="sm" variant="default" asChild>
-                <a href={`/webinar/${w.id}/live`} target="_blank" rel="noreferrer">
-                  <Video className="w-4 h-4 mr-1" /> Войти как ведущий
-                </a>
+              <Button size="sm" variant="default" onClick={() => setLiveSheetWebinar(w)}>
+                <Video className="w-4 h-4 mr-1" /> Войти как ведущий
               </Button>
               <Button size="sm" variant="outline" onClick={() => copyWebinarLink(w)}>
                 <Copy className="w-4 h-4 mr-1" /> Скопировать ссылку
@@ -411,10 +411,8 @@ export function WebinarsManager({ organizationId }: Props) {
                   </Button>
                 )}
                 {w.source_type === "livekit" && (
-                  <Button size="sm" variant="default" asChild>
-                    <a href={`/webinar/${w.id}/live`}>
-                      <Video className="w-3 h-3 mr-1" />Войти в эфир
-                    </a>
+                  <Button size="sm" variant="default" onClick={() => setLiveSheetWebinar(w)}>
+                    <Video className="w-3 h-3 mr-1" />Войти в эфир
                   </Button>
                 )}
                 {getEmbedUrl(w) && w.source_type !== "livekit" && (
