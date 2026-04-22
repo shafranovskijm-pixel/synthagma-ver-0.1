@@ -66,6 +66,8 @@ const SECTION_DESCRIPTIONS: Partial<Record<DocumentSubTab, string>> = {
   pd_requests: "Запросы субъектов ПД по 152-ФЗ — отзыв согласия, удаление, копия данных. Срок ответа 30 дней.",
   incoming: "Сканы подписанных контрагентом экземпляров — для двустороннего документооборота",
   recycle_bin: "Удалённые документы хранятся 30 дней. Восстановление возвращает их в исходный раздел.",
+  proposals: "Коммерческие предложения (КП) — артефакты воронки продаж. Активная работа с лидами — в разделе «Продажи».",
+  sales_contracts: "Договоры из CRM-воронки. Версионирование, статусы, share-ссылки. Подписания — в разделе «Подписания».",
 };
 
 interface DocumentsTabProps {
@@ -129,7 +131,7 @@ export const DocumentsTab = React.memo(function DocumentsTab({ organizationId, o
                 const Icon = item.icon;
                 const isActive = h.activeTab === item.value;
                 const showDivider = item.group && item.group !== lastGroup && idx > 0;
-                const groupLabel = item.group === "docs" && lastGroup !== "docs" ? "Документооборот" : item.group === "tools" && lastGroup !== "tools" ? "Инструменты" : null;
+                const groupLabel = item.group === "docs" && lastGroup !== "docs" ? "Документооборот" : item.group === "commerce" && lastGroup !== "commerce" ? "Коммерческие" : item.group === "tools" && lastGroup !== "tools" ? "Инструменты" : null;
                 lastGroup = item.group || "";
                 return (
                   <React.Fragment key={item.value}>
