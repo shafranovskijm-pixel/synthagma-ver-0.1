@@ -1,7 +1,8 @@
 import { useState, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { CreditCard } from 'lucide-react';
+import { CreditCard, Menu } from 'lucide-react';
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { CommercialProposals } from './sales/CommercialProposals';
 import { SalesServices } from './sales/SalesServices';
 import { SalesManagersList } from './sales/SalesManagersList';
@@ -10,7 +11,7 @@ import { SalesContracts } from './sales/SalesContracts';
 import { CompetitorComparison } from './sales/CompetitorComparison';
 import { CompanyCard } from './sales/CompanyCard';
 import { DocumentSigning } from './sales/DocumentSigning';
-import { SalesSidebar } from './sales/SalesSidebar';
+import { SalesSidebar, SalesSidebarContent, salesMenuGroups } from './sales/SalesSidebar';
 import { Deals360 } from './sales/Deals360';
 import { BroadcastManager } from './BroadcastManager';
 import { SalesOverview } from './sales/SalesOverview';
