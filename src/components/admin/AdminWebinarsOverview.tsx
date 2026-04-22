@@ -494,6 +494,17 @@ export function AdminWebinarsOverview() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {recordingTarget && (
+        <WebinarRecordingUploader
+          open={!!recordingTarget}
+          onOpenChange={(o) => !o && setRecordingTarget(null)}
+          webinarId={recordingTarget.id}
+          webinarTitle={recordingTarget.title}
+          currentRecordingUrl={(recordingTarget as any).recording_url ?? null}
+          onUploaded={fetchWebinars}
+        />
+      )}
     </div>
   );
 }
