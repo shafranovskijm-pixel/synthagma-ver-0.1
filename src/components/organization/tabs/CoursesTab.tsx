@@ -23,6 +23,7 @@ import { CourseCatalogCard } from "./courses/CourseCatalogCard";
 import { CategoryFolder } from "./courses/CategoryFolder";
 import { TransferCourseDialog } from "@/components/organization/dialogs/TransferCourseDialog";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
+import { QuickStartCard } from "@/components/organization/QuickStartCard";
 
 interface CoursesTabProps {
   organizationId: string;
@@ -339,6 +340,9 @@ export const CoursesTab = React.memo(function CoursesTab({ organizationId, onCou
   return (
     <div className="space-y-4 lg:space-y-6">
       <input ref={coverInputRef} type="file" accept="image/*" className="hidden" onChange={handleCoverUpload} />
+
+      {/* Quick start checklist for new orgs */}
+      <QuickStartCard />
 
       {/* Content type tabs */}
       <div className="flex items-center gap-1 bg-muted rounded-xl p-1 w-fit">
