@@ -19,6 +19,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { RadioPlayerButton } from "@/components/radio/RadioPlayerButton";
+import { SectionBreadcrumbDropdown } from "./SectionBreadcrumbDropdown";
 
 function getUserInitials(email?: string | null, name?: string | null): string {
   if (name) {
@@ -119,7 +120,20 @@ export function OrgDashboardHeader() {
   const breadcrumb = getBreadcrumb();
 
   const openCommandPalette = () => {
-    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', metaKey: true, ctrlKey: true, bubbles: true }));
+    window.dispatchEvent(new CustomEvent('open-command-palette'));
+  };
+
+  // Map active tab to section id for breadcrumb dropdown
+  const getSectionId = (): "learning" | "clients" | "tools" | "settings" | null => {
+    const learning = ["courses", "homework-review", "ai-tutors", "labor-safety"];
+    const clients = ["students", "organizations", "sales", "chats"];
+    const tools = ["stats", "links", "library", "journals", "frdo", "documents", "services"];
+    const settings = ["profile", "subscription", "payments", "org-documents", "whats-new", "settings"];
+    if (learning.includes(activeTab)) return "learning";
+    if (clients.includes(activeTab)) return "clients";
+    if (tools.includes(activeTab)) return "tools";
+    if (settings.includes(activeTab)) return "settings";
+    return null;
   };
 
   const isMac = typeof navigator !== 'undefined' && /Mac|iPhone|iPad|iPod/.test(navigator.platform);
@@ -162,14 +176,16 @@ export function OrgDashboardHeader() {
           </div>
         </div>
 
-        {/* Center: Search command palette */}
+        {/* Center: Omnibox-style global search */}
         <button
           onClick={openCommandPalette}
-          className="hidden md:flex flex-1 max-w-md mx-4 items-center gap-2 px-3 py-1.5 rounded-xl border border-border bg-muted/40 hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
-          aria-label="Найти раздел или действие"
+          className="hidden md:flex flex-1 max-w-xl mx-6 items-center gap-2.5 px-4 h-9 rounded-xl border border-border/70 bg-muted/30 hover:bg-muted hover:border-primary/40 text-muted-foreground hover:text-foreground transition-all shadow-sm"
+          aria-label="Найти раздел, ученика, курс, документ"
         >
-          <Search className="w-4 h-4 shrink-0" />
-          <span className="text-xs font-medium flex-1 text-left">Найти раздел или действие…</span>
+          <Search className="w-4 h-4 shrink-0 text-primary/70" />
+          <span className="text-sm font-medium flex-1 text-left truncate">
+            Найти раздел, ученика, курс, документ…
+          </span>
           <kbd className="hidden lg:inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded border border-border bg-card text-[10px] font-mono text-muted-foreground">
             {isMac ? "⌘" : "Ctrl"}+K
           </kbd>
@@ -291,7 +307,13 @@ export function OrgDashboardHeader() {
                   {customName || organizationName || "Школа"}
                 </button>
                 <span className="opacity-50">›</span>
-                <span className="text-muted-foreground/80 hidden sm:inline">{breadcrumb.section}</span>
+                <span className="hidden sm:inline">
+                  <SectionBreadcrumbDropdown
+                    section={getSectionId()}
+                    label={breadcrumb.section}
+                    activeTab={activeTab}
+                  />
+                </span>
                 <span className="opacity-50 hidden sm:inline">›</span>
                 <span className="font-display text-sm font-semibold text-foreground/85 truncate">
                   {breadcrumb.page}

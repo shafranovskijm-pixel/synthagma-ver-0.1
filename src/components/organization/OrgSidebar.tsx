@@ -133,6 +133,10 @@ export function OrgSidebar() {
   const isMobileSidebarOpen = d.isMobileSidebarOpen;
   const setIsMobileSidebarOpen = d.setIsMobileSidebarOpen;
   const onLogout = d.handleLogout;
+  const organizationName = d.organizationName;
+  const customName = d.branding.brandingSettings.customName;
+  const planName = d.subscriptionLimits?.plan;
+  const planLabel = planName === 'free' ? 'Бесплатный' : planName === 'start' ? 'Старт' : planName === 'standard' ? 'Стандарт' : planName === 'professional' ? 'Профессиональный' : planName === 'maximum' ? 'Максимальный' : '';
   const { handleLogoUpload, isUploadingLogo } = d.branding;
   const logoInputRef = useRef<HTMLInputElement>(null);
 
@@ -160,6 +164,17 @@ export function OrgSidebar() {
     try { localStorage.setItem(EXPANDED_KEY, expanded ? "1" : "0"); } catch {}
     // Notify layout to adjust main content margin
     window.dispatchEvent(new CustomEvent("org-sidebar-expanded-change", { detail: expanded }));
+  }, [expanded]);
+
+  // Auto-collapse on screens < 1280px to prevent content squeeze
+  useEffect(() => {
+    if (typeof window === "undefined" || !window.matchMedia) return;
+    const mq = window.matchMedia("(max-width: 1279px)");
+    const apply = () => { if (mq.matches && expanded) setExpanded(false); };
+    apply();
+    const handler = () => apply();
+    mq.addEventListener?.("change", handler);
+    return () => mq.removeEventListener?.("change", handler);
   }, [expanded]);
 
   // Theme-aware accent
@@ -253,13 +268,19 @@ export function OrgSidebar() {
         role="navigation"
         aria-label="Основная навигация"
         className={cn(
-          "fixed inset-y-0 left-0 z-50 shadow-[2px_0_8px_rgba(0,0,0,0.06)] flex flex-col transition-[transform,width] duration-300",
+          "fixed inset-y-0 left-0 z-50 bg-card border-r border-border/60 shadow-[2px_0_12px_rgba(0,0,0,0.04)] flex flex-col transition-[transform,width] duration-300",
           expanded ? "w-[220px]" : "w-[88px]",
           isMobileSidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
         )}
-        style={{ backgroundColor: `hsl(${brandHsl} / 0.07)` }}
+        style={{
+          backdropFilter: "none",
+          WebkitBackdropFilter: "none",
+          // Subtle vertical brand stripe for accent without losing opacity
+          boxShadow: `inset 3px 0 0 hsl(${brandHsl} / 0.5), 2px 0 12px rgba(0,0,0,0.04)`,
+        }}
       >
-        <div className="flex justify-center py-4">
+        {/* Header: logo + (expanded) school name + collapse toggle */}
+        <div className={cn("px-3 pt-4 pb-3 border-b border-border/40", expanded ? "flex items-center gap-2.5" : "flex flex-col items-center gap-2")}>
           <input
             ref={logoInputRef}
             type="file"
@@ -271,12 +292,12 @@ export function OrgSidebar() {
             <TooltipTrigger asChild>
               <button
                 onClick={logoUrl ? () => logoInputRef.current?.click() : toggleTheme}
-                className="relative flex h-12 w-12 items-center justify-center overflow-hidden rounded-xl bg-card/80 shadow-sm hover:ring-2 hover:ring-primary/40 transition-all group/logo"
+                className="relative flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-card shadow-sm hover:ring-2 hover:ring-primary/40 transition-all group/logo"
               >
                 {isUploadingLogo ? (
                   <div className="animate-spin rounded-full h-5 w-5 border-2 border-primary border-t-transparent" />
                 ) : logoUrl ? (
-                  <img src={logoUrl} alt="Логотип" className="h-10 w-10 object-contain" />
+                  <img src={logoUrl} alt="Логотип" className="h-9 w-9 object-contain" />
                 ) : (
                   <SigmaLogo size="sm" />
                 )}
@@ -291,153 +312,171 @@ export function OrgSidebar() {
               {logoUrl ? "Нажмите, чтобы изменить значок" : "Сменить тему"}
             </TooltipContent>
           </Tooltip>
+
+          {expanded && (
+            <div className="flex-1 min-w-0">
+              <div className="text-[13px] font-semibold text-foreground leading-tight truncate">
+                {customName || organizationName || "Школа"}
+              </div>
+              {planLabel && (
+                <div className="text-[10px] text-muted-foreground mt-0.5 truncate">
+                  {planLabel} тариф
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Collapse / Expand toggle (desktop only) */}
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                onClick={() => setExpanded((v) => !v)}
+                className={cn(
+                  "hidden lg:flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors",
+                  !expanded && "mt-1"
+                )}
+                aria-label={expanded ? "Свернуть меню" : "Развернуть меню"}
+              >
+                {expanded ? <ChevronsLeft className="h-4 w-4" /> : <ChevronsRight className="h-4 w-4" />}
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="right" className="z-[100]">
+              {expanded ? "Свернуть меню" : "Развернуть меню"}
+            </TooltipContent>
+          </Tooltip>
         </div>
 
         {/* Navigation grouped by section */}
-        <div className="flex-1 flex flex-col items-center gap-3 overflow-y-auto scrollbar-hide px-2 py-1">
+        <div className={cn("flex-1 flex flex-col overflow-y-auto scrollbar-hide py-2", expanded ? "px-2 gap-2" : "items-center gap-2 px-2")}>
           {grouped.map((group, gIdx) => (
-            <div key={group.section} className="w-full flex flex-col items-center">
-              {/* Section divider with mini-label */}
-              {gIdx > 0 && (
-                <div className="w-10 h-px my-1.5 bg-foreground/10" aria-hidden />
-              )}
-              <span
-                className="text-[9px] uppercase tracking-wider font-semibold text-foreground/40 mb-1.5 select-none"
-                aria-hidden
-              >
-                {SECTION_LABELS[group.section]}
-              </span>
-              <div
-                className="rounded-[24px] p-1.5 shadow-sm w-full"
-                style={{ backgroundColor: `hsl(${brandHsl} / 0.12)` }}
-              >
-                <nav className={cn("flex flex-col gap-1", expanded ? "items-stretch" : "items-center")}>
-                  {group.items.map((item) => {
-                    const isActive = activeTab === item.id;
-                    const locked = item.category ? isLocked(item.category) : false;
-
-                    return (
-                      <Tooltip key={item.id} delayDuration={300}>
-                        <TooltipTrigger asChild>
-                          <button
-                            data-onboarding={item.id === "courses" ? "courses" : item.id === "students" ? "students" : item.id === "settings" ? "settings" : undefined}
-                            onClick={() => handleTabClick(item.id)}
-                            className={cn(
-                              "relative rounded-xl transition-all duration-200",
-                              expanded
-                                ? "flex items-center gap-2.5 px-2.5 py-2 w-full text-left"
-                                : cn(
-                                    "flex flex-col items-center justify-center w-[68px] px-1 py-1.5",
-                                    showLabels ? "gap-0.5" : "h-11"
-                                  ),
-                              locked && "opacity-50",
-                              isActive
-                                ? "text-primary-foreground shadow-md"
-                                : "text-foreground/70 hover:text-foreground hover:scale-[1.04]"
-                            )}
-                            style={{
-                              backgroundColor: isActive
-                                ? `hsl(${brandHsl})`
-                                : `hsl(${brandHsl} / 0.10)`,
-                              ...(isActive ? { boxShadow: `0 4px 14px hsl(${brandHsl} / 0.4)` } : {}),
-                            }}
-                            aria-current={isActive ? "page" : undefined}
-                            aria-label={item.label}
-                          >
-                            <span className="relative flex items-center justify-center">
-                              <item.icon className="h-[18px] w-[18px] shrink-0" />
-                              {locked && <Lock className="absolute -top-1 -right-2 w-2.5 h-2.5 text-muted-foreground/60" />}
-                              {(item.badge ?? 0) > 0 && (
-                                <span className="absolute -top-1.5 -right-2 bg-destructive text-destructive-foreground text-[9px] font-bold rounded-full min-w-[16px] h-4 flex items-center justify-center px-1">
-                                  {item.badge! > 99 ? "99+" : item.badge}
-                                </span>
-                              )}
-                            </span>
-                            {expanded ? (
-                              <span
-                                className={cn(
-                                  "text-xs font-medium truncate flex-1",
-                                  isActive ? "text-primary-foreground" : "text-foreground/85"
-                                )}
-                              >
-                                {item.label}
-                              </span>
-                            ) : showLabels ? (
-                              <span
-                                className={cn(
-                                  "text-[9px] leading-tight font-medium text-center max-w-[64px] line-clamp-2",
-                                  isActive ? "text-primary-foreground/95" : "text-foreground/70"
-                                )}
-                              >
-                                {item.label}
-                              </span>
-                            ) : null}
-                          </button>
-                        </TooltipTrigger>
-                        {!expanded && (
-                          <TooltipContent
-                            side="right"
-                            sideOffset={12}
-                            className="z-[100] rounded-xl px-4 py-2 text-sm font-medium shadow-lg border-border/60"
-                            style={{
-                              backgroundColor: `hsl(${brandHsl})`,
-                              color: 'white',
-                              boxShadow: `0 4px 20px hsl(${brandHsl} / 0.3)`,
-                            }}
-                          >
-                            {item.label}
-                          </TooltipContent>
-                        )}
-                      </Tooltip>
-                    );
-                  })}
-                </nav>
+            <div key={group.section} className="w-full flex flex-col">
+              {/* Section heading: plain caps text, no plate */}
+              <div className={cn("px-1", gIdx > 0 ? "mt-2" : "mt-0", expanded ? "text-left" : "text-center")}>
+                <span
+                  className="text-[9px] uppercase tracking-[0.08em] font-semibold text-muted-foreground/70 select-none"
+                  aria-hidden
+                >
+                  {SECTION_LABELS[group.section]}
+                </span>
               </div>
+
+              <nav className={cn("flex flex-col gap-0.5 mt-1", expanded ? "items-stretch" : "items-center")}>
+                {group.items.map((item) => {
+                  const isActive = activeTab === item.id;
+                  const locked = item.category ? isLocked(item.category) : false;
+
+                  return (
+                    <Tooltip key={item.id} delayDuration={300}>
+                      <TooltipTrigger asChild>
+                        <button
+                          data-onboarding={item.id === "courses" ? "courses" : item.id === "students" ? "students" : item.id === "settings" ? "settings" : undefined}
+                          onClick={() => handleTabClick(item.id)}
+                          className={cn(
+                            "relative rounded-lg transition-all duration-150",
+                            expanded
+                              ? "flex items-center gap-3 px-2.5 h-10 w-full text-left"
+                              : cn(
+                                  "flex flex-col items-center justify-center w-[68px] px-1 py-1.5",
+                                  showLabels ? "gap-0.5" : "h-10"
+                                ),
+                            locked && "opacity-50",
+                            isActive
+                              ? "text-primary-foreground shadow-sm"
+                              : "text-foreground/70 hover:text-foreground hover:bg-foreground/5"
+                          )}
+                          style={{
+                            backgroundColor: isActive ? `hsl(${brandHsl})` : undefined,
+                            ...(isActive ? { boxShadow: `0 2px 10px hsl(${brandHsl} / 0.3)` } : {}),
+                          }}
+                          aria-current={isActive ? "page" : undefined}
+                          aria-label={item.label}
+                        >
+                          <span className="relative flex items-center justify-center shrink-0" style={{ width: 18, height: 18 }}>
+                            <item.icon className="h-[18px] w-[18px]" />
+                            {locked && <Lock className="absolute -top-1 -right-2 w-2.5 h-2.5 text-muted-foreground/60" />}
+                            {(item.badge ?? 0) > 0 && (
+                              <span className="absolute -top-1.5 -right-2 bg-destructive text-destructive-foreground text-[9px] font-bold rounded-full min-w-[16px] h-4 flex items-center justify-center px-1">
+                                {item.badge! > 99 ? "99+" : item.badge}
+                              </span>
+                            )}
+                          </span>
+                          {expanded ? (
+                            <span
+                              className={cn(
+                                "text-[13px] font-medium truncate flex-1",
+                                isActive ? "text-primary-foreground" : "text-foreground/85"
+                              )}
+                            >
+                              {item.label}
+                            </span>
+                          ) : showLabels ? (
+                            <span
+                              className={cn(
+                                "text-[9px] leading-tight font-medium text-center max-w-[64px] line-clamp-2",
+                                isActive ? "text-primary-foreground/95" : "text-foreground/70"
+                              )}
+                            >
+                              {item.label}
+                            </span>
+                          ) : null}
+                        </button>
+                      </TooltipTrigger>
+                      {!expanded && (
+                        <TooltipContent
+                          side="right"
+                          sideOffset={12}
+                          className="z-[100] rounded-xl px-4 py-2 text-sm font-medium shadow-lg border-border/60"
+                          style={{
+                            backgroundColor: `hsl(${brandHsl})`,
+                            color: 'white',
+                            boxShadow: `0 4px 20px hsl(${brandHsl} / 0.3)`,
+                          }}
+                        >
+                          {item.label}
+                        </TooltipContent>
+                      )}
+                    </Tooltip>
+                  );
+                })}
+              </nav>
             </div>
           ))}
         </div>
 
-        {/* Footer: Help, What's new, Toggle labels, Logout */}
-        <div className="flex flex-col items-center gap-1.5 py-3 border-t border-foreground/5">
+        {/* Footer: Help, What's new, Logout (collapse moved to header) */}
+        <div className={cn("py-3 border-t border-border/40", expanded ? "px-2 flex flex-col gap-1" : "flex flex-col items-center gap-1.5")}>
           <Tooltip>
             <TooltipTrigger asChild>
               <button
                 onClick={() => window.dispatchEvent(new CustomEvent('open-support-chat'))}
-                className="flex h-9 w-9 items-center justify-center rounded-xl text-foreground/60 hover:text-primary hover:bg-primary/10 transition-colors"
+                className={cn(
+                  "rounded-lg text-foreground/60 hover:text-primary hover:bg-primary/10 transition-colors",
+                  expanded ? "flex items-center gap-3 px-2.5 h-9 w-full text-left" : "flex h-9 w-9 items-center justify-center"
+                )}
                 aria-label="Помощь"
               >
-                <HelpCircle className="h-[18px] w-[18px]" />
+                <HelpCircle className="h-[18px] w-[18px] shrink-0" />
+                {expanded && <span className="text-[13px] font-medium">Помощь</span>}
               </button>
             </TooltipTrigger>
-            <TooltipContent side="right" className="z-[100]">Помощь</TooltipContent>
+            {!expanded && <TooltipContent side="right" className="z-[100]">Помощь</TooltipContent>}
           </Tooltip>
 
           <Tooltip>
             <TooltipTrigger asChild>
               <button
                 onClick={() => handleTabClick("whats-new" as TabType)}
-                className="flex h-9 w-9 items-center justify-center rounded-xl text-foreground/60 hover:text-primary hover:bg-primary/10 transition-colors"
+                className={cn(
+                  "rounded-lg text-foreground/60 hover:text-primary hover:bg-primary/10 transition-colors",
+                  expanded ? "flex items-center gap-3 px-2.5 h-9 w-full text-left" : "flex h-9 w-9 items-center justify-center"
+                )}
                 aria-label="Что нового"
               >
-                <Star className="h-[18px] w-[18px]" />
+                <Star className="h-[18px] w-[18px] shrink-0" />
+                {expanded && <span className="text-[13px] font-medium">Что нового</span>}
               </button>
             </TooltipTrigger>
-            <TooltipContent side="right" className="z-[100]">Что нового</TooltipContent>
-          </Tooltip>
-
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <button
-                onClick={() => setExpanded((v) => !v)}
-                className="hidden lg:flex h-9 w-9 items-center justify-center rounded-xl text-foreground/60 hover:text-primary hover:bg-primary/10 transition-colors"
-                aria-label={expanded ? "Свернуть меню" : "Развернуть меню"}
-              >
-                {expanded ? <ChevronsLeft className="h-[18px] w-[18px]" /> : <ChevronsRight className="h-[18px] w-[18px]" />}
-              </button>
-            </TooltipTrigger>
-            <TooltipContent side="right" className="z-[100]">
-              {expanded ? "Свернуть меню" : "Развернуть меню"}
-            </TooltipContent>
+            {!expanded && <TooltipContent side="right" className="z-[100]">Что нового</TooltipContent>}
           </Tooltip>
 
           {!expanded && (
@@ -461,13 +500,17 @@ export function OrgSidebar() {
             <TooltipTrigger asChild>
               <button
                 onClick={onLogout}
-                className="flex h-9 w-9 items-center justify-center rounded-xl text-destructive hover:bg-destructive/10 transition-colors mt-1"
+                className={cn(
+                  "rounded-lg text-destructive hover:bg-destructive/10 transition-colors mt-1",
+                  expanded ? "flex items-center gap-3 px-2.5 h-9 w-full text-left" : "flex h-9 w-9 items-center justify-center"
+                )}
                 aria-label="Выйти"
               >
-                <LogOut className="h-[18px] w-[18px]" />
+                <LogOut className="h-[18px] w-[18px] shrink-0" />
+                {expanded && <span className="text-[13px] font-medium">Выйти</span>}
               </button>
             </TooltipTrigger>
-            <TooltipContent side="right" className="z-[100]">Выйти</TooltipContent>
+            {!expanded && <TooltipContent side="right" className="z-[100]">Выйти</TooltipContent>}
           </Tooltip>
         </div>
       </aside>
