@@ -66,6 +66,16 @@ export function OrgSalesManager() {
   const [section, setSection] = useState<string>('overview');
   const { settings: smtp } = useOrgSmtp(organizationId);
 
+  const [taskPrefill, setTaskPrefill] = useState<{ name: string; inn?: string | null } | null>(null);
+  const [activityDialog, setActivityDialog] = useState<{
+    open: boolean; type: 'call' | 'note'; company: { name: string; inn: string } | null;
+  }>({ open: false, type: 'call', company: null });
+  const [commRefresh, setCommRefresh] = useState(0);
+
+  const openActivity = useCallback((type: 'call' | 'note') => (c: { name: string; inn: string }) => {
+    setActivityDialog({ open: true, type, company: c });
+  }, []);
+
   if (!organizationId) return null;
 
   return (
@@ -138,13 +148,23 @@ export function OrgSalesManager() {
               }}
             />
           )}
-          {section === 'tasks' && <SalesTasks organizationId={organizationId} />}
+          {section === 'tasks' && (
+            <SalesTasks
+              organizationId={organizationId}
+              prefillCompany={taskPrefill}
+              onPrefillConsumed={() => setTaskPrefill(null)}
+            />
+          )}
           {section === 'deals' && (
             <Deals360
               organizationId={organizationId}
               onCreateProposal={() => setSection('proposals')}
               onCreateContract={() => setSection('contracts')}
               onCreateInvoice={() => setSection('contracts')}
+              onAddCall={openActivity('call')}
+              onAddNote={openActivity('note')}
+              onAddTask={(c) => { setTaskPrefill(c); setSection('tasks'); }}
+              communicationRefreshKey={commRefresh}
             />
           )}
           {section === 'companies' && <CompaniesUnified organizationId={organizationId} hideColdBase />}
@@ -160,6 +180,19 @@ export function OrgSalesManager() {
           {section === 'smtp' && <OrgSmtpSettings organizationId={organizationId} />}
         </div>
       </div>
+
+      {/* Универсальный диалог звонок/заметка */}
+      {activityDialog.company && (
+        <LogActivityDialog
+          open={activityDialog.open}
+          onOpenChange={(v) => setActivityDialog(s => ({ ...s, open: v }))}
+          companyName={activityDialog.company.name}
+          inn={activityDialog.company.inn}
+          defaultType={activityDialog.type}
+          organizationId={organizationId}
+          onLogged={() => setCommRefresh(x => x + 1)}
+        />
+      )}
     </div>
   );
 }
