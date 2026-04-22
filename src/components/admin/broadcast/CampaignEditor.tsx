@@ -98,6 +98,11 @@ export function CampaignEditor({ open, onClose, scope, organizationId, onCreated
   const [scheduledTime, setScheduledTime] = useState("");
   const [draftRestored, setDraftRestored] = useState(false);
 
+  // A/B test
+  const [abEnabled, setAbEnabled] = useState(false);
+  const [subjectB, setSubjectB] = useState("");
+  const [abSamplePercent, setAbSamplePercent] = useState(20);
+
   const scopeKey = scope === "platform" ? "platform" : (organizationId || "");
   const { status: warmup } = useEmailWarmup(scopeKey || null);
   const tooMany = warmup && recipients.count > warmup.remaining;
@@ -203,6 +208,7 @@ export function CampaignEditor({ open, onClose, scope, organizationId, onCreated
     setMeetingMode("none"); setExternalUrl(""); setExternalDate(""); setExternalTime("");
     setSelectedWebinarId(""); setNewWebinarMeta(null);
     setScheduleEnabled(false); setScheduledDate(""); setScheduledTime("");
+    setAbEnabled(false); setSubjectB(""); setAbSamplePercent(20);
     setRecipients({ source: scope === "platform" ? "organizations" : "students", manualEmails: [], count: 0 });
     try { localStorage.removeItem(DRAFT_KEY); } catch { /* ignore */ }
   };
@@ -277,11 +283,15 @@ export function CampaignEditor({ open, onClose, scope, organizationId, onCreated
       }
 
       const isScheduled = !launch && !!scheduledAtISO;
+      const useAb = abEnabled && subjectB.trim().length > 0;
       const payload: any = {
         scope,
         organization_id: scope === "org" ? organizationId : null,
         name: name.trim(),
         subject: subject.trim(),
+        subject_b: useAb ? subjectB.trim() : null,
+        ab_test_enabled: useAb,
+        ab_sample_percent: useAb ? abSamplePercent : 20,
         html_body: html,
         from_name: fromName.trim() || null,
         reply_to: replyTo.trim() || null,
@@ -344,11 +354,48 @@ export function CampaignEditor({ open, onClose, scope, organizationId, onCreated
             </div>
 
             <div>
-              <Label>Тема письма</Label>
+              <Label>Тема письма {abEnabled && <span className="text-xs text-muted-foreground">(вариант A)</span>}</Label>
               <Input value={subject} onChange={(e) => setSubject(e.target.value)} placeholder="Здравствуйте, {{name}}!" />
               <p className="text-xs text-muted-foreground mt-1">
-                Переменные: <code>{"{{name}}"}</code>, <code>{"{{email}}"}</code>, <code>{"{{date}}"}</code>, <code>{"{{time}}"}</code>, <code>{"{{webinar_url}}"}</code>, <code>{"{{host_name}}"}</code>
+                Переменные: <code>{"{{name}}"}</code>, <code>{"{{email}}"}</code>, <code>{"{{org_name}}"}</code>, <code>{"{{plan}}"}</code>, <code>{"{{course_count}}"}</code>, <code>{"{{last_login}}"}</code>, <code>{"{{date}}"}</code>, <code>{"{{time}}"}</code>, <code>{"{{webinar_url\}\}"}</code>, <code>{"{{host_name}}"}</code>
               </p>
+            </div>
+
+            {/* A/B-тест темы */}
+            <div className="border rounded-xl p-4 bg-muted/20 space-y-3">
+              <label className="flex items-center gap-2 text-sm font-semibold cursor-pointer">
+                <Checkbox checked={abEnabled} onCheckedChange={(v) => setAbEnabled(!!v)} />
+                <span>A/B-тест темы письма</span>
+              </label>
+              {abEnabled && (
+                <div className="space-y-2">
+                  <div>
+                    <Label className="text-xs">Тема — вариант B</Label>
+                    <Input
+                      value={subjectB}
+                      onChange={(e) => setSubjectB(e.target.value)}
+                      placeholder="Альтернативная формулировка темы"
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-xs">Размер тестовой выборки: <b>{abSamplePercent}%</b></Label>
+                    <input
+                      type="range"
+                      min={5}
+                      max={50}
+                      step={5}
+                      value={abSamplePercent}
+                      onChange={(e) => setAbSamplePercent(parseInt(e.target.value, 10))}
+                      className="w-full accent-primary"
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Сначала отправим {abSamplePercent}% получателей: половине — тема A, половине — тема B.
+                      Через 30 минут система автоматически выберет вариант с лучшим open-rate
+                      и отправит его остальным {100 - abSamplePercent}%.
+                    </p>
+                  </div>
+                </div>
+              )}
             </div>
 
             <div>
