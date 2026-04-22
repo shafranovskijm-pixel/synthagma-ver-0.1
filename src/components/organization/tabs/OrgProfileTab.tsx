@@ -747,49 +747,133 @@ export function OrgProfileTab({ organizationId, initialSubTab }: ProfileTabProps
         );
 
       case "menu": {
-        const menuItems = [
-          { icon: BarChart3, bg: "bg-accent/15", color: "text-accent", label: "Статистика", desc: "Аналитика и отчёты", key: "showStats" as keyof MenuSettingsLocal },
-          { icon: LinkIcon, bg: "bg-primary/15", color: "text-primary", label: "Ссылки регистрации", desc: "Самостоятельная регистрация", key: "showLinks" as keyof MenuSettingsLocal },
-          { icon: HardHat, bg: "bg-accent/15", color: "text-accent", label: "Охрана труда", desc: "Модуль охраны труда", key: "showLaborSafety" as keyof MenuSettingsLocal },
-          { icon: FileText, bg: "bg-destructive/15", color: "text-destructive", label: "Документы", desc: "Документооборот", key: "showDocuments" as keyof MenuSettingsLocal },
-          { icon: ShoppingBag, bg: "bg-primary/15", color: "text-primary", label: "Маркетплейс", desc: "Магазин курсов", key: "showServices" as keyof MenuSettingsLocal },
+        type MenuKey = keyof typeof defaultMenuSettings;
+        type Badge = "beta" | "paid" | "always";
+        type Group = {
+          title: string;
+          desc: string;
+          items: { icon: any; bg: string; color: string; label: string; desc: string; key?: MenuKey; badge?: Badge; alwaysOn?: boolean }[];
+        };
+        const groups: Group[] = [
+          {
+            title: "Обучение",
+            desc: "Базовые разделы — всегда доступны",
+            items: [
+              { icon: BookOpen, bg: "bg-primary/15", color: "text-primary", label: "Курсы", desc: "Каталог и редактор курсов", alwaysOn: true, badge: "always" },
+              { icon: Users, bg: "bg-accent/15", color: "text-accent", label: "Ученики", desc: "Управление учениками", key: "showStudents" },
+              { icon: Building2, bg: "bg-primary/15", color: "text-primary", label: "Компании", desc: "Корпоративные клиенты", key: "showCompanies" },
+              { icon: ClipboardList, bg: "bg-accent/15", color: "text-accent", label: "Журналы", desc: "Журналы регистрации документов", key: "showJournals" },
+              { icon: MessageSquare, bg: "bg-primary/15", color: "text-primary", label: "Чаты", desc: "Общение с учениками", alwaysOn: true, badge: "always" },
+            ],
+          },
+          {
+            title: "Аналитика",
+            desc: "Метрики и регистрация",
+            items: [
+              { icon: BarChart3, bg: "bg-accent/15", color: "text-accent", label: "Статистика", desc: "Аналитика и отчёты", key: "showStats" },
+              { icon: LinkIcon, bg: "bg-primary/15", color: "text-primary", label: "Ссылки регистрации", desc: "Самостоятельная регистрация", key: "showLinks" },
+            ],
+          },
+          {
+            title: "Бизнес",
+            desc: "Финансы, маркетинг, продажи",
+            items: [
+              { icon: Wallet, bg: "bg-primary/15", color: "text-primary", label: "Финансы", desc: "Подписка и оплаты", alwaysOn: true, badge: "always" },
+              { icon: Briefcase, bg: "bg-accent/15", color: "text-accent", label: "Продажи", desc: "CRM: воронка, лиды, КП, рассылки", key: "showSales", badge: "beta" },
+              { icon: Bot, bg: "bg-primary/15", color: "text-primary", label: "ИИ-преподаватели", desc: "Голосовые ИИ-аватары", key: "showAITutors", badge: "beta" },
+              { icon: ShoppingBag, bg: "bg-accent/15", color: "text-accent", label: "Маркетплейс", desc: "Магазин курсов", key: "showServices" },
+              { icon: Sparkles, bg: "bg-primary/15", color: "text-primary", label: "Витрина и Telegram", desc: "Публичная витрина курсов", alwaysOn: true, badge: "always" },
+              { icon: CreditCard, bg: "bg-accent/15", color: "text-accent", label: "Подписка", desc: "Тариф организации", key: "showSubscription" },
+            ],
+          },
+          {
+            title: "Документооборот",
+            desc: "Документы, реестры, регламенты",
+            items: [
+              { icon: FileText, bg: "bg-destructive/15", color: "text-destructive", label: "Документы", desc: "Документы организации", key: "showDocuments" },
+              { icon: Award, bg: "bg-primary/15", color: "text-primary", label: "ФРДО", desc: "Реестр документов об образовании", key: "showFrdo" },
+              { icon: HardHat, bg: "bg-accent/15", color: "text-accent", label: "Охрана труда", desc: "Модуль ОТ", key: "showLaborSafety", badge: "paid" },
+              { icon: FolderOpen, bg: "bg-primary/15", color: "text-primary", label: "Библиотека", desc: "Хранилище материалов", key: "showLibrary" },
+            ],
+          },
         ];
+
+        const renderBadge = (b?: Badge) => {
+          if (b === "beta") return <span className="text-[10px] uppercase tracking-wide px-1.5 py-0.5 rounded bg-primary/10 text-primary font-semibold">Beta</span>;
+          if (b === "paid") return <span className="text-[10px] uppercase tracking-wide px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-600 font-semibold">Платный</span>;
+          if (b === "always") return <span className="text-[10px] uppercase tracking-wide px-1.5 py-0.5 rounded bg-muted text-muted-foreground font-semibold">Всегда</span>;
+          return null;
+        };
+
         return (
-          <div className="max-w-2xl">
-            <p className="text-xs lg:text-sm text-muted-foreground mb-4 lg:mb-5">Включите или отключите разделы в боковом меню</p>
-            <div className="space-y-2">
-              {menuItems.map((item) => {
-                const Icon = item.icon;
-                const isOn = menuSettings[item.key];
-                return (
-                  <div key={item.key} className="flex items-center justify-between p-3 lg:p-4 rounded-xl border border-border/60 hover:border-primary/30 hover:bg-accent/5 transition-all group/row">
-                    <div className="flex items-center gap-3 lg:gap-4">
-                      <div className={`w-11 h-11 lg:w-12 lg:h-12 rounded-xl ${item.bg} flex items-center justify-center shadow-sm transition-transform group-hover/row:scale-105`}>
-                        <Icon className={`w-5 h-5 lg:w-[22px] lg:h-[22px] ${item.color}`} />
-                      </div>
-                      <div>
-                        <p className="font-medium text-sm lg:text-base">{item.label}</p>
-                        <p className="text-xs lg:text-sm text-muted-foreground">{item.desc}</p>
-                      </div>
-                    </div>
-                    <button
-                      onClick={() => setMenuSettings(prev => ({ ...prev, [item.key]: !prev[item.key] }))}
-                      className={`relative inline-flex h-7 w-12 items-center rounded-full transition-colors shrink-0 ${isOn ? 'bg-primary shadow-md' : 'bg-muted'}`}
-                    >
-                      <span className={`inline-block h-5 w-5 transform rounded-full bg-white shadow-sm transition-transform ${isOn ? 'translate-x-6' : 'translate-x-1'}`} />
-                    </button>
+          <div className="max-w-3xl">
+            <p className="text-xs lg:text-sm text-muted-foreground mb-4 lg:mb-5">
+              Тумблеры показывают реальное состояние меню. Изменения применяются после сохранения и видны во всех вкладках организации.
+            </p>
+            <div className="space-y-6">
+              {groups.map(group => (
+                <div key={group.title}>
+                  <div className="mb-2">
+                    <h4 className="text-sm font-semibold text-foreground">{group.title}</h4>
+                    <p className="text-xs text-muted-foreground">{group.desc}</p>
                   </div>
-                );
-              })}
+                  <div className="space-y-2">
+                    {group.items.map((item, idx) => {
+                      const Icon = item.icon;
+                      const isAlways = item.alwaysOn;
+                      const isOn = isAlways ? true : !!menuSettings[item.key as MenuKey];
+                      return (
+                        <div
+                          key={`${group.title}-${idx}`}
+                          className={`flex items-center justify-between p-3 lg:p-4 rounded-xl border transition-all ${
+                            isAlways ? "border-border/40 bg-muted/30" : "border-border/60 hover:border-primary/30 hover:bg-accent/5"
+                          }`}
+                        >
+                          <div className="flex items-center gap-3 lg:gap-4 min-w-0">
+                            <div className={`w-11 h-11 lg:w-12 lg:h-12 rounded-xl ${item.bg} flex items-center justify-center shadow-sm shrink-0`}>
+                              <Icon className={`w-5 h-5 lg:w-[22px] lg:h-[22px] ${item.color}`} />
+                            </div>
+                            <div className="min-w-0">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <p className="font-medium text-sm lg:text-base">{item.label}</p>
+                                {renderBadge(item.badge)}
+                              </div>
+                              <p className="text-xs lg:text-sm text-muted-foreground">{item.desc}</p>
+                            </div>
+                          </div>
+                          <button
+                            onClick={() => {
+                              if (isAlways || !item.key) return;
+                              const k = item.key as MenuKey;
+                              setMenuSettings(prev => ({ ...prev, [k]: !prev[k] }) as any);
+                            }}
+                            disabled={isAlways}
+                            className={`relative inline-flex h-7 w-12 items-center rounded-full transition-colors shrink-0 ${
+                              isOn ? "bg-primary shadow-md" : "bg-muted"
+                            } ${isAlways ? "opacity-60 cursor-not-allowed" : ""}`}
+                          >
+                            <span
+                              className={`inline-block h-5 w-5 transform rounded-full bg-white shadow-sm transition-transform ${
+                                isOn ? "translate-x-6" : "translate-x-1"
+                              }`}
+                            />
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
             </div>
-            <div className="mt-5 lg:mt-6 pt-4 border-t border-border flex flex-wrap gap-2">
+            <div className="mt-6 pt-4 border-t border-border flex flex-wrap gap-2">
               <Button className="btn-gradient rounded-xl gap-2 text-sm" onClick={handleSaveMenuSettings}><Save className="w-4 h-4" /> Сохранить</Button>
-              <Button variant="outline" className="rounded-xl gap-2 text-sm" onClick={reloadMenuSettings}><RefreshCw className="w-4 h-4" /> Обновить меню</Button>
-              <Button variant="ghost" className="rounded-xl gap-2 text-sm" onClick={resetMenuSettings}><RotateCcw className="w-4 h-4" /> По умолчанию</Button>
+              <Button variant="outline" className="rounded-xl gap-2 text-sm" onClick={handleReloadMenuSettings}><RefreshCw className="w-4 h-4" /> Обновить меню</Button>
+              <Button variant="ghost" className="rounded-xl gap-2 text-sm" onClick={handleResetMenuSettings}><RotateCcw className="w-4 h-4" /> По умолчанию</Button>
             </div>
           </div>
         );
       }
+
 
       case "student-dashboard":
         return (
