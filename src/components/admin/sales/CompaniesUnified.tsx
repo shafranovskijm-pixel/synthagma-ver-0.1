@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Card, CardContent } from '@/components/ui/card';
 import { Building2, Snowflake, Archive, Ban } from 'lucide-react';
@@ -12,8 +12,13 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Plus, Trash2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { ru } from 'date-fns/locale';
+import { supabase } from '@/integrations/supabase/client';
 
-export function CompaniesUnified() {
+interface CompaniesUnifiedProps {
+  organizationId?: string;
+}
+
+export function CompaniesUnified({ organizationId }: CompaniesUnifiedProps = {}) {
   const [tab, setTab] = useState<'in_work' | 'cold' | 'archive' | 'blacklist'>('in_work');
 
   return (
@@ -43,31 +48,96 @@ export function CompaniesUnified() {
         </TabsList>
 
         <TabsContent value="in_work" className="mt-4">
-          <LeadsManager />
+          <LeadsManager organizationId={organizationId} />
         </TabsContent>
 
         <TabsContent value="cold" className="mt-4">
-          <CompaniesDatabase />
+          <CompaniesDatabase organizationId={organizationId} />
         </TabsContent>
 
         <TabsContent value="archive" className="mt-4">
-          <Card className="rounded-2xl">
-            <CardContent className="p-8 text-center text-muted-foreground">
-              Архив компаний — здесь будут отображаться ранее удалённые лиды и компании.
-            </CardContent>
-          </Card>
+          <ArchiveTab organizationId={organizationId} />
         </TabsContent>
 
         <TabsContent value="blacklist" className="mt-4">
-          <BlacklistTab />
+          <BlacklistTab organizationId={organizationId} />
         </TabsContent>
       </Tabs>
     </div>
   );
 }
 
-function BlacklistTab() {
-  const { list, add, remove } = useSalesBlacklist();
+function ArchiveTab({ organizationId }: { organizationId?: string }) {
+  const [items, setItems] = useState<Array<{ id: string; type: 'lead' | 'proposal'; name: string; reason: string; date: string }>>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    void load();
+  }, [organizationId]);
+
+  async function load() {
+    setLoading(true);
+    try {
+      const applyOrg = <T extends { eq: any }>(q: T): T =>
+        organizationId ? q.eq('organization_id', organizationId) : q;
+      const [leadsR, proposalsR] = await Promise.all([
+        applyOrg(
+          supabase.from('sales_leads')
+            .select('id, org_name, status, updated_at')
+            .eq('status', 'not_interested')
+            .order('updated_at', { ascending: false })
+            .limit(200)
+        ),
+        applyOrg(
+          supabase.from('commercial_proposals')
+            .select('id, company_name, status, updated_at')
+            .eq('status', 'rejected')
+            .order('updated_at', { ascending: false })
+            .limit(200)
+        ),
+      ]);
+      const merged = [
+        ...(leadsR.data || []).map((l: any) => ({ id: l.id, type: 'lead' as const, name: l.org_name, reason: 'Лид: отказ', date: l.updated_at })),
+        ...(proposalsR.data || []).map((p: any) => ({ id: p.id, type: 'proposal' as const, name: p.company_name, reason: 'КП: отклонено', date: p.updated_at })),
+      ].sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+      setItems(merged);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  if (loading) return <div className="text-center text-sm text-muted-foreground py-8">Загрузка...</div>;
+  if (items.length === 0) {
+    return (
+      <Card className="rounded-2xl">
+        <CardContent className="p-8 text-center text-muted-foreground">
+          Архив пуст. Сюда попадают отказавшиеся лиды и отклонённые КП.
+        </CardContent>
+      </Card>
+    );
+  }
+  return (
+    <Card className="rounded-2xl">
+      <CardContent className="p-3 space-y-1.5">
+        {items.map(it => (
+          <div key={it.type + it.id} className="flex items-start gap-3 p-3 rounded-xl border hover:bg-muted/30">
+            <Archive className="w-4 h-4 text-muted-foreground mt-0.5 shrink-0" />
+            <div className="flex-1 min-w-0">
+              <div className="text-sm font-medium truncate">{it.name}</div>
+              <div className="text-xs text-muted-foreground">{it.reason}</div>
+              <div className="text-[10px] text-muted-foreground mt-0.5">
+                {it.date ? format(new Date(it.date), 'dd MMM yyyy', { locale: ru }) : '—'}
+              </div>
+            </div>
+          </div>
+        ))}
+      </CardContent>
+    </Card>
+  );
+}
+
+function BlacklistTab({ organizationId }: { organizationId?: string }) {
+  const { list, add, remove } = useSalesBlacklist(organizationId);
   const [open, setOpen] = useState(false);
   const [inn, setInn] = useState('');
   const [orgName, setOrgName] = useState('');

@@ -9,18 +9,21 @@ export interface BlacklistEntry {
   reason: string | null;
   added_by: string | null;
   added_at: string;
+  organization_id: string | null;
 }
 
-export function useSalesBlacklist() {
+export function useSalesBlacklist(organizationId?: string) {
   const qc = useQueryClient();
 
   const list = useQuery({
-    queryKey: ['sales_blacklist'],
+    queryKey: ['sales_blacklist', organizationId || 'all'],
     queryFn: async () => {
-      const { data, error } = await (supabase as any)
+      let q = (supabase as any)
         .from('sales_blacklist')
         .select('*')
         .order('added_at', { ascending: false });
+      if (organizationId) q = q.eq('organization_id', organizationId);
+      const { data, error } = await q;
       if (error) throw error;
       return (data || []) as BlacklistEntry[];
     },
@@ -29,7 +32,7 @@ export function useSalesBlacklist() {
   const add = useMutation({
     mutationFn: async (input: { inn: string; org_name?: string; reason?: string; organization_id?: string | null }) => {
       const { data: u } = await supabase.auth.getUser();
-      let orgId = input.organization_id ?? null;
+      let orgId = input.organization_id ?? organizationId ?? null;
       if (orgId === null && u.user?.id) {
         const { data: p } = await supabase.from('profiles').select('organization_id').eq('user_id', u.user.id).maybeSingle();
         orgId = p?.organization_id ?? null;

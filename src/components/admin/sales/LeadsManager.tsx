@@ -20,7 +20,11 @@ const LEAD_STATUS_MAP: Record<string, { label: string; color: string }> = {
   client: { label: 'Клиент', color: 'bg-emerald-500/10 text-emerald-500' },
 };
 
-export function LeadsManager() {
+interface LeadsManagerProps {
+  organizationId?: string;
+}
+
+export function LeadsManager({ organizationId }: LeadsManagerProps = {}) {
   const { leads, fetchLeads, assignLeads, managers, fetchManagers, updateLeadStatus, updateLeadNotes, addActivity, activities, fetchActivities } = useSalesManager();
   const [search, setSearch] = useState('');
   const [regionFilter, setRegionFilter] = useState('all');
@@ -31,11 +35,16 @@ export function LeadsManager() {
   const [detailLead, setDetailLead] = useState<SalesLead | null>(null);
   const [activityNote, setActivityNote] = useState('');
 
-  useEffect(() => { fetchLeads(); fetchManagers(); }, [fetchLeads, fetchManagers]);
+  useEffect(() => { fetchLeads(); fetchManagers(); }, [fetchLeads, fetchManagers, organizationId]);
 
-  const regions = [...new Set(leads.map(l => l.region).filter(Boolean))] as string[];
+  // фильтрация по orgId на клиенте (RLS уже сужает на сервере, но для админа делаем явно)
+  const orgFilteredLeads = organizationId
+    ? leads.filter((l: any) => l.organization_id === organizationId)
+    : leads;
 
-  const filtered = leads.filter(l => {
+  const regions = [...new Set(orgFilteredLeads.map(l => l.region).filter(Boolean))] as string[];
+
+  const filtered = orgFilteredLeads.filter(l => {
     if (search && !l.org_name.toLowerCase().includes(search.toLowerCase()) && !l.inn?.includes(search)) return false;
     if (regionFilter !== 'all' && l.region !== regionFilter) return false;
     if (statusFilter !== 'all' && l.status !== statusFilter) return false;
@@ -85,7 +94,7 @@ export function LeadsManager() {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between flex-wrap gap-2">
-        <h3 className="text-lg font-semibold">База компаний ({leads.length})</h3>
+        <h3 className="text-lg font-semibold">База компаний ({orgFilteredLeads.length})</h3>
         <Button size="sm" onClick={() => setImportOpen(true)}>
           <Upload className="w-4 h-4 mr-2" />Импорт из Excel
         </Button>

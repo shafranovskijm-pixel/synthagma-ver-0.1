@@ -17,7 +17,7 @@ export interface SalesTask {
   updated_at: string;
 }
 
-export function useSalesTasks(filter?: { leadId?: string; managerId?: string; onlyOpen?: boolean }) {
+export function useSalesTasks(filter?: { leadId?: string; managerId?: string; onlyOpen?: boolean; organizationId?: string }) {
   const qc = useQueryClient();
 
   const list = useQuery({
@@ -26,6 +26,7 @@ export function useSalesTasks(filter?: { leadId?: string; managerId?: string; on
       let q = (supabase as any).from('sales_tasks').select('*').order('due_date', { ascending: true });
       if (filter?.leadId) q = q.eq('lead_id', filter.leadId);
       if (filter?.managerId) q = q.eq('manager_id', filter.managerId);
+      if (filter?.organizationId) q = q.eq('organization_id', filter.organizationId);
       if (filter?.onlyOpen) q = q.eq('status', 'pending');
       const { data, error } = await q;
       if (error) throw error;
