@@ -1,51 +1,67 @@
 ---
 name: Broadcast email mailing
-description: Система рассылок: SMTP, шаблоны, продающие письма, прогрев, suppression-лист, планировщик, click-tracking, UTM, dedup, RFC 8058 unsubscribe
+description: Система рассылок: SMTP, шаблоны, продающие письма, прогрев, suppression-лист, планировщик, click-tracking, UTM, dedup, RFC 8058 unsubscribe, A/B-тест тем, расширенные переменные, импорт CSV/Excel, inbox-превью, проверка SPF/DKIM/DMARC
 type: feature
 ---
 
-Система рассылок в админ-панели (вкладка «Рассылка»). Платформенный SMTP (через ENV) или SMTP организации (расшифровка через `get_decrypted_org_smtp`). Edge: `run-email-campaign`, `send-campaign-email`, `process-paused-campaigns`, `process-scheduled-campaigns`, `email-unsubscribe`, `email-click-redirect`, `track-email-open`.
+Система рассылок в админ-панели (вкладка «Рассылка»). Платформенный SMTP (через ENV) или SMTP организации (расшифровка через `get_decrypted_org_smtp`). Edge: `run-email-campaign`, `send-campaign-email`, `process-paused-campaigns`, `process-scheduled-campaigns`, `email-unsubscribe`, `email-click-redirect`, `track-email-open`, `email-ab-pick-winner`, `email-domain-check`.
 
 ## Заполнение получателей
 
-Получатели вставляются `run-email-campaign` при первом запуске кампании (если в `email_campaign_recipients` ещё пусто). Источники (`recipient_source`): `manual`, `organizations`, `companies_db` (sales_companies_db), `students` (profiles по org), `companies` (по org). Дедупликация по email + фильтр через `email_suppressions` (для платформы — только `scope=platform`; для орг — `scope IN (orgId, 'platform')`).
+Получатели вставляются `run-email-campaign` при первом запуске кампании. Источники (`recipient_source`): `manual`, `organizations`, `companies_db`, `students`, `companies`. Дедупликация по email + фильтр через `email_suppressions`.
 
-## Шаблоны (src/components/admin/broadcast/emailTemplates.ts)
+## Шаблоны
 
-7 шаблонов в Teal/Cyan (#1AAB9B): `inactive`, `welcome`, `cold`, `presentation` (большой продающий с 4 блоками), `followup`, `proposal`, `reactivation`. Все продающие — с футером «СТОП для отписки» + ссылкой `{{unsubscribe_url}}`. В `email_templates` синхронизированы как `scope='platform' is_default=true`.
+7 шаблонов в Teal/Cyan (#1AAB9B): `inactive`, `welcome`, `cold`, `presentation`, `followup`, `proposal`, `reactivation`. Все продающие — с футером «СТОП для отписки» + ссылкой `{{unsubscribe_url}}`.
 
 ## Планировщик отправки
 
-В `CampaignEditor` чекбокс «Запланировать отправку» + дата/время → `email_campaigns.scheduled_at` + `status='scheduled'`. Cron `process-scheduled-campaigns` (jobid 11, schedule `* * * * *`) проверяет `scheduled_at <= now()` и переводит в `draft` + вызывает `run-email-campaign`. Минимум +30 сек в будущее.
+Чекбокс «Запланировать отправку» + дата/время → `email_campaigns.scheduled_at` + `status='scheduled'`. Cron `process-scheduled-campaigns` (jobid 11, `* * * * *`). Минимум +30 сек в будущее.
 
-## Автосохранение черновика
+## A/B-тест тем (jobid 12, `*/5 * * * *`)
 
-`CampaignEditor` сохраняет в `localStorage('broadcast_campaign_draft_v1')` каждые 800 мс (debounce). Восстанавливается при открытии диалога (если scope/org совпадают и черновик не старше 7 дней). При успешном создании — очищается.
+Поля `email_campaigns.subject_b`, `ab_test_enabled`, `ab_sample_percent` (5–50, default 20), `ab_winner` (a/b), `ab_winner_picked_at`, `ab_sample_started_at`. У получателя — `subject_variant` (a/b/null). Поток: `run-email-campaign` размечает sample-получателей рандомно 50/50 → отправляет только их → cron `email-ab-pick-winner` через ≥30 минут считает open rate и выбирает победителя → размечает оставшиеся pending → перезапускает `run-email-campaign` для добивки.
+
+## Расширенные переменные
+
+В `send-campaign-email` подгружаются: `{{org_name}}`, `{{plan}}`, `{{course_count}}`, `{{last_login}}` (из `organizations` и `profiles` по email получателя). Плюс старые: `{{name}}`, `{{email}}`, `{{date}}`, `{{time}}`, `{{webinar_url}}`, `{{host_name}}`, `{{unsubscribe_url}}`.
+
+## Импорт получателей из CSV/Excel
+
+В `RecipientPicker` (источник «Ручной список email») — кнопка «Импорт из CSV/Excel». Использует `xlsx`-парсер: читает первый лист, ищет email-подобные строки в любой колонке, дедуплицирует и объединяет с уже введёнными.
+
+## Inbox-превью
+
+Компонент `InboxPreview` — третья вкладка в редакторе. Эмуляция Gmail/Mail.ru/Outlook + переключатель Desktop/Mobile (360/720px). Показывает list-row (аватар, отправитель, тема, preheader) и тело письма в iframe с sandbox.
+
+## Репутация домена (SPF/DKIM/DMARC)
+
+Edge `email-domain-check` через Google DNS-over-HTTPS (`https://dns.google/resolve`) проверяет TXT/MX-записи. Считает score 0–100 (SPF 35, DMARC 35, DKIM 25, MX 5), даёт рекомендации по настройке. UI — вкладка «Репутация домена» в `BroadcastManager`.
 
 ## Suppression-лист (email_suppressions)
 
-Таблица `email_suppressions(email, scope, reason, source_campaign_id, ...)`. Reason: `manual|unsubscribe|bounce|complaint`. UI: вкладка «Отписавшиеся» (`SuppressionListManager`) — добавление вручную, поиск, удаление. RPC `is_email_suppressed(email, scope)` используется в `send-campaign-email`.
+Таблица + RPC `is_email_suppressed`. UI: вкладка «Отписавшиеся» (`SuppressionListManager`).
 
 ## RFC 8058 One-Click Unsubscribe
 
-`send-campaign-email` добавляет заголовки `List-Unsubscribe: <url>, <mailto:...>`, `List-Unsubscribe-Post: List-Unsubscribe=One-Click`, `Precedence: bulk`. Edge `email-unsubscribe` обрабатывает GET (страница) и POST (one-click) → пишет в `email_suppressions`, инкрементит `unsubscribe_count`.
+Заголовки `List-Unsubscribe`, `List-Unsubscribe-Post`, `Precedence: bulk`. Edge `email-unsubscribe` обрабатывает GET и POST.
 
 ## Click-tracking + UTM
 
-`_shared/email-html-utils.ts` (`processCampaignHtml`) при отправке: оборачивает все `<a href>` через `email-click-redirect?t=<token>&url=<encoded>` для подсчёта кликов в `email_campaign_clicks`, и при `utm_enabled !== false` добавляет UTM (`utm_source=sintagma_email`, `utm_medium=email`, `utm_campaign=<campaign_name_slug>`). Клик считается также как открытие, если `opened_at` пуст.
+`_shared/email-html-utils.ts` (`processCampaignHtml`): оборачивает `<a href>` через `email-click-redirect?t=<token>&url=<encoded>`, добавляет UTM (`utm_source=sintagma_email`, `utm_medium=email`, `utm_campaign=<slug>`).
 
-## Валидация HTML
+## Автосохранение черновика
 
-В `handleSave` сравниваются открытые/закрытые теги (`p|div|a|span|table|tr|td`); при разнице >2 — confirm.
+`localStorage('broadcast_campaign_draft_v1')` каждые 800 мс (debounce). 7 дней TTL.
 
-## CreateWebinarQuick fallback
+## Что ещё не сделано
 
-Для платформенного админа без `profiles.organization_id` — `Select` со списком организаций. Выбор в `localStorage('broadcast_webinar_org_id')`.
+- **Drip-кампании** — таблицы `email_drip_sequences/steps/subscribers/sends` спроектированы, но миграция падает (`function has_role(uuid, app_role) does not exist` — нужно проверить точную сигнатуру в проекте).
+- A/B-тест по содержанию (не только теме)
+- Inbox-превью через Litmus/email-on-acid (платный API)
 
-## Колонки email_campaigns
+## Колонки email_campaigns (актуальный набор)
 
-`scheduled_at`, `started_at`, `completed_at`, `total_recipients`, `sent_count`, `failed_count`, `open_count`, `click_count`, `unsubscribe_count`, `utm_enabled` (default true), `user_paused`, `template_id`. Статусы: `draft|scheduled|sending|completed|failed|paused`.
+`scheduled_at`, `started_at`, `completed_at`, `total_recipients`, `sent_count`, `failed_count`, `open_count`, `click_count`, `unsubscribe_count`, `utm_enabled`, `user_paused`, `template_id`, `subject_b`, `ab_test_enabled`, `ab_sample_percent`, `ab_winner`, `ab_winner_picked_at`, `ab_sample_started_at`. Получатель: `subject_variant` (a/b/null).
 
-## Что ещё можно улучшить (опционально)
-
-A/B-тест темы, расширенные персональные переменные (`{{org_name}}`, `{{plan}}`), inbox-превью (Litmus/email-on-acid), drip-кампании (последовательности писем по триггерам), DMARC/DKIM-мониторинг.
+Cron-задачи: jobid 11 (process-scheduled-campaigns, каждую минуту), jobid 12 (email-ab-pick-winner, каждые 5 минут).
