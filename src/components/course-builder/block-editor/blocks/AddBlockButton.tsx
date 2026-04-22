@@ -198,7 +198,7 @@ export function InlineAddBlockButton({ onAdd }: { onAdd: (type: BlockType, pendi
           <Plus className="w-5 h-5" strokeWidth={2.5} />
         </button>
       </PopoverTrigger>
-      <PopoverContent align="start" side="right" collisionPadding={16} className="w-[560px] max-w-[calc(100vw-2rem)] p-4">
+      <PopoverContent align="start" side="right" sideOffset={8} collisionPadding={16} avoidCollisions className="w-[560px] max-w-[calc(100vw-1rem)] max-h-[var(--radix-popover-content-available-height)] p-3 sm:p-4 overflow-hidden">
         <BlockPicker onSelect={handleSelect} />
       </PopoverContent>
     </Popover>
