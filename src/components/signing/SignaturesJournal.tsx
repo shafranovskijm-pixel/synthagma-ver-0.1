@@ -512,6 +512,7 @@ export function SignaturesJournal({ organizationId, initialStatus }: Props) {
               })}
             </TableBody>
           </Table>
+          </div>
         </div>
       )}
 
