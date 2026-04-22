@@ -6,7 +6,6 @@ import { LeadsManager } from './sales/LeadsManager';
 import { SalesControlPanel } from './sales/SalesControlPanel';
 import { SalesContracts } from './sales/SalesContracts';
 import { CompetitorComparison } from './sales/CompetitorComparison';
-import { DemoLinksManager } from './sales/DemoLinksManager';
 import { CompanyCard } from './sales/CompanyCard';
 import { DocumentSigning } from './sales/DocumentSigning';
 import { SalesSidebar } from './sales/SalesSidebar';
@@ -24,7 +23,6 @@ const TABS: Record<string, React.ReactNode> = {
   signing: <DocumentSigning />,
   control: <SalesControlPanel />,
   comparison: <CompetitorComparison />,
-  demo: <DemoLinksManager />,
   'company-card': <CompanyCard />,
 };
 
