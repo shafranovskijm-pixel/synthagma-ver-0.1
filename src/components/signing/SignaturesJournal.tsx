@@ -172,6 +172,38 @@ export function SignaturesJournal({ organizationId, initialStatus }: Props) {
     toast.success("Ссылка скопирована");
   };
 
+  const remindRecipient = async (r: SignatureRow) => {
+    const t = toast.loading("Отправляем напоминание...");
+    try {
+      const { error } = await supabase.functions.invoke("send-signing-email", {
+        body: {
+          signature_id: r.id,
+          is_reminder: true,
+        },
+      });
+      if (error) throw error;
+      toast.success("Напоминание отправлено", { id: t, description: r.recipient_email });
+    } catch (e: any) {
+      toast.error("Не удалось отправить напоминание", { id: t, description: e?.message || String(e) });
+    }
+  };
+
+  const cancelSignature = async (r: SignatureRow) => {
+    if (!confirm(`Отменить подписание документа «${r.document_title}»? Получатель больше не сможет его подписать.`)) return;
+    const t = toast.loading("Отменяем подписание...");
+    try {
+      const { error } = await supabase
+        .from("document_signatures")
+        .update({ status: "expired", rejected_at: new Date().toISOString(), rejection_reason: "Отменено отправителем" })
+        .eq("id", r.id);
+      if (error) throw error;
+      toast.success("Подписание отменено", { id: t });
+      load();
+    } catch (e: any) {
+      toast.error("Не удалось отменить", { id: t, description: e?.message || String(e) });
+    }
+  };
+
   const handleDownloadProtocol = (r: SignatureRow) => {
     const org = orgs[r.organization_id];
     downloadSignatureProtocol({
