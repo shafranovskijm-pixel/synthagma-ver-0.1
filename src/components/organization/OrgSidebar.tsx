@@ -583,7 +583,7 @@ export function OrgSidebar() {
               <TooltipTrigger asChild>
                 <button
                   onClick={handleToggleExpanded}
-                  className="hidden lg:flex items-center justify-center gap-1 h-8 w-[68px] rounded-lg border border-primary/20 bg-primary/5 text-primary/80 hover:bg-primary/15 hover:text-primary hover:border-primary/40 transition-colors"
+                  className="hidden lg:flex items-center justify-center gap-1 h-8 w-[68px] rounded-lg border border-primary/30 bg-transparent text-primary hover:bg-primary/10 hover:border-primary/50 transition-colors"
                   aria-label="Развернуть меню — показать названия пунктов"
                 >
                   <PanelLeftOpen className="h-4 w-4" />
