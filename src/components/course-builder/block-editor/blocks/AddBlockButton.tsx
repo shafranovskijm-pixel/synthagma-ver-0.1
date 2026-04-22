@@ -2,6 +2,7 @@ import { useState, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Input } from "@/components/ui/input";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import { Plus, Search, Sparkles } from "lucide-react";
 import type { BlockType, AIShortcutType } from "../types";
@@ -23,44 +24,53 @@ const allItems: GridItem[] = [
   ...aiShortcuts.map((s) => ({ type: s.type, icon: s.icon, label: s.label, group: "ИИ", isAI: true, description: s.description })),
 ];
 
-function BlockGrid({ items, selected, onPick }: { items: GridItem[]; selected: GridItem["type"] | null; onPick: (item: GridItem) => void }) {
+function BlockGrid({ items, onPick }: { items: GridItem[]; onPick: (item: GridItem) => void }) {
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-      {items.map((item) => {
-        const isActive = item.type === selected;
-        const iconClass = blockIconBg[item.type as BlockType] || "text-primary bg-primary/10";
-        return (
-          <button
-            key={item.type}
-            type="button"
-            onClick={() => onPick(item)}
-            className={cn(
-              "group flex flex-col items-center justify-center gap-2 rounded-xl border-2 p-4 text-center transition-all relative",
-              "hover:border-primary/40 hover:bg-primary/5",
-              isActive ? "border-primary bg-primary/10 shadow-sm" : "border-border/60 bg-card",
-            )}
-          >
-            {item.isAI && (
-              <span className="absolute top-1.5 right-1.5 text-[9px] font-semibold uppercase tracking-wide bg-gradient-to-r from-primary to-purple-500 text-primary-foreground rounded-full px-1.5 py-0.5 leading-none">
-                AI
-              </span>
-            )}
-            <div className={cn("w-11 h-11 rounded-xl flex items-center justify-center", iconClass)}>
-              <item.icon className="w-5 h-5" />
-            </div>
-            <span className={cn("text-sm font-medium leading-tight", isActive ? "text-primary" : "text-foreground")}>
-              {item.label}
-            </span>
-          </button>
-        );
-      })}
-    </div>
+    <TooltipProvider delayDuration={400}>
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        {items.map((item) => {
+          const iconClass = blockIconBg[item.type as BlockType] || "text-primary bg-primary/10";
+          const description = item.description || blockDescriptions[item.type as BlockType] || "";
+          return (
+            <Tooltip key={item.type}>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  onClick={() => onPick(item)}
+                  title={description}
+                  className={cn(
+                    "group flex flex-col items-center justify-center gap-2 rounded-xl border-2 p-4 text-center transition-all relative",
+                    "border-border/60 bg-card hover:border-primary hover:bg-primary/10 hover:shadow-sm hover:scale-[1.02]",
+                  )}
+                >
+                  {item.isAI && (
+                    <span className="absolute top-1.5 right-1.5 text-[9px] font-semibold uppercase tracking-wide bg-gradient-to-r from-primary to-purple-500 text-primary-foreground rounded-full px-1.5 py-0.5 leading-none">
+                      AI
+                    </span>
+                  )}
+                  <div className={cn("w-11 h-11 rounded-xl flex items-center justify-center", iconClass)}>
+                    <item.icon className="w-5 h-5" />
+                  </div>
+                  <span className="text-sm font-medium leading-tight text-foreground group-hover:text-primary">
+                    {item.label}
+                  </span>
+                </button>
+              </TooltipTrigger>
+              {description && (
+                <TooltipContent side="top" className="max-w-[240px] text-xs leading-relaxed">
+                  {description}
+                </TooltipContent>
+              )}
+            </Tooltip>
+          );
+        })}
+      </div>
+    </TooltipProvider>
   );
 }
 
-function BlockPicker({ onSelect, onCancel }: { onSelect: (item: GridItem) => void; onCancel: () => void }) {
+function BlockPicker({ onSelect }: { onSelect: (item: GridItem) => void }) {
   const [search, setSearch] = useState("");
-  const [selected, setSelected] = useState<GridItem | null>(null);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -78,21 +88,18 @@ function BlockPicker({ onSelect, onCancel }: { onSelect: (item: GridItem) => voi
     return order.map((g) => ({ group: g, items: groups[g] }));
   }, [filtered]);
 
-  const description = selected
-    ? (selected.description || blockDescriptions[selected.type as BlockType] || "")
-    : "";
-
-  const handleConfirm = () => {
-    if (selected) onSelect(selected);
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter" && filtered.length === 1) {
+      e.preventDefault();
+      onSelect(filtered[0]);
+    }
   };
 
   return (
     <div className="space-y-3">
-      <div>
-        <h3 className="text-base font-semibold text-foreground">Выберите тип блока</h3>
-        <p className="text-xs text-muted-foreground mt-0.5">
-          Каждый блок подходит для своих задач — выберите подходящий формат.
-        </p>
+      <div className="flex items-center justify-between gap-3">
+        <h3 className="text-base font-semibold text-foreground">Выберите блок</h3>
+        <span className="text-[11px] text-muted-foreground">Один клик — добавить</span>
       </div>
 
       <div className="relative">
@@ -101,42 +108,25 @@ function BlockPicker({ onSelect, onCancel }: { onSelect: (item: GridItem) => voi
           autoFocus
           value={search}
           onChange={(e) => setSearch(e.target.value)}
+          onKeyDown={handleKeyDown}
           placeholder="Поиск блока"
           className="h-8 text-sm pl-8"
         />
       </div>
 
-      <div className="max-h-[420px] overflow-y-auto space-y-4 pr-1">
+      <div className="max-h-[60vh] overflow-y-auto space-y-4 pr-1">
         {grouped.map(({ group, items }) => (
           <div key={group}>
             <p className="text-[10px] uppercase tracking-wide font-semibold text-muted-foreground px-1 mb-2 flex items-center gap-1.5">
               {group === "ИИ" && <Sparkles className="w-3 h-3 text-primary" />}
               {group}
             </p>
-            <BlockGrid items={items} selected={selected?.type ?? null} onPick={setSelected} />
+            <BlockGrid items={items} onPick={onSelect} />
           </div>
         ))}
         {grouped.length === 0 && (
           <p className="text-xs text-muted-foreground text-center py-6">Ничего не найдено</p>
         )}
-      </div>
-
-      <div className="rounded-xl border border-border/60 bg-muted/30 p-3 min-h-[68px]">
-        {selected ? (
-          <>
-            <p className="text-sm font-semibold text-foreground mb-1">{selected.label}</p>
-            <p className="text-xs text-muted-foreground leading-relaxed">{description}</p>
-          </>
-        ) : (
-          <p className="text-xs text-muted-foreground leading-relaxed">
-            Выберите блок выше, чтобы увидеть описание и продолжить.
-          </p>
-        )}
-      </div>
-
-      <div className="flex justify-end gap-2 pt-1">
-        <Button variant="outline" size="sm" onClick={onCancel}>Отмена</Button>
-        <Button size="sm" className="btn-gradient" onClick={handleConfirm} disabled={!selected}>Далее</Button>
       </div>
     </div>
   );
@@ -183,8 +173,8 @@ export function AddBlockButton({ onAdd }: { onAdd: (type: BlockType, pendingAI?:
       <PopoverTrigger asChild>
         <Button variant="outline" size="sm" className="rounded-lg gap-2"><Plus className="w-4 h-4" />Добавить блок</Button>
       </PopoverTrigger>
-      <PopoverContent align="center" className="w-[560px] max-w-[calc(100vw-2rem)] p-4">
-        <BlockPicker onSelect={handleSelect} onCancel={() => setOpen(false)} />
+      <PopoverContent align="center" collisionPadding={16} className="w-[560px] max-w-[calc(100vw-2rem)] p-4">
+        <BlockPicker onSelect={handleSelect} />
       </PopoverContent>
     </Popover>
   );
@@ -208,8 +198,8 @@ export function InlineAddBlockButton({ onAdd }: { onAdd: (type: BlockType, pendi
           <Plus className="w-5 h-5" strokeWidth={2.5} />
         </button>
       </PopoverTrigger>
-      <PopoverContent align="start" side="right" className="w-[560px] max-w-[calc(100vw-2rem)] p-4">
-        <BlockPicker onSelect={handleSelect} onCancel={() => setOpen(false)} />
+      <PopoverContent align="start" side="right" collisionPadding={16} className="w-[560px] max-w-[calc(100vw-2rem)] p-4">
+        <BlockPicker onSelect={handleSelect} />
       </PopoverContent>
     </Popover>
   );
