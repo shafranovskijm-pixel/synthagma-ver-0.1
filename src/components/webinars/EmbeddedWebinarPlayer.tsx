@@ -192,6 +192,9 @@ function LiveKitEmbed({
   prefetchedToken,
   prefetchedWsUrl,
   viewOnly,
+  showSidePanel,
+  guestIdentity,
+  guestDisplayName,
 }: {
   webinarId: string;
   webinarTitle: string | null;
@@ -203,6 +206,9 @@ function LiveKitEmbed({
   prefetchedToken: string | null;
   prefetchedWsUrl: string | null;
   viewOnly: boolean;
+  showSidePanel: boolean;
+  guestIdentity: string | null;
+  guestDisplayName: string | null;
 }) {
   const [token, setToken] = useState<string | null>(prefetchedToken);
   const [wsUrl, setWsUrl] = useState<string | null>(prefetchedWsUrl);
