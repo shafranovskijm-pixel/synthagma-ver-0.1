@@ -184,6 +184,34 @@ export function IncomingDocumentsManager({ organizationId }: Props) {
           </Button>
         </div>
 
+        {!loading && items.length > 0 && (
+          <div className="flex flex-wrap items-center gap-2 px-4 py-3 border-b bg-muted/20">
+            <div className="relative flex-1 min-w-[200px]">
+              <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Поиск по названию, ИНН, контрагенту, номеру..."
+                className="pl-9 h-9"
+              />
+            </div>
+            <Select value={typeFilter} onValueChange={(v) => setTypeFilter(v as any)}>
+              <SelectTrigger className="w-[160px] h-9">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Все типы</SelectItem>
+                {Object.entries(DOC_TYPE_LABELS).map(([k, v]) => (
+                  <SelectItem key={k} value={k}>{v}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <span className="text-xs text-muted-foreground ml-auto">
+              {filtered.length} из {items.length}
+            </span>
+          </div>
+        )}
+
         {loading ? (
           <div className="p-8 text-center text-muted-foreground">Загрузка...</div>
         ) : items.length === 0 ? (
@@ -202,9 +230,13 @@ export function IncomingDocumentsManager({ organizationId }: Props) {
               Загрузить первый документ
             </Button>
           </div>
+        ) : filtered.length === 0 ? (
+          <div className="p-12 text-center text-sm text-muted-foreground">
+            Ничего не найдено по заданным фильтрам
+          </div>
         ) : (
           <div className="divide-y">
-            {items.map((doc) => (
+            {filtered.map((doc) => (
               <div
                 key={doc.id}
                 className="p-4 flex items-center justify-between gap-4 hover:bg-muted/30 transition-colors"
@@ -239,34 +271,37 @@ export function IncomingDocumentsManager({ organizationId }: Props) {
                   </div>
                 </div>
                 <div className="flex gap-1 shrink-0">
+                  {isPreviewable(doc) && (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      title="Предпросмотр"
+                      className="rounded-xl"
+                      onClick={() => openPreview(doc)}
+                    >
+                      <Eye className="w-4 h-4" />
+                    </Button>
+                  )}
                   <Button
                     variant="ghost"
-                    size="sm"
-                    className="rounded-xl gap-1"
+                    size="icon"
+                    title="Скачать"
+                    className="rounded-xl"
+                    onClick={() => downloadFile(doc)}
+                  >
+                    <Download className="w-4 h-4" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    title="Открыть в новой вкладке"
+                    className="rounded-xl"
                     onClick={async () => {
-                      // Always generate fresh signed URL — file_url stored at upload time may have expired
-                      const path = doc.file_path;
-                      if (!path) {
-                        // fallback: legacy records may only have file_url
-                        if (doc.file_url) {
-                          window.open(doc.file_url, "_blank");
-                          return;
-                        }
-                        toast.error("Файл не найден");
-                        return;
-                      }
-                      const { data, error } = await supabase.storage
-                        .from("incoming-documents")
-                        .createSignedUrl(path, 3600);
-                      if (error || !data?.signedUrl) {
-                        toast.error("Не удалось открыть файл", { description: error?.message });
-                        return;
-                      }
-                      window.open(data.signedUrl, "_blank");
+                      const url = await getSignedUrl(doc);
+                      if (url) window.open(url, "_blank");
                     }}
                   >
                     <ExternalLink className="w-4 h-4" />
-                    Открыть
                   </Button>
                   <Button
                     variant="ghost"
@@ -275,6 +310,7 @@ export function IncomingDocumentsManager({ organizationId }: Props) {
                       if (confirm(`Переместить документ "${doc.title}" в корзину? Срок хранения 30 дней.`)) remove(doc);
                     }}
                     className="rounded-xl"
+                    title="В корзину"
                   >
                     <Trash2 className="w-4 h-4 text-destructive" />
                   </Button>
@@ -284,6 +320,38 @@ export function IncomingDocumentsManager({ organizationId }: Props) {
           </div>
         )}
       </CardContent>
+
+      <Dialog open={!!previewDoc} onOpenChange={(v) => { if (!v) { setPreviewDoc(null); setPreviewUrl(null); } }}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden p-0 rounded-2xl">
+          <DialogHeader className="px-5 pt-5">
+            <DialogTitle className="truncate pr-6">{previewDoc?.title}</DialogTitle>
+          </DialogHeader>
+          <div className="px-5 pb-5">
+            {previewUrl && previewDoc && (
+              isImage(previewDoc) ? (
+                <img src={previewUrl} alt={previewDoc.title} className="w-full max-h-[75vh] object-contain rounded-lg border bg-muted" />
+              ) : (
+                <iframe src={previewUrl} title={previewDoc.title} className="w-full h-[75vh] rounded-lg border bg-white" />
+              )
+            )}
+            <div className="flex justify-end gap-2 mt-3">
+              {previewDoc && (
+                <>
+                  <Button variant="outline" size="sm" className="gap-2" onClick={() => previewDoc && downloadFile(previewDoc)}>
+                    <Download className="w-4 h-4" />Скачать
+                  </Button>
+                  <Button variant="outline" size="sm" className="gap-2" onClick={async () => {
+                    const url = await getSignedUrl(previewDoc);
+                    if (url) window.open(url, "_blank");
+                  }}>
+                    <ExternalLink className="w-4 h-4" />В новой вкладке
+                  </Button>
+                </>
+              )}
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="max-w-lg rounded-2xl">
