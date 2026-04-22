@@ -42,19 +42,19 @@ const badgeStyles: Record<string, string> = {
 
 function KpiCard({ title, value, hint, icon: Icon, iconColor = "text-primary", variant = "default", badge }: KpiCardProps) {
   return (
-    <Card className={`${variantStyles[variant]} transition-shadow hover:shadow-md`}>
-      <CardContent className="p-4">
-        <div className="flex items-start justify-between mb-2">
-          <Icon className={`w-5 h-5 ${iconColor}`} />
+    <Card className={`${variantStyles[variant]} transition-shadow hover:shadow-md min-w-0 overflow-hidden`}>
+      <CardContent className="p-4 min-w-0">
+        <div className="flex items-start justify-between mb-2 gap-2 min-w-0">
+          <Icon className={`w-5 h-5 shrink-0 ${iconColor}`} />
           {badge && (
-            <Badge variant="outline" className={badgeStyles[badge.tone || "default"]}>
+            <Badge variant="outline" className={`${badgeStyles[badge.tone || "default"]} shrink-0 truncate max-w-[60%]`}>
               {badge.text}
             </Badge>
           )}
         </div>
-        <p className="text-2xl font-semibold tabular-nums">{value}</p>
-        <p className="text-xs text-muted-foreground mt-1">{title}</p>
-        {hint && <p className="text-[11px] text-muted-foreground/70 mt-0.5">{hint}</p>}
+        <p className="text-xl xl:text-2xl font-semibold tabular-nums truncate">{value}</p>
+        <p className="text-xs text-muted-foreground mt-1 truncate">{title}</p>
+        {hint && <p className="text-[11px] text-muted-foreground/70 mt-0.5 line-clamp-2">{hint}</p>}
       </CardContent>
     </Card>
   );
@@ -66,7 +66,7 @@ export function DocumentsKpiDashboard({ organizationId }: Props) {
   if (loading && !kpi) {
     return (
       <div className="space-y-4">
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 xl:grid-cols-4 gap-3">
           {Array.from({ length: 8 }).map((_, i) => <Skeleton key={i} className="h-28 rounded-xl" />)}
         </div>
       </div>
@@ -111,7 +111,7 @@ export function DocumentsKpiDashboard({ organizationId }: Props) {
       {/* Основные метрики */}
       <div>
         <h4 className="text-xs uppercase tracking-wider text-muted-foreground font-semibold mb-3">Подписания (ПЭП)</h4>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 xl:grid-cols-4 gap-3">
           <KpiCard title="Всего отправлено" value={kpi.signatures_total} icon={FileSignature} iconColor="text-indigo-500" />
           <KpiCard title="Подписано" value={kpi.signatures_signed} icon={FileCheck} iconColor="text-emerald-500" variant="success"
             badge={{ text: `${kpi.signing_conversion}%`, tone: "success" }} hint="Конверсия в подпись" />
@@ -124,7 +124,7 @@ export function DocumentsKpiDashboard({ organizationId }: Props) {
 
       <div>
         <h4 className="text-xs uppercase tracking-wider text-muted-foreground font-semibold mb-3">Документы об образовании</h4>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 xl:grid-cols-4 gap-3">
           <KpiCard title="Всего выдано" value={kpi.education_docs_total} icon={GraduationCap} iconColor="text-blue-500" />
           <KpiCard title="За этот месяц" value={kpi.education_docs_this_month} icon={TrendingUp} iconColor="text-emerald-500" />
           <KpiCard title="Дубликаты" value={kpi.duplicates_count} icon={FileText} iconColor="text-violet-500" />
@@ -135,7 +135,7 @@ export function DocumentsKpiDashboard({ organizationId }: Props) {
 
       <div>
         <h4 className="text-xs uppercase tracking-wider text-muted-foreground font-semibold mb-3">Контрагенты и продажи</h4>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 xl:grid-cols-4 gap-3">
           <KpiCard title="Договоры" value={kpi.contracts_total} icon={Receipt} iconColor="text-primary"
             hint={`Подписано: ${kpi.contracts_signed} · Ожидает: ${kpi.contracts_pending}`} />
           <KpiCard title="Коммерческие предложения" value={kpi.proposals_total} icon={FileText} iconColor="text-cyan-500"
