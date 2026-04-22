@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import {
@@ -9,6 +9,9 @@ import {
   Trash2,
   Calendar,
   Building2,
+  Search,
+  Eye,
+  Download,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -59,6 +62,10 @@ const DOC_TYPE_VARIANTS: Record<IncomingDocType, any> = {
 export function IncomingDocumentsManager({ organizationId }: Props) {
   const { items, loading, uploading, upload, remove } = useIncomingDocuments(organizationId);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [search, setSearch] = useState("");
+  const [typeFilter, setTypeFilter] = useState<IncomingDocType | "all">("all");
+  const [previewDoc, setPreviewDoc] = useState<IncomingDocument | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [form, setForm] = useState({
     doc_type: "contract" as IncomingDocType,
     title: "",
@@ -69,6 +76,63 @@ export function IncomingDocumentsManager({ organizationId }: Props) {
     notes: "",
   });
   const [file, setFile] = useState<File | null>(null);
+
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return items.filter((d) => {
+      if (typeFilter !== "all" && d.doc_type !== typeFilter) return false;
+      if (!q) return true;
+      return (
+        d.title.toLowerCase().includes(q) ||
+        (d.counterparty_name || "").toLowerCase().includes(q) ||
+        (d.counterparty_inn || "").toLowerCase().includes(q) ||
+        (d.doc_number || "").toLowerCase().includes(q)
+      );
+    });
+  }, [items, search, typeFilter]);
+
+  const getSignedUrl = async (doc: IncomingDocument): Promise<string | null> => {
+    if (doc.file_path) {
+      const { data, error } = await supabase.storage
+        .from("incoming-documents")
+        .createSignedUrl(doc.file_path, 3600);
+      if (error || !data?.signedUrl) {
+        toast.error("Не удалось получить ссылку", { description: error?.message });
+        return null;
+      }
+      return data.signedUrl;
+    }
+    return doc.file_url || null;
+  };
+
+  const openPreview = async (doc: IncomingDocument) => {
+    const url = await getSignedUrl(doc);
+    if (!url) return;
+    setPreviewDoc(doc);
+    setPreviewUrl(url);
+  };
+
+  const downloadFile = async (doc: IncomingDocument) => {
+    const url = await getSignedUrl(doc);
+    if (!url) return;
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = doc.title;
+    a.target = "_blank";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+  };
+
+  const isPreviewable = (doc: IncomingDocument | null) => {
+    if (!doc) return false;
+    const name = (doc.file_path || doc.title || "").toLowerCase();
+    return name.endsWith(".pdf") || /\.(jpe?g|png|webp|gif)$/i.test(name);
+  };
+  const isImage = (doc: IncomingDocument | null) => {
+    if (!doc) return false;
+    return /\.(jpe?g|png|webp|gif)$/i.test((doc.file_path || doc.title || "").toLowerCase());
+  };
 
   const reset = () => {
     setForm({
