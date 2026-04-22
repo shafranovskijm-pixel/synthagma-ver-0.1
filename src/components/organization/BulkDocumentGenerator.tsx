@@ -550,7 +550,7 @@ export function BulkDocumentGenerator({ organizationId, isOpen, onClose }: BulkD
                 <>
                   <Button variant="ghost" onClick={handleClose}>Отмена</Button>
                   <Button
-                    onClick={() => setStep("preview")}
+                    onClick={handleStartPreview}
                     disabled={!selectedTemplate || selectedIds.size === 0}
                     className="rounded-xl gap-1.5"
                   >
