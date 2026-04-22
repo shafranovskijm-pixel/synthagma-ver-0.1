@@ -168,14 +168,50 @@ export function Deals360({ organizationId, onCreateProposal, onCreateContract, o
         d.contracts.push(c);
         if (c.status === 'signed' || c.status === 'active') d.totalRevenue += Number(c.total_amount || 0);
       });
-      (signaturesRes.data || []).forEach((s: any) => {
-        // Привязываем подписи через recipient_name (упрощённо)
-        const existing = Array.from(map.values()).find(x =>
-          x.name.toLowerCase().includes((s.recipient_name || '').toLowerCase().slice(0, 15)) ||
-          (s.recipient_name || '').toLowerCase().includes(x.name.toLowerCase().slice(0, 15))
-        );
-        if (existing) existing.signatures.push(s);
+
+      // Индексы для O(1) поиска подписей по имени получателя.
+      const byNameLower = new Map<string, DealCompany>();
+      map.forEach(c => {
+        if (c.name) byNameLower.set(c.name.toLowerCase(), c);
       });
+      (signaturesRes.data || []).forEach((s: any) => {
+        const recipient = (s.recipient_name || '').toLowerCase().trim();
+        if (!recipient) return;
+        // Точное совпадение
+        let target = byNameLower.get(recipient);
+        // Префиксный fallback (одна итерация по индексу — лучше, чем O(N×M))
+        if (!target) {
+          const recPrefix = recipient.slice(0, 15);
+          for (const [name, company] of byNameLower) {
+            if (name.startsWith(recPrefix) || recipient.startsWith(name.slice(0, 15))) {
+              target = company;
+              break;
+            }
+          }
+        }
+        if (target) target.signatures.push(s);
+      });
+
+      // Привязываем счета по organization_id (когда грузим конкретную организацию,
+      // все её счета относятся к её платформенным сделкам).
+      const invoiceList = (billingRes.data || []) as any[];
+      if (organizationId && invoiceList.length > 0) {
+        const orgInvoices = invoiceList.map((inv: any) => ({
+          id: inv.id,
+          status: inv.status || 'pending',
+          document_number: inv.invoice_number || null,
+          amount: Number(inv.amount || 0),
+          created_at: inv.created_at,
+          type: 'subscription',
+        }));
+        // Привязываем все счета организации к самой большой сделке (по revenue)
+        // или к первой попавшейся компании.
+        const targetCompany = Array.from(map.values())
+          .sort((a, b) => b.totalRevenue - a.totalRevenue)[0];
+        if (targetCompany) {
+          targetCompany.invoices.push(...orgInvoices);
+        }
+      }
 
       // Подсчёт last activity
       const all: DealCompany[] = [];
@@ -184,6 +220,7 @@ export function Deals360({ organizationId, onCreateProposal, onCreateContract, o
           ...c.proposals.map(p => p.created_at),
           ...c.contracts.map(p => p.created_at),
           ...c.signatures.map(p => p.created_at),
+          ...c.invoices.map(p => p.created_at),
         ].filter(Boolean).sort().reverse();
         c.lastActivity = dates[0] || '';
         all.push(c);
