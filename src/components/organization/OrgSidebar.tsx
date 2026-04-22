@@ -314,9 +314,13 @@ export function OrgSidebar() {
               {item.badge! > 99 ? "99+" : item.badge}
             </span>
           )}
-          {/* "New" indicator dot — orange */}
+          {/* "New" indicator dot */}
           {!item.badge && item.hasNew && (
-            <span className="absolute -top-0.5 -right-1 w-2 h-2 rounded-full bg-orange-500 ring-2 ring-card animate-pulse" aria-label="Есть новое" />
+            <span
+              className="absolute -top-0.5 -right-1 w-2 h-2 rounded-full ring-2 ring-card animate-pulse"
+              style={{ backgroundColor: "hsl(var(--warning))" }}
+              aria-label="Есть новое"
+            />
           )}
         </span>
         {expanded ? (
