@@ -2440,6 +2440,7 @@ export type Database = {
           template_id: string | null
           total_recipients: number
           updated_at: string
+          user_paused: boolean
         }
         Insert: {
           completed_at?: string | null
@@ -2465,6 +2466,7 @@ export type Database = {
           template_id?: string | null
           total_recipients?: number
           updated_at?: string
+          user_paused?: boolean
         }
         Update: {
           completed_at?: string | null
@@ -2490,6 +2492,7 @@ export type Database = {
           template_id?: string | null
           total_recipients?: number
           updated_at?: string
+          user_paused?: boolean
         }
         Relationships: [
           {
