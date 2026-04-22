@@ -23,6 +23,7 @@ import {
 import { ContractGenerator } from "./ContractGenerator";
 import { InvoiceGenerator } from "./InvoiceGenerator";
 import { ActGenerator } from "./ActGenerator";
+import { ReconciliationActDialog } from "./ReconciliationActDialog";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 import { LoadMoreControls } from "@/components/ui/LoadMoreControls";
 
@@ -59,6 +60,7 @@ export function CompaniesManager({ organizationId }: CompaniesManagerProps) {
   const lg = useCompanyLinksAndGenerators(organizationId);
   const [visibleCount, setVisibleCount] = useState(10);
   const paginatedCompanies = cm.filteredCompanies.slice(0, visibleCount);
+  const [reconciliationCompany, setReconciliationCompany] = useState<any>(null);
 
   const handleViewAsCompany = (e: React.MouseEvent, company: any) => {
     e.stopPropagation();
@@ -290,6 +292,7 @@ export function CompaniesManager({ organizationId }: CompaniesManagerProps) {
         onOpenContractGenerator={(c) => lg.openContractGenerator(c)}
         onOpenInvoiceGenerator={(c) => lg.openInvoiceGenerator(c)}
         onOpenActGenerator={(c) => lg.openActGenerator(c)}
+        onOpenReconciliation={(c) => setReconciliationCompany(c)}
         onUploadDocument={handleUploadDocument}
         onViewDocument={handleViewDocument} onDownloadDocument={handleDownloadDocument}
         onDeleteDocument={(doc) => dm.deleteDocument(doc)} onTogglePaid={handleTogglePaid}
@@ -355,6 +358,19 @@ export function CompaniesManager({ organizationId }: CompaniesManagerProps) {
           <ActGenerator organizationId={organizationId} isOpen={lg.showActGenerator} onClose={lg.closeActGenerator} orgRequisites={lg.orgRequisites} preselectedCompany={lg.selectedCompanyForGenerator} />
         </>
       )}
+
+      <ReconciliationActDialog
+        open={!!reconciliationCompany}
+        onOpenChange={(open) => { if (!open) setReconciliationCompany(null); }}
+        organizationId={organizationId}
+        organizationName={lg.orgRequisites?.name || ""}
+        organizationInn={lg.orgRequisites?.inn || null}
+        company={reconciliationCompany ? { id: reconciliationCompany.id, name: reconciliationCompany.name, inn: reconciliationCompany.inn } : null}
+        onSaved={() => {
+          if (reconciliationCompany) dm.refreshDocuments(reconciliationCompany.id);
+          cm.fetchGlobalDocStats();
+        }}
+      />
     </div>
   );
 }

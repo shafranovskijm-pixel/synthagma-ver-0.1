@@ -12,7 +12,7 @@ import {
   Building2, Edit, Trash2, Eye, EyeOff, GraduationCap, UserPlus, Link2,
   FileText, Receipt, FileCheck, ChevronRight, Plus, Download, X,
   CheckCircle2, Clock, Banknote, Calendar, KeyRound, Copy,
-  Loader2 as Loader2Icon, Send, MessageSquare, Inbox,
+  Loader2 as Loader2Icon, Send, MessageSquare, Inbox, Scale,
 } from "lucide-react";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
@@ -38,6 +38,7 @@ interface CompanyDetailDialogProps {
   onOpenContractGenerator: (company: Company) => void;
   onOpenInvoiceGenerator: (company: Company) => void;
   onOpenActGenerator: (company: Company) => void;
+  onOpenReconciliation?: (company: Company) => void;
   onUploadDocument: (type: 'contract' | 'invoice' | 'act', file: File) => void;
   onViewDocument: (doc: CompanyDocument) => void;
   onDownloadDocument: (doc: CompanyDocument) => void;
@@ -157,12 +158,13 @@ function StatCard({ icon, label, value, amount, className = "text-muted-foregrou
   );
 }
 
-function ActionsGrid({ company, onOpenChange, onViewStudents, onBulkAssign, onOpenLinks, onBulkEnroll }: CompanyDetailDialogProps) {
+function ActionsGrid({ company, onOpenChange, onViewStudents, onBulkAssign, onOpenLinks, onBulkEnroll, onOpenReconciliation }: CompanyDetailDialogProps) {
   const actions = [
     { icon: Eye, label: "Просмотр учеников", desc: "Список и прогресс", color: "bg-primary/10", iconColor: "text-primary", onClick: () => { onOpenChange(false); onViewStudents(company!); } },
     { icon: UserPlus, label: "Назначить учеников", desc: "Добавить в компанию", color: "bg-sigma-green/10", iconColor: "text-sigma-green", onClick: () => { onOpenChange(false); onBulkAssign(company!); } },
     { icon: Link2, label: "Ссылки для регистрации", desc: "Управление ссылками", color: "bg-blue-500/10", iconColor: "text-blue-500", onClick: () => { onOpenChange(false); onOpenLinks(company!); } },
     { icon: GraduationCap, label: "Зачислить на курсы", desc: "Массовое зачисление", color: "bg-orange-500/10", iconColor: "text-orange-500", onClick: () => { onOpenChange(false); onBulkEnroll(company!); } },
+    ...(onOpenReconciliation ? [{ icon: Scale, label: "Акт сверки", desc: "Сальдо за период по счетам и платежам", color: "bg-amber-500/10", iconColor: "text-amber-500", onClick: () => { onOpenChange(false); onOpenReconciliation(company!); } }] : []),
     { icon: Eye, label: "Личный кабинет компании", desc: company?.user_id ? "Просмотр от лица компании" : "У компании нет учётной записи", color: "bg-primary/10", iconColor: "text-primary", disabled: !company?.user_id, onClick: () => { localStorage.setItem('orgViewAsCompany', JSON.stringify({ companyId: company!.id, companyName: company!.name, userId: company!.user_id })); window.open('/company', '_blank'); } },
   ];
 
