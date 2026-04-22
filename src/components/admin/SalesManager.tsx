@@ -69,7 +69,11 @@ export function SalesManager() {
 
   const TABS: Record<string, React.ReactNode> = {
     overview: <SalesOverview onJump={handleJump} />,
-    tasks: <SalesTasks prefillCompany={taskPrefill} onPrefillConsumed={() => setTaskPrefill(null)} />,
+    tasks: <SalesTasks
+      prefillCompany={taskPrefill}
+      onPrefillConsumed={() => setTaskPrefill(null)}
+      onOpenDeal={(inn) => handleJump('deals', inn)}
+    />,
     deals: (
       <Deals360
         onCreateProposal={goCreateProposal}
