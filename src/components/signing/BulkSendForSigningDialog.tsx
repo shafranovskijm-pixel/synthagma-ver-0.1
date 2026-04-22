@@ -76,7 +76,7 @@ export function BulkSendForSigningDialog({ open, onOpenChange, payload, organiza
         .select("user_id")
         .eq("organization_id", organizationId)
         .limit(1000);
-      const userIds = Array.from(new Set((enrollments || []).map((e: any) => e.user_id))).slice(0, 500);
+      const userIds = Array.from(new Set(((enrollments as any[]) || []).map((e: any) => e.user_id))).slice(0, 500) as string[];
       if (userIds.length) {
         const { data: profs } = await supabase
           .from("profiles")
