@@ -22,6 +22,7 @@ import {
 import { useAuth } from "@/hooks/useAuth";
 import { AdminCreateWebinarDialog } from "./AdminCreateWebinarDialog";
 import { EmbeddedWebinarPlayer } from "@/components/webinars/EmbeddedWebinarPlayer";
+import { WebinarLiveOverlay } from "@/components/webinars/WebinarLiveOverlay";
 import { WebinarRecordingUploader } from "@/components/webinars/WebinarRecordingUploader";
 import { Paperclip } from "lucide-react";
 
