@@ -90,8 +90,17 @@ Deno.serve(async (req) => {
       if (!webinar) return json({ error: "Вебинар не найден" }, 404);
       if (!webinar.allow_guests) return json({ error: "Гостевой вход выключен" }, 403);
       if (webinar.source_type !== "livekit") return json({ error: "Не LiveKit-вебинар" }, 400);
-      if (webinar.guest_password && webinar.guest_password !== guestPassword) {
-        return json({ error: "Неверный пароль" }, 401);
+      if (webinar.status !== "live") {
+        return json({ error: "Эфир ещё не начался или уже завершён" }, 403);
+      }
+
+      // Проверяем пароль через RPC (поддерживает шифрованный guest_password).
+      if (webinar.guest_password) {
+        const { data: ok, error: vErr } = await admin.rpc("verify_webinar_guest_password", {
+          p_public_token: publicToken,
+          p_password: guestPassword ?? "",
+        });
+        if (vErr || ok !== true) return json({ error: "Неверный пароль" }, 401);
       }
 
       const ps = (webinar.player_settings ?? {}) as Record<string, any>;

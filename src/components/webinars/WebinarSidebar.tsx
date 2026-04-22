@@ -8,6 +8,7 @@ interface Props {
   isHost: boolean;
   participantIdentity: string;
   participantName: string;
+  isGuest?: boolean;
   className?: string;
 }
 
@@ -19,6 +20,7 @@ export const WebinarSidebar = ({
   isHost,
   participantIdentity,
   participantName,
+  isGuest = false,
   className,
 }: Props) => {
   return (
@@ -38,6 +40,7 @@ export const WebinarSidebar = ({
             isHost={isHost}
             participantIdentity={participantIdentity}
             participantName={participantName}
+            isGuest={isGuest}
           />
         </TabsContent>
         <TabsContent value="polls" className="flex-1 m-0 min-h-0">

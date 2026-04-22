@@ -8133,6 +8133,38 @@ export type Database = {
           },
         ]
       }
+      webinar_rate_limits: {
+        Row: {
+          action: string
+          created_at: string
+          id: string
+          identity: string
+          webinar_id: string
+        }
+        Insert: {
+          action: string
+          created_at?: string
+          id?: string
+          identity: string
+          webinar_id: string
+        }
+        Update: {
+          action?: string
+          created_at?: string
+          id?: string
+          identity?: string
+          webinar_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "webinar_rate_limits_webinar_id_fkey"
+            columns: ["webinar_id"]
+            isOneToOne: false
+            referencedRelation: "webinars"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       webinars: {
         Row: {
           access_type: string
@@ -8385,6 +8417,16 @@ export type Database = {
     Functions: {
       _email_daily_limit: { Args: { _day: number }; Returns: number }
       _get_pw_key: { Args: never; Returns: string }
+      _webinar_rate_check: {
+        Args: {
+          p_action: string
+          p_identity: string
+          p_max: number
+          p_webinar_id: string
+          p_window_seconds: number
+        }
+        Returns: boolean
+      }
       add_signature_comment_by_token: {
         Args: {
           p_author_name: string
@@ -8783,6 +8825,30 @@ export type Database = {
       upgrade_to_organization_role: {
         Args: { p_organization_id: string; p_user_id: string }
         Returns: undefined
+      }
+      verify_webinar_guest_password: {
+        Args: { p_password: string; p_public_token: string }
+        Returns: boolean
+      }
+      webinar_post_chat: {
+        Args: {
+          p_content: string
+          p_is_guest: boolean
+          p_sender_identity: string
+          p_sender_name: string
+          p_webinar_id: string
+        }
+        Returns: string
+      }
+      webinar_post_question: {
+        Args: {
+          p_author_identity: string
+          p_author_name: string
+          p_is_guest: boolean
+          p_question: string
+          p_webinar_id: string
+        }
+        Returns: string
       }
     }
     Enums: {

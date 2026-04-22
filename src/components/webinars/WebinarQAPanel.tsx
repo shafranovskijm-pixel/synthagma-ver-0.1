@@ -24,9 +24,10 @@ interface Props {
   isHost: boolean;
   participantIdentity: string;
   participantName: string;
+  isGuest?: boolean;
 }
 
-export const WebinarQAPanel = ({ webinarId, isHost, participantIdentity, participantName }: Props) => {
+export const WebinarQAPanel = ({ webinarId, isHost, participantIdentity, participantName, isGuest = false }: Props) => {
   const [items, setItems] = useState<Question[]>([]);
   const [text, setText] = useState("");
   const [busy, setBusy] = useState(false);
@@ -74,16 +75,18 @@ export const WebinarQAPanel = ({ webinarId, isHost, participantIdentity, partici
     if (!text.trim()) return;
     setBusy(true);
     try {
-      const { error } = await supabase.from("webinar_questions").insert({
-        webinar_id: webinarId,
-        question: text.trim(),
-        author_name: participantName,
-        author_identity: participantIdentity,
+      const { error } = await supabase.rpc("webinar_post_question", {
+        p_webinar_id: webinarId,
+        p_author_identity: participantIdentity,
+        p_author_name: participantName,
+        p_question: text.trim(),
+        p_is_guest: isGuest,
       });
       if (error) throw error;
       setText("");
     } catch (e) {
-      toast.error((e as Error).message);
+      const msg = (e as Error).message || "Не удалось отправить";
+      toast.error(/Rate limit/i.test(msg) ? "Слишком часто. Попробуйте через минуту." : msg);
     } finally { setBusy(false); }
   };
 

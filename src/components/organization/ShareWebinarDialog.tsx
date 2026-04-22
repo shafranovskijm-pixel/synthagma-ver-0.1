@@ -26,6 +26,8 @@ interface Props {
 export const ShareWebinarDialog = ({ open, onOpenChange, webinar, onUpdated }: Props) => {
   const [allowGuests, setAllowGuests] = useState(true);
   const [password, setPassword] = useState("");
+  const [hasExistingPassword, setHasExistingPassword] = useState(false);
+  const [changePassword, setChangePassword] = useState(false);
   const [saving, setSaving] = useState(false);
   const [copied, setCopied] = useState(false);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -38,7 +40,9 @@ export const ShareWebinarDialog = ({ open, onOpenChange, webinar, onUpdated }: P
   useEffect(() => {
     if (webinar) {
       setAllowGuests(webinar.allow_guests);
-      setPassword(webinar.guest_password ?? "");
+      setHasExistingPassword(!!webinar.guest_password && webinar.guest_password !== "");
+      setPassword("");
+      setChangePassword(false);
     }
   }, [webinar]);
 
@@ -59,19 +63,22 @@ export const ShareWebinarDialog = ({ open, onOpenChange, webinar, onUpdated }: P
   const save = async () => {
     if (!webinar) return;
     setSaving(true);
-    const { error } = await supabase
-      .from("webinars")
-      .update({
-        allow_guests: allowGuests,
-        guest_password: password.trim() || null,
-      })
-      .eq("id", webinar.id);
+    const update: Record<string, unknown> = { allow_guests: allowGuests };
+    // Меняем пароль только если хост явно его задал/убрал.
+    // Иначе — оставляем существующий зашифрованный пароль как есть.
+    if (changePassword || !hasExistingPassword) {
+      update.guest_password = password.trim() || null;
+    }
+    const { error } = await supabase.from("webinars").update(update).eq("id", webinar.id);
     setSaving(false);
     if (error) {
       toast.error("Не удалось сохранить настройки");
       return;
     }
     toast.success("Настройки доступа сохранены");
+    setHasExistingPassword(!!(update.guest_password ?? hasExistingPassword));
+    setChangePassword(false);
+    setPassword("");
     onUpdated?.();
   };
 
@@ -112,12 +119,28 @@ export const ShareWebinarDialog = ({ open, onOpenChange, webinar, onUpdated }: P
 
               <div className="space-y-1">
                 <Label htmlFor="guest-pw">Пароль для входа (опционально)</Label>
-                <Input
-                  id="guest-pw"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Оставьте пустым — без пароля"
-                />
+                {hasExistingPassword && !changePassword ? (
+                  <div className="flex items-center gap-2">
+                    <Input value="••••••••" readOnly className="font-mono" />
+                    <Button type="button" variant="outline" size="sm" onClick={() => setChangePassword(true)}>
+                      Изменить
+                    </Button>
+                  </div>
+                ) : (
+                  <>
+                    <Input
+                      id="guest-pw"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      placeholder="Оставьте пустым — без пароля"
+                    />
+                    {hasExistingPassword && (
+                      <p className="text-xs text-muted-foreground">
+                        Введите новый пароль или оставьте пустым, чтобы убрать защиту.
+                      </p>
+                    )}
+                  </>
+                )}
               </div>
 
               <Button onClick={save} disabled={saving} className="w-full">
