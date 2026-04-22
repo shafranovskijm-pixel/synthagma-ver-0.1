@@ -589,6 +589,17 @@ export function WebinarsManager({ organizationId }: Props) {
           )}
         </SheetContent>
       </Sheet>
+
+      {recordingTarget && (
+        <WebinarRecordingUploader
+          open={!!recordingTarget}
+          onOpenChange={(o) => !o && setRecordingTarget(null)}
+          webinarId={recordingTarget.id}
+          webinarTitle={recordingTarget.title}
+          currentRecordingUrl={recordingTarget.recording_url ?? null}
+          onUploaded={fetchWebinars}
+        />
+      )}
     </div>
   );
 }
