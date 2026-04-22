@@ -1207,6 +1207,47 @@ export type Database = {
           },
         ]
       }
+      company_staff: {
+        Row: {
+          company_id: string
+          created_at: string
+          expires_at: string | null
+          id: string
+          invited_by: string | null
+          role: Database["public"]["Enums"]["company_staff_role"]
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          expires_at?: string | null
+          id?: string
+          invited_by?: string | null
+          role?: Database["public"]["Enums"]["company_staff_role"]
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          expires_at?: string | null
+          id?: string
+          invited_by?: string | null
+          role?: Database["public"]["Enums"]["company_staff_role"]
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "company_staff_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       consent_documents: {
         Row: {
           address: string | null
@@ -9043,8 +9084,9 @@ export type Database = {
       expire_temporary_staff_roles: {
         Args: never
         Returns: {
-          count: number
-          scope: string
+          expired_admin: number
+          expired_company: number
+          expired_org: number
         }[]
       }
       find_knowledge_bank_content: {
@@ -9221,6 +9263,13 @@ export type Database = {
           version: number
         }[]
       }
+      get_user_companies: {
+        Args: { _user_id: string }
+        Returns: {
+          company_id: string
+          role: string
+        }[]
+      }
       get_user_role: {
         Args: { _user_id: string }
         Returns: Database["public"]["Enums"]["app_role"]
@@ -9239,6 +9288,14 @@ export type Database = {
       get_warmup_status: { Args: { p_scope_key: string }; Returns: Json }
       has_admin_staff_role: {
         Args: { _role: string; _user_id: string }
+        Returns: boolean
+      }
+      has_company_access: {
+        Args: {
+          _company_id: string
+          _min_role?: Database["public"]["Enums"]["company_staff_role"]
+          _user_id: string
+        }
         Returns: boolean
       }
       has_org_staff_permission: {
@@ -9421,6 +9478,7 @@ export type Database = {
         | "student"
         | "sales_manager"
         | "company"
+      company_staff_role: "owner" | "manager" | "viewer"
       payer_type: "individual" | "legal_entity"
     }
     CompositeTypes: {
@@ -9556,6 +9614,7 @@ export const Constants = {
         "sales_manager",
         "company",
       ],
+      company_staff_role: ["owner", "manager", "viewer"],
       payer_type: ["individual", "legal_entity"],
     },
   },
