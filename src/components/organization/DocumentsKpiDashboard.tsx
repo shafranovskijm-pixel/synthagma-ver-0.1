@@ -5,15 +5,17 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import {
   FileSignature, FileCheck, GraduationCap, AlertTriangle,
-  TrendingUp, Clock, ShieldAlert, Inbox, RefreshCw, FileText, Receipt
+  TrendingUp, Clock, ShieldAlert, Inbox, RefreshCw, FileText, Receipt, Download
 } from "lucide-react";
 import {
   ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid, Legend,
   BarChart, Bar
 } from "recharts";
+import { toast } from "sonner";
 
 interface Props {
   organizationId: string;
+  onNavigate?: (tab: string, prefilter?: Record<string, string>) => void;
 }
 
 interface KpiCardProps {
@@ -24,6 +26,7 @@ interface KpiCardProps {
   iconColor?: string;
   variant?: "default" | "warning" | "danger" | "success";
   badge?: { text: string; tone?: "default" | "warning" | "danger" | "success" };
+  onClick?: () => void;
 }
 
 const variantStyles: Record<string, string> = {
@@ -40,9 +43,16 @@ const badgeStyles: Record<string, string> = {
   success: "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400",
 };
 
-function KpiCard({ title, value, hint, icon: Icon, iconColor = "text-primary", variant = "default", badge }: KpiCardProps) {
+function KpiCard({ title, value, hint, icon: Icon, iconColor = "text-primary", variant = "default", badge, onClick }: KpiCardProps) {
+  const clickable = !!onClick;
   return (
-    <Card className={`${variantStyles[variant]} transition-shadow hover:shadow-md min-w-0 overflow-hidden`}>
+    <Card
+      className={`${variantStyles[variant]} transition-all min-w-0 overflow-hidden ${clickable ? "hover:shadow-md hover:border-primary/40 cursor-pointer hover:-translate-y-0.5" : "hover:shadow-md"}`}
+      onClick={onClick}
+      role={clickable ? "button" : undefined}
+      tabIndex={clickable ? 0 : undefined}
+      onKeyDown={clickable ? (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onClick?.(); } } : undefined}
+    >
       <CardContent className="p-4 min-w-0">
         <div className="flex items-start justify-between mb-2 gap-2 min-w-0">
           <Icon className={`w-5 h-5 shrink-0 ${iconColor}`} />
