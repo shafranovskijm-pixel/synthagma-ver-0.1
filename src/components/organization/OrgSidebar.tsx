@@ -4,10 +4,12 @@ import {
   BookOpen, Users, Settings, LogOut, Upload,
   Building2, HardHat, HardDrive, CreditCard, Lock, MessageCircle, Wallet,
   BarChart3, Link, ShoppingBag, FileText, ClipboardList, FileSpreadsheet, BookCheck, Radio, Sparkles, Briefcase,
-  HelpCircle, Star, ChevronsLeft, ChevronsRight, Pin, PinOff
+  HelpCircle, Star, PanelLeftClose, PanelLeftOpen, Pin, PinOff
 } from "lucide-react";
+import { toast } from "sonner";
 import { SigmaLogo } from "@/components/ui/SigmaLogo";
 import { useOrgDashboard } from "@/contexts/OrgDashboardContext";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import { getStoredThemeId, getThemeById } from "@/constants/admin-themes";
