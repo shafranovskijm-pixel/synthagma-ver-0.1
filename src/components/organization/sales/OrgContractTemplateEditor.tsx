@@ -5,9 +5,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Save, Eye } from "lucide-react";
+import { Save, Eye, History } from "lucide-react";
 import DOMPurify from "dompurify";
 import type { OrgContractTemplate } from "@/hooks/useOrgContracts";
+import { ContractTemplateVersionsDialog } from "./ContractTemplateVersionsDialog";
 
 interface Props {
   open: boolean;
@@ -22,6 +23,7 @@ export function OrgContractTemplateEditor({ open, onOpenChange, template, onSave
   const [name, setName] = useState("");
   const [body, setBody] = useState("");
   const [saving, setSaving] = useState(false);
+  const [historyOpen, setHistoryOpen] = useState(false);
 
   useEffect(() => {
     if (open) {
@@ -46,7 +48,14 @@ export function OrgContractTemplateEditor({ open, onOpenChange, template, onSave
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>{template ? "Редактировать шаблон договора" : "Новый шаблон договора"}</DialogTitle>
+          <DialogTitle className="flex items-center justify-between gap-3">
+            <span>{template ? `Редактировать шаблон ${template.version ? `(v${template.version})` : ""}` : "Новый шаблон договора"}</span>
+            {template && (
+              <Button variant="outline" size="sm" type="button" onClick={() => setHistoryOpen(true)} className="gap-1.5 mr-6">
+                <History className="w-3.5 h-3.5" />История версий
+              </Button>
+            )}
+          </DialogTitle>
         </DialogHeader>
 
         <div className="space-y-3">
@@ -86,6 +95,13 @@ export function OrgContractTemplateEditor({ open, onOpenChange, template, onSave
             <Save className="w-4 h-4" />Сохранить
           </Button>
         </DialogFooter>
+
+        <ContractTemplateVersionsDialog
+          open={historyOpen}
+          onOpenChange={setHistoryOpen}
+          templateId={template?.id || null}
+          currentBody={body}
+        />
       </DialogContent>
     </Dialog>
   );
