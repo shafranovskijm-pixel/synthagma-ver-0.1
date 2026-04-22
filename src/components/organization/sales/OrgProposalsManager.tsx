@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Plus, Trash2, Pencil, Send, FileText, Mail, Briefcase, Sparkles } from "lucide-react";
+import { Plus, Trash2, Pencil, Send, FileText, Mail, Briefcase, Sparkles, Wand2 } from "lucide-react";
 import { useOrgProposals, type OrgProposal, type OrgProposalServiceItem } from "@/hooks/useOrgProposals";
 import { useOrgServices } from "@/hooks/useOrgServices";
 import { useEmailTemplates } from "@/hooks/useEmailTemplates";
