@@ -572,7 +572,14 @@ function SetupStep(p: SetupStepProps) {
           </div>
           <div className="space-y-1.5 col-span-2">
             <Label className="text-xs font-medium">Цена за человека (₽)</Label>
-            <Input type="number" min={0} step="0.01" value={perStudentPriceDisplay(p.perStudentPrice)} onChange={e => p.setPerStudentPrice(Number(e.target.value) || 0)} className="rounded-xl" />
+            <Input
+              type="number"
+              min={0}
+              step="0.01"
+              value={p.perStudentPrice === 0 ? "" : p.perStudentPrice}
+              onChange={e => p.setPerStudentPrice(Number(e.target.value) || 0)}
+              className="rounded-xl"
+            />
           </div>
         </div>
 
