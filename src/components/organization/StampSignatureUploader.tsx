@@ -47,24 +47,31 @@ export function StampSignatureUploader({
     try {
       const fileExt = file.name.split(".").pop();
       const fileName = `${type}_${Date.now()}.${fileExt}`;
+      // Stamps & signatures live in a dedicated PRIVATE bucket (org-stamps).
+      // Path layout REQUIRED by RLS: organizations/{organization_id}/...
       const folderPath = companyId
-        ? `companies/${companyId}`
+        ? `organizations/${organizationId}/companies/${companyId}`
         : `organizations/${organizationId}`;
       const filePath = `${folderPath}/${fileName}`;
 
-      // Upload to storage
+      // Upload to private bucket
       const { error: uploadError } = await supabase.storage
-        .from("org-documents")
-        .upload(filePath, file, { upsert: true });
+        .from("org-stamps")
+        .upload(filePath, file, { upsert: true, contentType: file.type });
 
       if (uploadError) throw uploadError;
 
-      // Get public URL
-      const { data: urlData } = supabase.storage
-        .from("org-documents")
-        .getPublicUrl(filePath);
+      // Generate a long-lived signed URL (1 year) so embedding in HTML/PDF
+      // templates keeps working without refactoring every consumer.
+      const { data: signed, error: signError } = await supabase.storage
+        .from("org-stamps")
+        .createSignedUrl(filePath, 60 * 60 * 24 * 365);
 
-      onUpload(urlData.publicUrl);
+      if (signError || !signed?.signedUrl) {
+        throw signError || new Error("Не удалось создать защищённую ссылку");
+      }
+
+      onUpload(signed.signedUrl);
       toast.success(`${typeLabel} загружена`);
     } catch (error) {
       console.error("Upload error:", error);
@@ -77,12 +84,20 @@ export function StampSignatureUploader({
   const handleRemove = async () => {
     setIsRemoving(true);
     try {
-      // Extract file path from URL if needed
+      // Extract file path from signed URL: /storage/v1/object/sign/org-stamps/<path>?token=...
+      // Also handle legacy public URLs from the old org-documents bucket.
       if (currentUrl) {
-        const urlParts = currentUrl.split("/org-documents/");
-        if (urlParts.length > 1) {
-          const filePath = decodeURIComponent(urlParts[1]);
-          await supabase.storage.from("org-documents").remove([filePath]);
+        const newMarker = "/org-stamps/";
+        const legacyMarker = "/org-documents/";
+        const stripQuery = (s: string) => s.split("?")[0];
+        const newIdx = currentUrl.indexOf(newMarker);
+        const legacyIdx = currentUrl.indexOf(legacyMarker);
+        if (newIdx !== -1) {
+          const path = decodeURIComponent(stripQuery(currentUrl.substring(newIdx + newMarker.length)));
+          await supabase.storage.from("org-stamps").remove([path]);
+        } else if (legacyIdx !== -1) {
+          const path = decodeURIComponent(stripQuery(currentUrl.substring(legacyIdx + legacyMarker.length)));
+          await supabase.storage.from("org-documents").remove([path]);
         }
       }
       onRemove();
