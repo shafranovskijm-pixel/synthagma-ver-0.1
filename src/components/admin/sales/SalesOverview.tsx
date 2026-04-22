@@ -3,13 +3,16 @@ import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { Progress } from '@/components/ui/progress';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { useToast } from '@/hooks/use-toast';
 import {
   TrendingUp, AlertCircle, Flame, Trophy, Activity, Target,
-  FileText, ScrollText, PenTool, Wallet, ArrowRight, Clock
+  FileText, ScrollText, PenTool, Wallet, ArrowRight, Clock, Pencil, Check, X
 } from 'lucide-react';
-import { format, differenceInDays, startOfMonth, endOfMonth } from 'date-fns';
+import { format, differenceInDays, startOfMonth, endOfMonth, subDays, startOfQuarter } from 'date-fns';
 import { ru } from 'date-fns/locale';
 import { SigmaSpinner } from '@/components/ui/SigmaSpinner';
 import { cn } from '@/lib/utils';
@@ -20,7 +23,7 @@ interface OverviewData {
   funnel: { leads: number; proposals: number; contracts: number; paid: number;
             leadsAmt: number; proposalsAmt: number; contractsAmt: number; paidAmt: number };
   alerts: {
-    staleProposals: Array<{ id: string; company_name: string; total_amount: number; days: number }>;
+    staleProposals: Array<{ id: string; company_name: string; company_inn: string | null; total_amount: number; days: number }>;
     coldLeads: Array<{ id: string; org_name: string; days: number }>;
     pendingSignatures: Array<{ id: string; document_title: string; recipient_name: string; days: number }>;
   };
@@ -29,24 +32,30 @@ interface OverviewData {
   leaderboard: Array<{ id: string; name: string; deals: number; revenue: number }>;
 }
 
-const MONTH_PLAN_DEFAULT = 500000; // ₽ — default plan
+const MONTH_PLAN_DEFAULT = 500000; // ₽ — fallback plan
+type LeaderboardPeriod = 'month' | '30d' | 'quarter';
 
 interface Props {
-  onJump?: (tab: string) => void;
+  onJump?: (tab: string, inn?: string | null) => void;
   organizationId?: string;
   /** какие из секций реально доступны при клике (если не указано — все) */
   availableSections?: string[];
 }
 
 export function SalesOverview({ onJump, organizationId, availableSections }: Props) {
+  const { toast } = useToast();
   const [data, setData] = useState<OverviewData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [leaderPeriod, setLeaderPeriod] = useState<LeaderboardPeriod>('month');
+  const [planEditing, setPlanEditing] = useState(false);
+  const [planDraft, setPlanDraft] = useState<string>('');
+  const [savingPlan, setSavingPlan] = useState(false);
 
-  useEffect(() => { void load(); }, [organizationId]);
+  useEffect(() => { void load(); }, [organizationId, leaderPeriod]);
 
-  const safeJump = (tab: string) => {
-    if (!availableSections || availableSections.includes(tab)) onJump?.(tab);
-    else onJump?.('deals'); // fallback
+  const safeJump = (tab: string, inn?: string | null) => {
+    if (!availableSections || availableSections.includes(tab)) onJump?.(tab, inn);
+    else onJump?.('deals', inn);
   };
 
   async function load() {
