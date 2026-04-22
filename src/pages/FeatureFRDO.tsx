@@ -20,6 +20,17 @@ const stagger = {
 const FeatureFRDO = () => {
   return (
     <div className="min-h-screen bg-background">
+      <Helmet>
+        <title>Выпуск ФРДО и реестр документов об образовании — СИНТАГМА</title>
+        <meta name="description" content="Автоматизация ФИС ФРДО: подготовка XLSX-шаблонов 35/41, реестр документов об образовании, валидация СНИЛС/дат до выгрузки. Формирование файла — на любом тарифе, выгрузка — на «Профессиональном»." />
+        <meta name="keywords" content="выпуск ФРДО, реестр документов об образовании, ФИС ФРДО, выгрузка ФРДО, шаблон ФРДО 35 столбцов, шаблон ФРДО 41 столбец, автоматизация ФРДО, обрнадзор ФРДО, удостоверения о повышении квалификации, дипломы переподготовки" />
+        <link rel="canonical" href="https://sintagma.com.ru/feature/frdo" />
+        <meta property="og:title" content="Выпуск ФРДО и реестр документов об образовании — СИНТАГМА" />
+        <meta property="og:description" content="Готовый реестр документов об образовании и автоматическая выгрузка в ФИС ФРДО без ошибок «недопустимый символ». Формирование — бесплатно, выгрузка — на тарифе «Профессиональный»." />
+        <meta property="og:type" content="website" />
+        <meta property="og:url" content="https://sintagma.com.ru/feature/frdo" />
+        <meta property="og:image" content="https://sintagma.com.ru/og-image.png" />
+      </Helmet>
       {/* Header */}
       <header className="sticky top-0 z-50 bg-background/80 backdrop-blur-xl border-b border-border">
         <div className="container mx-auto px-6 py-4 flex items-center justify-between">
