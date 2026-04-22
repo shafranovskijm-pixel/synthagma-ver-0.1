@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -61,6 +61,10 @@ interface OrgRequisites {
   bank_bik?: string | null;
   bank_account?: string | null;
   bank_corr_account?: string | null;
+  email?: string | null;
+  phone?: string | null;
+  stamp_url?: string | null;
+  signature_url?: string | null;
 }
 
 interface BulkDocumentGeneratorProps {
@@ -109,6 +113,8 @@ export function BulkDocumentGenerator({ organizationId, isOpen, onClose }: BulkD
   // Прогресс
   const [progress, setProgress] = useState(0);
   const [results, setResults] = useState<GenerationResult[]>([]);
+  const cancelRef = useRef(false);
+  const [duplicateNumbers, setDuplicateNumbers] = useState<string[]>([]);
 
   const selectedTemplate = useMemo(
     () => templates.find(t => t.id === selectedTemplateId) || null,
@@ -134,7 +140,7 @@ export function BulkDocumentGenerator({ organizationId, isOpen, onClose }: BulkD
           .order("name"),
         supabase
           .from("organizations")
-          .select("name, inn, kpp, ogrn, legal_address, director_name")
+          .select("name, email, phone, inn, kpp, ogrn, legal_address, director_name, director_position, bank_name, bank_bik, bank_account, bank_corr_account, stamp_url, signature_url")
           .eq("id", organizationId)
           .maybeSingle(),
         supabase
