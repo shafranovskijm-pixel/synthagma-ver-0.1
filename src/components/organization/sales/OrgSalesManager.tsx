@@ -179,12 +179,14 @@ export function OrgSalesManager() {
               onAddCall={openActivity('call')}
               onAddNote={openActivity('note')}
               onAddTask={(c) => { setTaskPrefill(c); setSection('tasks'); }}
+              onSendForSigning={() => setSection('contracts')}
               communicationRefreshKey={commRefresh}
               initialSelectedInn={dealSelectedInn}
             />
           )}
           {section === 'leads' && <LeadsManager organizationId={organizationId} />}
           {section === 'companies' && <CompaniesUnified organizationId={organizationId} hideColdBase />}
+          {section === 'comparison' && <CompetitorComparison />}
           {section === 'campaigns' && (
             <OrgEmailCampaigns organizationId={organizationId} onGoToSmtp={() => setSection('smtp')} />
           )}
