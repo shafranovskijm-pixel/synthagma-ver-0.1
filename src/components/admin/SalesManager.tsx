@@ -29,6 +29,9 @@ export function SalesManager() {
   const [contractPrefill, setContractPrefill] = useState<PendingCompany | null>(null);
   const [taskPrefill, setTaskPrefill] = useState<PendingCompany | null>(null);
 
+  // ИНН компании, выбранной из «Обзора» (Топ-5 / Алерты) — пробрасываем в Deals360
+  const [dealSelectedInn, setDealSelectedInn] = useState<string | null>(null);
+
   // Диалог звонок/заметка
   const [activityDialog, setActivityDialog] = useState<{
     open: boolean; type: 'call' | 'note'; company: PendingCompany | null;
@@ -58,8 +61,14 @@ export function SalesManager() {
     setActiveTab('tasks');
   }, []);
 
+  // Из «Обзора» можно прийти на «Сделки 360°» с выбранной компанией
+  const handleJump = useCallback((tab: string, inn?: string | null) => {
+    if (inn) setDealSelectedInn(inn);
+    setActiveTab(tab);
+  }, []);
+
   const TABS: Record<string, React.ReactNode> = {
-    overview: <SalesOverview onJump={setActiveTab} />,
+    overview: <SalesOverview onJump={handleJump} />,
     tasks: <SalesTasks prefillCompany={taskPrefill} onPrefillConsumed={() => setTaskPrefill(null)} />,
     deals: (
       <Deals360
@@ -70,6 +79,7 @@ export function SalesManager() {
         onAddNote={openActivity('note')}
         onAddTask={goAddTask}
         communicationRefreshKey={commRefresh}
+        initialSelectedInn={dealSelectedInn}
       />
     ),
     companies: <CompaniesUnified />,
