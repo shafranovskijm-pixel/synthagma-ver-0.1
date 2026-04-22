@@ -6115,6 +6115,7 @@ export type Database = {
           id: string
           inn: string
           org_name: string | null
+          organization_id: string | null
           reason: string | null
         }
         Insert: {
@@ -6123,6 +6124,7 @@ export type Database = {
           id?: string
           inn: string
           org_name?: string | null
+          organization_id?: string | null
           reason?: string | null
         }
         Update: {
@@ -6131,9 +6133,18 @@ export type Database = {
           id?: string
           inn?: string
           org_name?: string | null
+          organization_id?: string | null
           reason?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "sales_blacklist_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       sales_companies_db: {
         Row: {
@@ -6643,6 +6654,7 @@ export type Database = {
           id: string
           lead_id: string | null
           manager_id: string | null
+          organization_id: string | null
           status: string
           title: string
           type: string
@@ -6657,6 +6669,7 @@ export type Database = {
           id?: string
           lead_id?: string | null
           manager_id?: string | null
+          organization_id?: string | null
           status?: string
           title: string
           type?: string
@@ -6671,6 +6684,7 @@ export type Database = {
           id?: string
           lead_id?: string | null
           manager_id?: string | null
+          organization_id?: string | null
           status?: string
           title?: string
           type?: string
@@ -6689,6 +6703,13 @@ export type Database = {
             columns: ["manager_id"]
             isOneToOne: false
             referencedRelation: "sales_managers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sales_tasks_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
             referencedColumns: ["id"]
           },
         ]

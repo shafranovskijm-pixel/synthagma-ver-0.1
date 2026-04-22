@@ -2,11 +2,12 @@ import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Mail, Plus, Play, Trash2, BarChart2 } from "lucide-react";
+import { Mail, Plus, Play, Trash2, BarChart2, RefreshCw } from "lucide-react";
 import { useEmailCampaigns } from "@/hooks/useEmailCampaigns";
 import { CampaignEditor } from "./CampaignEditor";
 import { CampaignReport } from "./CampaignReport";
 import { WarmupBadge } from "./WarmupBadge";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 
@@ -55,9 +56,24 @@ export function CampaignsManager({ scope, organizationId }: Props) {
               {campaigns.map(c => (
                 <div key={c.id} className="flex items-center gap-3 p-3 rounded-lg border border-border bg-muted/20">
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-wrap">
                       <p className="font-medium text-sm truncate">{c.name}</p>
                       <Badge className={statusColor(c.status)} variant="outline">{c.status}</Badge>
+                      {c.status === "paused" && (
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Badge variant="outline" className="gap-1 bg-primary/10 text-primary border-primary/30">
+                                <RefreshCw className="w-3 h-3 animate-spin" style={{ animationDuration: '3s' }} />
+                                Продолжается автоматически
+                              </Badge>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p className="text-xs max-w-xs">Кампания будет дослана в течение 5 минут.<br/>Платформа автоматически отправит оставшимся получателям.</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      )}
                     </div>
                     <p className="text-xs text-muted-foreground truncate">{c.subject}</p>
                     <p className="text-xs text-muted-foreground mt-0.5">
