@@ -305,6 +305,7 @@ function LiveKitEmbed({
             isHost={!viewOnly}
             participantIdentity={guestIdentity ?? `guest-${webinarId}`}
             participantName={guestDisplayName ?? "Гость"}
+            isGuest={viewOnly || !!guestIdentity}
             className="hidden lg:flex flex-col h-[calc(100vh-200px)] min-h-[400px] max-h-[720px] rounded-lg border bg-background overflow-hidden"
           />
         )}
@@ -316,6 +317,7 @@ function LiveKitEmbed({
           isHost={!viewOnly}
           participantIdentity={guestIdentity ?? `guest-${webinarId}`}
           participantName={guestDisplayName ?? "Гость"}
+          isGuest={viewOnly || !!guestIdentity}
           className="lg:hidden flex flex-col h-[480px] rounded-lg border bg-background overflow-hidden"
         />
       )}
