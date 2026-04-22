@@ -82,6 +82,8 @@ interface GenerationResult {
   recipientName: string;
   status: "success" | "error";
   documentName?: string;
+  filePath?: string;
+  fileName?: string;
   error?: string;
 }
 
