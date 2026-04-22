@@ -468,7 +468,7 @@ export function useDocumentsTab(organizationId: string | null, organizationName?
 
   return {
     d, plan, isFreePlan,
-    activeTab, setActiveTab,
+    activeTab, setActiveTab, tabPrefilters,
     constructorTab, setConstructorTab,
     stampUrl, signatureUrl,
     handleStampUpload, handleSignatureUpload, handleStampRemove, handleSignatureRemove,
