@@ -5,12 +5,15 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
-import { Search, Building2, FileText, ScrollText, PenTool, Receipt, CheckCircle2, Clock, XCircle, ArrowRight, Sparkles, Activity, LayoutGrid } from 'lucide-react';
+import { Search, Building2, FileText, ScrollText, PenTool, Receipt, CheckCircle2, Clock, XCircle, ArrowRight, Sparkles, Activity, LayoutGrid, Columns3 } from 'lucide-react';
 import { format } from 'date-fns';
 import { ru } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { SigmaSpinner } from '@/components/ui/SigmaSpinner';
 import { CompanyTimeline } from './CompanyTimeline';
+import { DealQuickActions } from './DealQuickActions';
+import { DealCommunication } from './DealCommunication';
+import { SalesKanban } from './SalesKanban';
 
 interface DealCompany {
   inn: string;
@@ -62,6 +65,7 @@ export function Deals360() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [selectedInn, setSelectedInn] = useState<string | null>(null);
+  const [view, setView] = useState<'list' | 'kanban'>('list');
 
   useEffect(() => {
     void loadDeals();
