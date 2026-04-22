@@ -19,6 +19,7 @@ import { ThemeAnimations, getStoredAnimationLevel, type AnimationLevel } from "@
 import { AtmosphericBleed } from "@/components/ui/AtmosphericBleed";
 import { useOrgTheme } from "@/hooks/useOrgTheme";
 import { GlobalCommandPalette } from "@/components/shared/GlobalCommandPalette";
+import { OrgMobileBottomNav } from "@/components/organization/OrgMobileBottomNav";
 
 export default function OrganizationDashboard() {
   const navigate = useNavigate();
@@ -36,6 +37,16 @@ export default function OrganizationDashboard() {
     return id ? getThemeById(id) || null : null;
   });
   const [animLevel, setAnimLevel] = useState<AnimationLevel>(getStoredAnimationLevel);
+
+  // Sidebar expanded state — sync margin of main content
+  const [sidebarExpanded, setSidebarExpanded] = useState<boolean>(() => {
+    try { return localStorage.getItem("org-sidebar-expanded") === "1"; } catch { return false; }
+  });
+  useEffect(() => {
+    const handler = (e: Event) => setSidebarExpanded(!!(e as CustomEvent).detail);
+    window.addEventListener("org-sidebar-expanded-change", handler);
+    return () => window.removeEventListener("org-sidebar-expanded-change", handler);
+  }, []);
 
   useEffect(() => {
     const handler = (e: Event) => {
@@ -125,7 +136,11 @@ export default function OrganizationDashboard() {
       {/* Main content */}
       <main 
         ref={d.swipeRef} 
-        className={`flex-1 flex flex-col min-w-0 transition-all duration-300 lg:ml-[88px] ${d.isAdminView ? 'mt-10' : ''}`}
+        className={cn(
+          "flex-1 flex flex-col min-w-0 transition-all duration-300 pb-14 lg:pb-0",
+          sidebarExpanded ? "lg:ml-[220px]" : "lg:ml-[88px]",
+          d.isAdminView ? "mt-10" : ""
+        )}
       >
         {/* Header with hero banner */}
         <OrgDashboardHeader />
@@ -156,6 +171,9 @@ export default function OrganizationDashboard() {
 
       {/* Global Cmd+K palette */}
       <GlobalCommandPalette scope="organization" organizationId={d.organizationId} />
+
+      {/* Mobile bottom navigation */}
+      <OrgMobileBottomNav />
     </div>
   );
 }
