@@ -1,12 +1,13 @@
 import { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { Helmet } from "react-helmet-async";
+import { QRCodeSVG } from "qrcode.react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
-import { CheckCircle2, XCircle, ShieldAlert, Search, ArrowLeft, FileCheck2 } from "lucide-react";
+import { CheckCircle2, XCircle, ShieldAlert, Search, ArrowLeft, FileCheck2, Printer, QrCode } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import { ru } from "date-fns/locale";
 
@@ -211,6 +212,35 @@ export default function VerifyDocument() {
                 />
               )}
             </CardContent>
+            <div className="border-t bg-muted/30 p-6 flex flex-col md:flex-row items-center gap-6 print:bg-white">
+              <div className="bg-white p-3 rounded-xl border border-border shrink-0">
+                <QRCodeSVG
+                  value={`${window.location.origin}/verify/${encodeURIComponent(doc.reg_number)}`}
+                  size={132}
+                  level="M"
+                  includeMargin={false}
+                />
+              </div>
+              <div className="flex-1 text-center md:text-left space-y-2">
+                <div className="flex items-center justify-center md:justify-start gap-2 text-primary font-medium">
+                  <QrCode className="w-4 h-4" />
+                  Проверка по QR-коду
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  Отсканируйте QR-код смартфоном — он откроет эту страницу с регистрационным номером{" "}
+                  <span className="font-mono">{doc.reg_number}</span>. QR можно распечатать на бланке документа.
+                </p>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => window.print()}
+                  className="rounded-lg print:hidden"
+                >
+                  <Printer className="w-4 h-4 mr-2" />
+                  Распечатать
+                </Button>
+              </div>
+            </div>
           </Card>
         )}
 
