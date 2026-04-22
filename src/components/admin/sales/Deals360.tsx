@@ -3,13 +3,14 @@ import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Search, Building2, FileText, ScrollText, PenTool, Receipt, CheckCircle2, Clock, XCircle, ArrowRight, Sparkles } from 'lucide-react';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import { Search, Building2, FileText, ScrollText, PenTool, Receipt, CheckCircle2, Clock, XCircle, ArrowRight, Sparkles, Activity, LayoutGrid } from 'lucide-react';
 import { format } from 'date-fns';
 import { ru } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { SigmaSpinner } from '@/components/ui/SigmaSpinner';
+import { CompanyTimeline } from './CompanyTimeline';
 
 interface DealCompany {
   inn: string;
