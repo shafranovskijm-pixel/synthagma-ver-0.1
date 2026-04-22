@@ -39,6 +39,27 @@ serve(async (req: Request) => {
       .from("email_campaign_recipients").select("*").eq("id", recipientId).single();
     if (rErr || !recipient) throw new Error("Получатель не найден");
 
+    // ============ Suppression check ============
+    const scopeKey = campaign.scope === "platform" ? "platform" : (campaign.organization_id || "platform");
+    const { data: isSupp } = await admin.rpc("is_email_suppressed", {
+      p_email: recipient.email,
+      p_scope: scopeKey,
+    });
+    if (isSupp === true) {
+      await admin.from("email_campaign_recipients").update({
+        status: "failed",
+        error: "Адрес в списке отписавшихся",
+      }).eq("id", recipientId);
+      const { data: c2 } = await admin.from("email_campaigns")
+        .select("failed_count").eq("id", campaignId).single();
+      await admin.from("email_campaigns").update({
+        failed_count: (c2?.failed_count || 0) + 1,
+      }).eq("id", campaignId);
+      return new Response(JSON.stringify({ success: false, suppressed: true }), {
+        status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     // Получаем SMTP-конфигурацию
     let smtp: SmtpConfig;
     if (campaign.scope === "platform") {
