@@ -268,28 +268,55 @@ function LiveKitEmbed({
 
   return (
     <div className="space-y-3">
-      <div className="relative aspect-video w-full rounded-lg overflow-hidden bg-black" data-lk-theme="default">
-        <LiveKitRoom
-          token={token}
-          serverUrl={wsUrl}
-          connect={true}
-          video={!viewOnly}
-          audio={!viewOnly}
-          style={{ height: "100%" }}
-        >
-          <LiveKitTopBar
-            title={webinarTitle}
-            publicLink={viewOnly ? null : publicLink}
-            onShare={() => setShareOpen(true)}
-            onEnd={onEnd}
-            hasShareSettings={!viewOnly && Boolean(publicToken)}
-            viewOnly={viewOnly}
+      <div
+        className={cn(
+          "grid gap-3",
+          showSidePanel ? "lg:grid-cols-[1fr_340px]" : "grid-cols-1",
+        )}
+      >
+        <div className="relative aspect-video w-full rounded-lg overflow-hidden bg-black" data-lk-theme="default">
+          <LiveKitRoom
+            token={token}
+            serverUrl={wsUrl}
+            connect={true}
+            video={!viewOnly}
+            audio={!viewOnly}
+            style={{ height: "100%" }}
+          >
+            <LiveKitTopBar
+              title={webinarTitle}
+              publicLink={viewOnly ? null : publicLink}
+              onShare={() => setShareOpen(true)}
+              onEnd={onEnd}
+              hasShareSettings={!viewOnly && Boolean(publicToken)}
+              viewOnly={viewOnly}
+            />
+            <VideoConference />
+            <WelcomeOverlay webinarTitle={webinarTitle} />
+            <RoomAudioRenderer />
+          </LiveKitRoom>
+        </div>
+
+        {showSidePanel && (
+          <WebinarSidebar
+            webinarId={webinarId}
+            isHost={!viewOnly}
+            participantIdentity={guestIdentity ?? `guest-${webinarId}`}
+            participantName={guestDisplayName ?? "Гость"}
+            className="hidden lg:flex flex-col h-[calc(100vh-200px)] min-h-[400px] max-h-[720px] rounded-lg border bg-background overflow-hidden"
           />
-          <VideoConference />
-          <WelcomeOverlay webinarTitle={webinarTitle} />
-          <RoomAudioRenderer />
-        </LiveKitRoom>
+        )}
       </div>
+
+      {showSidePanel && (
+        <WebinarSidebar
+          webinarId={webinarId}
+          isHost={!viewOnly}
+          participantIdentity={guestIdentity ?? `guest-${webinarId}`}
+          participantName={guestDisplayName ?? "Гость"}
+          className="lg:hidden flex flex-col h-[480px] rounded-lg border bg-background overflow-hidden"
+        />
+      )}
 
       {!viewOnly && publicToken && (
         <ShareWebinarDialog
