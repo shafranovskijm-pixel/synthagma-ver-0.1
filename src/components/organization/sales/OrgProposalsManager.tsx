@@ -339,6 +339,23 @@ export function OrgProposalsManager({ organizationId, onGoToSmtp }: Props) {
         onClose={() => setPickerOpen(false)}
         onPick={handlePresetPick}
       />
+
+      {editor && (
+        <ProposalVariablesCheckDialog
+          open={variablesCheckOpen}
+          onClose={() => setVariablesCheckOpen(false)}
+          course={
+            (editor.proposal as any).linked_course_id
+              ? orgCourses.find(c => c.id === (editor.proposal as any).linked_course_id) || null
+              : null
+          }
+          companyName={editor.proposal.company_name}
+          contactPerson={editor.proposal.contact_person}
+          introHtml={(editor.proposal as any).intro_html}
+          outroHtml={(editor.proposal as any).outro_html}
+          items={editor.items.map(i => ({ custom_name: i.custom_name, custom_description: i.custom_description }))}
+        />
+      )}
     </div>
   );
 }
