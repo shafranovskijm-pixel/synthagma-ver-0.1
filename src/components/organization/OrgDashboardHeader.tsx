@@ -20,6 +20,7 @@ import {
   DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { RadioPlayerButton } from "@/components/radio/RadioPlayerButton";
 import { SectionBreadcrumbDropdown } from "./SectionBreadcrumbDropdown";
+import { QuickActionChips } from "./QuickActionChips";
 
 function getUserInitials(email?: string | null, name?: string | null): string {
   if (name) {
@@ -277,6 +278,9 @@ export function OrgDashboardHeader() {
           </DropdownMenu>
         </div>
       </div>
+
+      {/* Quick action chips under omnibox */}
+      <QuickActionChips />
 
       {/* Hero banner with theme swiper — hidden on course details page (course banner takes its place) */}
       {activeTab !== "course-details" && (
