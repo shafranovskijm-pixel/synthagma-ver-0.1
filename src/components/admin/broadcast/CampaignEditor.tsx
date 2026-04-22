@@ -17,6 +17,7 @@ import { RecipientPicker, RecipientPickerValue } from "./RecipientPicker";
 import { WarmupBadge } from "./WarmupBadge";
 import { useEmailWarmup } from "@/hooks/useEmailWarmup";
 import { CreateWebinarQuick } from "./CreateWebinarQuick";
+import { InboxPreview } from "./InboxPreview";
 
 interface InitialData {
   name?: string;
@@ -504,6 +505,7 @@ export function CampaignEditor({ open, onClose, scope, organizationId, onCreated
                 <TabsList>
                   <TabsTrigger value="html">HTML</TabsTrigger>
                   <TabsTrigger value="preview">Предпросмотр</TabsTrigger>
+                  <TabsTrigger value="inbox">Inbox-превью</TabsTrigger>
                 </TabsList>
                 <TabsContent value="html">
                   <Textarea
@@ -517,6 +519,14 @@ export function CampaignEditor({ open, onClose, scope, organizationId, onCreated
                   <div
                     className="border rounded-lg p-4 bg-background min-h-[200px] prose prose-sm max-w-none"
                     dangerouslySetInnerHTML={{ __html: renderPreview() }}
+                  />
+                </TabsContent>
+                <TabsContent value="inbox">
+                  <InboxPreview
+                    subject={subject || "Тема письма"}
+                    fromName={fromName || "Команда Sintagma"}
+                    fromEmail={replyTo || "noreply@sintagma.com.ru"}
+                    html={renderPreview()}
                   />
                 </TabsContent>
               </Tabs>
