@@ -4,7 +4,7 @@ import {
   BookOpen, Users, Settings, LogOut, Upload,
   Building2, HardHat, HardDrive, CreditCard, Lock, MessageCircle, Wallet,
   BarChart3, Link, ShoppingBag, FileText, ClipboardList, FileSpreadsheet, BookCheck, Radio, Sparkles, Briefcase,
-  HelpCircle, Star
+  HelpCircle, Star, ChevronsLeft, ChevronsRight
 } from "lucide-react";
 import { SigmaLogo } from "@/components/ui/SigmaLogo";
 import { useOrgDashboard } from "@/contexts/OrgDashboardContext";
@@ -119,6 +119,7 @@ const SECTION_LABELS: Record<SectionId, string> = {
 };
 
 const SHOW_LABELS_KEY = "org-sidebar-show-labels";
+const EXPANDED_KEY = "org-sidebar-expanded";
 
 export function OrgSidebar() {
   const d = useOrgDashboard();
@@ -150,6 +151,16 @@ export function OrgSidebar() {
   useEffect(() => {
     try { localStorage.setItem(SHOW_LABELS_KEY, showLabels ? "1" : "0"); } catch {}
   }, [showLabels]);
+
+  // Expanded mode (icon+text full panel)
+  const [expanded, setExpanded] = useState<boolean>(() => {
+    try { return localStorage.getItem(EXPANDED_KEY) === "1"; } catch { return false; }
+  });
+  useEffect(() => {
+    try { localStorage.setItem(EXPANDED_KEY, expanded ? "1" : "0"); } catch {}
+    // Notify layout to adjust main content margin
+    window.dispatchEvent(new CustomEvent("org-sidebar-expanded-change", { detail: expanded }));
+  }, [expanded]);
 
   // Theme-aware accent
   const [themeAccent, setThemeAccent] = useState<string | null>(() => {
@@ -242,7 +253,8 @@ export function OrgSidebar() {
         role="navigation"
         aria-label="Основная навигация"
         className={cn(
-          "fixed inset-y-0 left-0 z-50 w-[88px] shadow-[2px_0_8px_rgba(0,0,0,0.06)] flex flex-col transition-transform duration-300",
+          "fixed inset-y-0 left-0 z-50 shadow-[2px_0_8px_rgba(0,0,0,0.06)] flex flex-col transition-[transform,width] duration-300",
+          expanded ? "w-[220px]" : "w-[88px]",
           isMobileSidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
         )}
         style={{ backgroundColor: `hsl(${brandHsl} / 0.07)` }}
@@ -299,7 +311,7 @@ export function OrgSidebar() {
                 className="rounded-[24px] p-1.5 shadow-sm w-full"
                 style={{ backgroundColor: `hsl(${brandHsl} / 0.12)` }}
               >
-                <nav className="flex flex-col items-center gap-1">
+                <nav className={cn("flex flex-col gap-1", expanded ? "items-stretch" : "items-center")}>
                   {group.items.map((item) => {
                     const isActive = activeTab === item.id;
                     const locked = item.category ? isLocked(item.category) : false;
@@ -311,8 +323,13 @@ export function OrgSidebar() {
                             data-onboarding={item.id === "courses" ? "courses" : item.id === "students" ? "students" : item.id === "settings" ? "settings" : undefined}
                             onClick={() => handleTabClick(item.id)}
                             className={cn(
-                              "relative flex flex-col items-center justify-center w-[68px] rounded-xl transition-all duration-200 px-1 py-1.5",
-                              showLabels ? "gap-0.5" : "h-11",
+                              "relative rounded-xl transition-all duration-200",
+                              expanded
+                                ? "flex items-center gap-2.5 px-2.5 py-2 w-full text-left"
+                                : cn(
+                                    "flex flex-col items-center justify-center w-[68px] px-1 py-1.5",
+                                    showLabels ? "gap-0.5" : "h-11"
+                                  ),
                               locked && "opacity-50",
                               isActive
                                 ? "text-primary-foreground shadow-md"
@@ -336,7 +353,16 @@ export function OrgSidebar() {
                                 </span>
                               )}
                             </span>
-                            {showLabels && (
+                            {expanded ? (
+                              <span
+                                className={cn(
+                                  "text-xs font-medium truncate flex-1",
+                                  isActive ? "text-primary-foreground" : "text-foreground/85"
+                                )}
+                              >
+                                {item.label}
+                              </span>
+                            ) : showLabels ? (
                               <span
                                 className={cn(
                                   "text-[9px] leading-tight font-medium text-center max-w-[64px] line-clamp-2",
@@ -345,21 +371,23 @@ export function OrgSidebar() {
                               >
                                 {item.label}
                               </span>
-                            )}
+                            ) : null}
                           </button>
                         </TooltipTrigger>
-                        <TooltipContent
-                          side="right"
-                          sideOffset={12}
-                          className="z-[100] rounded-xl px-4 py-2 text-sm font-medium shadow-lg border-border/60"
-                          style={{
-                            backgroundColor: `hsl(${brandHsl})`,
-                            color: 'white',
-                            boxShadow: `0 4px 20px hsl(${brandHsl} / 0.3)`,
-                          }}
-                        >
-                          {item.label}
-                        </TooltipContent>
+                        {!expanded && (
+                          <TooltipContent
+                            side="right"
+                            sideOffset={12}
+                            className="z-[100] rounded-xl px-4 py-2 text-sm font-medium shadow-lg border-border/60"
+                            style={{
+                              backgroundColor: `hsl(${brandHsl})`,
+                              color: 'white',
+                              boxShadow: `0 4px 20px hsl(${brandHsl} / 0.3)`,
+                            }}
+                          >
+                            {item.label}
+                          </TooltipContent>
+                        )}
                       </Tooltip>
                     );
                   })}
@@ -400,17 +428,34 @@ export function OrgSidebar() {
           <Tooltip>
             <TooltipTrigger asChild>
               <button
-                onClick={() => setShowLabels((v) => !v)}
-                className="flex h-7 w-7 items-center justify-center rounded-lg text-foreground/40 hover:text-foreground/80 hover:bg-foreground/5 transition-colors text-[10px] font-bold"
-                aria-label={showLabels ? "Скрыть подписи" : "Показать подписи"}
+                onClick={() => setExpanded((v) => !v)}
+                className="hidden lg:flex h-9 w-9 items-center justify-center rounded-xl text-foreground/60 hover:text-primary hover:bg-primary/10 transition-colors"
+                aria-label={expanded ? "Свернуть меню" : "Развернуть меню"}
               >
-                {showLabels ? "Aa" : "·"}
+                {expanded ? <ChevronsLeft className="h-[18px] w-[18px]" /> : <ChevronsRight className="h-[18px] w-[18px]" />}
               </button>
             </TooltipTrigger>
             <TooltipContent side="right" className="z-[100]">
-              {showLabels ? "Скрыть подписи" : "Показать подписи"}
+              {expanded ? "Свернуть меню" : "Развернуть меню"}
             </TooltipContent>
           </Tooltip>
+
+          {!expanded && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  onClick={() => setShowLabels((v) => !v)}
+                  className="flex h-7 w-7 items-center justify-center rounded-lg text-foreground/40 hover:text-foreground/80 hover:bg-foreground/5 transition-colors text-[10px] font-bold"
+                  aria-label={showLabels ? "Скрыть подписи" : "Показать подписи"}
+                >
+                  {showLabels ? "Aa" : "·"}
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="right" className="z-[100]">
+                {showLabels ? "Скрыть подписи" : "Показать подписи"}
+              </TooltipContent>
+            </Tooltip>
+          )}
 
           <Tooltip>
             <TooltipTrigger asChild>

@@ -101,6 +101,23 @@ export function OrgDashboardHeader() {
     }
   };
 
+  // Breadcrumbs: section group → page
+  const getBreadcrumb = (): { section: string; page: string } | null => {
+    const learning = ["courses", "homework-review", "ai-tutors", "labor-safety"];
+    const clients = ["students", "organizations", "sales", "chats"];
+    const tools = ["stats", "links", "library", "journals", "frdo", "documents", "services"];
+    const settings = ["profile", "subscription", "payments", "org-documents", "whats-new", "settings"];
+    const title = getPageTitle();
+    if (!title) return null;
+    if (learning.includes(activeTab)) return { section: "Обучение", page: title };
+    if (clients.includes(activeTab)) return { section: "Клиенты", page: title };
+    if (tools.includes(activeTab)) return { section: "Инструменты", page: title };
+    if (settings.includes(activeTab)) return { section: "Настройки", page: title };
+    return { section: "Школа", page: title };
+  };
+
+  const breadcrumb = getBreadcrumb();
+
   const openCommandPalette = () => {
     window.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', metaKey: true, ctrlKey: true, bubbles: true }));
   };
@@ -253,12 +270,27 @@ export function OrgDashboardHeader() {
         </HeroBannerSwiper>
       )}
 
-      {/* Sub-header: page title + action buttons */}
+      {/* Sub-header: breadcrumbs + page title + action buttons */}
       {activeTab !== "course-details" && (
         <div className="flex items-center justify-between px-4 lg:px-6 h-12 border-t border-border/50 bg-card/95 backdrop-blur-sm">
-          <h1 className="font-display text-base font-semibold text-foreground/80">
-            {getPageTitle()}
-          </h1>
+          <div className="flex items-center gap-2 min-w-0">
+            {breadcrumb && (
+              <nav aria-label="Хлебные крошки" className="flex items-center gap-1.5 text-xs text-muted-foreground min-w-0">
+                <button
+                  onClick={() => d.tabNavigation.setActiveTab("courses" as any)}
+                  className="hover:text-primary transition-colors truncate"
+                >
+                  {customName || organizationName || "Школа"}
+                </button>
+                <span className="opacity-50">›</span>
+                <span className="text-muted-foreground/80 hidden sm:inline">{breadcrumb.section}</span>
+                <span className="opacity-50 hidden sm:inline">›</span>
+                <span className="font-display text-sm font-semibold text-foreground/85 truncate">
+                  {breadcrumb.page}
+                </span>
+              </nav>
+            )}
+          </div>
 
           <div className="flex items-center gap-2">
             {activeTab === "links" && (
@@ -290,6 +322,18 @@ export function OrgDashboardHeader() {
                   <span className="hidden sm:inline">Создать курс</span>
                 </Button>
               </div>
+            )}
+            {activeTab === "organizations" && (
+              <Button className="btn-gradient rounded-xl gap-2 text-xs" size="sm" onClick={() => window.dispatchEvent(new CustomEvent('org-add-company'))}>
+                <Plus className="w-4 h-4" />
+                <span className="hidden sm:inline">Добавить компанию</span>
+              </Button>
+            )}
+            {activeTab === "sales" && (
+              <Button className="btn-gradient rounded-xl gap-2 text-xs" size="sm" onClick={() => window.dispatchEvent(new CustomEvent('org-sales-create-deal'))}>
+                <Plus className="w-4 h-4" />
+                <span className="hidden sm:inline">Новая сделка</span>
+              </Button>
             )}
           </div>
         </div>
