@@ -139,7 +139,7 @@ export function SalesKanban({ onSelectCompany, organizationId }: Props) {
 
   return (
     <div className="space-y-3">
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3">
         {COLUMNS.map(col => {
           const items = grouped.get(col.id) || [];
           const total = items.reduce((s, d) => s + d.amount, 0);
