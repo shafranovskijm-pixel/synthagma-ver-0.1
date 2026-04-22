@@ -232,6 +232,15 @@ function ProposalContent({ proposal, services, discountPercent = 0, senderName, 
         </div>
       )}
 
+      {/* Outro marketing block (from preset) */}
+      {(proposal as any).outro_html && (
+        <div
+          className="mb-6"
+          style={{ fontFamily: "'Inter', sans-serif" }}
+          dangerouslySetInnerHTML={{ __html: (proposal as any).outro_html }}
+        />
+      )}
+
       {/* Validity + date */}
       <div className="flex justify-between items-end text-sm text-gray-600 border-t border-gray-200 pt-4" style={{ fontFamily: "'Inter', sans-serif" }}>
         <div>
