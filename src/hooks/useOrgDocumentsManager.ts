@@ -311,7 +311,54 @@ export function useOrgDocumentsManager(organizationId: string) {
   const openUploadDialog = (docType: string) => {
     setUploadDocType(docType);
     setSelectedFile(null);
+    const existing = documents.find((d) => d.type === docType);
+    setUploadIssueDate(existing?.issue_date || "");
+    setUploadExpiresAt(existing?.expires_at || "");
+    setUploadResponsible(existing?.responsible_person || "");
     setShowUploadDialog(true);
+  };
+
+  const archiveDocument = async (docId: string) => {
+    const { error } = await supabase
+      .from("org_documents")
+      .update({ status: "archived" })
+      .eq("id", docId);
+    if (error) {
+      toast.error("Не удалось архивировать");
+      return;
+    }
+    toast.success("Документ перенесён в архив");
+    fetchDocuments();
+  };
+
+  const restoreDocument = async (docId: string) => {
+    const { error } = await supabase
+      .from("org_documents")
+      .update({ status: "active" })
+      .eq("id", docId);
+    if (error) {
+      toast.error("Не удалось восстановить");
+      return;
+    }
+    toast.success("Документ восстановлен");
+    fetchDocuments();
+  };
+
+  const getExpiryStatus = (doc: OrgDocument | undefined): {
+    state: "none" | "active" | "expiring" | "expired" | "archived";
+    daysLeft: number | null;
+  } => {
+    if (!doc) return { state: "none", daysLeft: null };
+    if (doc.status === "archived") return { state: "archived", daysLeft: null };
+    if (!doc.expires_at) return { state: "active", daysLeft: null };
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const exp = new Date(doc.expires_at);
+    exp.setHours(0, 0, 0, 0);
+    const days = Math.floor((exp.getTime() - today.getTime()) / 86400000);
+    if (days < 0) return { state: "expired", daysLeft: days };
+    if (days <= 30) return { state: "expiring", daysLeft: days };
+    return { state: "active", daysLeft: days };
   };
 
   const handleQuizSubmit = async (quizData: any) => {
