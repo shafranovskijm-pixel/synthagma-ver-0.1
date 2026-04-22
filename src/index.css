@@ -421,6 +421,15 @@
 }
 
 @layer utilities {
+  /* Hide scrollbar but keep scroll functional (for floating toolbars on narrow screens) */
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+
   /* Elegant animations */
   .animate-float {
     animation: float 8s ease-in-out infinite;
