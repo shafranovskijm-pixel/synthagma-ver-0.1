@@ -10,10 +10,12 @@ import { Progress } from "@/components/ui/progress";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { FileText, Building2, Users, Eye, Download, FileStack, Search, AlertTriangle, CheckCircle2, Sparkles } from "lucide-react";
+import { FileText, Building2, Users, Eye, Download, FileStack, Search, AlertTriangle, CheckCircle2, Sparkles, RefreshCw, FileDown, Archive } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
+import JSZip from "jszip";
+import { openPrivateFile } from "@/lib/storage/privateFile";
 import {
   renderTemplate,
   buildOrgVariables,
