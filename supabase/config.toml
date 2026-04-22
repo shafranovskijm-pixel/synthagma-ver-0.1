@@ -143,3 +143,7 @@ verify_jwt = false
 
 [functions.public-verify-document]
 verify_jwt = false
+
+[functions.upload-demo-asset]
+verify_jwt = false
+
