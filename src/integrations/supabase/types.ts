@@ -7934,6 +7934,47 @@ export type Database = {
           },
         ]
       }
+      webinar_chat_messages: {
+        Row: {
+          content: string
+          created_at: string
+          id: string
+          is_guest: boolean
+          is_host: boolean
+          sender_identity: string
+          sender_name: string
+          webinar_id: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          id?: string
+          is_guest?: boolean
+          is_host?: boolean
+          sender_identity: string
+          sender_name: string
+          webinar_id: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          id?: string
+          is_guest?: boolean
+          is_host?: boolean
+          sender_identity?: string
+          sender_name?: string
+          webinar_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "webinar_chat_messages_webinar_id_fkey"
+            columns: ["webinar_id"]
+            isOneToOne: false
+            referencedRelation: "webinars"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       webinar_participants: {
         Row: {
           id: string
@@ -7969,10 +8010,134 @@ export type Database = {
           },
         ]
       }
+      webinar_poll_votes: {
+        Row: {
+          created_at: string
+          id: string
+          option_index: number
+          poll_id: string
+          voter_identity: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          option_index: number
+          poll_id: string
+          voter_identity: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          option_index?: number
+          poll_id?: string
+          voter_identity?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "webinar_poll_votes_poll_id_fkey"
+            columns: ["poll_id"]
+            isOneToOne: false
+            referencedRelation: "webinar_polls"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      webinar_polls: {
+        Row: {
+          closed_at: string | null
+          created_at: string
+          created_by: string | null
+          id: string
+          options: Json
+          question: string
+          status: string
+          webinar_id: string
+        }
+        Insert: {
+          closed_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          options: Json
+          question: string
+          status?: string
+          webinar_id: string
+        }
+        Update: {
+          closed_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          options?: Json
+          question?: string
+          status?: string
+          webinar_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "webinar_polls_webinar_id_fkey"
+            columns: ["webinar_id"]
+            isOneToOne: false
+            referencedRelation: "webinars"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      webinar_questions: {
+        Row: {
+          answer_text: string | null
+          answered: boolean
+          answered_at: string | null
+          answered_by: string | null
+          author_identity: string
+          author_name: string
+          created_at: string
+          id: string
+          question: string
+          upvotes: number
+          webinar_id: string
+        }
+        Insert: {
+          answer_text?: string | null
+          answered?: boolean
+          answered_at?: string | null
+          answered_by?: string | null
+          author_identity: string
+          author_name: string
+          created_at?: string
+          id?: string
+          question: string
+          upvotes?: number
+          webinar_id: string
+        }
+        Update: {
+          answer_text?: string | null
+          answered?: boolean
+          answered_at?: string | null
+          answered_by?: string | null
+          author_identity?: string
+          author_name?: string
+          created_at?: string
+          id?: string
+          question?: string
+          upvotes?: number
+          webinar_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "webinar_questions_webinar_id_fkey"
+            columns: ["webinar_id"]
+            isOneToOne: false
+            referencedRelation: "webinars"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       webinars: {
         Row: {
           access_type: string
           allow_guests: boolean
+          auto_record: boolean
           company_id: string | null
           course_id: string | null
           cover_url: string | null
@@ -7991,8 +8156,14 @@ export type Database = {
           organization_id: string
           player_settings: Json | null
           public_token: string | null
+          recording_egress_id: string | null
+          recording_ended_at: string | null
+          recording_external_url: string | null
           recording_size_bytes: number | null
+          recording_started_at: string | null
+          recording_status: string | null
           recording_url: string | null
+          reminders_sent: Json
           room_name: string | null
           room_url: string | null
           rtmp_key: string | null
@@ -8008,6 +8179,7 @@ export type Database = {
         Insert: {
           access_type?: string
           allow_guests?: boolean
+          auto_record?: boolean
           company_id?: string | null
           course_id?: string | null
           cover_url?: string | null
@@ -8026,8 +8198,14 @@ export type Database = {
           organization_id: string
           player_settings?: Json | null
           public_token?: string | null
+          recording_egress_id?: string | null
+          recording_ended_at?: string | null
+          recording_external_url?: string | null
           recording_size_bytes?: number | null
+          recording_started_at?: string | null
+          recording_status?: string | null
           recording_url?: string | null
+          reminders_sent?: Json
           room_name?: string | null
           room_url?: string | null
           rtmp_key?: string | null
@@ -8043,6 +8221,7 @@ export type Database = {
         Update: {
           access_type?: string
           allow_guests?: boolean
+          auto_record?: boolean
           company_id?: string | null
           course_id?: string | null
           cover_url?: string | null
@@ -8061,8 +8240,14 @@ export type Database = {
           organization_id?: string
           player_settings?: Json | null
           public_token?: string | null
+          recording_egress_id?: string | null
+          recording_ended_at?: string | null
+          recording_external_url?: string | null
           recording_size_bytes?: number | null
+          recording_started_at?: string | null
+          recording_status?: string | null
           recording_url?: string | null
+          reminders_sent?: Json
           room_name?: string | null
           room_url?: string | null
           rtmp_key?: string | null
