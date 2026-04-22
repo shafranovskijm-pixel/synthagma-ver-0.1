@@ -383,6 +383,11 @@ export function SignaturesJournal({ organizationId, initialStatus }: Props) {
         <Button variant="outline" size="sm" className="gap-2" onClick={handleExportCsv}>
           <FileDown className="w-4 h-4" />CSV
         </Button>
+        {organizationId && (
+          <Button variant="outline" size="sm" className="gap-2" onClick={() => setBulkResendOpen(true)}>
+            <Users className="w-4 h-4" />Массовая отправка
+          </Button>
+        )}
       </div>
 
       <Tabs value={statusFilter} onValueChange={setStatusFilter}>
