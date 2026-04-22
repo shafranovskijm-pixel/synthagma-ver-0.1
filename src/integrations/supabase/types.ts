@@ -6180,6 +6180,7 @@ export type Database = {
           okpo: string | null
           okved_list: string[] | null
           okved_main: string | null
+          organization_id: string | null
           parsed_at: string | null
           phone: string | null
           phones: string[] | null
@@ -6230,6 +6231,7 @@ export type Database = {
           okpo?: string | null
           okved_list?: string[] | null
           okved_main?: string | null
+          organization_id?: string | null
           parsed_at?: string | null
           phone?: string | null
           phones?: string[] | null
@@ -6280,6 +6282,7 @@ export type Database = {
           okpo?: string | null
           okved_list?: string[] | null
           okved_main?: string | null
+          organization_id?: string | null
           parsed_at?: string | null
           phone?: string | null
           phones?: string[] | null
@@ -6305,6 +6308,13 @@ export type Database = {
             referencedRelation: "sales_leads"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "sales_companies_db_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
         ]
       }
       sales_contracts: {
@@ -6326,6 +6336,7 @@ export type Database = {
           id: string
           manager_id: string | null
           notes: string | null
+          organization_id: string | null
           prepayment_amount: number
           status: string
           tariff_plan: string | null
@@ -6350,6 +6361,7 @@ export type Database = {
           id?: string
           manager_id?: string | null
           notes?: string | null
+          organization_id?: string | null
           prepayment_amount?: number
           status?: string
           tariff_plan?: string | null
@@ -6374,6 +6386,7 @@ export type Database = {
           id?: string
           manager_id?: string | null
           notes?: string | null
+          organization_id?: string | null
           prepayment_amount?: number
           status?: string
           tariff_plan?: string | null
@@ -6386,6 +6399,13 @@ export type Database = {
             columns: ["manager_id"]
             isOneToOne: false
             referencedRelation: "sales_managers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sales_contracts_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
             referencedColumns: ["id"]
           },
         ]
@@ -6476,6 +6496,7 @@ export type Database = {
           id: string
           lead_id: string
           manager_id: string
+          organization_id: string | null
         }
         Insert: {
           activity_type: string
@@ -6484,6 +6505,7 @@ export type Database = {
           id?: string
           lead_id: string
           manager_id: string
+          organization_id?: string | null
         }
         Update: {
           activity_type?: string
@@ -6492,6 +6514,7 @@ export type Database = {
           id?: string
           lead_id?: string
           manager_id?: string
+          organization_id?: string | null
         }
         Relationships: [
           {
@@ -6506,6 +6529,13 @@ export type Database = {
             columns: ["manager_id"]
             isOneToOne: false
             referencedRelation: "sales_managers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sales_lead_activities_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
             referencedColumns: ["id"]
           },
         ]
@@ -6526,6 +6556,7 @@ export type Database = {
           notes: string | null
           ogrn: string | null
           org_name: string
+          organization_id: string | null
           phone: string | null
           region: string | null
           source: string
@@ -6548,6 +6579,7 @@ export type Database = {
           notes?: string | null
           ogrn?: string | null
           org_name: string
+          organization_id?: string | null
           phone?: string | null
           region?: string | null
           source?: string
@@ -6570,6 +6602,7 @@ export type Database = {
           notes?: string | null
           ogrn?: string | null
           org_name?: string
+          organization_id?: string | null
           phone?: string | null
           region?: string | null
           source?: string
@@ -6583,6 +6616,13 @@ export type Database = {
             columns: ["assigned_manager_id"]
             isOneToOne: false
             referencedRelation: "sales_managers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sales_leads_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
             referencedColumns: ["id"]
           },
         ]

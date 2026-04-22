@@ -53,7 +53,10 @@ export function CampaignsManager({ scope, organizationId }: Props) {
             <p className="text-sm text-muted-foreground">Кампаний пока нет. Создайте первую.</p>
           ) : (
             <div className="space-y-2">
-              {campaigns.map(c => (
+              {campaigns.map(c => {
+                const startedAt = (c as any).started_at ? new Date((c as any).started_at) : null;
+                const stuck = c.status === 'sending' && startedAt && (Date.now() - startedAt.getTime() > 10 * 60 * 1000);
+                return (
                 <div key={c.id} className="flex items-center gap-3 p-3 rounded-lg border border-border bg-muted/20">
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
@@ -74,6 +77,11 @@ export function CampaignsManager({ scope, organizationId }: Props) {
                           </Tooltip>
                         </TooltipProvider>
                       )}
+                      {stuck && (
+                        <Badge variant="outline" className="gap-1 bg-orange-500/10 text-orange-600 border-orange-500/30">
+                          Зависла — нажмите «Продолжить»
+                        </Badge>
+                      )}
                     </div>
                     <p className="text-xs text-muted-foreground truncate">{c.subject}</p>
                     <p className="text-xs text-muted-foreground mt-0.5">
@@ -83,10 +91,10 @@ export function CampaignsManager({ scope, organizationId }: Props) {
                     </p>
                   </div>
                   <div className="flex items-center gap-1 shrink-0">
-                    {(c.status === "draft" || c.status === "paused") && (
+                    {(c.status === "draft" || c.status === "paused" || stuck) && (
                       <Button size="sm" variant="ghost" onClick={() => launch(c.id)} className="gap-1">
                         <Play className="w-3 h-3" />
-                        {c.status === "paused" ? "Продолжить" : "Запустить"}
+                        {c.status === "paused" || stuck ? "Продолжить" : "Запустить"}
                       </Button>
                     )}
                     <Button size="sm" variant="ghost" onClick={() => setReportFor(c.id)}>
@@ -97,7 +105,7 @@ export function CampaignsManager({ scope, organizationId }: Props) {
                     </Button>
                   </div>
                 </div>
-              ))}
+              );})}
             </div>
           )}
         </CardContent>

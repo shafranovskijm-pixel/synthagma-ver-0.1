@@ -15,8 +15,12 @@ import { useCheckoApi } from '@/hooks/useCheckoApi';
 import { CheckoQuotaBar } from './CheckoQuotaBar';
 import { AddInnsDialog } from './AddInnsDialog';
 
-export function CompaniesDatabase() {
-  const { list, convertToLead, remove } = useSalesCompaniesDb();
+interface CompaniesDatabaseProps {
+  organizationId?: string;
+}
+
+export function CompaniesDatabase({ organizationId }: CompaniesDatabaseProps = {}) {
+  const { list, convertToLead, remove } = useSalesCompaniesDb(organizationId);
   const { stats, enrichBatch } = useCheckoApi();
   const [search, setSearch] = useState('');
   const [licenseFilter, setLicenseFilter] = useState('all');

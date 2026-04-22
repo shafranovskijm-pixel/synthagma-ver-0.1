@@ -49,17 +49,19 @@ export interface SalesCompanyDbRow {
   created_at: string;
 }
 
-export function useSalesCompaniesDb() {
+export function useSalesCompaniesDb(organizationId?: string) {
   const qc = useQueryClient();
 
   const list = useQuery({
-    queryKey: ['sales_companies_db'],
+    queryKey: ['sales_companies_db', organizationId || 'all'],
     queryFn: async () => {
-      const { data, error } = await supabase
+      let q = supabase
         .from('sales_companies_db')
         .select('*')
         .order('parsed_at', { ascending: false })
         .limit(2000);
+      if (organizationId) q = q.eq('organization_id', organizationId);
+      const { data, error } = await q;
       if (error) throw error;
       return (data || []) as unknown as SalesCompanyDbRow[];
     },

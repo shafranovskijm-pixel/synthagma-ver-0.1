@@ -67,7 +67,15 @@ const STATUS_LABELS: Record<string, string> = {
   pending: 'Ожидает',
 };
 
-export function Deals360() {
+interface Deals360Props {
+  organizationId?: string;
+  /** колбэк-фабрики быстрых действий, чтобы кнопки в правой панели работали */
+  onCreateProposal?: (company: { name: string; inn: string }) => void;
+  onCreateContract?: (company: { name: string; inn: string }) => void;
+  onCreateInvoice?: (company: { name: string; inn: string }) => void;
+}
+
+export function Deals360({ organizationId, onCreateProposal, onCreateContract, onCreateInvoice }: Deals360Props = {}) {
   const [companies, setCompanies] = useState<DealCompany[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -78,13 +86,15 @@ export function Deals360() {
   useEffect(() => {
     void loadDeals();
     void loadContacts();
-  }, []);
+  }, [organizationId]);
 
   async function loadContacts() {
-    const { data } = await supabase
+    let q = supabase
       .from('sales_companies_db')
       .select('inn, phone, email, website')
       .limit(2000);
+    if (organizationId) q = q.eq('organization_id', organizationId);
+    const { data } = await q;
     const map: Record<string, CompanyContact> = {};
     (data || []).forEach((r: any) => {
       if (r.inn) map[r.inn] = { phone: r.phone, email: r.email, website: r.website };
@@ -95,11 +105,32 @@ export function Deals360() {
   async function loadDeals() {
     setLoading(true);
     try {
+      const applyOrg = <T extends { eq: any }>(q: T): T =>
+        organizationId ? q.eq('organization_id', organizationId) : q;
+
       const [proposalsRes, contractsRes, signaturesRes, billingRes] = await Promise.all([
-        supabase.from('commercial_proposals').select('id, company_inn, company_name, status, total_amount, created_at, tariff_plan, last_sent_at').order('created_at', { ascending: false }),
-        supabase.from('sales_contracts').select('id, company_inn, company_name, status, contract_number, total_amount, created_at').order('created_at', { ascending: false }),
-        supabase.from('document_signatures').select('id, recipient_name, status, document_title, document_type, created_at, signed_at, sent_at, viewed_at').order('created_at', { ascending: false }).limit(500),
-        supabase.from('subscription_invoices').select('id, status, invoice_number, amount, created_at, organization_id').order('created_at', { ascending: false }).limit(500),
+        applyOrg(
+          supabase.from('commercial_proposals')
+            .select('id, company_inn, company_name, status, total_amount, created_at, tariff_plan, last_sent_at')
+            .is('deleted_at', null)
+            .order('created_at', { ascending: false })
+            .limit(500)
+        ),
+        applyOrg(
+          supabase.from('sales_contracts')
+            .select('id, company_inn, company_name, status, contract_number, total_amount, created_at')
+            .order('created_at', { ascending: false })
+            .limit(500)
+        ),
+        applyOrg(
+          supabase.from('document_signatures')
+            .select('id, recipient_name, status, document_title, document_type, created_at, signed_at, sent_at, viewed_at')
+            .order('created_at', { ascending: false })
+            .limit(500)
+        ),
+        organizationId
+          ? supabase.from('subscription_invoices').select('id, status, invoice_number, amount, created_at, organization_id').eq('organization_id', organizationId).order('created_at', { ascending: false }).limit(200)
+          : supabase.from('subscription_invoices').select('id, status, invoice_number, amount, created_at, organization_id').order('created_at', { ascending: false }).limit(500),
       ]);
 
       const map = new Map<string, DealCompany>();
@@ -200,9 +231,16 @@ export function Deals360() {
       </div>
 
       {view === 'kanban' ? (
-        <SalesKanban onSelectCompany={(inn) => { setView('list'); setSelectedInn(inn); }} />
+        <SalesKanban
+          organizationId={organizationId}
+          onSelectCompany={(inn) => {
+            // сначала переключаем в list, потом ставим выделение, чтобы grid отрисовался
+            setView('list');
+            setTimeout(() => setSelectedInn(inn), 0);
+          }}
+        />
       ) : (
-      <div className="grid grid-cols-1 lg:grid-cols-[300px_minmax(0,1fr)_320px] gap-4">
+      <div className="grid grid-cols-1 lg:grid-cols-[280px_minmax(0,1fr)] xl:grid-cols-[300px_minmax(0,1fr)_320px] gap-4">
         {/* Список компаний */}
         <Card className="rounded-2xl">
           <CardContent className="p-3 space-y-3">
@@ -383,11 +421,14 @@ export function Deals360() {
 
         {/* Правая панель: контакты + быстрые действия + история */}
         {selected ? (
-          <div className="space-y-4">
+          <div className="space-y-4 lg:col-span-2 xl:col-span-1">
             <DealQuickActions
               companyName={selected.name}
               inn={selected.inn}
               contact={contactsByInn[selected.inn]}
+              onCreateProposal={onCreateProposal ? () => onCreateProposal({ name: selected.name, inn: selected.inn }) : undefined}
+              onCreateContract={onCreateContract ? () => onCreateContract({ name: selected.name, inn: selected.inn }) : undefined}
+              onCreateInvoice={onCreateInvoice ? () => onCreateInvoice({ name: selected.name, inn: selected.inn }) : undefined}
             />
             <DealCommunication
               inn={selected.inn}

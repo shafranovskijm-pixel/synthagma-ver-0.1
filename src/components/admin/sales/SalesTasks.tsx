@@ -32,8 +32,12 @@ const TYPE_LABEL = {
   other: 'Другое',
 } as const;
 
-export function SalesTasks() {
-  const { list, create, complete, remove } = useSalesTasks();
+interface SalesTasksProps {
+  organizationId?: string;
+}
+
+export function SalesTasks({ organizationId }: SalesTasksProps = {}) {
+  const { list, create, complete, remove } = useSalesTasks(organizationId ? { organizationId } : undefined);
   const { managers, fetchManagers, leads, fetchLeads } = useSalesManager();
   const [open, setOpen] = useState(false);
   const [tab, setTab] = useState<'open' | 'today' | 'overdue' | 'done'>('open');
@@ -203,10 +207,11 @@ function NewTaskForm({ managers, leads, onSubmit }:
         </div>
       </div>
       <div>
-        <label className="text-xs text-muted-foreground">Менеджер</label>
-        <Select value={managerId} onValueChange={setManagerId}>
-          <SelectTrigger className="rounded-xl"><SelectValue placeholder="Выбрать..." /></SelectTrigger>
+        <label className="text-xs text-muted-foreground">Менеджер (необязательно)</label>
+        <Select value={managerId || 'none'} onValueChange={(v) => setManagerId(v === 'none' ? '' : v)}>
+          <SelectTrigger className="rounded-xl"><SelectValue placeholder="Без менеджера" /></SelectTrigger>
           <SelectContent>
+            <SelectItem value="none">— Без менеджера —</SelectItem>
             {managers.map((m: any) => <SelectItem key={m.id} value={m.id}>{m.full_name}</SelectItem>)}
           </SelectContent>
         </Select>
@@ -226,14 +231,14 @@ function NewTaskForm({ managers, leads, onSubmit }:
         <Textarea value={description} onChange={e => setDescription(e.target.value)} rows={2}
           className="rounded-xl" />
       </div>
-      <Button className="w-full rounded-xl" disabled={!title.trim() || !managerId || submitting}
+      <Button className="w-full rounded-xl" disabled={!title.trim() || submitting}
         onClick={async () => {
           setSubmitting(true);
           try {
             await onSubmit({
               title: title.trim(), description: description.trim() || null,
               type, due_date: new Date(dueDate).toISOString(),
-              manager_id: managerId, lead_id: leadId || null,
+              manager_id: managerId || null, lead_id: leadId || null,
               status: 'pending',
             });
             setTitle(''); setDescription('');

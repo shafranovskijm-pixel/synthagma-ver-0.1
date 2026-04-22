@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
-import { Sparkles, FileText, FileCode, Briefcase, Boxes, Settings, ListTodo, Send, Building2, Target } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Sparkles, FileText, FileCode, Briefcase, Boxes, Settings, ListTodo, Send, Building2, Target, Mail } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useOrgDashboard } from '@/contexts/OrgDashboardContext';
 import { OrgEmailCampaigns } from './OrgEmailCampaigns';
@@ -13,6 +14,7 @@ import { SalesOverview } from '@/components/admin/sales/SalesOverview';
 import { SalesTasks } from '@/components/admin/sales/SalesTasks';
 import { Deals360 } from '@/components/admin/sales/Deals360';
 import { CompaniesUnified } from '@/components/admin/sales/CompaniesUnified';
+import { useOrgSmtp } from '@/hooks/useOrgSmtp';
 
 interface MenuItem { id: string; label: string; icon: any; soon?: boolean }
 interface MenuGroup { label: string; items: MenuItem[] }
@@ -55,10 +57,13 @@ const menuGroups: MenuGroup[] = [
   },
 ];
 
+const AVAILABLE_SECTIONS = ['overview','tasks','deals','companies','proposals','contracts','services','templates','campaigns','smtp'];
+
 export function OrgSalesManager() {
   const d = useOrgDashboard();
   const organizationId = d.organizationId;
   const [section, setSection] = useState<string>('overview');
+  const { settings: smtp } = useOrgSmtp(organizationId);
 
   if (!organizationId) return null;
 
@@ -74,7 +79,7 @@ export function OrgSalesManager() {
       </Card>
 
       <div className="flex gap-4">
-        {/* Сайдбар продаж (по образцу админки) */}
+        {/* Сайдбар */}
         <div className="w-56 shrink-0 py-2 pr-4 space-y-4">
           {menuGroups.map((group, gi) => (
             <div key={group.label} className="space-y-1">
@@ -106,11 +111,42 @@ export function OrgSalesManager() {
         </div>
 
         {/* Контент */}
-        <div className="flex-1 min-w-0">
-          {section === 'overview' && <SalesOverview onJump={(t) => setSection(t)} />}
-          {section === 'tasks' && <SalesTasks />}
-          {section === 'deals' && <Deals360 />}
-          {section === 'companies' && <CompaniesUnified />}
+        <div className="flex-1 min-w-0 space-y-3">
+          {/* Глобальное предупреждение SMTP, если используются разделы, требующие почту */}
+          {!smtp && (section === 'campaigns' || section === 'proposals') && (
+            <Card className="border-orange-500/30 bg-orange-500/5">
+              <CardContent className="p-3 flex items-center gap-2 text-sm">
+                <Mail className="w-4 h-4 text-orange-500 shrink-0" />
+                <div className="flex-1">
+                  <strong>SMTP не настроен.</strong> Письма получателям отправляться не будут.
+                </div>
+                <Button size="sm" variant="outline" className="rounded-lg" onClick={() => setSection('smtp')}>
+                  Настроить
+                </Button>
+              </CardContent>
+            </Card>
+          )}
+
+          {section === 'overview' && (
+            <SalesOverview
+              organizationId={organizationId}
+              availableSections={AVAILABLE_SECTIONS}
+              onJump={(t) => {
+                if (AVAILABLE_SECTIONS.includes(t)) setSection(t);
+                else setSection('deals');
+              }}
+            />
+          )}
+          {section === 'tasks' && <SalesTasks organizationId={organizationId} />}
+          {section === 'deals' && (
+            <Deals360
+              organizationId={organizationId}
+              onCreateProposal={() => setSection('proposals')}
+              onCreateContract={() => setSection('contracts')}
+              onCreateInvoice={() => setSection('contracts')}
+            />
+          )}
+          {section === 'companies' && <CompaniesUnified organizationId={organizationId} />}
           {section === 'campaigns' && (
             <OrgEmailCampaigns organizationId={organizationId} onGoToSmtp={() => setSection('smtp')} />
           )}

@@ -24,33 +24,65 @@ const COLUMNS: { id: DealCard['stage']; title: string; icon: any; cls: string }[
   { id: 'paid', title: 'Оплачено', icon: Wallet, cls: 'border-emerald-500/40 bg-emerald-500/5' },
 ];
 
-export function SalesKanban({ onSelectCompany }: { onSelectCompany?: (inn: string) => void }) {
+interface Props {
+  onSelectCompany?: (inn: string) => void;
+  organizationId?: string;
+}
+
+export function SalesKanban({ onSelectCompany, organizationId }: Props) {
   const [deals, setDeals] = useState<DealCard[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => { void load(); }, []);
+  useEffect(() => { void load(); }, [organizationId]);
 
   async function load() {
     setLoading(true);
     try {
+      const applyOrg = <T extends { eq: any }>(q: T): T =>
+        organizationId ? q.eq('organization_id', organizationId) : q;
+
       const [propR, contR, sigR, leadR] = await Promise.all([
-        supabase.from('commercial_proposals').select('id, company_inn, company_name, status, total_amount, created_at, updated_at').is('deleted_at', null),
-        supabase.from('sales_contracts').select('id, company_inn, company_name, status, total_amount, created_at, updated_at'),
-        supabase.from('document_signatures').select('id, recipient_name, status, sent_at, created_at, document_title').in('status', ['sent','viewed','in_review','signed']),
-        supabase.from('sales_leads').select('id, org_name, inn, status, last_contact_at, created_at'),
+        applyOrg(
+          supabase.from('commercial_proposals')
+            .select('id, company_inn, company_name, status, total_amount, created_at, updated_at')
+            .is('deleted_at', null)
+            .order('updated_at', { ascending: false })
+            .limit(500)
+        ),
+        applyOrg(
+          supabase.from('sales_contracts')
+            .select('id, company_inn, company_name, status, total_amount, created_at, updated_at')
+            .order('updated_at', { ascending: false })
+            .limit(500)
+        ),
+        applyOrg(
+          supabase.from('document_signatures')
+            .select('id, recipient_name, status, sent_at, created_at, document_title')
+            .in('status', ['sent','viewed','in_review','signed'])
+            .order('created_at', { ascending: false })
+            .limit(500)
+        ),
+        applyOrg(
+          supabase.from('sales_leads')
+            .select('id, org_name, inn, status, last_contact_at, created_at')
+            .order('created_at', { ascending: false })
+            .limit(500)
+        ),
       ]);
 
       const map = new Map<string, DealCard>();
+      const byNameLower = new Map<string, DealCard>();
 
       const ensure = (inn: string | null, name: string): DealCard => {
         const key = inn || name;
         if (!map.has(key)) {
-          map.set(key, { inn: inn || '—', name, amount: 0, stage: 'lead', lastActivity: '', status: '' });
+          const d = { inn: inn || '—', name, amount: 0, stage: 'lead' as DealCard['stage'], lastActivity: '', status: '' };
+          map.set(key, d);
+          if (name) byNameLower.set(name.toLowerCase(), d);
         }
         return map.get(key)!;
       };
 
-      // Leads (lowest priority — only if no other docs)
       (leadR.data || []).forEach((l: any) => {
         if (l.status === 'not_interested') return;
         const c = ensure(l.inn, l.org_name);
@@ -58,7 +90,6 @@ export function SalesKanban({ onSelectCompany }: { onSelectCompany?: (inn: strin
         c.status = l.status;
       });
 
-      // Proposals
       (propR.data || []).forEach((p: any) => {
         const c = ensure(p.company_inn, p.company_name);
         c.amount += Number(p.total_amount || 0);
@@ -66,7 +97,6 @@ export function SalesKanban({ onSelectCompany }: { onSelectCompany?: (inn: strin
         if (p.updated_at > c.lastActivity) { c.lastActivity = p.updated_at; c.status = p.status; }
       });
 
-      // Contracts
       (contR.data || []).forEach((c: any) => {
         const d = ensure(c.company_inn, c.company_name);
         d.amount += Number(c.total_amount || 0);
@@ -76,18 +106,19 @@ export function SalesKanban({ onSelectCompany }: { onSelectCompany?: (inn: strin
         if (c.updated_at > d.lastActivity) { d.lastActivity = c.updated_at; d.status = c.status; }
       });
 
-      // Signatures: bump to signing if pending, paid stays
+      // Подписи: ищем по точному совпадению имени получателя (lowercase),
+      // вместо O(N×M) substring-поиска
       (sigR.data || []).forEach((s: any) => {
-        const existing = Array.from(map.values()).find(x =>
-          x.name.toLowerCase().includes((s.recipient_name || '').toLowerCase().slice(0, 15))
-        );
+        const recip = (s.recipient_name || '').toLowerCase().trim();
+        if (!recip) return;
+        const existing = byNameLower.get(recip);
         if (existing) {
           if (existing.stage !== 'paid' && s.status !== 'signed') existing.stage = 'signing';
           if (s.status === 'signed' && existing.stage !== 'paid') existing.stage = 'signing';
         }
       });
 
-      setDeals(Array.from(map.values()).sort((a, b) => b.lastActivity.localeCompare(a.lastActivity)));
+      setDeals(Array.from(map.values()).sort((a, b) => (b.lastActivity || '').localeCompare(a.lastActivity || '')));
     } catch (e) {
       console.error('SalesKanban load', e);
     } finally {
