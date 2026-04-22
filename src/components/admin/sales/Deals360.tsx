@@ -79,9 +79,19 @@ interface Deals360Props {
   onCreateProposal?: (company: { name: string; inn: string }) => void;
   onCreateContract?: (company: { name: string; inn: string }) => void;
   onCreateInvoice?: (company: { name: string; inn: string }) => void;
+  onAddCall?: (company: { name: string; inn: string }) => void;
+  onAddNote?: (company: { name: string; inn: string }) => void;
+  onAddTask?: (company: { name: string; inn: string }) => void;
+  /** Изменение значения вызовет refetch истории общения у выбранной компании */
+  communicationRefreshKey?: number;
 }
 
-export function Deals360({ organizationId, onCreateProposal, onCreateContract, onCreateInvoice }: Deals360Props = {}) {
+export function Deals360({
+  organizationId,
+  onCreateProposal, onCreateContract, onCreateInvoice,
+  onAddCall, onAddNote, onAddTask,
+  communicationRefreshKey,
+}: Deals360Props = {}) {
   const [companies, setCompanies] = useState<DealCompany[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -472,10 +482,14 @@ export function Deals360({ organizationId, onCreateProposal, onCreateContract, o
               onCreateProposal={onCreateProposal ? () => onCreateProposal({ name: selected.name, inn: selected.inn }) : undefined}
               onCreateContract={onCreateContract ? () => onCreateContract({ name: selected.name, inn: selected.inn }) : undefined}
               onCreateInvoice={onCreateInvoice ? () => onCreateInvoice({ name: selected.name, inn: selected.inn }) : undefined}
+              onAddCall={onAddCall ? () => onAddCall({ name: selected.name, inn: selected.inn }) : undefined}
+              onAddNote={onAddNote ? () => onAddNote({ name: selected.name, inn: selected.inn }) : undefined}
+              onAddTask={onAddTask ? () => onAddTask({ name: selected.name, inn: selected.inn }) : undefined}
             />
             <DealCommunication
               inn={selected.inn}
               companyName={selected.name}
+              refreshKey={communicationRefreshKey}
             />
           </div>
         ) : <div />}

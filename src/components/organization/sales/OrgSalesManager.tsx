@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Sparkles, FileText, FileCode, Briefcase, Boxes, Settings, ListTodo, Send, Building2, Target, Mail } from 'lucide-react';
@@ -14,6 +14,7 @@ import { SalesOverview } from '@/components/admin/sales/SalesOverview';
 import { SalesTasks } from '@/components/admin/sales/SalesTasks';
 import { Deals360 } from '@/components/admin/sales/Deals360';
 import { CompaniesUnified } from '@/components/admin/sales/CompaniesUnified';
+import { LogActivityDialog } from '@/components/admin/sales/LogActivityDialog';
 import { useOrgSmtp } from '@/hooks/useOrgSmtp';
 
 interface MenuItem { id: string; label: string; icon: any; soon?: boolean }
@@ -64,6 +65,16 @@ export function OrgSalesManager() {
   const organizationId = d.organizationId;
   const [section, setSection] = useState<string>('overview');
   const { settings: smtp } = useOrgSmtp(organizationId);
+
+  const [taskPrefill, setTaskPrefill] = useState<{ name: string; inn?: string | null } | null>(null);
+  const [activityDialog, setActivityDialog] = useState<{
+    open: boolean; type: 'call' | 'note'; company: { name: string; inn: string } | null;
+  }>({ open: false, type: 'call', company: null });
+  const [commRefresh, setCommRefresh] = useState(0);
+
+  const openActivity = useCallback((type: 'call' | 'note') => (c: { name: string; inn: string }) => {
+    setActivityDialog({ open: true, type, company: c });
+  }, []);
 
   if (!organizationId) return null;
 
@@ -137,13 +148,23 @@ export function OrgSalesManager() {
               }}
             />
           )}
-          {section === 'tasks' && <SalesTasks organizationId={organizationId} />}
+          {section === 'tasks' && (
+            <SalesTasks
+              organizationId={organizationId}
+              prefillCompany={taskPrefill}
+              onPrefillConsumed={() => setTaskPrefill(null)}
+            />
+          )}
           {section === 'deals' && (
             <Deals360
               organizationId={organizationId}
               onCreateProposal={() => setSection('proposals')}
               onCreateContract={() => setSection('contracts')}
               onCreateInvoice={() => setSection('contracts')}
+              onAddCall={openActivity('call')}
+              onAddNote={openActivity('note')}
+              onAddTask={(c) => { setTaskPrefill(c); setSection('tasks'); }}
+              communicationRefreshKey={commRefresh}
             />
           )}
           {section === 'companies' && <CompaniesUnified organizationId={organizationId} hideColdBase />}
@@ -159,6 +180,19 @@ export function OrgSalesManager() {
           {section === 'smtp' && <OrgSmtpSettings organizationId={organizationId} />}
         </div>
       </div>
+
+      {/* Универсальный диалог звонок/заметка */}
+      {activityDialog.company && (
+        <LogActivityDialog
+          open={activityDialog.open}
+          onOpenChange={(v) => setActivityDialog(s => ({ ...s, open: v }))}
+          companyName={activityDialog.company.name}
+          inn={activityDialog.company.inn}
+          defaultType={activityDialog.type}
+          organizationId={organizationId}
+          onLogged={() => setCommRefresh(x => x + 1)}
+        />
+      )}
     </div>
   );
 }
