@@ -57,9 +57,11 @@ interface SalesSidebarProps {
   onTabChange: (tab: string) => void;
 }
 
-export function SalesSidebar({ activeTab, onTabChange }: SalesSidebarProps) {
+export const salesMenuGroups = menuGroups;
+
+export function SalesSidebarContent({ activeTab, onTabChange }: SalesSidebarProps) {
   return (
-    <div className="w-56 shrink-0 py-2 pr-4 space-y-4 sticky top-2 self-start max-h-[calc(100vh-1rem)] overflow-y-auto">
+    <div className="space-y-4">
       {menuGroups.map((group, gi) => (
         <div key={group.label} className="space-y-1">
           <p className="px-3 pb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/60">
@@ -84,6 +86,14 @@ export function SalesSidebar({ activeTab, onTabChange }: SalesSidebarProps) {
           {gi < menuGroups.length - 1 && <div className="h-px bg-border/50 mx-3 mt-3" />}
         </div>
       ))}
+    </div>
+  );
+}
+
+export function SalesSidebar({ activeTab, onTabChange }: SalesSidebarProps) {
+  return (
+    <div className="hidden md:block w-56 shrink-0 py-2 pr-4 sticky top-2 self-start max-h-[calc(100vh-1rem)] overflow-y-auto">
+      <SalesSidebarContent activeTab={activeTab} onTabChange={onTabChange} />
     </div>
   );
 }
