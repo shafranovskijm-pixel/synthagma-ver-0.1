@@ -2630,6 +2630,178 @@ export type Database = {
           },
         ]
       }
+      email_drip_sends: {
+        Row: {
+          error: string | null
+          id: string
+          sent_at: string
+          status: string
+          step_id: string
+          subscriber_id: string
+        }
+        Insert: {
+          error?: string | null
+          id?: string
+          sent_at?: string
+          status?: string
+          step_id: string
+          subscriber_id: string
+        }
+        Update: {
+          error?: string | null
+          id?: string
+          sent_at?: string
+          status?: string
+          step_id?: string
+          subscriber_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "email_drip_sends_step_id_fkey"
+            columns: ["step_id"]
+            isOneToOne: false
+            referencedRelation: "email_drip_steps"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "email_drip_sends_subscriber_id_fkey"
+            columns: ["subscriber_id"]
+            isOneToOne: false
+            referencedRelation: "email_drip_subscribers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      email_drip_sequences: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          description: string | null
+          id: string
+          is_active: boolean
+          name: string
+          recipient_source: string
+          trigger_type: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name: string
+          recipient_source?: string
+          trigger_type?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          recipient_source?: string
+          trigger_type?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      email_drip_steps: {
+        Row: {
+          created_at: string
+          delay_days: number
+          delay_hours: number
+          html: string
+          id: string
+          sequence_id: string
+          step_order: number
+          subject: string
+          template_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          delay_days?: number
+          delay_hours?: number
+          html: string
+          id?: string
+          sequence_id: string
+          step_order: number
+          subject: string
+          template_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          delay_days?: number
+          delay_hours?: number
+          html?: string
+          id?: string
+          sequence_id?: string
+          step_order?: number
+          subject?: string
+          template_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "email_drip_steps_sequence_id_fkey"
+            columns: ["sequence_id"]
+            isOneToOne: false
+            referencedRelation: "email_drip_sequences"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      email_drip_subscribers: {
+        Row: {
+          completed_at: string | null
+          current_step: number
+          email: string
+          id: string
+          next_send_at: string
+          organization_id: string | null
+          recipient_name: string | null
+          sequence_id: string
+          status: string
+          subscribed_at: string
+          unsubscribed_at: string | null
+        }
+        Insert: {
+          completed_at?: string | null
+          current_step?: number
+          email: string
+          id?: string
+          next_send_at?: string
+          organization_id?: string | null
+          recipient_name?: string | null
+          sequence_id: string
+          status?: string
+          subscribed_at?: string
+          unsubscribed_at?: string | null
+        }
+        Update: {
+          completed_at?: string | null
+          current_step?: number
+          email?: string
+          id?: string
+          next_send_at?: string
+          organization_id?: string | null
+          recipient_name?: string | null
+          sequence_id?: string
+          status?: string
+          subscribed_at?: string
+          unsubscribed_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "email_drip_subscribers_sequence_id_fkey"
+            columns: ["sequence_id"]
+            isOneToOne: false
+            referencedRelation: "email_drip_sequences"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       email_suppressions: {
         Row: {
           created_at: string
