@@ -1,23 +1,20 @@
 import { useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
-import { Mail, Settings, Users, FileText, Briefcase, FileCode, Sparkles, Boxes } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Mail, Settings, Users, FileText, Briefcase, FileCode, Sparkles, Boxes, ArrowUpRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { OrgEmailCampaigns } from "./OrgEmailCampaigns";
 import { OrgSmtpSettings } from "./OrgSmtpSettings";
 import { OrgServicesManager } from "./OrgServicesManager";
-import { OrgProposalsManager } from "./OrgProposalsManager";
-import { OrgContractsManager } from "./OrgContractsManager";
 import { EmailTemplatesManager } from "@/components/shared/sales/EmailTemplatesManager";
 import { useOrgDashboard } from "@/contexts/OrgDashboardContext";
 
-type Section = "campaigns" | "templates" | "proposals" | "services" | "contracts" | "leads" | "smtp";
+type Section = "campaigns" | "templates" | "services" | "leads" | "smtp";
 
 const sections: { id: Section; label: string; icon: any; soon?: boolean }[] = [
   { id: "campaigns", label: "Рассылки", icon: Mail },
   { id: "templates", label: "Шаблоны писем", icon: FileCode },
-  { id: "proposals", label: "КП", icon: FileText },
   { id: "services", label: "Каталог услуг", icon: Boxes },
-  { id: "contracts", label: "Договоры", icon: Briefcase },
   { id: "leads", label: "Лиды", icon: Users, soon: true },
   { id: "smtp", label: "SMTP", icon: Settings },
 ];
@@ -29,6 +26,12 @@ export function OrgSalesLayout() {
 
   if (!organizationId) return null;
 
+  const goToDocuments = (sub: "proposals" | "sales_contracts") => {
+    // Switch the main org tab to "documents" and pass deep-link via URL hash so DocumentsTab can auto-select sub-tab
+    try { localStorage.setItem("documents.deepLink", sub); } catch {}
+    d.tabNavigation.setActiveTab("documents" as any);
+  };
+
   return (
     <div className="space-y-4">
       {/* Beta-баннер */}
@@ -36,10 +39,24 @@ export function OrgSalesLayout() {
         <CardContent className="p-3 flex items-center gap-2 text-sm">
           <Sparkles className="w-4 h-4 text-primary shrink-0" />
           <span>
-            <strong>Раздел «Продажи» — Beta.</strong> Чтобы оставить его навсегда — напишите в поддержку.
+            <strong>Раздел «Продажи» — Beta.</strong> Здесь живёт CRM-процесс: рассылки, лиды, услуги, SMTP. Документы (КП, договоры) перенесены в раздел <strong>«Документы»</strong>.
           </span>
         </CardContent>
       </Card>
+
+      {/* Быстрые ссылки в Документы */}
+      <div className="flex flex-wrap gap-2">
+        <Button variant="outline" size="sm" className="rounded-xl gap-2" onClick={() => goToDocuments("proposals")}>
+          <FileText className="w-4 h-4" />
+          КП в «Документах»
+          <ArrowUpRight className="w-3.5 h-3.5 opacity-60" />
+        </Button>
+        <Button variant="outline" size="sm" className="rounded-xl gap-2" onClick={() => goToDocuments("sales_contracts")}>
+          <Briefcase className="w-4 h-4" />
+          Договоры в «Документах»
+          <ArrowUpRight className="w-3.5 h-3.5 opacity-60" />
+        </Button>
+      </div>
 
       <div className="flex items-center gap-2 overflow-x-auto pb-1">
         {sections.map(s => {
@@ -68,8 +85,6 @@ export function OrgSalesLayout() {
       )}
       {section === "templates" && <EmailTemplatesManager scope="org" organizationId={organizationId} />}
       {section === "services" && <OrgServicesManager organizationId={organizationId} />}
-      {section === "proposals" && <OrgProposalsManager organizationId={organizationId} onGoToSmtp={() => setSection("smtp")} />}
-      {section === "contracts" && <OrgContractsManager organizationId={organizationId} />}
       {section === "smtp" && <OrgSmtpSettings organizationId={organizationId} />}
       {section === "leads" && (
         <Card>
