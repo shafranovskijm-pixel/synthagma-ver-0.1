@@ -10,8 +10,8 @@ import { ru } from "date-fns/locale";
 interface RoleAuditEntry {
   id: string;
   action: string;
-  actor_user_id: string | null;
-  actor_name: string | null;
+  performed_by: string | null;
+  performed_by_name: string | null;
   target_user_id: string | null;
   target_email: string | null;
   target_name: string | null;
@@ -20,7 +20,7 @@ interface RoleAuditEntry {
   company_id: string | null;
   old_role: string | null;
   new_role: string | null;
-  notes: string | null;
+  details: any;
   created_at: string;
 }
 
@@ -113,7 +113,7 @@ export function RoleAuditLog({ scope, organizationId, limit = 50 }: RoleAuditLog
                       <span>{e.new_role || e.old_role || "—"}</span>
                     )}
                   </TableCell>
-                  <TableCell className="text-sm text-muted-foreground">{e.actor_name || "—"}</TableCell>
+                  <TableCell className="text-sm text-muted-foreground">{e.performed_by_name || "—"}</TableCell>
                   <TableCell className="text-xs text-muted-foreground">
                     {formatDistanceToNow(new Date(e.created_at), { addSuffix: true, locale: ru })}
                   </TableCell>
