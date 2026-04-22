@@ -249,8 +249,37 @@ export function BulkDocumentGenerator({ organizationId, isOpen, onClose }: BulkD
     return findMissingVariables(selectedTemplate.body_html, buildVariables(0, firstId));
   }, [previewHtml]);
 
+  // Заранее подготовим список планируемых номеров и проверим дубли в БД.
+  async function checkDuplicates(): Promise<string[]> {
+    const ids = Array.from(selectedIds);
+    const planned = ids.map((_, i) =>
+      `${contractNumberPrefix}${String(contractNumberStart + i).padStart(3, "0")}`
+    );
+    if (planned.length === 0) return [];
+    try {
+      const { data } = await supabase
+        .from("company_documents")
+        .select("contract_number, company_id, companies!inner(organization_id)")
+        .in("contract_number", planned)
+        .eq("companies.organization_id", organizationId)
+        .is("deleted_at", null);
+      const used = new Set((data || []).map((r: any) => r.contract_number).filter(Boolean));
+      return planned.filter(n => used.has(n));
+    } catch (e) {
+      console.warn("Duplicate check failed", e);
+      return [];
+    }
+  }
+
+  async function handleStartPreview() {
+    const dups = await checkDuplicates();
+    setDuplicateNumbers(dups);
+    setStep("preview");
+  }
+
   async function handleGenerate() {
     if (!selectedTemplate || selectedIds.size === 0) return;
+    cancelRef.current = false;
     setStep("running");
     setProgress(0);
     setResults([]);
@@ -258,6 +287,10 @@ export function BulkDocumentGenerator({ organizationId, isOpen, onClose }: BulkD
     const localResults: GenerationResult[] = [];
 
     for (let i = 0; i < ids.length; i++) {
+      if (cancelRef.current) {
+        toast.info(`Остановлено. Готово: ${localResults.length} из ${ids.length}`);
+        break;
+      }
       const id = ids[i];
       const recipient = filteredRecipients.find(r => r.id === id) || { id, name: "—" };
       try {
@@ -276,7 +309,6 @@ export function BulkDocumentGenerator({ organizationId, isOpen, onClose }: BulkD
 
         const { data: urlData } = supabase.storage.from("billing-documents").getPublicUrl(path);
 
-        // Сохраняем в company_documents (если получатель — компания)
         if (recipientType === "companies") {
           const totalAmount = perStudentPrice * studentsPerCompany;
           await supabase.from("company_documents").insert({
@@ -289,6 +321,18 @@ export function BulkDocumentGenerator({ organizationId, isOpen, onClose }: BulkD
             students_count: studentsPerCompany,
             file_url: urlData.publicUrl,
             file_path: path,
+          });
+        } else {
+          // Логируем студенческие документы в общий журнал выдачи документов.
+          await supabase.from("document_issuance_log").insert({
+            organization_id: organizationId,
+            user_id: id,
+            user_name: recipient.name,
+            document_type: "contract",
+            document_name: `${selectedTemplate.name} № ${variables.contract_number}`,
+            reg_number: String(variables.contract_number),
+            file_url: urlData.publicUrl,
+            send_method: "bulk_generation",
           });
         }
 
@@ -323,7 +367,7 @@ export function BulkDocumentGenerator({ organizationId, isOpen, onClose }: BulkD
 
   function handleClose() {
     if (step === "running") {
-      toast.warning("Дождитесь завершения генерации");
+      toast.warning("Дождитесь завершения или нажмите «Остановить»");
       return;
     }
     setStep("setup");
