@@ -121,13 +121,15 @@ export function LeadsManager({ organizationId }: LeadsManagerProps = {}) {
             {Object.entries(LEAD_STATUS_MAP).map(([k, v]) => <SelectItem key={k} value={k}>{v.label}</SelectItem>)}
           </SelectContent>
         </Select>
-        <Select value={managerFilter} onValueChange={setManagerFilter}>
-          <SelectTrigger className="w-[180px]"><SelectValue placeholder="Менеджер" /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Все менеджеры</SelectItem>
-            {managers.map(m => <SelectItem key={m.id} value={m.id}>{m.full_name}</SelectItem>)}
-          </SelectContent>
-        </Select>
+        {hasManagers && (
+          <Select value={managerFilter} onValueChange={setManagerFilter}>
+            <SelectTrigger className="w-[180px]"><SelectValue placeholder="Менеджер" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Все менеджеры</SelectItem>
+              {managers.map(m => <SelectItem key={m.id} value={m.id}>{m.full_name}</SelectItem>)}
+            </SelectContent>
+          </Select>
+        )}
       </div>
 
       {/* Bulk actions */}
