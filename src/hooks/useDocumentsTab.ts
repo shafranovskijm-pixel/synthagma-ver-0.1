@@ -241,16 +241,19 @@ export function useDocumentsTab(organizationId: string | null, organizationName?
   };
 
   const handleDeleteBillingDoc = async (doc: BillingDoc) => {
-    if (!confirm("Удалить документ?")) return;
+    if (!confirm("Переместить документ в корзину? Он будет храниться 30 дней и может быть восстановлен.")) return;
     try {
-      await supabase.storage.from("billing-documents").remove([doc.file_url]);
-      const { error } = await supabase.from("org_billing_documents").delete().eq("id", doc.id);
+      const { data, error } = await supabase.rpc("soft_delete_document", {
+        p_table: "org_billing_documents",
+        p_id: doc.id,
+      });
       if (error) throw error;
+      if (!data) throw new Error("Документ не найден или уже удалён");
       setBillingDocs(prev => prev.filter(d => d.id !== doc.id));
-      toast.success("Документ удалён");
-    } catch (e) {
+      toast.success("Документ перемещён в корзину");
+    } catch (e: any) {
       console.error("Error deleting document:", e);
-      toast.error("Ошибка", { description: "Не удалось удалить документ" });
+      toast.error("Ошибка", { description: e?.message || "Не удалось удалить документ" });
     }
   };
 

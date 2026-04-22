@@ -79,7 +79,9 @@ export const DocumentsTab = React.memo(function DocumentsTab({ organizationId, o
   }
 
   const visibleItems = NAV_ITEMS.filter(item => !item.ordersOnly || isOrdersEnabled);
-  const activeItem = visibleItems.find(i => i.value === h.activeTab) || visibleItems[0];
+  // Fallback to first item (kpi) if active tab was disabled by plan/visibility change
+  const activeItem = visibleItems.find(i => i.value === h.activeTab) || visibleItems[0] || NAV_ITEMS[0];
+  const ActiveIcon = activeItem.icon;
 
   return (
     <div className="space-y-0">
@@ -137,7 +139,7 @@ export const DocumentsTab = React.memo(function DocumentsTab({ organizationId, o
           <div className="flex items-center justify-between px-4 lg:px-6 py-4 border-b border-border">
             <div>
               <h2 className="text-base font-semibold flex items-center gap-2">
-                <activeItem.icon className="w-4 h-4 text-primary" />
+                <ActiveIcon className="w-4 h-4 text-primary" />
                 {activeItem.label}
               </h2>
               {SECTION_DESCRIPTIONS[h.activeTab] && <p className="text-xs text-muted-foreground mt-0.5">{SECTION_DESCRIPTIONS[h.activeTab]}</p>}

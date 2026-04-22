@@ -78,21 +78,22 @@ export function DocumentArchiveView({
   };
 
   const handleDelete = async (docId: string) => {
-    if (!confirm("Удалить документ?")) return;
+    if (!confirm("Переместить документ в корзину? Он будет храниться 30 дней и может быть восстановлен.")) return;
 
     try {
-      const { error } = await supabase
-        .from("org_documents")
-        .delete()
-        .eq("id", docId);
+      const { data, error } = await supabase.rpc("soft_delete_document", {
+        p_table: "org_documents",
+        p_id: docId,
+      });
 
       if (error) throw error;
+      if (!data) throw new Error("Документ не найден или уже удалён");
 
       setDocuments(documents.filter((d) => d.id !== docId));
-      toast.success("Документ удалён");
-    } catch (error) {
+      toast.success("Документ перемещён в корзину");
+    } catch (error: any) {
       console.error("Error deleting document:", error);
-      toast.error("Ошибка удаления");
+      toast.error("Ошибка удаления", { description: error?.message });
     }
   };
 

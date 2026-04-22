@@ -122,16 +122,17 @@ export function useIncomingDocuments(organizationId: string | null) {
 
   const remove = useCallback(
     async (doc: IncomingDocument) => {
-      if (doc.file_path) {
-        await supabase.storage.from("incoming-documents").remove([doc.file_path]);
-      }
-      const { error } = await supabase.from("incoming_documents").delete().eq("id", doc.id);
-      if (error) {
-        toast.error("Не удалось удалить");
+      // Soft-delete via RPC — file stays in storage so Recycle Bin can restore it
+      const { data, error } = await supabase.rpc("soft_delete_document", {
+        p_table: "incoming_documents",
+        p_id: doc.id,
+      });
+      if (error || !data) {
+        toast.error("Не удалось переместить в корзину", { description: error?.message });
         return;
       }
       setItems((prev) => prev.filter((i) => i.id !== doc.id));
-      toast.success("Документ удалён");
+      toast.success("Документ перемещён в корзину");
     },
     []
   );

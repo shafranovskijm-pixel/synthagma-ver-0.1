@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState } from "react";
 import { useRecycleBin, type RecycleBinItem } from "@/hooks/useRecycleBin";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -10,7 +10,7 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger
 } from "@/components/ui/alert-dialog";
-import { Trash2, RotateCcw, Search, AlertTriangle, Clock } from "lucide-react";
+import { Trash2, RotateCcw, Search, AlertTriangle, Clock, ChevronDown } from "lucide-react";
 import { format, formatDistanceToNow } from "date-fns";
 import { ru } from "date-fns/locale";
 
@@ -19,21 +19,11 @@ interface Props {
 }
 
 export function RecycleBinManager({ organizationId }: Props) {
-  const { items, loading, restore, restoreMany, purgeOne } = useRecycleBin(organizationId);
-  const [search, setSearch] = useState("");
+  const { items, total, loading, search, setSearch, hasMore, restore, restoreMany, purgeOne, loadMore } = useRecycleBin(organizationId);
   const [selected, setSelected] = useState<Set<string>>(new Set());
 
   const key = (it: RecycleBinItem) => `${it.source_table}:${it.id}`;
-
-  const filtered = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    if (!q) return items;
-    return items.filter(it =>
-      it.display_name.toLowerCase().includes(q) ||
-      it.type_label.toLowerCase().includes(q) ||
-      (it.meta || "").toLowerCase().includes(q)
-    );
-  }, [items, search]);
+  const filtered = items;
 
   const toggle = (it: RecycleBinItem) => {
     setSelected(prev => {

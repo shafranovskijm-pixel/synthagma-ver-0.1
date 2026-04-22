@@ -33,7 +33,10 @@ import {
 import {
   useIncomingDocuments,
   type IncomingDocType,
+  type IncomingDocument,
 } from "@/hooks/useIncomingDocuments";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
 interface Props {
   organizationId: string;
@@ -164,17 +167,40 @@ export function IncomingDocumentsManager({ organizationId }: Props) {
                   </div>
                 </div>
                 <div className="flex gap-1 shrink-0">
-                  <Button variant="ghost" size="sm" asChild className="rounded-xl">
-                    <a href={doc.file_url} target="_blank" rel="noreferrer" className="gap-1">
-                      <ExternalLink className="w-4 h-4" />
-                      Открыть
-                    </a>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="rounded-xl gap-1"
+                    onClick={async () => {
+                      // Always generate fresh signed URL — file_url stored at upload time may have expired
+                      const path = doc.file_path;
+                      if (!path) {
+                        // fallback: legacy records may only have file_url
+                        if (doc.file_url) {
+                          window.open(doc.file_url, "_blank");
+                          return;
+                        }
+                        toast.error("Файл не найден");
+                        return;
+                      }
+                      const { data, error } = await supabase.storage
+                        .from("incoming-documents")
+                        .createSignedUrl(path, 3600);
+                      if (error || !data?.signedUrl) {
+                        toast.error("Не удалось открыть файл", { description: error?.message });
+                        return;
+                      }
+                      window.open(data.signedUrl, "_blank");
+                    }}
+                  >
+                    <ExternalLink className="w-4 h-4" />
+                    Открыть
                   </Button>
                   <Button
                     variant="ghost"
                     size="icon"
                     onClick={() => {
-                      if (confirm(`Удалить документ "${doc.title}"?`)) remove(doc);
+                      if (confirm(`Переместить документ "${doc.title}" в корзину? Срок хранения 30 дней.`)) remove(doc);
                     }}
                     className="rounded-xl"
                   >
