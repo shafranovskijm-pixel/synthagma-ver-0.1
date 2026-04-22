@@ -44,6 +44,7 @@ export function OrgProposalsManager({ organizationId, onGoToSmtp }: Props) {
   const [sendDialog, setSendDialog] = useState<{ proposal: OrgProposal; email: string; templateId: string } | null>(null);
   const [contractFromCP, setContractFromCP] = useState<OrgProposal | null>(null);
   const [pickerOpen, setPickerOpen] = useState(false);
+  const [variablesCheckOpen, setVariablesCheckOpen] = useState(false);
   const [orgCourses, setOrgCourses] = useState<Array<{ id: string; title: string; duration: string | null; price: number | null; slug: string | null }>>([]);
   const [busy, setBusy] = useState(false);
 
