@@ -59,7 +59,12 @@ interface OrgOption {
   phone: string | null;
 }
 
-export function SalesContracts() {
+interface SalesContractsProps {
+  prefillCompany?: { name: string; inn?: string | null } | null;
+  onPrefillConsumed?: () => void;
+}
+
+export function SalesContracts({ prefillCompany, onPrefillConsumed }: SalesContractsProps = {}) {
   const [contracts, setContracts] = useState<SalesContract[]>([]);
   const [loading, setLoading] = useState(false);
   const [showForm, setShowForm] = useState(false);
@@ -95,6 +100,21 @@ export function SalesContracts() {
   }, []);
 
   useEffect(() => { fetchContracts(); fetchOrganizations(); }, [fetchContracts, fetchOrganizations]);
+
+  // Открытие формы с предзаполненной компанией
+  useEffect(() => {
+    if (prefillCompany?.name) {
+      setForm(prev => ({
+        ...prev,
+        company_name: prefillCompany.name,
+        company_inn: prefillCompany.inn || prev.company_inn,
+      }));
+      setSelectedOrgId('manual');
+      setShowForm(true);
+      onPrefillConsumed?.();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [prefillCompany?.name, prefillCompany?.inn]);
 
   const handleOrgSelect = (orgId: string) => {
     setSelectedOrgId(orgId);
