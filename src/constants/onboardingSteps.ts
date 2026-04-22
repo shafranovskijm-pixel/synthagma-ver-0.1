@@ -1,4 +1,4 @@
-import { BookOpen, Users, FileText, Settings, Sparkles, Play, Upload, Video, MessageCircle, ClipboardList, Bell } from "lucide-react";
+import { BookOpen, Users, FileText, Settings, Sparkles, Play, Upload, Video, MessageCircle, ClipboardList, Bell, Briefcase } from "lucide-react";
 
 export interface OnboardingStep {
   id: string;
@@ -39,6 +39,14 @@ export const organizationOnboardingSteps: OnboardingStep[] = [
     description: "Автоматически формируйте приказы, протоколы, удостоверения и дипломы. Ведите журналы учёта и выгружайте данные в ФИС ФРДО.",
     tab: "documents",
     highlightSelector: "[data-onboarding='documents']",
+  },
+  {
+    id: "sales",
+    icon: Briefcase,
+    title: "Продажи",
+    description: "Полноценный CRM: ведите базу клиентов, отправляйте КП, управляйте договорами и следите за воронкой через канбан. Назначайте сотрудникам роль «Менеджер по продажам» и используйте демо-доступы для презентации платформы клиентам.",
+    tab: "sales",
+    highlightSelector: "[data-onboarding='sales']",
   },
   {
     id: "settings",
@@ -150,6 +158,12 @@ export const organizationHelpTips: Record<string, HelpTip[]> = {
     { title: "Шаблоны документов", description: "Система автоматически заполняет шаблоны приказов, протоколов и удостоверений данными учеников." },
     { title: "Журналы", description: "Ведите журналы посещаемости, оценок и выдачи документов в разделе «Журналы»." },
     { title: "ФИС ФРДО", description: "Выгружайте данные о выданных документах в формате ФИС ФРДО." },
+  ],
+  sales: [
+    { title: "Создание лида", description: "Заведите карточку клиента (лид) с контактами и источником, чтобы не потерять заявку." },
+    { title: "Коммерческие предложения", description: "Соберите КП из шаблона и отправьте по email прямо из платформы — клиент откроет ссылку и подпишется онлайн." },
+    { title: "Канбан сделок", description: "Перетаскивайте сделки между этапами воронки (Новый → Переговоры → Договор → Оплата) для наглядного контроля." },
+    { title: "Демо-доступы", description: "Создавайте временные ссылки доступа к платформе для потенциальных клиентов — посмотрите, как это работает изнутри." },
   ],
   settings: [
     { title: "Брендирование", description: "Загрузите логотип и обложку, настройте название — ученики увидят ваш фирменный стиль." },
