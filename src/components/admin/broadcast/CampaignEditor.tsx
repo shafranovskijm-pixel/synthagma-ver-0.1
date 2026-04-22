@@ -51,6 +51,21 @@ interface MeetingMeta {
 
 const DEFAULT_HTML = "<p>Здравствуйте, {{name}}!</p>\n<p>Текст письма...</p>";
 
+const DRAFT_KEY = "broadcast_campaign_draft_v1";
+
+interface DraftData {
+  name: string;
+  subject: string;
+  html: string;
+  fromName: string;
+  replyTo: string;
+  scheduledDate: string;
+  scheduledTime: string;
+  scope: string;
+  organizationId: string | null;
+  savedAt: number;
+}
+
 export function CampaignEditor({ open, onClose, scope, organizationId, onCreated, initial }: Props) {
   const [name, setName] = useState("");
   const [subject, setSubject] = useState("");
@@ -76,6 +91,12 @@ export function CampaignEditor({ open, onClose, scope, organizationId, onCreated
   const [selectedWebinarId, setSelectedWebinarId] = useState<string>("");
   const [createWebinarOpen, setCreateWebinarOpen] = useState(false);
   const [newWebinarMeta, setNewWebinarMeta] = useState<MeetingMeta | null>(null);
+
+  // Scheduling
+  const [scheduleEnabled, setScheduleEnabled] = useState(false);
+  const [scheduledDate, setScheduledDate] = useState("");
+  const [scheduledTime, setScheduledTime] = useState("");
+  const [draftRestored, setDraftRestored] = useState(false);
 
   const scopeKey = scope === "platform" ? "platform" : (organizationId || "");
   const { status: warmup } = useEmailWarmup(scopeKey || null);
