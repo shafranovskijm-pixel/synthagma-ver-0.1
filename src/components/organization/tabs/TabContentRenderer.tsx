@@ -28,7 +28,7 @@ import { WhatsNewTab } from "@/components/organization/tabs/WhatsNewTab";
 import { OrgDocumentsTab } from "@/components/organization/tabs/OrgDocumentsTab";
 import { ContractEditorTab } from "@/components/organization/tabs/ContractEditorTab";
 import { OrgSecondaryNavTabs } from "@/components/organization/OrgSecondaryNavTabs";
-import { OrgSalesLayout } from "@/components/organization/sales/OrgSalesLayout";
+import { OrgSalesManager } from "@/components/organization/sales/OrgSalesManager";
 
 import { useOrgDashboard } from "@/contexts/OrgDashboardContext";
 
@@ -212,8 +212,8 @@ export function TabContentRenderer() {
       {/* Payments Tab */}
       {activeTab === "payments" && <PaymentsTab />}
 
-      {/* Sales Tab (рассылки + SMTP, заглушки лидов/КП/договоров) */}
-      {activeTab === ("sales" as any) && organizationId && <OrgSalesLayout />}
+      {/* Sales Tab — единый «Кабинет менеджера» (КП/Договоры/Рассылки/SMTP + заглушки Сделок 360°/Задач) */}
+      {activeTab === ("sales" as any) && organizationId && <OrgSalesManager />}
 
       {/* Subscription Tab */}
       {activeTab === "subscription" && <SubscriptionTab />}
