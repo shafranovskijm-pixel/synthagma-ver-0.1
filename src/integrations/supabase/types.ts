@@ -9704,6 +9704,10 @@ export type Database = {
         Args: { p_id: string; p_table: string }
         Returns: boolean
       }
+      revoke_signature: {
+        Args: { p_reason?: string; p_signature_id: string }
+        Returns: Json
+      }
       sender_countersign: {
         Args: { p_ip?: string; p_signature_id: string; p_user_agent?: string }
         Returns: undefined
