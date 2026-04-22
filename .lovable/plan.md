@@ -1,247 +1,174 @@
 
 
-## План: Замена парсера list-org на интеграцию с Checko API + автообновление 100/день
+# Аудит документооборота и план улучшений
 
-### Что получится
+## Что я обнаружил
 
-В админке **«Продажи → База компаний»** вместо парсера list-org появится модуль обогащения по Checko API:
+### Текущая архитектура (что уже есть)
+- **22 таблицы** документооборота: `org_documents`, `education_document_records`, `document_signatures` (+`signature_revisions`, `signature_comments`), `pep_agreements`, `student_consents`, `consent_documents`, `org_contracts`, `org_billing_documents`, `org_contract_templates`, `company_documents`, `program_documents`, `journal_instances`, `journal_entries`, `student_documents`, `student_identity_documents`, `student_frdo_data`, `frdo_signed_documents`, `marketplace_orders`, `service_orders`, `sales_contracts`, `subscription_invoices`, `document_issuance_log`.
+- **Edge-функции:** `finalize-signature`, `org-create-contract-signature`, `process-contract-template`, `send-signing-email`, `send-documents-reminder`, `notify-course-order/program-order/order-status`, `handle-email-action`, `generate-self-examination-report`, `generate-company-card`.
+- **UI:** `DocumentsTab` с 12 разделами (Контрагенты, Приказы, Протоколы, Удостоверения, Дипломы, Свидетельства, Программы, Журналы, ФРДО, Конструктор, Документы орг., Подписания).
+- **PEP-подписание:** работает с хешем SHA-256, антитемпер-проверкой, журналом `signature_revisions`/`signature_comments`, двусторонним подписанием, сканом рукописной подписи.
 
-1. **Кнопка «Загрузить ИНН списком»** — вставка/загрузка CSV с ИНН (до 100 за раз). Каждый ИНН → 1 запрос к `/v2/company` → полная карточка компании сохраняется.
-2. **Кнопка «Обновить устаревшие»** — берёт компании из БД, отсортированные по `parsed_at ASC`, и обогащает столько, сколько осталось из дневной квоты (100 − уже использовано).
-3. **Переключатель «Автообновление раз в сутки»** (toggle на уровне платформы) — при включении ежедневно в 03:00 МСК запускает фоновое обновление до 100 самых старых записей.
-4. **Индикатор квоты** в шапке: «Использовано сегодня: 12 / 100. Сброс в 00:00 МСК». Берётся из `meta.today_request_count` (Checko возвращает в каждом ответе) + локального счётчика.
+### Реальные данные в БД
+- 375 `org_documents`, 255 `education_document_records` (254 удостоверения + 1 диплом, **0 копий/дубликатов**, **0 аннулированных**)
+- 23 `student_consents`, 9 комментариев, 1 ревизия, 0 в очереди подписания, **0 записей в `document_issuance_log`** — журнал выдачи фактически не пишется
+- 10 `org_billing_documents`, 0 `company_documents` — модуль контрагентов почти не используется
 
-Кнопка «Спарсить страницу list-org» удаляется. Edge-функция `parse-list-org` остаётся в кодовой базе, но больше не вызывается из UI (можно удалить позже).
+---
 
-### Источник API ключа
+## Найденные проблемы и недоработки
 
-Ключ Checko (`gSxUDYBlrLQp1c3O`) сохраняю как **runtime-секрет** `CHECKO_API_KEY` через `add_secret`. Используется только из edge-функций — в UI не светится. Если понадобится сменить — пользователь меняет в Lovable Cloud.
+### 🔴 Критичные (юридические/функциональные пробелы)
 
-### Что сохраняем из ответа Checko (поля endpoint `/v2/company`)
+1. **`org_documents` без срока действия и статуса.** Колонок `expires_at`, `issue_date`, `status`, `responsible_person`, `inn_subject` нет вообще. Положения, лицензии, СОУТ, проверки — всё «вечное», нет напоминаний об истечении и нет признака «действующий/архив».
+2. **`document_issuance_log` пустой.** Таблица создана, но при печати/выдаче удостоверений/дипломов запись туда не добавляется. Нет факта «кому, когда, как (лично/почта/курьер) выдан документ» — а это требование Постановления 1490 (учёт выдачи документов о квалификации).
+3. **Нумерация документов не централизована.** `generateRegNumber` рассчитывается клиентом по `COUNT()` — гонка состояний при одновременной выдаче, дубликаты регистрационных номеров. Нужен серверный `next_reg_number(org_id, doc_type, year)` с advisory lock.
+4. **PEP-подпись: нет PDF-сертификата подписания.** После `finalize-signature` нет сгенерированного «протокола электронной подписи» (PDF с хешем, IP, UA, временем, текстом ПЭП-соглашения, ФИО подписанта). Сейчас всё лежит «в БД» — невыгружаемо для суда.
+5. **Нет архива подписанных PDF.** `signed_document_path` есть в схеме, но при PEP-подписании HTML не конвертируется в PDF и не сохраняется в storage. При смене шаблона организация теряет оригинал того, что подписали.
+6. **Нет автозаполнения приказов.** «Приказы о зачислении/отчислении» — это только архив. Сами приказы вручную загружаются. Нет генерации приказа по группе/дате/протоколу с автонумерацией и подстановкой ФИО учеников.
+7. **Согласия на ПД не привязаны к версии оферты.** В `student_consents` нет `policy_version`, `policy_url`, `purposes` (массив целей обработки) — нарушение требований 152-ФЗ о возможности отзыва согласия по конкретной цели.
+8. **Отсутствует «Запрос на отзыв согласия / удаление ПД»** (152-ФЗ ст. 9). Ученик не может отправить запрос организации, нет таблицы `data_subject_requests`.
 
-В существующую таблицу `sales_companies_db` (новые колонки добавлю миграцией):
+### 🟡 Средние (UX и операционные)
 
-| Поле БД | Источник Checko |
-|---|---|
-| `inn`, `ogrn`, `name` (НаимПолн), `short_name` (НаимСокр), `full_name` | как было |
-| `kpp` *(новая)* | `КПП` |
-| `okpo` *(новая)* | `ОКПО` |
-| `registration_date` *(новая, date)* | `ДатаРег` |
-| `address`, `city`, `region` | `ЮрАдрес.АдресРФ` / `ЮрАдрес.НасПункт` / `Регион.Наим` |
-| `phone` | `Контакты.Тел[0]` |
-| `phones` *(новая, text[])* | `Контакты.Тел` (полный массив) |
-| `email` | `Контакты.Емэйл[0]` |
-| `emails` *(новая, text[])* | `Контакты.Емэйл` |
-| `website` | `Контакты.ВебСайт` |
-| `social_links` *(новая, jsonb)* | `{vk, max, telegram}` |
-| `director` | `Руковод[0].ФИО` |
-| `director_inn` *(новая)* | `Руковод[0].ИНН` |
-| `director_position` | `Руковод[0].НаимДолжн` |
-| `okved_main` | `ОКВЭД.Код + " " + ОКВЭД.Наим` |
-| `okved_list` | `ОКВЭДДоп[]` (массив кодов с наименованиями) |
-| `licenses` *(новая, jsonb[])* | весь массив `Лиценз[]` (Номер, Дата, ДатаНач, ДатаОконч, ЛицОрг, ВидДеят[]) |
-| `license_number`, `license_issue_date`, `license_authority`, `license_activities`, `license_valid_to` | первая образовательная лицензия (если найдена по ВидДеят содержит «образоват») — иначе первая лицензия |
-| `has_education_license` | true если в `Лиценз[*].ВидДеят` встречается «образоват» |
-| `status` | `Статус.Наим` |
-| `employee_count` | `СЧР` (среднеспис. численность работников) |
-| `charter_capital` *(новая, numeric)* | `УстКап.Сумма` |
-| `unfair_supplier` *(новая, bool)* | `НедобПост` |
-| `mass_director` *(новая, bool)* | `МассРуковод` |
-| `mass_address` *(новая, bool)* | `ЮрАдрес.МассАдрес.length > 0` |
-| `sanctions` *(новая, bool)* | `Санкции` |
-| `successors` *(новая, jsonb)* | `Правопреем[]` |
-| `predecessors` *(новая, jsonb)* | `Правопредш[]` |
-| `branches_count` *(новая, int)* | `Подразд.Филиал.length` |
-| `last_data_date` *(новая, date)* | `ДатаВып` (дата выгрузки данных Checko) |
-| `raw_data` | весь `data` объект (jsonb, для audit и будущего) |
-| `source_url` | `https://checko.ru/company/ul/{ОГРН}` (стандартный URL карточки) |
-| `data_source` *(новая)* | `'checko'` |
-| `parsed_at` | `now()` при каждом обновлении |
+9. **Нет «Входящих документов»** (контрагенты прислали скан подписанного с их стороны акта/договора) — `external_upload` тип есть, но загрузить с пометкой «к нашему договору №…» нельзя без отправки на подписание.
+10. **`org-billing-documents` (счета/акты) не попадают в `signature_revisions`.** Сгенерировал акт → отправил на email, и связи с подписанием нет. Нужна кнопка «Отправить на подписание» прямо из вкладки «Контрагенты».
+11. **Нет реестра доверенностей.** Подписант от организации (директор/уполномоченное) хранится только в `org_requisites.director_name` — нет таблицы `org_signatories` с правом подписи документов разных типов и сроком полномочий.
+12. **Поиск по реестру документов отсутствует на уровне платформы.** В каждом разделе свой поиск, но единого «найти любой документ организации по ИНН/ФИО/номеру/дате» нет.
+13. **Версионирование шаблонов договоров.** `org_contract_templates` без `version`, `is_active`, `archived_at`. Изменили шаблон — старые договоры ссылаются на «обновлённый» текст без истории.
+14. **Нет напоминаний истёкших документов.** Подписки уведомляют за 7 дней, а лицензии/СОУТ/положения — нет. Нужен `process-document-expiry-reminders` cron + почтовое уведомление.
+15. **Связка «Заявка → Договор → Счёт → Акт → Удостоверение» не визуализирована.** Это всё разные таблицы, нет страницы «Сделка с компанией ИРР» где видно полный жизненный цикл одной продажи.
+16. **`signature_revisions` не показывает diff между версиями.** Загрузил v2 — клиент видит «новая версия», но не видит, что изменилось. Нужен текстовый diff (или хотя бы summary, который сейчас опциональный).
+17. **Массовые операции отсутствуют.** Нельзя выгрузить ZIP всех удостоверений выпуска, отправить пачкой 50 договоров на подписание, аннулировать пачку дубликатов.
 
-Уникальный ключ — `inn`. При повторной загрузке — `INSERT ... ON CONFLICT (inn) DO UPDATE`.
+### 🟢 Мелкие
 
-### Учёт квоты 100/день
+18. Нет «корзины» удалённых документов (восстановление в течение 30 дней).
+19. Нет водяного знака «КОПИЯ» / «АННУЛИРОВАН» при печати.
+20. Нет предпросмотра DOCX (только PDF/HTML) — пользователи скачивают, чтобы увидеть.
+21. Нет QR-кода на удостоверениях со ссылкой на проверку подлинности (`/verify/:reg_number`).
+22. Нет журнала аудита по конкретному документу (кто и когда менял запись о выданном удостоверении).
+23. `student_consents` хранит зашифрованный паспорт, но в UI организации нет кнопки «Запросить временный доступ к ПД» с логированием.
 
-Новая таблица `checko_api_usage`:
-```
-id uuid PK,
-date date UNIQUE,
-requests_count int default 0,
-last_balance numeric,        -- из meta.balance
-last_used_at timestamptz
-```
+---
 
-Edge-функция перед каждым запросом проверяет `requests_count < 100` для текущей даты (МСК). После запроса берёт `meta.today_request_count` из ответа — это **наиболее точное значение от самого Checko**, синхронизируем с ним. Если Checko вернул `today_request_count >= 100` или статус "error" с лимитом — функция останавливает batch и возвращает фронту «остановлено: квота исчерпана, обработано N из M».
+## Прогноз: какие функции ещё понадобятся
 
-UI показывает:
-- «Сегодня использовано: **N / 100**» (тянется из `checko_api_usage.requests_count` для текущей даты).
-- Прогресс-бар.
-- Если 100 — кнопка обогащения дизаблится с подсказкой «Сброс квоты в 00:00 МСК. Включите автообновление, чтобы каждое утро забирать новые 100».
+| Приоритет | Функция | Зачем |
+|---|---|---|
+| ⭐⭐⭐ | **Публичная проверка документов** `/verify/{reg_number}` + QR на бланках | Работодатели и Рособрнадзор проверяют подлинность удостоверений |
+| ⭐⭐⭐ | **Сертификат электронной подписи (PDF)** автогенерация после PEP | Обязательно для предъявления в суд |
+| ⭐⭐⭐ | **Архив подписанных PDF** в storage с хешем | Без этого в споре нет «оригинала» |
+| ⭐⭐⭐ | **Серверная нумерация** регномеров | Уберёт дубликаты при параллельной работе |
+| ⭐⭐⭐ | **Журнал выдачи** (заполнение `document_issuance_log` автоматически) | Требование 1490-ПП |
+| ⭐⭐ | **Сделки 360°** — единая страница «контрагент + договор + счёт + акт + ученики + документы» | Менеджер видит весь цикл |
+| ⭐⭐ | **Сроки действия** в `org_documents` + cron-напоминания | Лицензии/СОУТ не «потеряются» |
+| ⭐⭐ | **Реестр подписантов** (директор + уполномоченные с доверенностями) | При смене директора не нужно менять 200 шаблонов |
+| ⭐⭐ | **Шаблоны с версионированием** + diff между версиями | Аудит изменений договорной базы |
+| ⭐⭐ | **Запросы субъектов ПД** (отзыв согласия, удаление, выдача копии) + страница для ученика | 152-ФЗ ст. 14, 21 |
+| ⭐⭐ | **Входящие документы** — папка для сканов от контрагентов с привязкой к нашему документу | Закрытие двустороннего документооборота |
+| ⭐ | Массовые операции (ZIP-выгрузка выпуска, пакетная отправка) | Экономия часов работы |
+| ⭐ | Корзина + восстановление | От случайного удаления |
+| ⭐ | DOCX-превью inline | Удобство |
+| ⭐ | Водяные знаки «КОПИЯ»/«АННУЛИРОВАНО» при печати | Видно глазом |
+| ⭐ | Глобальный поиск по всем документам организации | Один Cmd+K вместо обхода 12 вкладок |
 
-### Автообновление раз в сутки
+---
 
-Таблица `checko_settings` (1 строка, id=1):
-```
-auto_enrich_enabled bool default false,
-last_auto_run_at timestamptz,
-last_auto_processed int,
-last_auto_error text
-```
+## План доработок (3 фазы)
 
-Cron-job (через `pg_cron` + `pg_net`, расширения уже включены):
+### Фаза 1 — Юридическая база (критично, 1 итерация)
+
+**Миграция БД:**
 ```sql
-select cron.schedule(
-  'checko-daily-enrich',
-  '0 0 * * *',  -- 00:00 UTC = 03:00 МСК
-  $$
-  select net.http_post(
-    url := 'https://atxwvjxbqjgkbjlhsdch.supabase.co/functions/v1/checko-daily-enrich',
-    headers := '{"Content-Type":"application/json","Authorization":"Bearer ANON_KEY"}'::jsonb,
-    body := '{}'::jsonb,
-    timeout_milliseconds := 600000
-  );
-  $$
-);
+-- 1. Сроки и статус для org_documents
+ALTER TABLE org_documents ADD COLUMN issue_date date,
+  ADD COLUMN expires_at date,
+  ADD COLUMN status text DEFAULT 'active' CHECK (status IN ('active','archived','expired')),
+  ADD COLUMN responsible_person text,
+  ADD COLUMN reminder_sent_at timestamptz;
+CREATE INDEX ON org_documents (organization_id, expires_at) WHERE expires_at IS NOT NULL;
+
+-- 2. Серверная нумерация
+CREATE TABLE document_number_sequences (
+  organization_id uuid, doc_type text, year int, last_number int DEFAULT 0,
+  PRIMARY KEY (organization_id, doc_type, year));
+CREATE FUNCTION next_reg_number(p_org uuid, p_type text, p_year int) RETURNS int
+  LANGUAGE plpgsql AS $$ ... advisory lock + UPSERT ... $$;
+
+-- 3. Версионирование шаблонов
+ALTER TABLE org_contract_templates ADD COLUMN version int DEFAULT 1,
+  ADD COLUMN is_active boolean DEFAULT true,
+  ADD COLUMN archived_at timestamptz;
+
+-- 4. Подписанты организации
+CREATE TABLE org_signatories (id uuid PK, organization_id uuid, full_name text,
+  position text, basis text, valid_from date, valid_to date, is_default boolean,
+  signature_url text, stamp_url text);
+
+-- 5. Расширение student_consents под 152-ФЗ
+ALTER TABLE student_consents ADD COLUMN policy_version text,
+  ADD COLUMN purposes text[], ADD COLUMN withdrawn_at timestamptz,
+  ADD COLUMN withdrawn_reason text;
+
+-- 6. Запросы субъектов ПД
+CREATE TABLE data_subject_requests (id uuid PK, user_id uuid, organization_id uuid,
+  request_type text CHECK (request_type IN ('access','deletion','withdrawal','correction')),
+  status text DEFAULT 'pending', description text, response text,
+  created_at timestamptz, resolved_at timestamptz, resolved_by uuid);
 ```
 
-Edge `checko-daily-enrich`:
-1. Читает `checko_settings.auto_enrich_enabled` — если false, выходит.
-2. Берёт 100 самых старых записей из `sales_companies_db` (ORDER BY parsed_at ASC).
-3. Если их меньше 100 — добивает новыми ИНН из «очереди» (см. ниже).
-4. Делает запросы пачкой по 5 параллельно с `await Promise.all`, между пачками `sleep(500ms)` (чтобы не перегружать Checko).
-5. После завершения пишет `last_auto_run_at`, `last_auto_processed`, `last_auto_error`.
-6. Лог последнего запуска показывается в UI («Последнее автообновление: 21.04.2026 03:00, обновлено 100 компаний»).
+**Edge-функции:**
+- `generate-signature-certificate` — после `finalize-signature` рендерит PDF «Сертификат подписи» (ФИО, ИНН, документ, хеш, IP, UA, время, текст ПЭП), кладёт в `signed-documents` bucket, путь → `document_signatures.signed_document_path`.
+- `convert-html-to-pdf` (общий) — конвертирует подписанный HTML в PDF через Chromium-бессерверный (или unoconv) и сохраняет.
+- `process-document-expiry-reminders` — cron ежедневно в 06:00 МСК, ищет `org_documents` с `expires_at` через 30/14/7/1 дней, шлёт уведомление + создаёт `org_notifications`.
 
-**Очередь новых ИНН** (`checko_pending_inns`):
-```
-inn text PK,
-added_at timestamptz default now(),
-note text
-```
-Если пользователь добавил 500 ИНН одной кнопкой, первые ~ (100 − использовано) обрабатываются сразу, остальные кладутся в очередь и подхватываются ежесуточно.
+**Frontend:**
+- В `OrgDocumentsManager` добавить колонки «Дата выдачи», «Срок действия», статус-badge, фильтры «Истекают в 30 дней / Просрочены / Архив».
+- В `EducationDocumentsJournal` при сохранении новой записи вызывать RPC `next_reg_number` вместо клиентского COUNT.
+- Кнопка «Скачать сертификат подписи (PDF)» в карточке подписания.
+- Раздел «Подписанты» в Конструкторе с CRUD + выбор подписанта при отправке на подписание.
 
-### Edge-функции (новые)
+### Фаза 2 — UX и операционные улучшения (2-3 итерации)
 
-| Функция | Назначение |
-|---|---|
-| `checko-enrich-batch` | Принимает `{ inns: string[], mode: 'add'|'refresh' }`. Делает запросы с учётом квоты, возвращает `{ processed, skipped_quota, errors[], remaining_quota, queued_inns[] }`. |
-| `checko-daily-enrich` | Cron-обёртка — без авторизации (verify_jwt=false), запускается из pg_cron. Использует service role внутри. |
-| `checko-stats` | GET → `{ today_used, today_remaining, balance, last_auto_run, queue_size, total_companies }` для UI. |
+**Сделки 360°:** новая страница `/organization/deal/:companyId` — таймлайн всех документов с компанией: договоры → счета → акты → ученики → удостоверения. Кнопки «Создать счёт», «Отправить акт», «Подписать договор» — всё в одном месте.
 
-Edge `parse-list-org` остаётся в кодовой базе как deprecated (на случай rollback), но из UI убирается.
+**Журнал выдачи (`document_issuance_log`):**
+- Триггер на `INSERT` в `education_document_records` → автозапись.
+- В `EducationDocumentsJournal` модал «Выдать документ» → выбор способа (лично/почта/курьер) + трек-номер → запись в журнал + смена статуса.
 
-### Frontend — изменения
+**Запросы субъектов ПД:**
+- В кабинете ученика раздел «Мои персональные данные» с кнопками «Получить копию», «Отозвать согласие», «Удалить ПД».
+- В кабинете организации: вкладка «Запросы ПД» с обработкой (срок 30 дней по 152-ФЗ).
 
-**`src/components/admin/sales/CompaniesDatabase.tsx`** — переписываю верхнюю карточку:
-- Убираю input URL и Pages.
-- Добавляю две кнопки: **«Добавить ИНН»** (открывает диалог с textarea для вставки списка ИНН + загрузкой CSV) и **«Обновить устаревшие (N)»**.
-- Добавляю индикатор квоты + переключатель «Автообновление ежедневно».
-- Таблица результатов остаётся, но добавляются новые колонки: КПП, Числ. сотр., Лицензий (count), Метки риска (Санкции / РНП / Масс. адрес — если true).
+**Версионирование шаблонов:**
+- В `ContractTemplateEditor` показывать историю версий, diff (`diff` библиотека), кнопка «Восстановить версию».
+- При создании договора жёстко фиксировать `template_version` в `org_contracts`.
 
-**Новые компоненты:**
-- `AddInnsDialog.tsx` — textarea (по 1 ИНН в строке) + загрузка CSV (xlsx/csv parser уже есть). Парсит, валидирует контрольное число ИНН, показывает предпросмотр.
-- `ChekoQuotaBar.tsx` — прогресс-бар + переключатель автообновления + кнопка «Запустить вручную».
+**Входящие документы:** новая вкладка «Входящие» в Контрагентах. Загрузка скана → выбор связанного нашего документа → сохранение как «контрсторонний экземпляр». Для двустороннего документооборота без подписания через ПЭП.
 
-**Новый хук** `useCheckoApi.ts`:
-- `stats` (useQuery, refetchInterval 30s)
-- `enrichBatch` (useMutation)
-- `setAutoEnrich` (useMutation)
-- `runManualNow` (useMutation)
+### Фаза 3 — Продвинутые функции (опционально)
 
-### Миграция (схема + cron + начальная строка settings)
+- **Публичная проверка `/verify/:reg_number`** + QR-код на бланках удостоверений.
+- **Массовые операции:** ZIP-экспорт выпуска, пакетная отправка договоров (выбор группы → один клик → каждому по ссылке).
+- **Глобальный поиск Cmd+K** по всем документам организации (полнотекст по `name`, `reg_number`, `full_name`, `inn`).
+- **Корзина:** soft-delete с `deleted_at`, страница «Корзина» с восстановлением в 30 дней.
+- **Водяной знак «КОПИЯ» / «АННУЛИРОВАН»** — CSS overlay в HTML-шаблонах при `document_status != 'original'`.
+- **Diff между ревизиями** в `SignaturesJournal` (показ изменений в HTML/тексте).
+- **Inline-предпросмотр DOCX** через mammoth.js.
+- **Аудит-логи документов:** триггер `auto_audit_log` уже есть, но не на всех документных таблицах — добавить на `org_documents`, `education_document_records`, `signature_revisions`.
 
-```sql
--- 1. Расширяем sales_companies_db
-ALTER TABLE sales_companies_db
-  ADD COLUMN IF NOT EXISTS kpp text,
-  ADD COLUMN IF NOT EXISTS okpo text,
-  ADD COLUMN IF NOT EXISTS registration_date date,
-  ADD COLUMN IF NOT EXISTS phones text[],
-  ADD COLUMN IF NOT EXISTS emails text[],
-  ADD COLUMN IF NOT EXISTS social_links jsonb,
-  ADD COLUMN IF NOT EXISTS director_inn text,
-  ADD COLUMN IF NOT EXISTS licenses jsonb,
-  ADD COLUMN IF NOT EXISTS charter_capital numeric,
-  ADD COLUMN IF NOT EXISTS unfair_supplier boolean DEFAULT false,
-  ADD COLUMN IF NOT EXISTS mass_director boolean DEFAULT false,
-  ADD COLUMN IF NOT EXISTS mass_address boolean DEFAULT false,
-  ADD COLUMN IF NOT EXISTS sanctions boolean DEFAULT false,
-  ADD COLUMN IF NOT EXISTS successors jsonb,
-  ADD COLUMN IF NOT EXISTS predecessors jsonb,
-  ADD COLUMN IF NOT EXISTS branches_count int,
-  ADD COLUMN IF NOT EXISTS last_data_date date,
-  ADD COLUMN IF NOT EXISTS data_source text DEFAULT 'list-org';
+---
 
-CREATE UNIQUE INDEX IF NOT EXISTS sales_companies_db_inn_key ON sales_companies_db (inn);
+## Что предлагаю сделать первой итерацией
 
--- 2. Учёт квоты
-CREATE TABLE checko_api_usage (
-  date date PRIMARY KEY,
-  requests_count int NOT NULL DEFAULT 0,
-  last_balance numeric,
-  last_used_at timestamptz
-);
-ALTER TABLE checko_api_usage ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Admins read checko usage" ON checko_api_usage FOR SELECT TO authenticated USING (has_role('admin', auth.uid()));
+**Фаза 1 целиком** (критичные юридические пробелы):
+1. Миграция БД (6 пунктов выше)
+2. Edge `generate-signature-certificate` + интеграция в `finalize-signature`
+3. Edge `process-document-expiry-reminders` + cron
+4. Серверная нумерация `next_reg_number`
+5. UI: сроки/статус в `OrgDocumentsManager`, журнал выдачи, подписанты, сертификат подписи
 
--- 3. Настройки
-CREATE TABLE checko_settings (
-  id int PRIMARY KEY DEFAULT 1 CHECK (id = 1),
-  auto_enrich_enabled boolean DEFAULT false,
-  last_auto_run_at timestamptz,
-  last_auto_processed int,
-  last_auto_error text,
-  updated_at timestamptz DEFAULT now()
-);
-INSERT INTO checko_settings (id) VALUES (1) ON CONFLICT DO NOTHING;
-ALTER TABLE checko_settings ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Admins manage checko settings" ON checko_settings FOR ALL TO authenticated USING (has_role('admin', auth.uid())) WITH CHECK (has_role('admin', auth.uid()));
-
--- 4. Очередь
-CREATE TABLE checko_pending_inns (
-  inn text PRIMARY KEY,
-  added_at timestamptz DEFAULT now(),
-  note text
-);
-ALTER TABLE checko_pending_inns ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Admins manage checko queue" ON checko_pending_inns FOR ALL TO authenticated USING (has_role('admin', auth.uid())) WITH CHECK (has_role('admin', auth.uid()));
-```
-
-Cron создаётся **отдельным insert-вызовом** (как требует инструкция — содержит anon key):
-```sql
-SELECT cron.schedule('checko-daily-enrich', '0 0 * * *', $$
-  SELECT net.http_post(
-    url := 'https://atxwvjxbqjgkbjlhsdch.supabase.co/functions/v1/checko-daily-enrich',
-    headers := '{"Content-Type":"application/json","Authorization":"Bearer <ANON_KEY>"}'::jsonb,
-    body := '{}'::jsonb,
-    timeout_milliseconds := 600000
-  );
-$$);
-```
-
-### End-to-end проверка перед сдачей
-
-1. Миграция применена, RLS на 3 новых таблицах, индекс на `inn` создан.
-2. Секрет `CHECKO_API_KEY` создан и доступен в edge-функциях.
-3. Cron-job `checko-daily-enrich` создан (`SELECT * FROM cron.job WHERE jobname='checko-daily-enrich'`).
-4. UI: В админке «Продажи → База компаний» вижу новый интерфейс, кнопка list-org удалена.
-5. **Тестовый запуск:** добавляю 3 ИНН (Сбербанк `7707083893`, Яндекс `7736207543`, наша Синтагма) → нажимаю «Обогатить» → получаю 3 заполненные карточки с лицензиями, контактами, директором. Квота `3/100`. Каждое поле в БД заполнено корректно.
-6. **Очередь:** добавляю 200 ИНН — первые ~97 обрабатываются, остальные 103 уходят в `checko_pending_inns` со статусом «в очереди».
-7. **Лимит:** искусственно ставлю `requests_count=99`, нажимаю «Обновить устаревшие» — обрабатывается 1 запись, кнопка дизаблится, текст «Квота исчерпана».
-8. **Автообновление:** включаю переключатель → проверяю в `checko_settings.auto_enrich_enabled=true`. Вручную дёргаю edge `checko-daily-enrich` через `curl_edge_functions` → процессит до 100 записей из очереди и старых, `last_auto_run_at` обновляется.
-9. **Конвертация в лид:** из новой карточки нажимаю «В лиды» — лид создаётся с полным набором полей (телефон, email, директор), статус карточки `converted_to_lead_id` обновляется.
-10. **Экспорт XLSX:** кнопка работает, выгружает все новые поля.
-11. Отчёт в чат: ✅ миграция, ✅ секрет, ✅ cron, ✅ UI, ✅ обогащение 3 компаний с реальными данными, ✅ очередь, ✅ лимит, ✅ автообновление — с конкретными числами и ID.
-
-### Что НЕ делаю в v1
-
-- Не использую `/v2/search` Checko (на бесплатном тарифе недоступен — endpoint требует платного плана).
-- Не подключаю `/v2/finances` и `/v2/proceedings` — пока только базовая карточка (можно добавить позже отдельной кнопкой «Обогатить финансами», но это лишний запрос на компанию).
-- Не удаляю физически edge `parse-list-org` (deprecated, оставляю на случай rollback на 1 релиз).
-- Не делаю автоматический парсинг по ОКВЭД (нет search) — пользователь сам приносит список ИНН.
-
-### Файлы
-
-**Создать:** 1 миграция, 1 cron-insert (отдельно), 3 edge-функции, 4 frontend-файла.  
-**Править:** `CompaniesDatabase.tsx`, `useSalesCompaniesDb.ts` (дополню типом), `appVersion.ts → 1.0.57`, запись в `platform_updates`.
+После этого — обсудим, какую часть Фазы 2 запускать (Сделки 360°, ПД-запросы, версионирование шаблонов или входящие документы).
 
