@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Plus, FileSpreadsheet, Menu, CreditCard, HelpCircle, User, LogOut, Sparkles, ShoppingBag, Settings, FileText, Briefcase } from "lucide-react";
+import { Plus, FileSpreadsheet, Menu, CreditCard, HelpCircle, User, LogOut, Sparkles, ShoppingBag, Settings, FileText, Briefcase, Search } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useNavigate } from "react-router-dom";
 import { showLimitToast } from "@/utils/limitToast";
@@ -78,25 +78,35 @@ export function OrgDashboardHeader() {
     switch (activeTab) {
       case "courses": return "Курсы";
       case "students": return "Ученики";
-      case "organizations": return "Компании";
+      case "organizations": return "Клиенты-компании";
       case "library": return "Хранилище";
       case "stats": return "Статистика";
       case "links": return "Ссылки регистрации";
-      case "documents": return "Документооборот";
+      case "documents": return "Документы учеников";
       case "journals": return "Журналы";
       case "labor-safety": return "Охрана труда";
-      case "services": return "Магазин курсов";
+      case "services": return "Готовые программы";
       case "settings": return "Настройки";
       case "payments": return "Финансы";
       case "subscription": return "Тариф";
       case "chats": return "Чаты";
       case "frdo": return "ФИС ФРДО";
       case "profile": return "Профиль";
+      case "homework-review": return "Домашние работы";
+      case "ai-tutors": return "ИИ-уроки";
+      case "sales": return "Продажи";
+      case "org-documents": return "Документы школы";
+      case "whats-new": return "Что нового";
       default: return "";
     }
   };
 
-  
+  const openCommandPalette = () => {
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', metaKey: true, ctrlKey: true, bubbles: true }));
+  };
+
+  const isMac = typeof navigator !== 'undefined' && /Mac|iPhone|iPad|iPod/.test(navigator.platform);
+
 
   return (
     <header data-org-sticky-header className="sticky top-0 z-30 bg-card border-b border-border">
@@ -135,8 +145,30 @@ export function OrgDashboardHeader() {
           </div>
         </div>
 
+        {/* Center: Search command palette */}
+        <button
+          onClick={openCommandPalette}
+          className="hidden md:flex flex-1 max-w-md mx-4 items-center gap-2 px-3 py-1.5 rounded-xl border border-border bg-muted/40 hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+          aria-label="Найти раздел или действие"
+        >
+          <Search className="w-4 h-4 shrink-0" />
+          <span className="text-xs font-medium flex-1 text-left">Найти раздел или действие…</span>
+          <kbd className="hidden lg:inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded border border-border bg-card text-[10px] font-mono text-muted-foreground">
+            {isMac ? "⌘" : "Ctrl"}+K
+          </kbd>
+        </button>
+
         {/* Right: Tariff + Partner + Notifications + Profile */}
         <div className="flex items-center gap-1.5 sm:gap-2.5">
+          {/* Search mobile */}
+          <button
+            onClick={openCommandPalette}
+            className="md:hidden flex h-9 w-9 items-center justify-center rounded-lg hover:bg-secondary text-muted-foreground"
+            aria-label="Поиск"
+          >
+            <Search className="w-4 h-4" />
+          </button>
+
           {/* Tariff badge with days */}
           <button
             onClick={() => d.tabNavigation.setActiveTab("subscription" as any)}
@@ -189,19 +221,11 @@ export function OrgDashboardHeader() {
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => d.tabNavigation.setActiveTab("org-documents" as any)} className="rounded-lg gap-2.5 py-2.5 focus:bg-primary/10 focus:text-primary">
                 <FileText className="w-4 h-4" />
-                Документы
+                Документы школы
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => d.tabNavigation.setActiveTab("sales" as any)} className="rounded-lg gap-2.5 py-2.5 focus:bg-primary/10 focus:text-primary">
-                <Briefcase className="w-4 h-4" />
-                Продажи
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => d.tabNavigation.setActiveTab("whats-new" as any)} className="rounded-lg gap-2.5 py-2.5 focus:bg-primary/10 focus:text-primary">
-                <Sparkles className="w-4 h-4" />
-                Что нового?
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => window.open("https://t.me/+SVTbxqnGmF1iMzIy", "_blank")} className="rounded-lg gap-2.5 py-2.5 focus:bg-primary/10 focus:text-primary">
-                <HelpCircle className="w-4 h-4" />
-                Помощь
+              <DropdownMenuItem onClick={() => d.tabNavigation.setActiveTab("subscription" as any)} className="rounded-lg gap-2.5 py-2.5 focus:bg-primary/10 focus:text-primary">
+                <CreditCard className="w-4 h-4" />
+                Тариф и оплата
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={d.handleLogout} className="rounded-lg gap-2.5 py-2.5 text-destructive focus:bg-destructive/10 focus:text-destructive">

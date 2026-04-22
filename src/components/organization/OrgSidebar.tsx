@@ -3,7 +3,8 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { 
   BookOpen, Users, Settings, LogOut, Upload,
   Building2, HardHat, HardDrive, CreditCard, Lock, MessageCircle, Wallet,
-  BarChart3, Link, ShoppingBag, FileText, ClipboardList, FileSpreadsheet, BookCheck, Radio, Sparkles, Briefcase
+  BarChart3, Link, ShoppingBag, FileText, ClipboardList, FileSpreadsheet, BookCheck, Radio, Sparkles, Briefcase,
+  HelpCircle, Star
 } from "lucide-react";
 import { SigmaLogo } from "@/components/ui/SigmaLogo";
 import { useOrgDashboard } from "@/contexts/OrgDashboardContext";
@@ -100,13 +101,24 @@ function normalizeBrandColor(color?: string): string {
   return trimmed;
 }
 
+type SectionId = "learning" | "clients" | "tools";
+
 interface NavItem {
   id: TabType;
   icon: typeof BookOpen;
   label: string;
   category?: string;
   badge?: number;
+  section: SectionId;
 }
+
+const SECTION_LABELS: Record<SectionId, string> = {
+  learning: "Обучение",
+  clients: "Клиенты",
+  tools: "Инструменты",
+};
+
+const SHOW_LABELS_KEY = "org-sidebar-show-labels";
 
 export function OrgSidebar() {
   const d = useOrgDashboard();
@@ -127,6 +139,17 @@ export function OrgSidebar() {
   const [helpOpen, setHelpOpen] = useState(false);
   const { theme: currentTheme, setTheme } = useTheme();
   const toggleTheme = () => setTheme(currentTheme === "dark" ? "light" : "dark");
+
+  // Mini-labels under icons (for new orgs / sensor screens)
+  const [showLabels, setShowLabels] = useState<boolean>(() => {
+    try {
+      const v = localStorage.getItem(SHOW_LABELS_KEY);
+      return v === null ? true : v === "1";
+    } catch { return true; }
+  });
+  useEffect(() => {
+    try { localStorage.setItem(SHOW_LABELS_KEY, showLabels ? "1" : "0"); } catch {}
+  }, [showLabels]);
 
   // Theme-aware accent
   const [themeAccent, setThemeAccent] = useState<string | null>(() => {
@@ -174,31 +197,37 @@ export function OrgSidebar() {
     setIsMobileSidebarOpen(false);
   };
 
-  // Build nav items dynamically based on menu settings
+  // Build nav items grouped by section
   const rawItems: NavItem[] = [];
-  
-  if (menuSettings.showCourses !== false) rawItems.push({ id: "courses", icon: BookOpen, label: "Курсы", category: "courses" });
-  if (menuSettings.showCompanies !== false) rawItems.push({ id: "organizations", icon: Building2, label: "Компании", category: "companies" });
-  if (menuSettings.showStudents !== false) rawItems.push({ id: "students", icon: Users, label: "Ученики", category: "students" });
-  
-  if (menuSettings.showStats) rawItems.push({ id: "stats", icon: BarChart3, label: "Статистика" });
-  if (menuSettings.showLinks) rawItems.push({ id: "links", icon: Link, label: "Ссылки", category: "links" });
-  
-  if (menuSettings.showLaborSafety !== false) rawItems.push({ id: "labor-safety", icon: HardHat, label: "Охрана труда", category: "labor_safety" });
-  // «Финансы» убраны из сайдбара — открываются изнутри раздела «Тариф».
-  // «Продажи» теперь всегда видны (видимость регулируется правами сотрудника `sales.read`).
-  rawItems.push({ id: "sales", icon: Briefcase, label: "Продажи" });
 
-  rawItems.push({ id: "homework-review", icon: BookCheck, label: "Задания" });
-
+  // === ОБУЧЕНИЕ ===
+  if (menuSettings.showCourses !== false) rawItems.push({ id: "courses", icon: BookOpen, label: "Курсы", category: "courses", section: "learning" });
+  rawItems.push({ id: "homework-review", icon: BookCheck, label: "Домашние работы", section: "learning" });
   if (menuSettings.showAITutors !== false) {
-    rawItems.push({ id: "ai-tutors", icon: Sparkles, label: "ИИ-преподаватели" });
+    rawItems.push({ id: "ai-tutors", icon: Sparkles, label: "ИИ-уроки", section: "learning" });
   }
+  if (menuSettings.showLaborSafety !== false) rawItems.push({ id: "labor-safety", icon: HardHat, label: "Охрана труда", category: "labor_safety", section: "learning" });
 
-  rawItems.push({ id: "chats", icon: MessageCircle, label: "Чаты", badge: d.unreadChatsCount });
+  // === КЛИЕНТЫ ===
+  if (menuSettings.showStudents !== false) rawItems.push({ id: "students", icon: Users, label: "Ученики", category: "students", section: "clients" });
+  if (menuSettings.showCompanies !== false) rawItems.push({ id: "organizations", icon: Building2, label: "Клиенты-компании", category: "companies", section: "clients" });
+  // «Продажи» всегда видны (видимость регулируется правами sales.read).
+  rawItems.push({ id: "sales", icon: Briefcase, label: "Продажи", section: "clients" });
+  rawItems.push({ id: "chats", icon: MessageCircle, label: "Чаты", badge: d.unreadChatsCount, section: "clients" });
 
-  // Фильтр по правам сотрудника. Пока загружаются — показываем всё, чтобы избежать вспышки пустого меню.
+  // === ИНСТРУМЕНТЫ ===
+  if (menuSettings.showStats) rawItems.push({ id: "stats", icon: BarChart3, label: "Статистика", section: "tools" });
+  if (menuSettings.showLinks) rawItems.push({ id: "links", icon: Link, label: "Ссылки", category: "links", section: "tools" });
+  // «Финансы» убраны — открываются изнутри «Тариф».
+
+  // Фильтр по правам сотрудника
   const navItems: NavItem[] = permsLoading ? rawItems : rawItems.filter(item => canSeeOrgTab(item.id));
+
+  // Group preserving section order
+  const sectionOrder: SectionId[] = ["learning", "clients", "tools"];
+  const grouped = sectionOrder
+    .map((sec) => ({ section: sec, items: navItems.filter((i) => i.section === sec) }))
+    .filter((g) => g.items.length > 0);
 
 
 
@@ -252,76 +281,145 @@ export function OrgSidebar() {
           </Tooltip>
         </div>
 
-        {/* Navigation pill */}
-        <div className="flex-1 flex items-center justify-center overflow-y-auto scrollbar-hide px-2">
-          <div
-            className="rounded-[28px] p-2 shadow-md"
-            style={{ backgroundColor: `hsl(${brandHsl} / 0.14)` }}
-          >
-            <nav className="flex flex-col items-center gap-1.5">
-              {navItems.map((item) => {
-                const isActive = activeTab === item.id;
-                const locked = item.category ? isLocked(item.category) : false;
+        {/* Navigation grouped by section */}
+        <div className="flex-1 flex flex-col items-center gap-3 overflow-y-auto scrollbar-hide px-2 py-1">
+          {grouped.map((group, gIdx) => (
+            <div key={group.section} className="w-full flex flex-col items-center">
+              {/* Section divider with mini-label */}
+              {gIdx > 0 && (
+                <div className="w-10 h-px my-1.5 bg-foreground/10" aria-hidden />
+              )}
+              <span
+                className="text-[9px] uppercase tracking-wider font-semibold text-foreground/40 mb-1.5 select-none"
+                aria-hidden
+              >
+                {SECTION_LABELS[group.section]}
+              </span>
+              <div
+                className="rounded-[24px] p-1.5 shadow-sm w-full"
+                style={{ backgroundColor: `hsl(${brandHsl} / 0.12)` }}
+              >
+                <nav className="flex flex-col items-center gap-1">
+                  {group.items.map((item) => {
+                    const isActive = activeTab === item.id;
+                    const locked = item.category ? isLocked(item.category) : false;
 
-                return (
-                  <Tooltip key={item.id} delayDuration={100}>
-                    <TooltipTrigger asChild>
-                      <button
-                        data-onboarding={item.id === "courses" ? "courses" : item.id === "students" ? "students" : item.id === "settings" ? "settings" : undefined}
-                        onClick={() => handleTabClick(item.id)}
-                        className={cn(
-                          "relative flex h-11 w-11 items-center justify-center rounded-xl transition-all duration-200",
-                          locked && "opacity-50",
-                          isActive
-                            ? "text-primary-foreground shadow-md"
-                            : "text-foreground/70 hover:text-foreground hover:scale-110"
-                        )}
-                        style={{
-                          backgroundColor: isActive
-                            ? `hsl(${brandHsl})`
-                            : `hsl(${brandHsl} / 0.12)`,
-                          ...(isActive ? { boxShadow: `0 4px 14px hsl(${brandHsl} / 0.4)` } : {}),
-                        }}
-                        aria-current={isActive ? "page" : undefined}
-                      >
-                        <item.icon className="h-[18px] w-[18px] shrink-0" />
-                        {locked && <Lock className="absolute top-0.5 right-0.5 w-2.5 h-2.5 text-muted-foreground/60" />}
-                        {(item.badge ?? 0) > 0 && (
-                          <span className="absolute -top-1 -right-1 bg-destructive text-destructive-foreground text-[9px] font-bold rounded-full min-w-[16px] h-4 flex items-center justify-center px-1">
-                            {item.badge! > 99 ? "99+" : item.badge}
-                          </span>
-                        )}
-                      </button>
-                    </TooltipTrigger>
-                    <TooltipContent
-                      side="right"
-                      sideOffset={12}
-                      className="z-[100] rounded-xl px-4 py-2 text-sm font-medium shadow-lg border-border/60"
-                      style={{
-                        backgroundColor: `hsl(${brandHsl})`,
-                        color: 'white',
-                        boxShadow: `0 4px 20px hsl(${brandHsl} / 0.3)`,
-                      }}
-                    >
-                      {item.label}
-                    </TooltipContent>
-                  </Tooltip>
-                );
-              })}
-            </nav>
-          </div>
+                    return (
+                      <Tooltip key={item.id} delayDuration={300}>
+                        <TooltipTrigger asChild>
+                          <button
+                            data-onboarding={item.id === "courses" ? "courses" : item.id === "students" ? "students" : item.id === "settings" ? "settings" : undefined}
+                            onClick={() => handleTabClick(item.id)}
+                            className={cn(
+                              "relative flex flex-col items-center justify-center w-[68px] rounded-xl transition-all duration-200 px-1 py-1.5",
+                              showLabels ? "gap-0.5" : "h-11",
+                              locked && "opacity-50",
+                              isActive
+                                ? "text-primary-foreground shadow-md"
+                                : "text-foreground/70 hover:text-foreground hover:scale-[1.04]"
+                            )}
+                            style={{
+                              backgroundColor: isActive
+                                ? `hsl(${brandHsl})`
+                                : `hsl(${brandHsl} / 0.10)`,
+                              ...(isActive ? { boxShadow: `0 4px 14px hsl(${brandHsl} / 0.4)` } : {}),
+                            }}
+                            aria-current={isActive ? "page" : undefined}
+                            aria-label={item.label}
+                          >
+                            <span className="relative flex items-center justify-center">
+                              <item.icon className="h-[18px] w-[18px] shrink-0" />
+                              {locked && <Lock className="absolute -top-1 -right-2 w-2.5 h-2.5 text-muted-foreground/60" />}
+                              {(item.badge ?? 0) > 0 && (
+                                <span className="absolute -top-1.5 -right-2 bg-destructive text-destructive-foreground text-[9px] font-bold rounded-full min-w-[16px] h-4 flex items-center justify-center px-1">
+                                  {item.badge! > 99 ? "99+" : item.badge}
+                                </span>
+                              )}
+                            </span>
+                            {showLabels && (
+                              <span
+                                className={cn(
+                                  "text-[9px] leading-tight font-medium text-center max-w-[64px] line-clamp-2",
+                                  isActive ? "text-primary-foreground/95" : "text-foreground/70"
+                                )}
+                              >
+                                {item.label}
+                              </span>
+                            )}
+                          </button>
+                        </TooltipTrigger>
+                        <TooltipContent
+                          side="right"
+                          sideOffset={12}
+                          className="z-[100] rounded-xl px-4 py-2 text-sm font-medium shadow-lg border-border/60"
+                          style={{
+                            backgroundColor: `hsl(${brandHsl})`,
+                            color: 'white',
+                            boxShadow: `0 4px 20px hsl(${brandHsl} / 0.3)`,
+                          }}
+                        >
+                          {item.label}
+                        </TooltipContent>
+                      </Tooltip>
+                    );
+                  })}
+                </nav>
+              </div>
+            </div>
+          ))}
         </div>
 
-        {/* Logout */}
-        <div className="flex justify-center py-4">
+        {/* Footer: Help, What's new, Toggle labels, Logout */}
+        <div className="flex flex-col items-center gap-1.5 py-3 border-t border-foreground/5">
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                onClick={() => window.dispatchEvent(new CustomEvent('open-support-chat'))}
+                className="flex h-9 w-9 items-center justify-center rounded-xl text-foreground/60 hover:text-primary hover:bg-primary/10 transition-colors"
+                aria-label="Помощь"
+              >
+                <HelpCircle className="h-[18px] w-[18px]" />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="right" className="z-[100]">Помощь</TooltipContent>
+          </Tooltip>
+
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                onClick={() => handleTabClick("whats-new" as TabType)}
+                className="flex h-9 w-9 items-center justify-center rounded-xl text-foreground/60 hover:text-primary hover:bg-primary/10 transition-colors"
+                aria-label="Что нового"
+              >
+                <Star className="h-[18px] w-[18px]" />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="right" className="z-[100]">Что нового</TooltipContent>
+          </Tooltip>
+
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                onClick={() => setShowLabels((v) => !v)}
+                className="flex h-7 w-7 items-center justify-center rounded-lg text-foreground/40 hover:text-foreground/80 hover:bg-foreground/5 transition-colors text-[10px] font-bold"
+                aria-label={showLabels ? "Скрыть подписи" : "Показать подписи"}
+              >
+                {showLabels ? "Aa" : "·"}
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="right" className="z-[100]">
+              {showLabels ? "Скрыть подписи" : "Показать подписи"}
+            </TooltipContent>
+          </Tooltip>
+
           <Tooltip>
             <TooltipTrigger asChild>
               <button
                 onClick={onLogout}
-                className="flex h-10 w-10 items-center justify-center rounded-xl text-destructive hover:bg-destructive/10 transition-colors"
+                className="flex h-9 w-9 items-center justify-center rounded-xl text-destructive hover:bg-destructive/10 transition-colors mt-1"
                 aria-label="Выйти"
               >
-                <LogOut className="h-5 w-5" />
+                <LogOut className="h-[18px] w-[18px]" />
               </button>
             </TooltipTrigger>
             <TooltipContent side="right" className="z-[100]">Выйти</TooltipContent>
