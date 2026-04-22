@@ -29,24 +29,28 @@ import { ConstructorSection } from "./documents/ConstructorSection";
 import { DocumentDialogs } from "./documents/DocumentDialogs";
 
 const NAV_ITEMS: { value: DocumentSubTab; label: string; icon: React.ElementType; ordersOnly?: boolean; iconColor?: string; group?: string }[] = [
-  { value: "kpi", label: "Сводка / KPI", icon: BarChart3, iconColor: "text-primary", group: "platform" },
-  { value: "counterparties", label: "Контрагенты", icon: Building2, group: "platform" },
-  { value: "incoming", label: "Входящие", icon: Inbox, iconColor: "text-cyan-500", group: "platform" },
-  { value: "orders", label: "Приказы", icon: ScrollText, ordersOnly: true, iconColor: "text-amber-500", group: "docs" },
-  { value: "protocols", label: "Протоколы АК", icon: ClipboardList, iconColor: "text-violet-500", group: "docs" },
-  { value: "certificates", label: "Удостоверения", icon: Award, iconColor: "text-emerald-500", group: "docs" },
-  { value: "diplomas", label: "Дипломы", icon: GraduationCap, iconColor: "text-blue-500", group: "docs" },
-  { value: "testimonials", label: "Свидетельства", icon: FileCheck, iconColor: "text-rose-500", group: "docs" },
-  { value: "proposals", label: "Коммерч. предложения", icon: Send, iconColor: "text-fuchsia-500", group: "commerce" },
-  { value: "sales_contracts", label: "Договоры (продажи)", icon: Briefcase, iconColor: "text-indigo-500", group: "commerce" },
-  { value: "programs", label: "Программы", icon: BookOpen, group: "tools" },
-  { value: "journals", label: "Журналы", icon: ClipboardList, iconColor: "text-amber-500", group: "tools" },
-  { value: "frdo", label: "ФИС ФРДО", icon: Database, iconColor: "text-violet-500", group: "tools" },
-  { value: "constructor", label: "Конструктор", icon: Wrench, group: "tools" },
-  { value: "org", label: "Документы орг.", icon: FileText, iconColor: "text-primary/70", group: "tools" },
-  { value: "signatures", label: "Подписания", icon: FileSignature, iconColor: "text-indigo-500", group: "tools" },
-  { value: "pd_requests", label: "Запросы ПД", icon: ShieldCheck, iconColor: "text-emerald-500", group: "tools" },
-  { value: "recycle_bin", label: "Корзина", icon: Trash2, iconColor: "text-muted-foreground", group: "tools" },
+  // Корневые пункты — без заголовка группы
+  { value: "kpi", label: "Сводка / KPI", icon: BarChart3, iconColor: "text-primary", group: "root" },
+  { value: "counterparties", label: "Контрагенты", icon: Building2, group: "root" },
+  { value: "incoming", label: "Входящие", icon: Inbox, iconColor: "text-cyan-500", group: "root" },
+  // Продажи
+  { value: "proposals", label: "Коммерч. предложения", icon: Send, iconColor: "text-fuchsia-500", group: "sales" },
+  { value: "sales_contracts", label: "Договоры (продажи)", icon: Briefcase, iconColor: "text-indigo-500", group: "sales" },
+  { value: "signatures", label: "Подписания", icon: FileSignature, iconColor: "text-indigo-500", group: "sales" },
+  // Документы организации
+  { value: "programs", label: "Программы", icon: BookOpen, group: "org_docs" },
+  { value: "journals", label: "Журналы", icon: ClipboardList, iconColor: "text-amber-500", group: "org_docs" },
+  { value: "frdo", label: "ФИС ФРДО", icon: Database, iconColor: "text-violet-500", group: "org_docs" },
+  { value: "testimonials", label: "Свидетельства", icon: FileCheck, iconColor: "text-rose-500", group: "org_docs" },
+  { value: "diplomas", label: "Дипломы", icon: GraduationCap, iconColor: "text-blue-500", group: "org_docs" },
+  { value: "certificates", label: "Удостоверения", icon: Award, iconColor: "text-emerald-500", group: "org_docs" },
+  { value: "protocols", label: "Протоколы АК", icon: ClipboardList, iconColor: "text-violet-500", group: "org_docs" },
+  { value: "orders", label: "Приказы", icon: ScrollText, ordersOnly: true, iconColor: "text-amber-500", group: "org_docs" },
+  { value: "org", label: "Документы орг.", icon: FileText, iconColor: "text-primary/70", group: "org_docs" },
+  { value: "pd_requests", label: "Запросы ПД", icon: ShieldCheck, iconColor: "text-emerald-500", group: "org_docs" },
+  // Служебное
+  { value: "constructor", label: "Конструктор", icon: Wrench, group: "service" },
+  { value: "recycle_bin", label: "Корзина", icon: Trash2, iconColor: "text-muted-foreground", group: "service" },
 ];
 
 const SECTION_DESCRIPTIONS: Partial<Record<DocumentSubTab, string>> = {
