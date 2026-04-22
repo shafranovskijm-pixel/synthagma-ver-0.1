@@ -238,6 +238,8 @@ export const DocumentsTab = React.memo(function DocumentsTab({ organizationId, o
             {h.activeTab === "pd_requests" && <DataSubjectRequestsManager organizationId={organizationId} />}
             {h.activeTab === "incoming" && <IncomingDocumentsManager organizationId={organizationId} />}
             {h.activeTab === "recycle_bin" && <RecycleBinManager organizationId={organizationId} />}
+            {h.activeTab === "proposals" && <OrgProposalsManager organizationId={organizationId} />}
+            {h.activeTab === "sales_contracts" && <OrgContractsManager organizationId={organizationId} />}
             {h.activeTab === "counterparties" && (
               <CounterpartiesSection
                 organizationId={organizationId}
