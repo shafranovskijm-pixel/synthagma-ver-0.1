@@ -1,7 +1,7 @@
 import { useState, useCallback } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Sparkles, FileText, FileCode, Briefcase, Boxes, Settings, ListTodo, Send, Building2, Target, Mail, Kanban, UserPlus, Trophy } from 'lucide-react';
+import { Sparkles, FileText, FileCode, Briefcase, Boxes, Settings, ListTodo, Send, Building2, Target, Mail, Kanban, UserPlus, Trophy, Snowflake } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useOrgDashboard } from '@/contexts/OrgDashboardContext';
 import { OrgEmailCampaigns } from './OrgEmailCampaigns';
@@ -18,6 +18,7 @@ import { LogActivityDialog } from '@/components/admin/sales/LogActivityDialog';
 import { SalesKanban } from '@/components/admin/sales/SalesKanban';
 import { LeadsManager } from '@/components/admin/sales/LeadsManager';
 import { CompetitorComparison } from '@/components/admin/sales/CompetitorComparison';
+import { SalesSegments } from '@/components/admin/sales/SalesSegments';
 import { useOrgSmtp } from '@/hooks/useOrgSmtp';
 
 interface MenuItem { id: string; label: string; icon: any; soon?: boolean }
@@ -39,6 +40,7 @@ const menuGroups: MenuGroup[] = [
       { id: 'deals', label: 'Сделки 360°', icon: Sparkles },
       { id: 'leads', label: 'Лиды', icon: UserPlus },
       { id: 'companies', label: 'Компании', icon: Building2 },
+      { id: 'segments', label: 'Сегменты', icon: Snowflake },
     ],
   },
   {
@@ -64,7 +66,7 @@ const menuGroups: MenuGroup[] = [
   },
 ];
 
-const AVAILABLE_SECTIONS = ['overview','tasks','comparison','kanban','deals','leads','companies','proposals','contracts','services','templates','campaigns','smtp'];
+const AVAILABLE_SECTIONS = ['overview','tasks','comparison','kanban','deals','leads','companies','segments','proposals','contracts','services','templates','campaigns','smtp'];
 
 export function OrgSalesManager() {
   const d = useOrgDashboard();
@@ -186,6 +188,12 @@ export function OrgSalesManager() {
           )}
           {section === 'leads' && <LeadsManager organizationId={organizationId} />}
           {section === 'companies' && <CompaniesUnified organizationId={organizationId} hideColdBase />}
+          {section === 'segments' && (
+            <SalesSegments
+              organizationId={organizationId}
+              onOpenDeal={(inn) => { if (inn) setDealSelectedInn(inn); setSection('deals'); }}
+            />
+          )}
           {section === 'comparison' && <CompetitorComparison />}
           {section === 'campaigns' && (
             <OrgEmailCampaigns organizationId={organizationId} onGoToSmtp={() => setSection('smtp')} />
