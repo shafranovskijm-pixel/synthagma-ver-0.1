@@ -131,16 +131,6 @@ export function OrgProfileTab({ organizationId, initialSubTab }: ProfileTabProps
     toast.success("Меню обновлено");
   };
 
-    if (!organizationId) return;
-    setMenuSettings(DEFAULT_MENU);
-    await supabase.from("organizations").update({ menu_settings: DEFAULT_MENU as any }).eq("id", organizationId);
-    toast.success("Меню восстановлено по умолчанию");
-  };
-
-  const reloadMenuSettings = async () => {
-    await loadMenuSettings();
-    toast.success("Меню обновлено");
-  };
 
   const loadOrgCredentials = async () => {
     if (!organizationId) return;
