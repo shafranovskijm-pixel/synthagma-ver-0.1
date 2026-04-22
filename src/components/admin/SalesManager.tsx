@@ -11,10 +11,12 @@ import { DocumentSigning } from './sales/DocumentSigning';
 import { SalesSidebar } from './sales/SalesSidebar';
 import { CompaniesDatabase } from './sales/CompaniesDatabase';
 import { Deals360 } from './sales/Deals360';
+import { BroadcastManager } from './BroadcastManager';
 
 const TABS: Record<string, React.ReactNode> = {
   deals: <Deals360 />,
   proposals: <CommercialProposals />,
+  broadcast: <BroadcastManager />,
   services: <SalesServices />,
   managers: <SalesManagersList />,
   leads: <LeadsManager />,
