@@ -1,10 +1,30 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
+import QRCode from "qrcode";
 import { supabase } from "@/integrations/supabase/client";
-import { LiveKitRoom, VideoConference, RoomAudioRenderer } from "@livekit/components-react";
+import {
+  LiveKitRoom,
+  VideoConference,
+  RoomAudioRenderer,
+  useParticipants,
+} from "@livekit/components-react";
 import "@livekit/components-styles";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 import { Button } from "@/components/ui/button";
-import { AlertCircle, ExternalLink } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import {
+  AlertCircle,
+  ExternalLink,
+  Copy,
+  Check,
+  QrCode,
+  Users,
+  Settings2,
+  Square,
+  Radio,
+} from "lucide-react";
+import { toast } from "sonner";
+import { getBaseUrl } from "@/utils/getBaseUrl";
+import { ShareWebinarDialog } from "@/components/organization/ShareWebinarDialog";
 
 interface Props {
   webinarId: string;
@@ -13,12 +33,24 @@ interface Props {
   kinescopeVideoId?: string | null;
   embedUrl?: string | null;
   externalUrl?: string | null;
+  /** Заголовок вебинара — рисуется в шапке встроенного плеера */
+  webinarTitle?: string | null;
+  /** Публичный токен для гостевой ссылки `/w/<token>` */
+  publicToken?: string | null;
+  /** Флаг «гости разрешены» — управляется в ShareWebinarDialog */
+  allowGuests?: boolean;
+  /** Текущий гостевой пароль */
+  guestPassword?: string | null;
+  /** Коллбэк «завершить эфир» — если передан, рисуется кнопка «Завершить» */
+  onEnd?: () => void;
+  /** Коллбэк после сохранения настроек доступа в ShareWebinarDialog */
+  onShareUpdated?: () => void;
 }
 
 /**
  * Универсальный встроенный плеер вебинара.
  * - kinescope: iframe https://kinescope.io/embed/{id}
- * - livekit:   полноценная комната LiveKit с камерой/микрофоном
+ * - livekit:   полноценная комната LiveKit с камерой/микрофоном + шапка с публичной ссылкой
  * - external:  iframe или fallback-кнопка
  */
 export function EmbeddedWebinarPlayer({
@@ -28,6 +60,12 @@ export function EmbeddedWebinarPlayer({
   kinescopeVideoId,
   embedUrl,
   externalUrl,
+  webinarTitle,
+  publicToken,
+  allowGuests,
+  guestPassword,
+  onEnd,
+  onShareUpdated,
 }: Props) {
   // ============ Kinescope ============
   if (sourceType === "kinescope") {
@@ -86,14 +124,41 @@ export function EmbeddedWebinarPlayer({
   }
 
   // ============ LiveKit ============
-  return <LiveKitEmbed webinarId={webinarId} />;
+  return (
+    <LiveKitEmbed
+      webinarId={webinarId}
+      webinarTitle={webinarTitle ?? null}
+      publicToken={publicToken ?? null}
+      allowGuests={allowGuests ?? true}
+      guestPassword={guestPassword ?? null}
+      onEnd={onEnd}
+      onShareUpdated={onShareUpdated}
+    />
+  );
 }
 
-function LiveKitEmbed({ webinarId }: { webinarId: string }) {
+function LiveKitEmbed({
+  webinarId,
+  webinarTitle,
+  publicToken,
+  allowGuests,
+  guestPassword,
+  onEnd,
+  onShareUpdated,
+}: {
+  webinarId: string;
+  webinarTitle: string | null;
+  publicToken: string | null;
+  allowGuests: boolean;
+  guestPassword: string | null;
+  onEnd?: () => void;
+  onShareUpdated?: () => void;
+}) {
   const [token, setToken] = useState<string | null>(null);
   const [wsUrl, setWsUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [shareOpen, setShareOpen] = useState(false);
 
   const fetchToken = useCallback(async () => {
     setLoading(true);
@@ -118,6 +183,8 @@ function LiveKitEmbed({ webinarId }: { webinarId: string }) {
     fetchToken();
   }, [fetchToken]);
 
+  const publicLink = publicToken ? `${getBaseUrl()}/w/${publicToken}` : null;
+
   if (loading) {
     return (
       <div className="aspect-video w-full rounded-lg bg-muted flex items-center justify-center">
@@ -137,18 +204,144 @@ function LiveKitEmbed({ webinarId }: { webinarId: string }) {
   }
 
   return (
-    <div className="aspect-video w-full rounded-lg overflow-hidden bg-black" data-lk-theme="default">
-      <LiveKitRoom
-        token={token}
-        serverUrl={wsUrl}
-        connect={true}
-        video={true}
-        audio={true}
-        style={{ height: "100%" }}
-      >
-        <VideoConference />
-        <RoomAudioRenderer />
-      </LiveKitRoom>
+    <div className="space-y-3">
+      <div className="aspect-video w-full rounded-lg overflow-hidden bg-black" data-lk-theme="default">
+        <LiveKitRoom
+          token={token}
+          serverUrl={wsUrl}
+          connect={true}
+          video={true}
+          audio={true}
+          style={{ height: "100%" }}
+        >
+          <LiveKitTopBar
+            title={webinarTitle}
+            publicLink={publicLink}
+            onShare={() => setShareOpen(true)}
+            onEnd={onEnd}
+            hasShareSettings={Boolean(publicToken)}
+          />
+          <VideoConference />
+          <RoomAudioRenderer />
+        </LiveKitRoom>
+      </div>
+
+      {publicToken && (
+        <ShareWebinarDialog
+          open={shareOpen}
+          onOpenChange={setShareOpen}
+          webinar={{
+            id: webinarId,
+            title: webinarTitle ?? "Вебинар",
+            public_token: publicToken,
+            allow_guests: allowGuests,
+            guest_password: guestPassword,
+          }}
+          onUpdated={onShareUpdated}
+        />
+      )}
+    </div>
+  );
+}
+
+/**
+ * Шапка плеера LiveKit. Должна быть смонтирована ВНУТРИ <LiveKitRoom>,
+ * чтобы useParticipants() мог получить контекст комнаты.
+ */
+function LiveKitTopBar({
+  title,
+  publicLink,
+  onShare,
+  onEnd,
+  hasShareSettings,
+}: {
+  title: string | null;
+  publicLink: string | null;
+  onShare: () => void;
+  onEnd?: () => void;
+  hasShareSettings: boolean;
+}) {
+  const participants = useParticipants();
+  const [copied, setCopied] = useState(false);
+  const qrCanvasRef = useRef<HTMLCanvasElement | null>(null);
+  const [qrOpen, setQrOpen] = useState(false);
+
+  useEffect(() => {
+    if (qrOpen && publicLink && qrCanvasRef.current) {
+      QRCode.toCanvas(qrCanvasRef.current, publicLink, { width: 200, margin: 1 }).catch(() => {});
+    }
+  }, [qrOpen, publicLink]);
+
+  const copyLink = async () => {
+    if (!publicLink) return;
+    try {
+      await navigator.clipboard.writeText(publicLink);
+      setCopied(true);
+      toast.success("Ссылка для участников скопирована");
+      setTimeout(() => setCopied(false), 1500);
+    } catch {
+      toast.error("Не удалось скопировать");
+    }
+  };
+
+  return (
+    <div className="absolute top-2 left-2 right-2 z-10 flex flex-wrap items-center gap-2 rounded-md bg-background/85 backdrop-blur-sm border border-border px-3 py-2 shadow-sm">
+      <div className="flex items-center gap-2 min-w-0 mr-auto">
+        <span className="relative flex h-2.5 w-2.5 shrink-0">
+          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-destructive opacity-75" />
+          <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-destructive" />
+        </span>
+        <span className="text-xs font-semibold text-destructive uppercase tracking-wide hidden sm:inline">
+          В эфире
+        </span>
+        {title && (
+          <span className="text-sm font-medium truncate max-w-[180px] sm:max-w-[260px]">
+            · {title}
+          </span>
+        )}
+      </div>
+
+      <div className="flex items-center gap-1 text-xs text-muted-foreground px-2 py-1 rounded bg-muted">
+        <Users className="w-3.5 h-3.5" />
+        <span className="font-medium tabular-nums">{participants.length}</span>
+      </div>
+
+      {publicLink && (
+        <>
+          <Button size="sm" variant="default" onClick={copyLink} className="h-8">
+            {copied ? <Check className="w-3.5 h-3.5 mr-1.5" /> : <Copy className="w-3.5 h-3.5 mr-1.5" />}
+            <span className="hidden sm:inline">Ссылка для участников</span>
+            <span className="sm:hidden">Ссылка</span>
+          </Button>
+
+          <Popover open={qrOpen} onOpenChange={setQrOpen}>
+            <PopoverTrigger asChild>
+              <Button size="sm" variant="outline" className="h-8 px-2" title="QR-код">
+                <QrCode className="w-3.5 h-3.5" />
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-3 bg-white">
+              <canvas ref={qrCanvasRef} />
+              <p className="text-xs text-center mt-2 text-muted-foreground max-w-[200px] break-all">
+                {publicLink}
+              </p>
+            </PopoverContent>
+          </Popover>
+        </>
+      )}
+
+      {hasShareSettings && (
+        <Button size="sm" variant="outline" onClick={onShare} className="h-8 px-2" title="Настройки доступа">
+          <Settings2 className="w-3.5 h-3.5" />
+        </Button>
+      )}
+
+      {onEnd && (
+        <Button size="sm" variant="destructive" onClick={onEnd} className="h-8" title="Завершить эфир">
+          <Square className="w-3.5 h-3.5 sm:mr-1.5" />
+          <span className="hidden sm:inline">Завершить</span>
+        </Button>
+      )}
     </div>
   );
 }
