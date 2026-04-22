@@ -103,11 +103,66 @@ serve(async (req: Request) => {
     const unsubscribeUrl = `${SUPABASE_URL}/functions/v1/email-unsubscribe?t=${recipient.open_token}`;
     const trackUrl = `${SUPABASE_URL}/functions/v1/track-email-open?t=${recipient.open_token}`;
 
+    // ============ Расширенные переменные {{org_name}}, {{plan}}, {{course_count}}, {{last_login}} ============
+    let orgName = "";
+    let plan = "";
+    let courseCount = "";
+    let lastLogin = "";
+
+    // Если получатель — организация (по email), пробуем подтянуть инфу
+    try {
+      const { data: orgRow } = await admin
+        .from("organizations")
+        .select("id, name, subscription_plan, subscription_plans:subscription_plan(name)")
+        .eq("email", recipient.email)
+        .maybeSingle();
+      if (orgRow) {
+        orgName = (orgRow as any).name || "";
+        plan = (orgRow as any).subscription_plan || "";
+        const { count: cc } = await admin
+          .from("courses")
+          .select("id", { count: "exact", head: true })
+          .eq("organization_id", (orgRow as any).id);
+        if (cc !== null && cc !== undefined) courseCount = String(cc);
+      }
+    } catch (_) { /* optional */ }
+
+    // last_login через профиль (если email совпадает)
+    try {
+      const { data: prof } = await admin
+        .from("profiles")
+        .select("last_sign_in_at, organization_id")
+        .eq("email", recipient.email)
+        .maybeSingle();
+      if (prof?.last_sign_in_at) {
+        lastLogin = new Intl.DateTimeFormat("ru-RU", { day: "numeric", month: "long", year: "numeric" })
+          .format(new Date(prof.last_sign_in_at));
+      }
+      if (!orgName && (prof as any)?.organization_id) {
+        const { data: o2 } = await admin.from("organizations")
+          .select("name, subscription_plan").eq("id", (prof as any).organization_id).maybeSingle();
+        if (o2) {
+          orgName = (o2 as any).name || orgName;
+          if (!plan) plan = (o2 as any).subscription_plan || "";
+        }
+      }
+    } catch (_) { /* optional */ }
+
+    // Выбор темы по A/B-варианту
+    const variant = (recipient as any).subject_variant as ("a" | "b" | null) || null;
+    const subject = (variant === "b" && campaign.subject_b)
+      ? campaign.subject_b
+      : campaign.subject;
+
     let personalizedHtml = (campaign.html_body as string)
       .replace(/\{\{name\}\}/g, recipient.recipient_name || "")
       .replace(/\{\{recipient_name\}\}/g, recipient.recipient_name || "")
       .replace(/\{\{email\}\}/g, recipient.email)
       .replace(/\{\{company\}\}/g, recipient.recipient_name || "")
+      .replace(/\{\{org_name\}\}/g, orgName)
+      .replace(/\{\{plan\}\}/g, plan)
+      .replace(/\{\{course_count\}\}/g, courseCount)
+      .replace(/\{\{last_login\}\}/g, lastLogin)
       .replace(/\{\{webinar_url\}\}/g, meeting?.url || "")
       .replace(/\{\{date\}\}/g, dateLabel)
       .replace(/\{\{time\}\}/g, timeLabel)
