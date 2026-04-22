@@ -137,7 +137,7 @@ export function RecycleBinManager({ organizationId }: Props) {
                         </p>
                       </div>
                       <div className="flex items-center gap-1 shrink-0">
-                        <Button size="sm" variant="ghost" className="gap-1 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-500/10"
+                        <Button size="sm" variant="ghost" className="gap-1 text-accent hover:text-accent hover:bg-accent/10"
                           onClick={() => restore(it)}>
                           <RotateCcw className="w-3.5 h-3.5" />
                           <span className="hidden sm:inline">Восстановить</span>
