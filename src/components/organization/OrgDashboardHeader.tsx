@@ -282,7 +282,7 @@ export function OrgDashboardHeader() {
       {/* Quick action chips under omnibox */}
       <QuickActionChips />
 
-
+      {/* Hero banner with theme swiper — hidden on course details page (course banner takes its place) */}
       {activeTab !== "course-details" && (
         <HeroBannerSwiper>
           <div className="absolute bottom-4 left-6 flex items-end gap-3 z-10">
