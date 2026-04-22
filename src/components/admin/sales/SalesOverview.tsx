@@ -276,13 +276,44 @@ export function SalesOverview({ onJump, organizationId, availableSections }: Pro
           <CardContent className="p-5 space-y-3">
             <div className="flex items-center justify-between">
               <span className="text-sm text-muted-foreground">План на месяц</span>
-              <Badge variant={planPct >= 100 ? 'default' : 'secondary'} className="rounded-lg">
-                {planPct}%
-              </Badge>
+              <div className="flex items-center gap-1.5">
+                <Badge variant={planPct >= 100 ? 'default' : 'secondary'} className="rounded-lg">
+                  {planPct}%
+                </Badge>
+                {!organizationId && !planEditing && (
+                  <Button
+                    size="icon" variant="ghost" className="h-6 w-6"
+                    onClick={() => { setPlanDraft(String(data.monthPlan)); setPlanEditing(true); }}
+                    title="Изменить план"
+                  >
+                    <Pencil className="w-3.5 h-3.5" />
+                  </Button>
+                )}
+              </div>
             </div>
             <div>
               <div className="text-3xl font-semibold">{data.monthRevenue.toLocaleString('ru-RU')} ₽</div>
-              <div className="text-xs text-muted-foreground mt-1">из {data.monthPlan.toLocaleString('ru-RU')} ₽</div>
+              {planEditing ? (
+                <div className="flex items-center gap-1.5 mt-2">
+                  <Input
+                    value={planDraft}
+                    onChange={e => setPlanDraft(e.target.value)}
+                    placeholder="500000"
+                    className="h-8 text-sm"
+                    inputMode="numeric"
+                    autoFocus
+                    onKeyDown={e => { if (e.key === 'Enter') void savePlan(); if (e.key === 'Escape') setPlanEditing(false); }}
+                  />
+                  <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => void savePlan()} disabled={savingPlan}>
+                    <Check className="w-4 h-4 text-emerald-600" />
+                  </Button>
+                  <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => setPlanEditing(false)} disabled={savingPlan}>
+                    <X className="w-4 h-4 text-muted-foreground" />
+                  </Button>
+                </div>
+              ) : (
+                <div className="text-xs text-muted-foreground mt-1">из {data.monthPlan.toLocaleString('ru-RU')} ₽</div>
+              )}
             </div>
             <Progress value={planPct} className="h-2" />
             <div className="text-xs text-muted-foreground">
@@ -325,7 +356,7 @@ export function SalesOverview({ onJump, organizationId, availableSections }: Pro
                     title={p.company_name}
                     subtitle={`КП без ответа ${p.days} ${pluralDays(p.days)} • ${p.total_amount.toLocaleString('ru-RU')} ₽`}
                     icon={FileText} tone="amber"
-                    onClick={() => safeJump('proposals')}
+                    onClick={() => safeJump('deals', p.company_inn)}
                   />
                 ))}
                 {data.alerts.coldLeads.map(l => (
@@ -364,7 +395,7 @@ export function SalesOverview({ onJump, organizationId, availableSections }: Pro
               <div className="space-y-2 pr-2">
                 {data.topDeals.map((d, i) => (
                   <button key={d.inn}
-                    onClick={() => safeJump('deals')}
+                    onClick={() => safeJump('deals', d.inn !== '—' ? d.inn : null)}
                     className="w-full text-left p-3 rounded-xl border hover:bg-muted/30 transition-colors flex items-center gap-3">
                     <div className={cn(
                       "w-8 h-8 rounded-lg flex items-center justify-center text-sm font-semibold shrink-0",
@@ -412,9 +443,23 @@ export function SalesOverview({ onJump, organizationId, availableSections }: Pro
         {!hideLeaderboard && (
           <Card className="rounded-2xl">
             <CardContent className="p-5 space-y-3">
-              <div className="flex items-center gap-2">
-                <Trophy className="w-4 h-4 text-amber-500" />
-                <span className="text-sm font-medium">Лидерборд менеджеров</span>
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <Trophy className="w-4 h-4 text-amber-500" />
+                  <span className="text-sm font-medium">Лидерборд менеджеров</span>
+                </div>
+                {!organizationId && (
+                  <Select value={leaderPeriod} onValueChange={(v: LeaderboardPeriod) => setLeaderPeriod(v)}>
+                    <SelectTrigger className="h-7 text-xs w-[130px] rounded-lg">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="month">Этот месяц</SelectItem>
+                      <SelectItem value="30d">30 дней</SelectItem>
+                      <SelectItem value="quarter">Квартал</SelectItem>
+                    </SelectContent>
+                  </Select>
+                )}
               </div>
               <div className="space-y-1.5">
                 {data.leaderboard.length === 0 && (
