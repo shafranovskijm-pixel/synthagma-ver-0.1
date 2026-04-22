@@ -17,6 +17,8 @@ interface CommItem {
 interface Props {
   inn: string;
   companyName: string;
+  /** Изменение значения вызывает повторную загрузку истории */
+  refreshKey?: number;
 }
 
 const ICONS = {
@@ -37,13 +39,14 @@ const COLORS = {
   proposal_viewed: 'text-cyan-600 bg-cyan-500/10',
 } as const;
 
-export function DealCommunication({ inn, companyName }: Props) {
+export function DealCommunication({ inn, companyName, refreshKey = 0 }: Props) {
   const [items, setItems] = useState<CommItem[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     void load();
-  }, [inn, companyName]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [inn, companyName, refreshKey]);
 
   async function load() {
     setLoading(true);
@@ -78,15 +81,15 @@ export function DealCommunication({ inn, companyName }: Props) {
       if (lead?.id) {
         const { data: acts } = await supabase
           .from('sales_lead_activities')
-          .select('id, type, notes, created_at')
+          .select('id, activity_type, description, created_at')
           .eq('lead_id', lead.id)
           .order('created_at', { ascending: false })
           .limit(20);
         (acts || []).forEach((a: any) => {
           collected.push({
             id: `act-${a.id}`,
-            type: (['call','email','meeting','note'].includes(a.type) ? a.type : 'note') as any,
-            text: a.notes || labelByType(a.type),
+            type: (['call','email','meeting','note'].includes(a.activity_type) ? a.activity_type : 'note') as any,
+            text: a.description || labelByType(a.activity_type),
             created_at: a.created_at,
           });
         });
