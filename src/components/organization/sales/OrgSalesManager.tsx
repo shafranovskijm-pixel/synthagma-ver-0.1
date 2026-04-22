@@ -29,6 +29,7 @@ const menuGroups: MenuGroup[] = [
     items: [
       { id: 'overview', label: 'Обзор', icon: Target },
       { id: 'tasks', label: 'Задачи', icon: ListTodo },
+      { id: 'comparison', label: 'Сравнение', icon: Trophy },
     ],
   },
   {
@@ -63,7 +64,7 @@ const menuGroups: MenuGroup[] = [
   },
 ];
 
-const AVAILABLE_SECTIONS = ['overview','tasks','kanban','deals','leads','companies','proposals','contracts','services','templates','campaigns','smtp'];
+const AVAILABLE_SECTIONS = ['overview','tasks','comparison','kanban','deals','leads','companies','proposals','contracts','services','templates','campaigns','smtp'];
 
 export function OrgSalesManager() {
   const d = useOrgDashboard();
