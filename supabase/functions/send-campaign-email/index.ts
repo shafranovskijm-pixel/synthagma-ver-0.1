@@ -92,12 +92,6 @@ serve(async (req: Request) => {
       };
     }
 
-    // Подставляем трекинг-пиксель в HTML
-    const trackUrl = `${SUPABASE_URL}/functions/v1/track-email-open?t=${recipient.open_token}`;
-    const htmlWithPixel = campaign.html_body
-      + `<img src="${trackUrl}" width="1" height="1" alt="" style="display:none" />`;
-
-    // Подставляем переменные (включая meeting-данные из recipient_filter.meeting)
     const meeting = (campaign.recipient_filter as any)?.meeting || null;
     const dateLabel = meeting?.scheduled_at
       ? new Intl.DateTimeFormat("ru-RU", { day: "numeric", month: "long", year: "numeric" }).format(new Date(meeting.scheduled_at))
@@ -105,7 +99,11 @@ serve(async (req: Request) => {
     const timeLabel = meeting?.scheduled_at
       ? new Intl.DateTimeFormat("ru-RU", { hour: "2-digit", minute: "2-digit", hour12: false }).format(new Date(meeting.scheduled_at))
       : "";
-    const personalizedHtml = htmlWithPixel
+
+    const unsubscribeUrl = `${SUPABASE_URL}/functions/v1/email-unsubscribe?t=${recipient.open_token}`;
+    const trackUrl = `${SUPABASE_URL}/functions/v1/track-email-open?t=${recipient.open_token}`;
+
+    let personalizedHtml = (campaign.html_body as string)
       .replace(/\{\{name\}\}/g, recipient.recipient_name || "")
       .replace(/\{\{recipient_name\}\}/g, recipient.recipient_name || "")
       .replace(/\{\{email\}\}/g, recipient.email)
@@ -113,7 +111,21 @@ serve(async (req: Request) => {
       .replace(/\{\{webinar_url\}\}/g, meeting?.url || "")
       .replace(/\{\{date\}\}/g, dateLabel)
       .replace(/\{\{time\}\}/g, timeLabel)
-      .replace(/\{\{host_name\}\}/g, meeting?.host_name || campaign.from_name || "");
+      .replace(/\{\{host_name\}\}/g, meeting?.host_name || campaign.from_name || "")
+      .replace(/\{\{unsubscribe_url\}\}/g, unsubscribeUrl);
+
+    personalizedHtml = processCampaignHtml(personalizedHtml, {
+      campaignId: campaign.id,
+      campaignName: campaign.name,
+      recipientToken: recipient.open_token,
+      supabaseUrl: SUPABASE_URL,
+      utmEnabled: campaign.utm_enabled !== false,
+      trackClicks: true,
+      unsubscribeUrl,
+      fromEmail: smtp.from_email,
+    });
+
+    personalizedHtml += `<img src="${trackUrl}" width="1" height="1" alt="" style="display:none" />`;
 
     // iCal-приглашение, если включено и есть meeting с датой
     const attachments: Attachment[] = [];
