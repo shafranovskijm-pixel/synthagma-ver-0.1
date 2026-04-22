@@ -15,9 +15,9 @@ import { CompanyTimeline } from './CompanyTimeline';
 interface DealCompany {
   inn: string;
   name: string;
-  proposals: Array<{ id: string; status: string; total_amount: number; created_at: string; tariff_plan: string | null }>;
+  proposals: Array<{ id: string; status: string; total_amount: number; created_at: string; tariff_plan: string | null; last_sent_at: string | null }>;
   contracts: Array<{ id: string; status: string; contract_number: string | null; total_amount: number; created_at: string }>;
-  signatures: Array<{ id: string; status: string; document_title: string; document_type: string; created_at: string; signed_at: string | null }>;
+  signatures: Array<{ id: string; status: string; document_title: string; document_type: string; created_at: string; signed_at: string | null; sent_at: string | null; viewed_at: string | null }>;
   invoices: Array<{ id: string; status: string; document_number: string | null; amount: number; created_at: string; type: string }>;
   totalRevenue: number;
   lastActivity: string;
