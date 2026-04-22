@@ -103,7 +103,14 @@ function generateProposalEmailHtml(proposal: CommercialProposal, services: Propo
   </body></html>`;
 }
 
-export function CommercialProposals() {
+interface CommercialProposalsProps {
+  /** Если задано — после монтирования откроется редактор с предзаполненной компанией */
+  prefillCompany?: { name: string; inn?: string | null } | null;
+  /** Колбэк после того как preffill использован, чтобы родитель сбросил state */
+  onPrefillConsumed?: () => void;
+}
+
+export function CommercialProposals({ prefillCompany, onPrefillConsumed }: CommercialProposalsProps = {}) {
   const { proposals, fetchProposals, updateProposalStatus, deleteProposal, getProposalServices, managers, fetchManagers } = useSalesManager();
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [editorOpen, setEditorOpen] = useState(false);
@@ -111,6 +118,7 @@ export function CommercialProposals() {
   const [editingServices, setEditingServices] = useState<ProposalServiceItem[]>([]);
   const [previewProposal, setPreviewProposal] = useState<CommercialProposal | null>(null);
   const [previewServices, setPreviewServices] = useState<ProposalServiceItem[]>([]);
+  const [prefillForEditor, setPrefillForEditor] = useState<{ name: string; inn?: string | null } | null>(null);
 
   // Send email dialog state
   const [sendDialogOpen, setSendDialogOpen] = useState(false);
@@ -120,6 +128,18 @@ export function CommercialProposals() {
   const [isSending, setIsSending] = useState(false);
 
   useEffect(() => { fetchProposals(); fetchManagers(); }, [fetchProposals, fetchManagers]);
+
+  // Открыть редактор с предзаполненной компанией, если задано
+  useEffect(() => {
+    if (prefillCompany?.name) {
+      setEditingProposal(null);
+      setEditingServices([]);
+      setPrefillForEditor({ name: prefillCompany.name, inn: prefillCompany.inn || null });
+      setEditorOpen(true);
+      onPrefillConsumed?.();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [prefillCompany?.name, prefillCompany?.inn]);
 
   const filtered = statusFilter === 'all' ? proposals : proposals.filter(p => p.status === statusFilter);
 
@@ -145,6 +165,7 @@ export function CommercialProposals() {
     setEditorOpen(false);
     setEditingProposal(null);
     setEditingServices([]);
+    setPrefillForEditor(null);
     fetchProposals();
   };
 
