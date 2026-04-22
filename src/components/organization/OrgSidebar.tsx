@@ -101,13 +101,24 @@ function normalizeBrandColor(color?: string): string {
   return trimmed;
 }
 
+type SectionId = "learning" | "clients" | "tools";
+
 interface NavItem {
   id: TabType;
   icon: typeof BookOpen;
   label: string;
   category?: string;
   badge?: number;
+  section: SectionId;
 }
+
+const SECTION_LABELS: Record<SectionId, string> = {
+  learning: "Обучение",
+  clients: "Клиенты",
+  tools: "Инструменты",
+};
+
+const SHOW_LABELS_KEY = "org-sidebar-show-labels";
 
 export function OrgSidebar() {
   const d = useOrgDashboard();
