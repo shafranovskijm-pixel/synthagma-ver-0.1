@@ -216,8 +216,8 @@ export const DocumentsTab = React.memo(function DocumentsTab({ organizationId, o
             {h.activeTab === "diplomas" && <EducationDocumentsJournal organizationId={organizationId} onClose={() => {}} documentTypeFilter="diploma" onOpenFrdoTab={() => h.setActiveTab("frdo")} />}
             {h.activeTab === "testimonials" && <EducationDocumentsJournal organizationId={organizationId} onClose={() => {}} documentTypeFilter="qualification" onOpenFrdoTab={() => h.setActiveTab("frdo")} />}
             {h.activeTab === "programs" && <CourseProgramsList organizationId={organizationId} />}
-            {h.activeTab === "journals" && <div className="bg-card rounded-xl lg:rounded-2xl border border-border p-4 lg:p-6"><JournalsManager organizationId={organizationId!} /></div>}
-            {h.activeTab === "frdo" && <div className="bg-card rounded-xl lg:rounded-2xl border border-border p-4 lg:p-6"><FRDOManager organizationId={organizationId!} /></div>}
+            {h.activeTab === "journals" && <JournalsManager organizationId={organizationId!} />}
+            {h.activeTab === "frdo" && <FRDOManager organizationId={organizationId!} />}
             {h.activeTab === "signatures" && <SignaturesJournal organizationId={organizationId} />}
             {h.activeTab === "pd_requests" && <DataSubjectRequestsManager organizationId={organizationId} />}
             {h.activeTab === "incoming" && <IncomingDocumentsManager organizationId={organizationId} />}
