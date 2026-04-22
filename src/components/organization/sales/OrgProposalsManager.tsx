@@ -185,12 +185,32 @@ export function OrgProposalsManager({ organizationId, onGoToSmtp }: Props) {
           <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
             <DialogHeader><DialogTitle>{editor.proposal.id ? "Редактировать КП" : "Новое КП"}</DialogTitle></DialogHeader>
             <div className="space-y-3">
+              {(editor.proposal as any).preset_id && (
+                <div className="flex items-center gap-2 p-2 bg-primary/5 border border-primary/20 rounded-md text-xs">
+                  <Sparkles className="w-4 h-4 text-primary" />
+                  <span className="text-muted-foreground">КП создано по шаблону. Маркетинговые блоки добавятся в публичную версию автоматически.</span>
+                </div>
+              )}
               <div className="grid grid-cols-2 gap-2">
                 <div><Label>Название компании</Label><Input value={editor.proposal.company_name || ""} onChange={e => setEditor(s => s && ({ ...s, proposal: { ...s.proposal, company_name: e.target.value } }))} /></div>
                 <div><Label>ИНН</Label><Input value={editor.proposal.company_inn || ""} onChange={e => setEditor(s => s && ({ ...s, proposal: { ...s.proposal, company_inn: e.target.value } }))} /></div>
                 <div><Label>Email</Label><Input type="email" value={editor.proposal.company_email || ""} onChange={e => setEditor(s => s && ({ ...s, proposal: { ...s.proposal, company_email: e.target.value } }))} /></div>
                 <div><Label>Контактное лицо</Label><Input value={editor.proposal.contact_person || ""} onChange={e => setEditor(s => s && ({ ...s, proposal: { ...s.proposal, contact_person: e.target.value } }))} /></div>
                 <div><Label>Скидка (%)</Label><Input type="number" min={0} max={100} value={editor.proposal.discount_percent || 0} onChange={e => setEditor(s => s && ({ ...s, proposal: { ...s.proposal, discount_percent: Number(e.target.value) } }))} /></div>
+                <div>
+                  <Label>Курс для подстановки переменных</Label>
+                  <Select
+                    value={(editor.proposal as any).linked_course_id || "none"}
+                    onValueChange={(v) => setEditor(s => s && ({ ...s, proposal: { ...s.proposal, ...({ linked_course_id: v === "none" ? null : v } as any) } }))}
+                  >
+                    <SelectTrigger><SelectValue placeholder="Не выбран" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">— Не выбран —</SelectItem>
+                      {orgCourses.map(c => <SelectItem key={c.id} value={c.id}>{c.title}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-[10px] text-muted-foreground mt-1">Подставит название, длительность и цену в маркетинговые блоки</p>
+                </div>
               </div>
               <div><Label>Примечание</Label><Textarea rows={2} value={editor.proposal.custom_note || ""} onChange={e => setEditor(s => s && ({ ...s, proposal: { ...s.proposal, custom_note: e.target.value } }))} /></div>
 
