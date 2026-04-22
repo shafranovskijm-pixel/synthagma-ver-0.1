@@ -572,7 +572,7 @@ export function OrgSidebar() {
           {effectiveExpanded ? (
             <button
               onClick={handleToggleExpanded}
-              className="hidden lg:flex items-center justify-center gap-2 h-9 w-full rounded-lg border border-border/60 bg-muted/40 text-foreground/80 hover:bg-primary/10 hover:text-primary hover:border-primary/40 transition-colors text-[12px] font-medium"
+              className="hidden lg:flex items-center justify-center gap-2 h-9 w-full rounded-lg border border-primary/20 bg-primary/5 text-primary/80 hover:bg-primary/15 hover:text-primary hover:border-primary/40 transition-colors text-[12px] font-medium"
               aria-label="Свернуть меню в иконки"
             >
               <PanelLeftClose className="h-4 w-4" />
@@ -583,7 +583,7 @@ export function OrgSidebar() {
               <TooltipTrigger asChild>
                 <button
                   onClick={handleToggleExpanded}
-                  className="hidden lg:flex items-center justify-center gap-1 h-8 w-[68px] rounded-lg border border-border/60 bg-muted/40 text-foreground/70 hover:bg-primary/10 hover:text-primary hover:border-primary/40 transition-colors"
+                  className="hidden lg:flex items-center justify-center gap-1 h-8 w-[68px] rounded-lg border border-primary/20 bg-primary/5 text-primary/80 hover:bg-primary/15 hover:text-primary hover:border-primary/40 transition-colors"
                   aria-label="Развернуть меню — показать названия пунктов"
                 >
                   <PanelLeftOpen className="h-4 w-4" />
