@@ -124,6 +124,7 @@ serve(async (req: Request) => {
       html: personalizedHtml,
       fromOverride,
       replyTo: campaign.reply_to || undefined,
+      attachments: attachments.length ? attachments : undefined,
     });
 
     // Помечаем как отправленное
