@@ -113,8 +113,8 @@ export function IncomingDocumentLinkDialog({
           </div>
 
           {currentLinkedId && (
-            <div className="flex items-center justify-between rounded-lg border border-amber-500/30 bg-amber-500/5 p-2.5 text-sm">
-              <span className="text-amber-700 dark:text-amber-400">Уже связан с договором из журнала подписаний</span>
+            <div className="flex items-center justify-between rounded-lg border border-warning/30 bg-warning/5 p-2.5 text-sm">
+              <span className="text-warning-foreground">Уже связан с договором из журнала подписаний</span>
               <Button
                 variant="outline"
                 size="sm"
