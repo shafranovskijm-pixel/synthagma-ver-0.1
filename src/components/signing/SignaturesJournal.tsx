@@ -612,6 +612,15 @@ export function SignaturesJournal({ organizationId, initialStatus }: Props) {
           )}
         </DialogContent>
       </Dialog>
+
+      {organizationId && (
+        <BulkSendForSigningDialog
+          open={bulkResendOpen}
+          onOpenChange={setBulkResendOpen}
+          organizationId={organizationId}
+          payload={null}
+        />
+      )}
     </div>
   );
 }
