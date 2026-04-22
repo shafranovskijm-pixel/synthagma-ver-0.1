@@ -248,6 +248,33 @@ export function AdminWebinarsOverview() {
     if (data) setPlayerWebinar({ ...(data as any), organization_name: null });
   };
 
+  // Inline-режим эфира — встаёт ВНУТРИ контента админки, как редактор курсов (сайдбар остаётся видимым)
+  if (playerWebinar) {
+    return (
+      <WebinarLiveInline
+        webinar={{
+          id: playerWebinar.id,
+          title: playerWebinar.title,
+          source_type: playerWebinar.source_type,
+          kinescope_live_id: playerWebinar.kinescope_live_id,
+          kinescope_video_id: playerWebinar.kinescope_video_id,
+          embed_url: playerWebinar.embed_url,
+          external_url: playerWebinar.external_url,
+          public_token: playerWebinar.public_token,
+          allow_guests: playerWebinar.allow_guests,
+          guest_password: playerWebinar.guest_password,
+          status: playerWebinar.status,
+          recording_url: (playerWebinar as any).recording_url ?? null,
+          organization_name: playerWebinar.organization_name,
+        }}
+        onBack={() => setPlayerWebinar(null)}
+        expandHref={`/webinar/${playerWebinar.id}/live`}
+        onEnd={closePlayer}
+        onShareUpdated={fetchWebinars}
+      />
+    );
+  }
+
   return (
     <div className="space-y-6">
       {/* Header */}
