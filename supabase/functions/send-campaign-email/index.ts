@@ -159,6 +159,11 @@ serve(async (req: Request) => {
       fromOverride,
       replyTo: campaign.reply_to || undefined,
       attachments: attachments.length ? attachments : undefined,
+      extraHeaders: {
+        "List-Unsubscribe": `<${unsubscribeUrl}>, <mailto:${smtp.from_email}?subject=unsubscribe>`,
+        "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
+        "Precedence": "bulk",
+      },
     });
 
     // Помечаем как отправленное
