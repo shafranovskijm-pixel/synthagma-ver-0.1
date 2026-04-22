@@ -574,7 +574,7 @@ export function BulkDocumentGenerator({ organizationId, isOpen, onClose }: BulkD
                     color="text-rose-600 dark:text-rose-400"
                   />
                 </div>
-                <ScrollArea className="h-[360px] rounded-xl border border-border">
+                <ScrollArea className="h-[320px] rounded-xl border border-border">
                   <div className="divide-y divide-border">
                     {results.map(r => (
                       <div key={r.recipientId} className="flex items-center justify-between gap-3 px-3 py-2.5 text-sm">
@@ -586,8 +586,22 @@ export function BulkDocumentGenerator({ organizationId, isOpen, onClose }: BulkD
                           )}
                           <span className="truncate">{r.recipientName}</span>
                         </div>
-                        <div className="text-xs text-muted-foreground shrink-0">
-                          {r.status === "success" ? `№ ${r.documentName}` : r.error}
+                        <div className="flex items-center gap-2 shrink-0">
+                          <span className="text-xs text-muted-foreground max-w-[220px] truncate">
+                            {r.status === "success" ? `№ ${r.documentName}` : r.error}
+                          </span>
+                          {r.status === "success" && r.filePath && (
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              className="h-7 w-7"
+                              onClick={() => openPrivateFile("billing-documents", r.filePath!)}
+                              title="Открыть PDF"
+                            >
+                              <Eye className="w-3.5 h-3.5" />
+                            </Button>
+                          )}
                         </div>
                       </div>
                     ))}
