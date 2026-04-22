@@ -315,7 +315,7 @@ export function OrgSidebar() {
         onClick={() => handleTabClick(item.id)}
         className={cn(
           "relative rounded-lg transition-all duration-150 animate-fade-in",
-          expanded
+          effectiveExpanded
             ? "flex items-center gap-3 px-2.5 h-10 w-full text-left"
             : cn(
                 "flex flex-col items-center justify-center w-[68px] px-1 py-1.5",
@@ -350,7 +350,7 @@ export function OrgSidebar() {
             />
           )}
         </span>
-        {expanded ? (
+        {effectiveExpanded ? (
           <span
             className={cn(
               "text-[13px] font-medium truncate flex-1",
@@ -369,7 +369,7 @@ export function OrgSidebar() {
             {item.label}
           </span>
         ) : null}
-        {expanded && itemPinned && (
+        {effectiveExpanded && itemPinned && (
           <Pin className={cn("w-3 h-3 shrink-0", isActive ? "text-primary-foreground/90" : "text-muted-foreground/60")} />
         )}
       </button>
@@ -380,7 +380,7 @@ export function OrgSidebar() {
         <ContextMenuTrigger asChild>
           <Tooltip delayDuration={300}>
             <TooltipTrigger asChild>{button}</TooltipTrigger>
-            {!expanded && (
+            {!effectiveExpanded && (
               <TooltipContent
                 side="right"
                 sideOffset={12}
