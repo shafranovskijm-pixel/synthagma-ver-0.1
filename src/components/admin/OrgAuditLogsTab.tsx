@@ -117,30 +117,36 @@ export function OrgAuditLogsTab({ organizationId }: OrgAuditLogsTabProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [actionFilter, setActionFilter] = useState<string>("all");
   const [entityFilter, setEntityFilter] = useState<string>("all");
+  const [userFilter, setUserFilter] = useState<string>("all");
+  const [dateRange, setDateRange] = useState<"7" | "30" | "90" | "365" | "all">("30");
 
   useEffect(() => {
     loadLogs();
-  }, [organizationId]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [organizationId, dateRange]);
 
   const loadLogs = async () => {
     setLoading(true);
     try {
-      const thirtyDaysAgo = new Date();
-      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-
-      const { data, error } = await supabase
+      let query = supabase
         .from("audit_logs")
         .select("*")
         .eq("organization_id", organizationId)
-        .gte("created_at", thirtyDaysAgo.toISOString())
         .order("created_at", { ascending: false })
-        .limit(500);
+        .limit(2000);
 
+      if (dateRange !== "all") {
+        const days = parseInt(dateRange, 10);
+        const since = new Date();
+        since.setDate(since.getDate() - days);
+        query = query.gte("created_at", since.toISOString());
+      }
+
+      const { data, error } = await query;
       if (error) {
         console.error("Error loading audit logs:", error);
         return;
       }
-
       setLogs(data || []);
     } finally {
       setLoading(false);
@@ -156,12 +162,16 @@ export function OrgAuditLogsTab({ organizationId }: OrgAuditLogsTabProps) {
 
     const matchesAction = actionFilter === "all" || log.action_type === actionFilter;
     const matchesEntity = entityFilter === "all" || log.entity_type === entityFilter;
+    const matchesUser = userFilter === "all" || log.user_id === userFilter;
 
-    return matchesSearch && matchesAction && matchesEntity;
+    return matchesSearch && matchesAction && matchesEntity && matchesUser;
   });
 
   const entityTypes = [...new Set(logs.map((l) => l.entity_type))];
   const actionTypes = [...new Set(logs.map((l) => l.action_type))];
+  const users = Array.from(
+    new Map(logs.map((l) => [l.user_id, { id: l.user_id, name: l.user_name || "Неизвестный" }])).values(),
+  );
 
   // Stats
   const todayLogs = logs.filter(
@@ -173,6 +183,27 @@ export function OrgAuditLogsTab({ organizationId }: OrgAuditLogsTabProps) {
     weekAgo.setDate(weekAgo.getDate() - 7);
     return logDate >= weekAgo;
   }).length;
+
+  const exportCsv = () => {
+    const escape = (v: string) => `"${(v ?? "").replace(/"/g, '""')}"`;
+    const header = ["Дата", "Пользователь", "Действие", "Тип объекта", "Объект", "ID объекта"];
+    const rows = filteredLogs.map((l) => [
+      format(new Date(l.created_at), "dd.MM.yyyy HH:mm:ss", { locale: ru }),
+      l.user_name || "",
+      ACTION_LABELS[l.action_type] || l.action_type,
+      ENTITY_LABELS[l.entity_type] || l.entity_type,
+      l.entity_name || "",
+      l.entity_id || "",
+    ]);
+    const csv = [header, ...rows].map((r) => r.map(escape).join(";")).join("\r\n");
+    const blob = new Blob(["\ufeff" + csv], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `audit-log-${format(new Date(), "yyyy-MM-dd")}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
 
   const ActionIcon = ({ type }: { type: string }) => {
     const Icon = ACTION_ICONS[type] || History;
