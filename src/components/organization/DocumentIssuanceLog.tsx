@@ -174,6 +174,65 @@ export function DocumentIssuanceLog({ organizationId }: DocumentIssuanceLogProps
     (log.reg_number && log.reg_number.toLowerCase().includes(searchQuery.toLowerCase()))
   );
 
+  const allSelected = filteredLogs.length > 0 && filteredLogs.every(l => selectedIds.has(l.id));
+  const someSelected = selectedIds.size > 0 && !allSelected;
+
+  const toggleAll = () => {
+    if (allSelected) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(filteredLogs.map(l => l.id)));
+    }
+  };
+
+  const toggleOne = (id: string) => {
+    const next = new Set(selectedIds);
+    if (next.has(id)) next.delete(id); else next.add(id);
+    setSelectedIds(next);
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedIds.size === 0) return;
+    if (!confirm(`Удалить выбранные записи (${selectedIds.size})? Действие необратимо.`)) return;
+    setBulkDeleting(true);
+    try {
+      const ids = Array.from(selectedIds);
+      const { error } = await supabase
+        .from("document_issuance_log")
+        .delete()
+        .in("id", ids);
+      if (error) throw error;
+      toast.success(`Удалено: ${ids.length}`);
+      setSelectedIds(new Set());
+      await loadLogs();
+    } catch (e) {
+      console.error("Bulk delete error", e);
+      toast.error("Ошибка удаления");
+    } finally {
+      setBulkDeleting(false);
+    }
+  };
+
+  const handleBulkExport = async () => {
+    const items = filteredLogs.filter(l => selectedIds.has(l.id));
+    if (items.length === 0) return;
+    const XLSX = await getXLSX();
+    const exportData = items.map((log, index) => ({
+      "№": index + 1,
+      "Дата": format(new Date(log.issued_at), "dd.MM.yyyy", { locale: ru }),
+      "ФИО": log.user_name,
+      "Вид документа": getDocumentTypeLabel(log.document_type),
+      "Рег.номер": log.reg_number || "-",
+      "Способ отправки": log.send_method
+        ? `${getSendMethodLabel(log.send_method)}${log.send_number ? `: ${log.send_number}` : ""}`
+        : "-" }));
+    const ws = XLSX.utils.json_to_sheet(exportData);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Выбранные документы");
+    XLSX.writeFile(wb, `documents_selected_${format(new Date(), "yyyy-MM-dd")}.xlsx`);
+    toast.success(`Выгружено: ${items.length}`);
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
