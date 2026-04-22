@@ -2,8 +2,10 @@ import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Plus, Trash2, UserCog, Shield, Eye, Briefcase } from "lucide-react";
+import { Plus, Trash2, UserCog, Shield, Eye, Briefcase, Mail } from "lucide-react";
 import { toast } from "sonner";
+import { StaffInvitationDialog } from "@/components/staff/StaffInvitationDialog";
+import { RoleAuditLog } from "@/components/staff/RoleAuditLog";
 import {
   Dialog,
   DialogContent,
@@ -75,6 +77,7 @@ export function AdminStaffTab() {
   const [staff, setStaff] = useState<StaffMember[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAddDialog, setShowAddDialog] = useState(false);
+  const [showInviteDialog, setShowInviteDialog] = useState(false);
   const [newFullName, setNewFullName] = useState("");
   const [newEmail, setNewEmail] = useState("");
   const [newRole, setNewRole] = useState("viewer");
@@ -159,10 +162,16 @@ export function AdminStaffTab() {
             Управляйте командой администраторов и менеджеров
           </p>
         </div>
-        <Button onClick={() => setShowAddDialog(true)} className="gap-2">
-          <Plus className="w-4 h-4" />
-          Добавить
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={() => setShowInviteDialog(true)} className="gap-2">
+            <Mail className="w-4 h-4" />
+            Пригласить
+          </Button>
+          <Button onClick={() => setShowAddDialog(true)} className="gap-2">
+            <Plus className="w-4 h-4" />
+            Добавить
+          </Button>
+        </div>
       </div>
 
       {/* Role cards */}
