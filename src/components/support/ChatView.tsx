@@ -94,11 +94,12 @@ export function ChatView({
         )}
         {messages.map((msg) => (
           <div key={msg.id} className={cn("flex", msg.role === "user" ? "justify-end" : "justify-start")}>
-            <div className={cn(
-              "max-w-[85%] rounded-2xl px-3.5 py-2 text-sm shadow-sm",
-              msg.role === "user" && "bg-primary text-primary-foreground rounded-br-md",
-              msg.role === "ai" && "bg-card border border-border rounded-bl-md",
-              msg.role === "operator" && "bg-accent text-accent-foreground rounded-bl-md border border-primary/20",
+            <div
+              className={cn(
+                "max-w-[85%] rounded-2xl px-3.5 py-2 text-sm shadow-sm",
+                msg.role === "user" && "text-white rounded-br-md",
+                msg.role === "ai" && "bg-card border border-border rounded-bl-md",
+                msg.role === "operator" && "bg-accent text-accent-foreground rounded-bl-md border border-primary/20",
               msg.role === "system" && "bg-muted/60 text-muted-foreground italic text-xs mx-auto"
             )}>
               {msg.role === "operator" && (
