@@ -54,14 +54,18 @@ Edge `email-domain-check` через Google DNS-over-HTTPS (`https://dns.google/
 
 `localStorage('broadcast_campaign_draft_v1')` каждые 800 мс (debounce). 7 дней TTL.
 
+## Drip-кампании (последовательности)
+
+Таблицы: `email_drip_sequences` (название, активность, источник), `email_drip_steps` (порядок, delay_days/hours, subject, html), `email_drip_subscribers` (email, current_step, next_send_at, status: active/paused/completed/unsubscribed), `email_drip_sends` (журнал). RLS — только админы платформы (`has_role('admin', auth.uid())`). Edge `process-drip-campaigns` (cron jobid 13, `*/5 * * * *`) проверяет suppression, отправляет следующий шаг через SMTP, обновляет `next_send_at` по delay следующего шага, при отсутствии — переводит в `completed`. UI: вкладка «Drip-цепочки» (`DripCampaignsManager`) — создание последовательностей, редактирование шагов, добавление подписчиков (с дедупом), ручной запуск.
+
 ## Что ещё не сделано
 
-- **Drip-кампании** — таблицы `email_drip_sequences/steps/subscribers/sends` спроектированы, но миграция падает (`function has_role(uuid, app_role) does not exist` — нужно проверить точную сигнатуру в проекте).
 - A/B-тест по содержанию (не только теме)
 - Inbox-превью через Litmus/email-on-acid (платный API)
+- Drip: сегментация подписчиков по тегам, автоподписка по событиям (новая регистрация org, бездействие N дней)
 
 ## Колонки email_campaigns (актуальный набор)
 
 `scheduled_at`, `started_at`, `completed_at`, `total_recipients`, `sent_count`, `failed_count`, `open_count`, `click_count`, `unsubscribe_count`, `utm_enabled`, `user_paused`, `template_id`, `subject_b`, `ab_test_enabled`, `ab_sample_percent`, `ab_winner`, `ab_winner_picked_at`, `ab_sample_started_at`. Получатель: `subject_variant` (a/b/null).
 
-Cron-задачи: jobid 11 (process-scheduled-campaigns, каждую минуту), jobid 12 (email-ab-pick-winner, каждые 5 минут).
+Cron-задачи: jobid 11 (process-scheduled-campaigns, каждую минуту), jobid 12 (email-ab-pick-winner, каждые 5 минут), jobid 13 (process-drip-campaigns, каждые 5 минут).
