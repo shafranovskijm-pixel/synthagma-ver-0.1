@@ -273,9 +273,18 @@ export function SignaturesJournal({ organizationId }: Props) {
       </Tabs>
 
       {filtered.length === 0 ? (
-        <div className="text-center py-16 text-muted-foreground">
-          <FileText className="w-12 h-12 mx-auto mb-3 opacity-30" />
-          <p>Нет записей о подписаниях</p>
+        <div className="text-center py-16 px-6 space-y-3">
+          <div className="mx-auto w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center">
+            <FileText className="w-10 h-10 text-primary/40" />
+          </div>
+          <div>
+            <p className="text-base font-semibold">Нет записей о подписаниях</p>
+            <p className="text-sm text-muted-foreground mt-1 max-w-md mx-auto">
+              {search || statusFilter !== "all" || typeFilter !== "all" || dateFrom || dateTo
+                ? "Попробуйте изменить фильтры или сбросить поиск"
+                : "Когда вы отправите документ на подписание, он появится здесь вместе с историей действий и доказательствами."}
+            </p>
+          </div>
         </div>
       ) : (
         <div className="rounded-xl border overflow-hidden">
