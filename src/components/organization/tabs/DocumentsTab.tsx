@@ -1,8 +1,9 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import {
   Users, ClipboardList, Award, GraduationCap, FileCheck,
   FileText, Upload, BookOpen, Wrench, Building2, ScrollText,
-  Lock, ArrowUpRight, FolderOpen, Receipt, Database, FileSignature, ShieldCheck, Inbox, BarChart3, Trash2
+  Lock, ArrowUpRight, FolderOpen, Receipt, Database, FileSignature, ShieldCheck, Inbox, BarChart3, Trash2,
+  PanelLeftClose, PanelLeftOpen
 } from "lucide-react";
 import { JournalsManager } from "@/components/organization/JournalsManager";
 import { FRDOManager } from "@/components/organization/FRDOManager";
@@ -73,6 +74,12 @@ interface DocumentsTabProps {
 
 export const DocumentsTab = React.memo(function DocumentsTab({ organizationId, organizationName, onShowBulkUploadDialog, isOrdersEnabled = true, onNavigateToSubscription }: DocumentsTabProps) {
   const h = useDocumentsTab(organizationId, organizationName);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState<boolean>(() => {
+    try { return localStorage.getItem("documents.sidebar.collapsed") === "1"; } catch { return false; }
+  });
+  useEffect(() => {
+    try { localStorage.setItem("documents.sidebar.collapsed", sidebarCollapsed ? "1" : "0"); } catch {}
+  }, [sidebarCollapsed]);
 
   if (!organizationId) {
     return <div className="text-center py-12 text-muted-foreground">Организация не найдена</div>;
@@ -87,21 +94,29 @@ export const DocumentsTab = React.memo(function DocumentsTab({ organizationId, o
     <div className="space-y-0">
       <div className="flex flex-col lg:flex-row gap-0 min-h-[600px]">
         {/* Left sidebar navigation */}
-        <nav className="lg:w-56 xl:w-64 shrink-0 border-b lg:border-b-0 lg:border-r border-border bg-card lg:rounded-l-2xl">
-          <div className="lg:hidden flex overflow-x-auto gap-1 p-2">
-            {visibleItems.map(item => {
-              const Icon = item.icon;
-              const isActive = h.activeTab === item.value;
-              return (
-                <button key={item.value} onClick={() => h.setActiveTab(item.value)} className={cn(
-                  "flex items-center gap-1.5 px-3 py-2 text-xs font-medium rounded-lg whitespace-nowrap transition-colors",
-                  isActive ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
-                )}>
-                  <Icon className="w-3.5 h-3.5" />
-                  {item.label}
-                </button>
-              );
-            })}
+        <nav className={cn(
+          "shrink-0 border-b lg:border-b-0 lg:border-r border-border bg-card lg:rounded-l-2xl transition-[width] duration-200",
+          sidebarCollapsed ? "lg:w-14" : "lg:w-52 xl:w-60"
+        )}>
+          {/* Mobile horizontal tab bar with right fade */}
+          <div className="lg:hidden relative">
+            <div className="flex overflow-x-auto gap-1 p-2 scrollbar-thin">
+              {visibleItems.map(item => {
+                const Icon = item.icon;
+                const isActive = h.activeTab === item.value;
+                return (
+                  <button key={item.value} onClick={() => h.setActiveTab(item.value)} className={cn(
+                    "flex items-center gap-1.5 px-3 py-2 text-xs font-medium rounded-lg whitespace-nowrap transition-colors shrink-0",
+                    isActive ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
+                  )}>
+                    <Icon className="w-3.5 h-3.5" />
+                    {item.label}
+                  </button>
+                );
+              })}
+            </div>
+            {/* Right edge fade indicator — hints there's more to scroll */}
+            <div className="pointer-events-none absolute right-0 top-0 bottom-0 w-8 bg-gradient-to-l from-card to-transparent" />
           </div>
           <div className="hidden lg:flex flex-col py-3 bg-gradient-to-b from-card to-muted/20">
             {(() => {
@@ -114,18 +129,31 @@ export const DocumentsTab = React.memo(function DocumentsTab({ organizationId, o
                 lastGroup = item.group || "";
                 return (
                   <React.Fragment key={item.value}>
-                    {showDivider && (
+                    {showDivider && !sidebarCollapsed && (
                       <div className="px-4 pt-3 pb-1">
                         <div className="h-px bg-border/60" />
                         {groupLabel && <span className="text-[10px] uppercase tracking-wider text-muted-foreground/60 font-semibold mt-2 block">{groupLabel}</span>}
                       </div>
                     )}
-                    <button onClick={() => h.setActiveTab(item.value)} className={cn(
-                      "flex items-center gap-2.5 px-4 py-2.5 text-sm font-medium text-left transition-all duration-200 group",
-                      isActive ? "bg-primary/15 text-primary border-r-2 border-primary" : "text-muted-foreground hover:text-primary hover:bg-primary/10 hover:translate-x-0.5"
-                    )}>
+                    {showDivider && sidebarCollapsed && (
+                      <div className="px-2 py-1.5"><div className="h-px bg-border/60" /></div>
+                    )}
+                    <button
+                      onClick={() => h.setActiveTab(item.value)}
+                      title={sidebarCollapsed ? item.label : undefined}
+                      className={cn(
+                        "flex items-center gap-2.5 text-sm font-medium text-left transition-all duration-200 group",
+                        sidebarCollapsed ? "justify-center px-0 py-2.5 mx-2 rounded-lg" : "px-4 py-2.5",
+                        isActive
+                          ? sidebarCollapsed
+                            ? "bg-primary/15 text-primary"
+                            : "bg-primary/15 text-primary border-r-2 border-primary"
+                          : "text-muted-foreground hover:text-primary hover:bg-primary/10",
+                        !isActive && !sidebarCollapsed && "hover:translate-x-0.5"
+                      )}
+                    >
                       <Icon className={cn("w-4 h-4 shrink-0 transition-colors duration-200", isActive ? "text-primary" : item.iconColor || "group-hover:text-primary")} />
-                      {item.label}
+                      {!sidebarCollapsed && <span className="truncate">{item.label}</span>}
                     </button>
                   </React.Fragment>
                 );
@@ -136,15 +164,26 @@ export const DocumentsTab = React.memo(function DocumentsTab({ organizationId, o
 
         {/* Right content panel */}
         <div className="flex-1 min-w-0 bg-card lg:rounded-r-2xl border-l-0">
-          <div className="flex items-center justify-between px-4 lg:px-6 py-4 border-b border-border">
-            <div>
-              <h2 className="text-base font-semibold flex items-center gap-2">
-                <ActiveIcon className="w-4 h-4 text-primary" />
-                {activeItem.label}
-              </h2>
-              {SECTION_DESCRIPTIONS[h.activeTab] && <p className="text-xs text-muted-foreground mt-0.5">{SECTION_DESCRIPTIONS[h.activeTab]}</p>}
+          <div className="flex items-center justify-between gap-3 px-4 lg:px-6 py-4 border-b border-border">
+            <div className="flex items-center gap-2 min-w-0">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setSidebarCollapsed(v => !v)}
+                className="hidden lg:inline-flex h-8 w-8 shrink-0"
+                title={sidebarCollapsed ? "Развернуть меню" : "Свернуть меню"}
+              >
+                {sidebarCollapsed ? <PanelLeftOpen className="w-4 h-4" /> : <PanelLeftClose className="w-4 h-4" />}
+              </Button>
+              <div className="min-w-0">
+                <h2 className="text-base font-semibold flex items-center gap-2">
+                  <ActiveIcon className="w-4 h-4 text-primary shrink-0" />
+                  <span className="truncate">{activeItem.label}</span>
+                </h2>
+                {SECTION_DESCRIPTIONS[h.activeTab] && <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1">{SECTION_DESCRIPTIONS[h.activeTab]}</p>}
+              </div>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 shrink-0">
               {onShowBulkUploadDialog && h.activeTab === "org" && (
                 <Button variant="outline" size="sm" className="rounded-xl gap-1.5" onClick={onShowBulkUploadDialog}>
                   <Upload className="w-3.5 h-3.5" /><span className="hidden sm:inline">Массовая загрузка</span>
