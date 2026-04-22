@@ -14,6 +14,7 @@ import { useEmailTemplates } from "@/hooks/useEmailTemplates";
 import { useOrgSmtp } from "@/hooks/useOrgSmtp";
 import { CreateContractDialog } from "./CreateContractDialog";
 import { ProposalPresetPicker } from "./ProposalPresetPicker";
+import { ProposalVariablesCheckDialog } from "./ProposalVariablesCheckDialog";
 import type { ProposalPreset } from "@/hooks/useProposalPresets";
 import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
