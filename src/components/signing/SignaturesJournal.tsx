@@ -265,6 +265,87 @@ export function SignaturesJournal({ organizationId, initialStatus }: Props) {
     toast.success(`Экспортировано записей: ${filtered.length}`);
   };
 
+  const toggleSelect = (id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+
+  const toggleSelectAllVisible = () => {
+    setSelectedIds((prev) => {
+      const allIds = filtered.map((r) => r.id);
+      const allSelected = allIds.length > 0 && allIds.every((id) => prev.has(id));
+      const next = new Set(prev);
+      if (allSelected) {
+        allIds.forEach((id) => next.delete(id));
+      } else {
+        allIds.forEach((id) => next.add(id));
+      }
+      return next;
+    });
+  };
+
+  const clearSelection = () => setSelectedIds(new Set());
+
+  const downloadProtocolsZip = async () => {
+    const list = filtered.filter((r) => selectedIds.has(r.id));
+    if (!list.length) { toast.error("Не выбрано ни одной записи"); return; }
+    setBulkBusy(true);
+    const t = toast.loading(`Готовим архив протоколов: ${list.length} шт.`);
+    try {
+      const { default: JSZip } = await import("jszip");
+      const zip = new JSZip();
+      const usedNames = new Set<string>();
+      for (const r of list) {
+        const org = orgs[r.organization_id];
+        const html = buildProtocolHtml({
+          documentTitle: r.document_title,
+          documentType: r.document_type,
+          documentHash: r.document_hash,
+          organizationName: org?.name,
+          organizationInn: org?.inn,
+          senderName: r.sender_name,
+          recipientName: r.recipient_name,
+          recipientEmail: r.recipient_email,
+          recipientType: r.recipient_type,
+          status: r.status,
+          createdAt: r.created_at,
+          sentAt: r.sent_at,
+          signedAt: r.signed_at,
+          signedIp: r.signed_ip,
+          signedUserAgent: r.signed_user_agent,
+          rejectedAt: r.rejected_at,
+          rejectionReason: r.rejection_reason,
+          expiresAt: r.expires_at,
+          signatureToken: r.signature_token,
+        });
+        const safeTitle = (r.document_title || "document").replace(/[\\/:*?"<>|]+/g, "_").slice(0, 60);
+        let baseName = `${r.signature_token.slice(0, 8)}_${safeTitle}.html`;
+        let i = 2;
+        while (usedNames.has(baseName)) {
+          baseName = `${r.signature_token.slice(0, 8)}_${safeTitle}_${i}.html`;
+          i++;
+        }
+        usedNames.add(baseName);
+        zip.file(baseName, html);
+      }
+      const blob = await zip.generateAsync({ type: "blob" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `signature-protocols-${new Date().toISOString().slice(0, 10)}.zip`;
+      document.body.appendChild(a); a.click(); a.remove();
+      URL.revokeObjectURL(url);
+      toast.success(`Архив скачан: ${list.length} протокол(ов)`, { id: t });
+    } catch (e: any) {
+      toast.error("Не удалось сформировать ZIP", { id: t, description: e?.message || String(e) });
+    } finally {
+      setBulkBusy(false);
+    }
+  };
+
   const uniqueTypes = useMemo(() => {
     const set = new Set(rows.map((r) => r.document_type));
     return Array.from(set);
