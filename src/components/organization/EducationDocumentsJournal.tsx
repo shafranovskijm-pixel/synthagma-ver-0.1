@@ -122,7 +122,10 @@ export function EducationDocumentsJournal({
               <CheckCircle2 className="w-5 h-5 text-amber-500" />
             </div>
             <div><p className="text-2xl font-bold">{stats.originals}/{stats.duplicates}</p><p className="text-xs text-muted-foreground">Ориг./Дубл.</p></div>
-          </div>
+      </div>
+
+      {/* FRDO export readiness */}
+      <FrdoReadinessBanner organizationId={organizationId} onOpenFrdo={onOpenFrdoTab} />
         </div>
       </div>
 
