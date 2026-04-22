@@ -42,8 +42,8 @@ export function QuickStartCard() {
     let cancelled = false;
     (async () => {
       const [{ count: linkCount }, { count: studentCount }] = await Promise.all([
-        supabase.from("registration_links" as any).select("id", { count: "exact", head: true }).eq("organization_id", orgId),
-        supabase.from("enrollments" as any).select("id", { count: "exact", head: true }).eq("organization_id", orgId),
+        supabase.from("registration_links").select("id", { count: "exact", head: true }).eq("organization_id", orgId),
+        supabase.from("enrollments").select("id", { count: "exact", head: true }).eq("organization_id", orgId),
       ]);
       if (cancelled) return;
       setHasLink((linkCount ?? 0) > 0);
