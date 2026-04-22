@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Progress } from '@/components/ui/progress';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { useToast } from '@/hooks/use-toast';
+import { toast } from 'sonner';
 import {
   TrendingUp, AlertCircle, Flame, Trophy, Activity, Target,
   FileText, ScrollText, PenTool, Wallet, ArrowRight, Clock, Pencil, Check, X
@@ -43,7 +43,6 @@ interface Props {
 }
 
 export function SalesOverview({ onJump, organizationId, availableSections }: Props) {
-  const { toast } = useToast();
   const [data, setData] = useState<OverviewData | null>(null);
   const [loading, setLoading] = useState(true);
   const [leaderPeriod, setLeaderPeriod] = useState<LeaderboardPeriod>('month');
