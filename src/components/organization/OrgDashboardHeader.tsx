@@ -221,19 +221,11 @@ export function OrgDashboardHeader() {
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => d.tabNavigation.setActiveTab("org-documents" as any)} className="rounded-lg gap-2.5 py-2.5 focus:bg-primary/10 focus:text-primary">
                 <FileText className="w-4 h-4" />
-                Документы
+                Документы школы
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => d.tabNavigation.setActiveTab("sales" as any)} className="rounded-lg gap-2.5 py-2.5 focus:bg-primary/10 focus:text-primary">
-                <Briefcase className="w-4 h-4" />
-                Продажи
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => d.tabNavigation.setActiveTab("whats-new" as any)} className="rounded-lg gap-2.5 py-2.5 focus:bg-primary/10 focus:text-primary">
-                <Sparkles className="w-4 h-4" />
-                Что нового?
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => window.open("https://t.me/+SVTbxqnGmF1iMzIy", "_blank")} className="rounded-lg gap-2.5 py-2.5 focus:bg-primary/10 focus:text-primary">
-                <HelpCircle className="w-4 h-4" />
-                Помощь
+              <DropdownMenuItem onClick={() => d.tabNavigation.setActiveTab("subscription" as any)} className="rounded-lg gap-2.5 py-2.5 focus:bg-primary/10 focus:text-primary">
+                <CreditCard className="w-4 h-4" />
+                Тариф и оплата
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={d.handleLogout} className="rounded-lg gap-2.5 py-2.5 text-destructive focus:bg-destructive/10 focus:text-destructive">
