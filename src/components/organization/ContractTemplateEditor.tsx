@@ -29,6 +29,9 @@ import { HighlightedTemplateEditor } from "./HighlightedTemplateEditor";
 import { BUILT_IN_TEMPLATES, type ContractTemplate } from "./contract-template/builtInTemplates";
 import { TemplateHistoryDialog, type TemplateHistoryEntry } from "./contract-template/TemplateHistoryDialog";
 import { CONTRACT_PLACEHOLDERS, extractTextFromPDF, extractTextFromDOCX, getPreviewText, FALLBACK_VARIABLE_PATTERNS } from "./contract-template/contractTemplateHelpers";
+import { loadRealRequisites, getPreviewWithRealRequisites, type RealRequisites } from "./contract-template/realRequisitesPreview";
+import { Tabs as PreviewTabs, TabsContent as PreviewTabsContent, TabsList as PreviewTabsList, TabsTrigger as PreviewTabsTrigger } from "@/components/ui/tabs";
+import { AlertCircle } from "lucide-react";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 
 interface ContractTemplateEditorProps {
