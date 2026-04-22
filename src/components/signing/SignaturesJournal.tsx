@@ -413,25 +413,53 @@ export function SignaturesJournal({ organizationId, initialStatus }: Props) {
           </div>
         </div>
       ) : (
-        <div className="rounded-xl border overflow-hidden">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Документ</TableHead>
-                <TableHead>Тип</TableHead>
-                <TableHead>Получатель</TableHead>
-                <TableHead>Статус</TableHead>
-                <TableHead>Отправлено</TableHead>
-                <TableHead>Подписано</TableHead>
-                <TableHead></TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filtered.map((r) => {
-                const st = STATUS_LABELS[r.status] || STATUS_LABELS.draft;
-                const StIcon = st.icon;
-                return (
-                  <TableRow key={r.id}>
+        <div className="space-y-3">
+          {selectedIds.size > 0 && (
+            <div className="flex items-center justify-between gap-3 px-4 py-2.5 rounded-xl border bg-primary/5 border-primary/20">
+              <div className="text-sm font-medium">
+                Выбрано: <span className="text-primary">{selectedIds.size}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <Button variant="outline" size="sm" className="gap-2" onClick={downloadProtocolsZip} disabled={bulkBusy}>
+                  <Archive className="w-4 h-4" />Скачать протоколы (ZIP)
+                </Button>
+                <Button variant="ghost" size="sm" onClick={clearSelection}>Сбросить</Button>
+              </div>
+            </div>
+          )}
+          <div className="rounded-xl border overflow-hidden">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-10">
+                    <Checkbox
+                      checked={filtered.length > 0 && filtered.every((r) => selectedIds.has(r.id))}
+                      onCheckedChange={toggleSelectAllVisible}
+                      aria-label="Выбрать все на странице"
+                    />
+                  </TableHead>
+                  <TableHead>Документ</TableHead>
+                  <TableHead>Тип</TableHead>
+                  <TableHead>Получатель</TableHead>
+                  <TableHead>Статус</TableHead>
+                  <TableHead>Отправлено</TableHead>
+                  <TableHead>Подписано</TableHead>
+                  <TableHead></TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filtered.map((r) => {
+                  const st = STATUS_LABELS[r.status] || STATUS_LABELS.draft;
+                  const StIcon = st.icon;
+                  return (
+                    <TableRow key={r.id} data-state={selectedIds.has(r.id) ? "selected" : undefined}>
+                      <TableCell>
+                        <Checkbox
+                          checked={selectedIds.has(r.id)}
+                          onCheckedChange={() => toggleSelect(r.id)}
+                          aria-label="Выбрать запись"
+                        />
+                      </TableCell>
                     <TableCell className="font-medium max-w-[280px] truncate">{r.document_title}</TableCell>
                     <TableCell className="text-sm text-muted-foreground">{TYPE_LABELS[r.document_type] || r.document_type}</TableCell>
                     <TableCell>
