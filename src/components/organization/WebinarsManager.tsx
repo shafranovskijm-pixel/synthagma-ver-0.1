@@ -9,11 +9,12 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
-import { Plus, Radio, Video, Calendar, Users, Copy, ExternalLink, Square, Trash2, RefreshCw, Pencil, CopyPlus, Link, Search, Clock, Zap, Share2, QrCode, Maximize2 } from "lucide-react";
+import { Plus, Radio, Video, Calendar, Users, Copy, ExternalLink, Square, Trash2, RefreshCw, Pencil, CopyPlus, Link, Search, Clock, Zap, Share2, QrCode, Maximize2, Paperclip } from "lucide-react";
 import { CreateWebinarDialog } from "./CreateWebinarDialog";
 import { WebinarParticipantsDialog } from "./WebinarParticipantsDialog";
 import { ShareWebinarDialog } from "./ShareWebinarDialog";
 import { EmbeddedWebinarPlayer } from "@/components/webinars/EmbeddedWebinarPlayer";
+import { WebinarRecordingUploader } from "@/components/webinars/WebinarRecordingUploader";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
@@ -41,6 +42,7 @@ interface Webinar {
   public_token: string | null;
   allow_guests: boolean;
   guest_password: string | null;
+  recording_url?: string | null;
 }
 
 interface Props {
@@ -61,6 +63,7 @@ export function WebinarsManager({ organizationId }: Props) {
   const [search, setSearch] = useState("");
   const [shareWebinar, setShareWebinar] = useState<Webinar | null>(null);
   const [liveSheetWebinar, setLiveSheetWebinar] = useState<Webinar | null>(null);
+  const [recordingTarget, setRecordingTarget] = useState<Webinar | null>(null);
 
   const fetchWebinars = useCallback(async () => {
     const { data } = await supabase
