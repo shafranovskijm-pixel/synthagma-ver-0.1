@@ -41,13 +41,11 @@ export function QuickStartCard() {
     if (!orgId) return;
     let cancelled = false;
     (async () => {
-      const [{ count: linkCount }, { count: studentCount }] = await Promise.all([
-        supabase.from("registration_links").select("id", { count: "exact", head: true }).eq("organization_id", orgId),
-        supabase.from("enrollments").select("id", { count: "exact", head: true }).eq("organization_id", orgId),
-      ]);
+      const linkRes = await supabase.from("registration_links").select("id", { count: "exact", head: true }).eq("organization_id", orgId);
+      const studentRes = await supabase.from("enrollments").select("id", { count: "exact", head: true }).eq("organization_id", orgId);
       if (cancelled) return;
-      setHasLink((linkCount ?? 0) > 0);
-      setHasStudent((studentCount ?? 0) > 0);
+      setHasLink((linkRes.count ?? 0) > 0);
+      setHasStudent((studentRes.count ?? 0) > 0);
     })();
     return () => { cancelled = true; };
   }, [orgId]);
