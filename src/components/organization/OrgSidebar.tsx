@@ -1,10 +1,10 @@
-import { useState, useCallback, useRef, useEffect } from "react";
+import { useState, useCallback, useRef, useEffect, useMemo } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { 
   BookOpen, Users, Settings, LogOut, Upload,
   Building2, HardHat, HardDrive, CreditCard, Lock, MessageCircle, Wallet,
   BarChart3, Link, ShoppingBag, FileText, ClipboardList, FileSpreadsheet, BookCheck, Radio, Sparkles, Briefcase,
-  HelpCircle, Star, ChevronsLeft, ChevronsRight
+  HelpCircle, Star, ChevronsLeft, ChevronsRight, Pin, PinOff
 } from "lucide-react";
 import { SigmaLogo } from "@/components/ui/SigmaLogo";
 import { useOrgDashboard } from "@/contexts/OrgDashboardContext";
@@ -14,6 +14,14 @@ import { getStoredThemeId, getThemeById } from "@/constants/admin-themes";
 import { useTheme } from "next-themes";
 import { HelpCenterDialog } from "@/components/shared/HelpCenterDialog";
 import { useStaffPermissions } from "@/hooks/useStaffPermissions";
+import { useOrgNewIndicators } from "@/hooks/useOrgNewIndicators";
+import { useOrgSidebarPinned } from "@/hooks/useOrgSidebarPinned";
+import {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuTrigger,
+} from "@/components/ui/context-menu";
 import {
   AlertDialog,
   AlertDialogAction,
