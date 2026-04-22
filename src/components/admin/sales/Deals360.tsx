@@ -177,14 +177,31 @@ export function Deals360() {
 
   return (
     <div className="space-y-4">
-      <div>
-        <h2 className="text-xl font-semibold flex items-center gap-2">
-          <Sparkles className="w-5 h-5 text-primary" />
-          Сделки 360°
-        </h2>
-        <p className="text-sm text-muted-foreground">Полная картина по каждой компании: КП → Договоры → Подписи → Счета</p>
+      <div className="flex items-start justify-between gap-3 flex-wrap">
+        <div>
+          <h2 className="text-xl font-semibold flex items-center gap-2">
+            <Sparkles className="w-5 h-5 text-primary" />
+            Сделки 360°
+          </h2>
+          <p className="text-sm text-muted-foreground">Полная картина по каждой компании: КП → Договоры → Подписи → Счета</p>
+        </div>
+        <div className="inline-flex rounded-xl border bg-muted/30 p-1">
+          <Button size="sm" variant={view === 'list' ? 'default' : 'ghost'}
+            onClick={() => setView('list')}
+            className="h-8 rounded-lg gap-1.5">
+            <List className="w-3.5 h-3.5" /> Список
+          </Button>
+          <Button size="sm" variant={view === 'kanban' ? 'default' : 'ghost'}
+            onClick={() => setView('kanban')}
+            className="h-8 rounded-lg gap-1.5">
+            <Columns3 className="w-3.5 h-3.5" /> Канбан
+          </Button>
+        </div>
       </div>
 
+      {view === 'kanban' ? (
+        <SalesKanban onSelectCompany={(inn) => { setView('list'); setSelectedInn(inn); }} />
+      ) : (
       <div className="grid grid-cols-1 lg:grid-cols-[340px_1fr] gap-4">
         {/* Список компаний */}
         <Card className="rounded-2xl">
