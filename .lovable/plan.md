@@ -1,102 +1,111 @@
 
 
-# Аудит «Продажи»: что готово, что хрупко, что починить
+# Аудит «Продажи»: что ещё надо починить
 
-## Состояние по разделам
+После прошлого спринта (4 итерации) я перепроверил код. Хорошая новость: основа теперь твёрдая — RLS по организациям подтверждена в БД, фильтрация прокинута, лимиты добавлены. Но я нашёл **новую партию узких мест**, которые точно «вылезут» у пользователя.
 
-### Админка (/admin → Продажи) — работает, но с подводными камнями
-- **Обзор, Задачи, Сделки 360°, Канбан, Компании (с Чёрным списком), КП, Договоры, Подписание, Услуги, Менеджеры, Контроль, Сравнение, Рассылки** — всё на месте.
-- **«Наши реквизиты»** вынесены в кнопку в шапке (модалка) — корректно.
+## Состояние RLS в БД (проверил из postgres)
 
-### Организация (/organization → Продажи, если включён `showSales`)
-- Новый `OrgSalesManager` подключён, использует те же компоненты `SalesOverview`, `SalesTasks`, `Deals360`, `CompaniesUnified` из админки.
-- Проблема: эти компоненты **не передают `organizationId`** и **не фильтруют данные по организации** на клиенте. RLS отдаст организации только её данные → внутри будет «пусто», а админ увидит вообще всё (вперемешку с другими орг.).
+✅ Все ключевые таблицы изолированы:
+- `sales_leads`, `sales_lead_activities`, `sales_companies_db`, `sales_contracts`, `sales_blacklist`, `sales_tasks` — политики `Org members manage own ...` с `organization_id = current_organization_id()` действуют.
+- `commercial_proposals`, `document_signatures` — политики org-area тоже на месте.
 
-## Узкие места и риски (что точно «уплывёт» у пользователя)
+⚠️ Но `sales_managers` — только админ + сам менеджер. У `org_manager` доступа нет → леaderboard и фильтр менеджера в орг-кабинете всегда пустые (это уже учтено в `SalesOverview`, но в `LeadsManager.managers` массив **пустой**, а интерфейс показывает фильтр и бейдж «Менеджер» с прочерком).
 
-### A. Утечка данных и пустые экраны (критично)
-1. **`Deals360` / `SalesKanban` / `SalesOverview` / `CompaniesUnified` дёргают глобальные таблицы без `organization_id`-фильтра**. Для организации:
-   - `commercial_proposals` — RLS политика «Org members manage own proposals» требует `scope='org' AND organization_id=...`. Если в таблице платформенные КП (`scope='platform'`), орг. их **не увидит и это правильно**, но если КП орг. сохранены без `organization_id` — будут невидимы. Нужно проверять при создании КП в `OrgProposalsManager`, что `organization_id` проставляется.
-   - `sales_contracts`, `sales_companies_db`, `sales_leads`, `sales_managers`, `sales_lead_activities` — RLS только для `admin` и `sales_manager`. **Менеджер организации (роль `org_manager`) не получит ни одной строки** → во вкладках будет вечная «Загрузка…» / пустота.
-2. **`subscription_invoices`** в Сделках 360° для орг. показывает только её счета (RLS), но в админке — все счета платформы. Скорее всего это нормально, но в орг. контексте `Wallet` всегда будет 0.
+## Новые узкие места и баги
 
-### B. Перфоманс и тайм-ауты
-3. **`Deals360.loadDeals()`** грузит **все** `commercial_proposals` + **все** `sales_contracts` без `limit` и без range. На 5000+ КП — фриз и таймаут.
-4. **`SalesOverview`** делает 6 параллельных `select *` без лимитов. У больших аккаунтов уйдёт в out-of-memory браузера.
-5. **`SalesKanban`** жёстко использует `Array.from(map.values()).find(...)` для привязки подписей по `recipient_name` (substring 15 символов) — **O(N×M)** + ложные привязки (две компании с похожими названиями склеятся в одну).
+### 1. Утечка через `useSalesManager` (КРИТ)
+- `LeadsManager` вызывает `fetchLeads()` без `organizationId`, фильтрует уже **на клиенте** (`l.organization_id === organizationId`). Для организаций с **>1000 лидов** Supabase вернёт максимум 1000 (default limit), и после клиентской фильтрации может получиться пусто или непредсказуемо обрезано. Нужно фильтровать на сервере.
+- Тот же `useSalesManager` используется в `NewTaskForm` (`SalesTasks`) — `fetchLeads` без org-фильтра загружает чужие лиды для админа (норм) и пустоту для орг (RLS отрежет, ок), но с лимитом 1000 для крупных аккаунтов.
+- `fetchActivities`, `fetchProposals` — нигде не фильтруются по `organization_id` явно (полагаемся только на RLS). На больших объёмах админ получит «всё подряд» и фриз.
 
-### C. UX-баги, которые точно вылезут
-6. **«Канбан» в Сделках 360°** — переключение `view='kanban'`, но шапка с тогглом отрисована **снаружи** канбана. Когда в канбане кликают карточку, переключение возвращает в `list` — а скроллинг страницы остаётся на канбане → пользователь «теряет» выбор.
-7. **`DealQuickActions`** — все 6 кнопок (Создать КП, Создать договор, Счёт, Звонок, Заметка, Задача) **без `onClick` обработчиков** в `Deals360`. Нажимаются, но ничего не происходит → ощущение «сломано».
-8. **`DealCommunication`** показывает «историю» — из какого источника? Если из `sales_lead_activities`, то для записи без `lead_id` (в орг. контексте) будет пусто всегда.
-9. **`SalesTasks → NewTaskForm → managerId`** — обязательное поле. У орг. менеджера в `sales_managers` записей **нет** → создать задачу невозможно (кнопка disabled).
-10. **`overview` → `onJump('leads')` / `onJump('signing')`** — этих секций больше нет в `OrgSalesManager` (есть только `companies`, нет `leads`/`signing`/`comparison`/`control`/`managers`). Клик по уведомлению — ничего не происходит.
-11. **Шапка/сайдбар орг. Продаж**: ширина `w-56` + контент `flex-1`, но **внутри** контент `Deals360` рисует свой `grid lg:grid-cols-[300px_minmax(0,1fr)_320px]`. На вьюпорте 1280-1366 правая панель «Контакты + быстрые действия» **уплывёт под основной блок** (gap=4×16 + 300+320=684px съедает половину). Нужен `xl:` брейкпоинт.
-12. **Чёрный список**: `useSalesBlacklist.list` грузит **всё подряд** без фильтра по `organization_id`. У админа покажет ИНН разных организаций вперемешку, у орг. менеджера — RLS-зависимо (если RLS требует `organization_id`, увидит только свои).
-13. **«Архив» в `CompaniesUnified`** — заглушка-плейсхолдер, никакого функционала.
+### 2. `DealCommunication` — SQL-инъекция через `.or()` (КРИТ безопасность)
+- Строки `or('inn.eq.${inn},org_name.ilike.${companyName.slice(0,30)}%')` и `or('company_inn.eq.${inn},company_name.ilike.${companyName.slice(0,30)}%')` подставляют `companyName` без экранирования.
+- Если в названии компании есть `,` или `)`, запрос **сломается** или вернёт неожиданное.
+- Названия типа `ООО «Рога, и копыта»` гарантированно ломают URL-параметры PostgREST.
 
-### D. Рассылки
-14. **Cron `process-paused-campaigns`** добавлен, но в `CampaignsManager` бейдж «Продолжается автоматически» показан только для `paused`. Если пользователь создал кампанию в `draft` и она «зависла» на `sending` (Edge упал, статус не обновился) — бейджа нет, кнопки «Принудительно продолжить» нет. Менеджер думает «всё сломано».
-15. **Trial / SMTP не настроен** в орг.: `OrgEmailCampaigns` пытается запустить → `run-email-campaign` вернёт ошибку, но в `OrgSalesManager` нет видимого предупреждения «настройте SMTP сначала». Раздел `smtp` есть, но пользователь о нём не догадывается.
+### 3. `sales_companies_db` insert RLS — `INSERT` политика без проверки `WITH CHECK` для admin (нашёл дыру)
+- Политика `Admins can insert sales companies db` имеет `qual = NULL` для INSERT (это нормально для INSERT) но `with_check` требует `organization_id IS NOT NULL OR admin`. Это значит, что **админ при импорте через Чеко** может вставить строку **без `organization_id`** → она будет видна всем org как «осиротевшая»? Нет, RLS SELECT для org требует `organization_id = current_organization_id()`. Проверю: SELECT-политики org игнорируют NULL → ок.
+- Но `sales_companies_db_db` массовый импорт через `checko-enrich-batch` сохраняет данные **без** `organization_id` (это глобальная база, общее для всех админов). Для **орг.менеджера** Чёрная база будет пустой всегда → опция «обогатить из ИНН-базы» бесполезна. Нужно решить продуктово: либо **общая глобальная база** видна всем, либо орг ведёт свою.
 
-### E. Рискованные предположения в коде
-16. `STAGE_ICON`, `STATUS_COLORS` имеют ключи только под некоторые статусы. Новый статус (например, `archived`) → пустой стиль, бейдж без цвета.
-17. `differenceInDays` в `SalesOverview` падает, если `last_sent_at`/`sent_at` `null` (фильтр `.filter(p.last_sent_at)` есть, но для signatures проверка только `s.sent_at || s.created_at` — `created_at` всегда есть, ОК). Для `coldLeads` `last_contact_at || created_at` — ОК.
-18. `NewTaskForm` сохраняет `due_date` через `new Date(dueDate).toISOString()` — берёт локальный TZ браузера. На сервере хранится UTC. Отчёт «сегодня» в другой timezone покажет «вчера» — лёгкая путаница на стыке полуночи.
+### 4. `OrgSalesManager` — пустые данные и потерянный сценарий
+- Раздел `companies` грузит `LeadsManager` + `CompaniesDatabase` (Чеко-база). Поскольку Чеко-база **глобальная** (без `organization_id`), орг-менеджер видит пустоту → кнопка «Импорт из Excel» и «Добавить ИНН» ведёт на админский функционал, который для орг тоже не работает (RLS на `organization_id IS NOT NULL OR admin` для INSERT, но сам Edge `checko-enrich-batch` от service-role и не проставляет `organization_id`).
+- Решение: либо скрыть «Холодную базу» в орг-кабинете, либо хранить per-org копию (предпочтительно — скрыть и показывать сообщение «Холодная база ИНН доступна только администраторам платформы»).
 
-## Что предлагаю сделать (по приоритету)
+### 5. `Deals360.signatures` — старый O(N×M) substring match никуда не делся
+- В `Deals360.tsx:171-178` всё ещё есть код `Array.from(map.values()).find(x => x.name.toLowerCase().includes(s.recipient_name.slice(0,15)))`. Я починил это в `SalesKanban`, но `Deals360` — нет.
+- При 500 КП × 500 подписей = 250k операций сравнения строк = ~200ms заметного фриза.
+- Решение: построить `byNameLower: Map` и `byInn: Map` один раз, искать через `.get()`.
 
-### Итерация 1 — Изоляция организаций и пустые экраны (БЛОКЕР)
-- Прокинуть проп `organizationId?: string` в `SalesOverview`, `SalesTasks`, `Deals360`, `SalesKanban`, `CompaniesUnified` (и далее в `LeadsManager`, `CompaniesDatabase`). Когда `organizationId` задан — фильтровать запросы `.eq('organization_id', organizationId)`.
-- Добавить RLS политики для `org_manager` на `sales_leads`, `sales_lead_activities`, `sales_companies_db`, `sales_managers` (видеть только свою орг.). Без этого даже с фильтром будут пустые экраны.
-- В `OrgSalesManager` убрать из меню/обзора пункты, которые не реализованы для орг (`leads`, `signing`, `managers`, `control`), либо показывать их как «soon». `onJump` маппить только в существующие секции.
+### 6. `Deals360.invoices` — массив всегда пустой
+- В `loadDeals()` есть `billingRes` (запрос `subscription_invoices`), но **результаты нигде не пишутся в `c.invoices`** — массив создаётся пустым в `ensure()`, и счётчик «Счета: 0» всегда.
+- В правой панели «Воронка этапов» иконка «Счета» всегда тёмная.
 
-### Итерация 2 — Производительность
-- В `Deals360.loadDeals()` добавить `.limit(500)` + сортировку по `created_at desc`, отдельную пагинацию «Показать ещё». Для орг. — `.eq('organization_id', orgId)`.
-- В `SalesOverview` запросы `.select(...)` сузить полями, добавить `.gte('created_at', ...)` (последние 90 дней + текущий месяц).
-- В `SalesKanban` заменить «привязку подписей по substring имени» на индекс по `inn` (если в `document_signatures` нет `inn` — добавить колонку в миграции и заполнить триггером при создании подписи).
+### 7. `SalesTasks` создание — `managers` массив всегда `[]` для орг
+- `useSalesManager().fetchManagers()` вызывает `select('*').from('sales_managers')` без `organization_id`. RLS не пускает org_manager → массив пустой.
+- В `NewTaskForm` `Select` с менеджерами **пуст**. Пользователь думает «нет менеджеров — нельзя создать задачу». Нужно показать info-сообщение «В вашей организации нет менеджеров продаж — задача будет без привязки».
 
-### Итерация 3 — UX-баги и плавающие плашки
-- Подключить `onCreate*` хендлеры в `DealQuickActions` (открывать существующие диалоги создания КП/договора, либо переключать секцию + предзаполнять).
-- Сетка `Deals360` на ≤1280px: переключить с `lg:grid-cols-[...3-col]` на `xl:grid-cols-[...3-col]` и `lg:grid-cols-[280px_1fr]` (правую панель — под основной блок).
-- В `SalesTasks` для орг. менеджера автоподставлять «Менеджер = текущий пользователь» (если в `sales_managers` есть запись с `user_id = auth.uid()`), либо разрешать `manager_id = null` при создании.
-- В `Deals360`: после клика на карточку канбана **сначала** переключать на `list`, **потом** ставить `selectedInn` в `setTimeout(0)` — чтобы grid отрисовался и скроллбар появился до выбора.
-- В `CampaignsManager`: добавить «Принудительно продолжить» для статуса `sending`, если `started_at` старше 10 минут (зависшая кампания).
-- В `OrgSalesManager → Рассылки`: проверять `useOrgSmtp().configured` и показывать `Card`-предупреждение «Настройте SMTP» с кнопкой перехода в раздел `smtp`.
+### 8. `process-paused-campaigns` cron — может убить рассылку
+- Cron каждые 5 минут вызывает `run-email-campaign` для всех `paused`. Если пользователь сам поставил кампанию на паузу (вручную) — **cron её снова запустит**.
+- Сейчас в БД статус `paused` означает «зависла, надо продолжить». Но если в UI кнопка «Пауза» делает то же самое — конфликт.
+- Решение: добавить колонку `email_campaigns.paused_by_user boolean` и не ресюмить такие, ИЛИ заменить `paused` на `interrupted` для зависших.
 
-### Итерация 4 — Контент-заглушки
-- Реализовать вкладку «Архив» в `CompaniesUnified`: показывать `sales_leads` со статусом `not_interested` / `archived` + `commercial_proposals.status='rejected'`.
-- В `useSalesBlacklist` добавить фильтр `organizationId` (если задан) для админа — оставить «всё», для орг. — только свои (RLS уже работает, но добавить явный `.eq()` для скорости и чтобы query-key был корректный).
+### 9. `commercial_proposals` SELECT для anon (`Public can view sent proposals`)
+- Политика разрешает **анонимам** читать любые КП со статусом `sent`. Это **публичная утечка данных всех клиентов всех организаций** — ИНН, суммы, контактные данные.
+- Назначение, видимо: клиент по `proposal_token` видит своё КП. Но политика не ограничивает по токену!
+- **КРИТИЧНО**: переписать политику на `(status = 'sent' AND public_token IS NOT NULL)` и в коде на стороне клиента всегда читать через токен, либо вообще убрать публичный доступ и читать через edge-функцию.
+
+### 10. Мелочи UX
+- `Deals360` колонка «Подписи» считает только подписи, привязанные через имя (см. п. 5) — реальное число всегда занижено.
+- `SalesKanban` 5 колонок на 1366px (sm:3, lg:5) — последние 2 колонки горизонтально скроллятся, контент обрезается. Нужен `2xl:grid-cols-5`, на меньших — `lg:grid-cols-3 xl:grid-cols-5`.
+- Архив в `CompaniesUnified` группирует только `not_interested` лиды и `rejected` КП — а отклонённые договоры (status `cancelled`/`expired`) не попадают.
+
+## План: 3 итерации
+
+### Итерация 1 — Безопасность (сделать срочно)
+1. Закрыть SQL-инъекцию в `DealCommunication`: использовать `.eq('inn', inn)` отдельным запросом и `.ilike('company_name', escapedName)` через `replace(',', '\\,')` либо переключиться на 2 отдельных запроса с `OR` через `.or()` корректно.
+2. Сузить политику `Public can view sent proposals` на `commercial_proposals` — добавить ограничение по `public_token IS NOT NULL` ИЛИ убрать политику и читать через edge-функцию `get-public-proposal`.
+3. Добавить флаг `email_campaigns.user_paused boolean` и в cron `process-paused-campaigns` пропускать `WHERE user_paused = false`.
+
+### Итерация 2 — Производительность и корректность данных
+4. `useSalesManager.fetchLeads/fetchProposals/fetchActivities` — принимают `organizationId`, добавляют `.eq('organization_id', orgId)` + `.limit(2000)`.
+5. `Deals360.tsx`: индекс `byInn` и `byNameLower`, замена substring-поиска подписей.
+6. `Deals360.tsx`: `billingRes` действительно пушим в `c.invoices` (привязка по `organization_id` для платформенных счетов или по `company_inn` если будет такое поле).
+7. `SalesKanban` сетка: `grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5`.
+
+### Итерация 3 — UX и продуктовые улучшения
+8. `OrgSalesManager` → раздел «companies»: скрыть вкладку «Холодная база» (Чеко) для орг, показать карточку «Доступно администраторам платформы». Либо — отдельная per-org Чеко-база (большая работа, отложить).
+9. `SalesTasks NewTaskForm` для орг: если `managers.length === 0`, скрыть селект менеджера и показать подсказку «Задача будет создана без привязки к менеджеру».
+10. `LeadsManager` для орг: фильтр «Менеджер» скрыть, если `managers` пуст. Показать счётчик «Всего: N» вместо `(orgFilteredLeads.length)` после server-side фильтрации.
+11. `Архив` в `CompaniesUnified`: добавить договоры со статусом `cancelled`/`expired`.
 
 ## Что НЕ делаю
-- Не переписываю CRM с нуля (структура хорошая).
-- Не интегрирую телефонию/CRM-почту (отложено).
-- Не делаю drag-n-drop для канбана (отдельная большая задача).
-- Не правлю TZ-логику globally (только напомню на UI «Сегодня в вашем часовом поясе»).
+- Не переделываю `commercial_proposals` на токен-based чтение (это отдельная задача — нужна edge-функция и редизайн страницы публичного просмотра КП).
+- Не делаю drag-n-drop в Канбане.
+- Не трогаю `useSalesManager` структурно (старый код с useState вместо react-query) — только добавляю org-фильтр.
 
-## Технические детали (для разработчика)
+## Технические детали
 
-**Файлы под правки в Итерации 1:**
-- `src/components/admin/sales/SalesOverview.tsx` — пропс `organizationId?: string`, добавить `.eq()` ко всем 6 запросам.
-- `src/components/admin/sales/Deals360.tsx`, `SalesKanban.tsx`, `CompaniesUnified.tsx`, `SalesTasks.tsx`, `LeadsManager.tsx`, `CompaniesDatabase.tsx` — то же.
-- `src/components/organization/sales/OrgSalesManager.tsx` — `<SalesOverview organizationId={organizationId} />` и т.д.
-- Миграция: RLS политики `org_manager` на `sales_leads`, `sales_lead_activities`, `sales_companies_db` (`USING (organization_id = current_organization_id())`).
+**Файлы для итерации 1:**
+- `src/components/admin/sales/DealCommunication.tsx` — переписать `.or()` запросы.
+- Миграция: `ALTER POLICY "Public can view sent proposals" ON commercial_proposals USING (status='sent' AND public_token IS NOT NULL)` (сначала проверю наличие `public_token` колонки).
+- Миграция: `ALTER TABLE email_campaigns ADD COLUMN user_paused boolean DEFAULT false`. Edge `process-paused-campaigns`: `WHERE status='paused' AND user_paused=false`.
 
-**Итерация 2 — индексы и лимиты:**
-- Индексы: `sales_leads(organization_id, created_at desc)`, `commercial_proposals(organization_id, created_at desc)`, `sales_contracts(organization_id, created_at desc)`.
-- В query-key хука прокинуть `organizationId` чтобы кэш не «склеивался» между организациями.
+**Файлы для итерации 2:**
+- `src/hooks/useSalesManager.ts` — параметризация org-фильтра.
+- `src/components/admin/sales/Deals360.tsx` — рефакторинг `loadDeals`.
+- `src/components/admin/sales/SalesKanban.tsx` — сетка.
 
-**Итерация 3 — UX:**
-- `DealQuickActions` принимает `onCreateProposal/Contract/Invoice` колбэки и `OrgSalesManager`/`SalesManager` пробрасывает их (открывают модалку или переключают секцию + state).
-- Брейкпоинт сетки: `grid-cols-1 lg:grid-cols-[280px_1fr] xl:grid-cols-[300px_minmax(0,1fr)_320px]`.
-
-**Итерация 4 — `CampaignsManager`:**
-- Зависшие кампании детектить так: `status='sending' AND now()-started_at > '10 min'`. Кнопка «Принудительно продолжить» вызывает `run-email-campaign` повторно (он уже идемпотентен).
+**Файлы для итерации 3:**
+- `src/components/organization/sales/OrgSalesManager.tsx` — заглушка для холодной базы.
+- `src/components/admin/sales/SalesTasks.tsx`, `LeadsManager.tsx`, `CompaniesUnified.tsx` — UX.
 
 ## Решение от вас
 
-1. **Все 4 итерации сразу** (рекомендую — это закрывает блокеры и UX-косяки) — 1 крупный заход.
-2. **Только Итерация 1** (изоляция организаций и пустые экраны) — обязательный минимум, ~1 заход.
-3. **Итерации 1 + 3** (изоляция + UX без производительности и архива).
+Какой объём делаем?
+
+1. **Все 3 итерации** (рекомендую — закрывает безопасность + UX-косяки) — 1 крупный заход.
+2. **Только Итерация 1 (безопасность)** — обязательный минимум, особенно п.9 (утечка КП).
+3. **Итерации 1 + 2** (без UX-полировки).
 4. **Свой набор** — скажите номера пунктов.
 
