@@ -243,6 +243,7 @@ export function BroadcastManager() {
       <Tabs defaultValue="campaigns" className="w-full">
         <TabsList>
           <TabsTrigger value="campaigns">Email-кампании</TabsTrigger>
+          <TabsTrigger value="drip">Drip-цепочки</TabsTrigger>
           <TabsTrigger value="templates">Шаблоны писем</TabsTrigger>
           <TabsTrigger value="suppression">Отписавшиеся</TabsTrigger>
           <TabsTrigger value="domain">Репутация домена</TabsTrigger>
@@ -250,6 +251,9 @@ export function BroadcastManager() {
         </TabsList>
         <TabsContent value="campaigns" className="mt-4">
           <CampaignsManager scope="platform" organizationId={null} />
+        </TabsContent>
+        <TabsContent value="drip" className="mt-4">
+          <DripCampaignsManager />
         </TabsContent>
         <TabsContent value="templates" className="mt-4">
           <EmailTemplatesManager scope="platform" organizationId={null} />
