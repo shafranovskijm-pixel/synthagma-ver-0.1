@@ -146,7 +146,7 @@ export function OrgSalesManager() {
               onCreateInvoice={() => setSection('contracts')}
             />
           )}
-          {section === 'companies' && <CompaniesUnified organizationId={organizationId} />}
+          {section === 'companies' && <CompaniesUnified organizationId={organizationId} hideColdBase />}
           {section === 'campaigns' && (
             <OrgEmailCampaigns organizationId={organizationId} onGoToSmtp={() => setSection('smtp')} />
           )}
