@@ -276,6 +276,109 @@ export function OrgSidebar() {
 
 
 
+  // Render single nav button (used by both pinned and section blocks)
+  const renderNavItem = (item: NavItem) => {
+    const isActive = activeTab === item.id;
+    const locked = item.category ? isLocked(item.category) : false;
+    const itemPinned = isPinned(item.id);
+
+    const button = (
+      <button
+        data-onboarding={item.id === "courses" ? "courses" : item.id === "students" ? "students" : item.id === "settings" ? "settings" : undefined}
+        onClick={() => handleTabClick(item.id)}
+        className={cn(
+          "relative rounded-lg transition-all duration-150 animate-fade-in",
+          expanded
+            ? "flex items-center gap-3 px-2.5 h-10 w-full text-left"
+            : cn(
+                "flex flex-col items-center justify-center w-[68px] px-1 py-1.5",
+                showLabels ? "gap-0.5" : "h-10"
+              ),
+          locked && "opacity-50",
+          isActive
+            ? "text-primary-foreground shadow-sm scale-[1.02]"
+            : "text-foreground/70 hover:text-foreground hover:bg-foreground/5 hover:scale-[1.02]"
+        )}
+        style={{
+          backgroundColor: isActive ? `hsl(${brandHsl})` : undefined,
+          ...(isActive ? { boxShadow: `0 2px 10px hsl(${brandHsl} / 0.3)` } : {}),
+        }}
+        aria-current={isActive ? "page" : undefined}
+        aria-label={item.label}
+      >
+        <span className="relative flex items-center justify-center shrink-0" style={{ width: 18, height: 18 }}>
+          <item.icon className="h-[18px] w-[18px]" />
+          {locked && <Lock className="absolute -top-1 -right-2 w-2.5 h-2.5 text-muted-foreground/60" />}
+          {(item.badge ?? 0) > 0 && (
+            <span className="absolute -top-1.5 -right-2 bg-destructive text-destructive-foreground text-[9px] font-bold rounded-full min-w-[16px] h-4 flex items-center justify-center px-1">
+              {item.badge! > 99 ? "99+" : item.badge}
+            </span>
+          )}
+          {/* "New" indicator dot — orange */}
+          {!item.badge && item.hasNew && (
+            <span className="absolute -top-0.5 -right-1 w-2 h-2 rounded-full bg-orange-500 ring-2 ring-card animate-pulse" aria-label="Есть новое" />
+          )}
+        </span>
+        {expanded ? (
+          <span
+            className={cn(
+              "text-[13px] font-medium truncate flex-1",
+              isActive ? "text-primary-foreground" : "text-foreground/85"
+            )}
+          >
+            {item.label}
+          </span>
+        ) : showLabels ? (
+          <span
+            className={cn(
+              "text-[9px] leading-tight font-medium text-center max-w-[64px] line-clamp-2",
+              isActive ? "text-primary-foreground/95" : "text-foreground/70"
+            )}
+          >
+            {item.label}
+          </span>
+        ) : null}
+        {expanded && itemPinned && (
+          <Pin className={cn("w-3 h-3 shrink-0", isActive ? "text-primary-foreground/90" : "text-muted-foreground/60")} />
+        )}
+      </button>
+    );
+
+    return (
+      <ContextMenu key={item.id}>
+        <ContextMenuTrigger asChild>
+          <Tooltip delayDuration={300}>
+            <TooltipTrigger asChild>{button}</TooltipTrigger>
+            {!expanded && (
+              <TooltipContent
+                side="right"
+                sideOffset={12}
+                className="z-[100] rounded-xl p-3 shadow-lg border-border/60 max-w-[240px] bg-card"
+              >
+                <div className="flex items-center gap-2 mb-1">
+                  <item.icon className="w-4 h-4" style={{ color: `hsl(${brandHsl})` }} />
+                  <span className="font-semibold text-sm text-foreground">{item.label}</span>
+                </div>
+                {item.description && (
+                  <p className="text-xs text-muted-foreground leading-snug">{item.description}</p>
+                )}
+                <div className="text-[10px] text-muted-foreground/70 mt-2 pt-2 border-t border-border/50">
+                  ПКМ — {itemPinned ? "открепить" : "закрепить"}
+                </div>
+              </TooltipContent>
+            )}
+          </Tooltip>
+        </ContextMenuTrigger>
+        <ContextMenuContent className="w-44 rounded-xl">
+          <ContextMenuItem onClick={() => togglePin(item.id)} className="rounded-lg gap-2 py-2">
+            {itemPinned ? <PinOff className="w-3.5 h-3.5" /> : <Pin className="w-3.5 h-3.5" />}
+            {itemPinned ? "Открепить" : "Закрепить наверху"}
+          </ContextMenuItem>
+        </ContextMenuContent>
+      </ContextMenu>
+    );
+  };
+
   return (
     <>
       {/* Mobile overlay */}
