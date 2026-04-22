@@ -408,17 +408,46 @@ export function ContractTemplateEditor({
               Предпросмотр договора
             </DialogTitle>
           </DialogHeader>
-          <div className="bg-white text-black p-8 rounded-xl border shadow-inner">
-            <pre className="whitespace-pre-wrap font-serif text-sm leading-relaxed">
-              {getPreviewText(template)}
-            </pre>
-          </div>
-          <div className="flex justify-end gap-2">
+          <PreviewTabs value={previewMode} onValueChange={(v) => setPreviewMode(v as "real" | "demo")}>
+            <PreviewTabsList className="rounded-xl">
+              <PreviewTabsTrigger value="real" className="rounded-lg text-xs">С моими реквизитами</PreviewTabsTrigger>
+              <PreviewTabsTrigger value="demo" className="rounded-lg text-xs">С демо-значениями</PreviewTabsTrigger>
+            </PreviewTabsList>
+            <PreviewTabsContent value="real" className="mt-3">
+              {(() => {
+                const { text, missing } = getPreviewWithRealRequisites(template, realData);
+                return (
+                  <>
+                    {missing.length > 0 && (
+                      <div className="flex items-start gap-2 p-3 mb-3 rounded-xl border border-warning/30 bg-warning/5 text-xs">
+                        <AlertCircle className="w-4 h-4 text-warning mt-0.5 shrink-0" />
+                        <div>
+                          <div className="font-medium text-warning mb-1">Не заполнены реквизиты:</div>
+                          <div className="text-muted-foreground">{missing.join(", ")}</div>
+                          <div className="text-muted-foreground mt-1">Заполните во вкладке «Реквизиты» — будут подставляться автоматически.</div>
+                        </div>
+                      </div>
+                    )}
+                    <div className="bg-white text-black p-8 rounded-xl border shadow-inner">
+                      <pre className="whitespace-pre-wrap font-serif text-sm leading-relaxed">{text}</pre>
+                    </div>
+                  </>
+                );
+              })()}
+            </PreviewTabsContent>
+            <PreviewTabsContent value="demo" className="mt-3">
+              <div className="bg-white text-black p-8 rounded-xl border shadow-inner">
+                <pre className="whitespace-pre-wrap font-serif text-sm leading-relaxed">{getPreviewText(template)}</pre>
+              </div>
+            </PreviewTabsContent>
+          </PreviewTabs>
+          <div className="flex justify-end gap-2 mt-3">
             <Button variant="outline" className="rounded-xl" onClick={() => setShowPreview(false)}>Закрыть</Button>
             <Button className="rounded-xl gap-2" onClick={() => {
+              const text = previewMode === "real" ? getPreviewWithRealRequisites(template, realData).text : getPreviewText(template);
               const printWindow = window.open("", "_blank");
               if (printWindow) {
-                printWindow.document.write(`<!DOCTYPE html><html><head><title>Предпросмотр договора</title><style>body{font-family:'Times New Roman',serif;padding:2cm;line-height:1.6;}pre{white-space:pre-wrap;font-family:inherit;}</style></head><body><pre>${getPreviewText(template)}</pre></body></html>`);
+                printWindow.document.write(`<!DOCTYPE html><html><head><title>Предпросмотр договора</title><style>body{font-family:'Times New Roman',serif;padding:2cm;line-height:1.6;}pre{white-space:pre-wrap;font-family:inherit;}</style></head><body><pre>${text}</pre></body></html>`);
                 printWindow.document.close();
                 printWindow.print();
               }
