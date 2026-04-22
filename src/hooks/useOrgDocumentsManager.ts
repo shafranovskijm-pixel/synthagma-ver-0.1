@@ -185,6 +185,10 @@ export function useOrgDocumentsManager(organizationId: string) {
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
   const [uploadDocType, setUploadDocType] = useState("");
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [uploadIssueDate, setUploadIssueDate] = useState<string>("");
+  const [uploadExpiresAt, setUploadExpiresAt] = useState<string>("");
+  const [uploadResponsible, setUploadResponsible] = useState<string>("");
+  const [expiryFilter, setExpiryFilter] = useState<"all" | "active" | "expiring" | "expired" | "archived">("all");
   const [showQuiz, setShowQuiz] = useState(false);
   const [isSubmittingQuiz, setIsSubmittingQuiz] = useState(false);
   const [showAutoGenSuccessDialog, setShowAutoGenSuccessDialog] = useState(false);
@@ -256,17 +260,22 @@ export function useOrgDocumentsManager(organizationId: string) {
       }
 
       const existingDoc = documents.find((d) => d.type === uploadDocType);
+      const meta: any = { status: "active", reminder_sent_at: null };
+      if (uploadIssueDate) meta.issue_date = uploadIssueDate;
+      if (uploadExpiresAt) meta.expires_at = uploadExpiresAt;
+      if (uploadResponsible) meta.responsible_person = uploadResponsible;
+
       if (existingDoc) {
         const { error } = await supabase
           .from("org_documents")
-          .update({ name: docTypeInfo.label, file_url: fileUrl, updated_at: new Date().toISOString() })
+          .update({ name: docTypeInfo.label, file_url: fileUrl, updated_at: new Date().toISOString(), ...meta })
           .eq("id", existingDoc.id);
         if (error) throw error;
         toast.success("Документ обновлён");
       } else {
         const { error } = await supabase
           .from("org_documents")
-          .insert({ organization_id: organizationId, name: docTypeInfo.label, type: uploadDocType, file_url: fileUrl });
+          .insert({ organization_id: organizationId, name: docTypeInfo.label, type: uploadDocType, file_url: fileUrl, ...meta });
         if (error) throw error;
         toast.success("Документ загружен");
       }
@@ -274,6 +283,9 @@ export function useOrgDocumentsManager(organizationId: string) {
       setShowUploadDialog(false);
       setUploadDocType("");
       setSelectedFile(null);
+      setUploadIssueDate("");
+      setUploadExpiresAt("");
+      setUploadResponsible("");
       fetchDocuments();
     } catch (error) {
       console.error("Error uploading document:", error);
