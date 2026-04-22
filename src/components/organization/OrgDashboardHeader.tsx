@@ -145,8 +145,30 @@ export function OrgDashboardHeader() {
           </div>
         </div>
 
+        {/* Center: Search command palette */}
+        <button
+          onClick={openCommandPalette}
+          className="hidden md:flex flex-1 max-w-md mx-4 items-center gap-2 px-3 py-1.5 rounded-xl border border-border bg-muted/40 hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+          aria-label="Найти раздел или действие"
+        >
+          <Search className="w-4 h-4 shrink-0" />
+          <span className="text-xs font-medium flex-1 text-left">Найти раздел или действие…</span>
+          <kbd className="hidden lg:inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded border border-border bg-card text-[10px] font-mono text-muted-foreground">
+            {isMac ? "⌘" : "Ctrl"}+K
+          </kbd>
+        </button>
+
         {/* Right: Tariff + Partner + Notifications + Profile */}
         <div className="flex items-center gap-1.5 sm:gap-2.5">
+          {/* Search mobile */}
+          <button
+            onClick={openCommandPalette}
+            className="md:hidden flex h-9 w-9 items-center justify-center rounded-lg hover:bg-secondary text-muted-foreground"
+            aria-label="Поиск"
+          >
+            <Search className="w-4 h-4" />
+          </button>
+
           {/* Tariff badge with days */}
           <button
             onClick={() => d.tabNavigation.setActiveTab("subscription" as any)}
