@@ -9,6 +9,10 @@ export interface OrgDocument {
   file_url: string | null;
   created_at: string;
   updated_at: string;
+  issue_date?: string | null;
+  expires_at?: string | null;
+  status?: string | null;
+  responsible_person?: string | null;
 }
 
 // Основные категории документов
