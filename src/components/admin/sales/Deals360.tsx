@@ -491,6 +491,8 @@ export function Deals360({
               companyName={selected.name}
               refreshKey={communicationRefreshKey}
             />
+          </div>
+        ) : <div />}
       </div>
       )}
     </div>
