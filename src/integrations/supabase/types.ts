@@ -1882,6 +1882,65 @@ export type Database = {
           },
         ]
       }
+      data_subject_requests: {
+        Row: {
+          attachment_urls: string[] | null
+          contact_email: string | null
+          created_at: string
+          description: string | null
+          due_date: string | null
+          id: string
+          organization_id: string
+          request_type: string
+          resolved_at: string | null
+          resolved_by: string | null
+          response: string | null
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          attachment_urls?: string[] | null
+          contact_email?: string | null
+          created_at?: string
+          description?: string | null
+          due_date?: string | null
+          id?: string
+          organization_id: string
+          request_type: string
+          resolved_at?: string | null
+          resolved_by?: string | null
+          response?: string | null
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          attachment_urls?: string[] | null
+          contact_email?: string | null
+          created_at?: string
+          description?: string | null
+          due_date?: string | null
+          id?: string
+          organization_id?: string
+          request_type?: string
+          resolved_at?: string | null
+          resolved_by?: string | null
+          response?: string | null
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "data_subject_requests_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       document_issuance_log: {
         Row: {
           created_at: string
@@ -1944,6 +2003,30 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      document_number_sequences: {
+        Row: {
+          doc_type: string
+          last_number: number
+          organization_id: string
+          updated_at: string
+          year: number
+        }
+        Insert: {
+          doc_type: string
+          last_number?: number
+          organization_id: string
+          updated_at?: string
+          year: number
+        }
+        Update: {
+          doc_type?: string
+          last_number?: number
+          organization_id?: string
+          updated_at?: string
+          year?: number
+        }
+        Relationships: []
       }
       document_signatures: {
         Row: {
@@ -3717,34 +3800,43 @@ export type Database = {
       }
       org_contract_templates: {
         Row: {
+          archived_at: string | null
           body_html: string
           created_at: string
           id: string
+          is_active: boolean
           is_default: boolean
           name: string
           organization_id: string
           updated_at: string
           variables: Json
+          version: number
         }
         Insert: {
+          archived_at?: string | null
           body_html: string
           created_at?: string
           id?: string
+          is_active?: boolean
           is_default?: boolean
           name: string
           organization_id: string
           updated_at?: string
           variables?: Json
+          version?: number
         }
         Update: {
+          archived_at?: string | null
           body_html?: string
           created_at?: string
           id?: string
+          is_active?: boolean
           is_default?: boolean
           name?: string
           organization_id?: string
           updated_at?: string
           variables?: Json
+          version?: number
         }
         Relationships: [
           {
@@ -3806,28 +3898,43 @@ export type Database = {
       org_documents: {
         Row: {
           created_at: string
+          expires_at: string | null
           file_url: string | null
           id: string
+          issue_date: string | null
           name: string
           organization_id: string
+          reminder_sent_at: string | null
+          responsible_person: string | null
+          status: string
           type: string
           updated_at: string
         }
         Insert: {
           created_at?: string
+          expires_at?: string | null
           file_url?: string | null
           id?: string
+          issue_date?: string | null
           name: string
           organization_id: string
+          reminder_sent_at?: string | null
+          responsible_person?: string | null
+          status?: string
           type: string
           updated_at?: string
         }
         Update: {
           created_at?: string
+          expires_at?: string | null
           file_url?: string | null
           id?: string
+          issue_date?: string | null
           name?: string
           organization_id?: string
+          reminder_sent_at?: string | null
+          responsible_person?: string | null
+          status?: string
           type?: string
           updated_at?: string
         }
@@ -4013,6 +4120,68 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "org_services_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      org_signatories: {
+        Row: {
+          basis: string | null
+          created_at: string
+          created_by: string | null
+          doc_types: string[] | null
+          full_name: string
+          id: string
+          is_default: boolean
+          notes: string | null
+          organization_id: string
+          position: string | null
+          signature_url: string | null
+          stamp_url: string | null
+          updated_at: string
+          valid_from: string | null
+          valid_to: string | null
+        }
+        Insert: {
+          basis?: string | null
+          created_at?: string
+          created_by?: string | null
+          doc_types?: string[] | null
+          full_name: string
+          id?: string
+          is_default?: boolean
+          notes?: string | null
+          organization_id: string
+          position?: string | null
+          signature_url?: string | null
+          stamp_url?: string | null
+          updated_at?: string
+          valid_from?: string | null
+          valid_to?: string | null
+        }
+        Update: {
+          basis?: string | null
+          created_at?: string
+          created_by?: string | null
+          doc_types?: string[] | null
+          full_name?: string
+          id?: string
+          is_default?: boolean
+          notes?: string | null
+          organization_id?: string
+          position?: string | null
+          signature_url?: string | null
+          stamp_url?: string | null
+          updated_at?: string
+          valid_from?: string | null
+          valid_to?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "org_signatories_organization_id_fkey"
             columns: ["organization_id"]
             isOneToOne: false
             referencedRelation: "organizations"
@@ -6392,11 +6561,16 @@ export type Database = {
           organization_id: string
           passport_data: string | null
           phone: string | null
+          policy_url: string | null
+          policy_version: string | null
+          purposes: string[] | null
           signed_at: string | null
           status: string
           updated_at: string
           user_agent: string | null
           user_id: string
+          withdrawn_at: string | null
+          withdrawn_reason: string | null
         }
         Insert: {
           address?: string | null
@@ -6411,11 +6585,16 @@ export type Database = {
           organization_id: string
           passport_data?: string | null
           phone?: string | null
+          policy_url?: string | null
+          policy_version?: string | null
+          purposes?: string[] | null
           signed_at?: string | null
           status?: string
           updated_at?: string
           user_agent?: string | null
           user_id: string
+          withdrawn_at?: string | null
+          withdrawn_reason?: string | null
         }
         Update: {
           address?: string | null
@@ -6430,11 +6609,16 @@ export type Database = {
           organization_id?: string
           passport_data?: string | null
           phone?: string | null
+          policy_url?: string | null
+          policy_version?: string | null
+          purposes?: string[] | null
           signed_at?: string | null
           status?: string
           updated_at?: string
           user_agent?: string | null
           user_id?: string
+          withdrawn_at?: string | null
+          withdrawn_reason?: string | null
         }
         Relationships: [
           {
@@ -8049,6 +8233,10 @@ export type Database = {
           organization_id: string
           user_id: string
         }[]
+      }
+      next_reg_number: {
+        Args: { p_doc_type: string; p_org: string; p_year?: number }
+        Returns: number
       }
       org_finalize_signature_review: {
         Args: { p_action: string; p_message?: string; p_signature_id: string }
