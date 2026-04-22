@@ -62,7 +62,7 @@ const menuGroups: MenuGroup[] = [
   },
 ];
 
-const AVAILABLE_SECTIONS = ['overview','tasks','deals','companies','proposals','contracts','services','templates','campaigns','smtp'];
+const AVAILABLE_SECTIONS = ['overview','tasks','kanban','deals','leads','companies','proposals','contracts','services','templates','campaigns','smtp'];
 
 export function OrgSalesManager() {
   const d = useOrgDashboard();
