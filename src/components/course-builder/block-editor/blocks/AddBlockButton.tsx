@@ -174,7 +174,32 @@ export function AddBlockButton({ onAdd }: { onAdd: (type: BlockType, pendingAI?:
         <Button variant="outline" size="sm" className="rounded-lg gap-2"><Plus className="w-4 h-4" />Добавить блок</Button>
       </PopoverTrigger>
       <PopoverContent align="center" className="w-[560px] max-w-[calc(100vw-2rem)] p-4">
-        <BlockPicker onSelect={handleSelect} onCancel={() => setOpen(false)} />
+        <BlockPicker onSelect={handleSelect} />
+      </PopoverContent>
+    </Popover>
+  );
+}
+
+// Compact "+" trigger used between blocks (left of block on hover)
+export function InlineAddBlockButton({ onAdd }: { onAdd: (type: BlockType, pendingAI?: AIShortcutType) => void }) {
+  const [open, setOpen] = useState(false);
+  const handleSelect = (item: GridItem) => {
+    setOpen(false);
+    const { type, pendingAI } = resolvePick(item);
+    onAdd(type, pendingAI);
+  };
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <button
+          className="h-10 w-10 rounded-full bg-primary text-primary-foreground hover:bg-primary/90 hover:scale-110 flex items-center justify-center transition-all shadow-lg shadow-primary/30 ring-2 ring-primary/20 hover:ring-primary/40"
+          title="Добавить блок"
+        >
+          <Plus className="w-5 h-5" strokeWidth={2.5} />
+        </button>
+      </PopoverTrigger>
+      <PopoverContent align="start" side="right" collisionPadding={16} className="w-[560px] max-w-[calc(100vw-2rem)] p-4">
+        <BlockPicker onSelect={handleSelect} />
       </PopoverContent>
     </Popover>
   );
