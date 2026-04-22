@@ -3,8 +3,10 @@ import {
   Users, ClipboardList, Award, GraduationCap, FileCheck,
   FileText, Upload, BookOpen, Wrench, Building2, ScrollText,
   Lock, ArrowUpRight, FolderOpen, Receipt, Database, FileSignature, ShieldCheck, Inbox, BarChart3, Trash2,
-  PanelLeftClose, PanelLeftOpen
+  PanelLeftClose, PanelLeftOpen, Briefcase, Send
 } from "lucide-react";
+import { OrgProposalsManager } from "@/components/organization/sales/OrgProposalsManager";
+import { OrgContractsManager } from "@/components/organization/sales/OrgContractsManager";
 import { JournalsManager } from "@/components/organization/JournalsManager";
 import { FRDOManager } from "@/components/organization/FRDOManager";
 import { Button } from "@/components/ui/button";
@@ -35,6 +37,8 @@ const NAV_ITEMS: { value: DocumentSubTab; label: string; icon: React.ElementType
   { value: "certificates", label: "Удостоверения", icon: Award, iconColor: "text-emerald-500", group: "docs" },
   { value: "diplomas", label: "Дипломы", icon: GraduationCap, iconColor: "text-blue-500", group: "docs" },
   { value: "testimonials", label: "Свидетельства", icon: FileCheck, iconColor: "text-rose-500", group: "docs" },
+  { value: "proposals", label: "Коммерч. предложения", icon: Send, iconColor: "text-fuchsia-500", group: "commerce" },
+  { value: "sales_contracts", label: "Договоры (продажи)", icon: Briefcase, iconColor: "text-indigo-500", group: "commerce" },
   { value: "programs", label: "Программы", icon: BookOpen, group: "tools" },
   { value: "journals", label: "Журналы", icon: ClipboardList, iconColor: "text-amber-500", group: "tools" },
   { value: "frdo", label: "ФИС ФРДО", icon: Database, iconColor: "text-violet-500", group: "tools" },
@@ -62,6 +66,8 @@ const SECTION_DESCRIPTIONS: Partial<Record<DocumentSubTab, string>> = {
   pd_requests: "Запросы субъектов ПД по 152-ФЗ — отзыв согласия, удаление, копия данных. Срок ответа 30 дней.",
   incoming: "Сканы подписанных контрагентом экземпляров — для двустороннего документооборота",
   recycle_bin: "Удалённые документы хранятся 30 дней. Восстановление возвращает их в исходный раздел.",
+  proposals: "Коммерческие предложения (КП) — артефакты воронки продаж. Активная работа с лидами — в разделе «Продажи».",
+  sales_contracts: "Договоры из CRM-воронки. Версионирование, статусы, share-ссылки. Подписания — в разделе «Подписания».",
 };
 
 interface DocumentsTabProps {
@@ -80,6 +86,18 @@ export const DocumentsTab = React.memo(function DocumentsTab({ organizationId, o
   useEffect(() => {
     try { localStorage.setItem("documents.sidebar.collapsed", sidebarCollapsed ? "1" : "0"); } catch {}
   }, [sidebarCollapsed]);
+
+  // Deep-link from Sales: pick up requested sub-tab and clear the marker
+  useEffect(() => {
+    try {
+      const dl = localStorage.getItem("documents.deepLink");
+      if (dl === "proposals" || dl === "sales_contracts") {
+        h.setActiveTab(dl as DocumentSubTab);
+        localStorage.removeItem("documents.deepLink");
+      }
+    } catch {}
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   if (!organizationId) {
     return <div className="text-center py-12 text-muted-foreground">Организация не найдена</div>;
@@ -125,7 +143,7 @@ export const DocumentsTab = React.memo(function DocumentsTab({ organizationId, o
                 const Icon = item.icon;
                 const isActive = h.activeTab === item.value;
                 const showDivider = item.group && item.group !== lastGroup && idx > 0;
-                const groupLabel = item.group === "docs" && lastGroup !== "docs" ? "Документооборот" : item.group === "tools" && lastGroup !== "tools" ? "Инструменты" : null;
+                const groupLabel = item.group === "docs" && lastGroup !== "docs" ? "Документооборот" : item.group === "commerce" && lastGroup !== "commerce" ? "Коммерческие" : item.group === "tools" && lastGroup !== "tools" ? "Инструменты" : null;
                 lastGroup = item.group || "";
                 return (
                   <React.Fragment key={item.value}>
@@ -232,6 +250,8 @@ export const DocumentsTab = React.memo(function DocumentsTab({ organizationId, o
             {h.activeTab === "pd_requests" && <DataSubjectRequestsManager organizationId={organizationId} />}
             {h.activeTab === "incoming" && <IncomingDocumentsManager organizationId={organizationId} />}
             {h.activeTab === "recycle_bin" && <RecycleBinManager organizationId={organizationId} />}
+            {h.activeTab === "proposals" && <OrgProposalsManager organizationId={organizationId} />}
+            {h.activeTab === "sales_contracts" && <OrgContractsManager organizationId={organizationId} />}
             {h.activeTab === "counterparties" && (
               <CounterpartiesSection
                 organizationId={organizationId}

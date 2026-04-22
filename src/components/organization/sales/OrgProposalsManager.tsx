@@ -15,6 +15,7 @@ import { useOrgSmtp } from "@/hooks/useOrgSmtp";
 import { CreateContractDialog } from "./CreateContractDialog";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
+import { toast } from "sonner";
 
 const STATUS: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
   draft: { label: "Черновик", variant: "secondary" },
@@ -26,7 +27,7 @@ const STATUS: Record<string, { label: string; variant: "default" | "secondary" |
 
 interface Props {
   organizationId: string;
-  onGoToSmtp: () => void;
+  onGoToSmtp?: () => void;
 }
 
 export function OrgProposalsManager({ organizationId, onGoToSmtp }: Props) {
@@ -67,7 +68,8 @@ export function OrgProposalsManager({ organizationId, onGoToSmtp }: Props) {
 
   const openSend = (p: OrgProposal) => {
     if (!smtp) {
-      onGoToSmtp();
+      if (onGoToSmtp) onGoToSmtp();
+      else toast.error("SMTP не настроен. Откройте раздел «Продажи → SMTP», чтобы настроить отправку.");
       return;
     }
     setSendDialog({
