@@ -4,8 +4,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Plus, Trash2, UserCog, Shield, Eye, Briefcase, Mail } from "lucide-react";
 import { toast } from "sonner";
-import { StaffInvitationDialog } from "@/components/staff/StaffInvitationDialog";
+import { StaffInvitationDialog, type StaffInvitationRole } from "@/components/staff/StaffInvitationDialog";
 import { RoleAuditLog } from "@/components/staff/RoleAuditLog";
+import { AdminPermissionMatrix } from "@/components/staff/PermissionMatrix";
 import {
   Dialog,
   DialogContent,
@@ -257,11 +258,39 @@ export function AdminStaffTab() {
         </Table>
       </div>
 
+      {/* Permissions matrix */}
+      <div className="space-y-3">
+        <div>
+          <h3 className="text-base font-bold">Что может каждая роль</h3>
+          <p className="text-sm text-muted-foreground">
+            Доступ к разделам админ-панели по ролям. Изменения вступают в силу сразу после смены роли.
+          </p>
+        </div>
+        <AdminPermissionMatrix />
+      </div>
+
+      {/* Audit log */}
+      <RoleAuditLog scope="admin" limit={30} />
+
+      {/* Invitation dialog */}
+      <StaffInvitationDialog
+        open={showInviteDialog}
+        onOpenChange={setShowInviteDialog}
+        roles={Object.entries(ROLE_CONFIG).map(([value, c]) => ({
+          value,
+          label: c.label,
+          description: c.description,
+        })) as StaffInvitationRole[]}
+        defaultRole="viewer"
+        invitationType="admin"
+        onInvited={fetchStaff}
+      />
+
       {/* Add dialog */}
       <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Добавить сотрудника</DialogTitle>
+            <DialogTitle>Добавить существующего пользователя</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-2">
             <div>
@@ -271,6 +300,9 @@ export function AdminStaffTab() {
             <div>
               <label className="text-sm font-medium mb-1.5 block">Email</label>
               <Input value={newEmail} onChange={e => setNewEmail(e.target.value)} placeholder="user@example.com" type="email" />
+              <p className="text-xs text-muted-foreground mt-1">
+                Пользователь должен быть уже зарегистрирован. Иначе используйте «Пригласить».
+              </p>
             </div>
             <div>
               <label className="text-sm font-medium mb-1.5 block">Роль</label>
