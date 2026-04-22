@@ -26,7 +26,7 @@ const STATUS: Record<string, { label: string; variant: "default" | "secondary" |
 
 interface Props {
   organizationId: string;
-  onGoToSmtp: () => void;
+  onGoToSmtp?: () => void;
 }
 
 export function OrgProposalsManager({ organizationId, onGoToSmtp }: Props) {
