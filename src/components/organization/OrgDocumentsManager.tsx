@@ -154,6 +154,19 @@ function OverviewContent({ h }: { h: ReturnType<typeof useOrgDocumentsManager> }
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input placeholder="Поиск документов..." value={h.searchQuery} onChange={(e) => h.setSearchQuery(e.target.value)} className="pl-10 rounded-xl" />
         </div>
+        <div className="flex gap-1 flex-wrap">
+          {(["all", "active", "expiring", "expired", "archived"] as const).map((f) => (
+            <Button
+              key={f}
+              size="sm"
+              variant={h.expiryFilter === f ? "default" : "outline"}
+              className="rounded-xl"
+              onClick={() => h.setExpiryFilter(f)}
+            >
+              {f === "all" ? "Все" : f === "active" ? "Действующие" : f === "expiring" ? "Истекают" : f === "expired" ? "Просрочены" : "Архив"}
+            </Button>
+          ))}
+        </div>
         <Button variant="outline" className="rounded-xl gap-2" onClick={() => h.setShowOrderDialog(true)}>
           <ShoppingCart className="w-4 h-4" />
           Заказать документы
