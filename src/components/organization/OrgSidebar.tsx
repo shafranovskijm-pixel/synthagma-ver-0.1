@@ -533,15 +533,28 @@ export function OrgSidebar() {
           <Tooltip>
             <TooltipTrigger asChild>
               <button
-                onClick={() => handleTabClick("whats-new" as TabType)}
+                onClick={() => {
+                  try { localStorage.setItem("whats-new-last-seen", String(Date.now())); } catch {}
+                  handleTabClick("whats-new" as TabType);
+                }}
                 className={cn(
-                  "rounded-lg text-foreground/60 hover:text-primary hover:bg-primary/10 transition-colors",
+                  "relative rounded-lg text-foreground/60 hover:text-primary hover:bg-primary/10 transition-colors",
                   expanded ? "flex items-center gap-3 px-2.5 h-9 w-full text-left" : "flex h-9 w-9 items-center justify-center"
                 )}
                 aria-label="Что нового"
               >
                 <Star className="h-[18px] w-[18px] shrink-0" />
-                {expanded && <span className="text-[13px] font-medium">Что нового</span>}
+                {expanded && <span className="text-[13px] font-medium flex-1">Что нового</span>}
+                {newIndicators.whatsNew > 0 && (
+                  <span
+                    className={cn(
+                      "rounded-full ring-2 ring-card animate-pulse",
+                      expanded ? "w-2 h-2" : "absolute top-1.5 right-1.5 w-2 h-2"
+                    )}
+                    style={{ backgroundColor: "hsl(var(--warning))" }}
+                    aria-label="Есть новое"
+                  />
+                )}
               </button>
             </TooltipTrigger>
             {!expanded && <TooltipContent side="right" className="z-[100]">Что нового</TooltipContent>}
