@@ -118,7 +118,45 @@ export function RecycleBinManager({ organizationId }: Props) {
                 Восстановить ({selectedItems.length})
               </Button>
             )}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button size="sm" variant="outline" className="gap-1.5" disabled={purging || items.length === 0}>
+                  <Trash2 className="w-3.5 h-3.5" />
+                  Очистить старее
+                  <ChevronDown className="w-3.5 h-3.5 opacity-60" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuLabel className="text-xs">Удалить окончательно документы</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={() => setConfirmDays(7)}>Старее 7 дней</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setConfirmDays(14)}>Старее 14 дней</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setConfirmDays(30)}>Старее 30 дней</DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
+
+          <AlertDialog open={confirmDays !== null} onOpenChange={(v) => !v && setConfirmDays(null)}>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Удалить окончательно документы старее {confirmDays} дн.?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Будут безвозвратно удалены все документы из вашей корзины, попавшие туда более {confirmDays} дней назад. Восстановить их будет невозможно.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel disabled={purging}>Отмена</AlertDialogCancel>
+                <AlertDialogAction
+                  disabled={purging}
+                  onClick={(e) => { e.preventDefault(); if (confirmDays !== null) purgeOlderThan(confirmDays); }}
+                  className="bg-destructive hover:bg-destructive/90"
+                >
+                  {purging ? "Удаление..." : "Удалить навсегда"}
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+
 
           {filtered.length === 0 ? (
             items.length === 0 ? (
