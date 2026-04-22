@@ -67,6 +67,7 @@ export function OrgSalesManager() {
   const { settings: smtp } = useOrgSmtp(organizationId);
 
   const [taskPrefill, setTaskPrefill] = useState<{ name: string; inn?: string | null } | null>(null);
+  const [dealSelectedInn, setDealSelectedInn] = useState<string | null>(null);
   const [activityDialog, setActivityDialog] = useState<{
     open: boolean; type: 'call' | 'note'; company: { name: string; inn: string } | null;
   }>({ open: false, type: 'call', company: null });
@@ -142,7 +143,8 @@ export function OrgSalesManager() {
             <SalesOverview
               organizationId={organizationId}
               availableSections={AVAILABLE_SECTIONS}
-              onJump={(t) => {
+              onJump={(t, inn) => {
+                if (inn) setDealSelectedInn(inn);
                 if (AVAILABLE_SECTIONS.includes(t)) setSection(t);
                 else setSection('deals');
               }}
@@ -165,6 +167,7 @@ export function OrgSalesManager() {
               onAddNote={openActivity('note')}
               onAddTask={(c) => { setTaskPrefill(c); setSection('tasks'); }}
               communicationRefreshKey={commRefresh}
+              initialSelectedInn={dealSelectedInn}
             />
           )}
           {section === 'companies' && <CompaniesUnified organizationId={organizationId} hideColdBase />}
