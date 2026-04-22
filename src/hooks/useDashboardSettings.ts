@@ -26,7 +26,7 @@ interface MenuSettings {
   courseFolderMode?: 'folders' | 'flat';
 }
 
-const defaultMenuSettings: MenuSettings = {
+export const defaultMenuSettings: MenuSettings = {
   showStats: false,
   showLinks: false,
   showDocuments: false,
