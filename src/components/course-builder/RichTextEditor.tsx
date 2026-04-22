@@ -47,7 +47,10 @@ export function RichTextEditor({
   onConvertBlockType, canConvert, canStyle, currentBlock, presets, onPresetsChange,
 }: RichTextEditorProps) {
   const editorRef = useRef<HTMLDivElement>(null);
+  const toolbarRef = useRef<HTMLDivElement>(null);
   const [showToolbar, setShowToolbar] = useState(false);
+  // left here is the desired CENTER of the toolbar relative to the editor.
+  // The clamp logic in the effect below adjusts it so the toolbar stays fully visible in the viewport.
   const [toolbarPos, setToolbarPos] = useState({ top: 0, left: 0 });
   const [styleMenuOpen, setStyleMenuOpen] = useState(false);
   const [listMenuOpen, setListMenuOpen] = useState(false);
