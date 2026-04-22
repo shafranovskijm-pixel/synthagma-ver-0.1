@@ -2,7 +2,7 @@ import React from "react";
 import {
   Users, ClipboardList, Award, GraduationCap, FileCheck,
   FileText, Upload, BookOpen, Wrench, Building2, ScrollText,
-  Lock, ArrowUpRight, FolderOpen, Receipt, Database, FileSignature, ShieldCheck, Inbox
+  Lock, ArrowUpRight, FolderOpen, Receipt, Database, FileSignature, ShieldCheck, Inbox, BarChart3, Trash2
 } from "lucide-react";
 import { JournalsManager } from "@/components/organization/JournalsManager";
 import { FRDOManager } from "@/components/organization/FRDOManager";
@@ -15,6 +15,8 @@ import { ContractGenerator } from "@/components/organization/ContractGenerator";
 import { SignaturesJournal } from "@/components/signing/SignaturesJournal";
 import { DataSubjectRequestsManager } from "@/components/organization/DataSubjectRequestsManager";
 import { IncomingDocumentsManager } from "@/components/organization/IncomingDocumentsManager";
+import { DocumentsKpiDashboard } from "@/components/organization/DocumentsKpiDashboard";
+import { RecycleBinManager } from "@/components/organization/RecycleBinManager";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -24,6 +26,7 @@ import { ConstructorSection } from "./documents/ConstructorSection";
 import { DocumentDialogs } from "./documents/DocumentDialogs";
 
 const NAV_ITEMS: { value: DocumentSubTab; label: string; icon: React.ElementType; ordersOnly?: boolean; iconColor?: string; group?: string }[] = [
+  { value: "kpi", label: "Сводка / KPI", icon: BarChart3, iconColor: "text-primary", group: "platform" },
   { value: "counterparties", label: "Контрагенты", icon: Building2, group: "platform" },
   { value: "incoming", label: "Входящие", icon: Inbox, iconColor: "text-cyan-500", group: "platform" },
   { value: "orders", label: "Приказы", icon: ScrollText, ordersOnly: true, iconColor: "text-amber-500", group: "docs" },
@@ -38,9 +41,11 @@ const NAV_ITEMS: { value: DocumentSubTab; label: string; icon: React.ElementType
   { value: "org", label: "Документы орг.", icon: FileText, iconColor: "text-primary/70", group: "tools" },
   { value: "signatures", label: "Подписания", icon: FileSignature, iconColor: "text-indigo-500", group: "tools" },
   { value: "pd_requests", label: "Запросы ПД", icon: ShieldCheck, iconColor: "text-emerald-500", group: "tools" },
+  { value: "recycle_bin", label: "Корзина", icon: Trash2, iconColor: "text-muted-foreground", group: "tools" },
 ];
 
 const SECTION_DESCRIPTIONS: Partial<Record<DocumentSubTab, string>> = {
+  kpi: "Ключевые метрики документооборота: подписания, выдачи, конверсии, истекающие сроки",
   constructor: "Настройте шаблоны документов — реквизиты, печать и подпись будут автоматически подставляться",
   org: "Загрузите обязательные документы организации по 273-ФЗ",
   orders: "Сгенерированные приказы о зачислении и отчислении",
@@ -55,6 +60,7 @@ const SECTION_DESCRIPTIONS: Partial<Record<DocumentSubTab, string>> = {
   signatures: "Журнал отправленных на подписание документов и доказательства подписей",
   pd_requests: "Запросы субъектов ПД по 152-ФЗ — отзыв согласия, удаление, копия данных. Срок ответа 30 дней.",
   incoming: "Сканы подписанных контрагентом экземпляров — для двустороннего документооборота",
+  recycle_bin: "Удалённые документы хранятся 30 дней. Восстановление возвращает их в исходный раздел.",
 };
 
 interface DocumentsTabProps {
@@ -146,6 +152,7 @@ export const DocumentsTab = React.memo(function DocumentsTab({ organizationId, o
           </div>
 
           <div className="p-4 lg:p-6">
+            {h.activeTab === "kpi" && <DocumentsKpiDashboard organizationId={organizationId} />}
             {h.activeTab === "constructor" && (
               <ConstructorSection
                 organizationId={organizationId}
@@ -173,6 +180,7 @@ export const DocumentsTab = React.memo(function DocumentsTab({ organizationId, o
             {h.activeTab === "signatures" && <SignaturesJournal organizationId={organizationId} />}
             {h.activeTab === "pd_requests" && <DataSubjectRequestsManager organizationId={organizationId} />}
             {h.activeTab === "incoming" && <IncomingDocumentsManager organizationId={organizationId} />}
+            {h.activeTab === "recycle_bin" && <RecycleBinManager organizationId={organizationId} />}
             {h.activeTab === "counterparties" && (
               <CounterpartiesSection
                 organizationId={organizationId}

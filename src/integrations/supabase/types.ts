@@ -881,6 +881,8 @@ export type Database = {
           created_at: string
           created_by: string
           custom_note: string | null
+          deleted_at: string | null
+          deleted_by: string | null
           discount_percent: number | null
           id: string
           last_sent_at: string | null
@@ -907,6 +909,8 @@ export type Database = {
           created_at?: string
           created_by: string
           custom_note?: string | null
+          deleted_at?: string | null
+          deleted_by?: string | null
           discount_percent?: number | null
           id?: string
           last_sent_at?: string | null
@@ -933,6 +937,8 @@ export type Database = {
           created_at?: string
           created_by?: string
           custom_note?: string | null
+          deleted_at?: string | null
+          deleted_by?: string | null
           discount_percent?: number | null
           id?: string
           last_sent_at?: string | null
@@ -1045,6 +1051,8 @@ export type Database = {
           contract_date: string | null
           contract_number: string | null
           course_id: string | null
+          deleted_at: string | null
+          deleted_by: string | null
           file_path: string | null
           file_size: number | null
           file_url: string | null
@@ -1063,6 +1071,8 @@ export type Database = {
           contract_date?: string | null
           contract_number?: string | null
           course_id?: string | null
+          deleted_at?: string | null
+          deleted_by?: string | null
           file_path?: string | null
           file_size?: number | null
           file_url?: string | null
@@ -1081,6 +1091,8 @@ export type Database = {
           contract_date?: string | null
           contract_number?: string | null
           course_id?: string | null
+          deleted_at?: string | null
+          deleted_by?: string | null
           file_path?: string | null
           file_size?: number | null
           file_url?: string | null
@@ -1887,6 +1899,8 @@ export type Database = {
           attachment_urls: string[] | null
           contact_email: string | null
           created_at: string
+          deleted_at: string | null
+          deleted_by: string | null
           description: string | null
           due_date: string | null
           id: string
@@ -1903,6 +1917,8 @@ export type Database = {
           attachment_urls?: string[] | null
           contact_email?: string | null
           created_at?: string
+          deleted_at?: string | null
+          deleted_by?: string | null
           description?: string | null
           due_date?: string | null
           id?: string
@@ -1919,6 +1935,8 @@ export type Database = {
           attachment_urls?: string[] | null
           contact_email?: string | null
           created_at?: string
+          deleted_at?: string | null
+          deleted_by?: string | null
           description?: string | null
           due_date?: string | null
           id?: string
@@ -1944,6 +1962,8 @@ export type Database = {
       document_issuance_log: {
         Row: {
           created_at: string
+          deleted_at: string | null
+          deleted_by: string | null
           document_name: string
           document_type: string
           enrollment_id: string | null
@@ -1959,6 +1979,8 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          deleted_at?: string | null
+          deleted_by?: string | null
           document_name: string
           document_type: string
           enrollment_id?: string | null
@@ -1974,6 +1996,8 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          deleted_at?: string | null
+          deleted_by?: string | null
           document_name?: string
           document_type?: string
           enrollment_id?: string | null
@@ -2032,6 +2056,8 @@ export type Database = {
         Row: {
           created_at: string
           current_revision_id: string | null
+          deleted_at: string | null
+          deleted_by: string | null
           document_hash: string | null
           document_html: string | null
           document_id: string | null
@@ -2076,6 +2102,8 @@ export type Database = {
         Insert: {
           created_at?: string
           current_revision_id?: string | null
+          deleted_at?: string | null
+          deleted_by?: string | null
           document_hash?: string | null
           document_html?: string | null
           document_id?: string | null
@@ -2120,6 +2148,8 @@ export type Database = {
         Update: {
           created_at?: string
           current_revision_id?: string | null
+          deleted_at?: string | null
+          deleted_by?: string | null
           document_hash?: string | null
           document_html?: string | null
           document_id?: string | null
@@ -2196,6 +2226,8 @@ export type Database = {
         Row: {
           birth_date: string | null
           created_at: string
+          deleted_at: string | null
+          deleted_by: string | null
           delivery_details: string | null
           delivery_method: string
           document_number: string
@@ -2221,6 +2253,8 @@ export type Database = {
         Insert: {
           birth_date?: string | null
           created_at?: string
+          deleted_at?: string | null
+          deleted_by?: string | null
           delivery_details?: string | null
           delivery_method?: string
           document_number: string
@@ -2246,6 +2280,8 @@ export type Database = {
         Update: {
           birth_date?: string | null
           created_at?: string
+          deleted_at?: string | null
+          deleted_by?: string | null
           delivery_details?: string | null
           delivery_method?: string
           document_number?: string
@@ -2844,6 +2880,8 @@ export type Database = {
           counterparty_inn: string | null
           counterparty_name: string | null
           created_at: string
+          deleted_at: string | null
+          deleted_by: string | null
           doc_date: string | null
           doc_number: string | null
           doc_type: string
@@ -2864,6 +2902,8 @@ export type Database = {
           counterparty_inn?: string | null
           counterparty_name?: string | null
           created_at?: string
+          deleted_at?: string | null
+          deleted_by?: string | null
           doc_date?: string | null
           doc_number?: string | null
           doc_type?: string
@@ -2884,6 +2924,8 @@ export type Database = {
           counterparty_inn?: string | null
           counterparty_name?: string | null
           created_at?: string
+          deleted_at?: string | null
+          deleted_by?: string | null
           doc_date?: string | null
           doc_number?: string | null
           doc_type?: string
@@ -4057,6 +4099,8 @@ export type Database = {
       org_documents: {
         Row: {
           created_at: string
+          deleted_at: string | null
+          deleted_by: string | null
           expires_at: string | null
           file_url: string | null
           id: string
@@ -4071,6 +4115,8 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          deleted_at?: string | null
+          deleted_by?: string | null
           expires_at?: string | null
           file_url?: string | null
           id?: string
@@ -4085,6 +4131,8 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          deleted_at?: string | null
+          deleted_by?: string | null
           expires_at?: string | null
           file_url?: string | null
           id?: string
@@ -8430,6 +8478,7 @@ export type Database = {
           used_count: number
         }[]
       }
+      purge_recycle_bin_30d: { Args: never; Returns: number }
       recalc_enrollment_time: {
         Args: { p_enrollment_id: string }
         Returns: undefined
@@ -8442,6 +8491,10 @@ export type Database = {
         Args: { p_summary?: string; p_token: string }
         Returns: undefined
       }
+      restore_document: {
+        Args: { p_id: string; p_table: string }
+        Returns: boolean
+      }
       sender_countersign: {
         Args: { p_ip?: string; p_signature_id: string; p_user_agent?: string }
         Returns: undefined
@@ -8453,6 +8506,10 @@ export type Database = {
           p_resolution_status: string
         }
         Returns: undefined
+      }
+      soft_delete_document: {
+        Args: { p_id: string; p_table: string }
+        Returns: boolean
       }
       track_user_visit: { Args: { p_user_id: string }; Returns: undefined }
       update_signature_revision_html: {
