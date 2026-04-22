@@ -3,9 +3,10 @@ import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
-import { Search, Building2, FileText, ScrollText, PenTool, Receipt, CheckCircle2, Clock, XCircle, ArrowRight, Sparkles, Activity, LayoutGrid, Columns3 } from 'lucide-react';
+import { Search, Building2, FileText, ScrollText, PenTool, Receipt, CheckCircle2, Clock, XCircle, ArrowRight, Sparkles, Activity, LayoutGrid, Columns3, List } from 'lucide-react';
 import { format } from 'date-fns';
 import { ru } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
@@ -14,6 +15,12 @@ import { CompanyTimeline } from './CompanyTimeline';
 import { DealQuickActions } from './DealQuickActions';
 import { DealCommunication } from './DealCommunication';
 import { SalesKanban } from './SalesKanban';
+
+interface CompanyContact {
+  phone?: string | null;
+  email?: string | null;
+  website?: string | null;
+}
 
 interface DealCompany {
   inn: string;
@@ -66,10 +73,24 @@ export function Deals360() {
   const [search, setSearch] = useState('');
   const [selectedInn, setSelectedInn] = useState<string | null>(null);
   const [view, setView] = useState<'list' | 'kanban'>('list');
+  const [contactsByInn, setContactsByInn] = useState<Record<string, CompanyContact>>({});
 
   useEffect(() => {
     void loadDeals();
+    void loadContacts();
   }, []);
+
+  async function loadContacts() {
+    const { data } = await supabase
+      .from('sales_companies_db')
+      .select('inn, phone, email, website')
+      .limit(2000);
+    const map: Record<string, CompanyContact> = {};
+    (data || []).forEach((r: any) => {
+      if (r.inn) map[r.inn] = { phone: r.phone, email: r.email, website: r.website };
+    });
+    setContactsByInn(map);
+  }
 
   async function loadDeals() {
     setLoading(true);
@@ -156,15 +177,32 @@ export function Deals360() {
 
   return (
     <div className="space-y-4">
-      <div>
-        <h2 className="text-xl font-semibold flex items-center gap-2">
-          <Sparkles className="w-5 h-5 text-primary" />
-          Сделки 360°
-        </h2>
-        <p className="text-sm text-muted-foreground">Полная картина по каждой компании: КП → Договоры → Подписи → Счета</p>
+      <div className="flex items-start justify-between gap-3 flex-wrap">
+        <div>
+          <h2 className="text-xl font-semibold flex items-center gap-2">
+            <Sparkles className="w-5 h-5 text-primary" />
+            Сделки 360°
+          </h2>
+          <p className="text-sm text-muted-foreground">Полная картина по каждой компании: КП → Договоры → Подписи → Счета</p>
+        </div>
+        <div className="inline-flex rounded-xl border bg-muted/30 p-1">
+          <Button size="sm" variant={view === 'list' ? 'default' : 'ghost'}
+            onClick={() => setView('list')}
+            className="h-8 rounded-lg gap-1.5">
+            <List className="w-3.5 h-3.5" /> Список
+          </Button>
+          <Button size="sm" variant={view === 'kanban' ? 'default' : 'ghost'}
+            onClick={() => setView('kanban')}
+            className="h-8 rounded-lg gap-1.5">
+            <Columns3 className="w-3.5 h-3.5" /> Канбан
+          </Button>
+        </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-[340px_1fr] gap-4">
+      {view === 'kanban' ? (
+        <SalesKanban onSelectCompany={(inn) => { setView('list'); setSelectedInn(inn); }} />
+      ) : (
+      <div className="grid grid-cols-1 lg:grid-cols-[300px_minmax(0,1fr)_320px] gap-4">
         {/* Список компаний */}
         <Card className="rounded-2xl">
           <CardContent className="p-3 space-y-3">
@@ -342,7 +380,23 @@ export function Deals360() {
             )}
           </CardContent>
         </Card>
+
+        {/* Правая панель: контакты + быстрые действия + история */}
+        {selected ? (
+          <div className="space-y-4">
+            <DealQuickActions
+              companyName={selected.name}
+              inn={selected.inn}
+              contact={contactsByInn[selected.inn]}
+            />
+            <DealCommunication
+              inn={selected.inn}
+              companyName={selected.name}
+            />
+          </div>
+        ) : <div />}
       </div>
+      )}
     </div>
   );
 }
