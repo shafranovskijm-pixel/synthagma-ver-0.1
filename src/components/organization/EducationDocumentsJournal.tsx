@@ -24,17 +24,20 @@ import { printHtmlContent } from "@/utils/printHtmlToPdf";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 import { DocumentFormDialog } from "./education-documents/DocumentFormDialog";
 import { SelectStudentsDialog } from "./education-documents/SelectStudentsDialog";
+import { FrdoReadinessBanner } from "./FrdoReadinessBanner";
 
 interface EducationDocumentsJournalProps {
   organizationId: string;
   onClose: () => void;
   documentTypeFilter?: "certificate" | "diploma" | "qualification";
+  onOpenFrdoTab?: () => void;
 }
 
 export function EducationDocumentsJournal({
   organizationId,
   onClose,
-  documentTypeFilter }: EducationDocumentsJournalProps) {
+  documentTypeFilter,
+  onOpenFrdoTab }: EducationDocumentsJournalProps) {
   const {
     loading, saving, searchQuery, setSearchQuery,
     selectedDocType, setSelectedDocType, selectedStatus, setSelectedStatus,
