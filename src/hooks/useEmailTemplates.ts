@@ -98,6 +98,21 @@ export function useEmailTemplates(scope: "platform" | "org", organizationId: str
     });
   }, [upsert]);
 
+  const cloneFromPlatform = useCallback(async (platformTemplate: EmailTemplate) => {
+    if (scope !== "org" || !organizationId) {
+      toast.error("Клонирование доступно только для организации");
+      return null;
+    }
+    return upsert({
+      name: platformTemplate.name,
+      subject: platformTemplate.subject,
+      html_body: platformTemplate.html_body,
+      category: platformTemplate.category,
+      variables: platformTemplate.variables,
+      is_default: false,
+    });
+  }, [scope, organizationId, upsert]);
+
   const sendTest = useCallback(async (templateId: string, toEmail: string) => {
     const { data, error } = await supabase.functions.invoke("send-test-email", {
       body: {
