@@ -111,6 +111,52 @@ export function CampaignEditor({ open, onClose, scope, organizationId, onCreated
     }
   }, [open, initial]);
 
+  // Restore draft from localStorage when dialog opens (only if no initial data)
+  useEffect(() => {
+    if (!open || initial || draftRestored) return;
+    try {
+      const raw = localStorage.getItem(DRAFT_KEY);
+      if (!raw) return;
+      const draft: DraftData = JSON.parse(raw);
+      // Match scope/org and not older than 7 days
+      if (
+        draft.scope !== scope ||
+        draft.organizationId !== organizationId ||
+        Date.now() - draft.savedAt > 7 * 24 * 60 * 60 * 1000
+      ) return;
+      // Only restore if there's meaningful content
+      if (!draft.name && !draft.subject && draft.html === DEFAULT_HTML) return;
+      setName(draft.name || "");
+      setSubject(draft.subject || "");
+      setHtml(draft.html || DEFAULT_HTML);
+      setFromName(draft.fromName || "");
+      setReplyTo(draft.replyTo || "");
+      if (draft.scheduledDate) {
+        setScheduleEnabled(true);
+        setScheduledDate(draft.scheduledDate);
+        setScheduledTime(draft.scheduledTime || "");
+      }
+      setDraftRestored(true);
+      toast.info("Восстановлен черновик кампании");
+    } catch { /* ignore */ }
+  }, [open, initial, scope, organizationId, draftRestored]);
+
+  // Auto-save draft to localStorage (debounced)
+  useEffect(() => {
+    if (!open) return;
+    const t = setTimeout(() => {
+      try {
+        const draft: DraftData = {
+          name, subject, html, fromName, replyTo,
+          scheduledDate, scheduledTime,
+          scope, organizationId, savedAt: Date.now(),
+        };
+        localStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
+      } catch { /* ignore quota */ }
+    }, 800);
+    return () => clearTimeout(t);
+  }, [open, name, subject, html, fromName, replyTo, scheduledDate, scheduledTime, scope, organizationId]);
+
   // Load existing webinars when "existing" mode chosen
   useEffect(() => {
     if (meetingMode !== "existing") return;
