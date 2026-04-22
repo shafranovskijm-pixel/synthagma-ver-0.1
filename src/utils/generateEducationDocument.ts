@@ -57,6 +57,20 @@ function stampSignatureHtml(org: OrgDataForDocument): string {
   return parts.join("");
 }
 
+function buildVerifyUrl(regNumber: string): string {
+  const base =
+    typeof window !== "undefined" && window.location?.origin
+      ? window.location.origin
+      : "https://синтагма.рф";
+  return `${base}/verify/${encodeURIComponent(regNumber)}`;
+}
+
+// Builds a Google Chart QR image URL — works without bundling a QR library inside
+// the printed/exported HTML and renders reliably in PDF.
+function qrImageUrl(text: string, size = 110): string {
+  return `https://api.qrserver.com/v1/create-qr-code/?size=${size}x${size}&data=${encodeURIComponent(text)}`;
+}
+
 export function generateEducationDocumentHtml(
   record: EducationDocumentRecord,
   org: OrgDataForDocument,
@@ -68,6 +82,7 @@ export function generateEducationDocumentHtml(
   const directorName = org.director_name || "____________________";
   const directorPosition = org.director_position || "Руководитель";
   const orgCity = org.city || "г. Москва";
+  const verifyUrl = buildVerifyUrl(record.reg_number);
 
   const qualificationBlock =
     record.document_type !== "certificate" && record.qualification_name
@@ -239,11 +254,13 @@ export function generateEducationDocumentHtml(
         <div class="signature-label">${directorName}</div>
       </div>
       <div class="stamp-area">
-        М.П.
+        <img src="${qrImageUrl(verifyUrl)}" style="width:90px;height:90px;display:block;margin:0 auto 4px;" alt="QR" />
+        <div style="font-size:10px;color:#666;">Проверить подлинность</div>
+        <div style="font-size:9px;color:#999;">синтагма.рф/verify</div>
       </div>
     </div>
     <div class="reg-line">
-      Регистрационный номер: ${record.reg_number}
+      Регистрационный номер: ${record.reg_number} · Проверить: ${verifyUrl}
     </div>
   </div>
 </div>
