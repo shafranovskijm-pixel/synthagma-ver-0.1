@@ -46,6 +46,22 @@ serve(async (req: Request) => {
       });
     }
 
+    // Идемпотентность: если кампания уже sending и started_at < 5 минут назад,
+    // не запускаем второй раннер (защита от дубль-кликов и дубль-вызовов).
+    if (campaign.status === "sending" && campaign.started_at) {
+      const startedMs = new Date(campaign.started_at).getTime();
+      if (Date.now() - startedMs < 5 * 60 * 1000) {
+        return new Response(JSON.stringify({
+          ok: true,
+          alreadyRunning: true,
+          message: "Кампания уже отправляется (идёт фоновая обработка)",
+        }), {
+          status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      // Если sending старше 5 минут — считаем зависшей, перезапускаем.
+    }
+
     // Получатели в статусе pending
     const { data: pending } = await admin
       .from("email_campaign_recipients")
