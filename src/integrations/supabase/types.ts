@@ -2471,6 +2471,7 @@ export type Database = {
           recipient_name: string | null
           sent_at: string | null
           status: string
+          subject_variant: string | null
         }
         Insert: {
           campaign_id: string
@@ -2482,6 +2483,7 @@ export type Database = {
           recipient_name?: string | null
           sent_at?: string | null
           status?: string
+          subject_variant?: string | null
         }
         Update: {
           campaign_id?: string
@@ -2493,6 +2495,7 @@ export type Database = {
           recipient_name?: string | null
           sent_at?: string | null
           status?: string
+          subject_variant?: string | null
         }
         Relationships: [
           {
@@ -2506,6 +2509,11 @@ export type Database = {
       }
       email_campaigns: {
         Row: {
+          ab_sample_percent: number
+          ab_sample_started_at: string | null
+          ab_test_enabled: boolean
+          ab_winner: string | null
+          ab_winner_picked_at: string | null
           click_count: number
           completed_at: string | null
           created_at: string
@@ -2527,6 +2535,7 @@ export type Database = {
           started_at: string | null
           status: string
           subject: string
+          subject_b: string | null
           template_id: string | null
           total_recipients: number
           unsubscribe_count: number
@@ -2535,6 +2544,11 @@ export type Database = {
           utm_enabled: boolean
         }
         Insert: {
+          ab_sample_percent?: number
+          ab_sample_started_at?: string | null
+          ab_test_enabled?: boolean
+          ab_winner?: string | null
+          ab_winner_picked_at?: string | null
           click_count?: number
           completed_at?: string | null
           created_at?: string
@@ -2556,6 +2570,7 @@ export type Database = {
           started_at?: string | null
           status?: string
           subject: string
+          subject_b?: string | null
           template_id?: string | null
           total_recipients?: number
           unsubscribe_count?: number
@@ -2564,6 +2579,11 @@ export type Database = {
           utm_enabled?: boolean
         }
         Update: {
+          ab_sample_percent?: number
+          ab_sample_started_at?: string | null
+          ab_test_enabled?: boolean
+          ab_winner?: string | null
+          ab_winner_picked_at?: string | null
           click_count?: number
           completed_at?: string | null
           created_at?: string
@@ -2585,6 +2605,7 @@ export type Database = {
           started_at?: string | null
           status?: string
           subject?: string
+          subject_b?: string | null
           template_id?: string | null
           total_recipients?: number
           unsubscribe_count?: number

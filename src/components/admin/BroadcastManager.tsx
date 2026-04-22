@@ -17,6 +17,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { CampaignsManager } from "./broadcast/CampaignsManager";
 import { EmailTemplatesManager } from "@/components/shared/sales/EmailTemplatesManager";
 import { SuppressionListManager } from "./broadcast/SuppressionListManager";
+import { DomainReputationCheck } from "./broadcast/DomainReputationCheck";
 
 interface Announcement {
   id: string;
@@ -243,6 +244,7 @@ export function BroadcastManager() {
           <TabsTrigger value="campaigns">Email-кампании</TabsTrigger>
           <TabsTrigger value="templates">Шаблоны писем</TabsTrigger>
           <TabsTrigger value="suppression">Отписавшиеся</TabsTrigger>
+          <TabsTrigger value="domain">Репутация домена</TabsTrigger>
           <TabsTrigger value="legacy">Уведомления и быстрые письма</TabsTrigger>
         </TabsList>
         <TabsContent value="campaigns" className="mt-4">
@@ -253,6 +255,9 @@ export function BroadcastManager() {
         </TabsContent>
         <TabsContent value="suppression" className="mt-4">
           <SuppressionListManager scope="platform" organizationId={null} />
+        </TabsContent>
+        <TabsContent value="domain" className="mt-4">
+          <DomainReputationCheck />
         </TabsContent>
         <TabsContent value="legacy" className="mt-4 space-y-6">
       {/* Original announcements section */}

@@ -1,9 +1,13 @@
-import { useState, useEffect } from "react";
+import { useRef, useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Upload } from "lucide-react";
+import { toast } from "sonner";
+import * as XLSX from "xlsx";
 
 export type RecipientSource = "students" | "companies" | "organizations" | "companies_db" | "manual";
 
@@ -23,6 +27,7 @@ interface Props {
 export function RecipientPicker({ scope, organizationId, value, onChange }: Props) {
   const [manualText, setManualText] = useState(value.manualEmails.join("\n"));
   const [autoCount, setAutoCount] = useState<number | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   // Recompute auto count
   useEffect(() => {
@@ -95,6 +100,38 @@ export function RecipientPicker({ scope, organizationId, value, onChange }: Prop
     ));
   };
 
+  const handleFileImport = async (file: File) => {
+    try {
+      const buf = await file.arrayBuffer();
+      const wb = XLSX.read(buf, { type: "array" });
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      if (!ws) throw new Error("Файл пустой");
+      // массив массивов, без шапки — будем искать email-подобные строки в любой колонке
+      const rows: any[][] = XLSX.utils.sheet_to_json(ws, { header: 1, defval: "" });
+      const emailRe = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      const collected: string[] = [];
+      for (const row of rows) {
+        for (const cell of row) {
+          const v = String(cell || "").trim().toLowerCase();
+          if (emailRe.test(v)) collected.push(v);
+        }
+      }
+      const unique = Array.from(new Set(collected));
+      if (unique.length === 0) {
+        toast.error("В файле не найдено валидных email-адресов");
+        return;
+      }
+      // объединяем с уже введёнными
+      const existing = parseManual(manualText);
+      const merged = Array.from(new Set([...existing, ...unique]));
+      setManualText(merged.join("\n"));
+      onChange({ ...value, manualEmails: merged, count: merged.length });
+      toast.success(`Импортировано ${unique.length} адресов (всего ${merged.length})`);
+    } catch (e: any) {
+      toast.error("Ошибка импорта: " + (e?.message || "не удалось прочитать файл"));
+    }
+  };
+
   return (
     <div className="space-y-3">
       <div>
@@ -112,7 +149,29 @@ export function RecipientPicker({ scope, organizationId, value, onChange }: Prop
 
       {value.source === "manual" ? (
         <div>
-          <Label>Email-адреса (по одному на строку, через запятую или пробел)</Label>
+          <div className="flex items-center justify-between mb-1">
+            <Label>Email-адреса (по одному на строку, через запятую или пробел)</Label>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              onClick={() => fileInputRef.current?.click()}
+              className="gap-1 h-7 text-xs"
+            >
+              <Upload className="w-3 h-3" /> Импорт из CSV/Excel
+            </Button>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".csv,.xls,.xlsx,text/csv,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+              className="hidden"
+              onChange={(e) => {
+                const f = e.target.files?.[0];
+                if (f) handleFileImport(f);
+                e.target.value = "";
+              }}
+            />
+          </div>
           <Textarea
             rows={6}
             value={manualText}
@@ -125,6 +184,7 @@ export function RecipientPicker({ scope, organizationId, value, onChange }: Prop
           />
           <p className="text-xs text-muted-foreground mt-1">
             Распознано валидных адресов: <Badge variant="secondary">{value.manualEmails.length}</Badge>
+            {" · "}Поддерживаются файлы CSV, XLS, XLSX (email ищется в любой колонке)
           </p>
         </div>
       ) : (
