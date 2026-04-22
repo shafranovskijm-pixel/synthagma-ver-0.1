@@ -17,6 +17,7 @@ import { CompaniesUnified } from '@/components/admin/sales/CompaniesUnified';
 import { LogActivityDialog } from '@/components/admin/sales/LogActivityDialog';
 import { SalesKanban } from '@/components/admin/sales/SalesKanban';
 import { LeadsManager } from '@/components/admin/sales/LeadsManager';
+import { CompetitorComparison } from '@/components/admin/sales/CompetitorComparison';
 import { useOrgSmtp } from '@/hooks/useOrgSmtp';
 
 interface MenuItem { id: string; label: string; icon: any; soon?: boolean }
