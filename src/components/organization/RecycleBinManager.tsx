@@ -17,6 +17,7 @@ import { Trash2, RotateCcw, Search, AlertTriangle, Clock, ChevronDown } from "lu
 import { format, formatDistanceToNow } from "date-fns";
 import { ru } from "date-fns/locale";
 import { LoadMoreControls } from "@/components/ui/LoadMoreControls";
+import { toast } from "sonner";
 
 interface Props {
   organizationId: string;
@@ -51,6 +52,11 @@ export function RecycleBinManager({ organizationId }: Props) {
   };
 
   const selectedItems = filtered.filter(it => selected.has(key(it)));
+
+  const daysLeft = (deletedAt: string) => {
+    const ms = new Date(deletedAt).getTime() + 30 * 24 * 60 * 60 * 1000 - Date.now();
+    return Math.max(0, Math.ceil(ms / (24 * 60 * 60 * 1000)));
+  };
 
   const purgeOlderThan = async (days: number) => {
     const cutoff = Date.now() - days * 24 * 60 * 60 * 1000;
