@@ -155,6 +155,7 @@ export function OrgSalesManager() {
               organizationId={organizationId}
               prefillCompany={taskPrefill}
               onPrefillConsumed={() => setTaskPrefill(null)}
+              onOpenDeal={(inn) => { setDealSelectedInn(inn); setSection('deals'); }}
             />
           )}
           {section === 'deals' && (

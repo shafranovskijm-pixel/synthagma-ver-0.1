@@ -8,7 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Plus, CheckCircle2, Trash2, Phone, Mail, Calendar as CalIcon, Repeat, MoreHorizontal, ListTodo } from 'lucide-react';
+import { Plus, CheckCircle2, Trash2, Phone, Mail, Calendar as CalIcon, Repeat, MoreHorizontal, ListTodo, ExternalLink } from 'lucide-react';
 import { useSalesTasks } from '@/hooks/useSalesTasks';
 import { useSalesManager } from '@/hooks/useSalesManager';
 import { format, isPast, isToday, isTomorrow, differenceInDays } from 'date-fns';
@@ -36,11 +36,18 @@ interface SalesTasksProps {
   organizationId?: string;
   prefillCompany?: { name: string; inn?: string | null } | null;
   onPrefillConsumed?: () => void;
+  onOpenDeal?: (inn: string) => void;
 }
 
-export function SalesTasks({ organizationId, prefillCompany, onPrefillConsumed }: SalesTasksProps = {}) {
+export function SalesTasks({ organizationId, prefillCompany, onPrefillConsumed, onOpenDeal }: SalesTasksProps = {}) {
   const { list, create, complete, remove } = useSalesTasks(organizationId ? { organizationId } : undefined);
   const { managers, fetchManagers, leads, fetchLeads } = useSalesManager();
+
+  // Загрузим лидов сразу — нужно для маппинга lead_id → ИНН и для кнопки «Открыть сделку»
+  useEffect(() => { fetchLeads(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  const leadById = new Map<string, { inn: string | null; org_name: string }>(
+    (leads || []).map((l: any) => [l.id, { inn: l.inn, org_name: l.org_name }])
+  );
   const [open, setOpen] = useState(false);
   const [tab, setTab] = useState<'open' | 'today' | 'overdue' | 'done'>('open');
   const [prefillTitle, setPrefillTitle] = useState<string>('');
@@ -162,6 +169,20 @@ export function SalesTasks({ organizationId, prefillCompany, onPrefillConsumed }
                               {!overdue && !today && days > 0 && <span>• через {days} дн.</span>}
                             </div>
                           </div>
+                          {onOpenDeal && t.lead_id && (() => {
+                            const lead = leadById.get(t.lead_id);
+                            const innOrName = lead?.inn || lead?.org_name;
+                            if (!innOrName) return null;
+                            return (
+                              <Button
+                                size="sm" variant="ghost"
+                                onClick={() => onOpenDeal(innOrName)}
+                                className="rounded-lg h-8" title="Открыть сделку"
+                              >
+                                <ExternalLink className="w-4 h-4 text-primary" />
+                              </Button>
+                            );
+                          })()}
                           {t.status === 'pending' && (
                             <Button size="sm" variant="ghost" onClick={() => complete.mutate(t.id)}
                               className="rounded-lg h-8" title="Выполнено">

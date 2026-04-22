@@ -126,10 +126,14 @@ export function LogActivityDialog({
       const { error } = await supabase.from('sales_lead_activities').insert(payload);
       if (error) throw error;
 
-      // last_contact_at
+      // last_contact_at + при «не интересно» — автоматически закрываем лид
+      const leadUpdate: any = { last_contact_at: new Date().toISOString() };
+      if (type === 'call' && result === 'not_interested') {
+        leadUpdate.status = 'not_interested';
+      }
       await supabase
         .from('sales_leads')
-        .update({ last_contact_at: new Date().toISOString() } as any)
+        .update(leadUpdate)
         .eq('id', leadId);
 
       // Авто-задача-напоминание
