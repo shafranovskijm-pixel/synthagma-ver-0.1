@@ -302,12 +302,14 @@ function LiveKitTopBar({
   onShare,
   onEnd,
   hasShareSettings,
+  viewOnly = false,
 }: {
   title: string | null;
   publicLink: string | null;
   onShare: () => void;
   onEnd?: () => void;
   hasShareSettings: boolean;
+  viewOnly?: boolean;
 }) {
   const participants = useParticipants();
   const [copied, setCopied] = useState(false);
