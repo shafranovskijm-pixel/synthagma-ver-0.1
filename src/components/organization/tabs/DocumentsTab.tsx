@@ -3,8 +3,10 @@ import {
   Users, ClipboardList, Award, GraduationCap, FileCheck,
   FileText, Upload, BookOpen, Wrench, Building2, ScrollText,
   Lock, ArrowUpRight, FolderOpen, Receipt, Database, FileSignature, ShieldCheck, Inbox, BarChart3, Trash2,
-  PanelLeftClose, PanelLeftOpen
+  PanelLeftClose, PanelLeftOpen, Briefcase, Send
 } from "lucide-react";
+import { OrgProposalsManager } from "@/components/organization/sales/OrgProposalsManager";
+import { OrgContractsManager } from "@/components/organization/sales/OrgContractsManager";
 import { JournalsManager } from "@/components/organization/JournalsManager";
 import { FRDOManager } from "@/components/organization/FRDOManager";
 import { Button } from "@/components/ui/button";
