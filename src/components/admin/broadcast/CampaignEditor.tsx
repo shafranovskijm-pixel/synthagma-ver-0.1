@@ -10,7 +10,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Plus, Calendar, Link as LinkIcon, Video } from "lucide-react";
+import { Plus, Calendar, Link as LinkIcon, Video, Clock, Save } from "lucide-react";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import { RecipientPicker, RecipientPickerValue } from "./RecipientPicker";
@@ -489,19 +489,49 @@ export function CampaignEditor({ open, onClose, scope, organizationId, onCreated
               </div>
             )}
 
+            {/* Scheduling */}
+            <div className="border rounded-xl p-4 bg-muted/20 space-y-3">
+              <label className="flex items-center gap-2 text-sm font-semibold cursor-pointer">
+                <Checkbox checked={scheduleEnabled} onCheckedChange={(v) => setScheduleEnabled(!!v)} />
+                <Clock className="w-4 h-4 text-primary" />
+                <span>Запланировать отправку</span>
+              </label>
+              {scheduleEnabled && (
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <Label className="text-xs">Дата</Label>
+                    <Input type="date" value={scheduledDate} onChange={(e) => setScheduledDate(e.target.value)} />
+                  </div>
+                  <div>
+                    <Label className="text-xs">Время</Label>
+                    <Input type="time" value={scheduledTime} onChange={(e) => setScheduledTime(e.target.value)} />
+                  </div>
+                  <p className="col-span-2 text-xs text-muted-foreground">
+                    Кампания будет автоматически запущена в указанное время. Локальная зона: {Intl.DateTimeFormat().resolvedOptions().timeZone}.
+                  </p>
+                </div>
+              )}
+            </div>
+
             <label className="flex items-center gap-2 text-sm">
               <Checkbox checked={consent} onCheckedChange={(v) => setConsent(!!v)} />
               <span>У меня есть согласие получателей на email-рассылки</span>
             </label>
+
+            {draftRestored && (
+              <p className="text-xs text-muted-foreground flex items-center gap-1">
+                <Save className="w-3 h-3" /> Черновик автоматически сохраняется
+              </p>
+            )}
           </div>
 
           <DialogFooter>
             <Button variant="outline" onClick={onClose} disabled={saving}>Отмена</Button>
             <Button variant="secondary" onClick={() => handleSave(false)} disabled={saving}>
-              Сохранить как черновик
+              {scheduleEnabled ? "Запланировать" : "Сохранить как черновик"}
             </Button>
-            <Button onClick={() => handleSave(true)} disabled={saving || !!tooMany || recipients.count === 0 || !consent}>
-              {saving ? "Создание..." : `Запустить (${recipients.count})`}
+            <Button onClick={() => handleSave(true)} disabled={saving || !!tooMany || recipients.count === 0 || !consent || scheduleEnabled}>
+              {saving ? "Создание..." : `Запустить сейчас (${recipients.count})`}
             </Button>
           </DialogFooter>
         </DialogContent>
