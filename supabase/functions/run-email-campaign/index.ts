@@ -136,7 +136,7 @@ serve(async (req: Request) => {
       });
 
       // Фильтр по suppression-листу
-      const scopeKey = campaign.scope === "platform" ? "platform" : (campaign.organization_id || "platform");
+      const scopeKey0 = campaign.scope === "platform" ? "platform" : (campaign.organization_id || "platform");
       let allowed = unique;
       if (unique.length > 0) {
         const emails = unique.map((r) => r.email);
@@ -144,9 +144,27 @@ serve(async (req: Request) => {
           .from("email_suppressions")
           .select("email")
           .in("email", emails)
-          .in("scope", [scopeKey, "platform"]);
+          .in("scope", [scopeKey0, "platform"]);
         const suppSet = new Set((suppRows || []).map((r: any) => String(r.email).toLowerCase()));
         allowed = unique.filter((r) => !suppSet.has(r.email));
+      }
+
+      // ============ A/B-тест: размечаем sample получателей ============
+      let abAssign: Map<string, "a" | "b"> | null = null;
+      if (campaign.ab_test_enabled && campaign.subject_b) {
+        abAssign = new Map();
+        const samplePct = Math.max(5, Math.min(50, campaign.ab_sample_percent || 20));
+        const sampleSize = Math.max(2, Math.floor((allowed.length * samplePct) / 100));
+        // случайный выбор sampleSize получателей и 50/50 между a/b
+        const indices = allowed.map((_, i) => i);
+        for (let i = indices.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [indices[i], indices[j]] = [indices[j], indices[i]];
+        }
+        for (let k = 0; k < sampleSize && k < indices.length; k++) {
+          const idx = indices[k];
+          abAssign.set(allowed[idx].email, k % 2 === 0 ? "a" : "b");
+        }
       }
 
       // Вставка партиями по 500
@@ -155,7 +173,8 @@ serve(async (req: Request) => {
           campaign_id: campaignId,
           email: r.email,
           recipient_name: r.name,
-          status: "pending",
+          status: "pending" as const,
+          subject_variant: abAssign?.get(r.email) || null,
         }));
         const BATCH = 500;
         for (let i = 0; i < rows.length; i += BATCH) {
@@ -170,12 +189,25 @@ serve(async (req: Request) => {
       }).eq("id", campaignId);
     }
 
-    // Получатели в статусе pending
-    const { data: pending } = await admin
+    // ============ A/B-тест: на первом запуске отправляем только sample ============
+    let pendingQuery = admin
       .from("email_campaign_recipients")
-      .select("id")
+      .select("id, subject_variant")
       .eq("campaign_id", campaignId)
       .eq("status", "pending");
+
+    if (campaign.ab_test_enabled && campaign.subject_b && !campaign.ab_winner) {
+      // отправляем только размеченных (sample), остальные ждут выбора победителя
+      pendingQuery = pendingQuery.not("subject_variant", "is", null);
+      // отметим время начала sample
+      if (!campaign.ab_sample_started_at) {
+        await admin.from("email_campaigns").update({
+          ab_sample_started_at: new Date().toISOString(),
+        }).eq("id", campaignId);
+      }
+    }
+
+    const { data: pending } = await pendingQuery;
 
     const pendingCount = pending?.length || 0;
     if (pendingCount === 0) {
