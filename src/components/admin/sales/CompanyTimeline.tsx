@@ -161,14 +161,6 @@ export function CompanyTimeline({ proposals, contracts, signatures, invoices = [
       .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
   }, [proposals, contracts, signatures, invoices]);
 
-  if (events.length === 0) {
-    return (
-      <div className="text-center text-sm text-muted-foreground py-8">
-        Событий пока нет
-      </div>
-    );
-  }
-
   // Группировка по дате
   const grouped = useMemo(() => {
     const map = new Map<string, TimelineEvent[]>();
@@ -179,6 +171,14 @@ export function CompanyTimeline({ proposals, contracts, signatures, invoices = [
     });
     return Array.from(map.entries());
   }, [events]);
+
+  if (events.length === 0) {
+    return (
+      <div className="text-center text-sm text-muted-foreground py-8">
+        Событий пока нет
+      </div>
+    );
+  }
 
   return (
     <ScrollArea className="h-[calc(100vh-440px)]">
