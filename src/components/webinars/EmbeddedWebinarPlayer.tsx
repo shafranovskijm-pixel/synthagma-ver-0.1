@@ -56,6 +56,11 @@ interface Props {
   prefetchedWsUrl?: string | null;
   /** read-only режим (для гостей): без кнопок «Завершить», «Доступ», QR, «Ссылка для участников» */
   viewOnly?: boolean;
+  /** Показывать боковую панель Q&A + Опросы рядом с плеером (для гостей и зрителей) */
+  showSidePanel?: boolean;
+  /** Имя/идентификатор зрителя для Q&A и опросов (используется в гостевом режиме) */
+  guestIdentity?: string | null;
+  guestDisplayName?: string | null;
 }
 
 /**
