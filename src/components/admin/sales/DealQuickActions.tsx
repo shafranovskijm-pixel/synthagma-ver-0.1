@@ -1,6 +1,6 @@
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { FileText, ScrollText, Receipt, Phone, StickyNote, ListTodo, Mail, Copy, Globe } from 'lucide-react';
+import { FileText, ScrollText, Receipt, Phone, StickyNote, ListTodo, Mail, Copy, Globe, FileSignature } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface ContactInfo {
