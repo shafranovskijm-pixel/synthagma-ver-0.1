@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Plus, FileSpreadsheet, Menu, CreditCard, HelpCircle, User, LogOut, Sparkles, ShoppingBag, Settings, FileText, Briefcase, Search } from "lucide-react";
+import { Plus, FileSpreadsheet, Menu, CreditCard, HelpCircle, User, LogOut, Sparkles, ShoppingBag, Settings, FileText, Briefcase, Search, PlayCircle } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useNavigate } from "react-router-dom";
 import { showLimitToast } from "@/utils/limitToast";
@@ -243,6 +243,14 @@ export function OrgDashboardHeader() {
               <DropdownMenuItem onClick={() => d.tabNavigation.setActiveTab("subscription" as any)} className="rounded-lg gap-2.5 py-2.5 focus:bg-primary/10 focus:text-primary">
                 <CreditCard className="w-4 h-4" />
                 Тариф и оплата
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                onClick={() => d.setShowOnboarding?.(true)}
+                className="rounded-lg gap-2.5 py-2.5 focus:bg-primary/10 focus:text-primary"
+              >
+                <PlayCircle className="w-4 h-4" />
+                Перезапустить тур
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={d.handleLogout} className="rounded-lg gap-2.5 py-2.5 text-destructive focus:bg-destructive/10 focus:text-destructive">
