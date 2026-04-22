@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -61,6 +61,10 @@ interface OrgRequisites {
   bank_bik?: string | null;
   bank_account?: string | null;
   bank_corr_account?: string | null;
+  email?: string | null;
+  phone?: string | null;
+  stamp_url?: string | null;
+  signature_url?: string | null;
 }
 
 interface BulkDocumentGeneratorProps {
@@ -109,6 +113,8 @@ export function BulkDocumentGenerator({ organizationId, isOpen, onClose }: BulkD
   // Прогресс
   const [progress, setProgress] = useState(0);
   const [results, setResults] = useState<GenerationResult[]>([]);
+  const cancelRef = useRef(false);
+  const [duplicateNumbers, setDuplicateNumbers] = useState<string[]>([]);
 
   const selectedTemplate = useMemo(
     () => templates.find(t => t.id === selectedTemplateId) || null,
@@ -134,7 +140,7 @@ export function BulkDocumentGenerator({ organizationId, isOpen, onClose }: BulkD
           .order("name"),
         supabase
           .from("organizations")
-          .select("name, inn, kpp, ogrn, legal_address, director_name")
+          .select("name, email, phone, inn, kpp, ogrn, legal_address, director_name, director_position, bank_name, bank_bik, bank_account, bank_corr_account, stamp_url, signature_url")
           .eq("id", organizationId)
           .maybeSingle(),
         supabase
@@ -197,6 +203,13 @@ export function BulkDocumentGenerator({ organizationId, isOpen, onClose }: BulkD
     const number = `${contractNumberPrefix}${String(contractNumberStart + index).padStart(3, "0")}`;
     const totalAmount = perStudentPrice * studentsPerCompany;
 
+    const stampImg = orgRequisites?.stamp_url
+      ? `<img src="${orgRequisites.stamp_url}" alt="Печать" style="height:120px;display:inline-block;" />`
+      : "";
+    const signImg = orgRequisites?.signature_url
+      ? `<img src="${orgRequisites.signature_url}" alt="Подпись" style="height:60px;display:inline-block;" />`
+      : "";
+
     const baseVars: TemplateVariables = {
       ...orgVars,
       contract_number: number,
@@ -206,6 +219,8 @@ export function BulkDocumentGenerator({ organizationId, isOpen, onClose }: BulkD
       price: formatMoney(perStudentPrice),
       total_price: formatMoney(totalAmount),
       total_price_words: moneyToWords(totalAmount),
+      org_stamp_html: stampImg,
+      org_signature_html: signImg,
     };
 
     if (recipientType === "companies") {
@@ -234,8 +249,37 @@ export function BulkDocumentGenerator({ organizationId, isOpen, onClose }: BulkD
     return findMissingVariables(selectedTemplate.body_html, buildVariables(0, firstId));
   }, [previewHtml]);
 
+  // Заранее подготовим список планируемых номеров и проверим дубли в БД.
+  async function checkDuplicates(): Promise<string[]> {
+    const ids = Array.from(selectedIds);
+    const planned = ids.map((_, i) =>
+      `${contractNumberPrefix}${String(contractNumberStart + i).padStart(3, "0")}`
+    );
+    if (planned.length === 0) return [];
+    try {
+      const { data } = await supabase
+        .from("company_documents")
+        .select("contract_number, company_id, companies!inner(organization_id)")
+        .in("contract_number", planned)
+        .eq("companies.organization_id", organizationId)
+        .is("deleted_at", null);
+      const used = new Set((data || []).map((r: any) => r.contract_number).filter(Boolean));
+      return planned.filter(n => used.has(n));
+    } catch (e) {
+      console.warn("Duplicate check failed", e);
+      return [];
+    }
+  }
+
+  async function handleStartPreview() {
+    const dups = await checkDuplicates();
+    setDuplicateNumbers(dups);
+    setStep("preview");
+  }
+
   async function handleGenerate() {
     if (!selectedTemplate || selectedIds.size === 0) return;
+    cancelRef.current = false;
     setStep("running");
     setProgress(0);
     setResults([]);
@@ -243,6 +287,10 @@ export function BulkDocumentGenerator({ organizationId, isOpen, onClose }: BulkD
     const localResults: GenerationResult[] = [];
 
     for (let i = 0; i < ids.length; i++) {
+      if (cancelRef.current) {
+        toast.info(`Остановлено. Готово: ${localResults.length} из ${ids.length}`);
+        break;
+      }
       const id = ids[i];
       const recipient = filteredRecipients.find(r => r.id === id) || { id, name: "—" };
       try {
@@ -261,7 +309,6 @@ export function BulkDocumentGenerator({ organizationId, isOpen, onClose }: BulkD
 
         const { data: urlData } = supabase.storage.from("billing-documents").getPublicUrl(path);
 
-        // Сохраняем в company_documents (если получатель — компания)
         if (recipientType === "companies") {
           const totalAmount = perStudentPrice * studentsPerCompany;
           await supabase.from("company_documents").insert({
@@ -274,6 +321,18 @@ export function BulkDocumentGenerator({ organizationId, isOpen, onClose }: BulkD
             students_count: studentsPerCompany,
             file_url: urlData.publicUrl,
             file_path: path,
+          });
+        } else {
+          // Логируем студенческие документы в общий журнал выдачи документов.
+          await supabase.from("document_issuance_log").insert({
+            organization_id: organizationId,
+            user_id: id,
+            user_name: recipient.name,
+            document_type: "contract",
+            document_name: `${selectedTemplate.name} № ${variables.contract_number}`,
+            reg_number: String(variables.contract_number),
+            file_url: urlData.publicUrl,
+            send_method: "bulk_generation",
           });
         }
 
@@ -308,7 +367,7 @@ export function BulkDocumentGenerator({ organizationId, isOpen, onClose }: BulkD
 
   function handleClose() {
     if (step === "running") {
-      toast.warning("Дождитесь завершения генерации");
+      toast.warning("Дождитесь завершения или нажмите «Остановить»");
       return;
     }
     setStep("setup");
@@ -364,6 +423,15 @@ export function BulkDocumentGenerator({ organizationId, isOpen, onClose }: BulkD
 
             {step === "preview" && (
               <div className="space-y-3">
+                {duplicateNumbers.length > 0 && (
+                  <Alert variant="destructive" className="rounded-xl">
+                    <AlertTriangle className="w-4 h-4" />
+                    <AlertDescription>
+                      Найдены дубли номеров ({duplicateNumbers.length}): {duplicateNumbers.slice(0, 5).join(", ")}
+                      {duplicateNumbers.length > 5 ? "…" : ""}. Измените префикс или начальный номер, чтобы избежать конфликтов.
+                    </AlertDescription>
+                  </Alert>
+                )}
                 {missingVariables.length > 0 && (
                   <Alert variant="destructive" className="rounded-xl">
                     <AlertTriangle className="w-4 h-4" />
@@ -382,6 +450,29 @@ export function BulkDocumentGenerator({ organizationId, isOpen, onClose }: BulkD
                     className="w-full h-[500px]"
                     title="Предпросмотр"
                   />
+                </div>
+              </div>
+            )}
+
+            {step === "running" && (
+              <div className="space-y-4 py-4">
+                <div className="flex items-center justify-center">
+                  <SigmaSpinner size="lg" />
+                </div>
+                <div className="text-center text-sm text-muted-foreground">
+                  Генерируем документы… {results.length} из {selectedIds.size}
+                </div>
+                <Progress value={progress} className="h-2" />
+                <div className="flex justify-center">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => { cancelRef.current = true; }}
+                    className="rounded-xl"
+                  >
+                    Остановить
+                  </Button>
                 </div>
               </div>
             )}
@@ -459,7 +550,7 @@ export function BulkDocumentGenerator({ organizationId, isOpen, onClose }: BulkD
                 <>
                   <Button variant="ghost" onClick={handleClose}>Отмена</Button>
                   <Button
-                    onClick={() => setStep("preview")}
+                    onClick={handleStartPreview}
                     disabled={!selectedTemplate || selectedIds.size === 0}
                     className="rounded-xl gap-1.5"
                   >
