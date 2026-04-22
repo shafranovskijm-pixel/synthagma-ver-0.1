@@ -37,7 +37,7 @@ interface SigData {
   signed_at: string | null;
 }
 
-type Step = "loading" | "identity" | "agreement" | "review" | "sign" | "done" | "error" | "expired" | "already-signed" | "review-mode";
+type Step = "loading" | "identity" | "agreement" | "review" | "sign" | "done" | "error" | "expired" | "already-signed" | "revoked" | "review-mode";
 
 export default function SignDocument() {
   const { token } = useParams<{ token: string }>();
@@ -74,6 +74,8 @@ export default function SignDocument() {
       setEmail(row.recipient_email);
 
       if (row.status === "signed") { setStep("already-signed"); return; }
+      if (row.status === "revoked") { setStep("revoked"); return; }
+      if (row.status === "rejected") { setStep("revoked"); return; }
       if (new Date(row.expires_at) < new Date()) { setStep("expired"); return; }
 
       if (row.mode === "review" || row.status === "in_review" || row.status === "changes_requested") {
@@ -201,6 +203,17 @@ export default function SignDocument() {
               <CheckCircle2 className="w-12 h-12 mx-auto text-primary mb-3" />
               <h2 className="font-bold text-lg mb-1">Документ уже подписан</h2>
               <p className="text-muted-foreground">«{sig.document_title}» подписан {sig.signed_at ? new Date(sig.signed_at).toLocaleString("ru-RU") : ""}.</p>
+            </CardContent></Card>
+          )}
+
+          {step === "revoked" && sig && (
+            <Card><CardContent className="pt-6 text-center">
+              <AlertTriangle className="w-12 h-12 mx-auto text-destructive mb-3" />
+              <h2 className="font-bold text-lg mb-1">Документ отозван</h2>
+              <p className="text-muted-foreground">
+                Документ «{sig.document_title}» был отозван отправителем и больше не доступен для подписания.
+                Свяжитесь с отправителем для уточнения деталей.
+              </p>
             </CardContent></Card>
           )}
 

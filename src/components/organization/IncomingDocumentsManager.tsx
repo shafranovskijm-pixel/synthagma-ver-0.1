@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import {
@@ -12,6 +12,7 @@ import {
   Search,
   Eye,
   Download,
+  Link2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -40,6 +41,7 @@ import {
 } from "@/hooks/useIncomingDocuments";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { IncomingDocumentLinkDialog } from "./IncomingDocumentLinkDialog";
 
 interface Props {
   organizationId: string;
@@ -60,12 +62,14 @@ const DOC_TYPE_VARIANTS: Record<IncomingDocType, any> = {
 };
 
 export function IncomingDocumentsManager({ organizationId }: Props) {
-  const { items, loading, uploading, upload, remove } = useIncomingDocuments(organizationId);
+  const { items, loading, uploading, upload, remove, refresh } = useIncomingDocuments(organizationId);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [search, setSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState<IncomingDocType | "all">("all");
   const [previewDoc, setPreviewDoc] = useState<IncomingDocument | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [linkDialogFor, setLinkDialogFor] = useState<IncomingDocument | null>(null);
+  const [linkedTitles, setLinkedTitles] = useState<Record<string, string>>({});
   const [form, setForm] = useState({
     doc_type: "contract" as IncomingDocType,
     title: "",
@@ -76,6 +80,21 @@ export function IncomingDocumentsManager({ organizationId }: Props) {
     notes: "",
   });
   const [file, setFile] = useState<File | null>(null);
+
+  // Подгружаем названия связанных подписаний для бейджа
+  useEffect(() => {
+    const ids = Array.from(new Set(items.map((i) => i.related_signature_id).filter(Boolean))) as string[];
+    if (ids.length === 0) { setLinkedTitles({}); return; }
+    (async () => {
+      const { data } = await supabase
+        .from("document_signatures")
+        .select("id, document_title")
+        .in("id", ids);
+      const map: Record<string, string> = {};
+      (data || []).forEach((r: any) => { map[r.id] = r.document_title; });
+      setLinkedTitles(map);
+    })();
+  }, [items]);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -265,12 +284,30 @@ export function IncomingDocumentsManager({ organizationId }: Props) {
                       Загружен {format(new Date(doc.created_at), "d MMM yyyy", { locale: ru })}
                       {doc.doc_date && ` • Дата документа: ${format(new Date(doc.doc_date), "d MMM yyyy", { locale: ru })}`}
                     </p>
+                    {doc.related_signature_id && (
+                      <p className="text-xs mt-1 flex items-center gap-1.5">
+                        <Link2 className="w-3 h-3 text-primary" />
+                        <span className="text-primary font-medium">Подписанный экземпляр:</span>
+                        <span className="text-muted-foreground truncate">
+                          {linkedTitles[doc.related_signature_id] || "договор из журнала подписаний"}
+                        </span>
+                      </p>
+                    )}
                     {doc.notes && (
                       <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{doc.notes}</p>
                     )}
                   </div>
                 </div>
                 <div className="flex gap-1 shrink-0">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    title={doc.related_signature_id ? "Изменить связь с договором" : "Привязать к отправленному договору"}
+                    className="rounded-xl"
+                    onClick={() => setLinkDialogFor(doc)}
+                  >
+                    <Link2 className={`w-4 h-4 ${doc.related_signature_id ? "text-primary" : ""}`} />
+                  </Button>
                   {isPreviewable(doc) && (
                     <Button
                       variant="ghost"
@@ -459,6 +496,18 @@ export function IncomingDocumentsManager({ organizationId }: Props) {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {linkDialogFor && (
+        <IncomingDocumentLinkDialog
+          open={!!linkDialogFor}
+          onOpenChange={(v) => { if (!v) setLinkDialogFor(null); }}
+          organizationId={organizationId}
+          incomingDocId={linkDialogFor.id}
+          currentLinkedId={linkDialogFor.related_signature_id}
+          hint={linkDialogFor.counterparty_name || linkDialogFor.title}
+          onLinked={refresh}
+        />
+      )}
     </Card>
   );
 }

@@ -57,6 +57,9 @@ serve(async (req) => {
     if (sig.status === "signed") {
       return new Response(JSON.stringify({ error: "Already signed", signatureId: sig.id }), { status: 409, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
+    if (sig.status === "revoked" || sig.status === "rejected") {
+      return new Response(JSON.stringify({ error: "Document was revoked by sender and cannot be signed" }), { status: 410, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
     if (new Date(sig.expires_at) < new Date()) {
       await supabase.from("document_signatures").update({ status: "expired" }).eq("id", sig.id);
       return new Response(JSON.stringify({ error: "Token expired" }), { status: 410, headers: { ...corsHeaders, "Content-Type": "application/json" } });
