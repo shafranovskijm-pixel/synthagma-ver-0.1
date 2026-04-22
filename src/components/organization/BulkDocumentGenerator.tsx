@@ -655,7 +655,3 @@ function SetupStep(p: SetupStepProps) {
     </div>
   );
 }
-
-function perStudentPriceDisplay(value: number): string | number {
-  return value === 0 ? "" : value;
-}
