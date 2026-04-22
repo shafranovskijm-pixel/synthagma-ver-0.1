@@ -64,10 +64,10 @@ export function OwnershipTransfer({ organizationId, currentOwnerId }: Props) {
   const selectedCandidate = candidates.find((c) => c.user_id === selectedId);
 
   return (
-    <Card className="border-amber-500/30 bg-amber-500/5">
+    <Card className="border-warning/30 bg-warning/5">
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
-          <Crown className="h-5 w-5 text-amber-600" />
+          <Crown className="h-5 w-5 text-warning" />
           Передача владения организацией
         </CardTitle>
         <CardDescription>
