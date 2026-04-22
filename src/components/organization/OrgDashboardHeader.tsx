@@ -191,6 +191,10 @@ export function OrgDashboardHeader() {
                 <FileText className="w-4 h-4" />
                 Документы
               </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => d.tabNavigation.setActiveTab("sales" as any)} className="rounded-lg gap-2.5 py-2.5 focus:bg-primary/10 focus:text-primary">
+                <Briefcase className="w-4 h-4" />
+                Продажи
+              </DropdownMenuItem>
               <DropdownMenuItem onClick={() => d.tabNavigation.setActiveTab("whats-new" as any)} className="rounded-lg gap-2.5 py-2.5 focus:bg-primary/10 focus:text-primary">
                 <Sparkles className="w-4 h-4" />
                 Что нового?
