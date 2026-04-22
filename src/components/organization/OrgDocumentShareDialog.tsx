@@ -114,7 +114,7 @@ export function OrgDocumentShareDialog({
                       {!l.is_active && <Badge variant="destructive">Отозвана</Badge>}
                       {expired && <Badge variant="secondary">Истекла</Badge>}
                       {limited && <Badge variant="secondary">Лимит</Badge>}
-                      {!dead && <Badge className="bg-green-500/15 text-green-600 border-green-500/30">Активна</Badge>}
+                      {!dead && <Badge className="bg-primary/15 text-primary border-primary/30">Активна</Badge>}
                       <span className="text-xs text-muted-foreground">
                         Скачана: {l.download_count}{l.max_downloads ? ` / ${l.max_downloads}` : ""}
                       </span>
