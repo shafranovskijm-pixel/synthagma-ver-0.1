@@ -15,6 +15,8 @@ type Poll = {
   created_at: string;
 };
 
+// Идентификатор для голосования: одно identity = один голос (БД-ограничение).
+
 type Vote = { poll_id: string; option_index: number; voter_identity: string };
 
 interface Props {
@@ -118,7 +120,16 @@ export const WebinarPollsPanel = ({ webinarId, isHost, participantIdentity }: Pr
     const { error } = await supabase.from("webinar_poll_votes").insert({
       poll_id: pollId, option_index: optionIndex, voter_identity: participantIdentity,
     });
-    if (error) toast.error(error.message);
+    if (error) {
+      const msg = error.message || "";
+      if (/duplicate key|unique/i.test(msg)) {
+        toast.error("Вы уже голосовали в этом опросе");
+      } else if (/row-level security/i.test(msg)) {
+        toast.error("Голосование недоступно: опрос закрыт или вебинар не идёт");
+      } else {
+        toast.error(msg);
+      }
+    }
   };
 
   return (
