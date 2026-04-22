@@ -428,17 +428,34 @@ export function OrgSidebar() {
           <Tooltip>
             <TooltipTrigger asChild>
               <button
-                onClick={() => setShowLabels((v) => !v)}
-                className="flex h-7 w-7 items-center justify-center rounded-lg text-foreground/40 hover:text-foreground/80 hover:bg-foreground/5 transition-colors text-[10px] font-bold"
-                aria-label={showLabels ? "Скрыть подписи" : "Показать подписи"}
+                onClick={() => setExpanded((v) => !v)}
+                className="hidden lg:flex h-9 w-9 items-center justify-center rounded-xl text-foreground/60 hover:text-primary hover:bg-primary/10 transition-colors"
+                aria-label={expanded ? "Свернуть меню" : "Развернуть меню"}
               >
-                {showLabels ? "Aa" : "·"}
+                {expanded ? <ChevronsLeft className="h-[18px] w-[18px]" /> : <ChevronsRight className="h-[18px] w-[18px]" />}
               </button>
             </TooltipTrigger>
             <TooltipContent side="right" className="z-[100]">
-              {showLabels ? "Скрыть подписи" : "Показать подписи"}
+              {expanded ? "Свернуть меню" : "Развернуть меню"}
             </TooltipContent>
           </Tooltip>
+
+          {!expanded && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  onClick={() => setShowLabels((v) => !v)}
+                  className="flex h-7 w-7 items-center justify-center rounded-lg text-foreground/40 hover:text-foreground/80 hover:bg-foreground/5 transition-colors text-[10px] font-bold"
+                  aria-label={showLabels ? "Скрыть подписи" : "Показать подписи"}
+                >
+                  {showLabels ? "Aa" : "·"}
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="right" className="z-[100]">
+                {showLabels ? "Скрыть подписи" : "Показать подписи"}
+              </TooltipContent>
+            </Tooltip>
+          )}
 
           <Tooltip>
             <TooltipTrigger asChild>
