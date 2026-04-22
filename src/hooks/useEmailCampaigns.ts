@@ -14,11 +14,14 @@ export interface EmailCampaign {
   recipient_source: string;
   recipient_filter: any;
   manual_emails: string[] | null;
-  status: "draft" | "sending" | "completed" | "failed" | "paused";
+  status: "draft" | "scheduled" | "sending" | "completed" | "failed" | "paused";
   total_recipients: number;
   sent_count: number;
   failed_count: number;
   open_count: number;
+  click_count: number;
+  unsubscribe_count: number;
+  scheduled_at: string | null;
   started_at: string | null;
   completed_at: string | null;
   created_at: string;
