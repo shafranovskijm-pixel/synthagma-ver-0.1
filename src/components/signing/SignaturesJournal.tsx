@@ -15,6 +15,7 @@ import { downloadSignatureProtocol, exportSignaturesToCSV } from "@/utils/signat
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { SignatureRevisionUploader } from "@/components/signing/SignatureRevisionUploader";
 import { Upload, PenLine } from "lucide-react";
+import { LoadMoreControls } from "@/components/ui/LoadMoreControls";
 
 interface SignatureRow {
   id: string;
@@ -345,6 +346,14 @@ export function SignaturesJournal({ organizationId }: Props) {
             </TableBody>
           </Table>
         </div>
+      )}
+
+      {filtered.length > 0 && (
+        <LoadMoreControls
+          visibleCount={rows.length}
+          totalCount={totalCount}
+          onLoadMore={loadMore}
+        />
       )}
 
       <Dialog open={!!selected} onOpenChange={(v) => !v && setSelected(null)}>
