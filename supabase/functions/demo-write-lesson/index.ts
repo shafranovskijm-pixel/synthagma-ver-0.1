@@ -18,7 +18,7 @@ Deno.serve(async (req) => {
 
   try {
     const token = req.headers.get("x-demo-token");
-    const expected = Deno.env.get("DEMO_WRITE_TOKEN");
+    const expected = Deno.env.get("LOVABLE_API_KEY");
     if (!expected || token !== expected) {
       return new Response(JSON.stringify({ error: "unauthorized" }), { status: 401, headers: corsHeaders });
     }
