@@ -18,6 +18,7 @@ import { CampaignsManager } from "./broadcast/CampaignsManager";
 import { EmailTemplatesManager } from "@/components/shared/sales/EmailTemplatesManager";
 import { SuppressionListManager } from "./broadcast/SuppressionListManager";
 import { DomainReputationCheck } from "./broadcast/DomainReputationCheck";
+import { DripCampaignsManager } from "./broadcast/DripCampaignsManager";
 
 interface Announcement {
   id: string;
