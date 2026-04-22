@@ -241,10 +241,6 @@ export function DealCommunication({ inn, companyName, refreshKey = 0 }: Props) {
       setLoading(false);
     }
   }
-    } finally {
-      setLoading(false);
-    }
-  }
 
   return (
     <Card className="rounded-2xl">
