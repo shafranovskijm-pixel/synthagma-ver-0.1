@@ -128,5 +128,32 @@ export function useEmailTemplates(scope: "platform" | "org", organizationId: str
     return true;
   }, [scope, organizationId]);
 
-  return { templates, loading, refresh, upsert, remove, duplicate, sendTest };
+  return { templates, loading, refresh, upsert, remove, duplicate, sendTest, cloneFromPlatform };
+}
+
+/**
+ * Загружает только платформенные шаблоны (для галереи в org-кабинете).
+ * Доступ открыт через RLS-политику "platform email templates readable".
+ */
+export function usePlatformEmailTemplates() {
+  const [templates, setTemplates] = useState<EmailTemplate[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    (async () => {
+      setLoading(true);
+      const { data, error } = await supabase
+        .from("email_templates")
+        .select("*")
+        .is("deleted_at", null)
+        .eq("scope", "platform")
+        .order("category", { ascending: true })
+        .order("name", { ascending: true });
+      if (error) toast.error("Ошибка загрузки галереи: " + error.message);
+      setTemplates((data || []) as EmailTemplate[]);
+      setLoading(false);
+    })();
+  }, []);
+
+  return { templates, loading };
 }
