@@ -15,6 +15,7 @@ import { useOrgSmtp } from "@/hooks/useOrgSmtp";
 import { CreateContractDialog } from "./CreateContractDialog";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
+import { toast } from "sonner";
 
 const STATUS: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
   draft: { label: "Черновик", variant: "secondary" },
