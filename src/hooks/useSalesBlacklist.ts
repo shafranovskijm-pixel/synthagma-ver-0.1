@@ -27,11 +27,16 @@ export function useSalesBlacklist() {
   });
 
   const add = useMutation({
-    mutationFn: async (input: { inn: string; org_name?: string; reason?: string }) => {
+    mutationFn: async (input: { inn: string; org_name?: string; reason?: string; organization_id?: string | null }) => {
       const { data: u } = await supabase.auth.getUser();
+      let orgId = input.organization_id ?? null;
+      if (orgId === null && u.user?.id) {
+        const { data: p } = await supabase.from('profiles').select('organization_id').eq('user_id', u.user.id).maybeSingle();
+        orgId = p?.organization_id ?? null;
+      }
       const { error } = await (supabase as any)
         .from('sales_blacklist')
-        .insert({ ...input, added_by: u.user?.id });
+        .insert({ ...input, organization_id: orgId, added_by: u.user?.id });
       if (error) throw error;
     },
     onSuccess: () => {

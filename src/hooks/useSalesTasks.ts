@@ -34,11 +34,17 @@ export function useSalesTasks(filter?: { leadId?: string; managerId?: string; on
   });
 
   const create = useMutation({
-    mutationFn: async (input: Omit<SalesTask, 'id' | 'created_at' | 'updated_at' | 'completed_at' | 'created_by'>) => {
+    mutationFn: async (input: Omit<SalesTask, 'id' | 'created_at' | 'updated_at' | 'completed_at' | 'created_by'> & { organization_id?: string | null }) => {
       const { data: u } = await supabase.auth.getUser();
+      // Auto-resolve organization_id from current user's profile if not provided
+      let orgId = input.organization_id ?? null;
+      if (orgId === null && u.user?.id) {
+        const { data: p } = await supabase.from('profiles').select('organization_id').eq('user_id', u.user.id).maybeSingle();
+        orgId = p?.organization_id ?? null;
+      }
       const { data, error } = await (supabase as any)
         .from('sales_tasks')
-        .insert({ ...input, created_by: u.user?.id })
+        .insert({ ...input, organization_id: orgId, created_by: u.user?.id })
         .select()
         .single();
       if (error) throw error;
