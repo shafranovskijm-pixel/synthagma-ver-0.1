@@ -92,9 +92,23 @@ export function RecycleBinManager({ organizationId }: Props) {
           </div>
 
           {filtered.length === 0 ? (
-            <div className="text-center py-12 text-sm text-muted-foreground">
-              {items.length === 0 ? "Корзина пуста" : "Ничего не найдено по запросу"}
-            </div>
+            items.length === 0 ? (
+              <div className="text-center py-16 px-6 space-y-3">
+                <div className="mx-auto w-20 h-20 rounded-full bg-muted/40 flex items-center justify-center">
+                  <Trash2 className="w-10 h-10 text-muted-foreground/30" />
+                </div>
+                <div>
+                  <p className="text-base font-semibold">Корзина пуста</p>
+                  <p className="text-sm text-muted-foreground mt-1 max-w-sm mx-auto">
+                    Удалённые документы появляются здесь и хранятся 30 дней. После этого срока они удаляются окончательно.
+                  </p>
+                </div>
+              </div>
+            ) : (
+              <div className="text-center py-12 text-sm text-muted-foreground">
+                Ничего не найдено по запросу
+              </div>
+            )
           ) : (
             <>
               <div className="flex items-center gap-2 px-3 py-2 text-xs text-muted-foreground border-b">

@@ -123,12 +123,20 @@ export function IncomingDocumentsManager({ organizationId }: Props) {
         {loading ? (
           <div className="p-8 text-center text-muted-foreground">Загрузка...</div>
         ) : items.length === 0 ? (
-          <div className="p-12 text-center text-muted-foreground space-y-2">
-            <Inbox className="w-10 h-10 mx-auto text-primary/50" />
-            <p className="font-medium">Пока нет входящих документов</p>
-            <p className="text-sm">
-              Загружайте сюда сканы подписанных контрагентом договоров и актов.
-            </p>
+          <div className="p-16 text-center space-y-3">
+            <div className="mx-auto w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center">
+              <Inbox className="w-10 h-10 text-primary/40" />
+            </div>
+            <div>
+              <p className="text-base font-semibold">Пока нет входящих документов</p>
+              <p className="text-sm text-muted-foreground mt-1 max-w-md mx-auto">
+                Загружайте сюда сканы подписанных контрагентом договоров, актов и счетов — для двустороннего документооборота.
+              </p>
+            </div>
+            <Button size="sm" onClick={() => setDialogOpen(true)} className="gap-2 rounded-xl mt-2">
+              <Upload className="w-4 h-4" />
+              Загрузить первый документ
+            </Button>
           </div>
         ) : (
           <div className="divide-y">
