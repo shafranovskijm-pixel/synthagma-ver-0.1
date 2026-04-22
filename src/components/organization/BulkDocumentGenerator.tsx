@@ -10,10 +10,12 @@ import { Progress } from "@/components/ui/progress";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { FileText, Building2, Users, Eye, Download, FileStack, Search, AlertTriangle, CheckCircle2, Sparkles } from "lucide-react";
+import { FileText, Building2, Users, Eye, Download, FileStack, Search, AlertTriangle, CheckCircle2, Sparkles, RefreshCw, FileDown, Archive } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
+import JSZip from "jszip";
+import { openPrivateFile } from "@/utils/storageHelpers";
 import {
   renderTemplate,
   buildOrgVariables,
@@ -80,6 +82,8 @@ interface GenerationResult {
   recipientName: string;
   status: "success" | "error";
   documentName?: string;
+  filePath?: string;
+  fileName?: string;
   error?: string;
 }
 
@@ -277,6 +281,75 @@ export function BulkDocumentGenerator({ organizationId, isOpen, onClose }: BulkD
     setStep("preview");
   }
 
+  async function generateOne(
+    index: number,
+    recipientId: string
+  ): Promise<GenerationResult> {
+    const recipient = filteredRecipients.find(r => r.id === recipientId)
+      || (recipientType === "companies"
+        ? companies.find(c => c.id === recipientId) && { id: recipientId, name: companies.find(c => c.id === recipientId)!.name }
+        : students.find(s => s.user_id === recipientId) && { id: recipientId, name: students.find(s => s.user_id === recipientId)!.full_name || students.find(s => s.user_id === recipientId)!.email || "—" })
+      || { id: recipientId, name: "—" };
+
+    try {
+      const variables = buildVariables(index, recipientId);
+      const html = renderTemplate(selectedTemplate!.body_html, variables);
+      const fullDoc = wrapAsPrintableDocument(html, `${selectedTemplate!.name} — ${recipient.name}`);
+      const safeName = selectedTemplate!.name.replace(/[^\w\u0400-\u04FF\s.-]/g, "_");
+      const fileName = `${safeName}_${variables.contract_number}.pdf`;
+      const yearMonth = documentDate.slice(0, 7);
+      const storagePath = `${organizationId}/bulk/${yearMonth}/${Date.now()}_${index}_${fileName}`;
+
+      const { data: pdfRes, error: pdfErr } = await supabase.functions.invoke("html-to-pdf", {
+        body: { html: fullDoc, fileName, storagePath },
+      });
+      if (pdfErr) throw pdfErr;
+      if (!pdfRes?.path) throw new Error("PDF не был сохранён");
+
+      if (recipientType === "companies") {
+        const totalAmount = perStudentPrice * studentsPerCompany;
+        await supabase.from("company_documents").insert({
+          company_id: recipientId,
+          name: `${selectedTemplate!.name} № ${variables.contract_number}`,
+          type: "contract",
+          contract_number: String(variables.contract_number),
+          contract_date: documentDate,
+          amount: totalAmount,
+          students_count: studentsPerCompany,
+          file_path: pdfRes.path,
+        });
+      } else {
+        await supabase.from("document_issuance_log").insert({
+          organization_id: organizationId,
+          user_id: recipientId,
+          user_name: recipient.name,
+          document_type: "contract",
+          document_name: `${selectedTemplate!.name} № ${variables.contract_number}`,
+          reg_number: String(variables.contract_number),
+          file_url: pdfRes.path,
+          send_method: "bulk_generation",
+        });
+      }
+
+      return {
+        recipientId,
+        recipientName: recipient.name,
+        status: "success",
+        documentName: String(variables.contract_number),
+        filePath: pdfRes.path,
+        fileName,
+      };
+    } catch (e: any) {
+      console.error("Bulk gen error for", recipientId, e);
+      return {
+        recipientId,
+        recipientName: recipient.name,
+        status: "error",
+        error: e?.message || "Ошибка",
+      };
+    }
+  }
+
   async function handleGenerate() {
     if (!selectedTemplate || selectedIds.size === 0) return;
     cancelRef.current = false;
@@ -291,69 +364,8 @@ export function BulkDocumentGenerator({ organizationId, isOpen, onClose }: BulkD
         toast.info(`Остановлено. Готово: ${localResults.length} из ${ids.length}`);
         break;
       }
-      const id = ids[i];
-      const recipient = filteredRecipients.find(r => r.id === id) || { id, name: "—" };
-      try {
-        const variables = buildVariables(i, id);
-        const html = renderTemplate(selectedTemplate.body_html, variables);
-        const fullDoc = wrapAsPrintableDocument(html, `${selectedTemplate.name} — ${recipient.name}`);
-        const safeName = selectedTemplate.name.replace(/[^\w\u0400-\u04FF\s.-]/g, "_");
-        const fileName = `${safeName}_${variables.contract_number}.pdf`;
-        const yearMonth = documentDate.slice(0, 7); // YYYY-MM
-        const storagePath = `${organizationId}/bulk/${yearMonth}/${Date.now()}_${i}_${fileName}`;
-
-        // PDF собирается в edge-функции и кладётся в приватный bucket billing-documents.
-        // Доступ — только через signed URL (openPrivateFile).
-        const { data: pdfRes, error: pdfErr } = await supabase.functions.invoke("html-to-pdf", {
-          body: { html: fullDoc, fileName, storagePath },
-        });
-        if (pdfErr) throw pdfErr;
-        if (!pdfRes?.path) throw new Error("PDF не был сохранён");
-
-        if (recipientType === "companies") {
-          const totalAmount = perStudentPrice * studentsPerCompany;
-          await supabase.from("company_documents").insert({
-            company_id: id,
-            name: `${selectedTemplate.name} № ${variables.contract_number}`,
-            type: "contract",
-            contract_number: String(variables.contract_number),
-            contract_date: documentDate,
-            amount: totalAmount,
-            students_count: studentsPerCompany,
-            // file_url оставляем пустым — публичных URL у приватного bucket нет.
-            file_path: pdfRes.path,
-          });
-        } else {
-          // Логируем студенческие документы в общий журнал выдачи документов.
-          // file_url не используем, т.к. это приватный bucket.
-          await supabase.from("document_issuance_log").insert({
-            organization_id: organizationId,
-            user_id: id,
-            user_name: recipient.name,
-            document_type: "contract",
-            document_name: `${selectedTemplate.name} № ${variables.contract_number}`,
-            reg_number: String(variables.contract_number),
-            file_url: pdfRes.path,
-            send_method: "bulk_generation",
-          });
-        }
-
-        localResults.push({
-          recipientId: id,
-          recipientName: recipient.name,
-          status: "success",
-          documentName: String(variables.contract_number),
-        });
-      } catch (e: any) {
-        console.error("Bulk gen error for", id, e);
-        localResults.push({
-          recipientId: id,
-          recipientName: recipient.name,
-          status: "error",
-          error: e?.message || "Ошибка",
-        });
-      }
-
+      const res = await generateOne(i, ids[i]);
+      localResults.push(res);
       setProgress(Math.round(((i + 1) / ids.length) * 100));
       setResults([...localResults]);
     }
@@ -364,6 +376,67 @@ export function BulkDocumentGenerator({ organizationId, isOpen, onClose }: BulkD
       toast.success(`Сгенерировано документов: ${successful}`);
     } else {
       toast.warning(`Готово: ${successful}/${ids.length}. Ошибок: ${ids.length - successful}`);
+    }
+  }
+
+  // Повторная попытка только для записей со статусом error
+  async function handleRetryErrors() {
+    const errors = results.filter(r => r.status === "error");
+    if (errors.length === 0) return;
+    cancelRef.current = false;
+    setStep("running");
+    setProgress(0);
+    const success = results.filter(r => r.status === "success");
+    const updated: GenerationResult[] = [...success];
+    setResults(updated);
+
+    for (let i = 0; i < errors.length; i++) {
+      if (cancelRef.current) break;
+      // Используем оригинальный индекс из общего списка для сохранения нумерации.
+      const originalIndex = results.findIndex(r => r.recipientId === errors[i].recipientId);
+      const res = await generateOne(originalIndex >= 0 ? originalIndex : i, errors[i].recipientId);
+      updated.push(res);
+      setProgress(Math.round(((i + 1) / errors.length) * 100));
+      setResults([...updated]);
+    }
+    setStep("done");
+    toast.success("Повторная генерация завершена");
+  }
+
+  // Скачивание всех успешных PDF одним ZIP-архивом
+  async function handleDownloadZip() {
+    const ok = results.filter(r => r.status === "success" && r.filePath);
+    if (ok.length === 0) {
+      toast.error("Нет файлов для скачивания");
+      return;
+    }
+    const zip = new JSZip();
+    const tid = toast.loading(`Готовим архив (${ok.length} файлов)…`);
+    try {
+      for (const r of ok) {
+        const { data, error } = await supabase.storage
+          .from("billing-documents")
+          .createSignedUrl(r.filePath!, 60 * 5);
+        if (error || !data?.signedUrl) continue;
+        const resp = await fetch(data.signedUrl);
+        if (!resp.ok) continue;
+        const buf = await resp.arrayBuffer();
+        zip.file(r.fileName || `${r.documentName || r.recipientId}.pdf`, buf);
+      }
+      const blob = await zip.generateAsync({ type: "blob" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `documents_${documentDate}.zip`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      toast.dismiss(tid);
+      toast.success(`Скачан архив: ${ok.length} файлов`);
+    } catch (e: any) {
+      toast.dismiss(tid);
+      toast.error(`Не удалось собрать архив: ${e?.message || "ошибка"}`);
     }
   }
 
@@ -501,7 +574,7 @@ export function BulkDocumentGenerator({ organizationId, isOpen, onClose }: BulkD
                     color="text-rose-600 dark:text-rose-400"
                   />
                 </div>
-                <ScrollArea className="h-[360px] rounded-xl border border-border">
+                <ScrollArea className="h-[320px] rounded-xl border border-border">
                   <div className="divide-y divide-border">
                     {results.map(r => (
                       <div key={r.recipientId} className="flex items-center justify-between gap-3 px-3 py-2.5 text-sm">
@@ -513,8 +586,22 @@ export function BulkDocumentGenerator({ organizationId, isOpen, onClose }: BulkD
                           )}
                           <span className="truncate">{r.recipientName}</span>
                         </div>
-                        <div className="text-xs text-muted-foreground shrink-0">
-                          {r.status === "success" ? `№ ${r.documentName}` : r.error}
+                        <div className="flex items-center gap-2 shrink-0">
+                          <span className="text-xs text-muted-foreground max-w-[220px] truncate">
+                            {r.status === "success" ? `№ ${r.documentName}` : r.error}
+                          </span>
+                          {r.status === "success" && r.filePath && (
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              className="h-7 w-7"
+                              onClick={() => openPrivateFile("billing-documents", r.filePath!)}
+                              title="Открыть PDF"
+                            >
+                              <Eye className="w-3.5 h-3.5" />
+                            </Button>
+                          )}
                         </div>
                       </div>
                     ))}
@@ -559,7 +646,31 @@ export function BulkDocumentGenerator({ organizationId, isOpen, onClose }: BulkD
                 </>
               )}
               {step === "done" && (
-                <Button onClick={handleClose} className="rounded-xl">Готово</Button>
+                <>
+                  {results.some(r => r.status === "error") && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={handleRetryErrors}
+                      className="rounded-xl gap-1.5"
+                    >
+                      <RefreshCw className="w-4 h-4" />
+                      Повторить ошибки ({results.filter(r => r.status === "error").length})
+                    </Button>
+                  )}
+                  {results.some(r => r.status === "success") && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={handleDownloadZip}
+                      className="rounded-xl gap-1.5"
+                    >
+                      <Archive className="w-4 h-4" />
+                      Скачать ZIP
+                    </Button>
+                  )}
+                  <Button onClick={handleClose} className="rounded-xl">Готово</Button>
+                </>
               )}
             </div>
           </div>
