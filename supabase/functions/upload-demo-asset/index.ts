@@ -16,9 +16,10 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const sharedSecret = Deno.env.get("DEMO_ENRICH_SECRET");
+    // Auth: caller must know the LOVABLE_API_KEY (server-side secret, never exposed to browser).
+    const expected = Deno.env.get("LOVABLE_API_KEY");
     const provided = req.headers.get("x-demo-secret");
-    if (!sharedSecret || provided !== sharedSecret) {
+    if (!expected || !provided || provided !== expected) {
       return new Response(JSON.stringify({ error: "unauthorized" }), {
         status: 401,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
