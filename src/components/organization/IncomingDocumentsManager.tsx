@@ -284,12 +284,30 @@ export function IncomingDocumentsManager({ organizationId }: Props) {
                       Загружен {format(new Date(doc.created_at), "d MMM yyyy", { locale: ru })}
                       {doc.doc_date && ` • Дата документа: ${format(new Date(doc.doc_date), "d MMM yyyy", { locale: ru })}`}
                     </p>
+                    {doc.related_signature_id && (
+                      <p className="text-xs mt-1 flex items-center gap-1.5">
+                        <Link2 className="w-3 h-3 text-primary" />
+                        <span className="text-primary font-medium">Подписанный экземпляр:</span>
+                        <span className="text-muted-foreground truncate">
+                          {linkedTitles[doc.related_signature_id] || "договор из журнала подписаний"}
+                        </span>
+                      </p>
+                    )}
                     {doc.notes && (
                       <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{doc.notes}</p>
                     )}
                   </div>
                 </div>
                 <div className="flex gap-1 shrink-0">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    title={doc.related_signature_id ? "Изменить связь с договором" : "Привязать к отправленному договору"}
+                    className="rounded-xl"
+                    onClick={() => setLinkDialogFor(doc)}
+                  >
+                    <Link2 className={`w-4 h-4 ${doc.related_signature_id ? "text-primary" : ""}`} />
+                  </Button>
                   {isPreviewable(doc) && (
                     <Button
                       variant="ghost"
