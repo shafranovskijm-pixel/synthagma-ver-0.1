@@ -36,6 +36,7 @@ const ROLES = [
   { value: "school_editor", label: "Редактор школы", icon: Edit3, color: "bg-blue-500/10 text-blue-600", description: "Редактирование страниц школы, лендингов, дизайна" },
   { value: "course_editor", label: "Редактор курсов", icon: BookOpen, color: "bg-green-500/10 text-green-600", description: "Создание и редактирование курсов и уроков" },
   { value: "teacher", label: "Преподаватель", icon: Users, color: "bg-indigo-500/10 text-indigo-600", description: "Проверка заданий, общение с учениками, доступ к курсам" },
+  { value: "sales_manager", label: "Менеджер по продажам", icon: Shield, color: "bg-fuchsia-500/10 text-fuchsia-600", description: "Доступ только к разделу «Продажи»: воронка, лиды, КП, договоры, рассылки и компании" },
 ];
 
 const INVITATION_ROLES: StaffInvitationRole[] = ROLES.map(r => ({
