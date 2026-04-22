@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import { useOrgDashboard } from "@/contexts/OrgDashboardContext";
 import { SUBSCRIPTION_PLANS, type SubscriptionPlan, formatStorageSize } from "@/constants/subscriptionPlans";
 import { ORG_FEATURE_CATALOG } from "@/constants/orgFeatureCatalog";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -11,7 +12,7 @@ import { Textarea } from "@/components/ui/textarea";
 import {
   Crown, BookOpen, Users, HardDrive, Sparkles, Check, X,
   ArrowRight, Calendar, AlertTriangle,
-  ExternalLink, CreditCard
+  ExternalLink, CreditCard, Wallet
 } from "lucide-react";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
