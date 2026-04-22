@@ -2069,6 +2069,7 @@ export type Database = {
           signed_ip: string | null
           signed_user_agent: string | null
           status: string
+          template_version_id: string | null
           updated_at: string
           viewed_at: string | null
         }
@@ -2112,6 +2113,7 @@ export type Database = {
           signed_ip?: string | null
           signed_user_agent?: string | null
           status?: string
+          template_version_id?: string | null
           updated_at?: string
           viewed_at?: string | null
         }
@@ -2155,6 +2157,7 @@ export type Database = {
           signed_ip?: string | null
           signed_user_agent?: string | null
           status?: string
+          template_version_id?: string | null
           updated_at?: string
           viewed_at?: string | null
         }
@@ -2178,6 +2181,13 @@ export type Database = {
             columns: ["pep_agreement_id"]
             isOneToOne: false
             referencedRelation: "pep_agreements"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "document_signatures_template_version_id_fkey"
+            columns: ["template_version_id"]
+            isOneToOne: false
+            referencedRelation: "org_contract_template_versions"
             referencedColumns: ["id"]
           },
         ]
@@ -2825,6 +2835,98 @@ export type Database = {
             columns: ["organization_id"]
             isOneToOne: false
             referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      incoming_documents: {
+        Row: {
+          counterparty_inn: string | null
+          counterparty_name: string | null
+          created_at: string
+          doc_date: string | null
+          doc_number: string | null
+          doc_type: string
+          file_path: string | null
+          file_size: number | null
+          file_url: string
+          id: string
+          notes: string | null
+          organization_id: string
+          related_billing_doc_id: string | null
+          related_company_id: string | null
+          related_signature_id: string | null
+          title: string
+          updated_at: string
+          uploaded_by: string | null
+        }
+        Insert: {
+          counterparty_inn?: string | null
+          counterparty_name?: string | null
+          created_at?: string
+          doc_date?: string | null
+          doc_number?: string | null
+          doc_type?: string
+          file_path?: string | null
+          file_size?: number | null
+          file_url: string
+          id?: string
+          notes?: string | null
+          organization_id: string
+          related_billing_doc_id?: string | null
+          related_company_id?: string | null
+          related_signature_id?: string | null
+          title: string
+          updated_at?: string
+          uploaded_by?: string | null
+        }
+        Update: {
+          counterparty_inn?: string | null
+          counterparty_name?: string | null
+          created_at?: string
+          doc_date?: string | null
+          doc_number?: string | null
+          doc_type?: string
+          file_path?: string | null
+          file_size?: number | null
+          file_url?: string
+          id?: string
+          notes?: string | null
+          organization_id?: string
+          related_billing_doc_id?: string | null
+          related_company_id?: string | null
+          related_signature_id?: string | null
+          title?: string
+          updated_at?: string
+          uploaded_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "incoming_documents_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "incoming_documents_related_billing_doc_id_fkey"
+            columns: ["related_billing_doc_id"]
+            isOneToOne: false
+            referencedRelation: "org_billing_documents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "incoming_documents_related_company_id_fkey"
+            columns: ["related_company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "incoming_documents_related_signature_id_fkey"
+            columns: ["related_signature_id"]
+            isOneToOne: false
+            referencedRelation: "document_signatures"
             referencedColumns: ["id"]
           },
         ]
@@ -3794,6 +3896,63 @@ export type Database = {
             columns: ["organization_id"]
             isOneToOne: false
             referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      org_contract_template_versions: {
+        Row: {
+          body_html: string
+          change_summary: string | null
+          created_at: string
+          created_by: string | null
+          created_by_name: string | null
+          id: string
+          name: string
+          organization_id: string
+          template_id: string
+          variables: Json
+          version: number
+        }
+        Insert: {
+          body_html: string
+          change_summary?: string | null
+          created_at?: string
+          created_by?: string | null
+          created_by_name?: string | null
+          id?: string
+          name: string
+          organization_id: string
+          template_id: string
+          variables?: Json
+          version: number
+        }
+        Update: {
+          body_html?: string
+          change_summary?: string | null
+          created_at?: string
+          created_by?: string | null
+          created_by_name?: string | null
+          id?: string
+          name?: string
+          organization_id?: string
+          template_id?: string
+          variables?: Json
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "org_contract_template_versions_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "org_contract_template_versions_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "org_contract_templates"
             referencedColumns: ["id"]
           },
         ]

@@ -1,0 +1,298 @@
+import { useState } from "react";
+import { format } from "date-fns";
+import { ru } from "date-fns/locale";
+import {
+  Upload,
+  Inbox,
+  FileText,
+  ExternalLink,
+  Trash2,
+  Calendar,
+  Building2,
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  useIncomingDocuments,
+  type IncomingDocType,
+} from "@/hooks/useIncomingDocuments";
+
+interface Props {
+  organizationId: string;
+}
+
+const DOC_TYPE_LABELS: Record<IncomingDocType, string> = {
+  contract: "Договор",
+  act: "Акт",
+  invoice: "Счёт",
+  other: "Прочее",
+};
+
+const DOC_TYPE_VARIANTS: Record<IncomingDocType, any> = {
+  contract: "default",
+  act: "secondary",
+  invoice: "outline",
+  other: "outline",
+};
+
+export function IncomingDocumentsManager({ organizationId }: Props) {
+  const { items, loading, uploading, upload, remove } = useIncomingDocuments(organizationId);
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [form, setForm] = useState({
+    doc_type: "contract" as IncomingDocType,
+    title: "",
+    counterparty_name: "",
+    counterparty_inn: "",
+    doc_number: "",
+    doc_date: "",
+    notes: "",
+  });
+  const [file, setFile] = useState<File | null>(null);
+
+  const reset = () => {
+    setForm({
+      doc_type: "contract",
+      title: "",
+      counterparty_name: "",
+      counterparty_inn: "",
+      doc_number: "",
+      doc_date: "",
+      notes: "",
+    });
+    setFile(null);
+  };
+
+  const handleSubmit = async () => {
+    if (!file || !form.title.trim()) return;
+    const ok = await upload({
+      doc_type: form.doc_type,
+      title: form.title,
+      counterparty_name: form.counterparty_name || undefined,
+      counterparty_inn: form.counterparty_inn || undefined,
+      doc_number: form.doc_number || undefined,
+      doc_date: form.doc_date || null,
+      notes: form.notes || undefined,
+      file,
+    });
+    if (ok) {
+      setDialogOpen(false);
+      reset();
+    }
+  };
+
+  return (
+    <Card>
+      <CardContent className="p-0">
+        <div className="flex items-center justify-between p-4 border-b">
+          <div>
+            <h3 className="font-semibold flex items-center gap-2">
+              <Inbox className="w-4 h-4 text-primary" />
+              Входящие документы
+            </h3>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Сканы подписанных контрагентом экземпляров — для двустороннего документооборота
+            </p>
+          </div>
+          <Button size="sm" onClick={() => setDialogOpen(true)} className="gap-2 rounded-xl">
+            <Upload className="w-4 h-4" />
+            Загрузить
+          </Button>
+        </div>
+
+        {loading ? (
+          <div className="p-8 text-center text-muted-foreground">Загрузка...</div>
+        ) : items.length === 0 ? (
+          <div className="p-12 text-center text-muted-foreground space-y-2">
+            <Inbox className="w-10 h-10 mx-auto text-primary/50" />
+            <p className="font-medium">Пока нет входящих документов</p>
+            <p className="text-sm">
+              Загружайте сюда сканы подписанных контрагентом договоров и актов.
+            </p>
+          </div>
+        ) : (
+          <div className="divide-y">
+            {items.map((doc) => (
+              <div
+                key={doc.id}
+                className="p-4 flex items-center justify-between gap-4 hover:bg-muted/30 transition-colors"
+              >
+                <div className="flex items-start gap-3 min-w-0 flex-1">
+                  <FileText className="w-5 h-5 text-primary mt-0.5 shrink-0" />
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <p className="font-medium truncate">{doc.title}</p>
+                      <Badge variant={DOC_TYPE_VARIANTS[doc.doc_type]}>
+                        {DOC_TYPE_LABELS[doc.doc_type]}
+                      </Badge>
+                      {doc.doc_number && (
+                        <span className="text-xs text-muted-foreground">№ {doc.doc_number}</span>
+                      )}
+                    </div>
+                    {doc.counterparty_name && (
+                      <p className="text-sm text-muted-foreground truncate flex items-center gap-1 mt-0.5">
+                        <Building2 className="w-3 h-3" />
+                        {doc.counterparty_name}
+                        {doc.counterparty_inn && ` • ИНН ${doc.counterparty_inn}`}
+                      </p>
+                    )}
+                    <p className="text-xs text-muted-foreground/70 mt-0.5 flex items-center gap-2">
+                      <Calendar className="w-3 h-3" />
+                      Загружен {format(new Date(doc.created_at), "d MMM yyyy", { locale: ru })}
+                      {doc.doc_date && ` • Дата документа: ${format(new Date(doc.doc_date), "d MMM yyyy", { locale: ru })}`}
+                    </p>
+                    {doc.notes && (
+                      <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{doc.notes}</p>
+                    )}
+                  </div>
+                </div>
+                <div className="flex gap-1 shrink-0">
+                  <Button variant="ghost" size="sm" asChild className="rounded-xl">
+                    <a href={doc.file_url} target="_blank" rel="noreferrer" className="gap-1">
+                      <ExternalLink className="w-4 h-4" />
+                      Открыть
+                    </a>
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => {
+                      if (confirm(`Удалить документ "${doc.title}"?`)) remove(doc);
+                    }}
+                    className="rounded-xl"
+                  >
+                    <Trash2 className="w-4 h-4 text-destructive" />
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </CardContent>
+
+      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+        <DialogContent className="max-w-lg rounded-2xl">
+          <DialogHeader>
+            <DialogTitle>Загрузить входящий документ</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="space-y-1">
+              <Label>Тип документа</Label>
+              <Select
+                value={form.doc_type}
+                onValueChange={(v) => setForm({ ...form, doc_type: v as IncomingDocType })}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {Object.entries(DOC_TYPE_LABELS).map(([k, v]) => (
+                    <SelectItem key={k} value={k}>
+                      {v}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-1">
+              <Label>Название *</Label>
+              <Input
+                value={form.title}
+                onChange={(e) => setForm({ ...form, title: e.target.value })}
+                placeholder="Договор оказания услуг №..."
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <Label>Контрагент</Label>
+                <Input
+                  value={form.counterparty_name}
+                  onChange={(e) => setForm({ ...form, counterparty_name: e.target.value })}
+                  placeholder="ООО «Ромашка»"
+                />
+              </div>
+              <div className="space-y-1">
+                <Label>ИНН контрагента</Label>
+                <Input
+                  value={form.counterparty_inn}
+                  onChange={(e) => setForm({ ...form, counterparty_inn: e.target.value })}
+                  placeholder="7707083893"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <Label>Номер документа</Label>
+                <Input
+                  value={form.doc_number}
+                  onChange={(e) => setForm({ ...form, doc_number: e.target.value })}
+                  placeholder="123/2025"
+                />
+              </div>
+              <div className="space-y-1">
+                <Label>Дата документа</Label>
+                <Input
+                  type="date"
+                  value={form.doc_date}
+                  onChange={(e) => setForm({ ...form, doc_date: e.target.value })}
+                />
+              </div>
+            </div>
+
+            <div className="space-y-1">
+              <Label>Файл *</Label>
+              <Input
+                type="file"
+                accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
+                onChange={(e) => setFile(e.target.files?.[0] || null)}
+              />
+            </div>
+
+            <div className="space-y-1">
+              <Label>Комментарий</Label>
+              <Textarea
+                rows={3}
+                value={form.notes}
+                onChange={(e) => setForm({ ...form, notes: e.target.value })}
+                placeholder="Дополнительная информация"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setDialogOpen(false)}>
+              Отмена
+            </Button>
+            <Button
+              onClick={handleSubmit}
+              disabled={uploading || !file || !form.title.trim()}
+              className="gap-2"
+            >
+              <Upload className="w-4 h-4" />
+              {uploading ? "Загрузка..." : "Загрузить"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </Card>
+  );
+}
