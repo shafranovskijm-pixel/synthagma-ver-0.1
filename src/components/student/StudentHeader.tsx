@@ -16,6 +16,8 @@ interface StudentHeaderProps {
   onLogout: () => void;
   setTheme: (t: string) => void;
   pendingCount: number;
+  /** Human-readable list of pending actions, used in the badge tooltip. */
+  pendingReasons?: string[];
   isVideoIdentified: boolean;
   showAchievements: boolean;
   onShowVideoId: () => void;
@@ -27,7 +29,7 @@ interface StudentHeaderProps {
 
 export function StudentHeader({
   fullName, orgName, logoUrl, onLogout, setTheme,
-  pendingCount, isVideoIdentified, showAchievements,
+  pendingCount, pendingReasons, isVideoIdentified, showAchievements,
   onShowVideoId, onShowConsent, onShowDocs, onShowAchievements,
   onProfileClick,
 }: StudentHeaderProps) {
@@ -37,6 +39,26 @@ export function StudentHeader({
   const initials = fullName
     ? fullName.split(" ").slice(0, 2).map(n => n[0]).join("").toUpperCase()
     : "У";
+
+  const goToProfile = () => {
+    if (onProfileClick && pendingCount === 0) {
+      onProfileClick();
+      return;
+    }
+    if (pendingCount > 0) {
+      navigate("/student/profile?section=documents");
+    } else if (onProfileClick) {
+      onProfileClick();
+    } else {
+      navigate("/student/profile");
+    }
+  };
+
+  const reasonsTooltip = pendingCount > 0
+    ? (pendingReasons && pendingReasons.length > 0
+        ? `${pendingCount} ${pendingCount === 1 ? "действие требует" : "действия требуют"} внимания: ${pendingReasons.join(", ")}`
+        : "Требуются документы")
+    : null;
 
   return (
     <header className="h-16 bg-card border-b border-border flex items-center justify-between px-6 shrink-0">
@@ -73,11 +95,11 @@ export function StudentHeader({
         {/* Notifications bell (заглушка под персональные уведомления) */}
         <Tooltip>
           <TooltipTrigger asChild>
-            <Button variant="ghost" size="icon" className="rounded-xl w-10 h-10 relative hover:scale-105 transition-transform">
+            <Button variant="ghost" size="icon" className="rounded-xl w-10 h-10 relative hover:scale-105 transition-transform" disabled>
               <Bell className="w-6 h-6 text-muted-foreground" />
             </Button>
           </TooltipTrigger>
-          <TooltipContent>Уведомления</TooltipContent>
+          <TooltipContent>Скоро: уведомления</TooltipContent>
         </Tooltip>
 
         {/* Profile dropdown */}
@@ -88,9 +110,27 @@ export function StudentHeader({
                 <AvatarFallback className="bg-primary/10 text-primary text-sm font-semibold">{initials}</AvatarFallback>
               </Avatar>
               {pendingCount > 0 && (
-                <div className="absolute top-0 left-7 w-5 h-5 rounded-full bg-destructive text-destructive-foreground text-[10px] flex items-center justify-center font-bold">
-                  {pendingCount}
-                </div>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span
+                      role="button"
+                      tabIndex={0}
+                      aria-label={reasonsTooltip || "Требуются документы"}
+                      onClick={(e) => { e.stopPropagation(); navigate("/student/profile?section=documents"); }}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          navigate("/student/profile?section=documents");
+                        }
+                      }}
+                      className="absolute top-0 left-7 w-5 h-5 rounded-full bg-destructive text-destructive-foreground text-[10px] flex items-center justify-center font-bold cursor-pointer hover:scale-110 transition-transform"
+                    >
+                      {pendingCount}
+                    </span>
+                  </TooltipTrigger>
+                  <TooltipContent className="max-w-xs">{reasonsTooltip}</TooltipContent>
+                </Tooltip>
               )}
               <span className="text-base font-medium hidden sm:block">{fullName || "Ученик"}</span>
             </button>
@@ -102,7 +142,7 @@ export function StudentHeader({
             </div>
             <DropdownMenuSeparator />
 
-            <DropdownMenuItem onClick={onProfileClick || (() => navigate("/student/profile"))}>
+            <DropdownMenuItem onClick={goToProfile}>
               <User className="w-4 h-4 mr-2" />
               Мой профиль
               {pendingCount > 0 && (
