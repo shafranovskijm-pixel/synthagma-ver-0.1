@@ -1,7 +1,9 @@
+import { useState } from "react";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
-import { AlertTriangle, Sparkles, ShieldCheck, CheckCircle2, FileSpreadsheet } from "lucide-react";
+import { AlertTriangle, Sparkles, ShieldCheck, CheckCircle2, FileSpreadsheet, Wrench } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { FrdoFileSanitizerDialog } from "@/components/organization/FrdoFileSanitizerDialog";
 import frdoErrorsPain from "@/assets/features/frdo-errors-pain.png";
 
 const fadeUp = {
@@ -15,6 +17,7 @@ const fadeUp = {
  * the editor demo.
  */
 export function FrdoPainSlide() {
+  const [sanitizerOpen, setSanitizerOpen] = useState(false);
   return (
     <div className="grid lg:grid-cols-2 gap-10 lg:gap-12 items-center">
       {/* Left column — pain copy + checklist */}
