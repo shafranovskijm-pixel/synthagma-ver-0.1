@@ -8,6 +8,9 @@ export interface FrdoReadinessStats {
   missing_birth_date: number;
   missing_snils: number;
   missing_passport: number;
+  missing_gender_resolvable: number;
+  missing_gender_unresolvable: number;
+  missing_profession_name: number;
 }
 
 const EMPTY: FrdoReadinessStats = {
@@ -17,6 +20,9 @@ const EMPTY: FrdoReadinessStats = {
   missing_birth_date: 0,
   missing_snils: 0,
   missing_passport: 0,
+  missing_gender_resolvable: 0,
+  missing_gender_unresolvable: 0,
+  missing_profession_name: 0,
 };
 
 export function useFrdoReadiness(organizationId: string | null | undefined) {
