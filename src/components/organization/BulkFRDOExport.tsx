@@ -91,6 +91,12 @@ export function BulkFRDOExport({
   const [frdoDataMap, setFrdoDataMap] = useState<Map<string, FRDOData>>(new Map());
   const [enrollmentsMap, setEnrollmentsMap] = useState<Map<string, EnrollmentData[]>>(new Map());
   const [studentsWithMissingData, setStudentsWithMissingData] = useState<string[]>([]);
+  const [validationPreview, setValidationPreview] = useState<{
+    rows: (string | number)[][];
+    issues: { studentName: string; issues: string[] }[];
+    autoGenderCount: number;
+    professionFromTitleCount: number;
+  } | null>(null);
 
   const selectedStudents = students.filter(s => selectedStudentIds.has(s.user_id) || selectedStudentIds.has(s.id));
 
@@ -382,11 +388,57 @@ export function BulkFRDOExport({
 
             <div className="flex justify-end gap-3">
               <Button variant="outline" className="rounded-xl" onClick={() => onOpenChange(false)}>Отмена</Button>
-              <Button className="rounded-xl gap-2" onClick={handleExport} disabled={isExporting || selectedStudents.length === 0}>
+              <Button className="rounded-xl gap-2" onClick={() => handleExport(false)} disabled={isExporting || selectedStudents.length === 0}>
                 {isExporting ? <SigmaSpinner size="sm" /> : <Download className="w-4 h-4" />}
                 Экспортировать ({selectedStudents.length})
               </Button>
             </div>
+
+            {validationPreview && (
+              <div className="border border-amber-500/30 bg-amber-500/5 rounded-xl p-4 space-y-3">
+                <div className="flex items-start gap-2">
+                  <AlertTriangle className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" />
+                  <div className="space-y-1">
+                    <p className="font-medium text-sm">
+                      Найдены проблемы в {validationPreview.issues.length} строках
+                    </p>
+                    {validationPreview.autoGenderCount > 0 && (
+                      <p className="text-xs text-muted-foreground">
+                        Пол будет автоматически определён по отчеству у {validationPreview.autoGenderCount} записей.
+                      </p>
+                    )}
+                    {validationPreview.professionFromTitleCount > 0 && (
+                      <p className="text-xs text-amber-600">
+                        ⚠️ У {validationPreview.professionFromTitleCount} записей подставлено название курса вместо профессии — ФРДО может отклонить файл. Заполните поле «Наименование профессии» в настройках курса.
+                      </p>
+                    )}
+                  </div>
+                </div>
+                {validationPreview.issues.length > 0 && (
+                  <ScrollArea className="h-32 rounded-lg border bg-background/60 p-2">
+                    <ul className="space-y-1 text-xs">
+                      {validationPreview.issues.slice(0, 50).map((it, idx) => (
+                        <li key={idx}>
+                          <span className="font-medium">{it.studentName}:</span>{" "}
+                          <span className="text-muted-foreground">{it.issues.join("; ")}</span>
+                        </li>
+                      ))}
+                      {validationPreview.issues.length > 50 && (
+                        <li className="text-muted-foreground">…и ещё {validationPreview.issues.length - 50}</li>
+                      )}
+                    </ul>
+                  </ScrollArea>
+                )}
+                <div className="flex justify-end gap-2">
+                  <Button size="sm" variant="ghost" className="rounded-lg" onClick={() => setValidationPreview(null)}>
+                    Отменить
+                  </Button>
+                  <Button size="sm" variant="outline" className="rounded-lg" onClick={() => handleExport(true)} disabled={isExporting}>
+                    Игнорировать и экспортировать
+                  </Button>
+                </div>
+              </div>
+            )}
           </div>
         )}
       </DialogContent>
