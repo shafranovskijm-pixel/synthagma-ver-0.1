@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Users, DollarSign, TrendingUp, CheckCircle, XCircle } from "lucide-react";
 import { toast } from "sonner";
+import { getErrorMessage } from "@/utils/handleSupabaseError";
 
 export function ReferralsManager() {
   const [partners, setPartners] = useState<any[]>([]);

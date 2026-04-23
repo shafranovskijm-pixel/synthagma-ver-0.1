@@ -191,7 +191,7 @@ export function AIAvatarManager({ organizationId }: Props) {
       language: tpl.language,
       allow_interruptions: tpl.allow_interruptions,
     });
-    if (error) { toast.error("Ошибка"); return; }
+    if (error) { toast.error(getErrorMessage(error)); return; }
     toast.success("Дублировано");
     fetchAll();
   };
