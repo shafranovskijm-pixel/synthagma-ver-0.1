@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, User, FileText, Video, BookOpen, Clock, MessageCircle, LogIn, Send } from "lucide-react";
-import { SendForSigningDialog, type SendForSigningPayload } from "@/components/signing/SendForSigningDialog";
+import { SendDocumentToStudentDialog } from "@/components/organization/student-detail/SendDocumentToStudentDialog";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { useOrgDashboard } from "@/contexts/OrgDashboardContext";
@@ -72,7 +72,7 @@ export function StudentDetailsTab() {
   const [student, setStudent] = useState<StudentData | null>(null);
   const [enrollments, setEnrollments] = useState<StudentEnrollment[]>([]);
   const [loading, setLoading] = useState(true);
-  const [signingPayload, setSigningPayload] = useState<SendForSigningPayload | null>(null);
+  const [sendDocOpen, setSendDocOpen] = useState(false);
 
   const { plan: orgPlan } = useSubscriptionLimits(organizationId);
 
@@ -190,23 +190,43 @@ export function StudentDetailsTab() {
         <Button variant="ghost" size="sm" className="gap-1.5 rounded-xl" onClick={() => d.tabNavigation.setActiveTab("students")}>
           <ArrowLeft className="w-4 h-4" /> Назад к ученикам
         </Button>
-        <Button
-          variant="outline"
-          size="sm"
-          className="gap-1.5 rounded-xl hover:text-primary hover:bg-primary/10 hover:border-primary/30"
-          onClick={() => {
-            localStorage.setItem('adminViewAsStudent', JSON.stringify({
-              userId: student.user_id,
-              name: student.name,
-              orgReturn: '/organization',
-            }));
-            navigate('/student');
-          }}
-        >
-          <LogIn className="w-4 h-4" />
-          Войти как ученик
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-1.5 rounded-xl hover:text-primary hover:bg-primary/10 hover:border-primary/30"
+            onClick={() => setSendDocOpen(true)}
+          >
+            <Send className="w-4 h-4" />
+            Отправить на подпись
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-1.5 rounded-xl hover:text-primary hover:bg-primary/10 hover:border-primary/30"
+            onClick={() => {
+              localStorage.setItem('adminViewAsStudent', JSON.stringify({
+                userId: student.user_id,
+                name: student.name,
+                orgReturn: '/organization',
+              }));
+              navigate('/student');
+            }}
+          >
+            <LogIn className="w-4 h-4" />
+            Войти как ученик
+          </Button>
+        </div>
       </div>
+
+      {organizationId && (
+        <SendDocumentToStudentDialog
+          open={sendDocOpen}
+          onOpenChange={setSendDocOpen}
+          organizationId={organizationId}
+          student={{ user_id: student.user_id, name: student.name, email: student.email }}
+        />
+      )}
 
       {/* Student info header */}
       <div className="flex items-center gap-3 p-4 bg-card rounded-xl border border-border">
