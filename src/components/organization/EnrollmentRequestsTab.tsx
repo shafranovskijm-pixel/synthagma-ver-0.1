@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
+import { getErrorMessage } from "@/utils/handleSupabaseError";
 import { Check, X, ClipboardCheck, Users } from "lucide-react";
 import {
   Select,
@@ -169,8 +170,8 @@ export function EnrollmentRequestsTab({ courseId, defaultAccessDays, onRefreshSt
       toast.success(`Заявка одобрена: ${request.user_name}`);
       loadRequests();
       onRefreshStudents?.();
-    } catch (e: any) {
-      toast.error("Ошибка одобрения заявки", { description: e.message });
+    } catch (e) {
+      toast.error("Ошибка одобрения заявки", { description: getErrorMessage(e) });
     } finally {
       setProcessingId(null);
     }
@@ -203,8 +204,8 @@ export function EnrollmentRequestsTab({ courseId, defaultAccessDays, onRefreshSt
 
       toast.success(`Заявка отклонена: ${request.user_name}`);
       loadRequests();
-    } catch (e: any) {
-      toast.error("Ошибка отклонения заявки", { description: e.message });
+    } catch (e) {
+      toast.error("Ошибка отклонения заявки", { description: getErrorMessage(e) });
     } finally {
       setProcessingId(null);
     }

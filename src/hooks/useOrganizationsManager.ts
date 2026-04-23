@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { getErrorMessage } from "@/utils/handleSupabaseError";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import { getXLSX } from "@/utils/xlsxHelper";
@@ -238,7 +239,7 @@ export function useOrganizationsManager(openOrgId?: string | null, onOpenOrgHand
       if (data?.error) throw new Error(data.error);
       toast.success("Успешно", { description: "Пароль изменён" });
       setResetPasswordOrg(null); setNewPassword(""); fetchOrganizations();
-    } catch (error: any) { console.error("Error resetting password:", error); toast.error("Ошибка", { description: error?.message || "Не удалось сбросить пароль" }); }
+    } catch (error) { console.error("Error resetting password:", error); toast.error("Ошибка", { description: getErrorMessage(error, "Не удалось сбросить пароль") }); }
     finally { setResettingPassword(false); }
   };
 

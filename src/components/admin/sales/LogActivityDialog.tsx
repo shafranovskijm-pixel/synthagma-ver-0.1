@@ -10,6 +10,7 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Phone, StickyNote } from 'lucide-react';
 import { toast } from 'sonner';
+import { getErrorMessage } from "@/utils/handleSupabaseError";
 
 interface Props {
   open: boolean;
@@ -75,7 +76,7 @@ export function LogActivityDialog({
       .from('sales_leads').insert(insertPayload).select('id').single();
     if (error) {
       console.error('create lead error', error);
-      toast.error('Не удалось создать лид', { description: error.message });
+      toast.error('Не удалось создать лид', { description: getErrorMessage(error) });
       return null;
     }
     return created?.id || null;
@@ -155,7 +156,7 @@ export function LogActivityDialog({
         const { error: taskErr } = await supabase.from('sales_tasks').insert(taskPayload);
         if (taskErr) {
           console.error('create reminder task error', taskErr);
-          toast.error('Активность сохранена, но не удалось создать задачу-напоминание', { description: taskErr.message });
+          toast.error('Активность сохранена, но не удалось создать задачу-напоминание', { description: getErrorMessage(taskErr) });
         } else {
           toast.success(`Поставил задачу-перезвон через ${days} дн.`);
         }
@@ -164,9 +165,9 @@ export function LogActivityDialog({
       toast.success(type === 'call' ? 'Звонок записан' : 'Заметка сохранена');
       onOpenChange(false);
       onLogged?.();
-    } catch (e: any) {
+    } catch (e) {
       console.error(e);
-      toast.error('Ошибка', { description: e.message });
+      toast.error('Ошибка', { description: getErrorMessage(e) });
     } finally {
       setSubmitting(false);
     }

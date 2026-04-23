@@ -7,6 +7,7 @@ import { Star, Check, Trash2, Clock } from "lucide-react";
 import { format, differenceInMonths } from "date-fns";
 import { ru } from "date-fns/locale";
 import { toast } from "sonner";
+import { getErrorMessage } from "@/utils/handleSupabaseError";
 
 interface Testimonial {
   id: string;
@@ -42,7 +43,7 @@ export function TestimonialsManager() {
       .update({ is_approved: true })
       .eq("id", id);
     if (error) {
-      toast.error("Ошибка", { description: error.message });
+      toast.error("Ошибка", { description: getErrorMessage(error) });
     } else {
       toast.success("Отзыв одобрен");
       fetchTestimonials();
@@ -54,7 +55,7 @@ export function TestimonialsManager() {
       .update({ is_approved: false })
       .eq("id", id);
     if (error) {
-      toast.error("Ошибка", { description: error.message });
+      toast.error("Ошибка", { description: getErrorMessage(error) });
     } else {
       toast.success("Отзыв скрыт");
       fetchTestimonials();
@@ -67,7 +68,7 @@ export function TestimonialsManager() {
       .delete()
       .eq("id", id);
     if (error) {
-      toast.error("Ошибка", { description: error.message });
+      toast.error("Ошибка", { description: getErrorMessage(error) });
     } else {
       toast.success("Отзыв удалён");
       fetchTestimonials();

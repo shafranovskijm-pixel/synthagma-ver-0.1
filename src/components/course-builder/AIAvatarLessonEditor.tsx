@@ -11,6 +11,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { safeInvoke } from "@/utils/safeInvoke";
 import { useExternalStorageWithProgress } from "@/hooks/useExternalStorageWithProgress";
 import { toast } from "sonner";
+import { getErrorMessage } from "@/utils/handleSupabaseError";
 
 export interface AIAvatarConfig {
   ai_avatar_name: string;
@@ -204,8 +205,8 @@ export function AIAvatarLessonEditor({ value, onChange, courseId, courseTitle, l
         });
         toast.success("✨ Промпт сгенерирован");
       }
-    } catch (e: any) {
-      toast.error("Не удалось сгенерировать", { description: e.message });
+    } catch (e) {
+      toast.error("Не удалось сгенерировать", { description: getErrorMessage(e) });
     } finally {
       setGeneratingPrompt(false);
     }
@@ -228,8 +229,8 @@ export function AIAvatarLessonEditor({ value, onChange, courseId, courseTitle, l
       } else if (data?.error) {
         toast.error("Ошибка", { description: data.error });
       }
-    } catch (e: any) {
-      toast.error("Не удалось сгенерировать", { description: e.message });
+    } catch (e) {
+      toast.error("Не удалось сгенерировать", { description: getErrorMessage(e) });
     } finally {
       setGeneratingImage(false);
     }
@@ -244,8 +245,8 @@ export function AIAvatarLessonEditor({ value, onChange, courseId, courseTitle, l
         upd({ ai_avatar_image_url: result.url });
         toast.success("Фото загружено");
       }
-    } catch (e: any) {
-      toast.error("Ошибка загрузки", { description: e.message });
+    } catch (e) {
+      toast.error("Ошибка загрузки", { description: getErrorMessage(e) });
     } finally {
       setUploadingImg(false);
     }
@@ -270,8 +271,8 @@ export function AIAvatarLessonEditor({ value, onChange, courseId, courseTitle, l
         const audio = new Audio(`data:audio/wav;base64,${data.audio}`);
         await audio.play();
       }
-    } catch (e: any) {
-      toast.error("Не удалось воспроизвести", { description: e.message });
+    } catch (e) {
+      toast.error("Не удалось воспроизвести", { description: getErrorMessage(e) });
     } finally {
       setPreviewing(false);
     }
