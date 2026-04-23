@@ -34,7 +34,7 @@ export const MODEL_PRICING = [
   { provider: "GigaChat", model: "GigaChat", label: "GigaChat Lite", level: "Базовый", speed: "⚡⚡ Быстрая", cost: "low" as CostLevel },
   { provider: "GigaChat", model: "GigaChat-Pro", label: "GigaChat Pro", level: "Стандарт", speed: "⚡ Средняя", cost: "medium" as CostLevel },
   { provider: "GigaChat", model: "GigaChat-Max", label: "GigaChat Max", level: "Продвинутый", speed: "🐢 Медленная", cost: "high" as CostLevel },
-  { provider: "ElevenLabs", model: "elevenlabs", label: "ElevenLabs TTS", level: "TTS", speed: "⚡⚡ Быстрая", cost: "high" as CostLevel },
+  { provider: "SaluteSpeech", model: "salutespeech", label: "SaluteSpeech TTS", level: "TTS", speed: "⚡⚡ Быстрая", cost: "low" as CostLevel },
 ];
 
 export const MODEL_COST_MAP: Record<string, CostLevel> = {};
