@@ -1,5 +1,5 @@
 import { Crown, Check } from "lucide-react";
-import { SUBSCRIPTION_PLANS, formatStorageSize, YEARLY_DISCOUNT } from "@/constants/subscriptionPlans";
+import { SUBSCRIPTION_PLANS, YEARLY_DISCOUNT } from "@/constants/subscriptionPlans";
 import { PLAN_ORDER, formatPriceRu } from "@/lib/pricingFeatureRows";
 
 const HIGHLIGHTS: Record<string, string[]> = {
@@ -12,25 +12,24 @@ const HIGHLIGHTS: Record<string, string[]> = {
   start: [
     "До 15 курсов и 100 учеников",
     "60 завершённых обучений в месяц",
-    "Хранилище 3 ГБ",
     "Email-рассылки с SMTP, drip и A/B",
+    "Безлимитное хранилище файлов",
   ],
   standard: [
     "До 30 курсов и 200 учеников",
-    "100 обучений в месяц, 10 ГБ",
+    "100 обучений в месяц",
     "Полноценная CRM продаж: КП, договоры, счета",
     "Email-рассылки + продвинутая аналитика",
   ],
   professional: [
     "До 50 курсов и 1 000 учеников",
-    "500 обучений в месяц, 50 ГБ",
+    "500 обучений в месяц",
     "Вебинары на Kinescope Live",
     "ФИС ФРДО+ — выгружаем за вас",
     "Видеосервис+ (файлы > 2 ГБ)",
   ],
   maximum: [
     "Безлимитные курсы и ученики",
-    "Хранилище 100 ГБ",
     "3D-тренажёры и интерактивные симуляции",
     "Все функции платформы без ограничений",
     "Персональный менеджер сопровождения",
@@ -70,9 +69,6 @@ export function PlatformProposalPlanCards() {
                 за год — {formatPriceRu(Math.round(plan.price * (1 - YEARLY_DISCOUNT)))} ₽/мес (−{YEARLY_DISCOUNT * 100}%)
               </div>
             )}
-            <div className="mt-2 text-xs text-muted-foreground">
-              Хранилище: {formatStorageSize(plan.limits.storageBytes)}
-            </div>
             <ul className="mt-5 space-y-2">
               {HIGHLIGHTS[p].map((item) => (
                 <li key={item} className="flex items-start gap-2 text-sm">
