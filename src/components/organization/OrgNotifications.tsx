@@ -8,6 +8,7 @@ import {
   Video,
   Shield,
   FileText,
+  CheckCheck,
   CheckCircle2,
   CreditCard,
   ClipboardList } from "lucide-react";
@@ -192,8 +193,19 @@ export function OrgNotifications({ organizationId }: OrgNotificationsProps) {
       </PopoverTrigger>
       <PopoverContent className="w-[420px] p-0 rounded-2xl" align="end" sideOffset={8}>
         {/* Header */}
-        <div className="px-5 pt-5 pb-3">
+        <div className="px-5 pt-5 pb-3 flex items-center justify-between gap-2">
           <h3 className="font-bold text-lg">Уведомления</h3>
+          {unreadCount > 0 && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 px-2 text-xs gap-1.5"
+              onClick={markAllAsRead}
+            >
+              <CheckCheck className="w-3.5 h-3.5" />
+              Отметить все
+            </Button>
+          )}
         </div>
 
         {/* Tabs */}
