@@ -226,7 +226,7 @@ export function useSalesManager() {
       const batch = leadsData.slice(i, i + batchSize);
       const { error } = await supabase.from('sales_leads').insert(batch as any);
       if (error) {
-        toast.error("Ошибка импорта", { description: `Батч ${i / batchSize + 1}: ${error.message}` });
+        toast.error("Ошибка импорта", { description: `Батч ${i / batchSize + 1}: ${getErrorMessage(error)}` });
       } else {
         imported += batch.length;
       }
@@ -281,8 +281,8 @@ export function useSalesManager() {
       toast.success("Менеджер создан", { description: `${fullName} (${email})` });
       await fetchManagers();
       return true;
-    } catch (err: any) {
-      toast.error("Ошибка создания менеджера", { description: err.message });
+    } catch (err) {
+      toast.error("Ошибка создания менеджера", { description: getErrorMessage(err) });
       return false;
     } finally {
       setLoading(false);

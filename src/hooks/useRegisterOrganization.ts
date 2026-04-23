@@ -6,6 +6,7 @@ import { safeInvoke } from "@/utils/safeInvoke";
 import { SUBSCRIPTION_PLANS, type SubscriptionPlan } from "@/constants/subscriptionPlans";
 import { getRefCode, clearRefCode, captureRefFromUrl } from "@/utils/referralCookie";
 import { toast } from "sonner";
+import { getErrorMessage } from "@/utils/handleSupabaseError";
 
 const planKeys: SubscriptionPlan[] = ['free', 'start', 'standard', 'professional', 'maximum'];
 
@@ -71,9 +72,9 @@ export function useRegisterOrganization() {
       } else {
         toast.error("Компания не найдена", { description: "Проверьте правильность ИНН" });
       }
-    } catch (error: any) {
+    } catch (error) {
       console.error("Error loading company:", error);
-      toast.error("Ошибка загрузки", { description: error.message || "Не удалось загрузить данные компании" });
+      toast.error("Ошибка загрузки", { description: getErrorMessage(error, "Не удалось загрузить данные компании") });
     } finally { setIsLoadingInn(false); }
   };
 

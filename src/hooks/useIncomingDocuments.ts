@@ -2,6 +2,7 @@ import { useCallback, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { getErrorMessage } from "@/utils/handleSupabaseError";
 
 export type IncomingDocType = "contract" | "act" | "invoice" | "other";
 
@@ -126,7 +127,7 @@ export function useIncomingDocuments(organizationId: string | null) {
         p_id: doc.id,
       });
       if (error || !data) {
-        toast.error("Не удалось переместить в корзину", { description: error?.message });
+        toast.error("Не удалось переместить в корзину", { description: getErrorMessage(error) });
         return;
       }
       qc.setQueryData(
