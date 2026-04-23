@@ -19,6 +19,7 @@ import { ru } from "date-fns/locale";
 import { DocumentDropZone } from "../DocumentDropZone";
 import type { Company, CompanyDocument } from "@/hooks/useCompaniesManager";
 import { toast } from "sonner";
+import { getErrorMessage } from "@/utils/handleSupabaseError";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 
 interface CompanyDetailDialogProps {
