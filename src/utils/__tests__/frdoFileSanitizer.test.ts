@@ -105,6 +105,31 @@ describe("sanitizeText", () => {
   });
 });
 
+describe("sanitizeProfessionName", () => {
+  it("охранник → Охранник (title-case для классификатора ФРДО)", () => {
+    const r = sanitizeProfessionName("охранник");
+    expect(r.value).toBe("Охранник");
+    expect(r.fixed).toBe(true);
+  });
+  it("ВОДИТЕЛЬ автомобиля → Водитель Автомобиля", () => {
+    expect(sanitizeProfessionName("ВОДИТЕЛЬ автомобиля").value).toBe("Водитель Автомобиля");
+  });
+  it("сохраняет уже корректный регистр", () => {
+    const r = sanitizeProfessionName("Сварщик");
+    expect(r.value).toBe("Сварщик");
+    expect(r.fixed).toBe(false);
+  });
+  it("капитализирует слова после дефиса", () => {
+    expect(sanitizeProfessionName("слесарь-ремонтник").value).toBe("Слесарь-Ремонтник");
+  });
+  it("чистит NBSP и лишние пробелы", () => {
+    expect(sanitizeProfessionName("  машинист\u00A0крана  ").value).toBe("Машинист Крана");
+  });
+  it("пусто → пусто", () => {
+    expect(sanitizeProfessionName("").value).toBe("");
+  });
+});
+
 // auto_reg_number is wired via sanitizeByKind — verify directly through public surface
 // by parsing a tiny synthetic sheet would require ExcelJS; we instead test the
 // fallback semantics by checking sanitizeText behaviour and document the contract:
