@@ -17,8 +17,13 @@ import {
   FileCheck, Download, Trash2, CheckCircle2, Calendar
 } from "lucide-react";
 import { useAdminBilling, type Invoice, type BillingDoc, type Contract } from "@/hooks/useAdminBilling";
-import { ContractReviewBody } from "@/components/signing/ContractReviewBody";
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
+import { lazyWithRetry } from "@/utils/lazyWithRetry";
+import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
+
+const ContractReviewBody = lazyWithRetry(() =>
+  import("@/components/signing/ContractReviewBody").then((m) => ({ default: m.ContractReviewBody }))
+);
 import { supabase } from "@/integrations/supabase/client";
 
 const NAV_SECTIONS = [
@@ -212,7 +217,9 @@ function ContractRow({ c, statusBadge, compact = false, expanded = false, onTogg
       </div>
       {expanded && isSignature && c.signature_token && (
         <div className="border-t bg-background p-4">
-          <ContractReviewBody signatureToken={c.signature_token} embedded />
+          <Suspense fallback={<div className="flex justify-center py-8"><SigmaSpinner /></div>}>
+            <ContractReviewBody signatureToken={c.signature_token} embedded />
+          </Suspense>
         </div>
       )}
     </div>
