@@ -375,6 +375,8 @@ const FeatureFRDO = () => {
       </section>
 
       <Footer />
+
+      <FrdoFileSanitizerDialog open={sanitizerOpen} onOpenChange={setSanitizerOpen} />
     </div>
   );
 };
