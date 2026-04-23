@@ -46,6 +46,7 @@ export function CreateWebinarDialog({ open, onOpenChange, organizationId, userId
   const [kinescopeRtmpKey, setKinescopeRtmpKey] = useState("");
   const [coverUrl, setCoverUrl] = useState("");
   const [courseId, setCourseId] = useState<string>("none");
+  const [autoRecord, setAutoRecord] = useState(false);
   const [saving, setSaving] = useState(false);
   const [courses, setCourses] = useState<{ id: string; title: string }[]>([]);
 
@@ -74,6 +75,7 @@ export function CreateWebinarDialog({ open, onOpenChange, organizationId, userId
       setKinescopeRtmpKey((editWebinar as any).rtmp_key || "");
       setCoverUrl(editWebinar.cover_url || "");
       setCourseId(editWebinar.course_id || "none");
+      setAutoRecord(Boolean((editWebinar as any).auto_record));
     } else if (open && !editWebinar) {
       reset();
     }
@@ -91,6 +93,7 @@ export function CreateWebinarDialog({ open, onOpenChange, organizationId, userId
     setKinescopeRtmpKey("");
     setCoverUrl("");
     setCourseId("none");
+    setAutoRecord(false);
   };
 
   const handleSubmit = async () => {
