@@ -356,7 +356,14 @@ export function WebinarsManager({ organizationId }: Props) {
               )}
               <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0">
-                  <h4 className="font-medium truncate">{w.title}</h4>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <h4 className="font-medium truncate">{w.title}</h4>
+                    <RecordingStatusBadge
+                      status={w.recording_status}
+                      sizeBytes={w.recording_size_bytes}
+                      compact
+                    />
+                  </div>
                   {w.description && <p className="text-sm text-muted-foreground line-clamp-2">{w.description}</p>}
                 </div>
                 {statusBadge(w)}
@@ -427,7 +434,12 @@ export function WebinarsManager({ organizationId }: Props) {
                     <RefreshCw className="w-3 h-3 mr-1" />Запись
                   </Button>
                 )}
-                {w.source_type === "livekit" && (
+                {w.source_type === "livekit" && w.status === "ended" && w.recording_url && (
+                  <Button size="sm" variant="default" onClick={() => setPreviewWebinar(w)}>
+                    <Video className="w-3 h-3 mr-1" />Смотреть запись
+                  </Button>
+                )}
+                {w.source_type === "livekit" && w.status !== "ended" && (
                   <Button size="sm" variant="default" onClick={() => setLiveSheetWebinar(w)}>
                     <Video className="w-3 h-3 mr-1" />Войти в эфир
                   </Button>
@@ -539,6 +551,13 @@ export function WebinarsManager({ organizationId }: Props) {
       />
 
       {/* Live webinar теперь рендерится inline сверху (ранний return), отдельный overlay не нужен */}
+
+      <RecordingPreviewDialog
+        open={!!previewWebinar}
+        onOpenChange={(o) => !o && setPreviewWebinar(null)}
+        title={previewWebinar?.title || ""}
+        recordingUrl={previewWebinar?.recording_url ?? null}
+      />
 
       {recordingTarget && (
         <WebinarRecordingUploader
