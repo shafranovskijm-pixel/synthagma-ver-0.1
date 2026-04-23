@@ -144,7 +144,7 @@ export function useStudents(
 
   const invalidateStudents = useCallback(() => {
     if (!organizationId) return;
-    qc.invalidateQueries({ queryKey: ["org", organizationId, "students-list"] });
+    qc.invalidateQueries({ queryKey: qk.org.studentsListAll(organizationId) });
   }, [qc, organizationId]);
 
   const refreshGroups = useCallback(() => {

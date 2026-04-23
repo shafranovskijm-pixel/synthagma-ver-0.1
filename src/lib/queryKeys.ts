@@ -21,6 +21,15 @@ export const qk = {
     studentGroups: (orgId: string) => ["org", orgId, "student-groups"] as const,
     studentsFrdo: (orgId: string, key: string) => ["org", orgId, "students-frdo", key] as const,
     studentsList: (orgId: string, courseIdsKey: string) => ["org", orgId, "students-list", courseIdsKey] as const,
+    /** Префикс для инвалидации всех students-list внутри организации. */
+    studentsListAll: (orgId: string) => ["org", orgId, "students-list"] as const,
+  },
+  admin: {
+    organizations: () => ["admin", "organizations"] as const,
+    users: () => ["admin", "users"] as const,
+    notifications: () => ["admin", "notifications"] as const,
+    analytics: () => ["admin", "analytics"] as const,
+    aiToday: () => ["admin", "ai-today"] as const,
   },
   user: {
     profile: (userId: string) => ["user", userId, "profile"] as const,
