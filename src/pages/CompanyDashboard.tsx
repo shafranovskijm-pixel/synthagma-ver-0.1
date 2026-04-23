@@ -20,6 +20,7 @@ import { CompanyDocumentsTab } from "@/components/company/CompanyDocumentsTab";
 import { CompanyRemindersTab } from "@/components/company/CompanyRemindersTab";
 import { CompanyRequestsTab } from "@/components/company/CompanyRequestsTab";
 import { CompanyStaffManager } from "@/components/company/CompanyStaffManager";
+import { AnnouncementsBell } from "@/components/shared/AnnouncementsBell";
 
 type TabId = "home" | "employees" | "planning" | "requests" | "documents" | "reminders" | "team";
 

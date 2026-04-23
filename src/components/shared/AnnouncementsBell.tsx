@@ -58,6 +58,23 @@ export function AnnouncementsBell() {
     staleTime: 60 * 1000,
   });
 
+  // Realtime: при появлении нового объявления — инвалидируем список
+  useEffect(() => {
+    const channel = supabase
+      .channel("platform-announcements-bell")
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "platform_announcements" },
+        () => {
+          qc.invalidateQueries({ queryKey: qk.platform.announcements() });
+        },
+      )
+      .subscribe();
+    return () => {
+      void supabase.removeChannel(channel);
+    };
+  }, [qc]);
+
   const unseenCount = announcements.filter(
     (a) => !lastSeen || new Date(a.created_at) > new Date(lastSeen),
   ).length;
