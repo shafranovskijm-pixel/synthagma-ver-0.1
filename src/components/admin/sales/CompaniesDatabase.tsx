@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 // xlsx is dynamically imported inside the export handler to keep it out of the main bundle
 import {
   Database, Search, Loader2, Download, UserPlus, Trash2, ExternalLink,
-  BadgeCheck, Plus, RefreshCw, AlertTriangle,
+  BadgeCheck, Plus, RefreshCw, AlertTriangle, Sparkles,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -14,6 +14,8 @@ import { useSalesCompaniesDb, type SalesCompanyDbRow } from '@/hooks/useSalesCom
 import { useCheckoApi } from '@/hooks/useCheckoApi';
 import { CheckoQuotaBar } from './CheckoQuotaBar';
 import { AddInnsDialog } from './AddInnsDialog';
+import { CheckoSearchDialog } from './CheckoSearchDialog';
+import { CheckoSearchHistory } from './CheckoSearchHistory';
 
 interface CompaniesDatabaseProps {
   organizationId?: string;
@@ -28,6 +30,7 @@ export function CompaniesDatabase({ organizationId }: CompaniesDatabaseProps = {
   const [cityFilter, setCityFilter] = useState('all');
   const [riskFilter, setRiskFilter] = useState('all');
   const [addOpen, setAddOpen] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
 
   const rows = list.data || [];
   const remaining = stats.data?.today_remaining ?? 100;
@@ -127,7 +130,10 @@ export function CompaniesDatabase({ organizationId }: CompaniesDatabaseProps = {
               <Badge variant="secondary">{rows.length}</Badge>
             </div>
             <div className="flex items-center gap-2 flex-wrap">
-              <Button onClick={() => setAddOpen(true)} className="gap-2" disabled={remaining === 0}>
+              <Button onClick={() => setSearchOpen(true)} variant="default" className="gap-2 bg-gradient-to-r from-primary to-primary/80">
+                <Sparkles className="w-4 h-4" /> Подбор по фильтрам
+              </Button>
+              <Button onClick={() => setAddOpen(true)} variant="outline" className="gap-2" disabled={remaining === 0}>
                 <Plus className="w-4 h-4" /> Добавить ИНН
               </Button>
               <Button
@@ -233,6 +239,8 @@ export function CompaniesDatabase({ organizationId }: CompaniesDatabaseProps = {
         </CardContent>
       </Card>
 
+      <CheckoSearchHistory />
+
       <AddInnsDialog
         open={addOpen}
         onOpenChange={setAddOpen}
@@ -240,6 +248,8 @@ export function CompaniesDatabase({ organizationId }: CompaniesDatabaseProps = {
         isSubmitting={enrichBatch.isPending}
         remainingQuota={remaining}
       />
+
+      <CheckoSearchDialog open={searchOpen} onOpenChange={setSearchOpen} />
     </div>
   );
 }

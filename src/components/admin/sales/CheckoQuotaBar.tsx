@@ -1,4 +1,4 @@
-import { Loader2, Zap, Clock, Database } from 'lucide-react';
+import { Loader2, Zap, Clock, Database, Search } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
@@ -15,22 +15,44 @@ export function CheckoQuotaBar() {
   const pct = Math.min(100, Math.round((used / limit) * 100));
   const remaining = s?.today_remaining ?? limit;
 
+  const searchUsed = s?.search_used ?? 0;
+  const searchLimit = s?.search_daily_limit ?? 100;
+  const searchPct = Math.min(100, Math.round((searchUsed / searchLimit) * 100));
+  const searchRemaining = s?.search_remaining ?? searchLimit;
+
   return (
     <Card>
       <CardContent className="pt-5 space-y-4">
         <div className="flex items-start justify-between gap-4 flex-wrap">
-          <div className="space-y-1.5 min-w-[260px] flex-1">
-            <div className="flex items-center gap-2">
-              <Zap className="w-4 h-4 text-primary" />
-              <span className="text-sm font-semibold">Дневная квота Checko API</span>
-              <Badge variant={remaining === 0 ? 'destructive' : 'secondary'} className="ml-1">
-                {used} / {limit}
-              </Badge>
+          <div className="space-y-3 min-w-[280px] flex-1">
+            <div className="space-y-1.5">
+              <div className="flex items-center gap-2">
+                <Zap className="w-4 h-4 text-primary" />
+                <span className="text-sm font-semibold">Карточки компаний</span>
+                <Badge variant={remaining === 0 ? 'destructive' : 'secondary'} className="ml-1">
+                  {used} / {limit}
+                </Badge>
+              </div>
+              <Progress value={pct} className="h-2" />
+              <div className="flex items-center justify-between text-xs text-muted-foreground">
+                <span>Осталось: {remaining}</span>
+                <span>Сброс в 00:00 МСК</span>
+              </div>
             </div>
-            <Progress value={pct} className="h-2" />
-            <div className="flex items-center justify-between text-xs text-muted-foreground">
-              <span>Осталось сегодня: {remaining}</span>
-              <span>Сброс в 00:00 МСК</span>
+
+            <div className="space-y-1.5">
+              <div className="flex items-center gap-2">
+                <Search className="w-4 h-4 text-primary" />
+                <span className="text-sm font-semibold">Запросы поиска</span>
+                <Badge variant={searchRemaining === 0 ? 'destructive' : 'secondary'} className="ml-1">
+                  {searchUsed} / {searchLimit}
+                </Badge>
+              </div>
+              <Progress value={searchPct} className="h-2" />
+              <div className="flex items-center justify-between text-xs text-muted-foreground">
+                <span>Осталось: {searchRemaining}</span>
+                <span>Лимит подбора по фильтрам</span>
+              </div>
             </div>
           </div>
 
