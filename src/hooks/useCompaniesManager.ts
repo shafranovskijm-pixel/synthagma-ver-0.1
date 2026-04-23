@@ -1,4 +1,5 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useCallback, useMemo } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { safeInvoke } from "@/utils/safeInvoke";
 import { toast } from "sonner";
@@ -80,20 +81,73 @@ interface GlobalDocStats {
   unpaidAmount: number;
 }
 
-export function useCompaniesManager(organizationId: string) {
-  const [companies, setCompanies] = useState<Company[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [searchQuery, setSearchQuery] = useState("");
-  
-  // Global document stats
-  const [globalDocStats, setGlobalDocStats] = useState<GlobalDocStats>({
-    contracts: 0,
-    invoices: 0,
-    paidInvoices: 0,
-    unpaidInvoices: 0,
-    paidAmount: 0,
-    unpaidAmount: 0,
+const EMPTY_STATS: GlobalDocStats = {
+  contracts: 0,
+  invoices: 0,
+  paidInvoices: 0,
+  unpaidInvoices: 0,
+  paidAmount: 0,
+  unpaidAmount: 0,
+};
+
+const companiesKey = (orgId: string) => ['companies', orgId] as const;
+const docStatsKey = (orgId: string) => ['companies', orgId, 'docStats'] as const;
+
+async function fetchCompaniesData(organizationId: string): Promise<Company[]> {
+  const { data: companiesData, error } = await supabase
+    .from("companies")
+    .select("*")
+    .eq("organization_id", organizationId)
+    .order("name");
+
+  if (error) throw error;
+  if (!companiesData || companiesData.length === 0) return [];
+
+  // Single query for all student counts (fix N+1)
+  const companyIds = companiesData.map(c => c.id);
+  const { data: profiles } = await supabase
+    .from("profiles")
+    .select("company_id")
+    .in("company_id", companyIds);
+
+  const counts = new Map<string, number>();
+  (profiles || []).forEach(p => {
+    if (!p.company_id) return;
+    counts.set(p.company_id, (counts.get(p.company_id) || 0) + 1);
   });
+
+  return companiesData.map(c => ({ ...c, studentsCount: counts.get(c.id) || 0 }));
+}
+
+async function fetchDocStats(organizationId: string): Promise<GlobalDocStats> {
+  const { data: companiesData } = await supabase
+    .from("companies")
+    .select("id")
+    .eq("organization_id", organizationId);
+
+  if (!companiesData || companiesData.length === 0) return EMPTY_STATS;
+
+  const companyIds = companiesData.map(c => c.id);
+  const { data: docs } = await supabase
+    .from("company_documents")
+    .select("type, is_paid, amount")
+    .in("company_id", companyIds);
+
+  if (!docs) return EMPTY_STATS;
+
+  return {
+    contracts: docs.filter(d => d.type === 'contract').length,
+    invoices: docs.filter(d => d.type === 'invoice').length,
+    paidInvoices: docs.filter(d => d.type === 'invoice' && d.is_paid).length,
+    unpaidInvoices: docs.filter(d => d.type === 'invoice' && !d.is_paid).length,
+    paidAmount: docs.filter(d => d.is_paid).reduce((sum, d) => sum + (d.amount || 0), 0),
+    unpaidAmount: docs.filter(d => !d.is_paid && d.type === 'invoice').reduce((sum, d) => sum + (d.amount || 0), 0),
+  };
+}
+
+export function useCompaniesManager(organizationId: string) {
+  const qc = useQueryClient();
+  const [searchQuery, setSearchQuery] = useState("");
 
   // Create dialog state
   const [showCreateDialog, setShowCreateDialog] = useState(false);
@@ -119,86 +173,30 @@ export function useCompaniesManager(organizationId: string) {
   const [deletingCompany, setDeletingCompany] = useState<Company | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
-  const fetchCompanies = useCallback(async () => {
-    setIsLoading(true);
-    try {
-      const { data: companiesData, error } = await supabase
-        .from("companies")
-        .select("*")
-        .eq("organization_id", organizationId)
-        .order("name");
+  const { data: companies = [], isLoading } = useQuery({
+    queryKey: companiesKey(organizationId),
+    queryFn: () => fetchCompaniesData(organizationId),
+    enabled: !!organizationId,
+    staleTime: 60_000,
+    gcTime: 5 * 60_000,
+    meta: { onError: () => toast.error("Ошибка загрузки организаций") },
+  });
 
-      if (error) throw error;
+  const { data: globalDocStats = EMPTY_STATS } = useQuery({
+    queryKey: docStatsKey(organizationId),
+    queryFn: () => fetchDocStats(organizationId),
+    enabled: !!organizationId,
+    staleTime: 60_000,
+    gcTime: 5 * 60_000,
+  });
 
-      // Get student counts for each company
-      const companiesWithCounts = await Promise.all(
-        (companiesData || []).map(async (company) => {
-          const { count } = await supabase
-            .from("profiles")
-            .select("id", { count: "exact", head: true })
-            .eq("company_id", company.id);
+  const refreshCompanies = useCallback(() => {
+    qc.invalidateQueries({ queryKey: companiesKey(organizationId) });
+  }, [qc, organizationId]);
 
-          return { ...company, studentsCount: count || 0 };
-        })
-      );
-
-      setCompanies(companiesWithCounts);
-    } catch (error) {
-      console.error("Error fetching companies:", error);
-      toast.error("Ошибка загрузки организаций");
-    } finally {
-      setIsLoading(false);
-    }
-  }, [organizationId]);
-
-  const fetchGlobalDocStats = useCallback(async () => {
-    try {
-      // Get all company IDs for this organization
-      const { data: companiesData } = await supabase
-        .from("companies")
-        .select("id")
-        .eq("organization_id", organizationId);
-
-      if (!companiesData || companiesData.length === 0) {
-        setGlobalDocStats({
-          contracts: 0,
-          invoices: 0,
-          paidInvoices: 0,
-          unpaidInvoices: 0,
-          paidAmount: 0,
-          unpaidAmount: 0,
-        });
-        return;
-      }
-
-      const companyIds = companiesData.map(c => c.id);
-
-      const { data: docs } = await supabase
-        .from("company_documents")
-        .select("type, is_paid, amount")
-        .in("company_id", companyIds);
-
-      if (!docs) return;
-
-      const stats = {
-        contracts: docs.filter(d => d.type === 'contract').length,
-        invoices: docs.filter(d => d.type === 'invoice').length,
-        paidInvoices: docs.filter(d => d.type === 'invoice' && d.is_paid).length,
-        unpaidInvoices: docs.filter(d => d.type === 'invoice' && !d.is_paid).length,
-        paidAmount: docs.filter(d => d.is_paid).reduce((sum, d) => sum + (d.amount || 0), 0),
-        unpaidAmount: docs.filter(d => !d.is_paid && d.type === 'invoice').reduce((sum, d) => sum + (d.amount || 0), 0),
-      };
-
-      setGlobalDocStats(stats);
-    } catch (error) {
-      console.error("Error fetching global doc stats:", error);
-    }
-  }, [organizationId]);
-
-  useEffect(() => {
-    fetchCompanies();
-    fetchGlobalDocStats();
-  }, [fetchCompanies, fetchGlobalDocStats]);
+  const fetchGlobalDocStats = useCallback(() => {
+    qc.invalidateQueries({ queryKey: docStatsKey(organizationId) });
+  }, [qc, organizationId]);
 
   const searchDadata = async (inn: string) => {
     if (inn.length < 10) return;
@@ -268,7 +266,7 @@ export function useCompaniesManager(organizationId: string) {
       setNewCompanyInn("");
       setNewCompanyEmail("");
       setDadataCompanyInfo(null);
-      fetchCompanies();
+      refreshCompanies();
     } catch (error) {
       console.error("Error creating company:", error);
       toast.error("Ошибка создания организации");
@@ -318,7 +316,7 @@ export function useCompaniesManager(organizationId: string) {
       setShowEditDialog(false);
       setEditingCompany(null);
       setDadataEditCompanyInfo(null);
-      fetchCompanies();
+      refreshCompanies();
     } catch (error) {
       console.error("Error updating company:", error);
       toast.error("Ошибка обновления организации");
@@ -332,25 +330,21 @@ export function useCompaniesManager(organizationId: string) {
 
     setIsDeleting(true);
     try {
-      // First detach students from company
       await supabase
         .from("profiles")
         .update({ company_id: null })
         .eq("company_id", deletingCompany.id);
 
-      // Delete registration links
       await supabase
         .from("registration_links")
         .delete()
         .eq("company_id", deletingCompany.id);
 
-      // Delete company documents
       await supabase
         .from("company_documents")
         .delete()
         .eq("company_id", deletingCompany.id);
 
-      // Delete company
       const { error } = await supabase
         .from("companies")
         .delete()
@@ -361,7 +355,8 @@ export function useCompaniesManager(organizationId: string) {
       toast.success("Организация удалена");
       setShowDeleteConfirm(false);
       setDeletingCompany(null);
-      fetchCompanies();
+      refreshCompanies();
+      fetchGlobalDocStats();
     } catch (error) {
       console.error("Error deleting company:", error);
       toast.error("Ошибка удаления организации");
@@ -370,22 +365,23 @@ export function useCompaniesManager(organizationId: string) {
     }
   };
 
-  const filteredCompanies = companies.filter(
-    (c) =>
-      c.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (c.inn && c.inn.includes(searchQuery))
+  const filteredCompanies = useMemo(
+    () => companies.filter(
+      (c) =>
+        c.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (c.inn && c.inn.includes(searchQuery))
+    ),
+    [companies, searchQuery]
   );
 
   return {
-    // Data
     companies,
     filteredCompanies,
     isLoading,
     searchQuery,
     setSearchQuery,
     globalDocStats,
-    
-    // Create dialog
+
     showCreateDialog,
     setShowCreateDialog,
     newCompanyName,
@@ -400,8 +396,7 @@ export function useCompaniesManager(organizationId: string) {
     setDadataCompanyInfo,
     searchDadata,
     createCompany,
-    
-    // Edit dialog
+
     showEditDialog,
     setShowEditDialog,
     editingCompany,
@@ -418,17 +413,15 @@ export function useCompaniesManager(organizationId: string) {
     setDadataEditCompanyInfo,
     openEditDialog,
     saveCompany,
-    
-    // Delete confirm
+
     showDeleteConfirm,
     setShowDeleteConfirm,
     deletingCompany,
     setDeletingCompany,
     isDeleting,
     deleteCompany,
-    
-    // Refresh
-    refreshCompanies: fetchCompanies,
+
+    refreshCompanies,
     fetchGlobalDocStats,
   };
 }
