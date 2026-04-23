@@ -191,7 +191,9 @@ export function CourseDetailsModal({
             </TabsContent>
 
             <TabsContent value="history" className="mt-0 h-full">
-              <EnrollmentHistory courseId={course.id} organizationId={organizationId || ""} courseName={course.title} />
+              <Suspense fallback={<div className="flex justify-center py-8 text-sm text-muted-foreground">Загрузка истории…</div>}>
+                <EnrollmentHistory courseId={course.id} organizationId={organizationId || ""} courseName={course.title} />
+              </Suspense>
             </TabsContent>
 
             <TabsContent value="tests" className="mt-0">
