@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { getErrorMessage } from "@/utils/handleSupabaseError";
 
 export interface OrgContractTemplate {
   id: string;
@@ -46,8 +47,8 @@ export function useOrgContractTemplates(organizationId: string | null) {
         .order("created_at", { ascending: false });
       if (error) throw error;
       setTemplates((data || []) as OrgContractTemplate[]);
-    } catch (e: any) {
-      toast.error("Ошибка загрузки шаблонов договоров: " + e.message);
+    } catch (e) {
+      toast.error("Ошибка загрузки шаблонов договоров", { description: getErrorMessage(e) });
     } finally {
       setLoading(false);
     }
@@ -63,7 +64,7 @@ export function useOrgContractTemplates(organizationId: string | null) {
       .upsert(payload, { onConflict: "id" })
       .select("*")
       .single();
-    if (error) { toast.error("Ошибка сохранения: " + error.message); return null; }
+    if (error) { toast.error("Ошибка сохранения", { description: getErrorMessage(error) }); return null; }
     toast.success("Шаблон сохранён");
     refresh();
     return data as OrgContractTemplate;
@@ -95,8 +96,8 @@ export function useOrgContracts(organizationId: string | null) {
         .order("created_at", { ascending: false });
       if (error) throw error;
       setContracts((data || []) as OrgContractSignature[]);
-    } catch (e: any) {
-      toast.error("Ошибка загрузки договоров: " + e.message);
+    } catch (e) {
+      toast.error("Ошибка загрузки договоров", { description: getErrorMessage(e) });
     } finally {
       setLoading(false);
     }
@@ -126,7 +127,7 @@ export function useOrgContracts(organizationId: string | null) {
         linked_proposal_id: input.linkedProposalId ?? null,
       },
     });
-    if (error) { toast.error("Не удалось создать договор: " + error.message); return null; }
+    if (error) { toast.error("Не удалось создать договор", { description: getErrorMessage(error) }); return null; }
     if ((data as any)?.error) { toast.error((data as any).error); return null; }
     toast.success("Договор отправлен на подписание");
     refresh();

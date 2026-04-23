@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { getErrorMessage } from "@/utils/handleSupabaseError";
 
 export interface OrgProposal {
   id: string;
@@ -53,8 +54,8 @@ export function useOrgProposals(organizationId: string | null) {
         .order("created_at", { ascending: false });
       if (error) throw error;
       setProposals((data || []) as OrgProposal[]);
-    } catch (e: any) {
-      toast.error("Ошибка загрузки КП: " + e.message);
+    } catch (e) {
+      toast.error("Ошибка загрузки КП", { description: getErrorMessage(e) });
     } finally {
       setLoading(false);
     }
@@ -90,7 +91,7 @@ export function useOrgProposals(organizationId: string | null) {
       .upsert(payload, { onConflict: "id" })
       .select("*")
       .single();
-    if (error) { toast.error("Ошибка сохранения КП: " + error.message); return null; }
+    if (error) { toast.error("Ошибка сохранения КП", { description: getErrorMessage(error) }); return null; }
 
     // Заменяем услуги
     await supabase.from("commercial_proposal_services").delete().eq("proposal_id", saved.id);
@@ -105,7 +106,7 @@ export function useOrgProposals(organizationId: string | null) {
         sort_order: idx,
       }));
       const { error: sErr } = await supabase.from("commercial_proposal_services").insert(rows);
-      if (sErr) { toast.error("Ошибка сохранения услуг: " + sErr.message); }
+      if (sErr) { toast.error("Ошибка сохранения услуг", { description: getErrorMessage(sErr) }); }
     }
 
     refresh();
@@ -128,7 +129,7 @@ export function useOrgProposals(organizationId: string | null) {
         template_id: templateId,
       },
     });
-    if (error) { toast.error("Не удалось отправить: " + error.message); return false; }
+    if (error) { toast.error("Не удалось отправить", { description: getErrorMessage(error) }); return false; }
     if ((data as any)?.error) { toast.error((data as any).error); return false; }
     toast.success("КП отправлено на " + toEmail);
     refresh();
