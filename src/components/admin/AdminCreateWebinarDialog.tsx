@@ -4,10 +4,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
-import { Radio, Video, ExternalLink as ExternalLinkIcon } from "lucide-react";
+import { Radio, Video, ExternalLink as ExternalLinkIcon, Search } from "lucide-react";
 
 interface Props {
   open: boolean;
@@ -30,8 +31,10 @@ interface Org {
 export function AdminCreateWebinarDialog({ open, onOpenChange, onCreated, userId }: Props) {
   const [orgs, setOrgs] = useState<Org[]>([]);
   const [orgId, setOrgId] = useState<string>("");
+  const [orgSearch, setOrgSearch] = useState("");
   const [title, setTitle] = useState("Тестовый вебинар");
   const [type, setType] = useState<"livekit" | "kinescope" | "external">("livekit");
+  const [autoRecord, setAutoRecord] = useState(false);
   const [rtmpUrl, setRtmpUrl] = useState("");
   const [rtmpKey, setRtmpKey] = useState("");
   const [embedId, setEmbedId] = useState("");
@@ -40,25 +43,48 @@ export function AdminCreateWebinarDialog({ open, onOpenChange, onCreated, userId
 
   useEffect(() => {
     if (!open) return;
-    supabase
-      .from("organizations")
-      .select("id, name")
-      .order("name")
-      .limit(500)
-      .then(({ data }) => {
-        const list = (data || []) as Org[];
-        setOrgs(list);
-        if (list.length > 0 && !orgId) setOrgId(list[0].id);
-      });
-  }, [open]);
+    (async () => {
+      // Сначала получаем admin-organization из профиля, чтобы предвыбрать её
+      let myOrgId: string | null = null;
+      if (userId) {
+        const { data: prof } = await supabase
+          .from("profiles")
+          .select("organization_id")
+          .eq("user_id", userId)
+          .maybeSingle();
+        myOrgId = prof?.organization_id ?? null;
+      }
+      const { data } = await supabase
+        .from("organizations")
+        .select("id, name")
+        .order("name")
+        .limit(500);
+      const list = (data || []) as Org[];
+      setOrgs(list);
+      // Предвыбираем организацию админа, иначе — первую в списке
+      if (!orgId) {
+        if (myOrgId && list.some((o) => o.id === myOrgId)) {
+          setOrgId(myOrgId);
+        } else if (list.length > 0) {
+          setOrgId(list[0].id);
+        }
+      }
+    })();
+  }, [open, userId]);
+
+  const filteredOrgs = orgSearch.trim()
+    ? orgs.filter((o) => o.name.toLowerCase().includes(orgSearch.toLowerCase()))
+    : orgs;
 
   const reset = () => {
     setTitle("Тестовый вебинар");
     setType("livekit");
+    setAutoRecord(false);
     setRtmpUrl("");
     setRtmpKey("");
     setEmbedId("");
     setExternalUrl("");
+    setOrgSearch("");
   };
 
   const handleSubmit = async () => {
@@ -82,6 +108,8 @@ export function AdminCreateWebinarDialog({ open, onOpenChange, onCreated, userId
         source_type: type,
         status: type === "livekit" ? "live" : "planned",
         created_by: userId,
+        host_user_id: userId,
+        auto_record: type === "livekit" ? autoRecord : false,
       };
 
       if (type === "livekit") {
@@ -132,14 +160,31 @@ export function AdminCreateWebinarDialog({ open, onOpenChange, onCreated, userId
         <div className="space-y-4">
           <div>
             <Label>Организация</Label>
-            <Select value={orgId} onValueChange={setOrgId}>
-              <SelectTrigger><SelectValue placeholder="Выберите организацию" /></SelectTrigger>
-              <SelectContent>
-                {orgs.map((o) => (
-                  <SelectItem key={o.id} value={o.id}>{o.name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <div className="space-y-2">
+              <div className="relative">
+                <Search className="absolute left-2.5 top-2.5 w-4 h-4 text-muted-foreground" />
+                <Input
+                  value={orgSearch}
+                  onChange={(e) => setOrgSearch(e.target.value)}
+                  placeholder="Поиск организации..."
+                  className="pl-9"
+                />
+              </div>
+              <Select value={orgId} onValueChange={setOrgId}>
+                <SelectTrigger><SelectValue placeholder="Выберите организацию" /></SelectTrigger>
+                <SelectContent className="max-h-60">
+                  {filteredOrgs.length === 0 ? (
+                    <div className="py-2 px-3 text-xs text-muted-foreground">
+                      Ничего не найдено
+                    </div>
+                  ) : (
+                    filteredOrgs.map((o) => (
+                      <SelectItem key={o.id} value={o.id}>{o.name}</SelectItem>
+                    ))
+                  )}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
 
           <div>
@@ -166,8 +211,25 @@ export function AdminCreateWebinarDialog({ open, onOpenChange, onCreated, userId
           </div>
 
           {type === "livekit" && (
-            <div className="rounded-md bg-muted/50 p-3 text-xs text-muted-foreground">
-              Комната создаётся прямо сейчас. После сохранения откроется встроенный плеер с камерой и микрофоном — без OBS и без перехода на сторонние сервисы.
+            <div className="rounded-md bg-muted/50 p-3 space-y-3">
+              <p className="text-xs text-muted-foreground">
+                Комната создаётся прямо сейчас. После сохранения откроется встроенный плеер с камерой и микрофоном — без OBS и без перехода на сторонние сервисы.
+              </p>
+              <div className="flex items-start justify-between gap-3">
+                <div className="space-y-0.5">
+                  <Label htmlFor="admin-auto-record" className="cursor-pointer text-sm">
+                    Автоматически записывать эфир
+                  </Label>
+                  <p className="text-xs text-muted-foreground">
+                    Запись стартует при подключении ведущего.
+                  </p>
+                </div>
+                <Switch
+                  id="admin-auto-record"
+                  checked={autoRecord}
+                  onCheckedChange={setAutoRecord}
+                />
+              </div>
             </div>
           )}
 

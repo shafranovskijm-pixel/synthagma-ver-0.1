@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
@@ -45,6 +46,7 @@ export function CreateWebinarDialog({ open, onOpenChange, organizationId, userId
   const [kinescopeRtmpKey, setKinescopeRtmpKey] = useState("");
   const [coverUrl, setCoverUrl] = useState("");
   const [courseId, setCourseId] = useState<string>("none");
+  const [autoRecord, setAutoRecord] = useState(false);
   const [saving, setSaving] = useState(false);
   const [courses, setCourses] = useState<{ id: string; title: string }[]>([]);
 
@@ -73,6 +75,7 @@ export function CreateWebinarDialog({ open, onOpenChange, organizationId, userId
       setKinescopeRtmpKey((editWebinar as any).rtmp_key || "");
       setCoverUrl(editWebinar.cover_url || "");
       setCourseId(editWebinar.course_id || "none");
+      setAutoRecord(Boolean((editWebinar as any).auto_record));
     } else if (open && !editWebinar) {
       reset();
     }
@@ -90,6 +93,7 @@ export function CreateWebinarDialog({ open, onOpenChange, organizationId, userId
     setKinescopeRtmpKey("");
     setCoverUrl("");
     setCourseId("none");
+    setAutoRecord(false);
   };
 
   const handleSubmit = async () => {
@@ -107,7 +111,9 @@ export function CreateWebinarDialog({ open, onOpenChange, organizationId, userId
           scheduled_at: scheduledAt || null,
           duration_minutes: parseInt(durationMinutes) || null,
           cover_url: coverUrl.trim() || null,
-          course_id: courseId === "none" ? null : courseId };
+          course_id: courseId === "none" ? null : courseId,
+          auto_record: editWebinar!.source_type === "livekit" ? autoRecord : false,
+        };
         if (editWebinar!.source_type === "external") {
           updateData.external_url = externalUrl.trim() || null;
           updateData.embed_url = externalUrl.trim() || null;
@@ -134,7 +140,9 @@ export function CreateWebinarDialog({ open, onOpenChange, organizationId, userId
           status: "planned",
           created_by: userId,
           cover_url: coverUrl.trim() || null,
-          course_id: courseId === "none" ? null : courseId };
+          course_id: courseId === "none" ? null : courseId,
+          auto_record: sourceType === "livekit" ? autoRecord : false,
+        };
 
         if (sourceType === "livekit") {
           const { data, error } = await supabase.functions.invoke("livekit-create-room", {
@@ -232,10 +240,29 @@ export function CreateWebinarDialog({ open, onOpenChange, organizationId, userId
             </div>
           )}
 
-          {!isEdit && sourceType === "livekit" && (
-            <p className="text-xs text-muted-foreground">
-              Мы создадим комнату прямо в платформе. Подключение видео и звука происходит без перехода на сторонние сервисы.
-            </p>
+          {((!isEdit && sourceType === "livekit") || (isEdit && editWebinar?.source_type === "livekit")) && (
+            <div className="rounded-md border border-border bg-muted/30 p-3 space-y-3">
+              {!isEdit && (
+                <p className="text-xs text-muted-foreground">
+                  Мы создадим комнату прямо в платформе. Подключение видео и звука происходит без перехода на сторонние сервисы.
+                </p>
+              )}
+              <div className="flex items-start justify-between gap-3">
+                <div className="space-y-0.5">
+                  <Label htmlFor="auto-record-toggle" className="cursor-pointer">
+                    Автоматически записывать эфир
+                  </Label>
+                  <p className="text-xs text-muted-foreground">
+                    Запись стартует сама при подключении ведущего и сохраняется в Lovable Cloud.
+                  </p>
+                </div>
+                <Switch
+                  id="auto-record-toggle"
+                  checked={autoRecord}
+                  onCheckedChange={setAutoRecord}
+                />
+              </div>
+            </div>
           )}
 
           {((!isEdit && sourceType === "kinescope") || (isEdit && editWebinar?.source_type === "kinescope")) && (

@@ -6,11 +6,15 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from "@/components/ui/select";
 
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Radio, Search, Trash2, ExternalLink, Calendar, Building2, Plus, Play, ChevronDown, Zap } from "lucide-react";
+import { Radio, Search, Trash2, ExternalLink, Calendar, Building2, Plus, Play, ChevronDown, Zap, Download, Loader2, CircleDot } from "lucide-react";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import { toast } from "sonner";
@@ -24,7 +28,8 @@ import { AdminCreateWebinarDialog } from "./AdminCreateWebinarDialog";
 import { EmbeddedWebinarPlayer } from "@/components/webinars/EmbeddedWebinarPlayer";
 import { WebinarLiveInline } from "@/components/webinars/WebinarLiveInline";
 import { WebinarRecordingUploader } from "@/components/webinars/WebinarRecordingUploader";
-import { Paperclip } from "lucide-react";
+import { RecordingPreviewDialog } from "@/components/webinars/RecordingPreviewDialog";
+import { Paperclip, Eye } from "lucide-react";
 
 interface AdminWebinar {
   id: string;
@@ -70,11 +75,15 @@ export function AdminWebinarsOverview() {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [sourceFilter, setSourceFilter] = useState("all");
+  const [orgFilter, setOrgFilter] = useState("all");
   const [deleteTarget, setDeleteTarget] = useState<AdminWebinar | null>(null);
   const [showCreate, setShowCreate] = useState(false);
   const [playerWebinar, setPlayerWebinar] = useState<AdminWebinar | null>(null);
-  const [launching, setLaunching] = useState(false);
   const [recordingTarget, setRecordingTarget] = useState<AdminWebinar | null>(null);
+  const [previewWebinar, setPreviewWebinar] = useState<AdminWebinar | null>(null);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [bulkDeleting, setBulkDeleting] = useState(false);
+  const [showBulkConfirm, setShowBulkConfirm] = useState(false);
 
   const fetchWebinars = useCallback(async () => {
     setLoading(true);
@@ -120,6 +129,7 @@ export function AdminWebinarsOverview() {
       });
     }
     if (sourceFilter !== "all") result = result.filter((w) => w.source_type === sourceFilter);
+    if (orgFilter !== "all") result = result.filter((w) => w.organization_id === orgFilter);
     if (search.trim()) {
       const q = search.toLowerCase();
       result = result.filter(
@@ -129,7 +139,23 @@ export function AdminWebinarsOverview() {
       );
     }
     return result;
-  }, [webinars, statusFilter, sourceFilter, search]);
+  }, [webinars, statusFilter, sourceFilter, orgFilter, search]);
+
+  // Топ организаций (по числу вебинаров) для селекта-фильтра
+  const orgOptions = useMemo(() => {
+    const counts = new Map<string, { id: string; name: string; count: number }>();
+    for (const w of webinars) {
+      if (!w.organization_id) continue;
+      const cur = counts.get(w.organization_id) ?? {
+        id: w.organization_id,
+        name: w.organization_name || "Без имени",
+        count: 0,
+      };
+      cur.count += 1;
+      counts.set(w.organization_id, cur);
+    }
+    return Array.from(counts.values()).sort((a, b) => b.count - a.count);
+  }, [webinars]);
 
   const stats = useMemo(() => ({
     total: webinars.length,
@@ -150,82 +176,38 @@ export function AdminWebinarsOverview() {
     setDeleteTarget(null);
   };
 
-  /**
-   * One-click: создаёт LiveKit-вебинар и сразу открывает плеер.
-   * 1) Берём первую доступную организацию (organization_id NOT NULL в схеме).
-   * 2) INSERT webinars.
-   * 3) Вызов livekit-create-room → roomName/wsUrl.
-   * 4) UPDATE player_settings.
-   * 5) Открываем Sheet с плеером.
-   */
-  const launchInstantWebinar = async () => {
-    if (!user?.id) {
-      toast.error("Нужно авторизоваться");
-      return;
-    }
-    setLaunching(true);
+  const handleBulkDelete = async () => {
+    if (selectedIds.size === 0) return;
+    setBulkDeleting(true);
     try {
-      // Берём любую существующую организацию (organization_id NOT NULL)
-      const { data: anyOrg, error: orgErr } = await supabase
-        .from("organizations")
-        .select("id")
-        .order("created_at", { ascending: true })
-        .limit(1)
-        .maybeSingle();
-      if (orgErr) throw orgErr;
-      if (!anyOrg?.id) throw new Error("Нет ни одной организации в системе");
-
-      const now = new Date();
-      const title = `Тестовый вебинар ${format(now, "dd.MM HH:mm", { locale: ru })}`;
-
-      // INSERT webinar
-      const { data: created, error: insErr } = await supabase
-        .from("webinars")
-        .insert({
-          title,
-          source_type: "livekit",
-          status: "live",
-          scheduled_at: now.toISOString(),
-          duration_minutes: 60,
-          organization_id: anyOrg.id,
-          host_user_id: user.id,
-          created_by: user.id,
-          access_type: "org_all",
-          player_settings: {},
-        })
-        .select(SELECT_FIELDS)
-        .single();
-      if (insErr) throw insErr;
-
-      // Создаём LiveKit комнату
-      const { data: roomData, error: roomErr } = await supabase.functions.invoke(
-        "livekit-create-room",
-        { body: { webinarId: created.id, title } },
-      );
-      if (roomErr) throw new Error(roomErr.message);
-      if (!roomData?.ok) throw new Error(roomData?.error || "LiveKit room creation failed");
-
-      // UPDATE player_settings
-      const playerSettings = {
-        livekit: { roomName: roomData.roomName, wsUrl: roomData.wsUrl },
-      };
-      const { data: updated, error: updErr } = await supabase
-        .from("webinars")
-        .update({ player_settings: playerSettings })
-        .eq("id", created.id)
-        .select(SELECT_FIELDS)
-        .single();
-      if (updErr) throw updErr;
-
-      // Обновляем список и открываем плеер
-      await fetchWebinars();
-      setPlayerWebinar({ ...(updated as any), organization_name: null });
-      toast.success("Вебинар запущен — вы в эфире");
+      const ids = Array.from(selectedIds);
+      const { error } = await supabase.from("webinars").delete().in("id", ids);
+      if (error) throw error;
+      toast.success(`Удалено: ${ids.length}`);
+      setWebinars((prev) => prev.filter((w) => !selectedIds.has(w.id)));
+      setSelectedIds(new Set());
+      setShowBulkConfirm(false);
     } catch (e: any) {
-      console.error("[launchInstantWebinar]", e);
-      toast.error("Не удалось запустить: " + (e?.message || "ошибка"));
+      toast.error("Не удалось удалить: " + (e?.message || "ошибка"));
     } finally {
-      setLaunching(false);
+      setBulkDeleting(false);
+    }
+  };
+
+  const toggleSelect = (id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedIds.size === filtered.length) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(filtered.map((w) => w.id)));
     }
   };
 
@@ -292,23 +274,10 @@ export function AdminWebinarsOverview() {
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <Button onClick={launchInstantWebinar} disabled={launching} className="shrink-0">
+          <Button onClick={() => setShowCreate(true)} className="shrink-0">
             <Zap className="h-4 w-4 mr-2" />
-            {launching ? "Запускаю…" : "Запустить вебинар сейчас"}
+            Запустить вебинар сейчас
           </Button>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="icon" title="Расширенное создание">
-                <ChevronDown className="h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={() => setShowCreate(true)}>
-                <Plus className="h-4 w-4 mr-2" />
-                Расширенное создание (Kinescope / внешний)
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
         </div>
       </div>
 
@@ -359,7 +328,36 @@ export function AdminWebinarsOverview() {
             <TabsTrigger value="external">Внешний</TabsTrigger>
           </TabsList>
         </Tabs>
+        <Select value={orgFilter} onValueChange={setOrgFilter}>
+          <SelectTrigger className="w-[220px]">
+            <SelectValue placeholder="Все организации" />
+          </SelectTrigger>
+          <SelectContent className="max-h-72">
+            <SelectItem value="all">Все организации</SelectItem>
+            {orgOptions.slice(0, 50).map((o) => (
+              <SelectItem key={o.id} value={o.id}>
+                {o.name} <span className="text-muted-foreground">({o.count})</span>
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
+
+      {selectedIds.size > 0 && (
+        <div className="flex items-center gap-3 p-3 rounded-lg border bg-muted/30">
+          <span className="text-sm font-medium">Выбрано: {selectedIds.size}</span>
+          <Button
+            size="sm"
+            variant="destructive"
+            onClick={() => setShowBulkConfirm(true)}
+          >
+            <Trash2 className="h-4 w-4 mr-1.5" /> Удалить выбранные
+          </Button>
+          <Button size="sm" variant="outline" onClick={() => setSelectedIds(new Set())}>
+            Снять выделение
+          </Button>
+        </div>
+      )}
 
       {/* Table */}
       <Card className="overflow-hidden">
@@ -376,12 +374,20 @@ export function AdminWebinarsOverview() {
           <Table>
             <TableHeader>
               <TableRow>
+                <TableHead className="w-10">
+                  <Checkbox
+                    checked={filtered.length > 0 && selectedIds.size === filtered.length}
+                    onCheckedChange={toggleSelectAll}
+                    aria-label="Выделить всё"
+                  />
+                </TableHead>
                 <TableHead>Название</TableHead>
                 <TableHead>Организация</TableHead>
                 <TableHead>Дата</TableHead>
                 <TableHead>Длит.</TableHead>
                 <TableHead>Источник</TableHead>
                 <TableHead>Статус</TableHead>
+                <TableHead>Запись</TableHead>
                 <TableHead className="text-right">Действия</TableHead>
               </TableRow>
             </TableHeader>
@@ -392,8 +398,19 @@ export function AdminWebinarsOverview() {
                   w.source_type === "livekit" ||
                   (w.source_type === "kinescope" && (w.kinescope_live_id || w.kinescope_video_id)) ||
                   (w.source_type === "external" && (w.embed_url || w.external_url));
+                const recStatus = (w as any).recording_status as string | null;
+                const recUrl = (w as any).recording_url as string | null;
+                const recSize = (w as any).recording_size_bytes as number | null;
+                const recSizeMb = recSize ? (recSize / (1024 * 1024)).toFixed(0) : null;
                 return (
-                  <TableRow key={w.id}>
+                  <TableRow key={w.id} data-state={selectedIds.has(w.id) ? "selected" : undefined}>
+                    <TableCell>
+                      <Checkbox
+                        checked={selectedIds.has(w.id)}
+                        onCheckedChange={() => toggleSelect(w.id)}
+                        aria-label={`Выбрать ${w.title}`}
+                      />
+                    </TableCell>
                     <TableCell className="font-medium max-w-[280px] truncate">{w.title}</TableCell>
                     <TableCell>
                       <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
@@ -422,6 +439,30 @@ export function AdminWebinarsOverview() {
                     <TableCell>
                       <Badge variant={status.variant}>{status.label}</Badge>
                     </TableCell>
+                    <TableCell className="text-xs">
+                      {recStatus === "active" || recStatus === "starting" ? (
+                        <span className="inline-flex items-center gap-1 text-destructive font-medium">
+                          <CircleDot className="h-3 w-3 animate-pulse" /> Идёт
+                        </span>
+                      ) : recStatus === "processing" || recStatus === "stopped" ? (
+                        <span className="inline-flex items-center gap-1 text-warning">
+                          <Loader2 className="h-3 w-3 animate-spin" /> Обработка
+                        </span>
+                      ) : recUrl ? (
+                        <a
+                          href={recUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1 text-primary hover:underline"
+                          title="Открыть/скачать запись"
+                        >
+                          <Download className="h-3 w-3" />
+                          MP4{recSizeMb ? ` ${recSizeMb} МБ` : ""}
+                        </a>
+                      ) : (
+                        <span className="text-muted-foreground">—</span>
+                      )}
+                    </TableCell>
                     <TableCell className="text-right">
                       <div className="flex items-center justify-end gap-1">
                         {canPlay && (
@@ -432,6 +473,16 @@ export function AdminWebinarsOverview() {
                             title="Открыть встроенный плеер"
                           >
                             <Play className="h-4 w-4" />
+                          </Button>
+                        )}
+                        {recUrl && (
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => setPreviewWebinar(w)}
+                            title="Просмотр записи"
+                          >
+                            <Eye className="h-4 w-4" />
                           </Button>
                         )}
                         {w.source_type === "external" && w.external_url && (
@@ -506,6 +557,34 @@ export function AdminWebinarsOverview() {
           onUploaded={fetchWebinars}
         />
       )}
+
+      <RecordingPreviewDialog
+        open={!!previewWebinar}
+        onOpenChange={(o) => !o && setPreviewWebinar(null)}
+        title={previewWebinar?.title || ""}
+        recordingUrl={(previewWebinar as any)?.recording_url ?? null}
+      />
+
+      <AlertDialog open={showBulkConfirm} onOpenChange={setShowBulkConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Удалить {selectedIds.size} вебинар(ов)?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Все выбранные вебинары будут удалены безвозвратно вместе с их записями (если они хранятся в Cloud).
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={bulkDeleting}>Отмена</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleBulkDelete}
+              disabled={bulkDeleting}
+              className="bg-destructive hover:bg-destructive/90"
+            >
+              {bulkDeleting ? "Удаление…" : "Удалить"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
