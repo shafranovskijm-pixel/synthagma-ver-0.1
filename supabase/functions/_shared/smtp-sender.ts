@@ -1,4 +1,5 @@
 // Общий SMTP-отправитель для рассылок (UTF-8 кодировки, как в send-email)
+import { checkRateLimit } from "./rate-limiter.ts";
 
 function base64Encode(str: string): string {
   return btoa(unescape(encodeURIComponent(str)));
