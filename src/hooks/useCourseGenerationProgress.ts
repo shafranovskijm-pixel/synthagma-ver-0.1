@@ -11,6 +11,10 @@ export interface CourseGenerationProgress {
   current: number;
   total: number;
   message: string;
+  /** Человекочитаемое описание ошибки (только при step === "error"). */
+  error_message?: string;
+  /** На каком шаге упало (для кнопки «Повторить с шага N»). */
+  failed_at?: number;
   updated_at?: string;
 }
 
