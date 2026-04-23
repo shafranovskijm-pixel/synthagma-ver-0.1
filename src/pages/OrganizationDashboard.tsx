@@ -149,6 +149,7 @@ export default function OrganizationDashboard() {
         <div className="flex-1 p-4 lg:p-8 overflow-x-clip">
           <div className={cn("mx-auto", sidebarExpanded ? "max-w-[1400px]" : "max-w-none")}>
             <PlatformAnnouncementsBanner />
+            {d.tabNavigation.activeTab === "courses" && <RequiresAttentionWidget />}
 
             <AnimatedTabContent tabKey={d.tabNavigation.activeTab} direction={d.tabNavigation.swipeDirection} isMobile={d.isMobile}>
               <TabContentRenderer />
