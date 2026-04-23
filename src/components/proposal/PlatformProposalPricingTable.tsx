@@ -13,13 +13,13 @@ export function PlatformProposalPricingTable() {
               const plan = SUBSCRIPTION_PLANS[p];
               const isRec = p === 'standard';
               return (
-                <th key={p} className={`p-4 text-center font-display ${isRec ? 'bg-accent/5 text-accent' : ''}`}>
-                  <div className="text-base font-semibold">{plan.name}</div>
-                  <div className="mt-1 text-xs text-muted-foreground">
+                <th key={p} className={`p-4 text-center font-display ${isRec ? 'bg-accent/10' : ''}`}>
+                  <div className={`text-base font-semibold ${isRec ? 'text-accent' : 'text-foreground'}`}>{plan.name}</div>
+                  <div className="mt-1 text-sm font-semibold text-foreground">
                     {plan.price === 0 ? '0 ₽' : `${formatPriceRu(plan.price)} ₽/мес`}
                   </div>
                   {plan.price > 0 && (
-                    <div className="text-[10px] text-muted-foreground">
+                    <div className="text-[11px] text-foreground/70 mt-0.5">
                       или {formatPriceRu(Math.round(plan.price * (1 - YEARLY_DISCOUNT)))} ₽/мес за год
                     </div>
                   )}
