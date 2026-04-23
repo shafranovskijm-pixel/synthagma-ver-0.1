@@ -1,104 +1,77 @@
 
 
-# План: дополнительная оптимизация — то, что реально замедляет приложение
+# End-to-End проверка вебинаров: запись, мобильные, демонстрация экрана
 
-Прошёл по коду ещё раз. Маршруты уже lazy, SMTP консолидирован, denomailer удалён — это сделано. А вот реальные проблемы, которые остались:
+Прошёл по всему пути «создание комнаты → эфир → запись → остановка → копирование в Cloud → воспроизведение». Нашёл **8 проблем разной критичности**, из них **3 критичных**, которые ломают сценарий «нажал «Запись» — получил готовый файл в Cloud».
 
-## Что нашёл
+---
 
-### 1. Кабинет организации почти не использует React Query (главная боль)
-`useQuery` встречается во **всём кабинете организации** ровно в **1 файле**, при этом **39 файлов** делают `useEffect + supabase.from(...)` напрямую. В `CoursesTab.tsx` (547 строк), `UsersManager.tsx`, `StudentsTab.tsx` — **0 useQuery**.
+## Критичные проблемы
 
-Что это значит на практике:
-- Переключился между вкладками → данные грузятся заново.
-- Открыл карточку студента, вернулся → снова запрос.
-- Нет дедупликации одинаковых запросов.
-- Нет background refetch.
+### 1. `livekit-end-room` ищет несуществующее поле `room_name`
+Функция читает `webinars.room_name`, но при создании комнаты roomName сохраняется в `player_settings.livekit.roomName` (нет такой колонки в БД, либо она пустая). В итоге `DeleteRoom` НИКОГДА не вызывается → комнаты висят и ест бесплатные минуты LiveKit Cloud.
+**Фикс:** читать `player_settings->livekit->>roomName` (как делают `livekit-start-recording`, `livekit-moderate`).
 
-QueryClient в `App.tsx` уже настроен (`staleTime: 5 мин`, `gcTime: 30 мин`), но им почти никто не пользуется в самом нагруженном кабинете.
+### 2. Запись доступна только на «отдельной странице» `/webinar-live/:id`
+`RecordingControls` смонтирован только в `WebinarLive.tsx`. В inline-режиме (внутри кабинета админа/организации) кнопки «Запись» нет вообще. Пользователь, который просто запустил «One-click вебинар» из админки, физически не может включить запись.
+**Фикс:** встроить `<RecordingControls/>` в `LiveKitTopBar` (видна только хосту, только для `source_type==='livekit'`).
 
-**Что делаю:** перевожу 6 самых горячих мест на React Query (оставляю остальные как есть, чтобы не разнести проект):
-- `useCoursesTab` / `useCourseDetails` — список курсов и студентов курса.
-- Вкладка «Студенты» (`StudentsTab` + `useOrganizationStudents`).
-- `WebinarsManager` — список вебинаров.
-- `useOrganizationDashboard` — счётчики и подписка.
-- `IncomingDocumentsManager`.
-- `OrgProfileTab` — данные профиля.
+### 3. Авто-копирование записи в Cloud не происходит
+Сейчас цепочка такая: «Стоп» → запись висит на серверах LiveKit Cloud (внешний URL живёт ограниченное время) → пользователь должен ВРУЧНУЮ нажать «В Lovable Cloud». Если хост закроет вкладку — запись потеряется.
+**Фикс:** после `livekit-stop-recording` автоматически инвокать `livekit-copy-recording` (с retry, т.к. файл может быть готов через 5–30 секунд).
 
-Для каждого: завожу `queryKey` вида `['org', orgId, 'students']`, после mutation делаю `invalidateQueries`. Visible эффект — переходы по табам перестают «моргать» и перезапрашивать.
+---
 
-### 2. ElevenLabs — формально удалён, фактически живой
+## Важные проблемы (UX/мобильные)
 
-Память говорит «ElevenLabs удалён в пользу SaluteSpeech», но в коде:
-- `supabase/functions/elevenlabs-tts/index.ts` — функция работает.
-- `src/hooks/useElevenLabsTTS.ts` — используется в `useLessonTTS` и `TTSSettingsDialog`.
-- В UI настроек пользователю до сих пор предлагается выбрать ElevenLabs как провайдер.
-- `ELEVENLABS_API_KEY` фигурирует в админ-настройках.
+### 4. Inline-плеер не отдаёт `recordingUrl` в режиме просмотра завершённого
+В `WebinarLiveInline` поле `recording_url` пробрасывается, но если запись скопирована ПОСЛЕ показа компонента — `recording_url` в state не обновится (нет realtime-подписки на webinar). Для готовой записи будет показываться чёрный плеер без файла.
+**Фикс:** добавить supabase realtime-подписку в `EmbeddedWebinarPlayer` на `webinars.id=eq.{id}`, обновлять `recordingUrl` локально.
 
-То есть пользователь может выбрать ElevenLabs, заплатить за ключ, а потом мы это удалим. Надо привести к одному состоянию.
+### 5. Нет авто-старта записи через флаг `auto_record`
+В БД поле `webinars.auto_record` есть, но никогда не читается. Если организация хочет «всегда писать» — флаг бесполезен.
+**Фикс:** в `livekit-issue-token` (или в `LiveKitRoom onConnected`) при `isHost && webinar.auto_record && status==='live'` автоматом дёргать `livekit-start-recording`.
 
-**Что делаю:** убираю ElevenLabs целиком (раз в памяти решено).
-- Удаляю edge `elevenlabs-tts`.
-- Удаляю `src/hooks/useElevenLabsTTS.ts`.
-- Из `useLessonTTS.ts` убираю ветку `provider === 'elevenlabs'`.
-- Из `TTSSettingsDialog`, `AISettingsManager`, `AITestSandbox`, `AIAvatarLessonEditor`, `AIGenerateDialog`, `constants.ts` убираю опцию `elevenlabs` и упоминания.
-- В `manage-secret` убираю `ELEVENLABS_API_KEY` из списка.
-- Если у пользователя в localStorage стоит `provider: 'elevenlabs'` — миграция в `getStoredTTSSettings`: подменяю на `'salutespeech'` тихо.
+### 6. На мобильных скрыта кнопка «Демонстрация экрана» — это правильно для iOS Safari, но НЕ для Android Chrome
+CSS `.webinar-livekit-root[data-mobile="true"] .lk-button[data-lk-source="screen_share"] { display: none }` режет всё подряд по `Mobi|Android`. Android Chrome 89+ поддерживает `getDisplayMedia` на мобильных.
+**Фикс:** определять отдельно iOS (`/iPhone|iPad|iPod/`) → скрывать; Android → оставлять.
 
-### 3. MazeGame блокирует bundle public-страниц
+---
 
-`src/components/student/MazeGame.tsx` импортирует `@react-three/fiber` и `@react-three/drei` синхронно. Three.js — это ~600 KB. Сейчас, скорее всего, попадает в bundle любого, кто открывает дашборд студента, хотя 3D-тренажёр открывает 1 из 100.
+## Прочее
 
-**Что делаю:** оборачиваю `MazeGame` в `lazyWithRetry`, рендерю под `<Suspense>`. Минус ~600 KB из initial bundle студенческого кабинета.
+### 7. `livekit-stop-recording` использует `ListEgress` с `egress_id` — это не фильтр
+В Twirp `ListEgress` принимает `room_name`, не `egress_id`. Нужно `GetEgress` (one item) или `ListEgress { egress_ids: [...] }`. Сейчас иногда возвращает пустой список → `externalUrl=null` → запись теряется.
+**Фикс:** заменить на `egress_ids: [w.recording_egress_id]` или одиночный `egressInfo.GetEgress`.
 
-### 4. Огромные компоненты подписания загружаются всегда
+### 8. Egress занимает время после Stop — UI этого не показывает
+`recording_status` сразу становится `stopped`, но файл реально готов через 5–60 сек. Кнопка «В Lovable Cloud» доступна, но при клике может вернуть «Не удалось скачать: 404». Нужна индикация «Запись обрабатывается LiveKit, попробуйте через минуту».
+**Фикс:** в `livekit-copy-recording` при 404/недоступном `external_url` ставить статус `processing`, показывать спиннер с автоповтором каждые 10 сек до 5 мин.
 
-`ContractReviewBody.tsx` (1026 строк) и `ReviewableDocument.tsx` (949) импортируются синхронно из `AdminBillingOverview`, `CounterpartiesSection`, `ContractReviewDialog`. Они нужны только когда пользователь открыл диалог рецензии договора.
+---
 
-**Что делаю:** заменяю прямые импорты на `lazyWithRetry` + `<Suspense fallback={...}>` в трёх местах. Минус ~150 KB при первом открытии страниц «Документы» и «Биллинг».
+## Технические детали реализации
 
-### 5. 601 `console.log/warn/error` в продакшене
+| Файл | Изменение |
+|---|---|
+| `supabase/functions/livekit-end-room/index.ts` | Читать roomName из `player_settings->livekit->>roomName` вместо `room_name` |
+| `supabase/functions/livekit-stop-recording/index.ts` | `ListEgress { egress_ids: [id] }` + при `auto_record` уже стоит — продолжаем; возвращать `processing` если `externalUrl` ещё нет |
+| `supabase/functions/livekit-copy-recording/index.ts` | Корректно обработать 404 от LiveKit (вернуть `{ ok:false, retryAfterMs:10000 }`); recursive fetch с retry внутри функции (макс 3 попытки × 10 сек) |
+| `supabase/functions/livekit-start-recording/index.ts` | Уже корректно; добавить лог при auto_record |
+| `src/components/webinars/RecordingControls.tsx` | После `stop()` автоматически вызывать `copyToCloud()` с polling каждые 10 сек до 5 мин; новый статус `processing` |
+| `src/components/webinars/EmbeddedWebinarPlayer.tsx` | (a) Realtime-подписка на свой `webinars.id` для обновления `recordingUrl`/`status`; (b) `LiveKitTopBar` принимает `webinarId` + `isHost` + `sourceType`, рисует `<RecordingControls/>` если `isHost && sourceType==='livekit'`; (c) при `connected && isHost && webinar.auto_record` вызывает `livekit-start-recording` один раз |
+| `src/index.css` | Селектор `[data-mobile="ios"]` вместо `[data-mobile="true"]`; в JSX — выставлять `data-mobile="ios"` только для iOS, `"android"` для Android (без скрытия) |
+| `src/components/webinars/EmbeddedWebinarPlayer.tsx` | Изменить определение мобильного: `const platform = /iPhone\|iPad\|iPod/.test(ua) ? 'ios' : /Android/.test(ua) ? 'android' : 'desktop'` |
 
-Я не буду удалять их вручную (риск убрать полезное в catch). Вместо этого:
-- В `vite.config.ts` включаю `esbuild.drop: ['console', 'debugger']` для production-сборки. Dev остаётся как есть.
-- Проверяю, что `console.error` в catch-блоках, который реально нужен для Sentry-подобной диагностики, оборачиваю в утилиту `logError` (если такая нужна — сначала проверю, есть ли она; если нет — оставляю drop как глобальное правило).
+### Проверка end-to-end после фиксов
+1. Админ → «One-click вебинар» → «Запись» (новая кнопка в шапке плеера).
+2. Демо экрана работает на десктопе и Android Chrome; на iOS — скрыто (ограничение OS).
+3. «Стоп» → автоматически: stop-egress → polling каждые 10 сек → copy-recording → `recording_url` обновлён через realtime → плеер показывает запись прямо в текущем окне.
+4. «Завершить эфир» → `livekit-end-room` реально удаляет комнату на LiveKit Cloud.
+5. Флаг `auto_record=true` на webinar → запись стартует сама при первом подключении хоста.
 
-Это не «мнимая» оптимизация: 601 строка вызовов сериализует объекты, многие — большие (массивы курсов, студентов). На мобильном это заметно.
-
-### 6. Topbar и сайдбар: лишние ререндеры из-за нестабильных объектов
-
-В `OrgSidebar.tsx` и `OrgLayout` `useStaffPermissions()` возвращает новый объект при каждом рендере → каждый клик в меню перерисовывает всё дерево сайдбара.
-
-**Что делаю:** в `useStaffPermissions` (хук) оборачиваю возвращаемое значение в `useMemo` по реальным зависимостям. Не трогаю сам сайдбар, чтобы не сломать DnD/permissions, — фикс на уровне источника. Эффект распространится на всё, что использует хук.
-
-## Что НЕ делаю
-- Не перевожу все 39 файлов на React Query — это слишком большой рефакторинг за один заход. Только 6 самых горячих.
-- Не удаляю `console.*` руками — только через build-конфиг.
-- Не трогаю `OrgSidebar.tsx` напрямую (защита от регрессий).
-- Не оптимизирую `signing/*` рендер — только lazy-import.
-- Не трогаю auth, RLS, edge-функции отправки писем.
-
-## Порядок (4 коммита)
-
-**A. Bundle-чистка (быстрый win)**
-- `lazyWithRetry` для `MazeGame`, `ContractReviewBody`, `ReviewableDocument`.
-- `vite.config.ts`: drop console в prod.
-
-**B. Удаление ElevenLabs**
-- Удаляю edge + hook.
-- Чищу UI/настройки.
-- Тихая миграция localStorage.
-
-**C. React Query для горячих мест**
-- 6 файлов переводятся на `useQuery` с `queryKey` + `invalidateQueries`.
-
-**D. Стабилизация useStaffPermissions**
-- `useMemo` на возвращаемое значение хука.
-
-## Как проверим
-1. Open DevTools → Network на `/organization`: переключение Курсы→Студенты→Курсы не вызывает повторных запросов в течение 5 минут.
-2. Bundle-анализ (`npm run build`): initial размер `/organization` упал минимум на 500 KB.
-3. В localStorage у юзера-«ElevenLabs» провайдер автоматически стал `salutespeech`, озвучка работает.
-4. В прод-сборке `console.log` не попадают в бандл (поиск по `dist/*.js` ничего не находит).
-5. Dev-сборка: `console.*` по-прежнему пишутся, ничего не сломалось в отладке.
+### Что НЕ ломаем
+- Гостевой режим `/w/:token` — без изменений.
+- Kinescope-вебинары — без изменений.
+- AI-tutor (использует тот же `livekit-issue-token`) — изменений нет, т.к. ветка `aiTutorSessionId` отдельная.
 
