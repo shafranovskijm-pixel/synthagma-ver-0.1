@@ -22,6 +22,7 @@ import { differenceInDays } from "date-fns";
 import defaultCoverImg from "@/assets/default-org-cover.jpg";
 import { getStoredThemeId, getThemeById, type AdminTheme } from "@/constants/admin-themes";
 import { ThemeAnimations, getStoredAnimationLevel, type AnimationLevel } from "@/components/ui/ThemeAnimations";
+import { AtmosphericBleed } from "@/components/ui/AtmosphericBleed";
 
 import { HelpCenterDialog, useHelpCenterDialog } from "@/components/shared/HelpCenterDialog";
 import { useState, useEffect } from "react";
@@ -111,6 +112,14 @@ export default function OrgPageLayout({ title, icon: Icon, children }: OrgPageLa
       } : undefined}
     >
       {activeTheme && <ThemeAnimations animation={activeTheme.animation} level={animLevel} />}
+      {activeTheme && (
+        <AtmosphericBleed
+          bannerUrl={activeTheme.bannerUrl}
+          blur={activeTheme.atmosphereBlur}
+          opacity={activeTheme.atmosphereOpacity}
+          sharp={activeTheme.atmosphereSharp}
+        />
+      )}
       <OrgSidebar />
       <main className="flex-1 flex flex-col min-w-0 lg:ml-[88px]">
         {/* Sticky header */}
