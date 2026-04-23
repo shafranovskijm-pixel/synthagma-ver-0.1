@@ -53,8 +53,7 @@ interface Props {
 
 export function WebinarsManager({ organizationId }: Props) {
   const { user } = useAuth();
-  const [webinars, setWebinars] = useState<Webinar[]>([]);
-  const [loading, setLoading] = useState(true);
+  const qc = useQueryClient();
   const [showCreate, setShowCreate] = useState(false);
   const [editWebinar, setEditWebinar] = useState<Webinar | null>(null);
   const [participantsWebinar, setParticipantsWebinar] = useState<Webinar | null>(null);
@@ -67,17 +66,25 @@ export function WebinarsManager({ organizationId }: Props) {
   const [liveSheetWebinar, setLiveSheetWebinar] = useState<Webinar | null>(null);
   const [recordingTarget, setRecordingTarget] = useState<Webinar | null>(null);
 
-  const fetchWebinars = useCallback(async () => {
-    const { data } = await supabase
-      .from("webinars")
-      .select("*")
-      .eq("organization_id", organizationId)
-      .order("scheduled_at", { ascending: false, nullsFirst: false });
-    setWebinars((data as any[]) || []);
-    setLoading(false);
-  }, [organizationId]);
+  const webinarsQuery = useQuery({
+    queryKey: ["org", organizationId, "webinars"],
+    enabled: !!organizationId,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("webinars")
+        .select("*")
+        .eq("organization_id", organizationId)
+        .order("scheduled_at", { ascending: false, nullsFirst: false });
+      return ((data as any[]) || []) as Webinar[];
+    },
+    staleTime: 60_000,
+  });
 
-  useEffect(() => { fetchWebinars(); }, [fetchWebinars]);
+  const webinars = webinarsQuery.data ?? [];
+  const loading = webinarsQuery.isLoading;
+  const fetchWebinars = useCallback(async () => {
+    await qc.invalidateQueries({ queryKey: ["org", organizationId, "webinars"] });
+  }, [qc, organizationId]);
 
   const filteredWebinars = useMemo(() => {
     let result = webinars;
