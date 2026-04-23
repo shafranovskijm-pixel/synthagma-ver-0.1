@@ -11,19 +11,21 @@ import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 
-interface Webinar {
-  id: string;
-  title: string;
-  description: string | null;
-  scheduled_at: string | null;
-  status: string;
-  source_type: string;
-  embed_url: string | null;
-  external_url: string | null;
-  kinescope_video_id: string | null;
-  cover_url: string | null;
-  player_settings: Record<string, any> | null;
-}
+import type { Webinar as FullWebinar } from "@/types/webinar";
+
+type Webinar = Pick<
+  FullWebinar,
+  | "id"
+  | "title"
+  | "description"
+  | "scheduled_at"
+  | "status"
+  | "source_type"
+  | "embed_url"
+  | "external_url"
+  | "kinescope_video_id"
+  | "cover_url"
+> & { player_settings: Record<string, unknown> | null };
 
 export function StudentWebinarsList() {
   const { user } = useAuth();

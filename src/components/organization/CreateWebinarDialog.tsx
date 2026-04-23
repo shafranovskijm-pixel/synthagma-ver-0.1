@@ -65,7 +65,7 @@ export function CreateWebinarDialog({
     setIsLoading(true);
 
     try {
-      const payload = {
+      const basePayload = {
         ...formData,
         organization_id: organizationId,
         status: "scheduled",
@@ -74,12 +74,15 @@ export function CreateWebinarDialog({
       if (editWebinar) {
         const { error } = await supabase
           .from("webinars")
-          .update(payload)
+          .update(basePayload)
           .eq("id", editWebinar.id);
         if (error) throw error;
         toast.success("Вебинар обновлен");
       } else {
-        const { error } = await supabase.from("webinars").insert([payload]);
+        if (!userId) throw new Error("Не удалось определить организатора вебинара");
+        const { error } = await supabase
+          .from("webinars")
+          .insert([{ ...basePayload, host_user_id: userId }]);
         if (error) throw error;
         toast.success("Вебинар создан");
       }
@@ -88,7 +91,8 @@ export function CreateWebinarDialog({
       onOpenChange(false);
     } catch (error) {
       console.error("Error saving webinar:", error);
-      toast.error("Ошибка при сохранении вебинара");
+      const { getErrorMessage } = await import("@/utils/handleSupabaseError");
+      toast.error(getErrorMessage(error, "Ошибка при сохранении вебинара"));
     } finally {
       setIsLoading(false);
     }
