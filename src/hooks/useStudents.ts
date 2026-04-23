@@ -268,9 +268,9 @@ export function useStudents(
       toast.success(`Ученик создан. Пароль: ${result.data?.password} (сохраните его!)`);
     }
 
-    setRefreshKey(prev => prev + 1);
+    invalidateStudents();
     return true;
-  }, [organizationId]);
+  }, [organizationId, invalidateStudents]);
 
   const enrollToCourse = useCallback(async (userId: string, courseId: string): Promise<boolean> => {
     const result = await enrollStudent(userId, courseId);
@@ -279,9 +279,9 @@ export function useStudents(
       return false;
     }
     toast.success("Ученик зачислен на курс");
-    setRefreshKey(prev => prev + 1);
+    invalidateStudents();
     return true;
-  }, []);
+  }, [invalidateStudents]);
 
   const unenrollFromCourse = useCallback(async (enrollmentId: string): Promise<boolean> => {
     const success = await apiUnenrollStudent(enrollmentId);
@@ -290,9 +290,9 @@ export function useStudents(
       return false;
     }
     toast.success("Ученик отчислен с курса");
-    setRefreshKey(prev => prev + 1);
+    invalidateStudents();
     return true;
-  }, []);
+  }, [invalidateStudents]);
 
   const bulkEnroll = useCallback(async (courseId: string): Promise<{ success: number; failed: number }> => {
     const userIds = getSelectedUserIds();
@@ -306,9 +306,9 @@ export function useStudents(
     }
     
     setSelectedStudentIds(new Set());
-    setRefreshKey(prev => prev + 1);
+    invalidateStudents();
     return result;
-  }, [getSelectedUserIds]);
+  }, [getSelectedUserIds, invalidateStudents]);
 
   const bulkUnenroll = useCallback(async (): Promise<{ success: number; failed: number }> => {
     const enrollmentIds = Array.from(selectedStudentIds).map(id => {
@@ -326,9 +326,9 @@ export function useStudents(
     }
     
     setSelectedStudentIds(new Set());
-    setRefreshKey(prev => prev + 1);
+    invalidateStudents();
     return result;
-  }, [selectedStudentIds, students]);
+  }, [selectedStudentIds, students, invalidateStudents]);
 
   const bulkDelete = useCallback(async (): Promise<{ success: number; failed: number }> => {
     const userIds = getSelectedUserIds();
@@ -352,9 +352,9 @@ export function useStudents(
     }
     
     setSelectedStudentIds(new Set());
-    setRefreshKey(prev => prev + 1);
+    invalidateStudents();
     return { success, failed };
-  }, [getSelectedUserIds]);
+  }, [getSelectedUserIds, invalidateStudents]);
 
   const updateCompany = useCallback(async (userId: string, companyId: string | null): Promise<boolean> => {
     const success = await updateStudentCompany(userId, companyId);
@@ -363,9 +363,9 @@ export function useStudents(
       return false;
     }
     toast.success("Компания обновлена");
-    setRefreshKey(prev => prev + 1);
+    invalidateStudents();
     return true;
-  }, []);
+  }, [invalidateStudents]);
 
   const removeStudent = useCallback(async (userId: string): Promise<boolean> => {
     const success = await deleteStudent(userId);
@@ -374,13 +374,13 @@ export function useStudents(
       return false;
     }
     toast.success("Ученик удалён");
-    setRefreshKey(prev => prev + 1);
+    invalidateStudents();
     return true;
-  }, []);
+  }, [invalidateStudents]);
 
   const refresh = useCallback(() => {
-    setRefreshKey(prev => prev + 1);
-  }, []);
+    invalidateStudents();
+  }, [invalidateStudents]);
 
   return {
     students,
