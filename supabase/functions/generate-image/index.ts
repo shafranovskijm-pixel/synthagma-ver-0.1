@@ -211,6 +211,44 @@ async function generateWithGigaChat(prompt: string, keySlot?: string) {
   return `data:image/jpeg;base64,${base64}`;
 }
 
+// Lovable AI fallback for image generation (Gemini Nano Banana 2)
+async function generateWithLovableAI(prompt: string): Promise<string> {
+  const apiKey = Deno.env.get("LOVABLE_API_KEY");
+  if (!apiKey) throw { status: 500, message: "LOVABLE_API_KEY is not configured" };
+
+  console.log("[generate-image] Falling back to Lovable AI (gemini-3.1-flash-image-preview)");
+  const resp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      model: "google/gemini-3.1-flash-image-preview",
+      messages: [{
+        role: "user",
+        content: `Generate an educational illustration for: ${prompt}. Style: clean, professional, suitable for educational materials. High quality, detailed. NO text or labels in the image.`,
+      }],
+      modalities: ["image", "text"],
+    }),
+  });
+
+  if (!resp.ok) {
+    const text = await resp.text().catch(() => "");
+    console.error("[generate-image] Lovable AI error:", resp.status, text);
+    if (resp.status === 402) throw { status: 402, message: "Lovable AI: payment required" };
+    if (resp.status === 429) throw { status: 429, message: "Lovable AI: rate limited", retryable: true };
+    throw { status: resp.status, message: `Lovable AI error: ${resp.status}` };
+  }
+
+  const result = await resp.json();
+  const imageDataUrl = result.choices?.[0]?.message?.images?.[0]?.image_url?.url;
+  if (!imageDataUrl) {
+    throw { status: 502, message: "Lovable AI did not return an image" };
+  }
+  return imageDataUrl;
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
@@ -223,56 +261,94 @@ serve(async (req) => {
 
     let generatedImageUrl = "";
     let usedSlot = -1;
+    let usedProvider = selectedProvider;
 
     if (selectedProvider === "gigachat") {
-      // SLOT PINNING: each request is bound to exactly one slot.
-      // On 429 — retry SAME slot with backoff, never storm other slots.
-      const allSlots = ["KEY", "KEY_2", "KEY_3"] as const;
-      const parsedSlotIndex = typeof slotIndex === "number" ? slotIndex : Number(slotIndex);
-      const pinnedSlot = Number.isFinite(parsedSlotIndex)
-        ? Math.abs(parsedSlotIndex) % allSlots.length
-        : crypto.getRandomValues(new Uint8Array(1))[0] % allSlots.length;
-      usedSlot = pinnedSlot;
-      const slotName = allSlots[pinnedSlot];
-      let success = false;
-      let lastErr: any = null;
-      const MAX_RETRIES = 3;
+      // Build available slots based on which keys are actually configured
+      const allSlots = (["KEY", "KEY_2", "KEY_3"] as const).filter((s) => {
+        const env = s === "KEY_2" ? "GIGACHAT_AUTH_KEY_2" : s === "KEY_3" ? "GIGACHAT_AUTH_KEY_3" : "GIGACHAT_AUTH_KEY";
+        return !!Deno.env.get(env);
+      });
 
-      for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
-        if (attempt > 0) {
-          // Exponential backoff: 20s, 45s
-          const backoffMs = 20000 * Math.pow(2, attempt - 1) + Math.floor(Math.random() * 5000);
-          console.log(`[generate-image] Slot ${slotName} retry ${attempt + 1}/${MAX_RETRIES} after ${backoffMs}ms backoff`);
-          await new Promise(r => setTimeout(r, backoffMs));
-        }
-
-        try {
-          console.log(`[generate-image] Trying slot ${slotName} (attempt ${attempt + 1}/${MAX_RETRIES})`);
-          generatedImageUrl = await generateWithGigaChat(prompt, slotName);
-          success = true;
-          break;
-        } catch (e: any) {
-          lastErr = e;
-          const status = e?.status || 500;
-          const msg = e?.message || "";
-          console.warn(`[generate-image] Slot ${slotName} attempt ${attempt + 1} failed: status=${status}, ${msg}`);
-
-          // Retry on 429 (rate limit) and abort/timeout errors
-          const isAbort = msg.includes("aborted") || msg.includes("timed out");
-          if (status !== 429 && !isAbort) break;
-        }
+      if (allSlots.length === 0) {
+        throw { status: 500, message: "GigaChat keys not configured" };
       }
 
+      // SLOT CYCLING: slotIndex is just a STARTING offset — we cycle through
+      // remaining slots on 402 / 5xx / non-retryable errors.
+      const parsedSlotIndex = typeof slotIndex === "number" ? slotIndex : Number(slotIndex);
+      const startSlot = Number.isFinite(parsedSlotIndex)
+        ? Math.abs(parsedSlotIndex) % allSlots.length
+        : crypto.getRandomValues(new Uint8Array(1))[0] % allSlots.length;
+
+      let success = false;
+      let lastErr: any = null;
+      let allExhausted = true; // becomes false if any slot fails for a non-402/exhaustion reason
+
+      for (let slotAttempt = 0; slotAttempt < allSlots.length; slotAttempt++) {
+        const slotIdx = (startSlot + slotAttempt) % allSlots.length;
+        const slotName = allSlots[slotIdx];
+
+        // Per-slot retry on 429 only (max 2 attempts), then move to next slot
+        const MAX_RATE_RETRIES = 2;
+        let slotSucceeded = false;
+
+        for (let attempt = 0; attempt < MAX_RATE_RETRIES; attempt++) {
+          if (attempt > 0) {
+            const backoffMs = 15000 + Math.floor(Math.random() * 5000);
+            console.log(`[generate-image] [${slotName}] 429 retry ${attempt + 1}/${MAX_RATE_RETRIES} after ${backoffMs}ms`);
+            await new Promise((r) => setTimeout(r, backoffMs));
+          }
+
+          try {
+            console.log(`[generate-image] [${slotName}] attempt ${attempt + 1}/${MAX_RATE_RETRIES} (slot ${slotAttempt + 1}/${allSlots.length})`);
+            generatedImageUrl = await generateWithGigaChat(prompt, slotName);
+            usedSlot = slotIdx;
+            success = true;
+            slotSucceeded = true;
+            break;
+          } catch (e: any) {
+            lastErr = e;
+            const status = e?.status || 500;
+            const msg = e?.message || "";
+            console.warn(`[generate-image] [${slotName}] attempt ${attempt + 1} failed: status=${status}, ${msg}`);
+
+            if (status === 429) {
+              // retry same slot
+              continue;
+            }
+
+            // 402 / exhausted / 5xx / 4xx — stop retrying same slot, move to next
+            if (status === 402 || /402|exhausted|payment/i.test(msg)) {
+              console.log(`[generate-image] [${slotName}] tokens exhausted (402) → switching to next slot`);
+            } else {
+              allExhausted = false;
+              console.log(`[generate-image] [${slotName}] non-retryable error → switching to next slot`);
+            }
+            break;
+          }
+        }
+
+        if (slotSucceeded) break;
+      }
+
+      // If all GigaChat slots failed — try Lovable AI as final fallback
       if (!success) {
-        const status = lastErr?.status || 503;
-        const msg = lastErr?.message || "";
-        const isRetryable = lastErr?.status === 429 || msg.includes("aborted") || msg.includes("timed out");
-        throw {
-          status,
-          message: msg || "GigaChat слот недоступен",
-          slot: slotName,
-          retryable: isRetryable,
-        };
+        console.warn(`[generate-image] All ${allSlots.length} GigaChat slots failed (lastErr status=${lastErr?.status}), trying Lovable AI fallback...`);
+        try {
+          generatedImageUrl = await generateWithLovableAI(prompt);
+          usedProvider = "lovable_ai";
+          success = true;
+        } catch (lovErr: any) {
+          console.error("[generate-image] Lovable AI fallback also failed:", lovErr);
+          const status = lastErr?.status || lovErr?.status || 503;
+          const msg = lastErr?.message || lovErr?.message || "All image providers unavailable";
+          throw {
+            status,
+            message: msg,
+            retryable: lastErr?.status === 429 || lovErr?.status === 429,
+          };
+        }
       }
     } else {
       throw { status: 400, message: "Неподдерживаемый провайдер. Используйте gigachat." };
@@ -303,7 +379,7 @@ serve(async (req) => {
 
     const publicUrl = `${supabaseUrl}/storage/v1/object/public/course-files/${fileName}`;
 
-    return new Response(JSON.stringify({ url: publicUrl, slot: usedSlot }), {
+    return new Response(JSON.stringify({ url: publicUrl, slot: usedSlot, provider: usedProvider }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (e: any) {
