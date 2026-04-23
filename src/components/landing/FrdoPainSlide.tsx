@@ -19,7 +19,8 @@ const fadeUp = {
 export function FrdoPainSlide() {
   const [sanitizerOpen, setSanitizerOpen] = useState(false);
   return (
-    <div className="grid lg:grid-cols-2 gap-10 lg:gap-12 items-center">
+    <>
+      <div className="grid lg:grid-cols-2 gap-10 lg:gap-12 items-center">
       {/* Left column — pain copy + checklist */}
       <motion.div initial="hidden" animate="visible" variants={fadeUp}>
         <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-destructive/10 border border-destructive/20 mb-6">
@@ -58,11 +59,15 @@ export function FrdoPainSlide() {
               Попробовать бесплатно
             </Button>
           </Link>
-          <Link to="/feature/frdo#frdo-file-fixer">
-            <Button size="lg" variant="secondary" className="px-7">
-              Проверить файл
-            </Button>
-          </Link>
+          <Button
+            size="lg"
+            variant="secondary"
+            className="px-7 gap-2"
+            onClick={() => setSanitizerOpen(true)}
+          >
+            <Wrench className="w-4 h-4" />
+            Проверить файл
+          </Button>
           <Link to="/feature/frdo">
             <Button size="lg" variant="outline" className="px-7">
               Подробнее про ФРДО
@@ -97,6 +102,9 @@ export function FrdoPainSlide() {
           Реальный кейс клиента
         </div>
       </motion.div>
-    </div>
+      </div>
+
+      <FrdoFileSanitizerDialog open={sanitizerOpen} onOpenChange={setSanitizerOpen} />
+    </>
   );
 }
