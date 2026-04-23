@@ -445,7 +445,7 @@ export function AdminWebinarsOverview() {
                           <CircleDot className="h-3 w-3 animate-pulse" /> Идёт
                         </span>
                       ) : recStatus === "processing" || recStatus === "stopped" ? (
-                        <span className="inline-flex items-center gap-1 text-amber-600">
+                        <span className="inline-flex items-center gap-1 text-warning">
                           <Loader2 className="h-3 w-3 animate-spin" /> Обработка
                         </span>
                       ) : recUrl ? (
@@ -557,6 +557,34 @@ export function AdminWebinarsOverview() {
           onUploaded={fetchWebinars}
         />
       )}
+
+      <RecordingPreviewDialog
+        open={!!previewWebinar}
+        onOpenChange={(o) => !o && setPreviewWebinar(null)}
+        title={previewWebinar?.title || ""}
+        recordingUrl={(previewWebinar as any)?.recording_url ?? null}
+      />
+
+      <AlertDialog open={showBulkConfirm} onOpenChange={setShowBulkConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Удалить {selectedIds.size} вебинар(ов)?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Все выбранные вебинары будут удалены безвозвратно вместе с их записями (если они хранятся в Cloud).
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={bulkDeleting}>Отмена</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleBulkDelete}
+              disabled={bulkDeleting}
+              className="bg-destructive hover:bg-destructive/90"
+            >
+              {bulkDeleting ? "Удаление…" : "Удалить"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
