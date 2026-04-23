@@ -12,7 +12,7 @@ import { exportPlatformProposalPdf } from "@/utils/exportPlatformProposalPdf";
 
 const KPI = [
   { label: "300+", caption: "готовых программ" },
-  { label: "41", caption: "колонка ФРДО" },
+  { label: "1 мин", caption: "на подготовку файла ФРДО" },
   { label: "5", caption: "тарифов от 0 ₽" },
   { label: "5 мин", caption: "до запуска" },
   { label: "24/7", caption: "доступ и поддержка" },
