@@ -72,6 +72,7 @@ export function StudentDetailsTab() {
   const [student, setStudent] = useState<StudentData | null>(null);
   const [enrollments, setEnrollments] = useState<StudentEnrollment[]>([]);
   const [loading, setLoading] = useState(true);
+  const [signingPayload, setSigningPayload] = useState<SendForSigningPayload | null>(null);
 
   const { plan: orgPlan } = useSubscriptionLimits(organizationId);
 
