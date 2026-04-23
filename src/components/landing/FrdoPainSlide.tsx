@@ -54,15 +54,9 @@ export function FrdoPainSlide() {
         </div>
 
         <div className="mt-6 flex flex-wrap gap-3">
-          <Link to="/register-organization">
-            <Button size="lg" className="btn-accent px-7">
-              Попробовать бесплатно
-            </Button>
-          </Link>
           <Button
             size="lg"
-            variant="secondary"
-            className="px-7 gap-2"
+            className="btn-accent px-7 gap-2"
             onClick={() => setSanitizerOpen(true)}
           >
             <Wrench className="w-4 h-4" />
