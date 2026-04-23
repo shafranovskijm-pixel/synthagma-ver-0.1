@@ -61,7 +61,10 @@ export function useOrgNewIndicators(organizationId: string | null | undefined) {
     };
 
     load();
-    const interval = setInterval(load, 90_000); // refresh каждые 90 сек
+    // visibility-aware: пропускаем тики когда вкладка скрыта
+    const interval = setInterval(() => {
+      if (document.visibilityState === 'visible') load();
+    }, 90_000);
     return () => { cancelled = true; clearInterval(interval); };
   }, [organizationId]);
 
