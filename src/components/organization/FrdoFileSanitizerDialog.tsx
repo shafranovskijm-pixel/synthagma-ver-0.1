@@ -13,6 +13,7 @@ import {
   buildCleanRows,
   calcStats,
   getHeadersForType,
+  getUnmappedHeaders,
   type ParseResult,
   type FrdoSheetType,
 } from "@/utils/frdoFileSanitizer";
