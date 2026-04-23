@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
@@ -39,36 +40,33 @@ export interface IncomingDocInput {
   file: File;
 }
 
+const incomingKey = (orgId: string | null) => ["org", orgId, "incoming-documents"] as const;
+
 export function useIncomingDocuments(organizationId: string | null) {
-  const [items, setItems] = useState<IncomingDocument[]>([]);
-  const [loading, setLoading] = useState(true);
+  const qc = useQueryClient();
   const [uploading, setUploading] = useState(false);
 
-  const refresh = useCallback(async () => {
-    if (!organizationId) {
-      setItems([]);
-      setLoading(false);
-      return;
-    }
-    setLoading(true);
-    try {
+  const query = useQuery({
+    queryKey: incomingKey(organizationId),
+    enabled: !!organizationId,
+    queryFn: async () => {
       const { data, error } = await supabase
         .from("incoming_documents")
         .select("*")
-        .eq("organization_id", organizationId)
+        .eq("organization_id", organizationId!)
         .order("created_at", { ascending: false });
-      if (error) throw error;
-      setItems((data || []) as IncomingDocument[]);
-    } catch (e: any) {
-      toast.error("Ошибка загрузки входящих документов: " + e.message);
-    } finally {
-      setLoading(false);
-    }
-  }, [organizationId]);
+      if (error) {
+        toast.error("Ошибка загрузки входящих документов: " + error.message);
+        throw error;
+      }
+      return (data || []) as IncomingDocument[];
+    },
+    staleTime: 60_000,
+  });
 
-  useEffect(() => {
-    refresh();
-  }, [refresh]);
+  const refresh = useCallback(async () => {
+    await qc.invalidateQueries({ queryKey: incomingKey(organizationId) });
+  }, [qc, organizationId]);
 
   const upload = useCallback(
     async (input: IncomingDocInput) => {
@@ -108,7 +106,7 @@ export function useIncomingDocuments(organizationId: string | null) {
         if (insErr) throw insErr;
 
         toast.success("Документ добавлен");
-        refresh();
+        await refresh();
         return true;
       } catch (e: any) {
         toast.error("Ошибка загрузки: " + e.message);
@@ -131,11 +129,21 @@ export function useIncomingDocuments(organizationId: string | null) {
         toast.error("Не удалось переместить в корзину", { description: error?.message });
         return;
       }
-      setItems((prev) => prev.filter((i) => i.id !== doc.id));
+      qc.setQueryData(
+        incomingKey(organizationId),
+        (prev: IncomingDocument[] | undefined) => (prev || []).filter((i) => i.id !== doc.id)
+      );
       toast.success("Документ перемещён в корзину");
     },
-    []
+    [qc, organizationId]
   );
 
-  return { items, loading, uploading, refresh, upload, remove };
+  return {
+    items: query.data ?? [],
+    loading: query.isLoading,
+    uploading,
+    refresh,
+    upload,
+    remove,
+  };
 }

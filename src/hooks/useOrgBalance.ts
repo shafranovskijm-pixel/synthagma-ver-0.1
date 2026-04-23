@@ -1,4 +1,5 @@
-import { useState, useEffect, useCallback } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
 interface BalanceTransaction {
@@ -12,41 +13,54 @@ interface BalanceTransaction {
   created_at: string;
 }
 
+const balanceKey = (orgId: string) => ["org", orgId, "balance"] as const;
+const transactionsKey = (orgId: string) => ["org", orgId, "balance-transactions"] as const;
+
 export function useOrgBalance(organizationId: string) {
-  const [balance, setBalance] = useState<number>(0);
-  const [transactions, setTransactions] = useState<BalanceTransaction[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const qc = useQueryClient();
 
-  const fetchBalance = useCallback(async () => {
-    const { data, error } = await supabase
-      .from("organizations")
-      .select("balance")
-      .eq("id", organizationId)
-      .single();
-    if (error) { console.error("Error fetching balance:", error); return; }
-    setBalance(Number(data?.balance) || 0);
-  }, [organizationId]);
+  const balanceQuery = useQuery({
+    queryKey: balanceKey(organizationId),
+    enabled: !!organizationId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("organizations")
+        .select("balance")
+        .eq("id", organizationId)
+        .single();
+      if (error) throw error;
+      return Number(data?.balance) || 0;
+    },
+    staleTime: 60_000,
+  });
 
-  const fetchTransactions = useCallback(async () => {
-    const { data, error } = await supabase
-      .from("balance_transactions")
-      .select("*")
-      .eq("organization_id", organizationId)
-      .order("created_at", { ascending: false })
-      .limit(50);
-    if (error) { console.error("Error fetching transactions:", error); return; }
-    setTransactions(data || []);
-  }, [organizationId]);
+  const transactionsQuery = useQuery({
+    queryKey: transactionsKey(organizationId),
+    enabled: !!organizationId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("balance_transactions")
+        .select("*")
+        .eq("organization_id", organizationId)
+        .order("created_at", { ascending: false })
+        .limit(50);
+      if (error) throw error;
+      return (data || []) as BalanceTransaction[];
+    },
+    staleTime: 60_000,
+  });
 
-  const loadData = useCallback(async () => {
-    setIsLoading(true);
-    await Promise.all([fetchBalance(), fetchTransactions()]);
-    setIsLoading(false);
-  }, [fetchBalance, fetchTransactions]);
+  const refresh = useCallback(async () => {
+    await Promise.all([
+      qc.invalidateQueries({ queryKey: balanceKey(organizationId) }),
+      qc.invalidateQueries({ queryKey: transactionsKey(organizationId) }),
+    ]);
+  }, [qc, organizationId]);
 
-  useEffect(() => {
-    if (organizationId) loadData();
-  }, [organizationId, loadData]);
-
-  return { balance, transactions, isLoading, refresh: loadData };
+  return {
+    balance: balanceQuery.data ?? 0,
+    transactions: transactionsQuery.data ?? [],
+    isLoading: balanceQuery.isLoading || transactionsQuery.isLoading,
+    refresh,
+  };
 }
