@@ -29,8 +29,11 @@ Deno.serve(async (req) => {
     const { data: u } = await supabase.auth.getUser();
     if (!u?.user?.id) return json({ error: "Unauthorized" }, 401);
 
-    const { webinarId } = await req.json().catch(() => ({}));
+    const body = await req.json().catch(() => ({}));
+    const webinarId = body.webinarId;
+    const isAutoStart = body.autoStart === true;
     if (!webinarId) return json({ error: "webinarId required" }, 400);
+    if (isAutoStart) console.log("[livekit-start-recording] auto-start triggered for", webinarId);
 
     const { data: w } = await admin
       .from("webinars")
