@@ -274,23 +274,10 @@ export function AdminWebinarsOverview() {
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <Button onClick={launchInstantWebinar} disabled={launching} className="shrink-0">
+          <Button onClick={() => setShowCreate(true)} className="shrink-0">
             <Zap className="h-4 w-4 mr-2" />
-            {launching ? "Запускаю…" : "Запустить вебинар сейчас"}
+            Запустить вебинар сейчас
           </Button>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="icon" title="Расширенное создание">
-                <ChevronDown className="h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={() => setShowCreate(true)}>
-                <Plus className="h-4 w-4 mr-2" />
-                Расширенное создание (Kinescope / внешний)
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
         </div>
       </div>
 
