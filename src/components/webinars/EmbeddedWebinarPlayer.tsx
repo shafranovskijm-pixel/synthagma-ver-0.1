@@ -24,6 +24,7 @@ import {
   Settings2,
   Square,
   Radio,
+  MoreHorizontal,
 } from "lucide-react";
 import { toast } from "sonner";
 import { getBaseUrl } from "@/utils/getBaseUrl";
@@ -294,7 +295,13 @@ function LiveKitEmbed({
               hasShareSettings={!viewOnly && Boolean(publicToken)}
               viewOnly={viewOnly}
             />
-            <VideoConference />
+            <VideoConference
+              controls={{
+                screenShare: typeof navigator !== "undefined"
+                  && !!navigator.mediaDevices?.getDisplayMedia
+                  && !/Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent),
+              }}
+            />
             <WelcomeOverlay webinarTitle={webinarTitle} />
             <RoomAudioRenderer />
           </LiveKitRoom>
@@ -307,21 +314,10 @@ function LiveKitEmbed({
             participantIdentity={guestIdentity ?? `guest-${webinarId}`}
             participantName={guestDisplayName ?? "Гость"}
             isGuest={viewOnly || !!guestIdentity}
-            className="hidden lg:flex flex-col h-[calc(100vh-200px)] min-h-[400px] max-h-[720px] rounded-lg border bg-background overflow-hidden"
+            className="flex flex-col h-[480px] lg:h-[calc(100vh-200px)] lg:min-h-[400px] lg:max-h-[720px] rounded-lg border bg-background overflow-hidden"
           />
         )}
       </div>
-
-      {showSidePanel && (
-        <WebinarSidebar
-          webinarId={webinarId}
-          isHost={!viewOnly}
-          participantIdentity={guestIdentity ?? `guest-${webinarId}`}
-          participantName={guestDisplayName ?? "Гость"}
-          isGuest={viewOnly || !!guestIdentity}
-          className="lg:hidden flex flex-col h-[480px] rounded-lg border bg-background overflow-hidden"
-        />
-      )}
 
       {!viewOnly && publicToken && (
         <ShareWebinarDialog
