@@ -34,6 +34,7 @@ import {
   buildPORow,
   exportFRDOExcel,
   formatDateForFRDO } from "@/utils/frdoExcelExport";
+import { resolveFRDOFields } from "@/utils/frdoFieldResolver";
 
 interface FRDOExportDialogProps {
   isOpen: boolean;
@@ -228,9 +229,21 @@ export function FRDOExportDialog({
       || (courseData?.duration ? parseInt(courseData.duration.replace(/\D/g, "")) || 0 : 0)
       || Math.round(enrollment.time_spent / 3600);
 
-    const professionalArea = frдоData.professional_area || courseData?.frdo_professional_area || "";
-    const specialtyGroup = frдоData.specialty_group || courseData?.frdo_specialty_group || "";
-    const qualificationName = frдоData.qualification_name || courseData?.frdo_qualification_name || "нет";
+    const resolved = resolveFRDOFields(
+      {
+        last_name: frдоData.last_name, first_name: frдоData.first_name, middle_name: frдоData.middle_name,
+        birth_date: frдоData.birth_date, gender: frдоData.gender, snils: frдоData.snils,
+        citizenship_code: frдоData.citizenship_code, training_form: frдоData.training_form,
+        financing_source: frдоData.financing_source, education_form: frдоData.education_form,
+        professional_area: frдоData.professional_area, specialty_group: frдоData.specialty_group,
+        qualification_name: frдоData.qualification_name, profession_name: frдоData.profession_name,
+        qualification_rank: frдоData.qualification_rank,
+      },
+      courseData ? { ...courseData, title: courseData.title || enrollment.course_title } : { title: enrollment.course_title },
+    );
+    const professionalArea = resolved.professionalArea;
+    const specialtyGroup = resolved.specialtyGroup;
+    const qualificationName = resolved.qualificationName;
     const documentType = courseData?.frdo_document_type || "Удостоверение о повышении квалификации";
     const programType = courseData?.frdo_program_type === "professional_retraining" ? "Профессиональная переподготовка" : "Повышение квалификации";
 
@@ -261,9 +274,9 @@ export function FRDOExportDialog({
       startYear, endYear, durationHours,
       lastName: frдоData.last_name, firstName: frдоData.first_name, middleName: frдоData.middle_name,
       birthDate: formatDateForFRDO(frдоData.birth_date),
-      gender: frдоData.gender, snils: frдоData.snils,
-      trainingForm: frдоData.training_form, financingSource: frдоData.financing_source,
-      educationForm: frдоData.education_form, citizenshipCode: frдоData.citizenship_code });
+      gender: resolved.gender, snils: frдоData.snils,
+      trainingForm: resolved.trainingForm, financingSource: resolved.financingSource,
+      educationForm: resolved.educationForm, citizenshipCode: frдоData.citizenship_code });
 
     await exportFRDOExcel([row], "dpo", `${frдоData.last_name}_${format(new Date(), "dd-MM-yyyy")}`);
     toast.success("Документ зарегистрирован в журнале");
@@ -278,9 +291,26 @@ export function FRDOExportDialog({
       || (courseData?.duration ? parseInt(courseData.duration.replace(/\D/g, "")) || 0 : 0)
       || Math.round(enrollment.time_spent / 3600);
 
-    const professionName = frдоData.profession_name || courseData?.frdo_profession_name || "";
-    const qualificationRank = frдоData.qualification_rank || courseData?.frdo_qualification_rank || "";
+    const resolved = resolveFRDOFields(
+      {
+        last_name: frдоData.last_name, first_name: frдоData.first_name, middle_name: frдоData.middle_name,
+        birth_date: frдоData.birth_date, gender: frдоData.gender, snils: frдоData.snils,
+        citizenship_code: frдоData.citizenship_code, training_form: frдоData.training_form,
+        financing_source: frдоData.financing_source, education_form: frдоData.education_form,
+        professional_area: frдоData.professional_area, specialty_group: frдоData.specialty_group,
+        qualification_name: frдоData.qualification_name, profession_name: frдоData.profession_name,
+        qualification_rank: frдоData.qualification_rank,
+      },
+      courseData ? { ...courseData, title: courseData.title || enrollment.course_title } : { title: enrollment.course_title },
+    );
+    const professionName = resolved.professionName;
+    const qualificationRank = resolved.qualificationRank;
     const documentType = courseData?.frdo_document_type || "Свидетельство о профессии рабочего, должности служащего";
+
+    if (!professionName) {
+      toast.error('Не заполнено "Наименование профессии". Укажите его в карточке курса (раздел ФРДО) или у ученика.');
+      return;
+    }
 
     const year = new Date().getFullYear();
     const { count } = await supabase.from("education_document_records")
@@ -306,9 +336,9 @@ export function FRDOExportDialog({
       startYear, endYear, durationHours,
       lastName: frдоData.last_name, firstName: frдоData.first_name, middleName: frдоData.middle_name,
       birthDate: formatDateForFRDO(frдоData.birth_date),
-      gender: frдоData.gender, snils: frдоData.snils, citizenshipCode: frдоData.citizenship_code,
-      trainingForm: frдоData.training_form, financingSource: frдоData.financing_source,
-      educationForm: frдоData.education_form });
+      gender: resolved.gender, snils: frдоData.snils, citizenshipCode: frдоData.citizenship_code,
+      trainingForm: resolved.trainingForm, financingSource: resolved.financingSource,
+      educationForm: resolved.educationForm });
 
     await exportFRDOExcel([row], "po", `${frдоData.last_name}_${format(new Date(), "dd-MM-yyyy")}`);
     toast.success("Документ зарегистрирован в журнале");
