@@ -267,7 +267,8 @@ type CellKind =
   | "education_form"
   | "education_level"
   | "static_original"
-  | "static_no";
+  | "static_no"
+  | "auto_reg_number";
 
 interface ColumnMeta {
   /** Заголовок в нашем шаблоне */
