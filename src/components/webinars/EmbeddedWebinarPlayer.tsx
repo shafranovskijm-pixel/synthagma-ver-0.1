@@ -295,13 +295,7 @@ function LiveKitEmbed({
               hasShareSettings={!viewOnly && Boolean(publicToken)}
               viewOnly={viewOnly}
             />
-            <VideoConference
-              controls={{
-                screenShare: typeof navigator !== "undefined"
-                  && !!navigator.mediaDevices?.getDisplayMedia
-                  && !/Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent),
-              }}
-            />
+            <VideoConference />
             <WelcomeOverlay webinarTitle={webinarTitle} />
             <RoomAudioRenderer />
           </LiveKitRoom>
