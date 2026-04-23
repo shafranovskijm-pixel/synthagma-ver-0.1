@@ -1,12 +1,13 @@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Download, Search, Users, CheckCircle2, AlertCircle, XCircle, Filter, FileSpreadsheet, Shield, BarChart3, Upload, ClipboardCheck, BookOpen, Send } from "lucide-react";
+import { Download, Search, Users, CheckCircle2, AlertCircle, XCircle, Filter, FileSpreadsheet, Shield, BarChart3, Upload, ClipboardCheck, BookOpen, Send, Wand2 } from "lucide-react";
 import { FRDOExportDialog } from "./FRDOExportDialog";
+import { FrdoFileSanitizerDialog } from "./FrdoFileSanitizerDialog";
 import { useFRDOManager } from "@/hooks/useFRDOManager";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 import { LoadMoreControls } from "@/components/ui/LoadMoreControls";
-import { useRef } from "react";
+import { useRef, useState } from "react";
 
 export function FRDOManager({ organizationId }: { organizationId: string }) {
   const {
@@ -20,6 +21,7 @@ export function FRDOManager({ organizationId }: { organizationId: string }) {
   } = useFRDOManager(organizationId);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [showSanitizer, setShowSanitizer] = useState(false);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -37,6 +39,9 @@ export function FRDOManager({ organizationId }: { organizationId: string }) {
         <div><h2 className="text-2xl font-display font-semibold">ФИС ФРДО</h2><p className="text-muted-foreground">Управление данными</p></div>
         <div className="flex items-center gap-2 flex-wrap">
           <input ref={fileInputRef} type="file" className="hidden" onChange={handleFileChange} accept=".xlsx,.xls,.pdf,.zip" />
+          <Button variant="outline" onClick={() => setShowSanitizer(true)} className="rounded-xl gap-2">
+            <Wand2 className="w-4 h-4" />Очистить чужой файл
+          </Button>
           <Button variant="outline" onClick={() => fileInputRef.current?.click()} className="rounded-xl gap-2" disabled={isUploading}>
             {isUploading ? <SigmaSpinner size="sm" /> : <Upload className="w-4 h-4" />}Загрузить подписанный
           </Button>
@@ -133,6 +138,7 @@ export function FRDOManager({ organizationId }: { organizationId: string }) {
       </div>
 
       <FRDOExportDialog isOpen={showExportDialog} onOpenChange={setShowExportDialog} student={selectedStudentForExport ? { id: selectedStudentForExport.user_id, user_id: selectedStudentForExport.user_id, name: selectedStudentForExport.name, email: selectedStudentForExport.email } : null} organizationId={organizationId} enrollment={selectedEnrollmentForExport as any} />
+      <FrdoFileSanitizerDialog open={showSanitizer} onOpenChange={setShowSanitizer} />
     </div>
   );
 }
