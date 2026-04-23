@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useSalesManager, type SalesLead } from '@/hooks/useSalesManager';
-import * as XLSX from 'xlsx';
+// xlsx is dynamically imported inside handleFile to keep it out of the main bundle
 
 interface Props {
   open: boolean;

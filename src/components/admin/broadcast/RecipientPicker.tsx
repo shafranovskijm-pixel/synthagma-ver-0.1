@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Upload } from "lucide-react";
 import { toast } from "sonner";
-import * as XLSX from "xlsx";
+// xlsx is dynamically imported inside the file handler to keep it out of the main bundle
 
 export type RecipientSource = "students" | "companies" | "organizations" | "companies_db" | "manual";
 

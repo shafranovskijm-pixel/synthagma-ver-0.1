@@ -1,7 +1,7 @@
 import { useState, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import * as XLSX from "xlsx";
+// xlsx is dynamically imported inside handleExcelFile to keep it out of the main bundle
 import { MARKETPLACE_ORG_ID } from "@/constants/marketplace";
 import { type MarketplaceSettingsData, getMarketplaceSettings } from "@/components/admin/MarketplaceSettings";
 
@@ -26,8 +26,9 @@ export function usePipelineExcelImport({ onComplete }: UsePipelineExcelImportPro
     const file = e.target.files?.[0];
     if (!file) return;
     const reader = new FileReader();
-    reader.onload = (evt) => {
+    reader.onload = async (evt) => {
       try {
+        const XLSX = await import("xlsx");
         const wb = XLSX.read(evt.target?.result, { type: "binary" });
         const ws = wb.Sheets[wb.SheetNames[0]];
         const rows: any[][] = XLSX.utils.sheet_to_json(ws, { header: 1 });

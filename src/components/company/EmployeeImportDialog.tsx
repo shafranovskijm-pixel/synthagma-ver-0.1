@@ -9,7 +9,7 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { safeInvoke } from "@/utils/safeInvoke";
 import { showLimitToast } from "@/utils/limitToast";
-import * as XLSX from "xlsx";
+// xlsx is dynamically imported inside handleFileUpload to keep it out of the main bundle
 import { toast } from "sonner";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 
@@ -39,8 +39,9 @@ export function EmployeeImportDialog({ open, onOpenChange, companyId, organizati
     if (!file) return;
 
     const reader = new FileReader();
-    reader.onload = (evt) => {
+    reader.onload = async (evt) => {
       try {
+        const XLSX = await import("xlsx");
         const wb = XLSX.read(evt.target?.result, { type: "binary" });
         const ws = wb.Sheets[wb.SheetNames[0]];
         const data = XLSX.utils.sheet_to_json<Record<string, any>>(ws);

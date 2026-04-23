@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import * as XLSX from 'xlsx';
+// xlsx is dynamically imported inside the export handler to keep it out of the main bundle
 import {
   Database, Search, Loader2, Download, UserPlus, Trash2, ExternalLink,
   BadgeCheck, Plus, RefreshCw, AlertTriangle,

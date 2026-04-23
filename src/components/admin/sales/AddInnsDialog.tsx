@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import * as XLSX from 'xlsx';
+// xlsx is dynamically imported inside handleFile to keep it out of the main bundle
 import { Loader2, Upload, FileSpreadsheet } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -46,6 +46,7 @@ export function AddInnsDialog({ open, onOpenChange, onSubmit, isSubmitting, rema
 
   const handleFile = async (file: File) => {
     try {
+      const XLSX = await import('xlsx');
       const buf = await file.arrayBuffer();
       const wb = XLSX.read(buf);
       const ws = wb.Sheets[wb.SheetNames[0]];
