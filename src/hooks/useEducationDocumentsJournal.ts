@@ -70,64 +70,110 @@ export function useEducationDocumentsJournal({
 
   const [formData, setFormData] = useState(getDefaultFormData(documentTypeFilter));
 
-  // Load records and document settings
-  useEffect(() => {
-    const loadData = async () => {
-      setLoading(true);
-      try {
-        const [recordsRes, orgRes] = await Promise.all([
-          supabase
-            .from("education_document_records")
-            .select("*")
-            .eq("organization_id", organizationId)
-            .order("created_at", { ascending: false }),
-          supabase
-            .from("organizations")
-            .select("name, branding, license_number, stamp_url, signature_url, director_name, director_position")
-            .eq("id", organizationId)
-            .single(),
-        ]);
-        if (recordsRes.error) throw recordsRes.error;
-        setRecords((recordsRes.data || []).map(mapDbRecord));
+  // Records + org settings — single React Query
+  const recordsAndOrgKey = useMemo(
+    () => ["education-documents-journal", organizationId] as const,
+    [organizationId]
+  );
 
-        if (orgRes.data) {
-          const o = orgRes.data as any;
-          const branding = o.branding as Record<string, unknown> | null;
-          setOrgData({
-            name: o.name || "",
-            license_number: o.license_number,
-            city: (branding?.city as string) || null,
-            stamp_url: o.stamp_url,
-            signature_url: o.signature_url,
-            director_name: o.director_name,
-            director_position: o.director_position,
-          });
-          if (branding) {
-            setDocSettings({
-              certificateSettings: branding.certificateSettings as any,
-              diplomaSettings: branding.diplomaSettings as any,
-            });
-          }
+  const { data: recordsAndOrg, isLoading: loading } = useQuery({
+    queryKey: recordsAndOrgKey,
+    queryFn: async () => {
+      const [recordsRes, orgRes] = await Promise.all([
+        supabase
+          .from("education_document_records")
+          .select("*")
+          .eq("organization_id", organizationId)
+          .order("created_at", { ascending: false }),
+        supabase
+          .from("organizations")
+          .select("name, branding, license_number, stamp_url, signature_url, director_name, director_position")
+          .eq("id", organizationId)
+          .single(),
+      ]);
+      if (recordsRes.error) throw recordsRes.error;
+
+      const records = (recordsRes.data || []).map(mapDbRecord);
+
+      let orgData: {
+        name: string;
+        license_number?: string | null;
+        city?: string | null;
+        stamp_url?: string | null;
+        signature_url?: string | null;
+        director_name?: string | null;
+        director_position?: string | null;
+      } = { name: "" };
+      let docSettings: {
+        certificateSettings?: { series: string; startNumber: number; city: string; regNumberFormat: string };
+        diplomaSettings?: { series: string; startNumber: number; city: string; regNumberFormat: string };
+      } = {};
+
+      if (orgRes.data) {
+        const o = orgRes.data as any;
+        const branding = o.branding as Record<string, unknown> | null;
+        orgData = {
+          name: o.name || "",
+          license_number: o.license_number,
+          city: (branding?.city as string) || null,
+          stamp_url: o.stamp_url,
+          signature_url: o.signature_url,
+          director_name: o.director_name,
+          director_position: o.director_position,
+        };
+        if (branding) {
+          docSettings = {
+            certificateSettings: branding.certificateSettings as any,
+            diplomaSettings: branding.diplomaSettings as any,
+          };
         }
-      } catch (error) {
-        console.error("Error loading records:", error);
-        toast.error("Ошибка загрузки записей журнала");
-      } finally {
-        setLoading(false);
       }
-    };
-    loadData();
-  }, [organizationId]);
 
-  const loadCompletedStudents = async () => {
-    setLoadingStudents(true);
-    try {
+      return { records, orgData, docSettings };
+    },
+    enabled: !!organizationId,
+    staleTime: 60_000,
+    gcTime: 5 * 60_000,
+    meta: {
+      onError: () => toast.error("Ошибка загрузки записей журнала"),
+    },
+  });
+
+  const records = recordsAndOrg?.records ?? [];
+  const orgData = recordsAndOrg?.orgData ?? { name: "" };
+  const docSettings = recordsAndOrg?.docSettings ?? {};
+
+  const setRecords = useCallback(
+    (updater: EducationDocumentRecord[] | ((prev: EducationDocumentRecord[]) => EducationDocumentRecord[])) => {
+      qc.setQueryData(recordsAndOrgKey, (old: any) => {
+        if (!old) return old;
+        const next = typeof updater === "function" ? (updater as any)(old.records) : updater;
+        return { ...old, records: next };
+      });
+    },
+    [qc, recordsAndOrgKey]
+  );
+
+  // Completed students — derived query, depends on records (for already_added)
+  const addedEnrollmentIdsKey = useMemo(
+    () => records.filter((r) => r.enrollment_id).map((r) => r.enrollment_id).sort().join(","),
+    [records]
+  );
+
+  const completedStudentsKey = useMemo(
+    () => ["education-documents-completed-students", organizationId, addedEnrollmentIdsKey] as const,
+    [organizationId, addedEnrollmentIdsKey]
+  );
+
+  const { data: completedStudents = [], isFetching: loadingStudents } = useQuery({
+    queryKey: completedStudentsKey,
+    queryFn: async () => {
       const { data: courses, error: coursesError } = await supabase
         .from("courses")
         .select("id, title, frdo_program_type")
         .eq("organization_id", organizationId);
       if (coursesError) throw coursesError;
-      if (!courses || courses.length === 0) { setCompletedStudents([]); return; }
+      if (!courses || courses.length === 0) return [] as CompletedStudent[];
 
       const courseIds = courses.map((c) => c.id);
       const courseMap = new Map(courses.map((c) => [c.id, c.title]));
@@ -140,20 +186,15 @@ export function useEducationDocumentsJournal({
         .eq("status", "completed")
         .not("completed_at", "is", null);
       if (enrollmentsError) throw enrollmentsError;
-      if (!enrollments || enrollments.length === 0) { setCompletedStudents([]); return; }
+      if (!enrollments || enrollments.length === 0) return [] as CompletedStudent[];
 
       const userIds = [...new Set(enrollments.map((e) => e.user_id))];
 
-      const { data: profiles, error: profilesError } = await supabase
-        .from("profiles")
-        .select("user_id, full_name, email")
-        .in("user_id", userIds);
+      const [{ data: profiles, error: profilesError }, { data: frdoData, error: frdoError }] = await Promise.all([
+        supabase.from("profiles").select("user_id, full_name, email").in("user_id", userIds),
+        supabase.from("student_frdo_data").select("user_id, birth_date").in("user_id", userIds),
+      ]);
       if (profilesError) throw profilesError;
-
-      const { data: frdoData, error: frdoError } = await supabase
-        .from("student_frdo_data")
-        .select("user_id, birth_date")
-        .in("user_id", userIds);
       if (frdoError) throw frdoError;
 
       const profileMap = new Map(profiles?.map((p) => [p.user_id, p]) || []);
@@ -175,18 +216,20 @@ export function useEducationDocumentsJournal({
         };
       });
       students.sort((a, b) => new Date(b.completed_at).getTime() - new Date(a.completed_at).getTime());
-      setCompletedStudents(students);
-    } catch (error) {
-      console.error("Error loading completed students:", error);
-      toast.error("Ошибка загрузки списка выпускников");
-    } finally {
-      setLoadingStudents(false);
-    }
-  };
+      return students;
+    },
+    enabled: !!organizationId && !loading,
+    staleTime: 60_000,
+    gcTime: 5 * 60_000,
+    meta: {
+      onError: () => toast.error("Ошибка загрузки списка выпускников"),
+    },
+  });
 
-  useEffect(() => {
-    if (!loading) { loadCompletedStudents(); }
-  }, [loading, organizationId]);
+  const loadCompletedStudents = useCallback(async () => {
+    await qc.invalidateQueries({ queryKey: ["education-documents-completed-students", organizationId] });
+  }, [qc, organizationId]);
+
 
   const newGraduatesCount = useMemo(() => {
     let students = completedStudents;
