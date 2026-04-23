@@ -1,7 +1,9 @@
+import { useState } from "react";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
-import { AlertTriangle, Sparkles, ShieldCheck, CheckCircle2, FileSpreadsheet } from "lucide-react";
+import { AlertTriangle, Sparkles, ShieldCheck, CheckCircle2, FileSpreadsheet, Wrench } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { FrdoFileSanitizerDialog } from "@/components/organization/FrdoFileSanitizerDialog";
 import frdoErrorsPain from "@/assets/features/frdo-errors-pain.png";
 
 const fadeUp = {
@@ -15,8 +17,10 @@ const fadeUp = {
  * the editor demo.
  */
 export function FrdoPainSlide() {
+  const [sanitizerOpen, setSanitizerOpen] = useState(false);
   return (
-    <div className="grid lg:grid-cols-2 gap-10 lg:gap-12 items-center">
+    <>
+      <div className="grid lg:grid-cols-2 gap-10 lg:gap-12 items-center">
       {/* Left column — pain copy + checklist */}
       <motion.div initial="hidden" animate="visible" variants={fadeUp}>
         <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-destructive/10 border border-destructive/20 mb-6">
@@ -25,7 +29,7 @@ export function FrdoPainSlide() {
         </div>
 
         <h3 className="font-display text-2xl md:text-3xl font-medium mb-4 tracking-tight leading-tight">
-          Десятки строк <span className="text-destructive">«недопустимый символ»</span> перед каждой загрузкой в ФИС ФРДО
+          Забудь про ручной ввод и <span className="text-destructive">«недопустимый символ»</span> в ФИС ФРДО
         </h3>
 
         <p className="text-base text-muted-foreground mb-6 leading-relaxed">
@@ -55,6 +59,15 @@ export function FrdoPainSlide() {
               Попробовать бесплатно
             </Button>
           </Link>
+          <Button
+            size="lg"
+            variant="secondary"
+            className="px-7 gap-2"
+            onClick={() => setSanitizerOpen(true)}
+          >
+            <Wrench className="w-4 h-4" />
+            Проверить файл
+          </Button>
           <Link to="/feature/frdo">
             <Button size="lg" variant="outline" className="px-7">
               Подробнее про ФРДО
@@ -89,6 +102,9 @@ export function FrdoPainSlide() {
           Реальный кейс клиента
         </div>
       </motion.div>
-    </div>
+      </div>
+
+      <FrdoFileSanitizerDialog open={sanitizerOpen} onOpenChange={setSanitizerOpen} />
+    </>
   );
 }
