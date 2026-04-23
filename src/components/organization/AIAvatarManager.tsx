@@ -10,6 +10,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Sparkles, Plus, Pencil, Copy, Trash2, Search, BookOpen, Mic, Clock, Image as ImageIcon, ExternalLink } from "lucide-react";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 import { toast } from "sonner";
+import { getErrorMessage } from "@/utils/handleSupabaseError";
 import { useNavigate } from "react-router-dom";
 import { AIAvatarLessonEditor, defaultAIAvatarConfig, type AIAvatarConfig } from "@/components/course-builder/AIAvatarLessonEditor";
 
