@@ -14,6 +14,7 @@ import { OnboardingDialog } from "@/components/onboarding/OnboardingDialog";
 import { organizationOnboardingSteps } from "@/constants/onboardingSteps";
 import { useOrgDashboard } from "@/contexts/OrgDashboardContext";
 import { PlatformAnnouncementsBanner } from "@/components/organization/PlatformAnnouncementsBanner";
+import { RequiresAttentionWidget } from "@/components/organization/RequiresAttentionWidget";
 import { getStoredThemeId, getThemeById, type AdminTheme } from "@/constants/admin-themes";
 import { ThemeAnimations, getStoredAnimationLevel, type AnimationLevel } from "@/components/ui/ThemeAnimations";
 import { AtmosphericBleed } from "@/components/ui/AtmosphericBleed";
@@ -148,6 +149,7 @@ export default function OrganizationDashboard() {
         <div className="flex-1 p-4 lg:p-8 overflow-x-clip">
           <div className={cn("mx-auto", sidebarExpanded ? "max-w-[1400px]" : "max-w-none")}>
             <PlatformAnnouncementsBanner />
+            {d.tabNavigation.activeTab === "courses" && <RequiresAttentionWidget />}
 
             <AnimatedTabContent tabKey={d.tabNavigation.activeTab} direction={d.tabNavigation.swipeDirection} isMobile={d.isMobile}>
               <TabContentRenderer />

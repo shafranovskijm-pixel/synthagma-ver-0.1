@@ -1831,6 +1831,7 @@ export type Database = {
           frdo_qualification_name: string | null
           frdo_qualification_rank: string | null
           frdo_specialty_group: string | null
+          generation_progress: Json | null
           hidden_from_catalog: boolean
           id: string
           is_published: boolean
@@ -1872,6 +1873,7 @@ export type Database = {
           frdo_qualification_name?: string | null
           frdo_qualification_rank?: string | null
           frdo_specialty_group?: string | null
+          generation_progress?: Json | null
           hidden_from_catalog?: boolean
           id?: string
           is_published?: boolean
@@ -1913,6 +1915,7 @@ export type Database = {
           frdo_qualification_name?: string | null
           frdo_qualification_rank?: string | null
           frdo_specialty_group?: string | null
+          generation_progress?: Json | null
           hidden_from_catalog?: boolean
           id?: string
           is_published?: boolean
@@ -6033,6 +6036,7 @@ export type Database = {
           full_name: string | null
           generated_password: string | null
           id: string
+          last_seen_announcement_at: string | null
           last_visit_at: string | null
           lead_source: string | null
           lead_utm: Json | null
@@ -6057,6 +6061,7 @@ export type Database = {
           full_name?: string | null
           generated_password?: string | null
           id?: string
+          last_seen_announcement_at?: string | null
           last_visit_at?: string | null
           lead_source?: string | null
           lead_utm?: Json | null
@@ -6081,6 +6086,7 @@ export type Database = {
           full_name?: string | null
           generated_password?: string | null
           id?: string
+          last_seen_announcement_at?: string | null
           last_visit_at?: string | null
           lead_source?: string | null
           lead_utm?: Json | null

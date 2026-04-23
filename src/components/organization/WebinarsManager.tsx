@@ -25,31 +25,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { InlinePlayerSettings, buildKinescopeEmbedUrl } from "./WebinarPlayerSettings";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 import { getBaseUrl } from "@/utils/getBaseUrl";
-
-interface Webinar {
-  id: string;
-  title: string;
-  description: string | null;
-  scheduled_at: string | null;
-  duration_minutes: number | null;
-  status: string;
-  source_type: string;
-  kinescope_live_id: string | null;
-  kinescope_video_id: string | null;
-  external_url: string | null;
-  embed_url: string | null;
-  rtmp_url: string | null;
-  rtmp_key: string | null;
-  cover_url: string | null;
-  course_id: string | null;
-  created_at: string;
-  public_token: string | null;
-  allow_guests: boolean;
-  guest_password: string | null;
-  recording_url?: string | null;
-  recording_status?: string | null;
-  recording_size_bytes?: number | null;
-}
+import type { Webinar } from "@/types/webinar";
 
 interface Props {
   organizationId: string;

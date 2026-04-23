@@ -33,7 +33,10 @@ captureRefFromUrl();
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      staleTime: 5 * 60 * 1000,
+      // Global default: считаем данные свежими 30 сек.
+      // Снижает нагрузку на БД и устраняет дубликаты запросов между вкладками.
+      // Для редко меняющихся справочников используйте локально staleTime: 5 * 60 * 1000.
+      staleTime: 30 * 1000,
       gcTime: 30 * 60 * 1000,
       retry: 3,
       retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 30000),

@@ -11,6 +11,7 @@ import { differenceInDays } from "date-fns";
 import { useTheme } from "next-themes";
 import { useAuth } from "@/hooks/useAuth";
 import { OrgNotifications } from "./OrgNotifications";
+import { AnnouncementsBell } from "@/components/shared/AnnouncementsBell";
 import { HeroBannerSwiper } from "@/components/shared/HeroBannerSwiper";
 import {
   DropdownMenu,
@@ -219,6 +220,9 @@ export function OrgDashboardHeader() {
 
           {/* Radio */}
           <RadioPlayerButton />
+
+          {/* Что нового — bell с бейджем */}
+          <AnnouncementsBell />
 
           {/* Notifications */}
           {organizationId && (

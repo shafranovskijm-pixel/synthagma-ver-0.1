@@ -10,19 +10,22 @@ import {
 } from '@/components/ui/command';
 import { supabase } from '@/integrations/supabase/client';
 import { useNavigate } from 'react-router-dom';
-import { FileText, ScrollText, PenTool, Building2, Users, Receipt, GraduationCap, Sparkles, Inbox } from 'lucide-react';
+import { FileText, ScrollText, PenTool, Building2, Users, Receipt, GraduationCap, Sparkles, Inbox, BookOpen, Radio } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 
 interface SearchResult {
   id: string;
-  type: 'proposal' | 'contract' | 'signature' | 'company' | 'student' | 'invoice' | 'document' | 'incoming' | 'billing';
+  type: 'proposal' | 'contract' | 'signature' | 'company' | 'student' | 'invoice' | 'document' | 'incoming' | 'billing' | 'course' | 'webinar';
   title: string;
   subtitle?: string;
   navigateTo?: string;
   action?: () => void;
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const TYPE_META: Record<SearchResult['type'], { label: string; icon: any }> = {
+  course: { label: 'Курсы', icon: BookOpen },
+  webinar: { label: 'Вебинары', icon: Radio },
   proposal: { label: 'Коммерческие предложения', icon: FileText },
   contract: { label: 'Договоры', icon: ScrollText },
   signature: { label: 'Подписи', icon: PenTool },
@@ -118,13 +121,16 @@ export function GlobalCommandPalette({ scope = 'organization', organizationId }:
         }));
       } else if (organizationId) {
         // Organization: только своё
-        const [students, sigs, docs, companies, incoming, billing] = await Promise.all([
+        const [students, sigs, docs, companies, incoming, billing, courses, webinars] = await Promise.all([
           supabase.from('profiles').select('user_id, full_name, email, login').eq('organization_id', organizationId).or(`full_name.ilike.${like},email.ilike.${like},login.ilike.${like}`).limit(8),
           supabase.from('document_signatures').select('id, document_title, recipient_name, status').eq('organization_id', organizationId).or(`document_title.ilike.${like},recipient_name.ilike.${like}`).limit(8),
           supabase.from('education_document_records').select('id, full_name, reg_number, document_type').eq('organization_id', organizationId).or(`full_name.ilike.${like},reg_number.ilike.${like}`).limit(8),
           supabase.from('companies').select('id, name, inn, email').eq('organization_id', organizationId).or(`name.ilike.${like},inn.ilike.${like}`).limit(8),
           supabase.from('incoming_documents').select('id, title, counterparty_name, counterparty_inn, doc_number, doc_type').eq('organization_id', organizationId).or(`title.ilike.${like},counterparty_name.ilike.${like},counterparty_inn.ilike.${like},doc_number.ilike.${like}`).limit(6),
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           supabase.from('org_billing_documents' as any).select('id, doc_kind, doc_number, buyer_name, buyer_inn, total_amount').eq('organization_id', organizationId).or(`doc_number.ilike.${like},buyer_name.ilike.${like},buyer_inn.ilike.${like}`).limit(6),
+          supabase.from('courses').select('id, title, description, is_published').eq('organization_id', organizationId).or(`title.ilike.${like},description.ilike.${like}`).limit(6),
+          supabase.from('webinars').select('id, title, status, scheduled_at').eq('organization_id', organizationId).ilike('title', like).limit(6),
         ]);
 
         (students.data || []).forEach((r: any) => found.push({
@@ -161,6 +167,19 @@ export function GlobalCommandPalette({ scope = 'organization', organizationId }:
             subtitle: `${r.buyer_name || '—'}${r.buyer_inn ? ` • ИНН ${r.buyer_inn}` : ''}${r.total_amount ? ` • ${Number(r.total_amount).toLocaleString('ru-RU')} ₽` : ''}`,
           });
         });
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (courses.data || []).forEach((r: any) => found.push({
+          id: r.id, type: 'course',
+          title: r.title,
+          subtitle: r.is_published ? 'Опубликован' : 'Черновик',
+          navigateTo: `/organization?tab=course-details&courseId=${r.id}`,
+        }));
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (webinars.data || []).forEach((r: any) => found.push({
+          id: r.id, type: 'webinar',
+          title: r.title,
+          subtitle: `${r.status}${r.scheduled_at ? ` • ${new Date(r.scheduled_at).toLocaleDateString('ru-RU')}` : ''}`,
+        }));
       }
 
       setResults(found);
