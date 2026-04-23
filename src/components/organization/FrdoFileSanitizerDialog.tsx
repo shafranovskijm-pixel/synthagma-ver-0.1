@@ -116,8 +116,25 @@ export function FrdoFileSanitizerDialog({ open, onOpenChange }: Props) {
   const stats = result ? calcStats(result) : null;
   const headers = result ? getHeadersForType(result.type) : [];
   const previewRows = result ? result.rows.slice(0, 20) : [];
-  // Показываем только первые 12 колонок в превью, чтобы влезло в диалог
-  const previewCols = 12;
+  const previewCols = headers.length;
+  const [showPreview, setShowPreview] = useState(false);
+
+  // Сводка автозаполнений по причинам
+  const autoFillSummary = (() => {
+    if (!result) return [] as { reason: string; count: number }[];
+    const m = new Map<string, number>();
+    for (const row of result.rows) {
+      for (const c of row.cells) {
+        if (c.fixed && c.reason) {
+          m.set(c.reason, (m.get(c.reason) ?? 0) + 1);
+        }
+      }
+    }
+    return Array.from(m.entries())
+      .map(([reason, count]) => ({ reason, count }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 5);
+  })();
 
   return (
     <Dialog open={open} onOpenChange={(v) => { onOpenChange(v); if (!v) reset(); }}>
