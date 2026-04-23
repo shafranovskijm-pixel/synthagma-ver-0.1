@@ -328,7 +328,36 @@ export function AdminWebinarsOverview() {
             <TabsTrigger value="external">Внешний</TabsTrigger>
           </TabsList>
         </Tabs>
+        <Select value={orgFilter} onValueChange={setOrgFilter}>
+          <SelectTrigger className="w-[220px]">
+            <SelectValue placeholder="Все организации" />
+          </SelectTrigger>
+          <SelectContent className="max-h-72">
+            <SelectItem value="all">Все организации</SelectItem>
+            {orgOptions.slice(0, 50).map((o) => (
+              <SelectItem key={o.id} value={o.id}>
+                {o.name} <span className="text-muted-foreground">({o.count})</span>
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
+
+      {selectedIds.size > 0 && (
+        <div className="flex items-center gap-3 p-3 rounded-lg border bg-muted/30">
+          <span className="text-sm font-medium">Выбрано: {selectedIds.size}</span>
+          <Button
+            size="sm"
+            variant="destructive"
+            onClick={() => setShowBulkConfirm(true)}
+          >
+            <Trash2 className="h-4 w-4 mr-1.5" /> Удалить выбранные
+          </Button>
+          <Button size="sm" variant="outline" onClick={() => setSelectedIds(new Set())}>
+            Снять выделение
+          </Button>
+        </div>
+      )}
 
       {/* Table */}
       <Card className="overflow-hidden">
