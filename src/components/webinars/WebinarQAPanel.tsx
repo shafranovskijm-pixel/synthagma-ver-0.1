@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -32,9 +32,13 @@ export const WebinarQAPanel = ({ webinarId, isHost, participantIdentity, partici
   const [text, setText] = useState("");
   const [busy, setBusy] = useState(false);
 
+  const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
+
   useEffect(() => {
     let alive = true;
-    (async () => {
+    let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+
+    const fetchAll = async () => {
       const { data } = await supabase
         .from("webinar_questions")
         .select("*")
@@ -42,33 +46,61 @@ export const WebinarQAPanel = ({ webinarId, isHost, participantIdentity, partici
         .order("upvotes", { ascending: false })
         .order("created_at", { ascending: false });
       if (alive && data) setItems(data as Question[]);
-    })();
-    const ch = supabase
-      .channel(`qa-${webinarId}`)
-      .on("postgres_changes", {
-        event: "*",
-        schema: "public",
-        table: "webinar_questions",
-        filter: `webinar_id=eq.${webinarId}`,
-      }, (payload) => {
-        setItems((prev) => {
-          if (payload.eventType === "INSERT") {
-            const n = payload.new as Question;
-            if (prev.find((x) => x.id === n.id)) return prev;
-            return [n, ...prev].sort((a, b) => b.upvotes - a.upvotes);
+    };
+
+    const subscribe = () => {
+      if (!alive) return;
+      const ch = supabase
+        .channel(`qa-${webinarId}-${Math.random().toString(36).slice(2, 8)}`)
+        .on("postgres_changes", {
+          event: "*",
+          schema: "public",
+          table: "webinar_questions",
+          filter: `webinar_id=eq.${webinarId}`,
+        }, (payload) => {
+          setItems((prev) => {
+            if (payload.eventType === "INSERT") {
+              const n = payload.new as Question;
+              if (prev.find((x) => x.id === n.id)) return prev;
+              return [n, ...prev].sort((a, b) => b.upvotes - a.upvotes);
+            }
+            if (payload.eventType === "UPDATE") {
+              const n = payload.new as Question;
+              return prev.map((x) => x.id === n.id ? n : x).sort((a, b) => b.upvotes - a.upvotes);
+            }
+            if (payload.eventType === "DELETE") {
+              return prev.filter((x) => x.id !== (payload.old as Question).id);
+            }
+            return prev;
+          });
+        })
+        .subscribe((status) => {
+          if (status === "CHANNEL_ERROR" || status === "TIMED_OUT" || status === "CLOSED") {
+            if (!alive) return;
+            if (reconnectTimer) clearTimeout(reconnectTimer);
+            reconnectTimer = setTimeout(() => {
+              if (!alive) return;
+              if (channelRef.current) {
+                supabase.removeChannel(channelRef.current);
+                channelRef.current = null;
+              }
+              fetchAll();
+              subscribe();
+            }, 2000);
           }
-          if (payload.eventType === "UPDATE") {
-            const n = payload.new as Question;
-            return prev.map((x) => x.id === n.id ? n : x).sort((a, b) => b.upvotes - a.upvotes);
-          }
-          if (payload.eventType === "DELETE") {
-            return prev.filter((x) => x.id !== (payload.old as Question).id);
-          }
-          return prev;
         });
-      })
-      .subscribe();
-    return () => { alive = false; supabase.removeChannel(ch); };
+      channelRef.current = ch;
+    };
+
+    fetchAll();
+    subscribe();
+
+    return () => {
+      alive = false;
+      if (reconnectTimer) clearTimeout(reconnectTimer);
+      if (channelRef.current) supabase.removeChannel(channelRef.current);
+      channelRef.current = null;
+    };
   }, [webinarId]);
 
   const ask = async () => {
