@@ -83,49 +83,70 @@ export default function ProposalPlatform() {
         }
       `}</style>
 
-      <main className="min-h-screen bg-gradient-to-b from-background via-secondary/10 to-background py-10">
-        <div id="platform-proposal-root" className="container mx-auto max-w-5xl px-4 sm:px-6">
+      <main className="relative min-h-screen bg-gradient-to-b from-background via-secondary/10 to-background py-10">
+        <div className="proposal-print-hide">
+          <ProposalBackdrop />
+        </div>
+
+        <div id="platform-proposal-root" className="container relative mx-auto max-w-5xl px-4 sm:px-6">
           <PlatformProposalHeader onDownload={handleDownload} isExporting={exporting} />
 
           {/* Section 1: Hero */}
-          <section data-proposal-section className="mb-10 rounded-3xl border border-border bg-card p-8 shadow-sm sm:p-10">
-            <div className="mb-3 inline-flex items-center gap-2 rounded-full bg-accent/10 px-3 py-1 text-xs font-semibold text-accent">
-              <Sparkles className="h-3.5 w-3.5" />
-              Полноценная LMS под ключ
+          <section
+            data-proposal-section
+            className="relative mb-10 overflow-hidden rounded-3xl border border-border bg-card p-8 shadow-sm sm:p-10"
+          >
+            <div className="proposal-print-hide">
+              <ProposalHeroWave />
+              <CornerArcs className="-top-10 right-0 h-56 w-56" />
             </div>
-            <h1 className="font-display text-3xl font-medium tracking-tight sm:text-4xl">
-              Образовательная платформа Синтагма
-            </h1>
-            <p className="mt-4 max-w-3xl text-base leading-relaxed text-muted-foreground">
-              От конструктора курсов до автоматической выгрузки в ФИС ФРДО — всё, что нужно лицензированной
-              образовательной организации, в одной системе. Запускайтесь за 5 минут, масштабируйтесь без
-              ограничений.
-            </p>
-            <div className="mt-8 grid grid-cols-2 gap-3 sm:grid-cols-5">
-              {KPI.map((k) => (
-                <div key={k.label} className="rounded-2xl border border-border bg-background p-4 text-center">
-                  <div className="font-display text-2xl font-semibold text-accent">{k.label}</div>
-                  <div className="mt-1 text-xs text-muted-foreground">{k.caption}</div>
-                </div>
-              ))}
-            </div>
-            <div className="mt-6 rounded-2xl border border-border/60 bg-muted/30 p-4 text-xs text-muted-foreground">
-              <strong className="text-foreground">Исполнитель:</strong> ИП Шафрановский М. М. ·
-              sintagma.com.ru · Договор-оферта на платформе.
+            <div className="relative">
+              <div className="mb-3 inline-flex items-center gap-2 rounded-full bg-accent/10 px-3 py-1 text-xs font-semibold text-accent">
+                <Sparkles className="h-3.5 w-3.5" />
+                Полноценная LMS под ключ
+              </div>
+              <h1 className="font-display text-3xl font-medium tracking-tight sm:text-4xl">
+                Образовательная платформа Синтагма
+              </h1>
+              <p className="mt-4 max-w-3xl text-base leading-relaxed text-muted-foreground">
+                От конструктора курсов до автоматической выгрузки в ФИС ФРДО — всё, что нужно лицензированной
+                образовательной организации, в одной системе. Запускайтесь за 5 минут, масштабируйтесь без
+                ограничений.
+              </p>
+              <div className="mt-8 grid grid-cols-2 gap-3 sm:grid-cols-5">
+                {KPI.map((k) => (
+                  <div
+                    key={k.label}
+                    className="rounded-2xl border border-border bg-background/80 p-4 text-center backdrop-blur-sm"
+                  >
+                    <div className="font-display text-2xl font-semibold text-accent">{k.label}</div>
+                    <div className="mt-1 text-xs text-muted-foreground">{k.caption}</div>
+                  </div>
+                ))}
+              </div>
+              <div className="mt-6 rounded-2xl border border-border/60 bg-muted/30 p-4 text-xs text-muted-foreground">
+                <strong className="text-foreground">Исполнитель:</strong> ИП Шафрановский М. М. ·
+                sintagma.com.ru · Договор-оферта на платформе.
+              </div>
             </div>
           </section>
 
+          <div className="proposal-print-hide"><SectionDivider /></div>
+
           {/* Section 2: Advantages */}
-          <section data-proposal-section className="mb-10">
+          <section data-proposal-section className="relative mb-10 mt-6">
+            <div className="proposal-print-hide pointer-events-none absolute -top-6 right-0 hidden md:block">
+              <KnowledgeGraphIllustration className="h-32 w-52 opacity-80" />
+            </div>
             <h2 className="mb-2 font-display text-2xl font-medium tracking-tight">Ключевые преимущества</h2>
-            <p className="mb-6 text-sm text-muted-foreground">
+            <p className="mb-6 max-w-2xl text-sm text-muted-foreground">
               10 направлений, которые делают Синтагму полноценной заменой нескольких сервисов сразу.
             </p>
             <PlatformProposalAdvantages />
           </section>
 
           {/* Section 3: Pricing table */}
-          <section data-proposal-section className="mb-10">
+          <section data-proposal-section className="relative mb-10">
             <h2 className="mb-2 font-display text-2xl font-medium tracking-tight">Сравнение тарифов</h2>
             <p className="mb-6 text-sm text-muted-foreground">
               Полный список возможностей по 5 тарифам. При оплате за год — скидка 15%.
@@ -143,24 +164,32 @@ export default function ProposalPlatform() {
           </section>
 
           {/* Section 5: Discounts & conditions */}
-          <section data-proposal-section className="mb-10 rounded-3xl border border-border bg-card p-8 shadow-sm">
-            <div className="mb-4 inline-flex items-center gap-2 text-accent">
-              <Gift className="h-5 w-5" />
-              <h2 className="font-display text-2xl font-medium tracking-tight">Скидки и условия</h2>
+          <section
+            data-proposal-section
+            className="relative mb-10 overflow-hidden rounded-3xl border border-border bg-card p-8 shadow-sm"
+          >
+            <div className="proposal-print-hide">
+              <CornerArcs className="-bottom-20 -left-20 h-56 w-56 rotate-180" />
             </div>
-            <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              {[
-                { t: "Оплата за год — −15%", d: "К любому платному тарифу. Экономия от 8 000 ₽ в год." },
-                { t: "Безлимитное хранилище", d: "Видео, PDF, изображения — без ограничений по объёму на всех тарифах." },
-                { t: "Бесплатная миграция курсов", d: "Перенесём ваши материалы и зарегистрируем учеников." },
-                { t: "Помощь с брендированием", d: "Настройка логотипа, домена и цветовой схемы — включено." },
-              ].map((item) => (
-                <li key={item.t} className="rounded-2xl border border-border bg-background p-4">
-                  <div className="font-display text-base font-semibold">{item.t}</div>
-                  <div className="mt-1 text-sm text-muted-foreground">{item.d}</div>
-                </li>
-              ))}
-            </ul>
+            <div className="relative">
+              <div className="mb-4 inline-flex items-center gap-2 text-accent">
+                <Gift className="h-5 w-5" />
+                <h2 className="font-display text-2xl font-medium tracking-tight">Скидки и условия</h2>
+              </div>
+              <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                {[
+                  { t: "Оплата за год — −15%", d: "К любому платному тарифу. Экономия от 8 000 ₽ в год." },
+                  { t: "Безлимитное хранилище", d: "Видео, PDF, изображения — без ограничений по объёму на всех тарифах." },
+                  { t: "Бесплатная миграция курсов", d: "Перенесём ваши материалы и зарегистрируем учеников." },
+                  { t: "Помощь с брендированием", d: "Настройка логотипа, домена и цветовой схемы — включено." },
+                ].map((item) => (
+                  <li key={item.t} className="rounded-2xl border border-border bg-background p-4">
+                    <div className="font-display text-base font-semibold">{item.t}</div>
+                    <div className="mt-1 text-sm text-muted-foreground">{item.d}</div>
+                  </li>
+                ))}
+              </ul>
+            </div>
           </section>
 
           {/* Section 6: Additional services */}
@@ -178,9 +207,12 @@ export default function ProposalPlatform() {
           </section>
 
           {/* Section 7: Guarantees */}
-          <section data-proposal-section className="mb-10">
+          <section data-proposal-section className="relative mb-10">
+            <div className="proposal-print-hide pointer-events-none absolute -top-4 right-0 hidden md:block">
+              <CertificateIllustration className="h-36 w-36 opacity-80" />
+            </div>
             <h2 className="mb-2 font-display text-2xl font-medium tracking-tight">Гарантии и юридическая база</h2>
-            <p className="mb-6 text-sm text-muted-foreground">Соответствие требованиям 152-ФЗ, 273-ФЗ, 63-ФЗ, 54-ФЗ.</p>
+            <p className="mb-6 max-w-2xl text-sm text-muted-foreground">Соответствие требованиям 152-ФЗ, 273-ФЗ, 63-ФЗ, 54-ФЗ.</p>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
               {GUARANTEES.map(({ icon: Icon, title, desc }) => (
                 <div key={title} className="rounded-3xl border border-border bg-card p-5 shadow-sm">
@@ -203,39 +235,45 @@ export default function ProposalPlatform() {
           {/* Section 8: Contacts & CTA */}
           <section
             data-proposal-section
-            className="mb-10 rounded-3xl border border-accent/40 bg-gradient-to-br from-accent/10 via-card to-card p-8 shadow-sm sm:p-10"
+            className="relative mb-10 overflow-hidden rounded-3xl border border-accent/40 bg-gradient-to-br from-accent/10 via-card to-card p-8 shadow-sm sm:p-10"
           >
-            <h2 className="font-display text-2xl font-medium tracking-tight sm:text-3xl">
-              Готовы начать?
-            </h2>
-            <p className="mt-3 max-w-2xl text-base text-muted-foreground">
-              Зарегистрируйтесь бесплатно и протестируйте платформу — без карты и без обязательств.
-              Бесплатный тариф работает навсегда.
-            </p>
-            <div className="proposal-print-hide mt-6 flex flex-wrap gap-3">
-              <Button asChild size="lg" className="gap-2">
-                <Link to="/register-organization">
-                  Зарегистрироваться <ArrowRight className="h-4 w-4" />
-                </Link>
-              </Button>
-              <Button asChild variant="outline" size="lg" className="gap-2">
-                <a href="mailto:info@sintagma.com.ru?subject=Обсуждение%20тарифов%20Синтагма">
-                  <Mail className="h-4 w-4" /> Обсудить с менеджером
-                </a>
-              </Button>
+            <div className="proposal-print-hide">
+              <CornerArcs className="-right-16 -top-16 h-72 w-72" />
+              <div className="pointer-events-none absolute bottom-0 left-0 h-40 w-40 rounded-full bg-accent/20 blur-3xl" />
             </div>
-            <div className="mt-8 grid grid-cols-1 gap-3 text-sm sm:grid-cols-3">
-              <div className="flex items-center gap-2">
-                <Globe className="h-4 w-4 text-accent" />
-                <span>sintagma.com.ru</span>
+            <div className="relative">
+              <h2 className="font-display text-2xl font-medium tracking-tight sm:text-3xl">
+                Готовы начать?
+              </h2>
+              <p className="mt-3 max-w-2xl text-base text-muted-foreground">
+                Зарегистрируйтесь бесплатно и протестируйте платформу — без карты и без обязательств.
+                Бесплатный тариф работает навсегда.
+              </p>
+              <div className="proposal-print-hide mt-6 flex flex-wrap gap-3">
+                <Button asChild size="lg" className="gap-2">
+                  <Link to="/register-organization">
+                    Зарегистрироваться <ArrowRight className="h-4 w-4" />
+                  </Link>
+                </Button>
+                <Button asChild variant="outline" size="lg" className="gap-2">
+                  <a href="mailto:info@sintagma.com.ru?subject=Обсуждение%20тарифов%20Синтагма">
+                    <Mail className="h-4 w-4" /> Обсудить с менеджером
+                  </a>
+                </Button>
               </div>
-              <div className="flex items-center gap-2">
-                <Mail className="h-4 w-4 text-accent" />
-                <a href="mailto:info@sintagma.com.ru" className="hover:underline">info@sintagma.com.ru</a>
-              </div>
-              <div className="flex items-center gap-2">
-                <Phone className="h-4 w-4 text-accent" />
-                <span>По запросу через email</span>
+              <div className="mt-8 grid grid-cols-1 gap-3 text-sm sm:grid-cols-3">
+                <div className="flex items-center gap-2">
+                  <Globe className="h-4 w-4 text-accent" />
+                  <span>sintagma.com.ru</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Mail className="h-4 w-4 text-accent" />
+                  <a href="mailto:info@sintagma.com.ru" className="hover:underline">info@sintagma.com.ru</a>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Phone className="h-4 w-4 text-accent" />
+                  <span>По запросу через email</span>
+                </div>
               </div>
             </div>
           </section>
