@@ -21,6 +21,8 @@ const FeatureDocumentChecklist = lazyWithRetry(() => import("@/pages/FeatureDocu
 const FeatureCourseSettings = lazyWithRetry(() => import("@/pages/FeatureCourseSettings"));
 const FeatureBranding = lazyWithRetry(() => import("@/pages/FeatureBranding"));
 const FeatureAICourses = lazyWithRetry(() => import("@/pages/FeatureAICourses"));
+const FeatureEmailCampaigns = lazyWithRetry(() => import("@/pages/FeatureEmailCampaigns"));
+const FeatureSalesCRM = lazyWithRetry(() => import("@/pages/FeatureSalesCRM"));
 const RoadmapPage = lazyWithRetry(() => import("@/pages/RoadmapPage"));
 const RostechnadzorCoursesPage = lazyWithRetry(() => import("@/pages/RostechnadzorCoursesPage"));
 const PublicOffer = lazyWithRetry(() => import("@/pages/PublicOffer"));
@@ -73,6 +75,8 @@ export const publicRoutes = (
     <Route path="/feature/course-settings" element={<FeatureCourseSettings />} />
     <Route path="/feature/branding" element={<FeatureBranding />} />
     <Route path="/feature/ai-courses" element={<FeatureAICourses />} />
+    <Route path="/feature/email-campaigns" element={<FeatureEmailCampaigns />} />
+    <Route path="/feature/sales-crm" element={<FeatureSalesCRM />} />
     <Route path="/roadmap" element={<RoadmapPage />} />
     <Route path="/rostechnadzor-courses" element={<RostechnadzorCoursesPage />} />
     <Route path="/public-offer" element={<PublicOffer />} />

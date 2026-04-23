@@ -11,6 +11,8 @@ import {
   Video,
   HardHat,
   Smartphone,
+  Mail,
+  TrendingUp,
   ArrowRight,
 } from "lucide-react";
 import { Link } from "react-router-dom";
@@ -25,6 +27,8 @@ import safetyBg from "@/assets/features/safety-bg.jpg";
 import documentsBg from "@/assets/features/documents-bg.jpg";
 import frdoBg from "@/assets/features/frdo-bg.jpg";
 import studentsBg from "@/assets/features/students-bg.jpg";
+import emailBg from "@/assets/features/email-bg.jpg";
+import crmBg from "@/assets/features/crm-bg.jpg";
 import screenshotMarketplace from "@/assets/presentation/screenshot-marketplace.png";
 
 const features = [
@@ -90,6 +94,20 @@ const features = [
     description: "Автоматическая выгрузка данных о выданных документах.",
     link: "/feature/frdo",
     bg: frdoBg,
+  },
+  {
+    icon: Mail,
+    title: "Email-рассылки",
+    description: "Свой SMTP, шаблоны, drip-цепочки, A/B-тесты тем и трекинг открытий.",
+    link: "/feature/email-campaigns",
+    bg: emailBg,
+  },
+  {
+    icon: TrendingUp,
+    title: "CRM и Продажи",
+    description: "Канбан сделок, КП с PDF, договоры с ПЭП, счета и лидерборд менеджеров.",
+    link: "/feature/sales-crm",
+    bg: crmBg,
   },
   {
     icon: Users,

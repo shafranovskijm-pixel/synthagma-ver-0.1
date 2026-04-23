@@ -17,6 +17,8 @@ export interface PlanLimits {
   webinarsEnabled: boolean;
   videoServicePlus: boolean; // загрузка видео >2 ГБ
   trainersEnabled: boolean; // 3D-тренажёры
+  emailCampaignsEnabled: boolean; // Email-рассылки + SMTP
+  salesCrmEnabled: boolean; // CRM, сделки, КП, договоры
 }
 
 export interface PlanInfo {
@@ -53,6 +55,8 @@ export const SUBSCRIPTION_PLANS: Record<SubscriptionPlan, PlanInfo> = {
       webinarsEnabled: false,
       videoServicePlus: false,
       trainersEnabled: false,
+      emailCampaignsEnabled: false,
+      salesCrmEnabled: false,
     },
     enabledCategories: ['courses', 'students', 'companies', 'documents', 'journals', 'frdo', 'links', 'library', 'services', 'settings', 'student_cabinet', 'labor_safety'],
   },
@@ -78,6 +82,8 @@ export const SUBSCRIPTION_PLANS: Record<SubscriptionPlan, PlanInfo> = {
       webinarsEnabled: false,
       videoServicePlus: false,
       trainersEnabled: false,
+      emailCampaignsEnabled: true,
+      salesCrmEnabled: false,
     },
     enabledCategories: ['courses', 'students', 'companies', 'documents', 'journals', 'frdo', 'links', 'library', 'services', 'settings', 'student_cabinet', 'labor_safety'],
   },
@@ -103,6 +109,8 @@ export const SUBSCRIPTION_PLANS: Record<SubscriptionPlan, PlanInfo> = {
       webinarsEnabled: false,
       videoServicePlus: false,
       trainersEnabled: false,
+      emailCampaignsEnabled: true,
+      salesCrmEnabled: true,
     },
     enabledCategories: ['courses', 'students', 'companies', 'documents', 'journals', 'frdo', 'links', 'library', 'services', 'settings', 'student_cabinet', 'labor_safety'],
   },
@@ -128,6 +136,8 @@ export const SUBSCRIPTION_PLANS: Record<SubscriptionPlan, PlanInfo> = {
       webinarsEnabled: true,
       videoServicePlus: true,
       trainersEnabled: false,
+      emailCampaignsEnabled: true,
+      salesCrmEnabled: true,
     },
     enabledCategories: ['courses', 'students', 'companies', 'documents', 'journals', 'frdo', 'links', 'library', 'services', 'settings', 'student_cabinet', 'labor_safety', 'webinars'],
   },
@@ -153,6 +163,8 @@ export const SUBSCRIPTION_PLANS: Record<SubscriptionPlan, PlanInfo> = {
       webinarsEnabled: true,
       videoServicePlus: true,
       trainersEnabled: true,
+      emailCampaignsEnabled: true,
+      salesCrmEnabled: true,
     },
     enabledCategories: ['courses', 'students', 'companies', 'documents', 'journals', 'frdo', 'links', 'library', 'services', 'settings', 'student_cabinet', 'labor_safety', 'webinars', '3d_trainers'],
   },

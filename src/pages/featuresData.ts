@@ -1,6 +1,7 @@
 import {
   BookOpen, Users, Building2, FileCheck, ClipboardList, Database,
   Link as LinkIcon, Library, ShoppingBag, Settings, GraduationCap,
+  Mail, TrendingUp,
 } from "lucide-react";
 
 export interface FeatureItem {
@@ -25,12 +26,14 @@ export const iconMap: Record<string, React.ElementType> = {
   courses: BookOpen, students: Users, companies: Building2, documents: FileCheck,
   journals: ClipboardList, frdo: Database, links: LinkIcon, library: Library,
   services: ShoppingBag, settings: Settings, student_cabinet: GraduationCap,
+  email_campaigns: Mail, sales_crm: TrendingUp,
 };
 
 export const colorMap: Record<string, string> = {
   courses: "#6366f1", students: "#10b981", companies: "#f59e0b", documents: "#ec4899",
   journals: "#8b5cf6", frdo: "#06b6d4", links: "#14b8a6", library: "#f97316",
   services: "#84cc16", settings: "#64748b", student_cabinet: "#0ea5e9",
+  email_campaigns: "#3B82F6", sales_crm: "#F97316",
 };
 
 export const getDefaultFeatures = (): FeatureCategory[] => [
@@ -163,6 +166,39 @@ export const getDefaultFeatures = (): FeatureCategory[] => [
       { id: "cabinet_achievements", name: "Система достижений и бейджей", price: 500, included: false, isEnabled: true },
       { id: "cabinet_ai", name: "ИИ-помощник (чат-бот)", price: 2000, included: false, isEnabled: true },
       { id: "cabinet_progress", name: "Просмотр прогресса обучения", price: 0, included: true, isEnabled: true },
+    ],
+  },
+  {
+    id: "email_campaigns", title: "Email-рассылки", icon: Mail, color: "#3B82F6", basePrice: 2500, isEnabled: true,
+    features: [
+      { id: "email_smtp", name: "Подключение собственного SMTP", price: 0, included: true, isEnabled: true },
+      { id: "email_templates", name: "7 готовых шаблонов писем", price: 0, included: true, isEnabled: true },
+      { id: "email_editor", name: "Визуальный редактор с переменными", price: 0, included: true, isEnabled: true },
+      { id: "email_scheduler", name: "Планировщик отправки", price: 0, included: true, isEnabled: true },
+      { id: "email_ab", name: "A/B-тестирование тем письма", price: 500, included: false, isEnabled: true },
+      { id: "email_clicks", name: "Click-tracking и UTM-разметка", price: 0, included: true, isEnabled: true },
+      { id: "email_drip", name: "Drip-цепочки с условиями", price: 1000, included: false, isEnabled: true },
+      { id: "email_import", name: "Импорт контактов CSV/Excel", price: 0, included: true, isEnabled: true },
+      { id: "email_suppression", name: "Suppression-лист и RFC 8058 unsubscribe", price: 0, included: true, isEnabled: true },
+      { id: "email_dns", name: "Проверка SPF/DKIM/DMARC", price: 0, included: true, isEnabled: true },
+      { id: "email_inbox", name: "Inbox-превью Gmail/Mail.ru/Outlook", price: 500, included: false, isEnabled: true },
+    ],
+  },
+  {
+    id: "sales_crm", title: "CRM и Продажи", icon: TrendingUp, color: "#F97316", basePrice: 4500, isEnabled: true,
+    features: [
+      { id: "crm_kanban", name: "Канбан сделок с drag-n-drop", price: 0, included: true, isEnabled: true },
+      { id: "crm_leads", name: "База лидов и квалификация", price: 0, included: true, isEnabled: true },
+      { id: "crm_proposals", name: "Конструктор КП с PDF-экспортом", price: 0, included: true, isEnabled: true },
+      { id: "crm_proposal_links", name: "Публичные ссылки на КП с трекингом", price: 0, included: true, isEnabled: true },
+      { id: "crm_contracts", name: "Шаблоны договоров с автозаполнением", price: 0, included: true, isEnabled: true },
+      { id: "crm_pep", name: "Подписание ПЭП (простая электронная подпись)", price: 1000, included: false, isEnabled: true },
+      { id: "crm_invoices", name: "Счета и автонапоминания об оплате", price: 0, included: true, isEnabled: true },
+      { id: "crm_reconciliation", name: "Акт сверки взаиморасчётов", price: 500, included: false, isEnabled: true },
+      { id: "crm_360", name: "Тайм-лайн «Сделки 360°» по компании", price: 0, included: true, isEnabled: true },
+      { id: "crm_plan", name: "План месяца и лидерборд менеджеров", price: 1000, included: false, isEnabled: true },
+      { id: "crm_demo", name: "Демо-доступы для клиентов", price: 0, included: true, isEnabled: true },
+      { id: "crm_tasks", name: "Задачи и напоминания менеджерам", price: 0, included: true, isEnabled: true },
     ],
   },
 ];
