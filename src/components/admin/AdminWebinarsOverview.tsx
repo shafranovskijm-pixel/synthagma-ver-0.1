@@ -6,11 +6,15 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from "@/components/ui/select";
 
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Radio, Search, Trash2, ExternalLink, Calendar, Building2, Plus, Play, ChevronDown, Zap } from "lucide-react";
+import { Radio, Search, Trash2, ExternalLink, Calendar, Building2, Plus, Play, ChevronDown, Zap, Download, Loader2, CircleDot } from "lucide-react";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import { toast } from "sonner";
@@ -24,7 +28,8 @@ import { AdminCreateWebinarDialog } from "./AdminCreateWebinarDialog";
 import { EmbeddedWebinarPlayer } from "@/components/webinars/EmbeddedWebinarPlayer";
 import { WebinarLiveInline } from "@/components/webinars/WebinarLiveInline";
 import { WebinarRecordingUploader } from "@/components/webinars/WebinarRecordingUploader";
-import { Paperclip } from "lucide-react";
+import { RecordingPreviewDialog } from "@/components/webinars/RecordingPreviewDialog";
+import { Paperclip, Eye } from "lucide-react";
 
 interface AdminWebinar {
   id: string;
