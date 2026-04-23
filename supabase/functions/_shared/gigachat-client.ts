@@ -784,8 +784,35 @@ export async function callAIWithTools(
 
   const parseGcResponse = (text: string) => {
     const cleaned = text.replace(/```json\s*/g, "").replace(/```\s*/g, "").trim();
-    const parsed = JSON.parse(cleaned);
-    return tool ? parsed : { content: text };
+
+    if (!tool) {
+      return { content: cleaned || text };
+    }
+
+    const tryParse = (value: string) => {
+      try {
+        return JSON.parse(value);
+      } catch {
+        return null;
+      }
+    };
+
+    const direct = tryParse(cleaned);
+    if (direct !== null) return direct;
+
+    const objectMatch = cleaned.match(/\{[\s\S]*\}/);
+    if (objectMatch) {
+      const extracted = tryParse(objectMatch[0]);
+      if (extracted !== null) return extracted;
+    }
+
+    const arrayMatch = cleaned.match(/\[[\s\S]*\]/);
+    if (arrayMatch) {
+      const extracted = tryParse(arrayMatch[0]);
+      if (extracted !== null) return extracted;
+    }
+
+    throw new SyntaxError(`AI returned non-JSON content for tool call: ${cleaned.slice(0, 200)}`);
   };
 
   // Round-robin mode: distribute across 3 GigaChat API slots only
