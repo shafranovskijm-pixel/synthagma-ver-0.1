@@ -1,6 +1,7 @@
 import { useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { getErrorMessage } from "@/utils/handleSupabaseError";
 
 export function useRegistrationLinks(organizationId: string | null) {
   const [showCreateLinkDialog, setShowCreateLinkDialog] = useState(false);
@@ -35,7 +36,7 @@ export function useRegistrationLinks(organizationId: string | null) {
       return true;
     } catch (error) {
       console.error("Error creating link:", error);
-      toast.error("Ошибка создания ссылки");
+      toast.error("Ошибка создания ссылки", { description: getErrorMessage(error) });
       return false;
     } finally {
       setIsCreatingLink(false);

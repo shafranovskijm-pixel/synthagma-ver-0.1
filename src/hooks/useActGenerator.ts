@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
+import { getErrorMessage } from "@/utils/handleSupabaseError";
 import {
   formatPrice, numberToWords, detectGender, declineFullName, isIP,
   downloadAsDoc, printHtml,
@@ -75,7 +76,7 @@ export function useActGenerator(
 
         const today = new Date();
         setActNumber(`AKT-${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(Math.floor(Math.random() * 1000)).padStart(3, '0')}`);
-      } catch (error) { console.error(error); toast.error("Ошибка загрузки данных"); }
+      } catch (error) { console.error(error); toast.error("Ошибка загрузки данных", { description: getErrorMessage(error) }); }
       finally { setIsLoading(false); }
     };
     loadData();
@@ -127,7 +128,7 @@ export function useActGenerator(
     if (!price || parseFloat(price) <= 0) { toast.error("Укажите стоимость"); return; }
     setIsGenerating(true);
     try { printHtml(generateActHTML()); toast.success("Акт сформирован"); }
-    catch (error) { console.error(error); toast.error("Ошибка генерации акта"); }
+    catch (error) { console.error(error); toast.error("Ошибка генерации акта", { description: getErrorMessage(error) }); }
     finally { setIsGenerating(false); }
   };
 
@@ -147,7 +148,7 @@ export function useActGenerator(
       await onSave(html, actNumber, selectedCompany.name, totalPrice);
       toast.success("Акт сохранён");
       onClose?.();
-    } catch (error) { console.error(error); toast.error("Ошибка сохранения"); }
+    } catch (error) { console.error(error); toast.error("Ошибка сохранения", { description: getErrorMessage(error) }); }
     finally { setIsSaving(false); }
   };
 

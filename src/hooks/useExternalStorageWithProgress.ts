@@ -187,8 +187,7 @@ export const useExternalStorageWithProgress = () => {
         storage: 'internal',
       };
     } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : 'Не удалось загрузить файл';
-      toast.error("Ошибка загрузки", { description: "message" });
+      toast.error("Ошибка загрузки", { description: getErrorMessage(error, 'Не удалось загрузить файл') });
       return null;
     }
   }, [toast]);
