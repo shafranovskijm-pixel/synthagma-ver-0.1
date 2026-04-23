@@ -414,8 +414,22 @@ export function AdminWebinarsOverview() {
                     <TableCell className="font-medium max-w-[280px] truncate">{w.title}</TableCell>
                     <TableCell>
                       <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
-                        <Building2 className="h-3.5 w-3.5" />
-                        <span className="truncate max-w-[180px]">{w.organization_name || "—"}</span>
+                        <Building2 className="h-3.5 w-3.5 shrink-0" />
+                        <span className="truncate max-w-[160px]">{w.organization_name || "—"}</span>
+                        {w.organization_id && (
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            className="h-6 w-6 shrink-0"
+                            title="Открыть кабинет организации"
+                            onClick={() => {
+                              localStorage.setItem("adminViewAsOrg", w.organization_id);
+                              window.location.href = "/organization?tab=webinars";
+                            }}
+                          >
+                            <ExternalLink className="h-3.5 w-3.5" />
+                          </Button>
+                        )}
                       </div>
                     </TableCell>
                     <TableCell className="text-sm">
