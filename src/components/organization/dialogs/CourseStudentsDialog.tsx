@@ -292,11 +292,13 @@ export function CourseStudentsDialog({
                   <History className="w-4 h-4" />
                   История зачислений
                 </h3>
-                <EnrollmentHistory
-                  courseId={course.id}
-                  organizationId={organizationId}
-                  courseName={course.title}
-                />
+                <Suspense fallback={<div className="text-sm text-muted-foreground">Загрузка истории…</div>}>
+                  <EnrollmentHistory
+                    courseId={course.id}
+                    organizationId={organizationId}
+                    courseName={course.title}
+                  />
+                </Suspense>
               </div>
             )}
           </div>
