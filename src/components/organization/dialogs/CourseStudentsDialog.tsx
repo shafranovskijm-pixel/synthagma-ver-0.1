@@ -15,7 +15,8 @@ import { Link, Copy, Send, FileText, Trash2, BarChart3, History, RotateCcw } fro
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { CourseTestReport } from "@/components/organization/CourseTestReport";
-import { EnrollmentHistory } from "@/components/organization/EnrollmentHistory";
+// EnrollmentHistory pulls in recharts (~200KB) — load it only when the history block renders
+const EnrollmentHistory = lazy(() => import("@/components/organization/EnrollmentHistory").then(m => ({ default: m.EnrollmentHistory })));
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 
 interface Course {

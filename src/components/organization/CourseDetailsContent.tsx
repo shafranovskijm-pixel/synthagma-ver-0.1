@@ -11,7 +11,8 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { CourseDocumentsManager } from "@/components/organization/CourseDocumentsManager";
-import { EnrollmentHistory } from "@/components/organization/EnrollmentHistory";
+// EnrollmentHistory pulls in recharts (~200KB) — load it only when the history tab is opened
+const EnrollmentHistory = lazy(() => import("@/components/organization/EnrollmentHistory").then(m => ({ default: m.EnrollmentHistory })));
 import { CourseTestReport } from "@/components/organization/CourseTestReport";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";

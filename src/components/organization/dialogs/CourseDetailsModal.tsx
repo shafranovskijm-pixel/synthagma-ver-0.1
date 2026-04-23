@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, lazy, Suspense } from "react";
 import { useOrgFeatures } from "@/hooks/useOrgFeatures";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
@@ -6,7 +6,8 @@ import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { CourseDocumentsManager } from "@/components/organization/CourseDocumentsManager";
-import { EnrollmentHistory } from "@/components/organization/EnrollmentHistory";
+// EnrollmentHistory pulls in recharts (~200KB) — load it only when the history tab is opened
+const EnrollmentHistory = lazy(() => import("@/components/organization/EnrollmentHistory").then(m => ({ default: m.EnrollmentHistory })));
 import { CourseTestReport } from "@/components/organization/CourseTestReport";
 import { CoursePageSettingsContent } from "@/components/course-editor/CoursePageSettingsContent";
 import { CourseRemindersTab } from "@/components/organization/CourseRemindersTab";
