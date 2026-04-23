@@ -327,7 +327,7 @@ export function CheckoSearchDialog({ open, onOpenChange }: CheckoSearchDialogPro
             </div>
             {count.total > enrichRemaining && (
               <div className="flex items-start gap-2 text-xs text-muted-foreground p-2 rounded bg-background">
-                <AlertTriangle className="w-4 h-4 mt-0.5 text-amber-500 shrink-0" />
+                <AlertTriangle className="w-4 h-4 mt-0.5 text-warning shrink-0" />
                 <span>
                   Все {Math.min(count.total, limit)} ИНН попадут в очередь, но обогатится только до{' '}
                   <b>{enrichRemaining}</b> сегодня. Остальные обогатятся автоматически в следующие дни
