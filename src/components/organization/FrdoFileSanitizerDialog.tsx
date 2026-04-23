@@ -1,6 +1,6 @@
 import { useCallback, useState } from "react";
 import { motion } from "framer-motion";
-import { Wand2, UploadCloud, Download, FileSpreadsheet, AlertTriangle, CheckCircle2, FileDown, ChevronDown, ChevronUp, Sparkles } from "lucide-react";
+import { Wrench, UploadCloud, Download, FileSpreadsheet, AlertTriangle, CheckCircle2, FileDown, ChevronDown, ChevronUp, Sparkles, ShieldCheck } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
@@ -17,6 +17,7 @@ import {
   type FrdoSheetType,
 } from "@/utils/frdoFileSanitizer";
 import { exportFRDOExcel } from "@/utils/frdoExcelExport";
+import { injectIntoFrdoTemplate, hasFrdoTemplate } from "@/utils/frdoTemplateInjector";
 
 interface Props {
   open: boolean;
@@ -78,9 +79,19 @@ export function FrdoFileSanitizerDialog({ open, onOpenChange }: Props) {
     if (!result) return;
     try {
       const rows = buildCleanRows(result);
-      const suffix = `очищено-${format(new Date(), "dd-MM-yyyy")}`;
+      const suffix = `исправлено-${format(new Date(), "dd-MM-yyyy")}`;
+      // Пытаемся записать данные в оригинальный шаблон-донор Рособрнадзора —
+      // ФИС ФРДО принимает только файлы с её собственной структурой.
+      if (hasFrdoTemplate(result.type)) {
+        const ok = await injectIntoFrdoTemplate(rows, result.type, suffix);
+        if (ok) {
+          toast.success("Файл сохранён в эталонный шаблон ФИС ФРДО");
+          return;
+        }
+      }
+      // Fallback: ДПО шаблон ещё не загружен — экспортируем упрощённо
       await exportFRDOExcel(rows, result.type, suffix);
-      toast.success("Чистый файл скачан");
+      toast.warning("Эталонный шаблон ДПО ещё не загружен — выгрузка в упрощённом формате");
     } catch (e: any) {
       toast.error(e?.message || "Ошибка экспорта");
     }
