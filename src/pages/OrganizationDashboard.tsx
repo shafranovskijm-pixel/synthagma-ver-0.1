@@ -14,6 +14,7 @@ import { OnboardingDialog } from "@/components/onboarding/OnboardingDialog";
 import { organizationOnboardingSteps } from "@/constants/onboardingSteps";
 import { useOrgDashboard } from "@/contexts/OrgDashboardContext";
 import { PlatformAnnouncementsBanner } from "@/components/organization/PlatformAnnouncementsBanner";
+import { RequiresAttentionWidget } from "@/components/organization/RequiresAttentionWidget";
 import { getStoredThemeId, getThemeById, type AdminTheme } from "@/constants/admin-themes";
 import { ThemeAnimations, getStoredAnimationLevel, type AnimationLevel } from "@/components/ui/ThemeAnimations";
 import { AtmosphericBleed } from "@/components/ui/AtmosphericBleed";
