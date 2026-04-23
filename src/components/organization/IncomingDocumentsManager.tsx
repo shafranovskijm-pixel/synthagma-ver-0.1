@@ -116,7 +116,7 @@ export function IncomingDocumentsManager({ organizationId }: Props) {
         .from("incoming-documents")
         .createSignedUrl(doc.file_path, 3600);
       if (error || !data?.signedUrl) {
-        toast.error("Не удалось получить ссылку", { description: error?.message });
+        toast.error("Не удалось получить ссылку", { description: getErrorMessage(error) });
         return null;
       }
       return data.signedUrl;

@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
+import { getErrorMessage } from "@/utils/handleSupabaseError";
 import { Shield, ShieldCheck, Trash2, Loader2 } from "lucide-react";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
@@ -38,7 +39,7 @@ export function TwoFactorSetup() {
     setLoading(true);
     const { data, error } = await supabase.auth.mfa.listFactors();
     if (error) {
-      toast.error("Не удалось загрузить факторы", { description: error.message });
+      toast.error("Не удалось загрузить факторы", { description: getErrorMessage(error) });
       setLoading(false);
       return;
     }
@@ -65,7 +66,7 @@ export function TwoFactorSetup() {
     });
     setEnrolling(false);
     if (error) {
-      toast.error("Не удалось начать настройку", { description: error.message });
+      toast.error("Не удалось начать настройку", { description: getErrorMessage(error) });
       return;
     }
     setPendingFactor({
@@ -88,7 +89,7 @@ export function TwoFactorSetup() {
     });
     if (chErr) {
       setVerifying(false);
-      toast.error("Ошибка проверки", { description: chErr.message });
+      toast.error("Ошибка проверки", { description: getErrorMessage(chErr) });
       return;
     }
     const { error: vErr } = await supabase.auth.mfa.verify({
@@ -98,7 +99,7 @@ export function TwoFactorSetup() {
     });
     setVerifying(false);
     if (vErr) {
-      toast.error("Неверный код", { description: vErr.message });
+      toast.error("Неверный код", { description: getErrorMessage(vErr) });
       return;
     }
     toast.success("2FA подключена!");
@@ -119,7 +120,7 @@ export function TwoFactorSetup() {
     if (!factorToRemove) return;
     const { error } = await supabase.auth.mfa.unenroll({ factorId: factorToRemove });
     if (error) {
-      toast.error("Не удалось удалить", { description: error.message });
+      toast.error("Не удалось удалить", { description: getErrorMessage(error) });
       return;
     }
     toast.success("Фактор удалён");

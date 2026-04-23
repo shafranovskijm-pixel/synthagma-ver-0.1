@@ -8,6 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Card, CardContent } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
+import { getErrorMessage } from "@/utils/handleSupabaseError";
 import { format, isAfter, isBefore } from "date-fns";
 import { ru } from "date-fns/locale";
 import { Plus, Pencil, Trash2, UserCheck, Calendar, ShieldCheck, Star, AlertTriangle } from "lucide-react";
@@ -118,8 +119,8 @@ export function OrgSignatoriesManager({ organizationId }: Props) {
       }
       setOpen(false);
       await load();
-    } catch (e: any) {
-      toast.error("Ошибка сохранения", { description: e?.message || String(e) });
+    } catch (e) {
+      toast.error("Ошибка сохранения", { description: getErrorMessage(e) });
     } finally {
       setSaving(false);
     }

@@ -6,6 +6,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Upload, FileText, X, Loader2, Send } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { getErrorMessage } from "@/utils/handleSupabaseError";
 import { cn } from "@/lib/utils";
 
 interface Props {
@@ -57,9 +58,9 @@ export function SignatureRevisionUploader({ open, onOpenChange, signatureId, org
       onUploaded?.(revId as string);
       setFile(null); setSummary("");
       onOpenChange(false);
-    } catch (e: any) {
+    } catch (e) {
       console.error(e);
-      toast.error("Не удалось загрузить", { description: e?.message || String(e) });
+      toast.error("Не удалось загрузить", { description: getErrorMessage(e) });
     } finally {
       setUploading(false);
     }

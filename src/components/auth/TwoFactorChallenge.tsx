@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
+import { getErrorMessage } from "@/utils/handleSupabaseError";
 import { Shield, Loader2 } from "lucide-react";
 
 /**
@@ -52,7 +53,7 @@ export function TwoFactorChallenge() {
     setVerifying(true);
     const { data: ch, error: chErr } = await supabase.auth.mfa.challenge({ factorId });
     if (chErr) {
-      toast.error("Ошибка проверки", { description: chErr.message });
+      toast.error("Ошибка проверки", { description: getErrorMessage(chErr) });
       setVerifying(false);
       return;
     }

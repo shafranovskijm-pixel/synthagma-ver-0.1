@@ -13,6 +13,7 @@ import { Copy, TrendingUp, Users, DollarSign, Wallet, Sparkles, Link as LinkIcon
 import { Slider } from "@/components/ui/slider";
 import { getBaseUrl } from "@/utils/getBaseUrl";
 import { Link } from "react-router-dom";
+import { getErrorMessage } from "@/utils/handleSupabaseError";
 import { toast } from "sonner";
 import { getErrorMessage } from "@/utils/handleSupabaseError";
 
@@ -185,7 +186,7 @@ export function PartnerCabinet() {
       amount,
     });
     if (error) {
-      toast.error("Ошибка запроса", { description: error.message });
+      toast.error("Ошибка запроса", { description: getErrorMessage(error) });
     } else {
       toast.success("Запрос на вывод отправлен");
       setPayoutAmount("");

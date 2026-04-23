@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { getErrorMessage } from "@/utils/handleSupabaseError";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -91,9 +92,9 @@ export function DocumentArchiveView({
 
       setDocuments(documents.filter((d) => d.id !== docId));
       toast.success("Документ перемещён в корзину");
-    } catch (error: any) {
+    } catch (error) {
       console.error("Error deleting document:", error);
-      toast.error("Ошибка удаления", { description: error?.message });
+      toast.error("Ошибка удаления", { description: getErrorMessage(error) });
     }
   };
 

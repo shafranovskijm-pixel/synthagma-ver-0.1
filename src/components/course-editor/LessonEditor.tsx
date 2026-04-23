@@ -149,9 +149,9 @@ export const LessonEditor = ({
       toast.success(`Импортировано блоков: ${blocks.length}`, {
         description: warnings.length > 0 ? `Предупреждений: ${warnings.length}` : undefined,
       });
-    } catch (err: any) {
+    } catch (err) {
       console.error("DOCX import error:", err);
-      toast.error("Ошибка импорта", { description: err?.message || "Не удалось прочитать файл" });
+      toast.error("Ошибка импорта", { description: getErrorMessage(err, "Не удалось прочитать файл") });
     } finally {
       setImportingDocx(false);
       if (docxInputRef.current) docxInputRef.current.value = "";

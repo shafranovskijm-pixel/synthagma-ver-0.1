@@ -7,6 +7,7 @@ import { FileText, ScrollText, PenTool, Wallet, MessageSquare, Building2, GripVe
 import { cn } from '@/lib/utils';
 import { SigmaSpinner } from '@/components/ui/SigmaSpinner';
 import { toast } from 'sonner';
+import { getErrorMessage } from "@/utils/handleSupabaseError";
 import {
   DndContext,
   PointerSensor,
@@ -230,9 +231,9 @@ export function SalesKanban({ onSelectCompany, organizationId }: Props) {
           : d
       ));
       toast.success(`Перемещено: ${COLUMNS.find(c => c.id === target)?.title}`);
-    } catch (e: any) {
+    } catch (e) {
       console.error('moveDeal', e);
-      toast.error('Не удалось переместить', { description: e.message });
+      toast.error('Не удалось переместить', { description: getErrorMessage(e) });
     }
   }
 

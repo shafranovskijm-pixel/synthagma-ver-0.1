@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Search, Link2, FileText, Unlink } from "lucide-react";
 import { toast } from "sonner";
+import { getErrorMessage } from "@/utils/handleSupabaseError";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 
@@ -82,8 +83,8 @@ export function IncomingDocumentLinkDialog({
       toast.success(signatureId ? "Документ привязан к договору" : "Связь удалена");
       onLinked();
       onOpenChange(false);
-    } catch (e: any) {
-      toast.error("Не удалось привязать", { description: e?.message || String(e) });
+    } catch (e) {
+      toast.error("Не удалось привязать", { description: getErrorMessage(e) });
     } finally {
       setBusyId(null);
     }

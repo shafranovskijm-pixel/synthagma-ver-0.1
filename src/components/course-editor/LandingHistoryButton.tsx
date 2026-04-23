@@ -66,7 +66,7 @@ export function LandingHistoryButton({ courseId, onReverted }: Props) {
         .limit(10);
       if (cancelled) return;
       if (error) {
-        toast.error("Не удалось загрузить историю", { description: error.message });
+        toast.error("Не удалось загрузить историю", { description: getErrorMessage(error) });
       } else {
         setRows((data ?? []) as HistoryRow[]);
       }
@@ -91,8 +91,8 @@ export function LandingHistoryButton({ courseId, onReverted }: Props) {
       setConfirmRow(null);
       setOpen(false);
       onReverted?.();
-    } catch (e: any) {
-      toast.error("Не удалось восстановить версию", { description: e?.message });
+    } catch (e) {
+      toast.error("Не удалось восстановить версию", { description: getErrorMessage(e) });
     } finally {
       setReverting(null);
     }

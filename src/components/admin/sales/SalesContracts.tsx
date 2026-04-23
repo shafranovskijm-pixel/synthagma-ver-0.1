@@ -12,6 +12,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Plus, Eye, Download, Trash2, X, FileText, Stamp } from 'lucide-react';
 import { generateSintagmaContract, type ContractCustomService, type ContractData } from '@/constants/contractTemplates';
 import { toast } from "sonner";
+import { getErrorMessage } from "@/utils/handleSupabaseError";
 
 interface SalesContract {
   id: string;
@@ -185,7 +186,7 @@ export function SalesContracts({ prefillCompany, onPrefillConsumed }: SalesContr
       html_content: html,
     } as any);
 
-    if (error) { toast.error("Ошибка", { description: error.message }); return; }
+    if (error) { toast.error("Ошибка", { description: getErrorMessage(error) }); return; }
     toast.success("Договор создан");
     setShowForm(false);
     resetForm();
