@@ -57,14 +57,14 @@ export function AITestSandbox({ context, provider, gigachatModel, lovableModel }
           imageUrl: data?.url });
       } else if (context === "tts") {
         const response = await safeFetch(
-          `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/elevenlabs-tts`,
+          `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/salutespeech-tts`,
           {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
               apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
               Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}` },
-            body: JSON.stringify({ text: prompt, voiceId: "onwK4e9ZLuTAKqWW03F9" }) }
+            body: JSON.stringify({ text: prompt, voice: "Natalya_24000" }) }
         );
         const elapsed = Math.round(performance.now() - start);
         if (!response.ok) throw new Error(`TTS error: ${response.status}`);
@@ -73,7 +73,7 @@ export function AITestSandbox({ context, provider, gigachatModel, lovableModel }
         setResult({
           response: `Аудио сгенерировано (${(blob.size / 1024).toFixed(1)} КБ)`,
           timeMs: elapsed,
-          model: provider === "elevenlabs" ? "ElevenLabs" : "Lovable AI TTS",
+          model: "SaluteSpeech",
           audioUrl });
       } else {
         // Text-based AI test via gigachat function
