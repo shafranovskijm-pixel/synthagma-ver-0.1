@@ -6,6 +6,7 @@ import {
   sanitizeCitizenship,
   sanitizeFromDict,
   sanitizeText,
+  sanitizeProfessionName,
   stripInvisibles,
 } from "../frdoFileSanitizer";
 import { FRDO_TRAINING_FORMS, FRDO_FINANCING_SOURCES } from "@/constants/frdo";
