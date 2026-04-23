@@ -6,6 +6,9 @@ export interface CheckoStats {
   today_used: number;
   today_remaining: number;
   daily_limit: number;
+  search_used: number;
+  search_remaining: number;
+  search_daily_limit: number;
   balance: number | null;
   auto_enrich_enabled: boolean;
   last_auto_run_at: string | null;

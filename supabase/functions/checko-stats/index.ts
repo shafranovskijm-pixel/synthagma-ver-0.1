@@ -41,11 +41,16 @@ serve(async (req) => {
     ]);
 
     const used = usage.data?.requests_count ?? 0;
+    const searchUsed = usage.data?.search_requests_count ?? 0;
+    const SEARCH_LIMIT = 100;
 
     return new Response(JSON.stringify({
       today_used: used,
       today_remaining: Math.max(0, DAILY_LIMIT - used),
       daily_limit: DAILY_LIMIT,
+      search_used: searchUsed,
+      search_remaining: Math.max(0, SEARCH_LIMIT - searchUsed),
+      search_daily_limit: SEARCH_LIMIT,
       balance: usage.data?.last_balance ?? null,
       auto_enrich_enabled: settings.data?.auto_enrich_enabled ?? false,
       last_auto_run_at: settings.data?.last_auto_run_at ?? null,
