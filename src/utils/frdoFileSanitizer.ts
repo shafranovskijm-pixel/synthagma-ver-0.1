@@ -242,6 +242,27 @@ export function sanitizeText(raw: unknown): SanitizedCell {
   return { value: cleaned, fixed: cleaned !== original };
 }
 
+/**
+ * Нормализует наименование профессии/должности под классификатор ФИС ФРДО:
+ * первая буква каждого значимого слова — заглавная, остальные — строчные.
+ * Примеры: "охранник" → "Охранник", "ВОДИТЕЛЬ автомобиля" → "Водитель автомобиля".
+ *
+ * ФРДО-валидатор сравнивает значение с классификатором по точному совпадению,
+ * поэтому регистр критичен.
+ */
+export function sanitizeProfessionName(raw: unknown): SanitizedCell {
+  if (raw === null || raw === undefined) return { value: "", fixed: false };
+  const original = String(raw);
+  const cleaned = normalizeWhitespace(stripInvisibles(original));
+  if (!cleaned) return { value: "", fixed: cleaned !== original };
+  // Капитализация: первая буква слова — верхний регистр, остальные — нижний.
+  // Сохраняем разделители (пробел, дефис) как есть.
+  const titled = cleaned
+    .toLowerCase()
+    .replace(/(^|[\s\-])([а-яёa-z])/gu, (_m, sep, ch) => sep + ch.toUpperCase());
+  return { value: titled, fixed: titled !== original };
+}
+
 export function sanitizeNumber(raw: unknown): SanitizedCell {
   if (raw === null || raw === undefined || raw === "") return { value: "", fixed: false };
   if (typeof raw === "number") return { value: raw, fixed: false };
