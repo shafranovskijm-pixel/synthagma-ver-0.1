@@ -379,19 +379,23 @@ function LiveKitEmbed({
  * чтобы useParticipants() мог получить контекст комнаты.
  */
 function LiveKitTopBar({
+  webinarId,
   title,
   publicLink,
   onShare,
   onEnd,
   hasShareSettings,
   viewOnly = false,
+  isHost = false,
 }: {
+  webinarId: string;
   title: string | null;
   publicLink: string | null;
   onShare: () => void;
   onEnd?: () => void;
   hasShareSettings: boolean;
   viewOnly?: boolean;
+  isHost?: boolean;
 }) {
   const participants = useParticipants();
   const [copied, setCopied] = useState(false);
