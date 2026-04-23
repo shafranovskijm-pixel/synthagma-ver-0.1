@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -39,85 +40,111 @@ export interface UseCoursePreviewOptions {
   onNavigateToEditor?: () => void;
 }
 
+interface CoursePreviewData {
+  course: Course | null;
+  lessons: Lesson[];
+  lessonAttachments: Record<string, any[]>;
+  courseDocuments: any[];
+}
+
+const coursePreviewKey = (courseId?: string) => ['coursePreview', courseId] as const;
+const testQuestionsKey = (lessonId?: string) => ['testQuestions', lessonId] as const;
+
+async function fetchCoursePreviewData(courseId: string): Promise<CoursePreviewData> {
+  const [{ data: courseData, error: courseError }, { data: lessonsData, error: lessonsError }, { data: docsData }] = await Promise.all([
+    supabase.from('courses').select('*').eq('id', courseId).single(),
+    supabase.from('lessons').select('*').eq('course_id', courseId).order('order_index'),
+    supabase.from('course_documents').select('*').eq('course_id', courseId).order('created_at'),
+  ]);
+
+  if (courseError) throw courseError;
+  if (lessonsError) throw lessonsError;
+
+  const lessons = (lessonsData || []) as Lesson[];
+  let lessonAttachments: Record<string, any[]> = {};
+
+  if (lessons.length > 0) {
+    const lessonIds = lessons.map(l => l.id);
+    const { data: attData } = await supabase
+      .from('lesson_attachments')
+      .select('*')
+      .in('lesson_id', lessonIds)
+      .order('order_index');
+    if (attData) {
+      for (const a of attData) {
+        if (!lessonAttachments[a.lesson_id]) lessonAttachments[a.lesson_id] = [];
+        lessonAttachments[a.lesson_id].push(a);
+      }
+    }
+  }
+
+  return {
+    course: courseData as Course,
+    lessons,
+    lessonAttachments,
+    courseDocuments: docsData || [],
+  };
+}
+
 export function useCoursePreview(options: UseCoursePreviewOptions = {}) {
   const params = useParams();
   const courseId = options.courseIdOverride ?? params.courseId;
   const { user } = useAuth();
   const navigate = useNavigate();
+  const qc = useQueryClient();
   const [searchParams] = useSearchParams();
   const fromStore = searchParams.get('from') === 'store';
   const contentRef = useRef<HTMLDivElement>(null);
 
-  const [course, setCourse] = useState<Course | null>(null);
-  const [lessons, setLessons] = useState<Lesson[]>([]);
   const [currentLessonIndex, setCurrentLessonIndex] = useState(0);
-  const [loading, setLoading] = useState(true);
   const [isTransitioning, setIsTransitioning] = useState(false);
-  const [testQuestions, setTestQuestions] = useState<TestQuestion[]>([]);
   const [selectedAnswers, setSelectedAnswers] = useState<Record<string, number>>({});
-  const [lessonAttachments, setLessonAttachments] = useState<Record<string, any[]>>({});
-  const [courseDocuments, setCourseDocuments] = useState<any[]>([]);
   const [showDocumentsView, setShowDocumentsView] = useState(false);
   const [previewFile, setPreviewFile] = useState<{ url: string; name: string; type: string | null } | null>(null);
 
+  const { data, isLoading } = useQuery({
+    queryKey: coursePreviewKey(courseId),
+    queryFn: () => fetchCoursePreviewData(courseId!),
+    enabled: !!courseId && !!user,
+    staleTime: 60_000,
+    gcTime: 5 * 60_000,
+    meta: {
+      onError: () => toast.error('Ошибка загрузки курса'),
+    },
+  });
+
+  const course = data?.course ?? null;
+  const lessons = data?.lessons ?? [];
+  const lessonAttachments = data?.lessonAttachments ?? {};
+  const courseDocuments = data?.courseDocuments ?? [];
+
   const currentLesson = showDocumentsView ? null : lessons[currentLessonIndex];
 
-  useEffect(() => {
-    if (courseId && user) fetchCourseData();
-  }, [courseId, user]);
+  const { data: testQuestionsData } = useQuery({
+    queryKey: testQuestionsKey(currentLesson?.id),
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('test_questions_for_students')
+        .select('*')
+        .eq('lesson_id', currentLesson!.id)
+        .order('order_index');
+      if (error) throw error;
+      return (data || []) as TestQuestion[];
+    },
+    enabled: !!currentLesson?.id && currentLesson.type === 'test',
+    staleTime: 5 * 60_000,
+  });
 
+  const testQuestions = testQuestionsData ?? [];
+
+  // Reset answers when test lesson changes
   useEffect(() => {
-    if (currentLesson?.type === 'test') fetchTestQuestions(currentLesson.id);
+    if (currentLesson?.type === 'test') setSelectedAnswers({});
   }, [currentLesson?.id, currentLesson?.type]);
 
   useEffect(() => {
     if (contentRef.current) contentRef.current.scrollTo({ top: 0, behavior: 'smooth' });
   }, [currentLessonIndex]);
-
-  const fetchCourseData = async () => {
-    try {
-      const { data: courseData, error: courseError } = await supabase
-        .from('courses').select('*').eq('id', courseId).single();
-      if (courseError) throw courseError;
-      setCourse(courseData);
-
-      const { data: lessonsData, error: lessonsError } = await supabase
-        .from('lessons').select('*').eq('course_id', courseId).order('order_index');
-      if (lessonsError) throw lessonsError;
-      setLessons(lessonsData || []);
-
-      if (lessonsData && lessonsData.length > 0) {
-        const lessonIds = lessonsData.map(l => l.id);
-        const { data: attData } = await supabase
-          .from('lesson_attachments').select('*').in('lesson_id', lessonIds).order('order_index');
-        if (attData) {
-          const map: Record<string, any[]> = {};
-          for (const a of attData) {
-            if (!map[a.lesson_id]) map[a.lesson_id] = [];
-            map[a.lesson_id].push(a);
-          }
-          setLessonAttachments(map);
-        }
-      }
-
-      const { data: docsData } = await supabase
-        .from('course_documents').select('*').eq('course_id', courseId!).order('created_at');
-      setCourseDocuments(docsData || []);
-    } catch (error) {
-      console.error('Error fetching course:', error);
-      toast.error('Ошибка загрузки курса');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const fetchTestQuestions = async (lessonId: string) => {
-    const { data, error } = await supabase
-      .from('test_questions_for_students').select('*').eq('lesson_id', lessonId).order('order_index');
-    if (error) { console.error('Error fetching questions:', error); return; }
-    setTestQuestions(data || []);
-    setSelectedAnswers({});
-  };
 
   const transition = (cb: () => void) => {
     setIsTransitioning(true);
@@ -150,8 +177,14 @@ export function useCoursePreview(options: UseCoursePreviewOptions = {}) {
     return navigate(`/course-builder/${courseId}`);
   };
 
+  // Backwards-compatible refetcher for test questions used by callers (e.g. after submit)
+  const fetchTestQuestions = (lessonId: string) => {
+    qc.invalidateQueries({ queryKey: testQuestionsKey(lessonId) });
+  };
+
   return {
-    courseId, course, lessons, currentLesson, currentLessonIndex, loading, isTransitioning,
+    courseId, course, lessons, currentLesson, currentLessonIndex,
+    loading: isLoading, isTransitioning,
     testQuestions, selectedAnswers, setSelectedAnswers, lessonAttachments, courseDocuments,
     showDocumentsView, previewFile, setPreviewFile, contentRef, fromStore,
     goToNextLesson, goToPrevLesson, goToLesson, goToDocumentsView,
