@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback, useRef } from "react";
+import { useEffect, useState, useCallback, useRef, useMemo } from "react";
 import QRCode from "qrcode";
 import { supabase } from "@/integrations/supabase/client";
 import {
@@ -7,8 +7,9 @@ import {
   RoomAudioRenderer,
   useParticipants,
   useTracks,
+  useRoomContext,
 } from "@livekit/components-react";
-import { Track } from "livekit-client";
+import { Track, RoomEvent } from "livekit-client";
 import "@livekit/components-styles";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 import { SigmaLogo } from "@/components/ui/SigmaLogo";
@@ -30,7 +31,17 @@ import { toast } from "sonner";
 import { getBaseUrl } from "@/utils/getBaseUrl";
 import { ShareWebinarDialog } from "@/components/organization/ShareWebinarDialog";
 import { WebinarSidebar } from "@/components/webinars/WebinarSidebar";
+import { RecordingControls } from "@/components/webinars/RecordingControls";
 import { cn } from "@/lib/utils";
+
+/** Платформа для управления видимостью кнопки «поделиться экраном» */
+function detectPlatform(): "ios" | "android" | "desktop" {
+  if (typeof navigator === "undefined") return "desktop";
+  const ua = navigator.userAgent;
+  if (/iPhone|iPad|iPod/i.test(ua)) return "ios";
+  if (/Android/i.test(ua)) return "android";
+  return "desktop";
+}
 
 interface Props {
   webinarId: string;
