@@ -10,19 +10,22 @@ import {
 } from '@/components/ui/command';
 import { supabase } from '@/integrations/supabase/client';
 import { useNavigate } from 'react-router-dom';
-import { FileText, ScrollText, PenTool, Building2, Users, Receipt, GraduationCap, Sparkles, Inbox } from 'lucide-react';
+import { FileText, ScrollText, PenTool, Building2, Users, Receipt, GraduationCap, Sparkles, Inbox, BookOpen, Radio } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 
 interface SearchResult {
   id: string;
-  type: 'proposal' | 'contract' | 'signature' | 'company' | 'student' | 'invoice' | 'document' | 'incoming' | 'billing';
+  type: 'proposal' | 'contract' | 'signature' | 'company' | 'student' | 'invoice' | 'document' | 'incoming' | 'billing' | 'course' | 'webinar';
   title: string;
   subtitle?: string;
   navigateTo?: string;
   action?: () => void;
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const TYPE_META: Record<SearchResult['type'], { label: string; icon: any }> = {
+  course: { label: 'Курсы', icon: BookOpen },
+  webinar: { label: 'Вебинары', icon: Radio },
   proposal: { label: 'Коммерческие предложения', icon: FileText },
   contract: { label: 'Договоры', icon: ScrollText },
   signature: { label: 'Подписи', icon: PenTool },
