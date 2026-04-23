@@ -9,6 +9,14 @@ import { PlatformProposalAdvantages } from "@/components/proposal/PlatformPropos
 import { PlatformProposalPricingTable } from "@/components/proposal/PlatformProposalPricingTable";
 import { PlatformProposalPlanCards } from "@/components/proposal/PlatformProposalPlanCards";
 import { exportPlatformProposalPdf } from "@/utils/exportPlatformProposalPdf";
+import {
+  ProposalBackdrop,
+  ProposalHeroWave,
+  CornerArcs,
+  KnowledgeGraphIllustration,
+  CertificateIllustration,
+  SectionDivider,
+} from "@/components/proposal/ProposalDecorations";
 
 const KPI = [
   { label: "300+", caption: "готовых программ" },
