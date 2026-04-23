@@ -428,6 +428,7 @@ export function useCourseLearning() {
     course, lessons, currentLesson, currentLessonIndex, loading, enrollmentId,
     lessonProgress, completedCount, progressPercent, isMobile, user, courseId, lessonAttachments,
     isOfflineMode, offlineCachedAt,
+    isAdminView, adminViewStudentName: adminView?.name || '',
     navigate, goToNextLesson, goToPrevLesson, goToLesson, isTransitioning,
     sidebarOpen, setSidebarOpen, isLessonCompleted, isLessonAccessible,
     markLessonComplete, resetCourseProgress,
