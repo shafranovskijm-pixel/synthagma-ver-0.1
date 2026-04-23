@@ -286,17 +286,21 @@ export function useCourseLearning() {
 
   const fetchCourseData = async () => {
     try {
+      const lookupUserId = effectiveUserId; // target student in admin view, otherwise current user
       const [courseResult, lessonsResult, enrollmentResult] = await Promise.all([
         supabase.from('courses').select('*').eq('id', courseId).single(),
         supabase.from('lessons').select('*').eq('course_id', courseId).order('order_index'),
-        supabase.from('enrollments').select('*').eq('course_id', courseId).eq('user_id', user!.id).maybeSingle(),
+        lookupUserId
+          ? supabase.from('enrollments').select('*').eq('course_id', courseId).eq('user_id', lookupUserId).maybeSingle()
+          : Promise.resolve({ data: null, error: null }),
       ]);
       if (courseResult.error) throw courseResult.error;
       const courseData = courseResult.data;
       setCourse(courseData);
       setIsOfflineMode(false);
 
-      if (courseData.skip_video_identification === false && user) {
+      // Skip the video-identification gate when an admin/manager is previewing.
+      if (!isAdminView && courseData.skip_video_identification === false && user) {
         const { data: profileData } = await supabase.from('profiles').select('organization_id').eq('user_id', user.id).maybeSingle();
         if (profileData?.organization_id) {
           const { data: videoId } = await supabase.from('video_identifications').select('status').eq('user_id', user.id).eq('organization_id', profileData.organization_id).in('status', ['approved', 'verified']).limit(1).maybeSingle();
@@ -310,13 +314,13 @@ export function useCourseLearning() {
       if (lessonsResult.error) throw lessonsResult.error;
       let lessonsData = lessonsResult.data || [];
 
-      // Apply module access schedules + per-user overrides
+      // Apply module access schedules + per-user overrides (use target student's id in admin view)
       try {
         const moduleIds = Array.from(new Set(lessonsData.map((l: any) => l.module_id).filter(Boolean)));
-        if (moduleIds.length > 0 && user) {
+        if (moduleIds.length > 0 && lookupUserId) {
           const [schedRes, ovrRes] = await Promise.all([
             supabase.from("module_access_schedules" as never).select("module_id, unlock_at").in("module_id", moduleIds as string[]),
-            supabase.from("module_access_overrides" as never).select("module_id, unlock_at").in("module_id", moduleIds as string[]).eq("user_id", user.id),
+            supabase.from("module_access_overrides" as never).select("module_id, unlock_at").in("module_id", moduleIds as string[]).eq("user_id", lookupUserId),
           ]);
           const schedMap = new Map<string, string>();
           ((schedRes.data as any[]) || []).forEach((r) => schedMap.set(r.module_id, r.unlock_at));
@@ -334,12 +338,17 @@ export function useCourseLearning() {
 
       let enrollment = enrollmentResult.data;
       if (!enrollment) {
-        toast.error('Вы не записаны на этот курс', { description: 'Отправьте заявку на запись через каталог курсов' });
-        navigate('/student');
-        return;
+        if (isAdminView) {
+          // Admin preview: continue without enrollment so admin can browse the course content.
+          toast.info('Просмотр курса в режиме администратора', { description: 'Прогресс не сохраняется' });
+        } else {
+          toast.error('Вы не записаны на этот курс', { description: 'Отправьте заявку на запись через каталог курсов' });
+          navigate('/student');
+          return;
+        }
       }
 
-      if (enrollment && (enrollment as Record<string, unknown>).expires_at) {
+      if (!isAdminView && enrollment && (enrollment as Record<string, unknown>).expires_at) {
         const expiresAt = new Date((enrollment as Record<string, unknown>).expires_at as string);
         if (expiresAt < new Date() && enrollment.status !== 'completed') {
           toast.error('Доступ к курсу истёк', { description: 'Срок доступа к этому курсу закончился. Обратитесь к администратору.' });
@@ -350,10 +359,13 @@ export function useCourseLearning() {
 
       if (enrollment) {
         setEnrollmentId(enrollment.id);
-        const orgId = await supabase.from('profiles').select('organization_id').eq('user_id', user!.id).maybeSingle();
-        supabase.from('course_access_log').insert({
-          user_id: user!.id, course_id: courseId!, organization_id: orgId?.data?.organization_id || null, user_agent: navigator.userAgent,
-        }).then(() => {});
+        // Don't write access logs in admin preview mode.
+        if (!isAdminView && user) {
+          const orgId = await supabase.from('profiles').select('organization_id').eq('user_id', user.id).maybeSingle();
+          supabase.from('course_access_log').insert({
+            user_id: user.id, course_id: courseId!, organization_id: orgId?.data?.organization_id || null, user_agent: navigator.userAgent,
+          }).then(() => {});
+        }
       }
 
       const courseLessonIds = lessonsData.map((l: Lesson) => l.id);
