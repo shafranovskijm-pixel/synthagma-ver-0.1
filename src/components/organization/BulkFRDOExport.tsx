@@ -15,7 +15,7 @@ import {
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Download, FileSpreadsheet, AlertCircle, CheckCircle2 } from "lucide-react";
+import { Download, FileSpreadsheet, AlertCircle, CheckCircle2, AlertTriangle } from "lucide-react";
 import { format } from "date-fns";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 import {
@@ -23,6 +23,7 @@ import {
   buildPORow,
   exportFRDOExcel,
   formatDateForFRDO } from "@/utils/frdoExcelExport";
+import { resolveFRDOFields, validateFRDORowSync, type CourseFRDOLike } from "@/utils/frdoFieldResolver";
 
 interface Student {
   id: string;
