@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { useTheme } from "next-themes";
 import { User, FileText, Users, Sun, Moon, Monitor, Bell, Eye, EyeOff, Camera, HelpCircle } from "lucide-react";
@@ -27,6 +28,8 @@ import { useStudentProfile, PROFILE_TABS, NOTIFICATION_TYPES, CHANNELS } from "@
 interface StudentProfileContentProps {
   effectiveUserId: string;
   isAdminView?: boolean;
+  /** Number of pending document actions (used for the red badge on the Documents tab). */
+  pendingDocsCount?: number;
 }
 
 const TAB_ICONS: Record<string, typeof User> = {
@@ -37,10 +40,34 @@ const TAB_ICONS: Record<string, typeof User> = {
   help: HelpCircle,
 };
 
-export function StudentProfileContent({ effectiveUserId, isAdminView = false }: StudentProfileContentProps) {
+export function StudentProfileContent({ effectiveUserId, isAdminView = false, pendingDocsCount = 0 }: StudentProfileContentProps) {
   const { user } = useAuth();
   const { theme, setTheme } = useTheme();
-  const [activeTab, setActiveTab] = useState("profile");
+  const [searchParams, setSearchParams] = useSearchParams();
+  const initialSection = searchParams.get("section");
+  const [activeTab, setActiveTab] = useState(() => {
+    if (initialSection && PROFILE_TABS.some(t => t.id === initialSection)) return initialSection;
+    return "profile";
+  });
+
+  // Re-apply ?section=… when it changes (e.g. user navigates from header again).
+  useEffect(() => {
+    if (initialSection && PROFILE_TABS.some(t => t.id === initialSection)) {
+      setActiveTab(initialSection);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialSection]);
+
+  const handleTabClick = (tabId: string) => {
+    setActiveTab(tabId);
+    // Clean the section param from the URL after a manual switch so it doesn't
+    // override future navigation back to "profile".
+    if (searchParams.has("section")) {
+      const next = new URLSearchParams(searchParams);
+      next.delete("section");
+      setSearchParams(next, { replace: true });
+    }
+  };
 
   const sp = useStudentProfile(effectiveUserId, isAdminView, user?.id);
 
@@ -55,12 +82,13 @@ export function StudentProfileContent({ effectiveUserId, isAdminView = false }: 
       <div className="flex gap-1 overflow-x-auto pb-1 scrollbar-none">
         {visibleTabs.map(tab => {
           const Icon = TAB_ICONS[tab.id] || User;
+          const showDocsBadge = tab.id === "documents" && pendingDocsCount > 0;
           return (
             <button
               key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
+              onClick={() => handleTabClick(tab.id)}
               className={cn(
-                "flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-all shrink-0",
+                "relative flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-all shrink-0",
                 activeTab === tab.id
                   ? "bg-primary text-primary-foreground shadow-sm"
                   : "text-muted-foreground hover:bg-secondary hover:text-foreground"
@@ -68,6 +96,14 @@ export function StudentProfileContent({ effectiveUserId, isAdminView = false }: 
             >
               <Icon className="w-4 h-4" />
               <span className="hidden sm:inline">{tab.label}</span>
+              {showDocsBadge && (
+                <span
+                  aria-label={`${pendingDocsCount} требуют внимания`}
+                  className="ml-1 inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-destructive text-destructive-foreground text-[10px] font-bold leading-none"
+                >
+                  {pendingDocsCount}
+                </span>
+              )}
             </button>
           );
         })}
