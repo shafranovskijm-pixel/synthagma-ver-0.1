@@ -40,9 +40,14 @@ const RoomShell = ({ webinarId, isHost, sidebarOpen, onToggleSidebar }: RoomShel
   const name = localParticipant?.name || "Участник";
 
   return (
-    <div className="flex-1 flex min-h-0 relative">
-      <div className={cn("flex-1 relative min-h-0", sidebarOpen && "lg:pr-[340px]")}>
-        <div className="absolute top-2 right-2 z-10 flex items-center gap-2">
+    <div className="flex-1 flex flex-col lg:flex-row min-h-0 relative">
+      {/* Видео */}
+      <div className={cn(
+        "relative min-h-0",
+        // На десктопе — flex-1 + правый паддинг под сайдбар. На мобильном — фиксированная высота 50vh, чтобы сайдбар-табы поместились.
+        sidebarOpen ? "h-[45vh] lg:h-auto lg:flex-1 lg:pr-[340px]" : "flex-1",
+      )}>
+        <div className="absolute top-2 right-2 z-20 flex items-center gap-2">
           <div className="bg-background/80 backdrop-blur-sm px-2 py-1 rounded-md border">
             <ParticipantsCount />
           </div>
@@ -61,10 +66,12 @@ const RoomShell = ({ webinarId, isHost, sidebarOpen, onToggleSidebar }: RoomShel
         <VideoConference />
         <RoomAudioRenderer />
       </div>
+
+      {/* Боковая панель: на десктопе — справа абсолютно, на мобильном — снизу под видео в потоке */}
       {sidebarOpen && webinarId && (
-        <aside className="hidden lg:flex absolute right-0 top-0 bottom-0 w-[340px] bg-background border-l flex-col">
+        <aside className="flex-1 lg:flex-none lg:absolute lg:right-0 lg:top-0 lg:bottom-0 lg:w-[340px] bg-background border-t lg:border-t-0 lg:border-l flex flex-col min-h-0">
           <Tabs defaultValue="chat" className="flex-1 flex flex-col min-h-0">
-            <TabsList className="grid grid-cols-4 mx-2 mt-2">
+            <TabsList className="grid grid-cols-4 mx-2 mt-2 shrink-0">
               <TabsTrigger value="chat" className="text-xs gap-1">
                 <MessagesSquare className="w-3.5 h-3.5" /> Чат
               </TabsTrigger>
@@ -236,25 +243,28 @@ const WebinarLive = () => {
 
   return (
     <div className="h-screen flex flex-col bg-background overflow-hidden">
-      <div className="flex items-center justify-between px-4 py-2 border-b gap-2 flex-wrap shrink-0">
-        <Button variant="ghost" size="sm" onClick={handleDisconnected}>
-          <ArrowLeft className="w-4 h-4 mr-2" /> Завершить
+      <div className="flex items-center px-2 sm:px-4 py-1.5 border-b gap-1.5 shrink-0 min-h-[44px]">
+        <Button variant="ghost" size="sm" onClick={handleDisconnected} className="shrink-0 px-2 sm:px-3">
+          <ArrowLeft className="w-4 h-4 sm:mr-1.5" />
+          <span className="hidden sm:inline">Завершить</span>
         </Button>
-        <div className="text-sm font-medium truncate flex-1 text-center">{title}</div>
-        <div className="flex items-center gap-2">
+        <div className="text-sm font-medium truncate flex-1 text-center min-w-0 px-1">{title}</div>
+        <div className="flex items-center gap-1 shrink-0">
           {isWebinar && <RecordingControls webinarId={id!} />}
           {isWebinar && publicLink && (
             <>
-              <Button variant="outline" size="sm" onClick={copyLink}>
-                <Copy className="w-3.5 h-3.5 mr-1" /> Ссылка для участников
+              <Button variant="outline" size="sm" onClick={copyLink} className="px-2 sm:px-3">
+                <Copy className="w-3.5 h-3.5 sm:mr-1" />
+                <span className="hidden md:inline">Ссылка для участников</span>
+                <span className="hidden sm:inline md:hidden">Ссылка</span>
               </Button>
               <Popover onOpenChange={(o) => o && setTimeout(renderQr, 50)}>
                 <PopoverTrigger asChild>
-                  <Button variant="outline" size="icon" className="h-8 w-8">
+                  <Button variant="outline" size="icon" className="h-8 w-8 shrink-0">
                     <QrCode className="w-4 h-4" />
                   </Button>
                 </PopoverTrigger>
-                <PopoverContent className="w-auto p-3 bg-white">
+                <PopoverContent className="w-auto p-3 bg-white" align="end">
                   <canvas ref={qrCanvasRef} />
                   <p className="text-xs text-center text-muted-foreground mt-2 max-w-[200px] break-all">{publicLink}</p>
                 </PopoverContent>
