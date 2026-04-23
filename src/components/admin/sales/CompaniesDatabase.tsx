@@ -71,7 +71,8 @@ export function CompaniesDatabase({ organizationId }: CompaniesDatabaseProps = {
     enrichBatch.mutate({ inns: [], mode: 'refresh' });
   };
 
-  const handleExport = () => {
+  const handleExport = async () => {
+    const XLSX = await import('xlsx');
     const data = filtered.map(r => ({
       'Название': r.name,
       'ИНН': r.inn,
