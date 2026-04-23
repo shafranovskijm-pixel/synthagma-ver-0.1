@@ -1,107 +1,132 @@
 
 
-# План: подбор компаний по лицензиям через Checko Search API
+# План: ускорение и оптимизация платформы
 
-## Что есть сейчас
+Цель — заметно сократить время первой отрисовки админки и кабинета организации, убрать лишние запросы и облегчить главный JS-бандл, не меняя поведение функций.
 
-- ✅ `checko-enrich-batch` — обогащение **по списку известных ИНН** (карточка компании `/v2/company`)
-- ✅ Хранилище: `sales_companies_db`, `checko_settings`, `checko_api_usage`, `checko_pending_inns`
-- ✅ Раздел «Холодная база» (`CompaniesDatabase.tsx`) с квотой, фильтрами и экспортом XLSX
-- ❌ Нет **поиска компаний по фильтру** — только обогащение известных ИНН
-- ❌ Нет UI для настройки критериев подбора (лицензии, регион, ОКВЭД, размер штата)
+## 1. Убрать N+1 при загрузке списка организаций
 
-## Чего не хватает
+**Где:** `src/hooks/useOrganizationsManager.ts` (`fetchOrganizations`).
 
-Checko предоставляет endpoint **`/v2/search`** (поиск юрлиц), позволяющий указать:
-- регион (`region` — коды регионов РФ, например `77` Москва, `78` СПб),
-- наличие лицензии и тип лицензирующего органа (`licens` — например МЧС, Росздравнадзор, Рособрнадзор, Ространснадзор и др.),
-- ОКВЭД (`okved`),
-- статус (действующее / ликвидированное),
-- размер (по СЧР, по выручке).
+Сейчас при открытии `/admin` для каждой организации делается отдельный RPC `get_decrypted_org_credentials` (в network видно ~18 одновременных POST). Это и нагрузка, и время до первой полезной отрисовки.
 
-Endpoint возвращает **только список ИНН** (постранично), сама карточка не тратится. То есть поиск **отдельный платный лимит** от карточки `/v2/company`. После получения списка ИНН мы прогоняем их через уже существующую функцию `checko-enrich-batch`, которая использует дневную квоту 100 карточек/день.
+Что сделаю:
+- создам **batch-RPC** `get_decrypted_org_credentials_batch(org_ids uuid[])`, возвращающую массив `{ organization_id, login_email, login_password }` за один вызов (SECURITY DEFINER, проверяет `has_role(auth.uid(), 'admin')` как и текущая функция);
+- в `fetchOrganizations` заменю `Promise.all(orgIds.map(rpc(...)))` на один вызов;
+- сами `users_count` и `courses_count` получу через `count: 'exact', head: true` группой (или один SQL view `org_overview_counts`), а не через выгрузку всех `profiles`/`courses`.
 
-## Что будет сделано
+Эффект: было ~20 параллельных запросов → станет 2-3. Падение нагрузки на postgrest и заметное ускорение `/admin`.
 
-### 1. Edge function `checko-search` (новая)
-- POST принимает:
-  - `regions: number[]` — массив кодов регионов,
-  - `licenses: string[]` — типы лицензий (см. справочник ниже),
-  - `okveds?: string[]`,
-  - `activeOnly?: boolean` (по умолчанию true),
-  - `limit?: number` (макс 1000 ИНН за запрос — Checko возвращает страницами по 100),
-  - `autoEnrich?: boolean` — если true, сразу прогнать найденные ИНН через `checko-enrich-batch` (с учётом квоты 100/день, остальное — в очередь `checko_pending_inns`).
-- Делает запросы к `https://api.checko.ru/v2/search?key=...&region=...&licens=...&page=N` с пагинацией.
-- Учитывает свой счётчик в `checko_api_usage` (новая колонка `search_requests_count` — поиск тарифицируется отдельно).
-- Возвращает: `{ found_inns: string[], total: number, pages_fetched: number, search_requests_used: number, enriched?: number }`.
+## 2. Журналы оценок и тестов — тянуть только нужное
 
-### 2. SQL-миграция
-- Добавить в `checko_api_usage` колонку `search_requests_count int default 0`.
-- Новая таблица `checko_search_presets`:
-  - `id uuid pk`, `organization_id uuid null` (null = глобальный пресет админа), `name text`, `regions int[]`, `licenses text[]`, `okveds text[]`, `active_only bool`, `created_by uuid`, `created_at`, `updated_at`.
-  - RLS: админы видят все; организации — только свои.
-- Новая таблица `checko_search_runs` (история запусков): `id`, `preset_id`, `regions`, `licenses`, `found_count`, `enriched_count`, `search_requests_used`, `created_at`, `created_by`.
+**Где:** `src/hooks/useAutoGradesJournal.ts`, `src/hooks/useAutoFinalAttestation.ts`.
 
-### 3. UI: новый раздел «Подбор по лицензиям»
-Внутри уже существующего блока «Холодная база» (`CompaniesDatabase.tsx`) добавлю кнопку **«Подбор по фильтрам»**, открывающую диалог `CheckoSearchDialog`:
+Сейчас `select('*')` по `test_attempts` и `lesson_progress` **без фильтра по организации** и без диапазона дат — всё фильтруется уже на клиенте.
 
-**Шаг 1 — настройка фильтра:**
-- Мульти-селект регионов (полный справочник 89 регионов РФ).
-- Мульти-селект **лицензирующих органов**: Рособрнадзор (образование), МЧС (пожарная безопасность), Росздравнадзор (медицина), Ространснадзор (перевозки), Ростехнадзор (промбезопасность), Роскомнадзор, Минкультуры (охрана объектов культурного наследия), ФСБ (гостайна), ЦБ (банковская), ФСТЭК (защита информации) и т.д.
-- Опционально: ОКВЭД (текстовый ввод через запятую), «Только действующие».
-- Возможность **сохранить как пресет** (для повторного использования).
+Что сделаю:
+- ограничу выборку параметрами хука: `organization_id`, `dateRange.from/to`, и select только нужных колонок;
+- буду делать join через два запроса по `lesson_id IN (lessons WHERE course_id IN org)` — без выкачки чужих строк (RLS и так не отдаст, но фильтр снизит нагрузку и сетевой трафик);
+- добавлю `range(0, 999)` пагинацию и подгрузку «ещё».
 
-**Шаг 2 — предпросмотр:**
-- Кнопка «Найти компании» делает первый запрос `?limit=1` чтобы узнать общее количество (`total`).
-- Показывает: «Найдено 1 247 компаний. Поиск израсходует ~13 запросов поиска. Получить и обогатить?»
-- Предупреждение: «Обогащение будет ограничено дневной квотой 100 шт. Остальные ИНН попадут в очередь и обогатятся автоматически в ближайшие дни».
+## 3. Lazy-вкладки в AdminDashboard
 
-**Шаг 3 — запуск:**
-- Опции: «Только сохранить ИНН в очередь» / «Обогатить сейчас (до 100 шт.)».
-- После выполнения показывает итог + автоматически открывается список «Холодная база» с фильтром по только что добавленным.
+**Где:** `src/pages/AdminDashboard.tsx`.
 
-### 4. Пресеты подбора
-- В шапке диалога — селект «Загрузить пресет».
-- Кнопка «Сохранить как пресет» с именем.
-- Удобно для регулярных задач: «ДПО Москва», «УЦ Подмосковье», «Ростехнадзор СЗФО».
+Сейчас 17 тяжёлых компонентов вкладок (Marketplace, Sales, Billing, Webinars, Broadcast, ReferralsManager, PlatformUpdatesManager, AdminBillingOverview, AdminFinanceOverview, BlogManager, AdminChatsManager, AISettingsManager, …) импортируются eagerly и попадают в чанк страницы.
 
-### 5. Индикатор расхода в `CheckoQuotaBar`
-- Дополнить текущий бар двумя счётчиками: «Карточки: X/100», «Поиск: Y запросов».
-- Если поиск тоже имеет дневной лимит на бесплатном тарифе — отображать его (Checko: 100 запросов поиска/день на бесплатном тарифе).
+Что сделаю:
+- заменю прямые импорты на `lazyWithRetry` + локальный `<Suspense fallback={<LazyLoadFallback />}>` вокруг активной вкладки;
+- оставлю eager только дефолтную вкладку «Организации» и часто открываемые «Пользователи» и «Sales».
 
-### 6. История подборов
-- Маленькая вкладка «История подборов» в «Холодной базе» — показывает запуски из `checko_search_runs` (когда, фильтры, сколько найдено / обогащено, кто запустил).
+То же самое сделаю для `OrganizationDashboard.tsx` (23 импорта вкладок) и `StudentDashboard.tsx` (31 импорт).
+
+## 4. Вынести 300 КБ контрактных PNG из главного бандла
+
+**Где:** `src/constants/contractAssets.ts` (≈300 КБ base64), импортируется из `contractTemplates.ts` и `invoiceTemplate.ts`.
+
+Сейчас эти ассеты тянутся в любой чанк, который трогает шаблон договора/счёта.
+
+Что сделаю:
+- перенесу PNG-base64 в `src/assets/contracts/` как реальные файлы (`signature.png`, `stamp.png`) и буду импортировать через Vite `import sigUrl from '...png'` — Vite сам захэширует и положит как отдельный asset;
+- если base64 нужен именно как строка (для PDF-генерации), сделаю **динамический** `() => import('./contractAssets')` — он попадёт в отдельный чанк и подгрузится только при генерации документа.
+
+Эффект: −300 КБ из общего JS, заметно лучше TTI на холодном кэше.
+
+## 5. Split тяжёлых монолитных компонентов
+
+**Где:** `OrgProfileTab.tsx` (54 КБ), `ContractReviewBody.tsx` (47 КБ), `SignaturesJournal.tsx` (39 КБ), `RichTextEditor.tsx` (44 КБ), `BulkDocumentGenerator.tsx` (35 КБ), `frdoFileSanitizer.ts` (37 КБ).
+
+Что сделаю точечно:
+- `RichTextEditor` — обернуть `lazyWithRetry`, грузить только при открытии редактора;
+- `BulkDocumentGenerator` — lazy, диалог открывается по кнопке;
+- `SignaturesJournal` — lazy внутри вкладки документов;
+- `frdoFileSanitizer` — оставить, но убедиться, что грузится только в `FrdoFileSanitizerDialog` (динамический импорт при открытии);
+- `OrgProfileTab` — разбить на `ProfileBasicInfo`, `ProfileLegalInfo`, `ProfileBranding`, `ProfileCredentials`, чтобы рендер вкладки не тянул всё сразу.
+
+## 6. Поллинг → realtime + visibility-aware
+
+**Где:** `useCheckoApi.ts` (`refetchInterval: 30s`), `OnlineUsersWidget.tsx` (30s), `GenerationHistoryTab.tsx`, `useOrgNewIndicators.ts` (90s).
+
+Что сделаю:
+- глобально оборачиваю интервалы условием `document.visibilityState === 'visible'`, чтобы не дёргать сервер с фоновых вкладок;
+- `checko-stats` дополнительно держу `refetchInterval` только когда раздел «Холодная база» открыт (через `enabled: tab === 'cold-base'`);
+- `OnlineUsersWidget` — увеличу до 60с и поставлю visibility guard.
+
+## 7. Глобальная конфигурация React Query
+
+**Где:** `src/App.tsx`.
+
+Сейчас `staleTime: 30s` для всех запросов — нормальный дефолт, но точечно для справочников он маленький.
+
+Что сделаю:
+- в хуках, где данные меняются редко (категории, регионы, типы лицензий, тарифы, `radio_stations`, `admin_branding`), укажу `staleTime: 5 * 60 * 1000` и `gcTime: 30 * 60 * 1000`;
+- добавлю `placeholderData: keepPreviousData` для пагинированных таблиц (companies, journals), чтобы UI не «прыгал» при смене страницы.
+
+## 8. Точечные индексы в БД
+
+Создам/проверю индексы там, где идут частые фильтры:
+- `lesson_progress (user_id, completed, completed_at desc)`,
+- `test_attempts (user_id, completed_at desc)`,
+- `enrollments (organization_id, status, started_at desc)`,
+- `sales_companies_db (inn)`, `(region)`, `(updated_at desc)` — для холодной базы и фильтров поиска,
+- `checko_pending_inns (created_at)` — для очереди.
+
+Перед созданием прогоню `EXPLAIN` через managed DB tools, добавлю только реально нужные.
+
+## 9. Мелкие правки
+
+- В `useOrganizationsManager` уже после успешного `create/edit/delete` вызывается полный `fetchOrganizations()` — заменю на оптимистичное обновление состояния, чтобы не передёргивать всю таблицу.
+- Убрать в админке двойную подписку Yandex.Metrika (видно 2 счётчика в network) — оставить один, второй грузится зря.
 
 ## Файлы
 
 | Файл | Изменение |
 |---|---|
-| `supabase/functions/checko-search/index.ts` | новая edge-функция (поиск + опциональное обогащение) |
-| `supabase/functions/checko-enrich-batch/index.ts` | вынести `runEnrich` в shared + принимать `inns` от search |
-| миграция | новые таблицы `checko_search_presets`, `checko_search_runs`; колонка `search_requests_count` |
-| `src/components/admin/sales/CheckoSearchDialog.tsx` | новый диалог настройки и запуска подбора |
-| `src/components/admin/sales/CheckoSearchPresets.tsx` | управление сохранёнными пресетами |
-| `src/components/admin/sales/CompaniesDatabase.tsx` | кнопка «Подбор по фильтрам» + история |
-| `src/components/admin/sales/CheckoQuotaBar.tsx` | второй счётчик «Поиск» |
-| `src/hooks/useCheckoSearch.ts` | хук вызова функции, кеши пресетов и истории |
-| `src/data/russianRegions.ts` | справочник 89 регионов РФ (код + название) |
-| `src/data/checkoLicenseTypes.ts` | справочник лицензирующих органов с кодами Checko |
+| `src/hooks/useOrganizationsManager.ts` | один batch-RPC для credentials, count через head:true |
+| миграция | RPC `get_decrypted_org_credentials_batch`, нужные индексы |
+| `src/hooks/useAutoGradesJournal.ts`, `useAutoFinalAttestation.ts` | фильтры по org/датам, нужные колонки, пагинация |
+| `src/pages/AdminDashboard.tsx` | lazyWithRetry для редких вкладок + Suspense |
+| `src/pages/OrganizationDashboard.tsx`, `StudentDashboard.tsx` | то же |
+| `src/constants/contractAssets.ts` + `contractTemplates.ts`, `invoiceTemplate.ts` | вынести PNG в assets/динамический импорт |
+| `src/components/course-builder/RichTextEditor.tsx` (использования) | lazy-обёртка в местах открытия редактора |
+| `src/components/organization/BulkDocumentGenerator.tsx` (использования) | lazy при открытии диалога |
+| `src/components/admin/SignaturesJournal.tsx` (использования) | lazy внутри вкладки документов |
+| `src/components/organization/tabs/OrgProfileTab.tsx` | разбиение на 4 файла |
+| `src/hooks/useCheckoApi.ts`, `OnlineUsersWidget.tsx`, `useOrgNewIndicators.ts` | visibility-aware polling |
+| `src/hooks/use*` (справочники) | staleTime 5мин, keepPreviousData |
+| `index.html` | оставить один счётчик Метрики |
 
-## Доступ
-- Полный доступ к подбору — только у **администраторов платформы** (как и сейчас «Холодная база»), потому что бесплатная квота общая.
-- Для организаций раздел остаётся скрытым (`hideColdBase` в `CompaniesUnified`).
+## Что НЕ трогаю
 
-## Что НЕ делаем
-- Не платим за расширение тарифа Checko — работаем строго в рамках бесплатных 100 карточек + 100 поисков/день.
-- Не добавляем фильтр по ОКВЭДам глубоким деревом — простой текстовый ввод нескольких кодов.
-- Не дублируем функционал DaData (там уже есть `dadata-company` для одиночного поиска по ИНН).
-- Не меняем структуру `sales_companies_db` — туда складываются те же данные, что и сейчас при обогащении.
+- Логику бизнес-функций (CRM, ФРДО, маркетплейс, обучение) — только обвязка.
+- `src/integrations/supabase/types.ts` — авто-генерируемый.
+- Дизайн и внешний вид кабинетов.
+- Порядок работы Lovable Cloud / SMTP / Kinescope / GigaChat.
 
-## Ожидаемый результат
+## Ожидаемый эффект
 
-В админке `/admin` → «Продажи» → «Холодная база» появится кнопка **«Подбор по фильтрам»**:
-1. Выбираю регион «Москва» + лицензирующий орган «Рособрнадзор» → нажимаю «Найти».
-2. Система говорит: «Найдено 1 247 компаний с образовательной лицензией в Москве».
-3. Жму «Обогатить сейчас» → получаю 100 карточек в `sales_companies_db`, остальные 1 147 ИНН попадают в очередь и обогатятся автоматически в ближайшие дни (по 100/сутки через уже работающий cron `checko-daily-enrich`).
-4. Все компании сразу доступны в таблице с теми же фильтрами и экспортом XLSX, что и сейчас.
+- Главный JS-бандл − ориентировочно 350-500 КБ (за счёт lazy-вкладок и выноса PNG).
+- Загрузка `/admin`: 20+ параллельных запросов → 2-3.
+- Журналы оценок: вместо «select * по всей таблице» — выборка только за нужный месяц и нужную организацию.
+- Меньше фоновой нагрузки на postgrest и edge-функции из-за visibility-aware поллинга.
 
