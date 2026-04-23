@@ -108,10 +108,7 @@ export function HeroBannerSwiper({ children, className = "" }: HeroBannerSwiperP
       />
 
       {/* Top gradient overlay (for text readability) */}
-      <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/25 to-transparent" />
-
-      {/* Bottom fade — softens the banner edge into page background */}
-      <div className="absolute inset-x-0 bottom-0 h-16 lg:h-20 bg-gradient-to-b from-transparent to-background pointer-events-none z-[1]" />
+      <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-black/15 to-transparent" />
 
       {/* Arrow buttons — visible on hover (desktop) */}
       <button
