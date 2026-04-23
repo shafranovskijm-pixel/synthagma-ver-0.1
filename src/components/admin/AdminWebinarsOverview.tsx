@@ -374,12 +374,20 @@ export function AdminWebinarsOverview() {
           <Table>
             <TableHeader>
               <TableRow>
+                <TableHead className="w-10">
+                  <Checkbox
+                    checked={filtered.length > 0 && selectedIds.size === filtered.length}
+                    onCheckedChange={toggleSelectAll}
+                    aria-label="Выделить всё"
+                  />
+                </TableHead>
                 <TableHead>Название</TableHead>
                 <TableHead>Организация</TableHead>
                 <TableHead>Дата</TableHead>
                 <TableHead>Длит.</TableHead>
                 <TableHead>Источник</TableHead>
                 <TableHead>Статус</TableHead>
+                <TableHead>Запись</TableHead>
                 <TableHead className="text-right">Действия</TableHead>
               </TableRow>
             </TableHeader>
@@ -390,8 +398,19 @@ export function AdminWebinarsOverview() {
                   w.source_type === "livekit" ||
                   (w.source_type === "kinescope" && (w.kinescope_live_id || w.kinescope_video_id)) ||
                   (w.source_type === "external" && (w.embed_url || w.external_url));
+                const recStatus = (w as any).recording_status as string | null;
+                const recUrl = (w as any).recording_url as string | null;
+                const recSize = (w as any).recording_size_bytes as number | null;
+                const recSizeMb = recSize ? (recSize / (1024 * 1024)).toFixed(0) : null;
                 return (
-                  <TableRow key={w.id}>
+                  <TableRow key={w.id} data-state={selectedIds.has(w.id) ? "selected" : undefined}>
+                    <TableCell>
+                      <Checkbox
+                        checked={selectedIds.has(w.id)}
+                        onCheckedChange={() => toggleSelect(w.id)}
+                        aria-label={`Выбрать ${w.title}`}
+                      />
+                    </TableCell>
                     <TableCell className="font-medium max-w-[280px] truncate">{w.title}</TableCell>
                     <TableCell>
                       <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
@@ -420,6 +439,30 @@ export function AdminWebinarsOverview() {
                     <TableCell>
                       <Badge variant={status.variant}>{status.label}</Badge>
                     </TableCell>
+                    <TableCell className="text-xs">
+                      {recStatus === "active" || recStatus === "starting" ? (
+                        <span className="inline-flex items-center gap-1 text-destructive font-medium">
+                          <CircleDot className="h-3 w-3 animate-pulse" /> Идёт
+                        </span>
+                      ) : recStatus === "processing" || recStatus === "stopped" ? (
+                        <span className="inline-flex items-center gap-1 text-amber-600">
+                          <Loader2 className="h-3 w-3 animate-spin" /> Обработка
+                        </span>
+                      ) : recUrl ? (
+                        <a
+                          href={recUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1 text-primary hover:underline"
+                          title="Открыть/скачать запись"
+                        >
+                          <Download className="h-3 w-3" />
+                          MP4{recSizeMb ? ` ${recSizeMb} МБ` : ""}
+                        </a>
+                      ) : (
+                        <span className="text-muted-foreground">—</span>
+                      )}
+                    </TableCell>
                     <TableCell className="text-right">
                       <div className="flex items-center justify-end gap-1">
                         {canPlay && (
@@ -430,6 +473,16 @@ export function AdminWebinarsOverview() {
                             title="Открыть встроенный плеер"
                           >
                             <Play className="h-4 w-4" />
+                          </Button>
+                        )}
+                        {recUrl && (
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => setPreviewWebinar(w)}
+                            title="Просмотр записи"
+                          >
+                            <Eye className="h-4 w-4" />
                           </Button>
                         )}
                         {w.source_type === "external" && w.external_url && (
