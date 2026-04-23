@@ -297,9 +297,18 @@ export function PricingPlans() {
                       )}
                     </div>
 
-                    {/* Features */}
+                    {/* Features — доступные сверху, недоступные внизу */}
                     <div className="space-y-2.5 mb-6 flex-1">
-                      {featureRows.map((row) => {
+                      {[...featureRows]
+                        .sort((a, b) => {
+                          const av = a.getValue(planId);
+                          const bv = b.getValue(planId);
+                          const aDisabled = typeof av === 'boolean' && av === false;
+                          const bDisabled = typeof bv === 'boolean' && bv === false;
+                          if (aDisabled === bDisabled) return 0;
+                          return aDisabled ? 1 : -1;
+                        })
+                        .map((row) => {
                         const val = row.getValue(planId);
                         const isBool = typeof val === 'boolean';
                         const isAccent = typeof val === 'string' && val === 'ФРДО+' || row.label === 'Вебинары' || row.label === 'Видеосервис+' || row.label === '3D-тренажёры';
