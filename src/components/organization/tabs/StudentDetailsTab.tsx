@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, User, FileText, Video, BookOpen, Clock, MessageCircle, LogIn } from "lucide-react";
+import { ArrowLeft, User, FileText, Video, BookOpen, Clock, MessageCircle, LogIn, Send } from "lucide-react";
+import { SendForSigningDialog, type SendForSigningPayload } from "@/components/signing/SendForSigningDialog";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { useOrgDashboard } from "@/contexts/OrgDashboardContext";
