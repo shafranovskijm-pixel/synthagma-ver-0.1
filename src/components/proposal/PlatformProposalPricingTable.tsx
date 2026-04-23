@@ -30,14 +30,6 @@ export function PlatformProposalPricingTable() {
         </thead>
         <tbody>
           <tr className="border-b border-border/60">
-            <td className="p-3 font-medium">Хранилище файлов</td>
-            {PLAN_ORDER.map((p) => (
-              <td key={p} className={`p-3 text-center text-xs ${p === 'standard' ? 'bg-accent/5' : ''}`}>
-                <span className="font-semibold text-accent">Безлимит</span>
-              </td>
-            ))}
-          </tr>
-          <tr className="border-b border-border/60">
             <td className="p-3 font-medium">Обучений в месяц</td>
             {PLAN_ORDER.map((p) => {
               const v = SUBSCRIPTION_PLANS[p].limits.maxTrainedPerMonth;
