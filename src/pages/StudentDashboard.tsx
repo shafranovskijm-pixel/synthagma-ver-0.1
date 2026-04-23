@@ -54,7 +54,7 @@ function loadTBankSdk(): Promise<void> {
 function CatalogContent({
   catalogCourses, categories, handleCourseClick,
   enrolledCourses, isVideoIdentified, totalProgress, totalTimeSpent, totalCompletedLessons, formatTime,
-  user, contentTab,
+  user, contentTab, isAdminView,
 }: any) {
   const [confirmCourse, setConfirmCourse] = useState<any>(null);
   const [enrollCourse, setEnrollCourse] = useState<any>(null);
@@ -177,6 +177,7 @@ function CatalogContent({
           formatTime={formatTime}
           onBuy={handleBuy}
           onEnroll={handleEnroll}
+          isAdminView={isAdminView}
         />
       )}
       {contentTab === "webinars" && <StudentWebinarsList />}
@@ -293,7 +294,8 @@ export default function StudentDashboard() {
     if (isEnrolled) {
       const course = courses.find(c => c.id === courseId);
       const needsVerification = course?.skip_video_identification === false && !isVideoIdentified;
-      if (needsVerification) {
+      // Admin/manager preview bypasses the video-identification gate.
+      if (!isAdminView && needsVerification) {
         toast.error("Требуется видеоидентификация", { description: "Пройдите видеоидентификацию перед началом курса" });
         setShowVideoIdentification(true);
         return;
@@ -407,6 +409,7 @@ export default function StudentDashboard() {
                   formatTime={formatTime}
                   user={user}
                   contentTab="courses"
+                  isAdminView={isAdminView}
                 />
               )}
 

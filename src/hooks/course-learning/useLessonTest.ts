@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { safeInvoke } from "@/utils/safeInvoke";
 import { toast } from "sonner";
+import { isAdminViewActive } from "@/utils/adminViewMode";
 import type { Lesson, LessonProgress, TestQuestion } from "./types";
 
 interface UseLessonTestParams {
@@ -96,6 +97,10 @@ export function useLessonTest({
 
   const submitTest = async () => {
     if (!currentLesson || !user) return;
+    if (isAdminViewActive()) {
+      toast.info('Отправка теста недоступна в режиме просмотра администратора');
+      return;
+    }
     if (testQuestions.length === 0) { toast.error('Нет вопросов для теста.'); return; }
     await saveLessonTime();
     const shownIds = testQuestions.map(q => q.id);

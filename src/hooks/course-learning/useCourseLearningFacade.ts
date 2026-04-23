@@ -11,6 +11,7 @@ import { setupOfflineSyncListeners } from "@/utils/offlineSync";
 import { showLimitToast } from "@/utils/limitToast";
 import { ContentBlock, parseLessonContent } from "@/components/course-builder/BlockEditor";
 import { generateAttestationProtocol } from "@/utils/generateAttestationProtocol";
+import { getAdminViewData, isAdminViewActive } from "@/utils/adminViewMode";
 
 import type { Lesson, Course, LessonProgress } from "./types";
 import { useLessonTTS } from "./useLessonTTS";
@@ -34,6 +35,13 @@ export function useCourseLearning() {
   const isMobile = useIsMobile();
   const contentRef = useRef<HTMLDivElement>(null);
   const lessonStartTimeRef = useRef<number>(Date.now());
+
+  // Admin/manager "view as student" mode — read once per mount.
+  // While active: load target student's data, skip video-id check, never write to DB.
+  const adminViewRef = useRef(getAdminViewData());
+  const adminView = adminViewRef.current;
+  const isAdminView = adminView !== null;
+  const effectiveUserId = adminView?.userId || user?.id;
 
   const [course, setCourse] = useState<Course | null>(null);
   const [lessons, setLessons] = useState<Lesson[]>([]);
@@ -65,10 +73,11 @@ export function useCourseLearning() {
   // Parse content blocks
   const contentBlocks: ContentBlock[] = currentLesson?.content ? parseContentToBlocks(currentLesson.content) : [];
 
-  // Sub-hooks
-  const videoHook = useLessonVideo({ userId: user?.id, currentLesson });
+  // Sub-hooks — always use effective user id so admin sees student's video state
+  const videoHook = useLessonVideo({ userId: effectiveUserId, currentLesson });
 
   const saveLessonTime = useCallback(async (lessonId?: string) => {
+    if (isAdminView) return; // never write progress in admin view
     const lid = lessonId || currentLesson?.id;
     if (!lid || !user || !enrollmentId) return;
     const elapsed = Math.floor((Date.now() - lessonStartTimeRef.current) / 1000);
@@ -78,9 +87,10 @@ export function useCourseLearning() {
       await supabase.rpc('increment_lesson_time', { p_lesson_id: lid, p_user_id: user.id, p_seconds: elapsed });
       await supabase.rpc('recalc_enrollment_time', { p_enrollment_id: enrollmentId });
     } catch (err) { console.error('[saveLessonTime] error:', err); }
-  }, [currentLesson?.id, user, enrollmentId]);
+  }, [currentLesson?.id, user, enrollmentId, isAdminView]);
 
   const handleCourseCompletion = async (testScoreData?: { score: number; max: number }) => {
+    if (isAdminView) return; // never complete the student's course in admin view
     if (!course || !user || !courseId) return;
     try {
       const { data: profile } = await supabase.from('profiles').select('full_name, organization_id').eq('user_id', user.id).maybeSingle();
@@ -170,6 +180,11 @@ export function useCourseLearning() {
 
   const markLessonComplete = async (autoAdvance = true) => {
     if (!currentLesson || !user) return;
+    if (isAdminView) {
+      // Admin preview — just navigate forward without writing progress.
+      if (autoAdvance) goToNextLesson();
+      return;
+    }
     if (isLessonCompleted(currentLesson.id)) { if (autoAdvance) goToNextLesson(); return; }
 
     await saveLessonTime();
@@ -193,6 +208,7 @@ export function useCourseLearning() {
   };
 
   const resetCourseProgress = async () => {
+    if (isAdminView) { toast.info('Сброс прогресса недоступен в режиме просмотра'); return; }
     if (!user || !courseId) return;
     try {
       const lessonIds = lessons.map(l => l.id);
@@ -207,6 +223,7 @@ export function useCourseLearning() {
   };
 
   const submitFeedback = async () => {
+    if (isAdminView) { toast.info('Отправка отзывов недоступна в режиме просмотра'); return; }
     if (!currentLesson || !user || !feedbackAnswer.trim()) return;
     setFeedbackSending(true);
     try {
@@ -247,8 +264,9 @@ export function useCourseLearning() {
     lessonStartTimeRef.current = Date.now();
   }, [currentLesson?.id]);
 
-  // Save time on page unload / visibility change
+  // Save time on page unload / visibility change — disabled in admin preview
   useEffect(() => {
+    if (isAdminView) return;
     if (!user || !enrollmentId) return;
     const handleBeforeUnload = () => {
       const lid = currentLesson?.id;
@@ -265,21 +283,25 @@ export function useCourseLearning() {
     window.addEventListener('beforeunload', handleBeforeUnload);
     document.addEventListener('visibilitychange', handleVisibility);
     return () => { window.removeEventListener('beforeunload', handleBeforeUnload); document.removeEventListener('visibilitychange', handleVisibility); };
-  }, [user, enrollmentId, currentLesson?.id, saveLessonTime]);
+  }, [user, enrollmentId, currentLesson?.id, saveLessonTime, isAdminView]);
 
   const fetchCourseData = async () => {
     try {
+      const lookupUserId = effectiveUserId; // target student in admin view, otherwise current user
       const [courseResult, lessonsResult, enrollmentResult] = await Promise.all([
         supabase.from('courses').select('*').eq('id', courseId).single(),
         supabase.from('lessons').select('*').eq('course_id', courseId).order('order_index'),
-        supabase.from('enrollments').select('*').eq('course_id', courseId).eq('user_id', user!.id).maybeSingle(),
+        lookupUserId
+          ? supabase.from('enrollments').select('*').eq('course_id', courseId).eq('user_id', lookupUserId).maybeSingle()
+          : Promise.resolve({ data: null, error: null }),
       ]);
       if (courseResult.error) throw courseResult.error;
       const courseData = courseResult.data;
       setCourse(courseData);
       setIsOfflineMode(false);
 
-      if (courseData.skip_video_identification === false && user) {
+      // Skip the video-identification gate when an admin/manager is previewing.
+      if (!isAdminView && courseData.skip_video_identification === false && user) {
         const { data: profileData } = await supabase.from('profiles').select('organization_id').eq('user_id', user.id).maybeSingle();
         if (profileData?.organization_id) {
           const { data: videoId } = await supabase.from('video_identifications').select('status').eq('user_id', user.id).eq('organization_id', profileData.organization_id).in('status', ['approved', 'verified']).limit(1).maybeSingle();
@@ -293,13 +315,13 @@ export function useCourseLearning() {
       if (lessonsResult.error) throw lessonsResult.error;
       let lessonsData = lessonsResult.data || [];
 
-      // Apply module access schedules + per-user overrides
+      // Apply module access schedules + per-user overrides (use target student's id in admin view)
       try {
         const moduleIds = Array.from(new Set(lessonsData.map((l: any) => l.module_id).filter(Boolean)));
-        if (moduleIds.length > 0 && user) {
+        if (moduleIds.length > 0 && lookupUserId) {
           const [schedRes, ovrRes] = await Promise.all([
             supabase.from("module_access_schedules" as never).select("module_id, unlock_at").in("module_id", moduleIds as string[]),
-            supabase.from("module_access_overrides" as never).select("module_id, unlock_at").in("module_id", moduleIds as string[]).eq("user_id", user.id),
+            supabase.from("module_access_overrides" as never).select("module_id, unlock_at").in("module_id", moduleIds as string[]).eq("user_id", lookupUserId),
           ]);
           const schedMap = new Map<string, string>();
           ((schedRes.data as any[]) || []).forEach((r) => schedMap.set(r.module_id, r.unlock_at));
@@ -317,12 +339,17 @@ export function useCourseLearning() {
 
       let enrollment = enrollmentResult.data;
       if (!enrollment) {
-        toast.error('Вы не записаны на этот курс', { description: 'Отправьте заявку на запись через каталог курсов' });
-        navigate('/student');
-        return;
+        if (isAdminView) {
+          // Admin preview: continue without enrollment so admin can browse the course content.
+          toast.info('Просмотр курса в режиме администратора', { description: 'Прогресс не сохраняется' });
+        } else {
+          toast.error('Вы не записаны на этот курс', { description: 'Отправьте заявку на запись через каталог курсов' });
+          navigate('/student');
+          return;
+        }
       }
 
-      if (enrollment && (enrollment as Record<string, unknown>).expires_at) {
+      if (!isAdminView && enrollment && (enrollment as Record<string, unknown>).expires_at) {
         const expiresAt = new Date((enrollment as Record<string, unknown>).expires_at as string);
         if (expiresAt < new Date() && enrollment.status !== 'completed') {
           toast.error('Доступ к курсу истёк', { description: 'Срок доступа к этому курсу закончился. Обратитесь к администратору.' });
@@ -333,19 +360,22 @@ export function useCourseLearning() {
 
       if (enrollment) {
         setEnrollmentId(enrollment.id);
-        const orgId = await supabase.from('profiles').select('organization_id').eq('user_id', user!.id).maybeSingle();
-        supabase.from('course_access_log').insert({
-          user_id: user!.id, course_id: courseId!, organization_id: orgId?.data?.organization_id || null, user_agent: navigator.userAgent,
-        }).then(() => {});
+        // Don't write access logs in admin preview mode.
+        if (!isAdminView && user) {
+          const orgId = await supabase.from('profiles').select('organization_id').eq('user_id', user.id).maybeSingle();
+          supabase.from('course_access_log').insert({
+            user_id: user.id, course_id: courseId!, organization_id: orgId?.data?.organization_id || null, user_agent: navigator.userAgent,
+          }).then(() => {});
+        }
       }
 
       const courseLessonIds = lessonsData.map((l: Lesson) => l.id);
       let progressData: LessonProgress[] = [];
       let attMap: Record<string, typeof lessonAttachments[string]> = {};
 
-      if (courseLessonIds.length > 0) {
+      if (courseLessonIds.length > 0 && lookupUserId) {
         const [progressResult, attachmentsResult] = await Promise.all([
-          supabase.from('lesson_progress').select('lesson_id, completed').eq('user_id', user!.id).in('lesson_id', courseLessonIds),
+          supabase.from('lesson_progress').select('lesson_id, completed').eq('user_id', lookupUserId).in('lesson_id', courseLessonIds),
           supabase.from('lesson_attachments').select('*').in('lesson_id', courseLessonIds).order('order_index'),
         ]);
         if (attachmentsResult.error) console.error('Error fetching lesson attachments:', attachmentsResult.error);
@@ -398,6 +428,7 @@ export function useCourseLearning() {
     course, lessons, currentLesson, currentLessonIndex, loading, enrollmentId,
     lessonProgress, completedCount, progressPercent, isMobile, user, courseId, lessonAttachments,
     isOfflineMode, offlineCachedAt,
+    isAdminView, adminViewStudentName: adminView?.name || '',
     navigate, goToNextLesson, goToPrevLesson, goToLesson, isTransitioning,
     sidebarOpen, setSidebarOpen, isLessonCompleted, isLessonAccessible,
     markLessonComplete, resetCourseProgress,
