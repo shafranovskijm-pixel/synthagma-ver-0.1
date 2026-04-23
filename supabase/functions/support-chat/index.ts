@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { callAI } from "../_shared/gigachat-client.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -48,62 +49,22 @@ function shouldEscalate(text: string): boolean {
   return ESCALATION_KEYWORDS.some(kw => lower.includes(kw));
 }
 
-async function callLovableAI(messages: Array<{ role: string; content: string }>): Promise<string> {
-  const apiKey = Deno.env.get("LOVABLE_API_KEY");
-  if (!apiKey) throw new Error("LOVABLE_API_KEY missing");
-
-  const resp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-    method: "POST",
-    headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
-    body: JSON.stringify({
-      model: "google/gemini-2.5-flash",
-      messages: [{ role: "system", content: SYSTEM_PROMPT }, ...messages],
-    }),
-  });
-
-  if (!resp.ok) {
-    const errText = await resp.text();
-    throw new Error(`Lovable AI ${resp.status}: ${errText}`);
-  }
-  const data = await resp.json();
-  return data.choices?.[0]?.message?.content ?? "Извините, не удалось сформировать ответ.";
-}
-
-async function callGigaChat(messages: Array<{ role: string; content: string }>): Promise<string> {
-  const authKey = Deno.env.get("GIGACHAT_AUTH_KEY") || Deno.env.get("GIGACHAT_AUTH_KEY_2") || Deno.env.get("GIGACHAT_AUTH_KEY_3");
-  if (!authKey) throw new Error("GIGACHAT_AUTH_KEY missing");
-
-  // Получаем access token
-  const tokenResp = await fetch("https://ngw.devices.sberbank.ru:9443/api/v2/oauth", {
-    method: "POST",
-    headers: {
-      Authorization: `Basic ${authKey}`,
-      "Content-Type": "application/x-www-form-urlencoded",
-      "RqUID": crypto.randomUUID(),
-      Accept: "application/json",
-    },
-    body: "scope=GIGACHAT_API_PERS",
-  });
-  if (!tokenResp.ok) throw new Error(`GigaChat token ${tokenResp.status}`);
-  const { access_token } = await tokenResp.json();
-
-  const resp = await fetch("https://gigachat.devices.sberbank.ru/api/v1/chat/completions", {
-    method: "POST",
-    headers: { Authorization: `Bearer ${access_token}`, "Content-Type": "application/json" },
-    body: JSON.stringify({
-      model: "GigaChat",
-      messages: [{ role: "system", content: SYSTEM_PROMPT }, ...messages],
-      temperature: 0.4,
-    }),
-  });
-  if (!resp.ok) throw new Error(`GigaChat ${resp.status}`);
-  const data = await resp.json();
-  const content = data.choices?.[0]?.message?.content ?? "";
-  // GigaChat иногда возвращает модерационные отказы — пропускаем такие к Lovable AI
-  if (/я не могу|не уполномочен|не в моих правилах/i.test(content)) {
-    throw new Error("GigaChat moderation refusal");
-  }
-  return content;
+/**
+ * Вызов ИИ через общий клиент: пробует все 3 GigaChat-слота по очереди,
+ * при исчерпании токенов (402) или 429 переключается на следующий ключ,
+ * финально откатывается на Lovable AI (Gemini).
+ */
+async function callSupportAI(messages: Array<{ role: string; content: string }>): Promise<string> {
+  const fullMessages = [{ role: "system", content: SYSTEM_PROMPT }, ...messages];
+  const { text, model } = await callAI(
+    fullMessages,
+    1024,
+    "gigachat",            // preferredProvider — сначала все 3 GigaChat-слота, затем Lovable AI
+    "GigaChat-Pro",
+    "google/gemini-2.5-flash",
+  );
+  console.log(`[support-chat] AI answered via ${model}`);
+  return text || "Извините, не удалось сформировать ответ.";
 }
 
 async function sendToTelegramTopic(
@@ -314,18 +275,14 @@ serve(async (req) => {
       content: m.content,
     }));
 
-    // Вызываем ИИ: GigaChat → Lovable AI fallback
+    // Вызываем ИИ: общий клиент сам обходит все 3 GigaChat-слота и финально Lovable AI
     let aiResponse = "";
     let aiError: Error | null = null;
     try {
-      aiResponse = await callGigaChat(aiMessages);
+      aiResponse = await callSupportAI(aiMessages);
     } catch (e) {
-      console.warn("GigaChat failed, fallback to Lovable AI:", e);
-      try {
-        aiResponse = await callLovableAI(aiMessages);
-      } catch (e2) {
-        aiError = e2 as Error;
-      }
+      console.warn("[support-chat] All AI providers exhausted:", e);
+      aiError = e as Error;
     }
 
     if (aiError || !aiResponse) {
