@@ -89,15 +89,73 @@ export function useAdminBilling() {
   const [activeSection, setActiveSection] = useState<ActiveSection>("all");
   const [selectedOrgId, setSelectedOrgId] = useState<string>("");
 
-  const selectedOrg = orgs.find(o => o.id === selectedOrgId);
-  const orgContracts = contracts.filter(c => c.organization_id === selectedOrgId);
-  const orgInvoices = invoices.filter(i => i.organization_id === selectedOrgId);
-  const orgClosingDocs = billingDocs.filter(d => d.organization_id === selectedOrgId);
+  // Contract dialog
+  const [showCreateContract, setShowCreateContract] = useState(false);
+  const [contractForm, setContractForm] = useState({ organization_id: "", contract_number: "", contract_date: "" });
+  const [submitting, setSubmitting] = useState(false);
+
+  // Invoice dialog
+  const [showInvoiceDialog, setShowInvoiceDialog] = useState(false);
+  const [generatingInvoice, setGeneratingInvoice] = useState(false);
+  const [invoiceOtherPayer, setInvoiceOtherPayer] = useState(false);
+  const [invoiceBuyerName, setInvoiceBuyerName] = useState("");
+  const [invoiceBuyerInn, setInvoiceBuyerInn] = useState("");
+  const [invoiceBuyerKpp, setInvoiceBuyerKpp] = useState("");
+  const [innSearching, setInnSearching] = useState(false);
+  const [pendingInvoice, setPendingInvoice] = useState<{ html: string; insertData: any; invoiceNum: string; amount: number; plan: string } | null>(null);
+
+  // Act dialog
+  const [showActDialog, setShowActDialog] = useState(false);
+  const [actDate, setActDate] = useState<Date>(new Date());
+  const [actBasis, setActBasis] = useState("");
+  const [actAmount, setActAmount] = useState("");
+  const [actSubmitting, setActSubmitting] = useState(false);
+  const [actOtherCustomer, setActOtherCustomer] = useState(false);
+  const [actCustomerName, setActCustomerName] = useState("");
+  const [actCustomerInn, setActCustomerInn] = useState("");
+  const [actCustomerKpp, setActCustomerKpp] = useState("");
+  const [actCustomerDirector, setActCustomerDirector] = useState("");
+  const [actCustomerPosition, setActCustomerPosition] = useState("");
+  const [actInnSearching, setActInnSearching] = useState(false);
+  const [pendingAct, setPendingAct] = useState<GeneratedAct | null>(null);
+
+  // Invoice selection
+  const [selectedInvoiceIds, setSelectedInvoiceIds] = useState<Set<string>>(new Set());
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+
+  const { data, isLoading: loading } = useQuery({
+    queryKey: ADMIN_BILLING_KEY,
+    queryFn: fetchAdminBillingData,
+    staleTime: 60_000,
+    gcTime: 5 * 60_000,
+  });
+
+  const invoices = data?.invoices ?? [];
+  const billingDocs = data?.billingDocs ?? [];
+  const contracts = data?.contracts ?? [];
+  const orgs = data?.orgs ?? [];
+
+  const loadData = useCallback(() => {
+    qc.invalidateQueries({ queryKey: ADMIN_BILLING_KEY });
+  }, [qc]);
+
+  const setBillingDocs = useCallback((updater: (prev: BillingDoc[]) => BillingDoc[]) => {
+    qc.setQueryData<BillingData>(ADMIN_BILLING_KEY, (old) => {
+      if (!old) return old;
+      return { ...old, billingDocs: updater(old.billingDocs) };
+    });
+  }, [qc]);
+
+  const selectedOrg = useMemo(() => orgs.find(o => o.id === selectedOrgId), [orgs, selectedOrgId]);
+  const orgContracts = useMemo(() => contracts.filter(c => c.organization_id === selectedOrgId), [contracts, selectedOrgId]);
+  const orgInvoices = useMemo(() => invoices.filter(i => i.organization_id === selectedOrgId), [invoices, selectedOrgId]);
+  const orgClosingDocs = useMemo(() => billingDocs.filter(d => d.organization_id === selectedOrgId), [billingDocs, selectedOrgId]);
 
   const matchSearch = (text: string) => !search || text.toLowerCase().includes(search.toLowerCase());
-  const filteredInvoices = invoices.filter(i => matchSearch(i.invoice_number) || matchSearch(i.org_name || ""));
-  const filteredDocs = billingDocs.filter(d => matchSearch(d.name) || matchSearch(d.org_name || ""));
-  const filteredContracts = contracts.filter(c => matchSearch(c.contract_number || "") || matchSearch(c.org_name || ""));
+  const filteredInvoices = useMemo(() => invoices.filter(i => matchSearch(i.invoice_number) || matchSearch(i.org_name || "")), [invoices, search]);
+  const filteredDocs = useMemo(() => billingDocs.filter(d => matchSearch(d.name) || matchSearch(d.org_name || "")), [billingDocs, search]);
+  const filteredContracts = useMemo(() => contracts.filter(c => matchSearch(c.contract_number || "") || matchSearch(c.org_name || "")), [contracts, search]);
 
   const handleViewDoc = async (doc: BillingDoc) => {
     const url = await getSignedStorageUrl("billing-documents", doc.file_url);
