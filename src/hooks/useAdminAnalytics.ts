@@ -141,8 +141,10 @@ export function useAdminAnalytics() {
   });
 
   const periodDays = parseInt(period);
-  const startDate = subDays(new Date(), periodDays);
-  const dateRange = eachDayOfInterval({ start: startDate, end: new Date() });
+  const dateRange = useMemo(
+    () => eachDayOfInterval({ start: subDays(new Date(), periodDays), end: new Date() }),
+    [periodDays]
+  );
 
   const profilesMap = useMemo(() => {
     if (!data) return new Map<string, ProfileInfo>();
