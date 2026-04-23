@@ -19,6 +19,7 @@ import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import { OrganizationDetailsView } from "./OrganizationDetailsView";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
+import { TableSkeleton } from "@/components/shared/TableSkeleton";
 import { useOrganizationsManager, type Organization } from "@/hooks/useOrganizationsManager";
 import { OrgFormDialog } from "./organizations/OrgFormDialog";
 import { OrgStatsCards } from "./organizations/OrgStatsCards";
@@ -31,7 +32,15 @@ interface OrganizationsManagerProps {
 export function OrganizationsManager({ openOrgId, onOpenOrgHandled }: OrganizationsManagerProps = {}) {
   const h = useOrganizationsManager(openOrgId, onOpenOrgHandled);
 
-  if (h.loading) return <div className="flex items-center justify-center py-12"><SigmaSpinner size="lg" /></div>;
+  if (h.loading) return (
+    <div className="space-y-6">
+      <div>
+        <h2 className="text-2xl font-display font-bold">Организации</h2>
+        <p className="text-muted-foreground">Управление организациями платформы</p>
+      </div>
+      <TableSkeleton rows={6} cols={5} />
+    </div>
+  );
 
   if (h.viewingOrg) return <OrganizationDetailsView organization={h.viewingOrg} onBack={() => { h.setViewingOrg(null); h.fetchOrganizations(); }} />;
 

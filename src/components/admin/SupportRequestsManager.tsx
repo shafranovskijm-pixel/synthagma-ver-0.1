@@ -6,6 +6,8 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { MessageSquare, ExternalLink, RefreshCw, ChevronDown, ChevronUp, Clock, User, Globe, AlertTriangle } from "lucide-react";
+import { TableSkeleton } from "@/components/shared/TableSkeleton";
+import { EmptyState } from "@/components/shared/EmptyState";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import { toast } from "sonner";
@@ -138,13 +140,16 @@ export function SupportRequestsManager() {
         </div>
       </div>
 
+      {loading && requests.length === 0 && (
+        <TableSkeleton rows={4} cols={4} withHeader={false} />
+      )}
+
       {requests.length === 0 && !loading && (
-        <Card>
-          <CardContent className="py-12 text-center text-muted-foreground">
-            <MessageSquare className="w-12 h-12 mx-auto mb-3 opacity-30" />
-            <p>Нет обращений</p>
-          </CardContent>
-        </Card>
+        <EmptyState
+          icon={MessageSquare}
+          title="Нет обращений"
+          description="Здесь появятся заявки и сообщения от пользователей платформы."
+        />
       )}
 
       <div className="space-y-3">
