@@ -1,3 +1,4 @@
+import { lazy, Suspense } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import {
   AlertDialog,
@@ -15,7 +16,8 @@ import { Link, Copy, Send, FileText, Trash2, BarChart3, History, RotateCcw } fro
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { CourseTestReport } from "@/components/organization/CourseTestReport";
-import { EnrollmentHistory } from "@/components/organization/EnrollmentHistory";
+// EnrollmentHistory pulls in recharts (~200KB) — load it only when the history block renders
+const EnrollmentHistory = lazy(() => import("@/components/organization/EnrollmentHistory").then(m => ({ default: m.EnrollmentHistory })));
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 
 interface Course {
@@ -290,11 +292,13 @@ export function CourseStudentsDialog({
                   <History className="w-4 h-4" />
                   История зачислений
                 </h3>
-                <EnrollmentHistory
-                  courseId={course.id}
-                  organizationId={organizationId}
-                  courseName={course.title}
-                />
+                <Suspense fallback={<div className="text-sm text-muted-foreground">Загрузка истории…</div>}>
+                  <EnrollmentHistory
+                    courseId={course.id}
+                    organizationId={organizationId}
+                    courseName={course.title}
+                  />
+                </Suspense>
               </div>
             )}
           </div>

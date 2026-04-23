@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, lazy, Suspense } from "react";
 import {
   ClipboardList, Award, GraduationCap, FileCheck,
   FileText, Upload, BookOpen, Wrench, Building2, ScrollText,
@@ -16,7 +16,8 @@ import { ContractGenerator } from "@/components/organization/ContractGenerator";
 import { SignaturesJournal } from "@/components/signing/SignaturesJournal";
 import { DataSubjectRequestsManager } from "@/components/organization/DataSubjectRequestsManager";
 import { IncomingDocumentsManager } from "@/components/organization/IncomingDocumentsManager";
-import { DocumentsKpiDashboard } from "@/components/organization/DocumentsKpiDashboard";
+// DocumentsKpiDashboard pulls in recharts (~200KB) — load it only when the KPI section renders
+const DocumentsKpiDashboard = lazy(() => import("@/components/organization/DocumentsKpiDashboard").then(m => ({ default: m.DocumentsKpiDashboard })));
 import { RecycleBinManager } from "@/components/organization/RecycleBinManager";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -241,10 +242,12 @@ export const DocumentsTab = React.memo(function DocumentsTab({ organizationId, o
 
         <div className="p-4 lg:p-6">
           {h.activeTab === "kpi" && (
-            <DocumentsKpiDashboard
-              organizationId={organizationId}
-              onNavigate={(tab, prefilter) => h.setActiveTab(tab as DocumentSubTab, prefilter)}
-            />
+            <Suspense fallback={<div className="flex justify-center py-8 text-sm text-muted-foreground">Загрузка дашборда…</div>}>
+              <DocumentsKpiDashboard
+                organizationId={organizationId}
+                onNavigate={(tab, prefilter) => h.setActiveTab(tab as DocumentSubTab, prefilter)}
+              />
+            </Suspense>
           )}
           {h.activeTab === "constructor" && (
             <ConstructorSection

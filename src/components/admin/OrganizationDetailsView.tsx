@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -8,10 +9,12 @@ import { ArrowLeft, Users, BookOpen, Settings, Crown, History, MessageSquare, Be
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import { useOrgDetailsView, type Organization } from "@/hooks/useOrgDetailsView";
+import { lazyWithRetry } from "@/utils/lazyWithRetry";
 import { OrgStudentsPanel } from "./org-details/OrgStudentsPanel";
 import { OrgCoursesPanel } from "./org-details/OrgCoursesPanel";
 import { OrgSettingsPanel } from "./org-details/OrgSettingsPanel";
-import { OrgStatsPanel } from "./org-details/OrgStatsPanel";
+// OrgStatsPanel pulls in recharts (~200KB) — load it only when the overview tab is rendered
+const OrgStatsPanel = lazyWithRetry(() => import("./org-details/OrgStatsPanel").then(m => ({ default: m.OrgStatsPanel })));
 import { OrgTariffsPanel } from "./org-details/OrgTariffsPanel";
 import { OrgCommentsTab } from "./OrgCommentsTab";
 import { OrgRemindersTab } from "./OrgRemindersTab";
@@ -177,7 +180,11 @@ export function OrganizationDetailsView({ organization, onBack }: OrganizationDe
 
         {/* Content */}
         <div className="flex-1 min-w-0">
-          {vm.activeTab === "overview" && <OrgStatsPanel students={vm.students} courses={vm.courses} usage={vm.usage} usageHistory={vm.usageHistory} storageLimitPercent={vm.storageLimitPercent} aiGenerationsLimit={vm.aiGenerationsLimit} aiGenerationsPercent={vm.aiGenerationsPercent} formatBytes={vm.formatBytes} storageLimit={vm.settings.storage_limit_bytes} />}
+          {vm.activeTab === "overview" && (
+            <Suspense fallback={<div className="flex justify-center py-12"><SigmaSpinner /></div>}>
+              <OrgStatsPanel students={vm.students} courses={vm.courses} usage={vm.usage} usageHistory={vm.usageHistory} storageLimitPercent={vm.storageLimitPercent} aiGenerationsLimit={vm.aiGenerationsLimit} aiGenerationsPercent={vm.aiGenerationsPercent} formatBytes={vm.formatBytes} storageLimit={vm.settings.storage_limit_bytes} />
+            </Suspense>
+          )}
           {vm.activeTab === "students" && <OrgStudentsPanel students={vm.students} filteredStudents={vm.filteredStudents} searchQuery={vm.searchQuery} setSearchQuery={vm.setSearchQuery} pendingEnrollmentsCount={vm.pendingEnrollmentsCount} organizationName={organization.name} onShowBulkImport={() => vm.setShowStudentBulkImport(true)} />}
           {vm.activeTab === "courses" && <OrgCoursesPanel courses={vm.courses} organizationId={organization.id} dndSensors={vm.dndSensors} handleCourseDragEnd={vm.handleCourseDragEnd} migratingCourseId={vm.migratingCourseId} setMigratingCourseId={vm.setMigratingCourseId} migrationResult={vm.migrationResult} setMigrationResult={vm.setMigrationResult} onShowSkillspaceImport={() => vm.setShowSkillspaceImport(true)} onShowSkillspaceBatchImport={() => vm.setShowSkillspaceBatchImport(true)} onSkillspaceUpdate={vm.setSkillspaceUpdateCourse} fetchCourses={vm.fetchCourses} />}
           {vm.activeTab === "tariffs" && <OrgTariffsPanel organizationId={organization.id} subscriptionPlan={organization.subscription_plan || 'free'} planInfo={vm.planInfo} tariffCustomLabel={vm.tariffCustomLabel} setTariffCustomLabel={vm.setTariffCustomLabel} tariffPaidUntil={vm.tariffPaidUntil} setTariffPaidUntil={vm.setTariffPaidUntil} isSavingTariff={vm.isSavingTariff} saveTariffSettings={vm.saveTariffSettings} customLimits={vm.customLimits} setCustomLimits={vm.setCustomLimits} customCategories={vm.customCategories} setCustomCategories={vm.setCustomCategories} customPrice={vm.customPrice} setCustomPrice={vm.setCustomPrice} customDiscount={vm.customDiscount} setCustomDiscount={vm.setCustomDiscount} />}

@@ -11,7 +11,8 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { CourseDocumentsManager } from "@/components/organization/CourseDocumentsManager";
-import { EnrollmentHistory } from "@/components/organization/EnrollmentHistory";
+// EnrollmentHistory pulls in recharts (~200KB) — load it only when the history tab is opened
+const EnrollmentHistory = lazy(() => import("@/components/organization/EnrollmentHistory").then(m => ({ default: m.EnrollmentHistory })));
 import { CourseTestReport } from "@/components/organization/CourseTestReport";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -333,7 +334,11 @@ export function CourseDetailsContent({ course, courseStudents, organizationId, a
             <div className="min-w-0">
               {activeTab === "students" && <StudentsSection h={h} courseStudents={courseStudents} />}
               {activeTab === "requests" && <EnrollmentRequestsTab courseId={course.id} defaultAccessDays={h.defaultAccessDays} onRefreshStudents={onRefreshStudents} />}
-              {activeTab === "history" && <EnrollmentHistory courseId={course.id} organizationId={organizationId || ""} courseName={course.title} />}
+              {activeTab === "history" && (
+                <Suspense fallback={<div className="flex justify-center py-8 text-sm text-muted-foreground">Загрузка истории…</div>}>
+                  <EnrollmentHistory courseId={course.id} organizationId={organizationId || ""} courseName={course.title} />
+                </Suspense>
+              )}
               {activeTab === "groups" && <CourseGroupsTab courseId={course.id} organizationId={organizationId || ""} onRefreshStudents={onRefreshStudents} />}
               {activeTab === "achievements" && organizationId && <CourseAchievementsTab courseId={course.id} organizationId={organizationId} />}
               {activeTab === "reminders" && (
@@ -359,7 +364,11 @@ export function CourseDetailsContent({ course, courseStudents, organizationId, a
           {activeTab === "students" && <StudentsSection h={h} courseStudents={courseStudents} />}
         {activeTab === "requests" && <EnrollmentRequestsTab courseId={course.id} defaultAccessDays={h.defaultAccessDays} onRefreshStudents={onRefreshStudents} />}
         {activeTab === "materials" && <CourseDocumentsManager courseId={course.id} courseName={course.title} embedded={true} />}
-        {activeTab === "history" && <EnrollmentHistory courseId={course.id} organizationId={organizationId || ""} courseName={course.title} />}
+        {activeTab === "history" && (
+          <Suspense fallback={<div className="flex justify-center py-8 text-sm text-muted-foreground">Загрузка истории…</div>}>
+            <EnrollmentHistory courseId={course.id} organizationId={organizationId || ""} courseName={course.title} />
+          </Suspense>
+        )}
         {activeTab === "tests" && <CourseTestReport courseId={course.id} courseName={course.title} organizationId={organizationId || ""} />}
         {activeTab === "landing" && (
           <div className="space-y-4">

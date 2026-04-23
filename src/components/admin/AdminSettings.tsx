@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { ThemePersonalization } from "@/components/ui/ThemePersonalization";
 import {
   Palette, Database, Shield, Bell, Save, Globe, Tag, Sparkles,
@@ -8,9 +8,11 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { lazyWithRetry } from "@/utils/lazyWithRetry";
 import { SEOSettingsManager } from "./SEOSettingsManager";
 import { PromoCodesManager } from "./PromoCodesManager";
-import { AdminAnalytics } from "./AdminAnalytics";
+// AdminAnalytics pulls in recharts (~200KB) — load it only when the analytics tab is opened
+const AdminAnalytics = lazyWithRetry(() => import("./AdminAnalytics").then(m => ({ default: m.AdminAnalytics })));
 import { BlogManager } from "./BlogManager";
 import { AISettingsManager } from "./AISettingsManager";
 import { DevToolsPanel } from "./DevToolsPanel";
@@ -221,7 +223,11 @@ export function AdminSettings() {
       case "staff": return <AdminStaffTab />;
       case "media": return <AdminMediaLibrary />;
       case "signatures": return <SignaturesJournal />;
-      case "analytics": return <AdminAnalytics />;
+      case "analytics": return (
+        <Suspense fallback={<div className="flex justify-center py-12"><SigmaSpinner /></div>}>
+          <AdminAnalytics />
+        </Suspense>
+      );
       case "content": return <BlogManager />;
       case "ai": return <AISettingsManager />;
       case "devtools": return <DevToolsPanel />;
