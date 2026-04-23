@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { SigmaLogo } from "@/components/ui/SigmaLogo";
-import { ArrowLeft, Database, AlertTriangle, Clock, FileCheck, Upload, Shield, CheckCircle2, Scale, Sparkles, ShieldCheck, FileSpreadsheet, Wand2, Lock } from "lucide-react";
+import { ArrowLeft, Database, AlertTriangle, Clock, FileCheck, Upload, Shield, CheckCircle2, Scale, Sparkles, ShieldCheck, FileSpreadsheet, Wrench, Lock } from "lucide-react";
 import { motion } from "framer-motion";
 import { Footer } from "@/components/landing/Footer";
 import { FrdoFileSanitizerDialog } from "@/components/organization/FrdoFileSanitizerDialog";
@@ -314,8 +314,8 @@ const FeatureFRDO = () => {
                   <div className="grid md:grid-cols-3 gap-6 mb-8">
                     {[
                       { n: "1", title: "Загрузите свой файл", desc: ".xlsx — любая структура, чужой шаблон" },
-                      { n: "2", title: "Авто-очистка", desc: "СНИЛС, даты, пол, скрытые символы" },
-                      { n: "3", title: "Скачайте чистый", desc: "Готов к загрузке в ФИС ФРДО" },
+                      { n: "2", title: "Авто-исправление", desc: "СНИЛС, даты, пол, скрытые символы" },
+                      { n: "3", title: "Скачайте в шаблоне ФРДО", desc: "Эталонный xlsx с валидациями" },
                     ].map((s) => (
                       <div key={s.n} className="flex items-start gap-3">
                         <div className="w-9 h-9 rounded-xl bg-primary/10 text-primary flex items-center justify-center font-display font-medium shrink-0">
@@ -335,8 +335,8 @@ const FeatureFRDO = () => {
                       onClick={() => setSanitizerOpen(true)}
                       className="btn-accent px-8 gap-2 shadow-lg"
                     >
-                      <Wand2 className="w-5 h-5" />
-                      Очистить чужой файл
+                      <Wrench className="w-5 h-5" />
+                      Устранить ошибки ФРДО
                     </Button>
                     <div className="flex items-center gap-2 text-xs text-muted-foreground">
                       <Lock className="w-3.5 h-3.5" />
