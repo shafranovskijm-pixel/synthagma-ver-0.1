@@ -212,8 +212,8 @@ export function useSubscriptionTab() {
       } as any);
 
       nav(`/invoice/${(invoice as any).id}`);
-    } catch (e: any) {
-      toast.error("Ошибка", { description: e.message });
+    } catch (e) {
+      toast.error(getErrorMessage(e));
     } finally {
       setGeneratingInvoice(false);
     }

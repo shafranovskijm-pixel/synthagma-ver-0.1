@@ -208,7 +208,7 @@ export function useAdminBilling() {
       setPendingInvoice({ html, insertData, invoiceNum, amount, plan });
       toast.success("Счёт сформирован");
       setShowInvoiceDialog(false); setInvoiceOtherPayer(false); setInvoiceBuyerName(""); setInvoiceBuyerInn(""); setInvoiceBuyerKpp("");
-    } catch (e: any) { toast.error("Ошибка", { description: e.message }); }
+    } catch (e) { toast.error(getErrorMessage(e)); }
     setGeneratingInvoice(false);
   };
 
@@ -336,7 +336,7 @@ export function useAdminBilling() {
       if (updErr) throw updErr;
       toast.success("Оплата подтверждена", { description: `Тариф продлён до ${format(newPaidUntil, "d MMMM yyyy", { locale: ru })}` });
       loadData();
-    } catch (e: any) { toast.error("Ошибка", { description: e.message }); }
+    } catch (e) { toast.error(getErrorMessage(e)); }
   };
 
   return {

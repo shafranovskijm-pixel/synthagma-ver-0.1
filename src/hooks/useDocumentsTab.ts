@@ -413,8 +413,8 @@ export function useDocumentsTab(organizationId: string | null, organizationName?
       toast.success("Счёт сформирован", { description: "Скачайте или распечатайте для сохранения" });
       setShowInvoiceDialog(false);
       setInvoiceOtherPayer(false); setInvoiceBuyerName(""); setInvoiceBuyerInn(""); setInvoiceBuyerKpp("");
-    } catch (e: any) {
-      toast.error("Ошибка", { description: e.message });
+    } catch (e) {
+      toast.error(getErrorMessage(e));
     } finally {
       setGeneratingInvoice(false);
     }

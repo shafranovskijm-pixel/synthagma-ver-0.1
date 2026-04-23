@@ -142,8 +142,8 @@ export function PartnerCabinet() {
       if (error) throw error;
       toast.success("Вы стали партнёром!", { description: `Ваш реферальный код: ${data}` });
       loadData();
-    } catch (e: any) {
-      toast.error("Ошибка", { description: e.message });
+    } catch (e) {
+      toast.error(getErrorMessage(e));
     } finally {
       setIsBecoming(false);
     }

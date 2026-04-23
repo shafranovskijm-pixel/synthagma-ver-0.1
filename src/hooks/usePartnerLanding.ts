@@ -44,8 +44,8 @@ export function usePartnerLanding() {
       setPartnerCode(data);
       setIsPartner(true);
       toast.success("Вы стали партнёром!", { description: `Ваш реферальный код: ${data}` });
-    } catch (e: any) {
-      toast.error("Ошибка", { description: e.message });
+    } catch (e) {
+      toast.error(getErrorMessage(e));
     } finally { setIsBecoming(false); }
   };
 
