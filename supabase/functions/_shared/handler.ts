@@ -53,6 +53,15 @@ export interface PublicHandlerContext {
 type AuthedHandler = (ctx: HandlerContext) => Promise<unknown> | unknown;
 type PublicHandler = (ctx: PublicHandlerContext) => Promise<unknown> | unknown;
 
+export interface HandlerOptions {
+  /**
+   * Если true — оборачивает ответ в { ok: true, data }.
+   * Если false (по умолчанию) — возвращает payload как есть, что совместимо
+   * с существующими клиентами, ожидающими «плоский» JSON.
+   */
+  wrapResponse?: boolean;
+}
+
 function jsonResponse(payload: unknown, status = 200) {
   return new Response(JSON.stringify(payload), {
     headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -60,12 +69,16 @@ function jsonResponse(payload: unknown, status = 200) {
   });
 }
 
-function ok(data: unknown) {
-  return jsonResponse({ ok: true, data });
+function ok(data: unknown, wrap: boolean) {
+  // Если хендлер уже сам вернул Response — пропускаем без изменений.
+  if (data instanceof Response) return data;
+  return wrap ? jsonResponse({ ok: true, data }) : jsonResponse(data);
 }
 
-function fail(code: string, message: string, status = 400) {
-  return jsonResponse({ ok: false, code, message }, status);
+function fail(code: string, message: string, status = 400, wrap = true) {
+  return wrap
+    ? jsonResponse({ ok: false, code, message }, status)
+    : jsonResponse({ error: message }, status);
 }
 
 async function readBody(req: Request): Promise<unknown> {
@@ -80,7 +93,8 @@ async function readBody(req: Request): Promise<unknown> {
 }
 
 /** Edge function with required JWT validation */
-export function withAuth(handler: AuthedHandler) {
+export function withAuth(handler: AuthedHandler, options: HandlerOptions = {}) {
+  const wrap = options.wrapResponse ?? false;
   return async (req: Request): Promise<Response> => {
     if (req.method === "OPTIONS") {
       return new Response("ok", { headers: corsHeaders });
@@ -89,13 +103,13 @@ export function withAuth(handler: AuthedHandler) {
     try {
       const authHeader = req.headers.get("Authorization");
       if (!authHeader?.startsWith("Bearer ")) {
-        return fail("unauthorized", "Требуется авторизация", 401);
+        return fail("unauthorized", "Требуется авторизация", 401, wrap);
       }
 
       const supabaseUrl = Deno.env.get("SUPABASE_URL");
       const anonKey = Deno.env.get("SUPABASE_ANON_KEY");
       if (!supabaseUrl || !anonKey) {
-        return fail("config_error", "Сервис не настроен", 500);
+        return fail("config_error", "Сервис не настроен", 500, wrap);
       }
 
       const client = createClient(supabaseUrl, anonKey, {
@@ -105,23 +119,24 @@ export function withAuth(handler: AuthedHandler) {
       const token = authHeader.replace("Bearer ", "");
       const { data, error } = await client.auth.getClaims(token);
       if (error || !data?.claims) {
-        return fail("unauthorized", "Сессия истекла или недействительна", 401);
+        return fail("unauthorized", "Сессия истекла или недействительна", 401, wrap);
       }
 
       const body = await readBody(req);
       const result = await handler({ req, body, user: data.claims as JwtClaims });
-      return ok(result);
+      return ok(result, wrap);
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       // eslint-disable-next-line no-console
       console.error("[edge handler error]", msg);
-      return fail("internal_error", msg, 500);
+      return fail("internal_error", msg, 500, wrap);
     }
   };
 }
 
 /** Edge function without auth (e.g. public webhooks) */
-export function withHandler(handler: PublicHandler) {
+export function withHandler(handler: PublicHandler, options: HandlerOptions = {}) {
+  const wrap = options.wrapResponse ?? false;
   return async (req: Request): Promise<Response> => {
     if (req.method === "OPTIONS") {
       return new Response("ok", { headers: corsHeaders });
@@ -129,12 +144,12 @@ export function withHandler(handler: PublicHandler) {
     try {
       const body = await readBody(req);
       const result = await handler({ req, body });
-      return ok(result);
+      return ok(result, wrap);
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       // eslint-disable-next-line no-console
       console.error("[edge handler error]", msg);
-      return fail("internal_error", msg, 500);
+      return fail("internal_error", msg, 500, wrap);
     }
   };
 }
