@@ -105,13 +105,38 @@ export function EmbeddedWebinarPlayer({
   guestIdentity,
   guestDisplayName,
 }: Props) {
+  // ============ Realtime подписка на webinar (recording_url + status) ============
+  // Без неё inline-плеер не узнает, что запись скопировалась после стопа,
+  // и продолжит показывать чёрный экран вместо MP4.
+  const [liveRecordingUrl, setLiveRecordingUrl] = useState<string | null>(recordingUrl ?? null);
+  const [liveStatus, setLiveStatus] = useState<string | null>(status ?? null);
+  useEffect(() => { setLiveRecordingUrl(recordingUrl ?? null); }, [recordingUrl]);
+  useEffect(() => { setLiveStatus(status ?? null); }, [status]);
+  useEffect(() => {
+    if (!webinarId) return;
+    const ch = supabase
+      .channel(`webinar-embed-${webinarId}`)
+      .on("postgres_changes", {
+        event: "UPDATE",
+        schema: "public",
+        table: "webinars",
+        filter: `id=eq.${webinarId}`,
+      }, (payload) => {
+        const row = payload.new as { recording_url?: string | null; status?: string | null };
+        if ("recording_url" in row) setLiveRecordingUrl(row.recording_url ?? null);
+        if (row.status) setLiveStatus(row.status);
+      })
+      .subscribe();
+    return () => { supabase.removeChannel(ch); };
+  }, [webinarId]);
+
   // ============ Recording playback (LiveKit ended + recording attached) ============
-  if (sourceType === "livekit" && status === "ended" && recordingUrl) {
+  if (sourceType === "livekit" && liveStatus === "ended" && liveRecordingUrl) {
     return (
       <div className="aspect-video w-full rounded-lg overflow-hidden bg-black">
         <video
           controls
-          src={recordingUrl}
+          src={liveRecordingUrl}
           className="w-full h-full"
           preload="metadata"
         />
