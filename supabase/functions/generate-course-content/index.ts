@@ -276,6 +276,11 @@ const GIGACHAT_IMAGE_KEYS = [
   Deno.env.get("GIGACHAT_AUTH_KEY_3"),
 ].filter(Boolean) as string[];
 
+/**
+ * Возвращает изображение в виде data-URL.
+ * Бросает ошибку с признаком dead=true, если слот исчерпан (402) — чтобы
+ * внешний цикл больше не возвращался к этому слоту в рамках текущего запуска.
+ */
 async function generateImageWithGigaChat(prompt: string, keyIndex: number): Promise<string | null> {
   const authKey = GIGACHAT_IMAGE_KEYS[keyIndex];
   if (!authKey) return null;
@@ -300,6 +305,9 @@ async function generateImageWithGigaChat(prompt: string, keyIndex: number): Prom
   if (!tokenRes.ok) {
     const text = await tokenRes.text();
     console.error(`[GigaChat][${slotName}] OAuth error:`, tokenRes.status, text);
+    if (tokenRes.status === 402 || /payment|exhausted|insufficient/i.test(text)) {
+      throw { dead: true, status: 402, message: `[${slotName}] OAuth 402: tokens exhausted` };
+    }
     return null;
   }
 
@@ -326,6 +334,13 @@ async function generateImageWithGigaChat(prompt: string, keyIndex: number): Prom
   if (!chatRes.ok) {
     const text = await chatRes.text();
     console.error(`[GigaChat][${slotName}] Generation error:`, chatRes.status, text);
+    if (chatRes.status === 402 || /payment|exhausted|insufficient/i.test(text)) {
+      throw { dead: true, status: 402, message: `[${slotName}] 402: tokens exhausted` };
+    }
+    if (chatRes.status === 429) {
+      // 429 — слот не «мертв», но временно недоступен. Не зачисляем как dead.
+      throw { dead: false, status: 429, message: `[${slotName}] 429: rate limited` };
+    }
     return null;
   }
 
@@ -364,21 +379,38 @@ async function generateImageWithGigaChat(prompt: string, keyIndex: number): Prom
 }
 
 let gigaChatImageSlotCounter = 0;
+// Слоты, которые в рамках текущей сессии edge-функции исчерпали токены (402).
+// Edge-функции в Supabase живут от запроса до запроса коротко, поэтому это
+// эффективно работает как "мёртвый на этот запуск генерации курса".
+const deadImageSlots = new Set<number>();
 
 async function generateImage(prompt: string): Promise<string | null> {
-  // Try GigaChat first with round-robin across all slots
+  // Try GigaChat first with round-robin across all live slots
   if (GIGACHAT_IMAGE_KEYS.length > 0) {
-    const startSlot = gigaChatImageSlotCounter++ % GIGACHAT_IMAGE_KEYS.length;
-    for (let attempt = 0; attempt < GIGACHAT_IMAGE_KEYS.length; attempt++) {
-      const slotIdx = (startSlot + attempt) % GIGACHAT_IMAGE_KEYS.length;
-      try {
-        const result = await generateImageWithGigaChat(prompt, slotIdx);
-        if (result) {
-          console.log(`[Image] GigaChat slot-${slotIdx} success`);
-          return result;
+    const liveSlots = GIGACHAT_IMAGE_KEYS
+      .map((_, i) => i)
+      .filter((i) => !deadImageSlots.has(i));
+
+    if (liveSlots.length === 0) {
+      console.warn(`[Image] All ${GIGACHAT_IMAGE_KEYS.length} GigaChat slots are dead in this run, skipping to Lovable AI`);
+    } else {
+      const startSlot = gigaChatImageSlotCounter++ % liveSlots.length;
+      for (let attempt = 0; attempt < liveSlots.length; attempt++) {
+        const slotIdx = liveSlots[(startSlot + attempt) % liveSlots.length];
+        try {
+          const result = await generateImageWithGigaChat(prompt, slotIdx);
+          if (result) {
+            console.log(`[Image] GigaChat slot-${slotIdx} success`);
+            return result;
+          }
+        } catch (e: any) {
+          if (e?.dead) {
+            deadImageSlots.add(slotIdx);
+            console.warn(`[Image] GigaChat slot-${slotIdx} marked DEAD for this run (402). Live slots left: ${GIGACHAT_IMAGE_KEYS.length - deadImageSlots.size}`);
+          } else {
+            console.warn(`[Image] GigaChat slot-${slotIdx} transient failure:`, e?.message || e);
+          }
         }
-      } catch (e) {
-        console.warn(`[Image] GigaChat slot-${slotIdx} failed:`, e);
       }
     }
   }
