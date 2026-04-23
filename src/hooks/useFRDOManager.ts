@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { detectGenderFromMiddleName, generateDocumentNumber, generateRegNumber } from "@/constants/frdo";
 import { buildDPORow, buildPORow, exportFRDOExcel, formatDateForFRDO } from "@/utils/frdoExcelExport";
+import { resolveFRDOFields } from "@/utils/frdoFieldResolver";
 
 interface Student { user_id: string; name: string; email: string; course?: string | null; course_id?: string | null; }
 interface FRDOData {
@@ -140,21 +141,27 @@ export function useFRDOManager(organizationId: string) {
         const filteredEnrollments = courseFilter === "all" ? enrollments : enrollments.filter(e => e.course_id === courseFilter);
         const processEnrollment = (enrollment: EnrollmentData | null) => {
           const courseSettings = enrollment ? courses.find(c => c.id === enrollment.course_id) || null : null;
+          const courseLike = courseSettings ? { ...courseSettings, title: enrollment?.course_title || courseSettings.title } : (enrollment ? { title: enrollment.course_title } : null);
+          const resolved = resolveFRDOFields(data, courseLike);
           const docNum = generateDocumentNumber(docCounter);
           const regNum = generateRegNumber(docCounter);
           docCounter++;
           const startYear = enrollment?.started_at ? new Date(enrollment.started_at).getFullYear() : "";
           const endYear = enrollment?.completed_at ? new Date(enrollment.completed_at).getFullYear() : startYear;
           const durationHours = courseSettings?.frdo_duration_hours || getDuration(enrollment, courseSettings);
-          const financingSource = data.financing_source || courseSettings?.frdo_financing_source || "Платное обучение";
-          const educationForm = data.education_form || courseSettings?.frdo_education_form || "в образовательной организации";
-          const trainingForm = data.training_form || courseSettings?.training_form || "Очная";
           const documentType = exportType === "dpo" ? (courseSettings?.frdo_document_type || "Удостоверение о повышении квалификации") : (courseSettings?.frdo_document_type || "Свидетельство о профессии рабочего, должности служащего");
+
+          // Hard guard: PO requires non-empty profession name (column L)
+          if (exportType === "po" && !resolved.professionName) {
+            const studentLabel = `${data.last_name} ${data.first_name}`.trim() || student.name;
+            throw new Error(`Не заполнено "Наименование профессии" для ${studentLabel} (курс «${enrollment?.course_title || "—"}»). Укажите его в карточке курса (frdo_profession_name) или у ученика (profession_name).`);
+          }
+
           supabase.from("education_document_records").insert({ organization_id: organizationId, full_name: `${data.last_name} ${data.first_name} ${data.middle_name}`.trim(), document_type: documentType, document_number: docNum, reg_number: regNum, issue_date: enrollment?.completed_at || new Date().toISOString(), specialty_name: enrollment?.course_title || "", document_status: "Оригинал" });
           if (exportType === "dpo") {
-            rows.push(buildDPORow({ documentType, docNumber: docNum, regNumber: regNum, issueDate: formatDateForFRDO(enrollment?.completed_at || ""), programType: courseSettings?.frdo_program_type === "professional_retraining" ? "Профессиональная переподготовка" : "Повышение квалификации", programName: enrollment?.course_title || "", professionalArea: data.professional_area || courseSettings?.frdo_professional_area || "", specialtyGroup: data.specialty_group || courseSettings?.frdo_specialty_group || "", qualificationName: data.qualification_name || courseSettings?.frdo_qualification_name || "нет", educationLevel: data.education_level, educationDocLastName: data.education_doc_last_name, educationDocSeries: data.education_doc_series, educationDocNumber: data.education_doc_number, startYear, endYear, durationHours, lastName: data.last_name, firstName: data.first_name, middleName: data.middle_name, birthDate: formatDateForFRDO(data.birth_date), gender: data.gender, snils: data.snils, trainingForm, financingSource, educationForm, citizenshipCode: data.citizenship_code }));
+            rows.push(buildDPORow({ documentType, docNumber: docNum, regNumber: regNum, issueDate: formatDateForFRDO(enrollment?.completed_at || ""), programType: courseSettings?.frdo_program_type === "professional_retraining" ? "Профессиональная переподготовка" : "Повышение квалификации", programName: enrollment?.course_title || "", professionalArea: resolved.professionalArea, specialtyGroup: resolved.specialtyGroup, qualificationName: resolved.qualificationName, educationLevel: data.education_level, educationDocLastName: data.education_doc_last_name, educationDocSeries: data.education_doc_series, educationDocNumber: data.education_doc_number, startYear, endYear, durationHours, lastName: data.last_name, firstName: data.first_name, middleName: data.middle_name, birthDate: formatDateForFRDO(data.birth_date), gender: resolved.gender, snils: data.snils, trainingForm: resolved.trainingForm, financingSource: resolved.financingSource, educationForm: resolved.educationForm, citizenshipCode: data.citizenship_code }));
           } else {
-            rows.push(buildPORow({ documentType, docNumber: docNum, regNumber: regNum, issueDate: formatDateForFRDO(enrollment?.completed_at || ""), programType: "Программа профессиональной подготовки по профессии рабочего, должности служащего", programName: enrollment?.course_title || "", professionName: data.profession_name || courseSettings?.frdo_profession_name || "", qualificationRank: data.qualification_rank || courseSettings?.frdo_qualification_rank || "", startYear, endYear, durationHours, lastName: data.last_name, firstName: data.first_name, middleName: data.middle_name, birthDate: formatDateForFRDO(data.birth_date), gender: data.gender, snils: data.snils, citizenshipCode: data.citizenship_code, trainingForm, financingSource, educationForm }));
+            rows.push(buildPORow({ documentType, docNumber: docNum, regNumber: regNum, issueDate: formatDateForFRDO(enrollment?.completed_at || ""), programType: "Программа профессиональной подготовки по профессии рабочего, должности служащего", programName: enrollment?.course_title || "", professionName: resolved.professionName, qualificationRank: resolved.qualificationRank, startYear, endYear, durationHours, lastName: data.last_name, firstName: data.first_name, middleName: data.middle_name, birthDate: formatDateForFRDO(data.birth_date), gender: resolved.gender, snils: data.snils, citizenshipCode: data.citizenship_code, trainingForm: resolved.trainingForm, financingSource: resolved.financingSource, educationForm: resolved.educationForm }));
           }
         };
         if (filteredEnrollments.length === 0) processEnrollment(null);
@@ -163,7 +170,10 @@ export function useFRDOManager(organizationId: string) {
       if (rows.length === 0) { toast.error("Нет данных для экспорта"); setIsExporting(false); return; }
       await exportFRDOExcel(rows, exportType);
       toast.success(`Экспортировано ${rows.length} записей`);
-    } catch (error) { console.error("Export error:", error); toast.error("Ошибка экспорта"); }
+    } catch (error: any) {
+      console.error("Export error:", error);
+      toast.error(error?.message || "Ошибка экспорта");
+    }
     finally { setIsExporting(false); }
   };
 
