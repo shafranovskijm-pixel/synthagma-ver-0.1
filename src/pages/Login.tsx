@@ -12,6 +12,7 @@ import { safeInvoke } from "@/utils/safeInvoke";
 import { getBaseUrl } from "@/utils/getBaseUrl";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
+import { getErrorMessage } from "@/utils/handleSupabaseError";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 import {
   Dialog,
@@ -95,7 +96,7 @@ const Login = () => {
     const { error } = await signIn(signInEmail, cleanPassword);
     
     if (error) {
-      toast.error("Ошибка входа", { description: error.message === "Invalid login credentials" ? "Неверный логин или пароль" : error.message });
+      toast.error("Ошибка входа", { description: error.message === "Invalid login credentials" ? "Неверный логин или пароль" : getErrorMessage(error) });
     } else {
       toast.success("Успешно!", { description: "Вы вошли в систему" });
       // Role is already loaded in context by signIn, useEffect will navigate
@@ -127,7 +128,7 @@ const Login = () => {
       setResetEmail("");
     } catch (error: any) {
       console.error("Password reset error:", error);
-      toast.error("Ошибка", { description: error.message || "Не удалось отправить письмо" });
+      toast.error("Ошибка", { description: getErrorMessage(error, "Не удалось отправить письмо") });
     }
     
     setIsResetting(false);
@@ -197,7 +198,7 @@ const Login = () => {
         return;
       }
     } else if (error) {
-      toast.error("Ошибка входа", { description: error.message });
+      toast.error("Ошибка входа", { description: getErrorMessage(error) });
       setDemoLoading(null);
       return;
     }

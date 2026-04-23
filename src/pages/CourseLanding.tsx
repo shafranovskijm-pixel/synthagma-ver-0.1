@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Play, ArrowLeft } from "lucide-react";
 import { getBaseUrl } from "@/utils/getBaseUrl";
 import { toast } from "sonner";
+import { getErrorMessage } from "@/utils/handleSupabaseError";
 import { LandingHeroSection } from "@/components/course-landing/LandingHeroSection";
 import { LandingAudienceSection } from "@/components/course-landing/LandingAudienceSection";
 import { LandingProgramSection } from "@/components/course-landing/LandingProgramSection";
@@ -201,7 +202,7 @@ export default function CourseLanding() {
         toast.success((data as any)?.message || "Вы зачислены на курс");
       } catch (e: any) {
         console.error("self-enroll error:", e);
-        toast.error("Не удалось завершить запись", { description: e.message });
+        toast.error("Не удалось завершить запись", { description: getErrorMessage(e) });
       }
       return;
     }
@@ -261,7 +262,7 @@ export default function CourseLanding() {
         toast.success("Заявка отправлена! Она появится в заявках, чате и уведомлениях организации");
       } catch (e: any) {
         console.error("Purchase request error:", e);
-        toast.error("Ошибка отправки заявки", { description: e.message });
+        toast.error("Ошибка отправки заявки", { description: getErrorMessage(e) });
       }
       return;
     }
@@ -296,7 +297,7 @@ export default function CourseLanding() {
       setHasPendingRequest(true);
       toast.success("Заявка отправлена! Она появится в заявках, чате и уведомлениях организации");
     } catch (e: any) {
-      toast.error("Ошибка отправки заявки", { description: e.message });
+      toast.error("Ошибка отправки заявки", { description: getErrorMessage(e) });
     }
   };
 

@@ -14,6 +14,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Copy, TrendingUp, Users, DollarSign, Wallet, ArrowLeft, Network, Crown, Award, ChevronRight, FileText, Megaphone, BookOpen } from "lucide-react";
 import { getBaseUrl } from "@/utils/getBaseUrl";
 import { toast } from "sonner";
+import { getErrorMessage } from "@/utils/handleSupabaseError";
 import { PartnerNetworkTree } from "@/components/partner/PartnerNetworkTree";
 import { PartnerMaterials } from "@/components/partner/PartnerMaterials";
 import { PartnerHowItWorks } from "@/components/partner/PartnerHowItWorks";
@@ -120,7 +121,7 @@ const PartnerDashboard = () => {
     if (isNaN(amount) || amount < 1000) { toast.error("Минимальная сумма вывода — 1 000 ₽"); return; }
     if (amount > Number(partner.balance)) { toast.error("Недостаточно средств"); return; }
     const { error } = await supabase.from("referral_payouts").insert({ partner_id: partner.id, amount });
-    if (error) toast.error("Ошибка запроса", { description: error.message });
+    if (error) toast.error("Ошибка запроса", { description: getErrorMessage(error) });
     else { toast.success("Запрос на вывод отправлен"); setPayoutAmount(""); loadData(); }
   };
 

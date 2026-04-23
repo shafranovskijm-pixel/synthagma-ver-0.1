@@ -12,6 +12,7 @@ import { safeInvoke } from "@/utils/safeInvoke";
 import { showLimitToast } from "@/utils/limitToast";
 import { Upload, FileSpreadsheet, Download, CheckCircle2, XCircle, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
+import { getErrorMessage } from "@/utils/handleSupabaseError";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 
 interface Course {
@@ -188,7 +189,7 @@ export default function ImportStudentsForm({ organizationId, courses, companies,
       }
     } catch (error: any) {
       console.error("Import error:", error);
-      toast.error("Ошибка", { description: error.message });
+      toast.error("Ошибка", { description: getErrorMessage(error) });
     } finally {
       setIsImporting(false);
     }

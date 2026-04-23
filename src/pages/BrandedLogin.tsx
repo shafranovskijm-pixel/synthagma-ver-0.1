@@ -8,6 +8,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
+import { getErrorMessage } from "@/utils/handleSupabaseError";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 
 interface LoginBranding {
@@ -132,7 +133,7 @@ const BrandedLogin = () => {
     const { error } = await signIn(signInEmail, cleanPassword);
     
     if (error) {
-      toast.error("Ошибка входа", { description: error.message === "Invalid login credentials" ? "Неверный логин или пароль" : error.message });
+      toast.error("Ошибка входа", { description: error.message === "Invalid login credentials" ? "Неверный логин или пароль" : getErrorMessage(error) });
     } else {
       toast.success("Успешно!", { description: "Вы вошли в систему" });
     }
