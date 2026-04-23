@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { SigmaLogo } from "@/components/ui/SigmaLogo";
-import { ArrowLeft, Database, AlertTriangle, Clock, FileCheck, Upload, Shield, CheckCircle2, Scale, Sparkles, ShieldCheck, FileSpreadsheet, Wand2, Lock } from "lucide-react";
+import { ArrowLeft, Database, AlertTriangle, Clock, FileCheck, Upload, Shield, CheckCircle2, Scale, Sparkles, ShieldCheck, FileSpreadsheet, Wrench, Lock } from "lucide-react";
 import { motion } from "framer-motion";
 import { Footer } from "@/components/landing/Footer";
 import { FrdoFileSanitizerDialog } from "@/components/organization/FrdoFileSanitizerDialog";
@@ -297,14 +297,14 @@ const FeatureFRDO = () => {
           >
             <motion.div variants={fadeUp} className="text-center mb-10">
               <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 border border-primary/20 mb-5">
-                <Wand2 className="w-4 h-4 text-primary" />
+                <Wrench className="w-4 h-4 text-primary" />
                 <span className="text-sm font-medium text-primary">Бесплатно · без регистрации</span>
               </div>
               <h2 className="font-display text-3xl md:text-4xl font-medium mb-4 tracking-tight">
-                Проверьте свой Excel прямо сейчас
+                Устранение ошибок файлов ФРДО
               </h2>
               <p className="text-muted-foreground max-w-2xl mx-auto">
-                Загрузите файл, который ФИС ФРДО отклоняет с ошибкой «недопустимый символ» — Синтагма вычистит невидимые пробелы и табуляции, нормализует СНИЛС и даты, и переложит данные в эталонный шаблон 35/41 столбцов.
+                Загрузите файл, который ФИС ФРДО отклоняет с ошибкой «недопустимый символ» — Синтагма исправит формат, нормализует СНИЛС и даты, и перенесёт данные в <strong>оригинальный шаблон Рособрнадзора</strong> с сохранением валидаций и словарей.
               </p>
             </motion.div>
 
@@ -314,8 +314,8 @@ const FeatureFRDO = () => {
                   <div className="grid md:grid-cols-3 gap-6 mb-8">
                     {[
                       { n: "1", title: "Загрузите свой файл", desc: ".xlsx — любая структура, чужой шаблон" },
-                      { n: "2", title: "Авто-очистка", desc: "СНИЛС, даты, пол, скрытые символы" },
-                      { n: "3", title: "Скачайте чистый", desc: "Готов к загрузке в ФИС ФРДО" },
+                      { n: "2", title: "Авто-исправление", desc: "СНИЛС, даты, пол, скрытые символы" },
+                      { n: "3", title: "Скачайте в шаблоне ФРДО", desc: "Эталонный xlsx с валидациями" },
                     ].map((s) => (
                       <div key={s.n} className="flex items-start gap-3">
                         <div className="w-9 h-9 rounded-xl bg-primary/10 text-primary flex items-center justify-center font-display font-medium shrink-0">
@@ -335,8 +335,8 @@ const FeatureFRDO = () => {
                       onClick={() => setSanitizerOpen(true)}
                       className="btn-accent px-8 gap-2 shadow-lg"
                     >
-                      <Wand2 className="w-5 h-5" />
-                      Очистить чужой файл
+                      <Wrench className="w-5 h-5" />
+                      Устранить ошибки ФРДО
                     </Button>
                     <div className="flex items-center gap-2 text-xs text-muted-foreground">
                       <Lock className="w-3.5 h-3.5" />

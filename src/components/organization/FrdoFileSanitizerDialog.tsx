@@ -1,6 +1,6 @@
 import { useCallback, useState } from "react";
 import { motion } from "framer-motion";
-import { Wand2, UploadCloud, Download, FileSpreadsheet, AlertTriangle, CheckCircle2, FileDown, ChevronDown, ChevronUp, Sparkles } from "lucide-react";
+import { Wrench, UploadCloud, Download, FileSpreadsheet, AlertTriangle, CheckCircle2, FileDown, ChevronDown, ChevronUp, Sparkles, ShieldCheck } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
@@ -17,6 +17,7 @@ import {
   type FrdoSheetType,
 } from "@/utils/frdoFileSanitizer";
 import { exportFRDOExcel } from "@/utils/frdoExcelExport";
+import { injectIntoFrdoTemplate, hasFrdoTemplate } from "@/utils/frdoTemplateInjector";
 
 interface Props {
   open: boolean;
@@ -78,9 +79,19 @@ export function FrdoFileSanitizerDialog({ open, onOpenChange }: Props) {
     if (!result) return;
     try {
       const rows = buildCleanRows(result);
-      const suffix = `очищено-${format(new Date(), "dd-MM-yyyy")}`;
+      const suffix = `исправлено-${format(new Date(), "dd-MM-yyyy")}`;
+      // Пытаемся записать данные в оригинальный шаблон-донор Рособрнадзора —
+      // ФИС ФРДО принимает только файлы с её собственной структурой.
+      if (hasFrdoTemplate(result.type)) {
+        const ok = await injectIntoFrdoTemplate(rows, result.type, suffix);
+        if (ok) {
+          toast.success("Файл сохранён в эталонный шаблон ФИС ФРДО");
+          return;
+        }
+      }
+      // Fallback: ДПО шаблон ещё не загружен — экспортируем упрощённо
       await exportFRDOExcel(rows, result.type, suffix);
-      toast.success("Чистый файл скачан");
+      toast.warning("Эталонный шаблон ДПО ещё не загружен — выгрузка в упрощённом формате");
     } catch (e: any) {
       toast.error(e?.message || "Ошибка экспорта");
     }
@@ -142,12 +153,12 @@ export function FrdoFileSanitizerDialog({ open, onOpenChange }: Props) {
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 font-display">
             <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center">
-              <Wand2 className="w-5 h-5 text-primary" />
+              <Wrench className="w-5 h-5 text-primary" />
             </div>
-            Очистка чужого файла ФИС ФРДО
+            Устранение ошибок файлов ФРДО
           </DialogTitle>
           <DialogDescription>
-            Загрузите Excel, который не принимает система — мы вычистим невидимые символы, нормализуем СНИЛС и даты, и переложим данные в эталонный шаблон.
+            Загрузите файл, который не принимает ФИС ФРДО — мы исправим формат, перенесём данные в эталонный шаблон Рособрнадзора и вернём готовый <strong>.xlsx</strong> с валидациями и словарями.
           </DialogDescription>
         </DialogHeader>
 
@@ -202,8 +213,8 @@ export function FrdoFileSanitizerDialog({ open, onOpenChange }: Props) {
             <div className="flex justify-end gap-2">
               <Button variant="ghost" onClick={() => onOpenChange(false)} className="rounded-xl">Отмена</Button>
               <Button onClick={handleProcess} disabled={!file || isProcessing} className="rounded-xl gap-2">
-                {isProcessing ? <SigmaSpinner size="sm" /> : <Wand2 className="w-4 h-4" />}
-                Обработать
+                {isProcessing ? <SigmaSpinner size="sm" /> : <Wrench className="w-4 h-4" />}
+                Устранить ошибки
               </Button>
             </div>
           </motion.div>
@@ -215,7 +226,7 @@ export function FrdoFileSanitizerDialog({ open, onOpenChange }: Props) {
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
               <StatCard icon={FileSpreadsheet} label="Тип" value={result.type === "dpo" ? "ДПО" : "ПО"} tone="primary" />
               <StatCard icon={CheckCircle2} label="Строк" value={stats.totalRows} tone="primary" />
-              <StatCard icon={Wand2} label="Исправлено ячеек" value={`${stats.fixedCells} (${stats.fixedRows} стр.)`} tone="teal" />
+              <StatCard icon={Wrench} label="Исправлено ячеек" value={`${stats.fixedCells} (${stats.fixedRows} стр.)`} tone="teal" />
               <StatCard icon={AlertTriangle} label="Пустые обязательные" value={`${stats.missingRequiredRows} стр.`} tone={stats.missingRequiredRows > 0 ? "warn" : "primary"} />
             </div>
 
@@ -231,11 +242,17 @@ export function FrdoFileSanitizerDialog({ open, onOpenChange }: Props) {
                       Файл готов к загрузке в ФИС ФРДО
                     </div>
                     <div className="text-sm text-muted-foreground mt-1">
-                      Все обязательные поля заполнены. Данные переложены в эталонный шаблон с валидациями.
+                      Все обязательные поля заполнены. Данные перенесены в эталонный шаблон Рособрнадзора с сохранением валидаций и словарей.
                     </div>
                   </div>
+                  {result && hasFrdoTemplate(result.type) && (
+                    <div className="inline-flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-500/30">
+                      <ShieldCheck className="w-3.5 h-3.5" />
+                      Оригинальный шаблон ФИС ФРДО (≈262 КБ, со всеми валидациями)
+                    </div>
+                  )}
                   <Button onClick={handleDownload} size="lg" className="rounded-xl gap-2 bg-emerald-600 hover:bg-emerald-700 text-white">
-                    <Download className="w-5 h-5" /> Скачать чистый файл
+                    <Download className="w-5 h-5" /> Скачать в шаблоне Рособрнадзора (.xlsx)
                   </Button>
                   <button
                     type="button"
