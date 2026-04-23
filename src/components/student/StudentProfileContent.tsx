@@ -299,52 +299,13 @@ export function StudentProfileContent({ effectiveUserId, isAdminView = false, pe
 
       {/* Documents */}
       {activeTab === "documents" && (
-        <div className="space-y-6">
-          <Card className="rounded-2xl border-border/60 shadow-sm">
-            <CardHeader><CardTitle>Видеоидентификация</CardTitle></CardHeader>
-            <CardContent>
-              <VideoIdentification
-                userId={effectiveUserId}
-                userName={sp.profile?.full_name || "Ученик"}
-                organizationId={sp.profile?.organization_id || undefined}
-                embedded={true}
-              />
-            </CardContent>
-          </Card>
-
-          <Card className="rounded-2xl border-border/60 shadow-sm">
-            <CardHeader><CardTitle>Согласие на обработку ПД</CardTitle></CardHeader>
-            <CardContent>
-              <StudentConsentForm
-                userId={effectiveUserId}
-                userName={sp.profile?.full_name || "Ученик"}
-                organizationId={sp.profile?.organization_id || ""}
-                embedded={true}
-              />
-            </CardContent>
-          </Card>
-
-          <Card className="rounded-2xl border-border/60 shadow-sm">
-            <CardHeader><CardTitle>Документы</CardTitle></CardHeader>
-            <CardContent>
-              <StudentDocumentsUpload
-                userId={effectiveUserId}
-                organizationId={sp.profile?.organization_id || ""}
-                isOpen={false}
-                onOpenChange={() => {}}
-                embedded={true}
-              />
-            </CardContent>
-          </Card>
-
-          {!isAdminView && (
-            <StudentDataSubjectRequests
-              userId={effectiveUserId}
-              organizationId={sp.profile?.organization_id || ""}
-              userEmail={user?.email}
-            />
-          )}
-        </div>
+        <StudentDocumentsTab
+          userId={effectiveUserId}
+          userName={sp.profile?.full_name || "Ученик"}
+          organizationId={sp.profile?.organization_id || ""}
+          isAdminView={isAdminView}
+          userEmail={user?.email}
+        />
       )}
 
       {/* Achievements */}
