@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Play, ArrowLeft } from "lucide-react";
 import { getBaseUrl } from "@/utils/getBaseUrl";
 import { toast } from "sonner";
+import { getErrorMessage } from "@/utils/handleSupabaseError";
 import { LandingHeroSection } from "@/components/course-landing/LandingHeroSection";
 import { LandingAudienceSection } from "@/components/course-landing/LandingAudienceSection";
 import { LandingProgramSection } from "@/components/course-landing/LandingProgramSection";
