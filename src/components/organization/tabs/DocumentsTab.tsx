@@ -27,6 +27,7 @@ import { useOrgDashboard } from "@/contexts/OrgDashboardContext";
 import { CounterpartiesSection } from "./documents/CounterpartiesSection";
 import { ConstructorSection } from "./documents/ConstructorSection";
 import { DocumentDialogs } from "./documents/DocumentDialogs";
+import { TestInboxButton } from "@/components/organization/documents/TestInboxButton";
 
 // Подпункты группы «Документы организации» (второй уровень)
 type OrgDocSubValue = Extract<
@@ -237,6 +238,7 @@ export const DocumentsTab = React.memo(function DocumentsTab({ organizationId, o
                 <Upload className="w-3.5 h-3.5" /><span className="hidden sm:inline">Массовая загрузка</span>
               </Button>
             )}
+            {organizationId && <TestInboxButton organizationId={organizationId} />}
           </div>
         </div>
 
