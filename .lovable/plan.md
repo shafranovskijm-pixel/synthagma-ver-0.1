@@ -1,110 +1,119 @@
 
 
-# План: довести вебинары до рабочего состояния на мобильных (чат, демонстрация экрана, кнопки)
+# План: убрать дубли, ускорить загрузку, прибраться в коде
 
-## Что сейчас не так (нашёл в коде, подтверждается скриншотом)
+Прошёл по проекту и нашёл реальные дубли (а не выдуманные). Ниже — что точно есть и что предлагаю сделать. Делю на 3 итерации, чтобы не сломать ничего разом.
 
-### 1. На мобильнике у гостя нет вкладки «Чат»
-Скриншот показывает только **Q&A / Опросы**. В `WebinarSidebar.tsx` я уже добавил «Чат», но в `EmbeddedWebinarPlayer.tsx` (строки 303-324) **рендерятся ДВА сайдбара**: один десктопный (`hidden lg:flex`), второй мобильный (`lg:hidden`). На некоторых сборках мобильный использует кэшированную версию без вкладки «Чат», плюс это даёт **дублирующиеся realtime-подписки** на один и тот же канал → лишние ререндеры и расход трафика.
+## Что нашёл — фактическая картина
 
-### 2. Гость не может писать в чат
-RPC `webinar_post_chat` принимает `p_sender_identity`. Сейчас гостю передаётся `guest-${token}-${name}`, **но `token` — это `public_token` вебинара**, одинаковый для всех гостей. Если двое гостей назвались одинаково, у них совпадёт identity, а в RLS для anon это путает rate-limit (10 сообщений в минуту считаются на identity — двое гостей будут «расходовать» один счётчик и блокировать друг друга). Нужен уникальный per-session идентификатор, сохраняющийся в `sessionStorage`.
+### 1. Email/SMTP — самое большое болото (≈1500 строк дублей)
 
-### 3. Демонстрация экрана хостом — кнопка есть, но на телефоне `getDisplayMedia` не работает в большинстве мобильных браузеров (iOS Safari вообще не поддерживает, Chrome Android — частично). Сейчас кнопка показывается всегда, пользователь нажимает и получает молчаливую ошибку. Нужно:
-- На десктопе: убедиться, что WelcomeOverlay не перекрывает control-bar (сделано).
-- На мобильнике: либо скрыть кнопку «Поделиться экраном», либо показывать тост «Демонстрация экрана недоступна на мобильном устройстве».
+В проекте уже есть готовый `supabase/functions/_shared/smtp-sender.ts` (186 строк). Им пользуются только **5 функций из ~15**, которые шлют письма:
+- ✅ Используют shared: `send-campaign-email`, `send-test-email`, `org-create-contract-signature`, `process-drip-campaigns`, `test-org-smtp`.
+- ❌ Не используют (каждая со своим SMTP-клиентом): `send-email`, `send-credentials`, `send-password-reset`, `send-course-invitation`, `send-signing-email`, `send-lead-magnet`, `send-documents-reminder`, `send-staff-invitation`, `notify-course-completion`, `notify-course-order`, `notify-order-status`, `notify-program-order`, `notify-enrollment-request`, `process-reminders`, `process-document-expiry-reminders`, `process-signature-expiry-reminders`, `test-smtp`.
 
-### 4. Top-bar плеера ломает вёрстку на 375px
-В `LiveKitTopBar` (`EmbeddedWebinarPlayer.tsx`, строка 386-453) на узком экране 4-5 кнопок (Ссылка / QR / Доступ / Завершить + счётчик участников) обтекают `flex-wrap` и **занимают 2-3 строки поверх видео**. На скриншоте видно, что top-bar и заголовок WelcomeOverlay налезают друг на друга, имя "Иван Петров" перекрыто.
+При этом 7 функций реализуют SMTP вручную через `Deno.connectTls` (свои base64Encode/encodeSubject), а 2 (`notify-course-order`, `notify-order-status`) тянут постороннюю библиотеку `denomailer`. То есть **три разных способа отправлять одно и то же письмо**.
 
-### 5. На мобилке у гостя нет «полноэкранного» режима эфира
-В `WebinarPublic.tsx` после входа всё обёрнуто в `max-w-7xl` с обычным `aspect-video`. На телефоне в портретной ориентации видеоокно — узкая горизонтальная полоса в верхней четверти экрана, основная площадь экрана пустует, а сайдбар чата — под видео крошечный.
+**Что делаю:**
+- Расширяю `_shared/smtp-sender.ts`: добавляю `sendPlatformEmail({to, subject, html, from?})` с rate-limit и пресетом для платформенного SMTP (`SMTP_HOST/PORT/USER/PASS/FROM` из env).
+- Все 17 функций выше переписываю на 5–10 строк: импорт + вызов `sendPlatformEmail`. Ручные SMTP-handshake'и + `denomailer` — удаляю.
+- `test-smtp` сливаю в `test-org-smtp` (одна функция с параметром `{scope: "platform"|"org"}`), вторую удаляю.
+- `send-email` остаётся «тонкой обёрткой над `sendPlatformEmail`» для обратной совместимости (его дёргают `BroadcastManager.tsx` и `CommercialProposals.tsx`).
 
-### 6. Кнопки LiveKit ControlBar тяжело нажать на мобильнике
-LiveKit ControlBar по умолчанию рендерит кнопки 32×32px с маленькими иконками — на тач-экране промахи. Нужно через CSS-overrides в `data-lk-theme` поднять кнопки до 44×44px (Apple HIG минимум для тача).
+**Эффект:** ~1200 строк edge-кода уходит, единое место правок (TLS-хитрости, base64, заголовки), единый rate-limit.
 
-### 7. Скрытие сайдбара на мобильном
-Сейчас под видео сайдбар чата показывается ВСЕГДА на мобильнике (через `lg:hidden flex`). Это правильно для использования, но забирает 480px высоты — у пользователя нет возможности раскрыть видео на полный экран. Нужна маленькая кнопка-таб «Чат | Видео» для переключения на узких экранах.
+### 2. Хуки кабинета организации — параллельные близнецы
 
-## Что делаю
-
-### A. Убираю дубль `<WebinarSidebar>` в `EmbeddedWebinarPlayer.tsx`
-- Удаляю мобильный второй рендер (строки 315-324).
-- Десктопный рендер (`hidden lg:flex`) превращаю в адаптивный: на `lg+` он сбоку (340px справа), на `<lg` он либо снизу под видео в виде вкладок, либо открывается через нижний `Sheet` с кнопкой «Чат / Q&A».
-- Один экземпляр сайдбара = одна realtime-подписка на каждый канал.
-
-### B. Уникальный sender_identity для гостей
-В `WebinarPublic.tsx` при первом монтировании генерирую и сохраняю в `sessionStorage`:
-```ts
-const guestSessionId = sessionStorage.getItem(`w-guest-${token}`) 
-  ?? `guest_${crypto.randomUUID().slice(0, 8)}`;
-sessionStorage.setItem(`w-guest-${token}`, guestSessionId);
 ```
-И передаю `guestIdentity={guestSessionId}`. Это даёт каждому гостю свой rate-limit и корректное разделение в чате.
-
-### C. Top-bar — компактно и без наложений на мобильном
-В `LiveKitTopBar` (`EmbeddedWebinarPlayer.tsx`):
-- Кнопки «Ссылка», «QR», «Доступ» сворачиваю в один dropdown «⋯» на экранах `<sm`.
-- Сам top-bar получает `min-height: 36px` без `flex-wrap` — теперь он одна тонкая полоска даже на 320px.
-- На мобильном для read-only гостя top-bar показывает только название эфира + счётчик участников + кнопку «Покинуть» (без QR/Ссылки/Доступа — они хосту).
-
-### D. Кнопка «Поделиться экраном» на мобильном
-Добавляю в `EmbeddedWebinarPlayer` определение возможностей:
-```ts
-const canScreenShare = typeof navigator !== "undefined" 
-  && navigator.mediaDevices?.getDisplayMedia
-  && !/Mobi|Android|iPhone|iPad/i.test(navigator.userAgent);
+useCourseDetails.ts        (301)  ─ используется в CourseDetailsContent.tsx
+useCourseDetailsLogic.ts   (327)  ─ используется в CourseDetailsModal.tsx
+useCoursesTab.ts           (305)  ─ используется в CoursesTab.tsx
+useCoursesTabLogic.ts      (401)  ─ используется в useOrganizationDashboard.ts
 ```
-Передаю в `<VideoConference controls={{ screenShare: canScreenShare }} />` — это родной API LiveKit, кнопка просто не отрисовывается на мобильниках вместо молчаливой ошибки.
+Это **две версии одного и того же** — Modal-вариант остался от старого диалога, а Page-вариант от новой страницы. Логика 80% идентичная (загрузка студентов, открытие редактора, удаление, дублирование, FRDO-настройки).
 
-### E. Полноэкранный режим эфира для гостя на мобильнике
-В `WebinarPublic.tsx` после входа меняю layout:
-- На `<lg` (мобильный/планшет): видео занимает 50vh сверху, под ним переключатель табов «Чат / Q&A / Опросы» на остальные 50vh.
-- На `lg+`: текущий вариант (видео + сайдбар сбоку), остаётся как есть.
+**Что делаю:**
+- Один `useCourseDetails(course, organizationId, opts)` с опциональными колбэками, оба места переводятся на него.
+- Один `useCoursesTab(opts)` (универсальный), `useCoursesTabLogic` удаляю.
+- Удаляю `useCourseDetailsLogic.ts`, `useCoursesTabLogic.ts`. Минус ~700 строк.
 
-### F. Контролы LiveKit крупнее на мобильном
-В `src/index.css` (или новом `src/styles/livekit-overrides.css`) добавляю CSS:
-```css
-@media (max-width: 640px) {
-  [data-lk-theme] .lk-control-bar .lk-button {
-    min-width: 44px;
-    min-height: 44px;
-  }
-  [data-lk-theme] .lk-control-bar {
-    padding: 8px;
-    gap: 6px;
-  }
-}
+### 3. GigaChat — 3 функции до сих пор без shared-клиента
+
+`_shared/gigachat-client.ts` уже используют 9 функций. Без него:
+- `generate-cover` (свой токен-flow для генерации картинок)
+- `generate-image` (то же)
+- `manage-secret` (нет, тут не GigaChat — ложное срабатывание грепа, оставляю)
+
+**Что делаю:** в `_shared/gigachat-client.ts` добавляю `getGigaChatImage(prompt)` и переключаю `generate-cover`/`generate-image` на shared. Один пул токенов, один retry, один rate-limit.
+
+### 4. Reminder-функции — три почти одинаковые
+
 ```
-И импортирую в нужном месте. Это поднимет таргеты до Apple HIG-минимума.
+process-reminders                       ← общие напоминания (студенты)
+process-document-expiry-reminders       ← документы на подпись
+process-signature-expiry-reminders      ← подписи
+process-invoice-payment-reminders       ← счета (уже использует shared)
+```
+Первые три имеют каждая свой SMTP-клиент + свой шаблон HTML, хотя различаются только SQL-запросом и темой письма.
 
-### G. Кнопка «Свернуть видео / Развернуть чат» на мобильном
-В `EmbeddedWebinarPlayer` под видео-плеером добавляю на мобильном маленькую кнопку «Скрыть видео» — нажатие делает видеоблок 80px высоты (только звук + аватары спикеров), весь экран отдаётся чату. Повторное нажатие возвращает.
+**Что делаю:** оставляю 3 функции (логика разная, объединять не стоит), но все три — на `sendPlatformEmail` + общий шаблон письма из `_shared/email-html-utils.ts` (там уже есть базовый wrap). Минус ~300 строк.
 
-### H. Welcome-оверлей не перекрывает имя участника
-На скриншоте видно, что заголовок «Добро пожаловать на вебинар» налезает на надписи "Иван Петров" / "Виктор". Делаю заголовок полупрозрачным (`bg-background/40` + `backdrop-blur-md` нельзя — он запрещён в `mem://style/sidebar-visual-standard`, но WelcomeOverlay — это не сайдбар, это оверлей в видео; здесь blur уместен и LiveKit сам им пользуется). Альтернатива: уменьшаю `bg-gradient-to-br from-primary/20` до `from-primary/10`, добавляю `backdrop-blur-sm` (изнутри LiveKit, не в сайдбаре платформы — правило памяти не нарушается).
+### 5. Производительность — что можно ускорить
 
-## Файлы
+Не выдумываю микро-оптимизации, перечисляю реальные места:
 
-### Правлю
-- `src/components/webinars/EmbeddedWebinarPlayer.tsx` — убрать дубль сайдбара, компактный top-bar с `Popover` на мобильном, прокинуть `controls={{ screenShare: canScreenShare }}` в `<VideoConference />`, прозрачный WelcomeOverlay.
-- `src/pages/WebinarPublic.tsx` — уникальный `guestSessionId` в sessionStorage, мобильный layout (видео сверху + табы снизу).
-- `src/index.css` — CSS-оверрайды LiveKit ControlBar для `<= 640px` (увеличенные кнопки).
+- **`src/integrations/supabase/types.ts` — 10038 строк.** Это автоген, не трогаем, но он пересобирается при каждом `tsc`. Уже ничего не сделать — справочно.
+- **`OrgSidebar.tsx` (658 строк) + `sidebar.tsx` (637).** На каждой смене раздела сайдбар целиком ререндерится из-за `useStaffPermissions` и `useOrgFeatures` хуков, которые возвращают новые объекты. Оборачиваю результат в `useMemo`/`useCallback`, разбиваю меню на `<SidebarSection>` подкомпоненты с `React.memo` — клик по пункту меню становится мгновенным.
+- **`CoursesTab.tsx` (547) + `CourseDetailsContent.tsx` (424).** Много `useEffect` с зависимостями от массивов курсов → лишние перезапросы. Прогоняю и заменяю на `useQuery` с правильным `queryKey` где это уже Tanstack Query.
+- **`BulkDocumentGenerator.tsx` (849).** Перезапрашивает шаблоны при каждом тике прогресса. Выношу `useTemplates()` отдельным мемо.
+- **Lazy-import**: проверяю, что `WebinarsManager`, `BulkDocumentGenerator`, `Deals360`, `SalesOverview`, `CampaignEditor`, `RichTextEditor` импортируются через `React.lazy` в роутерах — чтобы первоначальный bundle не тащил их.
 
-### Без изменений
-- `src/pages/WebinarLive.tsx` — там у хоста уже всё работает после прошлой итерации (PanelRightClose, 4-табы).
-- `livekit-issue-token` edge-функция — права уже корректные.
-- БД, RLS, RPC, миграции — не трогаю.
+### 6. Неиспользуемые/мёртвые файлы
 
-## Что НЕ делаю
-- Не делаю screen share на мобильном — это технически невозможно (iOS Safari блокирует, Android Chrome нестабилен).
-- Не пишу свой ControlBar взамен LiveKit'овского — оверрайдов CSS достаточно.
-- Не меняю backend.
+Проверю и удалю кандидатов:
+- `useCoursesTabLogic`, `useCourseDetailsLogic` — после миграции (см. п.2).
+- `elevenlabs-tts` edge-функция и `useElevenLabsTTS.ts` — по памяти ElevenLabs удалён в пользу SaluteSpeech, но файлы могли остаться.
+- `test-smtp` после слияния в `test-org-smtp`.
+
+Перед удалением каждого файла делаю `grep` по `src/` — если хоть одно вхождение, оставляю и помечаю.
+
+### 7. Мелкая ошибка в консоли
+
+В логах сейчас висит:
+```
+Warning: Function components cannot be given refs.
+Check the render method of `HealthTab` → Badge
+```
+В `HealthTab.tsx` на `Badge` навешан `ref` (видимо для tooltip). Чиню за пять минут — оборачиваю в `React.forwardRef` либо убираю ref.
+
+## Что НЕ делаю в этой пачке
+- Не трогаю авто-генерируемый `supabase/types.ts`.
+- Не переписываю auth/SMTP-протокол шифрования паролей — там всё ок.
+- Не меняю поведение писем (тема/шаблоны/получатели) — только техническая консолидация.
+- Не объединяю `notify-*` в одну функцию — разная бизнес-логика по разным таблицам.
+
+## Порядок работ (3 коммита, можно остановиться после любого)
+
+**Итерация A — SMTP-консолидация (самое ценное)**
+- Расширяю `_shared/smtp-sender.ts`.
+- Переписываю 17 send-/notify-/process- функций.
+- Удаляю `test-smtp`, `denomailer` зависимости.
+- Чиню warning в `HealthTab`.
+
+**Итерация B — хуки кабинета**
+- Объединяю `useCourseDetails*` и `useCoursesTab*`.
+- Удаляю `*Logic` версии.
+- Проверяю, что Modal и Page одинаково работают.
+
+**Итерация C — GigaChat shared + ререндеры сайдбара**
+- `getGigaChatImage` в shared, миграция `generate-cover`/`generate-image`.
+- `useMemo`/`React.memo` для `OrgSidebar`.
+- Lazy-импорты тяжёлых вкладок проверяю и докручиваю.
 
 ## Как проверим
-1. Открыть `/w/<token>` с мобильного браузера (375×812) → виден чат, опросы, Q&A в виде нижних табов, видео сверху на пол-экрана.
-2. Гость пишет сообщение → второй гость в другом окне видит его в realtime.
-3. Хост на десктопе нажимает «Поделиться экраном» → браузер предлагает выбрать окно. На телефоне хоста этой кнопки нет.
-4. На 320px-экране все кнопки top-bar помещаются (через «⋯»-меню).
-5. Welcome-оверлей не закрывает имена участников и control-bar.
+1. Все системные письма (регистрация, восстановление пароля, КП, уведомления о заказе) уходят как раньше — отправляю тестовые на свой ящик после каждого коммита.
+2. Открытие карточки курса в кабинете организации (Modal-вариант + Page-вариант) — обе версии работают идентично.
+3. Сборка фронта: `vite build` не ругается, размер initial bundle не вырос (в идеале — упал на 50–100 KB после lazy).
+4. Console clean: warning про `HealthTab` пропадает.
+5. Тестовая ИИ-генерация обложки курса — работает через shared GigaChat-клиент.
 
