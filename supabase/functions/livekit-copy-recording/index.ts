@@ -33,7 +33,7 @@ Deno.serve(async (req) => {
 
     const { data: w } = await admin
       .from("webinars")
-      .select("id, organization_id, recording_external_url, recording_url")
+      .select("id, organization_id, recording_external_url, recording_url, recording_egress_id, recording_status")
       .eq("id", webinarId).maybeSingle();
     if (!w) return json({ error: "Not found" }, 404);
 
@@ -43,11 +43,67 @@ Deno.serve(async (req) => {
     const isAdmin = roles.includes("admin");
     if (!isAdmin && prof?.organization_id !== w.organization_id) return json({ error: "Forbidden" }, 403);
 
-    if (!w.recording_external_url) return json({ error: "Нет внешнего URL записи" }, 400);
     if (w.recording_url) return json({ ok: true, alreadyCopied: true, url: w.recording_url });
 
-    const fileResp = await fetch(w.recording_external_url);
-    if (!fileResp.ok) return json({ error: `Не удалось скачать: ${fileResp.status}` }, 502);
+    // Если внешнего URL ещё нет — пробуем получить его из LiveKit прямо сейчас (Egress мог только что закончиться)
+    let externalUrl = w.recording_external_url ?? null;
+    if (!externalUrl && w.recording_egress_id) {
+      try {
+        const { signLiveKitJwt, lkHttpUrl, getLiveKitEnv } = await import("../_shared/livekit-jwt.ts");
+        const { apiKey, apiSecret, wsUrl } = getLiveKitEnv();
+        const egressJwt = await signLiveKitJwt(apiKey, apiSecret, {
+          video: { roomRecord: true, roomAdmin: true },
+        }, 600);
+        const listResp = await fetch(`${lkHttpUrl(wsUrl)}/twirp/livekit.Egress/ListEgress`, {
+          method: "POST",
+          headers: { Authorization: `Bearer ${egressJwt}`, "Content-Type": "application/json" },
+          body: JSON.stringify({ egress_ids: [w.recording_egress_id] }),
+        });
+        if (listResp.ok) {
+          const j = await listResp.json();
+          const item = (j?.items ?? [])[0];
+          externalUrl =
+            item?.file?.location ??
+            item?.file_results?.[0]?.location ??
+            item?.fileResults?.[0]?.location ??
+            null;
+          if (externalUrl) {
+            await admin.from("webinars")
+              .update({ recording_external_url: externalUrl })
+              .eq("id", webinarId);
+          }
+        }
+      } catch (e) {
+        console.warn("[copy-recording] re-check external url failed", e);
+      }
+    }
+
+    if (!externalUrl) {
+      // Файл ещё не готов на стороне LiveKit. Просим клиент повторить.
+      await admin.from("webinars")
+        .update({ recording_status: "processing" })
+        .eq("id", webinarId);
+      return json({ ok: false, processing: true, retryAfterMs: 10000, error: "Запись ещё обрабатывается LiveKit" }, 202);
+    }
+
+    // Скачиваем с retry — иногда signed-url ещё не активен
+    let fileResp: Response | null = null;
+    for (let attempt = 0; attempt < 3; attempt++) {
+      fileResp = await fetch(externalUrl);
+      if (fileResp.ok) break;
+      if (fileResp.status === 404 || fileResp.status === 403) {
+        await new Promise((r) => setTimeout(r, 5000));
+        continue;
+      }
+      break;
+    }
+    if (!fileResp || !fileResp.ok) {
+      // 404 → файл ещё не появился, фронт повторит
+      if (fileResp?.status === 404) {
+        return json({ ok: false, processing: true, retryAfterMs: 10000, error: "Файл ещё не доступен" }, 202);
+      }
+      return json({ error: `Не удалось скачать: ${fileResp?.status ?? "network"}` }, 502);
+    }
     const blob = await fileResp.arrayBuffer();
     const sizeBytes = blob.byteLength;
     const path = `${w.organization_id}/${webinarId}-${Date.now()}.mp4`;

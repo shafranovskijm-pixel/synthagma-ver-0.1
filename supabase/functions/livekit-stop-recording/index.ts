@@ -60,28 +60,39 @@ Deno.serve(async (req) => {
       console.error("[stop-egress]", stopResp.status, stopText);
     }
 
-    // Получаем file_url
+    // Получаем file_url через ListEgress с правильным фильтром egress_ids
     let externalUrl: string | null = null;
     try {
       const listResp = await fetch(`${lkHttpUrl(wsUrl)}/twirp/livekit.Egress/ListEgress`, {
         method: "POST",
         headers: { Authorization: `Bearer ${egressJwt}`, "Content-Type": "application/json" },
-        body: JSON.stringify({ egress_id: w.recording_egress_id }),
+        body: JSON.stringify({ egress_ids: [w.recording_egress_id] }),
       });
       if (listResp.ok) {
         const j = await listResp.json();
         const item = (j?.items ?? [])[0];
-        externalUrl = item?.file?.location ?? item?.file_results?.[0]?.location ?? null;
+        externalUrl =
+          item?.file?.location ??
+          item?.file_results?.[0]?.location ??
+          item?.fileResults?.[0]?.location ??
+          null;
+      } else {
+        console.warn("[stop-egress] ListEgress non-ok", listResp.status, await listResp.text());
       }
-    } catch { /* ignore */ }
+    } catch (e) {
+      console.warn("[stop-egress] ListEgress failed", e);
+    }
+
+    // Если файл ещё не готов — ставим processing, фронт начнёт пуллинг копирования
+    const newStatus = externalUrl ? "stopped" : "processing";
 
     await admin.from("webinars").update({
-      recording_status: "stopped",
+      recording_status: newStatus,
       recording_ended_at: new Date().toISOString(),
       recording_external_url: externalUrl,
     }).eq("id", webinarId);
 
-    return json({ ok: true, externalUrl });
+    return json({ ok: true, externalUrl, status: newStatus });
   } catch (e) {
     console.error("[livekit-stop-recording]", e);
     return json({ error: (e as Error).message || "Internal" }, 500);

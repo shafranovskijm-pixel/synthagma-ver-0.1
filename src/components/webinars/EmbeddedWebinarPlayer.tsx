@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback, useRef } from "react";
+import { useEffect, useState, useCallback, useRef, useMemo } from "react";
 import QRCode from "qrcode";
 import { supabase } from "@/integrations/supabase/client";
 import {
@@ -7,8 +7,9 @@ import {
   RoomAudioRenderer,
   useParticipants,
   useTracks,
+  useRoomContext,
 } from "@livekit/components-react";
-import { Track } from "livekit-client";
+import { Track, RoomEvent } from "livekit-client";
 import "@livekit/components-styles";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 import { SigmaLogo } from "@/components/ui/SigmaLogo";
@@ -30,7 +31,17 @@ import { toast } from "sonner";
 import { getBaseUrl } from "@/utils/getBaseUrl";
 import { ShareWebinarDialog } from "@/components/organization/ShareWebinarDialog";
 import { WebinarSidebar } from "@/components/webinars/WebinarSidebar";
+import { RecordingControls } from "@/components/webinars/RecordingControls";
 import { cn } from "@/lib/utils";
+
+/** Платформа для управления видимостью кнопки «поделиться экраном» */
+function detectPlatform(): "ios" | "android" | "desktop" {
+  if (typeof navigator === "undefined") return "desktop";
+  const ua = navigator.userAgent;
+  if (/iPhone|iPad|iPod/i.test(ua)) return "ios";
+  if (/Android/i.test(ua)) return "android";
+  return "desktop";
+}
 
 interface Props {
   webinarId: string;
@@ -94,13 +105,38 @@ export function EmbeddedWebinarPlayer({
   guestIdentity,
   guestDisplayName,
 }: Props) {
+  // ============ Realtime подписка на webinar (recording_url + status) ============
+  // Без неё inline-плеер не узнает, что запись скопировалась после стопа,
+  // и продолжит показывать чёрный экран вместо MP4.
+  const [liveRecordingUrl, setLiveRecordingUrl] = useState<string | null>(recordingUrl ?? null);
+  const [liveStatus, setLiveStatus] = useState<string | null>(status ?? null);
+  useEffect(() => { setLiveRecordingUrl(recordingUrl ?? null); }, [recordingUrl]);
+  useEffect(() => { setLiveStatus(status ?? null); }, [status]);
+  useEffect(() => {
+    if (!webinarId) return;
+    const ch = supabase
+      .channel(`webinar-embed-${webinarId}`)
+      .on("postgres_changes", {
+        event: "UPDATE",
+        schema: "public",
+        table: "webinars",
+        filter: `id=eq.${webinarId}`,
+      }, (payload) => {
+        const row = payload.new as { recording_url?: string | null; status?: string | null };
+        if ("recording_url" in row) setLiveRecordingUrl(row.recording_url ?? null);
+        if (row.status) setLiveStatus(row.status);
+      })
+      .subscribe();
+    return () => { supabase.removeChannel(ch); };
+  }, [webinarId]);
+
   // ============ Recording playback (LiveKit ended + recording attached) ============
-  if (sourceType === "livekit" && status === "ended" && recordingUrl) {
+  if (sourceType === "livekit" && liveStatus === "ended" && liveRecordingUrl) {
     return (
       <div className="aspect-video w-full rounded-lg overflow-hidden bg-black">
         <video
           controls
-          src={recordingUrl}
+          src={liveRecordingUrl}
           className="w-full h-full"
           preload="metadata"
         />
@@ -280,7 +316,7 @@ function LiveKitEmbed({
         <div
           className="relative aspect-video w-full rounded-lg overflow-hidden bg-black webinar-livekit-root"
           data-lk-theme="default"
-          data-mobile={typeof navigator !== "undefined" && /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent) ? "true" : "false"}
+          data-mobile={detectPlatform()}
         >
           <LiveKitRoom
             token={token}
@@ -292,16 +328,19 @@ function LiveKitEmbed({
             style={{ height: "100%" }}
           >
             <LiveKitTopBar
+              webinarId={webinarId}
               title={webinarTitle}
               publicLink={viewOnly ? null : publicLink}
               onShare={() => setShareOpen(true)}
               onEnd={onEnd}
               hasShareSettings={!viewOnly && Boolean(publicToken)}
               viewOnly={viewOnly}
+              isHost={!viewOnly}
             />
             <VideoConference />
             <WelcomeOverlay webinarTitle={webinarTitle} />
             <RoomAudioRenderer />
+            {!viewOnly && <AutoRecordTrigger webinarId={webinarId} />}
           </LiveKitRoom>
         </div>
 
@@ -340,19 +379,23 @@ function LiveKitEmbed({
  * чтобы useParticipants() мог получить контекст комнаты.
  */
 function LiveKitTopBar({
+  webinarId,
   title,
   publicLink,
   onShare,
   onEnd,
   hasShareSettings,
   viewOnly = false,
+  isHost = false,
 }: {
+  webinarId: string;
   title: string | null;
   publicLink: string | null;
   onShare: () => void;
   onEnd?: () => void;
   hasShareSettings: boolean;
   viewOnly?: boolean;
+  isHost?: boolean;
 }) {
   const participants = useParticipants();
   const [copied, setCopied] = useState(false);
@@ -432,6 +475,13 @@ function LiveKitTopBar({
         </Button>
       )}
 
+      {/* Управление записью — только для хоста LiveKit-вебинара */}
+      {isHost && (
+        <div className="hidden sm:inline-flex">
+          <RecordingControls webinarId={webinarId} />
+        </div>
+      )}
+
       {/* Mobile: collapse host actions into "..." menu */}
       {!viewOnly && (publicLink || hasShareSettings) && (
         <Popover>
@@ -459,6 +509,11 @@ function LiveKitTopBar({
                   <Settings2 className="w-4 h-4 mr-2" />
                   Настройки доступа
                 </Button>
+              )}
+              {isHost && (
+                <div className="px-2 pt-1">
+                  <RecordingControls webinarId={webinarId} />
+                </div>
               )}
             </div>
           </PopoverContent>
@@ -535,6 +590,51 @@ function WelcomeOverlay({ webinarTitle }: { webinarTitle: string | null }) {
       </div>
     </div>
   );
+}
+
+/**
+ * Авто-старт записи при первом подключении хоста, если у вебинара выставлен флаг auto_record.
+ * Должен быть смонтирован ВНУТРИ <LiveKitRoom> для доступа к room context.
+ * Срабатывает один раз за сессию.
+ */
+function AutoRecordTrigger({ webinarId }: { webinarId: string }) {
+  const room = useRoomContext();
+  const triggeredRef = useRef(false);
+
+  useEffect(() => {
+    if (!room) return;
+    const tryStart = async () => {
+      if (triggeredRef.current) return;
+      try {
+        const { data: w } = await supabase
+          .from("webinars")
+          .select("auto_record, recording_status, status")
+          .eq("id", webinarId)
+          .maybeSingle();
+        if (!w?.auto_record) return;
+        if (w.recording_status === "active" || w.recording_status === "starting") return;
+        if (w.status && w.status !== "live") return;
+        triggeredRef.current = true;
+        const { error } = await supabase.functions.invoke("livekit-start-recording", {
+          body: { webinarId, autoStart: true },
+        });
+        if (error) {
+          console.warn("[auto-record] failed", error);
+          triggeredRef.current = false;
+        } else {
+          console.log("[auto-record] started for", webinarId);
+        }
+      } catch (e) {
+        console.warn("[auto-record] error", e);
+      }
+    };
+    const handler = () => { void tryStart(); };
+    room.on(RoomEvent.Connected, handler);
+    if (room.state === "connected") void tryStart();
+    return () => { room.off(RoomEvent.Connected, handler); };
+  }, [room, webinarId]);
+
+  return null;
 }
 
 function EmptyState({ message }: { message: string }) {
