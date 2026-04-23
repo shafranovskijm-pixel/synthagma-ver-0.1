@@ -121,6 +121,8 @@ export function AIGenerateDialog({
           </DialogTitle>
         </DialogHeader>
 
+        {courseId && <CourseGenerationProgress courseId={courseId} />}
+
         {!selectedType ? (
           <div className="space-y-3">
             {generateOptions.map((option) => {
