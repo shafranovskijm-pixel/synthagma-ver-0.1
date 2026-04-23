@@ -3,6 +3,7 @@ import { initExternalSupabase, getExternalSupabase } from '@/integrations/extern
 import { supabase } from '@/integrations/supabase/client';
 import { safeInvoke } from '@/utils/safeInvoke';
 import { toast } from "sonner";
+import { getErrorMessage } from "@/utils/handleSupabaseError";
 interface UploadResult {
   url: string;
   path: string;
