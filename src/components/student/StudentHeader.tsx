@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { RadioPlayerButton } from "@/components/radio/RadioPlayerButton";
+import { AnnouncementsBell } from "@/components/shared/AnnouncementsBell";
 import { useTheme } from "next-themes";
 
 interface StudentHeaderProps {
@@ -66,7 +67,10 @@ export function StudentHeader({
         {/* Radio */}
         <RadioPlayerButton />
 
-        {/* Notifications bell */}
+        {/* Что нового — bell с бейджем */}
+        <AnnouncementsBell />
+
+        {/* Notifications bell (заглушка под персональные уведомления) */}
         <Tooltip>
           <TooltipTrigger asChild>
             <Button variant="ghost" size="icon" className="rounded-xl w-10 h-10 relative hover:scale-105 transition-transform">
