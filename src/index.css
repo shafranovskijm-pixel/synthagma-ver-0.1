@@ -1096,8 +1096,9 @@ html {
   }
 }
 
-/* На мобильных getDisplayMedia не работает — скрываем кнопку «поделиться экраном» */
-.webinar-livekit-root[data-mobile="true"] .lk-control-bar button[data-lk-source="screen_share"],
-.webinar-livekit-root[data-mobile="true"] .lk-control-bar .lk-button:has(> svg + [data-lk-screen-share]) {
+/* На iOS Safari getDisplayMedia не работает в принципе — скрываем кнопку «поделиться экраном».
+   Android Chrome 89+ поддерживает getDisplayMedia, поэтому там кнопку оставляем. */
+.webinar-livekit-root[data-mobile="ios"] .lk-control-bar button[data-lk-source="screen_share"],
+.webinar-livekit-root[data-mobile="ios"] .lk-control-bar .lk-button:has(> svg + [data-lk-screen-share]) {
   display: none !important;
 }
