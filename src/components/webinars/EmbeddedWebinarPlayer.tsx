@@ -316,7 +316,7 @@ function LiveKitEmbed({
         <div
           className="relative aspect-video w-full rounded-lg overflow-hidden bg-black webinar-livekit-root"
           data-lk-theme="default"
-          data-mobile={typeof navigator !== "undefined" && /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent) ? "true" : "false"}
+          data-mobile={detectPlatform()}
         >
           <LiveKitRoom
             token={token}
@@ -328,16 +328,19 @@ function LiveKitEmbed({
             style={{ height: "100%" }}
           >
             <LiveKitTopBar
+              webinarId={webinarId}
               title={webinarTitle}
               publicLink={viewOnly ? null : publicLink}
               onShare={() => setShareOpen(true)}
               onEnd={onEnd}
               hasShareSettings={!viewOnly && Boolean(publicToken)}
               viewOnly={viewOnly}
+              isHost={!viewOnly}
             />
             <VideoConference />
             <WelcomeOverlay webinarTitle={webinarTitle} />
             <RoomAudioRenderer />
+            {!viewOnly && <AutoRecordTrigger webinarId={webinarId} />}
           </LiveKitRoom>
         </div>
 
