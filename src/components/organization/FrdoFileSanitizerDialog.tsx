@@ -118,7 +118,6 @@ export function FrdoFileSanitizerDialog({ open, onOpenChange }: Props) {
   const headers = result ? getHeadersForType(result.type) : [];
   const previewRows = result ? result.rows.slice(0, 20) : [];
   const previewCols = headers.length;
-  const [showPreview, setShowPreview] = useState(false);
 
   // Сводка автозаполнений по причинам
   const autoFillSummary = (() => {
