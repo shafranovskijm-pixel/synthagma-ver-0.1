@@ -10,23 +10,11 @@ import { ScrollReveal } from "@/components/ui/ScrollReveal";
 export function EditorAndFrdoSections() {
   return (
     <>
-      {/* Section 1: FRDO pain */}
+      {/* Section 1: FRDO pain — заголовок и подзаголовок убраны,
+          вся боль уже отлично читается прямо внутри FrdoPainSlide
+          (бейдж «Знакомо?» и «Забудь про ручной ввод…»). */}
       <section className="py-20 lg:py-28 relative overflow-hidden bg-gradient-to-b from-background via-muted/10 to-background">
         <div className="container mx-auto max-w-6xl px-6 relative z-10">
-          <ScrollReveal>
-            <div className="text-center mb-10">
-              <span className="inline-block px-4 py-1.5 rounded-full text-sm font-medium mb-4 bg-destructive/10 text-destructive">
-                Боль клиента
-              </span>
-              <h2 className="font-display text-3xl md:text-4xl font-bold mb-4 tracking-tight">
-                Забудьте про «недопустимый символ» в ФИС ФРДО
-              </h2>
-              <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
-                Невидимые пробелы, табуляции, кривой СНИЛС — Синтагма чистит и переупаковывает Excel в эталонный шаблон 35/41
-              </p>
-            </div>
-          </ScrollReveal>
-
           <FrdoPainSlide />
         </div>
       </section>
