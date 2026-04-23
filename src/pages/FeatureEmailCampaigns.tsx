@@ -244,7 +244,7 @@ const FeatureEmailCampaigns = () => {
             <motion.div variants={fadeUp} className="rounded-2xl border border-border/60 bg-card/80 overflow-hidden shadow-xl">
               <div className="bg-secondary/40 px-4 py-3 border-b border-border/60 flex items-center gap-2">
                 <div className="w-3 h-3 rounded-full bg-destructive/40" />
-                <div className="w-3 h-3 rounded-full bg-yellow-500/40" />
+                <div className="w-3 h-3 rounded-full bg-muted-foreground/30" />
                 <div className="w-3 h-3 rounded-full bg-accent/40" />
                 <span className="ml-3 text-xs text-muted-foreground">sintagma.com.ru / Рассылки</span>
               </div>

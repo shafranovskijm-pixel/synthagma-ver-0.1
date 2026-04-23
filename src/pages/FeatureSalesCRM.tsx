@@ -244,15 +244,15 @@ const FeatureSalesCRM = () => {
             <motion.div variants={fadeUp} className="rounded-2xl border border-border/60 bg-card/80 overflow-hidden shadow-xl">
               <div className="bg-secondary/40 px-4 py-3 border-b border-border/60 flex items-center gap-2">
                 <div className="w-3 h-3 rounded-full bg-destructive/40" />
-                <div className="w-3 h-3 rounded-full bg-yellow-500/40" />
+                <div className="w-3 h-3 rounded-full bg-muted-foreground/30" />
                 <div className="w-3 h-3 rounded-full bg-accent/40" />
                 <span className="ml-3 text-xs text-muted-foreground">sintagma.com.ru / CRM / Сделки</span>
               </div>
               <div className="p-4 grid grid-cols-2 md:grid-cols-4 gap-3 overflow-x-auto">
                 {[
-                  { stage: "Лид", count: 12, sum: "1.2 млн", color: "bg-blue-500/10 text-blue-500" },
-                  { stage: "КП отправлено", count: 8, sum: "2.4 млн", color: "bg-purple-500/10 text-purple-500" },
-                  { stage: "Договор", count: 5, sum: "1.8 млн", color: "bg-yellow-500/10 text-yellow-500" },
+                  { stage: "Лид", count: 12, sum: "1.2 млн", color: "bg-primary/10 text-primary" },
+                  { stage: "КП отправлено", count: 8, sum: "2.4 млн", color: "bg-secondary text-foreground" },
+                  { stage: "Договор", count: 5, sum: "1.8 млн", color: "bg-muted text-muted-foreground" },
                   { stage: "Оплачено", count: 3, sum: "950 тыс", color: "bg-accent/10 text-accent" },
                 ].map((col, i) => (
                   <div key={i} className="rounded-xl bg-background/60 border border-border/60 p-3 min-w-[180px]">
