@@ -728,3 +728,15 @@ export function calcStats(parse: ParseResult): SanitizeStats {
 export function getHeadersForType(type: FrdoSheetType): string[] {
   return type === "dpo" ? [...DPO_HEADERS] : [...PO_HEADERS];
 }
+
+/** Список наших заголовков, для которых не нашлось соответствия в исходнике */
+export function getUnmappedHeaders(parse: ParseResult): { index: number; header: string; required: boolean }[] {
+  const meta = getMeta(parse.type);
+  const result: { index: number; header: string; required: boolean }[] = [];
+  parse.columnMap.forEach((srcIdx, i) => {
+    if (srcIdx === -1) {
+      result.push({ index: i, header: meta[i].header, required: !!meta[i].required });
+    }
+  });
+  return result;
+}
