@@ -168,15 +168,16 @@ async function buildXlsxFile(headers: string[], rows: (string | number)[][], nam
 }
 
 describe("buildColumnMap fuzzy + positional fallback", () => {
-  it("matches singular profession header (PO[11])", async () => {
+  it("matches singular profession header (PO[11]) and title-cases value", async () => {
     const headers = [...PO_HEADERS];
     headers[11] = "Наименование профессии рабочего, должности служащего";
     const file = await buildXlsxFile(headers, [
-      headers.map((_, i) => (i === 11 ? "Водитель автомобиля" : `v${i}`)),
+      headers.map((_, i) => (i === 11 ? "водитель автомобиля" : `v${i}`)),
     ]);
     const r = await parseFrdoXlsx(file, "po");
     expect(r.columnMap[11]).toBe(11);
-    expect(String(r.rows[0].cells[11].value)).toBe("Водитель автомобиля");
+    // sanitizeProfessionName делает title-case под классификатор ФРДО
+    expect(String(r.rows[0].cells[11].value)).toBe("Водитель Автомобиля");
   });
 
   it("matches 'СНИЛС получателя' for PO[21]", async () => {
@@ -210,5 +211,14 @@ describe("buildColumnMap fuzzy + positional fallback", () => {
     const unmapped = getUnmappedHeaders(r);
     const snilsHeader = getHeadersForType("po")[21];
     expect(unmapped.some((u) => u.header === snilsHeader)).toBe(true);
+  });
+
+  it("регрессия ФРДО: 'охранник' (lowercase) → 'Охранник' для классификатора", async () => {
+    const headers = [...PO_HEADERS];
+    const file = await buildXlsxFile(headers, [
+      headers.map((_, i) => (i === 11 ? "охранник" : `v${i}`)),
+    ]);
+    const r = await parseFrdoXlsx(file, "po");
+    expect(String(r.rows[0].cells[11].value)).toBe("Охранник");
   });
 });
