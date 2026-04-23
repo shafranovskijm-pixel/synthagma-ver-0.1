@@ -1,93 +1,93 @@
 
+# План: починить перенос колонки L в PO-выгрузке ФРДО
 
-# План: автоматически заполнять «Пол» и «Наименование профессии» при экспорте ФРДО
+## Что сломано сейчас
 
-## Что не так сейчас
+Колонка **L** в PO-шаблоне — это `Наименование профессий рабочих, должностей служащих`.  
+Сама функция `buildPORow()` пишет её корректно в **12-ю позицию**, а шаблонный инжектор переносит все непустые значения по индексам без сдвига. Значит проблема не в `frdoTemplateInjector.ts`, а в том, **что в row уже приходит пустой `professionName`**.
 
-ФРДО-валидатор отверг файл с двумя ошибками на каждой строке:
-- **L** (12-я колонка PO = «Наименование профессий рабочих, должностей служащих») — **пусто** → «Значение отсутствует в классификаторе»
-- **U** (21-я колонка = «Пол получателя») — **пусто** или V/СНИЛС короче 14
+По коду видно расхождение:
+- `BulkFRDOExport.tsx` уже использует `resolveFRDOFields(...)` и передаёт `resolved.professionName`
+- но `useFRDOManager.ts` и `FRDOExportDialog.tsx` всё ещё собирают PO-строку по старой схеме:
+  - `professionName: data.profession_name || courseSettings?.frdo_profession_name || ""`
+  - без единого общего резолвера
+  - без безопасного fallback
+  - без явного предупреждения, если поле осталось пустым
 
-В коде `BulkFRDOExport.tsx` оба поля пишутся напрямую из БД:
+Из-за этого в одном сценарии L заполняется, а в другом — снова пустая.
 
-```ts
-gender: frdoData.gender,                 // если в БД пусто → пустая ячейка
-professionName: frdoData.profession_name // тоже пусто
-```
+## Что сделаю
 
-Хотя в `src/constants/frdo.ts` уже есть `detectGenderFromMiddleName()`, он используется только в `FRDOExportDialog`, а в массовом экспорте — нет. И «Наименование профессии» вообще нигде не подставляется автоматически — ждёт ручного ввода в карточке студента.
+### 1. Приведу все PO/DPO-экспорты к одному резолверу
+Во всех местах, где строятся строки ФРДО, использовать один и тот же helper:
+- `resolveFRDOFields(frdoData, courseSettings)`
 
-## Что меняем
+Это исправит единообразно:
+- `professionName` для PO
+- `gender`
+- `trainingForm`
+- `financingSource`
+- `educationForm`
+- DPO-поля курса
 
-### 1. Авто-определение пола из отчества — везде
+## 2. Починю конкретно массовую кнопочную выгрузку в FRDO Manager
+В `src/hooks/useFRDOManager.ts` заменю старую ручную сборку на:
+- `const resolved = resolveFRDOFields(data, courseSettings)`
+- для PO:
+  - `professionName: resolved.professionName`
+  - `qualificationRank: resolved.qualificationRank`
+  - `gender: resolved.gender`
+  - остальные поля тоже через resolved где нужно
+- для DPO:
+  - `professionalArea`, `specialtyGroup`, `qualificationName`, `gender` и прочее — тоже через resolved
 
-В `BulkFRDOExport.handleExport` и в `FrdoSyncDialog`/`useFRDOManager` (где собираются строки для экспорта) использовать каскад:
+Это самый вероятный источник текущей ошибки с L.
 
-```ts
-gender: frdoData.gender 
-     || detectGenderFromMiddleName(frdoData.middle_name) 
-     || ""
-```
+## 3. Починю одиночный экспорт из карточки ученика
+В `src/components/organization/FRDOExportDialog.tsx` уберу локальную разрозненную логику:
+- вместо `frдоData.profession_name || courseData?.frdo_profession_name || ""`
+- использовать `resolveFRDOFields(frдоData, courseData)`
 
-Дополнительно — если `gender` пустой, но определился по отчеству, при сохранении строки в `student_frdo_data` (там, где сейчас идёт upsert при синхронизации) **записать его в БД**, чтобы карточка студента тоже подтянула значение и показатель «готовность ФРДО» вырос.
+Для PO-экспорта:
+- `professionName: resolved.professionName`
+- `qualificationRank: resolved.qualificationRank`
+- `gender: resolved.gender`
 
-### 2. Подстановка наименования профессии из курса
+Для DPO:
+- аналогично перейти на `resolved.*`
 
-Сейчас `profession_name` лежит только в `student_frdo_data`. Для PO-экспорта нужен код/название из классификатора профессий (ОК 016-94). Делаем три уровня fallback:
+Так одиночный и массовый экспорт будут выдавать одинаковый результат.
 
-1. `frdoData.profession_name` (если организация уже заполнила вручную) — приоритет.
-2. `course.frdo_profession_name` — новое поле на уровне курса (заполняется один раз для всех учеников курса). Добавляем колонку в `courses` через миграцию + поле ввода в форме редактирования курса (вкладка «ФРДО / Документы»).
-3. Если оба пусты — используем `course.title` как заглушку **с предупреждением в UI**: «У курса не указано наименование профессии — будет подставлено название курса. ФРДО может отклонить файл».
+## 4. Добавлю жёсткую защиту от пустой L
+Если экспорт типа `po` и после всех fallback поле `resolved.professionName` всё ещё пустое:
+- не экспортировать молча пустую колонку L
+- показать понятную ошибку:
+  - `Не заполнено "Наименование профессии" для курса/ученика. Укажите frdo_profession_name в курсе или profession_name у ученика.`
 
-Аналогично для DPO — поля `professional_area`, `specialty_group`, `qualification_name` тянутся сначала из карточки студента, потом из курса.
+Это лучше, чем снова отдавать битый файл.
 
-### 3. UI-предупреждение перед экспортом
+## 5. Добавлю тест именно на колонку L
+Расширю тесты в `src/utils/__tests__/frdoExcelExport.test.ts` или добавлю отдельный тест на резолвер:
+- PO row должен класть `professionName` в индекс `11` (Excel L)
+- если `student.profession_name` пусто, а `course.frdo_profession_name = "Охранник"`, то в row[11] должно быть `"Охранник"`
 
-В диалоге `BulkFRDOExport` добавить **превалидацию**: перед нажатием «Экспортировать» показать список проблем по выбранным студентам:
+Отдельно добавлю тест на fallback через `resolveFRDOFields`.
 
-```
-⚠️ 5 из 19 студентов не пройдут валидацию ФРДО:
-• Иванов И.И. — нет СНИЛС
-• Петров П.П. — нет наименования профессии (не указано в курсе)
-• ...
-[Игнорировать и экспортировать]  [Открыть карточку студента]
-```
+## Файлы
 
-Используем тот же `useFrdoReadiness` / новую функцию `validateFRDORowSync(row)` с теми же правилами, что и валидатор ФРДО:
-- Пол ∈ {Муж, Жен} → если пусто и определяется по отчеству — авто;
-- СНИЛС: 14 символов вида `XXX-XXX-XXX XX` + проверка контрольной суммы (уже есть в `formatSnils`/`validateSnils`);
-- Профессия не пуста.
-
-### 4. Расширение «Готовности ФРДО» (FrdoReadinessBanner)
-
-Сейчас баннер считает только `missing_birth_date / snils / passport`. Добавляем в RPC `get_frdo_export_readiness` ещё:
-- `missing_gender_resolvable` — пол не указан, но определяется по отчеству (можно автоматически починить);
-- `missing_profession_name` — нет ни в студенте, ни в курсе.
-
-В баннере новая кнопка **«Авто-заполнить пол»** одним кликом проставит `gender` всем студентам с `missing_gender_resolvable > 0` через UPDATE по списку.
-
-## Технические детали
-
-| Файл | Изменение |
+| Файл | Что изменить |
 |---|---|
-| `src/components/organization/BulkFRDOExport.tsx` | gender/profession каскад + предвалидация + диалог-предупреждение |
-| `src/components/organization/FRDOExportDialog.tsx` | то же — единый helper `resolveFRDOFields(student, course, frdoData)` |
-| `src/utils/frdoExcelExport.ts` | новый helper `resolveFRDOFields()` + `validateFRDORowSync()` (строгие правила ФРДО, СНИЛС с контрольной суммой) |
-| `src/constants/frdo.ts` | оставить `detectGenderFromMiddleName` без изменений |
-| `src/components/organization/FrdoReadinessBanner.tsx` | показывать новые метрики + кнопка «Авто-заполнить пол» |
-| `src/hooks/useFrdoReadiness.ts` | расширить тип `stats` |
-| Миграция БД | `ALTER TABLE courses ADD COLUMN frdo_profession_name text, frdo_qualification_rank text, frdo_professional_area text, frdo_specialty_group text, frdo_qualification_name text` + обновить RPC `get_frdo_export_readiness` |
-| Форма курса | новая секция «ФРДО» в редакторе курса с полями выше (текстовые поля + подсказка про классификатор) |
-| `src/components/organization/students/FRDODataForm.tsx` | при пустом `gender` показать кнопку «Определить по отчеству» + автозаполнение |
+| `src/hooks/useFRDOManager.ts` | перевести сборку DPO/PO строк на `resolveFRDOFields()` |
+| `src/components/organization/FRDOExportDialog.tsx` | использовать `resolveFRDOFields()` для одиночного экспорта |
+| `src/utils/frdoFieldResolver.ts` | при необходимости усилить fallback и оставить единый источник правды |
+| `src/utils/__tests__/frdoExcelExport.test.ts` | тест на L-колонку / profession fallback |
 
-## Что НЕ делаем
+## Ожидаемый результат
 
-- Не подключаем онлайн-классификатор ОК 016-94 (профессии/специальности) — слишком объёмно. Поля свободного ввода с подсказкой про корректное название.
-- Не переписываем формат СНИЛС — он уже корректный, ошибка V14/V7 — это **реальная неверная контрольная сумма**, её только в карточке студента править.
-- Не трогаем `frdoFileSanitizer.ts` — он работает с чужими файлами, не с нашим экспортом.
-
-## Риски
-
-- Авто-определение пола по отчеству не работает для иностранцев без отчества или с нестандартными окончаниями. Для таких в баннере будут оставаться `missing_gender_unresolvable` — менеджер заполняет руками.
-- Подстановка `course.title` вместо профессии **не пройдёт ФРДО**, поэтому делаем явное предупреждение, не молчаливый fallback.
-
+После исправления:
+- в PO-выгрузке колонка **L** будет заполняться значением профессии, например **«Охранник»**
+- это будет работать одинаково:
+  - в массовой выгрузке
+  - в одиночной карточке ученика
+  - при экспорте через менеджер ФРДО
+- если профессия не задана вообще нигде, система остановит экспорт с понятной ошибкой, а не создаст файл с пустой L
