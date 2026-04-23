@@ -173,24 +173,28 @@ const AdminDashboard = () => {
 
         {/* Content */}
         <div className="p-4 lg:p-8 flex-1">
-          {activeTab === "analytics" && <AdminAnalytics />}
+          {/* Eager: дефолтные «Организации» и «Пользователи» — открываются часто */}
           {activeTab === "organizations" && <OrganizationsManager openOrgId={openOrgId} onOpenOrgHandled={() => setOpenOrgId(null)} />}
-          {activeTab === "marketplace" && <AdminMarketplaceManager />}
-          {activeTab === "sales" && <SalesManager />}
-          {activeTab === "billing" && <AdminBillingOverview pendingExpandContractId={pendingExpandContractId} />}
-          {activeTab === "finance" && <AdminFinanceOverview />}
-          {activeTab === "ai" && <AISettingsManager />}
           {activeTab === "users" && <UsersManager />}
-          {activeTab === "content" && <BlogManager />}
-          {activeTab === "support" && <SupportRequestsManager />}
-          {activeTab === "broadcast" && <BroadcastManager />}
-          {activeTab === "chats" && <AdminChatsManager />}
-          {activeTab === "referrals" && <ReferralsManager />}
-          
-          {activeTab === "devtools" && <DevToolsPanel />}
-          {activeTab === "updates" && <PlatformUpdatesManager />}
-          {activeTab === "webinars-admin" && <AdminWebinarsOverview />}
-          {activeTab === "settings" && <AdminSettings />}
+
+          {/* Lazy-вкладки: грузим JS только при открытии */}
+          <Suspense fallback={<LazyLoadFallback />}>
+            {activeTab === "analytics" && <AdminAnalytics />}
+            {activeTab === "marketplace" && <AdminMarketplaceManager />}
+            {activeTab === "sales" && <SalesManager />}
+            {activeTab === "billing" && <AdminBillingOverview pendingExpandContractId={pendingExpandContractId} />}
+            {activeTab === "finance" && <AdminFinanceOverview />}
+            {activeTab === "ai" && <AISettingsManager />}
+            {activeTab === "content" && <BlogManager />}
+            {activeTab === "support" && <SupportRequestsManager />}
+            {activeTab === "broadcast" && <BroadcastManager />}
+            {activeTab === "chats" && <AdminChatsManager />}
+            {activeTab === "referrals" && <ReferralsManager />}
+            {activeTab === "devtools" && <DevToolsPanel />}
+            {activeTab === "updates" && <PlatformUpdatesManager />}
+            {activeTab === "webinars-admin" && <AdminWebinarsOverview />}
+            {activeTab === "settings" && <AdminSettings />}
+          </Suspense>
         </div>
 
         {/* Footer */}
