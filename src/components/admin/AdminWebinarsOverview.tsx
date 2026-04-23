@@ -61,7 +61,7 @@ const SOURCE_LABELS: Record<string, string> = {
 
 // БЕЗ джойнов — джойн organizations(name) у админа иногда падает по RLS
 const SELECT_FIELDS =
-  "id, title, scheduled_at, duration_minutes, status, source_type, external_url, embed_url, kinescope_live_id, kinescope_video_id, organization_id, created_at, player_settings, public_token, allow_guests, guest_password";
+  "id, title, scheduled_at, duration_minutes, status, source_type, external_url, embed_url, kinescope_live_id, kinescope_video_id, organization_id, created_at, player_settings, public_token, allow_guests, guest_password, recording_status, recording_url, recording_size_bytes";
 
 export function AdminWebinarsOverview() {
   const { user } = useAuth();
@@ -229,10 +229,11 @@ export function AdminWebinarsOverview() {
     }
   };
 
-  // По закрытию Sheet помечаем вебинар как завершённый
+  // По закрытию Sheet — корректно завершаем LiveKit-вебинар (стоп записи + удаление комнаты).
   const closePlayer = async () => {
     if (playerWebinar && playerWebinar.status === "live") {
-      await supabase.from("webinars").update({ status: "ended" }).eq("id", playerWebinar.id);
+      const { endLiveKitWebinar } = await import("@/utils/endLiveKitWebinar");
+      await endLiveKitWebinar(playerWebinar.id);
       fetchWebinars();
     }
     setPlayerWebinar(null);

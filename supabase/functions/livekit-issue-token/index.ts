@@ -151,14 +151,42 @@ Deno.serve(async (req) => {
     if (webinarId) {
       const { data: webinar } = await admin
         .from("webinars")
-        .select("id, organization_id, created_by, player_settings, source_type, course_id")
+        .select("id, organization_id, created_by, host_user_id, player_settings, source_type, course_id")
         .eq("id", webinarId)
         .maybeSingle();
       if (!webinar) return json({ error: "Вебинар не найден" }, 404);
 
+      // Глобальный админ платформы — всегда host (может тестировать любой вебинар).
+      const { data: rolesRow } = await admin
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", user.id);
+      const isPlatformAdmin = (rolesRow ?? []).some((r: any) => r.role === "admin");
+
       const isOrgManager =
         profile?.organization_id && profile.organization_id === webinar.organization_id;
-      isHost = !!isOrgManager || webinar.created_by === user.id;
+
+      // org_staff с правом webinars.write — тоже host (сотрудники школы).
+      let isOrgStaffHost = false;
+      if (!isOrgManager && webinar.organization_id) {
+        try {
+          const { data: hasPerm } = await admin.rpc("has_org_staff_permission", {
+            _user_id: user.id,
+            _organization_id: webinar.organization_id,
+            _permission: "webinars.write",
+          });
+          isOrgStaffHost = hasPerm === true;
+        } catch (e) {
+          console.warn("[issue-token] has_org_staff_permission failed", e);
+        }
+      }
+
+      isHost =
+        isPlatformAdmin ||
+        !!isOrgManager ||
+        isOrgStaffHost ||
+        webinar.created_by === user.id ||
+        webinar.host_user_id === user.id;
 
       if (!isHost) {
         const { count: directCount } = await admin

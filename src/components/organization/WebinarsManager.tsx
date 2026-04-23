@@ -17,6 +17,8 @@ import { ShareWebinarDialog } from "./ShareWebinarDialog";
 import { EmbeddedWebinarPlayer } from "@/components/webinars/EmbeddedWebinarPlayer";
 import { WebinarLiveInline } from "@/components/webinars/WebinarLiveInline";
 import { WebinarRecordingUploader } from "@/components/webinars/WebinarRecordingUploader";
+import { RecordingStatusBadge } from "@/components/webinars/RecordingStatusBadge";
+import { RecordingPreviewDialog } from "@/components/webinars/RecordingPreviewDialog";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
@@ -45,6 +47,8 @@ interface Webinar {
   allow_guests: boolean;
   guest_password: string | null;
   recording_url?: string | null;
+  recording_status?: string | null;
+  recording_size_bytes?: number | null;
 }
 
 interface Props {
@@ -65,6 +69,7 @@ export function WebinarsManager({ organizationId }: Props) {
   const [shareWebinar, setShareWebinar] = useState<Webinar | null>(null);
   const [liveSheetWebinar, setLiveSheetWebinar] = useState<Webinar | null>(null);
   const [recordingTarget, setRecordingTarget] = useState<Webinar | null>(null);
+  const [previewWebinar, setPreviewWebinar] = useState<Webinar | null>(null);
 
   const webinarsQuery = useQuery({
     queryKey: ["org", organizationId, "webinars"],
@@ -107,32 +112,8 @@ export function WebinarsManager({ organizationId }: Props) {
   const handleStopLive = async (w: Webinar) => {
     setActionLoading(w.id);
     try {
-      // 1. Если активна запись — корректно остановить, чтобы не потерять файл.
-      const { data: full } = await supabase
-        .from("webinars")
-        .select("recording_status, source_type, room_name")
-        .eq("id", w.id)
-        .maybeSingle();
-      if ((full as any)?.recording_status === "active") {
-        try {
-          await supabase.functions.invoke("livekit-stop-recording", { body: { webinarId: w.id } });
-        } catch (recErr) {
-          console.warn("[stop-live] stop-recording failed", recErr);
-        }
-      }
-
-      // 2. Удалить LiveKit-комнату — мгновенно отключает участников, освобождает ресурсы.
-      if ((full as any)?.source_type === "livekit" && (full as any)?.room_name) {
-        try {
-          await supabase.functions.invoke("livekit-end-room", { body: { webinarId: w.id } });
-        } catch (endErr) {
-          console.warn("[stop-live] end-room failed", endErr);
-        }
-      }
-
-      // 3. Обновить статус в БД.
-      await supabase.from("webinars").update({ status: "ended" } as any).eq("id", w.id);
-      toast.success("Эфир завершён, участники отключены");
+      const { endLiveKitWebinar } = await import("@/utils/endLiveKitWebinar");
+      await endLiveKitWebinar(w.id);
       fetchWebinars();
     } catch (e: any) {
       toast.error(e.message || "Ошибка остановки трансляции");
@@ -375,7 +356,14 @@ export function WebinarsManager({ organizationId }: Props) {
               )}
               <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0">
-                  <h4 className="font-medium truncate">{w.title}</h4>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <h4 className="font-medium truncate">{w.title}</h4>
+                    <RecordingStatusBadge
+                      status={w.recording_status}
+                      sizeBytes={w.recording_size_bytes}
+                      compact
+                    />
+                  </div>
                   {w.description && <p className="text-sm text-muted-foreground line-clamp-2">{w.description}</p>}
                 </div>
                 {statusBadge(w)}
@@ -446,7 +434,12 @@ export function WebinarsManager({ organizationId }: Props) {
                     <RefreshCw className="w-3 h-3 mr-1" />Запись
                   </Button>
                 )}
-                {w.source_type === "livekit" && (
+                {w.source_type === "livekit" && w.status === "ended" && w.recording_url && (
+                  <Button size="sm" variant="default" onClick={() => setPreviewWebinar(w)}>
+                    <Video className="w-3 h-3 mr-1" />Смотреть запись
+                  </Button>
+                )}
+                {w.source_type === "livekit" && w.status !== "ended" && (
                   <Button size="sm" variant="default" onClick={() => setLiveSheetWebinar(w)}>
                     <Video className="w-3 h-3 mr-1" />Войти в эфир
                   </Button>
@@ -558,6 +551,13 @@ export function WebinarsManager({ organizationId }: Props) {
       />
 
       {/* Live webinar теперь рендерится inline сверху (ранний return), отдельный overlay не нужен */}
+
+      <RecordingPreviewDialog
+        open={!!previewWebinar}
+        onOpenChange={(o) => !o && setPreviewWebinar(null)}
+        title={previewWebinar?.title || ""}
+        recordingUrl={previewWebinar?.recording_url ?? null}
+      />
 
       {recordingTarget && (
         <WebinarRecordingUploader
