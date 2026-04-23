@@ -377,7 +377,7 @@ const PO_META: ColumnMeta[] = [
     "профессии рабочих",
     "профессия",
     "должность",
-  ), kind: "text", required: true },
+  ), kind: "profession", required: true },
   { header: PO_HEADERS[12], aliases: a("присвоенный квалификационный разряд класс категория при наличии", "разряд", "квалификационный разряд", "класс", "категория"), kind: "text" },
   { header: PO_HEADERS[13], aliases: a("год начала обучения", "год начала"), kind: "number" },
   { header: PO_HEADERS[14], aliases: a("год окончания обучения", "год окончания"), kind: "number" },
