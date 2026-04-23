@@ -113,23 +113,22 @@ export function StaffPermissionsProvider({ children }: { children: ReactNode }) 
   );
 }
 
+// Стабильный фолбек: создаём один раз, чтобы потребители не получали новый объект на каждом рендере.
+const FALLBACK_VALUE: StaffPermissionsContextValue = {
+  loading: false,
+  orgRole: null,
+  adminRole: null,
+  orgPermissions: new Set(),
+  adminSections: new Set(),
+  isOrgOwner: false,
+  can: () => true,
+  canSeeOrgTab: () => true,
+  canSeeAdminTab: () => true,
+};
+
 export function useStaffPermissions(): StaffPermissionsContextValue {
   const ctx = useContext(StaffPermissionsContext);
-  if (!ctx) {
-    // Безопасный фолбек, если провайдер не подключен — ничего не ломаем.
-    return {
-      loading: false,
-      orgRole: null,
-      adminRole: null,
-      orgPermissions: new Set(),
-      adminSections: new Set(),
-      isOrgOwner: false,
-      can: () => true,
-      canSeeOrgTab: () => true,
-      canSeeAdminTab: () => true,
-    };
-  }
-  return ctx;
+  return ctx ?? FALLBACK_VALUE;
 }
 
 interface RequirePermProps {
