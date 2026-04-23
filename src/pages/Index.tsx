@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { Helmet } from "react-helmet-async";
 import { Hero } from "@/components/landing/Hero";
 import { Features } from "@/components/landing/Features";
-import { EditorDemo } from "@/components/landing/EditorDemo";
+import { EditorDemoSlider } from "@/components/landing/EditorDemoSlider";
 import { RostechnadzorCourses } from "@/components/landing/RostechnadzorCourses";
 import { LandingHeader } from "@/components/landing/LandingHeader";
 
@@ -77,7 +77,7 @@ const Index = () => {
       <div className="min-h-screen bg-background">
         <LandingHeader showStars={false} />
         <Hero showStars={false} />
-        <EditorDemo />
+        <EditorDemoSlider />
         <PricingPlans />
         <Features />
         <RostechnadzorCourses />
