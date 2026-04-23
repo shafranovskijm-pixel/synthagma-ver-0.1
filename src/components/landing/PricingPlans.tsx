@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { Check, X, Crown, Sparkles, Info } from "lucide-react";
+import { Check, X, Crown, Sparkles, Info, FileText, ArrowRight } from "lucide-react";
 import { Link } from "react-router-dom";
 import { SUBSCRIPTION_PLANS, YEARLY_DISCOUNT, formatStorageSize, type SubscriptionPlan } from "@/constants/subscriptionPlans";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -388,11 +388,35 @@ export function PricingPlans() {
           whileInView={{ opacity: 1 }}
           viewport={{ once: true }}
           transition={{ delay: 0.6 }}
+          className="text-center mt-10"
         >
           <span className="text-xs text-[hsl(38,92%,50%)]/80">
             ФИС ФРДО+ — выгрузка данных в реестр выполняется нами за вас
           </span>
         </motion.p>
+
+        {/* Commercial proposal CTA */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.6, delay: 0.3 }}
+          className="mt-10 flex flex-col items-center text-center"
+        >
+          <Link
+            to="/proposal/platform"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="group inline-flex items-center gap-3 rounded-2xl bg-gradient-to-r from-accent to-accent/80 px-8 py-4 text-base font-semibold text-accent-foreground shadow-lg transition-all duration-300 hover:shadow-xl hover:scale-[1.02]"
+          >
+            <FileText className="h-5 w-5" />
+            Сформировать коммерческое предложение
+            <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+          </Link>
+          <p className="mt-3 text-xs text-muted-foreground max-w-md">
+            Готовое КП в PDF за 5 секунд — отправьте руководителю или приложите к тендеру
+          </p>
+        </motion.div>
       </div>
     </section>
   );
