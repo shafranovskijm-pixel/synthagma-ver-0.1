@@ -9,6 +9,7 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Plus, Pencil, Trash2, Save, X, ExternalLink } from "lucide-react";
 import { toast } from "sonner";
+import { getErrorMessage } from "@/utils/handleSupabaseError";
 import { motion } from "framer-motion";
 
 interface PlatformUpdate {
@@ -59,11 +60,11 @@ export function PlatformUpdatesManager() {
     };
     if (editingId) {
       const { error } = await supabase.from("platform_updates").update(payload).eq("id", editingId);
-      if (error) { toast.error("Ошибка"); return; }
+      if (error) { toast.error(getErrorMessage(error)); return; }
       toast.success("Обновлено");
     } else {
       const { error } = await supabase.from("platform_updates").insert(payload);
-      if (error) { toast.error("Ошибка"); return; }
+      if (error) { toast.error(getErrorMessage(error)); return; }
       toast.success("Создано");
     }
     resetForm();

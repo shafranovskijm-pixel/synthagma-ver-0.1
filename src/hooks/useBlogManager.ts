@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { safeInvoke } from "@/utils/safeInvoke";
 import { toast } from "sonner";
+import { getErrorMessage } from "@/utils/handleSupabaseError";
 
 export interface BlogPost {
   id: string; title: string; slug: string; excerpt: string | null; content: string | null;
@@ -94,12 +95,12 @@ export function useBlogManager() {
 
   const togglePublish = async (post: BlogPost) => {
     try { const { error } = await supabase.from("blog_posts").update({ is_published: !post.is_published, published_at: !post.is_published ? new Date().toISOString() : post.published_at }).eq("id", post.id); if (error) throw error; toast.success(post.is_published ? "Статья снята с публикации" : "Статья опубликована"); fetchPosts(); }
-    catch { toast.error("Ошибка"); }
+    catch (e) { toast.error(getErrorMessage(e)); }
   };
 
   const toggleFeatured = async (post: BlogPost) => {
     try { const { error } = await supabase.from("blog_posts").update({ is_featured: !post.is_featured }).eq("id", post.id); if (error) throw error; toast.success(post.is_featured ? "Убрано из избранного" : "Добавлено в избранное"); fetchPosts(); }
-    catch { toast.error("Ошибка"); }
+    catch (e) { toast.error(getErrorMessage(e)); }
   };
 
   return {
