@@ -15,7 +15,7 @@ import {
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Download, FileSpreadsheet, AlertCircle, CheckCircle2 } from "lucide-react";
+import { Download, FileSpreadsheet, AlertCircle, CheckCircle2, AlertTriangle } from "lucide-react";
 import { format } from "date-fns";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 import {
@@ -23,6 +23,7 @@ import {
   buildPORow,
   exportFRDOExcel,
   formatDateForFRDO } from "@/utils/frdoExcelExport";
+import { resolveFRDOFields, validateFRDORowSync, type CourseFRDOLike } from "@/utils/frdoFieldResolver";
 
 interface Student {
   id: string;
@@ -33,7 +34,7 @@ interface Student {
   course: string | null;
 }
 
-interface Course {
+interface Course extends CourseFRDOLike {
   id: string;
   title: string;
   duration: string | null;
@@ -90,6 +91,12 @@ export function BulkFRDOExport({
   const [frdoDataMap, setFrdoDataMap] = useState<Map<string, FRDOData>>(new Map());
   const [enrollmentsMap, setEnrollmentsMap] = useState<Map<string, EnrollmentData[]>>(new Map());
   const [studentsWithMissingData, setStudentsWithMissingData] = useState<string[]>([]);
+  const [validationPreview, setValidationPreview] = useState<{
+    rows: (string | number)[][];
+    issues: { studentName: string; issues: string[] }[];
+    autoGenderCount: number;
+    professionFromTitleCount: number;
+  } | null>(null);
 
   const selectedStudents = students.filter(s => selectedStudentIds.has(s.user_id) || selectedStudentIds.has(s.id));
 
@@ -148,7 +155,7 @@ export function BulkFRDOExport({
 
       const { data: enrollmentsData, error: enrollError } = await supabase
         .from("enrollments")
-        .select("user_id, course_id, started_at, completed_at, time_spent, courses(title, duration)")
+        .select("user_id, course_id, started_at, completed_at, time_spent, courses(id, title, duration, training_form, frdo_profession_name, frdo_qualification_rank, frdo_professional_area, frdo_specialty_group, frdo_qualification_name, frdo_financing_source, frdo_education_form)")
         .in("user_id", userIds);
       if (enrollError) throw enrollError;
 
@@ -156,7 +163,7 @@ export function BulkFRDOExport({
       const courseSet = new Map<string, Course>();
 
       for (const e of enrollmentsData || []) {
-        const courseData = e.courses as { title: string; duration: string | null } | null;
+        const courseData = e.courses as any;
         const enrollment: EnrollmentData = {
           user_id: e.user_id, course_id: e.course_id,
           course_title: courseData?.title || "Неизвестный курс",
@@ -164,8 +171,20 @@ export function BulkFRDOExport({
           time_spent: e.time_spent || 0, duration: courseData?.duration || null };
         if (!enrollMap.has(e.user_id)) enrollMap.set(e.user_id, []);
         enrollMap.get(e.user_id)!.push(enrollment);
-        if (!courseSet.has(e.course_id)) {
-          courseSet.set(e.course_id, { id: e.course_id, title: courseData?.title || "Неизвестный курс", duration: courseData?.duration || null });
+        if (courseData && !courseSet.has(e.course_id)) {
+          courseSet.set(e.course_id, {
+            id: e.course_id,
+            title: courseData.title || "Неизвестный курс",
+            duration: courseData.duration || null,
+            training_form: courseData.training_form || null,
+            frdo_profession_name: courseData.frdo_profession_name || null,
+            frdo_qualification_rank: courseData.frdo_qualification_rank || null,
+            frdo_professional_area: courseData.frdo_professional_area || null,
+            frdo_specialty_group: courseData.frdo_specialty_group || null,
+            frdo_qualification_name: courseData.frdo_qualification_name || null,
+            frdo_financing_source: courseData.frdo_financing_source || null,
+            frdo_education_form: courseData.frdo_education_form || null,
+          });
         }
       }
 
@@ -179,73 +198,104 @@ export function BulkFRDOExport({
     }
   };
 
-  const handleExport = async () => {
-    setIsExporting(true);
-    try {
-      const rows: (string | number)[][] = [];
+  const buildRows = (): {
+    rows: (string | number)[][];
+    issues: { studentName: string; issues: string[] }[];
+    autoGenderCount: number;
+    professionFromTitleCount: number;
+  } => {
+    const rows: (string | number)[][] = [];
+    const issues: { studentName: string; issues: string[] }[] = [];
+    let autoGenderCount = 0;
+    let professionFromTitleCount = 0;
 
-      for (const student of selectedStudents) {
-        const frdoData = frdoDataMap.get(student.user_id);
-        if (!frdoData) continue;
+    for (const student of selectedStudents) {
+      const frdoData = frdoDataMap.get(student.user_id);
+      if (!frdoData) continue;
 
-        const enrollments = enrollmentsMap.get(student.user_id) || [];
-        const filteredEnrollments = selectedCourseId === "all" ? enrollments : enrollments.filter(e => e.course_id === selectedCourseId);
-        if (filteredEnrollments.length === 0) continue;
+      const enrollments = enrollmentsMap.get(student.user_id) || [];
+      const filteredEnrollments = selectedCourseId === "all" ? enrollments : enrollments.filter(e => e.course_id === selectedCourseId);
+      if (filteredEnrollments.length === 0) continue;
 
-        for (const enrollment of filteredEnrollments) {
-          const startYear = enrollment.started_at ? new Date(enrollment.started_at).getFullYear() : "";
-          const endYear = enrollment.completed_at ? new Date(enrollment.completed_at).getFullYear() : startYear;
-          const durationHours = enrollment.duration
-            ? parseInt(enrollment.duration.replace(/\D/g, "")) || 0
-            : Math.round(enrollment.time_spent / 3600);
+      for (const enrollment of filteredEnrollments) {
+        const courseSettings = courses.find(c => c.id === enrollment.course_id) || null;
+        const resolved = resolveFRDOFields(frdoData, courseSettings);
 
-          if (exportType === "dpo") {
-            rows.push(buildDPORow({
-              documentType: "Удостоверение о повышении квалификации",
-              docNumber: "", regNumber: "",
-              issueDate: formatDateForFRDO(enrollment.completed_at || ""),
-              programType: "Повышение квалификации",
-              programName: enrollment.course_title,
-              professionalArea: frdoData.professional_area,
-              specialtyGroup: frdoData.specialty_group,
-              qualificationName: frdoData.qualification_name || "нет",
-              educationLevel: frdoData.education_level,
-              educationDocLastName: frdoData.education_doc_last_name,
-              educationDocSeries: frdoData.education_doc_series,
-              educationDocNumber: frdoData.education_doc_number,
-              startYear, endYear, durationHours,
-              lastName: frdoData.last_name, firstName: frdoData.first_name, middleName: frdoData.middle_name,
-              birthDate: formatDateForFRDO(frdoData.birth_date),
-              gender: frdoData.gender, snils: frdoData.snils,
-              trainingForm: frdoData.training_form, financingSource: frdoData.financing_source,
-              educationForm: frdoData.education_form, citizenshipCode: frdoData.citizenship_code }));
-          } else {
-            rows.push(buildPORow({
-              documentType: "Свидетельство о профессии рабочего, должности служащего",
-              docNumber: "", regNumber: "",
-              issueDate: formatDateForFRDO(enrollment.completed_at || ""),
-              programType: "Программа профессиональной подготовки по профессии рабочего, должности служащего",
-              programName: enrollment.course_title,
-              professionName: frdoData.profession_name,
-              qualificationRank: frdoData.qualification_rank,
-              startYear, endYear, durationHours,
-              lastName: frdoData.last_name, firstName: frdoData.first_name, middleName: frdoData.middle_name,
-              birthDate: formatDateForFRDO(frdoData.birth_date),
-              gender: frdoData.gender, snils: frdoData.snils, citizenshipCode: frdoData.citizenship_code,
-              trainingForm: frdoData.training_form, financingSource: frdoData.financing_source,
-              educationForm: frdoData.education_form }));
-          }
+        if (resolved.genderAutoDetected) autoGenderCount++;
+        if (resolved.professionFromCourseTitle) professionFromTitleCount++;
+
+        const rowIssues = validateFRDORowSync({ resolved, data: frdoData, exportType });
+        if (rowIssues.length > 0) {
+          issues.push({ studentName: student.name, issues: rowIssues.map(i => i.message) });
+        }
+
+        const startYear = enrollment.started_at ? new Date(enrollment.started_at).getFullYear() : "";
+        const endYear = enrollment.completed_at ? new Date(enrollment.completed_at).getFullYear() : startYear;
+        const durationHours = enrollment.duration
+          ? parseInt(enrollment.duration.replace(/\D/g, "")) || 0
+          : Math.round(enrollment.time_spent / 3600);
+
+        if (exportType === "dpo") {
+          rows.push(buildDPORow({
+            documentType: "Удостоверение о повышении квалификации",
+            docNumber: "", regNumber: "",
+            issueDate: formatDateForFRDO(enrollment.completed_at || ""),
+            programType: "Повышение квалификации",
+            programName: enrollment.course_title,
+            professionalArea: resolved.professionalArea,
+            specialtyGroup: resolved.specialtyGroup,
+            qualificationName: resolved.qualificationName,
+            educationLevel: frdoData.education_level,
+            educationDocLastName: frdoData.education_doc_last_name,
+            educationDocSeries: frdoData.education_doc_series,
+            educationDocNumber: frdoData.education_doc_number,
+            startYear, endYear, durationHours,
+            lastName: frdoData.last_name, firstName: frdoData.first_name, middleName: frdoData.middle_name,
+            birthDate: formatDateForFRDO(frdoData.birth_date),
+            gender: resolved.gender, snils: frdoData.snils,
+            trainingForm: resolved.trainingForm, financingSource: resolved.financingSource,
+            educationForm: resolved.educationForm, citizenshipCode: frdoData.citizenship_code }));
+        } else {
+          rows.push(buildPORow({
+            documentType: "Свидетельство о профессии рабочего, должности служащего",
+            docNumber: "", regNumber: "",
+            issueDate: formatDateForFRDO(enrollment.completed_at || ""),
+            programType: "Программа профессиональной подготовки по профессии рабочего, должности служащего",
+            programName: enrollment.course_title,
+            professionName: resolved.professionName,
+            qualificationRank: resolved.qualificationRank,
+            startYear, endYear, durationHours,
+            lastName: frdoData.last_name, firstName: frdoData.first_name, middleName: frdoData.middle_name,
+            birthDate: formatDateForFRDO(frdoData.birth_date),
+            gender: resolved.gender, snils: frdoData.snils, citizenshipCode: frdoData.citizenship_code,
+            trainingForm: resolved.trainingForm, financingSource: resolved.financingSource,
+            educationForm: resolved.educationForm }));
         }
       }
+    }
+    return { rows, issues, autoGenderCount, professionFromTitleCount };
+  };
 
+  const handleExport = async (skipValidation = false) => {
+    if (!skipValidation) {
+      const preview = buildRows();
+      if (preview.issues.length > 0 || preview.professionFromTitleCount > 0) {
+        setValidationPreview(preview);
+        return;
+      }
+    }
+    setIsExporting(true);
+    try {
+      const { rows, autoGenderCount } = buildRows();
       if (rows.length === 0) {
         toast.error("Нет данных для экспорта. Выберите курс или проверьте зачисления студентов.");
         setIsExporting(false);
         return;
       }
-
       await exportFRDOExcel(rows, exportType);
-      toast.success(`Экспортировано ${rows.length} записей`);
+      const extra = autoGenderCount > 0 ? ` (пол авто-определён у ${autoGenderCount})` : "";
+      toast.success(`Экспортировано ${rows.length} записей${extra}`);
+      setValidationPreview(null);
       onOpenChange(false);
     } catch (error) {
       console.error("Export error:", error);
@@ -338,11 +388,57 @@ export function BulkFRDOExport({
 
             <div className="flex justify-end gap-3">
               <Button variant="outline" className="rounded-xl" onClick={() => onOpenChange(false)}>Отмена</Button>
-              <Button className="rounded-xl gap-2" onClick={handleExport} disabled={isExporting || selectedStudents.length === 0}>
+              <Button className="rounded-xl gap-2" onClick={() => handleExport(false)} disabled={isExporting || selectedStudents.length === 0}>
                 {isExporting ? <SigmaSpinner size="sm" /> : <Download className="w-4 h-4" />}
                 Экспортировать ({selectedStudents.length})
               </Button>
             </div>
+
+            {validationPreview && (
+              <div className="border border-amber-500/30 bg-amber-500/5 rounded-xl p-4 space-y-3">
+                <div className="flex items-start gap-2">
+                  <AlertTriangle className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" />
+                  <div className="space-y-1">
+                    <p className="font-medium text-sm">
+                      Найдены проблемы в {validationPreview.issues.length} строках
+                    </p>
+                    {validationPreview.autoGenderCount > 0 && (
+                      <p className="text-xs text-muted-foreground">
+                        Пол будет автоматически определён по отчеству у {validationPreview.autoGenderCount} записей.
+                      </p>
+                    )}
+                    {validationPreview.professionFromTitleCount > 0 && (
+                      <p className="text-xs text-amber-600">
+                        ⚠️ У {validationPreview.professionFromTitleCount} записей подставлено название курса вместо профессии — ФРДО может отклонить файл. Заполните поле «Наименование профессии» в настройках курса.
+                      </p>
+                    )}
+                  </div>
+                </div>
+                {validationPreview.issues.length > 0 && (
+                  <ScrollArea className="h-32 rounded-lg border bg-background/60 p-2">
+                    <ul className="space-y-1 text-xs">
+                      {validationPreview.issues.slice(0, 50).map((it, idx) => (
+                        <li key={idx}>
+                          <span className="font-medium">{it.studentName}:</span>{" "}
+                          <span className="text-muted-foreground">{it.issues.join("; ")}</span>
+                        </li>
+                      ))}
+                      {validationPreview.issues.length > 50 && (
+                        <li className="text-muted-foreground">…и ещё {validationPreview.issues.length - 50}</li>
+                      )}
+                    </ul>
+                  </ScrollArea>
+                )}
+                <div className="flex justify-end gap-2">
+                  <Button size="sm" variant="ghost" className="rounded-lg" onClick={() => setValidationPreview(null)}>
+                    Отменить
+                  </Button>
+                  <Button size="sm" variant="outline" className="rounded-lg" onClick={() => handleExport(true)} disabled={isExporting}>
+                    Игнорировать и экспортировать
+                  </Button>
+                </div>
+              </div>
+            )}
           </div>
         )}
       </DialogContent>

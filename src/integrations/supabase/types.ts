@@ -9597,7 +9597,10 @@ export type Database = {
         Returns: {
           missing_birth_date: number
           missing_frdo_data: number
+          missing_gender_resolvable: number
+          missing_gender_unresolvable: number
           missing_passport: number
+          missing_profession_name: number
           missing_snils: number
           ready_for_export: number
           total_documents: number
