@@ -75,11 +75,15 @@ export function AdminWebinarsOverview() {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [sourceFilter, setSourceFilter] = useState("all");
+  const [orgFilter, setOrgFilter] = useState("all");
   const [deleteTarget, setDeleteTarget] = useState<AdminWebinar | null>(null);
   const [showCreate, setShowCreate] = useState(false);
   const [playerWebinar, setPlayerWebinar] = useState<AdminWebinar | null>(null);
-  const [launching, setLaunching] = useState(false);
   const [recordingTarget, setRecordingTarget] = useState<AdminWebinar | null>(null);
+  const [previewWebinar, setPreviewWebinar] = useState<AdminWebinar | null>(null);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [bulkDeleting, setBulkDeleting] = useState(false);
+  const [showBulkConfirm, setShowBulkConfirm] = useState(false);
 
   const fetchWebinars = useCallback(async () => {
     setLoading(true);
@@ -125,6 +129,7 @@ export function AdminWebinarsOverview() {
       });
     }
     if (sourceFilter !== "all") result = result.filter((w) => w.source_type === sourceFilter);
+    if (orgFilter !== "all") result = result.filter((w) => w.organization_id === orgFilter);
     if (search.trim()) {
       const q = search.toLowerCase();
       result = result.filter(
@@ -134,7 +139,23 @@ export function AdminWebinarsOverview() {
       );
     }
     return result;
-  }, [webinars, statusFilter, sourceFilter, search]);
+  }, [webinars, statusFilter, sourceFilter, orgFilter, search]);
+
+  // Топ организаций (по числу вебинаров) для селекта-фильтра
+  const orgOptions = useMemo(() => {
+    const counts = new Map<string, { id: string; name: string; count: number }>();
+    for (const w of webinars) {
+      if (!w.organization_id) continue;
+      const cur = counts.get(w.organization_id) ?? {
+        id: w.organization_id,
+        name: w.organization_name || "Без имени",
+        count: 0,
+      };
+      cur.count += 1;
+      counts.set(w.organization_id, cur);
+    }
+    return Array.from(counts.values()).sort((a, b) => b.count - a.count);
+  }, [webinars]);
 
   const stats = useMemo(() => ({
     total: webinars.length,
