@@ -131,7 +131,7 @@ export function useCourseReminders({ courseId, retrainingPeriodMonths, onPeriodC
       fetchReminders();
     } catch (error) {
       console.error("Error dismissing reminder:", error);
-      toast.error("Ошибка");
+      toast.error(getErrorMessage(error));
     }
   };
 
@@ -146,7 +146,7 @@ export function useCourseReminders({ courseId, retrainingPeriodMonths, onPeriodC
       fetchReminders();
     } catch (error) {
       console.error("Error marking sent:", error);
-      toast.error("Ошибка");
+      toast.error(getErrorMessage(error));
     }
   };
 

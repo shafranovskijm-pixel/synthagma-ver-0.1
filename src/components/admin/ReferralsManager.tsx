@@ -52,7 +52,7 @@ export function ReferralsManager() {
       .update({ status: action, paid_at: action === "paid" ? new Date().toISOString() : null })
       .eq("id", payoutId);
     if (error) {
-      toast.error("Ошибка");
+      toast.error(getErrorMessage(error));
     } else {
       // If paid, deduct from partner balance
       if (action === "paid") {
