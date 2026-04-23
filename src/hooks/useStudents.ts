@@ -1,4 +1,5 @@
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useCallback, useMemo } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { Student, StudentFRDOStatus, StudentStatusFilter, StudentDocsFilter } from "@/types";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -72,74 +73,81 @@ export function useStudents(
   courseIds: string[],
   studentDocsByUser: Map<string, string[]>
 ): UseStudentsReturn {
-  const [students, setStudents] = useState<Student[]>([]);
-  const [allProfiles, setAllProfiles] = useState<Student[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [frdoStatus, setFrdoStatus] = useState<Map<string, StudentFRDOStatus>>(new Map());
+  const qc = useQueryClient();
   const [selectedStudentIds, setSelectedStudentIds] = useState<Set<string>>(new Set());
-  const [refreshKey, setRefreshKey] = useState(0);
-  
+
   // Filters
   const [statusFilter, setStatusFilter] = useState<StudentStatusFilter>("all");
   const [courseFilter, setCourseFilter] = useState<string>("all");
   const [groupFilter, setGroupFilter] = useState<string>("all");
   const [docsFilter, setDocsFilter] = useState<StudentDocsFilter>("all");
   const [searchQuery, setSearchQuery] = useState("");
-  const [studentGroups, setStudentGroups] = useState<StudentGroup[]>([]);
-  const [studentGroupMap, setStudentGroupMap] = useState<Map<string, string | null>>(new Map());
-  const [groupsRefreshKey, setGroupsRefreshKey] = useState(0);
 
   // Memoize courseIds join to prevent infinite loops
   const courseIdsKey = useMemo(() => courseIds.join(","), [courseIds]);
 
-  // Load students + groups in a single parallel batch.
-  // groupMap now comes for free from fetchStudents (same profiles query),
-  // so we no longer issue a duplicate /profiles request just to read student_group_id.
-  useEffect(() => {
-    const load = async () => {
+  // Students + per-row group map (single source of truth — fetchStudents already returns groupMap)
+  const { data: studentsData, isLoading: studentsLoading } = useQuery({
+    queryKey: ["org-students", organizationId, courseIdsKey] as const,
+    queryFn: async () => {
       if (!organizationId) {
-        setIsLoading(false);
-        return;
+        return { students: [] as Student[], allProfiles: [] as Student[], groupMap: new Map<string, string | null>() };
       }
+      return fetchStudents(organizationId, courseIds);
+    },
+    enabled: !!organizationId,
+    staleTime: 60_000,
+    gcTime: 5 * 60_000,
+  });
 
-      setIsLoading(true);
-      try {
-        const [studentsResult, groupsResult] = await Promise.all([
-          fetchStudents(organizationId, courseIds),
-          supabase
-            .from("student_groups")
-            .select("id, name, color, organization_id, created_at, start_date, end_date")
-            .eq("organization_id", organizationId)
-            .order("name"),
-        ]);
+  const { data: groupsData } = useQuery({
+    queryKey: ["org-student-groups", organizationId] as const,
+    queryFn: async () => {
+      if (!organizationId) return [] as StudentGroup[];
+      const { data } = await supabase
+        .from("student_groups")
+        .select("id, name, color, organization_id, created_at, start_date, end_date")
+        .eq("organization_id", organizationId)
+        .order("name");
+      return (data as StudentGroup[]) || [];
+    },
+    enabled: !!organizationId,
+    staleTime: 60_000,
+    gcTime: 5 * 60_000,
+  });
 
-        const { students: studentsData, allProfiles: profilesData, groupMap } = studentsResult;
-        setStudents(studentsData);
-        setAllProfiles(profilesData);
-        setStudentGroups((groupsResult.data as StudentGroup[]) || []);
-        setStudentGroupMap(groupMap);
+  const students = studentsData?.students ?? [];
+  const allProfiles = studentsData?.allProfiles ?? [];
+  const studentGroupMap = studentsData?.groupMap ?? new Map<string, string | null>();
+  const studentGroups = groupsData ?? [];
+  const isLoading = !!organizationId && studentsLoading;
 
-        // UI is already usable — render now, then enrich with FRDO status in background.
-        setIsLoading(false);
+  // FRDO status — secondary, lightly cached
+  const studentUserIdsKey = useMemo(
+    () => students.map(s => s.user_id).sort().join(","),
+    [students]
+  );
 
-        const userIds = [...new Set(studentsData.map(s => s.user_id))];
-        if (userIds.length > 0) {
-          fetchFRDOStatus(organizationId, userIds)
-            .then(setFrdoStatus)
-            .catch(err => console.error("Error loading FRDO status:", err));
-        }
-      } catch (error) {
-        console.error("Error loading students:", error);
-        setIsLoading(false);
-      }
-    };
+  const { data: frdoStatus = new Map<string, StudentFRDOStatus>() } = useQuery({
+    queryKey: ["org-students-frdo", organizationId, studentUserIdsKey] as const,
+    queryFn: async () => {
+      if (!organizationId) return new Map<string, StudentFRDOStatus>();
+      const userIds = [...new Set(students.map(s => s.user_id))];
+      if (userIds.length === 0) return new Map<string, StudentFRDOStatus>();
+      return fetchFRDOStatus(organizationId, userIds);
+    },
+    enabled: !!organizationId && students.length > 0,
+    staleTime: 60_000,
+    gcTime: 5 * 60_000,
+  });
 
-    load();
-  }, [organizationId, courseIdsKey, refreshKey, groupsRefreshKey]);
+  const invalidateStudents = useCallback(() => {
+    qc.invalidateQueries({ queryKey: ["org-students", organizationId] });
+  }, [qc, organizationId]);
 
   const refreshGroups = useCallback(() => {
-    setGroupsRefreshKey(prev => prev + 1);
-  }, []);
+    qc.invalidateQueries({ queryKey: ["org-student-groups", organizationId] });
+  }, [qc, organizationId]);
 
   // Filtered students
   const filteredStudents = useMemo(() => {
@@ -267,9 +275,9 @@ export function useStudents(
       toast.success(`Ученик создан. Пароль: ${result.data?.password} (сохраните его!)`);
     }
 
-    setRefreshKey(prev => prev + 1);
+    invalidateStudents();
     return true;
-  }, [organizationId]);
+  }, [organizationId, invalidateStudents]);
 
   const enrollToCourse = useCallback(async (userId: string, courseId: string): Promise<boolean> => {
     const result = await enrollStudent(userId, courseId);
@@ -278,9 +286,9 @@ export function useStudents(
       return false;
     }
     toast.success("Ученик зачислен на курс");
-    setRefreshKey(prev => prev + 1);
+    invalidateStudents();
     return true;
-  }, []);
+  }, [invalidateStudents]);
 
   const unenrollFromCourse = useCallback(async (enrollmentId: string): Promise<boolean> => {
     const success = await apiUnenrollStudent(enrollmentId);
@@ -289,9 +297,9 @@ export function useStudents(
       return false;
     }
     toast.success("Ученик отчислен с курса");
-    setRefreshKey(prev => prev + 1);
+    invalidateStudents();
     return true;
-  }, []);
+  }, [invalidateStudents]);
 
   const bulkEnroll = useCallback(async (courseId: string): Promise<{ success: number; failed: number }> => {
     const userIds = getSelectedUserIds();
@@ -305,9 +313,9 @@ export function useStudents(
     }
     
     setSelectedStudentIds(new Set());
-    setRefreshKey(prev => prev + 1);
+    invalidateStudents();
     return result;
-  }, [getSelectedUserIds]);
+  }, [getSelectedUserIds, invalidateStudents]);
 
   const bulkUnenroll = useCallback(async (): Promise<{ success: number; failed: number }> => {
     const enrollmentIds = Array.from(selectedStudentIds).map(id => {
@@ -325,9 +333,9 @@ export function useStudents(
     }
     
     setSelectedStudentIds(new Set());
-    setRefreshKey(prev => prev + 1);
+    invalidateStudents();
     return result;
-  }, [selectedStudentIds, students]);
+  }, [selectedStudentIds, students, invalidateStudents]);
 
   const bulkDelete = useCallback(async (): Promise<{ success: number; failed: number }> => {
     const userIds = getSelectedUserIds();
@@ -351,9 +359,9 @@ export function useStudents(
     }
     
     setSelectedStudentIds(new Set());
-    setRefreshKey(prev => prev + 1);
+    invalidateStudents();
     return { success, failed };
-  }, [getSelectedUserIds]);
+  }, [getSelectedUserIds, invalidateStudents]);
 
   const updateCompany = useCallback(async (userId: string, companyId: string | null): Promise<boolean> => {
     const success = await updateStudentCompany(userId, companyId);
@@ -362,9 +370,9 @@ export function useStudents(
       return false;
     }
     toast.success("Компания обновлена");
-    setRefreshKey(prev => prev + 1);
+    invalidateStudents();
     return true;
-  }, []);
+  }, [invalidateStudents]);
 
   const removeStudent = useCallback(async (userId: string): Promise<boolean> => {
     const success = await deleteStudent(userId);
@@ -373,13 +381,13 @@ export function useStudents(
       return false;
     }
     toast.success("Ученик удалён");
-    setRefreshKey(prev => prev + 1);
+    invalidateStudents();
     return true;
-  }, []);
+  }, [invalidateStudents]);
 
   const refresh = useCallback(() => {
-    setRefreshKey(prev => prev + 1);
-  }, []);
+    invalidateStudents();
+  }, [invalidateStudents]);
 
   return {
     students,
