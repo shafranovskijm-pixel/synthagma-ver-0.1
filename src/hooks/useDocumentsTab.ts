@@ -8,6 +8,7 @@ import { generateInvoiceHtml, type InvoiceData } from "@/constants/invoiceTempla
 import { SUBSCRIPTION_PLANS } from "@/constants/subscriptionPlans";
 import { type OrgRequisites } from "@/hooks/useCompanyLinksAndGenerators";
 import { toast } from "sonner";
+import { getErrorMessage } from "@/utils/handleSupabaseError";
 
 export type DocumentSubTab = "kpi" | "constructor" | "programs" | "org" | "orders" | "protocols" | "certificates" | "diplomas" | "testimonials" | "journals" | "frdo" | "counterparties" | "incoming" | "signatures" | "pd_requests" | "recycle_bin" | "proposals" | "sales_contracts";
 export type CounterpartySubTab = "contracts" | "invoices" | "closing" | "history";
@@ -413,8 +414,8 @@ export function useDocumentsTab(organizationId: string | null, organizationName?
       toast.success("Счёт сформирован", { description: "Скачайте или распечатайте для сохранения" });
       setShowInvoiceDialog(false);
       setInvoiceOtherPayer(false); setInvoiceBuyerName(""); setInvoiceBuyerInn(""); setInvoiceBuyerKpp("");
-    } catch (e: any) {
-      toast.error("Ошибка", { description: e.message });
+    } catch (e) {
+      toast.error(getErrorMessage(e));
     } finally {
       setGeneratingInvoice(false);
     }

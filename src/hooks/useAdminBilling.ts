@@ -2,6 +2,7 @@ import { useState, useCallback, useMemo } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { getErrorMessage } from "@/utils/handleSupabaseError";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import { getSignedStorageUrl } from "@/utils/storageHelpers";
@@ -208,7 +209,7 @@ export function useAdminBilling() {
       setPendingInvoice({ html, insertData, invoiceNum, amount, plan });
       toast.success("Счёт сформирован");
       setShowInvoiceDialog(false); setInvoiceOtherPayer(false); setInvoiceBuyerName(""); setInvoiceBuyerInn(""); setInvoiceBuyerKpp("");
-    } catch (e: any) { toast.error("Ошибка", { description: e.message }); }
+    } catch (e) { toast.error(getErrorMessage(e)); }
     setGeneratingInvoice(false);
   };
 
@@ -336,7 +337,7 @@ export function useAdminBilling() {
       if (updErr) throw updErr;
       toast.success("Оплата подтверждена", { description: `Тариф продлён до ${format(newPaidUntil, "d MMMM yyyy", { locale: ru })}` });
       loadData();
-    } catch (e: any) { toast.error("Ошибка", { description: e.message }); }
+    } catch (e) { toast.error(getErrorMessage(e)); }
   };
 
   return {

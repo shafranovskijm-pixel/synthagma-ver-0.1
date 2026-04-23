@@ -14,6 +14,7 @@ import { Slider } from "@/components/ui/slider";
 import { getBaseUrl } from "@/utils/getBaseUrl";
 import { Link } from "react-router-dom";
 import { toast } from "sonner";
+import { getErrorMessage } from "@/utils/handleSupabaseError";
 
 function EarningsCalculator({ commissionPercent }: { commissionPercent: number }) {
   const [clients, setClients] = useState(5);
@@ -142,8 +143,8 @@ export function PartnerCabinet() {
       if (error) throw error;
       toast.success("Вы стали партнёром!", { description: `Ваш реферальный код: ${data}` });
       loadData();
-    } catch (e: any) {
-      toast.error("Ошибка", { description: e.message });
+    } catch (e) {
+      toast.error(getErrorMessage(e));
     } finally {
       setIsBecoming(false);
     }

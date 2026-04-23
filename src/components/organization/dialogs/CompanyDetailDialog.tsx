@@ -19,6 +19,7 @@ import { ru } from "date-fns/locale";
 import { DocumentDropZone } from "../DocumentDropZone";
 import type { Company, CompanyDocument } from "@/hooks/useCompaniesManager";
 import { toast } from "sonner";
+import { getErrorMessage } from "@/utils/handleSupabaseError";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 
 interface CompanyDetailDialogProps {
@@ -273,7 +274,7 @@ function CompanyAccessTab({ company }: { company: Company }) {
       if (data?.error) throw new Error(data.error);
       toast.success("Аккаунт создан", { description: `Логин: ${email}` });
       setCredentials({ login_email: email, login_password: password });
-    } catch (e: any) { toast.error("Ошибка", { description: e.message }); } finally { setCreating(false); }
+    } catch (e) { toast.error(getErrorMessage(e)); } finally { setCreating(false); }
   };
 
   const copyToClipboard = (text: string, label: string) => { navigator.clipboard.writeText(text); toast.success(`${label} скопирован`); };
@@ -365,7 +366,7 @@ function CompanyRequestsOrgView({ companyId }: { companyId: string }) {
       if (error) throw error;
       toast.success("Заявка обновлена");
       loadRequests();
-    } catch (e: any) { toast.error("Ошибка", { description: e.message }); } finally { setUpdatingId(null); }
+    } catch (e) { toast.error(getErrorMessage(e)); } finally { setUpdatingId(null); }
   };
 
   if (loading) return <div className="flex justify-center py-12"><SigmaSpinner /></div>;

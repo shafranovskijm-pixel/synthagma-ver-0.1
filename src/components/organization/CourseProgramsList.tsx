@@ -5,6 +5,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { getErrorMessage } from "@/utils/handleSupabaseError";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 interface CourseProgramsListProps {
   organizationId: string | null;
@@ -107,8 +108,8 @@ export function CourseProgramsList({ organizationId }: CourseProgramsListProps) 
 
       toast.success("Заявка отправлена", { description: "Мы свяжемся с вами для уточнения деталей" });
       fetchCourses();
-    } catch (e: any) {
-      toast.error("Ошибка", { description: e.message });
+    } catch (e) {
+      toast.error(getErrorMessage(e));
     } finally {
       setOrdering(null);
     }

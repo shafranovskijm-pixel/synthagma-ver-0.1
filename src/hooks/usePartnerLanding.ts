@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
+import { getErrorMessage } from "@/utils/handleSupabaseError";
 import { getPartnerRef } from "@/utils/referralCookie";
 import { getBaseUrl } from "@/utils/getBaseUrl";
 
@@ -44,8 +45,8 @@ export function usePartnerLanding() {
       setPartnerCode(data);
       setIsPartner(true);
       toast.success("Вы стали партнёром!", { description: `Ваш реферальный код: ${data}` });
-    } catch (e: any) {
-      toast.error("Ошибка", { description: e.message });
+    } catch (e) {
+      toast.error(getErrorMessage(e));
     } finally { setIsBecoming(false); }
   };
 

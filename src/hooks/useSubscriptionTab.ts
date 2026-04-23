@@ -6,6 +6,7 @@ import { useOrgDashboard } from "@/contexts/OrgDashboardContext";
 import { differenceInDays, format } from "date-fns";
 import { ru } from "date-fns/locale";
 import { toast } from "sonner";
+import { getErrorMessage } from "@/utils/handleSupabaseError";
 
 export const PLAN_ORDER: SubscriptionPlan[] = ['free', 'start', 'standard', 'professional', 'maximum'];
 
@@ -212,8 +213,8 @@ export function useSubscriptionTab() {
       } as any);
 
       nav(`/invoice/${(invoice as any).id}`);
-    } catch (e: any) {
-      toast.error("Ошибка", { description: e.message });
+    } catch (e) {
+      toast.error(getErrorMessage(e));
     } finally {
       setGeneratingInvoice(false);
     }

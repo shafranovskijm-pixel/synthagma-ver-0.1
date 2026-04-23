@@ -36,6 +36,7 @@ import {
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import { toast } from "sonner";
+import { getErrorMessage } from "@/utils/handleSupabaseError";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 
 interface Employee {
@@ -164,8 +165,8 @@ export function CompanyRequestsTab({ companyId, organizationId, employees }: Com
       setShowDialog(false);
       resetForm();
       loadRequests();
-    } catch (e: any) {
-      toast.error("Ошибка", { description: e.message });
+    } catch (e) {
+      toast.error(getErrorMessage(e));
     } finally {
       setSubmitting(false);
     }
