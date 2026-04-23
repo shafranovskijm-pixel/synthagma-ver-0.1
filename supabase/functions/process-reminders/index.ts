@@ -1,91 +1,26 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { sendPlatformEmail } from "../_shared/smtp-sender.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-function base64Encode(str: string): string {
-  return btoa(unescape(encodeURIComponent(str)));
-}
-
-function encodeSubject(subject: string): string {
-  return `=?UTF-8?B?${base64Encode(subject)}?=`;
-}
-
-function encodeFromHeader(from: string): string {
-  const match = from.match(/^(.+?)\s*<(.+)>$/);
-  if (match) {
-    return `=?UTF-8?B?${base64Encode(match[1].trim())}?= <${match[2].trim()}>`;
-  }
-  return from;
-}
-
 async function sendEmailViaSMTP(
   to: string,
   subject: string,
   htmlBody: string,
-  smtpHost: string,
-  smtpPort: string,
-  smtpUser: string,
-  smtpPass: string,
-  smtpFrom: string,
+  _smtpHost?: string,
+  _smtpPort?: string,
+  _smtpUser?: string,
+  _smtpPass?: string,
+  _smtpFrom?: string,
 ): Promise<boolean> {
-  try {
-    const encodedSubject = encodeSubject(subject);
-    const encodedFrom = encodeFromHeader(smtpFrom);
-    const encodedHtml = base64Encode(htmlBody);
-
-    const rawEmail = [
-      `From: ${encodedFrom}`,
-      `To: ${to}`,
-      `Subject: ${encodedSubject}`,
-      `MIME-Version: 1.0`,
-      `Content-Type: text/html; charset=UTF-8`,
-      `Content-Transfer-Encoding: base64`,
-      ``,
-      encodedHtml.match(/.{1,76}/g)?.join('\r\n') || encodedHtml,
-    ].join('\r\n');
-
-    const conn = await Deno.connectTls({ hostname: smtpHost, port: parseInt(smtpPort, 10) });
-    const encoder = new TextEncoder();
-    const decoder = new TextDecoder();
-
-    async function readResponse(): Promise<string> {
-      const buffer = new Uint8Array(1024);
-      const n = await conn.read(buffer);
-      return n === null ? "" : decoder.decode(buffer.subarray(0, n));
-    }
-
-    async function sendCommand(cmd: string): Promise<string> {
-      await conn.write(encoder.encode(cmd + "\r\n"));
-      return await readResponse();
-    }
-
-    await readResponse(); // greeting
-    await sendCommand(`EHLO localhost`);
-    await sendCommand(`AUTH LOGIN`);
-    await sendCommand(btoa(smtpUser));
-    await sendCommand(btoa(smtpPass));
-
-    const emailMatch = smtpFrom.match(/<([^>]+)>/) || [null, smtpFrom];
-    const fromEmail = emailMatch[1] || smtpFrom;
-
-    await sendCommand(`MAIL FROM:<${fromEmail}>`);
-    await sendCommand(`RCPT TO:<${to}>`);
-    await sendCommand(`DATA`);
-    await conn.write(encoder.encode(rawEmail + "\r\n.\r\n"));
-    await readResponse();
-    await sendCommand(`QUIT`);
-    conn.close();
-
-    console.log(`Email sent to ${to}`);
-    return true;
-  } catch (error) {
-    console.error(`Failed to send email to ${to}:`, error);
-    return false;
-  }
+  const r = await sendPlatformEmail({ to, subject, html: htmlBody, skipRateLimit: true });
+  if (!r.ok) console.error(`Failed to send email to ${to}:`, r.error);
+  else console.log(`Email sent to ${to}`);
+  return r.ok;
 }
 
 function buildReminderEmailHtml(
