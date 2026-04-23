@@ -25,7 +25,7 @@ export function FrdoPainSlide() {
         </div>
 
         <h3 className="font-display text-2xl md:text-3xl font-medium mb-4 tracking-tight leading-tight">
-          Десятки строк <span className="text-destructive">«недопустимый символ»</span> перед каждой загрузкой в ФИС ФРДО
+          Забудь про ручной ввод и <span className="text-destructive">«недопустимый символ»</span> в ФИС ФРДО
         </h3>
 
         <p className="text-base text-muted-foreground mb-6 leading-relaxed">
@@ -53,6 +53,11 @@ export function FrdoPainSlide() {
           <Link to="/register-organization">
             <Button size="lg" className="btn-accent px-7">
               Попробовать бесплатно
+            </Button>
+          </Link>
+          <Link to="/feature/frdo#frdo-file-fixer">
+            <Button size="lg" variant="secondary" className="px-7">
+              Проверить файл
             </Button>
           </Link>
           <Link to="/feature/frdo">
