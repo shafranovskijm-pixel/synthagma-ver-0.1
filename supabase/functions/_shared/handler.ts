@@ -53,6 +53,15 @@ export interface PublicHandlerContext {
 type AuthedHandler = (ctx: HandlerContext) => Promise<unknown> | unknown;
 type PublicHandler = (ctx: PublicHandlerContext) => Promise<unknown> | unknown;
 
+export interface HandlerOptions {
+  /**
+   * Если true — оборачивает ответ в { ok: true, data }.
+   * Если false (по умолчанию) — возвращает payload как есть, что совместимо
+   * с существующими клиентами, ожидающими «плоский» JSON.
+   */
+  wrapResponse?: boolean;
+}
+
 function jsonResponse(payload: unknown, status = 200) {
   return new Response(JSON.stringify(payload), {
     headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -60,12 +69,16 @@ function jsonResponse(payload: unknown, status = 200) {
   });
 }
 
-function ok(data: unknown) {
-  return jsonResponse({ ok: true, data });
+function ok(data: unknown, wrap: boolean) {
+  // Если хендлер уже сам вернул Response — пропускаем без изменений.
+  if (data instanceof Response) return data;
+  return wrap ? jsonResponse({ ok: true, data }) : jsonResponse(data);
 }
 
-function fail(code: string, message: string, status = 400) {
-  return jsonResponse({ ok: false, code, message }, status);
+function fail(code: string, message: string, status = 400, wrap = true) {
+  return wrap
+    ? jsonResponse({ ok: false, code, message }, status)
+    : jsonResponse({ error: message }, status);
 }
 
 async function readBody(req: Request): Promise<unknown> {
