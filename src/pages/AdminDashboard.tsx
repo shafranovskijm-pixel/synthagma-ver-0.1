@@ -27,7 +27,7 @@ import { useAdminBranding } from "@/hooks/useAdminBranding";
 import { supabase } from "@/integrations/supabase/client";
 import { getStoredThemeId, getThemeById, type AdminTheme } from "@/constants/admin-themes";
 import { ThemeAnimations, getStoredAnimationLevel, type AnimationLevel } from "@/components/ui/ThemeAnimations";
-import { AtmosphericBleed } from "@/components/ui/AtmosphericBleed";
+
 import { GlobalCommandPalette } from "@/components/shared/GlobalCommandPalette";
 
 
@@ -124,14 +124,6 @@ const AdminDashboard = () => {
     >
       {/* Theme animations */}
       {activeTheme && <ThemeAnimations animation={activeTheme.animation} level={animLevel} />}
-      {activeTheme && (
-        <AtmosphericBleed
-          bannerUrl={activeTheme.bannerUrl}
-          blur={activeTheme.atmosphereBlur}
-          opacity={activeTheme.atmosphereOpacity}
-          sharp={activeTheme.atmosphereSharp}
-        />
-      )}
       {/* Mobile overlay */}
       {isMobileSidebarOpen && (
         <div
