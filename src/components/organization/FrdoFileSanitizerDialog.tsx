@@ -80,18 +80,10 @@ export function FrdoFileSanitizerDialog({ open, onOpenChange }: Props) {
     try {
       const rows = buildCleanRows(result);
       const suffix = `исправлено-${format(new Date(), "dd-MM-yyyy")}`;
-      // Пытаемся записать данные в оригинальный шаблон-донор Рособрнадзора —
+      // Записываем данные в оригинальный шаблон-донор Рособрнадзора —
       // ФИС ФРДО принимает только файлы с её собственной структурой.
-      if (hasFrdoTemplate(result.type)) {
-        const ok = await injectIntoFrdoTemplate(rows, result.type, suffix);
-        if (ok) {
-          toast.success("Файл сохранён в эталонный шаблон ФИС ФРДО");
-          return;
-        }
-      }
-      // Fallback: ДПО шаблон ещё не загружен — экспортируем упрощённо
-      await exportFRDOExcel(rows, result.type, suffix);
-      toast.warning("Эталонный шаблон ДПО ещё не загружен — выгрузка в упрощённом формате");
+      await injectIntoFrdoTemplate(rows, result.type, suffix);
+      toast.success("Файл сохранён в эталонный шаблон ФИС ФРДО");
     } catch (e: any) {
       toast.error(e?.message || "Ошибка экспорта");
     }
