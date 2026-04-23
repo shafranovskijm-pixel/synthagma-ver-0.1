@@ -279,6 +279,50 @@ export function FrdoFileSanitizerDialog({ open, onOpenChange }: Props) {
               Распознано колонок источника: <strong>{result.matchedColumns}</strong> / {headers.length}.
             </div>
 
+            {/* Не найденные колонки */}
+            {(() => {
+              const unmapped = getUnmappedHeaders(result);
+              const requiredUnmapped = unmapped.filter((u) => u.required);
+              if (unmapped.length === 0) return null;
+              return (
+                <div className={`rounded-xl border p-3 text-sm ${requiredUnmapped.length > 0 ? "border-destructive/40 bg-destructive/5" : "border-amber-500/30 bg-amber-500/5"}`}>
+                  <div className="flex items-start gap-2">
+                    <AlertTriangle className={`w-4 h-4 mt-0.5 shrink-0 ${requiredUnmapped.length > 0 ? "text-destructive" : "text-amber-600"}`} />
+                    <div className="space-y-2 flex-1 min-w-0">
+                      <div className="font-medium">
+                        Не распознано колонок в исходном файле: <strong>{unmapped.length}</strong>
+                        {requiredUnmapped.length > 0 && <span className="text-destructive"> (из них обязательных: {requiredUnmapped.length})</span>}
+                      </div>
+                      <ul className="text-xs text-muted-foreground list-disc pl-4 space-y-0.5 max-h-24 overflow-y-auto">
+                        {unmapped.slice(0, 10).map((u) => (
+                          <li key={u.index}>
+                            <span className={u.required ? "text-destructive font-medium" : ""}>{u.header}</span>
+                            {u.required && " — обязательная"}
+                          </li>
+                        ))}
+                        {unmapped.length > 10 && <li>и ещё {unmapped.length - 10}…</li>}
+                      </ul>
+                      {result.sourceHeaders.length > 0 && (
+                        <details className="text-xs">
+                          <summary className="cursor-pointer text-muted-foreground hover:text-foreground">Заголовки в вашем файле ({result.sourceHeaders.length})</summary>
+                          <div className="mt-1.5 flex flex-wrap gap-1">
+                            {result.sourceHeaders.map((h, i) => (
+                              <span key={i} className="px-1.5 py-0.5 rounded bg-muted text-foreground/80 max-w-[200px] truncate" title={h}>
+                                {i + 1}. {h.length > 40 ? h.slice(0, 40) + "…" : h || "—"}
+                              </span>
+                            ))}
+                          </div>
+                        </details>
+                      )}
+                      <div className="text-xs text-muted-foreground italic">
+                        Переименуйте колонки в исходном файле под названия Рособрнадзора и перезагрузите — либо данные будут перенесены позиционно (если совпадает число колонок).
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
+
             {/* Раскрывающееся превью */}
             <div className="border border-border rounded-xl overflow-hidden">
               <button
