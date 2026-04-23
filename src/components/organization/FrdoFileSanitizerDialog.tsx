@@ -35,6 +35,7 @@ export function FrdoFileSanitizerDialog({ open, onOpenChange }: Props) {
   const [isProcessing, setIsProcessing] = useState(false);
   const [result, setResult] = useState<ParseResult | null>(null);
   const [dragActive, setDragActive] = useState(false);
+  const [showPreview, setShowPreview] = useState(false);
 
   const reset = useCallback(() => {
     setFile(null);
