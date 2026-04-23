@@ -59,7 +59,6 @@ serve(async (req) => {
       "SALUTESPEECH_AUTH_KEY",
       "SALUTESPEECH_AUTH_KEY_2",
       "SALUTESPEECH_AUTH_KEY_3",
-      "ELEVENLABS_API_KEY",
       "DADATA_API_KEY",
       "LIVEKIT_API_KEY",
       "LIVEKIT_API_SECRET",

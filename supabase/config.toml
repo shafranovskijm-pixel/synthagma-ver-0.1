@@ -93,9 +93,6 @@ verify_jwt = false
 [functions.generate-image]
 verify_jwt = false
 
-[functions.elevenlabs-tts]
-verify_jwt = false
-
 [functions.grade-test]
 verify_jwt = false
 
