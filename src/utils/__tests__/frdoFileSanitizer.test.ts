@@ -117,3 +117,67 @@ describe("auto_reg_number contract (via sanitizeText)", () => {
     expect(sanitizeText("12/2024").value).toBe("12/2024");
   });
 });
+
+// ============================================================
+// Header mapping (parseFrdoXlsx) — column resolution edge cases
+// ============================================================
+import ExcelJS from "exceljs";
+import { parseFrdoXlsx, getUnmappedHeaders, getHeadersForType } from "../frdoFileSanitizer";
+import { PO_HEADERS } from "../frdoExcelExport";
+
+async function buildXlsxFile(headers: string[], rows: (string | number)[][], name = "test.xlsx"): Promise<File> {
+  const wb = new ExcelJS.Workbook();
+  const ws = wb.addWorksheet("Лист1");
+  ws.addRow(headers);
+  for (const r of rows) ws.addRow(r);
+  const buf = await wb.xlsx.writeBuffer();
+  return new File([buf as ArrayBuffer], name, {
+    type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  });
+}
+
+describe("buildColumnMap fuzzy + positional fallback", () => {
+  it("matches singular profession header (PO[11])", async () => {
+    const headers = [...PO_HEADERS];
+    headers[11] = "Наименование профессии рабочего, должности служащего";
+    const file = await buildXlsxFile(headers, [
+      headers.map((_, i) => (i === 11 ? "Водитель автомобиля" : `v${i}`)),
+    ]);
+    const r = await parseFrdoXlsx(file, "po");
+    expect(r.columnMap[11]).toBe(11);
+    expect(String(r.rows[0].cells[11].value)).toBe("Водитель автомобиля");
+  });
+
+  it("matches 'СНИЛС получателя' for PO[21]", async () => {
+    const headers = [...PO_HEADERS];
+    headers[21] = "СНИЛС получателя";
+    const file = await buildXlsxFile(headers, [
+      headers.map((_, i) => (i === 21 ? "12345678901" : `v${i}`)),
+    ]);
+    const r = await parseFrdoXlsx(file, "po");
+    expect(r.columnMap[21]).toBe(21);
+    expect(String(r.rows[0].cells[21].value)).toBe("123-456-789 01");
+  });
+
+  it("positional fallback when source has 35 cols and required mostly matched", async () => {
+    const headers = [...PO_HEADERS];
+    headers[11] = "XYZ-неведомая колонка-Q";
+    const dataRow = headers.map((_, i) => (i === 11 ? "Сварщик" : `v${i}`));
+    const file = await buildXlsxFile(headers, [dataRow]);
+    const r = await parseFrdoXlsx(file, "po");
+    expect(r.columnMap[11]).toBe(11);
+    expect(String(r.rows[0].cells[11].value)).toBe("Сварщик");
+  });
+
+  it("reports unmapped header when column missing and counts differ", async () => {
+    const headers = [...PO_HEADERS];
+    headers[21] = "Совсем другая колонка";
+    headers.push("Лишняя колонка");
+    const dataRow = headers.map((_, i) => `v${i}`);
+    const file = await buildXlsxFile(headers, [dataRow]);
+    const r = await parseFrdoXlsx(file, "po");
+    const unmapped = getUnmappedHeaders(r);
+    const snilsHeader = getHeadersForType("po")[21];
+    expect(unmapped.some((u) => u.header === snilsHeader)).toBe(true);
+  });
+});
