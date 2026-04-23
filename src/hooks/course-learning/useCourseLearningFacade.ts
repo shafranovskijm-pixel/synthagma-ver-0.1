@@ -90,6 +90,7 @@ export function useCourseLearning() {
   }, [currentLesson?.id, user, enrollmentId, isAdminView]);
 
   const handleCourseCompletion = async (testScoreData?: { score: number; max: number }) => {
+    if (isAdminView) return; // never complete the student's course in admin view
     if (!course || !user || !courseId) return;
     try {
       const { data: profile } = await supabase.from('profiles').select('full_name, organization_id').eq('user_id', user.id).maybeSingle();
@@ -179,6 +180,11 @@ export function useCourseLearning() {
 
   const markLessonComplete = async (autoAdvance = true) => {
     if (!currentLesson || !user) return;
+    if (isAdminView) {
+      // Admin preview — just navigate forward without writing progress.
+      if (autoAdvance) goToNextLesson();
+      return;
+    }
     if (isLessonCompleted(currentLesson.id)) { if (autoAdvance) goToNextLesson(); return; }
 
     await saveLessonTime();
@@ -202,6 +208,7 @@ export function useCourseLearning() {
   };
 
   const resetCourseProgress = async () => {
+    if (isAdminView) { toast.info('Сброс прогресса недоступен в режиме просмотра'); return; }
     if (!user || !courseId) return;
     try {
       const lessonIds = lessons.map(l => l.id);
@@ -216,6 +223,7 @@ export function useCourseLearning() {
   };
 
   const submitFeedback = async () => {
+    if (isAdminView) { toast.info('Отправка отзывов недоступна в режиме просмотра'); return; }
     if (!currentLesson || !user || !feedbackAnswer.trim()) return;
     setFeedbackSending(true);
     try {
