@@ -176,82 +176,38 @@ export function AdminWebinarsOverview() {
     setDeleteTarget(null);
   };
 
-  /**
-   * One-click: создаёт LiveKit-вебинар и сразу открывает плеер.
-   * 1) Берём первую доступную организацию (organization_id NOT NULL в схеме).
-   * 2) INSERT webinars.
-   * 3) Вызов livekit-create-room → roomName/wsUrl.
-   * 4) UPDATE player_settings.
-   * 5) Открываем Sheet с плеером.
-   */
-  const launchInstantWebinar = async () => {
-    if (!user?.id) {
-      toast.error("Нужно авторизоваться");
-      return;
-    }
-    setLaunching(true);
+  const handleBulkDelete = async () => {
+    if (selectedIds.size === 0) return;
+    setBulkDeleting(true);
     try {
-      // Берём любую существующую организацию (organization_id NOT NULL)
-      const { data: anyOrg, error: orgErr } = await supabase
-        .from("organizations")
-        .select("id")
-        .order("created_at", { ascending: true })
-        .limit(1)
-        .maybeSingle();
-      if (orgErr) throw orgErr;
-      if (!anyOrg?.id) throw new Error("Нет ни одной организации в системе");
-
-      const now = new Date();
-      const title = `Тестовый вебинар ${format(now, "dd.MM HH:mm", { locale: ru })}`;
-
-      // INSERT webinar
-      const { data: created, error: insErr } = await supabase
-        .from("webinars")
-        .insert({
-          title,
-          source_type: "livekit",
-          status: "live",
-          scheduled_at: now.toISOString(),
-          duration_minutes: 60,
-          organization_id: anyOrg.id,
-          host_user_id: user.id,
-          created_by: user.id,
-          access_type: "org_all",
-          player_settings: {},
-        })
-        .select(SELECT_FIELDS)
-        .single();
-      if (insErr) throw insErr;
-
-      // Создаём LiveKit комнату
-      const { data: roomData, error: roomErr } = await supabase.functions.invoke(
-        "livekit-create-room",
-        { body: { webinarId: created.id, title } },
-      );
-      if (roomErr) throw new Error(roomErr.message);
-      if (!roomData?.ok) throw new Error(roomData?.error || "LiveKit room creation failed");
-
-      // UPDATE player_settings
-      const playerSettings = {
-        livekit: { roomName: roomData.roomName, wsUrl: roomData.wsUrl },
-      };
-      const { data: updated, error: updErr } = await supabase
-        .from("webinars")
-        .update({ player_settings: playerSettings })
-        .eq("id", created.id)
-        .select(SELECT_FIELDS)
-        .single();
-      if (updErr) throw updErr;
-
-      // Обновляем список и открываем плеер
-      await fetchWebinars();
-      setPlayerWebinar({ ...(updated as any), organization_name: null });
-      toast.success("Вебинар запущен — вы в эфире");
+      const ids = Array.from(selectedIds);
+      const { error } = await supabase.from("webinars").delete().in("id", ids);
+      if (error) throw error;
+      toast.success(`Удалено: ${ids.length}`);
+      setWebinars((prev) => prev.filter((w) => !selectedIds.has(w.id)));
+      setSelectedIds(new Set());
+      setShowBulkConfirm(false);
     } catch (e: any) {
-      console.error("[launchInstantWebinar]", e);
-      toast.error("Не удалось запустить: " + (e?.message || "ошибка"));
+      toast.error("Не удалось удалить: " + (e?.message || "ошибка"));
     } finally {
-      setLaunching(false);
+      setBulkDeleting(false);
+    }
+  };
+
+  const toggleSelect = (id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedIds.size === filtered.length) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(filtered.map((w) => w.id)));
     }
   };
 
