@@ -261,7 +261,27 @@ export function ProposalEditor({ onClose, editProposal, editServices, prefillCom
           {/* Company info */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <div><Label>Компания *</Label><Input value={companyName} onChange={e => setCompanyName(e.target.value)} placeholder="ООО «Компания»" /></div>
-            <div><Label>ИНН</Label><Input value={companyInn} onChange={e => setCompanyInn(e.target.value)} placeholder="1234567890" /></div>
+            <div>
+              <Label>ИНН</Label>
+              <div className="flex gap-2">
+                <Input
+                  value={companyInn}
+                  onChange={e => setCompanyInn(e.target.value)}
+                  onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleSearchByInn(); } }}
+                  placeholder="1234567890"
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="icon"
+                  onClick={handleSearchByInn}
+                  disabled={searchingInn || !companyInn}
+                  title="Найти по ИНН"
+                >
+                  {searchingInn ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
+                </Button>
+              </div>
+            </div>
             <div><Label>Email</Label><Input value={companyEmail} onChange={e => setCompanyEmail(e.target.value)} /></div>
             <div><Label>Телефон</Label><Input value={companyPhone} onChange={e => setCompanyPhone(e.target.value)} /></div>
             <div><Label>Контактное лицо</Label><Input value={contactPerson} onChange={e => setContactPerson(e.target.value)} /></div>
