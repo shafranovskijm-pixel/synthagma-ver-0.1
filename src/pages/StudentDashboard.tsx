@@ -365,6 +365,7 @@ export default function StudentDashboard() {
           onLogout={handleLogout}
           setTheme={setTheme}
           pendingCount={pendingDocsCount}
+          pendingReasons={pendingReasons}
           isVideoIdentified={isVideoIdentified}
           showAchievements={dashboardSettings.showAchievements}
           onShowVideoId={() => setShowVideoIdentification(true)}
