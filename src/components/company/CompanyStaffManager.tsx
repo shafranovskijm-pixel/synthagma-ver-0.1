@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { safeInvoke } from "@/utils/safeInvoke";
 import { toast } from "sonner";
+import { getErrorMessage } from "@/utils/handleSupabaseError";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -124,7 +125,7 @@ export function CompanyStaffManager({ companyId, companyName, ownerUserId }: Com
       setInviteName("");
       setInviteRole("manager");
     } catch (e: any) {
-      toast.error("Ошибка отправки", { description: e?.message });
+      toast.error("Ошибка отправки", { description: getErrorMessage(e) });
     } finally {
       setSending(false);
     }
@@ -133,7 +134,7 @@ export function CompanyStaffManager({ companyId, companyName, ownerUserId }: Com
   const updateRole = async (staffId: string, role: StaffRole) => {
     const { error } = await supabase.from("company_staff").update({ role }).eq("id", staffId);
     if (error) {
-      toast.error("Не удалось обновить роль", { description: error.message });
+      toast.error("Не удалось обновить роль", { description: getErrorMessage(error) });
       return;
     }
     toast.success("Роль обновлена");
@@ -144,7 +145,7 @@ export function CompanyStaffManager({ companyId, companyName, ownerUserId }: Com
     if (!confirm(`Удалить ${name} из сотрудников компании?`)) return;
     const { error } = await supabase.from("company_staff").delete().eq("id", staffId);
     if (error) {
-      toast.error("Не удалось удалить", { description: error.message });
+      toast.error("Не удалось удалить", { description: getErrorMessage(error) });
       return;
     }
     toast.success("Сотрудник удалён");

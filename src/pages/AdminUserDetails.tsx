@@ -19,6 +19,7 @@ import { ChatTab } from "@/components/organization/student-detail/ChatTab";
 import { FRDOExportDialog } from "@/components/organization/FRDOExportDialog";
 import { safeInvoke } from "@/utils/safeInvoke";
 import { toast } from "sonner";
+import { getErrorMessage } from "@/utils/handleSupabaseError";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 
 function formatTimeAgo(date: Date): string {
@@ -167,7 +168,7 @@ export default function AdminUserDetails() {
       setCredEdit(prev => ({ ...prev, editing: false, saving: false }));
       toast.success("Учётные данные обновлены");
     } catch (error: any) {
-      toast.error("Ошибка", { description: error?.message || "Не удалось сохранить" });
+      toast.error("Ошибка", { description: getErrorMessage(error, "Не удалось сохранить") });
       setCredEdit(prev => ({ ...prev, saving: false }));
     }
   };

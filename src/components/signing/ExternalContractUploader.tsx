@@ -7,6 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Upload, FileText, X, Loader2, Send } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { getErrorMessage } from "@/utils/handleSupabaseError";
 import { cn } from "@/lib/utils";
 
 interface Props {
@@ -96,9 +97,9 @@ export function ExternalContractUploader({ open, onOpenChange, organizationId, d
       onSent?.(sigId as string);
       reset();
       onOpenChange(false);
-    } catch (e: any) {
+    } catch (e) {
       console.error(e);
-      toast.error("Не удалось отправить", { description: e?.message || String(e) });
+      toast.error("Не удалось отправить", { description: getErrorMessage(e) });
     } finally {
       setUploading(false);
     }

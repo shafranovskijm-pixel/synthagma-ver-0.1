@@ -10,6 +10,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { supabase } from "@/integrations/supabase/client";
 import { MARKETPLACE_ORG_ID } from "@/constants/marketplace";
 import { toast } from "sonner";
+import { getErrorMessage } from "@/utils/handleSupabaseError";
 import {
   Search, RefreshCcw, Download, Loader2, ChevronDown, ChevronRight,
   CheckCircle2, AlertCircle, Clock, ExternalLink,
@@ -51,7 +52,7 @@ export function IpoImportTab() {
       .order("title", { ascending: true })
       .limit(2000);
     if (error) {
-      toast.error("Не удалось загрузить очередь импорта", { description: error.message });
+      toast.error("Не удалось загрузить очередь импорта", { description: getErrorMessage(error) });
     } else {
       setItems((data || []) as ImportItem[]);
     }
@@ -76,7 +77,7 @@ export function IpoImportTab() {
       });
       await fetchItems();
     } catch (e: any) {
-      toast.error("Ошибка сканирования", { description: e.message });
+      toast.error("Ошибка сканирования", { description: getErrorMessage(e) });
     } finally {
       setScanning(false);
     }
