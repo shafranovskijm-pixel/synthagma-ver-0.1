@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { X, Plus, Trash2, Eye, Sparkles } from 'lucide-react';
+import { X, Plus, Trash2, Eye, Sparkles, Search, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -11,6 +11,8 @@ import { SUBSCRIPTION_PLANS, type SubscriptionPlan } from '@/constants/subscript
 import { PROPOSAL_TEMPLATES, type ProposalTemplate } from '@/constants/proposalTemplates';
 import { useSalesManager, type ProposalServiceItem } from '@/hooks/useSalesManager';
 import { ProposalPreview } from './ProposalPreview';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 import type { CommercialProposal } from '@/hooks/useSalesManager';
 
 interface Props {
