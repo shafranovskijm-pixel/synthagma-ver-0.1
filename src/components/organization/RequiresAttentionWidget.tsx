@@ -26,36 +26,24 @@ interface AttentionCounts {
 async function fetchCounts(orgId: string): Promise<AttentionCounts> {
   const sevenDaysAgo = new Date(Date.now() - 7 * 86400_000).toISOString();
   const threeDaysFromNow = new Date(Date.now() + 3 * 86400_000).toISOString();
+  const now = new Date().toISOString();
+
+  // Cast to any to avoid excessive type instantiation depth across multiple parallel queries.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const sb = supabase as any;
 
   const [enrollment, homework, billing, signatures] = await Promise.all([
-    supabase
-      .from("enrollment_requests")
-      .select("id", { count: "exact", head: true })
-      .eq("organization_id", orgId)
-      .eq("status", "pending"),
-    supabase
-      .from("homework_submissions" as never)
-      .select("id", { count: "exact", head: true })
-      .eq("organization_id", orgId)
-      .eq("status", "pending")
-      .then(
-        (r) => r,
-        () => ({ count: 0 }),
-      ),
-    supabase
-      .from("org_billing_documents")
-      .select("id", { count: "exact", head: true })
-      .eq("organization_id", orgId)
-      .eq("doc_kind", "invoice")
-      .is("paid_at", null)
-      .lte("created_at", sevenDaysAgo),
-    supabase
-      .from("document_signatures")
-      .select("id", { count: "exact", head: true })
-      .eq("organization_id", orgId)
-      .in("status", ["sent", "viewed"])
-      .lte("expires_at", threeDaysFromNow)
-      .gte("expires_at", new Date().toISOString()),
+    sb.from("enrollment_requests").select("id", { count: "exact", head: true })
+      .eq("organization_id", orgId).eq("status", "pending"),
+    sb.from("homework_submissions").select("id", { count: "exact", head: true })
+      .eq("organization_id", orgId).eq("status", "pending")
+      .then((r: { count: number | null }) => r, () => ({ count: 0 })),
+    sb.from("org_billing_documents").select("id", { count: "exact", head: true })
+      .eq("organization_id", orgId).eq("doc_kind", "invoice")
+      .is("paid_at", null).lte("created_at", sevenDaysAgo),
+    sb.from("document_signatures").select("id", { count: "exact", head: true })
+      .eq("organization_id", orgId).in("status", ["sent", "viewed"])
+      .lte("expires_at", threeDaysFromNow).gte("expires_at", now),
   ]);
 
   return {
