@@ -69,9 +69,6 @@ export function PlatformProposalPlanCards() {
                 за год — {formatPriceRu(Math.round(plan.price * (1 - YEARLY_DISCOUNT)))} ₽/мес (−{YEARLY_DISCOUNT * 100}%)
               </div>
             )}
-            <div className="mt-2 text-xs text-muted-foreground">
-              Хранилище: {formatStorageSize(plan.limits.storageBytes)}
-            </div>
             <ul className="mt-5 space-y-2">
               {HIGHLIGHTS[p].map((item) => (
                 <li key={item} className="flex items-start gap-2 text-sm">
