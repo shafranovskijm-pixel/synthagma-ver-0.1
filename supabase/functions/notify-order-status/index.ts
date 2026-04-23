@@ -1,6 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { SMTPClient } from "https://deno.land/x/denomailer@1.6.0/mod.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { sendPlatformEmail } from "../_shared/smtp-sender.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -52,21 +52,8 @@ const handler = async (req: Request): Promise<Response> => {
   }
 
   try {
-    const SMTP_HOST = Deno.env.get("SMTP_HOST");
-    const SMTP_PORT = Deno.env.get("SMTP_PORT");
-    const SMTP_USER = Deno.env.get("SMTP_USER");
-    const SMTP_PASS = Deno.env.get("SMTP_PASS");
-    const SMTP_FROM = Deno.env.get("SMTP_FROM");
     const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
     const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-
-    if (!SMTP_HOST || !SMTP_PORT || !SMTP_USER || !SMTP_PASS || !SMTP_FROM) {
-      console.error("SMTP credentials are not fully configured");
-      return new Response(
-        JSON.stringify({ error: "Email service not configured", success: false }),
-        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
 
     if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
       console.error("Supabase credentials not configured");
@@ -100,7 +87,6 @@ const handler = async (req: Request): Promise<Response> => {
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
-    // Get buyer email
     let buyerEmail: string | null = null;
     let buyerName = "Покупатель";
 
@@ -110,17 +96,16 @@ const handler = async (req: Request): Promise<Response> => {
         .select("email, full_name")
         .eq("user_id", buyerUserId)
         .single();
-      
+
       buyerEmail = profile?.email || null;
       buyerName = profile?.full_name || "Студент";
     } else if (buyerType === "organization" && buyerOrganizationId) {
-      // Get organization members' emails
       const { data: profiles } = await supabase
         .from("profiles")
         .select("email, full_name")
         .eq("organization_id", buyerOrganizationId)
         .not("email", "is", null);
-      
+
       if (profiles && profiles.length > 0) {
         buyerEmail = profiles[0].email;
         buyerName = profiles[0].full_name || "Организация";
@@ -171,7 +156,7 @@ const handler = async (req: Request): Promise<Response> => {
           <div class="content">
             <p>Здравствуйте, ${buyerName}!</p>
             <p class="message">${statusInfo.message}</p>
-            
+
             <div class="order-details">
               <div class="detail-row">
                 <span class="detail-label">Курс</span>
@@ -190,9 +175,9 @@ const handler = async (req: Request): Promise<Response> => {
                 <span class="detail-value">${orderId.slice(0, 8).toUpperCase()}</span>
               </div>
             </div>
-            
+
             <div class="cta">
-              <a href="${req.headers.get("origin") || "https://sigma-edu.lovable.app"}/organization" class="button">
+              <a href="${req.headers.get("origin") || "https://sintagma.com.ru"}/organization" class="button">
                 Перейти в личный кабинет
               </a>
             </div>
@@ -205,26 +190,15 @@ const handler = async (req: Request): Promise<Response> => {
       </html>
     `;
 
-    const client = new SMTPClient({
-      connection: {
-        hostname: SMTP_HOST,
-        port: parseInt(SMTP_PORT, 10),
-        tls: true,
-        auth: {
-          username: SMTP_USER,
-          password: SMTP_PASS,
-        },
-      },
-    });
-
-    await client.send({
-      from: SMTP_FROM,
+    const result = await sendPlatformEmail({
       to: buyerEmail,
       subject: `${statusInfo.subject}: "${courseName}"`,
       html: htmlBody,
     });
 
-    await client.close();
+    if (!result.ok) {
+      throw new Error(result.error || "send failed");
+    }
 
     console.log("Status notification sent to:", buyerEmail);
 

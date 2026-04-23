@@ -1,4 +1,5 @@
 // Общий SMTP-отправитель для рассылок (UTF-8 кодировки, как в send-email)
+import { checkRateLimit } from "./rate-limiter.ts";
 
 function base64Encode(str: string): string {
   return btoa(unescape(encodeURIComponent(str)));
@@ -182,5 +183,106 @@ export async function sendSmtpEmail(cfg: SmtpConfig, opts: SendOptions): Promise
     await sendCommand("QUIT");
   } finally {
     try { activeConn.close(); } catch (_) { /* ignore */ }
+  }
+}
+
+/**
+ * Возвращает SMTP-конфиг платформы из env (SMTP_HOST/PORT/USER/PASS/FROM).
+ * Кидает ошибку, если переменные не заданы.
+ */
+export function getPlatformSmtpConfig(): SmtpConfig {
+  const host = Deno.env.get("SMTP_HOST");
+  const portStr = Deno.env.get("SMTP_PORT");
+  const username = Deno.env.get("SMTP_USER");
+  const password = Deno.env.get("SMTP_PASS");
+  const fromRaw = Deno.env.get("SMTP_FROM") || "noreply@sintagma.com.ru";
+
+  if (!host || !portStr || !username || !password) {
+    throw new Error("Platform SMTP is not configured (SMTP_HOST/PORT/USER/PASS missing)");
+  }
+
+  // SMTP_FROM может быть в виде "Имя <email>" либо просто email
+  const match = fromRaw.match(/^(.+?)\s*<(.+)>$/);
+  const from_email = match ? match[2].trim() : fromRaw.trim();
+  const from_name = match ? match[1].trim() : null;
+
+  return {
+    host,
+    port: parseInt(portStr, 10),
+    username,
+    password,
+    encryption: parseInt(portStr, 10) === 465 ? "ssl" : "starttls",
+    from_email,
+    from_name,
+  };
+}
+
+export interface PlatformEmailOptions extends Omit<SendOptions, "to"> {
+  to: string;
+  /** Ключ для rate-limit (по умолчанию `email:<to>`) */
+  rateLimitKey?: string;
+  /** Пропустить rate-limit (для cron-задач). По умолчанию false. */
+  skipRateLimit?: boolean;
+  /** Лимит запросов в окне (по умолчанию 20) */
+  rateLimitMax?: number;
+  /** Окно в секундах (по умолчанию 60) */
+  rateLimitWindowSec?: number;
+}
+
+export interface PlatformEmailResult {
+  ok: boolean;
+  error?: string;
+  rateLimited?: boolean;
+  retryAfterSeconds?: number;
+}
+
+/**
+ * Отправляет письмо через платформенный SMTP (env SMTP_*).
+ * Включает rate-limit по адресу получателя по умолчанию.
+ * Возвращает результат вместо throw — удобно для batched-операций.
+ */
+export async function sendPlatformEmail(opts: PlatformEmailOptions): Promise<PlatformEmailResult> {
+  if (!opts.skipRateLimit) {
+    const key = opts.rateLimitKey || `email:${opts.to}`;
+    const rl = checkRateLimit(key, {
+      maxRequests: opts.rateLimitMax ?? 20,
+      windowSeconds: opts.rateLimitWindowSec ?? 60,
+    });
+    if (!rl.allowed) {
+      return { ok: false, rateLimited: true, retryAfterSeconds: rl.retryAfterSeconds, error: "Rate limit exceeded" };
+    }
+  }
+
+  let cfg: SmtpConfig;
+  try {
+    cfg = getPlatformSmtpConfig();
+  } catch (e) {
+    return { ok: false, error: (e as Error).message };
+  }
+
+  try {
+    await sendSmtpEmail(cfg, {
+      to: opts.to,
+      subject: opts.subject,
+      html: opts.html,
+      fromOverride: opts.fromOverride,
+      replyTo: opts.replyTo,
+      attachments: opts.attachments,
+      extraHeaders: opts.extraHeaders,
+    });
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: (e as Error).message };
+  }
+}
+
+/**
+ * То же, что sendPlatformEmail, но throw'ает при ошибке.
+ * Удобно когда верхний уровень и так оборачивает try/catch.
+ */
+export async function sendPlatformEmailOrThrow(opts: PlatformEmailOptions): Promise<void> {
+  const res = await sendPlatformEmail(opts);
+  if (!res.ok) {
+    throw new Error(res.error || "Platform email send failed");
   }
 }

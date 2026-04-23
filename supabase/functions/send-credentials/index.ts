@@ -1,35 +1,12 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { sendPlatformEmail } from "../_shared/smtp-sender.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
     "authorization, x-client-info, apikey, content-type",
 };
-
-// Base64 encode for UTF-8 strings
-function base64Encode(str: string): string {
-  return btoa(unescape(encodeURIComponent(str)));
-}
-
-// Encode subject for email (RFC 2047)
-function encodeSubject(subject: string): string {
-  return `=?UTF-8?B?${base64Encode(subject)}?=`;
-}
-
-// Encode "From" display name (RFC 2047)
-function encodeFromHeader(from: string): string {
-  // Check if format is "Name <email@domain.com>"
-  const match = from.match(/^(.+?)\s*<(.+)>$/);
-  if (match) {
-    const displayName = match[1].trim();
-    const email = match[2].trim();
-    // Encode only the display name, keep email as-is
-    return `=?UTF-8?B?${base64Encode(displayName)}?= <${email}>`;
-  }
-  // If no display name, return as-is
-  return from;
-}
 
 interface CredentialsRequest {
   email: string;
@@ -55,14 +32,12 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
 
-    // Create authenticated client to verify the caller
     const supabaseAuth = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
       Deno.env.get("SUPABASE_ANON_KEY") ?? "",
       { global: { headers: { Authorization: authHeader } } }
     );
 
-    // Verify user identity
     const { data: { user }, error: authError } = await supabaseAuth.auth.getUser();
     if (authError || !user) {
       return new Response(
@@ -71,7 +46,6 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
 
-    // Verify user has organization or admin role
     const { data: roleData } = await supabaseAuth
       .from('user_roles')
       .select('role')
@@ -82,20 +56,6 @@ const handler = async (req: Request): Promise<Response> => {
       return new Response(
         JSON.stringify({ error: "Insufficient permissions. Organization or admin role required." }),
         { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
-    const SMTP_HOST = Deno.env.get("SMTP_HOST");
-    const SMTP_PORT = Deno.env.get("SMTP_PORT");
-    const SMTP_USER = Deno.env.get("SMTP_USER");
-    const SMTP_PASS = Deno.env.get("SMTP_PASS");
-    const SMTP_FROM = Deno.env.get("SMTP_FROM");
-    
-    if (!SMTP_HOST || !SMTP_PORT || !SMTP_USER || !SMTP_PASS || !SMTP_FROM) {
-      console.error("SMTP credentials are not fully configured");
-      return new Response(
-        JSON.stringify({ error: "Email service not configured" }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
@@ -115,12 +75,11 @@ const handler = async (req: Request): Promise<Response> => {
       /^https:\/\/[a-z0-9-]+--[a-z0-9-]+\.lovable\.app/,
       /^https:\/\/[a-z0-9-]+\.lovableproject\.com/,
       /^http:\/\/localhost/,
-      // Production custom domains (punycode format)
-      /^https:\/\/xn--80aaiswd0ak\.xn--p1ai/, // синтагма.рф
-      /^https:\/\/синтагма\.рф/, // Unicode format
-      /^https:\/\/(www\.)?sintagma\.com\.ru/, // sintagma.com.ru
+      /^https:\/\/xn--80aaiswd0ak\.xn--p1ai/,
+      /^https:\/\/синтагма\.рф/,
+      /^https:\/\/(www\.)?sintagma\.com\.ru/,
     ];
-    
+
     const isAllowedUrl = allowedPatterns.some(pattern => pattern.test(loginUrl));
     if (!isAllowedUrl) {
       console.error("Invalid loginUrl domain:", loginUrl);
@@ -131,7 +90,6 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     console.log("Sending credentials email to:", email);
-    console.log("SMTP Config - Host:", SMTP_HOST, "Port:", SMTP_PORT);
 
     const htmlBody = `<!DOCTYPE html>
 <html>
@@ -145,16 +103,16 @@ const handler = async (req: Request): Promise<Response> => {
         <h1 style="margin: 0; font-size: 24px;">Добро пожаловать!</h1>
         ${organizationName ? `<p style="margin: 10px 0 0 0; opacity: 0.9;">${organizationName}</p>` : ''}
       </div>
-      
+
       <div style="padding: 30px;">
         <p style="color: #333; font-size: 16px; line-height: 1.6; margin-bottom: 20px;">
           Здравствуйте${name ? `, ${name}` : ''}!
         </p>
-        
+
         <p style="color: #4a4a4a; font-size: 16px; line-height: 1.6; margin-bottom: 20px;">
           Ваш аккаунт в системе обучения готов к использованию. Ниже приведены ваши данные для входа:
         </p>
-        
+
         <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 20px; margin: 20px 0;">
           <div style="margin-bottom: 15px;">
             <div style="font-size: 12px; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px;">Логин</div>
@@ -165,24 +123,24 @@ const handler = async (req: Request): Promise<Response> => {
             <div style="font-size: 18px; font-weight: bold; color: #1e293b; font-family: monospace; background: #f1f5f9; padding: 8px 12px; border-radius: 6px; margin-top: 4px; display: inline-block;">${password}</div>
           </div>
         </div>
-        
+
         <p style="color: #4a4a4a; font-size: 16px; line-height: 1.6;">
           Для входа в систему нажмите кнопку ниже:
         </p>
-        
+
         <div style="text-align: center; margin: 30px 0;">
-          <a href="${loginUrl}" 
+          <a href="${loginUrl}"
              style="display: inline-block; background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%); color: white; text-decoration: none; padding: 14px 32px; border-radius: 8px; font-size: 16px; font-weight: 600;">
             Войти в систему
           </a>
         </div>
-        
+
         <p style="color: #9ca3af; font-size: 12px; margin-top: 20px;">
           Если кнопка не работает, скопируйте эту ссылку в браузер:<br>
           <a href="${loginUrl}" style="color: #6366f1; word-break: break-all;">${loginUrl}</a>
         </p>
       </div>
-      
+
       <div style="background: #f8fafc; padding: 20px; text-align: center; border-top: 1px solid #e2e8f0;">
         <p style="color: #9ca3af; font-size: 12px; margin: 0;">
           Это письмо было отправлено автоматически. Пожалуйста, не отвечайте на него.
@@ -193,90 +151,19 @@ const handler = async (req: Request): Promise<Response> => {
 </body>
 </html>`;
 
-    const subjectText = organizationName 
-      ? `Ваши данные для входа - ${organizationName}` 
+    const subjectText = organizationName
+      ? `Ваши данные для входа - ${organizationName}`
       : 'Ваши данные для входа';
 
-    // Build raw email with proper encoding
-    const encodedSubject = encodeSubject(subjectText);
-    const encodedFrom = encodeFromHeader(SMTP_FROM);
-    const encodedHtml = base64Encode(htmlBody);
-
-    const rawEmail = [
-      `From: ${encodedFrom}`,
-      `To: ${email}`,
-      `Subject: ${encodedSubject}`,
-      `MIME-Version: 1.0`,
-      `Content-Type: text/html; charset=UTF-8`,
-      `Content-Transfer-Encoding: base64`,
-      ``,
-      encodedHtml.match(/.{1,76}/g)?.join('\r\n') || encodedHtml,
-    ].join('\r\n');
-
-    // Connect via TLS
-    const conn = await Deno.connectTls({
-      hostname: SMTP_HOST,
-      port: parseInt(SMTP_PORT, 10),
+    const result = await sendPlatformEmail({
+      to: email,
+      subject: subjectText,
+      html: htmlBody,
     });
 
-    const encoder = new TextEncoder();
-    const decoder = new TextDecoder();
-
-    async function readResponse(): Promise<string> {
-      const buffer = new Uint8Array(1024);
-      const n = await conn.read(buffer);
-      if (n === null) return "";
-      return decoder.decode(buffer.subarray(0, n));
+    if (!result.ok) {
+      throw new Error(result.error || "send failed");
     }
-
-    async function sendCommand(cmd: string): Promise<string> {
-      await conn.write(encoder.encode(cmd + "\r\n"));
-      return await readResponse();
-    }
-
-    // SMTP handshake
-    let response = await readResponse();
-    console.log("Server greeting:", response.substring(0, 50));
-
-    response = await sendCommand(`EHLO localhost`);
-    console.log("EHLO response:", response.substring(0, 50));
-
-    // AUTH LOGIN
-    response = await sendCommand(`AUTH LOGIN`);
-    console.log("AUTH response:", response.substring(0, 30));
-
-    response = await sendCommand(btoa(SMTP_USER));
-    console.log("User response:", response.substring(0, 30));
-
-    response = await sendCommand(btoa(SMTP_PASS));
-    console.log("Pass response:", response.substring(0, 30));
-
-    // Extract email from SMTP_FROM (may contain display name)
-    const emailMatch = SMTP_FROM.match(/<([^>]+)>/) || [null, SMTP_FROM];
-    const fromEmail = emailMatch[1] || SMTP_FROM;
-
-    // MAIL FROM
-    response = await sendCommand(`MAIL FROM:<${fromEmail}>`);
-    console.log("MAIL FROM response:", response.substring(0, 30));
-
-    // RCPT TO
-    response = await sendCommand(`RCPT TO:<${email}>`);
-    console.log("RCPT TO response:", response.substring(0, 30));
-
-    // DATA
-    response = await sendCommand(`DATA`);
-    console.log("DATA response:", response.substring(0, 30));
-
-    // Send email content
-    await conn.write(encoder.encode(rawEmail + "\r\n.\r\n"));
-    response = await readResponse();
-    console.log("Email data response:", response.substring(0, 50));
-
-    // QUIT
-    response = await sendCommand(`QUIT`);
-    console.log("QUIT response:", response.substring(0, 30));
-
-    conn.close();
 
     console.log("Credentials email sent successfully to:", email, "by user:", user.id);
 

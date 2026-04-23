@@ -4,6 +4,7 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { sendPlatformEmail } from "../_shared/smtp-sender.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -12,63 +13,10 @@ const corsHeaders = {
 
 const REMINDER_DAYS = [30, 14, 7, 1];
 
-function b64(s: string): string { return btoa(unescape(encodeURIComponent(s))); }
-function encSubject(s: string): string { return `=?UTF-8?B?${b64(s)}?=`; }
-function encFrom(from: string): string {
-  const m = from.match(/^(.+?)\s*<(.+)>$/);
-  return m ? `=?UTF-8?B?${b64(m[1].trim())}?= <${m[2].trim()}>` : from;
-}
-
 async function sendSmtp(to: string, subject: string, html: string): Promise<boolean> {
-  const SMTP_HOST = Deno.env.get("SMTP_HOST");
-  const SMTP_PORT = Deno.env.get("SMTP_PORT");
-  const SMTP_USER = Deno.env.get("SMTP_USER");
-  const SMTP_PASS = Deno.env.get("SMTP_PASS");
-  const SMTP_FROM = Deno.env.get("SMTP_FROM");
-  if (!SMTP_HOST || !SMTP_PORT || !SMTP_USER || !SMTP_PASS || !SMTP_FROM) {
-    console.warn("SMTP not configured — skipping email");
-    return false;
-  }
-  try {
-    const encHtml = b64(html);
-    const raw = [
-      `From: ${encFrom(SMTP_FROM)}`,
-      `To: ${to}`,
-      `Subject: ${encSubject(subject)}`,
-      `MIME-Version: 1.0`,
-      `Content-Type: text/html; charset=UTF-8`,
-      `Content-Transfer-Encoding: base64`,
-      ``,
-      encHtml.match(/.{1,76}/g)?.join("\r\n") || encHtml,
-    ].join("\r\n");
-
-    const conn = await Deno.connectTls({ hostname: SMTP_HOST, port: parseInt(SMTP_PORT, 10) });
-    const enc = new TextEncoder();
-    const dec = new TextDecoder();
-    const read = async () => {
-      const buf = new Uint8Array(2048);
-      const n = await conn.read(buf);
-      return n === null ? "" : dec.decode(buf.subarray(0, n));
-    };
-    const cmd = async (c: string) => { await conn.write(enc.encode(c + "\r\n")); return await read(); };
-    await read();
-    await cmd("EHLO localhost");
-    await cmd("AUTH LOGIN");
-    await cmd(btoa(SMTP_USER));
-    await cmd(btoa(SMTP_PASS));
-    const fromEmail = (SMTP_FROM.match(/<([^>]+)>/) || [null, SMTP_FROM])[1] || SMTP_FROM;
-    await cmd(`MAIL FROM:<${fromEmail}>`);
-    await cmd(`RCPT TO:<${to}>`);
-    await cmd("DATA");
-    await conn.write(enc.encode(raw + "\r\n.\r\n"));
-    await read();
-    await cmd("QUIT");
-    conn.close();
-    return true;
-  } catch (e) {
-    console.error("SMTP send error:", e);
-    return false;
-  }
+  const r = await sendPlatformEmail({ to, subject, html, skipRateLimit: true });
+  if (!r.ok) console.error("SMTP send error:", r.error);
+  return r.ok;
 }
 
 function buildEmail(opts: {
