@@ -475,6 +475,13 @@ function LiveKitTopBar({
         </Button>
       )}
 
+      {/* Управление записью — только для хоста LiveKit-вебинара */}
+      {isHost && (
+        <div className="hidden sm:inline-flex">
+          <RecordingControls webinarId={webinarId} />
+        </div>
+      )}
+
       {/* Mobile: collapse host actions into "..." menu */}
       {!viewOnly && (publicLink || hasShareSettings) && (
         <Popover>
