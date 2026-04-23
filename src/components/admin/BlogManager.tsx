@@ -13,12 +13,14 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
+import { TableSkeleton } from "@/components/shared/TableSkeleton";
+import { EmptyState } from "@/components/shared/EmptyState";
 import { useBlogManager, BLOG_CATEGORIES } from "@/hooks/useBlogManager";
 
 export function BlogManager() {
   const h = useBlogManager();
 
-  if (h.isLoading) return <div className="flex items-center justify-center py-12"><SigmaSpinner size="lg" /></div>;
+  if (h.isLoading) return <TableSkeleton rows={6} cols={3} />;
 
   return (
     <div className="space-y-6">
@@ -36,7 +38,12 @@ export function BlogManager() {
 
         <TabsContent value="posts" className="mt-6">
           {h.posts.length === 0 ? (
-            <Card className="p-12 text-center"><FileText className="h-12 w-12 mx-auto text-muted-foreground mb-4" /><h3 className="font-semibold mb-2">Нет статей</h3><p className="text-sm text-muted-foreground mb-4">Создайте первую статью с помощью ИИ</p><Button onClick={h.openCreateDialog} className="gap-2"><Sparkles className="h-4 w-4" />Создать с ИИ</Button></Card>
+            <EmptyState
+              icon={FileText}
+              title="Нет статей"
+              description="Создайте первую статью с помощью ИИ — он напишет черновик за минуту."
+              action={{ label: "Создать с ИИ", onClick: h.openCreateDialog }}
+            />
           ) : (
             <div className="grid gap-4">
               {h.posts.map(post => (
@@ -74,8 +81,12 @@ export function BlogManager() {
         </TabsContent>
 
         <TabsContent value="subscribers" className="mt-6">
-          {h.isLoadingSubscribers ? <div className="flex items-center justify-center py-12"><SigmaSpinner size="lg" /></div>
-            : h.subscribers.length === 0 ? <Card className="p-12 text-center"><Mail className="h-12 w-12 mx-auto text-muted-foreground mb-4" /><h3 className="font-semibold mb-2">Нет подписчиков</h3><p className="text-sm text-muted-foreground">Подписчики появятся здесь после подписки на рассылку в блоге</p></Card>
+          {h.isLoadingSubscribers ? <TableSkeleton rows={5} cols={2} />
+            : h.subscribers.length === 0 ? <EmptyState
+                icon={Mail}
+                title="Нет подписчиков"
+                description="Подписчики появятся здесь после подписки на рассылку в блоге."
+              />
             : <Card><div className="divide-y">{h.subscribers.map(sub => (
               <div key={sub.id} className="flex items-center justify-between p-4">
                 <div className="flex items-center gap-3"><div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center"><Mail className="h-5 w-5 text-primary" /></div><div><p className="font-medium">{sub.email}</p><p className="text-sm text-muted-foreground">{format(new Date(sub.subscribed_at), "d MMM yyyy, HH:mm", { locale: ru })}{sub.source && ` • ${sub.source}`}</p></div></div>
