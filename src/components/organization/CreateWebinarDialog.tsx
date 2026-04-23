@@ -240,10 +240,29 @@ export function CreateWebinarDialog({ open, onOpenChange, organizationId, userId
             </div>
           )}
 
-          {!isEdit && sourceType === "livekit" && (
-            <p className="text-xs text-muted-foreground">
-              Мы создадим комнату прямо в платформе. Подключение видео и звука происходит без перехода на сторонние сервисы.
-            </p>
+          {((!isEdit && sourceType === "livekit") || (isEdit && editWebinar?.source_type === "livekit")) && (
+            <div className="rounded-md border border-border bg-muted/30 p-3 space-y-3">
+              {!isEdit && (
+                <p className="text-xs text-muted-foreground">
+                  Мы создадим комнату прямо в платформе. Подключение видео и звука происходит без перехода на сторонние сервисы.
+                </p>
+              )}
+              <div className="flex items-start justify-between gap-3">
+                <div className="space-y-0.5">
+                  <Label htmlFor="auto-record-toggle" className="cursor-pointer">
+                    Автоматически записывать эфир
+                  </Label>
+                  <p className="text-xs text-muted-foreground">
+                    Запись стартует сама при подключении ведущего и сохраняется в Lovable Cloud.
+                  </p>
+                </div>
+                <Switch
+                  id="auto-record-toggle"
+                  checked={autoRecord}
+                  onCheckedChange={setAutoRecord}
+                />
+              </div>
+            </div>
           )}
 
           {((!isEdit && sourceType === "kinescope") || (isEdit && editWebinar?.source_type === "kinescope")) && (
