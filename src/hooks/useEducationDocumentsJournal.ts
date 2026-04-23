@@ -32,9 +32,8 @@ export function useEducationDocumentsJournal({
   organizationId,
   documentTypeFilter,
 }: UseEducationDocumentsJournalProps) {
-  const [loading, setLoading] = useState(true);
+  const qc = useQueryClient();
   const [saving, setSaving] = useState(false);
-  const [records, setRecords] = useState<EducationDocumentRecord[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedDocType, setSelectedDocType] = useState<string>("all");
   const [selectedStatus, setSelectedStatus] = useState<string>("all");
