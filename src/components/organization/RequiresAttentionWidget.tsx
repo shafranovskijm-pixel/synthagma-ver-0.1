@@ -268,7 +268,7 @@ export function RequiresAttentionWidget() {
                 <Button
                   size="sm"
                   variant="ghost"
-                  className="h-8 w-8 p-0 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-500/10"
+                  className="h-8 w-8 p-0 text-primary hover:bg-primary/10"
                   onClick={() => handleAct(req.id, "approved")}
                   disabled={actingId === req.id}
                   aria-label="Одобрить"
@@ -282,7 +282,7 @@ export function RequiresAttentionWidget() {
                 <Button
                   size="sm"
                   variant="ghost"
-                  className="h-8 w-8 p-0 text-rose-600 hover:text-rose-700 hover:bg-rose-500/10"
+                  className="h-8 w-8 p-0 text-destructive hover:bg-destructive/10"
                   onClick={() => handleAct(req.id, "rejected")}
                   disabled={actingId === req.id}
                   aria-label="Отклонить"
