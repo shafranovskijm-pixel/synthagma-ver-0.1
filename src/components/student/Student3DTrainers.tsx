@@ -3,7 +3,7 @@ import { ArrowUp, ArrowDown, RotateCcw, RotateCw, ChevronsUp, RefreshCw, Trophy,
 import { Button } from "@/components/ui/button";
 import { MazeHUD } from "./MazeHUD";
 import { setMuted, isMuted, playBGMusic, stopBGMusic } from "./MazeSounds";
-import { resetGameState, gameState } from "./MazeGame";
+import { resetGameState, gameState } from "./mazeGameConfig";
 
 const MazeGame = lazy(() => import("./MazeGame"));
 
