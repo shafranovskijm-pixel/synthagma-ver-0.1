@@ -111,7 +111,9 @@ export function CreateWebinarDialog({ open, onOpenChange, organizationId, userId
           scheduled_at: scheduledAt || null,
           duration_minutes: parseInt(durationMinutes) || null,
           cover_url: coverUrl.trim() || null,
-          course_id: courseId === "none" ? null : courseId };
+          course_id: courseId === "none" ? null : courseId,
+          auto_record: editWebinar!.source_type === "livekit" ? autoRecord : false,
+        };
         if (editWebinar!.source_type === "external") {
           updateData.external_url = externalUrl.trim() || null;
           updateData.embed_url = externalUrl.trim() || null;
@@ -138,7 +140,9 @@ export function CreateWebinarDialog({ open, onOpenChange, organizationId, userId
           status: "planned",
           created_by: userId,
           cover_url: coverUrl.trim() || null,
-          course_id: courseId === "none" ? null : courseId };
+          course_id: courseId === "none" ? null : courseId,
+          auto_record: sourceType === "livekit" ? autoRecord : false,
+        };
 
         if (sourceType === "livekit") {
           const { data, error } = await supabase.functions.invoke("livekit-create-room", {
