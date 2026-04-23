@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { X, Plus, Trash2, Eye, Sparkles } from 'lucide-react';
+import { X, Plus, Trash2, Eye, Sparkles, Search, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -11,6 +11,8 @@ import { SUBSCRIPTION_PLANS, type SubscriptionPlan } from '@/constants/subscript
 import { PROPOSAL_TEMPLATES, type ProposalTemplate } from '@/constants/proposalTemplates';
 import { useSalesManager, type ProposalServiceItem } from '@/hooks/useSalesManager';
 import { ProposalPreview } from './ProposalPreview';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 import type { CommercialProposal } from '@/hooks/useSalesManager';
 
 interface Props {
@@ -58,7 +60,48 @@ export function ProposalEditor({ onClose, editProposal, editServices, prefillCom
   const [selectedTemplate, setSelectedTemplate] = useState<string>('');
   const [discountPercent, setDiscountPercent] = useState<number>(editProposal?.discount_percent || 0);
 
+  const [searchingInn, setSearchingInn] = useState(false);
+
   useEffect(() => { fetchServices(); fetchManagers(); }, [fetchServices, fetchManagers]);
+
+  const handleSearchByInn = async () => {
+    const inn = companyInn.replace(/\D/g, '');
+    if (inn.length !== 10 && inn.length !== 12) {
+      toast.error('Введите корректный ИНН (10 или 12 цифр)');
+      return;
+    }
+    setSearchingInn(true);
+    try {
+      // 1) Local companies cache
+      const { data: local } = await supabase
+        .from('companies')
+        .select('name, inn, email')
+        .eq('inn', inn)
+        .maybeSingle();
+      if (local) {
+        setCompanyName(local.name || '');
+        if (local.email && !companyEmail) setCompanyEmail(local.email);
+        toast.success('Найдено в базе', { description: local.name });
+        return;
+      }
+      // 2) DaData fallback
+      const { data: dd, error } = await supabase.functions.invoke('dadata-company', { body: { inn } });
+      if (error) throw error;
+      if (dd?.success && dd.company) {
+        setCompanyName(dd.company.shortName || dd.company.name || '');
+        setCompanyInn(dd.company.inn || inn);
+        if (dd.company.management && !contactPerson) setContactPerson(dd.company.management);
+        toast.success('Найдено (DaData)', { description: dd.company.shortName || dd.company.name });
+      } else {
+        toast.info('Не найдено', { description: 'Введите реквизиты вручную' });
+      }
+    } catch (err: any) {
+      console.error('[ProposalEditor] DaData lookup failed', err);
+      toast.error('Ошибка поиска', { description: err?.message || 'Попробуйте ещё раз' });
+    } finally {
+      setSearchingInn(false);
+    }
+  };
 
   const applyTemplate = (template: ProposalTemplate) => {
     setSelectedTemplate(template.id);
@@ -218,7 +261,27 @@ export function ProposalEditor({ onClose, editProposal, editServices, prefillCom
           {/* Company info */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <div><Label>Компания *</Label><Input value={companyName} onChange={e => setCompanyName(e.target.value)} placeholder="ООО «Компания»" /></div>
-            <div><Label>ИНН</Label><Input value={companyInn} onChange={e => setCompanyInn(e.target.value)} placeholder="1234567890" /></div>
+            <div>
+              <Label>ИНН</Label>
+              <div className="flex gap-2">
+                <Input
+                  value={companyInn}
+                  onChange={e => setCompanyInn(e.target.value)}
+                  onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleSearchByInn(); } }}
+                  placeholder="1234567890"
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="icon"
+                  onClick={handleSearchByInn}
+                  disabled={searchingInn || !companyInn}
+                  title="Найти по ИНН"
+                >
+                  {searchingInn ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
+                </Button>
+              </div>
+            </div>
             <div><Label>Email</Label><Input value={companyEmail} onChange={e => setCompanyEmail(e.target.value)} /></div>
             <div><Label>Телефон</Label><Input value={companyPhone} onChange={e => setCompanyPhone(e.target.value)} /></div>
             <div><Label>Контактное лицо</Label><Input value={contactPerson} onChange={e => setContactPerson(e.target.value)} /></div>
