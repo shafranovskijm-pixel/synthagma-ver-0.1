@@ -1,6 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { SMTPClient } from "https://deno.land/x/denomailer@1.6.0/mod.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { sendPlatformEmail } from "../_shared/smtp-sender.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -25,21 +25,8 @@ const handler = async (req: Request): Promise<Response> => {
   }
 
   try {
-    const SMTP_HOST = Deno.env.get("SMTP_HOST");
-    const SMTP_PORT = Deno.env.get("SMTP_PORT");
-    const SMTP_USER = Deno.env.get("SMTP_USER");
-    const SMTP_PASS = Deno.env.get("SMTP_PASS");
-    const SMTP_FROM = Deno.env.get("SMTP_FROM");
     const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
     const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-
-    if (!SMTP_HOST || !SMTP_PORT || !SMTP_USER || !SMTP_PASS || !SMTP_FROM) {
-      console.error("SMTP credentials are not fully configured");
-      return new Response(
-        JSON.stringify({ error: "Email service not configured", success: false }),
-        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
 
     if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
       console.error("Supabase credentials not configured");
@@ -62,10 +49,8 @@ const handler = async (req: Request): Promise<Response> => {
 
     console.log("Processing order notification:", { orderId, courseName, sellerOrganizationId });
 
-    // Get seller organization details and admin emails
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
-    // Get organization name
     const { data: orgData, error: orgError } = await supabase
       .from("organizations")
       .select("name")
@@ -78,7 +63,6 @@ const handler = async (req: Request): Promise<Response> => {
 
     const organizationName = orgData?.name || "Ваша организация";
 
-    // Get organization admin emails (profiles with this organization_id and email)
     const { data: profiles, error: profilesError } = await supabase
       .from("profiles")
       .select("email, full_name")
@@ -144,7 +128,7 @@ const handler = async (req: Request): Promise<Response> => {
           </div>
           <div class="content">
             <p>Поступила новая заявка на покупку курса из магазина курсов:</p>
-            
+
             <div class="order-details">
               <div class="detail-row">
                 <span class="detail-label">Курс</span>
@@ -166,17 +150,17 @@ const handler = async (req: Request): Promise<Response> => {
               ` : ""}
               <div class="price">${formattedPrice}</div>
             </div>
-            
+
             ${notes ? `
             <div class="notes">
               <div class="notes-label">Комментарий от покупателя</div>
               <p style="margin: 0;">${notes}</p>
             </div>
             ` : ""}
-            
+
             <div class="cta">
               <p>Перейдите в личный кабинет для обработки заявки:</p>
-              <a href="${req.headers.get("origin") || "https://sigma-edu.lovable.app"}/organization" class="button">
+              <a href="${req.headers.get("origin") || "https://sintagma.com.ru"}/organization" class="button">
                 Открыть заявки
               </a>
             </div>
@@ -189,34 +173,14 @@ const handler = async (req: Request): Promise<Response> => {
       </html>
     `;
 
-    const client = new SMTPClient({
-      connection: {
-        hostname: SMTP_HOST,
-        port: parseInt(SMTP_PORT, 10),
-        tls: true,
-        auth: {
-          username: SMTP_USER,
-          password: SMTP_PASS,
-        },
-      },
-    });
-
     // Send to all organization members
+    const subject = `Новая заявка на курс "${courseName}"`;
+    let sent = 0;
     for (const email of emails) {
-      try {
-        await client.send({
-          from: SMTP_FROM,
-          to: email,
-          subject: `Новая заявка на курс "${courseName}"`,
-          html: htmlBody,
-        });
-        console.log("Email sent to:", email);
-      } catch (emailError) {
-        console.error("Failed to send to:", email, emailError);
-      }
+      const r = await sendPlatformEmail({ to: email, subject, html: htmlBody });
+      if (r.ok) { sent++; console.log("Email sent to:", email); }
+      else { console.error("Failed to send to:", email, r.error); }
     }
-
-    await client.close();
 
     // Send Telegram notification
     const TELEGRAM_BOT_TOKEN = Deno.env.get("TELEGRAM_BOT_TOKEN");
@@ -258,10 +222,10 @@ const handler = async (req: Request): Promise<Response> => {
       }
     }
 
-    console.log("Notifications sent successfully");
+    console.log("Notifications sent successfully:", sent, "of", emails.length);
 
     return new Response(
-      JSON.stringify({ success: true, recipientsCount: emails.length }),
+      JSON.stringify({ success: true, recipientsCount: sent }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error: unknown) {
