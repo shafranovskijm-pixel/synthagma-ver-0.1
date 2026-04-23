@@ -766,18 +766,21 @@ export type Database = {
           last_balance: number | null
           last_used_at: string | null
           requests_count: number
+          search_requests_count: number
         }
         Insert: {
           date: string
           last_balance?: number | null
           last_used_at?: string | null
           requests_count?: number
+          search_requests_count?: number
         }
         Update: {
           date?: string
           last_balance?: number | null
           last_used_at?: string | null
           requests_count?: number
+          search_requests_count?: number
         }
         Relationships: []
       }
@@ -798,6 +801,112 @@ export type Database = {
           note?: string | null
         }
         Relationships: []
+      }
+      checko_search_presets: {
+        Row: {
+          active_only: boolean
+          created_at: string
+          created_by: string | null
+          id: string
+          licenses: string[]
+          name: string
+          okveds: string[]
+          organization_id: string | null
+          regions: number[]
+          updated_at: string
+        }
+        Insert: {
+          active_only?: boolean
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          licenses?: string[]
+          name: string
+          okveds?: string[]
+          organization_id?: string | null
+          regions?: number[]
+          updated_at?: string
+        }
+        Update: {
+          active_only?: boolean
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          licenses?: string[]
+          name?: string
+          okveds?: string[]
+          organization_id?: string | null
+          regions?: number[]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "checko_search_presets_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      checko_search_runs: {
+        Row: {
+          active_only: boolean
+          created_at: string
+          created_by: string | null
+          enriched_count: number
+          error_message: string | null
+          found_count: number
+          id: string
+          licenses: string[]
+          okveds: string[]
+          preset_id: string | null
+          queued_count: number
+          regions: number[]
+          search_requests_used: number
+          status: string
+        }
+        Insert: {
+          active_only?: boolean
+          created_at?: string
+          created_by?: string | null
+          enriched_count?: number
+          error_message?: string | null
+          found_count?: number
+          id?: string
+          licenses?: string[]
+          okveds?: string[]
+          preset_id?: string | null
+          queued_count?: number
+          regions?: number[]
+          search_requests_used?: number
+          status?: string
+        }
+        Update: {
+          active_only?: boolean
+          created_at?: string
+          created_by?: string | null
+          enriched_count?: number
+          error_message?: string | null
+          found_count?: number
+          id?: string
+          licenses?: string[]
+          okveds?: string[]
+          preset_id?: string | null
+          queued_count?: number
+          regions?: number[]
+          search_requests_used?: number
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "checko_search_runs_preset_id_fkey"
+            columns: ["preset_id"]
+            isOneToOne: false
+            referencedRelation: "checko_search_presets"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       checko_settings: {
         Row: {
