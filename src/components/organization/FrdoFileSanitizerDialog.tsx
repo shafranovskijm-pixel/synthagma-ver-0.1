@@ -153,12 +153,12 @@ export function FrdoFileSanitizerDialog({ open, onOpenChange }: Props) {
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 font-display">
             <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center">
-              <Wand2 className="w-5 h-5 text-primary" />
+              <Wrench className="w-5 h-5 text-primary" />
             </div>
-            Очистка чужого файла ФИС ФРДО
+            Устранение ошибок файлов ФРДО
           </DialogTitle>
           <DialogDescription>
-            Загрузите Excel, который не принимает система — мы вычистим невидимые символы, нормализуем СНИЛС и даты, и переложим данные в эталонный шаблон.
+            Загрузите файл, который не принимает ФИС ФРДО — мы исправим формат, перенесём данные в эталонный шаблон Рособрнадзора и вернём готовый <strong>.xlsx</strong> с валидациями и словарями.
           </DialogDescription>
         </DialogHeader>
 
@@ -213,8 +213,8 @@ export function FrdoFileSanitizerDialog({ open, onOpenChange }: Props) {
             <div className="flex justify-end gap-2">
               <Button variant="ghost" onClick={() => onOpenChange(false)} className="rounded-xl">Отмена</Button>
               <Button onClick={handleProcess} disabled={!file || isProcessing} className="rounded-xl gap-2">
-                {isProcessing ? <SigmaSpinner size="sm" /> : <Wand2 className="w-4 h-4" />}
-                Обработать
+                {isProcessing ? <SigmaSpinner size="sm" /> : <Wrench className="w-4 h-4" />}
+                Устранить ошибки
               </Button>
             </div>
           </motion.div>
@@ -226,7 +226,7 @@ export function FrdoFileSanitizerDialog({ open, onOpenChange }: Props) {
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
               <StatCard icon={FileSpreadsheet} label="Тип" value={result.type === "dpo" ? "ДПО" : "ПО"} tone="primary" />
               <StatCard icon={CheckCircle2} label="Строк" value={stats.totalRows} tone="primary" />
-              <StatCard icon={Wand2} label="Исправлено ячеек" value={`${stats.fixedCells} (${stats.fixedRows} стр.)`} tone="teal" />
+              <StatCard icon={Wrench} label="Исправлено ячеек" value={`${stats.fixedCells} (${stats.fixedRows} стр.)`} tone="teal" />
               <StatCard icon={AlertTriangle} label="Пустые обязательные" value={`${stats.missingRequiredRows} стр.`} tone={stats.missingRequiredRows > 0 ? "warn" : "primary"} />
             </div>
 
