@@ -280,6 +280,14 @@ export default function StudentDashboard() {
   }, [dashboardSettings.studentTheme]);
 
   const pendingDocsCount = documentsProgress.total - documentsProgress.completed;
+  const pendingReasons: string[] = [];
+  if (pendingDocsCount > 0) {
+    pendingReasons.push(
+      pendingDocsCount === 1
+        ? "загрузить 1 документ"
+        : `загрузить ${pendingDocsCount} документ${pendingDocsCount < 5 ? "а" : "ов"}`
+    );
+  }
 
   if (userRole && userRole !== 'student' && !isAdminView && !isAdminViewFromStorage && !isPreviewMode && !isPreviewFromStorage) {
     if (userRole === 'organization') return <Navigate to="/organization" replace />;
@@ -365,6 +373,7 @@ export default function StudentDashboard() {
           onLogout={handleLogout}
           setTheme={setTheme}
           pendingCount={pendingDocsCount}
+          pendingReasons={pendingReasons}
           isVideoIdentified={isVideoIdentified}
           showAchievements={dashboardSettings.showAchievements}
           onShowVideoId={() => setShowVideoIdentification(true)}
@@ -431,6 +440,7 @@ export default function StudentDashboard() {
               <StudentProfileContent
                 effectiveUserId={user.id}
                 isAdminView={isAdminView}
+                pendingDocsCount={pendingDocsCount}
               />
             </div>
           )}
