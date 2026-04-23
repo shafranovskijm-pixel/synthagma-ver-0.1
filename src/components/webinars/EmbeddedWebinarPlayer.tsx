@@ -277,7 +277,11 @@ function LiveKitEmbed({
           showSidePanel ? "lg:grid-cols-[1fr_340px]" : "grid-cols-1",
         )}
       >
-        <div className="relative aspect-video w-full rounded-lg overflow-hidden bg-black" data-lk-theme="default">
+        <div
+          className="relative aspect-video w-full rounded-lg overflow-hidden bg-black webinar-livekit-root"
+          data-lk-theme="default"
+          data-mobile={typeof navigator !== "undefined" && /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent) ? "true" : "false"}
+        >
           <LiveKitRoom
             token={token}
             serverUrl={wsUrl}
@@ -374,40 +378,41 @@ function LiveKitTopBar({
   };
 
   return (
-    <div className="absolute top-2 left-2 right-2 z-10 flex flex-wrap items-center gap-2 rounded-md bg-card border border-border px-3 py-2 shadow-md">
-      <div className="flex items-center gap-2 min-w-0 mr-auto">
+    <div className="absolute top-1.5 left-1.5 right-1.5 z-10 flex items-center gap-1.5 rounded-md bg-card/95 border border-border px-2 py-1.5 shadow-md min-h-[36px]">
+      <div className="flex items-center gap-1.5 min-w-0 mr-auto">
         <span className="relative flex h-2.5 w-2.5 shrink-0">
           <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-destructive opacity-75" />
           <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-destructive" />
         </span>
-        <span className="text-xs font-semibold text-destructive uppercase tracking-wide hidden sm:inline">
+        <span className="text-[11px] font-semibold text-destructive uppercase tracking-wide hidden md:inline">
           В эфире
         </span>
         {title && (
-          <span className="text-sm font-medium text-foreground truncate max-w-[180px] sm:max-w-[260px]">
-            · {title}
+          <span className="text-xs sm:text-sm font-medium text-foreground truncate max-w-[120px] sm:max-w-[220px] md:max-w-[320px]">
+            <span className="hidden md:inline">· </span>{title}
           </span>
         )}
       </div>
 
-      <div className="flex items-center gap-1 text-xs text-foreground px-2 py-1 rounded bg-muted">
+      <div className="flex items-center gap-1 text-xs text-foreground px-1.5 py-0.5 rounded bg-muted shrink-0">
         <Users className="w-3.5 h-3.5" />
         <span className="font-medium tabular-nums">{participants.length}</span>
       </div>
 
+      {/* Desktop: full buttons */}
       {publicLink && (
-        <>
+        <div className="hidden sm:flex items-center gap-1.5">
           <Button size="sm" variant="default" onClick={copyLink} className="h-8">
             {copied ? <Check className="w-3.5 h-3.5 mr-1.5" /> : <Copy className="w-3.5 h-3.5 mr-1.5" />}
-            <span className="hidden sm:inline">Ссылка для участников</span>
-            <span className="sm:hidden">Ссылка</span>
+            <span className="hidden md:inline">Ссылка для участников</span>
+            <span className="md:hidden">Ссылка</span>
           </Button>
 
           <Popover open={qrOpen} onOpenChange={setQrOpen}>
             <PopoverTrigger asChild>
               <Button size="sm" variant="secondary" className="h-8" title="QR-код">
-                <QrCode className="w-4 h-4 sm:mr-1.5" />
-                <span className="hidden sm:inline">QR</span>
+                <QrCode className="w-4 h-4 md:mr-1.5" />
+                <span className="hidden md:inline">QR</span>
               </Button>
             </PopoverTrigger>
             <PopoverContent className="w-auto p-3 bg-card">
@@ -417,14 +422,62 @@ function LiveKitTopBar({
               </p>
             </PopoverContent>
           </Popover>
-        </>
+        </div>
       )}
 
       {hasShareSettings && (
-        <Button size="sm" variant="secondary" onClick={onShare} className="h-8" title="Настройки доступа">
-          <Settings2 className="w-4 h-4 sm:mr-1.5" />
-          <span className="hidden sm:inline">Доступ</span>
+        <Button size="sm" variant="secondary" onClick={onShare} className="h-8 hidden sm:inline-flex" title="Настройки доступа">
+          <Settings2 className="w-4 h-4 md:mr-1.5" />
+          <span className="hidden md:inline">Доступ</span>
         </Button>
+      )}
+
+      {/* Mobile: collapse host actions into "..." menu */}
+      {!viewOnly && (publicLink || hasShareSettings) && (
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button size="sm" variant="secondary" className="h-8 w-8 p-0 sm:hidden" title="Действия">
+              <MoreHorizontal className="w-4 h-4" />
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-56 p-2 bg-card" align="end">
+            <div className="flex flex-col gap-1">
+              {publicLink && (
+                <>
+                  <Button size="sm" variant="ghost" className="justify-start h-9" onClick={copyLink}>
+                    {copied ? <Check className="w-4 h-4 mr-2" /> : <Copy className="w-4 h-4 mr-2" />}
+                    Скопировать ссылку
+                  </Button>
+                  <Button size="sm" variant="ghost" className="justify-start h-9" onClick={() => setQrOpen(true)}>
+                    <QrCode className="w-4 h-4 mr-2" />
+                    QR-код
+                  </Button>
+                </>
+              )}
+              {hasShareSettings && (
+                <Button size="sm" variant="ghost" className="justify-start h-9" onClick={onShare}>
+                  <Settings2 className="w-4 h-4 mr-2" />
+                  Настройки доступа
+                </Button>
+              )}
+            </div>
+          </PopoverContent>
+        </Popover>
+      )}
+
+      {/* Hidden trigger to render QR popover from mobile menu */}
+      {publicLink && (
+        <Popover open={qrOpen && typeof window !== "undefined" && window.innerWidth < 640} onOpenChange={setQrOpen}>
+          <PopoverTrigger asChild>
+            <span className="sr-only" aria-hidden />
+          </PopoverTrigger>
+          <PopoverContent className="w-auto p-3 bg-card" align="center">
+            <canvas ref={qrCanvasRef} />
+            <p className="text-xs text-center mt-2 text-muted-foreground max-w-[200px] break-all">
+              {publicLink}
+            </p>
+          </PopoverContent>
+        </Popover>
       )}
 
       {onEnd && (
@@ -432,7 +485,7 @@ function LiveKitTopBar({
           size="sm"
           variant={viewOnly ? "secondary" : "destructive"}
           onClick={onEnd}
-          className="h-8"
+          className="h-8 px-2 sm:px-3 shrink-0"
           title={viewOnly ? "Покинуть эфир" : "Завершить эфир"}
         >
           <Square className="w-3.5 h-3.5 sm:mr-1.5" />
@@ -463,20 +516,20 @@ function WelcomeOverlay({ webinarTitle }: { webinarTitle: string | null }) {
   // ВАЖНО: pointer-events-none + bottom-20, чтобы заглушка не перекрывала
   // нижнюю control-bar LiveKit (камера / микрофон / поделиться экраном / leave).
   return (
-    <div className="pointer-events-none absolute left-0 right-0 top-0 bottom-20 z-[2] flex flex-col items-center justify-center gap-6 bg-gradient-to-br from-primary/20 via-background to-primary/10 p-6 text-center">
-      <div className="animate-pulse">
-        <SigmaLogo size="xl" showText={false} />
+    <div className="pointer-events-none absolute left-0 right-0 top-12 bottom-24 z-[2] flex flex-col items-center justify-center gap-4 bg-gradient-to-br from-primary/10 via-background/40 to-primary/5 p-6 text-center">
+      <div className="animate-pulse opacity-90">
+        <SigmaLogo size="lg" showText={false} />
       </div>
-      <div className="space-y-2 max-w-lg">
-        <h2 className="text-2xl sm:text-3xl font-display font-medium text-foreground">
+      <div className="space-y-1.5 max-w-lg bg-background/60 rounded-lg px-4 py-2">
+        <h2 className="text-lg sm:text-2xl font-display font-medium text-foreground">
           Добро пожаловать на вебинар Синтагма
         </h2>
         {webinarTitle && (
-          <p className="text-base sm:text-lg font-medium text-primary">
+          <p className="text-sm sm:text-base font-medium text-primary">
             {webinarTitle}
           </p>
         )}
-        <p className="text-sm text-muted-foreground">
+        <p className="text-xs sm:text-sm text-muted-foreground">
           Эфир скоро начнётся. Включите камеру и микрофон кнопками внизу.
         </p>
       </div>
