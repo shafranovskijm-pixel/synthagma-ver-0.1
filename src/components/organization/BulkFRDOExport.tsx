@@ -149,7 +149,7 @@ export function BulkFRDOExport({
 
       const { data: enrollmentsData, error: enrollError } = await supabase
         .from("enrollments")
-        .select("user_id, course_id, started_at, completed_at, time_spent, courses(title, duration)")
+        .select("user_id, course_id, started_at, completed_at, time_spent, courses(id, title, duration, training_form, frdo_profession_name, frdo_qualification_rank, frdo_professional_area, frdo_specialty_group, frdo_qualification_name, frdo_financing_source, frdo_education_form)")
         .in("user_id", userIds);
       if (enrollError) throw enrollError;
 
@@ -157,7 +157,7 @@ export function BulkFRDOExport({
       const courseSet = new Map<string, Course>();
 
       for (const e of enrollmentsData || []) {
-        const courseData = e.courses as { title: string; duration: string | null } | null;
+        const courseData = e.courses as any;
         const enrollment: EnrollmentData = {
           user_id: e.user_id, course_id: e.course_id,
           course_title: courseData?.title || "Неизвестный курс",
@@ -165,8 +165,20 @@ export function BulkFRDOExport({
           time_spent: e.time_spent || 0, duration: courseData?.duration || null };
         if (!enrollMap.has(e.user_id)) enrollMap.set(e.user_id, []);
         enrollMap.get(e.user_id)!.push(enrollment);
-        if (!courseSet.has(e.course_id)) {
-          courseSet.set(e.course_id, { id: e.course_id, title: courseData?.title || "Неизвестный курс", duration: courseData?.duration || null });
+        if (courseData && !courseSet.has(e.course_id)) {
+          courseSet.set(e.course_id, {
+            id: e.course_id,
+            title: courseData.title || "Неизвестный курс",
+            duration: courseData.duration || null,
+            training_form: courseData.training_form || null,
+            frdo_profession_name: courseData.frdo_profession_name || null,
+            frdo_qualification_rank: courseData.frdo_qualification_rank || null,
+            frdo_professional_area: courseData.frdo_professional_area || null,
+            frdo_specialty_group: courseData.frdo_specialty_group || null,
+            frdo_qualification_name: courseData.frdo_qualification_name || null,
+            frdo_financing_source: courseData.frdo_financing_source || null,
+            frdo_education_form: courseData.frdo_education_form || null,
+          });
         }
       }
 
