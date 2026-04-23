@@ -1,77 +1,107 @@
 
 
-# End-to-End проверка вебинаров: запись, мобильные, демонстрация экрана
+# Вебинары: усиление прав, исправление завершения и UX-улучшения
 
-Прошёл по всему пути «создание комнаты → эфир → запись → остановка → копирование в Cloud → воспроизведение». Нашёл **8 проблем разной критичности**, из них **3 критичных**, которые ломают сценарий «нажал «Запись» — получил готовый файл в Cloud».
-
----
-
-## Критичные проблемы
-
-### 1. `livekit-end-room` ищет несуществующее поле `room_name`
-Функция читает `webinars.room_name`, но при создании комнаты roomName сохраняется в `player_settings.livekit.roomName` (нет такой колонки в БД, либо она пустая). В итоге `DeleteRoom` НИКОГДА не вызывается → комнаты висят и ест бесплатные минуты LiveKit Cloud.
-**Фикс:** читать `player_settings->livekit->>roomName` (как делают `livekit-start-recording`, `livekit-moderate`).
-
-### 2. Запись доступна только на «отдельной странице» `/webinar-live/:id`
-`RecordingControls` смонтирован только в `WebinarLive.tsx`. В inline-режиме (внутри кабинета админа/организации) кнопки «Запись» нет вообще. Пользователь, который просто запустил «One-click вебинар» из админки, физически не может включить запись.
-**Фикс:** встроить `<RecordingControls/>` в `LiveKitTopBar` (видна только хосту, только для `source_type==='livekit'`).
-
-### 3. Авто-копирование записи в Cloud не происходит
-Сейчас цепочка такая: «Стоп» → запись висит на серверах LiveKit Cloud (внешний URL живёт ограниченное время) → пользователь должен ВРУЧНУЮ нажать «В Lovable Cloud». Если хост закроет вкладку — запись потеряется.
-**Фикс:** после `livekit-stop-recording` автоматически инвокать `livekit-copy-recording` (с retry, т.к. файл может быть готов через 5–30 секунд).
+После предыдущего раунда фиксов остались **3 критичных бага доступа/устойчивости** и группа UX-улучшений для админа и организации.
 
 ---
 
-## Важные проблемы (UX/мобильные)
+## Критичные баги в коде
 
-### 4. Inline-плеер не отдаёт `recordingUrl` в режиме просмотра завершённого
-В `WebinarLiveInline` поле `recording_url` пробрасывается, но если запись скопирована ПОСЛЕ показа компонента — `recording_url` в state не обновится (нет realtime-подписки на webinar). Для готовой записи будет показываться чёрный плеер без файла.
-**Фикс:** добавить supabase realtime-подписку в `EmbeddedWebinarPlayer` на `webinars.id=eq.{id}`, обновлять `recordingUrl` локально.
+### 1. `WebinarsManager.handleStopLive` НЕ удаляет LiveKit-комнату
+В БД у 0 из 7 LiveKit-вебинаров заполнено `webinars.room_name` — `roomName` хранится только в `player_settings.livekit.roomName`. Текущий код:
+```ts
+.select("recording_status, source_type, room_name")
+if (full?.source_type === "livekit" && full?.room_name) { livekit-end-room }
+```
+→ условие НИКОГДА не выполняется → комната висит на LiveKit Cloud, ест минуты тарифа, участники остаются в эфире.
+**Фикс:** читать `player_settings`, проверять `ps?.livekit?.roomName`. Edge-функция уже умеет оба пути — нужно лишь снять блокировку на клиенте.
 
-### 5. Нет авто-старта записи через флаг `auto_record`
-В БД поле `webinars.auto_record` есть, но никогда не читается. Если организация хочет «всегда писать» — флаг бесполезен.
-**Фикс:** в `livekit-issue-token` (или в `LiveKitRoom onConnected`) при `isHost && webinar.auto_record && status==='live'` автоматом дёргать `livekit-start-recording`.
+### 2. `AdminWebinarsOverview.closePlayer` теряет запись и оставляет комнату
+При закрытии плеера админ просто делает `update status='ended'` — никакого `livekit-stop-recording` и `livekit-end-room`. Если админ записывал тестовый вебинар → файл потерян, комната активна.
+**Фикс:** в `closePlayer` повторить ту же цепочку, что и `WebinarsManager.handleStopLive` (stop-recording → end-room → status=ended). Вынести в общий хелпер `endLiveKitWebinar(webinarId)` и использовать в обоих местах.
 
-### 6. На мобильных скрыта кнопка «Демонстрация экрана» — это правильно для iOS Safari, но НЕ для Android Chrome
-CSS `.webinar-livekit-root[data-mobile="true"] .lk-button[data-lk-source="screen_share"] { display: none }` режет всё подряд по `Mobi|Android`. Android Chrome 89+ поддерживает `getDisplayMedia` на мобильных.
-**Фикс:** определять отдельно iOS (`/iPhone|iPad|iPod/`) → скрывать; Android → оставлять.
+### 3. `livekit-issue-token` не выдаёт host-права админу платформы
+Сейчас `isHost = isOrgManager || webinar.created_by === user.id`. Глобальный администратор (роль `admin` в `user_roles`) не имеет `organization_id == webinar.organization_id` и не `created_by` чужих вебинаров → подключается как зритель без права публикации/записи. Не может протестировать чужой вебинар.
+**Фикс:** добавить проверку `roles.includes('admin')` через `user_roles` (как уже делают остальные edge-функции LiveKit). Также учесть `org_staff`-сотрудников организации как хостов (через `has_org_staff_permission(user, org, 'webinars.write')`) — иначе сотрудник школы не сможет вести эфир.
 
----
-
-## Прочее
-
-### 7. `livekit-stop-recording` использует `ListEgress` с `egress_id` — это не фильтр
-В Twirp `ListEgress` принимает `room_name`, не `egress_id`. Нужно `GetEgress` (one item) или `ListEgress { egress_ids: [...] }`. Сейчас иногда возвращает пустой список → `externalUrl=null` → запись теряется.
-**Фикс:** заменить на `egress_ids: [w.recording_egress_id]` или одиночный `egressInfo.GetEgress`.
-
-### 8. Egress занимает время после Stop — UI этого не показывает
-`recording_status` сразу становится `stopped`, но файл реально готов через 5–60 сек. Кнопка «В Lovable Cloud» доступна, но при клике может вернуть «Не удалось скачать: 404». Нужна индикация «Запись обрабатывается LiveKit, попробуйте через минуту».
-**Фикс:** в `livekit-copy-recording` при 404/недоступном `external_url` ставить статус `processing`, показывать спиннер с автоповтором каждые 10 сек до 5 мин.
+### 4. `WebinarLive.tsx` всегда передаёт `isHost={isWebinar}` (т.е. `true`)
+На странице `/webinar/:id/live` любой авторизованный пользователь видит **`RecordingControls`, модерацию, кнопку «Запись»** — даже если он студент. Edge-функции, конечно, его 403-ят, но кнопки висят и сбивают с толку.
+**Фикс:** взять `isHost` из ответа `livekit-issue-token` (поле `data.isHost` уже возвращается!) и пробросить в `RoomShell`.
 
 ---
 
-## Технические детали реализации
+## Улучшения для админа платформы
+
+### 5. В таблице `AdminWebinarsOverview` нет колонки «Запись»
+Поля `recording_status`, `recording_url`, `recording_size_bytes` вообще не подтягиваются в `SELECT_FIELDS`. Админ не видит, у каких вебинаров есть запись и сколько весит.
+**Фикс:** добавить в SELECT, новая колонка «Запись» с значками: «—» / «Идёт» (красный кружок) / «Готовится» / «✓ MP4 320 МБ» (с иконкой скачивания → открывает `recording_url` в новой вкладке).
+
+### 6. Нет фильтра «по организации» и быстрого перехода в кабинет организации
+Админ видит сотни вебинаров, не может отфильтровать по конкретной организации.
+**Фикс:** селект «Организация» (top-15 по числу вебинаров + поиск); в строке организации добавить ссылку «→ кабинет» (через существующий `adminViewAsOrg`).
+
+### 7. Нет массовых действий
+Удалить разом 20 завершённых тестовых вебинаров нельзя.
+**Фикс:** чекбоксы в строках + кнопка «Удалить выбранные» (с подтверждением).
+
+### 8. Кнопка «Запустить вебинар сейчас» берёт ПЕРВУЮ организацию из БД
+```ts
+.from("organizations").select("id").order("created_at", asc).limit(1)
+```
+Это неконтролируемо — админ создаст вебинар у случайной школы. На проде — у самой старой организации в системе.
+**Фикс:** диалог выбора организации (с поиском); по умолчанию подставлять админскую организацию из `profiles.organization_id`, если есть.
+
+---
+
+## Улучшения для кабинета организации
+
+### 9. В карточке вебинара нет статуса записи
+В сетке `WebinarsManager` показано только «Запись доступна», если `recording_url` уже скопирован. Состояния «Идёт запись», «Обрабатывается», «Не удалось» не видно.
+**Фикс:** маленький бейдж под заголовком: красный «● REC», янтарный «обработка», зелёный «✓ MP4».
+
+### 10. Нет быстрого превью записи прямо из карточки
+Сейчас, чтобы посмотреть запись, нужно «Войти в эфир» → загрузка LiveKit → плеер увидит, что запись есть. Долго.
+**Фикс:** при `status==='ended' && recording_url` — кнопка «▶ Смотреть запись» открывает мини-`<Dialog>` с `<video controls src=recording_url>`.
+
+### 11. Чекбокс «Записывать автоматически» не отображается в карточке
+Поле `webinars.auto_record` (NOT NULL, default false) есть в БД, `AutoRecordTrigger` его читает, но в `CreateWebinarDialog`/`InlinePlayerSettings` чекбокса нет — пользователь не может его включить.
+**Фикс:** в диалоге создания вебинара (LiveKit-источник) — переключатель «Автоматически записывать эфир» под полем «Длительность».
+
+### 12. Кнопка «Стоп» не показывает прогресс остановки
+`handleStopLive` делает 3 шага последовательно (stop-recording → end-room → update status). Пока выполняется, кнопка просто disabled. Пользователь не понимает, на каком этапе зависло.
+**Фикс:** заменить «Завершить» на step-индикатор в toast: «Останавливаю запись…», «Закрываю комнату…», «Готово».
+
+### 13. После «Завершить» баннер «Сейчас в эфире» исчезает мгновенно, но запись ещё пуллится 1–5 минут
+Пользователь думает, что всё готово, и закрывает страницу. Polling в `RecordingControls` останавливается (компонент размонтирован).
+**Фикс:** перенести polling в **server-side cron** (новый edge `livekit-finalize-recordings` каждую минуту: проходит вебинары с `recording_status='processing' OR 'stopped'`, дёргает `livekit-copy-recording`). Это гарантия, что запись подхватится даже без открытой вкладки.
+
+---
+
+## Технические детали
 
 | Файл | Изменение |
 |---|---|
-| `supabase/functions/livekit-end-room/index.ts` | Читать roomName из `player_settings->livekit->>roomName` вместо `room_name` |
-| `supabase/functions/livekit-stop-recording/index.ts` | `ListEgress { egress_ids: [id] }` + при `auto_record` уже стоит — продолжаем; возвращать `processing` если `externalUrl` ещё нет |
-| `supabase/functions/livekit-copy-recording/index.ts` | Корректно обработать 404 от LiveKit (вернуть `{ ok:false, retryAfterMs:10000 }`); recursive fetch с retry внутри функции (макс 3 попытки × 10 сек) |
-| `supabase/functions/livekit-start-recording/index.ts` | Уже корректно; добавить лог при auto_record |
-| `src/components/webinars/RecordingControls.tsx` | После `stop()` автоматически вызывать `copyToCloud()` с polling каждые 10 сек до 5 мин; новый статус `processing` |
-| `src/components/webinars/EmbeddedWebinarPlayer.tsx` | (a) Realtime-подписка на свой `webinars.id` для обновления `recordingUrl`/`status`; (b) `LiveKitTopBar` принимает `webinarId` + `isHost` + `sourceType`, рисует `<RecordingControls/>` если `isHost && sourceType==='livekit'`; (c) при `connected && isHost && webinar.auto_record` вызывает `livekit-start-recording` один раз |
-| `src/index.css` | Селектор `[data-mobile="ios"]` вместо `[data-mobile="true"]`; в JSX — выставлять `data-mobile="ios"` только для iOS, `"android"` для Android (без скрытия) |
-| `src/components/webinars/EmbeddedWebinarPlayer.tsx` | Изменить определение мобильного: `const platform = /iPhone\|iPad\|iPod/.test(ua) ? 'ios' : /Android/.test(ua) ? 'android' : 'desktop'` |
+| `src/components/organization/WebinarsManager.tsx` | `handleStopLive`: SELECT `player_settings`, проверять `ps.livekit.roomName`. Вынести в `src/utils/endLiveKitWebinar.ts`. Прогресс-toast по шагам. |
+| `src/components/admin/AdminWebinarsOverview.tsx` | Импорт `endLiveKitWebinar`, использование в `closePlayer`. SELECT добавить `recording_status, recording_url, recording_size_bytes`. Колонка «Запись». Фильтр «Организация». Чекбоксы + bulk delete. Диалог выбора организации для one-click. |
+| `src/components/webinars/RecordingStatusBadge.tsx` | Новый компонент: маленький бейдж по `recording_status` (active/processing/uploaded/failed). Используется в обоих кабинетах. |
+| `src/components/webinars/RecordingPreviewDialog.tsx` | Новый: `<Dialog>` с `<video src={recordingUrl}>` и кнопкой «Скачать» / «Скопировать ссылку». |
+| `src/components/organization/CreateWebinarDialog.tsx` | Switch «Автоматически записывать эфир» (только для `source_type='livekit'`), пишет в `auto_record`. |
+| `supabase/functions/livekit-issue-token/index.ts` | Добавить чтение `user_roles` → `isAdmin`. Добавить `has_org_staff_permission(user_id, org_id, 'webinars.write')` через RPC. `isHost = isAdmin \|\| isOrgStaff \|\| created_by==user.id`. |
+| `src/pages/WebinarLive.tsx` | Сохранять `isHost` из `data.isHost`; передавать в `RoomShell` вместо `isWebinar`. Скрывать `RecordingControls` для зрителей. |
+| `supabase/functions/livekit-finalize-recordings/index.ts` | Новый cron-edge: каждую минуту находит вебинары с `recording_status IN ('processing','stopped','starting')`, для каждого вызывает internal-логику copy-recording. Регистрация в `cron.schedule`. |
+| `src/components/admin/AdminCreateWebinarDialog.tsx` | Селект организации (по умолчанию — админская из profile, если есть). |
 
-### Проверка end-to-end после фиксов
-1. Админ → «One-click вебинар» → «Запись» (новая кнопка в шапке плеера).
-2. Демо экрана работает на десктопе и Android Chrome; на iOS — скрыто (ограничение OS).
-3. «Стоп» → автоматически: stop-egress → polling каждые 10 сек → copy-recording → `recording_url` обновлён через realtime → плеер показывает запись прямо в текущем окне.
-4. «Завершить эфир» → `livekit-end-room` реально удаляет комнату на LiveKit Cloud.
-5. Флаг `auto_record=true` на webinar → запись стартует сама при первом подключении хоста.
-
-### Что НЕ ломаем
+### Что НЕ меняем
 - Гостевой режим `/w/:token` — без изменений.
-- Kinescope-вебинары — без изменений.
-- AI-tutor (использует тот же `livekit-issue-token`) — изменений нет, т.к. ветка `aiTutorSessionId` отдельная.
+- Kinescope/external источники — без изменений.
+- AI-tutor (`aiTutorSessionId`) ветка `livekit-issue-token` — не трогаем.
+- RLS на `webinars` — права админа уже работают через `is_admin()` policy.
+
+### Проверка после фиксов (end-to-end)
+1. Админ → «Запустить вебинар сейчас» → выбирает свою организацию → одно нажатие → эфир. После закрытия — комната удалена на LiveKit Cloud, запись (если была) сохранена в Cloud.
+2. Организация: создаёт вебинар с галкой «Авто-запись» → начинает эфир → запись стартует сама. После «Завершить» — toast прогресса; даже если закрыть вкладку, cron `livekit-finalize-recordings` через ≤1 мин допуллит файл.
+3. Сотрудник школы (роль `org_staff` с правом `webinars.write`) → подключается → получает host-права → может управлять записью.
+4. Студент открывает `/webinar/:id/live` → видит плеер БЕЗ кнопок записи и модерации.
+5. Админ в таблице видит колонку «Запись», может скачать MP4 одним кликом, фильтровать по организации, массово удалять.
 
