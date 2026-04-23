@@ -293,7 +293,8 @@ export default function StudentDashboard() {
     if (isEnrolled) {
       const course = courses.find(c => c.id === courseId);
       const needsVerification = course?.skip_video_identification === false && !isVideoIdentified;
-      if (needsVerification) {
+      // Admin/manager preview bypasses the video-identification gate.
+      if (!isAdminView && needsVerification) {
         toast.error("Требуется видеоидентификация", { description: "Пройдите видеоидентификацию перед началом курса" });
         setShowVideoIdentification(true);
         return;
@@ -407,6 +408,7 @@ export default function StudentDashboard() {
                   formatTime={formatTime}
                   user={user}
                   contentTab="courses"
+                  isAdminView={isAdminView}
                 />
               )}
 
