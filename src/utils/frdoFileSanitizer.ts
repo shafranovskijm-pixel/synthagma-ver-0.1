@@ -267,7 +267,8 @@ type CellKind =
   | "education_form"
   | "education_level"
   | "static_original"
-  | "static_no";
+  | "static_no"
+  | "auto_reg_number";
 
 interface ColumnMeta {
   /** Заголовок в нашем шаблоне */
@@ -293,7 +294,7 @@ const DPO_META: ColumnMeta[] = [
   { header: DPO_HEADERS[5], aliases: a("серия документа"), kind: "text", defaultValue: "нет" },
   { header: DPO_HEADERS[6], aliases: a("номер документа"), kind: "text", required: true },
   { header: DPO_HEADERS[7], aliases: a("дата выдачи документа", "дата выдачи"), kind: "date", required: true },
-  { header: DPO_HEADERS[8], aliases: a("регистрационный номер", "рег номер", "рег. номер"), kind: "text", required: true },
+  { header: DPO_HEADERS[8], aliases: a("регистрационный номер", "рег номер", "рег. номер"), kind: "auto_reg_number", defaultValue: "нет" },
   { header: DPO_HEADERS[9], aliases: a("дополнительная профессиональная программа", "дпо программа", "вид программы"), kind: "text" },
   { header: DPO_HEADERS[10], aliases: a("наименование дополнительной профессиональной программы", "наименование программы", "программа"), kind: "text", required: true },
   { header: DPO_HEADERS[11], aliases: a("наименование области профессиональной деятельности", "область деятельности"), kind: "text" },
@@ -330,7 +331,7 @@ const PO_META: ColumnMeta[] = [
   { header: PO_HEADERS[5], aliases: a("серия документа"), kind: "text", defaultValue: "Нет" },
   { header: PO_HEADERS[6], aliases: a("номер документа"), kind: "text", required: true },
   { header: PO_HEADERS[7], aliases: a("дата выдачи документа", "дата выдачи"), kind: "date", required: true },
-  { header: PO_HEADERS[8], aliases: a("регистрационный номер", "рег номер"), kind: "text", required: true },
+  { header: PO_HEADERS[8], aliases: a("регистрационный номер", "рег номер"), kind: "auto_reg_number", defaultValue: "нет" },
   { header: PO_HEADERS[9], aliases: a("программа профессионального обучения направление подготовки", "вид программы"), kind: "text" },
   { header: PO_HEADERS[10], aliases: a("наименование программы профессионального обучения", "наименование программы", "программа"), kind: "text", required: true },
   { header: PO_HEADERS[11], aliases: a("наименование профессий рабочих должностей служащих", "профессия"), kind: "text" },
@@ -371,6 +372,11 @@ function sanitizeByKind(raw: unknown, kind: CellKind, fallback?: string | number
     case "education_form": return sanitizeFromDict(raw, FRDO_EDUCATION_FORMS);
     case "education_level": return sanitizeFromDict(raw, FRDO_EDUCATION_LEVELS);
     case "number": return sanitizeNumber(raw);
+    case "auto_reg_number": {
+      const t = sanitizeText(raw);
+      if (!t.value) return { value: fallback ?? "нет", fixed: true, reason: "Регистрационный номер не указан — подставлено 'нет'" };
+      return t;
+    }
     case "static_original":
     case "static_no": {
       const cleaned = sanitizeText(raw);

@@ -1,6 +1,6 @@
 import { useCallback, useState } from "react";
 import { motion } from "framer-motion";
-import { Wand2, UploadCloud, Download, FileSpreadsheet, AlertTriangle, CheckCircle2, FileDown } from "lucide-react";
+import { Wand2, UploadCloud, Download, FileSpreadsheet, AlertTriangle, CheckCircle2, FileDown, ChevronDown, ChevronUp, Sparkles } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
@@ -35,6 +35,7 @@ export function FrdoFileSanitizerDialog({ open, onOpenChange }: Props) {
   const [isProcessing, setIsProcessing] = useState(false);
   const [result, setResult] = useState<ParseResult | null>(null);
   const [dragActive, setDragActive] = useState(false);
+  const [showPreview, setShowPreview] = useState(false);
 
   const reset = useCallback(() => {
     setFile(null);
@@ -116,8 +117,24 @@ export function FrdoFileSanitizerDialog({ open, onOpenChange }: Props) {
   const stats = result ? calcStats(result) : null;
   const headers = result ? getHeadersForType(result.type) : [];
   const previewRows = result ? result.rows.slice(0, 20) : [];
-  // Показываем только первые 12 колонок в превью, чтобы влезло в диалог
-  const previewCols = 12;
+  const previewCols = headers.length;
+
+  // Сводка автозаполнений по причинам
+  const autoFillSummary = (() => {
+    if (!result) return [] as { reason: string; count: number }[];
+    const m = new Map<string, number>();
+    for (const row of result.rows) {
+      for (const c of row.cells) {
+        if (c.fixed && c.reason) {
+          m.set(c.reason, (m.get(c.reason) ?? 0) + 1);
+        }
+      }
+    }
+    return Array.from(m.entries())
+      .map(([reason, count]) => ({ reason, count }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 5);
+  })();
 
   return (
     <Dialog open={open} onOpenChange={(v) => { onOpenChange(v); if (!v) reset(); }}>
@@ -202,47 +219,106 @@ export function FrdoFileSanitizerDialog({ open, onOpenChange }: Props) {
               <StatCard icon={AlertTriangle} label="Пустые обязательные" value={`${stats.missingRequiredRows} стр.`} tone={stats.missingRequiredRows > 0 ? "warn" : "primary"} />
             </div>
 
+            {/* Большая зелёная плашка готовности + крупная кнопка скачивания */}
+            {stats.missingRequiredRows === 0 && (
+              <motion.div {...fadeUp} className="rounded-2xl p-6 border-2 border-emerald-500/40 bg-emerald-500/5">
+                <div className="flex flex-col items-center text-center gap-4">
+                  <div className="w-14 h-14 rounded-2xl bg-emerald-500/15 flex items-center justify-center">
+                    <CheckCircle2 className="w-7 h-7 text-emerald-600" />
+                  </div>
+                  <div>
+                    <div className="text-lg font-display font-semibold text-emerald-700 dark:text-emerald-400">
+                      Файл готов к загрузке в ФИС ФРДО
+                    </div>
+                    <div className="text-sm text-muted-foreground mt-1">
+                      Все обязательные поля заполнены. Данные переложены в эталонный шаблон с валидациями.
+                    </div>
+                  </div>
+                  <Button onClick={handleDownload} size="lg" className="rounded-xl gap-2 bg-emerald-600 hover:bg-emerald-700 text-white">
+                    <Download className="w-5 h-5" /> Скачать чистый файл
+                  </Button>
+                  <button
+                    type="button"
+                    onClick={handleDownloadReport}
+                    className="text-xs text-muted-foreground hover:text-foreground underline-offset-2 hover:underline inline-flex items-center gap-1"
+                  >
+                    <FileDown className="w-3 h-3" /> Скачать отчёт об исправлениях (CSV)
+                  </button>
+                </div>
+              </motion.div>
+            )}
+
+            {/* Информер автозаполнений */}
+            {autoFillSummary.length > 0 && (
+              <div className="rounded-xl border border-primary/30 bg-primary/5 p-3 text-sm">
+                <div className="flex items-start gap-2">
+                  <Sparkles className="w-4 h-4 text-primary mt-0.5 shrink-0" />
+                  <div className="space-y-1">
+                    <div className="font-medium text-foreground">Автоматически дозаполнено / нормализовано:</div>
+                    <ul className="text-xs text-muted-foreground space-y-0.5 list-disc pl-4">
+                      {autoFillSummary.map((s, i) => (
+                        <li key={i}>{s.reason} — <strong>{s.count}</strong> ячеек</li>
+                      ))}
+                    </ul>
+                    <div className="text-xs text-muted-foreground/80 italic">Если у вас есть свои значения для этих полей — они сохранены.</div>
+                  </div>
+                </div>
+              </div>
+            )}
+
             <div className="text-xs text-muted-foreground">
               Распознано колонок источника: <strong>{result.matchedColumns}</strong> / {headers.length}.
-              Превью: первые 20 строк × {previewCols} колонок.
             </div>
 
+            {/* Раскрывающееся превью */}
             <div className="border border-border rounded-xl overflow-hidden">
-              <div className="overflow-x-auto max-h-[400px]">
-                <table className="w-full text-xs">
-                  <thead className="bg-muted/50 sticky top-0">
-                    <tr>
-                      <th className="px-2 py-2 text-left font-medium text-muted-foreground border-r border-border">№</th>
-                      {headers.slice(0, previewCols).map((h, i) => (
-                        <th key={i} className="px-2 py-2 text-left font-medium text-muted-foreground border-r border-border last:border-0 max-w-[180px] truncate" title={h}>
-                          {h}
-                        </th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {previewRows.map((row, ri) => (
-                      <tr key={ri} className="border-t border-border">
-                        <td className="px-2 py-1.5 text-muted-foreground border-r border-border">{row.sourceRowNumber}</td>
-                        {row.cells.slice(0, previewCols).map((c, ci) => {
-                          const isMissing = !String(c.value).trim() && headers[ci] && row.missingRequired.includes(headers[ci]);
-                          return (
-                            <td
-                              key={ci}
-                              className={`px-2 py-1.5 border-r border-border last:border-0 max-w-[180px] truncate ${
-                                isMissing ? "bg-destructive/10 text-destructive" : c.fixed ? "bg-primary/5" : ""
-                              }`}
-                              title={c.reason || (c.fixed ? "Очищено" : "")}
-                            >
-                              {String(c.value) || (isMissing ? "— пусто —" : "")}
-                            </td>
-                          );
-                        })}
+              <button
+                type="button"
+                onClick={() => setShowPreview((v) => !v)}
+                className="w-full flex items-center justify-between px-4 py-3 bg-muted/30 hover:bg-muted/50 transition-colors text-sm"
+              >
+                <span className="font-medium">
+                  {showPreview ? "Скрыть превью" : `Показать превью первых 20 строк × ${previewCols} колонок`}
+                </span>
+                {showPreview ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+              </button>
+              {showPreview && (
+                <div className="overflow-x-auto max-h-[400px] border-t border-border">
+                  <table className="w-full text-xs">
+                    <thead className="bg-muted/50 sticky top-0">
+                      <tr>
+                        <th className="px-2 py-2 text-left font-medium text-muted-foreground border-r border-border whitespace-nowrap">№</th>
+                        {headers.slice(0, previewCols).map((h, i) => (
+                          <th key={i} className="px-2 py-2 text-left font-medium text-muted-foreground border-r border-border last:border-0 max-w-[200px] truncate" title={h}>
+                            {h}
+                          </th>
+                        ))}
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                    </thead>
+                    <tbody>
+                      {previewRows.map((row, ri) => (
+                        <tr key={ri} className="border-t border-border">
+                          <td className="px-2 py-1.5 text-muted-foreground border-r border-border whitespace-nowrap">{row.sourceRowNumber}</td>
+                          {row.cells.slice(0, previewCols).map((c, ci) => {
+                            const isMissing = !String(c.value).trim() && headers[ci] && row.missingRequired.includes(headers[ci]);
+                            return (
+                              <td
+                                key={ci}
+                                className={`px-2 py-1.5 border-r border-border last:border-0 max-w-[200px] truncate ${
+                                  isMissing ? "bg-destructive/10 text-destructive" : c.fixed ? "bg-primary/5" : ""
+                                }`}
+                                title={c.reason || (c.fixed ? "Очищено" : "")}
+                              >
+                                {String(c.value) || (isMissing ? "— пусто —" : "")}
+                              </td>
+                            );
+                          })}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </div>
 
             {stats.missingRequiredRows > 0 && (
@@ -256,14 +332,16 @@ export function FrdoFileSanitizerDialog({ open, onOpenChange }: Props) {
 
             <div className="flex justify-between gap-2 flex-wrap">
               <Button variant="ghost" onClick={reset} className="rounded-xl">← Загрузить другой файл</Button>
-              <div className="flex gap-2">
-                <Button variant="outline" onClick={handleDownloadReport} className="rounded-xl gap-2">
-                  <FileDown className="w-4 h-4" /> Отчёт CSV
-                </Button>
-                <Button onClick={handleDownload} className="rounded-xl gap-2">
-                  <Download className="w-4 h-4" /> Скачать чистый файл
-                </Button>
-              </div>
+              {stats.missingRequiredRows > 0 && (
+                <div className="flex gap-2">
+                  <Button variant="outline" onClick={handleDownloadReport} className="rounded-xl gap-2">
+                    <FileDown className="w-4 h-4" /> Отчёт CSV
+                  </Button>
+                  <Button onClick={handleDownload} className="rounded-xl gap-2">
+                    <Download className="w-4 h-4" /> Скачать чистый файл
+                  </Button>
+                </div>
+              )}
             </div>
           </motion.div>
         )}
