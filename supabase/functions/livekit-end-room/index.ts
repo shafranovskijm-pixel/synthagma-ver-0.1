@@ -35,10 +35,14 @@ Deno.serve(async (req) => {
 
     const { data: w } = await admin
       .from("webinars")
-      .select("id, organization_id, host_user_id, room_name, source_type")
+      .select("id, organization_id, host_user_id, room_name, player_settings, source_type")
       .eq("id", webinarId)
       .maybeSingle();
     if (!w) return json({ error: "Not found" }, 404);
+
+    // roomName может быть в колонке room_name (legacy) либо в player_settings.livekit.roomName (новые)
+    const ps = (w.player_settings ?? {}) as Record<string, any>;
+    const roomName: string | null = ps?.livekit?.roomName ?? w.room_name ?? null;
 
     // Авторизация: админ платформы / организация-владелец / хост
     const { data: prof } = await admin
@@ -54,7 +58,7 @@ Deno.serve(async (req) => {
       return json({ error: "Forbidden" }, 403);
     }
 
-    if (w.source_type !== "livekit" || !w.room_name) {
+    if (w.source_type !== "livekit" || !roomName) {
       // Не LiveKit-вебинар или комната ещё не создавалась — нечего удалять
       return json({ ok: true, skipped: true });
     }
@@ -65,7 +69,7 @@ Deno.serve(async (req) => {
     }
 
     const adminToken = await signLiveKitJwt(apiKey, apiSecret, {
-      video: { roomAdmin: true, room: w.room_name },
+      video: { roomAdmin: true, room: roomName },
     });
 
     const resp = await fetch(`${lkHttpUrl(wsUrl)}/twirp/livekit.RoomService/DeleteRoom`, {
@@ -74,14 +78,14 @@ Deno.serve(async (req) => {
         "Authorization": `Bearer ${adminToken}`,
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ room: w.room_name }),
+      body: JSON.stringify({ room: roomName }),
     });
 
     const text = await resp.text();
     if (!resp.ok) {
       // 404 от LiveKit = комната уже удалена / истекла, это не ошибка
       if (resp.status === 404 || /room not found/i.test(text)) {
-        console.log("[livekit-end-room] room already gone", w.room_name);
+        console.log("[livekit-end-room] room already gone", roomName);
         return json({ ok: true, alreadyGone: true });
       }
       console.error("[livekit-end-room] LiveKit error", resp.status, text);
