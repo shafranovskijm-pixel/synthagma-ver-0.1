@@ -242,6 +242,27 @@ export function sanitizeText(raw: unknown): SanitizedCell {
   return { value: cleaned, fixed: cleaned !== original };
 }
 
+/**
+ * Нормализует наименование профессии/должности под классификатор ФИС ФРДО:
+ * первая буква каждого значимого слова — заглавная, остальные — строчные.
+ * Примеры: "охранник" → "Охранник", "ВОДИТЕЛЬ автомобиля" → "Водитель автомобиля".
+ *
+ * ФРДО-валидатор сравнивает значение с классификатором по точному совпадению,
+ * поэтому регистр критичен.
+ */
+export function sanitizeProfessionName(raw: unknown): SanitizedCell {
+  if (raw === null || raw === undefined) return { value: "", fixed: false };
+  const original = String(raw);
+  const cleaned = normalizeWhitespace(stripInvisibles(original));
+  if (!cleaned) return { value: "", fixed: cleaned !== original };
+  // Капитализация: первая буква слова — верхний регистр, остальные — нижний.
+  // Сохраняем разделители (пробел, дефис) как есть.
+  const titled = cleaned
+    .toLowerCase()
+    .replace(/(^|[\s\-])([а-яёa-z])/gu, (_m, sep, ch) => sep + ch.toUpperCase());
+  return { value: titled, fixed: titled !== original };
+}
+
 export function sanitizeNumber(raw: unknown): SanitizedCell {
   if (raw === null || raw === undefined || raw === "") return { value: "", fixed: false };
   if (typeof raw === "number") return { value: raw, fixed: false };
@@ -266,6 +287,7 @@ type CellKind =
   | "financing"
   | "education_form"
   | "education_level"
+  | "profession"
   | "static_original"
   | "static_no"
   | "auto_reg_number";
@@ -309,7 +331,7 @@ const DPO_META: ColumnMeta[] = [
   { header: DPO_HEADERS[10], aliases: a("наименование дополнительной профессиональной программы", "наименование программы", "программа", "название программы", "программа обучения", "наименование курса"), kind: "text", required: true },
   { header: DPO_HEADERS[11], aliases: a("наименование области профессиональной деятельности", "область деятельности", "область профессиональной деятельности"), kind: "text" },
   { header: DPO_HEADERS[12], aliases: a("укрупненные группы специальностей", "группа специальностей", "укрупненная группа"), kind: "text" },
-  { header: DPO_HEADERS[13], aliases: a("наименование квалификации профессии специальности", "квалификация", "наименование квалификации"), kind: "text" },
+  { header: DPO_HEADERS[13], aliases: a("наименование квалификации профессии специальности", "квалификация", "наименование квалификации"), kind: "profession" },
   { header: DPO_HEADERS[14], aliases: a("уровень образования во спо", "уровень образования"), kind: "education_level" },
   { header: DPO_HEADERS[15], aliases: a("фамилия указанная в дипломе о во или спо", "фамилия в дипломе"), kind: "text" },
   { header: DPO_HEADERS[16], aliases: a("серия документа о во спо", "серия диплома"), kind: "text" },
@@ -355,7 +377,7 @@ const PO_META: ColumnMeta[] = [
     "профессии рабочих",
     "профессия",
     "должность",
-  ), kind: "text", required: true },
+  ), kind: "profession", required: true },
   { header: PO_HEADERS[12], aliases: a("присвоенный квалификационный разряд класс категория при наличии", "разряд", "квалификационный разряд", "класс", "категория"), kind: "text" },
   { header: PO_HEADERS[13], aliases: a("год начала обучения", "год начала"), kind: "number" },
   { header: PO_HEADERS[14], aliases: a("год окончания обучения", "год окончания"), kind: "number" },
@@ -393,6 +415,7 @@ function sanitizeByKind(raw: unknown, kind: CellKind, fallback?: string | number
     case "education_form": return sanitizeFromDict(raw, FRDO_EDUCATION_FORMS);
     case "education_level": return sanitizeFromDict(raw, FRDO_EDUCATION_LEVELS);
     case "number": return sanitizeNumber(raw);
+    case "profession": return sanitizeProfessionName(raw);
     case "auto_reg_number": {
       const t = sanitizeText(raw);
       if (!t.value) return { value: fallback ?? "нет", fixed: true, reason: "Регистрационный номер не указан — подставлено 'нет'" };
