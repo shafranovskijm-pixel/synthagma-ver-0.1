@@ -284,6 +284,16 @@ interface ColumnMeta {
 /** Хелпер: нормализованный массив алиасов */
 const a = (...arr: string[]) => arr.map(normalizeHeaderKey);
 
+// Алиасы для общих ФИО/персональных колонок
+const LASTNAME_ALIASES = ["фамилия получателя", "фамилия", "фамилия слушателя", "фамилия ученика", "фамилия обучающегося"];
+const FIRSTNAME_ALIASES = ["имя получателя", "имя", "имя слушателя", "имя ученика", "имя обучающегося"];
+const MIDDLENAME_ALIASES = ["отчество получателя при наличии", "отчество получателя", "отчество", "отчество слушателя", "отчество ученика"];
+const BIRTHDATE_ALIASES = ["дата рождения получателя", "дата рождения", "др", "дата рождения слушателя", "дата рождения ученика"];
+const GENDER_ALIASES = ["пол получателя", "пол", "пол слушателя", "гендер"];
+const SNILS_ALIASES = ["снилс", "снилс получателя", "номер снилс", "страховой номер", "номер страхового свидетельства", "снилс ученика", "снилс слушателя"];
+const ISSUE_DATE_ALIASES = ["дата выдачи документа", "дата выдачи", "дата выдачи док", "дата выдачи свидетельства", "дата выдачи диплома", "дата выдачи удостоверения"];
+const REG_NUMBER_ALIASES = ["регистрационный номер", "рег номер", "рег. номер", "регистрационный номер документа", "номер регистрационный"];
+
 // DPO — 41 колонка
 const DPO_META: ColumnMeta[] = [
   { header: DPO_HEADERS[0], aliases: a("вид документа", "тип документа"), kind: "text", required: true },
@@ -293,13 +303,13 @@ const DPO_META: ColumnMeta[] = [
   { header: DPO_HEADERS[4], aliases: a("подтверждение уничтожения"), kind: "static_no", defaultValue: "Нет" },
   { header: DPO_HEADERS[5], aliases: a("серия документа"), kind: "text", defaultValue: "нет" },
   { header: DPO_HEADERS[6], aliases: a("номер документа"), kind: "text", required: true },
-  { header: DPO_HEADERS[7], aliases: a("дата выдачи документа", "дата выдачи"), kind: "date", required: true },
-  { header: DPO_HEADERS[8], aliases: a("регистрационный номер", "рег номер", "рег. номер"), kind: "auto_reg_number", defaultValue: "нет" },
+  { header: DPO_HEADERS[7], aliases: a(...ISSUE_DATE_ALIASES), kind: "date", required: true },
+  { header: DPO_HEADERS[8], aliases: a(...REG_NUMBER_ALIASES), kind: "auto_reg_number", defaultValue: "нет" },
   { header: DPO_HEADERS[9], aliases: a("дополнительная профессиональная программа", "дпо программа", "вид программы"), kind: "text" },
-  { header: DPO_HEADERS[10], aliases: a("наименование дополнительной профессиональной программы", "наименование программы", "программа"), kind: "text", required: true },
-  { header: DPO_HEADERS[11], aliases: a("наименование области профессиональной деятельности", "область деятельности"), kind: "text" },
-  { header: DPO_HEADERS[12], aliases: a("укрупненные группы специальностей", "группа специальностей"), kind: "text" },
-  { header: DPO_HEADERS[13], aliases: a("наименование квалификации профессии специальности", "квалификация"), kind: "text" },
+  { header: DPO_HEADERS[10], aliases: a("наименование дополнительной профессиональной программы", "наименование программы", "программа", "название программы", "программа обучения", "наименование курса"), kind: "text", required: true },
+  { header: DPO_HEADERS[11], aliases: a("наименование области профессиональной деятельности", "область деятельности", "область профессиональной деятельности"), kind: "text" },
+  { header: DPO_HEADERS[12], aliases: a("укрупненные группы специальностей", "группа специальностей", "укрупненная группа"), kind: "text" },
+  { header: DPO_HEADERS[13], aliases: a("наименование квалификации профессии специальности", "квалификация", "наименование квалификации"), kind: "text" },
   { header: DPO_HEADERS[14], aliases: a("уровень образования во спо", "уровень образования"), kind: "education_level" },
   { header: DPO_HEADERS[15], aliases: a("фамилия указанная в дипломе о во или спо", "фамилия в дипломе"), kind: "text" },
   { header: DPO_HEADERS[16], aliases: a("серия документа о во спо", "серия диплома"), kind: "text" },
@@ -307,12 +317,12 @@ const DPO_META: ColumnMeta[] = [
   { header: DPO_HEADERS[18], aliases: a("год начала обучения для документа о квалификации", "год начала обучения", "год начала"), kind: "number" },
   { header: DPO_HEADERS[19], aliases: a("год окончания обучения для документа о квалификации", "год окончания обучения", "год окончания"), kind: "number" },
   { header: DPO_HEADERS[20], aliases: a("срок обучения часов для документа о квалификации", "срок обучения часов", "часов", "объем часов"), kind: "number" },
-  { header: DPO_HEADERS[21], aliases: a("фамилия получателя", "фамилия"), kind: "text", required: true },
-  { header: DPO_HEADERS[22], aliases: a("имя получателя", "имя"), kind: "text", required: true },
-  { header: DPO_HEADERS[23], aliases: a("отчество получателя", "отчество"), kind: "text" },
-  { header: DPO_HEADERS[24], aliases: a("дата рождения получателя", "дата рождения"), kind: "date", required: true },
-  { header: DPO_HEADERS[25], aliases: a("пол получателя", "пол"), kind: "gender", required: true },
-  { header: DPO_HEADERS[26], aliases: a("снилс"), kind: "snils", required: true },
+  { header: DPO_HEADERS[21], aliases: a(...LASTNAME_ALIASES), kind: "text", required: true },
+  { header: DPO_HEADERS[22], aliases: a(...FIRSTNAME_ALIASES), kind: "text", required: true },
+  { header: DPO_HEADERS[23], aliases: a(...MIDDLENAME_ALIASES), kind: "text" },
+  { header: DPO_HEADERS[24], aliases: a(...BIRTHDATE_ALIASES), kind: "date", required: true },
+  { header: DPO_HEADERS[25], aliases: a(...GENDER_ALIASES), kind: "gender", required: true },
+  { header: DPO_HEADERS[26], aliases: a(...SNILS_ALIASES), kind: "snils", required: true },
   { header: DPO_HEADERS[27], aliases: a("форма обучения"), kind: "training_form", defaultValue: "Очная" },
   { header: DPO_HEADERS[28], aliases: a("источник финансирования обучения", "источник финансирования"), kind: "financing", defaultValue: "Платное обучение" },
   { header: DPO_HEADERS[29], aliases: a("форма получения образования на момент прекращения образовательных отношений", "форма получения образования"), kind: "education_form", defaultValue: "в образовательной организации" },
@@ -323,28 +333,39 @@ const DPO_META: ColumnMeta[] = [
 
 // PO — 35 колонок
 const PO_META: ColumnMeta[] = [
-  { header: PO_HEADERS[0], aliases: a("вид документа"), kind: "text", required: true },
+  { header: PO_HEADERS[0], aliases: a("вид документа", "тип документа"), kind: "text", required: true },
   { header: PO_HEADERS[1], aliases: a("статус документа"), kind: "static_original", defaultValue: "Оригинал" },
   { header: PO_HEADERS[2], aliases: a("подтверждение утраты"), kind: "static_no", defaultValue: "Нет" },
   { header: PO_HEADERS[3], aliases: a("подтверждение обмена"), kind: "static_no", defaultValue: "Нет" },
   { header: PO_HEADERS[4], aliases: a("подтверждение уничтожения"), kind: "static_no", defaultValue: "Нет" },
   { header: PO_HEADERS[5], aliases: a("серия документа"), kind: "text", defaultValue: "Нет" },
   { header: PO_HEADERS[6], aliases: a("номер документа"), kind: "text", required: true },
-  { header: PO_HEADERS[7], aliases: a("дата выдачи документа", "дата выдачи"), kind: "date", required: true },
-  { header: PO_HEADERS[8], aliases: a("регистрационный номер", "рег номер"), kind: "auto_reg_number", defaultValue: "нет" },
-  { header: PO_HEADERS[9], aliases: a("программа профессионального обучения направление подготовки", "вид программы"), kind: "text" },
-  { header: PO_HEADERS[10], aliases: a("наименование программы профессионального обучения", "наименование программы", "программа"), kind: "text", required: true },
-  { header: PO_HEADERS[11], aliases: a("наименование профессий рабочих должностей служащих", "профессия"), kind: "text" },
-  { header: PO_HEADERS[12], aliases: a("присвоенный квалификационный разряд класс категория при наличии", "разряд", "квалификационный разряд"), kind: "text" },
-  { header: PO_HEADERS[13], aliases: a("год начала обучения"), kind: "number" },
-  { header: PO_HEADERS[14], aliases: a("год окончания обучения"), kind: "number" },
-  { header: PO_HEADERS[15], aliases: a("срок обучения часов", "часов"), kind: "number" },
-  { header: PO_HEADERS[16], aliases: a("фамилия получателя", "фамилия"), kind: "text", required: true },
-  { header: PO_HEADERS[17], aliases: a("имя получателя", "имя"), kind: "text", required: true },
-  { header: PO_HEADERS[18], aliases: a("отчество получателя при наличии", "отчество получателя", "отчество"), kind: "text" },
-  { header: PO_HEADERS[19], aliases: a("дата рождения получателя", "дата рождения"), kind: "date", required: true },
-  { header: PO_HEADERS[20], aliases: a("пол получателя", "пол"), kind: "gender", required: true },
-  { header: PO_HEADERS[21], aliases: a("снилс"), kind: "snils", required: true },
+  { header: PO_HEADERS[7], aliases: a(...ISSUE_DATE_ALIASES), kind: "date", required: true },
+  { header: PO_HEADERS[8], aliases: a(...REG_NUMBER_ALIASES), kind: "auto_reg_number", defaultValue: "нет" },
+  { header: PO_HEADERS[9], aliases: a("программа профессионального обучения направление подготовки", "вид программы", "направление подготовки"), kind: "text" },
+  { header: PO_HEADERS[10], aliases: a("наименование программы профессионального обучения", "наименование программы", "программа", "название программы", "программа обучения", "наименование курса"), kind: "text", required: true },
+  { header: PO_HEADERS[11], aliases: a(
+    "наименование профессий рабочих должностей служащих",
+    "наименование профессии рабочего должности служащего",
+    "наименование профессии рабочего",
+    "наименование должности служащего",
+    "профессия рабочего",
+    "должность служащего",
+    "наименование профессии",
+    "профессии рабочих",
+    "профессия",
+    "должность",
+  ), kind: "text", required: true },
+  { header: PO_HEADERS[12], aliases: a("присвоенный квалификационный разряд класс категория при наличии", "разряд", "квалификационный разряд", "класс", "категория"), kind: "text" },
+  { header: PO_HEADERS[13], aliases: a("год начала обучения", "год начала"), kind: "number" },
+  { header: PO_HEADERS[14], aliases: a("год окончания обучения", "год окончания"), kind: "number" },
+  { header: PO_HEADERS[15], aliases: a("срок обучения часов", "часов", "объем часов"), kind: "number" },
+  { header: PO_HEADERS[16], aliases: a(...LASTNAME_ALIASES), kind: "text", required: true },
+  { header: PO_HEADERS[17], aliases: a(...FIRSTNAME_ALIASES), kind: "text", required: true },
+  { header: PO_HEADERS[18], aliases: a(...MIDDLENAME_ALIASES), kind: "text" },
+  { header: PO_HEADERS[19], aliases: a(...BIRTHDATE_ALIASES), kind: "date", required: true },
+  { header: PO_HEADERS[20], aliases: a(...GENDER_ALIASES), kind: "gender", required: true },
+  { header: PO_HEADERS[21], aliases: a(...SNILS_ALIASES), kind: "snils", required: true },
   { header: PO_HEADERS[22], aliases: a("гражданство получателя код страны по оксм", "гражданство", "оксм"), kind: "citizenship", defaultValue: "643" },
   { header: PO_HEADERS[23], aliases: a("форма обучения"), kind: "training_form", defaultValue: "Очная" },
   { header: PO_HEADERS[24], aliases: a("источник финансирования обучения", "источник финансирования"), kind: "financing", defaultValue: "Платное обучение" },
