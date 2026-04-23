@@ -445,22 +445,91 @@ function findHeaderRow(
   return 0;
 }
 
+/** Стем (первые 5 символов) — для сравнения форм слова: профессии/профессий/профессия */
+function stemToken(t: string): string {
+  return t.length > 5 ? t.slice(0, 5) : t;
+}
+
+/** Доля общих стемов (слов длиной ≥ 4) между двумя нормализованными заголовками */
+function tokenOverlap(headerNorm: string, aliasNorm: string): number {
+  const tokens = (s: string) =>
+    new Set(
+      s
+        .split(/[^a-zа-я0-9]+/i)
+        .filter((t) => t.length >= 4)
+        .map(stemToken),
+    );
+  const a1 = tokens(headerNorm);
+  const a2 = tokens(aliasNorm);
+  if (a1.size === 0 || a2.size === 0) return 0;
+  let common = 0;
+  for (const t of a1) if (a2.has(t)) common++;
+  return common / Math.max(a1.size, a2.size);
+}
+
 /** Построить columnMap: индекс_в_наших_HEADERS → индекс_в_источнике (или -1) */
 function buildColumnMap(sourceHeaders: string[], meta: ColumnMeta[]): number[] {
   const sourceNorm = sourceHeaders.map(normalizeHeaderKey);
-  return meta.map((m) => {
+  const used = new Set<number>();
+
+  const map = meta.map((m) => {
     // exact
     for (const alias of m.aliases) {
       const idx = sourceNorm.indexOf(alias);
-      if (idx >= 0) return idx;
+      if (idx >= 0 && !used.has(idx)) {
+        used.add(idx);
+        return idx;
+      }
     }
-    // partial contains (alias ⊂ source)
+    // partial contains
     for (const alias of m.aliases) {
-      const idx = sourceNorm.findIndex((h) => h && (h.includes(alias) || alias.includes(h)));
-      if (idx >= 0) return idx;
+      const idx = sourceNorm.findIndex(
+        (h, i) => !used.has(i) && h && (h.includes(alias) || alias.includes(h)),
+      );
+      if (idx >= 0) {
+        used.add(idx);
+        return idx;
+      }
+    }
+    // fuzzy token overlap ≥ 60 %
+    let bestIdx = -1;
+    let bestScore = 0;
+    for (let i = 0; i < sourceNorm.length; i++) {
+      if (used.has(i) || !sourceNorm[i]) continue;
+      for (const alias of m.aliases) {
+        const score = tokenOverlap(sourceNorm[i], alias);
+        if (score >= 0.6 && score > bestScore) {
+          bestScore = score;
+          bestIdx = i;
+        }
+      }
+    }
+    if (bestIdx >= 0) {
+      used.add(bestIdx);
+      return bestIdx;
     }
     return -1;
   });
+
+  // Позиционный fallback: если число колонок источника совпадает с эталоном
+  // и ≥ 80 % обязательных колонок уже сматчено по тексту — добиваем оставшиеся
+  // -1 по индексу. Защищает от полностью переименованных заголовков.
+  const expectedCols = meta.length;
+  if (sourceHeaders.length === expectedCols) {
+    const requiredMeta = meta.filter((m) => m.required);
+    const requiredMatched = meta.filter((m, i) => m.required && map[i] >= 0).length;
+    const requiredRatio = requiredMeta.length === 0 ? 1 : requiredMatched / requiredMeta.length;
+    if (requiredRatio >= 0.8) {
+      for (let i = 0; i < map.length; i++) {
+        if (map[i] === -1 && !used.has(i) && i < sourceHeaders.length) {
+          map[i] = i;
+          used.add(i);
+        }
+      }
+    }
+  }
+
+  return map;
 }
 
 /**
