@@ -79,6 +79,28 @@ describe("buildPORow", () => {
   it("places document type first", () => {
     expect(buildPORow(poData)[0]).toBe("Свидетельство о профессии рабочего, должности служащего");
   });
+  it("places professionName in column L (index 11) for PO rows", () => {
+    // Excel column L = 12th column = array index 11
+    const row = buildPORow(poData);
+    expect(row[11]).toBe("Электромонтёр");
+  });
+
+  it("falls back to course frdo_profession_name via resolveFRDOFields when student has no profession", async () => {
+    const { resolveFRDOFields } = await import("../frdoFieldResolver");
+    const resolved = resolveFRDOFields(
+      { profession_name: "" },
+      { title: "Курс охранников", frdo_profession_name: "Охранник" },
+    );
+    expect(resolved.professionName).toBe("Охранник");
+    expect(resolved.professionFromCourseTitle).toBe(false);
+  });
+
+  it("falls back to course.title when neither student nor course frdo_profession_name set", async () => {
+    const { resolveFRDOFields } = await import("../frdoFieldResolver");
+    const resolved = resolveFRDOFields({}, { title: "Курс охранников" });
+    expect(resolved.professionName).toBe("Курс охранников");
+    expect(resolved.professionFromCourseTitle).toBe(true);
+  });
 });
 
 describe("formatDateForFRDO", () => {

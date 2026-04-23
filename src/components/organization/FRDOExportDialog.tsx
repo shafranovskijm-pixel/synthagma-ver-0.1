@@ -336,9 +336,9 @@ export function FRDOExportDialog({
       startYear, endYear, durationHours,
       lastName: frдоData.last_name, firstName: frдоData.first_name, middleName: frдоData.middle_name,
       birthDate: formatDateForFRDO(frдоData.birth_date),
-      gender: frдоData.gender, snils: frдоData.snils, citizenshipCode: frдоData.citizenship_code,
-      trainingForm: frдоData.training_form, financingSource: frдоData.financing_source,
-      educationForm: frдоData.education_form });
+      gender: resolved.gender, snils: frдоData.snils, citizenshipCode: frдоData.citizenship_code,
+      trainingForm: resolved.trainingForm, financingSource: resolved.financingSource,
+      educationForm: resolved.educationForm });
 
     await exportFRDOExcel([row], "po", `${frдоData.last_name}_${format(new Date(), "dd-MM-yyyy")}`);
     toast.success("Документ зарегистрирован в журнале");
