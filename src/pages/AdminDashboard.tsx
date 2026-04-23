@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, Suspense } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useNavigate } from "react-router-dom";
 import { AdminSidebar, type AdminTabType } from "@/components/admin/AdminSidebar";
@@ -6,23 +6,26 @@ import { AdminDashboardHeader } from "@/components/admin/AdminDashboardHeader";
 import { AdminDashboardFooter } from "@/components/admin/AdminDashboardFooter";
 import { OrganizationsManager } from "@/components/admin/OrganizationsManager";
 import { UsersManager } from "@/components/admin/UsersManager";
-import { AdminAnalytics } from "@/components/admin/AdminAnalytics";
-import { AdminMarketplaceManager } from "@/components/admin/AdminMarketplaceManager";
-import { SupportRequestsManager } from "@/components/admin/SupportRequestsManager";
-import { AdminSettings } from "@/components/admin/AdminSettings";
-import { BlogManager } from "@/components/admin/BlogManager";
-import { DevToolsPanel } from "@/components/admin/DevToolsPanel";
-import { SalesManager } from "@/components/admin/SalesManager";
-import { AISettingsManager } from "@/components/admin/AISettingsManager";
-import { BroadcastManager } from "@/components/admin/BroadcastManager";
-import { AdminChatsManager } from "@/components/admin/AdminChatsManager";
+import { lazyWithRetry } from "@/utils/lazyWithRetry";
+import { LazyLoadFallback } from "@/components/LazyLoadFallback";
 
-import { ReferralsManager } from "@/components/admin/ReferralsManager";
-import { PlatformUpdatesManager } from "@/components/admin/PlatformUpdatesManager";
-import { AdminBillingOverview } from "@/components/admin/AdminBillingOverview";
-import { AdminFinanceOverview } from "@/components/admin/AdminFinanceOverview";
-import { AdminStaffTab } from "@/components/admin/AdminStaffTab";
-import { AdminWebinarsOverview } from "@/components/admin/AdminWebinarsOverview";
+// Tяжёлые редко открываемые вкладки — грузим динамически
+const AdminAnalytics = lazyWithRetry(() => import("@/components/admin/AdminAnalytics").then(m => ({ default: m.AdminAnalytics })));
+const AdminMarketplaceManager = lazyWithRetry(() => import("@/components/admin/AdminMarketplaceManager").then(m => ({ default: m.AdminMarketplaceManager })));
+const SupportRequestsManager = lazyWithRetry(() => import("@/components/admin/SupportRequestsManager").then(m => ({ default: m.SupportRequestsManager })));
+const AdminSettings = lazyWithRetry(() => import("@/components/admin/AdminSettings").then(m => ({ default: m.AdminSettings })));
+const BlogManager = lazyWithRetry(() => import("@/components/admin/BlogManager").then(m => ({ default: m.BlogManager })));
+const DevToolsPanel = lazyWithRetry(() => import("@/components/admin/DevToolsPanel").then(m => ({ default: m.DevToolsPanel })));
+const SalesManager = lazyWithRetry(() => import("@/components/admin/SalesManager").then(m => ({ default: m.SalesManager })));
+const AISettingsManager = lazyWithRetry(() => import("@/components/admin/AISettingsManager").then(m => ({ default: m.AISettingsManager })));
+const BroadcastManager = lazyWithRetry(() => import("@/components/admin/BroadcastManager").then(m => ({ default: m.BroadcastManager })));
+const AdminChatsManager = lazyWithRetry(() => import("@/components/admin/AdminChatsManager").then(m => ({ default: m.AdminChatsManager })));
+const ReferralsManager = lazyWithRetry(() => import("@/components/admin/ReferralsManager").then(m => ({ default: m.ReferralsManager })));
+const PlatformUpdatesManager = lazyWithRetry(() => import("@/components/admin/PlatformUpdatesManager").then(m => ({ default: m.PlatformUpdatesManager })));
+const AdminBillingOverview = lazyWithRetry(() => import("@/components/admin/AdminBillingOverview").then(m => ({ default: m.AdminBillingOverview })));
+const AdminFinanceOverview = lazyWithRetry(() => import("@/components/admin/AdminFinanceOverview").then(m => ({ default: m.AdminFinanceOverview })));
+const AdminWebinarsOverview = lazyWithRetry(() => import("@/components/admin/AdminWebinarsOverview").then(m => ({ default: m.AdminWebinarsOverview })));
+
 import { useAdminBranding } from "@/hooks/useAdminBranding";
 import { supabase } from "@/integrations/supabase/client";
 import { getStoredThemeId, getThemeById, type AdminTheme } from "@/constants/admin-themes";
@@ -170,24 +173,28 @@ const AdminDashboard = () => {
 
         {/* Content */}
         <div className="p-4 lg:p-8 flex-1">
-          {activeTab === "analytics" && <AdminAnalytics />}
+          {/* Eager: дефолтные «Организации» и «Пользователи» — открываются часто */}
           {activeTab === "organizations" && <OrganizationsManager openOrgId={openOrgId} onOpenOrgHandled={() => setOpenOrgId(null)} />}
-          {activeTab === "marketplace" && <AdminMarketplaceManager />}
-          {activeTab === "sales" && <SalesManager />}
-          {activeTab === "billing" && <AdminBillingOverview pendingExpandContractId={pendingExpandContractId} />}
-          {activeTab === "finance" && <AdminFinanceOverview />}
-          {activeTab === "ai" && <AISettingsManager />}
           {activeTab === "users" && <UsersManager />}
-          {activeTab === "content" && <BlogManager />}
-          {activeTab === "support" && <SupportRequestsManager />}
-          {activeTab === "broadcast" && <BroadcastManager />}
-          {activeTab === "chats" && <AdminChatsManager />}
-          {activeTab === "referrals" && <ReferralsManager />}
-          
-          {activeTab === "devtools" && <DevToolsPanel />}
-          {activeTab === "updates" && <PlatformUpdatesManager />}
-          {activeTab === "webinars-admin" && <AdminWebinarsOverview />}
-          {activeTab === "settings" && <AdminSettings />}
+
+          {/* Lazy-вкладки: грузим JS только при открытии */}
+          <Suspense fallback={<LazyLoadFallback />}>
+            {activeTab === "analytics" && <AdminAnalytics />}
+            {activeTab === "marketplace" && <AdminMarketplaceManager />}
+            {activeTab === "sales" && <SalesManager />}
+            {activeTab === "billing" && <AdminBillingOverview pendingExpandContractId={pendingExpandContractId} />}
+            {activeTab === "finance" && <AdminFinanceOverview />}
+            {activeTab === "ai" && <AISettingsManager />}
+            {activeTab === "content" && <BlogManager />}
+            {activeTab === "support" && <SupportRequestsManager />}
+            {activeTab === "broadcast" && <BroadcastManager />}
+            {activeTab === "chats" && <AdminChatsManager />}
+            {activeTab === "referrals" && <ReferralsManager />}
+            {activeTab === "devtools" && <DevToolsPanel />}
+            {activeTab === "updates" && <PlatformUpdatesManager />}
+            {activeTab === "webinars-admin" && <AdminWebinarsOverview />}
+            {activeTab === "settings" && <AdminSettings />}
+          </Suspense>
         </div>
 
         {/* Footer */}

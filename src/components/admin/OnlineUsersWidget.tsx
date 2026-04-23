@@ -36,8 +36,16 @@ export function OnlineUsersWidget() {
 
   useEffect(() => {
     fetchUsers();
-    const interval = setInterval(fetchUsers, 30000); // refresh every 30s
-    return () => clearInterval(interval);
+    // visibility-aware: не дёргаем сервер, когда вкладка в фоне
+    const interval = setInterval(() => {
+      if (document.visibilityState === 'visible') fetchUsers();
+    }, 60000); // refresh every 60s
+    const onVisible = () => { if (document.visibilityState === 'visible') fetchUsers(); };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener('visibilitychange', onVisible);
+    };
   }, []);
 
   const now = new Date();

@@ -80,17 +80,20 @@ export function useOrganizationsManager(openOrgId?: string | null, onOpenOrgHand
       setLoading(false);
       setDetailsLoading(true);
       const orgIds = orgs.map(o => o.id);
-      const [profilesRes, coursesRes, ...credResults] = await Promise.all([
+      // Один батч-RPC вместо N отдельных запросов на каждую организацию
+      const [profilesRes, coursesRes, credRes] = await Promise.all([
         supabase.from("profiles").select("organization_id").in("organization_id", orgIds),
         supabase.from("courses").select("organization_id").in("organization_id", orgIds),
-        ...orgIds.map(id => supabase.rpc("get_decrypted_org_credentials", { p_organization_id: id }).then(res => ({ orgId: id, data: res.data?.[0] || null }))),
+        supabase.rpc("get_decrypted_org_credentials_batch" as any, { p_organization_ids: orgIds }),
       ]);
       const userCounts: Record<string, number> = {};
       const courseCounts: Record<string, number> = {};
       (profilesRes.data || []).forEach(p => { userCounts[p.organization_id] = (userCounts[p.organization_id] || 0) + 1; });
       (coursesRes.data || []).forEach(c => { courseCounts[c.organization_id] = (courseCounts[c.organization_id] || 0) + 1; });
       const credMap: Record<string, any> = {};
-      credResults.forEach((cr: any) => { credMap[cr.orgId] = cr.data; });
+      ((credRes.data as any[]) || []).forEach((row) => {
+        credMap[row.organization_id] = { login_email: row.login_email, login_password: row.login_password };
+      });
       setOrganizations(prev => prev.map(org => ({ ...org, users_count: userCounts[org.id] || 0, courses_count: courseCounts[org.id] || 0, credentials: credMap[org.id] || null })));
       setDetailsLoading(false);
     } catch (error) {

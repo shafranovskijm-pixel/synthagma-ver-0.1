@@ -9669,6 +9669,14 @@ export type Database = {
           login_password: string
         }[]
       }
+      get_decrypted_org_credentials_batch: {
+        Args: { p_organization_ids: string[] }
+        Returns: {
+          login_email: string
+          login_password: string
+          organization_id: string
+        }[]
+      }
       get_decrypted_org_smtp: {
         Args: { p_organization_id: string }
         Returns: {

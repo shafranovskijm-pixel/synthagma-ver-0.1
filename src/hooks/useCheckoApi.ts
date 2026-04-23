@@ -42,7 +42,10 @@ export function useCheckoApi() {
       if (data?.error) throw new Error(data.error);
       return data as CheckoStats;
     },
-    refetchInterval: 30000,
+    // Поллинг только когда вкладка активна — экономим запросы к edge-функции
+    refetchInterval: () =>
+      typeof document !== 'undefined' && document.visibilityState === 'visible' ? 30000 : false,
+    refetchIntervalInBackground: false,
   });
 
   const enrichBatch = useMutation({
