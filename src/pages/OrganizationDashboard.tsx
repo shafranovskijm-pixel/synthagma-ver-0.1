@@ -17,6 +17,7 @@ import { PlatformAnnouncementsBanner } from "@/components/organization/PlatformA
 import { RequiresAttentionWidget } from "@/components/organization/RequiresAttentionWidget";
 import { getStoredThemeId, getThemeById, type AdminTheme } from "@/constants/admin-themes";
 import { ThemeAnimations, getStoredAnimationLevel, type AnimationLevel } from "@/components/ui/ThemeAnimations";
+import { AtmosphericBleed } from "@/components/ui/AtmosphericBleed";
 
 import { useOrgTheme } from "@/hooks/useOrgTheme";
 import { GlobalCommandPalette } from "@/components/shared/GlobalCommandPalette";
@@ -110,6 +111,14 @@ export default function OrganizationDashboard() {
       } : undefined}
     >
       {activeTheme && <ThemeAnimations animation={activeTheme.animation} level={animLevel} />}
+      {activeTheme && (
+        <AtmosphericBleed
+          bannerUrl={activeTheme.bannerUrl}
+          blur={activeTheme.atmosphereBlur}
+          opacity={activeTheme.atmosphereOpacity}
+          sharp={activeTheme.atmosphereSharp}
+        />
+      )}
       {/* Admin View Banner */}
       {d.isAdminView && (
         <div className="fixed top-0 left-0 right-0 z-50 bg-primary text-primary-foreground py-2 px-4 flex items-center justify-between">
