@@ -264,8 +264,9 @@ export function useCourseLearning() {
     lessonStartTimeRef.current = Date.now();
   }, [currentLesson?.id]);
 
-  // Save time on page unload / visibility change
+  // Save time on page unload / visibility change — disabled in admin preview
   useEffect(() => {
+    if (isAdminView) return;
     if (!user || !enrollmentId) return;
     const handleBeforeUnload = () => {
       const lid = currentLesson?.id;
@@ -282,7 +283,7 @@ export function useCourseLearning() {
     window.addEventListener('beforeunload', handleBeforeUnload);
     document.addEventListener('visibilitychange', handleVisibility);
     return () => { window.removeEventListener('beforeunload', handleBeforeUnload); document.removeEventListener('visibilitychange', handleVisibility); };
-  }, [user, enrollmentId, currentLesson?.id, saveLessonTime]);
+  }, [user, enrollmentId, currentLesson?.id, saveLessonTime, isAdminView]);
 
   const fetchCourseData = async () => {
     try {
