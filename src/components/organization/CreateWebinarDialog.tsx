@@ -9,21 +9,7 @@ import { Switch } from "@/components/ui/switch";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
-
-interface Webinar {
-  id: string;
-  title: string;
-  description: string | null;
-  scheduled_at: string | null;
-  duration_minutes: number | null;
-  status: string;
-  source_type: string;
-  external_url: string | null;
-  embed_url: string | null;
-  cover_url: string | null;
-  course_id: string | null;
-  [key: string]: any;
-}
+import type { Webinar } from "@/types/webinar";
 
 interface Props {
   open: boolean;
@@ -34,298 +20,143 @@ interface Props {
   editWebinar?: Webinar | null;
 }
 
-export function CreateWebinarDialog({ open, onOpenChange, organizationId, userId, onCreated, editWebinar }: Props) {
-  const [title, setTitle] = useState("");
-  const [description, setDescription] = useState("");
-  const [scheduledAt, setScheduledAt] = useState("");
-  const [durationMinutes, setDurationMinutes] = useState("60");
-  const [sourceType, setSourceType] = useState<"livekit" | "external" | "kinescope">("livekit");
-  const [externalUrl, setExternalUrl] = useState("");
-  const [kinescopeEmbedId, setKinescopeEmbedId] = useState("");
-  const [kinescopeRtmpUrl, setKinescopeRtmpUrl] = useState("");
-  const [kinescopeRtmpKey, setKinescopeRtmpKey] = useState("");
-  const [coverUrl, setCoverUrl] = useState("");
-  const [courseId, setCourseId] = useState<string>("none");
-  const [autoRecord, setAutoRecord] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const [courses, setCourses] = useState<{ id: string; title: string }[]>([]);
-
-  const isEdit = !!editWebinar;
-
-  useEffect(() => {
-    if (!open) return;
-    supabase
-      .from("courses")
-      .select("id, title")
-      .eq("organization_id", organizationId)
-      .order("title")
-      .then(({ data }) => setCourses(data || []));
-  }, [open, organizationId]);
+export function CreateWebinarDialog({
+  open,
+  onOpenChange,
+  organizationId,
+  userId,
+  onCreated,
+  editWebinar,
+}: Props) {
+  const [isLoading, setIsLoading] = useState(false);
+  const [formData, setFormData] = useState({
+    title: "",
+    description: "",
+    source_type: "kinescope",
+    scheduled_at: "",
+    duration_minutes: 60,
+    allow_guests: false,
+  });
 
   useEffect(() => {
-    if (open && editWebinar) {
-      setTitle(editWebinar.title || "");
-      setDescription(editWebinar.description || "");
-      setScheduledAt(editWebinar.scheduled_at ? editWebinar.scheduled_at.slice(0, 16) : "");
-      setDurationMinutes(String(editWebinar.duration_minutes || 60));
-      setSourceType((editWebinar.source_type as any) || "livekit");
-      setExternalUrl(editWebinar.external_url || "");
-      setKinescopeEmbedId((editWebinar as any).kinescope_live_id || "");
-      setKinescopeRtmpUrl((editWebinar as any).rtmp_url || "");
-      setKinescopeRtmpKey((editWebinar as any).rtmp_key || "");
-      setCoverUrl(editWebinar.cover_url || "");
-      setCourseId(editWebinar.course_id || "none");
-      setAutoRecord(Boolean((editWebinar as any).auto_record));
-    } else if (open && !editWebinar) {
-      reset();
+    if (editWebinar) {
+      setFormData({
+        title: editWebinar.title || "",
+        description: editWebinar.description || "",
+        source_type: editWebinar.source_type || "kinescope",
+        scheduled_at: editWebinar.scheduled_at ? editWebinar.scheduled_at.slice(0, 16) : "",
+        duration_minutes: editWebinar.duration_minutes || 60,
+        allow_guests: editWebinar.allow_guests || false,
+      });
+    } else {
+      setFormData({
+        title: "",
+        description: "",
+        source_type: "kinescope",
+        scheduled_at: "",
+        duration_minutes: 60,
+        allow_guests: false,
+      });
     }
-  }, [open, editWebinar]);
+  }, [editWebinar, open]);
 
-  const reset = () => {
-    setTitle("");
-    setDescription("");
-    setScheduledAt("");
-    setDurationMinutes("60");
-    setSourceType("livekit");
-    setExternalUrl("");
-    setKinescopeEmbedId("");
-    setKinescopeRtmpUrl("");
-    setKinescopeRtmpKey("");
-    setCoverUrl("");
-    setCourseId("none");
-    setAutoRecord(false);
-  };
-
-  const handleSubmit = async () => {
-    if (!title.trim()) { toast.error("Введите название"); return; }
-    if (!isEdit && sourceType === "kinescope" && !kinescopeEmbedId.trim()) {
-      toast.error("Введите Kinescope Embed ID (создайте Live в Kinescope)"); return;
-    }
-    setSaving(true);
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoading(true);
 
     try {
-      if (isEdit) {
-        const updateData: Record<string, unknown> = {
-          title: title.trim(),
-          description: description.trim() || null,
-          scheduled_at: scheduledAt || null,
-          duration_minutes: parseInt(durationMinutes) || null,
-          cover_url: coverUrl.trim() || null,
-          course_id: courseId === "none" ? null : courseId,
-          auto_record: editWebinar!.source_type === "livekit" ? autoRecord : false,
-        };
-        if (editWebinar!.source_type === "external") {
-          updateData.external_url = externalUrl.trim() || null;
-          updateData.embed_url = externalUrl.trim() || null;
-        }
-        if (editWebinar!.source_type === "kinescope") {
-          updateData.kinescope_live_id = kinescopeEmbedId.trim() || null;
-          updateData.embed_url = kinescopeEmbedId.trim()
-            ? `https://kinescope.io/embed/${kinescopeEmbedId.trim()}`
-            : null;
-          updateData.rtmp_url = kinescopeRtmpUrl.trim() || null;
-          updateData.rtmp_key = kinescopeRtmpKey.trim() || null;
-        }
-        const { error } = await supabase.from("webinars").update(updateData as any).eq("id", editWebinar!.id);
+      const payload = {
+        ...formData,
+        organization_id: organizationId,
+        status: "scheduled",
+      };
+
+      if (editWebinar) {
+        const { error } = await supabase
+          .from("webinars")
+          .update(payload)
+          .eq("id", editWebinar.id);
         if (error) throw error;
-        toast.success("Вебинар обновлён");
+        toast.success("Вебинар обновлен");
       } else {
-        const webinarData: Record<string, unknown> = {
-          organization_id: organizationId,
-          title: title.trim(),
-          description: description.trim() || null,
-          scheduled_at: scheduledAt || null,
-          duration_minutes: parseInt(durationMinutes) || null,
-          source_type: sourceType,
-          status: "planned",
-          created_by: userId,
-          cover_url: coverUrl.trim() || null,
-          course_id: courseId === "none" ? null : courseId,
-          auto_record: sourceType === "livekit" ? autoRecord : false,
-        };
-
-        if (sourceType === "livekit") {
-          const { data, error } = await supabase.functions.invoke("livekit-create-room", {
-            body: { title: title.trim() } });
-          if (error) throw new Error(error.message);
-          if (!data?.ok || !data?.roomName) throw new Error(data?.error || "Не удалось создать комнату LiveKit");
-          webinarData.player_settings = {
-            livekit: { roomName: data.roomName, wsUrl: data.wsUrl },
-          };
-        } else if (sourceType === "kinescope") {
-          webinarData.kinescope_live_id = kinescopeEmbedId.trim();
-          webinarData.embed_url = `https://kinescope.io/embed/${kinescopeEmbedId.trim()}`;
-          webinarData.rtmp_url = kinescopeRtmpUrl.trim() || null;
-          webinarData.rtmp_key = kinescopeRtmpKey.trim() || null;
-        } else {
-          webinarData.external_url = externalUrl.trim() || null;
-          webinarData.embed_url = externalUrl.trim() || null;
-        }
-
-        const { error: insertError } = await supabase.from("webinars").insert(webinarData as any);
-        if (insertError) throw insertError;
-        toast.success("Вебинар создан!");
+        const { error } = await supabase.from("webinars").insert([payload]);
+        if (error) throw error;
+        toast.success("Вебинар создан");
       }
 
-      reset();
-      onOpenChange(false);
       onCreated();
-    } catch (e: any) {
-      toast.error(e.message || "Ошибка сохранения вебинара");
+      onOpenChange(false);
+    } catch (error) {
+      console.error("Error saving webinar:", error);
+      toast.error("Ошибка при сохранении вебинара");
     } finally {
-      setSaving(false);
+      setIsLoading(false);
     }
   };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle>{isEdit ? "Редактировать вебинар" : "Создать вебинар"}</DialogTitle>
+          <DialogTitle>{editWebinar ? "Редактировать вебинар" : "Создать вебинар"}</DialogTitle>
         </DialogHeader>
-        <div className="space-y-4">
-          <div>
-            <Label>Название *</Label>
-            <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Вебинар по теме..." />
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="title">Название</Label>
+            <Input
+              id="title"
+              value={formData.title}
+              onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+              required
+            />
           </div>
-          <div>
-            <Label>Описание</Label>
-            <Textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder="О чём будет вебинар" rows={3} />
+          <div className="space-y-2">
+            <Label htmlFor="description">Описание</Label>
+            <Textarea
+              id="description"
+              value={formData.description}
+              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+            />
           </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <Label>Дата и время</Label>
-              <Input type="datetime-local" value={scheduledAt} onChange={(e) => setScheduledAt(e.target.value)} />
-            </div>
-            <div>
-              <Label>Длительность (мин)</Label>
-              <Input type="number" value={durationMinutes} onChange={(e) => setDurationMinutes(e.target.value)} />
-            </div>
-          </div>
-
-          <div>
-            <Label>Привязка к курсу</Label>
-            <Select value={courseId} onValueChange={setCourseId}>
+          <div className="space-y-2">
+            <Label htmlFor="source_type">Тип трансляции</Label>
+            <Select
+              value={formData.source_type}
+              onValueChange={(value) => setFormData({ ...formData, source_type: value })}
+            >
               <SelectTrigger>
-                <SelectValue placeholder="Без привязки" />
+                <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="none">Без привязки к курсу</SelectItem>
-                {courses.map((c) => (
-                  <SelectItem key={c.id} value={c.id}>{c.title}</SelectItem>
-                ))}
+                <SelectItem value="kinescope">Kinescope</SelectItem>
+                <SelectItem value="zoom">Zoom</SelectItem>
+                <SelectItem value="external">Внешняя ссылка</SelectItem>
               </SelectContent>
             </Select>
-            <p className="text-xs text-muted-foreground mt-1">Ученики курса автоматически получат доступ к вебинару</p>
           </div>
-
-          <div>
-            <Label>Обложка (URL изображения)</Label>
-            <Input value={coverUrl} onChange={(e) => setCoverUrl(e.target.value)} placeholder="https://..." />
+          <div className="space-y-2">
+            <Label htmlFor="scheduled_at">Дата и время</Label>
+            <Input
+              id="scheduled_at"
+              type="datetime-local"
+              value={formData.scheduled_at}
+              onChange={(e) => setFormData({ ...formData, scheduled_at: e.target.value })}
+              required
+            />
           </div>
-
-          {!isEdit && (
-            <div>
-              <Label>Источник трансляции</Label>
-              <Select value={sourceType} onValueChange={(v) => setSourceType(v as any)}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="livekit">Встроенный плеер LiveKit (браузер, без OBS)</SelectItem>
-                  <SelectItem value="kinescope">Kinescope Live (профи: RTMP + OBS, DRM, запись)</SelectItem>
-                  <SelectItem value="external">Внешняя ссылка (Zoom, VK, Rutube, YouTube)</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          )}
-
-          {((!isEdit && sourceType === "livekit") || (isEdit && editWebinar?.source_type === "livekit")) && (
-            <div className="rounded-md border border-border bg-muted/30 p-3 space-y-3">
-              {!isEdit && (
-                <p className="text-xs text-muted-foreground">
-                  Мы создадим комнату прямо в платформе. Подключение видео и звука происходит без перехода на сторонние сервисы.
-                </p>
-              )}
-              <div className="flex items-start justify-between gap-3">
-                <div className="space-y-0.5">
-                  <Label htmlFor="auto-record-toggle" className="cursor-pointer">
-                    Автоматически записывать эфир
-                  </Label>
-                  <p className="text-xs text-muted-foreground">
-                    Запись стартует сама при подключении ведущего и сохраняется в Lovable Cloud.
-                  </p>
-                </div>
-                <Switch
-                  id="auto-record-toggle"
-                  checked={autoRecord}
-                  onCheckedChange={setAutoRecord}
-                />
-              </div>
-            </div>
-          )}
-
-          {((!isEdit && sourceType === "kinescope") || (isEdit && editWebinar?.source_type === "kinescope")) && (
-            <div className="space-y-3">
-              <div className="rounded-md bg-muted border border-border p-3 text-xs space-y-1">
-                <p className="font-medium">Создайте Live в дашборде Kinescope</p>
-                <p className="text-muted-foreground">
-                  Kinescope не позволяет создавать прямой эфир через API. Создайте Live вручную, скопируйте Embed ID и (опционально) RTMP-данные. Эфир ведите через OBS / vMix.
-                </p>
-                <a
-                  href="https://app.kinescope.io/lives"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-primary hover:underline"
-                >
-                  Открыть Kinescope Live →
-                </a>
-              </div>
-              <div>
-                <Label>Embed ID *</Label>
-                <Input
-                  value={kinescopeEmbedId}
-                  onChange={(e) => setKinescopeEmbedId(e.target.value)}
-                  placeholder="например: 3xxxxxxxxxxxxxxxxxxxxxxxx"
-                />
-              </div>
-              <div>
-                <Label>RTMP URL (опционально)</Label>
-                <Input
-                  value={kinescopeRtmpUrl}
-                  onChange={(e) => setKinescopeRtmpUrl(e.target.value)}
-                  placeholder="rtmps://live.kinescope.io/live"
-                />
-              </div>
-              <div>
-                <Label>Stream Key (опционально)</Label>
-                <Input
-                  value={kinescopeRtmpKey}
-                  onChange={(e) => setKinescopeRtmpKey(e.target.value)}
-                  placeholder="секретный ключ потока для OBS"
-                />
-              </div>
-            </div>
-          )}
-
-          {((!isEdit && sourceType === "external") || (isEdit && editWebinar?.source_type === "external")) && (
-            <div>
-              <Label>Ссылка на трансляцию</Label>
-              <Input
-                value={externalUrl}
-                onChange={(e) => setExternalUrl(e.target.value)}
-                placeholder="https://zoom.us/j/... или https://vk.com/video..."
-              />
-            </div>
-          )}
-          <div className="flex justify-end gap-2 pt-2">
-            <Button variant="outline" onClick={() => onOpenChange(false)}>Отмена</Button>
-            <Button onClick={handleSubmit} disabled={saving}>
-              {saving && <SigmaSpinner size="sm" className="mr-2" />}
-              {isEdit ? "Сохранить" : "Создать"}
-            </Button>
+          <div className="flex items-center justify-between">
+            <Label htmlFor="allow_guests">Разрешить гостевой вход</Label>
+            <Switch
+              id="allow_guests"
+              checked={formData.allow_guests}
+              onCheckedChange={(checked) => setFormData({ ...formData, allow_guests: checked })}
+            />
           </div>
-        </div>
+          <Button type="submit" className="w-full" disabled={isLoading}>
+            {isLoading ? <SigmaSpinner size="sm" className="mr-2" /> : null}
+            {editWebinar ? "Сохранить изменения" : "Создать"}
+          </Button>
+        </form>
       </DialogContent>
     </Dialog>
   );
