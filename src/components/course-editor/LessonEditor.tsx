@@ -25,6 +25,7 @@ import { useSubscriptionLimits } from "@/hooks/useSubscriptionLimits";
 import { useLessonDraft } from "@/hooks/useLessonDraft";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
+import { getErrorMessage } from "@/utils/handleSupabaseError";
 import { countBlocksWords, formatReadingTime } from "@/lib/wordCount";
 import { importDocxFile } from "@/lib/docxImport";
 import { checkVideoUrl } from "@/lib/videoUrlValidator";

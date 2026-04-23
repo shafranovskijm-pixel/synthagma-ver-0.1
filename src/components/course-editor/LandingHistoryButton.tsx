@@ -23,6 +23,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { getErrorMessage } from "@/utils/handleSupabaseError";
 import { formatDistanceToNow } from "date-fns";
 import { ru } from "date-fns/locale";
 
