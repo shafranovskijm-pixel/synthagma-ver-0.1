@@ -6,7 +6,8 @@ import JSZip from "jszip";
 // Vite ?url import → in vitest (node) we can't resolve it the same way, so
 // we test the underlying xml manipulation logic with a real local copy of the
 // template instead.
-const TEMPLATE_PATH = resolve(__dirname, "../../assets/frdo/template-po.xlsx");
+const TEMPLATE_PO_PATH = resolve(__dirname, "../../assets/frdo/template-po.xlsx");
+const TEMPLATE_DPO_PATH = resolve(__dirname, "../../assets/frdo/template-dpo.xlsx");
 
 describe("frdoTemplateInjector — donor template integrity", () => {
   it("template asset exists and is ≥ 200 KB (full FRDO donor)", () => {

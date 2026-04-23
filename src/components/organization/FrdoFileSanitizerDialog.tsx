@@ -16,8 +16,7 @@ import {
   type ParseResult,
   type FrdoSheetType,
 } from "@/utils/frdoFileSanitizer";
-import { exportFRDOExcel } from "@/utils/frdoExcelExport";
-import { injectIntoFrdoTemplate, hasFrdoTemplate } from "@/utils/frdoTemplateInjector";
+import { injectIntoFrdoTemplate } from "@/utils/frdoTemplateInjector";
 
 interface Props {
   open: boolean;
