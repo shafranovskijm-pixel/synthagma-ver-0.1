@@ -54,7 +54,7 @@ function loadTBankSdk(): Promise<void> {
 function CatalogContent({
   catalogCourses, categories, handleCourseClick,
   enrolledCourses, isVideoIdentified, totalProgress, totalTimeSpent, totalCompletedLessons, formatTime,
-  user, contentTab,
+  user, contentTab, isAdminView,
 }: any) {
   const [confirmCourse, setConfirmCourse] = useState<any>(null);
   const [enrollCourse, setEnrollCourse] = useState<any>(null);
@@ -177,6 +177,7 @@ function CatalogContent({
           formatTime={formatTime}
           onBuy={handleBuy}
           onEnroll={handleEnroll}
+          isAdminView={isAdminView}
         />
       )}
       {contentTab === "webinars" && <StudentWebinarsList />}

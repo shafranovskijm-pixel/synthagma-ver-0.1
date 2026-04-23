@@ -45,6 +45,8 @@ interface CourseCatalogProps {
   formatTime?: (m: number) => string;
   onBuy?: (courseId: string) => void;
   onEnroll?: (courseId: string) => void;
+  /** When true, hide "needs video identification" badges — admin/manager preview. */
+  isAdminView?: boolean;
 }
 
 export function CourseCatalog({
@@ -52,7 +54,7 @@ export function CourseCatalog({
   enrolledCourses, isVideoIdentified,
   totalProgress = 0, totalTimeSpent = 0, totalCompletedLessons = 0,
   formatTime = (m) => `${Math.floor(m / 60)}ч ${m % 60}м`,
-  onBuy, onEnroll,
+  onBuy, onEnroll, isAdminView = false,
 }: CourseCatalogProps) {
   const [search, setSearch] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
@@ -118,7 +120,7 @@ export function CourseCatalog({
                 totalLessons={course.totalLessons}
                 completedLessons={course.completedLessons}
                 status={course.status === "completed" ? "completed" : "in_progress"}
-                needsVideoId={course.skip_video_identification === false && !isVideoIdentified}
+                needsVideoId={!isAdminView && course.skip_video_identification === false && !isVideoIdentified}
                 onClick={() => onCourseClick(course.id, true)}
               />
             ))}

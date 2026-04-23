@@ -12,11 +12,13 @@ interface StudentLibraryProps {
   isVideoIdentified: boolean;
   onCourseClick: (courseId: string) => void;
   branding?: { primaryColor: string; secondaryColor: string } | null;
+  /** When true, hide "needs video identification" badges — admin/manager preview. */
+  isAdminView?: boolean;
 }
 
 export function StudentLibrary({
   courses, totalProgress, totalTimeSpent, totalCompletedLessons,
-  formatTime, isVideoIdentified, onCourseClick, branding,
+  formatTime, isVideoIdentified, onCourseClick, branding, isAdminView = false,
 }: StudentLibraryProps) {
   return (
     <div className="space-y-6">
@@ -61,7 +63,7 @@ export function StudentLibrary({
               totalLessons={course.totalLessons}
               completedLessons={course.completedLessons}
               status={course.status === "completed" ? "completed" : "in_progress"}
-              needsVideoId={course.skip_video_identification === false && !isVideoIdentified}
+              needsVideoId={!isAdminView && course.skip_video_identification === false && !isVideoIdentified}
               onClick={() => onCourseClick(course.id)}
             />
           ))}
