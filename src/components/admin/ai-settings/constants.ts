@@ -78,7 +78,6 @@ export const PIPELINE_PROVIDERS = [
 ];
 
 export const TTS_PROVIDERS = [
-  { value: "elevenlabs", label: "ElevenLabs" },
   { value: "salutespeech", label: "SaluteSpeech (Sber)" },
   { value: "lovable_ai", label: "Lovable AI" },
 ];
@@ -100,7 +99,6 @@ export const API_KEYS_LIST = [
   { name: "SALUTESPEECH_AUTH_KEY", label: "SaluteSpeech Key 1" },
   { name: "SALUTESPEECH_AUTH_KEY_2", label: "SaluteSpeech Key 2" },
   { name: "SALUTESPEECH_AUTH_KEY_3", label: "SaluteSpeech Key 3" },
-  { name: "ELEVENLABS_API_KEY", label: "ElevenLabs" },
   { name: "LOVABLE_API_KEY", label: "Lovable AI" },
   { name: "LIVEKIT_API_KEY", label: "LiveKit API Key" },
   { name: "LIVEKIT_API_SECRET", label: "LiveKit API Secret" },
