@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { initExternalSupabase, getExternalSupabase } from '@/integrations/external-supabase/client';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from "sonner";
+import { getErrorMessage } from "@/utils/handleSupabaseError";
 interface UploadResult {
   url: string;
   path: string;
@@ -77,8 +78,7 @@ export const useExternalStorage = () => {
         storage: 'internal',
       };
     } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : 'Не удалось загрузить файл';
-      toast.error("Ошибка загрузки", { description: "message" });
+      toast.error("Ошибка загрузки", { description: getErrorMessage(error, 'Не удалось загрузить файл') });
       return null;
     } finally {
       setIsUploading(false);
@@ -99,8 +99,7 @@ export const useExternalStorage = () => {
       if (error) throw error;
       return true;
     } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : 'Не удалось удалить файл';
-      toast.error("Ошибка удаления", { description: "message" });
+      toast.error("Ошибка удаления", { description: getErrorMessage(error, 'Не удалось удалить файл') });
       return false;
     }
   };

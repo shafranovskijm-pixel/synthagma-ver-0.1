@@ -3,6 +3,7 @@ import { initExternalSupabase, getExternalSupabase } from '@/integrations/extern
 import { supabase } from '@/integrations/supabase/client';
 import { safeInvoke } from '@/utils/safeInvoke';
 import { toast } from "sonner";
+import { getErrorMessage } from "@/utils/handleSupabaseError";
 interface UploadResult {
   url: string;
   path: string;
@@ -187,8 +188,7 @@ export const useExternalStorageWithProgress = () => {
         storage: 'internal',
       };
     } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : 'Не удалось загрузить файл';
-      toast.error("Ошибка загрузки", { description: "message" });
+      toast.error("Ошибка загрузки", { description: getErrorMessage(error, 'Не удалось загрузить файл') });
       return null;
     }
   }, [toast]);
