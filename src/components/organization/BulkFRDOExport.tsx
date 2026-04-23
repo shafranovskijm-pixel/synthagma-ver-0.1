@@ -192,73 +192,104 @@ export function BulkFRDOExport({
     }
   };
 
-  const handleExport = async () => {
-    setIsExporting(true);
-    try {
-      const rows: (string | number)[][] = [];
+  const buildRows = (): {
+    rows: (string | number)[][];
+    issues: { studentName: string; issues: string[] }[];
+    autoGenderCount: number;
+    professionFromTitleCount: number;
+  } => {
+    const rows: (string | number)[][] = [];
+    const issues: { studentName: string; issues: string[] }[] = [];
+    let autoGenderCount = 0;
+    let professionFromTitleCount = 0;
 
-      for (const student of selectedStudents) {
-        const frdoData = frdoDataMap.get(student.user_id);
-        if (!frdoData) continue;
+    for (const student of selectedStudents) {
+      const frdoData = frdoDataMap.get(student.user_id);
+      if (!frdoData) continue;
 
-        const enrollments = enrollmentsMap.get(student.user_id) || [];
-        const filteredEnrollments = selectedCourseId === "all" ? enrollments : enrollments.filter(e => e.course_id === selectedCourseId);
-        if (filteredEnrollments.length === 0) continue;
+      const enrollments = enrollmentsMap.get(student.user_id) || [];
+      const filteredEnrollments = selectedCourseId === "all" ? enrollments : enrollments.filter(e => e.course_id === selectedCourseId);
+      if (filteredEnrollments.length === 0) continue;
 
-        for (const enrollment of filteredEnrollments) {
-          const startYear = enrollment.started_at ? new Date(enrollment.started_at).getFullYear() : "";
-          const endYear = enrollment.completed_at ? new Date(enrollment.completed_at).getFullYear() : startYear;
-          const durationHours = enrollment.duration
-            ? parseInt(enrollment.duration.replace(/\D/g, "")) || 0
-            : Math.round(enrollment.time_spent / 3600);
+      for (const enrollment of filteredEnrollments) {
+        const courseSettings = courses.find(c => c.id === enrollment.course_id) || null;
+        const resolved = resolveFRDOFields(frdoData, courseSettings);
 
-          if (exportType === "dpo") {
-            rows.push(buildDPORow({
-              documentType: "Удостоверение о повышении квалификации",
-              docNumber: "", regNumber: "",
-              issueDate: formatDateForFRDO(enrollment.completed_at || ""),
-              programType: "Повышение квалификации",
-              programName: enrollment.course_title,
-              professionalArea: frdoData.professional_area,
-              specialtyGroup: frdoData.specialty_group,
-              qualificationName: frdoData.qualification_name || "нет",
-              educationLevel: frdoData.education_level,
-              educationDocLastName: frdoData.education_doc_last_name,
-              educationDocSeries: frdoData.education_doc_series,
-              educationDocNumber: frdoData.education_doc_number,
-              startYear, endYear, durationHours,
-              lastName: frdoData.last_name, firstName: frdoData.first_name, middleName: frdoData.middle_name,
-              birthDate: formatDateForFRDO(frdoData.birth_date),
-              gender: frdoData.gender, snils: frdoData.snils,
-              trainingForm: frdoData.training_form, financingSource: frdoData.financing_source,
-              educationForm: frdoData.education_form, citizenshipCode: frdoData.citizenship_code }));
-          } else {
-            rows.push(buildPORow({
-              documentType: "Свидетельство о профессии рабочего, должности служащего",
-              docNumber: "", regNumber: "",
-              issueDate: formatDateForFRDO(enrollment.completed_at || ""),
-              programType: "Программа профессиональной подготовки по профессии рабочего, должности служащего",
-              programName: enrollment.course_title,
-              professionName: frdoData.profession_name,
-              qualificationRank: frdoData.qualification_rank,
-              startYear, endYear, durationHours,
-              lastName: frdoData.last_name, firstName: frdoData.first_name, middleName: frdoData.middle_name,
-              birthDate: formatDateForFRDO(frdoData.birth_date),
-              gender: frdoData.gender, snils: frdoData.snils, citizenshipCode: frdoData.citizenship_code,
-              trainingForm: frdoData.training_form, financingSource: frdoData.financing_source,
-              educationForm: frdoData.education_form }));
-          }
+        if (resolved.genderAutoDetected) autoGenderCount++;
+        if (resolved.professionFromCourseTitle) professionFromTitleCount++;
+
+        const rowIssues = validateFRDORowSync({ resolved, data: frdoData, exportType });
+        if (rowIssues.length > 0) {
+          issues.push({ studentName: student.name, issues: rowIssues.map(i => i.message) });
+        }
+
+        const startYear = enrollment.started_at ? new Date(enrollment.started_at).getFullYear() : "";
+        const endYear = enrollment.completed_at ? new Date(enrollment.completed_at).getFullYear() : startYear;
+        const durationHours = enrollment.duration
+          ? parseInt(enrollment.duration.replace(/\D/g, "")) || 0
+          : Math.round(enrollment.time_spent / 3600);
+
+        if (exportType === "dpo") {
+          rows.push(buildDPORow({
+            documentType: "Удостоверение о повышении квалификации",
+            docNumber: "", regNumber: "",
+            issueDate: formatDateForFRDO(enrollment.completed_at || ""),
+            programType: "Повышение квалификации",
+            programName: enrollment.course_title,
+            professionalArea: resolved.professionalArea,
+            specialtyGroup: resolved.specialtyGroup,
+            qualificationName: resolved.qualificationName,
+            educationLevel: frdoData.education_level,
+            educationDocLastName: frdoData.education_doc_last_name,
+            educationDocSeries: frdoData.education_doc_series,
+            educationDocNumber: frdoData.education_doc_number,
+            startYear, endYear, durationHours,
+            lastName: frdoData.last_name, firstName: frdoData.first_name, middleName: frdoData.middle_name,
+            birthDate: formatDateForFRDO(frdoData.birth_date),
+            gender: resolved.gender, snils: frdoData.snils,
+            trainingForm: resolved.trainingForm, financingSource: resolved.financingSource,
+            educationForm: resolved.educationForm, citizenshipCode: frdoData.citizenship_code }));
+        } else {
+          rows.push(buildPORow({
+            documentType: "Свидетельство о профессии рабочего, должности служащего",
+            docNumber: "", regNumber: "",
+            issueDate: formatDateForFRDO(enrollment.completed_at || ""),
+            programType: "Программа профессиональной подготовки по профессии рабочего, должности служащего",
+            programName: enrollment.course_title,
+            professionName: resolved.professionName,
+            qualificationRank: resolved.qualificationRank,
+            startYear, endYear, durationHours,
+            lastName: frdoData.last_name, firstName: frdoData.first_name, middleName: frdoData.middle_name,
+            birthDate: formatDateForFRDO(frdoData.birth_date),
+            gender: resolved.gender, snils: frdoData.snils, citizenshipCode: frdoData.citizenship_code,
+            trainingForm: resolved.trainingForm, financingSource: resolved.financingSource,
+            educationForm: resolved.educationForm }));
         }
       }
+    }
+    return { rows, issues, autoGenderCount, professionFromTitleCount };
+  };
 
+  const handleExport = async (skipValidation = false) => {
+    if (!skipValidation) {
+      const preview = buildRows();
+      if (preview.issues.length > 0 || preview.professionFromTitleCount > 0) {
+        setValidationPreview(preview);
+        return;
+      }
+    }
+    setIsExporting(true);
+    try {
+      const { rows, autoGenderCount } = buildRows();
       if (rows.length === 0) {
         toast.error("Нет данных для экспорта. Выберите курс или проверьте зачисления студентов.");
         setIsExporting(false);
         return;
       }
-
       await exportFRDOExcel(rows, exportType);
-      toast.success(`Экспортировано ${rows.length} записей`);
+      const extra = autoGenderCount > 0 ? ` (пол авто-определён у ${autoGenderCount})` : "";
+      toast.success(`Экспортировано ${rows.length} записей${extra}`);
+      setValidationPreview(null);
       onOpenChange(false);
     } catch (error) {
       console.error("Export error:", error);
