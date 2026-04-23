@@ -1,11 +1,13 @@
 import { Link } from "react-router-dom";
 import { Helmet } from "react-helmet-async";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { SigmaLogo } from "@/components/ui/SigmaLogo";
-import { ArrowLeft, Database, AlertTriangle, Clock, FileCheck, Upload, Shield, CheckCircle2, Scale, Sparkles, ShieldCheck, FileSpreadsheet } from "lucide-react";
+import { ArrowLeft, Database, AlertTriangle, Clock, FileCheck, Upload, Shield, CheckCircle2, Scale, Sparkles, ShieldCheck, FileSpreadsheet, Wand2, Lock } from "lucide-react";
 import { motion } from "framer-motion";
 import { Footer } from "@/components/landing/Footer";
+import { FrdoFileSanitizerDialog } from "@/components/organization/FrdoFileSanitizerDialog";
 import frdoErrorsPain from "@/assets/features/frdo-errors-pain.png";
 
 const fadeUp = {
@@ -18,6 +20,7 @@ const stagger = {
 };
 
 const FeatureFRDO = () => {
+  const [sanitizerOpen, setSanitizerOpen] = useState(false);
   return (
     <div className="min-h-screen bg-background">
       <Helmet>
