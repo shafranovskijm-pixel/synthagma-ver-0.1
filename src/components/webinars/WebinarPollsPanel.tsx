@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -33,57 +33,92 @@ export const WebinarPollsPanel = ({ webinarId, isHost, participantIdentity }: Pr
   const [options, setOptions] = useState<string[]>(["", ""]);
   const [busy, setBusy] = useState(false);
 
+  const chPRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
+  const chVRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
+
   useEffect(() => {
     let alive = true;
-    (async () => {
+    let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+
+    const fetchAll = async () => {
       const { data: pData } = await supabase
         .from("webinar_polls").select("*").eq("webinar_id", webinarId)
         .order("created_at", { ascending: false });
-      if (alive && pData) {
-        const normalized = (pData as any[]).map((p) => ({
-          ...p,
-          options: Array.isArray(p.options) ? p.options : [],
-        })) as Poll[];
-        setPolls(normalized);
-        const ids = normalized.map((p) => p.id);
-        if (ids.length > 0) {
-          const { data: vData } = await supabase
-            .from("webinar_poll_votes").select("poll_id, option_index, voter_identity").in("poll_id", ids);
-          if (alive && vData) setVotes(vData as Vote[]);
-        }
+      if (!alive || !pData) return;
+      const normalized = (pData as any[]).map((p) => ({
+        ...p,
+        options: Array.isArray(p.options) ? p.options : [],
+      })) as Poll[];
+      setPolls(normalized);
+      const ids = normalized.map((p) => p.id);
+      if (ids.length > 0) {
+        const { data: vData } = await supabase
+          .from("webinar_poll_votes").select("poll_id, option_index, voter_identity").in("poll_id", ids);
+        if (alive && vData) setVotes(vData as Vote[]);
       }
-    })();
-    const chP = supabase
-      .channel(`polls-${webinarId}`)
-      .on("postgres_changes", {
-        event: "*", schema: "public", table: "webinar_polls",
-        filter: `webinar_id=eq.${webinarId}`,
-      }, (payload) => {
-        setPolls((prev) => {
-          if (payload.eventType === "INSERT") {
-            const p = payload.new as any;
-            const n = { ...p, options: Array.isArray(p.options) ? p.options : [] } as Poll;
-            return prev.find((x) => x.id === n.id) ? prev : [n, ...prev];
+    };
+
+    const subscribe = () => {
+      if (!alive) return;
+      const chP = supabase
+        .channel(`polls-${webinarId}-${Math.random().toString(36).slice(2, 8)}`)
+        .on("postgres_changes", {
+          event: "*", schema: "public", table: "webinar_polls",
+          filter: `webinar_id=eq.${webinarId}`,
+        }, (payload) => {
+          setPolls((prev) => {
+            if (payload.eventType === "INSERT") {
+              const p = payload.new as any;
+              const n = { ...p, options: Array.isArray(p.options) ? p.options : [] } as Poll;
+              return prev.find((x) => x.id === n.id) ? prev : [n, ...prev];
+            }
+            if (payload.eventType === "UPDATE") {
+              const p = payload.new as any;
+              const n = { ...p, options: Array.isArray(p.options) ? p.options : [] } as Poll;
+              return prev.map((x) => x.id === n.id ? n : x);
+            }
+            if (payload.eventType === "DELETE") return prev.filter((x) => x.id !== (payload.old as Poll).id);
+            return prev;
+          });
+        })
+        .subscribe((status) => {
+          if (status === "CHANNEL_ERROR" || status === "TIMED_OUT" || status === "CLOSED") {
+            if (!alive) return;
+            if (reconnectTimer) clearTimeout(reconnectTimer);
+            reconnectTimer = setTimeout(() => {
+              if (!alive) return;
+              if (chPRef.current) supabase.removeChannel(chPRef.current);
+              if (chVRef.current) supabase.removeChannel(chVRef.current);
+              chPRef.current = null;
+              chVRef.current = null;
+              fetchAll();
+              subscribe();
+            }, 2000);
           }
-          if (payload.eventType === "UPDATE") {
-            const p = payload.new as any;
-            const n = { ...p, options: Array.isArray(p.options) ? p.options : [] } as Poll;
-            return prev.map((x) => x.id === n.id ? n : x);
-          }
-          if (payload.eventType === "DELETE") return prev.filter((x) => x.id !== (payload.old as Poll).id);
-          return prev;
         });
-      })
-      .subscribe();
-    const chV = supabase
-      .channel(`pollvotes-${webinarId}`)
-      .on("postgres_changes", {
-        event: "INSERT", schema: "public", table: "webinar_poll_votes",
-      }, (payload) => {
-        setVotes((prev) => [...prev, payload.new as Vote]);
-      })
-      .subscribe();
-    return () => { alive = false; supabase.removeChannel(chP); supabase.removeChannel(chV); };
+      const chV = supabase
+        .channel(`pollvotes-${webinarId}-${Math.random().toString(36).slice(2, 8)}`)
+        .on("postgres_changes", {
+          event: "INSERT", schema: "public", table: "webinar_poll_votes",
+        }, (payload) => {
+          setVotes((prev) => [...prev, payload.new as Vote]);
+        })
+        .subscribe();
+      chPRef.current = chP;
+      chVRef.current = chV;
+    };
+
+    fetchAll();
+    subscribe();
+
+    return () => {
+      alive = false;
+      if (reconnectTimer) clearTimeout(reconnectTimer);
+      if (chPRef.current) supabase.removeChannel(chPRef.current);
+      if (chVRef.current) supabase.removeChannel(chVRef.current);
+      chPRef.current = null;
+      chVRef.current = null;
+    };
   }, [webinarId]);
 
   const addOption = () => setOptions((o) => o.length < 6 ? [...o, ""] : o);

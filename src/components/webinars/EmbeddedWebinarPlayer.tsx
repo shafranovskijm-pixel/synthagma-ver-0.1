@@ -281,8 +281,9 @@ function LiveKitEmbed({
             token={token}
             serverUrl={wsUrl}
             connect={true}
-            video={!viewOnly}
-            audio={!viewOnly}
+            // Подключаемся к комнате мгновенно (только сигналинг). Камера/микрофон — по кнопкам LiveKit.
+            video={false}
+            audio={false}
             style={{ height: "100%" }}
           >
             <LiveKitTopBar
@@ -469,8 +470,10 @@ function WelcomeOverlay({ webinarTitle }: { webinarTitle: string | null }) {
   // Если есть хотя бы один реальный трек — скрываем заглушку
   if (tracks.length > 0) return null;
 
+  // ВАЖНО: pointer-events-none + bottom-20, чтобы заглушка не перекрывала
+  // нижнюю control-bar LiveKit (камера / микрофон / поделиться экраном / leave).
   return (
-    <div className="absolute inset-0 z-[5] flex flex-col items-center justify-center gap-6 bg-gradient-to-br from-primary/20 via-background to-primary/10 p-6 text-center">
+    <div className="pointer-events-none absolute left-0 right-0 top-0 bottom-20 z-[2] flex flex-col items-center justify-center gap-6 bg-gradient-to-br from-primary/20 via-background to-primary/10 p-6 text-center">
       <div className="animate-pulse">
         <SigmaLogo size="xl" showText={false} />
       </div>
@@ -484,7 +487,7 @@ function WelcomeOverlay({ webinarTitle }: { webinarTitle: string | null }) {
           </p>
         )}
         <p className="text-sm text-muted-foreground">
-          Эфир скоро начнётся. Ведущий подключает камеру…
+          Эфир скоро начнётся. Включите камеру и микрофон кнопками внизу.
         </p>
       </div>
     </div>
