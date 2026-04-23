@@ -163,8 +163,8 @@ export function AIAvatarManager({ organizationId }: Props) {
       }
       setEditorOpen(false);
       fetchAll();
-    } catch (e: any) {
-      toast.error("Ошибка сохранения", { description: e.message });
+    } catch (e) {
+      toast.error("Ошибка сохранения", { description: getErrorMessage(e) });
     } finally {
       setSaving(false);
     }

@@ -185,7 +185,7 @@ export function PartnerCabinet() {
       amount,
     });
     if (error) {
-      toast.error("Ошибка запроса", { description: error.message });
+      toast.error("Ошибка запроса", { description: getErrorMessage(error) });
     } else {
       toast.success("Запрос на вывод отправлен");
       setPayoutAmount("");

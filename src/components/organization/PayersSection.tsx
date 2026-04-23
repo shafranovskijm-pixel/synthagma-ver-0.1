@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Plus, Search, Users, Building2, User, Archive, Mail, Phone } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import { getErrorMessage } from "@/utils/handleSupabaseError";
 
 interface Payer {
   id: string;
@@ -63,7 +64,7 @@ export function PayersSection({ organizationId }: Props) {
       payer_type: form.payer_type,
     } as any);
     if (error) {
-      toast.error("Ошибка", { description: error.message });
+      toast.error("Ошибка", { description: getErrorMessage(error) });
     } else {
       toast.success("Плательщик добавлен");
       setShowDialog(false);

@@ -8,6 +8,7 @@ import { Star, MessageSquarePlus } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { LandingLoginDialog } from "./LandingLoginDialog";
 import { toast } from "sonner";
+import { getErrorMessage } from "@/utils/handleSupabaseError";
 
 interface TestimonialFormProps {
   onSubmitted?: () => void;
@@ -114,8 +115,8 @@ export function TestimonialForm({ onSubmitted }: TestimonialFormProps) {
       setHighlight("");
       setRating(5);
       onSubmitted?.();
-    } catch (err: any) {
-      toast.error("Ошибка", { description: err.message });
+    } catch (err) {
+      toast.error("Ошибка", { description: getErrorMessage(err) });
     } finally {
       setLoading(false);
     }

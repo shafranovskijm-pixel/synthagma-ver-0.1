@@ -6,6 +6,7 @@ import { safeInvoke } from "@/utils/safeInvoke";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
+import { getErrorMessage } from "@/utils/handleSupabaseError";
 
 interface Props {
   lesson: {
@@ -40,8 +41,8 @@ export function LessonAIAvatar({ lesson, onComplete, isMobile }: Props) {
       }
       onComplete();
       navigate(`/webinar/ai-tutor/live?sessionId=${data.sessionId}`);
-    } catch (e: any) {
-      toast.error("Не удалось начать сессию", { description: e.message });
+    } catch (e) {
+      toast.error("Не удалось начать сессию", { description: getErrorMessage(e) });
     } finally {
       setStarting(false);
     }

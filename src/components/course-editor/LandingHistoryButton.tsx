@@ -23,6 +23,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { getErrorMessage } from "@/utils/handleSupabaseError";
 import { formatDistanceToNow } from "date-fns";
 import { ru } from "date-fns/locale";
 
@@ -66,7 +67,7 @@ export function LandingHistoryButton({ courseId, onReverted }: Props) {
         .limit(10);
       if (cancelled) return;
       if (error) {
-        toast.error("Не удалось загрузить историю", { description: error.message });
+        toast.error("Не удалось загрузить историю", { description: getErrorMessage(error) });
       } else {
         setRows((data ?? []) as HistoryRow[]);
       }
@@ -91,8 +92,8 @@ export function LandingHistoryButton({ courseId, onReverted }: Props) {
       setConfirmRow(null);
       setOpen(false);
       onReverted?.();
-    } catch (e: any) {
-      toast.error("Не удалось восстановить версию", { description: e?.message });
+    } catch (e) {
+      toast.error("Не удалось восстановить версию", { description: getErrorMessage(e) });
     } finally {
       setReverting(null);
     }
