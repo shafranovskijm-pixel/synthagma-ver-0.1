@@ -297,14 +297,14 @@ const FeatureFRDO = () => {
           >
             <motion.div variants={fadeUp} className="text-center mb-10">
               <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 border border-primary/20 mb-5">
-                <Wand2 className="w-4 h-4 text-primary" />
+                <Wrench className="w-4 h-4 text-primary" />
                 <span className="text-sm font-medium text-primary">Бесплатно · без регистрации</span>
               </div>
               <h2 className="font-display text-3xl md:text-4xl font-medium mb-4 tracking-tight">
-                Проверьте свой Excel прямо сейчас
+                Устранение ошибок файлов ФРДО
               </h2>
               <p className="text-muted-foreground max-w-2xl mx-auto">
-                Загрузите файл, который ФИС ФРДО отклоняет с ошибкой «недопустимый символ» — Синтагма вычистит невидимые пробелы и табуляции, нормализует СНИЛС и даты, и переложит данные в эталонный шаблон 35/41 столбцов.
+                Загрузите файл, который ФИС ФРДО отклоняет с ошибкой «недопустимый символ» — Синтагма исправит формат, нормализует СНИЛС и даты, и перенесёт данные в <strong>оригинальный шаблон Рособрнадзора</strong> с сохранением валидаций и словарей.
               </p>
             </motion.div>
 
