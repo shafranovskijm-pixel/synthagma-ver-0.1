@@ -107,32 +107,8 @@ export function WebinarsManager({ organizationId }: Props) {
   const handleStopLive = async (w: Webinar) => {
     setActionLoading(w.id);
     try {
-      // 1. Если активна запись — корректно остановить, чтобы не потерять файл.
-      const { data: full } = await supabase
-        .from("webinars")
-        .select("recording_status, source_type, room_name")
-        .eq("id", w.id)
-        .maybeSingle();
-      if ((full as any)?.recording_status === "active") {
-        try {
-          await supabase.functions.invoke("livekit-stop-recording", { body: { webinarId: w.id } });
-        } catch (recErr) {
-          console.warn("[stop-live] stop-recording failed", recErr);
-        }
-      }
-
-      // 2. Удалить LiveKit-комнату — мгновенно отключает участников, освобождает ресурсы.
-      if ((full as any)?.source_type === "livekit" && (full as any)?.room_name) {
-        try {
-          await supabase.functions.invoke("livekit-end-room", { body: { webinarId: w.id } });
-        } catch (endErr) {
-          console.warn("[stop-live] end-room failed", endErr);
-        }
-      }
-
-      // 3. Обновить статус в БД.
-      await supabase.from("webinars").update({ status: "ended" } as any).eq("id", w.id);
-      toast.success("Эфир завершён, участники отключены");
+      const { endLiveKitWebinar } = await import("@/utils/endLiveKitWebinar");
+      await endLiveKitWebinar(w.id);
       fetchWebinars();
     } catch (e: any) {
       toast.error(e.message || "Ошибка остановки трансляции");
