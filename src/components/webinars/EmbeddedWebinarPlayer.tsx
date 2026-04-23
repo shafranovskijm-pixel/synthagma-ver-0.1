@@ -510,6 +510,11 @@ function LiveKitTopBar({
                   Настройки доступа
                 </Button>
               )}
+              {isHost && (
+                <div className="px-2 pt-1">
+                  <RecordingControls webinarId={webinarId} />
+                </div>
+              )}
             </div>
           </PopoverContent>
         </Popover>
