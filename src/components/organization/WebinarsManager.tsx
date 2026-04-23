@@ -26,6 +26,7 @@ import { InlinePlayerSettings, buildKinescopeEmbedUrl } from "./WebinarPlayerSet
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 import { getBaseUrl } from "@/utils/getBaseUrl";
 import type { Webinar } from "@/types/webinar";
+import { qk } from "@/lib/queryKeys";
 
 interface Props {
   organizationId: string;
@@ -48,7 +49,7 @@ export function WebinarsManager({ organizationId }: Props) {
   const [previewWebinar, setPreviewWebinar] = useState<Webinar | null>(null);
 
   const webinarsQuery = useQuery({
-    queryKey: ["org", organizationId, "webinars"],
+    queryKey: qk.org.webinars(organizationId),
     enabled: !!organizationId,
     queryFn: async () => {
       const { data } = await supabase
@@ -64,7 +65,7 @@ export function WebinarsManager({ organizationId }: Props) {
   const webinars = webinarsQuery.data ?? [];
   const loading = webinarsQuery.isLoading;
   const fetchWebinars = useCallback(async () => {
-    await qc.invalidateQueries({ queryKey: ["org", organizationId, "webinars"] });
+    await qc.invalidateQueries({ queryKey: qk.org.webinars(organizationId) });
   }, [qc, organizationId]);
 
   const filteredWebinars = useMemo(() => {

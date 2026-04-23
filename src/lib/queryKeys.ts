@@ -18,6 +18,9 @@ export const qk = {
     billingUnpaid: (orgId: string) => ["org", orgId, "billing-unpaid"] as const,
     signaturesExpiring: (orgId: string) => ["org", orgId, "signatures-expiring"] as const,
     attentionWidget: (orgId: string) => ["org", orgId, "attention-widget"] as const,
+    studentGroups: (orgId: string) => ["org", orgId, "student-groups"] as const,
+    studentsFrdo: (orgId: string, key: string) => ["org", orgId, "students-frdo", key] as const,
+    studentsList: (orgId: string, courseIdsKey: string) => ["org", orgId, "students-list", courseIdsKey] as const,
   },
   user: {
     profile: (userId: string) => ["user", userId, "profile"] as const,

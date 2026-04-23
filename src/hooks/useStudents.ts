@@ -25,6 +25,7 @@ import {
   isValidEmail
 } from "@/api/students";
 import { toast } from "sonner";
+import { qk } from "@/lib/queryKeys";
 
 interface UseStudentsReturn {
   students: Student[];
@@ -88,7 +89,7 @@ export function useStudents(
 
   // Students + per-row group map (single source of truth — fetchStudents already returns groupMap)
   const { data: studentsData, isLoading: studentsLoading } = useQuery({
-    queryKey: ["org-students", organizationId, courseIdsKey] as const,
+    queryKey: qk.org.studentsList(organizationId ?? "none", courseIdsKey),
     queryFn: async () => {
       if (!organizationId) {
         return { students: [] as Student[], allProfiles: [] as Student[], groupMap: new Map<string, string | null>() };
@@ -101,7 +102,7 @@ export function useStudents(
   });
 
   const { data: groupsData } = useQuery({
-    queryKey: ["org-student-groups", organizationId] as const,
+    queryKey: qk.org.studentGroups(organizationId ?? "none"),
     queryFn: async () => {
       if (!organizationId) return [] as StudentGroup[];
       const { data } = await supabase
@@ -129,7 +130,7 @@ export function useStudents(
   );
 
   const { data: frdoStatus = new Map<string, StudentFRDOStatus>() } = useQuery({
-    queryKey: ["org-students-frdo", organizationId, studentUserIdsKey] as const,
+    queryKey: qk.org.studentsFrdo(organizationId ?? "none", studentUserIdsKey),
     queryFn: async () => {
       if (!organizationId) return new Map<string, StudentFRDOStatus>();
       const userIds = [...new Set(students.map(s => s.user_id))];
@@ -142,11 +143,13 @@ export function useStudents(
   });
 
   const invalidateStudents = useCallback(() => {
-    qc.invalidateQueries({ queryKey: ["org-students", organizationId] });
+    if (!organizationId) return;
+    qc.invalidateQueries({ queryKey: ["org", organizationId, "students-list"] });
   }, [qc, organizationId]);
 
   const refreshGroups = useCallback(() => {
-    qc.invalidateQueries({ queryKey: ["org-student-groups", organizationId] });
+    if (!organizationId) return;
+    qc.invalidateQueries({ queryKey: qk.org.studentGroups(organizationId) });
   }, [qc, organizationId]);
 
   // Filtered students
