@@ -11,6 +11,7 @@ import { setupOfflineSyncListeners } from "@/utils/offlineSync";
 import { showLimitToast } from "@/utils/limitToast";
 import { ContentBlock, parseLessonContent } from "@/components/course-builder/BlockEditor";
 import { generateAttestationProtocol } from "@/utils/generateAttestationProtocol";
+import { getAdminViewData, isAdminViewActive } from "@/utils/adminViewMode";
 
 import type { Lesson, Course, LessonProgress } from "./types";
 import { useLessonTTS } from "./useLessonTTS";
