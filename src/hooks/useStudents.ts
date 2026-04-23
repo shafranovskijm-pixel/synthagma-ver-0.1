@@ -1,4 +1,5 @@
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useCallback, useMemo } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { Student, StudentFRDOStatus, StudentStatusFilter, StudentDocsFilter } from "@/types";
 import { supabase } from "@/integrations/supabase/client";
 
