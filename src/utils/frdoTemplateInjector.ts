@@ -15,6 +15,7 @@ import { format } from "date-fns";
 
 // Vite поддерживает `?url` для любых статических ассетов
 import templatePoUrl from "@/assets/frdo/template-po.xlsx?url";
+import templateDpoUrl from "@/assets/frdo/template-dpo.xlsx?url";
 
 const SHEET_NS = "http://schemas.openxmlformats.org/spreadsheetml/2006/main";
 
@@ -41,21 +42,22 @@ function xmlEscape(value: string): string {
 }
 
 /**
- * Числовая колонка в шаблоне ПО (1-based согласно sheet1 валидациям):
- * - 14 (N): год начала обучения
- * - 15 (O): год окончания обучения
- * - 16 (P): срок обучения, часов
- * Всё остальное — текст (включая СНИЛС, даты dd.MM.yyyy).
+ * Числовые колонки шаблонов ФИС ФРДО (1-based индексы согласно заголовкам).
+ * ПО (35 колонок):
+ *   14 (N) Год начала обучения, 15 (O) Год окончания, 16 (P) Срок обучения, часов
+ * ДПО (40 колонок):
+ *   19 (S) Год начала обучения, 20 (T) Год окончания, 21 (U) Срок обучения, часов
+ * Всё остальное — текст (включая СНИЛС и даты dd.MM.yyyy).
  */
 const PO_NUMERIC_COLS = new Set([14, 15, 16]);
+const DPO_NUMERIC_COLS = new Set([19, 20, 21]);
 
 /** Определить, нужно ли значение записать как число */
 function isNumericCell(value: unknown, colIndex0: number, type: "po" | "dpo"): boolean {
   if (value === null || value === undefined || value === "") return false;
   if (typeof value === "number" && Number.isFinite(value)) {
-    if (type === "po") return PO_NUMERIC_COLS.has(colIndex0 + 1);
-    // Для ДПО fallback на ExcelJS, но на всякий случай
-    return true;
+    const col1 = colIndex0 + 1;
+    return type === "po" ? PO_NUMERIC_COLS.has(col1) : DPO_NUMERIC_COLS.has(col1);
   }
   return false;
 }
@@ -88,13 +90,12 @@ function buildRowXml(
 
 /** Загрузить ArrayBuffer шаблона-донора */
 async function fetchTemplateBuffer(type: "po" | "dpo"): Promise<ArrayBuffer | null> {
-  if (type === "po") {
-    const res = await fetch(templatePoUrl);
-    if (!res.ok) throw new Error(`Не удалось загрузить шаблон ПО (${res.status})`);
-    return await res.arrayBuffer();
+  const url = type === "po" ? templatePoUrl : templateDpoUrl;
+  const res = await fetch(url);
+  if (!res.ok) {
+    throw new Error(`Не удалось загрузить шаблон ${type.toUpperCase()} (${res.status})`);
   }
-  // ДПО шаблон ещё не загружен в проект
-  return null;
+  return await res.arrayBuffer();
 }
 
 /**
@@ -139,7 +140,7 @@ export async function injectIntoFrdoTemplate(
   const headerRowXml = headerRowMatch[0];
 
   // Ширина — берём из первой строки данных, либо стандартное число колонок
-  const cellCount = rows[0]?.length ?? (type === "po" ? 35 : 41);
+  const cellCount = rows[0]?.length ?? (type === "po" ? 35 : 40);
 
   // Строим новые строки
   const newRowsXml = rows
@@ -187,6 +188,6 @@ export async function injectIntoFrdoTemplate(
 }
 
 /** true, если для данного типа есть шаблон-донор в проекте */
-export function hasFrdoTemplate(type: "po" | "dpo"): boolean {
-  return type === "po";
+export function hasFrdoTemplate(_type: "po" | "dpo"): boolean {
+  return true;
 }
