@@ -1077,3 +1077,27 @@ html {
   outline-color: hsl(var(--primary));
   background-color: hsl(var(--primary) / 0.08);
 }
+
+/* ========== LiveKit ControlBar — мобильные тач-таргеты + скрытие screen-share на мобильных ========== */
+@media (max-width: 640px) {
+  [data-lk-theme] .lk-control-bar {
+    padding: 8px;
+    gap: 6px;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  [data-lk-theme] .lk-control-bar .lk-button {
+    min-width: 44px;
+    min-height: 44px;
+  }
+  [data-lk-theme] .lk-control-bar .lk-button > svg {
+    width: 18px;
+    height: 18px;
+  }
+}
+
+/* На мобильных getDisplayMedia не работает — скрываем кнопку «поделиться экраном» */
+.webinar-livekit-root[data-mobile="true"] .lk-control-bar button[data-lk-source="screen_share"],
+.webinar-livekit-root[data-mobile="true"] .lk-control-bar .lk-button:has(> svg + [data-lk-screen-share]) {
+  display: none !important;
+}

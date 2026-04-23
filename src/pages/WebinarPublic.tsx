@@ -35,6 +35,17 @@ const WebinarPublic = () => {
   const [lkToken, setLkToken] = useState<string | null>(null);
   const [wsUrl, setWsUrl] = useState<string | null>(null);
 
+  // Уникальный per-session id гостя — даёт корректный rate-limit чата (10 сообщ/мин на каждого).
+  const [guestSessionId] = useState(() => {
+    if (typeof window === "undefined" || !token) return `guest_${Math.random().toString(36).slice(2, 10)}`;
+    const key = `w-guest-${token}`;
+    const existing = sessionStorage.getItem(key);
+    if (existing) return existing;
+    const fresh = `guest_${(crypto.randomUUID?.() ?? Math.random().toString(36).slice(2)).replace(/-/g, "").slice(0, 12)}`;
+    sessionStorage.setItem(key, fresh);
+    return fresh;
+  });
+
   useEffect(() => {
     if (!token) return;
     (async () => {
@@ -95,7 +106,6 @@ const WebinarPublic = () => {
 
   // Already in live room — рендерим брендированный плеер (как у админа), но в read-only режиме
   if (lkToken && wsUrl) {
-    const guestIdentity = `guest-${token}-${name.trim().toLowerCase().replace(/\s+/g, "-")}`;
     return (
       <div className="min-h-screen bg-background p-2 sm:p-4">
         <div className="max-w-7xl mx-auto">
@@ -107,7 +117,7 @@ const WebinarPublic = () => {
             prefetchedWsUrl={wsUrl}
             viewOnly
             showSidePanel
-            guestIdentity={guestIdentity}
+            guestIdentity={guestSessionId}
             guestDisplayName={name.trim() || "Гость"}
             onEnd={() => { setLkToken(null); setWsUrl(null); }}
           />
