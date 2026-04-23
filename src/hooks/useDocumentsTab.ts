@@ -263,9 +263,9 @@ export function useDocumentsTab(organizationId: string | null, organizationName?
       if (!data) throw new Error("Документ не найден или уже удалён");
       setBillingDocs(prev => prev.filter(d => d.id !== doc.id));
       toast.success("Документ перемещён в корзину");
-    } catch (e: any) {
+    } catch (e) {
       console.error("Error deleting document:", e);
-      toast.error("Ошибка", { description: e?.message || "Не удалось удалить документ" });
+      toast.error("Ошибка", { description: getErrorMessage(e, "Не удалось удалить документ") });
     }
   };
 
@@ -448,8 +448,8 @@ export function useDocumentsTab(organizationId: string | null, organizationName?
         if (printWindow) { printWindow.document.write(pendingInvoice.html); printWindow.document.close(); printWindow.focus(); setTimeout(() => printWindow.print(), 500); }
         toast.success("Счёт отправлен на печать и сохранён");
       }
-    } catch (e: any) {
-      toast.error("Ошибка сохранения", { description: e.message });
+    } catch (e) {
+      toast.error("Ошибка сохранения", { description: getErrorMessage(e) });
     }
     setPendingInvoice(null);
   };

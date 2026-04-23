@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { getErrorMessage } from "@/utils/handleSupabaseError";
 
 export interface PromoCode {
   id: string;
@@ -286,9 +287,9 @@ export function useCoursePageSettings(courseId: string, courseTitle: string, cou
         }));
         toast.success("Тексты формы сгенерированы");
       }
-    } catch (e: any) {
+    } catch (e) {
       console.error(e);
-      toast.error("Ошибка ИИ-генерации", { description: e.message });
+      toast.error("Ошибка ИИ-генерации", { description: getErrorMessage(e) });
     } finally {
       setAiLoading(null);
     }

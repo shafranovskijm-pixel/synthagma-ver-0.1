@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
+import { getErrorMessage } from "@/utils/handleSupabaseError";
 
 export const PROFILE_TABS = [
   { id: "profile", label: "Профиль" },
@@ -207,7 +208,7 @@ export function useStudentProfile(effectiveUserId: string, isAdminView: boolean,
     const path = `avatars/${userId}.${ext}`;
     const { error: uploadError } = await supabase.storage.from("student-documents").upload(path, file, { upsert: true });
     if (uploadError) {
-      toast.error("Ошибка загрузки", { description: uploadError.message });
+      toast.error("Ошибка загрузки", { description: getErrorMessage(uploadError) });
       return;
     }
     const { data: urlData } = supabase.storage.from("student-documents").getPublicUrl(path);
@@ -225,8 +226,8 @@ export function useStudentProfile(effectiveUserId: string, isAdminView: boolean,
       const { error } = await supabase.auth.updateUser({ email: newEmail });
       if (error) throw error;
       toast.success("Письмо отправлено", { description: "Подтвердите новый email по ссылке в письме" });
-    } catch (err: any) {
-      toast.error("Ошибка", { description: err.message });
+    } catch (err) {
+      toast.error("Ошибка", { description: getErrorMessage(err) });
     } finally {
       setEmailSaving(false);
     }
@@ -249,8 +250,8 @@ export function useStudentProfile(effectiveUserId: string, isAdminView: boolean,
       setNewPassword("");
       setConfirmPassword("");
       toast.success("Пароль изменён");
-    } catch (err: any) {
-      toast.error("Ошибка", { description: err.message });
+    } catch (err) {
+      toast.error("Ошибка", { description: getErrorMessage(err) });
     } finally {
       setPasswordSaving(false);
     }

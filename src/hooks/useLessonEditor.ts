@@ -3,6 +3,7 @@ import { ContentBlock, parseLessonContent } from "@/components/course-builder/Bl
 import { safeInvoke } from "@/utils/safeInvoke";
 import { useExternalStorageWithProgress } from "@/hooks/useExternalStorageWithProgress";
 import { toast } from "sonner";
+import { getErrorMessage } from "@/utils/handleSupabaseError";
 import { defaultAIAvatarConfig, type AIAvatarConfig } from "@/components/course-builder/AIAvatarLessonEditor";
 
 interface Lesson {
@@ -163,8 +164,9 @@ export function useLessonEditor({
     try {
       const result = await uploadWithProgress(file, 'course-files', fileName, (percent) => setVideoUploadProgress(percent));
       if (result) { setVideoUrl(result.url); toast.success("Видео загружено"); }
-    } catch (err: any) {
-      if (err.message !== 'Загрузка отменена') toast.error("Ошибка загрузки", { description: err.message });
+    } catch (err) {
+      const msg = getErrorMessage(err);
+      if (msg !== 'Загрузка отменена') toast.error("Ошибка загрузки", { description: msg });
     } finally {
       setVideoUploadProgress(null);
     }

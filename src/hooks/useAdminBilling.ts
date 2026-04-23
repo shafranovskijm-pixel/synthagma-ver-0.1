@@ -181,7 +181,7 @@ export function useAdminBilling() {
     if (!orgId) return;
     setSubmitting(true);
     const { error } = await supabase.from("org_contracts").insert({ organization_id: orgId, contract_number: contractForm.contract_number || null, contract_date: contractForm.contract_date || null, status: "active" });
-    if (error) { toast.error("Ошибка", { description: error.message }); }
+    if (error) { toast.error("Ошибка", { description: getErrorMessage(error) }); }
     else { toast.success("Договор создан"); setShowCreateContract(false); setContractForm({ organization_id: "", contract_number: "", contract_date: "" }); loadData(); }
     setSubmitting(false);
   };
@@ -230,7 +230,7 @@ export function useAdminBilling() {
         if (printWindow) { printWindow.document.write(pendingInvoice.html); printWindow.document.close(); printWindow.focus(); setTimeout(() => printWindow.print(), 500); }
         toast.success("Счёт отправлен на печать и сохранён");
       }
-    } catch (e: any) { toast.error("Ошибка сохранения", { description: e.message }); }
+    } catch (e) { toast.error("Ошибка сохранения", { description: getErrorMessage(e) }); }
     setPendingInvoice(null);
   };
 
@@ -318,7 +318,7 @@ export function useAdminBilling() {
       for (const id of ids) { const { error } = await supabase.from("subscription_invoices").delete().eq("id", id); if (error) throw error; }
       toast.success(`Удалено счетов: ${ids.length}`);
       setSelectedInvoiceIds(new Set()); setShowDeleteConfirm(false); loadData();
-    } catch (e: any) { toast.error("Ошибка удаления", { description: e.message }); }
+    } catch (e) { toast.error("Ошибка удаления", { description: getErrorMessage(e) }); }
     setDeleting(false);
   };
 

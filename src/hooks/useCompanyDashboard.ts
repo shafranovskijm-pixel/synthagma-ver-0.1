@@ -4,6 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { safeInvoke } from '@/utils/safeInvoke';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from "sonner";
+import { getErrorMessage } from "@/utils/handleSupabaseError";
 
 interface CompanyData {
   id: string;
@@ -201,8 +202,8 @@ export function useCompanyDashboard(viewAsUserId?: string) {
 
       await refresh();
       return result;
-    } catch (error: any) {
-      toast.error("Ошибка", { description: error.message || 'Не удалось добавить сотрудника' });
+    } catch (error) {
+      toast.error("Ошибка", { description: getErrorMessage(error, 'Не удалось добавить сотрудника') });
     } finally {
       setAddingEmployee(false);
     }
