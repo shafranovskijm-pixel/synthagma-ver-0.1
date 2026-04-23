@@ -134,7 +134,7 @@ export function useSubscriptionTab() {
     } as any);
 
     if (error) {
-      toast.error("Ошибка", { description: error.message });
+      toast.error("Ошибка", { description: getErrorMessage(error) });
     } else {
       toast.success("Заявка отправлена", { description: "Мы свяжемся с вами для оформления перехода на новый тариф" });
       setPendingRequest({ requested_plan: selectedPlan, created_at: new Date().toISOString() });
@@ -239,8 +239,8 @@ export function useSubscriptionTab() {
       } else {
         toast.error("Не удалось получить ссылку на оплату");
       }
-    } catch (e: any) {
-      toast.error("Ошибка оплаты", { description: e.message });
+    } catch (e) {
+      toast.error("Ошибка оплаты", { description: getErrorMessage(e) });
     } finally {
       setPayingOnline(false);
     }
