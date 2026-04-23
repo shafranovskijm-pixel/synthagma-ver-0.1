@@ -242,11 +242,17 @@ export function FrdoFileSanitizerDialog({ open, onOpenChange }: Props) {
                       Файл готов к загрузке в ФИС ФРДО
                     </div>
                     <div className="text-sm text-muted-foreground mt-1">
-                      Все обязательные поля заполнены. Данные переложены в эталонный шаблон с валидациями.
+                      Все обязательные поля заполнены. Данные перенесены в эталонный шаблон Рособрнадзора с сохранением валидаций и словарей.
                     </div>
                   </div>
+                  {result && hasFrdoTemplate(result.type) && (
+                    <div className="inline-flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-500/30">
+                      <ShieldCheck className="w-3.5 h-3.5" />
+                      Оригинальный шаблон ФИС ФРДО (≈262 КБ, со всеми валидациями)
+                    </div>
+                  )}
                   <Button onClick={handleDownload} size="lg" className="rounded-xl gap-2 bg-emerald-600 hover:bg-emerald-700 text-white">
-                    <Download className="w-5 h-5" /> Скачать чистый файл
+                    <Download className="w-5 h-5" /> Скачать в шаблоне Рособрнадзора (.xlsx)
                   </Button>
                   <button
                     type="button"
