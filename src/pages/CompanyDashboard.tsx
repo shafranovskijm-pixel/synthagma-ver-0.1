@@ -20,6 +20,7 @@ import { CompanyDocumentsTab } from "@/components/company/CompanyDocumentsTab";
 import { CompanyRemindersTab } from "@/components/company/CompanyRemindersTab";
 import { CompanyRequestsTab } from "@/components/company/CompanyRequestsTab";
 import { CompanyStaffManager } from "@/components/company/CompanyStaffManager";
+import { AnnouncementsBell } from "@/components/shared/AnnouncementsBell";
 
 type TabId = "home" | "employees" | "planning" | "requests" | "documents" | "reminders" | "team";
 
@@ -144,7 +145,11 @@ const CompanyDashboard = () => {
       </aside>
 
       {/* Main content */}
-      <main className={`flex-1 max-w-6xl mx-auto px-6 py-8 space-y-8 ${isOrgView ? 'mt-10' : ''}`}>
+      <main className={`flex-1 max-w-6xl mx-auto px-6 py-8 space-y-8 relative ${isOrgView ? 'mt-10' : ''}`}>
+        {/* Что нового — bell в правом верхнем углу */}
+        <div className="absolute top-4 right-6 z-10">
+          <AnnouncementsBell />
+        </div>
         {/* Welcome for empty state */}
         {activeTab === "home" && employees.length === 0 && (
           <Card className="border-primary/20 bg-primary/5">
