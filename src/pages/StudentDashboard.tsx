@@ -279,13 +279,45 @@ export default function StudentDashboard() {
     return () => window.removeEventListener("visual-theme-change", handler);
   }, [dashboardSettings.studentTheme]);
 
-  const pendingDocsCount = documentsProgress.total - documentsProgress.completed;
+  const docsPending = documentsProgress.total - documentsProgress.completed;
+  const [inboxPending, setInboxPending] = useState(0);
+  useEffect(() => {
+    if (!user?.id) return;
+    let cancelled = false;
+    const load = async () => {
+      const { count } = await supabase
+        .from("document_signatures")
+        .select("id", { count: "exact", head: true })
+        .eq("recipient_user_id", user.id)
+        .in("status", ["sent", "viewed", "in_review"])
+        .eq("hidden_for_recipient", false)
+        .is("deleted_at", null);
+      if (!cancelled) setInboxPending(count || 0);
+    };
+    load();
+    const channel = supabase
+      .channel(`dash-inbox-${user.id}`)
+      .on("postgres_changes", {
+        event: "*", schema: "public", table: "document_signatures",
+        filter: `recipient_user_id=eq.${user.id}`,
+      }, () => load())
+      .subscribe();
+    return () => { cancelled = true; supabase.removeChannel(channel); };
+  }, [user?.id]);
+  const pendingDocsCount = docsPending + inboxPending;
   const pendingReasons: string[] = [];
-  if (pendingDocsCount > 0) {
+  if (docsPending > 0) {
     pendingReasons.push(
-      pendingDocsCount === 1
+      docsPending === 1
         ? "загрузить 1 документ"
-        : `загрузить ${pendingDocsCount} документ${pendingDocsCount < 5 ? "а" : "ов"}`
+        : `загрузить ${docsPending} документ${docsPending < 5 ? "а" : "ов"}`
+    );
+  }
+  if (inboxPending > 0) {
+    pendingReasons.push(
+      inboxPending === 1
+        ? "подписать 1 документ от организации"
+        : `подписать ${inboxPending} документ${inboxPending < 5 ? "а" : "ов"} от организации`
     );
   }
 
