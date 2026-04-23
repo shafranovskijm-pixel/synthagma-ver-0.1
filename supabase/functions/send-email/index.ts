@@ -1,27 +1,11 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { checkRateLimit, rateLimitResponse } from "../_shared/rate-limiter.ts";
+import { sendPlatformEmail } from "../_shared/smtp-sender.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
     "authorization, x-client-info, apikey, content-type",
 };
-
-function base64Encode(str: string): string {
-  return btoa(unescape(encodeURIComponent(str)));
-}
-
-function encodeSubject(subject: string): string {
-  return `=?UTF-8?B?${base64Encode(subject)}?=`;
-}
-
-function encodeFromHeader(from: string): string {
-  const match = from.match(/^(.+?)\s*<(.+)>$/);
-  if (match) {
-    return `=?UTF-8?B?${base64Encode(match[1].trim())}?= <${match[2].trim()}>`;
-  }
-  return from;
-}
 
 interface EmailRequest {
   to: string;
@@ -36,27 +20,7 @@ const handler = async (req: Request): Promise<Response> => {
   }
 
   try {
-    const SMTP_HOST = Deno.env.get("SMTP_HOST");
-    const SMTP_PORT = Deno.env.get("SMTP_PORT");
-    const SMTP_USER = Deno.env.get("SMTP_USER");
-    const SMTP_PASS = Deno.env.get("SMTP_PASS");
-    const SMTP_FROM = Deno.env.get("SMTP_FROM") || "noreply@sintagma.com.ru";
-
-    if (!SMTP_HOST || !SMTP_PORT || !SMTP_USER || !SMTP_PASS) {
-      console.error("SMTP credentials are not fully configured");
-      return new Response(
-        JSON.stringify({ error: "Email service not configured" }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
     const { to, subject, html, from }: EmailRequest = await req.json();
-
-    // Rate limiting
-    const rl = checkRateLimit(`email:${to}`, { maxRequests: 20, windowSeconds: 60 });
-    if (!rl.allowed) {
-      return rateLimitResponse(rl, corsHeaders);
-    }
 
     if (!to || !subject || !html) {
       return new Response(
@@ -65,86 +29,33 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
 
-    console.log("Sending email to:", to);
-    console.log("Subject:", subject);
+    console.log("Sending email to:", to, "subject:", subject);
 
-    const senderFrom = from ? `${from}` : SMTP_FROM;
-    const encodedSubject = encodeSubject(subject);
-    const encodedFrom = encodeFromHeader(senderFrom);
-    const encodedHtml = base64Encode(html);
-
-    const rawEmail = [
-      `From: ${encodedFrom}`,
-      `To: ${to}`,
-      `Subject: ${encodedSubject}`,
-      `MIME-Version: 1.0`,
-      `Content-Type: text/html; charset=UTF-8`,
-      `Content-Transfer-Encoding: base64`,
-      ``,
-      encodedHtml.match(/.{1,76}/g)?.join('\r\n') || encodedHtml,
-    ].join('\r\n');
-
-    const conn = await Deno.connectTls({
-      hostname: SMTP_HOST,
-      port: parseInt(SMTP_PORT, 10),
+    const result = await sendPlatformEmail({
+      to,
+      subject,
+      html,
+      fromOverride: from,
     });
 
-    const encoder = new TextEncoder();
-    const decoder = new TextDecoder();
-
-    async function readResponse(): Promise<string> {
-      const buffer = new Uint8Array(4096);
-      const n = await conn.read(buffer);
-      if (n === null) return "";
-      return decoder.decode(buffer.subarray(0, n));
-    }
-
-    async function sendCommand(cmd: string): Promise<string> {
-      await conn.write(encoder.encode(cmd + "\r\n"));
-      return await readResponse();
-    }
-
-    let response = await readResponse();
-    console.log("Server greeting:", response.trim());
-
-    response = await sendCommand("EHLO localhost");
-    console.log("EHLO response:", response.trim());
-
-    response = await sendCommand("AUTH LOGIN");
-    console.log("AUTH LOGIN response:", response.trim());
-
-    response = await sendCommand(btoa(SMTP_USER));
-    console.log("AUTH user response:", response.trim());
-
-    response = await sendCommand(btoa(SMTP_PASS));
-    console.log("AUTH pass response:", response.trim());
-
-    const emailMatch = senderFrom.match(/<([^>]+)>/) || [null, senderFrom];
-    const fromEmail = emailMatch[1] || senderFrom;
-
-    response = await sendCommand(`MAIL FROM:<${fromEmail}>`);
-    console.log("MAIL FROM response:", response.trim());
-
-    response = await sendCommand(`RCPT TO:<${to}>`);
-    console.log("RCPT TO response:", response.trim());
-
-    response = await sendCommand("DATA");
-    console.log("DATA response:", response.trim());
-
-    await conn.write(encoder.encode(rawEmail + "\r\n.\r\n"));
-    response = await readResponse();
-    console.log("Email data response:", response.trim());
-
-    await sendCommand("QUIT");
-    conn.close();
-
-    const statusCode = response.match(/^(\d+)/)?.[1];
-    if (statusCode && parseInt(statusCode) >= 400) {
-      throw new Error(`SMTP error: ${response.trim()}`);
+    if (!result.ok) {
+      if (result.rateLimited) {
+        return new Response(
+          JSON.stringify({ error: result.error, retryAfterSeconds: result.retryAfterSeconds }),
+          {
+            status: 429,
+            headers: {
+              ...corsHeaders,
+              "Content-Type": "application/json",
+              "Retry-After": String(result.retryAfterSeconds || 60),
+            },
+          }
+        );
+      }
+      throw new Error(result.error || "send failed");
     }
 
     console.log("Email sent successfully to:", to);
-
     return new Response(
       JSON.stringify({ success: true }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
