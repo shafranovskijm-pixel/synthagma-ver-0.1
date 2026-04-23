@@ -130,7 +130,10 @@ export function CompaniesDatabase({ organizationId }: CompaniesDatabaseProps = {
               <Badge variant="secondary">{rows.length}</Badge>
             </div>
             <div className="flex items-center gap-2 flex-wrap">
-              <Button onClick={() => setAddOpen(true)} className="gap-2" disabled={remaining === 0}>
+              <Button onClick={() => setSearchOpen(true)} variant="default" className="gap-2 bg-gradient-to-r from-primary to-primary/80">
+                <Sparkles className="w-4 h-4" /> Подбор по фильтрам
+              </Button>
+              <Button onClick={() => setAddOpen(true)} variant="outline" className="gap-2" disabled={remaining === 0}>
                 <Plus className="w-4 h-4" /> Добавить ИНН
               </Button>
               <Button
@@ -236,6 +239,8 @@ export function CompaniesDatabase({ organizationId }: CompaniesDatabaseProps = {
         </CardContent>
       </Card>
 
+      <CheckoSearchHistory />
+
       <AddInnsDialog
         open={addOpen}
         onOpenChange={setAddOpen}
@@ -243,6 +248,8 @@ export function CompaniesDatabase({ organizationId }: CompaniesDatabaseProps = {
         isSubmitting={enrichBatch.isPending}
         remainingQuota={remaining}
       />
+
+      <CheckoSearchDialog open={searchOpen} onOpenChange={setSearchOpen} />
     </div>
   );
 }
