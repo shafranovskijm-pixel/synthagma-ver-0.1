@@ -372,9 +372,9 @@ export function useCourseLearning() {
       let progressData: LessonProgress[] = [];
       let attMap: Record<string, typeof lessonAttachments[string]> = {};
 
-      if (courseLessonIds.length > 0) {
+      if (courseLessonIds.length > 0 && lookupUserId) {
         const [progressResult, attachmentsResult] = await Promise.all([
-          supabase.from('lesson_progress').select('lesson_id, completed').eq('user_id', user!.id).in('lesson_id', courseLessonIds),
+          supabase.from('lesson_progress').select('lesson_id, completed').eq('user_id', lookupUserId).in('lesson_id', courseLessonIds),
           supabase.from('lesson_attachments').select('*').in('lesson_id', courseLessonIds).order('order_index'),
         ]);
         if (attachmentsResult.error) console.error('Error fetching lesson attachments:', attachmentsResult.error);
