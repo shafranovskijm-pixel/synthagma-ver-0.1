@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { LiveKitRoom, RoomAudioRenderer, useParticipants, useLocalParticipant, VideoConference } from "@livekit/components-react";
 import "@livekit/components-styles";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, AlertCircle, Copy, Users, QrCode, MessageSquare, BarChart3, PanelRightClose, PanelRightOpen } from "lucide-react";
+import { ArrowLeft, AlertCircle, Copy, Users, QrCode, MessageSquare, BarChart3, MessagesSquare, PanelRightClose, PanelRightOpen } from "lucide-react";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 import { toast } from "sonner";
 import { getBaseUrl } from "@/utils/getBaseUrl";
@@ -15,6 +15,7 @@ import { RecordingControls } from "@/components/webinars/RecordingControls";
 import { ParticipantsModerationPanel } from "@/components/webinars/ParticipantsModerationPanel";
 import { WebinarQAPanel } from "@/components/webinars/WebinarQAPanel";
 import { WebinarPollsPanel } from "@/components/webinars/WebinarPollsPanel";
+import { WebinarChatPanel } from "@/components/webinars/WebinarChatPanel";
 import { cn } from "@/lib/utils";
 
 const ParticipantsCount = () => {
@@ -62,8 +63,11 @@ const RoomShell = ({ webinarId, isHost, sidebarOpen, onToggleSidebar }: RoomShel
       </div>
       {sidebarOpen && webinarId && (
         <aside className="hidden lg:flex absolute right-0 top-0 bottom-0 w-[340px] bg-background border-l flex-col">
-          <Tabs defaultValue="participants" className="flex-1 flex flex-col min-h-0">
-            <TabsList className="grid grid-cols-3 mx-2 mt-2">
+          <Tabs defaultValue="chat" className="flex-1 flex flex-col min-h-0">
+            <TabsList className="grid grid-cols-4 mx-2 mt-2">
+              <TabsTrigger value="chat" className="text-xs gap-1">
+                <MessagesSquare className="w-3.5 h-3.5" /> Чат
+              </TabsTrigger>
               <TabsTrigger value="participants" className="text-xs gap-1">
                 <Users className="w-3.5 h-3.5" /> Люди
               </TabsTrigger>
@@ -71,9 +75,17 @@ const RoomShell = ({ webinarId, isHost, sidebarOpen, onToggleSidebar }: RoomShel
                 <MessageSquare className="w-3.5 h-3.5" /> Q&A
               </TabsTrigger>
               <TabsTrigger value="polls" className="text-xs gap-1">
-                <BarChart3 className="w-3.5 h-3.5" /> Опросы
+                <BarChart3 className="w-3.5 h-3.5" /> Опрос
               </TabsTrigger>
             </TabsList>
+            <TabsContent value="chat" className="flex-1 m-0 min-h-0">
+              <WebinarChatPanel
+                webinarId={webinarId}
+                isHost={isHost}
+                participantIdentity={identity}
+                participantName={name}
+              />
+            </TabsContent>
             <TabsContent value="participants" className="flex-1 m-0 min-h-0">
               <ParticipantsModerationPanel webinarId={webinarId} isHost={isHost} />
             </TabsContent>
@@ -256,8 +268,10 @@ const WebinarLive = () => {
           token={token}
           serverUrl={wsUrl}
           connect={true}
-          video={true}
-          audio={true}
+          // Подключение к комнате — мгновенно (только сигналинг). Захват камеры/микрофона
+          // запускается пользователем кнопками LiveKit, чтобы UI не «фризился» на старте.
+          video={false}
+          audio={false}
           onDisconnected={handleDisconnected}
           style={{ height: "100%", display: "flex", flexDirection: "column" }}
         >
