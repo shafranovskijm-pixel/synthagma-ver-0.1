@@ -32,6 +32,8 @@ import {
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
+import { TableSkeleton } from "@/components/shared/TableSkeleton";
+import { EmptyState } from "@/components/shared/EmptyState";
 
 interface CourseDocument {
   id: string;
@@ -355,26 +357,14 @@ export function CourseDocumentsManager({
       </div>
 
       {isLoading ? (
-        <div className="flex items-center justify-center py-12">
-          <SigmaSpinner size="lg" />
-        </div>
+        <TableSkeleton rows={4} cols={3} withHeader={false} />
       ) : documents.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-16 px-6">
-          <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center mb-4">
-            <FileText className="w-8 h-8 text-primary" />
-          </div>
-          <h3 className="text-lg font-semibold mb-2">Материалы курса</h3>
-          <p className="text-sm text-muted-foreground text-center max-w-md mb-6">
-            Загружайте учебные материалы, методички, презентации и дополнительные файлы для учеников. Все документы будут доступны ученикам прямо в уроках курса.
-          </p>
-          <Button
-            className="btn-gradient rounded-xl gap-2"
-            onClick={() => setShowAddDialog(true)}
-          >
-            <Plus className="w-4 h-4" />
-            Добавить документ
-          </Button>
-        </div>
+        <EmptyState
+          icon={FileText}
+          title="Материалы курса"
+          description="Загружайте методички, презентации и дополнительные файлы для учеников. Все документы будут доступны прямо в уроках курса."
+          action={{ label: "Добавить документ", onClick: () => setShowAddDialog(true) }}
+        />
       ) : (
         <div className="space-y-2">
           {documents.map((doc) => {
