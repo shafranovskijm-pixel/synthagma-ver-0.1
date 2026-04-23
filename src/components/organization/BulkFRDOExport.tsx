@@ -34,7 +34,7 @@ interface Student {
   course: string | null;
 }
 
-interface Course {
+interface Course extends CourseFRDOLike {
   id: string;
   title: string;
   duration: string | null;
