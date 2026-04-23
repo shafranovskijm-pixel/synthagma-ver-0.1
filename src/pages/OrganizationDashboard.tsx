@@ -20,6 +20,7 @@ import { ThemeAnimations, getStoredAnimationLevel, type AnimationLevel } from "@
 import { AtmosphericBleed } from "@/components/ui/AtmosphericBleed";
 import { useOrgTheme } from "@/hooks/useOrgTheme";
 import { GlobalCommandPalette } from "@/components/shared/GlobalCommandPalette";
+import { RouteErrorBoundary } from "@/components/shared/RouteErrorBoundary";
 import { OrgMobileBottomNav } from "@/components/organization/OrgMobileBottomNav";
 
 export default function OrganizationDashboard() {
@@ -152,7 +153,9 @@ export default function OrganizationDashboard() {
             {d.tabNavigation.activeTab === "courses" && <RequiresAttentionWidget />}
 
             <AnimatedTabContent tabKey={d.tabNavigation.activeTab} direction={d.tabNavigation.swipeDirection} isMobile={d.isMobile}>
-              <TabContentRenderer />
+              <RouteErrorBoundary section={String(d.tabNavigation.activeTab ?? "Раздел")}>
+                <TabContentRenderer />
+              </RouteErrorBoundary>
             </AnimatedTabContent>
           </div>
         </div>
