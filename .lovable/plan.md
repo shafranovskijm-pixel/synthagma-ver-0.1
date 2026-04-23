@@ -1,75 +1,50 @@
 
 
-# План: «Войти как ученик» — открывать любой курс и пропускать видеоидентификацию для админа/менеджера
+# План: связать бейдж «горящих уведомлений» с подвкладкой «Документы» в профиле ученика
 
 ## Корень проблемы
 
-Когда админ или менеджер организации жмёт «Войти как ученик», в `localStorage.adminViewAsStudent` сохраняется `userId` ученика. `useStudentDashboard` это уже учитывает — он подменяет `effectiveUserId = targetUserId` и показывает курсы выбранного ученика. Но дальше — две блокировки:
-
-1. **`src/hooks/course-learning/useCourseLearningFacade.ts` → `fetchCourseData`** запрашивает enrollment по `user!.id` (это **всегда текущий админ**, а не targetUserId). Результат `enrollmentResult.data` пустой → срабатывает `toast.error('Вы не записаны на этот курс') + navigate('/student')`. Админ ни в один курс ученика провалиться не может.
-2. **Та же функция, строки 282-291** — проверка видеоидентификации идёт по `user.id` админа. У админа никакой `video_identifications` нет → `navigate('/student')` сразу же.
-3. **`src/pages/StudentDashboard.tsx → handleCourseClick`** (строки 292-305) тоже проверяет `isVideoIdentified` — и в режиме админа показывает тост «Требуется видеоидентификация».
-
-При этом `CourseLearning` вообще не знает, что мы в admin-view: он не читает `localStorage.adminViewAsStudent`.
+На дашборде ученика около аватарки горит красная цифра — это `pendingDocsCount` (неподписанные документы, отсутствие видеоидентификации и согласия ПД). Но называется тултипом «Уведомления», а внутри профиля бейджа нет ни на одной подвкладке. Пользователь проваливается в «Профиль» и не понимает, где именно «горит». На самом деле всё, что считается в `pendingDocsCount`, лежит на подвкладке **«Документы»** (видеоидентификация + согласие ПД + загрузка документов).
 
 ## Что меняется
 
-### 1. Утилита-хелпер `src/utils/adminViewMode.ts` (новый файл)
+### 1. Бейдж на подвкладке «Документы» в `StudentProfileContent.tsx`
 
-Один источник правды для всех мест, где нужно понять, что мы в режиме «админ смотрит как ученик»:
+В горизонтальном списке табов (строки 55-74) для таба `documents` показываем красный бейдж с числом, если `sp.pendingDocsCount > 0`. Берём то же значение, что уже считается в `useStudentProfile` для общего счётчика (если ещё не возвращается оттуда — добавим в хуке: `pendingDocsCount = (videoIdRequired && !videoIdDone) + (consentRequired && !consentSigned) + unsignedDocs`).
 
-```ts
-export function getAdminViewData(): { userId: string; name: string; orgReturn?: string } | null
-export function isAdminViewActive(): boolean
-```
+Стиль бейджа — как в `StudentProfileSidebar`: красный кружок 16×16 с цифрой, чтобы визуально отличаться от активного фиолетового фона таба.
 
-Читает `localStorage.getItem('adminViewAsStudent')`, парсит JSON, возвращает данные. Заменяет 7 разрозненных мест, где это парсится вручную.
+### 2. Открывать «Документы» автоматически, когда пришли «по бейджу»
 
-### 2. Правка `src/hooks/course-learning/useCourseLearningFacade.ts`
+В `StudentHeader.tsx` (строки 105-113) кнопка «Мой профиль» сейчас идёт на `/student/profile`, что редиректит на `/student?tab=profile` с подвкладкой «Профиль». Меняем поведение: **если `pendingCount > 0`** — переходим на `/student/profile?section=documents`, иначе — как сейчас.
 
-**a)** В начале хука читаем `getAdminViewData()` и определяем `effectiveUserId = adminView?.userId || user?.id`. Все обращения к `user!.id` в `fetchCourseData` (строки 275, 283, 285, 336, 338, 348) меняем на `effectiveUserId`.
+В `StudentProfileContent.tsx` читаем `?section=` из URL (через `useSearchParams`) и при наличии — устанавливаем `activeTab` соответственно. Это работает и для прямой ссылки из бейджа, и для будущих deep-link'ов.
 
-**b)** В блоке проверки видеоидентификации (282-291): если `isAdminViewActive()` → пропускаем проверку полностью.
+### 3. Кликабельный бейдж на аватарке
 
-**c)** В блоке отсутствия enrollment (319-323): если `isAdminViewActive()` → **не редиректим**, вместо ошибки показываем toast.info («Просмотр курса в режиме администратора — прогресс не сохраняется») и продолжаем без `enrollmentId`. Уроки и контент всё равно загрузятся.
+Сейчас красная «3» нарисована поверх дропдауна и не кликабельна напрямую — нужно открыть меню → «Мой профиль». Добавляем условие: при `pendingCount > 0` рендерим **отдельную кнопку-ссылку** на `/student/profile?section=documents` с тултипом **«Требуются документы»** (вместо нынешнего «Уведомления», который вводит в заблуждение).
 
-**d)** Все мутации (`saveLessonTime`, `recalc_enrollment_time`, `lesson_progress.upsert`, `enrollments.update`, `course_access_log.insert`, `test_attempts.insert`) уже завязаны на `enrollmentId` через ранний `return if (!enrollmentId)` — но добавим явную защиту: в начале каждой мутации `if (isAdminViewActive()) return;`. Это гарантия, что админ ничего не запишет от лица ученика по ошибке.
+### 4. Переименовать тултип «заглушки-колокольчика»
 
-### 3. Правка `src/pages/StudentDashboard.tsx → handleCourseClick`
+В `StudentHeader.tsx` (строки 73-81) тултип `Уведомления` у Bell-иконки, которая пока ничего не делает, переименовываем в **«Скоро: уведомления»** или вовсе убираем эту кнопку до того, как функция появится. Сейчас она усиливает путаницу — выглядит как «вот тут уведомления», но клик ничего не даёт.
 
-В проверке видеоидентификации (строки 295-300) добавляем условие: `if (!isAdminView && needsVerification)`. Для админа сразу `navigate(\`/course/${courseId}/learn\`)`.
+### 5. Тултип у красного бейджа
 
-Также сейчас доступны только курсы, на которые ученик записан (`courses` из `useStudentDashboard`). Этого достаточно для демонстрации — админ увидит реальные курсы выбранного ученика. Если курсов у ученика нет, пусть админ выберет другого ученика; делать «открой любой курс из каталога» избыточно.
-
-### 4. Правка `src/components/student/StudentLibrary.tsx` и `CourseCatalog.tsx`
-
-Бейдж «Требуется видеоидентификация» на карточке курса (`needsVideoId`) тоже скрываем в режиме админа. Прокидываем `isAdminView` через пропсы из `StudentDashboard.tsx` (он уже есть в `useStudentDashboard`).
-
-### 5. Защита от неправильного admin-view
-
-В `getAdminViewData()`: если `userRole !== 'admin' && userRole !== 'organization'` (например, обычный пользователь подложил ключ в localStorage) — игнорируем флаг и чистим его. Защищает от попытки эскалации.
-
-RLS-политики на `enrollments`, `lessons`, `lesson_progress`, `courses` для админов уже разрешают чтение чужих данных через `has_role('admin')` — миграции трогать **не нужно**. Менеджер организации при просмотре ученика своей организации тоже проходит RLS (`current_organization_id() = enrollment.organization_id`).
-
-### 6. Тесты
-
-- `useStudentDashboard.test.ts`: добавить кейс «при `adminViewAsStudent` `handleCourseClick` пропускает видеоидентификацию».
-- Новый `adminViewMode.test.ts`: парсинг JSON, очистка невалидного флага.
+Когда наводим на бейдж «3» возле аватарки — показываем подсказку: **«3 действия требуют внимания: подписать согласие, пройти видеоидентификацию, загрузить документы»** (текст собирается из реальных причин в `useStudentProfile`).
 
 ## Что НЕ делаем
 
-- Не меняем массовый просмотр уроков по факту прогресса (если ученик не дошёл до урока — урок остаётся `is_locked`; админ всё ещё пройдёт по лестнице, как ученик). Если позже понадобится «админ видит все уроки разблокированными» — добавим отдельным шагом.
-- Не сохраняем никакие данные в БД в admin-view (никакого `course_access_log`, `lesson_progress`, `test_attempts`).
-- Не трогаем RLS — текущих политик хватает.
+- Не трогаем `AnnouncementsBell` — он про объявления платформы, бейдж там корректный.
+- Не добавляем новых RPC и миграций — `pendingDocsCount` уже считается на клиенте в `useStudentProfile`/`useStudentDashboard`.
+- Не меняем подвкладку «Уведомления» (там настройки каналов оповещений, к бейджу не относится).
 
 ## Технические детали
 
 | Файл | Изменение |
 |---|---|
-| `src/utils/adminViewMode.ts` | новый: `getAdminViewData()`, `isAdminViewActive()` |
-| `src/hooks/course-learning/useCourseLearningFacade.ts` | `effectiveUserId`, пропуск video-id и enrollment-проверки в admin-view, защита от записи |
-| `src/pages/StudentDashboard.tsx` | `handleCourseClick`: пропуск video-id для admin; передача `isAdminView` в каталог |
-| `src/components/student/StudentLibrary.tsx` | пропс `isAdminView`, скрытие `needsVideoId` бейджа |
-| `src/components/student/CourseCatalog.tsx` | пропс `isAdminView`, скрытие `needsVideoId` бейджа |
-| `src/utils/__tests__/adminViewMode.test.ts` | новые тесты |
+| `src/hooks/useStudentProfile.ts` | вернуть из хука `pendingDocsCount` и массив причин `pendingReasons: string[]` |
+| `src/components/student/StudentProfileContent.tsx` | бейдж на табе «Документы»; чтение `?section=` из URL; начальный `activeTab` из section |
+| `src/components/student/StudentHeader.tsx` | переход на `/student/profile?section=documents` при `pendingCount>0`; тултип бейджа с причинами; убрать/переименовать тултип «Уведомления» у заглушки |
+| `src/pages/StudentProfile.tsx` | прокинуть `section` в редирект: `Navigate to={\`/student?tab=profile&section=\${section}\`}` |
+| `src/pages/StudentDashboard.tsx` | передать `pendingReasons` в `StudentHeader` (для тултипа) |
 
