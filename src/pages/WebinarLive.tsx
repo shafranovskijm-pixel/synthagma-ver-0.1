@@ -254,7 +254,7 @@ const WebinarLive = () => {
         </Button>
         <div className="text-sm font-medium truncate flex-1 text-center min-w-0 px-1">{title}</div>
         <div className="flex items-center gap-1 shrink-0">
-          {isWebinar && <RecordingControls webinarId={id!} />}
+          {isWebinar && isHost && <RecordingControls webinarId={id!} />}
           {isWebinar && publicLink && (
             <>
               <Button variant="outline" size="sm" onClick={copyLink} className="px-2 sm:px-3">
