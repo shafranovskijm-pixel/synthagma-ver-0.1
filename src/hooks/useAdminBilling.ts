@@ -39,90 +39,55 @@ export interface Org {
 
 export type ActiveSection = "all" | "org-contracts" | "org-invoices" | "org-closing";
 
+interface BillingData {
+  invoices: Invoice[];
+  billingDocs: BillingDoc[];
+  contracts: Contract[];
+  orgs: Org[];
+}
+
+const ADMIN_BILLING_KEY = ['adminBilling'] as const;
+
+async function fetchAdminBillingData(): Promise<BillingData> {
+  const [invoiceRes, docsRes, contractsRes, orgsRes, signaturesRes] = await Promise.all([
+    supabase.from("subscription_invoices").select("*").order("created_at", { ascending: false }),
+    supabase.from("org_billing_documents" as any).select("*").order("created_at", { ascending: false }),
+    supabase.from("org_contracts").select("*").order("created_at", { ascending: false }),
+    supabase.from("organizations").select("id, name, inn, kpp, director_name, director_position, subscription_plan, custom_price, custom_discount"),
+    supabase.from("document_signatures")
+      .select("id, organization_id, document_title, sender_name, status, created_at, signature_token, recipient_type")
+      .eq("recipient_type", "admin_sintagma")
+      .order("created_at", { ascending: false }),
+  ]);
+  const orgMap: Record<string, string> = {};
+  const orgList: Org[] = [];
+  (orgsRes.data || []).forEach((o: any) => { orgMap[o.id] = o.name; orgList.push(o); });
+  const invoices = (invoiceRes.data || []).map((i: any) => ({ ...i, org_name: orgMap[i.organization_id] || "—" }));
+  const billingDocs = (docsRes.data as any[] || []).map((d: any) => ({ ...d, org_name: orgMap[d.organization_id] || "—" }));
+  const orgContractsList: Contract[] = (contractsRes.data || []).map((c: any) => ({ ...c, org_name: orgMap[c.organization_id] || "—", kind: 'org_contract' as const }));
+  const signatureContractsList: Contract[] = (signaturesRes.data || []).map((s: any) => ({
+    id: s.id,
+    organization_id: s.organization_id,
+    contract_number: null,
+    contract_date: s.created_at,
+    file_url: null,
+    status: s.status === 'signed' ? 'paid' : (s.status === 'in_review' || s.status === 'sent' ? 'pending' : s.status),
+    created_at: s.created_at,
+    org_name: orgMap[s.organization_id] || "—",
+    kind: 'signature' as const,
+    signature_token: s.signature_token,
+    document_title: s.document_title,
+    sender_name: s.sender_name,
+  }));
+  const contracts = [...orgContractsList, ...signatureContractsList].sort((a, b) => (b.created_at || '').localeCompare(a.created_at || ''));
+  return { invoices, billingDocs, contracts, orgs: orgList };
+}
+
 export function useAdminBilling() {
-  const [invoices, setInvoices] = useState<Invoice[]>([]);
-  const [billingDocs, setBillingDocs] = useState<BillingDoc[]>([]);
-  const [contracts, setContracts] = useState<Contract[]>([]);
-  const [orgs, setOrgs] = useState<Org[]>([]);
+  const qc = useQueryClient();
   const [search, setSearch] = useState("");
-  const [loading, setLoading] = useState(true);
   const [activeSection, setActiveSection] = useState<ActiveSection>("all");
   const [selectedOrgId, setSelectedOrgId] = useState<string>("");
-
-  // Contract dialog
-  const [showCreateContract, setShowCreateContract] = useState(false);
-  const [contractForm, setContractForm] = useState({ organization_id: "", contract_number: "", contract_date: "" });
-  const [submitting, setSubmitting] = useState(false);
-
-  // Invoice dialog
-  const [showInvoiceDialog, setShowInvoiceDialog] = useState(false);
-  const [generatingInvoice, setGeneratingInvoice] = useState(false);
-  const [invoiceOtherPayer, setInvoiceOtherPayer] = useState(false);
-  const [invoiceBuyerName, setInvoiceBuyerName] = useState("");
-  const [invoiceBuyerInn, setInvoiceBuyerInn] = useState("");
-  const [invoiceBuyerKpp, setInvoiceBuyerKpp] = useState("");
-  const [innSearching, setInnSearching] = useState(false);
-  const [pendingInvoice, setPendingInvoice] = useState<{ html: string; insertData: any; invoiceNum: string; amount: number; plan: string } | null>(null);
-
-  // Act dialog
-  const [showActDialog, setShowActDialog] = useState(false);
-  const [actDate, setActDate] = useState<Date>(new Date());
-  const [actBasis, setActBasis] = useState("");
-  const [actAmount, setActAmount] = useState("");
-  const [actSubmitting, setActSubmitting] = useState(false);
-  const [actOtherCustomer, setActOtherCustomer] = useState(false);
-  const [actCustomerName, setActCustomerName] = useState("");
-  const [actCustomerInn, setActCustomerInn] = useState("");
-  const [actCustomerKpp, setActCustomerKpp] = useState("");
-  const [actCustomerDirector, setActCustomerDirector] = useState("");
-  const [actCustomerPosition, setActCustomerPosition] = useState("");
-  const [actInnSearching, setActInnSearching] = useState(false);
-  const [pendingAct, setPendingAct] = useState<GeneratedAct | null>(null);
-
-  // Invoice selection
-  const [selectedInvoiceIds, setSelectedInvoiceIds] = useState<Set<string>>(new Set());
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const [deleting, setDeleting] = useState(false);
-
-  useEffect(() => { loadData(); }, []);
-
-  const loadData = async () => {
-    setLoading(true);
-    const [invoiceRes, docsRes, contractsRes, orgsRes, signaturesRes] = await Promise.all([
-      supabase.from("subscription_invoices").select("*").order("created_at", { ascending: false }),
-      supabase.from("org_billing_documents" as any).select("*").order("created_at", { ascending: false }),
-      supabase.from("org_contracts").select("*").order("created_at", { ascending: false }),
-      supabase.from("organizations").select("id, name, inn, kpp, director_name, director_position, subscription_plan, custom_price, custom_discount"),
-      supabase.from("document_signatures")
-        .select("id, organization_id, document_title, sender_name, status, created_at, signature_token, recipient_type")
-        .eq("recipient_type", "admin_sintagma")
-        .order("created_at", { ascending: false }),
-    ]);
-    const orgMap: Record<string, string> = {};
-    const orgList: Org[] = [];
-    (orgsRes.data || []).forEach((o: any) => { orgMap[o.id] = o.name; orgList.push(o); });
-    setOrgs(orgList);
-    setInvoices((invoiceRes.data || []).map((i: any) => ({ ...i, org_name: orgMap[i.organization_id] || "—" })));
-    setBillingDocs((docsRes.data as any[] || []).map((d: any) => ({ ...d, org_name: orgMap[d.organization_id] || "—" })));
-    const orgContractsList: Contract[] = (contractsRes.data || []).map((c: any) => ({ ...c, org_name: orgMap[c.organization_id] || "—", kind: 'org_contract' as const }));
-    const signatureContractsList: Contract[] = (signaturesRes.data || []).map((s: any) => ({
-      id: s.id,
-      organization_id: s.organization_id,
-      contract_number: null,
-      contract_date: s.created_at,
-      file_url: null,
-      status: s.status === 'signed' ? 'paid' : (s.status === 'in_review' || s.status === 'sent' ? 'pending' : s.status),
-      created_at: s.created_at,
-      org_name: orgMap[s.organization_id] || "—",
-      kind: 'signature' as const,
-      signature_token: s.signature_token,
-      document_title: s.document_title,
-      sender_name: s.sender_name,
-    }));
-    const merged = [...orgContractsList, ...signatureContractsList].sort((a, b) => (b.created_at || '').localeCompare(a.created_at || ''));
-    setContracts(merged);
-    setLoading(false);
-  };
 
   const selectedOrg = orgs.find(o => o.id === selectedOrgId);
   const orgContracts = contracts.filter(c => c.organization_id === selectedOrgId);
