@@ -130,10 +130,15 @@ async function buildXlsxFile(headers: string[], rows: (string | number)[][], nam
   const ws = wb.addWorksheet("Лист1");
   ws.addRow(headers);
   for (const r of rows) ws.addRow(r);
-  const buf = await wb.xlsx.writeBuffer();
-  return new File([buf as ArrayBuffer], name, {
+  const buf = (await wb.xlsx.writeBuffer()) as ArrayBuffer;
+  // jsdom's File polyfill lacks arrayBuffer(); attach our own.
+  const file = new File([buf], name, {
     type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
   });
+  if (typeof (file as any).arrayBuffer !== "function") {
+    (file as any).arrayBuffer = async () => buf;
+  }
+  return file;
 }
 
 describe("buildColumnMap fuzzy + positional fallback", () => {
