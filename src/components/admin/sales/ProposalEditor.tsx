@@ -60,7 +60,48 @@ export function ProposalEditor({ onClose, editProposal, editServices, prefillCom
   const [selectedTemplate, setSelectedTemplate] = useState<string>('');
   const [discountPercent, setDiscountPercent] = useState<number>(editProposal?.discount_percent || 0);
 
+  const [searchingInn, setSearchingInn] = useState(false);
+
   useEffect(() => { fetchServices(); fetchManagers(); }, [fetchServices, fetchManagers]);
+
+  const handleSearchByInn = async () => {
+    const inn = companyInn.replace(/\D/g, '');
+    if (inn.length !== 10 && inn.length !== 12) {
+      toast.error('Введите корректный ИНН (10 или 12 цифр)');
+      return;
+    }
+    setSearchingInn(true);
+    try {
+      // 1) Local companies cache
+      const { data: local } = await supabase
+        .from('companies')
+        .select('name, inn, email')
+        .eq('inn', inn)
+        .maybeSingle();
+      if (local) {
+        setCompanyName(local.name || '');
+        if (local.email && !companyEmail) setCompanyEmail(local.email);
+        toast.success('Найдено в базе', { description: local.name });
+        return;
+      }
+      // 2) DaData fallback
+      const { data: dd, error } = await supabase.functions.invoke('dadata-company', { body: { inn } });
+      if (error) throw error;
+      if (dd?.success && dd.company) {
+        setCompanyName(dd.company.shortName || dd.company.name || '');
+        setCompanyInn(dd.company.inn || inn);
+        if (dd.company.management && !contactPerson) setContactPerson(dd.company.management);
+        toast.success('Найдено (DaData)', { description: dd.company.shortName || dd.company.name });
+      } else {
+        toast.info('Не найдено', { description: 'Введите реквизиты вручную' });
+      }
+    } catch (err: any) {
+      console.error('[ProposalEditor] DaData lookup failed', err);
+      toast.error('Ошибка поиска', { description: err?.message || 'Попробуйте ещё раз' });
+    } finally {
+      setSearchingInn(false);
+    }
+  };
 
   const applyTemplate = (template: ProposalTemplate) => {
     setSelectedTemplate(template.id);
