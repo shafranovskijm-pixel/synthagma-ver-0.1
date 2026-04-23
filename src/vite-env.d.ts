@@ -9,3 +9,9 @@ declare module 'virtual:pwa-register' {
     onRegisterError?: (error: any) => void;
   }): (reloadPage?: boolean) => Promise<void>;
 }
+
+declare module "*.xlsx?url" {
+  const url: string;
+  export default url;
+}
+
