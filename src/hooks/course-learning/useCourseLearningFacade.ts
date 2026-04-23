@@ -36,6 +36,13 @@ export function useCourseLearning() {
   const contentRef = useRef<HTMLDivElement>(null);
   const lessonStartTimeRef = useRef<number>(Date.now());
 
+  // Admin/manager "view as student" mode — read once per mount.
+  // While active: load target student's data, skip video-id check, never write to DB.
+  const adminViewRef = useRef(getAdminViewData());
+  const adminView = adminViewRef.current;
+  const isAdminView = adminView !== null;
+  const effectiveUserId = adminView?.userId || user?.id;
+
   const [course, setCourse] = useState<Course | null>(null);
   const [lessons, setLessons] = useState<Lesson[]>([]);
   const [currentLessonIndex, setCurrentLessonIndex] = useState(0);
