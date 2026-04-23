@@ -73,10 +73,11 @@ export function useCourseLearning() {
   // Parse content blocks
   const contentBlocks: ContentBlock[] = currentLesson?.content ? parseContentToBlocks(currentLesson.content) : [];
 
-  // Sub-hooks
-  const videoHook = useLessonVideo({ userId: user?.id, currentLesson });
+  // Sub-hooks — always use effective user id so admin sees student's video state
+  const videoHook = useLessonVideo({ userId: effectiveUserId, currentLesson });
 
   const saveLessonTime = useCallback(async (lessonId?: string) => {
+    if (isAdminView) return; // never write progress in admin view
     const lid = lessonId || currentLesson?.id;
     if (!lid || !user || !enrollmentId) return;
     const elapsed = Math.floor((Date.now() - lessonStartTimeRef.current) / 1000);
@@ -86,7 +87,7 @@ export function useCourseLearning() {
       await supabase.rpc('increment_lesson_time', { p_lesson_id: lid, p_user_id: user.id, p_seconds: elapsed });
       await supabase.rpc('recalc_enrollment_time', { p_enrollment_id: enrollmentId });
     } catch (err) { console.error('[saveLessonTime] error:', err); }
-  }, [currentLesson?.id, user, enrollmentId]);
+  }, [currentLesson?.id, user, enrollmentId, isAdminView]);
 
   const handleCourseCompletion = async (testScoreData?: { score: number; max: number }) => {
     if (!course || !user || !courseId) return;
