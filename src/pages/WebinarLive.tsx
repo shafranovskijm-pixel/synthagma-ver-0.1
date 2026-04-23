@@ -131,6 +131,7 @@ const WebinarLive = () => {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [isHost, setIsHost] = useState(false);
   const qrCanvasRef = useRef<HTMLCanvasElement | null>(null);
 
   const isWebinar = !sessionId && !!id;
@@ -156,6 +157,8 @@ const WebinarLive = () => {
 
       setToken(data.token);
       setWsUrl(data.wsUrl);
+      // Берём isHost из ответа edge-функции — так зрители НЕ увидят кнопки записи/модерации.
+      setIsHost(!!data.isHost);
 
       if (!isTutor && id) {
         const { data: w } = await supabase
@@ -167,6 +170,7 @@ const WebinarLive = () => {
         if ((w as any)?.public_token) setPublicToken((w as any).public_token);
       } else if (isTutor) {
         setTitle("ИИ-преподаватель — сессия");
+        setIsHost(true);
       }
     } catch (e) {
       const msg = (e as Error).message || "Ошибка";
@@ -287,7 +291,7 @@ const WebinarLive = () => {
         >
           <RoomShell
             webinarId={isWebinar ? id! : null}
-            isHost={isWebinar}
+            isHost={isHost}
             sidebarOpen={sidebarOpen}
             onToggleSidebar={() => setSidebarOpen((v) => !v)}
           />
