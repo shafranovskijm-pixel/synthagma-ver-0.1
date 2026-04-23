@@ -1,4 +1,6 @@
-import React, { useState, useEffect } from "react";
+import React, { Suspense, useState, useEffect } from "react";
+import { lazyWithRetry } from "@/utils/lazyWithRetry";
+import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -10,7 +12,9 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { ContractLegalFaq } from "@/components/organization/ContractLegalFaq";
 import { SendForSigningDialog, type SendForSigningPayload } from "@/components/signing/SendForSigningDialog";
 import { ExternalContractUploader } from "@/components/signing/ExternalContractUploader";
-import { ContractReviewBody } from "@/components/signing/ContractReviewBody";
+const ContractReviewBody = lazyWithRetry(() =>
+  import("@/components/signing/ContractReviewBody").then((m) => ({ default: m.ContractReviewBody }))
+);
 import { CounterpartyTimeline } from "./CounterpartyTimeline";
 import { File, Upload } from "lucide-react";
 import { format } from "date-fns";
@@ -390,7 +394,9 @@ export function CounterpartiesSection({
                 </div>
                 {expandedReviewId === c.id && c.signature_token && (
                   <div className="border-t bg-background p-4">
-                    <ContractReviewBody signatureToken={c.signature_token} viewerRole="organization" embedded />
+                    <Suspense fallback={<div className="flex justify-center py-8"><SigmaSpinner /></div>}>
+                      <ContractReviewBody signatureToken={c.signature_token} viewerRole="organization" embedded />
+                    </Suspense>
                   </div>
                 )}
               </div>

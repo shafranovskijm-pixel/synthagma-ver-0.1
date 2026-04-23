@@ -142,7 +142,7 @@ export function AISettingsManager() {
 
   const getStatusBadge = (ctx: string) => {
     const s = h.settings[ctx]; if (!s) return null;
-    const providerLabel = s.provider === "gigachat" ? "GigaChat" : s.provider === "lovable_ai" ? "Lovable AI" : s.provider === "round_robin" ? "Round-Robin" : s.provider === "elevenlabs" ? "ElevenLabs" : s.provider === "salutespeech" ? "SaluteSpeech" : s.provider;
+    const providerLabel = s.provider === "gigachat" ? "GigaChat" : s.provider === "lovable_ai" ? "Lovable AI" : s.provider === "round_robin" ? "Round-Robin" : s.provider === "salutespeech" ? "SaluteSpeech" : s.provider;
     const modelLabel = s.provider === "gigachat" || s.provider === "round_robin"
       ? GIGACHAT_MODELS.find(m => m.value === s.gigachat_model)?.label || s.gigachat_model
       : LOVABLE_MODELS.find(m => m.value === s.lovable_model)?.label || IMAGE_MODELS.find(m => m.value === s.lovable_model)?.label || s.lovable_model;
@@ -155,13 +155,6 @@ export function AISettingsManager() {
     if (ctx === "tts") return (
       <div className="space-y-4">
         {renderProviderSelect(ctx, TTS_PROVIDERS)}
-        {h.settings[ctx]?.provider === "elevenlabs" && (
-          <div className="space-y-2 mt-4 p-4 rounded-lg bg-muted/50">
-            <Label className="text-sm">Свой API-ключ ElevenLabs (опционально)</Label>
-            <Input type="password" placeholder="sk-... (оставьте пустым для ключа по умолчанию)" value={h.settings[ctx]?.extra_config?.custom_api_key || ""} onChange={(e) => h.updateExtra(ctx, "custom_api_key", e.target.value)} className="max-w-md font-mono text-xs" />
-            <p className="text-xs text-muted-foreground">Если указан, будет использоваться вместо системного ключа ElevenLabs</p>
-          </div>
-        )}
         {h.settings[ctx]?.provider === "salutespeech" && <SaluteSpeechTestPanel voice={h.settings[ctx]?.extra_config?.salute_voice || "natalya"} onVoiceChange={(v) => h.updateExtra(ctx, "salute_voice", v)} />}
       </div>
     );

@@ -41,7 +41,7 @@ const CourseLearning = () => {
     sidebarOpen, setSidebarOpen, isTransitioning,
     testQuestions, testSubmitted, testScore, testPassingScore, testExplanations, allBankQuestions,
     answers, setAnswers,
-    isSpeaking, speakText, ttsSettingsOpen, setTtsSettingsOpen, ttsSettings, setTtsSettings, elevenLabsTTS,
+    isSpeaking, speakText, ttsSettingsOpen, setTtsSettingsOpen, ttsSettings, setTtsSettings,
     isChatOpen, setIsChatOpen, chatMessages, chatInput, setChatInput, isChatLoading, chatScrollRef, sendChatMessage,
     videoWatchProgress, setVideoWatchProgress, savedPosition, isVideoProgressLoading, saveVideoPosition,
     currentLesson, completedCount, progressPercent,
@@ -118,9 +118,9 @@ const CourseLearning = () => {
           <div className="flex items-center gap-1 md:gap-2 shrink-0">
             {(currentLesson?.type === 'text' || currentLesson?.type === 'test') && (
               <>
-                <Button variant={isSpeaking ? "default" : "outline"} size="sm" onClick={speakText} disabled={elevenLabsTTS.isLoading} className={cn("rounded-lg", isSpeaking && "bg-primary text-primary-foreground", isMobile && "h-8 w-8 p-0")} title={isSpeaking ? "Стоп" : "Озвучить"}>
-                  {elevenLabsTTS.isLoading ? <SigmaSpinner size="sm" /> : isSpeaking ? <Square className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
-                  {!isMobile && <span className="ml-1">{elevenLabsTTS.isLoading ? '...' : isSpeaking ? 'Стоп' : 'Озвучить'}</span>}
+                <Button variant={isSpeaking ? "default" : "outline"} size="sm" onClick={speakText} className={cn("rounded-lg", isSpeaking && "bg-primary text-primary-foreground", isMobile && "h-8 w-8 p-0")} title={isSpeaking ? "Стоп" : "Озвучить"}>
+                  {isSpeaking ? <Square className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
+                  {!isMobile && <span className="ml-1">{isSpeaking ? 'Стоп' : 'Озвучить'}</span>}
                 </Button>
                 {ttsSettings.provider === 'salutespeech' ? (
                   <DropdownMenu>

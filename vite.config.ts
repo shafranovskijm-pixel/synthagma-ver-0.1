@@ -111,6 +111,9 @@ export default defineConfig(({ mode }) => ({
   define: {
     __BUILD_TIMESTAMP__: JSON.stringify(Date.now().toString()),
   },
+  esbuild: {
+    drop: mode === "production" ? ["console", "debugger"] : [],
+  },
   build: {
     chunkSizeWarningLimit: 2000,
     rollupOptions: {

@@ -78,7 +78,7 @@ const aiFeatures = [
   {
     icon: Mic,
     title: "ИИ-озвучка уроков",
-    description: "Профессиональная озвучка текстов через ElevenLabs — реалистичные голоса на русском и английском языках. Превратите текст в аудио-лекцию.",
+    description: "Профессиональная озвучка текстов через SaluteSpeech — реалистичные русские голоса. Превратите текст в аудио-лекцию.",
   },
   {
     icon: FileText,
@@ -191,7 +191,7 @@ const FeatureAICourses = () => {
                 { step: "1", title: "Опишите тему курса", desc: "Введите название и краткое описание — ИИ предложит структуру с уроками" },
                 { step: "2", title: "Сгенерируйте контент", desc: "ИИ наполнит каждый урок текстом, примерами и предупреждениями" },
                 { step: "3", title: "Добавьте тесты", desc: "Автоматическая генерация вопросов по содержанию уроков" },
-                { step: "4", title: "Озвучьте уроки", desc: "Профессиональная озвучка через ElevenLabs — реалистичные голоса на русском" },
+                { step: "4", title: "Озвучьте уроки", desc: "Профессиональная озвучка через SaluteSpeech — реалистичные русские голоса" },
               ].map((item, i) => (
                 <motion.div key={i} variants={fadeUp} className="flex items-start gap-4">
                   <div className="w-10 h-10 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center shrink-0">

@@ -33,7 +33,7 @@ const generateOptions: AIGenerateOption[] = [
     type: "audio",
     icon: Volume2,
     title: "Аудио лекция",
-    description: "AI-озвучка (ElevenLabs) — реалистичные голоса читают текст",
+    description: "AI-озвучка (SaluteSpeech) — реалистичные голоса читают текст",
     color: "text-green-500",
     bgColor: "bg-green-500/10 hover:bg-green-500/20" },
   {

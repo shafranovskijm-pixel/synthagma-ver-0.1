@@ -1,5 +1,4 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import { useElevenLabsTTS } from "@/hooks/useElevenLabsTTS";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { TTSSettings, getStoredTTSSettings, AdminTTSDefaults } from "@/components/student/TTSSettingsDialog";
@@ -26,8 +25,6 @@ export function useLessonTTS({ currentLesson, currentLessonIndex, contentBlocks,
   const saluteAbortRef = useRef<AbortController | null>(null);
   const saluteCacheRef = useRef<Map<string, string>>(new Map());
 
-  const elevenLabsTTS = useElevenLabsTTS({ voiceId: ttsSettings.voiceId });
-
   // Load admin TTS defaults
   useEffect(() => {
     if (adminDefaultsLoaded.current) return;
@@ -48,11 +45,9 @@ export function useLessonTTS({ currentLesson, currentLessonIndex, contentBlocks,
     })();
   }, []);
 
-  const isSpeaking = ttsSettings.provider === 'elevenlabs'
-    ? elevenLabsTTS.isActive
-    : ttsSettings.provider === 'salutespeech'
-      ? (isSaluteSpeaking || isSaluteLoading)
-      : isBrowserSpeaking;
+  const isSpeaking = ttsSettings.provider === 'salutespeech'
+    ? (isSaluteSpeaking || isSaluteLoading)
+    : isBrowserSpeaking;
 
   const extractTextFromBlocks = (blocks: ContentBlock[]): string => {
     return blocks.map(block => {
@@ -152,9 +147,7 @@ export function useLessonTTS({ currentLesson, currentLessonIndex, contentBlocks,
     const textToSpeak = getTextToSpeak();
     if (!textToSpeak) { toast.error('Нет текста для озвучивания'); return; }
 
-    if (ttsSettings.provider === 'elevenlabs') {
-      elevenLabsTTS.speak(textToSpeak);
-    } else if (ttsSettings.provider === 'salutespeech') {
+    if (ttsSettings.provider === 'salutespeech') {
       speakSalute(textToSpeak);
     } else {
       if (isBrowserSpeaking) { window.speechSynthesis?.cancel(); setIsBrowserSpeaking(false); return; }
@@ -173,14 +166,14 @@ export function useLessonTTS({ currentLesson, currentLessonIndex, contentBlocks,
   };
 
   // Stop speaking when lesson changes
-  useEffect(() => { window.speechSynthesis?.cancel(); setIsBrowserSpeaking(false); elevenLabsTTS.stop(); stopSaluteSpeech(); }, [currentLessonIndex]);
+  useEffect(() => { window.speechSynthesis?.cancel(); setIsBrowserSpeaking(false); stopSaluteSpeech(); }, [currentLessonIndex, stopSaluteSpeech]);
   useEffect(() => {
-    return () => { window.speechSynthesis?.cancel(); elevenLabsTTS.stop(); stopSaluteSpeech(); saluteCacheRef.current.forEach(url => URL.revokeObjectURL(url)); saluteCacheRef.current.clear(); };
-  }, []);
+    return () => { window.speechSynthesis?.cancel(); stopSaluteSpeech(); saluteCacheRef.current.forEach(url => URL.revokeObjectURL(url)); saluteCacheRef.current.clear(); };
+  }, [stopSaluteSpeech]);
 
   return {
     ttsSettingsOpen, setTtsSettingsOpen,
     ttsSettings, setTtsSettings,
-    isSpeaking, speakText, elevenLabsTTS,
+    isSpeaking, speakText,
   };
 }

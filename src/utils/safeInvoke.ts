@@ -84,7 +84,7 @@ export async function safeInvoke<T = unknown>(
 }
 
 /**
- * Safe wrapper for direct fetch() calls (e.g. ElevenLabs TTS).
+ * Safe wrapper for direct fetch() calls (e.g. SaluteSpeech TTS).
  * Retries on network-level blocks, returns Response on success.
  */
 export async function safeFetch(

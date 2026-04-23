@@ -34,7 +34,7 @@ export const MODEL_PRICING = [
   { provider: "GigaChat", model: "GigaChat", label: "GigaChat Lite", level: "Базовый", speed: "⚡⚡ Быстрая", cost: "low" as CostLevel },
   { provider: "GigaChat", model: "GigaChat-Pro", label: "GigaChat Pro", level: "Стандарт", speed: "⚡ Средняя", cost: "medium" as CostLevel },
   { provider: "GigaChat", model: "GigaChat-Max", label: "GigaChat Max", level: "Продвинутый", speed: "🐢 Медленная", cost: "high" as CostLevel },
-  { provider: "ElevenLabs", model: "elevenlabs", label: "ElevenLabs TTS", level: "TTS", speed: "⚡⚡ Быстрая", cost: "high" as CostLevel },
+  { provider: "SaluteSpeech", model: "salutespeech", label: "SaluteSpeech TTS", level: "TTS", speed: "⚡⚡ Быстрая", cost: "low" as CostLevel },
 ];
 
 export const MODEL_COST_MAP: Record<string, CostLevel> = {};
@@ -78,7 +78,6 @@ export const PIPELINE_PROVIDERS = [
 ];
 
 export const TTS_PROVIDERS = [
-  { value: "elevenlabs", label: "ElevenLabs" },
   { value: "salutespeech", label: "SaluteSpeech (Sber)" },
   { value: "lovable_ai", label: "Lovable AI" },
 ];
@@ -100,7 +99,6 @@ export const API_KEYS_LIST = [
   { name: "SALUTESPEECH_AUTH_KEY", label: "SaluteSpeech Key 1" },
   { name: "SALUTESPEECH_AUTH_KEY_2", label: "SaluteSpeech Key 2" },
   { name: "SALUTESPEECH_AUTH_KEY_3", label: "SaluteSpeech Key 3" },
-  { name: "ELEVENLABS_API_KEY", label: "ElevenLabs" },
   { name: "LOVABLE_API_KEY", label: "Lovable AI" },
   { name: "LIVEKIT_API_KEY", label: "LiveKit API Key" },
   { name: "LIVEKIT_API_SECRET", label: "LiveKit API Secret" },

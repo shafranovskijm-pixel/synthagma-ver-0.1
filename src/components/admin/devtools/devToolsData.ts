@@ -264,7 +264,7 @@ export const EDGE_FUNCTIONS: EdgeFunc[] = [
   { name: "convert-lesson-content", category: "documents", description: "Конвертация контента урока" },
   { name: "seed-welcome-course", category: "documents", description: "Создание приветственного курса" },
   // Media
-  { name: "elevenlabs-tts", category: "media", description: "Text-to-Speech (ElevenLabs)" },
+  // (elevenlabs-tts removed)
   { name: "salutespeech-tts", category: "media", description: "Text-to-Speech (SaluteSpeech)" },
   { name: "kinescope-proxy", category: "media", description: "Kinescope API прокси" },
   { name: "kinescope-drm-auth", category: "media", description: "Kinescope DRM авторизация" },

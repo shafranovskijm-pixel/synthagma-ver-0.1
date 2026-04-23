@@ -112,19 +112,6 @@ const LLM_OPTIONS: Record<string, { label: string; models: { value: string; labe
 };
 
 const TTS_OPTIONS: Record<string, { label: string; voices: { value: string; label: string }[] }> = {
-  elevenlabs: {
-    label: "ElevenLabs (лучшее качество русского)",
-    voices: [
-      { value: "EXAVITQu4vr4xnSDxMaL", label: "Sarah (женский, тёплый)" },
-      { value: "9BWtsMINqrJLrRacOk9x", label: "Aria (женский, чистый)" },
-      { value: "FGY2WhTYpPnrIDTdsKH5", label: "Laura (женский, мягкий)" },
-      { value: "XB0fDUnXU5powFXDhCwa", label: "Charlotte (женский, выразительный)" },
-      { value: "JBFqnCBsd6RMkjVDRZzb", label: "George (мужской, спокойный)" },
-      { value: "iP95p4xoKVk53GoZ742B", label: "Chris (мужской, дружелюбный)" },
-      { value: "onwK4e9ZLuTAKqWW03F9", label: "Daniel (мужской, авторитетный)" },
-      { value: "pqHfZKP75CvOlQylNhV4", label: "Bill (мужской, зрелый)" },
-    ],
-  },
   openai: {
     label: "OpenAI TTS",
     voices: [
@@ -500,7 +487,7 @@ export function AIAvatarLessonEditor({ value, onChange, courseId, courseTitle, l
           </div>
           {value.ai_avatar_tts_provider === "elevenlabs" && (
             <p className="text-[10px] text-muted-foreground">
-              ID голоса можно скопировать из библиотеки <a href="https://elevenlabs.io/voice-library" target="_blank" rel="noopener noreferrer" className="text-primary underline">ElevenLabs Voice Library</a> и вставить вручную, выбрав «Custom».
+              ElevenLabs больше не поддерживается — выберите другого провайдера (рекомендуется SaluteSpeech).
             </p>
           )}
         </div>

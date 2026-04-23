@@ -15,7 +15,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { ELEVENLABS_VOICES, DEFAULT_VOICE_ID } from '@/hooks/useElevenLabsTTS';
 import { Volume2, Settings2 } from 'lucide-react';
 
 interface TTSSettingsDialogProps {
@@ -25,11 +24,12 @@ interface TTSSettingsDialogProps {
   onSettingsChange: (settings: TTSSettings) => void;
 }
 
-export type TTSProvider = 'elevenlabs' | 'salutespeech' | 'browser';
+export type TTSProvider = 'salutespeech' | 'browser';
 
 export interface TTSSettings {
   provider: TTSProvider;
-  voiceId: string;
+  /** @deprecated kept for backward compat — no longer used */
+  voiceId?: string;
   saluteVoice: string;
   /** @deprecated kept for backward compat migration */
   useElevenLabs?: boolean;
@@ -70,11 +70,14 @@ export function getStoredTTSSettings(adminDefaults?: AdminTTSDefaults): TTSSetti
     const stored = localStorage.getItem(TTS_SETTINGS_KEY);
     if (stored) {
       const parsed = JSON.parse(stored);
-      // Backward compatibility: migrate old format
-      if (parsed.provider) return parsed;
+      // Silent migration: ElevenLabs has been removed → switch to SaluteSpeech.
+      const rawProvider = parsed.provider as string | undefined;
+      const provider: TTSProvider =
+        rawProvider === 'salutespeech' || rawProvider === 'browser'
+          ? rawProvider
+          : 'salutespeech';
       return {
-        provider: parsed.useElevenLabs ? 'elevenlabs' : 'browser',
-        voiceId: parsed.voiceId || DEFAULT_VOICE_ID,
+        provider,
         saluteVoice: parsed.saluteVoice || DEFAULT_SALUTE_VOICE,
       };
     }
@@ -83,13 +86,14 @@ export function getStoredTTSSettings(adminDefaults?: AdminTTSDefaults): TTSSetti
   }
 
   // No user override — use admin defaults if available
-  const defaultProvider = (adminDefaults?.provider as TTSProvider) || 'salutespeech';
+  const rawAdmin = (adminDefaults?.provider as string | undefined) || 'salutespeech';
+  const defaultProvider: TTSProvider =
+    rawAdmin === 'salutespeech' || rawAdmin === 'browser' ? rawAdmin : 'salutespeech';
   const adminVoiceRaw = adminDefaults?.saluteVoice || '';
   const defaultSaluteVoice = ADMIN_TO_CLIENT_VOICE[adminVoiceRaw] || adminVoiceRaw || DEFAULT_SALUTE_VOICE;
 
   return {
     provider: defaultProvider,
-    voiceId: DEFAULT_VOICE_ID,
     saluteVoice: defaultSaluteVoice,
   };
 }
@@ -143,42 +147,11 @@ export function TTSSettingsDialog({
                 <SelectValue placeholder="Выберите провайдер" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="elevenlabs">ElevenLabs (рекомендуется)</SelectItem>
-                <SelectItem value="salutespeech">SaluteSpeech (Сбер)</SelectItem>
+                <SelectItem value="salutespeech">SaluteSpeech (Сбер, рекомендуется)</SelectItem>
                 <SelectItem value="browser">Браузер (встроенный)</SelectItem>
               </SelectContent>
             </Select>
           </div>
-
-          {/* ElevenLabs voice selection */}
-          {localSettings.provider === 'elevenlabs' && (
-            <div className="space-y-2">
-              <Label>Голос</Label>
-              <Select
-                value={localSettings.voiceId}
-                onValueChange={(value) =>
-                  setLocalSettings((prev) => ({ ...prev, voiceId: value }))
-                }
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Выберите голос" />
-                </SelectTrigger>
-                <SelectContent>
-                  {ELEVENLABS_VOICES.map((voice) => (
-                    <SelectItem key={voice.id} value={voice.id}>
-                      <div className="flex items-center gap-2">
-                        <Volume2 className="w-3.5 h-3.5 text-muted-foreground" />
-                        {voice.name}
-                      </div>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <p className="text-xs text-muted-foreground">
-                George (мужской, РУ) — лучший для русского языка
-              </p>
-            </div>
-          )}
 
           {/* SaluteSpeech voice selection */}
           {localSettings.provider === 'salutespeech' && (
@@ -213,7 +186,7 @@ export function TTSSettingsDialog({
           {localSettings.provider === 'browser' && (
             <div className="rounded-lg bg-muted p-3">
               <p className="text-sm text-muted-foreground">
-                Будет использоваться встроенный синтезатор речи браузера. 
+                Будет использоваться встроенный синтезатор речи браузера.
                 Качество зависит от вашего браузера и устройства.
               </p>
             </div>

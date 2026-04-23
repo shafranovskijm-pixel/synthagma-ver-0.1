@@ -166,10 +166,10 @@ export async function generateAIContent(
     toast.info("Генерация аудио... Длинные тексты могут занять до 2 минут.");
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 180000);
-    const response = await safeFetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/elevenlabs-tts`, {
+    const response = await safeFetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/salutespeech-tts`, {
       method: "POST",
       headers: { "Content-Type": "application/json", apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY, Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}` },
-      body: JSON.stringify({ text: prompt, voiceId: "JBFqnCBsd6RMkjVDRZzb" }),
+      body: JSON.stringify({ text: prompt, voice: "Natalya_24000" }),
       signal: controller.signal,
     });
     clearTimeout(timeoutId);
