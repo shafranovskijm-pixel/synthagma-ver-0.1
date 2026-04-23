@@ -10,6 +10,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Search, Users, Shield, Building2, GraduationCap } from "lucide-react";
 import { toast } from "sonner";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
+import { TableSkeleton } from "@/components/shared/TableSkeleton";
+import { EmptyState } from "@/components/shared/EmptyState";
 import { UserTableRow, type UserWithRole } from "./users/UserTableRow";
 
 
@@ -205,8 +207,12 @@ export function UsersManager() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-12">
-        <SigmaSpinner size="lg" />
+      <div className="space-y-6">
+        <div>
+          <h2 className="text-2xl font-display font-bold">Пользователи</h2>
+          <p className="text-muted-foreground">Управление пользователями платформы</p>
+        </div>
+        <TableSkeleton rows={8} cols={6} />
       </div>
     );
   }
@@ -293,9 +299,13 @@ export function UsersManager() {
             <TableBody>
               {filteredUsers.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
-                    <Users className="w-12 h-12 mx-auto mb-2 opacity-50" />
-                    Пользователи не найдены
+                  <TableCell colSpan={6} className="p-0">
+                    <EmptyState
+                      icon={Users}
+                      title="Пользователи не найдены"
+                      description="Попробуйте изменить фильтр роли или поисковый запрос."
+                      className="border-0 rounded-none"
+                    />
                   </TableCell>
                 </TableRow>
               ) : (
