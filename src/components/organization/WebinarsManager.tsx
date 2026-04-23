@@ -17,6 +17,8 @@ import { ShareWebinarDialog } from "./ShareWebinarDialog";
 import { EmbeddedWebinarPlayer } from "@/components/webinars/EmbeddedWebinarPlayer";
 import { WebinarLiveInline } from "@/components/webinars/WebinarLiveInline";
 import { WebinarRecordingUploader } from "@/components/webinars/WebinarRecordingUploader";
+import { RecordingStatusBadge } from "@/components/webinars/RecordingStatusBadge";
+import { RecordingPreviewDialog } from "@/components/webinars/RecordingPreviewDialog";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
@@ -45,6 +47,8 @@ interface Webinar {
   allow_guests: boolean;
   guest_password: string | null;
   recording_url?: string | null;
+  recording_status?: string | null;
+  recording_size_bytes?: number | null;
 }
 
 interface Props {
@@ -65,6 +69,7 @@ export function WebinarsManager({ organizationId }: Props) {
   const [shareWebinar, setShareWebinar] = useState<Webinar | null>(null);
   const [liveSheetWebinar, setLiveSheetWebinar] = useState<Webinar | null>(null);
   const [recordingTarget, setRecordingTarget] = useState<Webinar | null>(null);
+  const [previewWebinar, setPreviewWebinar] = useState<Webinar | null>(null);
 
   const webinarsQuery = useQuery({
     queryKey: ["org", organizationId, "webinars"],
