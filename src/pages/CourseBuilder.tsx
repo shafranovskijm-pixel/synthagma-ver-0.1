@@ -305,7 +305,7 @@ export default function CourseBuilder({ embedded, embeddedCourseId, onExitEditor
         </AlertDialogContent>
       </AlertDialog>
 
-      <AIGenerateDialog open={showAIGenerateDialog} onOpenChange={setShowAIGenerateDialog} onGenerate={handleAIGenerate} courseTitle={courseTitle} courseDescription={courseDescription} />
+      <AIGenerateDialog open={showAIGenerateDialog} onOpenChange={setShowAIGenerateDialog} onGenerate={handleAIGenerate} courseTitle={courseTitle} courseDescription={courseDescription} courseId={resolvedCourseId} />
 
       <CourseReviewDialog
         open={showReviewDialog}

@@ -16,6 +16,7 @@ import {
   Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
+import { CourseGenerationProgress } from "@/components/course-builder/CourseGenerationProgress";
 
 export type AIGenerateType = "audio" | "slides" | "video" | "image" | "test";
 
@@ -72,6 +73,7 @@ interface AIGenerateDialogProps {
   onGenerate: (type: AIGenerateType, prompt: string) => Promise<void>;
   courseTitle?: string;
   courseDescription?: string;
+  courseId?: string;
 }
 
 export function AIGenerateDialog({
@@ -79,7 +81,8 @@ export function AIGenerateDialog({
   onOpenChange,
   onGenerate,
   courseTitle,
-  courseDescription }: AIGenerateDialogProps) {
+  courseDescription,
+  courseId }: AIGenerateDialogProps) {
   const [selectedType, setSelectedType] = useState<AIGenerateType | null>(null);
   const [prompt, setPrompt] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
@@ -117,6 +120,8 @@ export function AIGenerateDialog({
             {selectedType ? selectedOption?.title : "Сгенерировать с ИИ"}
           </DialogTitle>
         </DialogHeader>
+
+        {courseId && <CourseGenerationProgress courseId={courseId} />}
 
         {!selectedType ? (
           <div className="space-y-3">

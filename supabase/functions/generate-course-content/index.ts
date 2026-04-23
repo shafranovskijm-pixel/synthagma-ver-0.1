@@ -568,14 +568,54 @@ function blocksToMarkdown(blocks: ContentBlock[]): string {
   }).join('\n');
 }
 
+async function setProgress(
+  supabase: any,
+  courseId: string,
+  step: "structure" | "lesson" | "test" | "done" | "error",
+  current: number,
+  total: number,
+  message: string,
+) {
+  try {
+    await supabase
+      .from("courses")
+      .update({
+        generation_progress: {
+          step,
+          current,
+          total,
+          message,
+          updated_at: new Date().toISOString(),
+        },
+      })
+      .eq("id", courseId);
+  } catch (e) {
+    console.error("setProgress failed:", e);
+  }
+}
+
 async function processOneCourse(supabase: any, courseId: string, courseTitle: string) {
   console.log(`Starting generation for course: ${courseTitle}`);
-  
+
   try {
+    await setProgress(supabase, courseId, "structure", 0, 1, "Создаём структуру курса…");
     const lessons = await generateCourseStructure(courseTitle);
     console.log(`Generated ${lessons.length} lessons for ${courseTitle}`);
 
+    const total = lessons.length;
+    let current = 0;
+
     for (const lesson of lessons) {
+      current += 1;
+      await setProgress(
+        supabase,
+        courseId,
+        lesson.type === "test" ? "test" : "lesson",
+        current,
+        total,
+        `${lesson.type === "test" ? "Тест" : "Урок"} ${current} из ${total}: ${lesson.title}`,
+      );
+
       const { data: lessonData, error: lessonError } = await supabase
         .from("lessons")
         .insert({
@@ -598,16 +638,16 @@ async function processOneCourse(supabase: any, courseId: string, courseTitle: st
       if (lesson.type === "lesson") {
         const blocks = await generateLessonContent(lesson.title, courseTitle);
         const markdown = blocksToMarkdown(blocks);
-        
+
         await supabase
           .from("lessons")
           .update({ content: markdown })
           .eq("id", lessonData.id);
-          
+
         console.log(`Generated content for lesson: ${lesson.title}`);
       } else {
         const questions = await generateTestQuestions(lesson.title, courseTitle);
-        
+
         for (let i = 0; i < questions.length; i++) {
           const q = questions[i];
           await supabase.from("test_questions").insert({
@@ -618,20 +658,23 @@ async function processOneCourse(supabase: any, courseId: string, courseTitle: st
             order_index: i
           });
         }
-        
+
         await supabase
           .from("lessons")
           .update({ test_questions_count: questions.length })
           .eq("id", lessonData.id);
-          
+
         console.log(`Generated ${questions.length} questions for test: ${lesson.title}`);
       }
 
       await new Promise(r => setTimeout(r, 3000));
     }
 
+    await setProgress(supabase, courseId, "done", total, total, "Генерация завершена");
     console.log(`Completed generation for course: ${courseTitle}`);
   } catch (error) {
+    const msg = error instanceof Error ? error.message : String(error);
+    await setProgress(supabase, courseId, "error", 0, 0, `Ошибка: ${msg}`);
     console.error(`Error processing course ${courseTitle}:`, error);
   }
 }
