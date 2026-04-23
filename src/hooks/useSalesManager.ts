@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { safeInvoke } from '@/utils/safeInvoke';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from "sonner";
+import { getErrorMessage } from "@/utils/handleSupabaseError";
 export interface SalesService {
   id: string;
   name: string;
