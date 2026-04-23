@@ -277,7 +277,7 @@ export const EDGE_FUNCTIONS: EdgeFunc[] = [
   { name: "referral-commission", category: "payments", description: "Реферальная комиссия" },
   { name: "referral-monthly-stats", category: "payments", description: "Месячная статистика рефералов" },
   // System
-  { name: "test-smtp", category: "system", description: "Тестирование SMTP" },
+  { name: "test-org-smtp", category: "system", description: "Тестирование SMTP (платформа/организация)" },
   { name: "dadata-company", category: "system", description: "Поиск компании через DaData" },
   { name: "get-external-storage-config", category: "system", description: "Конфигурация хранилища" },
   { name: "check-secrets-status", category: "system", description: "Проверка статуса секретов" },

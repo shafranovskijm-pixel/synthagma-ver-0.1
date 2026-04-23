@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { sendPlatformEmail } from "../_shared/smtp-sender.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -7,29 +8,13 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-function base64Encode(str: string): string {
-  return btoa(unescape(encodeURIComponent(str)));
-}
-
-function encodeSubject(subject: string): string {
-  return `=?UTF-8?B?${base64Encode(subject)}?=`;
-}
-
-function encodeFromHeader(from: string): string {
-  const match = from.match(/^(.+?)\s*<(.+)>$/);
-  if (match) {
-    return `=?UTF-8?B?${base64Encode(match[1].trim())}?= <${match[2].trim()}>`;
-  }
-  return from;
-}
-
 serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    const { enrollment_id, course_id, user_id } = await req.json();
+    const { course_id, user_id } = await req.json();
 
     if (!course_id || !user_id) {
       return new Response(JSON.stringify({ error: "Missing required fields" }), {
@@ -43,7 +28,6 @@ serve(async (req: Request) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
     );
 
-    // Get course with notification settings
     const { data: course, error: courseErr } = await supabaseAdmin
       .from("courses")
       .select("title, organization_id, notify_on_completion, completion_notify_emails, duration")
@@ -51,7 +35,6 @@ serve(async (req: Request) => {
       .single();
 
     if (courseErr || !course) {
-      console.error("Course not found:", courseErr);
       return new Response(JSON.stringify({ error: "Course not found" }), {
         status: 404,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -65,7 +48,6 @@ serve(async (req: Request) => {
       });
     }
 
-    // Get student profile
     const { data: profile } = await supabaseAdmin
       .from("profiles")
       .select("full_name, email")
@@ -74,7 +56,6 @@ serve(async (req: Request) => {
 
     const studentName = profile?.full_name || "Слушатель";
 
-    // Get organization
     const { data: org } = await supabaseAdmin
       .from("organizations")
       .select("name, email")
@@ -88,7 +69,6 @@ serve(async (req: Request) => {
       });
     }
 
-    // Get all test lessons for this course
     const { data: testLessons } = await supabaseAdmin
       .from("lessons")
       .select("id, title")
@@ -96,8 +76,7 @@ serve(async (req: Request) => {
       .eq("type", "test")
       .order("order_index");
 
-    // Get test attempts for this user in this course
-    let testResults: { lessonTitle: string; score: number; maxScore: number; percent: number }[] = [];
+    const testResults: { lessonTitle: string; score: number; maxScore: number; percent: number }[] = [];
     let totalScore = 0;
     let totalMax = 0;
 
@@ -110,7 +89,6 @@ serve(async (req: Request) => {
         .in("lesson_id", lessonIds)
         .order("completed_at", { ascending: false });
 
-      // Take latest attempt per lesson
       const latestByLesson = new Map<string, { score: number; max_score: number }>();
       for (const a of attempts || []) {
         if (!latestByLesson.has(a.lesson_id)) {
@@ -141,7 +119,6 @@ serve(async (req: Request) => {
       year: "numeric",
     });
 
-    // Build test results table rows
     const testRowsHtml = testResults.length > 0
       ? testResults
           .map(
@@ -174,20 +151,17 @@ serve(async (req: Request) => {
         <h1 style="margin: 0; font-size: 22px; font-weight: 700;">Курс завершён!</h1>
         <p style="margin: 8px 0 0 0; opacity: 0.9; font-size: 14px;">${org.name}</p>
       </div>
-      
       <div style="padding: 32px;">
         <div style="background: #f8fafc; border-radius: 12px; padding: 20px; margin-bottom: 24px;">
           <p style="margin: 0 0 8px 0; font-size: 14px; color: #64748b;">Слушатель</p>
           <p style="margin: 0; font-size: 18px; font-weight: 700; color: #0f172a;">${studentName}</p>
         </div>
-
         <div style="margin-bottom: 24px;">
           <p style="margin: 0 0 4px 0; font-size: 14px; color: #64748b;">Курс</p>
           <p style="margin: 0; font-size: 16px; font-weight: 600; color: #1e293b;">${course.title}</p>
           ${course.duration ? `<p style="margin: 4px 0 0 0; font-size: 13px; color: #94a3b8;">Длительность: ${course.duration}</p>` : ""}
           <p style="margin: 4px 0 0 0; font-size: 13px; color: #94a3b8;">Дата завершения: ${completionDate}</p>
         </div>
-
         <h3 style="margin: 0 0 12px 0; font-size: 15px; font-weight: 600; color: #334155;">Результаты тестирования</h3>
         <table style="width: 100%; border-collapse: collapse; border-radius: 8px; overflow: hidden; border: 1px solid #e2e8f0;">
           <thead>
@@ -197,29 +171,22 @@ serve(async (req: Request) => {
               <th style="padding: 10px 14px; text-align: center; font-size: 12px; font-weight: 600; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px;">Результат</th>
             </tr>
           </thead>
-          <tbody>
-            ${testRowsHtml}
-          </tbody>
+          <tbody>${testRowsHtml}</tbody>
         </table>
-
         ${testResults.length > 0 ? `
         <div style="margin-top: 16px; background: linear-gradient(135deg, #f0fdf4 0%, #ecfdf5 100%); border: 1px solid #bbf7d0; border-radius: 12px; padding: 16px; text-align: center;">
           <p style="margin: 0 0 4px 0; font-size: 13px; color: #166534;">Итоговый результат</p>
           <p style="margin: 0; font-size: 24px; font-weight: 700; color: #15803d;">${totalScore}/${totalMax} (${totalPercent}%)</p>
         </div>` : ""}
       </div>
-      
       <div style="background: #f8fafc; padding: 20px; text-align: center; border-top: 1px solid #e2e8f0;">
-        <p style="color: #94a3b8; font-size: 12px; margin: 0;">
-          Это письмо отправлено автоматически системой обучения.
-        </p>
+        <p style="color: #94a3b8; font-size: 12px; margin: 0;">Это письмо отправлено автоматически системой обучения.</p>
       </div>
     </div>
   </div>
 </body>
 </html>`;
 
-    // Collect recipients
     const recipients: string[] = [];
     if (org.email) recipients.push(org.email);
     if (course.completion_notify_emails) {
@@ -231,93 +198,35 @@ serve(async (req: Request) => {
     }
 
     if (recipients.length === 0) {
-      console.log("No recipients configured, skipping email");
       return new Response(JSON.stringify({ skipped: true, reason: "No recipients" }), {
         status: 200,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    // Send via SMTP
-    const SMTP_HOST = Deno.env.get("SMTP_HOST");
-    const SMTP_PORT = Deno.env.get("SMTP_PORT");
-    const SMTP_USER = Deno.env.get("SMTP_USER");
-    const SMTP_PASS = Deno.env.get("SMTP_PASS");
-    const SMTP_FROM = Deno.env.get("SMTP_FROM");
-
-    if (!SMTP_HOST || !SMTP_PORT || !SMTP_USER || !SMTP_PASS || !SMTP_FROM) {
-      console.error("SMTP not configured");
-      return new Response(JSON.stringify({ error: "Email service not configured" }), {
-        status: 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    const subjectText = `Курс завершён: ${studentName} — ${course.title}`;
-    const encodedSubject = encodeSubject(subjectText);
-    const encodedFrom = encodeFromHeader(SMTP_FROM);
-    const encodedHtml = base64Encode(htmlBody);
+    const subject = `Курс завершён: ${studentName} — ${course.title}`;
+    let sent = 0;
+    const errors: string[] = [];
 
     for (const recipient of recipients) {
-      try {
-        const rawEmail = [
-          `From: ${encodedFrom}`,
-          `To: ${recipient}`,
-          `Subject: ${encodedSubject}`,
-          `MIME-Version: 1.0`,
-          `Content-Type: text/html; charset=UTF-8`,
-          `Content-Transfer-Encoding: base64`,
-          ``,
-          encodedHtml.match(/.{1,76}/g)?.join("\r\n") || encodedHtml,
-        ].join("\r\n");
-
-        const conn = await Deno.connectTls({
-          hostname: SMTP_HOST,
-          port: parseInt(SMTP_PORT, 10),
-        });
-
-        const encoder = new TextEncoder();
-        const decoder = new TextDecoder();
-
-        async function readResponse(): Promise<string> {
-          const buffer = new Uint8Array(1024);
-          const n = await conn.read(buffer);
-          if (n === null) return "";
-          return decoder.decode(buffer.subarray(0, n));
-        }
-
-        async function sendCommand(cmd: string): Promise<string> {
-          await conn.write(encoder.encode(cmd + "\r\n"));
-          return await readResponse();
-        }
-
-        await readResponse(); // greeting
-        await sendCommand("EHLO localhost");
-        await sendCommand("AUTH LOGIN");
-        await sendCommand(btoa(SMTP_USER));
-        await sendCommand(btoa(SMTP_PASS));
-
-        const emailMatch = SMTP_FROM.match(/<([^>]+)>/) || [null, SMTP_FROM];
-        const fromEmail = emailMatch[1] || SMTP_FROM;
-
-        await sendCommand(`MAIL FROM:<${fromEmail}>`);
-        await sendCommand(`RCPT TO:<${recipient}>`);
-        await sendCommand("DATA");
-        await conn.write(encoder.encode(rawEmail + "\r\n.\r\n"));
-        await readResponse();
-        await sendCommand("QUIT");
-        conn.close();
-
-        console.log("Completion email sent to:", recipient);
-      } catch (smtpErr) {
-        console.error("SMTP error for", recipient, smtpErr);
+      const res = await sendPlatformEmail({
+        to: recipient,
+        subject,
+        html: htmlBody,
+        skipRateLimit: true, // системные уведомления, не пользовательские
+      });
+      if (res.ok) {
+        sent++;
+      } else {
+        errors.push(`${recipient}: ${res.error}`);
+        console.error("notify-course-completion send error:", recipient, res.error);
       }
     }
 
-    return new Response(JSON.stringify({ success: true, recipients: recipients.length }), {
-      status: 200,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return new Response(
+      JSON.stringify({ success: true, sent, total: recipients.length, errors: errors.length ? errors : undefined }),
+      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
   } catch (error: unknown) {
     console.error("Error in notify-course-completion:", error);
     return new Response(

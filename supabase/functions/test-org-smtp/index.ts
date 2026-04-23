@@ -1,13 +1,17 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
-import { sendSmtpEmail } from "../_shared/smtp-sender.ts";
+import { sendSmtpEmail, sendPlatformEmail, getPlatformSmtpConfig } from "../_shared/smtp-sender.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-interface ReqBody { organizationId: string; }
+interface ReqBody {
+  organizationId?: string;
+  scope?: "platform" | "org";
+  to?: string; // для platform-теста (если не задан — берём SMTP_FROM)
+}
 
 serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
@@ -29,9 +33,51 @@ serve(async (req: Request) => {
       });
     }
 
-    const body: ReqBody = await req.json();
+    const body: ReqBody = await req.json().catch(() => ({}));
+    const scope = body.scope || (body.organizationId ? "org" : "platform");
+
+    // ========== PLATFORM SMTP TEST ==========
+    if (scope === "platform") {
+      let cfg;
+      try {
+        cfg = getPlatformSmtpConfig();
+      } catch (e) {
+        return new Response(JSON.stringify({ success: false, error: (e as Error).message }), {
+          status: 200,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      const recipient = body.to || cfg.from_email;
+      const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"></head><body>
+        <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:20px">
+          <h1 style="color:#0EA5A4">Платформенный SMTP работает! ✅</h1>
+          <p>Это тестовое письмо для проверки настроек платформенного SMTP.</p>
+          <hr style="border:1px solid #e2e8f0;margin:20px 0">
+          <p style="color:#64748b;font-size:12px">
+            Сервер: ${cfg.host}:${cfg.port}<br>
+            От кого: ${cfg.from_email}<br>
+            Время: ${new Date().toLocaleString("ru-RU")}
+          </p>
+        </div>
+      </body></html>`;
+
+      const res = await sendPlatformEmail({
+        to: recipient,
+        subject: "✅ Тест платформенного SMTP — Sintagma",
+        html,
+        skipRateLimit: true,
+      });
+
+      return new Response(
+        JSON.stringify({ success: res.ok, error: res.error, sent_to: recipient }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // ========== ORG SMTP TEST ==========
     if (!body.organizationId) {
-      return new Response(JSON.stringify({ error: "organizationId required" }), {
+      return new Response(JSON.stringify({ error: "organizationId required for scope=org" }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -39,7 +85,6 @@ serve(async (req: Request) => {
 
     const admin = createClient(SUPABASE_URL, SERVICE_KEY);
 
-    // Получаем расшифрованный SMTP через RPC (RPC проверяет права)
     const userClientRpc = createClient(SUPABASE_URL, ANON_KEY, {
       global: { headers: { Authorization: authHeader } },
     });
@@ -89,24 +134,16 @@ serve(async (req: Request) => {
       testError = (e as Error).message;
     }
 
-    // Обновляем is_verified / last_test_*
     await admin.from("org_smtp_settings").update({
       is_verified: testError === null,
       last_test_at: new Date().toISOString(),
       last_test_error: testError,
     }).eq("organization_id", body.organizationId);
 
-    if (testError) {
-      return new Response(JSON.stringify({ success: false, error: testError }), {
-        status: 200, // 200 чтобы фронт мог красиво обработать
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    return new Response(JSON.stringify({ success: true, sent_to: smtp.from_email }), {
-      status: 200,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return new Response(
+      JSON.stringify({ success: testError === null, error: testError, sent_to: smtp.from_email }),
+      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
   } catch (e) {
     console.error("test-org-smtp error", e);
     return new Response(JSON.stringify({ error: (e as Error).message }), {
