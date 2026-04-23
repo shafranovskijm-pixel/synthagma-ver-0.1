@@ -10,3 +10,21 @@ export function formatSnils(value: string): string {
 export function isValidSnils(value: string): boolean {
   return value.replace(/\D/g, "").length === 11;
 }
+
+/**
+ * Validates SNILS checksum per official FRDO algorithm.
+ * Last 2 digits = sum(digit_i * (10 - position_i)) mod 101 (with 100 → 00).
+ */
+export function isValidSnilsChecksum(value: string): boolean {
+  const digits = value.replace(/\D/g, "");
+  if (digits.length !== 11) return false;
+  const body = digits.slice(0, 9);
+  const checksum = parseInt(digits.slice(9), 10);
+  let sum = 0;
+  for (let i = 0; i < 9; i++) {
+    sum += parseInt(body[i], 10) * (9 - i);
+  }
+  let expected = sum % 101;
+  if (expected === 100) expected = 0;
+  return expected === checksum;
+}
