@@ -592,6 +592,51 @@ function WelcomeOverlay({ webinarTitle }: { webinarTitle: string | null }) {
   );
 }
 
+/**
+ * Авто-старт записи при первом подключении хоста, если у вебинара выставлен флаг auto_record.
+ * Должен быть смонтирован ВНУТРИ <LiveKitRoom> для доступа к room context.
+ * Срабатывает один раз за сессию.
+ */
+function AutoRecordTrigger({ webinarId }: { webinarId: string }) {
+  const room = useRoomContext();
+  const triggeredRef = useRef(false);
+
+  useEffect(() => {
+    if (!room) return;
+    const tryStart = async () => {
+      if (triggeredRef.current) return;
+      try {
+        const { data: w } = await supabase
+          .from("webinars")
+          .select("auto_record, recording_status, status")
+          .eq("id", webinarId)
+          .maybeSingle();
+        if (!w?.auto_record) return;
+        if (w.recording_status === "active" || w.recording_status === "starting") return;
+        if (w.status && w.status !== "live") return;
+        triggeredRef.current = true;
+        const { error } = await supabase.functions.invoke("livekit-start-recording", {
+          body: { webinarId, autoStart: true },
+        });
+        if (error) {
+          console.warn("[auto-record] failed", error);
+          triggeredRef.current = false;
+        } else {
+          console.log("[auto-record] started for", webinarId);
+        }
+      } catch (e) {
+        console.warn("[auto-record] error", e);
+      }
+    };
+    const handler = () => { void tryStart(); };
+    room.on(RoomEvent.Connected, handler);
+    if (room.state === "connected") void tryStart();
+    return () => { room.off(RoomEvent.Connected, handler); };
+  }, [room, webinarId]);
+
+  return null;
+}
+
 function EmptyState({ message }: { message: string }) {
   return (
     <div className="aspect-video w-full rounded-lg bg-muted flex items-center justify-center p-6 text-center">
