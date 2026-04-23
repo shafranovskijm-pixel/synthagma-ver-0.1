@@ -653,11 +653,20 @@ export async function callAIRoundRobin(
     const chIdx = (startIdx + attempt) % channels.length;
     const channel = channels[chIdx];
     try {
-      console.log(`[AI-RR] ${taskLabel} → ${channel.name}${attempt > 0 ? " (fallback)" : ""}`);
-      return await channel.call(messages, maxTokens);
+      console.log(`[AI-RR] ${taskLabel} → ${channel.name}${attempt > 0 ? ` (fallback after slot-${(startIdx + attempt - 1) % channels.length})` : ""}`);
+      const result = await channel.call(messages, maxTokens);
+      if (attempt > 0) {
+        console.log(`[AI-RR] ${taskLabel} ✓ recovered on ${channel.name} after ${attempt} failed channel(s)`);
+      }
+      return result;
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
-      console.warn(`[AI-RR] ${channel.name} failed: ${msg}`);
+      const reason = msg.includes("402") ? "402 (tokens exhausted)"
+        : msg.includes("429") ? "429 (rate limited)"
+        : msg.includes("[MODERATION]") ? "moderation"
+        : msg.includes("exhausted") ? "all-models-exhausted"
+        : "other";
+      console.warn(`[AI-RR] ${taskLabel} ✗ ${channel.name} failed: ${reason} — ${msg.substring(0, 200)}`);
       lastError = err instanceof Error ? err : new Error(msg);
       if (msg.includes("402")) count402++;
 
@@ -676,6 +685,12 @@ export async function callAIRoundRobin(
           }
         }
         throw err;
+      }
+
+      // 429 — короткая пауза перед переключением на следующий канал, чтобы не штормить пул
+      if (msg.includes("429") && attempt < channels.length - 1) {
+        console.log(`[AI-RR] ${taskLabel} 429 backoff: waiting 1s before next channel`);
+        await new Promise((r) => setTimeout(r, 1000));
       }
     }
   }
