@@ -1,5 +1,5 @@
 import { Check, X } from "lucide-react";
-import { SUBSCRIPTION_PLANS, formatStorageSize, YEARLY_DISCOUNT } from "@/constants/subscriptionPlans";
+import { SUBSCRIPTION_PLANS, YEARLY_DISCOUNT } from "@/constants/subscriptionPlans";
 import { PLAN_ORDER, pricingFeatureRows, formatPriceRu } from "@/lib/pricingFeatureRows";
 
 export function PlatformProposalPricingTable() {
@@ -33,7 +33,7 @@ export function PlatformProposalPricingTable() {
             <td className="p-3 font-medium">Хранилище файлов</td>
             {PLAN_ORDER.map((p) => (
               <td key={p} className={`p-3 text-center text-xs ${p === 'standard' ? 'bg-accent/5' : ''}`}>
-                {formatStorageSize(SUBSCRIPTION_PLANS[p].limits.storageBytes)}
+                <span className="font-semibold text-accent">Безлимит</span>
               </td>
             ))}
           </tr>

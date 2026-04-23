@@ -28,14 +28,9 @@ export function PlatformProposalHeader({ onDownload, isExporting }: Props) {
   return (
     <header className="proposal-print-hide mb-10 flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
       <div>
-        <div className="mb-3 flex items-center gap-3">
-          <SigmaLogo className="h-10 w-10 text-accent" />
-          <div>
-            <div className="font-display text-xl font-medium tracking-tight">Синтагма</div>
-            <div className="text-xs text-muted-foreground">Образовательная платформа</div>
-          </div>
-        </div>
-        <div className="mt-2 text-xs uppercase tracking-widest text-accent">Коммерческое предложение</div>
+        <SigmaLogo size="md" />
+        <div className="mt-1 text-xs text-muted-foreground">Образовательная платформа</div>
+        <div className="mt-4 text-xs uppercase tracking-widest text-accent">Коммерческое предложение</div>
         <div className="mt-1 text-sm text-muted-foreground">Дата формирования: {today}</div>
       </div>
       <div className="flex flex-wrap gap-2">
