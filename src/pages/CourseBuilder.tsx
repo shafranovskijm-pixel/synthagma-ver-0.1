@@ -15,6 +15,7 @@ import { SortableLessonItem } from "@/components/course-builder/SortableLessonIt
 import { CourseBuilderLessonsNav } from "@/components/course-builder/CourseBuilderLessonsNav";
 import { AIGenerateDialog } from "@/components/course-builder/AIGenerateDialog";
 import { CourseReviewDialog } from "@/components/course-builder/CourseReviewDialog";
+import { CourseGenerationProgress } from "@/components/course-builder/CourseGenerationProgress";
 import { useCourseBuilder } from "@/hooks/useCourseBuilder";
 import { useCourseReview } from "@/hooks/useCourseReview";
 
@@ -183,6 +184,8 @@ export default function CourseBuilder({ embedded, embeddedCourseId, onExitEditor
 
           {/* CENTER: main content */}
           <div className="flex-1 min-w-0 space-y-6">
+            {/* Persistent generation progress — visible after page reload too */}
+            {resolvedCourseId && <CourseGenerationProgress courseId={resolvedCourseId} />}
             <div className="bg-card rounded-2xl border border-border border-t-2 border-t-primary/30">
               <Accordion type="single" collapsible>
                 <AccordionItem value="info" className="border-b-0">

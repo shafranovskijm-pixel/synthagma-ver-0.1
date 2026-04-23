@@ -3,6 +3,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Users, BookOpen, Activity, CheckCircle, Building2, DollarSign, Calendar, TrendingUp } from "lucide-react";
 import { OnlineUsersWidget } from "./OnlineUsersWidget";
+import { AdminAITodayWidget } from "./analytics/AdminAITodayWidget";
 import { useAdminAnalytics } from "@/hooks/useAdminAnalytics";
 import { RegistrationsChart } from "./analytics/RegistrationsChart";
 import { ActivityChart } from "./analytics/ActivityChart";
@@ -89,7 +90,10 @@ export function AdminAnalytics() {
         </div>
       )}
 
-      <OnlineUsersWidget />
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <OnlineUsersWidget />
+        <AdminAITodayWidget />
+      </div>
 
       {/* Summary Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4">
