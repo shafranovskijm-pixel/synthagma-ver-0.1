@@ -1,7 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Download, Search, Users, CheckCircle2, AlertCircle, XCircle, Filter, FileSpreadsheet, Shield, BarChart3, Upload, ClipboardCheck, BookOpen, Send, Wand2 } from "lucide-react";
+import { Download, Search, Users, CheckCircle2, AlertCircle, XCircle, Filter, FileSpreadsheet, Shield, BarChart3, Upload, ClipboardCheck, BookOpen, Send, Wrench } from "lucide-react";
 import { FRDOExportDialog } from "./FRDOExportDialog";
 import { FrdoFileSanitizerDialog } from "./FrdoFileSanitizerDialog";
 import { useFRDOManager } from "@/hooks/useFRDOManager";
@@ -40,7 +40,7 @@ export function FRDOManager({ organizationId }: { organizationId: string }) {
         <div className="flex items-center gap-2 flex-wrap">
           <input ref={fileInputRef} type="file" className="hidden" onChange={handleFileChange} accept=".xlsx,.xls,.pdf,.zip" />
           <Button variant="outline" onClick={() => setShowSanitizer(true)} className="rounded-xl gap-2">
-            <Wand2 className="w-4 h-4" />Очистить чужой файл
+            <Wrench className="w-4 h-4" />Устранить ошибки ФРДО
           </Button>
           <Button variant="outline" onClick={() => fileInputRef.current?.click()} className="rounded-xl gap-2" disabled={isUploading}>
             {isUploading ? <SigmaSpinner size="sm" /> : <Upload className="w-4 h-4" />}Загрузить подписанный
