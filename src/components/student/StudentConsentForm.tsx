@@ -96,13 +96,69 @@ export function StudentConsentForm({
   const [consentHistory, setConsentHistory] = useState<ConsentRecord[]>([]);
   const [currentConsent, setCurrentConsent] = useState<ConsentRecord | null>(null);
   const [showHistory, setShowHistory] = useState(false);
+  const [effectiveOrganizationId, setEffectiveOrganizationId] = useState<string | null>(
+    organizationId && organizationId.trim() ? organizationId : null
+  );
 
   useEffect(() => {
     if ((isOpen || embedded)) {
-      if (organizationId) loadOrganization();
-      loadConsentHistory();
+      resolveOrganizationId().then((resolvedId) => {
+        if (resolvedId) loadOrganization(resolvedId);
+        loadConsentHistory(resolvedId);
+      });
     }
-  }, [isOpen, embedded, organizationId, userId]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen, embedded, organizationId, userId, enrollmentId]);
+
+  // Резолвим organization_id: пропс → enrollment → профиль студента
+  const resolveOrganizationId = async (): Promise<string | null> => {
+    if (organizationId && organizationId.trim()) {
+      setEffectiveOrganizationId(organizationId);
+      return organizationId;
+    }
+    try {
+      // 1. Через enrollment, если он передан
+      if (enrollmentId) {
+        const { data: enr } = await supabase
+          .from("enrollments")
+          .select("course:courses(organization_id)")
+          .eq("id", enrollmentId)
+          .maybeSingle();
+        const orgFromEnr = (enr as any)?.course?.organization_id as string | undefined;
+        if (orgFromEnr) {
+          setEffectiveOrganizationId(orgFromEnr);
+          return orgFromEnr;
+        }
+      }
+      // 2. Через любое активное зачисление пользователя
+      const { data: anyEnr } = await supabase
+        .from("enrollments")
+        .select("course:courses(organization_id)")
+        .eq("user_id", userId)
+        .order("started_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      const orgFromAnyEnr = (anyEnr as any)?.course?.organization_id as string | undefined;
+      if (orgFromAnyEnr) {
+        setEffectiveOrganizationId(orgFromAnyEnr);
+        return orgFromAnyEnr;
+      }
+      // 3. Через профиль
+      const { data: prof } = await supabase
+        .from("profiles")
+        .select("organization_id")
+        .eq("user_id", userId)
+        .maybeSingle();
+      if (prof?.organization_id) {
+        setEffectiveOrganizationId(prof.organization_id);
+        return prof.organization_id;
+      }
+    } catch (e) {
+      console.error("Error resolving organization id:", e);
+    }
+    setEffectiveOrganizationId(null);
+    return null;
+  };
 
   const loadOrganization = async () => {
     try {
