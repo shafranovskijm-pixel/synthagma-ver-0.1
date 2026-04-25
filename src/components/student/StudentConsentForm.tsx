@@ -9,6 +9,7 @@ import { FileCheck, Shield, Check, AlertCircle, Download, History } from "lucide
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
+import { getErrorMessage } from "@/utils/handleSupabaseError";
 
 interface StudentConsentFormProps {
   userId: string;
