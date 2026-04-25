@@ -1,0 +1,1 @@
+ALTER TABLE public.courses ALTER COLUMN skip_video_identification SET DEFAULT true;
