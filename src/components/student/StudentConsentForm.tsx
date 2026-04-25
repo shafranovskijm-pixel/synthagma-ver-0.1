@@ -160,12 +160,12 @@ export function StudentConsentForm({
     return null;
   };
 
-  const loadOrganization = async () => {
+  const loadOrganization = async (orgId: string) => {
     try {
       const { data } = await supabase
         .from("organizations")
         .select("name, inn, ogrn, legal_address")
-        .eq("id", organizationId)
+        .eq("id", orgId)
         .single();
 
       if (data) {
@@ -176,7 +176,7 @@ export function StudentConsentForm({
     }
   };
 
-  const loadConsentHistory = async () => {
+  const loadConsentHistory = async (orgId?: string | null) => {
     setIsLoadingHistory(true);
     try {
       const query = supabase
@@ -185,8 +185,8 @@ export function StudentConsentForm({
         .eq("user_id", userId)
         .order("created_at", { ascending: false });
       
-      if (organizationId) {
-        query.eq("organization_id", organizationId);
+      if (orgId) {
+        query.eq("organization_id", orgId);
       }
 
       const { data, error } = await query;
@@ -211,6 +211,18 @@ export function StudentConsentForm({
       return;
     }
 
+    // На всякий случай ещё раз пробуем разрезолвить organization_id
+    let orgIdToUse = effectiveOrganizationId;
+    if (!orgIdToUse) {
+      orgIdToUse = await resolveOrganizationId();
+    }
+    if (!orgIdToUse) {
+      toast.error(
+        "Не удалось определить образовательную организацию. Обратитесь к администратору."
+      );
+      return;
+    }
+
     setIsLoading(true);
     try {
       const now = new Date();
@@ -220,7 +232,7 @@ export function StudentConsentForm({
         .from("student_consents")
         .insert({
           user_id: userId,
-          organization_id: organizationId || null,
+          organization_id: orgIdToUse,
           enrollment_id: enrollmentId || null,
           consent_type: "individual",
           status: "signed",
@@ -241,7 +253,7 @@ export function StudentConsentForm({
       onConsent?.();
     } catch (error) {
       console.error("Error saving consent:", error);
-      toast.error("Ошибка сохранения согласия");
+      toast.error(getErrorMessage(error, "Ошибка сохранения согласия"));
     } finally {
       setIsLoading(false);
     }
