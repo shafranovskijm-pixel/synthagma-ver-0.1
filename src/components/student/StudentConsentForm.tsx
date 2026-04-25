@@ -9,6 +9,7 @@ import { FileCheck, Shield, Check, AlertCircle, Download, History } from "lucide
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
+import { getErrorMessage } from "@/utils/handleSupabaseError";
 
 interface StudentConsentFormProps {
   userId: string;
@@ -95,20 +96,76 @@ export function StudentConsentForm({
   const [consentHistory, setConsentHistory] = useState<ConsentRecord[]>([]);
   const [currentConsent, setCurrentConsent] = useState<ConsentRecord | null>(null);
   const [showHistory, setShowHistory] = useState(false);
+  const [effectiveOrganizationId, setEffectiveOrganizationId] = useState<string | null>(
+    organizationId && organizationId.trim() ? organizationId : null
+  );
 
   useEffect(() => {
     if ((isOpen || embedded)) {
-      if (organizationId) loadOrganization();
-      loadConsentHistory();
+      resolveOrganizationId().then((resolvedId) => {
+        if (resolvedId) loadOrganization(resolvedId);
+        loadConsentHistory(resolvedId);
+      });
     }
-  }, [isOpen, embedded, organizationId, userId]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen, embedded, organizationId, userId, enrollmentId]);
 
-  const loadOrganization = async () => {
+  // Резолвим organization_id: пропс → enrollment → профиль студента
+  const resolveOrganizationId = async (): Promise<string | null> => {
+    if (organizationId && organizationId.trim()) {
+      setEffectiveOrganizationId(organizationId);
+      return organizationId;
+    }
+    try {
+      // 1. Через enrollment, если он передан
+      if (enrollmentId) {
+        const { data: enr } = await supabase
+          .from("enrollments")
+          .select("course:courses(organization_id)")
+          .eq("id", enrollmentId)
+          .maybeSingle();
+        const orgFromEnr = (enr as any)?.course?.organization_id as string | undefined;
+        if (orgFromEnr) {
+          setEffectiveOrganizationId(orgFromEnr);
+          return orgFromEnr;
+        }
+      }
+      // 2. Через любое активное зачисление пользователя
+      const { data: anyEnr } = await supabase
+        .from("enrollments")
+        .select("course:courses(organization_id)")
+        .eq("user_id", userId)
+        .order("started_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      const orgFromAnyEnr = (anyEnr as any)?.course?.organization_id as string | undefined;
+      if (orgFromAnyEnr) {
+        setEffectiveOrganizationId(orgFromAnyEnr);
+        return orgFromAnyEnr;
+      }
+      // 3. Через профиль
+      const { data: prof } = await supabase
+        .from("profiles")
+        .select("organization_id")
+        .eq("user_id", userId)
+        .maybeSingle();
+      if (prof?.organization_id) {
+        setEffectiveOrganizationId(prof.organization_id);
+        return prof.organization_id;
+      }
+    } catch (e) {
+      console.error("Error resolving organization id:", e);
+    }
+    setEffectiveOrganizationId(null);
+    return null;
+  };
+
+  const loadOrganization = async (orgId: string) => {
     try {
       const { data } = await supabase
         .from("organizations")
         .select("name, inn, ogrn, legal_address")
-        .eq("id", organizationId)
+        .eq("id", orgId)
         .single();
 
       if (data) {
@@ -119,7 +176,7 @@ export function StudentConsentForm({
     }
   };
 
-  const loadConsentHistory = async () => {
+  const loadConsentHistory = async (orgId?: string | null) => {
     setIsLoadingHistory(true);
     try {
       const query = supabase
@@ -128,8 +185,8 @@ export function StudentConsentForm({
         .eq("user_id", userId)
         .order("created_at", { ascending: false });
       
-      if (organizationId) {
-        query.eq("organization_id", organizationId);
+      if (orgId) {
+        query.eq("organization_id", orgId);
       }
 
       const { data, error } = await query;
@@ -154,6 +211,18 @@ export function StudentConsentForm({
       return;
     }
 
+    // На всякий случай ещё раз пробуем разрезолвить organization_id
+    let orgIdToUse = effectiveOrganizationId;
+    if (!orgIdToUse) {
+      orgIdToUse = await resolveOrganizationId();
+    }
+    if (!orgIdToUse) {
+      toast.error(
+        "Не удалось определить образовательную организацию. Обратитесь к администратору."
+      );
+      return;
+    }
+
     setIsLoading(true);
     try {
       const now = new Date();
@@ -163,7 +232,7 @@ export function StudentConsentForm({
         .from("student_consents")
         .insert({
           user_id: userId,
-          organization_id: organizationId || null,
+          organization_id: orgIdToUse,
           enrollment_id: enrollmentId || null,
           consent_type: "individual",
           status: "signed",
@@ -184,7 +253,7 @@ export function StudentConsentForm({
       onConsent?.();
     } catch (error) {
       console.error("Error saving consent:", error);
-      toast.error("Ошибка сохранения согласия");
+      toast.error(getErrorMessage(error, "Ошибка сохранения согласия"));
     } finally {
       setIsLoading(false);
     }
@@ -352,6 +421,21 @@ _________________________ / ${userName} /
               </div>
             )}
 
+            {/* Missing organization warning */}
+            {!effectiveOrganizationId && (
+              <div className="bg-destructive/10 border border-destructive/20 rounded-xl p-4 flex items-start gap-3">
+                <AlertCircle className="w-5 h-5 text-destructive shrink-0 mt-0.5" />
+                <div>
+                  <p className="text-sm font-medium text-destructive">
+                    Не удалось определить образовательную организацию
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Подписание согласия временно недоступно. Обратитесь к менеджеру вашей учебной организации, чтобы вас прикрепили к школе.
+                  </p>
+                </div>
+              </div>
+            )}
+
             <div className="bg-muted/50 rounded-xl p-4">
               <p className="text-sm">
                 <strong>{organization?.name || "Образовательная организация"}</strong>
@@ -380,7 +464,7 @@ _________________________ / ${userName} /
             <Button
               className="w-full btn-gradient rounded-xl gap-2"
               onClick={handleSubmitConsent}
-              disabled={!hasAgreed || isLoading}
+              disabled={!hasAgreed || isLoading || !effectiveOrganizationId}
             >
               {isLoading ? (
                 <>
