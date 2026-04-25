@@ -38,7 +38,7 @@ function generatePassword(): string {
   return pwd;
 }
 
-async function generateLogin(admin: ReturnType<typeof createClient>): Promise<string> {
+async function generateLogin(admin: any): Promise<string> {
   for (let attempt = 0; attempt < 6; attempt++) {
     const num = Math.floor(10000 + Math.random() * 90000);
     const login = `student_${num}`;

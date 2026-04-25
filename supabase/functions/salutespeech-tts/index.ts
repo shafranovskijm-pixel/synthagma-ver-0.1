@@ -267,7 +267,7 @@ serve(async (req) => {
 
     // Try primary slot, fallback to secondary
     const primarySlot = pickSlot(stream_index)!;
-    let audioBuffer: ArrayBuffer;
+    let audioBuffer: ArrayBuffer = new ArrayBuffer(0);
 
     try {
       audioBuffer = await synthesizeWithSlot(primarySlot, text, voiceParam, audioFormat);
