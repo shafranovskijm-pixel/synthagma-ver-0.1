@@ -421,6 +421,21 @@ _________________________ / ${userName} /
               </div>
             )}
 
+            {/* Missing organization warning */}
+            {!effectiveOrganizationId && (
+              <div className="bg-destructive/10 border border-destructive/20 rounded-xl p-4 flex items-start gap-3">
+                <AlertCircle className="w-5 h-5 text-destructive shrink-0 mt-0.5" />
+                <div>
+                  <p className="text-sm font-medium text-destructive">
+                    Не удалось определить образовательную организацию
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Подписание согласия временно недоступно. Обратитесь к менеджеру вашей учебной организации, чтобы вас прикрепили к школе.
+                  </p>
+                </div>
+              </div>
+            )}
+
             <div className="bg-muted/50 rounded-xl p-4">
               <p className="text-sm">
                 <strong>{organization?.name || "Образовательная организация"}</strong>
@@ -449,7 +464,7 @@ _________________________ / ${userName} /
             <Button
               className="w-full btn-gradient rounded-xl gap-2"
               onClick={handleSubmitConsent}
-              disabled={!hasAgreed || isLoading}
+              disabled={!hasAgreed || isLoading || !effectiveOrganizationId}
             >
               {isLoading ? (
                 <>
