@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
-import { Users, Search, BookOpen, Filter, FileCheck, FileSpreadsheet, GraduationCap, Key, Mail, XCircle, X, Trash2, FileText, FolderOpen, Plus, Settings } from "lucide-react";
+import { Users, Search, BookOpen, Filter, FileCheck, FileSpreadsheet, GraduationCap, Key, Mail, XCircle, X, Trash2, FileText, FolderOpen, Plus, Settings, Archive, ArchiveRestore, ChevronDown, ChevronRight } from "lucide-react";
 import { GroupSettingsDialog } from "@/components/organization/GroupSettingsDialog";
 import { useStudents } from "@/hooks/useStudents";
 import { toast } from "sonner";
@@ -45,7 +45,7 @@ export const StudentsTab = React.memo(function StudentsTab(props: StudentsTabPro
   const { organizationId, courses, studentDocsByUser, onViewStudent, onCopyCredentials, isCreatingBulkCredentials = false, isSendingBulkCredentials = false, isSendingBulkDocReminders = false } = props;
   const courseIds = courses.map(c => c.id);
   const { generateDocument, isGenerating } = useWordDocumentGenerator();
-  const { filteredStudents, isLoading, frdoStatus, selectedStudentIds, setSelectedStudentIds, toggleSelection, toggleSelectAll, getSelectedUserIds, statusFilter, setStatusFilter, courseFilter, setCourseFilter, groupFilter, setGroupFilter, studentGroups, refreshGroups, studentGroupMap, docsFilter, setDocsFilter, searchQuery, setSearchQuery, removeStudent } = useStudents(organizationId, courseIds, studentDocsByUser);
+  const { filteredStudents, isLoading, frdoStatus, selectedStudentIds, setSelectedStudentIds, toggleSelection, toggleSelectAll, getSelectedUserIds, statusFilter, setStatusFilter, courseFilter, setCourseFilter, groupFilter, setGroupFilter, studentGroups, refreshGroups, studentGroupMap, docsFilter, setDocsFilter, searchQuery, setSearchQuery, removeStudent, viewMode, setViewMode, archivedStudents, activeStudentsCount, archiveByMonth, archiveStudent, unarchiveStudent } = useStudents(organizationId, courseIds, studentDocsByUser);
 
   const [showGroupDialog, setShowGroupDialog] = useState(false);
   const [newGroupName, setNewGroupName] = useState("");
@@ -58,6 +58,23 @@ export const StudentsTab = React.memo(function StudentsTab(props: StudentsTabPro
   const [showRemindConfirm, setShowRemindConfirm] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [visibleCount, setVisibleCount] = useState(10);
+  const [expandedMonths, setExpandedMonths] = useState<Set<string>>(new Set());
+  React.useEffect(() => {
+    // Auto-expand the first (most recent) month when entering archive
+    if (viewMode === "archive" && archiveByMonth.length > 0) {
+      setExpandedMonths(prev => {
+        if (prev.size > 0) return prev;
+        return new Set([archiveByMonth[0].key]);
+      });
+    }
+  }, [viewMode, archiveByMonth]);
+  const toggleMonth = useCallback((key: string) => {
+    setExpandedMonths(prev => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key); else next.add(key);
+      return next;
+    });
+  }, []);
 
   const handleCreateGroup = async () => {
     if (!newGroupName.trim()) return;
@@ -128,8 +145,27 @@ export const StudentsTab = React.memo(function StudentsTab(props: StudentsTabPro
       <div className="p-4 lg:p-6 border-b border-border space-y-4">
         <div className="flex items-center justify-between flex-wrap gap-3">
           <div className="flex items-center gap-2 lg:gap-3">
-            <h2 className="font-display text-lg lg:text-xl font-semibold">{courseFilter !== "all" ? `Ученики: ${courses.find(c => c.id === courseFilter)?.title || "Курс"}` : "Все ученики"}</h2>
+            <h2 className="font-display text-lg lg:text-xl font-semibold">{courseFilter !== "all" ? `Ученики: ${courses.find(c => c.id === courseFilter)?.title || "Курс"}` : viewMode === "archive" ? "Архив учеников" : "Все ученики"}</h2>
             {courseFilter !== "all" && <Button variant="ghost" size="sm" onClick={() => setCourseFilter("all")} className="rounded-xl gap-1 text-muted-foreground hover:text-foreground"><X className="w-4 h-4" /><span className="hidden sm:inline">Сбросить</span></Button>}
+          </div>
+          {/* View toggle: Active / Archive */}
+          <div className="inline-flex items-center rounded-xl border border-border bg-muted/30 p-0.5 text-sm">
+            <button
+              type="button"
+              onClick={() => setViewMode("active")}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-colors ${viewMode === "active" ? "bg-background shadow-sm font-medium" : "text-muted-foreground hover:text-foreground"}`}
+            >
+              <Users className="w-4 h-4" /> Активные
+              <span className={`ml-1 text-xs px-1.5 py-0.5 rounded-full ${viewMode === "active" ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"}`}>{activeStudentsCount}</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewMode("archive")}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-colors ${viewMode === "archive" ? "bg-background shadow-sm font-medium" : "text-muted-foreground hover:text-foreground"}`}
+            >
+              <Archive className="w-4 h-4" /> Архив
+              <span className={`ml-1 text-xs px-1.5 py-0.5 rounded-full ${viewMode === "archive" ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"}`}>{archivedStudents.length}</span>
+            </button>
           </div>
         </div>
         <div className="lg:hidden"><div className="relative"><Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" /><Input placeholder="Поиск..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="pl-10 w-full rounded-xl" /></div></div>
@@ -187,7 +223,66 @@ export const StudentsTab = React.memo(function StudentsTab(props: StudentsTabPro
       {isLoading ? (
         <div className="flex items-center justify-center py-12"><SigmaSpinner size="lg" /></div>
       ) : filteredStudents.length === 0 ? (
-        <StudentsEmptyState onAddStudent={props.onAddStudent} onImportStudents={props.onImportStudents} onNavigateToFRDO={props.onNavigateToFRDO} />
+        viewMode === "archive" ? (
+          <div className="py-16 text-center text-muted-foreground">
+            <Archive className="w-10 h-10 mx-auto mb-3 opacity-40" />
+            <p className="font-medium">Архив пуст</p>
+            <p className="text-sm mt-1">Сюда автоматически попадают ученики, прошедшие все курсы на 100%.</p>
+          </div>
+        ) : (
+          <StudentsEmptyState onAddStudent={props.onAddStudent} onImportStudents={props.onImportStudents} onNavigateToFRDO={props.onNavigateToFRDO} />
+        )
+      ) : viewMode === "archive" ? (
+        <div className="divide-y divide-border">
+          {archiveByMonth.map(group => {
+            const isOpen = expandedMonths.has(group.key);
+            return (
+              <div key={group.key}>
+                <button
+                  type="button"
+                  onClick={() => toggleMonth(group.key)}
+                  className="w-full flex items-center justify-between px-4 lg:px-6 py-3 hover:bg-muted/40 transition-colors"
+                >
+                  <div className="flex items-center gap-2">
+                    {isOpen ? <ChevronDown className="w-4 h-4 text-muted-foreground" /> : <ChevronRight className="w-4 h-4 text-muted-foreground" />}
+                    <span className="font-medium">{group.label}</span>
+                    <span className="text-xs text-muted-foreground">— {group.students.length} учен.</span>
+                  </div>
+                </button>
+                {isOpen && (
+                  <div className="hidden lg:block overflow-x-auto border-t border-border bg-muted/10">
+                    <table className="w-full">
+                      <thead><tr className="border-b border-border">
+                        <th className="text-left px-4 py-3 text-xs font-medium text-muted-foreground w-12"></th>
+                        <th className="text-left px-6 py-3 text-xs font-medium text-muted-foreground">Ученик</th>
+                        <th className="text-left px-3 py-3 text-xs font-medium text-muted-foreground w-24">Онлайн</th>
+                        <th className="text-left px-3 py-3 text-xs font-medium text-muted-foreground">Группа</th>
+                        <th className="text-left px-4 py-3 text-xs font-medium text-muted-foreground">Документы</th>
+                        <th className="text-left px-3 py-3 text-xs font-medium text-muted-foreground">ФРДО</th>
+                        <th className="text-left px-6 py-3 text-xs font-medium text-muted-foreground">Курсы</th>
+                        <th className="text-left px-6 py-3 text-xs font-medium text-muted-foreground">Прогресс</th>
+                        <th className="text-left px-6 py-3 text-xs font-medium text-muted-foreground">Статус</th>
+                        <th className="text-left px-6 py-3 text-xs font-medium text-muted-foreground">Действия</th>
+                      </tr></thead>
+                      <tbody>
+                        {group.students.map(student => (
+                          <StudentTableRow key={student.user_id} student={student} isSelected={selectedStudentIds.has(student.user_id)} onToggleSelection={() => toggleSelection(student.user_id)} onViewStudent={() => onViewStudent(student)} onCopyCredentials={onCopyCredentials} onRemoveStudent={removeStudent} studentDocsByUser={studentDocsByUser} frdoStatus={frdoStatus} studentGroups={studentGroups} studentGroupMap={studentGroupMap} onAssignGroup={handleAssignGroup} isArchiveView onUnarchive={unarchiveStudent} />
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+                {isOpen && (
+                  <div className="lg:hidden divide-y divide-border border-t border-border bg-muted/10">
+                    {group.students.map(student => (
+                      <StudentMobileCard key={student.user_id} student={student} isSelected={selectedStudentIds.has(student.user_id)} onToggleSelection={() => toggleSelection(student.user_id)} onViewStudent={() => onViewStudent(student)} onCopyCredentials={onCopyCredentials} studentDocsByUser={studentDocsByUser} />
+                    ))}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
       ) : (
         <>
           <div className="lg:hidden divide-y divide-border">
@@ -211,7 +306,7 @@ export const StudentsTab = React.memo(function StudentsTab(props: StudentsTabPro
               </tr></thead>
               <tbody>
                 {paginatedStudents.map(student => (
-                  <StudentTableRow key={student.user_id} student={student} isSelected={selectedStudentIds.has(student.user_id)} onToggleSelection={() => toggleSelection(student.user_id)} onViewStudent={() => onViewStudent(student)} onCopyCredentials={onCopyCredentials} onRemoveStudent={removeStudent} studentDocsByUser={studentDocsByUser} frdoStatus={frdoStatus} studentGroups={studentGroups} studentGroupMap={studentGroupMap} onAssignGroup={handleAssignGroup} />
+                  <StudentTableRow key={student.user_id} student={student} isSelected={selectedStudentIds.has(student.user_id)} onToggleSelection={() => toggleSelection(student.user_id)} onViewStudent={() => onViewStudent(student)} onCopyCredentials={onCopyCredentials} onRemoveStudent={removeStudent} studentDocsByUser={studentDocsByUser} frdoStatus={frdoStatus} studentGroups={studentGroups} studentGroupMap={studentGroupMap} onAssignGroup={handleAssignGroup} onArchive={archiveStudent} />
                 ))}
               </tbody>
             </table>

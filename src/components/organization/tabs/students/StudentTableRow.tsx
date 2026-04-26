@@ -2,7 +2,7 @@ import React from "react";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Copy, Trash2, CheckCircle2, XCircle, AlertCircle } from "lucide-react";
+import { Copy, Trash2, CheckCircle2, XCircle, AlertCircle, Archive, ArchiveRestore } from "lucide-react";
 import type { Student, StudentFRDOStatus } from "@/types";
 
 function formatTimeAgo(dateStr: string): string {
@@ -26,11 +26,15 @@ interface StudentTableRowProps {
   studentGroups: Array<{ id: string; name: string; color: string }>;
   studentGroupMap: Map<string, string>;
   onAssignGroup: (userId: string, groupId: string | null) => void;
+  isArchiveView?: boolean;
+  onArchive?: (userId: string) => void;
+  onUnarchive?: (userId: string) => void;
 }
 
 export const StudentTableRow = React.memo(function StudentTableRow({
   student, isSelected, onToggleSelection, onViewStudent, onCopyCredentials,
   onRemoveStudent, studentDocsByUser, frdoStatus, studentGroups, studentGroupMap, onAssignGroup,
+  isArchiveView = false, onArchive, onUnarchive,
 }: StudentTableRowProps) {
   const enrollmentsCount = student.enrollments?.length || 0;
   const userDocs = studentDocsByUser.get(student.user_id) || [];
@@ -131,6 +135,11 @@ export const StudentTableRow = React.memo(function StudentTableRow({
         <div className="flex gap-2">
           {student.login && student.generated_password && (
             <Button variant="outline" size="sm" className="rounded-lg gap-1" onClick={() => onCopyCredentials(student.login!, student.generated_password!)} title="Копировать логин и пароль"><Copy className="w-4 h-4" /></Button>
+          )}
+          {isArchiveView ? (
+            onUnarchive && <Button variant="outline" size="sm" className="rounded-lg gap-1" onClick={() => onUnarchive(student.user_id)} title="Вернуть из архива"><ArchiveRestore className="w-4 h-4" /></Button>
+          ) : (
+            onArchive && <Button variant="outline" size="sm" className="rounded-lg" onClick={() => onArchive(student.user_id)} title="В архив"><Archive className="w-4 h-4" /></Button>
           )}
           <Button variant="outline" size="sm" className="rounded-lg text-destructive hover:text-destructive" onClick={() => onRemoveStudent(student.user_id)} title="Удалить ученика"><Trash2 className="w-4 h-4" /></Button>
         </div>

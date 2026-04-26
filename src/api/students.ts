@@ -26,7 +26,7 @@ export async function fetchStudents(
   const profilesPromise = fetchAllRows<any>(({ from, to }) =>
     supabase
       .from("profiles")
-      .select("id, user_id, full_name, email, login, company_id, last_visit_at, student_group_id")
+      .select("id, user_id, full_name, email, login, company_id, last_visit_at, student_group_id, archived_at")
       .eq("organization_id", organizationId)
       .range(from, to)
       .then(r => ({ data: r.data as any[] | null, error: r.error }))
@@ -129,8 +129,9 @@ export async function fetchStudents(
       lastActivity: enrollments[0]?.started_at || null,
       last_visit_at: profile.last_visit_at || null,
       status: aggregateStatus,
-      enrollments: enrollments // Add all enrollments for detail view
-    });
+      enrollments: enrollments, // Add all enrollments for detail view
+      archived_at: profile.archived_at ?? null,
+    } as Student);
   }
 
   // Sort: enrolled students first, then by name
@@ -368,7 +369,13 @@ export async function deleteStudent(userId: string): Promise<boolean> {
   return !error;
 }
 
-// ============= Helpers =============
+export async function setStudentArchived(userId: string, archived: boolean): Promise<boolean> {
+  const { error } = await supabase
+    .from("profiles")
+    .update({ archived_at: archived ? new Date().toISOString() : null } as any)
+    .eq("user_id", userId);
+  return !error;
+}
 
 function generatePassword(): string {
   const chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";

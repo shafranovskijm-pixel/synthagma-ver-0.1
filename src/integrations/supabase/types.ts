@@ -6135,6 +6135,7 @@ export type Database = {
       }
       profiles: {
         Row: {
+          archived_at: string | null
           avatar_url: string | null
           bio: string | null
           chat_privacy: Json | null
@@ -6160,6 +6161,7 @@ export type Database = {
           vk_link: string | null
         }
         Insert: {
+          archived_at?: string | null
           avatar_url?: string | null
           bio?: string | null
           chat_privacy?: Json | null
@@ -6185,6 +6187,7 @@ export type Database = {
           vk_link?: string | null
         }
         Update: {
+          archived_at?: string | null
           avatar_url?: string | null
           bio?: string | null
           chat_privacy?: Json | null
