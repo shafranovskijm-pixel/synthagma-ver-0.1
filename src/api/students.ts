@@ -369,7 +369,13 @@ export async function deleteStudent(userId: string): Promise<boolean> {
   return !error;
 }
 
-// ============= Helpers =============
+export async function setStudentArchived(userId: string, archived: boolean): Promise<boolean> {
+  const { error } = await supabase
+    .from("profiles")
+    .update({ archived_at: archived ? new Date().toISOString() : null } as any)
+    .eq("user_id", userId);
+  return !error;
+}
 
 function generatePassword(): string {
   const chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
