@@ -165,12 +165,18 @@ export function SalesTasks({ organizationId, prefillCompany, onPrefillConsumed, 
                             {t.description && (
                               <div className="text-xs text-muted-foreground mt-1 line-clamp-2">{t.description}</div>
                             )}
-                            <div className="text-xs mt-1 flex items-center gap-2 text-muted-foreground">
+                            <div className="text-xs mt-1 flex items-center gap-2 text-muted-foreground flex-wrap">
                               <CalIcon className="w-3 h-3" />
                               {format(date, 'dd MMM, HH:mm', { locale: ru })}
                               {overdue && <span className="text-rose-600">• просрочено на {Math.abs(days)} дн.</span>}
                               {today && <span className="text-amber-600">• сегодня</span>}
                               {!overdue && !today && days > 0 && <span>• через {days} дн.</span>}
+                              {(() => {
+                                const a = t.assigned_user_id ? assigneeById.get(t.assigned_user_id) : null;
+                                const fallback = !a && t.manager_id ? (managers || []).find((m: any) => m.id === t.manager_id) : null;
+                                const name = a?.full_name || fallback?.full_name;
+                                return name ? <span className="px-1.5 py-0.5 rounded bg-primary/10 text-primary">👤 {name}</span> : null;
+                              })()}
                             </div>
                           </div>
                           {onOpenDeal && t.lead_id && (() => {
