@@ -266,6 +266,21 @@ export function StaffManager({ organizationId }: StaffManagerProps) {
                           </span>
                         </TableCell>
                         <TableCell>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <div className="inline-flex">
+                                <Switch
+                                  checked={!!s.can_receive_crm_tasks}
+                                  onCheckedChange={(v) => handleToggleCrmFlag(s.id, v)}
+                                />
+                              </div>
+                            </TooltipTrigger>
+                            <TooltipContent side="top" className="max-w-[260px]">
+                              Если включено — сотрудник появится в списке исполнителей задач CRM (раздел «Продажи»).
+                            </TooltipContent>
+                          </Tooltip>
+                        </TableCell>
+                        <TableCell>
                           <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" onClick={() => handleDelete(s.id)}>
                             <Trash2 className="w-4 h-4" />
                           </Button>
