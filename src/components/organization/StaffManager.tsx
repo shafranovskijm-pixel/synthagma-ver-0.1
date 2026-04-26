@@ -188,12 +188,15 @@ export function StaffManager({ organizationId }: StaffManagerProps) {
               <h2 className="text-lg font-bold flex items-center gap-2"><Users className="w-5 h-5" />Сотрудники</h2>
               <p className="text-sm text-muted-foreground">Управление ролями и доступом сотрудников</p>
             </div>
-            <div className="flex gap-2">
-              <Button variant="outline" className="rounded-xl gap-2" onClick={() => setInviteOpen(true)}>
+            <div className="flex gap-2 flex-wrap">
+              <Button className="btn-gradient rounded-xl gap-2" onClick={() => setInviteOpen(true)}>
                 <Mail className="w-4 h-4" />Пригласить по email
               </Button>
-              <Button className="btn-gradient rounded-xl gap-2" onClick={() => setDialogOpen(true)}>
-                <Plus className="w-4 h-4" />Добавить
+              <Button variant="outline" className="rounded-xl gap-2" onClick={() => { setCreatePassword(generateStrongPassword()); setCreateOpen(true); }}>
+                <KeyRound className="w-4 h-4" />Создать с паролем
+              </Button>
+              <Button variant="ghost" className="rounded-xl gap-2" onClick={() => setDialogOpen(true)}>
+                <Plus className="w-4 h-4" />Добавить существующего
               </Button>
             </div>
           </div>
@@ -215,6 +218,9 @@ export function StaffManager({ organizationId }: StaffManagerProps) {
                     <TableHead>Роль</TableHead>
                     <TableHead>Срок действия</TableHead>
                     <TableHead>Видимость</TableHead>
+                    <TableHead className="whitespace-nowrap">
+                      <span className="flex items-center gap-1"><ListTodo className="w-3.5 h-3.5" />CRM-задачи</span>
+                    </TableHead>
                     <TableHead className="w-[80px]"></TableHead>
                   </TableRow>
                 </TableHeader>
@@ -258,6 +264,21 @@ export function StaffManager({ organizationId }: StaffManagerProps) {
                             <Eye className="w-3.5 h-3.5" />
                             {VISIBILITY.find(v => v.value === s.visibility)?.label || s.visibility}
                           </span>
+                        </TableCell>
+                        <TableCell>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <div className="inline-flex">
+                                <Switch
+                                  checked={!!s.can_receive_crm_tasks}
+                                  onCheckedChange={(v) => handleToggleCrmFlag(s.id, v)}
+                                />
+                              </div>
+                            </TooltipTrigger>
+                            <TooltipContent side="top" className="max-w-[260px]">
+                              Если включено — сотрудник появится в списке исполнителей задач CRM (раздел «Продажи»).
+                            </TooltipContent>
+                          </Tooltip>
                         </TableCell>
                         <TableCell>
                           <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" onClick={() => handleDelete(s.id)}>
@@ -349,12 +370,88 @@ export function StaffManager({ organizationId }: StaffManagerProps) {
                   </SelectContent>
                 </Select>
               </div>
+              <div className="flex items-center justify-between rounded-lg border border-border p-3">
+                <div className="space-y-0.5 pr-3">
+                  <Label className="flex items-center gap-2"><ListTodo className="w-4 h-4" />Может получать задачи CRM</Label>
+                  <p className="text-xs text-muted-foreground">Сотрудник появится в списке исполнителей в разделе «Продажи».</p>
+                </div>
+                <Switch checked={canReceiveCrmTasks} onCheckedChange={setCanReceiveCrmTasks} />
+              </div>
             </div>
             <DialogFooter>
               <Button variant="outline" onClick={() => setDialogOpen(false)}>Отмена</Button>
               <Button onClick={handleAdd} disabled={saving} className="btn-gradient gap-2">
                 {saving ? <SigmaSpinner size="sm" /> : <Plus className="w-4 h-4" />}
                 Добавить
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Create staff with password dialog */}
+        <Dialog open={createOpen} onOpenChange={setCreateOpen}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>Создать сотрудника с логином и паролем</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label>Email (логин)</Label>
+                <Input value={email} onChange={e => setEmail(e.target.value)} placeholder="email@example.com" />
+                <p className="text-xs text-muted-foreground">Будет создан аккаунт с этим email. Если такой пользователь уже есть — он просто будет добавлен в организацию.</p>
+              </div>
+              <div className="space-y-2">
+                <Label>ФИО / отображаемое имя</Label>
+                <Input value={displayName} onChange={e => setDisplayName(e.target.value)} placeholder="Иван Иванов" />
+              </div>
+              <div className="space-y-2">
+                <Label>Пароль</Label>
+                <div className="flex gap-2">
+                  <Input value={createPassword} onChange={e => setCreatePassword(e.target.value)} />
+                  <Button type="button" variant="outline" size="icon" onClick={() => setCreatePassword(generateStrongPassword())} title="Сгенерировать">
+                    <KeyRound className="w-4 h-4" />
+                  </Button>
+                  <Button type="button" variant="outline" size="icon" onClick={() => { navigator.clipboard.writeText(createPassword); toast.success("Скопировано"); }} title="Скопировать">
+                    <Copy className="w-4 h-4" />
+                  </Button>
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label>Роль</Label>
+                <Select value={role} onValueChange={setRole}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {ROLES.map(r => (
+                      <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground mt-1">{selectedRoleConfig.description}</p>
+              </div>
+              <div className="space-y-2">
+                <Label>Видимость для учеников</Label>
+                <Select value={visibility} onValueChange={setVisibility}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {VISIBILITY.map(v => (
+                      <SelectItem key={v.value} value={v.value}>{v.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="flex items-center justify-between rounded-lg border border-border p-3">
+                <div className="space-y-0.5 pr-3">
+                  <Label className="flex items-center gap-2"><ListTodo className="w-4 h-4" />Может получать задачи CRM</Label>
+                  <p className="text-xs text-muted-foreground">Сотрудник появится в списке исполнителей в разделе «Продажи».</p>
+                </div>
+                <Switch checked={canReceiveCrmTasks} onCheckedChange={setCanReceiveCrmTasks} />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setCreateOpen(false)}>Отмена</Button>
+              <Button onClick={handleCreateStaff} disabled={saving} className="btn-gradient gap-2">
+                {saving ? <SigmaSpinner size="sm" /> : <KeyRound className="w-4 h-4" />}
+                Создать
               </Button>
             </DialogFooter>
           </DialogContent>
