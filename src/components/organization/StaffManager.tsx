@@ -188,12 +188,15 @@ export function StaffManager({ organizationId }: StaffManagerProps) {
               <h2 className="text-lg font-bold flex items-center gap-2"><Users className="w-5 h-5" />Сотрудники</h2>
               <p className="text-sm text-muted-foreground">Управление ролями и доступом сотрудников</p>
             </div>
-            <div className="flex gap-2">
-              <Button variant="outline" className="rounded-xl gap-2" onClick={() => setInviteOpen(true)}>
+            <div className="flex gap-2 flex-wrap">
+              <Button className="btn-gradient rounded-xl gap-2" onClick={() => setInviteOpen(true)}>
                 <Mail className="w-4 h-4" />Пригласить по email
               </Button>
-              <Button className="btn-gradient rounded-xl gap-2" onClick={() => setDialogOpen(true)}>
-                <Plus className="w-4 h-4" />Добавить
+              <Button variant="outline" className="rounded-xl gap-2" onClick={() => { setCreatePassword(generateStrongPassword()); setCreateOpen(true); }}>
+                <KeyRound className="w-4 h-4" />Создать с паролем
+              </Button>
+              <Button variant="ghost" className="rounded-xl gap-2" onClick={() => setDialogOpen(true)}>
+                <Plus className="w-4 h-4" />Добавить существующего
               </Button>
             </div>
           </div>
