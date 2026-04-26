@@ -26,7 +26,7 @@ export async function fetchStudents(
   const profilesPromise = fetchAllRows<any>(({ from, to }) =>
     supabase
       .from("profiles")
-      .select("id, user_id, full_name, email, login, company_id, last_visit_at, student_group_id")
+      .select("id, user_id, full_name, email, login, company_id, last_visit_at, student_group_id, archived_at")
       .eq("organization_id", organizationId)
       .range(from, to)
       .then(r => ({ data: r.data as any[] | null, error: r.error }))
