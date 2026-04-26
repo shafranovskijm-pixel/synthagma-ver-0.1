@@ -218,6 +218,9 @@ export function StaffManager({ organizationId }: StaffManagerProps) {
                     <TableHead>Роль</TableHead>
                     <TableHead>Срок действия</TableHead>
                     <TableHead>Видимость</TableHead>
+                    <TableHead className="whitespace-nowrap">
+                      <span className="flex items-center gap-1"><ListTodo className="w-3.5 h-3.5" />CRM-задачи</span>
+                    </TableHead>
                     <TableHead className="w-[80px]"></TableHead>
                   </TableRow>
                 </TableHeader>
