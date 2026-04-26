@@ -103,6 +103,7 @@ export function SalesTasks({ organizationId, prefillCompany, onPrefillConsumed, 
             <NewTaskForm
               managers={managers}
               leads={leads}
+              assignees={assignees}
               initialTitle={prefillTitle}
               onSubmit={async (input) => {
                 await create.mutateAsync(input);
