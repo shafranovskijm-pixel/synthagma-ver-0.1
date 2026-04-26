@@ -65,10 +65,13 @@ export function StaffManager({ organizationId }: StaffManagerProps) {
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [inviteOpen, setInviteOpen] = useState(false);
+  const [createOpen, setCreateOpen] = useState(false);
   const [email, setEmail] = useState("");
   const [displayName, setDisplayName] = useState("");
   const [role, setRole] = useState("teacher");
   const [visibility, setVisibility] = useState("all");
+  const [canReceiveCrmTasks, setCanReceiveCrmTasks] = useState(false);
+  const [createPassword, setCreatePassword] = useState(generateStrongPassword());
   const [saving, setSaving] = useState(false);
 
   useEffect(() => { loadStaff(); }, [organizationId]);
