@@ -16,6 +16,7 @@ export interface Student {
   company_id?: string | null;
   company_name?: string | null;
   enrollments?: StudentEnrollment[]; // All enrollments for this student
+  archived_at?: string | null; // Manual archive timestamp (profiles.archived_at)
 }
 
 export interface StudentDocument {
