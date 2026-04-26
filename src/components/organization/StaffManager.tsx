@@ -109,6 +109,7 @@ export function StaffManager({ organizationId }: StaffManagerProps) {
       role,
       display_name: displayName.trim() || email.trim(),
       visibility,
+      can_receive_crm_tasks: canReceiveCrmTasks,
     } as any);
 
     if (error) {
@@ -117,10 +118,49 @@ export function StaffManager({ organizationId }: StaffManagerProps) {
     } else {
       toast.success("Сотрудник добавлен");
       setDialogOpen(false);
-      setEmail(""); setDisplayName(""); setRole("teacher"); setVisibility("all");
+      setEmail(""); setDisplayName(""); setRole("teacher"); setVisibility("all"); setCanReceiveCrmTasks(false);
       await loadStaff();
     }
     setSaving(false);
+  };
+
+  const handleCreateStaff = async () => {
+    if (!email.trim() || !createPassword.trim()) { toast.error("Введите email и пароль"); return; }
+    setSaving(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("create-org-staff", {
+        body: {
+          email: email.trim(),
+          password: createPassword,
+          fullName: displayName.trim() || email.trim(),
+          organizationId,
+          role,
+          displayName: displayName.trim() || email.trim(),
+          visibility,
+          canReceiveCrmTasks,
+        },
+      });
+      if (error || data?.error) {
+        toast.error("Ошибка: " + (data?.error || error?.message));
+      } else {
+        if (data?.existed) {
+          toast.success("Сотрудник уже зарегистрирован — добавлен в организацию");
+        } else {
+          await navigator.clipboard.writeText(`${data.login} / ${data.password}`).catch(() => {});
+          toast.success(`Создан. Логин: ${data.login}, пароль: ${data.password} (скопировано)`, { duration: 10000 });
+        }
+        setCreateOpen(false);
+        setEmail(""); setDisplayName(""); setRole("teacher"); setVisibility("all"); setCanReceiveCrmTasks(false);
+        setCreatePassword(generateStrongPassword());
+        await loadStaff();
+      }
+    } finally { setSaving(false); }
+  };
+
+  const handleToggleCrmFlag = async (id: string, value: boolean) => {
+    const { error } = await supabase.from("org_staff").update({ can_receive_crm_tasks: value } as any).eq("id", id);
+    if (error) toast.error("Ошибка: " + error.message);
+    else { setStaff(prev => prev.map(s => s.id === id ? { ...s, can_receive_crm_tasks: value } : s)); }
   };
 
   const handleChangeRole = async (id: string, newRole: string) => {
