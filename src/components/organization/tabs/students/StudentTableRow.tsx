@@ -136,6 +136,11 @@ export const StudentTableRow = React.memo(function StudentTableRow({
           {student.login && student.generated_password && (
             <Button variant="outline" size="sm" className="rounded-lg gap-1" onClick={() => onCopyCredentials(student.login!, student.generated_password!)} title="Копировать логин и пароль"><Copy className="w-4 h-4" /></Button>
           )}
+          {isArchiveView ? (
+            onUnarchive && <Button variant="outline" size="sm" className="rounded-lg gap-1" onClick={() => onUnarchive(student.user_id)} title="Вернуть из архива"><ArchiveRestore className="w-4 h-4" /></Button>
+          ) : (
+            onArchive && <Button variant="outline" size="sm" className="rounded-lg" onClick={() => onArchive(student.user_id)} title="В архив"><Archive className="w-4 h-4" /></Button>
+          )}
           <Button variant="outline" size="sm" className="rounded-lg text-destructive hover:text-destructive" onClick={() => onRemoveStudent(student.user_id)} title="Удалить ученика"><Trash2 className="w-4 h-4" /></Button>
         </div>
       </td>
