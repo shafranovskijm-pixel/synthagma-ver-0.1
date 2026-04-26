@@ -2,7 +2,7 @@ import React from "react";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Copy, Trash2, CheckCircle2, XCircle, AlertCircle } from "lucide-react";
+import { Copy, Trash2, CheckCircle2, XCircle, AlertCircle, Archive, ArchiveRestore } from "lucide-react";
 import type { Student, StudentFRDOStatus } from "@/types";
 
 function formatTimeAgo(dateStr: string): string {
