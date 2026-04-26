@@ -22,6 +22,7 @@ import {
   bulkUnenrollStudents,
   updateStudentCompany,
   deleteStudent,
+  setStudentArchived,
   isValidEmail
 } from "@/api/students";
 import { toast } from "sonner";
