@@ -92,6 +92,14 @@ export function useStudents(
   const [groupFilter, setGroupFilter] = useState<string>("all");
   const [docsFilter, setDocsFilter] = useState<StudentDocsFilter>("all");
   const [searchQuery, setSearchQuery] = useState("");
+  const [viewMode, setViewModeState] = useState<"active" | "archive">(() => {
+    if (typeof window === "undefined") return "active";
+    return (localStorage.getItem("org.students.viewMode") as "active" | "archive") || "active";
+  });
+  const setViewMode = useCallback((mode: "active" | "archive") => {
+    setViewModeState(mode);
+    if (typeof window !== "undefined") localStorage.setItem("org.students.viewMode", mode);
+  }, []);
 
   // Memoize courseIds join to prevent infinite loops
   const courseIdsKey = useMemo(() => courseIds.join(","), [courseIds]);
