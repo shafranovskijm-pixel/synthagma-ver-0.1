@@ -217,13 +217,13 @@ export function SalesTasks({ organizationId, prefillCompany, onPrefillConsumed, 
   );
 }
 
-function NewTaskForm({ managers, leads, onSubmit, initialTitle = '' }:
-  { managers: any[]; leads: any[]; onSubmit: (i: any) => Promise<void>; initialTitle?: string }) {
+function NewTaskForm({ managers, leads, assignees, onSubmit, initialTitle = '' }:
+  { managers: any[]; leads: any[]; assignees: OrgTaskAssignee[]; onSubmit: (i: any) => Promise<void>; initialTitle?: string }) {
   const [title, setTitle] = useState(initialTitle);
   const [description, setDescription] = useState('');
   const [type, setType] = useState<'call' | 'email' | 'meeting' | 'followup' | 'other'>('call');
   const [dueDate, setDueDate] = useState(format(new Date(Date.now() + 24 * 3600 * 1000), "yyyy-MM-dd'T'HH:mm"));
-  const [managerId, setManagerId] = useState<string>(managers[0]?.id || '');
+  const [assigneeUserId, setAssigneeUserId] = useState<string>(assignees[0]?.user_id || '');
   const [leadId, setLeadId] = useState<string>('');
   const [submitting, setSubmitting] = useState(false);
 
@@ -258,17 +258,24 @@ function NewTaskForm({ managers, leads, onSubmit, initialTitle = '' }:
         </div>
       </div>
       <div>
-        <label className="text-xs text-muted-foreground">Менеджер (необязательно)</label>
-        {managers.length === 0 ? (
+        <label className="text-xs text-muted-foreground">Исполнитель (необязательно)</label>
+        {assignees.length === 0 ? (
           <p className="text-xs text-muted-foreground p-2 rounded-lg bg-muted/40 border">
-            В вашей организации нет менеджеров продаж — задача будет создана без привязки к менеджеру.
+            Нет сотрудников с правом получать задачи. Включите галочку «Может получать задачи CRM» в разделе «Настройки → Сотрудники».
           </p>
         ) : (
-          <Select value={managerId || 'none'} onValueChange={(v) => setManagerId(v === 'none' ? '' : v)}>
-            <SelectTrigger className="rounded-xl"><SelectValue placeholder="Без менеджера" /></SelectTrigger>
+          <Select value={assigneeUserId || 'none'} onValueChange={(v) => setAssigneeUserId(v === 'none' ? '' : v)}>
+            <SelectTrigger className="rounded-xl"><SelectValue placeholder="Без исполнителя" /></SelectTrigger>
             <SelectContent>
-              <SelectItem value="none">— Без менеджера —</SelectItem>
-              {managers.map((m: any) => <SelectItem key={m.id} value={m.id}>{m.full_name}</SelectItem>)}
+              <SelectItem value="none">— Без исполнителя —</SelectItem>
+              {assignees.map((a) => (
+                <SelectItem key={a.user_id} value={a.user_id}>
+                  {a.full_name}
+                  {a.role && a.role !== 'owner' && (
+                    <span className="text-muted-foreground text-xs ml-1">({a.role})</span>
+                  )}
+                </SelectItem>
+              ))}
             </SelectContent>
           </Select>
         )}
@@ -292,10 +299,14 @@ function NewTaskForm({ managers, leads, onSubmit, initialTitle = '' }:
         onClick={async () => {
           setSubmitting(true);
           try {
+            // Если исполнитель есть и для него существует sales_manager (через триггер), проставим manager_id для совместимости.
+            const matchedManager = assigneeUserId ? (managers || []).find((m: any) => m.user_id === assigneeUserId) : null;
             await onSubmit({
               title: title.trim(), description: description.trim() || null,
               type, due_date: new Date(dueDate).toISOString(),
-              manager_id: managerId || null, lead_id: leadId || null,
+              assigned_user_id: assigneeUserId || null,
+              manager_id: matchedManager?.id || null,
+              lead_id: leadId || null,
               status: 'pending',
             });
             setTitle(''); setDescription('');
