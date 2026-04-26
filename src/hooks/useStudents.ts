@@ -169,9 +169,34 @@ export function useStudents(
     qc.invalidateQueries({ queryKey: qk.org.studentGroups(organizationId) });
   }, [qc, organizationId]);
 
-  // Filtered students
+  // Helper: archived = manually archived OR all enrollments completed (and has at least one)
+  const isArchived = useCallback((s: Student): boolean => {
+    if (s.archived_at) return true;
+    const enrollments = s.enrollments || [];
+    if (enrollments.length === 0) return false;
+    return enrollments.every(e => e.status === "completed" || (e.progress ?? 0) >= 100);
+  }, []);
+
+  const lastCompletedAt = useCallback((s: Student): string | null => {
+    const enrollments = s.enrollments || [];
+    const dates = enrollments
+      .map(e => e.completed_at)
+      .filter((d): d is string => !!d);
+    if (dates.length === 0) return s.archived_at ?? null;
+    dates.sort();
+    return dates[dates.length - 1];
+  }, []);
+
+  const archivedStudents = useMemo(
+    () => students.filter(isArchived),
+    [students, isArchived]
+  );
+  const activeStudentsCount = students.length - archivedStudents.length;
+
+  // Filtered students (respects viewMode + filters)
   const filteredStudents = useMemo(() => {
-    return students.filter(student => {
+    const pool = viewMode === "archive" ? archivedStudents : students.filter(s => !isArchived(s));
+    return pool.filter(student => {
       // Search filter
       if (searchQuery) {
         const query = searchQuery.toLowerCase();
@@ -182,8 +207,8 @@ export function useStudents(
         if (!matchesSearch) return false;
       }
 
-      // Status filter
-      if (statusFilter !== "all") {
+      // Status filter (only meaningful in active view)
+      if (viewMode === "active" && statusFilter !== "all") {
         const enrollments = student.enrollments || [];
         if (statusFilter === "not_enrolled" && enrollments.length > 0) return false;
         if (statusFilter === "active" && !enrollments.some(e => e.status === "active")) return false;
@@ -222,7 +247,39 @@ export function useStudents(
 
       return true;
     });
-  }, [students, searchQuery, statusFilter, courseFilter, groupFilter, docsFilter, studentDocsByUser, studentGroupMap]);
+  }, [students, archivedStudents, viewMode, isArchived, searchQuery, statusFilter, courseFilter, groupFilter, docsFilter, studentDocsByUser, studentGroupMap]);
+
+  // Group archive view by month (newest first)
+  const archiveByMonth = useMemo(() => {
+    if (viewMode !== "archive") return [] as Array<{ key: string; label: string; students: Student[] }>;
+    const groups = new Map<string, Student[]>();
+    const MONTHS = ["Январь","Февраль","Март","Апрель","Май","Июнь","Июль","Август","Сентябрь","Октябрь","Ноябрь","Декабрь"];
+    for (const s of filteredStudents) {
+      const dateStr = lastCompletedAt(s);
+      let key = "no-date";
+      let label = "Без даты завершения";
+      if (dateStr) {
+        const d = new Date(dateStr);
+        const y = d.getFullYear();
+        const m = d.getMonth();
+        key = `${y}-${String(m + 1).padStart(2, "0")}`;
+        label = `${MONTHS[m]} ${y}`;
+      }
+      const arr = groups.get(key) ?? [];
+      arr.push(s);
+      groups.set(key, arr);
+    }
+    return Array.from(groups.entries())
+      .sort((a, b) => (a[0] < b[0] ? 1 : a[0] > b[0] ? -1 : 0))
+      .map(([key, list]) => {
+        const sample = list[0];
+        const d = lastCompletedAt(sample);
+        const label = d
+          ? `${MONTHS[new Date(d).getMonth()]} ${new Date(d).getFullYear()}`
+          : "Без даты завершения";
+        return { key, label, students: list };
+      });
+  }, [filteredStudents, viewMode, lastCompletedAt]);
 
   // Selection helpers - use user_id for unique selection (one row per student)
   const toggleSelection = useCallback((uniqueId: string) => {
