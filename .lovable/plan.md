@@ -1,71 +1,138 @@
+## Цель
 
-# План: «Архив» учеников в кабинете организации
+1. **CRM-задачи** можно назначать любому сотруднику организации, у кого включён флаг «Может получать задачи CRM», а не только пользователям с ролью `sales_manager`.
+2. **Регистрация сотрудников** становится понятнее: добавляем кнопку мгновенного создания сотрудника с логином/паролем (как при создании ученика) + подсвечиваем приглашение по email.
 
-Цель — выгрузить из основного списка учеников тех, кто полностью прошёл всё обучение, и сложить их в отдельный «Архив» с группировкой по месяцам последнего завершения. Без потери данных, без удалений.
+---
 
 ## 1. База данных
 
-В таблицу `profiles` добавить:
-- `archived_at TIMESTAMPTZ NULL` — момент ручной архивации (если менеджер положил вручную).
-- Индекс `idx_profiles_archived_at (organization_id, archived_at)` для быстрых выборок.
+### 1.1. Расширение `org_staff`
+Добавляем флаг получения задач CRM:
+```sql
+ALTER TABLE public.org_staff
+  ADD COLUMN can_receive_crm_tasks boolean NOT NULL DEFAULT false;
 
-Никаких удалений, никаких новых таблиц. RLS не трогаем — `profiles` уже под существующими политиками.
+-- Включаем флаг автоматически для уже существующих менеджеров продаж и владельцев
+UPDATE public.org_staff
+   SET can_receive_crm_tasks = true
+ WHERE role IN ('sales_manager', 'owner', 'admin');
 
-## 2. Логика «кто в архиве»
+CREATE INDEX idx_org_staff_can_receive_crm
+  ON public.org_staff(organization_id)
+  WHERE can_receive_crm_tasks = true;
+```
 
-Ученик считается архивным, если выполнено **любое** из условий:
-- У него есть зачисления **и все они** имеют `status='completed'` (или `progress >= 100`). То есть нет ни одного активного курса.
-- Поле `archived_at` не пустое (ручная архивация).
+### 1.2. Новое поле в `sales_tasks`
+```sql
+ALTER TABLE public.sales_tasks
+  ADD COLUMN assigned_user_id uuid REFERENCES auth.users(id) ON DELETE SET NULL;
 
-Ученик возвращается в основной список автоматически, как только:
-- Появляется хотя бы одно активное (не завершённое) зачисление, **и** `archived_at` пустое (или менеджер вручную нажал «Вернуть из архива», что обнулит `archived_at`).
+CREATE INDEX idx_sales_tasks_assigned_user
+  ON public.sales_tasks(assigned_user_id)
+  WHERE assigned_user_id IS NOT NULL;
+```
+- `manager_id` оставляем для обратной совместимости (КП/договоры/лиды по-прежнему ссылаются на `sales_managers`).
+- В новой логике приоритет: `assigned_user_id` (новое поле) > `manager_id` (фолбек).
+- RLS не меняем — текущие политики уже фильтруют по `organization_id` и `current_organization_id()`.
 
-Дата для группировки в архиве — `max(completed_at)` по его зачислениям (а если их нет, но есть `archived_at` — берём `archived_at`).
+### 1.3. RPC для списка возможных исполнителей задач
+Создаём `SECURITY DEFINER` функцию, которая возвращает «кому можно назначить задачу» в текущей организации:
+```sql
+CREATE OR REPLACE FUNCTION public.list_org_task_assignees(_org_id uuid)
+RETURNS TABLE(user_id uuid, full_name text, role text, email text)
+...
+```
+Возвращает: владельца организации (из `profiles.organization_id`) + всех `org_staff` с `can_receive_crm_tasks = true`.
 
-## 3. Изменения в `useStudents` (`src/hooks/useStudents.ts`)
+---
 
-- Расширить `StudentStatusFilter` до `"all" | "active" | "completed" | "not_enrolled" | "archived"`.
-- Ввести понятие `viewMode: "active" | "archive"` (отдельно от фильтра, чтобы интерфейс был чище).
-- В `filteredStudents`:
-  - В режиме **active**: скрывать учеников, попадающих под условие архива (см. п.2).
-  - В режиме **archive**: показывать **только** архивных.
-- Дополнительно вернуть из хука:
-  - `archivedStudents: Student[]` — все архивные ученики организации (для бейджа-счётчика).
-  - `archiveByMonth: Map<string /* YYYY-MM */, Student[]>` — сгруппированные по месяцу последнего завершения.
-  - `archiveStudent(userId)` / `unarchiveStudent(userId)` — UPDATE `profiles.archived_at`.
+## 2. Backend / Edge function
 
-Кеш `react-query` уже инвалидируется через `qk.org.studentsListAll` — переиспользуем.
+### 2.1. Новая edge-функция `create-org-staff`
+Аналог `create-org-user`, но создаёт сотрудника организации:
+- Принимает: `email`, `password`, `fullName`, `organizationId`, `role`, `displayName`, `visibility`, `canReceiveCrmTasks`.
+- Проверяет, что вызывающий — владелец/админ этой организации (через `has_org_staff_permission` или `userRole === 'organization'`).
+- Создаёт пользователя через `supabase.auth.admin.createUser` с `email_confirm: true`.
+- Создаёт `profiles` (с `organization_id`).
+- Назначает глобальную роль (новую — `org_staff`) или используем существующую логику.
+- Создаёт запись в `org_staff` с указанной ролью и флагом.
+- Триггер `sync_admin_staff_to_sales_managers` уже есть для admin_staff — добавим аналогичный для `org_staff` (см. ниже).
 
-## 4. UI: вкладка «Архив» внутри раздела «Ученики»
+### 2.2. Новый триггер `sync_org_staff_to_sales_managers`
+Чтобы существующие места (КП/договоры/лиды), завязанные на `sales_managers`, продолжали работать для сотрудников с ролью `sales_manager` или с `can_receive_crm_tasks = true`:
+```sql
+CREATE OR REPLACE FUNCTION public.sync_org_staff_to_sales_managers()
+RETURNS trigger ...
+-- На INSERT/UPDATE: если can_receive_crm_tasks = true OR role = 'sales_manager' → upsert в sales_managers
+-- На UPDATE/DELETE: деактивировать sales_managers если флаг снят и роль ≠ sales_manager
+```
+Это гарантирует: галочка «Может получать задачи CRM» автоматически даёт сотруднику запись в `sales_managers`, и его можно ставить как менеджера в КП/договоре/лиде.
 
-В `src/components/organization/tabs/StudentsTab.tsx`:
+---
 
-- Над таблицей появляются две кнопки-таба:
-  - **Активные** (по умолчанию) — счётчик = `students.length - archivedStudents.length`.
-  - **Архив** — счётчик = `archivedStudents.length`.
-- В режиме «Активные» — текущая таблица без изменений, но из неё уходят полностью завершившие.
-- В режиме «Архив»:
-  - Поиск, фильтр по курсу/группе/документам — работают так же.
-  - Список рендерится **сгруппированным аккордеоном по месяцам** (новые сверху). Заголовок — «Октябрь 2025 — 12 учеников», по клику разворачивается список с теми же колонками, что и в основной таблице.
-  - В каждой строке вместо «Удалить» появляется кнопка **«Вернуть в активные»** (обнуляет `archived_at`; если все курсы по-прежнему 100%, ученик автоматически снова попадёт в архив — это норма).
+## 3. Frontend
 
-В режиме «Активные» в строке ученика добавляется пункт меню **«В архив»** (через троеточие/иконку). Полезно для случаев, когда ученик ещё не на 100%, но фактически больше не учится.
+### 3.1. `src/components/organization/StaffManager.tsx`
+- В таблице сотрудников новая колонка **«Задачи CRM»** с переключателем (Switch). Сохраняет в `org_staff.can_receive_crm_tasks` через UPDATE.
+- В диалоге добавления существующего пользователя — чекбокс «Может получать задачи CRM».
+- Новая третья кнопка **«Создать сотрудника»** (рядом с «Пригласить» и «Добавить»):
+  - Открывает диалог с полями: email, ФИО, временный пароль (с генератором), роль, видимость, чекбокс CRM-задач.
+  - Вызывает edge `create-org-staff`.
+  - После успеха — копирует логин/пароль в буфер обмена (как сейчас при создании учеников) и показывает их в toast.
+- Подсветка рекомендации: над кнопками — небольшой блок «💡 Лучший способ — пригласить по email: сотрудник сам задаст пароль». Кнопка «Пригласить» становится `btn-gradient` (главной).
 
-## 5. Сохранение пользовательского выбора
+### 3.2. `src/hooks/useSalesTasks.ts`
+- В `SalesTask` интерфейс добавить `assigned_user_id: string | null`.
+- В фильтре поддержать `assignedUserId?: string` (для будущих экранов «Мои задачи»).
+- В `create` передавать `assigned_user_id`.
 
-Текущий режим (`active`/`archive`) храним в `localStorage` ключом `org.students.viewMode`, чтобы при переходах не сбрасывался. Сброс на «Активные» при смене организации.
+### 3.3. Новый хук `useOrgTaskAssignees.ts`
+```ts
+export function useOrgTaskAssignees(organizationId?: string) {
+  return useQuery({
+    queryKey: ['org_task_assignees', organizationId],
+    queryFn: async () => supabase.rpc('list_org_task_assignees', { _org_id: organizationId }),
+    enabled: !!organizationId,
+  });
+}
+```
 
-## 6. Что НЕ меняем
+### 3.4. `src/components/admin/sales/SalesTasks.tsx` (форма `NewTaskForm`)
+- Меняем дропдаун **«Менеджер»** → **«Исполнитель»**.
+- Источник списка — `useOrgTaskAssignees` (все сотрудники с галочкой), а не `useSalesManager`.
+- При создании задачи передаём `assigned_user_id` вместо/вместе с `manager_id`.
+  - Если выбранный исполнитель есть в `sales_managers` (через триггер 3.2), автоматически проставляем `manager_id` тоже — для совместимости со старыми отчётами.
+- В отображении задачи показываем имя исполнителя (резолвим из списка assignees).
+- Если в дропдауне пусто — подсказка: «Нет сотрудников с правом получать задачи. Включите флаг в [Настройки → Сотрудники]».
 
-- Структуру `enrollments`, `courses`, `student_groups`.
-- Логику FRDO, документов, выдачи паролей, рассылок.
-- Права RLS и серверные функции.
-- Дизайн (Teal/Cyan, sidebar standard) — только добавляем переключатель табов в стиле платформы.
-- Авто-завершение курсов (мемо `automated-completion-logic`) — оно уже корректно проставляет `status='completed'` и `completed_at`, чем мы и пользуемся.
+### 3.5. `src/components/admin/sales/LogActivityDialog.tsx`
+- Аналогично: вместо привязки к `sales_managers.id` для текущего пользователя сначала ищем по `assigned_user_id`, фолбек на `manager_id`.
+- При создании follow-up задачи передаём `assigned_user_id = текущий пользователь`.
 
-## 7. Ожидаемый результат
+### 3.6. Карточка сотрудника / OrgPermissionMatrix
+Никаких структурных изменений матрицы прав не требуется — `can_receive_crm_tasks` это **операционный флаг**, а не роль. Управляется отдельным переключателем в таблице сотрудников.
 
-- Основной список «Ученики» сразу разгружается: 300 → ~100-150 активных, остальные уезжают в «Архив» одним кликом.
-- В «Архиве» легко найти выпускников по месяцам («октябрь 2025», «сентябрь 2025» …).
-- Ничего не удаляется: документы, тесты, история — на месте, в карточку ученика можно зайти и из архива.
-- Менеджер может вручную «убрать с глаз» неактивного ученика и вернуть его обратно одной кнопкой.
+---
+
+## 4. Совместимость со старыми задачами
+
+- Старые `sales_tasks` с `manager_id` и `assigned_user_id IS NULL` продолжают отображаться: при рендере резолвим имя через `sales_managers` (как сейчас).
+- Новые задачи всегда пишут `assigned_user_id`. Для дизайна экрана это поле приоритетнее.
+
+---
+
+## 5. Память / документация
+
+После выполнения:
+- Обновить `mem://features/staff-management` — упомянуть флаг `can_receive_crm_tasks` и кнопку «Создать сотрудника».
+- Создать `mem://features/sales/task-assignment` — описать модель: `assigned_user_id` приоритет, `manager_id` legacy, триггер sync.
+- Обновить index.
+
+---
+
+## Что НЕ меняем
+
+- КП (`commercial_proposals`), договоры (`sales_contracts`), лиды (`sales_leads`) по-прежнему ссылаются на `sales_managers.id` — это нормально, т.к. триггер 3.2 поднимает запись в `sales_managers` для всех сотрудников с галочкой.
+- RLS-политики `sales_tasks` — без изменений (фильтр по `organization_id` уже корректен).
+- `admin_staff` и существующий триггер `sync_admin_staff_to_sales_managers` — без изменений.
