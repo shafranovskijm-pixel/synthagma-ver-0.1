@@ -466,6 +466,28 @@ export function useStudents(
     invalidateStudents();
   }, [invalidateStudents]);
 
+  const archiveStudent = useCallback(async (userId: string): Promise<boolean> => {
+    const ok = await setStudentArchived(userId, true);
+    if (!ok) {
+      toast.error("Не удалось перенести в архив");
+      return false;
+    }
+    toast.success("Ученик перенесён в архив");
+    invalidateStudents();
+    return true;
+  }, [invalidateStudents]);
+
+  const unarchiveStudent = useCallback(async (userId: string): Promise<boolean> => {
+    const ok = await setStudentArchived(userId, false);
+    if (!ok) {
+      toast.error("Не удалось вернуть из архива");
+      return false;
+    }
+    toast.success("Ученик возвращён из архива");
+    invalidateStudents();
+    return true;
+  }, [invalidateStudents]);
+
   return {
     students,
     allProfiles,
@@ -498,6 +520,13 @@ export function useStudents(
     setDocsFilter,
     searchQuery,
     setSearchQuery,
-    filteredStudents
+    filteredStudents,
+    viewMode,
+    setViewMode,
+    archivedStudents,
+    activeStudentsCount,
+    archiveByMonth,
+    archiveStudent,
+    unarchiveStudent,
   };
 }
