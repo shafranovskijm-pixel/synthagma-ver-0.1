@@ -58,6 +58,23 @@ export const StudentsTab = React.memo(function StudentsTab(props: StudentsTabPro
   const [showRemindConfirm, setShowRemindConfirm] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [visibleCount, setVisibleCount] = useState(10);
+  const [expandedMonths, setExpandedMonths] = useState<Set<string>>(new Set());
+  React.useEffect(() => {
+    // Auto-expand the first (most recent) month when entering archive
+    if (viewMode === "archive" && archiveByMonth.length > 0) {
+      setExpandedMonths(prev => {
+        if (prev.size > 0) return prev;
+        return new Set([archiveByMonth[0].key]);
+      });
+    }
+  }, [viewMode, archiveByMonth]);
+  const toggleMonth = useCallback((key: string) => {
+    setExpandedMonths(prev => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key); else next.add(key);
+      return next;
+    });
+  }, []);
 
   const handleCreateGroup = async () => {
     if (!newGroupName.trim()) return;
