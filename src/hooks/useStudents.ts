@@ -68,6 +68,14 @@ interface UseStudentsReturn {
   searchQuery: string;
   setSearchQuery: (query: string) => void;
   filteredStudents: Student[];
+  // Archive
+  viewMode: "active" | "archive";
+  setViewMode: (mode: "active" | "archive") => void;
+  archivedStudents: Student[];
+  activeStudentsCount: number;
+  archiveByMonth: Array<{ key: string; label: string; students: Student[] }>;
+  archiveStudent: (userId: string) => Promise<boolean>;
+  unarchiveStudent: (userId: string) => Promise<boolean>;
 }
 
 export function useStudents(
