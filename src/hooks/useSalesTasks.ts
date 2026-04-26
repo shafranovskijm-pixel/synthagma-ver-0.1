@@ -6,6 +6,7 @@ export interface SalesTask {
   id: string;
   lead_id: string | null;
   manager_id: string | null;
+  assigned_user_id: string | null;
   due_date: string;
   title: string;
   description: string | null;
@@ -17,7 +18,7 @@ export interface SalesTask {
   updated_at: string;
 }
 
-export function useSalesTasks(filter?: { leadId?: string; managerId?: string; onlyOpen?: boolean; organizationId?: string }) {
+export function useSalesTasks(filter?: { leadId?: string; managerId?: string; assignedUserId?: string; onlyOpen?: boolean; organizationId?: string }) {
   const qc = useQueryClient();
 
   const list = useQuery({
@@ -26,6 +27,7 @@ export function useSalesTasks(filter?: { leadId?: string; managerId?: string; on
       let q = (supabase as any).from('sales_tasks').select('*').order('due_date', { ascending: true });
       if (filter?.leadId) q = q.eq('lead_id', filter.leadId);
       if (filter?.managerId) q = q.eq('manager_id', filter.managerId);
+      if (filter?.assignedUserId) q = q.eq('assigned_user_id', filter.assignedUserId);
       if (filter?.organizationId) q = q.eq('organization_id', filter.organizationId);
       if (filter?.onlyOpen) q = q.eq('status', 'pending');
       const { data, error } = await q;
