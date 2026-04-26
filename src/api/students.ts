@@ -129,8 +129,9 @@ export async function fetchStudents(
       lastActivity: enrollments[0]?.started_at || null,
       last_visit_at: profile.last_visit_at || null,
       status: aggregateStatus,
-      enrollments: enrollments // Add all enrollments for detail view
-    });
+      enrollments: enrollments, // Add all enrollments for detail view
+      archived_at: profile.archived_at ?? null,
+    } as Student);
   }
 
   // Sort: enrolled students first, then by name
