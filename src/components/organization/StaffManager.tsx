@@ -30,6 +30,7 @@ interface StaffMember {
   visibility: string;
   expires_at: string | null;
   created_at: string;
+  can_receive_crm_tasks?: boolean;
 }
 
 const ROLES = [
