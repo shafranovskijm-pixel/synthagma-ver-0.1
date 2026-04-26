@@ -145,8 +145,27 @@ export const StudentsTab = React.memo(function StudentsTab(props: StudentsTabPro
       <div className="p-4 lg:p-6 border-b border-border space-y-4">
         <div className="flex items-center justify-between flex-wrap gap-3">
           <div className="flex items-center gap-2 lg:gap-3">
-            <h2 className="font-display text-lg lg:text-xl font-semibold">{courseFilter !== "all" ? `Ученики: ${courses.find(c => c.id === courseFilter)?.title || "Курс"}` : "Все ученики"}</h2>
+            <h2 className="font-display text-lg lg:text-xl font-semibold">{courseFilter !== "all" ? `Ученики: ${courses.find(c => c.id === courseFilter)?.title || "Курс"}` : viewMode === "archive" ? "Архив учеников" : "Все ученики"}</h2>
             {courseFilter !== "all" && <Button variant="ghost" size="sm" onClick={() => setCourseFilter("all")} className="rounded-xl gap-1 text-muted-foreground hover:text-foreground"><X className="w-4 h-4" /><span className="hidden sm:inline">Сбросить</span></Button>}
+          </div>
+          {/* View toggle: Active / Archive */}
+          <div className="inline-flex items-center rounded-xl border border-border bg-muted/30 p-0.5 text-sm">
+            <button
+              type="button"
+              onClick={() => setViewMode("active")}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-colors ${viewMode === "active" ? "bg-background shadow-sm font-medium" : "text-muted-foreground hover:text-foreground"}`}
+            >
+              <Users className="w-4 h-4" /> Активные
+              <span className={`ml-1 text-xs px-1.5 py-0.5 rounded-full ${viewMode === "active" ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"}`}>{activeStudentsCount}</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewMode("archive")}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-colors ${viewMode === "archive" ? "bg-background shadow-sm font-medium" : "text-muted-foreground hover:text-foreground"}`}
+            >
+              <Archive className="w-4 h-4" /> Архив
+              <span className={`ml-1 text-xs px-1.5 py-0.5 rounded-full ${viewMode === "archive" ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"}`}>{archivedStudents.length}</span>
+            </button>
           </div>
         </div>
         <div className="lg:hidden"><div className="relative"><Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" /><Input placeholder="Поиск..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="pl-10 w-full rounded-xl" /></div></div>
