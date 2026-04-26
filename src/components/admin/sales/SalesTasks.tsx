@@ -11,6 +11,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Plus, CheckCircle2, Trash2, Phone, Mail, Calendar as CalIcon, Repeat, MoreHorizontal, ListTodo, ExternalLink } from 'lucide-react';
 import { useSalesTasks } from '@/hooks/useSalesTasks';
 import { useSalesManager } from '@/hooks/useSalesManager';
+import { useOrgTaskAssignees, type OrgTaskAssignee } from '@/hooks/useOrgTaskAssignees';
 import { format, isPast, isToday, isTomorrow, differenceInDays } from 'date-fns';
 import { ru } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
