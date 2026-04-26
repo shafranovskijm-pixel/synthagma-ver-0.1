@@ -370,12 +370,88 @@ export function StaffManager({ organizationId }: StaffManagerProps) {
                   </SelectContent>
                 </Select>
               </div>
+              <div className="flex items-center justify-between rounded-lg border border-border p-3">
+                <div className="space-y-0.5 pr-3">
+                  <Label className="flex items-center gap-2"><ListTodo className="w-4 h-4" />Может получать задачи CRM</Label>
+                  <p className="text-xs text-muted-foreground">Сотрудник появится в списке исполнителей в разделе «Продажи».</p>
+                </div>
+                <Switch checked={canReceiveCrmTasks} onCheckedChange={setCanReceiveCrmTasks} />
+              </div>
             </div>
             <DialogFooter>
               <Button variant="outline" onClick={() => setDialogOpen(false)}>Отмена</Button>
               <Button onClick={handleAdd} disabled={saving} className="btn-gradient gap-2">
                 {saving ? <SigmaSpinner size="sm" /> : <Plus className="w-4 h-4" />}
                 Добавить
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Create staff with password dialog */}
+        <Dialog open={createOpen} onOpenChange={setCreateOpen}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>Создать сотрудника с логином и паролем</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label>Email (логин)</Label>
+                <Input value={email} onChange={e => setEmail(e.target.value)} placeholder="email@example.com" />
+                <p className="text-xs text-muted-foreground">Будет создан аккаунт с этим email. Если такой пользователь уже есть — он просто будет добавлен в организацию.</p>
+              </div>
+              <div className="space-y-2">
+                <Label>ФИО / отображаемое имя</Label>
+                <Input value={displayName} onChange={e => setDisplayName(e.target.value)} placeholder="Иван Иванов" />
+              </div>
+              <div className="space-y-2">
+                <Label>Пароль</Label>
+                <div className="flex gap-2">
+                  <Input value={createPassword} onChange={e => setCreatePassword(e.target.value)} />
+                  <Button type="button" variant="outline" size="icon" onClick={() => setCreatePassword(generateStrongPassword())} title="Сгенерировать">
+                    <KeyRound className="w-4 h-4" />
+                  </Button>
+                  <Button type="button" variant="outline" size="icon" onClick={() => { navigator.clipboard.writeText(createPassword); toast.success("Скопировано"); }} title="Скопировать">
+                    <Copy className="w-4 h-4" />
+                  </Button>
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label>Роль</Label>
+                <Select value={role} onValueChange={setRole}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {ROLES.map(r => (
+                      <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground mt-1">{selectedRoleConfig.description}</p>
+              </div>
+              <div className="space-y-2">
+                <Label>Видимость для учеников</Label>
+                <Select value={visibility} onValueChange={setVisibility}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {VISIBILITY.map(v => (
+                      <SelectItem key={v.value} value={v.value}>{v.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="flex items-center justify-between rounded-lg border border-border p-3">
+                <div className="space-y-0.5 pr-3">
+                  <Label className="flex items-center gap-2"><ListTodo className="w-4 h-4" />Может получать задачи CRM</Label>
+                  <p className="text-xs text-muted-foreground">Сотрудник появится в списке исполнителей в разделе «Продажи».</p>
+                </div>
+                <Switch checked={canReceiveCrmTasks} onCheckedChange={setCanReceiveCrmTasks} />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setCreateOpen(false)}>Отмена</Button>
+              <Button onClick={handleCreateStaff} disabled={saving} className="btn-gradient gap-2">
+                {saving ? <SigmaSpinner size="sm" /> : <KeyRound className="w-4 h-4" />}
+                Создать
               </Button>
             </DialogFooter>
           </DialogContent>
