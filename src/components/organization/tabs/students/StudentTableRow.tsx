@@ -26,11 +26,15 @@ interface StudentTableRowProps {
   studentGroups: Array<{ id: string; name: string; color: string }>;
   studentGroupMap: Map<string, string>;
   onAssignGroup: (userId: string, groupId: string | null) => void;
+  isArchiveView?: boolean;
+  onArchive?: (userId: string) => void;
+  onUnarchive?: (userId: string) => void;
 }
 
 export const StudentTableRow = React.memo(function StudentTableRow({
   student, isSelected, onToggleSelection, onViewStudent, onCopyCredentials,
   onRemoveStudent, studentDocsByUser, frdoStatus, studentGroups, studentGroupMap, onAssignGroup,
+  isArchiveView = false, onArchive, onUnarchive,
 }: StudentTableRowProps) {
   const enrollmentsCount = student.enrollments?.length || 0;
   const userDocs = studentDocsByUser.get(student.user_id) || [];
