@@ -8,8 +8,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
-import { Plus, Trash2, Users, Shield, BookOpen, Edit3, Eye, Mail } from "lucide-react";
+import { Plus, Trash2, Users, Shield, BookOpen, Edit3, Eye, Mail, ListTodo, KeyRound, Copy } from "lucide-react";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 import { StaffInvitationDialog, type StaffInvitationRole } from "@/components/staff/StaffInvitationDialog";
 import { RoleAuditLog } from "@/components/staff/RoleAuditLog";
@@ -18,6 +19,7 @@ import { OrgCustomRolesManager } from "@/components/staff/OrgCustomRolesManager"
 import { StaffExpirationButton } from "@/components/staff/StaffExpirationButton";
 import { OwnershipTransfer } from "@/components/staff/OwnershipTransfer";
 import { useAuth } from "@/hooks/useAuth";
+import { generateStrongPassword } from "@/utils/credentials";
 
 interface StaffMember {
   id: string;
