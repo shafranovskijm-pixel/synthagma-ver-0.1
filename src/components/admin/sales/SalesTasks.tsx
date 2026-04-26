@@ -11,6 +11,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Plus, CheckCircle2, Trash2, Phone, Mail, Calendar as CalIcon, Repeat, MoreHorizontal, ListTodo, ExternalLink } from 'lucide-react';
 import { useSalesTasks } from '@/hooks/useSalesTasks';
 import { useSalesManager } from '@/hooks/useSalesManager';
+import { useOrgTaskAssignees, type OrgTaskAssignee } from '@/hooks/useOrgTaskAssignees';
 import { format, isPast, isToday, isTomorrow, differenceInDays } from 'date-fns';
 import { ru } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
@@ -42,12 +43,14 @@ interface SalesTasksProps {
 export function SalesTasks({ organizationId, prefillCompany, onPrefillConsumed, onOpenDeal }: SalesTasksProps = {}) {
   const { list, create, complete, remove } = useSalesTasks(organizationId ? { organizationId } : undefined);
   const { managers, fetchManagers, leads, fetchLeads } = useSalesManager();
+  const { data: assignees = [] } = useOrgTaskAssignees(organizationId);
 
   // Загрузим лидов сразу — нужно для маппинга lead_id → ИНН и для кнопки «Открыть сделку»
   useEffect(() => { fetchLeads(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
   const leadById = new Map<string, { inn: string | null; org_name: string }>(
     (leads || []).map((l: any) => [l.id, { inn: l.inn, org_name: l.org_name }])
   );
+  const assigneeById = new Map<string, OrgTaskAssignee>(assignees.map(a => [a.user_id, a]));
   const [open, setOpen] = useState(false);
   const [tab, setTab] = useState<'open' | 'today' | 'overdue' | 'done'>('open');
   const [prefillTitle, setPrefillTitle] = useState<string>('');
@@ -100,6 +103,7 @@ export function SalesTasks({ organizationId, prefillCompany, onPrefillConsumed, 
             <NewTaskForm
               managers={managers}
               leads={leads}
+              assignees={assignees}
               initialTitle={prefillTitle}
               onSubmit={async (input) => {
                 await create.mutateAsync(input);
@@ -161,12 +165,18 @@ export function SalesTasks({ organizationId, prefillCompany, onPrefillConsumed, 
                             {t.description && (
                               <div className="text-xs text-muted-foreground mt-1 line-clamp-2">{t.description}</div>
                             )}
-                            <div className="text-xs mt-1 flex items-center gap-2 text-muted-foreground">
+                            <div className="text-xs mt-1 flex items-center gap-2 text-muted-foreground flex-wrap">
                               <CalIcon className="w-3 h-3" />
                               {format(date, 'dd MMM, HH:mm', { locale: ru })}
                               {overdue && <span className="text-rose-600">• просрочено на {Math.abs(days)} дн.</span>}
                               {today && <span className="text-amber-600">• сегодня</span>}
                               {!overdue && !today && days > 0 && <span>• через {days} дн.</span>}
+                              {(() => {
+                                const a = t.assigned_user_id ? assigneeById.get(t.assigned_user_id) : null;
+                                const fallback = !a && t.manager_id ? (managers || []).find((m: any) => m.id === t.manager_id) : null;
+                                const name = a?.full_name || fallback?.full_name;
+                                return name ? <span className="px-1.5 py-0.5 rounded bg-primary/10 text-primary">👤 {name}</span> : null;
+                              })()}
                             </div>
                           </div>
                           {onOpenDeal && t.lead_id && (() => {
@@ -207,13 +217,13 @@ export function SalesTasks({ organizationId, prefillCompany, onPrefillConsumed, 
   );
 }
 
-function NewTaskForm({ managers, leads, onSubmit, initialTitle = '' }:
-  { managers: any[]; leads: any[]; onSubmit: (i: any) => Promise<void>; initialTitle?: string }) {
+function NewTaskForm({ managers, leads, assignees, onSubmit, initialTitle = '' }:
+  { managers: any[]; leads: any[]; assignees: OrgTaskAssignee[]; onSubmit: (i: any) => Promise<void>; initialTitle?: string }) {
   const [title, setTitle] = useState(initialTitle);
   const [description, setDescription] = useState('');
   const [type, setType] = useState<'call' | 'email' | 'meeting' | 'followup' | 'other'>('call');
   const [dueDate, setDueDate] = useState(format(new Date(Date.now() + 24 * 3600 * 1000), "yyyy-MM-dd'T'HH:mm"));
-  const [managerId, setManagerId] = useState<string>(managers[0]?.id || '');
+  const [assigneeUserId, setAssigneeUserId] = useState<string>(assignees[0]?.user_id || '');
   const [leadId, setLeadId] = useState<string>('');
   const [submitting, setSubmitting] = useState(false);
 
@@ -248,17 +258,24 @@ function NewTaskForm({ managers, leads, onSubmit, initialTitle = '' }:
         </div>
       </div>
       <div>
-        <label className="text-xs text-muted-foreground">Менеджер (необязательно)</label>
-        {managers.length === 0 ? (
+        <label className="text-xs text-muted-foreground">Исполнитель (необязательно)</label>
+        {assignees.length === 0 ? (
           <p className="text-xs text-muted-foreground p-2 rounded-lg bg-muted/40 border">
-            В вашей организации нет менеджеров продаж — задача будет создана без привязки к менеджеру.
+            Нет сотрудников с правом получать задачи. Включите галочку «Может получать задачи CRM» в разделе «Настройки → Сотрудники».
           </p>
         ) : (
-          <Select value={managerId || 'none'} onValueChange={(v) => setManagerId(v === 'none' ? '' : v)}>
-            <SelectTrigger className="rounded-xl"><SelectValue placeholder="Без менеджера" /></SelectTrigger>
+          <Select value={assigneeUserId || 'none'} onValueChange={(v) => setAssigneeUserId(v === 'none' ? '' : v)}>
+            <SelectTrigger className="rounded-xl"><SelectValue placeholder="Без исполнителя" /></SelectTrigger>
             <SelectContent>
-              <SelectItem value="none">— Без менеджера —</SelectItem>
-              {managers.map((m: any) => <SelectItem key={m.id} value={m.id}>{m.full_name}</SelectItem>)}
+              <SelectItem value="none">— Без исполнителя —</SelectItem>
+              {assignees.map((a) => (
+                <SelectItem key={a.user_id} value={a.user_id}>
+                  {a.full_name}
+                  {a.role && a.role !== 'owner' && (
+                    <span className="text-muted-foreground text-xs ml-1">({a.role})</span>
+                  )}
+                </SelectItem>
+              ))}
             </SelectContent>
           </Select>
         )}
@@ -282,10 +299,14 @@ function NewTaskForm({ managers, leads, onSubmit, initialTitle = '' }:
         onClick={async () => {
           setSubmitting(true);
           try {
+            // Если исполнитель есть и для него существует sales_manager (через триггер), проставим manager_id для совместимости.
+            const matchedManager = assigneeUserId ? (managers || []).find((m: any) => m.user_id === assigneeUserId) : null;
             await onSubmit({
               title: title.trim(), description: description.trim() || null,
               type, due_date: new Date(dueDate).toISOString(),
-              manager_id: managerId || null, lead_id: leadId || null,
+              assigned_user_id: assigneeUserId || null,
+              manager_id: matchedManager?.id || null,
+              lead_id: leadId || null,
               status: 'pending',
             });
             setTitle(''); setDescription('');

@@ -5168,6 +5168,7 @@ export type Database = {
       org_staff: {
         Row: {
           bio: string | null
+          can_receive_crm_tasks: boolean
           created_at: string
           custom_role_id: string | null
           display_name: string
@@ -5182,6 +5183,7 @@ export type Database = {
         }
         Insert: {
           bio?: string | null
+          can_receive_crm_tasks?: boolean
           created_at?: string
           custom_role_id?: string | null
           display_name?: string
@@ -5196,6 +5198,7 @@ export type Database = {
         }
         Update: {
           bio?: string | null
+          can_receive_crm_tasks?: boolean
           created_at?: string
           custom_role_id?: string | null
           display_name?: string
@@ -7518,6 +7521,7 @@ export type Database = {
       }
       sales_tasks: {
         Row: {
+          assigned_user_id: string | null
           completed_at: string | null
           created_at: string
           created_by: string | null
@@ -7533,6 +7537,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          assigned_user_id?: string | null
           completed_at?: string | null
           created_at?: string
           created_by?: string | null
@@ -7548,6 +7553,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          assigned_user_id?: string | null
           completed_at?: string | null
           created_at?: string
           created_by?: string | null
@@ -9868,6 +9874,15 @@ export type Database = {
       is_webinar_participant: {
         Args: { _user_id: string; _webinar_id: string }
         Returns: boolean
+      }
+      list_org_task_assignees: {
+        Args: { _org_id: string }
+        Returns: {
+          email: string
+          full_name: string
+          role: string
+          user_id: string
+        }[]
       }
       list_recycle_bin: {
         Args: {
