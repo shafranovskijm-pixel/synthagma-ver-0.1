@@ -43,12 +43,14 @@ interface SalesTasksProps {
 export function SalesTasks({ organizationId, prefillCompany, onPrefillConsumed, onOpenDeal }: SalesTasksProps = {}) {
   const { list, create, complete, remove } = useSalesTasks(organizationId ? { organizationId } : undefined);
   const { managers, fetchManagers, leads, fetchLeads } = useSalesManager();
+  const { data: assignees = [] } = useOrgTaskAssignees(organizationId);
 
   // Загрузим лидов сразу — нужно для маппинга lead_id → ИНН и для кнопки «Открыть сделку»
   useEffect(() => { fetchLeads(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
   const leadById = new Map<string, { inn: string | null; org_name: string }>(
     (leads || []).map((l: any) => [l.id, { inn: l.inn, org_name: l.org_name }])
   );
+  const assigneeById = new Map<string, OrgTaskAssignee>(assignees.map(a => [a.user_id, a]));
   const [open, setOpen] = useState(false);
   const [tab, setTab] = useState<'open' | 'today' | 'overdue' | 'done'>('open');
   const [prefillTitle, setPrefillTitle] = useState<string>('');
