@@ -196,7 +196,13 @@ export function CourseReviewDialog({
                       <div key={lessonTitle} className="space-y-2">
                         <h4 className="text-sm font-semibold text-muted-foreground px-1">{lessonTitle}</h4>
                         {findings.map(f => (
-                          <FindingCard key={f.id} finding={f} onDismiss={() => onDismiss(f.id)} />
+                          <FindingCard
+                            key={f.id}
+                            finding={f}
+                            onDismiss={() => onDismiss(f.id)}
+                            onApply={onApply ? () => onApply(f) : undefined}
+                            isApplying={applyingId === f.id}
+                          />
                         ))}
                       </div>
                     ))}
