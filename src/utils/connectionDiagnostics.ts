@@ -87,12 +87,31 @@ export async function runConnectionDiagnostics(): Promise<ProbeResult[]> {
       durationMs: r.ms,
       detail: r.error ?? `HTTP ${r.status ?? '—'} • ${r.ms} мс`,
     })).catch((e): ProbeResult => ({ id: 'storage', label: 'Хранилище файлов', status: 'blocked', durationMs: 0, detail: String(e) })),
+
+    // 5. Cloudflare — независимый эталон, чтобы понять, есть ли вообще выход в мир
+    timedFetch('https://cloudflare.com/cdn-cgi/trace', { method: 'GET' }).then((r): ProbeResult => ({
+      id: 'cloudflare',
+      label: 'Сторонний эталон (Cloudflare)',
+      status: r.status !== undefined ? (r.ms > 4000 ? 'slow' : 'ok') : 'blocked',
+      durationMs: r.ms,
+      detail: r.error ?? `HTTP ${r.status ?? '—'} • ${r.ms} мс`,
+    })).catch((e): ProbeResult => ({ id: 'cloudflare', label: 'Сторонний эталон', status: 'blocked', durationMs: 0, detail: String(e) })),
+
+    // 6. Kinescope — для жалоб на видео
+    timedFetch('https://kinescope.io/favicon.ico', { method: 'GET' }).then((r): ProbeResult => ({
+      id: 'kinescope',
+      label: 'Видео-сервис (Kinescope)',
+      status: r.status !== undefined ? (r.ms > 4000 ? 'slow' : 'ok') : 'blocked',
+      durationMs: r.ms,
+      detail: r.error ?? `HTTP ${r.status ?? '—'} • ${r.ms} мс`,
+    })).catch((e): ProbeResult => ({ id: 'kinescope', label: 'Видео-сервис (Kinescope)', status: 'blocked', durationMs: 0, detail: String(e) })),
   ];
 
   const settled = await Promise.allSettled(probes);
+  const ids: ProbeId[] = ['internet', 'api', 'edge', 'storage', 'cloudflare', 'kinescope'];
   return settled.map((s, i) => {
     if (s.status === 'fulfilled') return s.value;
-    return { id: (['internet', 'api', 'edge', 'storage'] as const)[i], label: 'Проверка', status: 'error', durationMs: 0, detail: String(s.reason) };
+    return { id: ids[i], label: 'Проверка', status: 'error', durationMs: 0, detail: String(s.reason) };
   });
 }
 
