@@ -8,8 +8,10 @@
 
 export type ProbeStatus = 'pending' | 'ok' | 'blocked' | 'slow' | 'error';
 
+export type ProbeId = 'internet' | 'api' | 'edge' | 'storage' | 'cloudflare' | 'kinescope';
+
 export interface ProbeResult {
-  id: 'internet' | 'api' | 'edge' | 'storage';
+  id: ProbeId;
   label: string;
   status: ProbeStatus;
   durationMs: number;
@@ -85,12 +87,31 @@ export async function runConnectionDiagnostics(): Promise<ProbeResult[]> {
       durationMs: r.ms,
       detail: r.error ?? `HTTP ${r.status ?? '—'} • ${r.ms} мс`,
     })).catch((e): ProbeResult => ({ id: 'storage', label: 'Хранилище файлов', status: 'blocked', durationMs: 0, detail: String(e) })),
+
+    // 5. Cloudflare — независимый эталон, чтобы понять, есть ли вообще выход в мир
+    timedFetch('https://cloudflare.com/cdn-cgi/trace', { method: 'GET' }).then((r): ProbeResult => ({
+      id: 'cloudflare',
+      label: 'Сторонний эталон (Cloudflare)',
+      status: r.status !== undefined ? (r.ms > 4000 ? 'slow' : 'ok') : 'blocked',
+      durationMs: r.ms,
+      detail: r.error ?? `HTTP ${r.status ?? '—'} • ${r.ms} мс`,
+    })).catch((e): ProbeResult => ({ id: 'cloudflare', label: 'Сторонний эталон', status: 'blocked', durationMs: 0, detail: String(e) })),
+
+    // 6. Kinescope — для жалоб на видео
+    timedFetch('https://kinescope.io/favicon.ico', { method: 'GET' }).then((r): ProbeResult => ({
+      id: 'kinescope',
+      label: 'Видео-сервис (Kinescope)',
+      status: r.status !== undefined ? (r.ms > 4000 ? 'slow' : 'ok') : 'blocked',
+      durationMs: r.ms,
+      detail: r.error ?? `HTTP ${r.status ?? '—'} • ${r.ms} мс`,
+    })).catch((e): ProbeResult => ({ id: 'kinescope', label: 'Видео-сервис (Kinescope)', status: 'blocked', durationMs: 0, detail: String(e) })),
   ];
 
   const settled = await Promise.allSettled(probes);
+  const ids: ProbeId[] = ['internet', 'api', 'edge', 'storage', 'cloudflare', 'kinescope'];
   return settled.map((s, i) => {
     if (s.status === 'fulfilled') return s.value;
-    return { id: (['internet', 'api', 'edge', 'storage'] as const)[i], label: 'Проверка', status: 'error', durationMs: 0, detail: String(s.reason) };
+    return { id: ids[i], label: 'Проверка', status: 'error', durationMs: 0, detail: String(s.reason) };
   });
 }
 
@@ -132,14 +153,11 @@ export function summarizeDiagnostics(results: ProbeResult[]): { headline: string
 }
 
 /** Формирует текст отчёта для скачивания / отправки в поддержку. */
-export function buildDiagnosticsReport(results: ProbeResult[]): string {
+export function buildDiagnosticsReport(results: ProbeResult[], deviceReport?: string): string {
   const lines: string[] = [];
   lines.push('=== Отчёт о соединении с Sintagma ===');
   lines.push(`Дата: ${new Date().toLocaleString('ru-RU')}`);
   lines.push(`URL: ${window.location.href}`);
-  lines.push(`Браузер: ${navigator.userAgent}`);
-  lines.push(`Платформа: ${navigator.platform}`);
-  lines.push(`Язык: ${navigator.language}`);
   lines.push(`Online (по данным браузера): ${navigator.onLine ? 'да' : 'нет'}`);
   lines.push('');
   lines.push('--- Результаты проверок ---');
@@ -148,6 +166,10 @@ export function buildDiagnosticsReport(results: ProbeResult[]): string {
     lines.push(`[${status}] ${r.label} (${r.durationMs} мс) — ${r.detail ?? ''}`);
   }
   lines.push('');
+  if (deviceReport) {
+    lines.push(deviceReport);
+    lines.push('');
+  }
   lines.push('--- Рекомендация для системного администратора ---');
   lines.push('Добавьте в исключения антивируса / firewall следующие домены:');
   lines.push('  • sintagma.com.ru');

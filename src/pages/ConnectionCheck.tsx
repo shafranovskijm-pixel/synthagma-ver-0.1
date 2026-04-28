@@ -5,22 +5,32 @@ import { Card } from '@/components/ui/card';
 import { Loader2, CheckCircle2, XCircle, AlertTriangle, Wifi, Download, RefreshCw, ArrowLeft } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { runConnectionDiagnostics, summarizeDiagnostics, buildDiagnosticsReport, type ProbeResult } from '@/utils/connectionDiagnostics';
+import { collectDeviceInfo, buildDeviceInfoReport, type DeviceInfo } from '@/utils/deviceDiagnostics';
+import { DeviceInfoCard } from '@/components/diagnostics/DeviceInfoCard';
 
 export default function ConnectionCheck() {
   const [results, setResults] = useState<ProbeResult[]>([]);
   const [running, setRunning] = useState(false);
   const [done, setDone] = useState(false);
+  const [deviceInfo, setDeviceInfo] = useState<DeviceInfo | null>(null);
+  const [deviceLoading, setDeviceLoading] = useState(true);
 
   const run = async () => {
     setRunning(true);
     setDone(false);
     setResults([]);
+    setDeviceLoading(true);
     try {
-      const r = await runConnectionDiagnostics();
+      const [r, d] = await Promise.all([
+        runConnectionDiagnostics(),
+        collectDeviceInfo(),
+      ]);
       setResults(r);
+      setDeviceInfo(d);
       setDone(true);
     } finally {
       setRunning(false);
+      setDeviceLoading(false);
     }
   };
 
@@ -31,8 +41,13 @@ export default function ConnectionCheck() {
 
   const summary = done ? summarizeDiagnostics(results) : null;
 
+  const buildReport = () => {
+    const deviceText = deviceInfo ? buildDeviceInfoReport(deviceInfo) : undefined;
+    return buildDiagnosticsReport(results, deviceText);
+  };
+
   const downloadReport = () => {
-    const text = buildDiagnosticsReport(results);
+    const text = buildReport();
     const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -46,7 +61,7 @@ export default function ConnectionCheck() {
 
   const copyReport = async () => {
     try {
-      await navigator.clipboard.writeText(buildDiagnosticsReport(results));
+      await navigator.clipboard.writeText(buildReport());
     } catch {
       // ignore
     }
@@ -104,6 +119,8 @@ export default function ConnectionCheck() {
               <div className="text-sm opacity-90">{summary.advice}</div>
             </div>
           )}
+
+          <DeviceInfoCard info={deviceInfo} loading={deviceLoading} />
 
           <div className="flex flex-wrap gap-2">
             <Button onClick={run} disabled={running} variant="outline">
