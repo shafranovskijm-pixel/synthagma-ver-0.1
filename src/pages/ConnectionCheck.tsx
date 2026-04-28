@@ -41,8 +41,13 @@ export default function ConnectionCheck() {
 
   const summary = done ? summarizeDiagnostics(results) : null;
 
+  const buildReport = () => {
+    const deviceText = deviceInfo ? buildDeviceInfoReport(deviceInfo) : undefined;
+    return buildDiagnosticsReport(results, deviceText);
+  };
+
   const downloadReport = () => {
-    const text = buildDiagnosticsReport(results);
+    const text = buildReport();
     const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -56,7 +61,7 @@ export default function ConnectionCheck() {
 
   const copyReport = async () => {
     try {
-      await navigator.clipboard.writeText(buildDiagnosticsReport(results));
+      await navigator.clipboard.writeText(buildReport());
     } catch {
       // ignore
     }
