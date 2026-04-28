@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { safeInvoke } from "@/utils/safeInvoke";
+import { enqueueTestSubmission } from "@/utils/testAnswerQueue";
 import { toast } from "sonner";
 import { isAdminViewActive } from "@/utils/adminViewMode";
 import type { Lesson, LessonProgress, TestQuestion } from "./types";
@@ -109,7 +110,13 @@ export function useLessonTest({
         score: number; maxScore: number; scorePercent: number; passed: boolean;
         correctAnswers: Record<string, number>; explanations?: Record<string, string | null>;
       }>('grade-test', { body: { lesson_id: currentLesson.id, answers, shown_question_ids: shownIds } });
-      if (gradeError || !gradeResult) { toast.error('Ошибка проверки теста'); return; }
+      if (gradeError || !gradeResult) {
+        // Fallback: ставим в очередь, чтобы при восстановлении сети ответ ушёл.
+        // Это спасает учеников за корпоративным firewall, у которых edge-функции не открываются.
+        await enqueueTestSubmission({ lessonId: currentLesson.id, answers, shownQuestionIds: shownIds });
+        toast.warning('Ответы сохранены. Тест будет отправлен автоматически при восстановлении соединения.', { duration: 8000 });
+        return;
+      }
       const { score, maxScore, scorePercent, passed, correctAnswers, explanations } = gradeResult;
       if (explanations) setTestExplanations(explanations);
       setTestQuestions(testQuestions.map(q => ({ ...q, correct_answer: correctAnswers[q.id] ?? q.correct_answer })));
@@ -123,7 +130,16 @@ export function useLessonTest({
       } else {
         toast.error(`Тест не пройден. ${score}/${maxScore} (${scorePercent}%). Нужно: ${testPassingScore}%.`);
       }
-    } catch (err) { console.error('Error submitting test:', err); toast.error('Ошибка отправки теста'); }
+    } catch (err) {
+      console.error('Error submitting test:', err);
+      // Сохраняем в очередь даже при необработанном исключении
+      try {
+        await enqueueTestSubmission({ lessonId: currentLesson.id, answers, shownQuestionIds: shownIds });
+        toast.warning('Ответы сохранены. Тест будет отправлен автоматически при восстановлении соединения.', { duration: 8000 });
+      } catch {
+        toast.error('Ошибка отправки теста');
+      }
+    }
   };
 
   const retryTest = () => {

@@ -13,6 +13,8 @@ import { TwoFactorChallenge } from "@/components/auth/TwoFactorChallenge";
 import { ScrollToTop } from "./components/ScrollToTop";
 import { SpecialOfferPopup } from "./components/landing/SpecialOfferPopup";
 import { OfflineIndicator } from "./components/OfflineIndicator";
+import { NetworkBlockBanner } from "./components/NetworkBlockBanner";
+import { installTestQueueListeners } from "./utils/testAnswerQueue";
 import { useThemePersonalization } from "@/components/ui/ThemePersonalization";
 import { captureRefFromUrl } from "@/utils/referralCookie";
 import { BackgroundUploadsProvider } from "@/contexts/BackgroundUploadsContext";
@@ -29,6 +31,7 @@ import {
 } from "@/routes";
 
 captureRefFromUrl();
+installTestQueueListeners();
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -61,6 +64,7 @@ const App = () => (
               <BackgroundUploadsProvider>
                 <ThemeInit />
                 <ScrollToTop />
+                <NetworkBlockBanner />
                 <OfflineIndicator />
                 <TooltipProvider>
                   <Sonner />
