@@ -1917,6 +1917,47 @@ export type Database = {
           },
         ]
       }
+      course_snapshots: {
+        Row: {
+          course_id: string
+          created_at: string
+          created_by: string | null
+          id: string
+          label: string | null
+          organization_id: string
+          payload: Json
+          reason: string
+        }
+        Insert: {
+          course_id: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          label?: string | null
+          organization_id: string
+          payload: Json
+          reason?: string
+        }
+        Update: {
+          course_id?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          label?: string | null
+          organization_id?: string
+          payload?: Json
+          reason?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "course_snapshots_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "courses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       courses: {
         Row: {
           accent_color: string | null
@@ -9965,6 +10006,7 @@ export type Database = {
         Args: { p_summary?: string; p_token: string }
         Returns: undefined
       }
+      restore_course_snapshot: { Args: { _snapshot_id: string }; Returns: Json }
       restore_document: {
         Args: { p_id: string; p_table: string }
         Returns: boolean

@@ -8,16 +8,18 @@ import { SigmaLogo } from "@/components/ui/SigmaLogo";
 import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from "@/components/ui/tooltip";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from "@/components/ui/accordion";
-import { ArrowLeft, Save, Eye, Plus, FileUp, Wand2, Check, AlertCircle, BookOpen, Layers, SearchCheck } from "lucide-react";
+import { ArrowLeft, Save, Eye, Plus, FileUp, Wand2, Check, AlertCircle, BookOpen, Layers, SearchCheck, History } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { SortableLessonItem } from "@/components/course-builder/SortableLessonItem";
 import { CourseBuilderLessonsNav } from "@/components/course-builder/CourseBuilderLessonsNav";
 import { AIGenerateDialog } from "@/components/course-builder/AIGenerateDialog";
 import { CourseReviewDialog } from "@/components/course-builder/CourseReviewDialog";
+import { CourseSnapshotsDialog } from "@/components/course-builder/CourseSnapshotsDialog";
 import { CourseGenerationProgress } from "@/components/course-builder/CourseGenerationProgress";
 import { useCourseBuilder } from "@/hooks/useCourseBuilder";
 import { useCourseReview } from "@/hooks/useCourseReview";
+import { useCourseSnapshots } from "@/hooks/useCourseSnapshots";
 
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 
@@ -51,6 +53,13 @@ export default function CourseBuilder({ embedded, embeddedCourseId, onExitEditor
     isReviewing, reviewResult, activeFindings, dismissedIds,
     startReview, dismissFinding, dismissAll, resetReview } = useCourseReview();
   const [showReviewDialog, setShowReviewDialog] = useState(false);
+  const [showReviewConfirm, setShowReviewConfirm] = useState(false);
+  const [showSnapshotsDialog, setShowSnapshotsDialog] = useState(false);
+
+  const {
+    snapshots, isLoading: snapshotsLoading, isCreating: snapshotCreating,
+    isRestoring: snapshotRestoring, createSnapshot, restoreSnapshot, deleteSnapshot,
+  } = useCourseSnapshots(resolvedCourseId ?? null, organizationId ?? null);
   
 
   // Подсветка активного урока в левом меню обновляется только по клику пользователя.
@@ -72,11 +81,19 @@ export default function CourseBuilder({ embedded, embeddedCourseId, onExitEditor
   }, [isSaving, saveCourse]);
 
 
-  const handleStartReview = async () => {
+  const handleStartReview = () => {
     if (!resolvedCourseId) {
       toast.error("Сначала сохраните курс");
       return;
     }
+    setShowReviewConfirm(true);
+  };
+
+  const runReviewAfterConfirm = async () => {
+    setShowReviewConfirm(false);
+    if (!resolvedCourseId) return;
+    // Safety snapshot — AI review is read-only today, but if we add "apply patch" later it will be needed.
+    await createSnapshot("before_ai_review", "Перед AI-проверкой");
     setShowReviewDialog(true);
     await startReview(resolvedCourseId);
   };
@@ -215,10 +232,24 @@ export default function CourseBuilder({ embedded, embeddedCourseId, onExitEditor
                     <span className="flex items-center gap-1.5"><Wand2 className="w-4 h-4" />{isGenerating ? 'Генерация...' : 'AI Структура'}</span>
                      <span className="text-[10px] text-muted-foreground font-normal">По названию и описанию курса</span>
                   </Button>
-                  <Button variant="outline" size="sm" onClick={handleStartReview} disabled={isReviewing || !resolvedCourseId || lessons.length === 0} className="h-auto py-2 px-3 flex flex-col items-center gap-0.5">
-                    <span className="flex items-center gap-1.5"><SearchCheck className="w-4 h-4" />{isReviewing ? 'Проверка...' : 'AI Проверка'}</span>
-                    <span className="text-[10px] text-muted-foreground font-normal">Актуальность и ошибки</span>
-                  </Button>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button variant="outline" size="sm" onClick={handleStartReview} disabled={isReviewing || !resolvedCourseId || lessons.length === 0} className="h-auto py-2 px-3 flex flex-col items-center gap-0.5">
+                        <span className="flex items-center gap-1.5"><SearchCheck className="w-4 h-4" />{isReviewing ? 'Проверка...' : 'AI Проверка'}</span>
+                        <span className="text-[10px] text-muted-foreground font-normal">Только анализ, курс не меняется</span>
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>AI только проанализирует уроки и тесты. Никакие изменения в курс не вносятся.</TooltipContent>
+                  </Tooltip>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button variant="outline" size="sm" onClick={() => setShowSnapshotsDialog(true)} disabled={!resolvedCourseId} className="h-auto py-2 px-3 flex flex-col items-center gap-0.5">
+                        <span className="flex items-center gap-1.5"><History className="w-4 h-4" />История версий</span>
+                        <span className="text-[10px] text-muted-foreground font-normal">Откат и снимки курса</span>
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>Снимки курса автоматически создаются перед AI-операциями. Можно вернуться к любой предыдущей версии.</TooltipContent>
+                  </Tooltip>
                 </div>
               </div>
 
@@ -320,6 +351,36 @@ export default function CourseBuilder({ embedded, embeddedCourseId, onExitEditor
         onDismiss={dismissFinding}
         onDismissAll={dismissAll}
       />
+
+      <AlertDialog open={showReviewConfirm} onOpenChange={setShowReviewConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Запустить AI-проверку курса?</AlertDialogTitle>
+            <AlertDialogDescription>
+              ИИ прочитает все уроки и тесты курса и предложит список замечаний (актуальность законодательства, ошибки в тестах, рекомендации).
+              <br /><br />
+              <strong>Курс при этом не меняется</strong> — вы сами решаете, что делать с каждым замечанием. Также перед проверкой автоматически создастся снимок курса в разделе «История версий».
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Отмена</AlertDialogCancel>
+            <AlertDialogAction onClick={runReviewAfterConfirm}>Запустить проверку</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <CourseSnapshotsDialog
+        open={showSnapshotsDialog}
+        onOpenChange={setShowSnapshotsDialog}
+        snapshots={snapshots}
+        isLoading={snapshotsLoading}
+        isCreating={snapshotCreating}
+        isRestoring={snapshotRestoring}
+        onCreate={() => createSnapshot("manual", "Ручное сохранение")}
+        onRestore={restoreSnapshot}
+        onDelete={deleteSnapshot}
+      />
+
     </div>
     </TooltipProvider>
   );
