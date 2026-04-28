@@ -100,6 +100,7 @@ export const publicRoutes = (
     <Route path="/w/:token" element={<WebinarPublic />} />
     <Route path="/document/share/:token" element={<DocumentSharePage />} />
     <Route path="/accept-invitation" element={<AcceptInvitation />} />
+    <Route path="/connection-check" element={<ConnectionCheck />} />
     <Route path="*" element={<NotFound />} />
   </>
 );
