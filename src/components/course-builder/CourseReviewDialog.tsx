@@ -24,14 +24,45 @@ interface CourseReviewDialogProps {
   reviewResult: ReviewResult | null;
   activeFindings: ReviewFinding[];
   dismissedCount: number;
+  appliedCount?: number;
+  applyingId?: string | null;
   onDismiss: (id: string) => void;
   onDismissAll: () => void;
+  onApply?: (finding: ReviewFinding) => void;
 }
 
-function FindingCard({ finding, onDismiss }: { finding: ReviewFinding; onDismiss: () => void }) {
+function describePatch(finding: ReviewFinding): string | null {
+  if (!finding.patch || !finding.target_kind || finding.target_kind === "none") return null;
+  const p = finding.patch as Record<string, unknown>;
+  const parts: string[] = [];
+  if (finding.target_kind === "lesson_title" && typeof p.title === "string") {
+    parts.push(`Название урока → «${p.title}»`);
+  }
+  if (finding.target_kind === "test_question") {
+    if (typeof p.question === "string") parts.push("Текст вопроса");
+    if (Array.isArray(p.options)) parts.push(`Варианты ответа (${p.options.length})`);
+    if (typeof p.correct_answer === "number") parts.push(`Правильный ответ → №${(p.correct_answer as number) + 1}`);
+    if (typeof p.explanation === "string") parts.push("Пояснение");
+  }
+  return parts.length > 0 ? parts.join(", ") : null;
+}
+
+function FindingCard({
+  finding,
+  onDismiss,
+  onApply,
+  isApplying,
+}: {
+  finding: ReviewFinding;
+  onDismiss: () => void;
+  onApply?: () => void;
+  isApplying?: boolean;
+}) {
   const type = typeConfig[finding.type];
   const severity = severityConfig[finding.severity];
   const TypeIcon = type.icon;
+  const canApply = !!onApply && !!finding.target_kind && finding.target_kind !== "none" && !!finding.target_id && !!finding.patch && Object.keys(finding.patch).length > 0;
+  const patchDesc = describePatch(finding);
 
   return (
     <div className={`rounded-xl border p-4 space-y-2 ${type.bg}`}>
@@ -42,7 +73,7 @@ function FindingCard({ finding, onDismiss }: { finding: ReviewFinding; onDismiss
           <Badge variant={severity.variant} className="text-[10px] h-5">{severity.label}</Badge>
           <span className="text-xs text-muted-foreground">· {finding.lesson_title}</span>
         </div>
-        <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" onClick={onDismiss} title="Отклонить">
+        <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" onClick={onDismiss} title="Отклонить" disabled={isApplying}>
           <X className="w-3.5 h-3.5" />
         </Button>
       </div>
@@ -50,7 +81,20 @@ function FindingCard({ finding, onDismiss }: { finding: ReviewFinding; onDismiss
       <div className="bg-background/60 rounded-lg p-3 border border-border/50">
         <p className="text-xs text-muted-foreground mb-1 font-medium">Рекомендация:</p>
         <p className="text-sm">{finding.suggestion}</p>
+        {canApply && patchDesc && (
+          <p className="text-xs text-muted-foreground mt-2">
+            <span className="font-medium">Будет изменено:</span> {patchDesc}
+          </p>
+        )}
       </div>
+      {canApply && (
+        <div className="flex justify-end pt-1">
+          <Button size="sm" onClick={onApply} disabled={isApplying} className="gap-1.5">
+            {isApplying ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Wand2 className="w-3.5 h-3.5" />}
+            Применить
+          </Button>
+        </div>
+      )}
     </div>
   );
 }
