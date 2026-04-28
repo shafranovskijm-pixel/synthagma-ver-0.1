@@ -169,6 +169,11 @@ export function CourseReviewDialog({
                     <Info className="w-3 h-3" /> {infoCount} инфо
                   </span>
                 )}
+                {appliedCount > 0 && (
+                  <span className="flex items-center gap-1 text-primary">
+                    <CheckCircle2 className="w-3 h-3" /> {appliedCount} применено
+                  </span>
+                )}
                 {dismissedCount > 0 && (
                   <span className="flex items-center gap-1 text-green-600 dark:text-green-400">
                     <CheckCircle2 className="w-3 h-3" /> {dismissedCount} отклонено
