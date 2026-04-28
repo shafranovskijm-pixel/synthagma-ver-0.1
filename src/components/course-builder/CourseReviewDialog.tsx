@@ -106,8 +106,11 @@ export function CourseReviewDialog({
   reviewResult,
   activeFindings,
   dismissedCount,
+  appliedCount = 0,
+  applyingId = null,
   onDismiss,
-  onDismissAll }: CourseReviewDialogProps) {
+  onDismissAll,
+  onApply }: CourseReviewDialogProps) {
   const totalFindings = reviewResult?.findings.length || 0;
 
   const criticalCount = activeFindings.filter(f => f.severity === "critical").length;
