@@ -8,16 +8,18 @@ import { SigmaLogo } from "@/components/ui/SigmaLogo";
 import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from "@/components/ui/tooltip";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from "@/components/ui/accordion";
-import { ArrowLeft, Save, Eye, Plus, FileUp, Wand2, Check, AlertCircle, BookOpen, Layers, SearchCheck } from "lucide-react";
+import { ArrowLeft, Save, Eye, Plus, FileUp, Wand2, Check, AlertCircle, BookOpen, Layers, SearchCheck, History } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { SortableLessonItem } from "@/components/course-builder/SortableLessonItem";
 import { CourseBuilderLessonsNav } from "@/components/course-builder/CourseBuilderLessonsNav";
 import { AIGenerateDialog } from "@/components/course-builder/AIGenerateDialog";
 import { CourseReviewDialog } from "@/components/course-builder/CourseReviewDialog";
+import { CourseSnapshotsDialog } from "@/components/course-builder/CourseSnapshotsDialog";
 import { CourseGenerationProgress } from "@/components/course-builder/CourseGenerationProgress";
 import { useCourseBuilder } from "@/hooks/useCourseBuilder";
 import { useCourseReview } from "@/hooks/useCourseReview";
+import { useCourseSnapshots } from "@/hooks/useCourseSnapshots";
 
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 
@@ -51,6 +53,13 @@ export default function CourseBuilder({ embedded, embeddedCourseId, onExitEditor
     isReviewing, reviewResult, activeFindings, dismissedIds,
     startReview, dismissFinding, dismissAll, resetReview } = useCourseReview();
   const [showReviewDialog, setShowReviewDialog] = useState(false);
+  const [showReviewConfirm, setShowReviewConfirm] = useState(false);
+  const [showSnapshotsDialog, setShowSnapshotsDialog] = useState(false);
+
+  const {
+    snapshots, isLoading: snapshotsLoading, isCreating: snapshotCreating,
+    isRestoring: snapshotRestoring, createSnapshot, restoreSnapshot, deleteSnapshot,
+  } = useCourseSnapshots(resolvedCourseId ?? null, organizationId ?? null);
   
 
   // Подсветка активного урока в левом меню обновляется только по клику пользователя.
@@ -72,11 +81,19 @@ export default function CourseBuilder({ embedded, embeddedCourseId, onExitEditor
   }, [isSaving, saveCourse]);
 
 
-  const handleStartReview = async () => {
+  const handleStartReview = () => {
     if (!resolvedCourseId) {
       toast.error("Сначала сохраните курс");
       return;
     }
+    setShowReviewConfirm(true);
+  };
+
+  const runReviewAfterConfirm = async () => {
+    setShowReviewConfirm(false);
+    if (!resolvedCourseId) return;
+    // Safety snapshot — AI review is read-only today, but if we add "apply patch" later it will be needed.
+    await createSnapshot("before_ai_review", "Перед AI-проверкой");
     setShowReviewDialog(true);
     await startReview(resolvedCourseId);
   };
