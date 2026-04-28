@@ -72,7 +72,7 @@ serve(async (req) => {
 
     // Build course summary for AI
     const lessonSummaries = lessons.map((l, i) => {
-      let summary = `### Урок ${i + 1}: "${l.title}" (тип: ${l.type})`;
+      let summary = `### Урок ${i + 1}: "${l.title}" [lesson_id=${l.id}] (тип: ${l.type})`;
 
       if (l.type === "test" && testQuestions[l.id]) {
         const qs = testQuestions[l.id];
@@ -83,11 +83,10 @@ serve(async (req) => {
                 `  ${idx + 1}) ${typeof o === "object" ? o.text : o}${idx === q.correct_answer ? " ✓" : ""}`
               ).join("\n")
             : "";
-          summary += `\n- ${q.question}\n${opts}`;
+          summary += `\n- [question_id=${q.id}] ${q.question}\n${opts}`;
           if (q.explanation) summary += `\n  Пояснение: ${q.explanation}`;
         }
       } else if (l.content) {
-        // Extract text from block content
         try {
           const blocks = JSON.parse(l.content);
           if (Array.isArray(blocks)) {
