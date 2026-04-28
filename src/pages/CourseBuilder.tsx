@@ -232,10 +232,24 @@ export default function CourseBuilder({ embedded, embeddedCourseId, onExitEditor
                     <span className="flex items-center gap-1.5"><Wand2 className="w-4 h-4" />{isGenerating ? 'Генерация...' : 'AI Структура'}</span>
                      <span className="text-[10px] text-muted-foreground font-normal">По названию и описанию курса</span>
                   </Button>
-                  <Button variant="outline" size="sm" onClick={handleStartReview} disabled={isReviewing || !resolvedCourseId || lessons.length === 0} className="h-auto py-2 px-3 flex flex-col items-center gap-0.5">
-                    <span className="flex items-center gap-1.5"><SearchCheck className="w-4 h-4" />{isReviewing ? 'Проверка...' : 'AI Проверка'}</span>
-                    <span className="text-[10px] text-muted-foreground font-normal">Актуальность и ошибки</span>
-                  </Button>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button variant="outline" size="sm" onClick={handleStartReview} disabled={isReviewing || !resolvedCourseId || lessons.length === 0} className="h-auto py-2 px-3 flex flex-col items-center gap-0.5">
+                        <span className="flex items-center gap-1.5"><SearchCheck className="w-4 h-4" />{isReviewing ? 'Проверка...' : 'AI Проверка'}</span>
+                        <span className="text-[10px] text-muted-foreground font-normal">Только анализ, курс не меняется</span>
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>AI только проанализирует уроки и тесты. Никакие изменения в курс не вносятся.</TooltipContent>
+                  </Tooltip>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button variant="outline" size="sm" onClick={() => setShowSnapshotsDialog(true)} disabled={!resolvedCourseId} className="h-auto py-2 px-3 flex flex-col items-center gap-0.5">
+                        <span className="flex items-center gap-1.5"><History className="w-4 h-4" />История версий</span>
+                        <span className="text-[10px] text-muted-foreground font-normal">Откат и снимки курса</span>
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>Снимки курса автоматически создаются перед AI-операциями. Можно вернуться к любой предыдущей версии.</TooltipContent>
+                  </Tooltip>
                 </div>
               </div>
 
