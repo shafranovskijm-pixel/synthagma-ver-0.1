@@ -9,6 +9,9 @@ export interface ReviewFinding {
   severity: "critical" | "warning" | "info";
   description: string;
   suggestion: string;
+  target_kind?: "test_question" | "lesson_title" | "none";
+  target_id?: string;
+  patch?: Record<string, unknown>;
 }
 
 export interface ReviewResult {
@@ -20,24 +23,22 @@ export function useCourseReview() {
   const [isReviewing, setIsReviewing] = useState(false);
   const [reviewResult, setReviewResult] = useState<ReviewResult | null>(null);
   const [dismissedIds, setDismissedIds] = useState<Set<string>>(new Set());
+  const [appliedIds, setAppliedIds] = useState<Set<string>>(new Set());
+  const [applyingId, setApplyingId] = useState<string | null>(null);
 
   const startReview = useCallback(async (courseId: string) => {
     setIsReviewing(true);
     setReviewResult(null);
     setDismissedIds(new Set());
+    setAppliedIds(new Set());
 
     try {
       const { data, error } = await supabase.functions.invoke("review-course", {
         body: { courseId },
       });
 
-      if (error) {
-        throw new Error(error.message || "Ошибка при проверке курса");
-      }
-
-      if (data?.error) {
-        throw new Error(data.error);
-      }
+      if (error) throw new Error(error.message || "Ошибка при проверке курса");
+      if (data?.error) throw new Error(data.error);
 
       const result: ReviewResult = {
         findings: data?.findings || [],
@@ -53,13 +54,9 @@ export function useCourseReview() {
       }
     } catch (err) {
       const message = err instanceof Error ? err.message : "Неизвестная ошибка";
-      if (message.includes("402")) {
-        toast.error("Требуется пополнение баланса ИИ-кредитов");
-      } else if (message.includes("429")) {
-        toast.error("Слишком много запросов, попробуйте позже");
-      } else {
-        toast.error(`Ошибка проверки: ${message}`);
-      }
+      if (message.includes("402")) toast.error("Требуется пополнение баланса ИИ-кредитов");
+      else if (message.includes("429")) toast.error("Слишком много запросов, попробуйте позже");
+      else toast.error(`Ошибка проверки: ${message}`);
     } finally {
       setIsReviewing(false);
     }
@@ -78,18 +75,54 @@ export function useCourseReview() {
   const resetReview = useCallback(() => {
     setReviewResult(null);
     setDismissedIds(new Set());
+    setAppliedIds(new Set());
   }, []);
 
-  const activeFindings = reviewResult?.findings.filter(f => !dismissedIds.has(f.id)) || [];
+  const applyFinding = useCallback(async (courseId: string, finding: ReviewFinding) => {
+    if (!finding.target_kind || finding.target_kind === "none" || !finding.target_id || !finding.patch) {
+      toast.error("Это замечание нельзя применить автоматически");
+      return false;
+    }
+    setApplyingId(finding.id);
+    try {
+      const { data, error } = await supabase.functions.invoke("apply-review-finding", {
+        body: {
+          courseId,
+          target_kind: finding.target_kind,
+          target_id: finding.target_id,
+          patch: finding.patch,
+        },
+      });
+      if (error) throw new Error(error.message || "Не удалось применить");
+      if (data?.error) throw new Error(data.error);
+
+      setAppliedIds(prev => new Set([...prev, finding.id]));
+      toast.success("Изменение применено");
+      return true;
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Неизвестная ошибка";
+      toast.error(`Ошибка: ${message}`);
+      return false;
+    } finally {
+      setApplyingId(null);
+    }
+  }, []);
+
+  const activeFindings = reviewResult?.findings.filter(
+    f => !dismissedIds.has(f.id) && !appliedIds.has(f.id)
+  ) || [];
 
   return {
     isReviewing,
     reviewResult,
     activeFindings,
     dismissedIds,
+    appliedIds,
+    applyingId,
     startReview,
     dismissFinding,
     dismissAll,
+    applyFinding,
     resetReview,
   };
 }
