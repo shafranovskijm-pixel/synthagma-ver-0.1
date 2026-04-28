@@ -72,7 +72,7 @@ serve(async (req) => {
 
     // Build course summary for AI
     const lessonSummaries = lessons.map((l, i) => {
-      let summary = `### Урок ${i + 1}: "${l.title}" (тип: ${l.type})`;
+      let summary = `### Урок ${i + 1}: "${l.title}" [lesson_id=${l.id}] (тип: ${l.type})`;
 
       if (l.type === "test" && testQuestions[l.id]) {
         const qs = testQuestions[l.id];
@@ -83,11 +83,10 @@ serve(async (req) => {
                 `  ${idx + 1}) ${typeof o === "object" ? o.text : o}${idx === q.correct_answer ? " ✓" : ""}`
               ).join("\n")
             : "";
-          summary += `\n- ${q.question}\n${opts}`;
+          summary += `\n- [question_id=${q.id}] ${q.question}\n${opts}`;
           if (q.explanation) summary += `\n  Пояснение: ${q.explanation}`;
         }
       } else if (l.content) {
-        // Extract text from block content
         try {
           const blocks = JSON.parse(l.content);
           if (Array.isArray(blocks)) {
@@ -136,7 +135,13 @@ ${lessonSummaries.join("\n\n")}`;
 
 4. **Предложения**: Предложи недостающие темы, дополнительные тестовые вопросы, улучшения формулировок.
 
-Будь конкретным и точным. Указывай номера и даты нормативных актов. Для каждого замечания предлагай конкретное исправление.`;
+Будь конкретным и точным. Указывай номера и даты нормативных актов.
+
+ВАЖНО про автоматическое применение правок:
+- Для каждого замечания указывай target_kind ("test_question", "lesson_title" или "none") и target_id (id из квадратных скобок [question_id=...] или [lesson_id=...] в тексте курса).
+- В patch клади ТОЛЬКО изменяемые поля. Для test_question допустимы поля: question (string), explanation (string), correct_answer (number — индекс правильного варианта, 0-based), options (массив строк — полностью заменяет варианты).
+- Для lesson_title patch = { "title": "..." }.
+- Если правка не сводится к одному машинному изменению (например, нужен новый урок или большое переписывание содержимого), ставь target_kind="none", target_id="" и patch={}.`;
 
     const tool = {
       type: "function",
@@ -165,8 +170,19 @@ ${lessonSummaries.join("\n\n")}`;
                   },
                   description: { type: "string", description: "Detailed description of the issue" },
                   suggestion: { type: "string", description: "Recommended fix or improvement" },
+                  target_kind: {
+                    type: "string",
+                    enum: ["test_question", "lesson_title", "none"],
+                    description: "What entity the patch targets. 'none' if no machine-applicable patch.",
+                  },
+                  target_id: { type: "string", description: "ID of the test_question or lesson the patch applies to. Empty if target_kind=none." },
+                  patch: {
+                    type: "object",
+                    description: "Concrete machine-applicable change. For test_question: { question?: string, explanation?: string, correct_answer?: number, options?: string[] }. For lesson_title: { title: string }. Empty {} if no patch.",
+                    additionalProperties: true,
+                  },
                 },
-                required: ["id", "lesson_title", "type", "severity", "description", "suggestion"],
+                required: ["id", "lesson_title", "type", "severity", "description", "suggestion", "target_kind", "target_id", "patch"],
                 additionalProperties: false,
               },
             },
