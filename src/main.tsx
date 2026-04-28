@@ -1,6 +1,11 @@
 import { createRoot } from "react-dom/client";
 import App from "./App.tsx";
 import "./index.css";
+import { installProxyFetch } from "./utils/proxyFetch";
+
+// Перехватчик fetch для обхода корпоративных блокировок Supabase-доменов
+// через резервные субдомены (api/functions/storage.sintagma.com.ru)
+installProxyFetch();
 
 // Redirect from Cyrillic domain to primary domain (bypasses stale SW cache)
 const CYRILLIC_DOMAINS = ['xn--80aaiswd0ak.xn--p1ai', 'www.xn--80aaiswd0ak.xn--p1ai'];
