@@ -319,7 +319,13 @@ const Login = () => {
               </div>
             </div>
 
-            <div className="flex justify-end">
+            <div className="flex justify-between items-center">
+              <a
+                href="/connection-check"
+                className="text-sm text-muted-foreground hover:text-primary transition-colors"
+              >
+                Не загружается?
+              </a>
               <button
                 type="button"
                 onClick={() => setShowForgotPassword(true)}
