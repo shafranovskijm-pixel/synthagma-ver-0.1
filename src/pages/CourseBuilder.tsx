@@ -351,6 +351,36 @@ export default function CourseBuilder({ embedded, embeddedCourseId, onExitEditor
         onDismiss={dismissFinding}
         onDismissAll={dismissAll}
       />
+
+      <AlertDialog open={showReviewConfirm} onOpenChange={setShowReviewConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Запустить AI-проверку курса?</AlertDialogTitle>
+            <AlertDialogDescription>
+              ИИ прочитает все уроки и тесты курса и предложит список замечаний (актуальность законодательства, ошибки в тестах, рекомендации).
+              <br /><br />
+              <strong>Курс при этом не меняется</strong> — вы сами решаете, что делать с каждым замечанием. Также перед проверкой автоматически создастся снимок курса в разделе «История версий».
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Отмена</AlertDialogCancel>
+            <AlertDialogAction onClick={runReviewAfterConfirm}>Запустить проверку</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <CourseSnapshotsDialog
+        open={showSnapshotsDialog}
+        onOpenChange={setShowSnapshotsDialog}
+        snapshots={snapshots}
+        isLoading={snapshotsLoading}
+        isCreating={snapshotCreating}
+        isRestoring={snapshotRestoring}
+        onCreate={() => createSnapshot("manual", "Ручное сохранение")}
+        onRestore={restoreSnapshot}
+        onDelete={deleteSnapshot}
+      />
+
     </div>
     </TooltipProvider>
   );
