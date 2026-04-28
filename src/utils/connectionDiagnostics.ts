@@ -8,8 +8,10 @@
 
 export type ProbeStatus = 'pending' | 'ok' | 'blocked' | 'slow' | 'error';
 
+export type ProbeId = 'internet' | 'api' | 'edge' | 'storage' | 'cloudflare' | 'kinescope';
+
 export interface ProbeResult {
-  id: 'internet' | 'api' | 'edge' | 'storage';
+  id: ProbeId;
   label: string;
   status: ProbeStatus;
   durationMs: number;
