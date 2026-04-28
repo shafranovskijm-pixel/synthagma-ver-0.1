@@ -46,6 +46,7 @@ const VerifyDocument = lazyWithRetry(() => import("@/pages/VerifyDocument"));
 const WebinarPublic = lazyWithRetry(() => import("@/pages/WebinarPublic"));
 const DocumentSharePage = lazyWithRetry(() => import("@/pages/DocumentSharePage"));
 const AcceptInvitation = lazyWithRetry(() => import("@/pages/AcceptInvitation"));
+const ConnectionCheck = lazyWithRetry(() => import("@/pages/ConnectionCheck"));
 const NotFound = lazyWithRetry(() => import("@/pages/NotFound"));
 
 export const publicRoutes = (
