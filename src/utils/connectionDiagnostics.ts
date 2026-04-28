@@ -153,14 +153,11 @@ export function summarizeDiagnostics(results: ProbeResult[]): { headline: string
 }
 
 /** Формирует текст отчёта для скачивания / отправки в поддержку. */
-export function buildDiagnosticsReport(results: ProbeResult[]): string {
+export function buildDiagnosticsReport(results: ProbeResult[], deviceReport?: string): string {
   const lines: string[] = [];
   lines.push('=== Отчёт о соединении с Sintagma ===');
   lines.push(`Дата: ${new Date().toLocaleString('ru-RU')}`);
   lines.push(`URL: ${window.location.href}`);
-  lines.push(`Браузер: ${navigator.userAgent}`);
-  lines.push(`Платформа: ${navigator.platform}`);
-  lines.push(`Язык: ${navigator.language}`);
   lines.push(`Online (по данным браузера): ${navigator.onLine ? 'да' : 'нет'}`);
   lines.push('');
   lines.push('--- Результаты проверок ---');
@@ -169,6 +166,10 @@ export function buildDiagnosticsReport(results: ProbeResult[]): string {
     lines.push(`[${status}] ${r.label} (${r.durationMs} мс) — ${r.detail ?? ''}`);
   }
   lines.push('');
+  if (deviceReport) {
+    lines.push(deviceReport);
+    lines.push('');
+  }
   lines.push('--- Рекомендация для системного администратора ---');
   lines.push('Добавьте в исключения антивируса / firewall следующие домены:');
   lines.push('  • sintagma.com.ru');
