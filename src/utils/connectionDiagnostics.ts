@@ -35,15 +35,25 @@ async function timedFetch(url: string, init?: RequestInit): Promise<{ ok: boolea
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL as string;
 const ANON_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string;
 
+function getInternetProbeUrl() {
+  const url = new URL('/robots.txt', window.location.origin);
+  url.searchParams.set('_probe', Date.now().toString());
+  return url.toString();
+}
+
 export async function runConnectionDiagnostics(): Promise<ProbeResult[]> {
   const probes: Promise<ProbeResult>[] = [
-    // 1. Базовый интернет — favicon Google (CORS-friendly, отдаёт opaque в no-cors, но 204 ловится в обычном)
-    timedFetch('https://www.gstatic.com/generate_204', { mode: 'no-cors' }).then((r): ProbeResult => ({
+    // 1. Базовая доступность сайта. Проверяем same-origin статический файл,
+    // чтобы не ловить ложные срабатывания из-за no-cors/opaque-ответов.
+    timedFetch(getInternetProbeUrl(), {
+      method: 'GET',
+      headers: { 'cache-control': 'no-cache' },
+    }).then((r): ProbeResult => ({
       id: 'internet',
       label: 'Интернет-соединение',
-      status: r.ok || r.status === undefined ? (r.ms > 3000 ? 'slow' : 'ok') : 'blocked',
+      status: r.ok ? (r.ms > 3000 ? 'slow' : 'ok') : 'blocked',
       durationMs: r.ms,
-      detail: r.error ?? `${r.ms} мс`,
+      detail: r.error ?? `${r.ms} мс${navigator.onLine ? '' : ' • браузер сообщает offline'}`,
     })).catch((e): ProbeResult => ({ id: 'internet', label: 'Интернет-соединение', status: 'blocked', durationMs: 0, detail: String(e) })),
 
     // 2. Главный API Sintagma (Supabase REST/Auth health)
