@@ -5,22 +5,32 @@ import { Card } from '@/components/ui/card';
 import { Loader2, CheckCircle2, XCircle, AlertTriangle, Wifi, Download, RefreshCw, ArrowLeft } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { runConnectionDiagnostics, summarizeDiagnostics, buildDiagnosticsReport, type ProbeResult } from '@/utils/connectionDiagnostics';
+import { collectDeviceInfo, buildDeviceInfoReport, type DeviceInfo } from '@/utils/deviceDiagnostics';
+import { DeviceInfoCard } from '@/components/diagnostics/DeviceInfoCard';
 
 export default function ConnectionCheck() {
   const [results, setResults] = useState<ProbeResult[]>([]);
   const [running, setRunning] = useState(false);
   const [done, setDone] = useState(false);
+  const [deviceInfo, setDeviceInfo] = useState<DeviceInfo | null>(null);
+  const [deviceLoading, setDeviceLoading] = useState(true);
 
   const run = async () => {
     setRunning(true);
     setDone(false);
     setResults([]);
+    setDeviceLoading(true);
     try {
-      const r = await runConnectionDiagnostics();
+      const [r, d] = await Promise.all([
+        runConnectionDiagnostics(),
+        collectDeviceInfo(),
+      ]);
       setResults(r);
+      setDeviceInfo(d);
       setDone(true);
     } finally {
       setRunning(false);
+      setDeviceLoading(false);
     }
   };
 
