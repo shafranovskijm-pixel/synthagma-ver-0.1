@@ -141,7 +141,7 @@ ${lessonSummaries.join("\n\n")}`;
 - Для каждого замечания указывай target_kind ("test_question", "lesson_title" или "none") и target_id (id из квадратных скобок [question_id=...] или [lesson_id=...] в тексте курса).
 - В patch клади ТОЛЬКО изменяемые поля. Для test_question допустимы поля: question (string), explanation (string), correct_answer (number — индекс правильного варианта, 0-based), options (массив строк — полностью заменяет варианты).
 - Для lesson_title patch = { "title": "..." }.
-- Если правка не сводится к одному машинному изменению (например, нужен новый урок или большое переписывание содержимого), ставь target_kind="none", target_id="" и patch={}.
+- Если правка не сводится к одному машинному изменению (например, нужен новый урок или большое переписывание содержимого), ставь target_kind="none", target_id="" и patch={}.`;
 
     const tool = {
       type: "function",
