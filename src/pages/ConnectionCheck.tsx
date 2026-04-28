@@ -120,6 +120,8 @@ export default function ConnectionCheck() {
             </div>
           )}
 
+          <DeviceInfoCard info={deviceInfo} loading={deviceLoading} />
+
           <div className="flex flex-wrap gap-2">
             <Button onClick={run} disabled={running} variant="outline">
               <RefreshCw className="w-4 h-4 mr-2" />
