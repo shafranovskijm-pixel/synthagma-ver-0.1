@@ -348,8 +348,11 @@ export default function CourseBuilder({ embedded, embeddedCourseId, onExitEditor
         reviewResult={reviewResult}
         activeFindings={activeFindings}
         dismissedCount={dismissedIds.size}
+        appliedCount={appliedIds.size}
+        applyingId={applyingId}
         onDismiss={dismissFinding}
         onDismissAll={dismissAll}
+        onApply={(f) => resolvedCourseId && applyFinding(resolvedCourseId, f)}
       />
 
       <AlertDialog open={showReviewConfirm} onOpenChange={setShowReviewConfirm}>
