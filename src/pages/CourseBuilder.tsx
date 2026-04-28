@@ -50,8 +50,8 @@ export default function CourseBuilder({ embedded, embeddedCourseId, onExitEditor
     collapseAllModules, expandAllModules } = useCourseBuilder(embeddedCourseId);
 
   const {
-    isReviewing, reviewResult, activeFindings, dismissedIds,
-    startReview, dismissFinding, dismissAll, resetReview } = useCourseReview();
+    isReviewing, reviewResult, activeFindings, dismissedIds, appliedIds, applyingId,
+    startReview, dismissFinding, dismissAll, applyFinding, resetReview } = useCourseReview();
   const [showReviewDialog, setShowReviewDialog] = useState(false);
   const [showReviewConfirm, setShowReviewConfirm] = useState(false);
   const [showSnapshotsDialog, setShowSnapshotsDialog] = useState(false);
