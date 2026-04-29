@@ -209,9 +209,17 @@ export function StudentDocumentsTab({
       status: "pending",
       icon: Shield,
       title: "Согласие на обработку персональных данных",
-      subtitle: "Требуется подписать перед началом обучения",
-      cta: "Подписать",
-      onAction: () => setShowConsent(true),
+      subtitle: pepStatus
+        ? "Подписать простой электронной подписью"
+        : "Сначала примите Соглашение об использовании ПЭП ниже",
+      cta: pepStatus ? "Подписать ПЭП" : "Недоступно",
+      onAction: () => {
+        if (!pepStatus) {
+          toast.error("Сначала примите Соглашение об использовании ПЭП");
+          return;
+        }
+        setShowConsent(true);
+      },
     });
   }
 
