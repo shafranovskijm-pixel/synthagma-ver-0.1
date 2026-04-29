@@ -152,6 +152,21 @@ export function StudentDocumentsTab({
     };
   }, [userId, showVideoId, showConsent, showDocs]);
 
+  // Load organization details for PEP card
+  useEffect(() => {
+    if (!organizationId) return;
+    let cancelled = false;
+    (async () => {
+      const { data } = await supabase
+        .from("organizations")
+        .select("name, inn")
+        .eq("id", organizationId)
+        .maybeSingle();
+      if (!cancelled && data) setOrgInfo({ name: (data as any).name, inn: (data as any).inn });
+    })();
+    return () => { cancelled = true; };
+  }, [organizationId]);
+
   const handleOpenSignature = (sig: InboxSignature) => {
     // Open the public signing page in a new tab — student is already authenticated
     // but the page works with the token directly.
