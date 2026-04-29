@@ -312,6 +312,7 @@ export function useStudentDetailCardLogic({
   const formatDuration = (seconds: number) => { const h = Math.floor(seconds / 3600); const m = Math.floor((seconds % 3600) / 60); return h > 0 ? `${h} ч ${m} мин` : `${m} мин`; };
 
   const latestConsent = consents[0];
+  const latestPepAgreement = pepAgreements[0];
   const latestVerification = verifications[0];
   const getIdentityDocByType = (type: string) => identityDocs.find(d => d.type === type);
 
