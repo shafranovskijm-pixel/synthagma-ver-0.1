@@ -23,7 +23,7 @@ import { VideoIdentification } from "@/components/student/VideoIdentification";
 import { StudentConsentForm } from "@/components/student/StudentConsentForm";
 import { StudentDocumentsUpload } from "@/components/student/StudentDocumentsUpload";
 import { StudentDataSubjectRequests } from "@/components/student/StudentDataSubjectRequests";
-import { StudentPepAgreementCard, type StudentPepAgreement } from "@/components/student/StudentPepAgreementCard";
+import { type StudentPepAgreement } from "@/components/student/StudentPepAgreementCard";
 import { useStudentSignatureInbox, type InboxSignature } from "@/hooks/useStudentSignatureInbox";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -313,19 +313,6 @@ export function StudentDocumentsTab({
 
   return (
     <div className="space-y-6">
-      {/* PEP Agreement card — must be accepted before signing anything else */}
-      {!isAdminView && organizationId && (
-        <StudentPepAgreementCard
-          userId={userId}
-          userName={userName}
-          userEmail={userEmail}
-          organizationId={organizationId}
-          organizationName={orgInfo.name}
-          organizationInn={orgInfo.inn}
-          onStatusChange={setPepStatus}
-        />
-      )}
-
       {/* All clear banner */}
       {allClear && (
         <Card className="rounded-2xl border-green-500/30 bg-green-500/5 shadow-sm">
@@ -569,6 +556,7 @@ export function StudentDocumentsTab({
             userName={userName}
             userEmail={userEmail}
             organizationId={organizationId || ""}
+            enrollmentId={undefined}
             embedded={true}
             onConsent={() => setShowConsent(false)}
           />
