@@ -23,6 +23,7 @@ import { VideoIdentification } from "@/components/student/VideoIdentification";
 import { StudentConsentForm } from "@/components/student/StudentConsentForm";
 import { StudentDocumentsUpload } from "@/components/student/StudentDocumentsUpload";
 import { StudentDataSubjectRequests } from "@/components/student/StudentDataSubjectRequests";
+import { StudentPepAgreementCard, type StudentPepAgreement } from "@/components/student/StudentPepAgreementCard";
 import { useStudentSignatureInbox, type InboxSignature } from "@/hooks/useStudentSignatureInbox";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
