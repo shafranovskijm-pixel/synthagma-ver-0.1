@@ -166,12 +166,19 @@ export function useStudentDashboard() {
 
   useEffect(() => {
     if (effectiveUserId) { loadData(); }
-    if (user && !isAdminView) { trackUserVisit(); checkNewAchievements(); }
+    if (user && !isAdminView) {
+      // fire-and-forget — не блокируем первый рендер
+      trackUserVisit();
+      checkNewAchievements();
+    }
   }, [effectiveUserId]);
 
-  const trackUserVisit = async () => {
+  const trackUserVisit = () => {
     if (!user) return;
-    try { await supabase.rpc('track_user_visit', { p_user_id: user!.id }); } catch (e) { console.error("Error tracking visit:", e); }
+    // не await — пусть выполняется в фоне
+    supabase.rpc('track_user_visit', { p_user_id: user!.id })
+      .then(() => {})
+      .then(undefined, (e) => console.error("Error tracking visit:", e));
   };
 
   const checkNewAchievements = async () => {
