@@ -72,6 +72,8 @@ export function StudentDocumentsTab({
   // Status state for one-time tasks
   const [videoIdStatus, setVideoIdStatus] = useState<{ verified: boolean; date?: string }>({ verified: false });
   const [consentStatus, setConsentStatus] = useState<{ signed: boolean; date?: string }>({ signed: false });
+  const [pepStatus, setPepStatus] = useState<StudentPepAgreement | null>(null);
+  const [orgInfo, setOrgInfo] = useState<{ name: string | null; inn: string | null }>({ name: null, inn: null });
   const [docsCounts, setDocsCounts] = useState<{ uploaded: number; required: number }>({
     uploaded: 0,
     required: 3,
