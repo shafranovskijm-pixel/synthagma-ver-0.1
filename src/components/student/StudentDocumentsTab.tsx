@@ -314,7 +314,7 @@ export function StudentDocumentsTab({
   return (
     <div className="space-y-6">
       {/* PEP Agreement card — must be accepted before signing anything else */}
-      {!isAdminView && organizationId && userEmail && (
+      {!isAdminView && organizationId && (
         <StudentPepAgreementCard
           userId={userId}
           userName={userName}
