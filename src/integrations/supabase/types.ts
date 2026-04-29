@@ -9777,6 +9777,7 @@ export type Database = {
         Args: { _organization_id: string; _user_id: string }
         Returns: string[]
       }
+      get_organization_core: { Args: { p_org_id: string }; Returns: Json }
       get_registration_link_by_token: {
         Args: { link_token: string }
         Returns: {
@@ -9847,6 +9848,10 @@ export type Database = {
           id: string
           version: number
         }[]
+      }
+      get_student_dashboard_snapshot: {
+        Args: { p_user_id: string }
+        Returns: Json
       }
       get_user_companies: {
         Args: { _user_id: string }
