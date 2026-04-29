@@ -524,29 +524,29 @@ export default function StudentDashboard() {
       </div>
 
       {/* Dialogs */}
-      {showVideoIdentification && user && (
+      {showVideoIdentification && effectiveStudentId && (
         <VideoIdentification
-          userId={user.id}
-          userName={profile?.full_name || "Ученик"}
+          userId={effectiveStudentId}
+          userName={effectiveStudentName}
           organizationId={profile?.organization_id || undefined}
           isOpen={showVideoIdentification}
           onOpenChange={setShowVideoIdentification}
           onVerified={() => setIsVideoIdentified(true)}
         />
       )}
-      {showConsentForm && user && profile?.organization_id && (
+      {showConsentForm && effectiveStudentId && (
         <StudentConsentForm
-          userId={user.id}
-          userName={profile?.full_name || "Ученик"}
-          organizationId={profile.organization_id}
+          userId={effectiveStudentId}
+          userName={effectiveStudentName}
+          organizationId={profile?.organization_id || ""}
           isOpen={showConsentForm}
           onOpenChange={setShowConsentForm}
         />
       )}
-      {showDocumentsUpload && user && profile?.organization_id && (
+      {showDocumentsUpload && effectiveStudentId && (
         <StudentDocumentsUpload
-          userId={user.id}
-          organizationId={profile.organization_id}
+          userId={effectiveStudentId}
+          organizationId={profile?.organization_id || ""}
           isOpen={showDocumentsUpload}
           onOpenChange={setShowDocumentsUpload}
         />
