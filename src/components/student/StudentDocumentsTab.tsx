@@ -184,18 +184,8 @@ export function StudentDocumentsTab({
 
   const actionItems: ActionItem[] = [];
 
-  // Consent
-  if (!consentStatus.signed) {
-    actionItems.push({
-      key: "consent",
-      status: "pending",
-      icon: Shield,
-      title: "Согласие на обработку персональных данных",
-      subtitle: "Внутри откроются и соглашение ПЭП, и согласие на ПД",
-      cta: "Открыть",
-      onAction: () => setShowConsent(true),
-    });
-  }
+  // Consent — handled by the always-visible card above; not added to action list
+  // to avoid duplication (the standalone card already exposes "Открыть").
 
   // Documents upload
   if (!docsDone) {
@@ -238,19 +228,9 @@ export function StudentDocumentsTab({
     });
   });
 
-  // Done items (one-time tasks completed)
+  // Done items (one-time tasks completed) — consent is shown by the always-visible
+  // top card above, so it's intentionally NOT duplicated here.
   const doneItems: ActionItem[] = [];
-  if (consentStatus.signed) {
-    doneItems.push({
-      key: "consent-done",
-      status: "done",
-      icon: Shield,
-      title: "Согласие на обработку ПД",
-      cta: "Открыть",
-      onAction: () => setShowConsent(true),
-      doneAt: consentStatus.date,
-    });
-  }
   if (videoIdStatus.verified) {
     doneItems.push({
       key: "videoid-done",
@@ -287,6 +267,45 @@ export function StudentDocumentsTab({
 
   return (
     <div className="space-y-6">
+      {/* Always-visible quick access to PEP + PD consent */}
+      <Card className="rounded-2xl border-border/60 shadow-sm">
+        <CardContent className="p-4 sm:p-5">
+          <div className="flex items-start gap-3">
+            <div className={cn(
+              "w-10 h-10 rounded-xl flex items-center justify-center shrink-0",
+              consentStatus.signed ? "bg-green-500/15" : "bg-primary/10"
+            )}>
+              {consentStatus.signed
+                ? <ShieldCheck className="w-5 h-5 text-green-600" />
+                : <Shield className="w-5 h-5 text-primary" />}
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 flex-wrap">
+                <p className="text-sm font-semibold">
+                  Соглашение об использовании ПЭП и согласие на ПД
+                </p>
+                {consentStatus.signed
+                  ? <Badge className="bg-green-500/10 text-green-600 border-green-500/20">Подписано</Badge>
+                  : <Badge variant="secondary">Требуется подписание</Badge>}
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">
+                {consentStatus.signed
+                  ? `Согласие действует${consentStatus.date ? `, подписано ${formatDate(consentStatus.date)}` : ""}. Внутри можно скачать или просмотреть.`
+                  : "Внутри откроются и соглашение ПЭП, и согласие на ПД — подписание выполняется простой электронной подписью (63-ФЗ)."}
+              </p>
+            </div>
+            <Button
+              size="sm"
+              onClick={() => setShowConsent(true)}
+              className="rounded-lg shrink-0"
+            >
+              Открыть
+              <ChevronRight className="w-3.5 h-3.5 ml-1" />
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
       {/* All clear banner */}
       {allClear && (
         <Card className="rounded-2xl border-green-500/30 bg-green-500/5 shadow-sm">
@@ -334,7 +353,6 @@ export function StudentDocumentsTab({
                     <Button
                       size="sm"
                       onClick={item.onAction}
-                      disabled={isAdminView}
                       className="rounded-lg shrink-0"
                     >
                       {item.cta}

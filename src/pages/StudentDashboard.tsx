@@ -252,6 +252,19 @@ export default function StudentDashboard() {
     handleLogout, pullToRefreshRef, pullDistance, isRefreshing, canRefresh, orgPlan,
     isAdminView, adminViewStudentName } = useStudentDashboard();
 
+  // When viewing a student from admin/org, prefer the target student's id everywhere
+  // so that documents, consents and uploads are read for that user (not the staff member).
+  const targetStudentUserId = (() => {
+    try {
+      const raw = localStorage.getItem('adminViewAsStudent');
+      if (!raw) return null;
+      const parsed = JSON.parse(raw);
+      return parsed?.userId || null;
+    } catch { return null; }
+  })();
+  const effectiveStudentId = (isAdminView && targetStudentUserId) ? targetStudentUserId : user?.id;
+  const effectiveStudentName = profile?.full_name || (isAdminView ? adminViewStudentName : null) || "Ученик";
+
   const setActiveTab = (tab: StudentTab) => setActiveTabRaw(tab as any);
   const currentTab: StudentTab = (activeTab === "store" || activeTab === "library" ? "catalog" : activeTab) as StudentTab;
 
@@ -467,10 +480,10 @@ export default function StudentDashboard() {
           )}
 
           {/* Profile tab */}
-          {currentTab === ("profile" as any) && user && (
+          {currentTab === ("profile" as any) && effectiveStudentId && (
             <div className="flex-1">
               <StudentProfileContent
-                effectiveUserId={user.id}
+                effectiveUserId={effectiveStudentId}
                 isAdminView={isAdminView}
                 pendingDocsCount={pendingDocsCount}
               />
@@ -511,29 +524,29 @@ export default function StudentDashboard() {
       </div>
 
       {/* Dialogs */}
-      {showVideoIdentification && user && (
+      {showVideoIdentification && effectiveStudentId && (
         <VideoIdentification
-          userId={user.id}
-          userName={profile?.full_name || "Ученик"}
+          userId={effectiveStudentId}
+          userName={effectiveStudentName}
           organizationId={profile?.organization_id || undefined}
           isOpen={showVideoIdentification}
           onOpenChange={setShowVideoIdentification}
           onVerified={() => setIsVideoIdentified(true)}
         />
       )}
-      {showConsentForm && user && profile?.organization_id && (
+      {showConsentForm && effectiveStudentId && (
         <StudentConsentForm
-          userId={user.id}
-          userName={profile?.full_name || "Ученик"}
-          organizationId={profile.organization_id}
+          userId={effectiveStudentId}
+          userName={effectiveStudentName}
+          organizationId={profile?.organization_id || ""}
           isOpen={showConsentForm}
           onOpenChange={setShowConsentForm}
         />
       )}
-      {showDocumentsUpload && user && profile?.organization_id && (
+      {showDocumentsUpload && effectiveStudentId && (
         <StudentDocumentsUpload
-          userId={user.id}
-          organizationId={profile.organization_id}
+          userId={effectiveStudentId}
+          organizationId={profile?.organization_id || ""}
           isOpen={showDocumentsUpload}
           onOpenChange={setShowDocumentsUpload}
         />
