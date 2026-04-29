@@ -136,15 +136,8 @@ export function useStudentDashboard() {
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [orgPlan, setOrgPlan] = useState<string>("free");
 
-  // Onboarding
-  useEffect(() => {
-    if (!user || isAdminView) return;
-    const checkOnboarding = async () => {
-      const { data } = await supabase.from("profiles").select("onboarding_completed").eq("user_id", user.id).maybeSingle();
-      if (data && !data.onboarding_completed) setShowOnboarding(true);
-    };
-    checkOnboarding();
-  }, [user, isAdminView]);
+  // Onboarding flag теперь приходит из get_student_dashboard_snapshot —
+  // отдельный запрос к profiles больше не нужен.
 
   const handleOnboardingClose = async () => {
     setShowOnboarding(false);
