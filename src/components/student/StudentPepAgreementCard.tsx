@@ -23,7 +23,7 @@ export interface StudentPepAgreement {
 interface Props {
   userId: string;
   userName: string;
-  userEmail: string;
+  userEmail?: string | null;
   organizationId: string | null;
   organizationName?: string | null;
   organizationInn?: string | null;
