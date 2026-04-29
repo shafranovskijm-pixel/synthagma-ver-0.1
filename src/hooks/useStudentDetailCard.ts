@@ -366,7 +366,7 @@ export function useStudentDetailCardLogic({
 
   return {
     activeTab, setActiveTab, isLoading,
-    consents, generatedConsents, verifications, documents, identityDocs,
+    consents, pepAgreements, latestPepAgreement, generatedConsents, verifications, documents, identityDocs,
     uploadingType, fileInputRef, previewDoc, setPreviewDoc, isLoadingPreview,
     isFRDODialogOpen, setIsFRDODialogOpen,
     selectedEnrollmentForFRDO, setSelectedEnrollmentForFRDO,
