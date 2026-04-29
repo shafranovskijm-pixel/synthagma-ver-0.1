@@ -334,7 +334,6 @@ export function StudentDocumentsTab({
                     <Button
                       size="sm"
                       onClick={item.onAction}
-                      disabled={isAdminView}
                       className="rounded-lg shrink-0"
                     >
                       {item.cta}
