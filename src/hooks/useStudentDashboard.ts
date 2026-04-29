@@ -389,15 +389,19 @@ export function useStudentDashboard() {
       }
 
       if (effectiveOrgId) {
-        const { data: identityDocs } = await supabase.from("student_identity_documents").select("type").eq("user_id", uid).eq("organization_id", effectiveOrgId);
+        // Параллельно: identity docs + video identification
+        const [identityRes, videoIdRes] = await Promise.all([
+          supabase.from("student_identity_documents").select("type").eq("user_id", uid).eq("organization_id", effectiveOrgId),
+          supabase.from("video_identifications").select("status").eq("user_id", uid).eq("organization_id", effectiveOrgId).in("status", ["approved", "verified"]).order("created_at", { ascending: false }).limit(1).maybeSingle(),
+        ]);
+        const identityDocs = identityRes.data;
         if (identityDocs) {
           const hasPassport = identityDocs.some(d => d.type === "passport" || d.type === "birth_certificate");
           const hasSnils = identityDocs.some(d => d.type === "snils");
           const hasEducation = identityDocs.some(d => d.type === "education_document" || d.type === "diploma" || d.type === "attestat");
           setDocumentsProgress({ completed: [hasPassport, hasSnils, hasEducation].filter(Boolean).length, total: 3 });
         }
-        const { data: videoId } = await supabase.from("video_identifications").select("status").eq("user_id", uid).eq("organization_id", effectiveOrgId).in("status", ["approved", "verified"]).order("created_at", { ascending: false }).limit(1).maybeSingle();
-        setIsVideoIdentified(!!videoId);
+        setIsVideoIdentified(!!videoIdRes.data);
       }
 
       // Cache dashboard data for offline fallback using local variables
