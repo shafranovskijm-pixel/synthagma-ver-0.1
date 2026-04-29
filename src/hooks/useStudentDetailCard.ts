@@ -62,6 +62,18 @@ interface ConsentRecord {
   signed_at: string | null;
   expires_at: string | null;
   created_at: string;
+  policy_version?: string | null;
+  ip_address?: string | null;
+  user_agent?: string | null;
+  signed_by_name?: string | null;
+}
+
+interface PepAgreementRecord {
+  id: string;
+  version: string;
+  accepted_at: string;
+  ip_address: string | null;
+  user_agent: string | null;
 }
 
 interface GeneratedConsentRecord {
