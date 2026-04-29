@@ -394,6 +394,7 @@ export function useStudentDetailCardLogic({
     viewConsentDialog, setViewConsentDialog,
     isEditingCredentials, setIsEditingCredentials, newLogin, setNewLogin, newPassword, setNewPassword,
     isUpdatingCredentials, copiedField, showPassword, setShowPassword,
+    decryptedPassword, isLoadingPassword,
     isEditingName, setIsEditingName, newFullName, setNewFullName, isUpdatingName, handleUpdateFullName,
     handleUpdateCredentials, copyToClipboard,
     handleUploadClick, handleFileChange, handleDeleteIdentityDoc, handlePreviewDoc, handleDownloadDoc,
