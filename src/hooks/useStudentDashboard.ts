@@ -166,12 +166,19 @@ export function useStudentDashboard() {
 
   useEffect(() => {
     if (effectiveUserId) { loadData(); }
-    if (user && !isAdminView) { trackUserVisit(); checkNewAchievements(); }
+    if (user && !isAdminView) {
+      // fire-and-forget — не блокируем первый рендер
+      trackUserVisit();
+      checkNewAchievements();
+    }
   }, [effectiveUserId]);
 
-  const trackUserVisit = async () => {
+  const trackUserVisit = () => {
     if (!user) return;
-    try { await supabase.rpc('track_user_visit', { p_user_id: user!.id }); } catch (e) { console.error("Error tracking visit:", e); }
+    // не await — пусть выполняется в фоне
+    supabase.rpc('track_user_visit', { p_user_id: user!.id })
+      .then(() => {})
+      .then(undefined, (e) => console.error("Error tracking visit:", e));
   };
 
   const checkNewAchievements = async () => {
@@ -236,7 +243,14 @@ export function useStudentDashboard() {
     }, 15000);
 
     try {
-      const { data: profileData } = await supabase.from("profiles").select("full_name, organization_id, organizations(name, description, branding, student_dashboard_settings, subscription_plan)").eq("user_id", uid).maybeSingle();
+      // Параллельно: профиль + labor_safety + enrollments — независимые источники данных
+      const [profileRes, laborRes, enrollmentsRes] = await Promise.all([
+        supabase.from("profiles").select("full_name, organization_id, organizations(name, description, branding, student_dashboard_settings, subscription_plan)").eq("user_id", uid).maybeSingle(),
+        supabase.from("labor_safety_profiles").select("organization_id, full_name, organizations(name, branding, student_dashboard_settings, subscription_plan)").eq("user_id", uid).order("created_at", { ascending: false }).limit(1).maybeSingle(),
+        supabase.from("enrollments").select("id, progress, status, time_spent, course_id, courses(id, title, description, duration, skip_video_identification)").eq("user_id", uid),
+      ]);
+
+      const profileData = profileRes.data;
       let effectiveOrgId: string | null = profileData?.organization_id || null;
       let effectiveOrgName: string | null = null;
       let effectiveBranding: any = null;
@@ -251,7 +265,7 @@ export function useStudentDashboard() {
         setProfile({ full_name: profileData.full_name, organization_name: effectiveOrgName, organization_id: profileData.organization_id, org_description: (org as any)?.description || null });
       }
 
-      const { data: laborProfile } = await supabase.from("labor_safety_profiles").select("organization_id, full_name, organizations(name, branding, student_dashboard_settings, subscription_plan)").eq("user_id", uid).order("created_at", { ascending: false }).limit(1).maybeSingle();
+      const laborProfile = laborRes.data;
       if (laborProfile?.organization_id) {
         effectiveOrgId = laborProfile.organization_id;
         const laborOrg = laborProfile.organizations as any;
@@ -282,7 +296,7 @@ export function useStudentDashboard() {
       let cachedTotalTime = 0;
       let cachedCompletedLessonsTotal = 0;
 
-      const { data: enrollments } = await supabase.from("enrollments").select("id, progress, status, time_spent, course_id, courses(id, title, description, duration, skip_video_identification)").eq("user_id", uid);
+      const enrollments = enrollmentsRes.data;
       if (enrollments) {
         // Collect all course IDs first for batch queries (eliminates N+1 problem)
         const validEnrollments = enrollments.filter(e => e.courses);
@@ -375,15 +389,19 @@ export function useStudentDashboard() {
       }
 
       if (effectiveOrgId) {
-        const { data: identityDocs } = await supabase.from("student_identity_documents").select("type").eq("user_id", uid).eq("organization_id", effectiveOrgId);
+        // Параллельно: identity docs + video identification
+        const [identityRes, videoIdRes] = await Promise.all([
+          supabase.from("student_identity_documents").select("type").eq("user_id", uid).eq("organization_id", effectiveOrgId),
+          supabase.from("video_identifications").select("status").eq("user_id", uid).eq("organization_id", effectiveOrgId).in("status", ["approved", "verified"]).order("created_at", { ascending: false }).limit(1).maybeSingle(),
+        ]);
+        const identityDocs = identityRes.data;
         if (identityDocs) {
           const hasPassport = identityDocs.some(d => d.type === "passport" || d.type === "birth_certificate");
           const hasSnils = identityDocs.some(d => d.type === "snils");
           const hasEducation = identityDocs.some(d => d.type === "education_document" || d.type === "diploma" || d.type === "attestat");
           setDocumentsProgress({ completed: [hasPassport, hasSnils, hasEducation].filter(Boolean).length, total: 3 });
         }
-        const { data: videoId } = await supabase.from("video_identifications").select("status").eq("user_id", uid).eq("organization_id", effectiveOrgId).in("status", ["approved", "verified"]).order("created_at", { ascending: false }).limit(1).maybeSingle();
-        setIsVideoIdentified(!!videoId);
+        setIsVideoIdentified(!!videoIdRes.data);
       }
 
       // Cache dashboard data for offline fallback using local variables
