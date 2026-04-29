@@ -146,6 +146,7 @@ export function useStudentDetailCardLogic({
 }: UseStudentDetailCardLogicProps) {
   const [activeTab, setActiveTab] = useState("profile");
   const [consents, setConsents] = useState<ConsentRecord[]>([]);
+  const [pepAgreements, setPepAgreements] = useState<PepAgreementRecord[]>([]);
   const [generatedConsents, setGeneratedConsents] = useState<GeneratedConsentRecord[]>([]);
   const [verifications, setVerifications] = useState<VerificationRecord[]>([]);
   const [documents, setDocuments] = useState<DocumentRecord[]>([]);
