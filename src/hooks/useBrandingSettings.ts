@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import type { Json } from "@/integrations/supabase/types";
 import { useOrganizationCore } from "@/hooks/useOrganizationCore";
+import { useQueryClient } from "@tanstack/react-query";
 
 interface BrandingSettings {
   coverUrl: string;
@@ -105,6 +106,7 @@ export function useBrandingSettings(organizationId: string | null, userId: strin
     }
   }, [userId]);
 
+  const qc = useQueryClient();
   // Save branding settings
   const saveBranding = useCallback(async () => {
     if (!organizationId) return;
@@ -115,6 +117,7 @@ export function useBrandingSettings(organizationId: string | null, userId: strin
         .update({ branding: JSON.parse(JSON.stringify(brandingSettings)) as Json })
         .eq('id', organizationId);
       if (error) throw error;
+      qc.invalidateQueries({ queryKey: ["org-core", organizationId] });
       toast.success('Настройки брендирования сохранены');
     } catch (error) {
       console.error('Error saving branding:', error);
@@ -122,7 +125,7 @@ export function useBrandingSettings(organizationId: string | null, userId: strin
     } finally {
       setIsSavingBranding(false);
     }
-  }, [organizationId, brandingSettings]);
+  }, [organizationId, brandingSettings, qc]);
 
   return {
     brandingSettings,
