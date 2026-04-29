@@ -38,7 +38,8 @@ export function ProfileTab({ student, enrollmentsCount, h, orgPlan }: ProfileTab
     { id: "passport", label: "Паспорт / Св-во о рождении", icon: User, completed: h.identityDocs.some((d: any) => d.type === "passport" || d.type === "birth_certificate"), uploadable: true, uploadType: "passport" },
     { id: "snils", label: "СНИЛС", icon: Shield, completed: h.identityDocs.some((d: any) => d.type === "snils"), uploadable: true, uploadType: "snils" },
     { id: "education_doc", label: "Документ об образовании", icon: GraduationCap, completed: h.identityDocs.some((d: any) => d.type === "education_document" || d.type === "diploma" || d.type === "attestat"), uploadable: true, uploadType: "education_document" },
-    { id: "consent", label: "Согласие на ПД", icon: Shield, completed: h.latestConsent?.status === "signed", uploadable: false, uploadType: undefined },
+    { id: "pep", label: "Соглашение об использовании ПЭП", icon: Shield, completed: !!h.latestPepAgreement, uploadable: false, uploadType: undefined },
+    { id: "consent", label: "Согласие на ПД (подписано ПЭП)", icon: Shield, completed: h.latestConsent?.status === "signed", uploadable: false, uploadType: undefined },
     { id: "video_id", label: "Видеоидентификация", icon: CheckCircle2, completed: h.latestVerification?.status === "verified", uploadable: false, uploadType: undefined },
   ];
 

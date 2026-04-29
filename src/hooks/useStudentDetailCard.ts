@@ -62,6 +62,18 @@ interface ConsentRecord {
   signed_at: string | null;
   expires_at: string | null;
   created_at: string;
+  policy_version?: string | null;
+  ip_address?: string | null;
+  user_agent?: string | null;
+  signed_by_name?: string | null;
+}
+
+interface PepAgreementRecord {
+  id: string;
+  agreement_version: string;
+  accepted_at: string;
+  ip_address: string | null;
+  user_agent: string | null;
 }
 
 interface GeneratedConsentRecord {
@@ -134,6 +146,7 @@ export function useStudentDetailCardLogic({
 }: UseStudentDetailCardLogicProps) {
   const [activeTab, setActiveTab] = useState("profile");
   const [consents, setConsents] = useState<ConsentRecord[]>([]);
+  const [pepAgreements, setPepAgreements] = useState<PepAgreementRecord[]>([]);
   const [generatedConsents, setGeneratedConsents] = useState<GeneratedConsentRecord[]>([]);
   const [verifications, setVerifications] = useState<VerificationRecord[]>([]);
   const [documents, setDocuments] = useState<DocumentRecord[]>([]);
@@ -171,13 +184,14 @@ export function useStudentDetailCardLogic({
     if (!student) return;
     setIsLoading(true);
     try {
-      const [consentsRes, generatedConsentsRes, verificationsRes, documentsRes, identityDocsRes, frdoRes] = await Promise.all([
+      const [consentsRes, generatedConsentsRes, verificationsRes, documentsRes, identityDocsRes, frdoRes, pepRes] = await Promise.all([
         supabase.from("student_consents").select("*").eq("user_id", student.user_id).eq("organization_id", organizationId).order("created_at", { ascending: false }),
         supabase.from("consent_documents").select("*").eq("student_user_id", student.user_id).eq("organization_id", organizationId).order("created_at", { ascending: false }),
         supabase.from("video_identifications").select("*").eq("user_id", student.user_id).order("created_at", { ascending: false }),
         supabase.from("student_documents").select("*, enrollments!inner(user_id)").eq("enrollments.user_id", student.user_id).order("created_at", { ascending: false }),
         supabase.from("student_identity_documents").select("*").eq("user_id", student.user_id).eq("organization_id", organizationId).order("created_at", { ascending: false }),
         supabase.from("student_frdo_data").select("*").eq("user_id", student.user_id).eq("organization_id", organizationId).maybeSingle(),
+        supabase.from("pep_agreements").select("id, agreement_version, accepted_at, ip_address, user_agent").eq("user_id", student.user_id).eq("organization_id", organizationId).order("accepted_at", { ascending: false }),
       ]);
       if (consentsRes.data) setConsents(consentsRes.data as ConsentRecord[]);
       if (generatedConsentsRes.data) setGeneratedConsents(generatedConsentsRes.data as GeneratedConsentRecord[]);
@@ -186,6 +200,7 @@ export function useStudentDetailCardLogic({
       if (identityDocsRes.data) setIdentityDocs(identityDocsRes.data as IdentityDocumentRecord[]);
       if (frdoRes.data) setFrdoData(frdoRes.data as Record<string, string | null>);
       else setFrdoData({});
+      if (pepRes.data) setPepAgreements(pepRes.data as PepAgreementRecord[]);
     } catch (error) { console.error("Error loading student data:", error); }
     finally { setIsLoading(false); }
   };
@@ -297,6 +312,7 @@ export function useStudentDetailCardLogic({
   const formatDuration = (seconds: number) => { const h = Math.floor(seconds / 3600); const m = Math.floor((seconds % 3600) / 60); return h > 0 ? `${h} ч ${m} мин` : `${m} мин`; };
 
   const latestConsent = consents[0];
+  const latestPepAgreement = pepAgreements[0];
   const latestVerification = verifications[0];
   const getIdentityDocByType = (type: string) => identityDocs.find(d => d.type === type);
 
@@ -350,7 +366,7 @@ export function useStudentDetailCardLogic({
 
   return {
     activeTab, setActiveTab, isLoading,
-    consents, generatedConsents, verifications, documents, identityDocs,
+    consents, pepAgreements, latestPepAgreement, generatedConsents, verifications, documents, identityDocs,
     uploadingType, fileInputRef, previewDoc, setPreviewDoc, isLoadingPreview,
     isFRDODialogOpen, setIsFRDODialogOpen,
     selectedEnrollmentForFRDO, setSelectedEnrollmentForFRDO,
