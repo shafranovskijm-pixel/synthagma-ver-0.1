@@ -171,6 +171,8 @@ export function useStudentDetailCardLogic({
   const [copiedField, setCopiedField] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
   const [isSendingReminder, setIsSendingReminder] = useState(false);
+  const [decryptedPassword, setDecryptedPassword] = useState<string | null>(null);
+  const [isLoadingPassword, setIsLoadingPassword] = useState(false);
 
   // FRDO data state
   const [frdoData, setFrdoData] = useState<Record<string, string | null>>({});
@@ -203,6 +205,25 @@ export function useStudentDetailCardLogic({
       if (pepRes.data) setPepAgreements(pepRes.data as PepAgreementRecord[]);
     } catch (error) { console.error("Error loading student data:", error); }
     finally { setIsLoading(false); }
+
+    // Decrypt password (admin/org with access)
+    if (student?.user_id) {
+      setIsLoadingPassword(true);
+      try {
+        const { data: pw, error: pwErr } = await supabase.rpc("get_decrypted_student_password", { p_user_id: student.user_id });
+        if (pwErr) {
+          console.warn("decrypt password error:", pwErr);
+          setDecryptedPassword(null);
+        } else {
+          setDecryptedPassword((pw as string) || null);
+        }
+      } catch (e) {
+        console.warn("decrypt password exception:", e);
+        setDecryptedPassword(null);
+      } finally {
+        setIsLoadingPassword(false);
+      }
+    }
   };
 
   const saveFrdoField = async (field: string, value: string) => {
@@ -373,6 +394,7 @@ export function useStudentDetailCardLogic({
     viewConsentDialog, setViewConsentDialog,
     isEditingCredentials, setIsEditingCredentials, newLogin, setNewLogin, newPassword, setNewPassword,
     isUpdatingCredentials, copiedField, showPassword, setShowPassword,
+    decryptedPassword, isLoadingPassword,
     isEditingName, setIsEditingName, newFullName, setNewFullName, isUpdatingName, handleUpdateFullName,
     handleUpdateCredentials, copyToClipboard,
     handleUploadClick, handleFileChange, handleDeleteIdentityDoc, handlePreviewDoc, handleDownloadDoc,

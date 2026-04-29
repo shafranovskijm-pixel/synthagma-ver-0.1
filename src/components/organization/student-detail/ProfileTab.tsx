@@ -151,18 +151,31 @@ export function ProfileTab({ student, enrollmentsCount, h, orgPlan }: ProfileTab
               <div className="p-3 rounded-lg bg-muted/50">
                 <div className="text-xs text-muted-foreground mb-1">Пароль</div>
                 <div className="flex items-center justify-between">
-                  <code className="font-mono text-sm">{h.showPassword ? (student.generated_password || "—") : "••••••••"}</code>
+                  {(() => {
+                    const rawPw = student.generated_password || "";
+                    const looksEncrypted = rawPw.startsWith("ENC:");
+                    const plainPw = h.decryptedPassword || (looksEncrypted ? "" : rawPw);
+                    const display = h.isLoadingPassword
+                      ? "Загрузка…"
+                      : plainPw
+                        ? (h.showPassword ? plainPw : "••••••••")
+                        : "—";
+                    return <code className="font-mono text-sm break-all">{display}</code>;
+                  })()}
                   <div className="flex items-center gap-1">
-                    <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => h.setShowPassword(!h.showPassword)}>
+                    <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => h.setShowPassword(!h.showPassword)} disabled={!h.decryptedPassword && (student.generated_password || "").startsWith("ENC:")}>
                       {h.showPassword ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
                     </Button>
-                    {student.generated_password && (
-                      <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => h.copyToClipboard(student.generated_password || "", "password")}>
+                    {(h.decryptedPassword || (student.generated_password && !student.generated_password.startsWith("ENC:"))) && (
+                      <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => h.copyToClipboard(h.decryptedPassword || student.generated_password || "", "password")}>
                         {h.copiedField === "password" ? <Check className="w-3 h-3 text-green-500" /> : <Copy className="w-3 h-3" />}
                       </Button>
                     )}
                   </div>
                 </div>
+                {!h.isLoadingPassword && !h.decryptedPassword && (student.generated_password || "").startsWith("ENC:") && (
+                  <p className="text-xs text-muted-foreground mt-2">Пароль зашифрован. Нажмите «Изменить», чтобы задать новый и отправить ученику.</p>
+                )}
               </div>
             </div>
           )}
