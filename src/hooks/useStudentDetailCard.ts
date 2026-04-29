@@ -70,7 +70,7 @@ interface ConsentRecord {
 
 interface PepAgreementRecord {
   id: string;
-  version: string;
+  agreement_version: string;
   accepted_at: string;
   ip_address: string | null;
   user_agent: string | null;
