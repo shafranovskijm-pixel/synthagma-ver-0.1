@@ -228,19 +228,9 @@ export function StudentDocumentsTab({
     });
   });
 
-  // Done items (one-time tasks completed)
+  // Done items (one-time tasks completed) — consent is shown by the always-visible
+  // top card above, so it's intentionally NOT duplicated here.
   const doneItems: ActionItem[] = [];
-  if (consentStatus.signed) {
-    doneItems.push({
-      key: "consent-done",
-      status: "done",
-      icon: Shield,
-      title: "Согласие на обработку ПД",
-      cta: "Открыть",
-      onAction: () => setShowConsent(true),
-      doneAt: consentStatus.date,
-    });
-  }
   if (videoIdStatus.verified) {
     doneItems.push({
       key: "videoid-done",
