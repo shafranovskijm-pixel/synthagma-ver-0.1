@@ -1,6 +1,8 @@
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { getPlanInfo, type SubscriptionPlan } from "@/constants/subscriptionPlans";
+import { useQuery } from "@tanstack/react-query";
+import { useOrganizationCore } from "@/hooks/useOrganizationCore";
 
 interface FeatureAccess {
   categoryEnabled: boolean;
