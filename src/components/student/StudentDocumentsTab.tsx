@@ -567,6 +567,7 @@ export function StudentDocumentsTab({
           <StudentConsentForm
             userId={userId}
             userName={userName}
+            userEmail={userEmail}
             organizationId={organizationId || ""}
             embedded={true}
             onConsent={() => setShowConsent(false)}
