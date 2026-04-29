@@ -23,7 +23,6 @@ import { VideoIdentification } from "@/components/student/VideoIdentification";
 import { StudentConsentForm } from "@/components/student/StudentConsentForm";
 import { StudentDocumentsUpload } from "@/components/student/StudentDocumentsUpload";
 import { StudentDataSubjectRequests } from "@/components/student/StudentDataSubjectRequests";
-import { StudentPepAgreementCard, type StudentPepAgreement } from "@/components/student/StudentPepAgreementCard";
 import { useStudentSignatureInbox, type InboxSignature } from "@/hooks/useStudentSignatureInbox";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -72,8 +71,6 @@ export function StudentDocumentsTab({
   // Status state for one-time tasks
   const [videoIdStatus, setVideoIdStatus] = useState<{ verified: boolean; date?: string }>({ verified: false });
   const [consentStatus, setConsentStatus] = useState<{ signed: boolean; date?: string }>({ signed: false });
-  const [pepStatus, setPepStatus] = useState<StudentPepAgreement | null>(null);
-  const [orgInfo, setOrgInfo] = useState<{ name: string | null; inn: string | null }>({ name: null, inn: null });
   const [docsCounts, setDocsCounts] = useState<{ uploaded: number; required: number }>({
     uploaded: 0,
     required: 3,
@@ -152,21 +149,6 @@ export function StudentDocumentsTab({
     };
   }, [userId, showVideoId, showConsent, showDocs]);
 
-  // Load organization details for PEP card
-  useEffect(() => {
-    if (!organizationId) return;
-    let cancelled = false;
-    (async () => {
-      const { data } = await supabase
-        .from("organizations")
-        .select("name, inn")
-        .eq("id", organizationId)
-        .maybeSingle();
-      if (!cancelled && data) setOrgInfo({ name: (data as any).name, inn: (data as any).inn });
-    })();
-    return () => { cancelled = true; };
-  }, [organizationId]);
-
   const handleOpenSignature = (sig: InboxSignature) => {
     // Open the public signing page in a new tab — student is already authenticated
     // but the page works with the token directly.
@@ -209,17 +191,9 @@ export function StudentDocumentsTab({
       status: "pending",
       icon: Shield,
       title: "Согласие на обработку персональных данных",
-      subtitle: pepStatus
-        ? "Подписать простой электронной подписью"
-        : "Сначала примите Соглашение об использовании ПЭП ниже",
-      cta: pepStatus ? "Подписать ПЭП" : "Недоступно",
-      onAction: () => {
-        if (!pepStatus) {
-          toast.error("Сначала примите Соглашение об использовании ПЭП");
-          return;
-        }
-        setShowConsent(true);
-      },
+      subtitle: "Внутри откроются и соглашение ПЭП, и согласие на ПД",
+      cta: "Открыть",
+      onAction: () => setShowConsent(true),
     });
   }
 
@@ -313,19 +287,6 @@ export function StudentDocumentsTab({
 
   return (
     <div className="space-y-6">
-      {/* PEP Agreement card — must be accepted before signing anything else */}
-      {!isAdminView && organizationId && (
-        <StudentPepAgreementCard
-          userId={userId}
-          userName={userName}
-          userEmail={userEmail}
-          organizationId={organizationId}
-          organizationName={orgInfo.name}
-          organizationInn={orgInfo.inn}
-          onStatusChange={setPepStatus}
-        />
-      )}
-
       {/* All clear banner */}
       {allClear && (
         <Card className="rounded-2xl border-green-500/30 bg-green-500/5 shadow-sm">
@@ -569,6 +530,7 @@ export function StudentDocumentsTab({
             userName={userName}
             userEmail={userEmail}
             organizationId={organizationId || ""}
+            enrollmentId={undefined}
             embedded={true}
             onConsent={() => setShowConsent(false)}
           />

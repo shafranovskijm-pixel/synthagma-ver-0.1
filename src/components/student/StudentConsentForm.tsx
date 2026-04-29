@@ -12,6 +12,7 @@ import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 import { getErrorMessage } from "@/utils/handleSupabaseError";
 import { PEP_AGREEMENT_VERSION } from "@/constants/pepAgreementTemplate";
 import { PepSignatureStamp } from "@/components/signing/PepSignatureStamp";
+import { getPepAgreementText } from "@/constants/pepAgreementTemplate";
 import { buildConsentPdfHtml } from "@/lib/consentPdf";
 import { printHtmlContent } from "@/utils/printHtmlToPdf";
 
@@ -279,6 +280,56 @@ export function StudentConsentForm({
     }
   };
 
+  const handleAcceptPepAgreement = async () => {
+    let orgIdToUse = effectiveOrganizationId;
+    if (!orgIdToUse) orgIdToUse = await resolveOrganizationId();
+    if (!orgIdToUse) {
+      toast.error("Не удалось определить образовательную организацию. Обратитесь к администратору.");
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      const ip = await fetchClientIp();
+      const agreementText = getPepAgreementText({
+        org_name: organization?.name || "Образовательная организация",
+        org_inn: organization?.inn || undefined,
+        user_name: userName,
+        user_email: emailFromAuth,
+        current_date: new Date().toLocaleDateString("ru-RU", {
+          day: "2-digit",
+          month: "long",
+          year: "numeric",
+        }),
+      });
+
+      const { data, error } = await supabase
+        .from("pep_agreements")
+        .insert({
+          organization_id: orgIdToUse,
+          user_id: userId,
+          email: emailFromAuth,
+          full_name: userName,
+          agreement_text: agreementText,
+          agreement_version: PEP_AGREEMENT_VERSION,
+          accepted_at: new Date().toISOString(),
+          ip_address: ip,
+          user_agent: navigator.userAgent,
+        })
+        .select("id, agreement_version, accepted_at")
+        .single();
+      if (error) throw error;
+
+      setPepAgreement(data as PepRecord);
+      toast.success("Соглашение об использовании ПЭП принято");
+    } catch (error) {
+      console.error("Accept pep_agreement error", error);
+      toast.error(getErrorMessage(error, "Не удалось сохранить соглашение ПЭП"));
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const formatDate = (dateStr: string) =>
     new Date(dateStr).toLocaleDateString("ru-RU", {
       day: "2-digit", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit",
@@ -427,17 +478,44 @@ export function StudentConsentForm({
             </div>
           )}
 
-          {!pepAgreement && (
-            <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-4 flex items-start gap-3">
-              <ShieldCheck className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
-              <div>
-                <p className="text-sm font-medium text-amber-700">Сначала примите Соглашение об использовании ПЭП</p>
+          <div className="rounded-xl border border-border/60 bg-card p-4 space-y-3">
+            <div className="flex items-start gap-3">
+              <div className="mt-0.5 rounded-lg bg-primary/10 p-2">
+                <ShieldCheck className="w-4 h-4 text-primary" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <p className="text-sm font-medium">Соглашение об использовании ПЭП</p>
+                  {pepAgreement ? (
+                    <Badge className="bg-green-500/10 text-green-600 border-green-500/20">Принято</Badge>
+                  ) : (
+                    <Badge variant="secondary">Не принято</Badge>
+                  )}
+                </div>
                 <p className="text-xs text-muted-foreground mt-1">
-                  Без принятого Соглашения об использовании простой электронной подписи подписать согласие нельзя — это требование 63-ФЗ. Найдите карточку «Соглашение об использовании ПЭП» в разделе «Документы» и примите его.
+                  Сначала принимается соглашение об использовании простой электронной подписи, затем подписывается согласие на обработку персональных данных.
                 </p>
+                {pepAgreement?.accepted_at && (
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Принято: {formatDate(pepAgreement.accepted_at)}
+                  </p>
+                )}
               </div>
             </div>
-          )}
+
+            {!pepAgreement && (
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full rounded-xl gap-2"
+                onClick={handleAcceptPepAgreement}
+                disabled={isLoading || !effectiveOrganizationId}
+              >
+                <ShieldCheck className="w-4 h-4" />
+                Принять соглашение ПЭП
+              </Button>
+            )}
+          </div>
 
           <div className="bg-muted/50 rounded-xl p-4">
             <p className="text-sm">
