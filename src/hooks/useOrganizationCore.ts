@@ -35,7 +35,7 @@ export function useOrganizationCore(organizationId: string | null | undefined) {
         p_org_id: organizationId,
       });
       if (error) throw error;
-      return (data as OrganizationCore) || null;
+      return (data as unknown as OrganizationCore) || null;
     },
   });
 

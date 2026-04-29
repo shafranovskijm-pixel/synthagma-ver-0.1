@@ -56,7 +56,7 @@ export function useStudentDashboardSnapshot(userId: string | null | undefined) {
         p_user_id: userId,
       });
       if (error) throw error;
-      return (data as StudentSnapshot) || null;
+      return (data as unknown as StudentSnapshot) || null;
     },
   });
 }
