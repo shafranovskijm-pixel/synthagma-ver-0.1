@@ -184,18 +184,8 @@ export function StudentDocumentsTab({
 
   const actionItems: ActionItem[] = [];
 
-  // Consent
-  if (!consentStatus.signed) {
-    actionItems.push({
-      key: "consent",
-      status: "pending",
-      icon: Shield,
-      title: "Согласие на обработку персональных данных",
-      subtitle: "Внутри откроются и соглашение ПЭП, и согласие на ПД",
-      cta: "Открыть",
-      onAction: () => setShowConsent(true),
-    });
-  }
+  // Consent — handled by the always-visible card above; not added to action list
+  // to avoid duplication (the standalone card already exposes "Открыть").
 
   // Documents upload
   if (!docsDone) {
