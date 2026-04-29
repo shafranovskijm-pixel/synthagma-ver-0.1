@@ -313,6 +313,19 @@ export function StudentDocumentsTab({
 
   return (
     <div className="space-y-6">
+      {/* PEP Agreement card — must be accepted before signing anything else */}
+      {!isAdminView && organizationId && userEmail && (
+        <StudentPepAgreementCard
+          userId={userId}
+          userName={userName}
+          userEmail={userEmail}
+          organizationId={organizationId}
+          organizationName={orgInfo.name}
+          organizationInn={orgInfo.inn}
+          onStatusChange={setPepStatus}
+        />
+      )}
+
       {/* All clear banner */}
       {allClear && (
         <Card className="rounded-2xl border-green-500/30 bg-green-500/5 shadow-sm">
