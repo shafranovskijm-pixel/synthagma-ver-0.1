@@ -252,6 +252,19 @@ export default function StudentDashboard() {
     handleLogout, pullToRefreshRef, pullDistance, isRefreshing, canRefresh, orgPlan,
     isAdminView, adminViewStudentName } = useStudentDashboard();
 
+  // When viewing a student from admin/org, prefer the target student's id everywhere
+  // so that documents, consents and uploads are read for that user (not the staff member).
+  const targetStudentUserId = (() => {
+    try {
+      const raw = localStorage.getItem('adminViewAsStudent');
+      if (!raw) return null;
+      const parsed = JSON.parse(raw);
+      return parsed?.userId || null;
+    } catch { return null; }
+  })();
+  const effectiveStudentId = (isAdminView && targetStudentUserId) ? targetStudentUserId : user?.id;
+  const effectiveStudentName = profile?.full_name || (isAdminView ? adminViewStudentName : null) || "Ученик";
+
   const setActiveTab = (tab: StudentTab) => setActiveTabRaw(tab as any);
   const currentTab: StudentTab = (activeTab === "store" || activeTab === "library" ? "catalog" : activeTab) as StudentTab;
 
