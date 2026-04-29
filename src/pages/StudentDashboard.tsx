@@ -480,10 +480,10 @@ export default function StudentDashboard() {
           )}
 
           {/* Profile tab */}
-          {currentTab === ("profile" as any) && user && (
+          {currentTab === ("profile" as any) && effectiveStudentId && (
             <div className="flex-1">
               <StudentProfileContent
-                effectiveUserId={user.id}
+                effectiveUserId={effectiveStudentId}
                 isAdminView={isAdminView}
                 pendingDocsCount={pendingDocsCount}
               />
