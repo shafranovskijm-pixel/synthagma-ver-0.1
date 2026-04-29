@@ -223,127 +223,73 @@ const defaultFeatures: OrgFeaturesState = {
 
 export function useOrgFeatures(organizationId: string | null) {
   const [features, setFeatures] = useState<OrgFeaturesState>(defaultFeatures);
-  const [loading, setLoading] = useState(true);
 
-  const fetchFeatures = useCallback(async () => {
-    if (!organizationId) {
-      setLoading(false);
-      return;
-    }
+  // План и custom_enabled_categories — из общего кэша core (один SELECT на всю страницу)
+  const { data: orgCore } = useOrganizationCore(organizationId);
 
-    try {
-      // Fetch global settings + subscription plan
-      const [globalCategoriesResult, globalFeaturesResult, orgCategoriesResult, orgFeaturesResult, orgPlanResult] = await Promise.all([
+  // Системные/орг настройки фич — кэшируются react-query на 60с
+  const { data: featureData, isLoading: featureLoading, refetch } = useQuery({
+    queryKey: ["org-features", organizationId],
+    enabled: !!organizationId,
+    staleTime: 60 * 1000,
+    gcTime: 10 * 60 * 1000,
+    queryFn: async () => {
+      const [globalCategoriesResult, globalFeaturesResult, orgCategoriesResult, orgFeaturesResult] = await Promise.all([
         supabase.from("system_feature_categories").select("category_id, is_enabled"),
         supabase.from("system_features").select("feature_id, is_enabled"),
-        supabase.from("organization_feature_categories").select("category_id, is_enabled").eq("organization_id", organizationId),
-        supabase.from("organization_features").select("feature_id, is_enabled").eq("organization_id", organizationId),
-        supabase.from("organizations").select("subscription_plan, custom_enabled_categories").eq("id", organizationId).single(),
+        supabase.from("organization_feature_categories").select("category_id, is_enabled").eq("organization_id", organizationId!),
+        supabase.from("organization_features").select("feature_id, is_enabled").eq("organization_id", organizationId!),
       ]);
+      return {
+        globalCategories: globalCategoriesResult.data || [],
+        globalFeatures: globalFeaturesResult.data || [],
+        orgCategories: orgCategoriesResult.data || [],
+        orgFeatures: orgFeaturesResult.data || [],
+      };
+    },
+  });
 
-      const newFeatures = { ...defaultFeatures };
+  const loading = !!organizationId && (featureLoading || !orgCore);
 
-      // Apply global category settings
-      if (globalCategoriesResult.data) {
-        for (const cat of globalCategoriesResult.data) {
-          if (cat.category_id in newFeatures) {
-            (newFeatures as any)[cat.category_id] = cat.is_enabled;
-          }
-        }
-      }
-
-      // Apply global feature settings
-      if (globalFeaturesResult.data) {
-        for (const feature of globalFeaturesResult.data) {
-          if (feature.feature_id in newFeatures) {
-            (newFeatures as any)[feature.feature_id] = feature.is_enabled;
-          }
-        }
-      }
-
-      // Override with org-specific category settings
-      if (orgCategoriesResult.data) {
-        for (const cat of orgCategoriesResult.data) {
-          if (cat.category_id in newFeatures) {
-            (newFeatures as any)[cat.category_id] = cat.is_enabled;
-          }
-        }
-      }
-
-      // Override with org-specific feature settings
-      if (orgFeaturesResult.data) {
-        for (const feature of orgFeaturesResult.data) {
-          if (feature.feature_id in newFeatures) {
-            (newFeatures as any)[feature.feature_id] = feature.is_enabled;
-          }
-        }
-      }
-
-      // Subscription plan is the FINAL authority on categories
-      const subscriptionPlan = (orgPlanResult.data?.subscription_plan || 'free') as SubscriptionPlan;
-      const customEnabledCategories: string[] = (orgPlanResult.data as any)?.custom_enabled_categories || [];
-      const planInfo = getPlanInfo(subscriptionPlan);
-      const allCategories = ['courses', 'students', 'companies', 'documents', 'journals', 'frdo', 'links', 'library', 'services', 'settings', 'student_cabinet', 'labor_safety', 'webinars'];
-      
-      for (const cat of allCategories) {
-        if (planInfo.enabledCategories.includes(cat)) {
-          (newFeatures as any)[cat] = true;
-        } else {
-          (newFeatures as any)[cat] = false;
-        }
-      }
-
-      // Apply custom enabled categories (override plan restrictions)
-      for (const cat of customEnabledCategories) {
-        if (cat in newFeatures) {
-          (newFeatures as any)[cat] = true;
-        }
-      }
-
-      // Disable AI if plan doesn't support it
-      if (!planInfo.limits.aiEnabled) {
-        newFeatures.courses_ai = false;
-      }
-
-      setFeatures(newFeatures);
-    } catch (error) {
-      console.error("Error fetching org features:", error);
-    } finally {
-      setLoading(false);
-    }
-  }, [organizationId]);
-
-  useEffect(() => {
-    fetchFeatures();
-  }, [fetchFeatures]);
-
-  // Realtime subscription for plan changes
   useEffect(() => {
     if (!organizationId) return;
+    if (!featureData || !orgCore) return;
 
-    const channel = supabase
-      .channel(`org-features-${organizationId}`)
-      .on(
-        'postgres_changes',
-        {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'organizations',
-          filter: `id=eq.${organizationId}`,
-        },
-        () => { fetchFeatures(); }
-      )
-      .subscribe();
+    const newFeatures = { ...defaultFeatures };
 
-    return () => { supabase.removeChannel(channel); };
-  }, [organizationId, fetchFeatures]);
+    for (const cat of featureData.globalCategories) {
+      if ((cat as any).category_id in newFeatures) (newFeatures as any)[(cat as any).category_id] = (cat as any).is_enabled;
+    }
+    for (const f of featureData.globalFeatures) {
+      if ((f as any).feature_id in newFeatures) (newFeatures as any)[(f as any).feature_id] = (f as any).is_enabled;
+    }
+    for (const cat of featureData.orgCategories) {
+      if ((cat as any).category_id in newFeatures) (newFeatures as any)[(cat as any).category_id] = (cat as any).is_enabled;
+    }
+    for (const f of featureData.orgFeatures) {
+      if ((f as any).feature_id in newFeatures) (newFeatures as any)[(f as any).feature_id] = (f as any).is_enabled;
+    }
 
-  // Helper function to check if a feature is enabled
+    const subscriptionPlan = (orgCore.subscription_plan || 'free') as SubscriptionPlan;
+    const customEnabledCategories: string[] = orgCore.custom_enabled_categories || [];
+    const planInfo = getPlanInfo(subscriptionPlan);
+    const allCategories = ['courses', 'students', 'companies', 'documents', 'journals', 'frdo', 'links', 'library', 'services', 'settings', 'student_cabinet', 'labor_safety', 'webinars'];
+
+    for (const cat of allCategories) {
+      (newFeatures as any)[cat] = planInfo.enabledCategories.includes(cat);
+    }
+    for (const cat of customEnabledCategories) {
+      if (cat in newFeatures) (newFeatures as any)[cat] = true;
+    }
+    if (!planInfo.limits.aiEnabled) newFeatures.courses_ai = false;
+
+    setFeatures(newFeatures);
+  }, [organizationId, featureData, orgCore]);
+
   const isEnabled = useCallback((featureId: keyof OrgFeaturesState): boolean => {
     return features[featureId] ?? true;
   }, [features]);
 
-  // Helper to check if a category and its feature are both enabled
   const isFeatureEnabled = useCallback((categoryId: keyof OrgFeaturesState, featureId: keyof OrgFeaturesState): boolean => {
     const categoryEnabled = features[categoryId] ?? true;
     const featureEnabled = features[featureId] ?? true;
@@ -355,6 +301,6 @@ export function useOrgFeatures(organizationId: string | null) {
     loading,
     isEnabled,
     isFeatureEnabled,
-    refetch: fetchFeatures,
+    refetch,
   };
 }
