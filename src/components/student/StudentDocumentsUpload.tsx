@@ -200,9 +200,11 @@ export function StudentDocumentsUpload({
 
       toast.success("Документ успешно загружен");
       loadDocuments();
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error uploading document:", error);
-      toast.error("Ошибка загрузки документа");
+      toast.error("Ошибка загрузки документа", {
+        description: error?.message || error?.error_description || String(error),
+      });
     } finally {
       setUploadingType(null);
       setSelectedDocType(null);
