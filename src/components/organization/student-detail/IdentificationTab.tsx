@@ -55,19 +55,48 @@ export function IdentificationTab({ h }: IdentificationTabProps) {
         </div>
       </div>
 
+      {/* PEP Agreement */}
+      <div className="bg-card rounded-2xl border border-border p-6">
+        <h3 className="font-semibold mb-4 flex items-center gap-2"><Shield className="w-5 h-5 text-primary" />Соглашение об использовании ПЭП</h3>
+        {!h.latestPepAgreement ? (
+          <div className="text-center py-6 text-muted-foreground">
+            <Shield className="w-10 h-10 mx-auto mb-3 opacity-50" />
+            <p>Ученик ещё не принял соглашение об использовании простой электронной подписи</p>
+          </div>
+        ) : (
+          <div className="space-y-2">
+            <div className="flex items-center gap-2">
+              <CheckCircle2 className="w-5 h-5 text-green-500" />
+              <span className="font-medium">Принято</span>
+              <span className="text-xs text-muted-foreground">версия {h.latestPepAgreement.agreement_version}</span>
+            </div>
+            <div className="text-sm text-muted-foreground">Принято: {h.formatDate(h.latestPepAgreement.accepted_at)}</div>
+            {h.latestPepAgreement.ip_address && <div className="text-xs text-muted-foreground">IP: {h.latestPepAgreement.ip_address}</div>}
+            {h.latestPepAgreement.user_agent && <div className="text-xs text-muted-foreground truncate">UA: {h.latestPepAgreement.user_agent}</div>}
+          </div>
+        )}
+      </div>
+
       {/* Consent History */}
       <div className="bg-card rounded-2xl border border-border p-6">
-        <h3 className="font-semibold mb-4 flex items-center gap-2"><History className="w-5 h-5 text-primary" />История согласий</h3>
+        <h3 className="font-semibold mb-4 flex items-center gap-2"><History className="w-5 h-5 text-primary" />История согласий на обработку ПД</h3>
         {h.consents.length === 0 ? (
           <div className="text-center py-8 text-muted-foreground"><Shield className="w-12 h-12 mx-auto mb-3 opacity-50" /><p>Нет подписанных согласий</p></div>
         ) : (
           <div className="space-y-3">
             {h.consents.map((c: any) => (
-              <div key={c.id} className="flex items-center justify-between p-3 rounded-xl bg-muted/50">
-                <div>
-                  <div className="flex items-center gap-2 mb-1">{getStatusBadge(c.status)}<span className="text-xs text-muted-foreground">{c.consent_type === "individual" ? "Физ. лицо" : "Юр. лицо"}</span></div>
-                  <p className="text-sm text-muted-foreground">{h.formatDate(c.created_at)}</p>
+              <div key={c.id} className="p-3 rounded-xl bg-muted/50 space-y-1">
+                <div className="flex items-center gap-2">
+                  {getStatusBadge(c.status)}
+                  {c.policy_version && <span className="text-xs text-muted-foreground">{c.policy_version}</span>}
+                  <span className="text-xs text-muted-foreground ml-auto">{h.formatDate(c.signed_at || c.created_at)}</span>
                 </div>
+                {(c.ip_address || c.user_agent) && (
+                  <div className="text-xs text-muted-foreground space-y-0.5">
+                    {c.ip_address && <div>IP: {c.ip_address}</div>}
+                    {c.user_agent && <div className="truncate">UA: {c.user_agent}</div>}
+                  </div>
+                )}
               </div>
             ))}
           </div>
