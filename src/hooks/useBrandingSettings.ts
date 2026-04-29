@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import type { Json } from "@/integrations/supabase/types";
+import { useOrganizationCore } from "@/hooks/useOrganizationCore";
 
 interface BrandingSettings {
   coverUrl: string;
@@ -29,36 +30,22 @@ export function useBrandingSettings(organizationId: string | null, userId: strin
   const [isUploadingLogo, setIsUploadingLogo] = useState(false);
   const [isSavingBranding, setIsSavingBranding] = useState(false);
 
-  // Load branding settings from organization
+  // Берём branding из общего кэша вместо отдельного SELECT
+  const { data: orgCore } = useOrganizationCore(organizationId);
   useEffect(() => {
-    const loadBranding = async () => {
-      if (!organizationId) return;
-      try {
-        const { data, error } = await supabase
-          .from('organizations')
-          .select('branding')
-          .eq('id', organizationId)
-          .single();
-        if (error) throw error;
-        if (data?.branding && typeof data.branding === 'object') {
-          const branding = data.branding as Record<string, unknown>;
-          setBrandingSettings({
-            coverUrl: branding.coverUrl as string || '',
-            primaryColor: branding.primaryColor as string || '#0d9488',
-            secondaryColor: branding.secondaryColor as string || '#14b8a6',
-            logoUrl: branding.logoUrl as string || '',
-            showOrgName: branding.showOrgName !== false,
-            coverPosition: (branding.coverPosition as BrandingSettings['coverPosition']) || 'cover',
-            customName: branding.customName as string || '',
-            customSubtitle: branding.customSubtitle as string || ''
-          });
-        }
-      } catch (error) {
-        console.error('Error loading branding:', error);
-      }
-    };
-    loadBranding();
-  }, [organizationId]);
+    if (!orgCore?.branding) return;
+    const branding = orgCore.branding as Record<string, unknown>;
+    setBrandingSettings({
+      coverUrl: (branding.coverUrl as string) || '',
+      primaryColor: (branding.primaryColor as string) || '#0d9488',
+      secondaryColor: (branding.secondaryColor as string) || '#14b8a6',
+      logoUrl: (branding.logoUrl as string) || '',
+      showOrgName: branding.showOrgName !== false,
+      coverPosition: (branding.coverPosition as BrandingSettings['coverPosition']) || 'cover',
+      customName: (branding.customName as string) || '',
+      customSubtitle: (branding.customSubtitle as string) || ''
+    });
+  }, [orgCore?.branding]);
 
   // Handle cover image upload
   const handleCoverUpload = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
