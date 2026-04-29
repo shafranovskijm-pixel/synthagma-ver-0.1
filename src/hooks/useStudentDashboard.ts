@@ -8,6 +8,7 @@ import { cacheDashboardData, getCachedDashboardData } from "@/utils/courseCache"
 import { safeInvoke } from "@/utils/safeInvoke";
 import { toast } from "sonner";
 import { useTheme } from "next-themes";
+import { useStudentDashboardSnapshot } from "@/hooks/useStudentDashboardSnapshot";
 
 import demoCourseSafety from "@/assets/demo/course-safety.jpg";
 import demoCourseFire from "@/assets/demo/course-fire.jpg";
