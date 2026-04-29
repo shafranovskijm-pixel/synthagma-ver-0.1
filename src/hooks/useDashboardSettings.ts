@@ -1,5 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { useOrganizationCore } from "@/hooks/useOrganizationCore";
+import { useQueryClient } from "@tanstack/react-query";
 
 interface StudentDashboardSettings {
   showLibrary: boolean;
@@ -88,6 +90,9 @@ export function useDashboardSettings(organizationId: string | null) {
   const [menuSettings, setMenuSettings] = useState<MenuSettings>(defaultMenuSettings);
   const [isSavingSettings, setIsSavingSettings] = useState(false);
 
+  const qc = useQueryClient();
+  const { data: orgCore } = useOrganizationCore(organizationId);
+
   // Load theme on mount
   useEffect(() => {
     const savedTheme = localStorage.getItem('theme');
@@ -100,106 +105,54 @@ export function useDashboardSettings(organizationId: string | null) {
     }
   }, []);
 
-  // Load menu settings from DB (with localStorage migration)
-  const loadMenuSettings = useCallback(async () => {
-    if (!organizationId) return;
-    try {
-      const { data, error } = await supabase
-        .from('organizations')
-        .select('menu_settings')
-        .eq('id', organizationId)
-        .single();
-      if (error) throw error;
-
-      if (data?.menu_settings && typeof data.menu_settings === 'object' && Object.keys(data.menu_settings as object).length > 0) {
-        setMenuSettings(normalizeMenuSettings(data.menu_settings as Record<string, unknown>));
+  // Берём menu_settings из общего кэша core (fallback на localStorage-миграцию ниже)
+  useEffect(() => {
+    if (!orgCore) return;
+    const ms = orgCore.menu_settings;
+    if (ms && typeof ms === 'object' && Object.keys(ms as object).length > 0) {
+      setMenuSettings(normalizeMenuSettings(ms as Record<string, unknown>));
+    } else if (organizationId) {
+      // Migrate from localStorage if DB is empty (one-time)
+      const saved = localStorage.getItem('orgMenuSettings');
+      if (saved) {
+        try {
+          const parsed = JSON.parse(saved);
+          const migrated = normalizeMenuSettings(parsed);
+          setMenuSettings(migrated);
+          supabase
+            .from('organizations')
+            .update({ menu_settings: migrated as any })
+            .eq('id', organizationId)
+            .then(() => {
+              qc.invalidateQueries({ queryKey: ["org-core", organizationId] });
+              localStorage.removeItem('orgMenuSettings');
+            });
+        } catch (e) {
+          console.error('Error migrating menu settings:', e);
+        }
       } else {
-        // Migrate from localStorage if DB is empty
-        const saved = localStorage.getItem('orgMenuSettings');
-        if (saved) {
-          try {
-            const parsed = JSON.parse(saved);
-            const migrated = normalizeMenuSettings(parsed);
-            setMenuSettings(migrated);
-            await supabase
-              .from('organizations')
-              .update({ menu_settings: migrated as any })
-              .eq('id', organizationId);
-            localStorage.removeItem('orgMenuSettings');
-          } catch (e) {
-            console.error('Error migrating menu settings:', e);
-          }
-        } else {
-          setMenuSettings({ ...defaultMenuSettings });
-        }
+        setMenuSettings({ ...defaultMenuSettings });
       }
-    } catch (error) {
-      console.error('Error loading menu settings from DB:', error);
     }
-  }, [organizationId]);
+  }, [orgCore, organizationId, qc]);
 
+  // Берём student_dashboard_settings из общего кэша core
   useEffect(() => {
-    loadMenuSettings();
-  }, [loadMenuSettings]);
+    const sds = orgCore?.student_dashboard_settings;
+    if (sds && typeof sds === 'object') {
+      const settings = sds as Record<string, unknown>;
+      setStudentDashboardSettings({
+        showLibrary: settings.showLibrary === true,
+        showAchievements: settings.showAchievements !== false,
+        showAiChat: settings.showAiChat !== false
+      });
+    }
+  }, [orgCore?.student_dashboard_settings]);
 
-  // Realtime subscription for menu_settings changes
-  useEffect(() => {
-    if (!organizationId) return;
-
-    const channel = supabase
-      .channel(`org-menu-${organizationId}`)
-      .on(
-        'postgres_changes',
-        {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'organizations',
-          filter: `id=eq.${organizationId}`,
-        },
-        (payload) => {
-          const newSettings = (payload.new as any)?.menu_settings;
-          if (newSettings && typeof newSettings === 'object') {
-            setMenuSettings(normalizeMenuSettings(newSettings));
-          }
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [organizationId]);
-
-  // Load student dashboard settings from organization
-  useEffect(() => {
-    const loadStudentSettings = async () => {
-      if (!organizationId) return;
-      try {
-        const { data, error } = await supabase
-          .from('organizations')
-          .select('student_dashboard_settings')
-          .eq('id', organizationId)
-          .single();
-        if (error) throw error;
-        if (data?.student_dashboard_settings && typeof data.student_dashboard_settings === 'object') {
-          const settings = data.student_dashboard_settings as Record<string, unknown>;
-          setStudentDashboardSettings({
-            showLibrary: settings.showLibrary === true,
-            showAchievements: settings.showAchievements !== false,
-            showAiChat: settings.showAiChat !== false
-          });
-        }
-      } catch (error) {
-        console.error('Error loading student dashboard settings:', error);
-      }
-    };
-    loadStudentSettings();
-  }, [organizationId]);
-
-  // Reload menu from DB (for manual refresh button)
+  // Reload menu from DB (for manual refresh button) — теперь через инвалидацию кэша core
   const reloadMenuSettings = useCallback(async () => {
-    await loadMenuSettings();
-  }, [loadMenuSettings]);
+    await qc.invalidateQueries({ queryKey: ["org-core", organizationId] });
+  }, [organizationId, qc]);
 
   // Reset menu to defaults and save to DB
   const resetMenuSettings = useCallback(async () => {
@@ -211,10 +164,11 @@ export function useDashboardSettings(organizationId: string | null) {
         .from('organizations')
         .update({ menu_settings: defaults as any })
         .eq('id', organizationId);
+      qc.invalidateQueries({ queryKey: ["org-core", organizationId] });
     } catch (error) {
       console.error('Error resetting menu settings:', error);
     }
-  }, [organizationId]);
+  }, [organizationId, qc]);
 
   // Preview student dashboard
   const previewStudentDashboard = useCallback(() => {
