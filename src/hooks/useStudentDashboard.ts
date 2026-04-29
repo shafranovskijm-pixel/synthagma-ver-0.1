@@ -165,6 +165,71 @@ export function useStudentDashboard() {
 
   const effectiveUserId = targetUserId || user?.id || null;
 
+  // ⚡ Быстрый снимок дашборда одним RPC — выставляет данные ДО окончания тяжёлого loadData.
+  // Если снапшот пришёл раньше — пользователь видит контент мгновенно, фоновый loadData потом
+  // обновит каталог и прочие детали.
+  const { data: snapshot } = useStudentDashboardSnapshot(effectiveUserId);
+  useEffect(() => {
+    if (!snapshot) return;
+    if (snapshot.profile) {
+      setProfile(prev => ({
+        full_name: snapshot.profile.full_name ?? prev?.full_name ?? null,
+        organization_id: snapshot.profile.organization_id ?? prev?.organization_id ?? null,
+        organization_name: snapshot.org?.name ?? prev?.organization_name ?? null,
+        org_description: snapshot.org?.description ?? prev?.org_description ?? null,
+      }));
+    }
+    if (snapshot.org?.branding && typeof snapshot.org.branding === 'object') {
+      const b = snapshot.org.branding as Record<string, unknown>;
+      setBranding({
+        coverUrl: (b.coverUrl as string) || '',
+        primaryColor: (b.primaryColor as string) || '#0d9488',
+        secondaryColor: (b.secondaryColor as string) || '#14b8a6',
+        logoUrl: (b.logoUrl as string) || '',
+        showOrgName: b.showOrgName !== false,
+      });
+    }
+    if (snapshot.org?.student_dashboard_settings && typeof snapshot.org.student_dashboard_settings === 'object') {
+      const s = snapshot.org.student_dashboard_settings as Record<string, unknown>;
+      setDashboardSettings({
+        showLibrary: s.showLibrary === true,
+        showAchievements: s.showAchievements !== false,
+        showAiChat: s.showAiChat !== false,
+        catalogMode: (s.catalogMode as "catalog" | "assigned") || "catalog",
+        studentTheme: (s.studentTheme as string | null) ?? null,
+      });
+    }
+    if (snapshot.org?.subscription_plan) setOrgPlan(snapshot.org.subscription_plan);
+    if (snapshot.enrollments && snapshot.enrollments.length >= 0) {
+      const mapped: StudentCourse[] = snapshot.enrollments.map((e) => ({
+        id: e.course_id,
+        title: e.title,
+        description: e.description,
+        duration: e.duration,
+        progress: Math.min(e.progress || 0, 100),
+        totalLessons: Number(e.total_lessons) || 0,
+        completedLessons: Number(e.completed_lessons) || 0,
+        status: (e.status === "completed" ? "completed" : "in_progress") as StudentCourse["status"],
+        skip_video_identification: e.skip_video_identification || false,
+      }));
+      setCourses(mapped);
+      setTotalCompletedLessons(mapped.reduce((sum, c) => sum + c.completedLessons, 0));
+      setTotalTimeSpent(snapshot.enrollments.reduce((sum, e) => sum + (e.time_spent || 0), 0));
+    }
+    if (snapshot.documents) {
+      setDocumentsProgress({
+        completed: [snapshot.documents.has_passport, snapshot.documents.has_snils, snapshot.documents.has_education].filter(Boolean).length,
+        total: 3,
+      });
+    }
+    setIsVideoIdentified(!!snapshot.video_identified);
+    if (typeof snapshot.profile.onboarding_completed === 'boolean' && !snapshot.profile.onboarding_completed && !isAdminView) {
+      setShowOnboarding(true);
+    }
+    // Снимок отдаёт основные данные → можно отключить спиннер сразу
+    setLoading(false);
+  }, [snapshot, isAdminView]);
+
   useEffect(() => {
     if (effectiveUserId) { loadData(); }
     if (user && !isAdminView) {
