@@ -164,10 +164,11 @@ export function useDashboardSettings(organizationId: string | null) {
         .from('organizations')
         .update({ menu_settings: defaults as any })
         .eq('id', organizationId);
+      qc.invalidateQueries({ queryKey: ["org-core", organizationId] });
     } catch (error) {
       console.error('Error resetting menu settings:', error);
     }
-  }, [organizationId]);
+  }, [organizationId, qc]);
 
   // Preview student dashboard
   const previewStudentDashboard = useCallback(() => {
