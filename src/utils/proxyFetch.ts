@@ -1,34 +1,44 @@
 /**
- * Proxy Fetch — глобальный перехватчик fetch, который при детекте блокировки
- * Supabase-доменов корпоративным фаерволом автоматически переключает все запросы
- * на резервные субдомены клиента (например, api.sintagma.com.ru через Cloudflare Worker).
+ * Proxy Fetch — глобальный перехватчик fetch + WebSocket, который переключает
+ * все Supabase-запросы на резервные субдомены через Cloudflare Worker.
  *
  * Логика:
- *  1. При первом запуске пытаемся обычный fetch.
- *  2. Если получаем сетевую ошибку (TypeError/AbortError/no-status) для *.supabase.co —
- *     помечаем proxy-режим и повторяем запрос через резервный домен.
- *  3. Сохраняем выбор в localStorage, чтобы следующая сессия сразу шла через прокси.
- *  4. Раз в 30 минут пробуем «вернуться» на прямой домен (на случай если блокировку сняли).
- *
- * Резервные субдомены настраиваются через VITE_PROXY_API_HOST и т.д. Если переменные
- * не заданы, прокси-режим просто не активируется (никаких ошибок в обычной работе).
+ *  1. На основном домене (sintagma.com.ru / www.sintagma.com.ru) — прокси-режим
+ *     включён ВСЕГДА, без ожидания первой ошибки. Это устраняет 30-сек таймаут
+ *     при попытке достучаться до заблокированного провайдером Supabase.
+ *  2. На остальных доменах (lovable.app, localhost) — старая логика:
+ *     пробуем прямой запрос, при сетевой ошибке переключаемся на прокси.
+ *  3. Перехватываем также WebSocket — Realtime использует wss://, не fetch.
+ *  4. На основном домене проба возврата на прямой канал отключена
+ *     (провайдеры РФ не разблокируются).
  */
 
 const SUPABASE_HOST = 'atxwvjxbqjgkbjlhsdch.supabase.co';
 
-// Хосты-прокси (заполняются на проде через runtime config или хардкод).
-// Пользователь сообщил, что доступ к DNS есть → используем sintagma.com.ru.
 const PROXY_HOSTS = {
-  api: 'api.sintagma.com.ru',           // → REST/Auth/Realtime (https://atxwvjxbqjgkbjlhsdch.supabase.co)
+  api: 'api.sintagma.com.ru',           // → REST/Auth/Realtime
   functions: 'functions.sintagma.com.ru', // → Edge Functions
   storage: 'storage.sintagma.com.ru',   // → Storage
 };
 
+// Хосты, на которых прокси-режим включается принудительно с самого старта.
+const FORCE_PROXY_HOSTS = new Set([
+  'sintagma.com.ru',
+  'www.sintagma.com.ru',
+]);
+
 const PROXY_FLAG_KEY = 'sintagma:use-proxy';
 const PROXY_LAST_PROBE_KEY = 'sintagma:proxy-last-probe';
-const PROBE_INTERVAL_MS = 30 * 60 * 1000; // 30 минут
+const PROBE_INTERVAL_MS = 30 * 60 * 1000;
+
+function isForcedProxyHost(): boolean {
+  if (typeof window === 'undefined') return false;
+  return FORCE_PROXY_HOSTS.has(window.location.hostname);
+}
 
 function getProxyMode(): boolean {
+  // На основном домене прокси всегда активен — не ждём таймаута.
+  if (isForcedProxyHost()) return true;
   try {
     return localStorage.getItem(PROXY_FLAG_KEY) === '1';
   } catch {
@@ -37,6 +47,8 @@ function getProxyMode(): boolean {
 }
 
 function setProxyMode(enabled: boolean) {
+  // Не позволяем выключить прокси на основном домене.
+  if (isForcedProxyHost() && !enabled) return;
   try {
     if (enabled) localStorage.setItem(PROXY_FLAG_KEY, '1');
     else localStorage.removeItem(PROXY_FLAG_KEY);
@@ -45,7 +57,7 @@ function setProxyMode(enabled: boolean) {
   }
 }
 
-/** Маппинг URL → прокси-URL. Возвращает исходный URL, если не подходит. */
+/** http(s):// URL → прокси-URL. */
 function rewriteUrl(url: string): string {
   if (!url.includes(SUPABASE_HOST)) return url;
   try {
@@ -56,7 +68,6 @@ function rewriteUrl(url: string): string {
     } else if (path.startsWith('/storage/')) {
       u.host = PROXY_HOSTS.storage;
     } else {
-      // /rest, /auth, /realtime → api.
       u.host = PROXY_HOSTS.api;
     }
     return u.toString();
@@ -65,7 +76,19 @@ function rewriteUrl(url: string): string {
   }
 }
 
-/** Признаки сетевой блокировки (а не 4xx/5xx, который означает что сервер ответил). */
+/** ws(s):// URL → прокси-URL (для Realtime). */
+function rewriteWsUrl(url: string): string {
+  if (!url.includes(SUPABASE_HOST)) return url;
+  try {
+    const u = new URL(url);
+    // Realtime всегда идёт через api.* (тот же хост, что REST/Auth)
+    u.host = PROXY_HOSTS.api;
+    return u.toString();
+  } catch {
+    return url;
+  }
+}
+
 function isNetworkBlock(err: unknown): boolean {
   if (!(err instanceof Error)) return false;
   const msg = err.message.toLowerCase();
@@ -81,76 +104,117 @@ function isNetworkBlock(err: unknown): boolean {
 }
 
 let originalFetch: typeof fetch | null = null;
+let originalWebSocket: typeof WebSocket | null = null;
 
 export function installProxyFetch() {
   if (typeof window === 'undefined') return;
-  if (originalFetch) return; // уже установлен
-  originalFetch = window.fetch.bind(window);
 
-  window.fetch = async function patchedFetch(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
-    const urlStr = typeof input === 'string'
-      ? input
-      : input instanceof URL ? input.toString() : input.url;
+  // ============= Fetch перехватчик =============
+  if (!originalFetch) {
+    originalFetch = window.fetch.bind(window);
 
-    // Не трогаем не-Supabase запросы
-    if (!urlStr.includes(SUPABASE_HOST) && !urlStr.includes('sintagma.com.ru')) {
-      return originalFetch!(input, init);
-    }
+    window.fetch = async function patchedFetch(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
+      const urlStr = typeof input === 'string'
+        ? input
+        : input instanceof URL ? input.toString() : input.url;
 
-    const useProxy = getProxyMode();
-
-    // Если уже в proxy-режиме — сразу через прокси
-    if (useProxy && urlStr.includes(SUPABASE_HOST)) {
-      const proxyUrl = rewriteUrl(urlStr);
-      try {
-        return await originalFetch!(proxyUrl, init);
-      } catch (err) {
-        // Прокси тоже упал — пробуем оригинал как последний шанс
-        try {
-          const resp = await originalFetch!(input, init);
-          // Прямой канал работает! Сбрасываем proxy-режим
-          setProxyMode(false);
-          return resp;
-        } catch {
-          throw err;
-        }
+      if (!urlStr.includes(SUPABASE_HOST) && !urlStr.includes('sintagma.com.ru')) {
+        return originalFetch!(input, init);
       }
-    }
 
-    // Обычный режим — пробуем прямой запрос
-    try {
-      const resp = await originalFetch!(input, init);
-      // Раз в 30 мин в proxy-режиме пробуем вернуться (здесь не proxy, ничего не делаем)
-      return resp;
-    } catch (err) {
-      if (isNetworkBlock(err) && urlStr.includes(SUPABASE_HOST)) {
-        // Блокировка! Переключаемся на прокси
+      const useProxy = getProxyMode();
+
+      // Принудительный прокси на основном домене — никаких попыток прямого запроса.
+      if (useProxy && urlStr.includes(SUPABASE_HOST)) {
         const proxyUrl = rewriteUrl(urlStr);
-        try {
-          const resp = await originalFetch!(proxyUrl, init);
-          // Успех → запоминаем proxy-режим
-          setProxyMode(true);
-          console.warn('[ProxyFetch] Direct Supabase blocked, switched to proxy:', proxyUrl);
-          // Сообщаем приложению (для показа баннера)
-          window.dispatchEvent(new CustomEvent('sintagma:proxy-activated'));
-          return resp;
-        } catch (proxyErr) {
-          // Оба канала недоступны — пробрасываем исходную ошибку
-          throw err;
+        // Если запрос был с Request-объектом, его нельзя просто передать с другим URL —
+        // нужно либо строку, либо новый Request. Используем строку + init.
+        if (typeof input === 'string' || input instanceof URL) {
+          return originalFetch!(proxyUrl, init);
         }
+        // Для Request копируем поля.
+        const req = input as Request;
+        return originalFetch!(proxyUrl, {
+          method: req.method,
+          headers: req.headers,
+          body: req.method === 'GET' || req.method === 'HEAD' ? undefined : await req.clone().blob(),
+          mode: req.mode,
+          credentials: req.credentials,
+          cache: req.cache,
+          redirect: req.redirect,
+          referrer: req.referrer,
+          integrity: req.integrity,
+          ...init,
+        });
       }
-      throw err;
-    }
-  };
 
-  // Периодическая проверка — пробовать ли вернуться на прямой канал
-  if (getProxyMode()) {
-    setTimeout(probeDirectChannel, 60_000); // через минуту после загрузки
+      // Обычный режим (lovable.app, localhost) — прямой запрос с фолбэком.
+      try {
+        return await originalFetch!(input, init);
+      } catch (err) {
+        if (isNetworkBlock(err) && urlStr.includes(SUPABASE_HOST)) {
+          const proxyUrl = rewriteUrl(urlStr);
+          try {
+            const resp = await originalFetch!(proxyUrl, init);
+            setProxyMode(true);
+            console.warn('[ProxyFetch] Direct Supabase blocked, switched to proxy:', proxyUrl);
+            window.dispatchEvent(new CustomEvent('sintagma:proxy-activated'));
+            return resp;
+          } catch {
+            throw err;
+          }
+        }
+        throw err;
+      }
+    };
+
+    // Проба возврата только на не-основном домене.
+    if (!isForcedProxyHost() && getProxyMode()) {
+      setTimeout(probeDirectChannel, 60_000);
+    }
+  }
+
+  // ============= WebSocket перехватчик (для Realtime) =============
+  if (!originalWebSocket && typeof WebSocket !== 'undefined') {
+    originalWebSocket = window.WebSocket;
+    const Original = originalWebSocket;
+
+    class PatchedWebSocket extends Original {
+      constructor(url: string | URL, protocols?: string | string[]) {
+        const urlStr = url instanceof URL ? url.toString() : url;
+        let finalUrl = urlStr;
+
+        if (urlStr.includes(SUPABASE_HOST) && getProxyMode()) {
+          finalUrl = rewriteWsUrl(urlStr);
+          if (finalUrl !== urlStr) {
+            console.info('[ProxyFetch] WebSocket → proxy:', finalUrl);
+          }
+        }
+
+        super(finalUrl, protocols);
+      }
+    }
+
+    // Копируем статические свойства (CONNECTING/OPEN/CLOSING/CLOSED).
+    Object.defineProperty(PatchedWebSocket, 'CONNECTING', { value: Original.CONNECTING });
+    Object.defineProperty(PatchedWebSocket, 'OPEN', { value: Original.OPEN });
+    Object.defineProperty(PatchedWebSocket, 'CLOSING', { value: Original.CLOSING });
+    Object.defineProperty(PatchedWebSocket, 'CLOSED', { value: Original.CLOSED });
+
+    window.WebSocket = PatchedWebSocket as unknown as typeof WebSocket;
+  }
+
+  // На основном домене сразу диспатчим событие — баннер/индикатор покажет статус.
+  if (isForcedProxyHost()) {
+    setTimeout(() => {
+      window.dispatchEvent(new CustomEvent('sintagma:proxy-activated'));
+    }, 0);
   }
 }
 
 async function probeDirectChannel() {
   if (!originalFetch) return;
+  if (isForcedProxyHost()) return; // на основном домене не пробуем
   try {
     const last = Number(localStorage.getItem(PROXY_LAST_PROBE_KEY) || 0);
     if (Date.now() - last < PROBE_INTERVAL_MS) return;
@@ -173,7 +237,7 @@ async function probeDirectChannel() {
 }
 
 export function getProxyStatus() {
-  return { enabled: getProxyMode(), hosts: PROXY_HOSTS };
+  return { enabled: getProxyMode(), hosts: PROXY_HOSTS, forced: isForcedProxyHost() };
 }
 
 export function forceProxyMode(enabled: boolean) {
