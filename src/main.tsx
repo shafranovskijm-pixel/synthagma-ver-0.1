@@ -5,18 +5,10 @@ import { installProxyFetch } from "./utils/proxyFetch";
 // через резервные субдомены (api/functions/storage.sintagma.com.ru)
 installProxyFetch();
 
-// Redirect from Cyrillic domain to primary domain (bypasses stale SW cache)
-const CYRILLIC_DOMAINS = ['xn--80aaiswd0ak.xn--p1ai', 'www.xn--80aaiswd0ak.xn--p1ai'];
-if (CYRILLIC_DOMAINS.includes(window.location.hostname)) {
-  if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.getRegistrations().then(regs => regs.forEach(r => r.unregister()));
-  }
-  if ('caches' in window) {
-    caches.keys().then(names => names.forEach(n => caches.delete(n)));
-  }
-  window.location.replace('https://sintagma.com.ru' + window.location.pathname + window.location.search + window.location.hash);
-  throw new Error('Redirecting to primary domain');
-}
+// Cyrillic domain (синтагма.рф) больше НЕ редиректится автоматически —
+// пользователь сам решает, куда направить DNS этого домена (Timeweb / Lovable / Worker).
+// Если домен подключён к Lovable, сайт открывается напрямую; если DNS ведёт на Timeweb —
+// откроется тот деплой. Если в будущем нужно вернуть редирект, восстановите блок из истории.
 
 declare const __BUILD_TIMESTAMP__: string;
 
