@@ -51,7 +51,7 @@ export function useCourseGenerationProgress(
 
     // Realtime subscription
     const channel = supabase
-      .channel(`course-progress-${courseId}`)
+      .channel(`course-progress-${courseId}-${Date.now()}-${Math.random().toString(36).slice(2,8)}`)
       .on(
         "postgres_changes",
         {

@@ -171,7 +171,7 @@ export function ColleagueChatPanel({ role, organizationId }: ColleagueChatPanelP
     loadMessages(selectedContactId);
 
     const channel = supabase
-      .channel(`colleague-chat-${selectedContactId}`)
+      .channel(`colleague-chat-${selectedContactId}-${Date.now()}-${Math.random().toString(36).slice(2,8)}`)
       .on("postgres_changes", {
         event: "INSERT",
         schema: "public",

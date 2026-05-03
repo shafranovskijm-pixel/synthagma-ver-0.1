@@ -40,7 +40,7 @@ export function OrgGeneralChat({ organizationId, currentUserId, onStartPrivateCh
     loadMessages();
 
     const channel = supabase
-      .channel(`org-general-chat-${organizationId}`)
+      .channel(`org-general-chat-${organizationId}-${Date.now()}-${Math.random().toString(36).slice(2,8)}`)
       .on("postgres_changes", {
         event: "INSERT",
         schema: "public",

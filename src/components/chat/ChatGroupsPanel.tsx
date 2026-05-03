@@ -117,7 +117,7 @@ export function ChatGroupsPanel({ organizationId, currentUserId }: ChatGroupsPan
     if (!selectedGroupId) return;
     loadGroupMessages(selectedGroupId);
     const channel = supabase
-      .channel(`group-chat-${selectedGroupId}`)
+      .channel(`group-chat-${selectedGroupId}-${Date.now()}-${Math.random().toString(36).slice(2,8)}`)
       .on("postgres_changes", {
         event: "INSERT", schema: "public", table: "chat_group_messages",
         filter: `group_id=eq.${selectedGroupId}`,

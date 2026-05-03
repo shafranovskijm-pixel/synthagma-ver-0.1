@@ -41,7 +41,7 @@ export function AdminChatDialog({ organizationId, currentUserId }: AdminChatDial
     loadMessages();
 
     const channel = supabase
-      .channel(`org-admin-chat-${organizationId}`)
+      .channel(`org-admin-chat-${organizationId}-${Date.now()}-${Math.random().toString(36).slice(2,8)}`)
       .on("postgres_changes", {
         event: "INSERT",
         schema: "public",

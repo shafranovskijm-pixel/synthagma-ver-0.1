@@ -114,7 +114,7 @@ export function OrgNotifications({ organizationId }: OrgNotificationsProps) {
     if (organizationId) {
       loadNotifications();
       const channel = supabase
-        .channel('org_notifications')
+        .channel(`org_notifications-${Date.now()}-${Math.random().toString(36).slice(2,8)}`)
         .on('postgres_changes', {
           event: 'INSERT', schema: 'public', table: 'org_notifications',
           filter: `organization_id=eq.${organizationId}` }, (payload) => {

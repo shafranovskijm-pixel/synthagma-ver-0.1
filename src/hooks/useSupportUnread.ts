@@ -21,7 +21,7 @@ export function useSupportUnread() {
 
   useEffect(() => {
     const channel = supabase
-      .channel('support-unread-admin')
+      .channel(`support-unread-admin-${Date.now()}-${Math.random().toString(36).slice(2,8)}`)
       .on('postgres_changes',
         { event: '*', schema: 'public', table: 'support_conversations' },
         () => fetchUnread()

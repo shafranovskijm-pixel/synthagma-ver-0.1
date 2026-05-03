@@ -61,7 +61,7 @@ export function AnnouncementsBell() {
   // Realtime: при появлении нового объявления — инвалидируем список
   useEffect(() => {
     const channel = supabase
-      .channel("platform-announcements-bell")
+      .channel(`platform-announcements-bell-${Date.now()}-${Math.random().toString(36).slice(2,8)}`)
       .on(
         "postgres_changes",
         { event: "INSERT", schema: "public", table: "platform_announcements" },

@@ -70,7 +70,7 @@ export function AdminSupportChats() {
   useEffect(() => { fetchConversations(); }, [fetchConversations]);
 
   useEffect(() => {
-    const ch = supabase.channel('admin-support-list')
+    const ch = supabase.channel(`admin-support-list-${Date.now()}-${Math.random().toString(36).slice(2,8)}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'support_conversations' }, fetchConversations)
       .subscribe();
     return () => { supabase.removeChannel(ch); };
@@ -88,7 +88,7 @@ export function AdminSupportChats() {
   useEffect(() => {
     if (!activeId) return;
     loadMessages(activeId);
-    const ch = supabase.channel(`admin-conv-${activeId}`)
+    const ch = supabase.channel(`admin-conv-${activeId}-${Date.now()}-${Math.random().toString(36).slice(2,8)}`)
       .on('postgres_changes', {
         event: 'INSERT', schema: 'public', table: 'support_messages',
         filter: `conversation_id=eq.${activeId}`,

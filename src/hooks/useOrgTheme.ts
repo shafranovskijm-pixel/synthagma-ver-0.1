@@ -119,7 +119,7 @@ export function useOrgTheme(organizationId: string | null | undefined) {
 
     // Realtime subscription: pick up branding changes from other devices
     const channel = supabase
-      .channel(`org-theme:${organizationId}`)
+      .channel(`org-theme:${organizationId}-${Date.now()}-${Math.random().toString(36).slice(2,8)}`)
       .on(
         "postgres_changes",
         {
