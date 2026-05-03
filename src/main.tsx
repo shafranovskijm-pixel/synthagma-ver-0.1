@@ -1,5 +1,3 @@
-import { createRoot } from "react-dom/client";
-import App from "./App.tsx";
 import "./index.css";
 import { installProxyFetch } from "./utils/proxyFetch";
 
@@ -101,6 +99,14 @@ async function purgeAllCaches() {
   }
 })();
 
-const root = document.getElementById("root")!;
+async function bootstrapApp() {
+  const [{ createRoot }, { default: App }] = await Promise.all([
+    import("react-dom/client"),
+    import("./App.tsx"),
+  ]);
 
-createRoot(root).render(<App />);
+  const root = document.getElementById("root")!;
+  createRoot(root).render(<App />);
+}
+
+void bootstrapApp();
