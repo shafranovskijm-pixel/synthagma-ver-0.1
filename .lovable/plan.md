@@ -1,59 +1,72 @@
-## Проблема
+## Что сейчас не так
 
-1. **Краш дашборда организации** — `useOrganizationCore.ts` создаёт канал с именем `org-core-${organizationId}` без уникального суффикса. При StrictMode/быстром ремаунте старый канал ещё не удалён, а новый пытается зарегистрировать `.on()` на уже подписанном канале → ошибка `cannot add postgres_changes callbacks ... after subscribe()`. Тот же баг я уже починил в `useSubscriptionLimits` — теперь нужно применить тот же приём по всему проекту.
-2. **«Кидает в ученика»** — это **следствие**: `OrgDashboardProvider` падает в Error Boundary, и пользователь видит запасной маршрут / закэшированную роль `student` в `localStorage('user_role')`. Когда ошибка realtime уйдёт, дашборд организации откроется штатно.
+Я прошёл цепочку «настройка в профиле → edge-функция → база» и нашёл **три проблемы**, из-за которых функция фактически не работает:
+
+### 1. Компонент `OrgCredentialsSettings` нигде не подключён
+Файл `src/components/organization/OrgCredentialsSettings.tsx` существует и красиво нарисован, но `rg -n "OrgCredentialsSettings"` находит его только внутри самого файла. В `OrgProfileTab.tsx` и других местах профиля он не импортируется — значит в кабинете организации этой настройки **просто нет в UI**. Пользователь не может ей воспользоваться.
+
+### 2. Edge-функция пишет пароль в открытом виде
+В таблице `organization_credentials.login_password` пароль хранится **зашифрованным** (`pgp_sym_encrypt`), читается через RPC `get_decrypted_org_credentials` → `decrypt_password()`. Это подтверждается и memory-правилом «PII and passwords encrypted at rest».
+
+А `supabase/functions/update-org-credentials/index.ts` (строка 138-141) делает:
+```ts
+.from('organization_credentials').update({ login_password: new_password })
+```
+— то есть кладёт plain text прямо в зашифрованную колонку. После такого UPDATE:
+- `decrypt_password()` либо упадёт с ошибкой, либо вернёт мусор;
+- в карточке у админа («Учётные данные организации») пароль перестанет показываться корректно;
+- ровно та ситуация, что мы сейчас разбирали с `regressofiya@yandex.ru` — карточка показывает одно, в `auth.users` другое.
+
+### 3. Проверка владельца по email сломается на первом же изменении email
+Edge-функция (строка 81) проверяет доступ так:
+```ts
+if (user.email !== credentials.login_email) → 403
+```
+Если организация уже хоть раз меняла email через Supabase Auth (или его поменял админ), `user.email` и `credentials.login_email` разъезжаются — и функция вернёт «Нет доступа к этой организации» даже легитимному владельцу. Правильнее проверять связь через `profiles.organization_id = current_user`.
 
 ## Что делаю
 
-### 1. Чиним `useOrganizationCore.ts` (главный виновник текущего краша)
-Добавляю уникальный суффикс к имени канала + try/catch вокруг `removeChannel`, по образцу уже исправленного `useSubscriptionLimits`:
+### Шаг 1. Подключить компонент в профиле организации
+В `src/components/organization/tabs/OrgProfileTab.tsx` добавить блок «Учётные данные для входа» (карточка с `<OrgCredentialsSettings organizationId={...} />`) под существующим блоком профиля. Это вернёт настройку в UI.
+
+### Шаг 2. Починить edge-функцию `update-org-credentials`
+Изменения в `supabase/functions/update-org-credentials/index.ts`:
+
+1. **Проверять владение через profiles, а не через email-сравнение:**
 ```ts
-const uniqueId = `${organizationId}-${Date.now()}-${Math.random().toString(36).slice(2,8)}`;
-const channel = supabase.channel(`org-core-${uniqueId}`);
-channel.on('postgres_changes', {...}, ...).subscribe();
-return () => { try { supabase.removeChannel(channel); } catch {} };
+const { data: profile } = await supabaseAdmin
+  .from('profiles').select('organization_id').eq('user_id', user.id).single();
+if (!profile || profile.organization_id !== organization_id) → 403
 ```
+2. **Шифровать пароль в `organization_credentials`** через RPC, а не писать plain text. Использовать `pgp_sym_encrypt` через служебную RPC (см. шаг 3).
+3. Сохранить порядок: сначала обновить `auth.users` (через `supabaseAdmin.auth.admin.updateUserById`), и только при успехе — обновить `organization_credentials`. Если auth-обновление упало — credentials не трогаем. Если credentials-обновление упало после auth — логируем и возвращаем понятную ошибку (auth уже изменён, надо вручную пересинхронизировать).
 
-### 2. Глобальный аудит каналов без уникального суффикса
-Применяю тот же паттерн ко всем хукам/компонентам, где имя канала строится только из стабильного id (то есть может коллидировать при ремаунте):
+### Шаг 3. SQL-миграция: RPC для шифрованной записи
+Добавить SECURITY DEFINER функцию `update_org_credentials_encrypted(p_organization_id uuid, p_email text, p_password text)`, которая:
+- проверяет, что вызывающий — админ или владелец этой организации;
+- шифрует пароль через ту же логику, что используется при создании (`pgp_sym_encrypt(p_password, <key>)`), чтобы `decrypt_password()` потом успешно его прочитал;
+- обновляет `login_email` и/или `login_password` атомарно.
 
-- `src/hooks/useOrgUnreadChats.ts` — `org-chats-${organizationId}`
-- `src/hooks/useOrgTheme.ts` — `org-theme:${organizationId}`
-- `src/hooks/useStudentSignatureInbox.ts` — `student-inbox-${userId}`
-- `src/hooks/useCourseGenerationProgress.ts` — `course-progress-${courseId}`
-- `src/hooks/useSupportUnread.ts` — `support-unread-admin`
-- `src/hooks/useAdminUnreadChats.ts` — `admin-unread-chats`
-- `src/pages/StudentDashboard.tsx` — `dash-inbox-${user.id}`
-- `src/pages/AdminDashboard.tsx` — `admin-notifications-bell`
-- `src/components/admin/AdminSupportChats.tsx` — `admin-support-list`, `admin-conv-${activeId}`
-- `src/components/admin/AdminChatsManager.tsx` — `admin-chat-${selectedOrgId}`
-- `src/components/organization/OrgChatsTab.tsx` — `org-admin-unread-${organizationId}`
-- `src/components/organization/AdminChatDialog.tsx` — `org-admin-chat-${organizationId}`
-- `src/components/organization/OrgNotifications.tsx` — `org_notifications`
-- `src/components/organization/student-detail/ChatTab.tsx` — `chat-${organizationId}-${studentUserId}`
-- `src/components/student/StudentOrgChat.tsx` — `student-chat-${organizationId}-${studentUserId}`
-- `src/components/support/SupportChatWidget.tsx` — `support-msg-${conversationId}`
-- `src/components/chat/OrgGeneralChat.tsx`, `ColleagueChatPanel.tsx`, `ChatGroupsPanel.tsx`
-- `src/components/company/CompanyRequestsTab.tsx` — `company_requests_realtime`
-- `src/components/shared/AnnouncementsBell.tsx` — `platform-announcements-bell`
-- `src/components/webinars/RecordingControls.tsx` — `rec-${webinarId}`
-- `src/components/webinars/EmbeddedWebinarPlayer.tsx` — `webinar-embed-${webinarId}`
+Edge-функция будет звать эту RPC вместо прямого UPDATE.
 
-(WebinarQAPanel/PollsPanel/ChatPanel и `useSubscriptionLimits` уже используют уникальные суффиксы — их не трогаю.)
+### Шаг 4. Ручная проверка после деплоя
+Сценарии:
+1. Войти под организацией → Профиль → блок «Учётные данные» виден, текущие email/пароль подгружены.
+2. Сменить только пароль → выйти → войти с новым паролем → успех. Открыть настройки снова — пароль показывается корректно (значит расшифровка работает).
+3. Сменить email → выйти → войти с новым email и тем же паролем → успех.
+4. Открыть карточку организации в админке — там тот же email и пароль, что задала организация (никакого рассинхрона).
 
-Каждое место правится по одному шаблону:
-- имя канала → `…-${id}-${Date.now()}-${Math.random().toString(36).slice(2,8)}`
-- cleanup `removeChannel` оборачивается в try/catch.
+## Технические детали (для разработчика)
 
-### 3. Проверка маршрутизации ролей
-После фикса краша:
-- открыть `/organization` под учёткой организации — должен загрузиться кабинет;
-- если по какой-то причине роль в `localStorage` устарела (`user_role=student`), это скорректирует `fetchUserRole` через RPC `get_user_role` при следующем входе. Логику `ProtectedRoute` менять не требуется — она корректна.
+- Файлы:
+  - `src/components/organization/tabs/OrgProfileTab.tsx` — добавить секцию + импорт.
+  - `supabase/functions/update-org-credentials/index.ts` — переписать логику проверки и записи credentials.
+  - Новая SQL-миграция — RPC `update_org_credentials_encrypted`.
+- Ключ шифрования возьмём из существующего механизма (тот же, что используется в `decrypt_password`/при первичном создании credentials в `generate-org-credentials`), чтобы избежать рассинхрона ключей.
+- RLS на `organization_credentials` не трогаем — пишем через SECURITY DEFINER RPC от имени service role.
+- Никаких клиентских изменений в `OrgCredentialsSettings.tsx` не требуется — он уже корректно работает с edge-функцией; меняется только серверная часть.
 
-## Записать в memory
-Добавлю короткое правило в `mem://architecture/realtime-channel-uniqueness`: realtime-каналы Supabase ВСЕГДА именуются с суффиксом `${Date.now()}-${rand}`, иначе StrictMode/ремаунты ловят `cannot add postgres_changes after subscribe()`.
-
-## Технические детали
-- Файлов трогаю ~22, изменения механические: имя канала + try/catch в cleanup.
-- Поведение realtime не меняется: каждый клиент получает уникальный канал, фильтр по `filter:` остаётся прежним, нагрузка на Realtime сервер та же.
-- Риски: минимальные. Уникальные имена — это рекомендованный паттерн supabase-js v2 для устранения race conditions при ремаунте.
+## Чего НЕ делаю
+- Не трогаю админскую функцию `reset-org-password` и `update-org-email` — они сейчас работают и используются в кабинете админа отдельно.
+- Не меняю формат хранения паролей и ключ шифрования.
+- Не делаю отдельный «текущий пароль для подтверждения» — оставляю текущее поведение (организация уже залогинена, JWT — достаточная проверка). Если понадобится, добавим отдельным шагом.
