@@ -47,6 +47,17 @@ server {
     proxy_set_header X-Forwarded-Proto $scheme;
     proxy_read_timeout 300s;
     proxy_send_timeout 300s;
+    
+    # Supabase уже может присылать свои CORS-заголовки.
+    # Если не скрыть их, браузер увидит дублирующийся
+    # Access-Control-Allow-Origin и заблокирует запрос.
+    proxy_hide_header Access-Control-Allow-Origin;
+    proxy_hide_header Access-Control-Allow-Credentials;
+    proxy_hide_header Access-Control-Allow-Methods;
+    proxy_hide_header Access-Control-Allow-Headers;
+    proxy_hide_header Access-Control-Allow-Expose-Headers;
+    proxy_hide_header Access-Control-Expose-Headers;
+    proxy_hide_header Access-Control-Max-Age;
 
     # ---- общий CORS-блок (вызывается из каждого location) ----
     # Используется через include + map; здесь — макрос на if внутри location.
