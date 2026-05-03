@@ -78,7 +78,8 @@ export function useOrgDetailsView(organization: Organization) {
   const [showStudentBulkImport, setShowStudentBulkImport] = useState(false);
   const [pendingEnrollmentsCount, setPendingEnrollmentsCount] = useState(0);
   const [skillspaceUpdateCourse, setSkillspaceUpdateCourse] = useState<{ id: string; title: string } | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false); // No longer block UI on initial load — progressive rendering
+  const loadedTabs = useState(() => new Set<string>())[0];
   const [students, setStudents] = useState<Student[]>([]);
   const [courses, setCourses] = useState<Course[]>([]);
   const [documents, setDocuments] = useState<OrgDocument[]>([]);
