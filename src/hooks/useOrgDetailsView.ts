@@ -314,18 +314,43 @@ export function useOrgDetailsView(organization: Organization) {
     setPendingEnrollmentsCount(count || 0);
   }, [organization.id]);
 
+  // Initial load — only essentials needed for header and the default tab.
+  // Header: branding. Default tab "courses": fetchCourses. Stats badge: usage.
   useEffect(() => {
-    const fetchAllData = async () => {
-      setLoading(true);
-      try {
-        await Promise.all([
-          fetchStudents(), fetchCourses(), fetchDocuments(), fetchUsage(),
-          fetchUsageHistory(), fetchCredentials(), fetchBranding(), fetchPendingEnrollmentsCount(),
-        ]);
-      } finally { setLoading(false); }
-    };
-    fetchAllData();
-  }, [organization.id, fetchStudents, fetchCourses, fetchDocuments, fetchUsage, fetchUsageHistory, fetchCredentials, fetchBranding, fetchPendingEnrollmentsCount]);
+    loadedTabs.clear();
+    fetchBranding();
+    fetchUsage();
+    fetchCourses();
+    loadedTabs.add("courses");
+  }, [organization.id, fetchBranding, fetchUsage, fetchCourses, loadedTabs]);
+
+  // Lazy-load per-tab data when user opens a tab for the first time
+  useEffect(() => {
+    if (loadedTabs.has(activeTab)) return;
+    loadedTabs.add(activeTab);
+    switch (activeTab) {
+      case "students":
+        fetchStudents();
+        fetchPendingEnrollmentsCount();
+        break;
+      case "courses":
+        fetchCourses();
+        break;
+      case "overview":
+        fetchUsageHistory();
+        break;
+      case "settings":
+        fetchCredentials();
+        fetchDocuments();
+        break;
+      case "history":
+      case "comments":
+      case "reminders":
+      case "tariffs":
+        // these panels fetch their own data internally
+        break;
+    }
+  }, [activeTab, loadedTabs, fetchStudents, fetchCourses, fetchUsageHistory, fetchCredentials, fetchDocuments, fetchPendingEnrollmentsCount]);
 
   const saveTariffSettings = async () => {
     setIsSavingTariff(true);
