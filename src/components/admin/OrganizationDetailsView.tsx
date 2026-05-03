@@ -41,9 +41,7 @@ export function OrganizationDetailsView({ organization, onBack }: OrganizationDe
   const navigate = useNavigate();
   const vm = useOrgDetailsView(organization);
 
-  if (vm.loading) {
-    return <div className="flex items-center justify-center py-12"><SigmaSpinner size="lg" /></div>;
-  }
+  // Progressive rendering — show header/branding/nav immediately; each panel handles its own loading state.
 
   const navItems = [
     { key: "students", icon: Users, label: "Ученики", group: "main" },

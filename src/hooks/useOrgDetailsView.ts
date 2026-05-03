@@ -78,7 +78,8 @@ export function useOrgDetailsView(organization: Organization) {
   const [showStudentBulkImport, setShowStudentBulkImport] = useState(false);
   const [pendingEnrollmentsCount, setPendingEnrollmentsCount] = useState(0);
   const [skillspaceUpdateCourse, setSkillspaceUpdateCourse] = useState<{ id: string; title: string } | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false); // No longer block UI on initial load — progressive rendering
+  const loadedTabs = useState(() => new Set<string>())[0];
   const [students, setStudents] = useState<Student[]>([]);
   const [courses, setCourses] = useState<Course[]>([]);
   const [documents, setDocuments] = useState<OrgDocument[]>([]);
@@ -213,19 +214,21 @@ export function useOrgDetailsView(organization: Organization) {
   }, [organization.id]);
 
   const fetchCourses = useCallback(async () => {
+    // Single query with embedded counts — eliminates N+1 (was 1 + 2*N requests)
     const { data: coursesData, error } = await supabase
-      .from("courses").select("id, title, is_published, catalog_order")
-      .eq("organization_id", organization.id).order("catalog_order", { ascending: true });
+      .from("courses")
+      .select("id, title, is_published, catalog_order, lessons(count), enrollments(count)")
+      .eq("organization_id", organization.id)
+      .order("catalog_order", { ascending: true });
     if (error) { console.error("Error fetching courses:", error); return; }
-    const coursesWithStats = await Promise.all(
-      (coursesData || []).map(async (course) => {
-        const [lessonsResult, enrollmentsResult] = await Promise.all([
-          supabase.from("lessons").select("id", { count: "exact" }).eq("course_id", course.id),
-          supabase.from("enrollments").select("id", { count: "exact" }).eq("course_id", course.id),
-        ]);
-        return { ...course, lessons_count: lessonsResult.count || 0, students_count: enrollmentsResult.count || 0 };
-      })
-    );
+    const coursesWithStats = (coursesData || []).map((c: any) => ({
+      id: c.id,
+      title: c.title,
+      is_published: c.is_published,
+      catalog_order: c.catalog_order || 0,
+      lessons_count: c.lessons?.[0]?.count || 0,
+      students_count: c.enrollments?.[0]?.count || 0,
+    }));
     setCourses(coursesWithStats);
     setStats(prev => ({ ...prev, totalCourses: coursesData?.length || 0 }));
   }, [organization.id]);
@@ -245,50 +248,76 @@ export function useOrgDetailsView(organization: Organization) {
   }, [organization.id]);
 
   const fetchUsage = useCallback(async () => {
+    // Read pre-aggregated values from organization_usage instead of scanning all storage buckets.
+    // Storage scanning is slow (50-150 list requests) and is now done by a background recalculation.
     const currentMonth = new Date().toISOString().slice(0, 7) + "-01";
     const { data: usageRow } = await supabase
-      .from("organization_usage").select("ai_generations_count")
-      .eq("organization_id", organization.id).eq("month_start", currentMonth).maybeSingle();
-    const aiCount = (usageRow as any)?.ai_generations_count || 0;
-    let totalBytes = 0;
-    const scanPath = async (client: any, bucket: string, prefix: string, depth = 0) => {
-      try {
-        const { data: items } = await client.storage.from(bucket).list(prefix, { limit: 500 });
-        if (!items) return;
-        for (const f of items) {
-          if (f.id === null && depth < 2) await scanPath(client, bucket, `${prefix}/${f.name}`, depth + 1);
-          else if (f.id !== null) totalBytes += (f.metadata as any)?.size || 0;
-        }
-      } catch { /* bucket/path doesn't exist */ }
-    };
-    const { data: orgCourses } = await supabase.from("courses").select("id").eq("organization_id", organization.id);
-    const courseIds = orgCourses?.map(c => c.id) || [];
-    const courseScans = courseIds.flatMap(courseId => [
-      scanPath(supabase, "course-files", courseId),
-      scanPath(supabase, "presentations", courseId),
-    ]);
-    const orgScans = [
-      scanPath(supabase, "org-documents", organization.id),
-      scanPath(supabase, "company-documents", organization.id),
-      scanPath(supabase, "org-branding", organization.id),
-      scanPath(supabase, "library-files", `library/${organization.id}`),
-      scanPath(supabase, "billing-documents", organization.id),
-      scanPath(supabase, "student-documents", organization.id),
-    ];
-    await Promise.all([...courseScans, ...orgScans]);
-    try {
-      const { data: config } = await safeInvoke<any>("get-external-storage-config");
-      if (config?.configured && config?.url && config?.key) {
-        const { createClient } = await import("@supabase/supabase-js");
-        const extClient = createClient(config.url, config.key);
-        await Promise.all(courseIds.map(courseId => scanPath(extClient, "course-videos", courseId)));
-      }
-    } catch { /* external not configured */ }
-
+      .from("organization_usage")
+      .select("ai_generations_count, storage_bytes")
+      .eq("organization_id", organization.id)
+      .eq("month_start", currentMonth)
+      .maybeSingle();
     setUsage({
-      storage_bytes: totalBytes,
-      ai_generations_count: aiCount,
+      storage_bytes: (usageRow as any)?.storage_bytes || 0,
+      ai_generations_count: (usageRow as any)?.ai_generations_count || 0,
     });
+  }, [organization.id]);
+
+  const [recalculatingStorage, setRecalculatingStorage] = useState(false);
+  const recalculateStorage = useCallback(async () => {
+    // On-demand storage recalculation — scans buckets client-side.
+    // Heavy (50-150 storage list requests), so run only when user explicitly asks.
+    setRecalculatingStorage(true);
+    try {
+      let totalBytes = 0;
+      const scanPath = async (client: any, bucket: string, prefix: string, depth = 0) => {
+        try {
+          const { data: items } = await client.storage.from(bucket).list(prefix, { limit: 500 });
+          if (!items) return;
+          for (const f of items) {
+            if (f.id === null && depth < 2) await scanPath(client, bucket, `${prefix}/${f.name}`, depth + 1);
+            else if (f.id !== null) totalBytes += (f.metadata as any)?.size || 0;
+          }
+        } catch { /* bucket/path doesn't exist */ }
+      };
+      const { data: orgCourses } = await supabase.from("courses").select("id").eq("organization_id", organization.id);
+      const courseIds = orgCourses?.map(c => c.id) || [];
+      const courseScans = courseIds.flatMap(courseId => [
+        scanPath(supabase, "course-files", courseId),
+        scanPath(supabase, "presentations", courseId),
+      ]);
+      const orgScans = [
+        scanPath(supabase, "org-documents", organization.id),
+        scanPath(supabase, "company-documents", organization.id),
+        scanPath(supabase, "org-branding", organization.id),
+        scanPath(supabase, "library-files", `library/${organization.id}`),
+        scanPath(supabase, "billing-documents", organization.id),
+        scanPath(supabase, "student-documents", organization.id),
+      ];
+      await Promise.all([...courseScans, ...orgScans]);
+      try {
+        const { data: config } = await safeInvoke<any>("get-external-storage-config");
+        if (config?.configured && config?.url && config?.key) {
+          const { createClient } = await import("@supabase/supabase-js");
+          const extClient = createClient(config.url, config.key);
+          await Promise.all(courseIds.map(courseId => scanPath(extClient, "course-videos", courseId)));
+        }
+      } catch { /* external not configured */ }
+      setUsage(prev => ({ ...prev, storage_bytes: totalBytes }));
+      // Persist to organization_usage so future opens show this value instantly
+      const currentMonth = new Date().toISOString().slice(0, 7) + "-01";
+      await supabase.from("organization_usage").upsert({
+        organization_id: organization.id,
+        month_start: currentMonth,
+        storage_bytes: totalBytes,
+      } as any, { onConflict: "organization_id,month_start" });
+      toast.success("Хранилище пересчитано");
+    } catch (err) {
+      console.error("Recalc storage error:", err);
+      toast.error("Не удалось пересчитать хранилище");
+    } finally {
+      setRecalculatingStorage(false);
+    }
   }, [organization.id]);
 
   const fetchUsageHistory = useCallback(async () => {
@@ -330,18 +359,43 @@ export function useOrgDetailsView(organization: Organization) {
     setPendingEnrollmentsCount(count || 0);
   }, [organization.id]);
 
+  // Initial load — only essentials needed for header and the default tab.
+  // Header: branding. Default tab "courses": fetchCourses. Stats badge: usage.
   useEffect(() => {
-    const fetchAllData = async () => {
-      setLoading(true);
-      try {
-        await Promise.all([
-          fetchStudents(), fetchCourses(), fetchDocuments(), fetchUsage(),
-          fetchUsageHistory(), fetchCredentials(), fetchBranding(), fetchPendingEnrollmentsCount(),
-        ]);
-      } finally { setLoading(false); }
-    };
-    fetchAllData();
-  }, [organization.id, fetchStudents, fetchCourses, fetchDocuments, fetchUsage, fetchUsageHistory, fetchCredentials, fetchBranding, fetchPendingEnrollmentsCount]);
+    loadedTabs.clear();
+    fetchBranding();
+    fetchUsage();
+    fetchCourses();
+    loadedTabs.add("courses");
+  }, [organization.id, fetchBranding, fetchUsage, fetchCourses, loadedTabs]);
+
+  // Lazy-load per-tab data when user opens a tab for the first time
+  useEffect(() => {
+    if (loadedTabs.has(activeTab)) return;
+    loadedTabs.add(activeTab);
+    switch (activeTab) {
+      case "students":
+        fetchStudents();
+        fetchPendingEnrollmentsCount();
+        break;
+      case "courses":
+        fetchCourses();
+        break;
+      case "overview":
+        fetchUsageHistory();
+        break;
+      case "settings":
+        fetchCredentials();
+        fetchDocuments();
+        break;
+      case "history":
+      case "comments":
+      case "reminders":
+      case "tariffs":
+        // these panels fetch their own data internally
+        break;
+    }
+  }, [activeTab, loadedTabs, fetchStudents, fetchCourses, fetchUsageHistory, fetchCredentials, fetchDocuments, fetchPendingEnrollmentsCount]);
 
   const saveTariffSettings = async () => {
     setIsSavingTariff(true);
@@ -406,7 +460,7 @@ export function useOrgDetailsView(organization: Organization) {
     stats, planKey, planInfo, storageLimitPercent, aiGenerationsLimit, aiGenerationsPercent,
     isStorageWarning, isStorageExceeded, isAiGenWarning, isAiGenExceeded, shouldBlockAI,
     dndSensors, handleCourseDragEnd, filteredStudents, formatBytes,
-    saveTariffSettings, saveSettings, fetchCourses, fetchStudents, fetchPendingEnrollmentsCount,
+    saveTariffSettings, saveSettings, fetchCourses, fetchStudents, fetchPendingEnrollmentsCount, recalculateStorage, recalculatingStorage,
     showSkillspaceImport, setShowSkillspaceImport, showSkillspaceBatchImport, setShowSkillspaceBatchImport,
     showStudentBulkImport, setShowStudentBulkImport, pendingEnrollmentsCount,
     skillspaceUpdateCourse, setSkillspaceUpdateCourse,
