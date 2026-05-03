@@ -132,8 +132,12 @@ export function useSubscriptionLimits(organizationId: string | null): Subscripti
   useEffect(() => {
     if (!organizationId) return;
 
-    const channel = supabase
-      .channel(`org-plan-${organizationId}`)
+    // Уникальное имя канала исключает коллизии при StrictMode/быстром ремаунте,
+    // когда старый канал ещё не успел удалиться, а новый пытается переиспользовать имя.
+    const uniqueId = `${organizationId}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    const channel = supabase.channel(`org-plan-${uniqueId}`);
+
+    channel
       .on(
         'postgres_changes',
         {
@@ -151,7 +155,13 @@ export function useSubscriptionLimits(organizationId: string | null): Subscripti
       )
       .subscribe();
 
-    return () => { supabase.removeChannel(channel); };
+    return () => {
+      try {
+        supabase.removeChannel(channel);
+      } catch {
+        // канал уже удалён — игнорируем
+      }
+    };
   }, [organizationId]);
 
   const planInfo = useMemo(() => getPlanInfo(plan), [plan]);
