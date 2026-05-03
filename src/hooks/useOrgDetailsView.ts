@@ -460,7 +460,7 @@ export function useOrgDetailsView(organization: Organization) {
     stats, planKey, planInfo, storageLimitPercent, aiGenerationsLimit, aiGenerationsPercent,
     isStorageWarning, isStorageExceeded, isAiGenWarning, isAiGenExceeded, shouldBlockAI,
     dndSensors, handleCourseDragEnd, filteredStudents, formatBytes,
-    saveTariffSettings, saveSettings, fetchCourses, fetchStudents, fetchPendingEnrollmentsCount, recalculateStorage,
+    saveTariffSettings, saveSettings, fetchCourses, fetchStudents, fetchPendingEnrollmentsCount, recalculateStorage, recalculatingStorage,
     showSkillspaceImport, setShowSkillspaceImport, showSkillspaceBatchImport, setShowSkillspaceBatchImport,
     showStudentBulkImport, setShowStudentBulkImport, pendingEnrollmentsCount,
     skillspaceUpdateCourse, setSkillspaceUpdateCourse,
