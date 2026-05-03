@@ -67,6 +67,7 @@ const App = () => (
                 <ScrollToTop />
                 <NetworkBlockBanner />
                 <OfflineIndicator />
+                <ProxyChannelIndicator />
                 <TooltipProvider>
                   <Sonner />
                   <SpecialOfferPopup />
