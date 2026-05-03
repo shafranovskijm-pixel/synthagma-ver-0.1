@@ -94,7 +94,7 @@ export function CompanyRequestsTab({ companyId, organizationId, employees }: Com
     loadRequests();
 
     const channel = supabase
-      .channel("company_requests_realtime")
+      .channel(`company_requests_realtime-${Date.now()}-${Math.random().toString(36).slice(2,8)}`)
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "company_requests", filter: `company_id=eq.${companyId}` },

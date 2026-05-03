@@ -43,8 +43,11 @@ export function useOrganizationCore(organizationId: string | null | undefined) {
   // Раньше каждый хук открывал свой канал — теперь один на всю сессию orgId.
   useEffect(() => {
     if (!organizationId) return;
-    const channel = supabase
-      .channel(`org-core-${organizationId}`)
+    // Уникальный суффикс защищает от коллизий при StrictMode/быстром ремаунте,
+    // когда старый канал ещё не успел удалиться (см. realtime-channel-uniqueness).
+    const uniqueId = `${organizationId}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    const channel = supabase.channel(`org-core-${uniqueId}`);
+    channel
       .on(
         "postgres_changes",
         {
@@ -60,7 +63,11 @@ export function useOrganizationCore(organizationId: string | null | undefined) {
       )
       .subscribe();
     return () => {
-      supabase.removeChannel(channel);
+      try {
+        supabase.removeChannel(channel);
+      } catch {
+        // канал уже удалён — игнорируем
+      }
     };
   }, [organizationId, qc]);
 

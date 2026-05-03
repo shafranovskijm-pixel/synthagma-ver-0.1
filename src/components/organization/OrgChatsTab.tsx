@@ -74,7 +74,7 @@ export function OrgChatsTab() {
       setAdminUnreadCount(count || 0);
     };
     loadAdminUnread();
-    const channel = supabase.channel(`org-admin-unread-${organizationId}`)
+    const channel = supabase.channel(`org-admin-unread-${organizationId}-${Date.now()}-${Math.random().toString(36).slice(2,8)}`)
       .on("postgres_changes", { event: "*", schema: "public", table: "admin_org_messages", filter: `organization_id=eq.${organizationId}` }, () => { loadAdminUnread(); })
       .subscribe();
     return () => { supabase.removeChannel(channel); };

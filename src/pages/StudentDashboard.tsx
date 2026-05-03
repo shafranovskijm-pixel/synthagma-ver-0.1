@@ -309,7 +309,7 @@ export default function StudentDashboard() {
     };
     load();
     const channel = supabase
-      .channel(`dash-inbox-${user.id}`)
+      .channel(`dash-inbox-${user.id}-${Date.now()}-${Math.random().toString(36).slice(2,8)}`)
       .on("postgres_changes", {
         event: "*", schema: "public", table: "document_signatures",
         filter: `recipient_user_id=eq.${user.id}`,

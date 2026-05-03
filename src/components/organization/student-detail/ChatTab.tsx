@@ -47,7 +47,7 @@ export function ChatTab({ studentUserId, organizationId, currentUserId, studentN
 
     // Subscribe to realtime
     const channel = supabase
-      .channel(`chat-${organizationId}-${studentUserId}`)
+      .channel(`chat-${organizationId}-${studentUserId}-${Date.now()}-${Math.random().toString(36).slice(2,8)}`)
       .on(
         "postgres_changes",
         {

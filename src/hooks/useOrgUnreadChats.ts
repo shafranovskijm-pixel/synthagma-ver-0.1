@@ -105,7 +105,7 @@ export function useOrgUnreadChats(organizationId: string | null, currentUserId: 
     if (!organizationId) return;
 
     const channel = supabase
-      .channel(`org-chats-${organizationId}`)
+      .channel(`org-chats-${organizationId}-${Date.now()}-${Math.random().toString(36).slice(2,8)}`)
       .on(
         "postgres_changes",
         {

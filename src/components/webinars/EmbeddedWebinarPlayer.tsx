@@ -115,7 +115,7 @@ export function EmbeddedWebinarPlayer({
   useEffect(() => {
     if (!webinarId) return;
     const ch = supabase
-      .channel(`webinar-embed-${webinarId}`)
+      .channel(`webinar-embed-${webinarId}-${Date.now()}-${Math.random().toString(36).slice(2,8)}`)
       .on("postgres_changes", {
         event: "UPDATE",
         schema: "public",

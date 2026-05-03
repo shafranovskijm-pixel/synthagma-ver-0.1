@@ -126,7 +126,7 @@ export function AdminChatsManager() {
   useEffect(() => {
     if (!selectedOrgId) return;
     loadMessages(selectedOrgId);
-    const channel = supabase.channel(`admin-chat-${selectedOrgId}`)
+    const channel = supabase.channel(`admin-chat-${selectedOrgId}-${Date.now()}-${Math.random().toString(36).slice(2,8)}`)
       .on("postgres_changes", { event: "INSERT", schema: "public", table: "admin_org_messages", filter: `organization_id=eq.${selectedOrgId}` }, (payload) => {
         const msg = payload.new as AdminMessage;
         setMessages(prev => prev.some(m => m.id === msg.id) ? prev : [...prev, msg]);

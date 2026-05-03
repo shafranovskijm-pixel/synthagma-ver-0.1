@@ -80,7 +80,7 @@ const AdminDashboard = () => {
   useEffect(() => {
     fetchNotifications();
     const channel = supabase
-      .channel("admin-notifications-bell")
+      .channel(`admin-notifications-bell-${Date.now()}-${Math.random().toString(36).slice(2,8)}`)
       .on("postgres_changes", { event: "*", schema: "public", table: "admin_notifications" }, () => fetchNotifications())
       .subscribe();
     return () => { supabase.removeChannel(channel); };

@@ -43,7 +43,7 @@ export function StudentOrgChat({ studentUserId, organizationId, organizationName
   useEffect(() => {
     loadMessages();
     const channel = supabase
-      .channel(`student-chat-${organizationId}-${studentUserId}`)
+      .channel(`student-chat-${organizationId}-${studentUserId}-${Date.now()}-${Math.random().toString(36).slice(2,8)}`)
       .on("postgres_changes", {
         event: "INSERT",
         schema: "public",

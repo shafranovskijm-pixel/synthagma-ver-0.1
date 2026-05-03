@@ -58,7 +58,7 @@ export function useStudentSignatureInbox(userId: string | null | undefined) {
   useEffect(() => {
     if (!userId) return;
     const channel = supabase
-      .channel(`student-inbox-${userId}`)
+      .channel(`student-inbox-${userId}-${Date.now()}-${Math.random().toString(36).slice(2,8)}`)
       .on(
         "postgres_changes",
         {

@@ -99,7 +99,7 @@ function SupportChatWidgetInner() {
   useEffect(() => {
     if (!conversationId) return;
     const channel = supabase
-      .channel(`support-msg-${conversationId}`)
+      .channel(`support-msg-${conversationId}-${Date.now()}-${Math.random().toString(36).slice(2,8)}`)
       .on("postgres_changes", {
         event: "INSERT", schema: "public", table: "support_messages",
         filter: `conversation_id=eq.${conversationId}`,

@@ -1,53 +1,59 @@
 ## Проблема
 
-Логин на `twc1.net` теперь работает (CORS починен ✅), но приложение падает на главной с ошибкой:
+1. **Краш дашборда организации** — `useOrganizationCore.ts` создаёт канал с именем `org-core-${organizationId}` без уникального суффикса. При StrictMode/быстром ремаунте старый канал ещё не удалён, а новый пытается зарегистрировать `.on()` на уже подписанном канале → ошибка `cannot add postgres_changes callbacks ... after subscribe()`. Тот же баг я уже починил в `useSubscriptionLimits` — теперь нужно применить тот же приём по всему проекту.
+2. **«Кидает в ученика»** — это **следствие**: `OrgDashboardProvider` падает в Error Boundary, и пользователь видит запасной маршрут / закэшированную роль `student` в `localStorage('user_role')`. Когда ошибка realtime уйдёт, дашборд организации откроется штатно.
 
-```
-cannot add `postgres_changes` callbacks for realtime:org-plan-... after `subscribe()`
-```
+## Что делаю
 
-Это значит: Supabase Realtime канал `org-plan-{orgId}` пересоздаётся, но старый instance не успевает удалиться, и на него повторно навешивается `.on('postgres_changes', ...)` уже после `.subscribe()`. В StrictMode / при быстром ре-рендере хука это вылазит наружу.
-
-## Что исправить
-
-### 1. `src/hooks/useSubscriptionLimits.ts` — защитить realtime-подписку
-
-Сейчас:
+### 1. Чиним `useOrganizationCore.ts` (главный виновник текущего краша)
+Добавляю уникальный суффикс к имени канала + try/catch вокруг `removeChannel`, по образцу уже исправленного `useSubscriptionLimits`:
 ```ts
-const channel = supabase.channel(`org-plan-${organizationId}`).on(...).subscribe();
-return () => { supabase.removeChannel(channel); };
+const uniqueId = `${organizationId}-${Date.now()}-${Math.random().toString(36).slice(2,8)}`;
+const channel = supabase.channel(`org-core-${uniqueId}`);
+channel.on('postgres_changes', {...}, ...).subscribe();
+return () => { try { supabase.removeChannel(channel); } catch {} };
 ```
 
-Заменить на паттерн с уникальным именем канала + ref-флагом, чтобы:
-- Каждый эффект создавал свой уникальный канал (`org-plan-${orgId}-${Math.random()}`), что исключает коллизии имён.
-- Cleanup гарантированно удалял именно свой канал.
-- `.on()` вызывался строго до `.subscribe()` (так и есть, но добавим явный гард: если канал уже подписан — пропустить).
+### 2. Глобальный аудит каналов без уникального суффикса
+Применяю тот же паттерн ко всем хукам/компонентам, где имя канала строится только из стабильного id (то есть может коллидировать при ремаунте):
 
-Это устранит ошибку и в StrictMode, и при быстрой смене `organizationId`.
+- `src/hooks/useOrgUnreadChats.ts` — `org-chats-${organizationId}`
+- `src/hooks/useOrgTheme.ts` — `org-theme:${organizationId}`
+- `src/hooks/useStudentSignatureInbox.ts` — `student-inbox-${userId}`
+- `src/hooks/useCourseGenerationProgress.ts` — `course-progress-${courseId}`
+- `src/hooks/useSupportUnread.ts` — `support-unread-admin`
+- `src/hooks/useAdminUnreadChats.ts` — `admin-unread-chats`
+- `src/pages/StudentDashboard.tsx` — `dash-inbox-${user.id}`
+- `src/pages/AdminDashboard.tsx` — `admin-notifications-bell`
+- `src/components/admin/AdminSupportChats.tsx` — `admin-support-list`, `admin-conv-${activeId}`
+- `src/components/admin/AdminChatsManager.tsx` — `admin-chat-${selectedOrgId}`
+- `src/components/organization/OrgChatsTab.tsx` — `org-admin-unread-${organizationId}`
+- `src/components/organization/AdminChatDialog.tsx` — `org-admin-chat-${organizationId}`
+- `src/components/organization/OrgNotifications.tsx` — `org_notifications`
+- `src/components/organization/student-detail/ChatTab.tsx` — `chat-${organizationId}-${studentUserId}`
+- `src/components/student/StudentOrgChat.tsx` — `student-chat-${organizationId}-${studentUserId}`
+- `src/components/support/SupportChatWidget.tsx` — `support-msg-${conversationId}`
+- `src/components/chat/OrgGeneralChat.tsx`, `ColleagueChatPanel.tsx`, `ChatGroupsPanel.tsx`
+- `src/components/company/CompanyRequestsTab.tsx` — `company_requests_realtime`
+- `src/components/shared/AnnouncementsBell.tsx` — `platform-announcements-bell`
+- `src/components/webinars/RecordingControls.tsx` — `rec-${webinarId}`
+- `src/components/webinars/EmbeddedWebinarPlayer.tsx` — `webinar-embed-${webinarId}`
 
-### 2. Проверить, что Realtime WebSocket идёт через ваш прокси
+(WebinarQAPanel/PollsPanel/ChatPanel и `useSubscriptionLimits` уже используют уникальные суффиксы — их не трогаю.)
 
-На `twc1.net` фронт ходит на Supabase через `api.sintagma.com.ru/sb-api/...`, но WebSocket для Realtime — отдельный путь (`/sb-realtime` в вашем nginx). Нужно убедиться:
-- `src/utils/proxyFetch.ts` / клиент Supabase подменяет realtime endpoint, когда работает в proxy-режиме.
-- Если нет — Realtime будет ходить напрямую на `*.supabase.co` и блокироваться у пользователей с ограничениями.
+Каждое место правится по одному шаблону:
+- имя канала → `…-${id}-${Date.now()}-${Math.random().toString(36).slice(2,8)}`
+- cleanup `removeChannel` оборачивается в try/catch.
 
-Я прочитаю `proxyFetch.ts` и `client.ts`, и если realtime не проксируется — добавлю подмену через `realtime.setAuth`/конфиг URL.
+### 3. Проверка маршрутизации ролей
+После фикса краша:
+- открыть `/organization` под учёткой организации — должен загрузиться кабинет;
+- если по какой-то причине роль в `localStorage` устарела (`user_role=student`), это скорректирует `fetchUserRole` через RPC `get_user_role` при следующем входе. Логику `ProtectedRoute` менять не требуется — она корректна.
 
-### 3. Поиск других мест с тем же паттерном
-
-Просканирую проект на `.channel(...).on('postgres_changes', ...).subscribe()` без уникального имени канала, и применю тот же фикс точечно (если найду явные дубли имён, как `org-plan-${id}`).
+## Записать в memory
+Добавлю короткое правило в `mem://architecture/realtime-channel-uniqueness`: realtime-каналы Supabase ВСЕГДА именуются с суффиксом `${Date.now()}-${rand}`, иначе StrictMode/ремаунты ловят `cannot add postgres_changes after subscribe()`.
 
 ## Технические детали
-
-**Файлы для правки:**
-- `src/hooks/useSubscriptionLimits.ts` — уникализировать имя канала, добавить guard.
-- `src/utils/proxyFetch.ts` (если требуется) — подмена Realtime URL в proxy-режиме.
-
-**Ничего не ломаем:** Поведение хука не меняется, только устраняется race condition.
-
-## Что НЕ делаем сейчас
-
-- Не трогаем DNS / nginx / VDS — текущий конфиг работает.
-- Не делаем dual-domain (.рф vs .com.ru) — это отдельная задача после стабилизации twc1.net.
-
-После применения фикса попросим вас перезагрузить страницу на twc1.net и проверить, что главная открывается.
+- Файлов трогаю ~22, изменения механические: имя канала + try/catch в cleanup.
+- Поведение realtime не меняется: каждый клиент получает уникальный канал, фильтр по `filter:` остаётся прежним, нагрузка на Realtime сервер та же.
+- Риски: минимальные. Уникальные имена — это рекомендованный паттерн supabase-js v2 для устранения race conditions при ремаунте.

@@ -34,7 +34,7 @@ export const RecordingControls = ({ webinarId }: Props) => {
   useEffect(() => {
     refresh();
     const ch = supabase
-      .channel(`rec-${webinarId}`)
+      .channel(`rec-${webinarId}-${Date.now()}-${Math.random().toString(36).slice(2,8)}`)
       .on("postgres_changes", {
         event: "UPDATE",
         schema: "public",
