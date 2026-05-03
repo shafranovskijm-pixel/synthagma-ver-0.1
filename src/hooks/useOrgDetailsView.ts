@@ -213,19 +213,21 @@ export function useOrgDetailsView(organization: Organization) {
   }, [organization.id]);
 
   const fetchCourses = useCallback(async () => {
+    // Single query with embedded counts — eliminates N+1 (was 1 + 2*N requests)
     const { data: coursesData, error } = await supabase
-      .from("courses").select("id, title, is_published, catalog_order")
-      .eq("organization_id", organization.id).order("catalog_order", { ascending: true });
+      .from("courses")
+      .select("id, title, is_published, catalog_order, lessons(count), enrollments(count)")
+      .eq("organization_id", organization.id)
+      .order("catalog_order", { ascending: true });
     if (error) { console.error("Error fetching courses:", error); return; }
-    const coursesWithStats = await Promise.all(
-      (coursesData || []).map(async (course) => {
-        const [lessonsResult, enrollmentsResult] = await Promise.all([
-          supabase.from("lessons").select("id", { count: "exact" }).eq("course_id", course.id),
-          supabase.from("enrollments").select("id", { count: "exact" }).eq("course_id", course.id),
-        ]);
-        return { ...course, lessons_count: lessonsResult.count || 0, students_count: enrollmentsResult.count || 0 };
-      })
-    );
+    const coursesWithStats = (coursesData || []).map((c: any) => ({
+      id: c.id,
+      title: c.title,
+      is_published: c.is_published,
+      catalog_order: c.catalog_order || 0,
+      lessons_count: c.lessons?.[0]?.count || 0,
+      students_count: c.enrollments?.[0]?.count || 0,
+    }));
     setCourses(coursesWithStats);
     setStats(prev => ({ ...prev, totalCourses: coursesData?.length || 0 }));
   }, [organization.id]);
