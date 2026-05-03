@@ -1,92 +1,113 @@
-## Что нужно исправить
-Сейчас фронтенд на Timeweb открывается, но вход ломается, потому что авторизация и запросы к базе по-прежнему идут не через российский reverse proxy:
-- в проекте глобальный перехватчик `src/utils/proxyFetch.ts` шлёт fallback на `api/functions/storage.sintagma.com.ru`
-- эта схема была рассчитана на Cloudflare Worker
-- у вас `api.sintagma.com.ru` без VPN тоже недоступен, значит проблема не во фронтенде, а в канале до backend
+## Что у нас по факту
 
-Итог: статические страницы работают, а логин/данные падают, потому что backend всё ещё уходит в заблокированный маршрут.
+- **Фронт:** Timeweb App Platform (Caddy, не Nginx) — `shafranovskijm-pixel-synthagma-bloom-e52ceedb-4ffa.twc1.net`. Кастомный домен — `синтагма.рф` (`xn--80aaiswd0ak.xn--p1ai`).
+- **VDS:** Timeweb VDS, Ubuntu 24.04, IP `176.98.178.203` — пустой, чистый.
+- **Цель:** Обойти блокировку `*.supabase.co` у пользователей в РФ.
 
-## План
+## Развилка — какая схема
 
-### 1. Перевести резервный канал с Cloudflare на Timeweb reverse proxy
-Настроить обычный reverse proxy на Timeweb/VPS, чтобы запросы шли через российский сервер, а не через Cloudflare.
+На App Platform нельзя править веб-сервер (Caddy управляется Timeweb), значит same-origin прокси на самом фронт-домене мы сделать не можем. Поэтому VDS — отдельный домен только для прокси.
 
-Предлагаемая схема:
 ```text
-Пользователь
-  -> sintagma.com.ru / ваш Timeweb-домен
-  -> Nginx на Timeweb
-     -> /auth, /rest, /realtime, /functions, /storage
-     -> backend проекта
+Браузер пользователя
+  │
+  │ 1. сам сайт ──────► xn--80aaiswd0ak.xn--p1ai  (Timeweb App)
+  │ 2. supabase API ───► api.sintagma.com.ru     (наш VDS, Nginx)
+  ▼                          │
+                             ▼
+                   atxwvjxbqjgkbjlhsdch.supabase.co
 ```
 
-Лучший вариант — не отдельные Cloudflare-субдомены, а same-origin proxy на Timeweb:
-- `/auth/v1/*`
-- `/rest/v1/*`
-- `/storage/v1/*`
-- `/functions/v1/*`
-- websocket/realtime маршрут
+Это значит: код фронта в `proxyFetch.ts` нужно немного дополнить — сейчас он пишет запросы на `window.location.origin` (same-origin), а нам надо чтобы с фронт-домена он ходил на **другой** домен `https://api.sintagma.com.ru`.
 
-Это уменьшит число точек отказа: браузеру не нужно отдельно ходить на `api.sintagma.com.ru`.
+## Шаги
 
-### 2. Обновить клиентский прокси в приложении
-Переписать `src/utils/proxyFetch.ts`, чтобы он:
-- больше не зависел от Cloudflare Worker
-- умел работать на основном домене и на Timeweb-домене
-- переписывал запросы к backend на same-origin proxy-маршруты Timeweb
-- отдельно переписывал WebSocket для realtime
-- не пытался использовать `api.sintagma.com.ru`, если этот хост больше не нужен
+### Шаг 1. DNS
 
-### 3. Проверить места, где используются прямые URL backend
-В проекте есть не только SDK-запросы, но и ручные `fetch(...)` / прямые URL через `VITE_SUPABASE_URL`, например для:
-- `functions/v1/...`
-- `storage/v1/...`
-- `rest/v1/...`
+В регистраторе `sintagma.com.ru` добавить:
 
-Нужно пройтись по таким местам и убедиться, что они тоже попадут под новую прокси-схему, иначе часть приложения всё равно будет требовать VPN.
+```
+api    A    176.98.178.203    TTL 300
+```
 
-### 4. Обновить страницу инструкции `/admin/proxy-setup`
-Сейчас админская страница описывает Cloudflare Worker.
-Нужно заменить её на актуальную инструкцию под Timeweb:
-- что настраивать в Nginx
-- какие домены/маршруты использовать
-- как проверить auth/storage/functions/realtime
+Если запись `api` уже была от прежней Cloudflare-схемы — заменить значение.
 
-### 5. Добавить понятную диагностику именно для новой схемы
-Обновить диагностику соединения, чтобы она проверяла уже Timeweb proxy-канал, а не старый Cloudflare-маршрут.
-Тогда админ сможет быстро понимать:
-- открывается ли фронтенд
-- работает ли `/auth/v1/health`
-- доступны ли functions/storage
-- работает ли websocket/realtime
+### Шаг 2. Подключиться к VDS по SSH
 
-### 6. Подготовить готовый серверный конфиг для вас
-После одобрения я подготовлю конкретный конфиг под ваш случай:
-- готовый `nginx.conf` / server block для Timeweb
-- какие DNS-записи нужны
-- какие upstream-адреса использовать
-- какие websocket/CORS/headers обязательно включить
+```
+ssh root@176.98.178.203
+```
 
-## Что это даст
-После этого сценарий будет такой:
-- пользователь открывает сайт без VPN
-- логин идёт через Timeweb proxy
-- запросы к базе/функциям/файлам тоже идут через Timeweb proxy
-- приложение перестаёт зависеть от прямого доступа к заблокированным backend-доменам из браузера
+Пароль — из панели Timeweb. На первом входе сменить.
+
+### Шаг 3. Базовая настройка Ubuntu (один блок команд)
+
+- `apt update && apt upgrade -y`
+- Установить Nginx, certbot, ufw, fail2ban
+- ufw открыть только 22 / 80 / 443
+- Включить fail2ban для SSH
+
+### Шаг 4. Положить Nginx-конфиг
+
+Создать `/etc/nginx/sites-available/api.sintagma.com.ru.conf` с:
+
+- `server_name api.sintagma.com.ru;`
+- `listen 80;` (потом certbot сам добавит 443)
+- внутри — содержимое из `src/utils/nginxProxyConfig.ts` (4 location: `/sb-api/`, `/sb-functions/`, `/sb-storage/`, `/sb-realtime`)
+- **CORS-заголовки** на каждый location: `Access-Control-Allow-Origin: https://xn--80aaiswd0ak.xn--p1ai` (и `https://sintagma.com.ru`, и preview-домен `*.twc1.net`) + обработка preflight `OPTIONS`. Это критично — иначе браузер не разрешит cross-origin запросы с фронта на api.
+
+Активировать: symlink в `sites-enabled`, `nginx -t`, `systemctl reload nginx`.
+
+### Шаг 5. Получить SSL
+
+```
+certbot --nginx -d api.sintagma.com.ru
+```
+
+### Шаг 6. Доработать `src/utils/proxyFetch.ts` (правка кода)
+
+Сейчас перехватчик переписывает URL на `window.location.origin + /sb-api/...`. Надо добавить переменную `PROXY_BASE_URL`:
+
+```text
+PROXY_BASE_URL = 'https://api.sintagma.com.ru'
+rewriteUrl: → PROXY_BASE_URL + '/sb-api/' + path
+rewriteWsUrl: → 'wss://api.sintagma.com.ru/sb-realtime' + ...
+```
+
+И включить FORCE_PROXY на всех фронт-доменах (там уже есть `xn--80aaiswd0ak.xn--p1ai`, `*.twc1.net`).
+
+### Шаг 7. Проверка
+
+1. `curl https://api.sintagma.com.ru/sb-api/auth/v1/health` — должен вернуть JSON GoTrue.
+2. Открыть `синтагма.рф` без VPN из РФ-сети — логин, курсы, видео, чат должны работать.
+3. На странице `/admin/proxy-setup` индикатор должен показывать «АКТИВЕН».
+4. В DevTools → Network: запросы к Supabase идут на `api.sintagma.com.ru`, а не `atxwvjxbqjgkbjlhsdch.supabase.co`.
+
+### Шаг 8. (потом) Безопасность сервера
+
+После того как всё заработает:
+
+- SSH по ключу, отключить вход по паролю
+- Автообновления безопасности (`unattended-upgrades`)
+- Мониторинг — простой скрипт `health.sh` через cron + Telegram-уведомление при падении
 
 ## Технические детали
-Затронутые части проекта:
-- `src/utils/proxyFetch.ts`
-- `src/pages/admin/ProxySetup.tsx`
-- `src/utils/connectionDiagnostics.ts`
-- возможные места с прямым `fetch(${import.meta.env.VITE_SUPABASE_URL}/...)`
 
-Серверная часть вне репозитория:
-- конфиг reverse proxy на Timeweb/Nginx
-- проверка websocket-проксирования для realtime
-- DNS/доменная схема
+- **Nginx + SNI**: `proxy_ssl_server_name on; proxy_ssl_name atxwvjxbqjgkbjlhsdch.supabase.co;` — обязательно, иначе Supabase отдаст 526.
+- **WebSocket**: `proxy_http_version 1.1; Upgrade/Connection: upgrade; proxy_read_timeout 3600s` для realtime.
+- **CORS preflight**: на каждый location нужен `if ($request_method = 'OPTIONS') { ... return 204; }` с заголовками `Access-Control-Allow-Origin/Methods/Headers/Credentials`.
+- **`Allow-Origin`**: динамически из whitelist (3 домена) — нельзя `*` потому что используем `Authorization` + credentials.
+- **`Access-Control-Allow-Headers`**: `authorization, apikey, content-type, x-client-info, x-supabase-*` — всё что шлёт Supabase JS SDK.
+- **`client_max_body_size 200m`** — для загрузок файлов в Storage и видео.
+- **resolver 1.1.1.1 8.8.8.8** — чтобы Nginx разрешал имя Supabase.
+- **Логи Nginx** — `/var/log/nginx/access.log` и `error.log`. Полезно следить первые сутки.
 
-## Важное замечание
-Я не буду пытаться «чинить логин в UI», потому что проблема не в форме входа. Сейчас узкое место — сетевой маршрут до backend. Сначала переводим backend-доступ на Timeweb proxy, потом логин и данные начнут работать.
+## План на сегодня
 
-Если одобряете, следующим шагом я подготовлю реализацию в коде и дам вам точный Nginx-конфиг под Timeweb.
+1. Я подготовлю **финальный Nginx-конфиг** с CORS под наши 3 фронт-домена + правку `proxyFetch.ts` (добавлю `PROXY_BASE_URL` и опубликую). Это — режим build (после утверждения этого плана).
+2. Параллельно пришлю вам **готовый набор SSH-команд** одним блоком — копируете, вставляете в терминал, всё ставится.
+3. Когда сервер заработает — проверим вместе по чек-листу из шага 7.
+
+Если согласны со схемой `api.sintagma.com.ru` (один домен под все 4 префикса, CORS с фронта) — апрувите план, и я перехожу к выполнению.
+
+Если хотите 3 отдельных поддомена `api.` / `functions.` / `storage.` (как было в Cloudflare-варианте) — скажите, переделаю под этот вариант. Но это лишняя сложность без пользы — рекомендую один.

@@ -31,13 +31,29 @@ const SUPABASE_HOST = (() => {
   return 'atxwvjxbqjgkbjlhsdch.supabase.co';
 })();
 
-// Same-origin префиксы — должны совпадать с Nginx-конфигом на Timeweb.
+// Базовый URL прокси-сервера (наш VDS на Timeweb с Nginx).
+// Если фронт хостится отдельно от прокси (App Platform → Caddy не управляем),
+// все Supabase-запросы летят сюда. Если пусто — используем same-origin (window.location.origin).
+const PROXY_BASE_URL = 'https://api.sintagma.com.ru';
+
+// Префиксы — должны совпадать с Nginx-конфигом на VDS.
 const SAME_ORIGIN_PREFIX = {
   api: '/sb-api',
   functions: '/sb-functions',
   storage: '/sb-storage',
   realtime: '/sb-realtime',
 };
+
+function getProxyHttpBase(): string {
+  if (PROXY_BASE_URL) return PROXY_BASE_URL;
+  if (typeof window !== 'undefined') return window.location.origin;
+  return '';
+}
+
+function getProxyWsBase(): string {
+  const http = getProxyHttpBase();
+  return http.replace(/^http/, 'ws');
+}
 
 // Хосты, на которых прокси-режим включается ВСЕГДА (без ожидания ошибки).
 // Сюда входят основной домен и любые публичные домены, где у пользователей
@@ -84,7 +100,7 @@ function setProxyMode(enabled: boolean) {
   }
 }
 
-/** Прямой Supabase-URL → same-origin URL текущего домена. */
+/** Прямой Supabase-URL → URL прокси-сервера (или same-origin). */
 function rewriteUrl(url: string): string {
   if (!url.includes(SUPABASE_HOST)) return url;
   try {
@@ -99,21 +115,20 @@ function rewriteUrl(url: string): string {
     } else {
       prefix = SAME_ORIGIN_PREFIX.api;
     }
-    const origin = window.location.origin;
+    const base = getProxyHttpBase();
     const path = (prefix + u.pathname).replace(/\/{2,}/g, '/');
-    return origin + path + (u.search || '');
+    return base + path + (u.search || '');
   } catch {
     return url;
   }
 }
 
-/** wss:// URL Supabase realtime → wss://{origin}/sb-realtime?... */
+/** wss:// URL Supabase realtime → wss://<proxy>/sb-realtime?... */
 function rewriteWsUrl(url: string): string {
   if (!url.includes(SUPABASE_HOST)) return url;
   try {
     const u = new URL(url);
-    const origin = window.location.origin.replace(/^http/, 'ws');
-    return origin + SAME_ORIGIN_PREFIX.realtime + (u.search || '');
+    return getProxyWsBase() + SAME_ORIGIN_PREFIX.realtime + (u.search || '');
   } catch {
     return url;
   }
