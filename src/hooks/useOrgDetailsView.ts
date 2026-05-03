@@ -247,51 +247,32 @@ export function useOrgDetailsView(organization: Organization) {
   }, [organization.id]);
 
   const fetchUsage = useCallback(async () => {
+    // Read pre-aggregated values from organization_usage instead of scanning all storage buckets.
+    // Storage scanning is slow (50-150 list requests) and is now done by a background recalculation.
     const currentMonth = new Date().toISOString().slice(0, 7) + "-01";
     const { data: usageRow } = await supabase
-      .from("organization_usage").select("ai_generations_count")
-      .eq("organization_id", organization.id).eq("month_start", currentMonth).maybeSingle();
-    const aiCount = (usageRow as any)?.ai_generations_count || 0;
-    let totalBytes = 0;
-    const scanPath = async (client: any, bucket: string, prefix: string, depth = 0) => {
-      try {
-        const { data: items } = await client.storage.from(bucket).list(prefix, { limit: 500 });
-        if (!items) return;
-        for (const f of items) {
-          if (f.id === null && depth < 2) await scanPath(client, bucket, `${prefix}/${f.name}`, depth + 1);
-          else if (f.id !== null) totalBytes += (f.metadata as any)?.size || 0;
-        }
-      } catch { /* bucket/path doesn't exist */ }
-    };
-    const { data: orgCourses } = await supabase.from("courses").select("id").eq("organization_id", organization.id);
-    const courseIds = orgCourses?.map(c => c.id) || [];
-    const courseScans = courseIds.flatMap(courseId => [
-      scanPath(supabase, "course-files", courseId),
-      scanPath(supabase, "presentations", courseId),
-    ]);
-    const orgScans = [
-      scanPath(supabase, "org-documents", organization.id),
-      scanPath(supabase, "company-documents", organization.id),
-      scanPath(supabase, "org-branding", organization.id),
-      scanPath(supabase, "library-files", `library/${organization.id}`),
-      scanPath(supabase, "billing-documents", organization.id),
-      scanPath(supabase, "student-documents", organization.id),
-    ];
-    await Promise.all([...courseScans, ...orgScans]);
-    try {
-      const { data: config } = await safeInvoke<any>("get-external-storage-config");
-      if (config?.configured && config?.url && config?.key) {
-        const { createClient } = await import("@supabase/supabase-js");
-        const extClient = createClient(config.url, config.key);
-        await Promise.all(courseIds.map(courseId => scanPath(extClient, "course-videos", courseId)));
-      }
-    } catch { /* external not configured */ }
-
+      .from("organization_usage")
+      .select("ai_generations_count, storage_bytes")
+      .eq("organization_id", organization.id)
+      .eq("month_start", currentMonth)
+      .maybeSingle();
     setUsage({
-      storage_bytes: totalBytes,
-      ai_generations_count: aiCount,
+      storage_bytes: (usageRow as any)?.storage_bytes || 0,
+      ai_generations_count: (usageRow as any)?.ai_generations_count || 0,
     });
   }, [organization.id]);
+
+  const recalculateStorage = useCallback(async () => {
+    // On-demand recalculation triggered by user button (in OrgStatsPanel)
+    try {
+      await safeInvoke("recalculate-org-storage", { body: { organization_id: organization.id } });
+      await fetchUsage();
+      toast.success("Хранилище пересчитано");
+    } catch (err) {
+      console.error("Recalc storage error:", err);
+      toast.error("Не удалось пересчитать хранилище");
+    }
+  }, [organization.id, fetchUsage]);
 
   const fetchUsageHistory = useCallback(async () => {
     const sixMonthsAgo = new Date();
