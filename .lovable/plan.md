@@ -1,84 +1,62 @@
-## Что нашёл при втором проходе
+# Чиним медленную загрузку базы на sintagma.com.ru
 
-Прошлый круг закрыл «вечную загрузку» в админке и убрал самые большие water-fall в `useStudentDashboard`. Теперь смотрю глубже — есть ещё 4 жирных слоя торможения.
+## Что происходит сейчас
 
-### 1. Кабинет организации делает 4–5 раздельных SELECT по `organizations`
+Прокси `sintagma-proxy` развёрнут и работает (435 запросов прошло). Но фронтенд устроен так:
 
-При заходе на `/organization` параллельно стартуют:
-- `useOrganizationDataLoader` → `organizations.name, frdo_enabled`
-- `useDashboardSettings` → `organizations.menu_settings`
-- `useDashboardSettings` → `organizations.student_dashboard_settings` (отдельный useEffect!)
-- `useBrandingSettings` → `organizations.branding`
-- `useOrgFeatures` → `organizations.subscription_plan, custom_enabled_categories`
-- `useSubscriptionLimits` тоже дёргает план
-- `useOrgBalance`, `useOrgUnreadChats` и т.д.
+1. Пользователь открывает `sintagma.com.ru` — HTML/JS грузятся с Cloudflare Pages мгновенно.
+2. Приложение пытается достучаться до базы напрямую: `atxwvjxbqjgkbjlhsdch.supabase.co`.
+3. У большинства провайдеров РФ этот домен либо медленный, либо просто висит до таймаута (~30 секунд).
+4. Только **после таймаута** срабатывает автопереключение на `api.sintagma.com.ru`, и запрос повторяется.
 
-Это 5 одинаковых запросов в одну строку `organizations` по `id=eq.<orgId>` — каждый со своим RLS-проходом. Плюс на каждом запросе цепляется `realtime channel` на ту же таблицу (`org-menu-…`, `org-features-…`).
+Результат: каждая страница ждёт ~30 секунд впустую, потом ещё раз делает запрос. На странице «Организации» так зависают 5–10 параллельных запросов — кажется, что база вообще не отвечает.
 
-**Фикс:** один общий хук `useOrganizationCore(orgId)` на TanStack Query, который тянет нужные поля одним запросом, и из него питаются все остальные. Один realtime-channel на UPDATE строки `organizations` инвалидирует кэш — все потребители подтягиваются.
+Дополнительно: **Realtime (WebSocket)** и часть Supabase SDK не идут через `window.fetch` — для них перехватчик в принципе не работает.
 
-### 2. У ученика много мелких последовательных раундтрипов на одном org
+## Что меняем
 
-В `useStudentDashboard.loadData` после `Promise.all(profile, labor, enrollments)` идут ещё 3 фазы **последовательно**:
-- лекции по курсам ученика (`lessons` + `lesson_progress`)
-- каталог org (`courses + categories + enrollment_requests` → потом ещё `lessons` для подсчёта)
-- идентификация (`identity_documents + video_identifications`)
+### 1. Включить прокси-режим по умолчанию на `sintagma.com.ru`
 
-Между ними ничего не зависит от предыдущих фаз кроме `effectiveOrgId`. Можно слить блок «каталог + идентификация» с блоком «прогресс по курсам» — до 2× ускорение «Time to Interactive».
+В `src/utils/proxyFetch.ts` в функции `getProxyMode()` добавить условие: если хост страницы — `sintagma.com.ru` (или `www.sintagma.com.ru`), считаем прокси-режим включённым **сразу**, без ожидания первой ошибки. Для других хостов (lovable.app, localhost) — старая логика «попробуй прямой, переключись при ошибке».
 
-Дополнительно: `lessons` запрашиваются **дважды** — один раз для записанных курсов, второй раз для каталога. Объединить в один SELECT с `in(course_id, [..все..])`.
+Это убирает 30-секундное ожидание таймаута на каждой загрузке.
 
-### 3. Нет SQL-функции для дашборда — фронт строит агрегаты сам
+### 2. Перенаправить сам Supabase-клиент на прокси
 
-Сейчас фронт качает все `lessons` и все `lesson_progress` ученика, чтобы посчитать `completedLessons` по каждому курсу. У организации с 30+ курсов и 200+ уроков это легко даёт 5–20 КБ JSON и заметную задержку.
+В `src/integrations/supabase/client.ts` — этот файл генерируется автоматически и **редактировать его нельзя**. Поэтому делаем обёртку: создаём `src/integrations/supabase/proxiedClient.ts`, который читает базовый URL и при необходимости подменяет `atxwvjxbqjgkbjlhsdch.supabase.co` → `api.sintagma.com.ru` ещё до создания клиента.
 
-**Фикс:** создать RPC `get_student_dashboard_snapshot(p_user_id uuid)` — одним SQL-запросом возвращает: org info, бренд, dashboard settings, список enrollments c counts, статусы документов. Один вызов вместо 8.
+Реализация: проверяем `window.location.hostname`. Если это `sintagma.com.ru` — клиент создаётся сразу с URL `https://api.sintagma.com.ru`, а Realtime — с `wss://api.sintagma.com.ru`. Это решает и проблему WebSocket.
 
-### 4. Хуки на сыром useEffect — нет кэша между переходами
+Чтобы не трогать сам автогенерируемый `client.ts`, вместо обёртки правильнее сделать так: оставить `client.ts` как есть, но в `main.tsx` **до** импорта приложения пропатчить `import.meta.env.VITE_SUPABASE_URL` через переопределение глобальной переменной — невозможно, env уже зашит в бандл.
 
-`useOrganizationDataLoader`, `useDashboardSettings`, `useBrandingSettings`, `useOrgFeatures`, `useStudentDashboard` все живут на `useState/useEffect`. При каждом перемонтировании (например, переход между вкладками с unmount) данные грузятся с нуля. TanStack Query уже подключён, но эти хуки им не пользуются.
+**Рабочий вариант:** оставляем `client.ts` нетронутым, но дополнительно к перехватчику `fetch` добавляем перехватчик `WebSocket` в `proxyFetch.ts` — оборачиваем `window.WebSocket` так, чтобы при создании сокета на `wss://atxwvjxbqjgkbjlhsdch.supabase.co/...` URL переписывался на `wss://api.sintagma.com.ru/...`. Это решает Realtime без правок автогенерируемых файлов.
 
-### 5. Реалтайм-каналы плодятся
+### 3. Убрать «пробу возврата на прямой канал» на основном домене
 
-Каждый хук открывает отдельный канал `org-menu-${id}`, `org-features-${id}`. В сумме 4–6 WebSocket-подписок на одну страницу. Можно держать один централизованный канал на `organizations:id=eq.<orgId>` и инвалидировать соответствующие query keys.
+Сейчас раз в 30 минут код пробует достучаться до прямого Supabase. На `sintagma.com.ru` это бесполезно — провайдеры не разблокируются — и только тратит время. Отключаем пробу для основного домена.
 
----
+### 4. Добавить индикатор «работает через резервный канал»
 
-## План правок
+Маленький значок в правом нижнем углу (или в шапке) — «Соединение через резервный канал», чтобы пользователи и админы понимали что происходит. Уже есть событие `sintagma:proxy-activated`, надо подвесить на него небольшой компонент.
 
-### A. SQL-миграция: один снапшот для ученика
-1. RPC `public.get_student_dashboard_snapshot(p_user_id uuid)`:
-   - возвращает JSONB: `profile`, `org` (id, name, branding, student_dashboard_settings, subscription_plan, description), `enrollments` (с `completed_lessons` и `total_lessons` через подзапросы), `documents` (флаги passport/snils/education + признак video_id), `labor_safety_org`.
-   - `SECURITY DEFINER`, `SET search_path = public`, проверка `auth.uid() = p_user_id OR has_role('admin'::app_role, auth.uid())` (с учётом фикса порядка из прошлой миграции).
-2. Дополнительные индексы, если ещё не созданы:
-   - `enrollments(user_id, course_id)` (есть uniq — годится)
-   - `lessons(course_id)` (вероятно есть — проверю в миграции через `IF NOT EXISTS`)
+## Технические детали
 
-### B. SQL-миграция: один снапшот для организации
-3. RPC `public.get_organization_core(p_org_id uuid)` — возвращает в одной строке: `name, branding, menu_settings, student_dashboard_settings, subscription_plan, custom_enabled_categories, frdo_enabled, description`. RLS внутри: владелец/staff/admin.
+Файлы, которые меняем:
+- `src/utils/proxyFetch.ts` — добавляем «всегда прокси на sintagma.com.ru», добавляем перехват WebSocket для wss://, отключаем `probeDirectChannel` для основного домена.
+- `src/components/NetworkBlockBanner.tsx` (или новый компонент) — индикатор активного прокси-режима.
 
-### C. Фронт: новый общий хук `useOrganizationCore`
-4. `src/hooks/useOrganizationCore.ts` — `useQuery({ queryKey: ['org-core', orgId], staleTime: 5*60_000 })`, вызывает RPC `get_organization_core`.
-5. Перевести `useDashboardSettings`, `useBrandingSettings`, `useOrgFeatures` на чтение из `useOrganizationCore` вместо собственных SELECT. Отдельные SELECT убираем. Запись (save) оставляем как есть, но после mutate — `queryClient.invalidateQueries(['org-core', orgId])`.
-6. В `useOrgFeatures` оставить только запросы по `system_features` / `organization_features` (план уже придёт из core), все 5 запросов завернуть в `useQuery(['org-features', orgId], …)` со `staleTime: 60_000`.
+Файлы, которые **не трогаем**:
+- `src/integrations/supabase/client.ts` — автогенерируется.
+- Cloudflare Worker — уже работает корректно.
+- Pages деплой — уже работает.
 
-### D. Фронт: ученик через `useQuery`
-7. `useStudentDashboard.loadData` → `useQuery(['student-dashboard', uid], () => supabase.rpc('get_student_dashboard_snapshot', { p_user_id: uid }))` со `staleTime: 30_000` и `placeholderData` из IndexedDB-кэша. Все мелкие SELECT уходят.
-8. `enrollments` → `lessons` → `lesson_progress` оставить только для случая, когда RPC недоступна (fallback), под флагом «офлайн».
+## Что увидит пользователь после деплоя
 
-### E. Один realtime-канал на организацию
-9. Новый хук `useOrgRealtime(orgId)` — один канал на `organizations.id=eq.<orgId>` + `subscription_change_events`. По UPDATE инвалидирует `['org-core', orgId]` и `['org-features', orgId]`. Старые каналы из `useDashboardSettings` / `useOrgFeatures` удаляются.
+1. Открывает `sintagma.com.ru` без VPN.
+2. Страница со списком организаций загружается за 1–2 секунды (как раньше с VPN).
+3. В углу маленькая надпись «Через резервный канал» — это нормально.
+4. Все функции работают: логин, чаты (Realtime), загрузка файлов, edge-функции.
 
-### F. Малое
-10. В `useStudentDashboard` `checkOnboarding` сделать частью `get_student_dashboard_snapshot` (поле `onboarding_completed`) — минус ещё один SELECT.
-11. В `loadCourseStudentsForModal` (`useOrganizationDashboard`) запросы `enrollments → user_roles → profiles → passwords` сделать через одну RPC `get_course_students(course_id)` — это уже отдельная история, **в этот заход НЕ делаю**, помечу TODO.
+## После одобрения
 
----
-
-## Что увидит пользователь
-- Заход на `/organization`: вместо 5 запросов в `organizations` → 1 RPC + 3 справочника. Первый рендер сайдбара/хедера ускорится на ~150–400 мс на медленных каналах.
-- Возврат на ту же страницу в течение 5 мин — мгновенно из кэша react-query.
-- Заход на `/student`: вместо 8 круговых запросов → 1 RPC. На орг с большим каталогом ускорение особенно заметно.
-- Меньше открытых WebSocket-подписок (1 вместо 4), меньше нагрузки на устройство.
-
-После применения сделаю замер `browser--performance_profile` до/после на твоей учётке и пришлю цифры.
+Я внесу изменения, вы нажмёте **Publish → Update** в Lovable, GitHub Actions соберёт новую версию и зальёт на Cloudflare Pages (~2 минуты). После этого проверим без VPN.

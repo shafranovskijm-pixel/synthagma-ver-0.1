@@ -14,6 +14,7 @@ import { ScrollToTop } from "./components/ScrollToTop";
 import { SpecialOfferPopup } from "./components/landing/SpecialOfferPopup";
 import { OfflineIndicator } from "./components/OfflineIndicator";
 import { NetworkBlockBanner } from "./components/NetworkBlockBanner";
+import { ProxyChannelIndicator } from "./components/ProxyChannelIndicator";
 import { installTestQueueListeners } from "./utils/testAnswerQueue";
 import { useThemePersonalization } from "@/components/ui/ThemePersonalization";
 import { captureRefFromUrl } from "@/utils/referralCookie";
@@ -66,6 +67,7 @@ const App = () => (
                 <ScrollToTop />
                 <NetworkBlockBanner />
                 <OfflineIndicator />
+                <ProxyChannelIndicator />
                 <TooltipProvider>
                   <Sonner />
                   <SpecialOfferPopup />
