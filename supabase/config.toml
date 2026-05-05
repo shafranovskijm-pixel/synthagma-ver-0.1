@@ -3,6 +3,9 @@ project_id = "atxwvjxbqjgkbjlhsdch"
 [functions.register-student]
 verify_jwt = false
 
+[functions.register-organization]
+verify_jwt = false
+
 [functions.student-chat]
 verify_jwt = false
 
