@@ -384,20 +384,25 @@ export const CoursesTab = React.memo(function CoursesTab({ organizationId, onCou
       </div>
 
 
-      {/* Webinars */}
-      {contentTab === "webinars" && (
-        <WebinarsContent
-          organizationId={organizationId}
-          isEnabled={dashboard.isEnabled('webinars')}
+      {/* Pro tier gate for premium tabs */}
+      {(contentTab === "webinars" || contentTab === "3d" || contentTab === "ai-tutor") && !isProTier ? (
+        <ProFeatureLocked
+          tab={contentTab}
           onNavigateToTariffs={() => dashboard.tabNavigation.setActiveTab("subscription" as any)}
         />
+      ) : (
+        <>
+          {contentTab === "webinars" && (
+            <WebinarsContent
+              organizationId={organizationId}
+              isEnabled={dashboard.isEnabled('webinars')}
+              onNavigateToTariffs={() => dashboard.tabNavigation.setActiveTab("subscription" as any)}
+            />
+          )}
+          {contentTab === "3d" && <ThreeDContent />}
+          {contentTab === "ai-tutor" && <AIAvatarManager organizationId={organizationId} />}
+        </>
       )}
-
-      {/* 3D */}
-      {contentTab === "3d" && <ThreeDContent />}
-
-      {/* AI Tutor */}
-      {contentTab === "ai-tutor" && <AIAvatarManager organizationId={organizationId} />}
 
       {/* Courses content */}
       {contentTab === "courses" && <>
