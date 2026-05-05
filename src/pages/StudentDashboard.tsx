@@ -449,7 +449,7 @@ export default function StudentDashboard() {
       </div>
 
       {/* Main content */}
-      <div className={cn("flex-1 flex flex-col min-w-0", (isPreviewMode || isAdminView) && "md:mt-10")}>
+      <div className={cn("flex-1 flex flex-col min-w-0", (isPreviewMode || isAdminView || isDemoStudent) && "md:mt-10")}>
         {/* Top header */}
         <StudentHeader
           fullName={profile?.full_name || null}
