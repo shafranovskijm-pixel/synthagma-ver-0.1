@@ -74,7 +74,20 @@ function isForcedProxyHost(): boolean {
 
 const PROXY_FLAG_KEY = 'sintagma:use-proxy';
 const PROXY_LAST_PROBE_KEY = 'sintagma:proxy-last-probe';
+const PROXY_RESET_KEY = 'sintagma:proxy-reset-v2';
 const PROBE_INTERVAL_MS = 30 * 60 * 1000;
+
+// Одноразовый сброс залипшего legacy-прокси у пользователей,
+// которые уже сохранили флаг на api.sintagma.com.ru.
+try {
+  if (typeof window !== 'undefined' && !localStorage.getItem(PROXY_RESET_KEY)) {
+    localStorage.removeItem(PROXY_FLAG_KEY);
+    localStorage.removeItem(PROXY_LAST_PROBE_KEY);
+    localStorage.setItem(PROXY_RESET_KEY, '1');
+  }
+} catch {
+  // ignore
+}
 
 function getProxyMode(): boolean {
   if (isForcedProxyHost()) return true;
