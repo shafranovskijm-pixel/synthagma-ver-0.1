@@ -15,6 +15,29 @@ export default function DemoStudentLogin() {
 
     (async () => {
       try {
+        // Save current session so user can return to org/admin cabinet.
+        try {
+          const { data: { session } } = await supabase.auth.getSession();
+          if (session?.refresh_token && session?.access_token) {
+            const ref = document.referrer || '';
+            let returnPath = '/organization';
+            try {
+              const u = new URL(ref);
+              if (u.origin === window.location.origin) {
+                const p = u.pathname;
+                if (p.startsWith('/organization') || p.startsWith('/admin') || p.startsWith('/sales') || p.startsWith('/company')) {
+                  returnPath = p + u.search;
+                }
+              }
+            } catch {}
+            localStorage.setItem('demoStudentReturn', JSON.stringify({
+              access_token: session.access_token,
+              refresh_token: session.refresh_token,
+              returnPath,
+            }));
+          }
+        } catch (e) { console.warn('Failed to capture return session', e); }
+
         // Always sign out first so we don't keep an admin/org session.
         await supabase.auth.signOut();
 
