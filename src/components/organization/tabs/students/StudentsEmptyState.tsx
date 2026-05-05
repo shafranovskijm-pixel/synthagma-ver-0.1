@@ -16,7 +16,7 @@ export function StudentsEmptyState({ onAddStudent, onImportStudents, onNavigateT
         </div>
         <h2 className="text-2xl font-bold text-foreground">Управляйте обучением эффективно</h2>
         <p className="text-muted-foreground mt-2 max-w-lg mx-auto">Добавьте учеников и начните отслеживать их прогресс, документы и результаты</p>
-        <Button variant="outline" className="rounded-xl gap-2 mt-4" onClick={() => { localStorage.setItem('previewStudentDashboard', 'true'); window.open('/student', '_blank'); }}>
+        <Button variant="outline" className="rounded-xl gap-2 mt-4" onClick={() => { window.open('/demo-student-login', '_blank'); }}>
           <Eye className="w-4 h-4" />Посмотрите, как выглядит кабинет ученика
         </Button>
       </div>
