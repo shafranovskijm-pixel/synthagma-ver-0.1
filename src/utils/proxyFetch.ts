@@ -31,10 +31,11 @@ const SUPABASE_HOST = (() => {
   return 'atxwvjxbqjgkbjlhsdch.supabase.co';
 })();
 
-// Базовый URL прокси-сервера. Сейчас legacy-домен api.sintagma.com.ru
-// больше не используется — fallback идёт через same-origin Nginx (/sb-*),
-// если он настроен на том же хосте, где живёт фронтенд.
-const PROXY_BASE_URL = '';
+// Базовый URL прокси-сервера на отдельном VDS (NGINX, Timeweb).
+// Используется для домена синтагма.рф, чтобы обойти блокировку *.supabase.co
+// в РФ без VPN, минуя Cloudflare и sintagma.com.ru.
+// Punycode для api.синтагма.рф.
+const PROXY_BASE_URL = 'https://api.xn--80aaiswd0ak.xn--p1ai';
 
 // Префиксы — должны совпадать с Nginx-конфигом на VDS.
 const SAME_ORIGIN_PREFIX = {
