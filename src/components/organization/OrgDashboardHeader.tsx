@@ -142,7 +142,7 @@ export function OrgDashboardHeader() {
 
 
   return (
-    <header data-org-sticky-header className="sticky top-0 z-30 bg-card border-b border-border">
+    <header data-org-sticky-header className="sticky top-0 z-30 bg-card border-b border-border group/orgheader">
       {/* Top bar */}
       <div className="flex items-center justify-between px-4 lg:px-6 h-14">
         {/* Left: Mobile menu + Logo + Org name */}
