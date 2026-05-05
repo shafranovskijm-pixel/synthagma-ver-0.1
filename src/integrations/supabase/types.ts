@@ -6830,6 +6830,87 @@ export type Database = {
           },
         ]
       }
+      registration_attempts: {
+        Row: {
+          contact_name: string | null
+          created_at: string
+          email: string | null
+          error_message: string | null
+          id: string
+          inn: string | null
+          ip: string | null
+          org_name: string | null
+          organization_id: string | null
+          page_url: string | null
+          phone: string | null
+          promo_code: string | null
+          ref_code: string | null
+          referrer: string | null
+          selected_plan: string | null
+          step: string
+          updated_at: string
+          user_agent: string | null
+          user_id: string | null
+          utm_campaign: string | null
+          utm_content: string | null
+          utm_medium: string | null
+          utm_source: string | null
+          utm_term: string | null
+        }
+        Insert: {
+          contact_name?: string | null
+          created_at?: string
+          email?: string | null
+          error_message?: string | null
+          id?: string
+          inn?: string | null
+          ip?: string | null
+          org_name?: string | null
+          organization_id?: string | null
+          page_url?: string | null
+          phone?: string | null
+          promo_code?: string | null
+          ref_code?: string | null
+          referrer?: string | null
+          selected_plan?: string | null
+          step: string
+          updated_at?: string
+          user_agent?: string | null
+          user_id?: string | null
+          utm_campaign?: string | null
+          utm_content?: string | null
+          utm_medium?: string | null
+          utm_source?: string | null
+          utm_term?: string | null
+        }
+        Update: {
+          contact_name?: string | null
+          created_at?: string
+          email?: string | null
+          error_message?: string | null
+          id?: string
+          inn?: string | null
+          ip?: string | null
+          org_name?: string | null
+          organization_id?: string | null
+          page_url?: string | null
+          phone?: string | null
+          promo_code?: string | null
+          ref_code?: string | null
+          referrer?: string | null
+          selected_plan?: string | null
+          step?: string
+          updated_at?: string
+          user_agent?: string | null
+          user_id?: string | null
+          utm_campaign?: string | null
+          utm_content?: string | null
+          utm_medium?: string | null
+          utm_source?: string | null
+          utm_term?: string | null
+        }
+        Relationships: []
+      }
       registration_links: {
         Row: {
           company_id: string | null
