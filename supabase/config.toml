@@ -156,3 +156,6 @@ verify_jwt = false
 
 [functions.log-registration-attempt]
 verify_jwt = false
+
+[functions.demo-student-login]
+verify_jwt = false
