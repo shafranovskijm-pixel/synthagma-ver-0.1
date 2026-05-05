@@ -236,6 +236,9 @@ export default function StudentDashboard() {
   const isAdminViewFromStorage = (() => {
     try { return !!localStorage.getItem('adminViewAsStudent'); } catch { return false; }
   })();
+  const isDemoStudent = (() => {
+    try { return !!localStorage.getItem('demoStudentReturn'); } catch { return false; }
+  })();
   const isPreviewFromStorage = false;
 
   const {
