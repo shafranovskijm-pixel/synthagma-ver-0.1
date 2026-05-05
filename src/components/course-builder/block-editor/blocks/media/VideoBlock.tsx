@@ -106,6 +106,45 @@ export function VideoBlock({ block, onUpdate, organizationId, courseId, lessonId
               )}
               <Button variant="secondary" size="sm" className="absolute top-2 right-2 opacity-0 group-hover/video:opacity-100 z-10" onClick={() => onUpdate({ videoUrl: "" })}>Удалить</Button>
             </div>
+          ) : embedResult.type === 'no-embed' ? (
+            <div className="relative group/video aspect-video w-full rounded-lg overflow-hidden bg-gradient-to-br from-primary/5 to-primary/10 border border-primary/20 flex flex-col items-center justify-center gap-3 px-6 text-center">
+              <Video className="w-12 h-12 text-primary/60" />
+              <div>
+                <p className="text-sm font-medium text-foreground mb-1">{embedResult.serviceLabel || 'Этот сервис'} не разрешает встраивание</p>
+                <p className="text-xs text-muted-foreground max-w-md">
+                  Запись будет открываться у ученика в новой вкладке. Для лучшего опыта <strong>скачайте видео</strong> из {embedResult.serviceLabel || 'сервиса'} и загрузите файлом ниже — оно будет проигрываться прямо в уроке.
+                </p>
+              </div>
+              <div className="flex flex-wrap items-center justify-center gap-2 mt-1">
+                <a
+                  href={embedResult.value || ''}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-primary text-primary-foreground rounded-md text-xs font-medium hover:bg-primary/90 transition-colors"
+                >
+                  <ExternalLink className="w-3.5 h-3.5" />
+                  Открыть запись
+                </a>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="gap-1.5 text-xs"
+                  onClick={() => onUpdate({ videoUrl: "" })}
+                >
+                  <Download className="w-3.5 h-3.5" />
+                  Загрузить файлом
+                </Button>
+              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="absolute top-2 right-2 opacity-0 group-hover/video:opacity-100 z-10"
+                onClick={() => onUpdate({ videoUrl: "" })}
+              >
+                Удалить
+              </Button>
+            </div>
           ) : (
             <LazyMediaPreview type="iframe">
               <div className="relative group/video aspect-video bg-black rounded-lg overflow-hidden">
