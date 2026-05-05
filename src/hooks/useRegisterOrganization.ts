@@ -181,17 +181,50 @@ export function useRegisterOrganization() {
 
       // Sign in with the just-created credentials
       const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
-      if (signInError) throw signInError;
+      if (signInError) {
+        const signInMessage = signInError.message || "Не удалось автоматически войти после регистрации";
+
+        await logAttempt('success', {
+          user_id: userId || null,
+          organization_id: orgId || null,
+          error_message: `auto_signin_failed: ${signInMessage}`,
+        }, attemptId);
+
+        toast.success("Организация зарегистрирована", {
+          description: "Аккаунт создан. Войдите вручную по email и паролю.",
+        });
+        window.removeEventListener('beforeunload', unloadHandler);
+        navigate("/login", { replace: true, state: { email } });
+        return;
+      }
 
       const refCode = getRefCode();
-      if (refCode && orgId) { await supabase.rpc('register_referral', { p_ref_code: refCode, p_organization_id: orgId }); clearRefCode(); }
-      if (promoApplied && promoCode) { await supabase.rpc('increment_promo_usage' as any, { p_code: promoCode.trim().toUpperCase() }); }
+      if (refCode && orgId) {
+        try {
+          await supabase.rpc('register_referral', { p_ref_code: refCode, p_organization_id: orgId });
+          clearRefCode();
+        } catch (referralError) {
+          console.error('Referral registration error:', referralError);
+        }
+      }
+
+      if (promoApplied && promoCode) {
+        try {
+          await supabase.rpc('increment_promo_usage' as any, { p_code: promoCode.trim().toUpperCase() });
+        } catch (promoError) {
+          console.error('Promo usage increment error:', promoError);
+        }
+      }
 
       if (userId) {
-        let confirmedRole = await refreshUserRole(userId);
-        for (let i = 0; i < 3 && confirmedRole !== 'organization'; i++) {
-          await new Promise(resolve => setTimeout(resolve, 500));
-          confirmedRole = await refreshUserRole(userId);
+        try {
+          let confirmedRole = await refreshUserRole(userId);
+          for (let i = 0; i < 3 && confirmedRole !== 'organization'; i++) {
+            await new Promise(resolve => setTimeout(resolve, 500));
+            confirmedRole = await refreshUserRole(userId);
+          }
+        } catch (roleError) {
+          console.error('Role refresh error:', roleError);
         }
       }
 
