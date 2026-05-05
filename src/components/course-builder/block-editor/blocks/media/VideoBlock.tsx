@@ -9,7 +9,7 @@ import { UploadProgressBlock } from "@/components/course-builder/UploadProgressB
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Video, Upload, FolderOpen, Trash2, Lock } from "lucide-react";
+import { Video, Upload, FolderOpen, Trash2, Lock, ExternalLink, Download } from "lucide-react";
 import type { ContentBlock } from "../../types";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 import { DirectVideoBlock } from "./DirectVideoBlock";
