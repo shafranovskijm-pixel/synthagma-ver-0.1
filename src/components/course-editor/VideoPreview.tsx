@@ -1,11 +1,22 @@
 import DOMPurify from "dompurify";
-import { Video } from "lucide-react";
+import { Video, ExternalLink } from "lucide-react";
 
 function isIframeEmbed(content: string): boolean {
   return content.trim().startsWith('<iframe') && content.includes('</iframe>');
 }
 
-function getEmbedFromContent(content: string): { type: 'iframe' | 'url' | 'direct' | null; value: string | null } {
+// Сервисы, запрещающие встраивание (frame-ancestors / X-Frame-Options).
+function detectNoEmbedService(content: string): { label: string; url: string } | null {
+  const url = content.trim();
+  if (/(?:^|\/\/)([a-zA-Z0-9-]+\.)?ktalk\.ru\//i.test(url)) return { label: 'Контур.Толк', url };
+  if (/zoom\.us\//i.test(url)) return { label: 'Zoom', url };
+  if (/teams\.microsoft\./i.test(url)) return { label: 'Microsoft Teams', url };
+  if (/meet\.google\./i.test(url)) return { label: 'Google Meet', url };
+  if (/webinar\.ru\//i.test(url)) return { label: 'Webinar.ru', url };
+  return null;
+}
+
+function getEmbedFromContent(content: string): { type: 'iframe' | 'url' | 'direct' | 'no-embed' | null; value: string | null; serviceLabel?: string } {
   if (!content) return { type: null, value: null };
   if (isIframeEmbed(content)) return { type: 'iframe', value: content };
 
@@ -17,8 +28,10 @@ function getEmbedFromContent(content: string): { type: 'iframe' | 'url' | 'direc
   if (rutubeMatch) return { type: 'url', value: `https://rutube.ru/play/embed/${rutubeMatch[1]}` };
   const vkMatch = content.match(/(?:vk\.com|vkvideo\.ru)\/video(-?\d+)_(\d+)/);
   if (vkMatch) return { type: 'url', value: `https://vk.com/video_ext.php?oid=${vkMatch[1]}&id=${vkMatch[2]}&hd=2` };
-  const ktalkMatch = content.match(/([a-zA-Z0-9]+)\.ktalk\.ru\/recordings\/([a-zA-Z0-9_-]+)/);
-  if (ktalkMatch) return { type: 'url', value: `https://${ktalkMatch[1]}.ktalk.ru/recordings/${ktalkMatch[2]}` };
+
+  const noEmbed = detectNoEmbedService(content);
+  if (noEmbed) return { type: 'no-embed', value: noEmbed.url, serviceLabel: noEmbed.label };
+
   const dzenMatch = content.match(/dzen\.ru\/(?:video\/watch|embed)\/([a-zA-Z0-9_-]+)/);
   if (dzenMatch) return { type: 'url', value: `https://dzen.ru/embed/${dzenMatch[1]}` };
   const okMatch = content.match(/ok\.ru\/video\/(\d+)/);
@@ -50,6 +63,29 @@ export function VideoPreview({ videoUrl }: { videoUrl: string }) {
 
   if (embedResult.type === 'direct') {
     return <div className="aspect-video bg-black rounded-xl overflow-hidden"><video src={embedResult.value || ''} controls className="w-full h-full" controlsList="nodownload" /></div>;
+  }
+
+  if (embedResult.type === 'no-embed') {
+    return (
+      <div className="aspect-video w-full rounded-xl overflow-hidden bg-gradient-to-br from-primary/5 to-primary/10 border border-primary/20 flex flex-col items-center justify-center gap-3 px-6 text-center">
+        <Video className="w-12 h-12 text-primary/60" />
+        <div>
+          <p className="text-sm font-medium text-foreground mb-1">{embedResult.serviceLabel} не разрешает встраивание</p>
+          <p className="text-xs text-muted-foreground max-w-md">
+            Запись откроется у ученика в новой вкладке. Лучше скачать видео из {embedResult.serviceLabel} и загрузить файлом — оно будет проигрываться прямо в уроке.
+          </p>
+        </div>
+        <a
+          href={embedResult.value || ''}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-primary text-primary-foreground rounded-md text-xs font-medium hover:bg-primary/90 transition-colors"
+        >
+          <ExternalLink className="w-3.5 h-3.5" />
+          Открыть запись
+        </a>
+      </div>
+    );
   }
 
   return (

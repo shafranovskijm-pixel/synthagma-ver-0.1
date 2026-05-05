@@ -9,7 +9,7 @@ import { UploadProgressBlock } from "@/components/course-builder/UploadProgressB
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Video, Upload, FolderOpen, Trash2, Lock } from "lucide-react";
+import { Video, Upload, FolderOpen, Trash2, Lock, ExternalLink, Download } from "lucide-react";
 import type { ContentBlock } from "../../types";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 import { DirectVideoBlock } from "./DirectVideoBlock";
@@ -35,7 +35,27 @@ export function VideoBlock({ block, onUpdate, organizationId, courseId, lessonId
 
   const isIframeEmbed = (content: string): boolean => content.trim().startsWith('<iframe') && content.includes('</iframe>');
 
-  const getEmbedFromContent = (content: string): { type: 'iframe' | 'url' | 'direct' | null; value: string | null } => {
+  // Сервисы, которые жёстко запрещают встраивание (frame-ancestors / X-Frame-Options).
+  // Для них показываем кнопку «Открыть в новой вкладке» вместо мёртвого iframe.
+  const NO_EMBED_HINT: Record<string, string> = {
+    ktalk: 'Контур.Толк',
+    zoom: 'Zoom',
+    teams: 'Microsoft Teams',
+    meet: 'Google Meet',
+    webinar: 'Webinar.ru',
+  };
+  const detectNoEmbedService = (content: string): { key: string; label: string; url: string } | null => {
+    if (!content) return null;
+    const url = content.trim();
+    if (/(?:^|\/\/)([a-zA-Z0-9-]+\.)?ktalk\.ru\//i.test(url)) return { key: 'ktalk', label: NO_EMBED_HINT.ktalk, url };
+    if (/zoom\.us\//i.test(url)) return { key: 'zoom', label: NO_EMBED_HINT.zoom, url };
+    if (/teams\.microsoft\./i.test(url)) return { key: 'teams', label: NO_EMBED_HINT.teams, url };
+    if (/meet\.google\./i.test(url)) return { key: 'meet', label: NO_EMBED_HINT.meet, url };
+    if (/webinar\.ru\//i.test(url)) return { key: 'webinar', label: NO_EMBED_HINT.webinar, url };
+    return null;
+  };
+
+  const getEmbedFromContent = (content: string): { type: 'iframe' | 'url' | 'direct' | 'no-embed' | null; value: string | null; serviceLabel?: string } => {
     if (!content) return { type: null, value: null };
     if (isIframeEmbed(content)) return { type: 'iframe', value: content };
     if (content.match(/\.(mp4|webm|ogg|mov|mkv|m4v)(\?.*)?$/i) || content.includes("selcdn.ru") || content.includes("selstorage")) return { type: 'direct', value: content };
@@ -48,8 +68,9 @@ export function VideoBlock({ block, onUpdate, organizationId, courseId, lessonId
     if (rutubeMatch) return { type: 'url', value: `https://rutube.ru/play/embed/${rutubeMatch[1]}` };
     const vkMatch = content.match(/(?:vk\.com|vkvideo\.ru)\/video(-?\d+)_(\d+)/);
     if (vkMatch) return { type: 'url', value: `https://vk.com/video_ext.php?oid=${vkMatch[1]}&id=${vkMatch[2]}&hd=2` };
-    const ktalkMatch = content.match(/([a-zA-Z0-9]+)\.ktalk\.ru\/recordings\/([a-zA-Z0-9_-]+)/);
-    if (ktalkMatch) return { type: 'url', value: `https://${ktalkMatch[1]}.ktalk.ru/recordings/${ktalkMatch[2]}` };
+    // KTalk и другие "non-embeddable" — отдельный тип
+    const noEmbed = detectNoEmbedService(content);
+    if (noEmbed) return { type: 'no-embed', value: noEmbed.url, serviceLabel: noEmbed.label };
     const dzenMatch = content.match(/dzen\.ru\/(?:video\/watch|embed)\/([a-zA-Z0-9_-]+)/);
     if (dzenMatch) return { type: 'url', value: `https://dzen.ru/embed/${dzenMatch[1]}` };
     const okMatch = content.match(/ok\.ru\/video\/(\d+)/);
@@ -84,6 +105,45 @@ export function VideoBlock({ block, onUpdate, organizationId, courseId, lessonId
                 <DirectVideoBlock url={embedResult.value || ''} />
               )}
               <Button variant="secondary" size="sm" className="absolute top-2 right-2 opacity-0 group-hover/video:opacity-100 z-10" onClick={() => onUpdate({ videoUrl: "" })}>Удалить</Button>
+            </div>
+          ) : embedResult.type === 'no-embed' ? (
+            <div className="relative group/video aspect-video w-full rounded-lg overflow-hidden bg-gradient-to-br from-primary/5 to-primary/10 border border-primary/20 flex flex-col items-center justify-center gap-3 px-6 text-center">
+              <Video className="w-12 h-12 text-primary/60" />
+              <div>
+                <p className="text-sm font-medium text-foreground mb-1">{embedResult.serviceLabel || 'Этот сервис'} не разрешает встраивание</p>
+                <p className="text-xs text-muted-foreground max-w-md">
+                  Запись будет открываться у ученика в новой вкладке. Для лучшего опыта <strong>скачайте видео</strong> из {embedResult.serviceLabel || 'сервиса'} и загрузите файлом ниже — оно будет проигрываться прямо в уроке.
+                </p>
+              </div>
+              <div className="flex flex-wrap items-center justify-center gap-2 mt-1">
+                <a
+                  href={embedResult.value || ''}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-primary text-primary-foreground rounded-md text-xs font-medium hover:bg-primary/90 transition-colors"
+                >
+                  <ExternalLink className="w-3.5 h-3.5" />
+                  Открыть запись
+                </a>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="gap-1.5 text-xs"
+                  onClick={() => onUpdate({ videoUrl: "" })}
+                >
+                  <Download className="w-3.5 h-3.5" />
+                  Загрузить файлом
+                </Button>
+              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="absolute top-2 right-2 opacity-0 group-hover/video:opacity-100 z-10"
+                onClick={() => onUpdate({ videoUrl: "" })}
+              >
+                Удалить
+              </Button>
             </div>
           ) : (
             <LazyMediaPreview type="iframe">
