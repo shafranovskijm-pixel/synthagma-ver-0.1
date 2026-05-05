@@ -138,6 +138,18 @@ export const CoursesTab = React.memo(function CoursesTab({ organizationId, onCou
     } catch { /* ignore */ }
   }, [organizationId]);
 
+  // Слушаем событие "курс добавлен из магазина" — мгновенно перетягиваем список
+  React.useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent).detail as { organizationId?: string } | undefined;
+      if (!detail?.organizationId || detail.organizationId === organizationId) {
+        refresh();
+      }
+    };
+    window.addEventListener('org-courses-refresh', handler);
+    return () => window.removeEventListener('org-courses-refresh', handler);
+  }, [organizationId, refresh]);
+
   const [folderViewMode, setFolderViewModeLocal] = useState<"folders" | "flat">(
     menuSettings?.courseFolderMode === "flat" ? "flat" : "folders"
   );

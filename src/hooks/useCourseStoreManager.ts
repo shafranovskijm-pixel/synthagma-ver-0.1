@@ -302,6 +302,13 @@ export function useCourseStoreManager({ organizationId, userRole = 'organization
       }
       refetchLimits();
 
+      // Уведомить список курсов организации, чтобы он подтянул новый курс без перезагрузки
+      try {
+        if (typeof window !== 'undefined' && organizationId) {
+          window.dispatchEvent(new CustomEvent('org-courses-refresh', { detail: { organizationId } }));
+        }
+      } catch { /* ignore */ }
+
       try {
         let buyerName = 'Неизвестный';
         let buyerEmail = '';
