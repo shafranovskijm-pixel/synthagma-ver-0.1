@@ -354,9 +354,41 @@ export function useCourseBuilder(propCourseId?: string) {
       const { data, error } = await safeInvoke<any>("generate-course-structure", { body: { title: courseTitle, description: courseDescription } });
       if (error) throw new Error(error.message || "Ошибка генерации");
       if (!data.success) throw new Error(data.error || "Ошибка генерации структуры");
-      const generatedLessons: Lesson[] = (data.lessons || []).map((l: any) => ({ id: crypto.randomUUID(), type: l.type as LessonType, title: l.title, content: l.type === "text" || l.type === "test" ? (l.description || "") : "", expanded: false, blocks: l.type === "text" ? [] : undefined }));
-      if (generatedLessons.length > 0) { setLessons(prev => [...prev, ...generatedLessons]); toast.success(`Добавлено ${generatedLessons.length} уроков`); markAsChanged(); setTimeout(() => { saveCourse(true); }, 500); }
-      else toast.error("AI не вернул уроки");
+
+      // Гарантируем наличие модуля — иначе уроки не отрисуются в сайдбаре (он показывает только уроки внутри модулей).
+      const cId = await ensureCourseId();
+      let targetModuleId: string | null = null;
+      if (modules.length > 0) {
+        targetModuleId = [...modules].sort((a, b) => a.order_index - b.order_index)[0].id;
+      } else if (cId) {
+        const { data: newModule, error: modErr } = await supabase
+          .from("course_modules" as any)
+          .insert({ course_id: cId, title: "Основной", order_index: 0 })
+          .select()
+          .single();
+        if (modErr || !newModule) { toast.error("Не удалось создать модуль для уроков"); return; }
+        const m = newModule as any;
+        targetModuleId = m.id;
+        setModules(prev => [...prev, { id: m.id, course_id: m.course_id, title: m.title, order_index: m.order_index, collapsed: false }]);
+      }
+
+      const generatedLessons: Lesson[] = (data.lessons || []).map((l: any) => ({
+        id: crypto.randomUUID(),
+        type: l.type as LessonType,
+        title: l.title,
+        content: l.type === "text" || l.type === "test" ? (l.description || "") : "",
+        expanded: false,
+        blocks: l.type === "text" ? [] : undefined,
+        module_id: targetModuleId,
+      }));
+      if (generatedLessons.length > 0) {
+        setLessons(prev => [...prev, ...generatedLessons]);
+        toast.success(`Добавлено ${generatedLessons.length} уроков`);
+        markAsChanged();
+        setTimeout(() => { saveCourse(true); }, 500);
+      } else {
+        toast.error("AI не вернул уроки");
+      }
     } catch (error: unknown) { toast.error(error instanceof Error ? error.message : "Ошибка генерации"); }
     finally { setIsGenerating(false); }
   };
