@@ -62,7 +62,11 @@ function getProxyWsBase(): string {
 // Принудительный прокси сейчас никому не нужен: основной домен
 // sintagma.com.ru ходит в Supabase напрямую. Прокси-режим включается лениво
 // только при фактической сетевой блокировке (см. installProxyFetch ниже).
-const FORCE_PROXY_HOSTS_EXACT = new Set<string>([]);
+// синтагма.рф (punycode) — фронт там, а Supabase заблокирован у российских провайдеров.
+const FORCE_PROXY_HOSTS_EXACT = new Set<string>([
+  'xn--80aaiswd0ak.xn--p1ai',
+  'www.xn--80aaiswd0ak.xn--p1ai',
+]);
 
 // Любой кастомный домен на Timeweb (twc1.net) — тоже включаем прокси,
 // потому что фронт там, а бэкенд за блокировкой.
