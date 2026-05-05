@@ -63,7 +63,10 @@ export function QuickStartCard() {
       description: "Загрузите свою программу или возьмите готовую из каталога.",
       done: hasCourse,
       cta: "Создать курс",
-      action: () => window.location.assign("/course-builder"),
+      action: () => {
+        d.tabNavigation.setActiveTab("courses" as any);
+        setTimeout(() => window.dispatchEvent(new CustomEvent('org-create-course')), 100);
+      },
     },
     {
       id: "logo",
