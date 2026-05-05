@@ -1,5 +1,11 @@
 /**
- * Готовый Nginx-конфиг для reverse proxy на отдельном VDS (api.sintagma.com.ru).
+ * Готовый Nginx-конфиг для reverse proxy на отдельном VDS Timeweb (176.98.178.203).
+ *
+ * Назначение: обход блокировки *.supabase.co в РФ без VPN для домена синтагма.рф.
+ * Полностью независим от sintagma.com.ru и Cloudflare.
+ *
+ * Домен: api.синтагма.рф  (punycode: api.xn--80aaiswd0ak.xn--p1ai)
+ * DNS: одна A-запись `api → 176.98.178.203` у регистратора .рф (Timeweb/reg.ru/...).
  *
  * Префиксы должны точно совпадать с SAME_ORIGIN_PREFIX в src/utils/proxyFetch.ts:
  *   /sb-api/        → https://<supabase>/                (auth/rest HTTP)
@@ -7,18 +13,21 @@
  *   /sb-storage/    → https://<supabase>/storage/v1/
  *   /sb-realtime    → wss://<supabase>/realtime/v1/websocket
  *
- * CORS: фронт хостится на другом домене (Timeweb App / Lovable / sintagma.com.ru),
- * поэтому браузер шлёт preflight OPTIONS — на каждый location нужны ACAO/ACAH/ACAM.
+ * Установка SSL:
+ *   sudo certbot --nginx -d api.xn--80aaiswd0ak.xn--p1ai
+ *   (домен передавать ИМЕННО в punycode — Let's Encrypt IDN не понимает)
  */
 
-export const NGINX_PROXY_CONFIG = `# === Sintagma reverse proxy (api.sintagma.com.ru) ===
-# /etc/nginx/sites-available/api.sintagma.com.ru.conf
-# certbot --nginx -d api.sintagma.com.ru   # после первой установки добавит блок 443
+export const NGINX_PROXY_CONFIG = `# === Sintagma reverse proxy для синтагма.рф ===
+# /etc/nginx/sites-available/api.sintagma-rf.conf
+# ln -s /etc/nginx/sites-available/api.sintagma-rf.conf /etc/nginx/sites-enabled/
+# certbot --nginx -d api.xn--80aaiswd0ak.xn--p1ai
 
 map $http_origin $cors_origin {
     default "";
-    "~^https?://(www\\.)?sintagma\\.com\\.ru$"            $http_origin;
+    # синтагма.рф (punycode) — основной домен
     "~^https?://(www\\.)?xn--80aaiswd0ak\\.xn--p1ai$"     $http_origin;
+    # preview / staging
     "~^https?://[a-z0-9-]+\\.twc1\\.net$"                  $http_origin;
     "~^https?://[a-z0-9-]+\\.lovable\\.app$"               $http_origin;
     "~^https?://[a-z0-9-]+\\.lovableproject\\.com$"        $http_origin;
@@ -28,9 +37,10 @@ map $http_origin $cors_origin {
 server {
     listen 80;
     listen [::]:80;
-    server_name api.sintagma.com.ru;
+    # ВАЖНО: nginx понимает только punycode
+    server_name api.xn--80aaiswd0ak.xn--p1ai;
 
-    # Backend
+    # Backend — Supabase
     set $sb_host "atxwvjxbqjgkbjlhsdch.supabase.co";
 
     resolver 1.1.1.1 8.8.8.8 ipv6=off valid=300s;
@@ -47,10 +57,8 @@ server {
     proxy_set_header X-Forwarded-Proto $scheme;
     proxy_read_timeout 300s;
     proxy_send_timeout 300s;
-    
-    # Supabase уже может присылать свои CORS-заголовки.
-    # Если не скрыть их, браузер увидит дублирующийся
-    # Access-Control-Allow-Origin и заблокирует запрос.
+
+    # Скрываем CORS-заголовки от Supabase, чтобы не было дублей
     proxy_hide_header Access-Control-Allow-Origin;
     proxy_hide_header Access-Control-Allow-Credentials;
     proxy_hide_header Access-Control-Allow-Methods;
@@ -58,9 +66,6 @@ server {
     proxy_hide_header Access-Control-Allow-Expose-Headers;
     proxy_hide_header Access-Control-Expose-Headers;
     proxy_hide_header Access-Control-Max-Age;
-
-    # ---- общий CORS-блок (вызывается из каждого location) ----
-    # Используется через include + map; здесь — макрос на if внутри location.
 
     # 1) REST / Auth — /sb-api/ → /
     location /sb-api/ {
