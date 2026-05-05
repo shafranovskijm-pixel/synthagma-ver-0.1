@@ -1,50 +1,50 @@
-# Защита от потерянных регистраций
+Проблема найдена точно: на `sintagma.com.ru` приложение принудительно отправляет все backend-запросы через legacy-прокси `https://api.sintagma.com.ru`, а этот адрес сейчас недоступен. Поэтому на кастомном домене регистрация не проходит, а в preview Lovable — проходит, потому что там приложение ходит в backend напрямую.
 
-## Проблема
-Сейчас Telegram-уведомление приходит только при **успешной** регистрации. Если падает edge-функция, signup в Supabase или клиент закрывает вкладку — лид теряется бесследно. С платной рекламы это критично.
+Что подтверждено:
+- В `src/utils/proxyFetch.ts` жёстко задан `PROXY_BASE_URL = 'https://api.sintagma.com.ru'`.
+- Там же домен `sintagma.com.ru` включён в `FORCE_PROXY_HOSTS_EXACT`, то есть прокси включается всегда.
+- В браузере на `https://sintagma.com.ru/register-organization` запрос падает с `net::ERR_TUNNEL_CONNECTION_FAILED` на `https://api.sintagma.com.ru/sb-api/rest/v1/app_settings?...`.
+- В preview этого нет, потому что forced proxy для preview не срабатывает.
 
-## Решение — 4 уровня защиты
+План исправления:
 
-### 1. Таблица `registration_attempts`
-Новая таблица фиксирует каждую попытку:
-- `step`: `submitted` / `success` / `failed`
-- Контакты: `email`, `phone`, `org_name`, `contact_name`, `inn`
-- Маркетинг: `utm_source/medium/campaign/term/content`, `ref_code`, `page_url`, `referrer`
-- Технические: `user_agent`, `ip`, `error_message`, `created_at`
-- Индексы по `created_at`, `step`, `email`, `(ip, created_at)`
-- RLS: SELECT/UPDATE — только админам. INSERT — через edge с service-role.
+1. Убрать принудительную зависимость `sintagma.com.ru` от `api.sintagma.com.ru`
+- Изменить `src/utils/proxyFetch.ts`, чтобы `sintagma.com.ru` не форсировал legacy-прокси.
+- Перевести `PROXY_BASE_URL` на безопасный режим:
+  - либо same-origin (`window.location.origin`) для `/sb-api`, `/sb-functions`, `/sb-storage`, `/sb-realtime`,
+  - либо пустой base с прямым каналом по умолчанию и fallback только при реальной сетевой блокировке.
+- Сохранить lazy fallback-логику только для тех доменов/сред, где прокси реально нужен.
 
-### 2. Edge `log-registration-attempt` (verify_jwt = false)
-- Принимает `attempt_id` (опционально) + поля → upsert в `registration_attempts`.
-- Rate-limit: ≤5 попыток с одного IP за 10 минут.
-- При `step='failed'` — шлёт в Telegram алерт: «⚠️ FAILED регистрация: <email>, <тел>, <ИНН>, ошибка: ...» с tel:/mailto: ссылками для быстрого звонка.
-- Дедуп Telegram при повторных F5 (один email — одно уведомление в час).
+2. Привести UI и тексты в соответствие новой схеме
+- Обновить `src/components/ProxyChannelIndicator.tsx`, чтобы он не показывал пользователю, что соединение идёт через `api.sintagma.com.ru`, если это больше не так.
+- Обновить `src/pages/admin/ProxySetup.tsx` и `src/utils/nginxProxyConfig.ts` под текущую инфраструктуру: либо same-origin Nginx-префиксы, либо полностью пометить legacy-сценарий как необязательный/архивный.
 
-### 3. Доработка `useRegisterOrganization.ts`
-- При монтировании — захват `utm_*` из URL в localStorage (по аналогии с `captureRefFromUrl`).
-- В `handleSubmit`:
-  - **до** вызова `register-organization` → лог `step='submitted'` (получаем `attempt_id`)
-  - на успехе → `step='success'` с `user_id` и `organization_id`
-  - в `catch` → `step='failed'` с `error_message` (Telegram алерт уйдёт автоматически из edge)
-- Резерв через `navigator.sendBeacon` — если вкладка закроется во время сабмита, попытка всё равно долетит.
+3. Проверить, что регистрация на кастомном домене снова работает в прямом канале
+- Протестировать открытие `/register-organization` на `sintagma.com.ru`.
+- Проверить, что первичные запросы (`app_settings`, auth, edge functions) больше не идут на `api.sintagma.com.ru`.
+- Проверить, что submit регистрации доходит до backend и не падает на инициализации/автологине.
 
-### 4. Админ-страница `/admin/registration-leads`
-- Таблица: дата • статус (badge зелёный/красный/жёлтый) • организация • контакт • email • телефон • ИНН • тариф • UTM-источник • ошибка
-- Фильтры: статус (все / failed / success / submitted), период (24ч/7д/30д/custom), UTM-источник
-- Поиск по email/телефону/ИНН
-- Кнопки в строке: «Позвонить» (tel:), «Написать» (mailto:), «Скопировать контакты»
-- Стат-карточки сверху: всего попыток, успехов, провалов, конверсия %
-- Пункт в админ-сайдбаре «Лиды регистрации»
+4. Дать вам короткий список, что можно безопасно удалить во внешней инфраструктуре
+- Если после исправления код больше не использует `api.sintagma.com.ru`, перечислю, какие записи/настройки Cloudflare можно снести без влияния на Timeweb/Nginx-схему.
+- Отдельно отмечу, какие записи трогать нельзя: основной домен и активные DNS-записи деплоя.
 
-## Что получит клиент
-1. **Ноль потерянных лидов** — даже при технических сбоях контакт сохранён + менеджер сразу получает алерт в Telegram.
-2. **UTM-аналитика** — видно, какие рекламные кампании реально приводят регистрации.
-3. **Скорость реакции** — алерт приходит мгновенно, можно перезвонить лиду за 5 минут.
-4. **Диагностика проблем** — массовые `failed` сразу видны в админке (например, упал edge или DaData).
+Технические детали:
+```text
+Сейчас:
+  sintagma.com.ru -> frontend
+  frontend -> api.sintagma.com.ru/sb-* -> FAIL
 
-## Технические детали
-- Миграция: `registration_attempts` + RLS + индексы + триггер `updated_at`.
-- Edge `log-registration-attempt`: zod-валидация, in-memory rate-limit по IP, Telegram через существующий `send-telegram-notification`.
-- `src/utils/utmCapture.ts` — новый утилитарный модуль (по образцу `referralCookie.ts`), вызывается в `App.tsx`.
-- `src/pages/admin/RegistrationLeads.tsx` — новая страница + маршрут в `adminRoutes.tsx` + ссылка в админ-сайдбаре.
-- Никаких изменений в существующей логике успешной регистрации — только добавляется логирование вокруг.
+После правки:
+  sintagma.com.ru -> frontend
+  frontend -> backend напрямую
+  или
+  frontend -> same-origin /sb-* только если это реально настроено и нужно
+```
+
+Файлы, которые затрону:
+- `src/utils/proxyFetch.ts`
+- `src/components/ProxyChannelIndicator.tsx`
+- `src/pages/admin/ProxySetup.tsx`
+- `src/utils/nginxProxyConfig.ts`
+
+Если одобрите, следующим сообщением сразу внесу правки и затем проверю регистрацию именно на `sintagma.com.ru`.
