@@ -96,6 +96,53 @@ export function useRegisterOrganization() {
     finally { setIsCheckingPromo(false); }
   };
 
+  const buildAttemptPayload = (extra: Record<string, any> = {}) => {
+    const utm = getUtmData() || {};
+    const refCode = getRefCode();
+    return {
+      email, phone: phone || null, org_name: orgName, contact_name: contactName,
+      inn: inn || null, selected_plan: selectedPlan,
+      promo_code: promoApplied ? promoCode.trim().toUpperCase() : null,
+      ref_code: refCode || null,
+      utm_source: utm.utm_source || null,
+      utm_medium: utm.utm_medium || null,
+      utm_campaign: utm.utm_campaign || null,
+      utm_term: utm.utm_term || null,
+      utm_content: utm.utm_content || null,
+      page_url: utm.page_url || (typeof window !== 'undefined' ? window.location.href : null),
+      referrer: utm.referrer || (typeof document !== 'undefined' ? document.referrer || null : null),
+      ...extra,
+    };
+  };
+
+  const logAttempt = async (
+    step: 'submitted' | 'success' | 'failed',
+    extra: Record<string, any> = {},
+    attemptId?: string | null,
+  ): Promise<string | null> => {
+    try {
+      const body = { step, attempt_id: attemptId || undefined, ...buildAttemptPayload(extra) };
+      const { data, error } = await supabase.functions.invoke('log-registration-attempt', { body });
+      if (error) { console.warn('logAttempt error:', error); return attemptId || null; }
+      return (data as any)?.attempt_id || attemptId || null;
+    } catch (e) {
+      console.warn('logAttempt exception:', e);
+      return attemptId || null;
+    }
+  };
+
+  const beaconLogFailure = (errorMessage: string, attemptId?: string | null) => {
+    try {
+      const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/log-registration-attempt`;
+      const body = JSON.stringify({
+        step: 'failed', attempt_id: attemptId || undefined, error_message: errorMessage,
+        ...buildAttemptPayload(),
+      });
+      const blob = new Blob([body], { type: 'application/json' });
+      navigator.sendBeacon?.(url, blob);
+    } catch (e) { console.warn('beaconLogFailure failed:', e); }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!orgName || !contactName || !email || !phone || !password) {
@@ -107,6 +154,14 @@ export function useRegisterOrganization() {
 
     setIsLoading(true);
     setIsRegistering(true);
+
+    // Step 1: log submission attempt before doing anything risky
+    const attemptId = await logAttempt('submitted');
+
+    // Setup safety net: if user closes tab during submit, log a failure via beacon
+    const unloadHandler = () => beaconLogFailure('Пользователь закрыл вкладку во время регистрации', attemptId);
+    window.addEventListener('beforeunload', unloadHandler);
+
     try {
       const { data: regData, error: regError } = await supabase.functions.invoke('register-organization', {
         body: {
@@ -148,16 +203,22 @@ export function useRegisterOrganization() {
       try { if (orgId) await supabase.functions.invoke("seed-welcome-course", { body: { organizationId: orgId } }); }
       catch (seedErr) { console.error("Seed welcome course error:", seedErr); }
 
+      // Mark attempt as successful
+      await logAttempt('success', { user_id: userId || null, organization_id: orgId || null }, attemptId);
 
       if (selectedPlan && selectedPlan !== 'free') {
         toast.success("Спасибо за регистрацию!", { description: "Ваш тариф будет подключён после оплаты. Наш менеджер свяжется с вами. Спасибо!" });
       } else {
         toast.success("Успешно!", { description: "Организация зарегистрирована. Добро пожаловать!" });
       }
+      window.removeEventListener('beforeunload', unloadHandler);
       navigate("/organization", { replace: true });
     } catch (error: any) {
       let errorMessage = error.message;
       if (error.message?.includes("already registered")) errorMessage = "Пользователь с таким email уже зарегистрирован";
+      // Log failed attempt — this also triggers Telegram alert from edge
+      await logAttempt('failed', { error_message: errorMessage }, attemptId);
+      window.removeEventListener('beforeunload', unloadHandler);
       toast.error("Ошибка регистрации", { description: errorMessage });
     }
     setIsLoading(false);
