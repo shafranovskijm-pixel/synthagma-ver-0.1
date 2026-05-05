@@ -31,10 +31,11 @@ const SUPABASE_HOST = (() => {
   return 'atxwvjxbqjgkbjlhsdch.supabase.co';
 })();
 
-// Базовый URL прокси-сервера. Сейчас legacy-домен api.sintagma.com.ru
-// больше не используется — fallback идёт через same-origin Nginx (/sb-*),
-// если он настроен на том же хосте, где живёт фронтенд.
-const PROXY_BASE_URL = '';
+// Базовый URL прокси-сервера на отдельном VDS (NGINX, Timeweb).
+// Используется для домена синтагма.рф, чтобы обойти блокировку *.supabase.co
+// в РФ без VPN, минуя Cloudflare и sintagma.com.ru.
+// Punycode для api.синтагма.рф.
+const PROXY_BASE_URL = 'https://api.xn--80aaiswd0ak.xn--p1ai';
 
 // Префиксы — должны совпадать с Nginx-конфигом на VDS.
 const SAME_ORIGIN_PREFIX = {
@@ -61,7 +62,11 @@ function getProxyWsBase(): string {
 // Принудительный прокси сейчас никому не нужен: основной домен
 // sintagma.com.ru ходит в Supabase напрямую. Прокси-режим включается лениво
 // только при фактической сетевой блокировке (см. installProxyFetch ниже).
-const FORCE_PROXY_HOSTS_EXACT = new Set<string>([]);
+// синтагма.рф (punycode) — фронт там, а Supabase заблокирован у российских провайдеров.
+const FORCE_PROXY_HOSTS_EXACT = new Set<string>([
+  'xn--80aaiswd0ak.xn--p1ai',
+  'www.xn--80aaiswd0ak.xn--p1ai',
+]);
 
 // Любой кастомный домен на Timeweb (twc1.net) — тоже включаем прокси,
 // потому что фронт там, а бэкенд за блокировкой.
