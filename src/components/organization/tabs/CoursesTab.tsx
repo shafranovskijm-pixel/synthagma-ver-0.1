@@ -359,16 +359,27 @@ export const CoursesTab = React.memo(function CoursesTab({ organizationId, onCou
       {/* Content type tabs */}
       <div className="flex items-center gap-1 bg-muted rounded-xl p-1 w-fit">
         {[
-          { key: "courses" as const, icon: BookOpen, label: "Курсы" },
-          { key: "webinars" as const, icon: Video, label: "Вебинары" },
-          { key: "3d" as const, icon: Box, label: "3D-тренажёры" },
-          { key: "ai-tutor" as const, icon: Sparkles, label: "ИИ-преподаватель" },
+          { key: "courses" as const, icon: BookOpen, label: "Курсы", proBadge: false },
+          { key: "webinars" as const, icon: Video, label: "Вебинары", proBadge: true },
+          { key: "3d" as const, icon: Box, label: "3D-тренажёры", proBadge: true },
+          { key: "ai-tutor" as const, icon: Sparkles, label: "ИИ-преподаватель", proBadge: true },
         ].map(tab => (
-          <button key={tab.key} onClick={() => setContentTab(tab.key)} className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${contentTab === tab.key ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}>
+          <button
+            key={tab.key}
+            onClick={() => setContentTab(tab.key)}
+            title={tab.proBadge ? "Доступно в Профессиональном тарифе" : undefined}
+            className={`relative px-4 py-2 rounded-lg text-sm font-medium transition-colors ${contentTab === tab.key ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
+          >
             <tab.icon className="w-4 h-4 inline-block mr-2" />{tab.label}
+            {tab.proBadge && (
+              <span className="ml-2 inline-flex items-center rounded-full bg-gradient-to-r from-amber-400/20 to-amber-500/20 text-amber-600 dark:text-amber-400 border border-amber-500/30 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide leading-none">
+                Pro
+              </span>
+            )}
           </button>
         ))}
       </div>
+
 
       {/* Webinars */}
       {contentTab === "webinars" && (
