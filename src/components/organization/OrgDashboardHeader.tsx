@@ -283,8 +283,12 @@ export function OrgDashboardHeader() {
         </div>
       </div>
 
-      {/* Quick action chips under omnibox */}
-      <QuickActionChips />
+      {/* Quick action chips under omnibox — reveal on hover/focus of header */}
+      <div
+        className="max-h-0 opacity-0 overflow-hidden transition-all duration-300 ease-out hover:max-h-20 hover:opacity-100 focus-within:max-h-20 focus-within:opacity-100 group-hover/orgheader:max-h-20 group-hover/orgheader:opacity-100 group-focus-within/orgheader:max-h-20 group-focus-within/orgheader:opacity-100"
+      >
+        <QuickActionChips />
+      </div>
 
       {/* Hero banner with theme swiper — hidden on course details page (course banner takes its place) */}
       {activeTab !== "course-details" && (
