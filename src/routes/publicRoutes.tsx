@@ -102,6 +102,7 @@ export const publicRoutes = (
     <Route path="/document/share/:token" element={<DocumentSharePage />} />
     <Route path="/accept-invitation" element={<AcceptInvitation />} />
     <Route path="/connection-check" element={<ConnectionCheck />} />
+    <Route path="/demo-student-login" element={<DemoStudentLogin />} />
     <Route path="*" element={<NotFound />} />
   </>
 );
