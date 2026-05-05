@@ -1,45 +1,19 @@
-## Что уже готово
+## Что сделать
 
-26 обложек сгенерировано через Lovable AI (Nano Banana) и загружено в `course-files/marketplace/<slug>/cover-N.png`:
-
-| Категория | Обложек |
-|---|---|
-| Электробезопасность, Энергетика, Медицина, Рабочие профессии | по 3 |
-| Охрана труда (2 категории) | 5 общих |
-| Пожарная, Строительные, Промбез, Машинист, Слесари, Эко, Стройконтроль, Переподготовка, Разное | по 1 |
-
-Качество отличное — фотореалистичные, тёплый свет, единая teal-стилистика. Пример (Электробезопасность cover-1) — высоковольтная подстанция с электриком в СИЗ.
-
-## Что осталось сделать (нужно одобрение)
-
-### 1. Привязать обложки к курсам — миграция БД
-
-Скрипт пройдёт по всем 17 категориям и распределит обложки **round-robin** только по курсам, у которых `cover_image_url IS NULL`:
-
-```sql
-WITH ranked AS (
-  SELECT id, ((row_number() OVER (ORDER BY created_at, id) - 1) % arr_len) AS pick
-  FROM courses WHERE category_id = ? AND cover_image_url IS NULL
-)
-UPDATE courses SET cover_image_url = base_url || (paths ->> ranked.pick)
-FROM ranked WHERE courses.id = ranked.id;
+**1. `src/pages/DemoStudentLogin.tsx`** — перед `supabase.auth.signOut()` сохранить текущую сессию в `localStorage.demoStudentReturn`:
+```json
+{ "access_token": "...", "refresh_token": "...", "returnPath": "/organization" }
 ```
+`returnPath` берётся из `document.referrer` (если он того же origin и начинается с `/organization`, `/admin`, `/sales`, `/company`), иначе `/organization`.
 
-Затем синхронизация `marketplace_courses.preview_image_url` для маркетплейс-организации (`4ac2c05a…`) тем же значением, где preview пуст.
+**2. `src/pages/StudentDashboard.tsx`** — добавить флаг `isDemoStudent` (синхронно из `localStorage.getItem('demoStudentReturn')`). Если он true и не `isAdminView` — отрисовать фиксированную плашку сверху (стиль как у admin-bar) с двумя кнопками:
 
-**Существующие 6 ручных обложек НЕ затрагиваются.**
+- **«Назад в организацию»** — читает сохранённые токены, вызывает `supabase.auth.setSession({ access_token, refresh_token })`, удаляет ключ и `navigate(returnPath, { replace: true })`. Fallback при ошибке: `navigate('/auth')`.
+- **«Выйти»** — `supabase.auth.signOut()` + удалить ключ + `navigate('/auth')`.
 
-После применения:
-- ~308 курсов в маркетплейсе получат обложки
-- 4 демо-курса ученика автоматически унаследуют обложки своих категорий (электробез/первая помощь/охрана труда)
-- Карточки в кабинете ученика и в маркетплейсе перестанут показывать пустые плейсхолдеры
+Также учесть `isDemoStudent` в условии `md:mt-10` для основного контента, чтобы плашка не перекрывала контент.
 
-### 2. Файлы
-
-- Новая миграция: `supabase/migrations/<ts>_assign_marketplace_covers.sql`
-
-Никаких изменений во фронтенде — компоненты уже умеют отображать `cover_image_url`/`preview_image_url`.
-
----
-
-Запускать миграцию?
+## Почему так
+- Refresh-token валиден — `setSession` бесшовно вернёт пользователя организации без повторного ввода пароля.
+- Хранение токенов в `localStorage` безопасно: Supabase SDK по умолчанию хранит их там же.
+- Edge-функцию `demo-student-login` менять не нужно.
