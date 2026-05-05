@@ -37,7 +37,7 @@ export function ProxyChannelIndicator() {
           </div>
         </TooltipTrigger>
         <TooltipContent side="top" className="max-w-xs text-xs">
-          Соединение с сервером идёт через защищённый резервный канал (api.sintagma.com.ru). Это нормально и не влияет на работу платформы.
+          Соединение с сервером идёт через резервный канал на том же домене. Это нормально и не влияет на работу платформы.
         </TooltipContent>
       </Tooltip>
     </TooltipProvider>
