@@ -104,14 +104,7 @@ export function useStudentDashboard() {
   const [loading, setLoading] = useState(true);
   const [totalTimeSpent, setTotalTimeSpent] = useState(0);
   const [totalCompletedLessons, setTotalCompletedLessons] = useState(0);
-  const [isPreviewMode, setIsPreviewMode] = useState(() => {
-    const preview = localStorage.getItem('previewStudentDashboard');
-    if (preview === 'true') {
-      localStorage.removeItem('previewStudentDashboard');
-      return true;
-    }
-    return false;
-  });
+  const [isPreviewMode] = useState(false);
   const [isAdminView, setIsAdminView] = useState(() => {
     const adminView = localStorage.getItem('adminViewAsStudent');
     if (adminView) {
