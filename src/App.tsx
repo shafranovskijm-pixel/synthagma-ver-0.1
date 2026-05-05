@@ -18,6 +18,7 @@ import { ProxyChannelIndicator } from "./components/ProxyChannelIndicator";
 import { installTestQueueListeners } from "./utils/testAnswerQueue";
 import { useThemePersonalization } from "@/components/ui/ThemePersonalization";
 import { captureRefFromUrl } from "@/utils/referralCookie";
+import { captureUtmFromUrl } from "@/utils/utmCapture";
 import { BackgroundUploadsProvider } from "@/contexts/BackgroundUploadsContext";
 import { BackgroundUploadsTray } from "@/components/uploads/BackgroundUploadsTray";
 import { SupportChatWidget } from "@/components/support/SupportChatWidget";
@@ -32,6 +33,7 @@ import {
 } from "@/routes";
 
 captureRefFromUrl();
+captureUtmFromUrl();
 installTestQueueListeners();
 
 const queryClient = new QueryClient({
