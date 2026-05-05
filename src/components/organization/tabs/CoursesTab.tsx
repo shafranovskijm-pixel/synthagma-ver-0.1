@@ -583,3 +583,68 @@ export const CoursesTab = React.memo(function CoursesTab({ organizationId, onCou
     </div>
   );
 });
+
+const PRO_TAB_META: Record<string, { title: string; description: string; benefits: string[] }> = {
+  webinars: {
+    title: "Вебинары",
+    description: "Проводите живые онлайн-занятия и трансляции с записью на Kinescope Live.",
+    benefits: [
+      "Интерактивные вебинары с чатом и записью",
+      "Безопасная трансляция через Kinescope",
+      "Автосохранение записей в курсах",
+    ],
+  },
+  "3d": {
+    title: "3D-тренажёры",
+    description: "Интерактивные 3D-симуляции для практической отработки навыков.",
+    benefits: [
+      "Готовые сценарии и кастомные тренажёры",
+      "Запуск прямо в уроке без установки",
+      "Автоматическая фиксация прохождения",
+    ],
+  },
+  "ai-tutor": {
+    title: "ИИ-преподаватель",
+    description: "Голосовой ИИ-аватар, который ведёт диалог с учеником по теме урока.",
+    benefits: [
+      "Персональные голосовые консультации",
+      "Настройка тона и сценариев под курс",
+      "Экономия времени преподавателей",
+    ],
+  },
+};
+
+function ProFeatureLocked({ tab, onNavigateToTariffs }: { tab: string; onNavigateToTariffs: () => void }) {
+  const meta = PRO_TAB_META[tab] || PRO_TAB_META["webinars"];
+  return (
+    <div className="max-w-3xl mx-auto py-8 lg:py-12">
+      <Card className="p-8 lg:p-12 text-center bg-gradient-to-br from-primary/5 via-card to-card border-primary/20">
+        <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-primary/15 text-primary mb-6">
+          <Lock className="w-8 h-8" />
+        </div>
+        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary text-xs font-semibold uppercase tracking-wide mb-4">
+          <Sparkles className="w-3.5 h-3.5" />
+          Профессиональный тариф
+        </div>
+        <h2 className="text-2xl lg:text-3xl font-display font-bold mb-3">{meta.title}</h2>
+        <p className="text-muted-foreground mb-8 max-w-xl mx-auto">{meta.description}</p>
+        <ul className="text-left max-w-md mx-auto mb-8 space-y-2.5">
+          {meta.benefits.map((b) => (
+            <li key={b} className="flex items-start gap-2.5 text-sm">
+              <span className="mt-0.5 inline-flex items-center justify-center w-5 h-5 rounded-full bg-primary/15 text-primary shrink-0">
+                <Sparkles className="w-3 h-3" />
+              </span>
+              <span className="text-foreground/85">{b}</span>
+            </li>
+          ))}
+        </ul>
+        <Button size="lg" onClick={onNavigateToTariffs} className="rounded-xl gap-2">
+          Перейти к тарифам
+        </Button>
+        <p className="text-xs text-muted-foreground mt-4">
+          Доступно на тарифах «Профессиональный» и «Максимальный».
+        </p>
+      </Card>
+    </div>
+  );
+}
