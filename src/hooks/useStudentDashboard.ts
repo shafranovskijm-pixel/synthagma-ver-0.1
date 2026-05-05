@@ -10,11 +10,6 @@ import { toast } from "sonner";
 import { useTheme } from "next-themes";
 import { useStudentDashboardSnapshot } from "@/hooks/useStudentDashboardSnapshot";
 
-import demoCourseSafety from "@/assets/demo/course-safety.jpg";
-import demoCourseFire from "@/assets/demo/course-fire.jpg";
-import demoCourseFirstaid from "@/assets/demo/course-firstaid.jpg";
-import demoCourseElectrical from "@/assets/demo/course-electrical.jpg";
-import demoOrgBanner from "@/assets/demo/org-banner.jpg";
 
 export interface StudentCourse {
   id: string;
