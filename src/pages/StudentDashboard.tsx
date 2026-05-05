@@ -389,10 +389,49 @@ export default function StudentDashboard() {
           </Button>
         </div>
       )}
-      {isPreviewMode && !isAdminView && (
+      {isPreviewMode && !isAdminView && !isDemoStudent && (
         <div className="fixed top-0 inset-x-0 bg-primary text-primary-foreground py-2 px-4 text-center text-sm z-50 flex items-center justify-center gap-2">
           <Eye className="w-4 h-4" />Режим предпросмотра
           <Button size="sm" variant="secondary" className="ml-4 h-7" onClick={() => window.close()}>Закрыть</Button>
+        </div>
+      )}
+      {isDemoStudent && !isAdminView && (
+        <div className="fixed top-0 left-0 right-0 z-50 bg-primary text-primary-foreground py-2 px-4 flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <Eye className="w-4 h-4" />
+            <span className="text-sm font-medium">Демо-кабинет ученика</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button variant="secondary" size="sm" className="gap-1" onClick={async () => {
+              try {
+                const raw = localStorage.getItem('demoStudentReturn');
+                const data = raw ? JSON.parse(raw) : null;
+                localStorage.removeItem('demoStudentReturn');
+                if (data?.access_token && data?.refresh_token) {
+                  await supabase.auth.signOut();
+                  const { error } = await supabase.auth.setSession({
+                    access_token: data.access_token,
+                    refresh_token: data.refresh_token,
+                  });
+                  if (error) throw error;
+                  window.location.href = data.returnPath || '/organization';
+                } else {
+                  navigate('/auth');
+                }
+              } catch (e) {
+                console.error('Return to org failed', e);
+                toast.error('Не удалось вернуться. Войдите заново.');
+                navigate('/auth');
+              }
+            }}>← Назад в организацию</Button>
+            <Button variant="secondary" size="sm" className="gap-1" onClick={async () => {
+              localStorage.removeItem('demoStudentReturn');
+              await supabase.auth.signOut();
+              navigate('/auth');
+            }}>
+              <X className="w-3 h-3" />Выйти
+            </Button>
+          </div>
         </div>
       )}
 
