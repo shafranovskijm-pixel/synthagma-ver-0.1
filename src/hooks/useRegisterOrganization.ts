@@ -97,7 +97,7 @@ export function useRegisterOrganization() {
   };
 
   const buildAttemptPayload = (extra: Record<string, any> = {}) => {
-    const utm = getUtmData() || {};
+    const utm: any = getUtmData() || {};
     const refCode = getRefCode();
     return {
       email, phone: phone || null, org_name: orgName, contact_name: contactName,
