@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback } from "react";
+import React, { useState, useMemo, useCallback, useEffect } from "react";
 import { useOrgDashboard } from "@/contexts/OrgDashboardContext";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -233,11 +233,18 @@ export const CoursesTab = React.memo(function CoursesTab({ organizationId, onCou
     setEditingCategory(category); setNewCategoryName(category.name); setNewCategoryColor(category.color); setShowCategoryDialog(true);
   };
 
-  const handleOpenCreateCourseDialog = () => {
+  const handleOpenCreateCourseDialog = useCallback(() => {
     const result = checkLimit('course');
     if (!result.allowed) { showLimitToast(result.message); return; }
     setShowCreateCourseDialog(true);
-  };
+  }, [checkLimit]);
+
+  // Listen for global "create course" requests (from header / quick actions / onboarding)
+  useEffect(() => {
+    const handler = () => handleOpenCreateCourseDialog();
+    window.addEventListener('org-create-course', handler);
+    return () => window.removeEventListener('org-create-course', handler);
+  }, [handleOpenCreateCourseDialog]);
 
   const handleCreateCourse = async () => {
     if (!newCourseTitle.trim()) return;

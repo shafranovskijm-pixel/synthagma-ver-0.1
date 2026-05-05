@@ -355,7 +355,10 @@ export function OrgDashboardHeader() {
                   <ShoppingBag className="w-4 h-4" />
                   <span className="hidden sm:inline">Добавить из магазина</span>
                 </Button>
-                <Button className="btn-gradient rounded-xl gap-2 text-xs" size="sm" onClick={() => navigate("/course-builder")}>
+                <Button className="btn-gradient rounded-xl gap-2 text-xs" size="sm" onClick={() => {
+                  d.tabNavigation.setActiveTab("courses" as any);
+                  setTimeout(() => window.dispatchEvent(new CustomEvent('org-create-course')), 0);
+                }}>
                   <Plus className="w-4 h-4" />
                   <span className="hidden sm:inline">Создать курс</span>
                 </Button>
