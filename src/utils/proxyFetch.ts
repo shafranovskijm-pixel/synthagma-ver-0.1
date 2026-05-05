@@ -31,10 +31,10 @@ const SUPABASE_HOST = (() => {
   return 'atxwvjxbqjgkbjlhsdch.supabase.co';
 })();
 
-// Базовый URL прокси-сервера (наш VDS на Timeweb с Nginx).
-// Если фронт хостится отдельно от прокси (App Platform → Caddy не управляем),
-// все Supabase-запросы летят сюда. Если пусто — используем same-origin (window.location.origin).
-const PROXY_BASE_URL = 'https://api.sintagma.com.ru';
+// Базовый URL прокси-сервера. Сейчас legacy-домен api.sintagma.com.ru
+// больше не используется — fallback идёт через same-origin Nginx (/sb-*),
+// если он настроен на том же хосте, где живёт фронтенд.
+const PROXY_BASE_URL = '';
 
 // Префиксы — должны совпадать с Nginx-конфигом на VDS.
 const SAME_ORIGIN_PREFIX = {
@@ -58,13 +58,10 @@ function getProxyWsBase(): string {
 // Хосты, на которых прокси-режим включается ВСЕГДА (без ожидания ошибки).
 // Сюда входят основной домен и любые публичные домены, где у пользователей
 // гарантированно может не быть прямого доступа к Supabase.
-const FORCE_PROXY_HOSTS_EXACT = new Set([
-  'sintagma.com.ru',
-  'www.sintagma.com.ru',
-  'app.sintagma.com.ru',
-  'xn--80aaiswd0ak.xn--p1ai',
-  'www.xn--80aaiswd0ak.xn--p1ai',
-]);
+// Принудительный прокси сейчас никому не нужен: основной домен
+// sintagma.com.ru ходит в Supabase напрямую. Прокси-режим включается лениво
+// только при фактической сетевой блокировке (см. installProxyFetch ниже).
+const FORCE_PROXY_HOSTS_EXACT = new Set<string>([]);
 
 // Любой кастомный домен на Timeweb (twc1.net) — тоже включаем прокси,
 // потому что фронт там, а бэкенд за блокировкой.
@@ -72,14 +69,25 @@ function isForcedProxyHost(): boolean {
   if (typeof window === 'undefined') return false;
   const h = window.location.hostname;
   if (FORCE_PROXY_HOSTS_EXACT.has(h)) return true;
-  if (h.endsWith('.twc1.net')) return true;
-  if (h.endsWith('.timeweb.cloud')) return true;
   return false;
 }
 
 const PROXY_FLAG_KEY = 'sintagma:use-proxy';
 const PROXY_LAST_PROBE_KEY = 'sintagma:proxy-last-probe';
+const PROXY_RESET_KEY = 'sintagma:proxy-reset-v2';
 const PROBE_INTERVAL_MS = 30 * 60 * 1000;
+
+// Одноразовый сброс залипшего legacy-прокси у пользователей,
+// которые уже сохранили флаг на api.sintagma.com.ru.
+try {
+  if (typeof window !== 'undefined' && !localStorage.getItem(PROXY_RESET_KEY)) {
+    localStorage.removeItem(PROXY_FLAG_KEY);
+    localStorage.removeItem(PROXY_LAST_PROBE_KEY);
+    localStorage.setItem(PROXY_RESET_KEY, '1');
+  }
+} catch {
+  // ignore
+}
 
 function getProxyMode(): boolean {
   if (isForcedProxyHost()) return true;
