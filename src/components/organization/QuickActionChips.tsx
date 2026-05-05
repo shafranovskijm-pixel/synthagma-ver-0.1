@@ -26,7 +26,10 @@ export function QuickActionChips() {
       id: "create-course",
       label: "Создать курс",
       icon: Plus,
-      run: () => navigate("/course-builder"),
+      run: () => {
+        d.tabNavigation.setActiveTab("courses" as any);
+        setTimeout(() => window.dispatchEvent(new CustomEvent('org-create-course')), 100);
+      },
     },
     "add-student": {
       id: "add-student",
