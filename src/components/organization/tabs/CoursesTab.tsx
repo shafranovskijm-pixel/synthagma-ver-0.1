@@ -186,10 +186,17 @@ export const CoursesTab = React.memo(function CoursesTab({ organizationId, onCou
   // Grouping
   const coursesByCategory = useMemo(() => {
     const grouped: Record<string, Course[]> = { uncategorized: [] };
+    const validCatIds = new Set(categories.map(c => c.id));
     categories.forEach(cat => { grouped[cat.id] = []; });
     filteredCourses.forEach(course => {
-      if (course.category_id && grouped[course.category_id]) grouped[course.category_id].push(course);
-      else grouped.uncategorized.push(course);
+      // Only group into a category folder if it belongs to THIS organization.
+      // Courses with a foreign/orphan category_id fall back to "Без категории"
+      // so they remain visible in folder view.
+      if (course.category_id && validCatIds.has(course.category_id)) {
+        grouped[course.category_id].push(course);
+      } else {
+        grouped.uncategorized.push(course);
+      }
     });
     return grouped;
   }, [filteredCourses, categories]);
