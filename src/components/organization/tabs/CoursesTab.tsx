@@ -254,7 +254,9 @@ export const CoursesTab = React.memo(function CoursesTab({ organizationId, onCou
       setNewCourseTitle(""); setNewCourseDescription(""); setNewCourseCategoryId(""); setShowInlineNewCategory(false);
       setInlineNewCategoryName(""); setInlineNewCategoryColor("#6366f1"); setShowCreateCourseDialog(false);
       refetchLimits();
-      navigate(`/course-builder/${course.id}`);
+      // Open inside the dashboard (same as clicking an existing course),
+      // not on the standalone /course-builder page.
+      handleCourseClick(course);
     }
     setIsCreatingCourse(false);
   };
