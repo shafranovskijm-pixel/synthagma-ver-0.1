@@ -5,6 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { safeInvoke } from "@/utils/safeInvoke";
 import { SUBSCRIPTION_PLANS, type SubscriptionPlan } from "@/constants/subscriptionPlans";
 import { getRefCode, clearRefCode, captureRefFromUrl } from "@/utils/referralCookie";
+import { getUtmData } from "@/utils/utmCapture";
 import { toast } from "sonner";
 import { getErrorMessage } from "@/utils/handleSupabaseError";
 
