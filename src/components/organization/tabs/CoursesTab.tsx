@@ -24,6 +24,9 @@ import { CategoryFolder } from "./courses/CategoryFolder";
 import { TransferCourseDialog } from "@/components/organization/dialogs/TransferCourseDialog";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 import { QuickStartCard } from "@/components/organization/QuickStartCard";
+import { useOrganizationCore } from "@/hooks/useOrganizationCore";
+import { Card } from "@/components/ui/card";
+import { Lock } from "lucide-react";
 
 interface CoursesTabProps {
   organizationId: string;
