@@ -352,6 +352,13 @@ export const CoursesTab = React.memo(function CoursesTab({ organizationId, onCou
 
   const [contentTab, setContentTab] = useState<"courses" | "webinars" | "3d" | "ai-tutor">("courses");
 
+  // Тарифный гейт: Вебинары / 3D / ИИ-преподаватель — только Профессиональный и Максимальный
+  const { data: orgCore } = useOrganizationCore(organizationId);
+  const isProTier = React.useMemo(() => {
+    const plan = (orgCore?.subscription_plan || 'free').toLowerCase();
+    return plan === 'professional' || plan === 'maximum';
+  }, [orgCore?.subscription_plan]);
+
   return (
     <div className="space-y-4 lg:space-y-6">
       <input ref={coverInputRef} type="file" accept="image/*" className="hidden" onChange={handleCoverUpload} />
