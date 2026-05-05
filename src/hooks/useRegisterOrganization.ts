@@ -107,46 +107,46 @@ export function useRegisterOrganization() {
     setIsLoading(true);
     setIsRegistering(true);
     try {
-      const { data: authData, error: authError } = await supabase.auth.signUp({
-        email, password,
-        options: { emailRedirectTo: `${window.location.origin}/organization`, data: { full_name: contactName } },
+      const { data: regData, error: regError } = await supabase.functions.invoke('register-organization', {
+        body: {
+          email, password, full_name: contactName,
+          org_name: orgName, phone: phone || null, inn: inn || null,
+          kpp: kpp || null, ogrn: ogrn || null,
+          legal_address: address || null, director_name: directorName || null,
+          subscription_plan: selectedPlan,
+          promo_code: promoApplied ? promoCode.trim().toUpperCase() : null,
+        },
       });
-      if (authError) throw authError;
+      if (regError) throw regError;
+      if ((regData as any)?.error) throw new Error((regData as any).error);
 
-      if (authData.user) {
-        const { data: orgId, error: orgError } = await supabase.rpc('create_organization', {
-          p_name: orgName, p_email: email, p_phone: phone || null, p_inn: inn || null,
-          p_contact_name: contactName, p_kpp: kpp || null, p_ogrn: ogrn || null,
-          p_legal_address: address || null, p_director_name: directorName || null,
-        });
-        if (orgError) throw orgError;
+      const orgId = (regData as any)?.organization_id;
+      const userId = (regData as any)?.user_id;
 
-        await supabase.from('organizations').update({ subscription_plan: selectedPlan, promo_code: promoApplied ? promoCode.trim().toUpperCase() : null } as any).eq('id', orgId);
+      // Sign in with the just-created credentials
+      const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
+      if (signInError) throw signInError;
 
-        const refCode = getRefCode();
-        if (refCode) { await supabase.rpc('register_referral', { p_ref_code: refCode, p_organization_id: orgId }); clearRefCode(); }
-        if (promoApplied && promoCode) { await supabase.rpc('increment_promo_usage' as any, { p_code: promoCode.trim().toUpperCase() }); }
+      const refCode = getRefCode();
+      if (refCode && orgId) { await supabase.rpc('register_referral', { p_ref_code: refCode, p_organization_id: orgId }); clearRefCode(); }
+      if (promoApplied && promoCode) { await supabase.rpc('increment_promo_usage' as any, { p_code: promoCode.trim().toUpperCase() }); }
 
-        const { error: profileError } = await supabase.from('profiles').update({ organization_id: orgId }).eq('user_id', authData.user.id);
-        if (profileError) throw new Error("Ошибка привязки профиля к организации: " + profileError.message);
-
-        const { error: roleError } = await supabase.rpc('upgrade_to_organization_role', { p_user_id: authData.user.id, p_organization_id: orgId });
-        if (roleError) throw new Error("Ошибка назначения роли организации: " + roleError.message);
-
-        let confirmedRole = await refreshUserRole(authData.user.id);
+      if (userId) {
+        let confirmedRole = await refreshUserRole(userId);
         for (let i = 0; i < 3 && confirmedRole !== 'organization'; i++) {
           await new Promise(resolve => setTimeout(resolve, 500));
-          confirmedRole = await refreshUserRole(authData.user.id);
+          confirmedRole = await refreshUserRole(userId);
         }
-
-        try {
-          const telegramMessage = `🏢 <b>Новая организация зарегистрирована!</b>\n\n<b>Название:</b> ${orgName}\n<b>Контактное лицо:</b> ${contactName || "—"}\n<b>Email:</b> ${email}\n<b>Телефон:</b> ${phone || "—"}\n<b>ИНН:</b> ${inn || "—"}\n<b>Тариф:</b> ${selectedPlan}${promoCode ? `\n<b>Промокод:</b> ${promoCode}` : ""}`;
-          await supabase.functions.invoke("send-telegram-notification", { body: { message: telegramMessage } });
-        } catch (tgErr) { console.error("Telegram notification error:", tgErr); }
-
-        try { await supabase.functions.invoke("seed-welcome-course", { body: { organizationId: orgId } }); }
-        catch (seedErr) { console.error("Seed welcome course error:", seedErr); }
       }
+
+      try {
+        const telegramMessage = `🏢 <b>Новая организация зарегистрирована!</b>\n\n<b>Название:</b> ${orgName}\n<b>Контактное лицо:</b> ${contactName || "—"}\n<b>Email:</b> ${email}\n<b>Телефон:</b> ${phone || "—"}\n<b>ИНН:</b> ${inn || "—"}\n<b>Тариф:</b> ${selectedPlan}${promoCode ? `\n<b>Промокод:</b> ${promoCode}` : ""}`;
+        await supabase.functions.invoke("send-telegram-notification", { body: { message: telegramMessage } });
+      } catch (tgErr) { console.error("Telegram notification error:", tgErr); }
+
+      try { if (orgId) await supabase.functions.invoke("seed-welcome-course", { body: { organizationId: orgId } }); }
+      catch (seedErr) { console.error("Seed welcome course error:", seedErr); }
+
 
       if (selectedPlan && selectedPlan !== 'free') {
         toast.success("Спасибо за регистрацию!", { description: "Ваш тариф будет подключён после оплаты. Наш менеджер свяжется с вами. Спасибо!" });
