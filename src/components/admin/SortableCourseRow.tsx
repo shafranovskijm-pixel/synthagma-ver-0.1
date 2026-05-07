@@ -3,7 +3,7 @@ import { CSS } from "@dnd-kit/utilities";
 import { TableRow, TableCell } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { BookOpen, ExternalLink, HardDrive, CheckCircle2, XCircle, RefreshCw, Trash2, GripVertical } from "lucide-react";
+import { BookOpen, HardDrive, CheckCircle2, XCircle, RefreshCw, Trash2, GripVertical } from "lucide-react";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 
 interface SortableCourseRowProps {
@@ -41,13 +41,7 @@ export function SortableCourseRow({ course, migratingCourseId, migrationResult, 
       <TableCell>
         <div className="flex items-center gap-2">
           <BookOpen className="w-4 h-4 text-primary" />
-          <button
-            onClick={() => window.open(`/course/${course.id}/edit`, '_blank')}
-            className="font-medium text-primary hover:underline cursor-pointer flex items-center gap-1"
-          >
-            {course.title}
-            <ExternalLink className="w-3 h-3" />
-          </button>
+          <span className="font-medium">{course.title}</span>
         </div>
       </TableCell>
       <TableCell className="text-center">

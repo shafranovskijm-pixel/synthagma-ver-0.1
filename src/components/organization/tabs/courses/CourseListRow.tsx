@@ -2,7 +2,7 @@ import React from "react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
-import { Edit, Eye, MoveRight, Users, BookOpen, GripVertical } from "lucide-react";
+import { Eye, MoveRight, Users, BookOpen, GripVertical } from "lucide-react";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import type { Course, CourseCategory } from "@/types";
@@ -12,13 +12,13 @@ interface SortableCourseListRowProps {
   isSelected: boolean;
   onToggleSelect: () => void;
   onClick: () => void;
-  onEdit: (e: React.MouseEvent) => void;
+  
   onPreview: (e: React.MouseEvent) => void;
   onMove: (e: React.MouseEvent) => void;
   category?: CourseCategory;
 }
 
-export function SortableCourseListRow({ course, isSelected, onToggleSelect, onClick, onEdit, onPreview, onMove, category }: SortableCourseListRowProps) {
+export function SortableCourseListRow({ course, isSelected, onToggleSelect, onClick, onPreview, onMove, category }: SortableCourseListRowProps) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: course.id });
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -83,14 +83,6 @@ export function SortableCourseListRow({ course, isSelected, onToggleSelect, onCl
       <td className="px-6 py-4">
         <TooltipProvider>
           <div className="flex gap-2">
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button variant="outline" size="sm" className="rounded-lg" onClick={onEdit}>
-                  <Edit className="w-4 h-4" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>Редактировать</TooltipContent>
-            </Tooltip>
             <Tooltip>
               <TooltipTrigger asChild>
                 <Button variant="outline" size="sm" className="rounded-lg" onClick={onPreview}>

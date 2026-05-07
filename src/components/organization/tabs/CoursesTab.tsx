@@ -557,6 +557,8 @@ export const CoursesTab = React.memo(function CoursesTab({ organizationId, onCou
                     getCategoryById={getCategoryById}
                     isAdminView={isAdminView}
                     onTransfer={handleTransfer}
+                    categories={categories}
+                    onMoveToCategory={handleQuickMoveCourse}
                   />
                 ))}
               </div>
@@ -583,7 +585,6 @@ export const CoursesTab = React.memo(function CoursesTab({ organizationId, onCou
                     <SortableCourseListRow key={course.id} course={course} isSelected={selectedCourseIds.has(course.id)}
                       onToggleSelect={() => toggleCourseSelection(course.id, { stopPropagation: () => {} } as React.MouseEvent)}
                       onClick={() => handleCourseClick(course)}
-                      onEdit={e => { e.stopPropagation(); navigate(`/course-builder/${course.id}`); }}
                       onPreview={e => { e.stopPropagation(); navigate(`/course-preview/${course.id}`); }}
                       onMove={e => openMoveCourseDialog(course, e)}
                       category={getCategoryById(course.category_id)}

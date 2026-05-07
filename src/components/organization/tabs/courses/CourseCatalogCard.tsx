@@ -1,8 +1,8 @@
 import React from "react";
-import { useNavigate } from "react-router-dom";
+
 import { Button } from "@/components/ui/button";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { BookOpen, Users, Edit, MoreVertical, Copy, ImagePlus, Wand2, CheckCircle, ArrowRightLeft } from "lucide-react";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger, DropdownMenuSub, DropdownMenuSubTrigger, DropdownMenuSubContent, DropdownMenuPortal } from "@/components/ui/dropdown-menu";
+import { BookOpen, Users, MoreVertical, Copy, ImagePlus, Wand2, CheckCircle, ArrowRightLeft, MoveRight, Check, FolderOpen } from "lucide-react";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 import type { Course, CourseCategory } from "@/types";
 
@@ -16,10 +16,11 @@ interface Props {
   getCategoryById: (id: string | null | undefined) => CourseCategory | undefined;
   isAdminView?: boolean;
   onTransfer?: (course: Course) => void;
+  categories?: CourseCategory[];
+  onMoveToCategory?: (course: Course, categoryId: string | null) => void;
 }
 
-export const CourseCatalogCard = React.memo(function CourseCatalogCard({ course, onCourseClick, onDuplicate, onCoverUpload, onGenerateCover, generatingCoverForCourse, getCategoryById, isAdminView, onTransfer }: Props) {
-  const navigate = useNavigate();
+export const CourseCatalogCard = React.memo(function CourseCatalogCard({ course, onCourseClick, onDuplicate, onCoverUpload, onGenerateCover, generatingCoverForCourse, getCategoryById, isAdminView, onTransfer, categories, onMoveToCategory }: Props) {
   const category = getCategoryById(course.category_id);
 
   return (
@@ -48,6 +49,43 @@ export const CourseCatalogCard = React.memo(function CourseCatalogCard({ course,
                 {generatingCoverForCourse === course.id ? <SigmaSpinner size="sm" className="mr-2" /> : <Wand2 className="w-4 h-4 mr-2" />}
                 {generatingCoverForCourse === course.id ? "Генерация..." : "Сгенерировать с ИИ"}
               </DropdownMenuItem>
+              {categories && onMoveToCategory && (
+                <>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuSub>
+                    <DropdownMenuSubTrigger>
+                      <MoveRight className="w-4 h-4 mr-2" />Переместить в категорию
+                    </DropdownMenuSubTrigger>
+                    <DropdownMenuPortal>
+                      <DropdownMenuSubContent className="rounded-xl max-h-72 overflow-y-auto">
+                        <DropdownMenuItem
+                          disabled={!course.category_id}
+                          onClick={e => { e.stopPropagation(); onMoveToCategory(course, null); }}
+                        >
+                          <FolderOpen className="w-4 h-4 mr-2 text-muted-foreground" />
+                          Без категории
+                          {!course.category_id && <Check className="w-4 h-4 ml-auto" />}
+                        </DropdownMenuItem>
+                        {categories.length > 0 && <DropdownMenuSeparator />}
+                        {categories.map(cat => {
+                          const isCurrent = course.category_id === cat.id;
+                          return (
+                            <DropdownMenuItem
+                              key={cat.id}
+                              disabled={isCurrent}
+                              onClick={e => { e.stopPropagation(); onMoveToCategory(course, cat.id); }}
+                            >
+                              <span className="w-3 h-3 rounded-full mr-2 shrink-0" style={{ backgroundColor: cat.color || 'var(--muted-foreground)' }} />
+                              <span className="truncate">{cat.name}</span>
+                              {isCurrent && <Check className="w-4 h-4 ml-auto shrink-0" />}
+                            </DropdownMenuItem>
+                          );
+                        })}
+                      </DropdownMenuSubContent>
+                    </DropdownMenuPortal>
+                  </DropdownMenuSub>
+                </>
+              )}
               {isAdminView && onTransfer && (
                 <>
                   <DropdownMenuSeparator />
@@ -90,9 +128,6 @@ export const CourseCatalogCard = React.memo(function CourseCatalogCard({ course,
           <div className="flex items-center gap-1"><Users className="w-3.5 h-3.5" />{course.studentsCount || 0} учеников</div>
           <div className="flex items-center gap-1"><BookOpen className="w-3.5 h-3.5" />{course.lessonsCount || 0} уроков</div>
         </div>
-        <Button variant="outline" className="w-full rounded-xl text-primary border-primary/30 hover:bg-primary/5 mt-1" onClick={e => { e.stopPropagation(); navigate(`/course-builder/${course.id}`); }}>
-          Редактировать курс
-        </Button>
       </div>
     </div>
   );
