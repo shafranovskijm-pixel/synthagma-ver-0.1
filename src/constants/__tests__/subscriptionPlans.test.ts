@@ -33,8 +33,8 @@ describe("getMinPlanForCategory", () => {
     expect(getMinPlanForCategory("webinars")?.id).toBe("professional");
   });
 
-  it("returns maximum for 3d_trainers", () => {
-    expect(getMinPlanForCategory("3d_trainers")?.id).toBe("maximum");
+  it("returns professional for 3d_trainers", () => {
+    expect(getMinPlanForCategory("3d_trainers")?.id).toBe("professional");
   });
 
   it("returns null for non-existent category", () => {
