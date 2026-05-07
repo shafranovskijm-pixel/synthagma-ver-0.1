@@ -105,6 +105,22 @@ export function OrganizationsManager({ openOrgId, onOpenOrgHandled }: Organizati
         </AlertDialogContent>
       </AlertDialog>
 
+      {/* Bulk Delete Confirmation */}
+      <AlertDialog open={h.bulkDeleteOpen} onOpenChange={h.setBulkDeleteOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Удалить {h.selectedOrgIds.length} организаций?</AlertDialogTitle>
+            <AlertDialogDescription>Будут удалены все выбранные организации со всеми связанными данными (курсы, ученики, документы и т.д.). Это действие нельзя отменить.</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={h.bulkDeleting}>Отмена</AlertDialogCancel>
+            <AlertDialogAction onClick={(e) => { e.preventDefault(); h.handleBulkDelete(); }} disabled={h.bulkDeleting} className="bg-destructive text-destructive-foreground">
+              {h.bulkDeleting ? <><SigmaSpinner size="sm" className="mr-2" />Удаление...</> : `Удалить ${h.selectedOrgIds.length}`}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       {/* Reset Password Dialog */}
       <Dialog open={!!h.resetPasswordOrg} onOpenChange={() => { h.setResetPasswordOrg(null); h.setNewPassword(""); }}>
         <DialogContent>
