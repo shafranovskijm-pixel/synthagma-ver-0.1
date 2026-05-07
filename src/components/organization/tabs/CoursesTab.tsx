@@ -520,6 +520,8 @@ export const CoursesTab = React.memo(function CoursesTab({ organizationId, onCou
               onToggleCourseSetting={handleToggleCourseSetting}
               onDuplicate={handleDuplicate}
               onMoveCourse={openMoveCourseDialog}
+              onMoveCourseToCategory={handleQuickMoveCourse}
+              allCategories={categories}
               isAdminView={isAdminView}
               onTransfer={handleTransfer}
               onCoverUpload={(id) => { setCoverUploadCourseId(id); setTimeout(() => coverInputRef.current?.click(), 100); }}
