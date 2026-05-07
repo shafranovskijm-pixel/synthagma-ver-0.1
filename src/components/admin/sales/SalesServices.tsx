@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Plus, Pencil, Trash2, GripVertical } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -18,6 +18,33 @@ export function SalesServices() {
   const [price, setPrice] = useState('');
 
   useEffect(() => { fetchServices(); }, [fetchServices]);
+
+  // Автосев дефолтных услуг (один раз после первой загрузки)
+  const seededRef = useRef(false);
+  useEffect(() => {
+    if (seededRef.current) return;
+    if (!services) return;
+    seededRef.current = true;
+    const defaults = [
+      {
+        name: 'Коробочная версия СИНТАГМА',
+        description: 'Неисключительная бессрочная лицензия с возможностью доработки и установки на ваш сервер. 3 месяца поддержки в стоимости.',
+        price: 540000,
+      },
+      {
+        name: 'Разработка сайта образовательной организации под ключ',
+        description: 'Профессиональный сайт учебного центра: адаптивный дизайн, каталог курсов, формы заявок, управление контентом.',
+        price: 55000,
+      },
+    ];
+    (async () => {
+      for (const d of defaults) {
+        if (!services.some(s => s.name.trim().toLowerCase() === d.name.toLowerCase())) {
+          await createService(d.name, d.description, d.price);
+        }
+      }
+    })();
+  }, [services, createService]);
 
   const handleSubmit = async () => {
     if (!name.trim()) return;

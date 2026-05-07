@@ -81,9 +81,9 @@ const Index = () => {
         <Hero showStars={false} />
         <EditorAndFrdoSections />
         <PricingPlans />
+        <Features />
         <BoxedVersionCard />
         <WebsiteDevelopmentCard />
-        <Features />
         <RostechnadzorCourses />
         
         <Testimonials />
