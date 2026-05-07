@@ -1,6 +1,6 @@
 import { SUBSCRIPTION_PLANS, type SubscriptionPlan } from "@/constants/subscriptionPlans";
 
-export const PLAN_ORDER: SubscriptionPlan[] = ['free', 'start', 'standard', 'professional', 'maximum'];
+export const PLAN_ORDER: SubscriptionPlan[] = ['free', 'start', 'standard', 'professional'];
 
 export interface PricingFeatureRow {
   label: string;
@@ -39,7 +39,7 @@ export const pricingFeatureRows: PricingFeatureRow[] = [
     link: "/feature/frdo",
     getValue: (p) => {
       if (!SUBSCRIPTION_PLANS[p].enabledCategories.includes('frdo')) return false;
-      return (p === 'professional' || p === 'maximum') ? 'ФРДО+' : true;
+      return p === 'professional' ? 'ФРДО+' : true;
     },
   },
   { label: "Вебинары", getValue: (p) => SUBSCRIPTION_PLANS[p].limits.webinarsEnabled },
