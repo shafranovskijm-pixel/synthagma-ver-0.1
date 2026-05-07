@@ -72,13 +72,26 @@ export function OrganizationsManager({ openOrgId, onOpenOrgHandled }: Organizati
         </div>
       </div>
 
+      {/* Bulk actions bar */}
+      {h.selectedOrgIds.length > 0 && (
+        <div className="flex items-center justify-between bg-destructive/10 border border-destructive/30 rounded-lg px-4 py-2">
+          <div className="text-sm">Выбрано организаций: <strong>{h.selectedOrgIds.length}</strong></div>
+          <div className="flex items-center gap-2">
+            <Button variant="ghost" size="sm" onClick={h.clearSelection}>Снять выделение</Button>
+            <Button variant="destructive" size="sm" onClick={() => h.setBulkDeleteOpen(true)}>
+              <Trash2 className="w-4 h-4 mr-1" />Удалить выбранные
+            </Button>
+          </div>
+        </div>
+      )}
+
       {/* Organizations List/Grid */}
       {h.filteredOrganizations.length === 0 ? (
         <div className="text-center py-12 text-muted-foreground"><Users className="w-12 h-12 mx-auto mb-2 opacity-50" /><p>{h.searchQuery ? "Ничего не найдено" : "Организации не найдены"}</p></div>
       ) : h.viewMode === 'list' ? (
-        <OrgListView orgs={h.filteredOrganizations} onView={h.setViewingOrg} onEdit={h.openEdit} onDelete={h.setDeleteOrg} onViewAs={h.viewAsOrganization} />
+        <OrgListView orgs={h.filteredOrganizations} onView={h.setViewingOrg} onEdit={h.openEdit} onDelete={h.setDeleteOrg} onViewAs={h.viewAsOrganization} selectedIds={h.selectedOrgIds} onToggleOne={h.toggleSelectOrg} onToggleAll={h.toggleSelectAllFiltered} />
       ) : (
-        <OrgGridView orgs={h.filteredOrganizations} detailsLoading={h.detailsLoading} onView={h.setViewingOrg} onEdit={h.openEdit} onDelete={h.setDeleteOrg} onViewAs={h.viewAsOrganization} showPasswords={h.showPasswords} togglePassword={h.togglePassword} copyToClipboard={h.copyToClipboard} copiedField={h.copiedField} generatingCredentials={h.generatingCredentials} handleGenerateCredentials={h.handleGenerateCredentials} setResetPasswordOrg={h.setResetPasswordOrg} setNewPassword={(p: string) => h.setNewPassword(p)} generatePassword={h.generatePassword} />
+        <OrgGridView orgs={h.filteredOrganizations} detailsLoading={h.detailsLoading} onView={h.setViewingOrg} onEdit={h.openEdit} onDelete={h.setDeleteOrg} onViewAs={h.viewAsOrganization} showPasswords={h.showPasswords} togglePassword={h.togglePassword} copyToClipboard={h.copyToClipboard} copiedField={h.copiedField} generatingCredentials={h.generatingCredentials} handleGenerateCredentials={h.handleGenerateCredentials} setResetPasswordOrg={h.setResetPasswordOrg} setNewPassword={(p: string) => h.setNewPassword(p)} generatePassword={h.generatePassword} selectedIds={h.selectedOrgIds} onToggleOne={h.toggleSelectOrg} />
       )}
 
       {/* Edit Dialog */}
