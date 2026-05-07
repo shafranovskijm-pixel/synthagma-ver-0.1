@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle
@@ -71,13 +72,26 @@ export function OrganizationsManager({ openOrgId, onOpenOrgHandled }: Organizati
         </div>
       </div>
 
+      {/* Bulk actions bar */}
+      {h.selectedOrgIds.length > 0 && (
+        <div className="flex items-center justify-between bg-destructive/10 border border-destructive/30 rounded-lg px-4 py-2">
+          <div className="text-sm">Выбрано организаций: <strong>{h.selectedOrgIds.length}</strong></div>
+          <div className="flex items-center gap-2">
+            <Button variant="ghost" size="sm" onClick={h.clearSelection}>Снять выделение</Button>
+            <Button variant="destructive" size="sm" onClick={() => h.setBulkDeleteOpen(true)}>
+              <Trash2 className="w-4 h-4 mr-1" />Удалить выбранные
+            </Button>
+          </div>
+        </div>
+      )}
+
       {/* Organizations List/Grid */}
       {h.filteredOrganizations.length === 0 ? (
         <div className="text-center py-12 text-muted-foreground"><Users className="w-12 h-12 mx-auto mb-2 opacity-50" /><p>{h.searchQuery ? "Ничего не найдено" : "Организации не найдены"}</p></div>
       ) : h.viewMode === 'list' ? (
-        <OrgListView orgs={h.filteredOrganizations} onView={h.setViewingOrg} onEdit={h.openEdit} onDelete={h.setDeleteOrg} onViewAs={h.viewAsOrganization} />
+        <OrgListView orgs={h.filteredOrganizations} onView={h.setViewingOrg} onEdit={h.openEdit} onDelete={h.setDeleteOrg} onViewAs={h.viewAsOrganization} selectedIds={h.selectedOrgIds} onToggleOne={h.toggleSelectOrg} onToggleAll={h.toggleSelectAllFiltered} />
       ) : (
-        <OrgGridView orgs={h.filteredOrganizations} detailsLoading={h.detailsLoading} onView={h.setViewingOrg} onEdit={h.openEdit} onDelete={h.setDeleteOrg} onViewAs={h.viewAsOrganization} showPasswords={h.showPasswords} togglePassword={h.togglePassword} copyToClipboard={h.copyToClipboard} copiedField={h.copiedField} generatingCredentials={h.generatingCredentials} handleGenerateCredentials={h.handleGenerateCredentials} setResetPasswordOrg={h.setResetPasswordOrg} setNewPassword={(p: string) => h.setNewPassword(p)} generatePassword={h.generatePassword} />
+        <OrgGridView orgs={h.filteredOrganizations} detailsLoading={h.detailsLoading} onView={h.setViewingOrg} onEdit={h.openEdit} onDelete={h.setDeleteOrg} onViewAs={h.viewAsOrganization} showPasswords={h.showPasswords} togglePassword={h.togglePassword} copyToClipboard={h.copyToClipboard} copiedField={h.copiedField} generatingCredentials={h.generatingCredentials} handleGenerateCredentials={h.handleGenerateCredentials} setResetPasswordOrg={h.setResetPasswordOrg} setNewPassword={(p: string) => h.setNewPassword(p)} generatePassword={h.generatePassword} selectedIds={h.selectedOrgIds} onToggleOne={h.toggleSelectOrg} />
       )}
 
       {/* Edit Dialog */}
@@ -88,6 +102,22 @@ export function OrganizationsManager({ openOrgId, onOpenOrgHandled }: Organizati
         <AlertDialogContent>
           <AlertDialogHeader><AlertDialogTitle>Удалить организацию?</AlertDialogTitle><AlertDialogDescription>Вы уверены, что хотите удалить организацию "{h.deleteOrg?.name}"? Это действие нельзя отменить.</AlertDialogDescription></AlertDialogHeader>
           <AlertDialogFooter><AlertDialogCancel>Отмена</AlertDialogCancel><AlertDialogAction onClick={h.handleDelete} className="bg-destructive text-destructive-foreground">Удалить</AlertDialogAction></AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Bulk Delete Confirmation */}
+      <AlertDialog open={h.bulkDeleteOpen} onOpenChange={h.setBulkDeleteOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Удалить {h.selectedOrgIds.length} организаций?</AlertDialogTitle>
+            <AlertDialogDescription>Будут удалены все выбранные организации со всеми связанными данными (курсы, ученики, документы и т.д.). Это действие нельзя отменить.</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={h.bulkDeleting}>Отмена</AlertDialogCancel>
+            <AlertDialogAction onClick={(e) => { e.preventDefault(); h.handleBulkDelete(); }} disabled={h.bulkDeleting} className="bg-destructive text-destructive-foreground">
+              {h.bulkDeleting ? <><SigmaSpinner size="sm" className="mr-2" />Удаление...</> : `Удалить ${h.selectedOrgIds.length}`}
+            </AlertDialogAction>
+          </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
 
@@ -115,11 +145,13 @@ export function OrganizationsManager({ openOrgId, onOpenOrgHandled }: Organizati
 }
 
 // ---- List View ----
-function OrgListView({ orgs, onView, onEdit, onDelete, onViewAs }: { orgs: Organization[]; onView: (o: Organization) => void; onEdit: (o: Organization) => void; onDelete: (o: Organization) => void; onViewAs: (o: Organization) => void }) {
+function OrgListView({ orgs, onView, onEdit, onDelete, onViewAs, selectedIds, onToggleOne, onToggleAll }: { orgs: Organization[]; onView: (o: Organization) => void; onEdit: (o: Organization) => void; onDelete: (o: Organization) => void; onViewAs: (o: Organization) => void; selectedIds: string[]; onToggleOne: (id: string) => void; onToggleAll: () => void }) {
+  const allSelected = orgs.length > 0 && orgs.every(o => selectedIds.includes(o.id));
   return (
     <div className="bg-card rounded-xl border border-border overflow-hidden">
       <table className="w-full">
         <thead><tr className="border-b border-border bg-muted/30">
+          <th className="px-3 py-3 w-10"><Checkbox checked={allSelected} onCheckedChange={onToggleAll} aria-label="Выбрать все" /></th>
           <th className="text-left px-4 py-3 text-xs font-medium text-muted-foreground">Организация</th>
           <th className="text-left px-4 py-3 text-xs font-medium text-muted-foreground">Контакты</th>
           <th className="text-left px-4 py-3 text-xs font-medium text-muted-foreground">Статистика</th>
@@ -127,7 +159,10 @@ function OrgListView({ orgs, onView, onEdit, onDelete, onViewAs }: { orgs: Organ
         </tr></thead>
         <tbody>
           {orgs.map(org => (
-            <tr key={org.id} className={`border-b border-border last:border-0 hover:bg-muted/30 transition-colors border-l-4 ${org.is_paid ? 'border-l-green-500' : 'border-l-orange-500'}`}>
+            <tr key={org.id} className={`border-b border-border last:border-0 hover:bg-muted/30 transition-colors border-l-4 ${org.is_paid ? 'border-l-green-500' : 'border-l-orange-500'} ${selectedIds.includes(org.id) ? 'bg-destructive/5' : ''}`}>
+              <td className="px-3 py-3" onClick={(e) => e.stopPropagation()}>
+                <Checkbox checked={selectedIds.includes(org.id)} onCheckedChange={() => onToggleOne(org.id)} aria-label={`Выбрать ${org.name}`} />
+              </td>
               <td className="px-4 py-3">
                 <div className="flex items-center gap-2.5 cursor-pointer" onClick={() => onView(org)}>
                   <div className={`w-8 h-8 rounded-full flex-shrink-0 flex items-center justify-center text-xs font-bold text-primary-foreground ${org.is_paid ? 'bg-green-500' : 'bg-orange-500'}`}>{org.name.charAt(0).toUpperCase()}</div>
@@ -157,16 +192,19 @@ function OrgListView({ orgs, onView, onEdit, onDelete, onViewAs }: { orgs: Organ
 }
 
 // ---- Grid View ----
-function OrgGridView({ orgs, detailsLoading, onView, onEdit, onDelete, onViewAs, showPasswords, togglePassword, copyToClipboard, copiedField, generatingCredentials, handleGenerateCredentials, setResetPasswordOrg, setNewPassword, generatePassword }: any) {
+function OrgGridView({ orgs, detailsLoading, onView, onEdit, onDelete, onViewAs, showPasswords, togglePassword, copyToClipboard, copiedField, generatingCredentials, handleGenerateCredentials, setResetPasswordOrg, setNewPassword, generatePassword, selectedIds, onToggleOne }: any) {
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
       {orgs.map((org: Organization) => (
-        <Card key={org.id} className={`transition-all hover:shadow-lg border-l-4 ${org.is_paid ? 'border-l-green-500' : 'border-l-orange-500'}`}>
+        <Card key={org.id} className={`transition-all hover:shadow-lg border-l-4 ${org.is_paid ? 'border-l-green-500' : 'border-l-orange-500'} ${selectedIds?.includes(org.id) ? 'ring-2 ring-destructive/40' : ''}`}>
           <CardHeader className="pb-3">
             <div className="flex items-start justify-between gap-2">
-              <div className="flex items-center gap-3 cursor-pointer hover:opacity-80 transition-opacity min-w-0 flex-1" onClick={() => onView(org)}>
-                <div className={`w-10 h-10 rounded-full flex-shrink-0 flex items-center justify-center text-sm font-bold text-white ${org.is_paid ? 'bg-green-500' : 'bg-orange-500'}`}>{org.name.charAt(0).toUpperCase()}</div>
-                <div className="min-w-0"><div className="font-medium text-primary hover:underline truncate">{org.name}</div>{org.inn && <div className="text-xs text-muted-foreground">ИНН: {org.inn}</div>}</div>
+              <div className="flex items-center gap-2 min-w-0 flex-1">
+                <Checkbox checked={selectedIds?.includes(org.id)} onCheckedChange={() => onToggleOne?.(org.id)} aria-label={`Выбрать ${org.name}`} />
+                <div className="flex items-center gap-3 cursor-pointer hover:opacity-80 transition-opacity min-w-0 flex-1" onClick={() => onView(org)}>
+                  <div className={`w-10 h-10 rounded-full flex-shrink-0 flex items-center justify-center text-sm font-bold text-white ${org.is_paid ? 'bg-green-500' : 'bg-orange-500'}`}>{org.name.charAt(0).toUpperCase()}</div>
+                  <div className="min-w-0"><div className="font-medium text-primary hover:underline truncate">{org.name}</div>{org.inn && <div className="text-xs text-muted-foreground">ИНН: {org.inn}</div>}</div>
+                </div>
               </div>
               <div className="flex flex-col items-end gap-1 flex-shrink-0">
                 {org.is_paid ? <Badge className="bg-green-500 hover:bg-green-600 text-xs"><DollarSign className="w-3 h-3 mr-0.5" />Оплачено</Badge> : <Badge variant="outline" className="border-orange-500 text-orange-600 text-xs">Без оплаты</Badge>}
