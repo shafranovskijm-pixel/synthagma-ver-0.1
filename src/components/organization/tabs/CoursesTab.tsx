@@ -281,6 +281,15 @@ export const CoursesTab = React.memo(function CoursesTab({ organizationId, onCou
     setMovingCourse(course); setTargetCategoryId(course.category_id || "none"); setShowMoveCourseDialog(true);
   };
 
+  const handleQuickMoveCourse = async (course: Course, categoryId: string | null) => {
+    if ((course.category_id || null) === categoryId) return;
+    const success = await update(course.id, { category_id: categoryId });
+    if (success) {
+      const target = categoryId ? categories.find(c => c.id === categoryId)?.name : "Без категории";
+      toast.success(`Перемещён в «${target ?? 'категорию'}»`);
+    }
+  };
+
   const handleCourseClick = (course: Course) => {
     if (onOpenCourseDetails) onOpenCourseDetails(course);
     else if (onCourseClick) onCourseClick(course);
