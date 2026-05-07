@@ -6,7 +6,6 @@ import { ArrowRight, Sparkles, Phone, Mail, Globe, ShieldCheck, Gift, BadgeCheck
 import { toast } from "sonner";
 import { PlatformProposalHeader } from "@/components/proposal/PlatformProposalHeader";
 import { PlatformProposalAdvantages } from "@/components/proposal/PlatformProposalAdvantages";
-import { PlatformProposalPricingTable } from "@/components/proposal/PlatformProposalPricingTable";
 import { PlatformProposalPlanCards } from "@/components/proposal/PlatformProposalPlanCards";
 import { SignatureStampBlock } from "@/components/proposal/SignatureStampBlock";
 import { exportPlatformProposalPdf } from "@/utils/exportPlatformProposalPdf";
@@ -146,13 +145,33 @@ export default function ProposalPlatform() {
             <PlatformProposalAdvantages />
           </section>
 
-          {/* Section 3: Pricing table */}
-          <section data-proposal-section className="relative mb-10">
-            <h2 className="mb-2 font-display text-2xl font-medium tracking-tight">Сравнение тарифов</h2>
+          {/* Section 3: Functionality */}
+          <section data-proposal-section className="relative mb-10 rounded-3xl border border-border bg-card p-8 shadow-sm">
+            <h2 className="mb-2 font-display text-2xl font-medium tracking-tight">Функционал платформы</h2>
             <p className="mb-6 text-sm text-muted-foreground">
-              Полный список возможностей по 4 тарифам. При оплате за год — скидка 15%.
+              Полный набор возможностей. Различия по тарифам — в карточках ниже.
             </p>
-            <PlatformProposalPricingTable />
+            <ul className="grid grid-cols-1 gap-x-6 gap-y-3 sm:grid-cols-2">
+              {[
+                "Конструктор курсов с ИИ-генерацией и озвучкой",
+                "ФИС ФРДО — автоматическая выгрузка",
+                "300+ готовых программ в библиотеке",
+                "Тесты, домашние задания, журналы, протоколы",
+                "Электронные документы и ПЭП (63-ФЗ)",
+                "Видеоидентификация учеников",
+                "Email-рассылки и собственный SMTP",
+                "CRM продаж: лиды, сделки, КП, договоры, счета",
+                "Вебинары на Kinescope Live",
+                "3D-тренажёры (за дополнительную плату)",
+                "Брендирование, свой домен, мобильная адаптация",
+                "Безлимитное хранилище видео и материалов",
+              ].map((item) => (
+                <li key={item} className="flex items-start gap-2.5 text-sm text-foreground/90">
+                  <Check className="mt-0.5 h-4 w-4 shrink-0 text-accent" />
+                  <span>{item}</span>
+                </li>
+              ))}
+            </ul>
           </section>
 
           {/* Section 4: Plan cards */}

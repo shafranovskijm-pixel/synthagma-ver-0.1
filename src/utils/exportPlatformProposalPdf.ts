@@ -21,7 +21,7 @@ export async function exportPlatformProposalPdf(rootSelector = "#platform-propos
     #platform-proposal-root h2 { font-size: 16px !important; line-height: 1.2 !important; margin-bottom: 6px !important; }
     #platform-proposal-root h3 { font-size: 14px !important; }
     #platform-proposal-root p, #platform-proposal-root li, #platform-proposal-root td, #platform-proposal-root th { font-size: 11px !important; line-height: 1.35 !important; }
-    #platform-proposal-root section { break-inside: auto !important; page-break-before: auto !important; page-break-inside: auto !important; }
+    #platform-proposal-root [data-proposal-section] { break-inside: avoid !important; page-break-inside: avoid !important; }
   `;
   document.head.appendChild(styleEl);
 
