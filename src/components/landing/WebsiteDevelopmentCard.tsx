@@ -7,7 +7,7 @@ const perks = [
   { icon: Globe, label: "Соответствие требованиям Минобрнауки" },
   { icon: Smartphone, label: "Адаптивный дизайн под все устройства" },
   { icon: ShieldCheck, label: "Формы заявок и интеграции" },
-  { icon: Zap, label: "Запуск под ключ за 2–3 недели" },
+  { icon: Zap, label: "Запуск под ключ за 1 неделю" },
 ];
 
 export function WebsiteDevelopmentCard() {
