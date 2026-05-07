@@ -85,14 +85,6 @@ export function SortableCourseListRow({ course, isSelected, onToggleSelect, onCl
           <div className="flex gap-2">
             <Tooltip>
               <TooltipTrigger asChild>
-                <Button variant="outline" size="sm" className="rounded-lg" onClick={onEdit}>
-                  <Edit className="w-4 h-4" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>Редактировать</TooltipContent>
-            </Tooltip>
-            <Tooltip>
-              <TooltipTrigger asChild>
                 <Button variant="outline" size="sm" className="rounded-lg" onClick={onPreview}>
                   <Eye className="w-4 h-4" />
                 </Button>
