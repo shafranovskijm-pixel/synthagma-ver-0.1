@@ -8,6 +8,7 @@ import { PlatformProposalHeader } from "@/components/proposal/PlatformProposalHe
 import { PlatformProposalAdvantages } from "@/components/proposal/PlatformProposalAdvantages";
 import { PlatformProposalPricingTable } from "@/components/proposal/PlatformProposalPricingTable";
 import { PlatformProposalPlanCards } from "@/components/proposal/PlatformProposalPlanCards";
+import { SignatureStampBlock } from "@/components/proposal/SignatureStampBlock";
 import { exportPlatformProposalPdf } from "@/utils/exportPlatformProposalPdf";
 import {
   ProposalBackdrop,
@@ -383,6 +384,15 @@ export default function ProposalPlatform() {
                 </div>
               </div>
             </div>
+          </section>
+
+          {/* Section 9: Signature & stamp — обязательно для тендеров */}
+          <section
+            data-proposal-section
+            className="relative mb-10 rounded-3xl border border-border bg-card p-8 shadow-sm"
+          >
+            <h2 className="mb-4 font-display text-xl font-medium tracking-tight">Реквизиты исполнителя</h2>
+            <SignatureStampBlock />
           </section>
         </div>
       </main>
