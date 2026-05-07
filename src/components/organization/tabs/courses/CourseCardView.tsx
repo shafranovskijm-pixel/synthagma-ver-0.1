@@ -84,6 +84,8 @@ export const CourseCard = React.memo(function CourseCard({
                 onGenerateCover={onGenerateCover}
                 generatingCoverForCourse={generatingCoverForCourse}
                 onDelete={onDelete}
+                categories={categories}
+                onMoveToCategory={onMoveToCategory}
               />
             </div>
             <div className="flex items-center gap-3 text-xs text-muted-foreground">
