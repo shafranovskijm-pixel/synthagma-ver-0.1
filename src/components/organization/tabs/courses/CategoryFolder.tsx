@@ -42,6 +42,7 @@ export const CategoryFolder = React.memo(function CategoryFolder({
   categoryId, categoryName, categoryColor, courses, isSystem = false, hiddenFromCatalog = false,
   isExpanded, onToggleExpand, onEditCategory, onDeleteCategory, onToggleCategoryVisibility,
   organizationId, selectedCourseIds, onToggleCourseSelect, onCourseClick, onToggleCourseSetting, onDuplicate, onMoveCourse,
+  onMoveCourseToCategory, allCategories,
   isAdminView, onTransfer, onCoverUpload, onGenerateCover, generatingCoverForCourse, onDeleteCourse,
 }: Props) {
   const courseCount = courses.length;
