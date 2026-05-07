@@ -1,8 +1,8 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { BookOpen, Users, Edit, MoreVertical, Copy, ImagePlus, Wand2, CheckCircle, ArrowRightLeft } from "lucide-react";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger, DropdownMenuSub, DropdownMenuSubTrigger, DropdownMenuSubContent, DropdownMenuPortal } from "@/components/ui/dropdown-menu";
+import { BookOpen, Users, MoreVertical, Copy, ImagePlus, Wand2, CheckCircle, ArrowRightLeft, MoveRight, Check, FolderOpen } from "lucide-react";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 import type { Course, CourseCategory } from "@/types";
 
