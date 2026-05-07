@@ -1,52 +1,83 @@
-## Проблема
+## Задача: убрать «Максимальный» тариф из лендинга, перенести его лимиты в «Профессиональный», добавить блоки «Коробочная версия» и «Разработка сайтов»
 
-Когда организация добавляет курс из магазина:
-- В режиме **«Список»** курс появляется (с категорией «—»).
-- В режиме **«Сетка» (плитки)** курс **не виден** до жёсткой перезагрузки.
+### 1. Тариф «Максимальный» → скрыть из лендинга, объединить с «Профессиональным»
 
-## Причина
+**Файл: `src/constants/subscriptionPlans.ts`**
 
-В `src/hooks/useCourseStoreManager.ts` (handleOrder, ~стр. 263-270) при клонировании курса в организацию-покупателя поле `category_id` копируется как есть со всеми остальными полями исходного курса:
+- В `professional.limits`:
+  - `maxCourses: -1`, `maxStudents: -1`, `maxTrainedPerMonth: -1`, `storageBytes: -1` (всё безлимит)
+  - `trainersEnabled: true` (3D-тренажёры включены, но с пометкой «за доплату» в UI)
+  - В `enabledCategories` добавить `'3d_trainers'`
+- `maximum` НЕ трогаем — оставляем в типах и объекте, чтобы существующие организации на нём не сломались. Просто скрываем из публичного отображения.
 
-```ts
-const { id, created_at, updated_at, ...courseData } = origCourse;
-await supabase.from('courses').insert({
-  ...courseData,             // ← сюда попадает category_id чужой организации
-  organization_id: organizationId,
-  source_order_id: orderData.id,
-  source_course_id: originalCourseId,
-})
+**Файл: `src/components/landing/PricingPlans.tsx`**
+
+- `planOrder` → `['free', 'start', 'standard', 'professional']` (без `maximum`)
+- Grid: `lg:grid-cols-4` вместо `lg:grid-cols-5`
+- Для строки «3D-тренажёры» в `professional`: рендерим Check + inline-бейдж «за доплату» (маленький pill рядом с текстом, accent-цвет)
+- `featureDescriptions["3D-тренажёры"].minPlan` → «Профессиональный»
+
+**Файл: `src/lib/pricingFeatureRows.ts`**
+
+- Обновить логику: `getValue` для «3D-тренажёры» в `professional` возвращает `'за доплату'` (строка) вместо `true`, чтобы отличать от обычного Check.
+
+### 2. Новый блок «Коробочная версия — 540 000 ₽»
+
+**Новый компонент: `src/components/landing/BoxedVersionCard.tsx`**
+
+Стиль Sintagma (teal/cyan, luxury minimal, no gold):
+- Центрированная карточка `max-w-xl`, `rounded-2xl`, `bg-card/80`, `backdrop-blur-md`, тонкая рамка `border-border/50`
+- Внутри:
+  - Бейдж «On-premise» (pill, accent/10)
+  - Заголовок «Коробочная версия»
+  - Цена `540 000` крупно + `₽` + подпись «единоразово»
+  - Подзаголовок «1 неисключительная лицензия»
+  - Список (Check, accent):
+    - Возможность доработки под ваши требования
+    - Установка на ваш сервер
+    - Бессрочная лицензия
+    - 3 месяца поддержки для интеграции ваших документов
+  - CTA-кнопка «Связаться с нами» → `tel:` или модалка обратной связи
+
+### 3. Новый блок «Разработка сайтов для образовательных организаций под ключ — 55 000 ₽»
+
+**Новый компонент: `src/components/landing/WebsiteDevelopmentCard.tsx`**
+
+Стиль Sintagma:
+- Карточка во всю ширину контейнера, `rounded-2xl`, `bg-card/80`, `backdrop-blur-md`
+- Двухколоночный layout на desktop:
+  - **Левая колонка** (flex-1):
+    - Бейдж «Новая услуга» (pill, accent)
+    - Заголовок «Разработка сайтов для образовательных организаций под ключ»
+    - Описание: профессиональные сайты, соответствие требованиям Минобрнауки, адаптивный дизайн, формы заявок, управление контентом
+    - Цена `55 000` крупно + `₽` + подпись «фиксированная стоимость»
+    - Две кнопки: «Подробнее об услуге» (accent) и «Заказать» (ghost)
+  - **Правая колонка** (скрывается на mobile):
+    - AI-сгенерированная иллюстрация: isometric/minimal изображение лэндинга образовательного центра в teal/cyan тонах, без текста
+    - Генерация через Lovable AI Gateway (`google/gemini-3-pro-image-preview`) → `src/assets/website-dev-illustration.png`
+
+### 4. Расположение секций
+
+**Файл: `src/pages/Index.tsx`**
+
+После `<PricingPlans />` и перед `<Features />` вставляем:
+```text
+<PricingPlans />
+<BoxedVersionCard />
+<WebsiteDevelopmentCard />
+<Features />
 ```
 
-В режиме «Сетка» группировка `catalogCoursesByCategory` (CoursesTab.tsx, стр. 365-376) делает так:
-- курсы с `category_id` распределяются по категориям организации-покупателя;
-- если `category_id` курса не совпадает ни с одной категорией покупателя — курс **не попадает ни в одну группу** (и не падает в «Без категории», т.к. `category_id !== null`) → исчезает из сетки.
+### 5. Что НЕ трогаем
 
-В режиме «Список» курсы рендерятся плоско, поэтому курс виден (с прочерком в столбце «Категория»).
+- Админка, биллинг, КП, шаблоны договоров, `OrgTariffsPanel` — `maximum` остаётся в enum и базе для обратной совместимости.
+- Не делаем миграций БД.
 
-После Ctrl+Shift+R ничего волшебного не происходит — просто пользователь думает, что курс появился, потому что:
-1. либо открыл другой режим, 
-2. либо событие `org-courses-refresh` сработало, но проблема группировки осталась — курс всё равно скрыт в сетке.
+### 6. Техническая деталь: AI-иллюстрация
 
-## Решение
+Один раз через `code--exec` + `lovable_ai.py`:
+- Промпт: «Minimal isometric illustration of a modern educational website on a laptop screen, teal and cyan color palette (HSL 174 72% 46%), soft gradients, clean white background, no text, luxury minimalist style, 3D-like but simple»
+- Модель: `google/gemini-3-pro-image-preview`
+- Output: `src/assets/website-dev-illustration.png`
 
-**Один маленький фикс** в `src/hooks/useCourseStoreManager.ts`, в `handleOrder`:
-
-При клонировании курса жёстко обнулить `category_id` (категория исходной организации не имеет смысла у покупателя). Курс попадёт в группу «Без категории», и пользователь сможет переместить его в нужную свою категорию через троеточие → «Переместить в категорию».
-
-```ts
-const { id, created_at, updated_at, category_id, ...courseData } = origCourse;
-await supabase.from('courses').insert({
-  ...courseData,
-  category_id: null,
-  organization_id: organizationId,
-  source_order_id: orderData.id,
-  source_course_id: originalCourseId,
-})
-```
-
-Заодно проверю, что после клонирования событие `org-courses-refresh` уже диспатчится (оно есть на строке 308) и `useCourses.refresh()` вызывает повторный запрос — это работает корректно. Никаких других изменений не требуется.
-
-## Файлы
-
-- `src/hooks/useCourseStoreManager.ts` — обнулить `category_id` при клонировании курса покупателю.
+Подтвердите — приступаю.
