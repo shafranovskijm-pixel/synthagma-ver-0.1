@@ -192,16 +192,19 @@ function OrgListView({ orgs, onView, onEdit, onDelete, onViewAs, selectedIds, on
 }
 
 // ---- Grid View ----
-function OrgGridView({ orgs, detailsLoading, onView, onEdit, onDelete, onViewAs, showPasswords, togglePassword, copyToClipboard, copiedField, generatingCredentials, handleGenerateCredentials, setResetPasswordOrg, setNewPassword, generatePassword }: any) {
+function OrgGridView({ orgs, detailsLoading, onView, onEdit, onDelete, onViewAs, showPasswords, togglePassword, copyToClipboard, copiedField, generatingCredentials, handleGenerateCredentials, setResetPasswordOrg, setNewPassword, generatePassword, selectedIds, onToggleOne }: any) {
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
       {orgs.map((org: Organization) => (
-        <Card key={org.id} className={`transition-all hover:shadow-lg border-l-4 ${org.is_paid ? 'border-l-green-500' : 'border-l-orange-500'}`}>
+        <Card key={org.id} className={`transition-all hover:shadow-lg border-l-4 ${org.is_paid ? 'border-l-green-500' : 'border-l-orange-500'} ${selectedIds?.includes(org.id) ? 'ring-2 ring-destructive/40' : ''}`}>
           <CardHeader className="pb-3">
             <div className="flex items-start justify-between gap-2">
-              <div className="flex items-center gap-3 cursor-pointer hover:opacity-80 transition-opacity min-w-0 flex-1" onClick={() => onView(org)}>
-                <div className={`w-10 h-10 rounded-full flex-shrink-0 flex items-center justify-center text-sm font-bold text-white ${org.is_paid ? 'bg-green-500' : 'bg-orange-500'}`}>{org.name.charAt(0).toUpperCase()}</div>
-                <div className="min-w-0"><div className="font-medium text-primary hover:underline truncate">{org.name}</div>{org.inn && <div className="text-xs text-muted-foreground">ИНН: {org.inn}</div>}</div>
+              <div className="flex items-center gap-2 min-w-0 flex-1">
+                <Checkbox checked={selectedIds?.includes(org.id)} onCheckedChange={() => onToggleOne?.(org.id)} aria-label={`Выбрать ${org.name}`} />
+                <div className="flex items-center gap-3 cursor-pointer hover:opacity-80 transition-opacity min-w-0 flex-1" onClick={() => onView(org)}>
+                  <div className={`w-10 h-10 rounded-full flex-shrink-0 flex items-center justify-center text-sm font-bold text-white ${org.is_paid ? 'bg-green-500' : 'bg-orange-500'}`}>{org.name.charAt(0).toUpperCase()}</div>
+                  <div className="min-w-0"><div className="font-medium text-primary hover:underline truncate">{org.name}</div>{org.inn && <div className="text-xs text-muted-foreground">ИНН: {org.inn}</div>}</div>
+                </div>
               </div>
               <div className="flex flex-col items-end gap-1 flex-shrink-0">
                 {org.is_paid ? <Badge className="bg-green-500 hover:bg-green-600 text-xs"><DollarSign className="w-3 h-3 mr-0.5" />Оплачено</Badge> : <Badge variant="outline" className="border-orange-500 text-orange-600 text-xs">Без оплаты</Badge>}
