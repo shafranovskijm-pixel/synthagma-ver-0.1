@@ -261,9 +261,10 @@ export function useCourseStoreManager({ organizationId, userRole = 'organization
           .from('courses').select('*').eq('id', originalCourseId).single();
         
         if (origCourse) {
-          const { id: _id, created_at: _ca, updated_at: _ua, ...courseData } = origCourse;
+          const { id: _id, created_at: _ca, updated_at: _ua, category_id: _cat, ...courseData } = origCourse;
           const { data: newCourse } = await supabase.from('courses').insert({
             ...courseData,
+            category_id: null,
             organization_id: organizationId,
             source_order_id: orderData.id,
             source_course_id: originalCourseId,
