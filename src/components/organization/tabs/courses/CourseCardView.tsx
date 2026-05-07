@@ -201,9 +201,47 @@ function CourseDropdownMenu({
           <DropdownMenuItem onClick={e => { e.stopPropagation(); onDuplicate(course.id); }}>
             <Copy className="w-4 h-4 mr-2" />Дублировать курс
           </DropdownMenuItem>
-          <DropdownMenuItem onClick={e => onMove(course, e)}>
-            <MoveRight className="w-4 h-4 mr-2" />Переместить в категорию
-          </DropdownMenuItem>
+          {categories && onMoveToCategory ? (
+            <DropdownMenuSub>
+              <DropdownMenuSubTrigger>
+                <MoveRight className="w-4 h-4 mr-2" />Переместить в категорию
+              </DropdownMenuSubTrigger>
+              <DropdownMenuPortal>
+                <DropdownMenuSubContent className="rounded-xl max-h-72 overflow-y-auto">
+                  <DropdownMenuItem
+                    disabled={!course.category_id}
+                    onClick={e => { e.stopPropagation(); onMoveToCategory(course, null); }}
+                  >
+                    <FolderOpen className="w-4 h-4 mr-2 text-muted-foreground" />
+                    Без категории
+                    {!course.category_id && <Check className="w-4 h-4 ml-auto" />}
+                  </DropdownMenuItem>
+                  {categories.length > 0 && <DropdownMenuSeparator />}
+                  {categories.map(cat => {
+                    const isCurrent = course.category_id === cat.id;
+                    return (
+                      <DropdownMenuItem
+                        key={cat.id}
+                        disabled={isCurrent}
+                        onClick={e => { e.stopPropagation(); onMoveToCategory(course, cat.id); }}
+                      >
+                        <span
+                          className="w-3 h-3 rounded-full mr-2 shrink-0"
+                          style={{ backgroundColor: cat.color || 'var(--muted-foreground)' }}
+                        />
+                        <span className="truncate">{cat.name}</span>
+                        {isCurrent && <Check className="w-4 h-4 ml-auto shrink-0" />}
+                      </DropdownMenuItem>
+                    );
+                  })}
+                </DropdownMenuSubContent>
+              </DropdownMenuPortal>
+            </DropdownMenuSub>
+          ) : (
+            <DropdownMenuItem onClick={e => onMove(course, e)}>
+              <MoveRight className="w-4 h-4 mr-2" />Переместить в категорию
+            </DropdownMenuItem>
+          )}
           {isAdminView && onTransfer && (
             <DropdownMenuItem className="text-primary focus:text-primary" onClick={e => { e.stopPropagation(); onTransfer(course); }}>
               <ArrowRightLeft className="w-4 h-4 mr-2" />Перенести в другую организацию
