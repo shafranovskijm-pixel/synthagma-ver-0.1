@@ -135,6 +135,7 @@ export const CourseCard = React.memo(function CourseCard({
 function CourseDropdownMenu({
   course, onToggleSetting, onDuplicate, onMove, isAdminView, onTransfer,
   onCoverUpload, onGenerateCover, generatingCoverForCourse, onDelete,
+  categories, onMoveToCategory,
 }: {
   course: Course;
   onToggleSetting: (course: Course, setting: any, e: React.MouseEvent) => void;
@@ -146,6 +147,8 @@ function CourseDropdownMenu({
   onGenerateCover?: (courseId: string) => void;
   generatingCoverForCourse?: string | null;
   onDelete?: (courseId: string) => void;
+  categories?: CourseCategory[];
+  onMoveToCategory?: (course: Course, categoryId: string | null) => void;
 }) {
   const navigate = useNavigate();
   const [confirmOpen, setConfirmOpen] = useState(false);
