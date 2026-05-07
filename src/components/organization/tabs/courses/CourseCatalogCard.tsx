@@ -42,7 +42,7 @@ export const CourseCatalogCard = React.memo(function CourseCatalogCard({ course,
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="rounded-xl">
               <DropdownMenuItem onClick={e => { e.stopPropagation(); onDuplicate(course.id); }}><Copy className="w-4 h-4 mr-2" />Дублировать</DropdownMenuItem>
-              <DropdownMenuItem onClick={e => { e.stopPropagation(); navigate(`/course-builder/${course.id}`); }}><Edit className="w-4 h-4 mr-2" />Настроить</DropdownMenuItem>
+              
               <DropdownMenuItem onClick={e => { e.stopPropagation(); onCoverUpload(course.id); }}><ImagePlus className="w-4 h-4 mr-2" />Изменить обложку</DropdownMenuItem>
               <DropdownMenuItem disabled={generatingCoverForCourse === course.id} onClick={e => { e.stopPropagation(); onGenerateCover(course.id); }}>
                 {generatingCoverForCourse === course.id ? <SigmaSpinner size="sm" className="mr-2" /> : <Wand2 className="w-4 h-4 mr-2" />}
