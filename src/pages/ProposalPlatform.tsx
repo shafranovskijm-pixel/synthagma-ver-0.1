@@ -21,13 +21,13 @@ import {
 const KPI = [
   { label: "300+", caption: "готовых программ" },
   { label: "1 мин", caption: "на подготовку файла ФРДО" },
-  { label: "5", caption: "тарифов от 0 ₽" },
+  { label: "4", caption: "тарифа от 0 ₽" },
   { label: "5 мин", caption: "до запуска" },
   { label: "24/7", caption: "доступ и поддержка" },
 ];
 
 const ADDITIONAL_SERVICES = [
-  { title: "ФРДО+", desc: "Выгружаем данные в ФИС ФРДО за вас. Включено в Профессиональный и Максимальный тарифы." },
+  { title: "ФРДО+", desc: "Выгружаем данные в ФИС ФРДО за вас. Включено в Профессиональный тариф." },
   { title: "Персональный менеджер", desc: "Сопровождение запуска и помощь по любым вопросам в рабочее время." },
   { title: "Разработка курсов «под ключ»", desc: "Методисты и дизайнеры создают курс по вашей программе с нуля." },
   { title: "Выезд для запуска", desc: "Очное обучение команды и настройка платформы под ваши процессы." },
@@ -62,7 +62,7 @@ export default function ProposalPlatform() {
         <title>Коммерческое предложение — Синтагма</title>
         <meta
           name="description"
-          content="Готовое коммерческое предложение по образовательной платформе Синтагма: 300+ программ, ФИС ФРДО, ИИ-генерация курсов, CRM, вебинары. 5 тарифов от 0 ₽."
+          content="Готовое коммерческое предложение по образовательной платформе Синтагма: 300+ программ, ФИС ФРДО, ИИ-генерация курсов, CRM, вебинары. 4 тарифа от 0 ₽, коробочная версия и разработка сайтов под ключ."
         />
         <link rel="canonical" href="https://sintagma.com.ru/proposal/platform" />
         <meta property="og:title" content="Коммерческое предложение — Синтагма" />
@@ -149,7 +149,7 @@ export default function ProposalPlatform() {
           <section data-proposal-section className="relative mb-10">
             <h2 className="mb-2 font-display text-2xl font-medium tracking-tight">Сравнение тарифов</h2>
             <p className="mb-6 text-sm text-muted-foreground">
-              Полный список возможностей по 5 тарифам. При оплате за год — скидка 15%.
+              Полный список возможностей по 4 тарифам. При оплате за год — скидка 15%.
             </p>
             <PlatformProposalPricingTable />
           </section>
