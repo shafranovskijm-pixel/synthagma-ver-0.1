@@ -201,12 +201,45 @@ export function useOrganizationsManager(openOrgId?: string | null, onOpenOrgHand
         supabase.from("student_login_history").delete().eq("organization_id", orgId),
         supabase.from("knowledge_bank").delete().eq("organization_id", orgId),
       ]);
-      const { error } = await supabase.from("organizations").delete().eq("id", orgId);
-      if (error) throw error;
+    const { error } = await supabase.from("organizations").delete().eq("id", orgId);
+    if (error) throw error;
+  };
+
+  const handleDelete = async () => {
+    if (!deleteOrg) return;
+    try {
+      await deleteOrgById(deleteOrg.id);
       toast.success("Успешно", { description: "Организация удалена" });
       setDeleteOrg(null); fetchOrganizations();
     } catch (error) { console.error("Error deleting organization:", error); toast.error("Ошибка", { description: "Не удалось удалить организацию. Проверьте консоль для деталей." }); }
   };
+
+  const [selectedOrgIds, setSelectedOrgIds] = useState<string[]>([]);
+  const [bulkDeleting, setBulkDeleting] = useState(false);
+  const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
+
+  const toggleSelectOrg = (id: string) => setSelectedOrgIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
+  const toggleSelectAllFiltered = () => {
+    const ids = filteredOrganizations.map(o => o.id);
+    setSelectedOrgIds(prev => prev.length === ids.length && ids.every(id => prev.includes(id)) ? [] : ids);
+  };
+  const clearSelection = () => setSelectedOrgIds([]);
+
+  const handleBulkDelete = async () => {
+    if (selectedOrgIds.length === 0) return;
+    setBulkDeleting(true);
+    let success = 0, failed = 0;
+    for (const id of selectedOrgIds) {
+      try { await deleteOrgById(id); success++; } catch (e) { console.error("Bulk delete error:", id, e); failed++; }
+    }
+    setBulkDeleting(false);
+    setBulkDeleteOpen(false);
+    setSelectedOrgIds([]);
+    if (failed === 0) toast.success("Успешно", { description: `Удалено организаций: ${success}` });
+    else toast.error("Частично выполнено", { description: `Удалено: ${success}, ошибок: ${failed}` });
+    fetchOrganizations();
+  };
+
 
   const openEdit = (org: Organization) => {
     setEditOrg(org);
