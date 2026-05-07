@@ -20,6 +20,8 @@ interface Props {
   onToggleSetting: (course: Course, setting: 'skip_video_identification' | 'sequential_lessons' | 'allow_video_seek' | 'hidden_from_catalog', e: React.MouseEvent) => void;
   onDuplicate: (courseId: string) => void;
   onMove: (course: Course, e?: React.MouseEvent) => void;
+  categories?: CourseCategory[];
+  onMoveToCategory?: (course: Course, categoryId: string | null) => void;
   isAdminView?: boolean;
   onTransfer?: (course: Course) => void;
   onCoverUpload?: (courseId: string) => void;
