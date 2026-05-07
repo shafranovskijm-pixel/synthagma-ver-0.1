@@ -143,10 +143,7 @@ export function useOrganizationsManager(openOrgId?: string | null, onOpenOrgHand
     finally { setSaving(false); }
   };
 
-  const handleDelete = async () => {
-    if (!deleteOrg) return;
-    try {
-      const orgId = deleteOrg.id;
+  const deleteOrgById = async (orgId: string) => {
       const { data: courses } = await supabase.from("courses").select("id").eq("organization_id", orgId);
       const courseIds = (courses || []).map((c) => c.id);
       await supabase.from("marketplace_orders").delete().eq("buyer_organization_id", orgId);
