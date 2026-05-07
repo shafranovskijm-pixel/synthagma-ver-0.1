@@ -12,7 +12,7 @@ interface SortableCourseListRowProps {
   isSelected: boolean;
   onToggleSelect: () => void;
   onClick: () => void;
-  onEdit: (e: React.MouseEvent) => void;
+  
   onPreview: (e: React.MouseEvent) => void;
   onMove: (e: React.MouseEvent) => void;
   category?: CourseCategory;
