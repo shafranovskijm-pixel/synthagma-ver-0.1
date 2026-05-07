@@ -330,26 +330,7 @@ export function useCompaniesManager(organizationId: string) {
 
     setIsDeleting(true);
     try {
-      await supabase
-        .from("profiles")
-        .update({ company_id: null })
-        .eq("company_id", deletingCompany.id);
-
-      await supabase
-        .from("registration_links")
-        .delete()
-        .eq("company_id", deletingCompany.id);
-
-      await supabase
-        .from("company_documents")
-        .delete()
-        .eq("company_id", deletingCompany.id);
-
-      const { error } = await supabase
-        .from("companies")
-        .delete()
-        .eq("id", deletingCompany.id);
-
+      const { error } = await supabase.rpc("admin_delete_company", { _company_id: deletingCompany.id });
       if (error) throw error;
 
       toast.success("Организация удалена");
