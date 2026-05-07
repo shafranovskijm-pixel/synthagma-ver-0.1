@@ -8,6 +8,7 @@ import { ru } from 'date-fns/locale';
 import type { CommercialProposal, ProposalServiceItem } from '@/hooks/useSalesManager';
 import { SUBSCRIPTION_PLANS, YEARLY_DISCOUNT, formatStorageSize, type SubscriptionPlan } from '@/constants/subscriptionPlans';
 import { toast } from "sonner";
+import { SignatureStampBlock } from "@/components/proposal/SignatureStampBlock";
 
 interface Props {
   open: boolean;
@@ -252,6 +253,9 @@ function ProposalContent({ proposal, services, discountPercent = 0, senderName, 
           Дата: {format(new Date(proposal.created_at), 'dd MMMM yyyy', { locale: ru })}
         </div>
       </div>
+
+      {/* Signature & stamp — обязательно для тендеров */}
+      <SignatureStampBlock />
     </div>
   );
 }
