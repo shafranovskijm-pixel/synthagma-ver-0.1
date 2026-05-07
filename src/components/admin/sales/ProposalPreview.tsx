@@ -278,6 +278,7 @@ export function ProposalPreview({ open, onClose, proposal, services, showActions
         <style>
           * { margin: 0; padding: 0; box-sizing: border-box; }
           body { font-family: 'Georgia', serif; color: #000; }
+          img { max-width: 100%; height: auto; }
           @page { size: A4; margin: 15mm; }
           @media print { body { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
         </style>
