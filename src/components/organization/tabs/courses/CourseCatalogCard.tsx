@@ -16,10 +16,11 @@ interface Props {
   getCategoryById: (id: string | null | undefined) => CourseCategory | undefined;
   isAdminView?: boolean;
   onTransfer?: (course: Course) => void;
+  categories?: CourseCategory[];
+  onMoveToCategory?: (course: Course, categoryId: string | null) => void;
 }
 
-export const CourseCatalogCard = React.memo(function CourseCatalogCard({ course, onCourseClick, onDuplicate, onCoverUpload, onGenerateCover, generatingCoverForCourse, getCategoryById, isAdminView, onTransfer }: Props) {
-  const navigate = useNavigate();
+export const CourseCatalogCard = React.memo(function CourseCatalogCard({ course, onCourseClick, onDuplicate, onCoverUpload, onGenerateCover, generatingCoverForCourse, getCategoryById, isAdminView, onTransfer, categories, onMoveToCategory }: Props) {
   const category = getCategoryById(course.category_id);
 
   return (
