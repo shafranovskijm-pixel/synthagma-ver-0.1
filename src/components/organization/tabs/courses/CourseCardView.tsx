@@ -34,6 +34,7 @@ export const CourseCard = React.memo(function CourseCard({
   course, compact = false, isSelected, onToggleSelect, onCourseClick,
   onToggleSetting, onDuplicate, onMove, isAdminView = false, onTransfer,
   onCoverUpload, onGenerateCover, generatingCoverForCourse, onDelete,
+  categories, onMoveToCategory,
 }: Props) {
   return (
     <div
