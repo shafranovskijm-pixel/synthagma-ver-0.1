@@ -8,6 +8,8 @@ import { RostechnadzorCourses } from "@/components/landing/RostechnadzorCourses"
 import { LandingHeader } from "@/components/landing/LandingHeader";
 
 import { PricingPlans } from "@/components/landing/PricingPlans";
+import { BoxedVersionCard } from "@/components/landing/BoxedVersionCard";
+import { WebsiteDevelopmentCard } from "@/components/landing/WebsiteDevelopmentCard";
 import { Testimonials } from "@/components/landing/Testimonials";
 
 import { MobileApp } from "@/components/landing/MobileApp";
@@ -79,6 +81,8 @@ const Index = () => {
         <Hero showStars={false} />
         <EditorAndFrdoSections />
         <PricingPlans />
+        <BoxedVersionCard />
+        <WebsiteDevelopmentCard />
         <Features />
         <RostechnadzorCourses />
         

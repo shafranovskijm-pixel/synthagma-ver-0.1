@@ -120,10 +120,10 @@ export const SUBSCRIPTION_PLANS: Record<SubscriptionPlan, PlanInfo> = {
     price: 16990,
     description: 'Для крупных организаций',
     limits: {
-      maxCourses: 50,
-      maxStudents: 1000,
-      maxTrainedPerMonth: 500,
-      storageBytes: 53687091200, // 50 GB
+      maxCourses: -1,
+      maxStudents: -1,
+      maxTrainedPerMonth: -1,
+      storageBytes: -1,
       aiEnabled: true,
       aiAudioEnabled: true,
       courseSettings: true,
@@ -135,11 +135,11 @@ export const SUBSCRIPTION_PLANS: Record<SubscriptionPlan, PlanInfo> = {
       kinescopeEnabled: true,
       webinarsEnabled: true,
       videoServicePlus: true,
-      trainersEnabled: false,
+      trainersEnabled: true,
       emailCampaignsEnabled: true,
       salesCrmEnabled: true,
     },
-    enabledCategories: ['courses', 'students', 'companies', 'documents', 'journals', 'frdo', 'links', 'library', 'services', 'settings', 'student_cabinet', 'labor_safety', 'webinars'],
+    enabledCategories: ['courses', 'students', 'companies', 'documents', 'journals', 'frdo', 'links', 'library', 'services', 'settings', 'student_cabinet', 'labor_safety', 'webinars', '3d_trainers'],
   },
   maximum: {
     id: 'maximum',
@@ -175,6 +175,7 @@ export function getPlanInfo(plan: SubscriptionPlan): PlanInfo {
 }
 
 export function formatStorageSize(bytes: number): string {
+  if (bytes === -1) return '∞';
   if (bytes >= 1073741824) return `${Math.round(bytes / 1073741824)} ГБ`;
   return `${Math.round(bytes / 1048576)} МБ`;
 }

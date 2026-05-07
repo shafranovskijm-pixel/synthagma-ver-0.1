@@ -5,7 +5,7 @@ import { Link } from "react-router-dom";
 import { SUBSCRIPTION_PLANS, YEARLY_DISCOUNT, formatStorageSize, type SubscriptionPlan } from "@/constants/subscriptionPlans";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { FloatingParticles } from "./FloatingParticles";
-const planOrder: SubscriptionPlan[] = ['free', 'start', 'standard', 'professional', 'maximum'];
+const planOrder: SubscriptionPlan[] = ['free', 'start', 'standard', 'professional'];
 
 const featureDescriptions: Record<string, { description: string; minPlan: string }> = {
   "Настройки курсов": { description: "Запрет перемотки видео, последовательное прохождение уроков, ограничение по времени. Контролируйте процесс обучения.", minPlan: "Бесплатный" },
@@ -22,7 +22,7 @@ const featureDescriptions: Record<string, { description: string; minPlan: string
   "ФИС ФРДО": { description: "Выгрузка данных в Федеральный реестр документов об образовании. Автоматическое формирование XML.", minPlan: "Бесплатный" },
   "Вебинары": { description: "Проведение онлайн-вебинаров и трансляций с интеграцией Kinescope Live.", minPlan: "Профессиональный" },
   "Видеосервис+": { description: "Загрузка видеофайлов размером более 2 ГБ. Профессиональный видеохостинг с DRM-защитой.", minPlan: "Профессиональный" },
-  "3D-тренажёры": { description: "Интерактивные 3D-тренажёры и симуляции для практического обучения.", minPlan: "Максимальный" },
+  "3D-тренажёры": { description: "Интерактивные 3D-тренажёры и симуляции для практического обучения. На тарифе «Профессиональный» — за дополнительную плату.", minPlan: "Профессиональный" },
   "ИИ-генерация": { description: "Автоматическое создание курсов, уроков и тестов с помощью искусственного интеллекта.", minPlan: "Бесплатный" },
   "ИИ-озвучка": { description: "Озвучивание текстовых уроков реалистичным голосом с помощью ИИ.", minPlan: "Бесплатный" },
 };
@@ -53,7 +53,10 @@ const featureRows: { label: string; link?: string; getValue: (p: SubscriptionPla
   }},
   { label: "Вебинары", getValue: (p) => SUBSCRIPTION_PLANS[p].limits.webinarsEnabled },
   { label: "Видеосервис+", getValue: (p) => SUBSCRIPTION_PLANS[p].limits.videoServicePlus },
-  { label: "3D-тренажёры", getValue: (p) => SUBSCRIPTION_PLANS[p].limits.trainersEnabled },
+  { label: "3D-тренажёры", getValue: (p) => {
+    if (!SUBSCRIPTION_PLANS[p].limits.trainersEnabled) return false;
+    return p === 'professional' ? 'за доплату' : true;
+  }},
   { label: "ИИ-генерация", link: "/feature/ai-courses", getValue: () => true },
   { label: "ИИ-озвучка", link: "/feature/ai-courses", getValue: () => true },
 ];
@@ -222,7 +225,7 @@ export function PricingPlans() {
           initial="hidden"
           whileInView="visible"
           viewport={{ once: true, margin: "-50px" }}
-          className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 xl:gap-5"
+          className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 xl:gap-5"
         >
           {planOrder.map((planId) => {
             const plan = SUBSCRIPTION_PLANS[planId];
@@ -311,9 +314,15 @@ export function PricingPlans() {
                         .map((row) => {
                         const val = row.getValue(planId);
                         const isBool = typeof val === 'boolean';
-                        const isAccent = typeof val === 'string' && val === 'ФРДО+' || row.label === 'Вебинары' || row.label === 'Видеосервис+' || row.label === '3D-тренажёры';
+                        const isExtraCharge = val === 'за доплату';
+                        const isAccent = (typeof val === 'string' && val === 'ФРДО+') || row.label === 'Вебинары' || row.label === 'Видеосервис+' || row.label === '3D-тренажёры';
                         const displayLabel = val === 'ФРДО+' ? 'ФИС ФРДО+' : row.label;
                         const isEnabled = isBool ? val : true;
+                        const renderExtraBadge = isExtraCharge ? (
+                          <span className="ml-1 inline-block text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-accent/10 text-accent align-middle">
+                            за доплату
+                          </span>
+                        ) : null;
                         return (
                           <div key={row.label} className="flex items-center gap-2 text-sm">
                             {isBool ? (
@@ -322,8 +331,10 @@ export function PricingPlans() {
                               ) : (
                                 <X className="w-4 h-4 text-muted-foreground/40 shrink-0" />
                               )
-                            ) : typeof val === 'string' && (val === 'ФРДО+') ? (
+                            ) : typeof val === 'string' && val === 'ФРДО+' ? (
                               <Check className="w-4 h-4 text-[hsl(38,92%,50%)] shrink-0" />
+                            ) : isExtraCharge ? (
+                              <Check className="w-4 h-4 text-accent shrink-0" />
                             ) : (
                               <span className="min-w-5 text-center text-xs font-semibold text-accent shrink-0">
                                 {val === 'Безлимит' ? '∞' : val}
@@ -335,6 +346,7 @@ export function PricingPlans() {
                                   <button className={`inline-flex items-center gap-1 text-left decoration-dotted underline-offset-2 hover:underline hover:text-accent transition-colors ${!isEnabled ? 'text-muted-foreground/50' : isAccent && isEnabled ? 'text-[hsl(38,92%,50%)] font-semibold' : 'text-foreground/80'}`}>
                                     {displayLabel}
                                     <Info className="w-3 h-3 text-muted-foreground shrink-0" />
+                                    {renderExtraBadge}
                                   </button>
                                 </PopoverTrigger>
                                 <PopoverContent side="top" className="w-72 text-sm">
@@ -354,7 +366,7 @@ export function PricingPlans() {
                               </Popover>
                             ) : (
                               <span className={!isEnabled ? 'text-muted-foreground/50' : isAccent && isEnabled ? 'text-[hsl(38,92%,50%)] font-semibold' : 'text-foreground/80'}>
-                                {displayLabel}
+                                {displayLabel}{renderExtraBadge}
                               </span>
                             )}
                           </div>
