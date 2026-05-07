@@ -319,5 +319,7 @@ export function useOrganizationsManager(openOrgId?: string | null, onOpenOrgHand
     togglePassword, copyToClipboard, generatePassword,
     handleResetPassword, handleGenerateCredentials,
     viewAsOrganization, exportToExcel, fetchOrganizations,
+    selectedOrgIds, toggleSelectOrg, toggleSelectAllFiltered, clearSelection,
+    bulkDeleteOpen, setBulkDeleteOpen, bulkDeleting, handleBulkDelete,
   };
 }
