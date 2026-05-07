@@ -5,7 +5,7 @@ import { Link } from "react-router-dom";
 import { SUBSCRIPTION_PLANS, YEARLY_DISCOUNT, formatStorageSize, type SubscriptionPlan } from "@/constants/subscriptionPlans";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { FloatingParticles } from "./FloatingParticles";
-const planOrder: SubscriptionPlan[] = ['free', 'start', 'standard', 'professional', 'maximum'];
+const planOrder: SubscriptionPlan[] = ['free', 'start', 'standard', 'professional'];
 
 const featureDescriptions: Record<string, { description: string; minPlan: string }> = {
   "Настройки курсов": { description: "Запрет перемотки видео, последовательное прохождение уроков, ограничение по времени. Контролируйте процесс обучения.", minPlan: "Бесплатный" },
@@ -22,7 +22,7 @@ const featureDescriptions: Record<string, { description: string; minPlan: string
   "ФИС ФРДО": { description: "Выгрузка данных в Федеральный реестр документов об образовании. Автоматическое формирование XML.", minPlan: "Бесплатный" },
   "Вебинары": { description: "Проведение онлайн-вебинаров и трансляций с интеграцией Kinescope Live.", minPlan: "Профессиональный" },
   "Видеосервис+": { description: "Загрузка видеофайлов размером более 2 ГБ. Профессиональный видеохостинг с DRM-защитой.", minPlan: "Профессиональный" },
-  "3D-тренажёры": { description: "Интерактивные 3D-тренажёры и симуляции для практического обучения.", minPlan: "Максимальный" },
+  "3D-тренажёры": { description: "Интерактивные 3D-тренажёры и симуляции для практического обучения. На тарифе «Профессиональный» — за дополнительную плату.", minPlan: "Профессиональный" },
   "ИИ-генерация": { description: "Автоматическое создание курсов, уроков и тестов с помощью искусственного интеллекта.", minPlan: "Бесплатный" },
   "ИИ-озвучка": { description: "Озвучивание текстовых уроков реалистичным голосом с помощью ИИ.", minPlan: "Бесплатный" },
 };
@@ -53,7 +53,10 @@ const featureRows: { label: string; link?: string; getValue: (p: SubscriptionPla
   }},
   { label: "Вебинары", getValue: (p) => SUBSCRIPTION_PLANS[p].limits.webinarsEnabled },
   { label: "Видеосервис+", getValue: (p) => SUBSCRIPTION_PLANS[p].limits.videoServicePlus },
-  { label: "3D-тренажёры", getValue: (p) => SUBSCRIPTION_PLANS[p].limits.trainersEnabled },
+  { label: "3D-тренажёры", getValue: (p) => {
+    if (!SUBSCRIPTION_PLANS[p].limits.trainersEnabled) return false;
+    return p === 'professional' ? 'за доплату' : true;
+  }},
   { label: "ИИ-генерация", link: "/feature/ai-courses", getValue: () => true },
   { label: "ИИ-озвучка", link: "/feature/ai-courses", getValue: () => true },
 ];
@@ -222,7 +225,7 @@ export function PricingPlans() {
           initial="hidden"
           whileInView="visible"
           viewport={{ once: true, margin: "-50px" }}
-          className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 xl:gap-5"
+          className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 xl:gap-5"
         >
           {planOrder.map((planId) => {
             const plan = SUBSCRIPTION_PLANS[planId];
