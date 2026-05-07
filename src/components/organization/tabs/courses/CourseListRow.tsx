@@ -18,7 +18,7 @@ interface SortableCourseListRowProps {
   category?: CourseCategory;
 }
 
-export function SortableCourseListRow({ course, isSelected, onToggleSelect, onClick, onEdit, onPreview, onMove, category }: SortableCourseListRowProps) {
+export function SortableCourseListRow({ course, isSelected, onToggleSelect, onClick, onPreview, onMove, category }: SortableCourseListRowProps) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: course.id });
   const style = {
     transform: CSS.Transform.toString(transform),
