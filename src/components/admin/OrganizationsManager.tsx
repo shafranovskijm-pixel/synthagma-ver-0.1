@@ -145,11 +145,13 @@ export function OrganizationsManager({ openOrgId, onOpenOrgHandled }: Organizati
 }
 
 // ---- List View ----
-function OrgListView({ orgs, onView, onEdit, onDelete, onViewAs }: { orgs: Organization[]; onView: (o: Organization) => void; onEdit: (o: Organization) => void; onDelete: (o: Organization) => void; onViewAs: (o: Organization) => void }) {
+function OrgListView({ orgs, onView, onEdit, onDelete, onViewAs, selectedIds, onToggleOne, onToggleAll }: { orgs: Organization[]; onView: (o: Organization) => void; onEdit: (o: Organization) => void; onDelete: (o: Organization) => void; onViewAs: (o: Organization) => void; selectedIds: string[]; onToggleOne: (id: string) => void; onToggleAll: () => void }) {
+  const allSelected = orgs.length > 0 && orgs.every(o => selectedIds.includes(o.id));
   return (
     <div className="bg-card rounded-xl border border-border overflow-hidden">
       <table className="w-full">
         <thead><tr className="border-b border-border bg-muted/30">
+          <th className="px-3 py-3 w-10"><Checkbox checked={allSelected} onCheckedChange={onToggleAll} aria-label="Выбрать все" /></th>
           <th className="text-left px-4 py-3 text-xs font-medium text-muted-foreground">Организация</th>
           <th className="text-left px-4 py-3 text-xs font-medium text-muted-foreground">Контакты</th>
           <th className="text-left px-4 py-3 text-xs font-medium text-muted-foreground">Статистика</th>
@@ -157,7 +159,10 @@ function OrgListView({ orgs, onView, onEdit, onDelete, onViewAs }: { orgs: Organ
         </tr></thead>
         <tbody>
           {orgs.map(org => (
-            <tr key={org.id} className={`border-b border-border last:border-0 hover:bg-muted/30 transition-colors border-l-4 ${org.is_paid ? 'border-l-green-500' : 'border-l-orange-500'}`}>
+            <tr key={org.id} className={`border-b border-border last:border-0 hover:bg-muted/30 transition-colors border-l-4 ${org.is_paid ? 'border-l-green-500' : 'border-l-orange-500'} ${selectedIds.includes(org.id) ? 'bg-destructive/5' : ''}`}>
+              <td className="px-3 py-3" onClick={(e) => e.stopPropagation()}>
+                <Checkbox checked={selectedIds.includes(org.id)} onCheckedChange={() => onToggleOne(org.id)} aria-label={`Выбрать ${org.name}`} />
+              </td>
               <td className="px-4 py-3">
                 <div className="flex items-center gap-2.5 cursor-pointer" onClick={() => onView(org)}>
                   <div className={`w-8 h-8 rounded-full flex-shrink-0 flex items-center justify-center text-xs font-bold text-primary-foreground ${org.is_paid ? 'bg-green-500' : 'bg-orange-500'}`}>{org.name.charAt(0).toUpperCase()}</div>
