@@ -7,9 +7,9 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { BookOpen, Users, Edit, Eye, EyeOff, MoreVertical, MoveRight, Video, VideoOff, Lock, Unlock, FastForward, Copy, ArrowRightLeft, ImagePlus, Wand2, Trash2 } from "lucide-react";
+import { BookOpen, Users, Edit, Eye, EyeOff, MoreVertical, MoveRight, Video, VideoOff, Lock, Unlock, FastForward, Copy, ArrowRightLeft, ImagePlus, Wand2, Trash2, Check, FolderOpen } from "lucide-react";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
-import type { Course } from "@/types";
+import type { Course, CourseCategory } from "@/types";
 
 interface Props {
   course: Course;
