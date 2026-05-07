@@ -557,6 +557,8 @@ export const CoursesTab = React.memo(function CoursesTab({ organizationId, onCou
                     getCategoryById={getCategoryById}
                     isAdminView={isAdminView}
                     onTransfer={handleTransfer}
+                    categories={categories}
+                    onMoveToCategory={handleQuickMoveCourse}
                   />
                 ))}
               </div>
