@@ -175,6 +175,7 @@ export function getPlanInfo(plan: SubscriptionPlan): PlanInfo {
 }
 
 export function formatStorageSize(bytes: number): string {
+  if (bytes === -1) return '∞';
   if (bytes >= 1073741824) return `${Math.round(bytes / 1073741824)} ГБ`;
   return `${Math.round(bytes / 1048576)} МБ`;
 }
