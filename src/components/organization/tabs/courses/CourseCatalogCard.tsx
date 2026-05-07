@@ -128,9 +128,6 @@ export const CourseCatalogCard = React.memo(function CourseCatalogCard({ course,
           <div className="flex items-center gap-1"><Users className="w-3.5 h-3.5" />{course.studentsCount || 0} учеников</div>
           <div className="flex items-center gap-1"><BookOpen className="w-3.5 h-3.5" />{course.lessonsCount || 0} уроков</div>
         </div>
-        <Button variant="outline" className="w-full rounded-xl text-primary border-primary/30 hover:bg-primary/5 mt-1" onClick={e => { e.stopPropagation(); navigate(`/course-builder/${course.id}`); }}>
-          Редактировать курс
-        </Button>
       </div>
     </div>
   );
