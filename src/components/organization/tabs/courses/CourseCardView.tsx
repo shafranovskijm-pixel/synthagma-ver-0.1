@@ -123,6 +123,8 @@ export const CourseCard = React.memo(function CourseCard({
             onGenerateCover={onGenerateCover}
             generatingCoverForCourse={generatingCoverForCourse}
             onDelete={onDelete}
+            categories={categories}
+            onMoveToCategory={onMoveToCategory}
           />
         </div>
       )}
