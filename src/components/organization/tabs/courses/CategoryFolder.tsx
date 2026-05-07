@@ -28,6 +28,8 @@ interface Props {
   onToggleCourseSetting: (course: Course, setting: any, e: React.MouseEvent) => void;
   onDuplicate: (courseId: string) => void;
   onMoveCourse: (course: Course, e?: React.MouseEvent) => void;
+  onMoveCourseToCategory?: (course: Course, categoryId: string | null) => void;
+  allCategories?: CourseCategory[];
   isAdminView?: boolean;
   onTransfer?: (course: Course) => void;
   onCoverUpload?: (courseId: string) => void;
