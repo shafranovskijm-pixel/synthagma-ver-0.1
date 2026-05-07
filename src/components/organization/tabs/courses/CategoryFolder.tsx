@@ -28,6 +28,8 @@ interface Props {
   onToggleCourseSetting: (course: Course, setting: any, e: React.MouseEvent) => void;
   onDuplicate: (courseId: string) => void;
   onMoveCourse: (course: Course, e?: React.MouseEvent) => void;
+  onMoveCourseToCategory?: (course: Course, categoryId: string | null) => void;
+  allCategories?: CourseCategory[];
   isAdminView?: boolean;
   onTransfer?: (course: Course) => void;
   onCoverUpload?: (courseId: string) => void;
@@ -40,6 +42,7 @@ export const CategoryFolder = React.memo(function CategoryFolder({
   categoryId, categoryName, categoryColor, courses, isSystem = false, hiddenFromCatalog = false,
   isExpanded, onToggleExpand, onEditCategory, onDeleteCategory, onToggleCategoryVisibility,
   organizationId, selectedCourseIds, onToggleCourseSelect, onCourseClick, onToggleCourseSetting, onDuplicate, onMoveCourse,
+  onMoveCourseToCategory, allCategories,
   isAdminView, onTransfer, onCoverUpload, onGenerateCover, generatingCoverForCourse, onDeleteCourse,
 }: Props) {
   const courseCount = courses.length;
@@ -108,6 +111,8 @@ export const CategoryFolder = React.memo(function CategoryFolder({
                   onToggleSetting={onToggleCourseSetting}
                   onDuplicate={onDuplicate}
                   onMove={onMoveCourse}
+                  categories={allCategories}
+                  onMoveToCategory={onMoveCourseToCategory}
                   isAdminView={isAdminView}
                   onTransfer={onTransfer}
                   onCoverUpload={onCoverUpload}

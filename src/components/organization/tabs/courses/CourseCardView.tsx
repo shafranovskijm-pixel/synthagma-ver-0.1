@@ -2,14 +2,14 @@ import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger, DropdownMenuSub, DropdownMenuSubTrigger, DropdownMenuSubContent, DropdownMenuPortal } from "@/components/ui/dropdown-menu";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { BookOpen, Users, Edit, Eye, EyeOff, MoreVertical, MoveRight, Video, VideoOff, Lock, Unlock, FastForward, Copy, ArrowRightLeft, ImagePlus, Wand2, Trash2 } from "lucide-react";
+import { BookOpen, Users, Edit, Eye, EyeOff, MoreVertical, MoveRight, Video, VideoOff, Lock, Unlock, FastForward, Copy, ArrowRightLeft, ImagePlus, Wand2, Trash2, Check, FolderOpen } from "lucide-react";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
-import type { Course } from "@/types";
+import type { Course, CourseCategory } from "@/types";
 
 interface Props {
   course: Course;
@@ -20,6 +20,8 @@ interface Props {
   onToggleSetting: (course: Course, setting: 'skip_video_identification' | 'sequential_lessons' | 'allow_video_seek' | 'hidden_from_catalog', e: React.MouseEvent) => void;
   onDuplicate: (courseId: string) => void;
   onMove: (course: Course, e?: React.MouseEvent) => void;
+  categories?: CourseCategory[];
+  onMoveToCategory?: (course: Course, categoryId: string | null) => void;
   isAdminView?: boolean;
   onTransfer?: (course: Course) => void;
   onCoverUpload?: (courseId: string) => void;
@@ -32,6 +34,7 @@ export const CourseCard = React.memo(function CourseCard({
   course, compact = false, isSelected, onToggleSelect, onCourseClick,
   onToggleSetting, onDuplicate, onMove, isAdminView = false, onTransfer,
   onCoverUpload, onGenerateCover, generatingCoverForCourse, onDelete,
+  categories, onMoveToCategory,
 }: Props) {
   return (
     <div
@@ -81,6 +84,8 @@ export const CourseCard = React.memo(function CourseCard({
                 onGenerateCover={onGenerateCover}
                 generatingCoverForCourse={generatingCoverForCourse}
                 onDelete={onDelete}
+                categories={categories}
+                onMoveToCategory={onMoveToCategory}
               />
             </div>
             <div className="flex items-center gap-3 text-xs text-muted-foreground">
@@ -118,6 +123,8 @@ export const CourseCard = React.memo(function CourseCard({
             onGenerateCover={onGenerateCover}
             generatingCoverForCourse={generatingCoverForCourse}
             onDelete={onDelete}
+            categories={categories}
+            onMoveToCategory={onMoveToCategory}
           />
         </div>
       )}
@@ -128,6 +135,7 @@ export const CourseCard = React.memo(function CourseCard({
 function CourseDropdownMenu({
   course, onToggleSetting, onDuplicate, onMove, isAdminView, onTransfer,
   onCoverUpload, onGenerateCover, generatingCoverForCourse, onDelete,
+  categories, onMoveToCategory,
 }: {
   course: Course;
   onToggleSetting: (course: Course, setting: any, e: React.MouseEvent) => void;
@@ -139,6 +147,8 @@ function CourseDropdownMenu({
   onGenerateCover?: (courseId: string) => void;
   generatingCoverForCourse?: string | null;
   onDelete?: (courseId: string) => void;
+  categories?: CourseCategory[];
+  onMoveToCategory?: (course: Course, categoryId: string | null) => void;
 }) {
   const navigate = useNavigate();
   const [confirmOpen, setConfirmOpen] = useState(false);
@@ -191,9 +201,47 @@ function CourseDropdownMenu({
           <DropdownMenuItem onClick={e => { e.stopPropagation(); onDuplicate(course.id); }}>
             <Copy className="w-4 h-4 mr-2" />Дублировать курс
           </DropdownMenuItem>
-          <DropdownMenuItem onClick={e => onMove(course, e)}>
-            <MoveRight className="w-4 h-4 mr-2" />Переместить в категорию
-          </DropdownMenuItem>
+          {categories && onMoveToCategory ? (
+            <DropdownMenuSub>
+              <DropdownMenuSubTrigger>
+                <MoveRight className="w-4 h-4 mr-2" />Переместить в категорию
+              </DropdownMenuSubTrigger>
+              <DropdownMenuPortal>
+                <DropdownMenuSubContent className="rounded-xl max-h-72 overflow-y-auto">
+                  <DropdownMenuItem
+                    disabled={!course.category_id}
+                    onClick={e => { e.stopPropagation(); onMoveToCategory(course, null); }}
+                  >
+                    <FolderOpen className="w-4 h-4 mr-2 text-muted-foreground" />
+                    Без категории
+                    {!course.category_id && <Check className="w-4 h-4 ml-auto" />}
+                  </DropdownMenuItem>
+                  {categories.length > 0 && <DropdownMenuSeparator />}
+                  {categories.map(cat => {
+                    const isCurrent = course.category_id === cat.id;
+                    return (
+                      <DropdownMenuItem
+                        key={cat.id}
+                        disabled={isCurrent}
+                        onClick={e => { e.stopPropagation(); onMoveToCategory(course, cat.id); }}
+                      >
+                        <span
+                          className="w-3 h-3 rounded-full mr-2 shrink-0"
+                          style={{ backgroundColor: cat.color || 'var(--muted-foreground)' }}
+                        />
+                        <span className="truncate">{cat.name}</span>
+                        {isCurrent && <Check className="w-4 h-4 ml-auto shrink-0" />}
+                      </DropdownMenuItem>
+                    );
+                  })}
+                </DropdownMenuSubContent>
+              </DropdownMenuPortal>
+            </DropdownMenuSub>
+          ) : (
+            <DropdownMenuItem onClick={e => onMove(course, e)}>
+              <MoveRight className="w-4 h-4 mr-2" />Переместить в категорию
+            </DropdownMenuItem>
+          )}
           {isAdminView && onTransfer && (
             <DropdownMenuItem className="text-primary focus:text-primary" onClick={e => { e.stopPropagation(); onTransfer(course); }}>
               <ArrowRightLeft className="w-4 h-4 mr-2" />Перенести в другую организацию
