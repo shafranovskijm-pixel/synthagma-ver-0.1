@@ -9659,6 +9659,14 @@ export type Database = {
           reference_url: string
         }[]
       }
+      admin_delete_company: {
+        Args: { _company_id: string }
+        Returns: undefined
+      }
+      admin_delete_organization: {
+        Args: { _org_id: string }
+        Returns: undefined
+      }
       admin_update_user_role: {
         Args: {
           p_new_role: Database["public"]["Enums"]["app_role"]

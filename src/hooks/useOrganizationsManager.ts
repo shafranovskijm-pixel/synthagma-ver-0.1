@@ -144,64 +144,7 @@ export function useOrganizationsManager(openOrgId?: string | null, onOpenOrgHand
   };
 
   const deleteOrgById = async (orgId: string) => {
-      const { data: courses } = await supabase.from("courses").select("id").eq("organization_id", orgId);
-      const courseIds = (courses || []).map((c) => c.id);
-      await supabase.from("marketplace_orders").delete().eq("buyer_organization_id", orgId);
-      if (courseIds.length > 0) {
-        const { data: mpCourses } = await supabase.from("marketplace_courses").select("id").eq("organization_id", orgId);
-        const mpCourseIds = (mpCourses || []).map((c) => c.id);
-        if (mpCourseIds.length > 0) { await supabase.from("marketplace_orders").delete().in("marketplace_course_id", mpCourseIds); await supabase.from("marketplace_course_comments").delete().in("marketplace_course_id", mpCourseIds); }
-        await supabase.from("enrollments").delete().in("course_id", courseIds);
-        await supabase.from("course_reminders").delete().in("course_id", courseIds);
-        await supabase.from("course_documents").delete().in("course_id", courseIds);
-        await supabase.from("course_access_log").delete().in("course_id", courseIds);
-        await supabase.from("lessons").delete().in("course_id", courseIds);
-        await supabase.from("courses").delete().eq("organization_id", orgId);
-      }
-      const { data: companies } = await supabase.from("companies").select("id").eq("organization_id", orgId);
-      const companyIds = (companies || []).map((c) => c.id);
-      if (companyIds.length > 0) {
-        await supabase.from("company_requests").delete().in("company_id", companyIds);
-        await supabase.from("company_documents").delete().in("company_id", companyIds);
-        await supabase.from("training_plans").delete().in("company_id", companyIds);
-        await supabase.from("companies").delete().eq("organization_id", orgId);
-      }
-      await Promise.all([
-        supabase.from("profiles").delete().eq("organization_id", orgId),
-        supabase.from("registration_links").delete().eq("organization_id", orgId),
-        supabase.from("organization_credentials").delete().eq("organization_id", orgId),
-        supabase.from("org_documents").delete().eq("organization_id", orgId),
-        supabase.from("org_notifications").delete().eq("organization_id", orgId),
-        supabase.from("organization_comments").delete().eq("organization_id", orgId),
-        supabase.from("audit_logs").delete().eq("organization_id", orgId),
-        supabase.from("consent_documents").delete().eq("organization_id", orgId),
-        supabase.from("course_categories").delete().eq("organization_id", orgId),
-        supabase.from("journal_instances").delete().eq("organization_id", orgId),
-        supabase.from("library_folders").delete().eq("organization_id", orgId),
-        supabase.from("library_documents").delete().eq("organization_id", orgId),
-        supabase.from("document_issuance_log").delete().eq("organization_id", orgId),
-        supabase.from("education_document_records").delete().eq("organization_id", orgId),
-        supabase.from("system_diagnostics").delete().eq("organization_id", orgId),
-        supabase.from("organization_feature_categories").delete().eq("organization_id", orgId),
-        supabase.from("organization_feature_usage").delete().eq("organization_id", orgId),
-        supabase.from("organization_features").delete().eq("organization_id", orgId),
-        supabase.from("marketplace_courses").delete().eq("organization_id", orgId),
-        supabase.from("labor_safety_groups").delete().eq("organization_id", orgId),
-        supabase.from("labor_safety_profiles").delete().eq("organization_id", orgId),
-        supabase.from("student_groups").delete().eq("organization_id", orgId),
-        supabase.from("testimonials").delete().eq("organization_id", orgId),
-        supabase.from("student_consents").delete().eq("organization_id", orgId),
-        supabase.from("program_categories").delete().eq("organization_id", orgId),
-        supabase.from("balance_transactions").delete().eq("organization_id", orgId),
-        supabase.from("ai_usage_log").delete().eq("organization_id", orgId),
-        supabase.from("admin_org_messages").delete().eq("organization_id", orgId),
-        supabase.from("course_access_log").delete().eq("organization_id", orgId),
-        supabase.from("course_requests").delete().eq("organization_id", orgId),
-        supabase.from("org_billing_documents").delete().eq("organization_id", orgId),
-        supabase.from("student_login_history").delete().eq("organization_id", orgId),
-        supabase.from("knowledge_bank").delete().eq("organization_id", orgId),
-      ]);
-    const { error } = await supabase.from("organizations").delete().eq("id", orgId);
+    const { error } = await supabase.rpc("admin_delete_organization", { _org_id: orgId });
     if (error) throw error;
   };
 
