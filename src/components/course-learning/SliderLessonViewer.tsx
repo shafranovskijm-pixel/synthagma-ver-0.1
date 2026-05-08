@@ -125,7 +125,7 @@ export const SliderLessonViewer = ({ content, title, lessonIndex, isMobile }: Sl
   }
 
   // Fallback slide-by-slide view
-  const [currentIndex, setCurrentIndex] = useState(0);
+  // Fallback slide-by-slide view (currentIndex declared above)
 
   if (slides.length === 0) {
     return (
