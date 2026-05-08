@@ -190,7 +190,7 @@ export function useCourseLearning() {
     await saveLessonTime();
     const { error } = await supabase.from('lesson_progress').upsert({
       lesson_id: currentLesson.id, user_id: user.id, completed: true, completed_at: new Date().toISOString()
-    }, { onConflict: 'lesson_id,user_id' });
+    }, { onConflict: 'user_id,lesson_id' });
 
     if (error) {
       const { error: insertError } = await supabase.from('lesson_progress').insert({
