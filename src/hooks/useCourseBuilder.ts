@@ -91,8 +91,16 @@ export function useCourseBuilder(propCourseId?: string) {
             .order("order_index")
         : Promise.resolve({ data: null, error: null } as any);
 
+      // PERF: pull lesson list WITHOUT `content` column. Slider lessons can
+      // hold 8–11 MB of base64 each → 50+ MB per course → PostgREST timeouts.
+      // Content is fetched on-demand via `loadLessonContent(id)` when a lesson
+      // is opened in the editor.
       const lessonsPromise = courseId
-        ? supabase.from("lessons").select("*").eq("course_id", courseId).order("order_index")
+        ? supabase
+            .from("lessons")
+            .select("id, course_id, title, type, order_index, module_id, is_locked, locked_until, test_passing_score, test_questions_to_show, ai_avatar_name, ai_avatar_image_url, ai_avatar_voice_id, ai_avatar_system_prompt, ai_avatar_greeting, ai_avatar_subject, ai_avatar_style, ai_avatar_session_minutes, ai_avatar_model")
+            .eq("course_id", courseId)
+            .order("order_index")
         : Promise.resolve({ data: null, error: null } as any);
 
       const [{ data: profile }, courseRes, modulesRes, lessonsRes] = await Promise.all([
