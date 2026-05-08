@@ -103,6 +103,9 @@ export function useCourseDetailsLogic(
   ) => {
     if (!course) return;
     try {
+      // Подчищаем ссылки, которые не каскадятся в БД (training_plans, source_course_id self-ref)
+      await supabase.from("training_plans").delete().eq("course_id", course.id);
+      await supabase.from("courses").update({ source_course_id: null } as any).eq("source_course_id", course.id);
       await supabase.from("enrollments").delete().eq("course_id", course.id);
       await supabase.from("lessons").delete().eq("course_id", course.id);
       await supabase.from("course_documents").delete().eq("course_id", course.id);
@@ -112,8 +115,9 @@ export function useCourseDetailsLogic(
       base.setShowDeleteConfirm(false);
       onOpenChange(false);
       onCourseDeleted?.();
-    } catch {
-      toast.error("Ошибка удаления курса");
+    } catch (err: any) {
+      console.error("[deleteCourse] error:", err);
+      toast.error("Ошибка удаления курса", { description: err?.message || err?.details || undefined });
     }
   }, [course, base]);
 
