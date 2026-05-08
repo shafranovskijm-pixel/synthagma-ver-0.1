@@ -43,6 +43,7 @@ export const SliderLessonViewer = ({ content, title, lessonIndex, isMobile }: Sl
   const [viewerError, setViewerError] = useState(false);
   const [viewerKind, setViewerKind] = useState<ViewerKind>('office');
   const [reloadKey, setReloadKey] = useState(0);
+  const [currentIndex, setCurrentIndex] = useState(0);
   const loadTimerRef = useRef<number | null>(null);
   const sliderContent = parseSliderContent(content);
   const slides = sliderContent.slides;
