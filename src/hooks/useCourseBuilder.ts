@@ -414,6 +414,26 @@ export function useCourseBuilder(propCourseId?: string) {
 
   const updateLesson = useCallback((id: string, updates: Partial<Lesson>) => { setLessons(prev => prev.map(l => l.id === id ? { ...l, ...updates } : l)); markAsChanged(); }, [markAsChanged]);
   const deleteLesson = useCallback((id: string) => { setLessons(prev => prev.filter(l => l.id !== id)); markAsChanged(); if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current); autoSaveTimerRef.current = setTimeout(() => { saveCourse(true); }, 500); }, [markAsChanged]);
+
+  // Lazy-load full content for a single lesson (slider blobs can be 10+ MB).
+  // Called when a lesson is opened/expanded in the editor.
+  const loadLessonContent = useCallback(async (lessonId: string): Promise<void> => {
+    const target = latestStateRef.current.lessons.find(l => l.id === lessonId);
+    if (!target || target.__contentLoaded) return;
+    const { data, error } = await supabase.from("lessons").select("content").eq("id", lessonId).maybeSingle();
+    if (error) { console.error("loadLessonContent failed", error); return; }
+    const content: string = (data as any)?.content || "";
+    setLessons(prev => prev.map(l => {
+      if (l.id !== lessonId) return l;
+      let blocks = l.blocks;
+      try {
+        const { jsonToBlocks } = require("@/components/course-builder/BlockEditor");
+        if (content) blocks = jsonToBlocks(content);
+      } catch { /* fallback: leave blocks as-is */ }
+      return { ...l, content, blocks, __contentLoaded: true };
+    }));
+  }, []);
+
   // Accordion: открыт только один урок. Повторный клик по уже открытому — сворачивает.
   const toggleLesson = useCallback((id: string) => {
     setLessons(prev => {
