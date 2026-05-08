@@ -46,6 +46,13 @@ export interface Lesson {
   questions?: TestQuestionLocal[];
   attachments?: LessonAttachmentLocal[];
   module_id?: string | null;
+  /**
+   * Lazy-load flag. `true` means lesson content is fully loaded into memory
+   * (used by `useCourseBuilder` to avoid pulling huge slider-base64 content
+   * for every lesson on initial list query). When `false`, `content`/`blocks`
+   * are placeholders and must NOT be saved back to DB (would wipe data).
+   */
+  __contentLoaded?: boolean;
 }
 
 export interface CourseModule {
