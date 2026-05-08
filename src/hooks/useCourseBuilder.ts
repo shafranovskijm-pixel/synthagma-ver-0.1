@@ -98,7 +98,7 @@ export function useCourseBuilder(propCourseId?: string) {
       const lessonsPromise = courseId
         ? supabase
             .from("lessons")
-            .select("id, course_id, title, type, order_index, module_id, is_locked, locked_until, test_passing_score, test_questions_to_show, ai_avatar_name, ai_avatar_image_url, ai_avatar_voice_id, ai_avatar_system_prompt, ai_avatar_greeting, ai_avatar_subject, ai_avatar_style, ai_avatar_session_minutes, ai_avatar_model")
+            .select("id, course_id, title, type, order_index, module_id, is_locked, test_passing_score, test_questions_to_show, ai_avatar_name, ai_avatar_image_url, ai_avatar_voice_id, ai_avatar_system_prompt, ai_avatar_greeting, ai_avatar_subject, ai_avatar_style, ai_avatar_session_minutes, ai_avatar_model")
             .eq("course_id", courseId)
             .order("order_index")
         : Promise.resolve({ data: null, error: null } as any);
