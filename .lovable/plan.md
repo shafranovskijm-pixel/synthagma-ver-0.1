@@ -1,45 +1,42 @@
 ## Проблема
 
-В программе «Обучение по гражданской обороне…» (Владивостокский центр охраны труда, id `43dcdf82-31df-40cb-ab87-f7792a3eab5b`) уроки **не удалены** — в БД 17 уроков, итоговый тест с 8 вопросами. Все на местах.
+Сегодня курсы открываются в 3–5 раз медленнее обычного (10–15 сек вместо 3). Я нашёл причину: на стороне ученика и в превью `lessons` грузятся целиком (`select('*')`), вместе с полем `content`. У слайдер‑уроков (презентаций) `content` хранит base64 PPTX/картинок и весит **8–11 МБ на урок**. На курсе с 8–10 уроками это **до 50–80 МБ JSON** в одном запросе → PostgREST тормозит/таймаутит, а на нестабильной сети пользователь видит «вечный спиннер» и пустые уроки.
 
-Причина «ошибки загрузки» и пустого списка: суммарный размер `lessons.content` ≈ **52 МБ** (отдельные слайдер-уроки 8–11 МБ — внутри base64-картинки слайдов). `useCourseBuilder` тянет `from("lessons").select("*")` одним запросом → PostgREST/сеть таймаутят → весь конструктор падает в «ошибку», курс выглядит пустым.
-
-Откат версии тут не нужен (снимков курса нет, и контент в БД). Лечим загрузку.
+В редакторе курса (`useCourseBuilder.ts`) этот же фикс уже сделан: оттуда `content` исключён, а тяжёлый контент догружается при открытии конкретного урока. На стороне обучения и превью — нет.
 
 ## Что сделаю
 
-1. **`src/hooks/useCourseBuilder.ts`** — на первом грузе списка уроков селектить только лёгкие поля:
-   ```ts
-   .select("id, course_id, title, type, order_index, module_id, is_locked, locked_until, test_passing_score, test_questions_to_show, ai_avatar_*")
-   ```
-   `content` не подтягивать. Для уроков, у которых ещё нет загруженного content, в state класть `content: null` + флаг `__contentLoaded: false`.
+### 1. `src/hooks/course-learning/useCourseLearningFacade.ts` (главное)
+- В `fetchCourseData` заменить `lessons.select('*')` на явный список колонок без `content` (id, title, type, order_index, module_id, is_locked, locked_until, test_passing_score, test_questions_to_show, ai_avatar_*, и т.д.).
+- Добавить ленивую догрузку: при смене `currentLessonIndex`, если у `currentLesson.content === undefined`, делать одиночный `select('content').eq('id', currentLesson.id).single()` и записывать в локальный стейт. Кэшировать в памяти, чтобы повторно не дёргать.
+- Уже загруженный курс с content для офлайна сохраняется как сейчас (в кэш кладётся то, что есть; для слайдеров content подтянется при первом открытии онлайн).
 
-2. **Догрузка контента «по требованию»**:
-   - Добавить хелпер `loadLessonContent(lessonId)` — `select("content").eq("id", lessonId).single()`, кладёт результат в стейт и помечает `__contentLoaded: true`.
-   - Вызывать его при открытии урока в редакторе/превью и перед автосохранением, если контент ещё не подтянут.
+### 2. `src/hooks/useCoursePreview.ts`
+- Тот же приём: `lessons.select('id,title,type,order_index,test_questions_count,is_locked')`, плюс отдельный запрос content для текущего урока.
 
-3. **`src/hooks/useCourseBuilder.ts` сохранение (строки 460–475)** — в массовом `upsert(lessonsToSave)` отправлять `content` только для уроков, у которых `__contentLoaded === true` (либо изменили). Иначе исключать `content` из payload, чтобы случайно не затереть тяжёлые слайдеры пустым значением.
+### 3. `src/hooks/useCourseStoreManager.ts` (строка 275, дубликат курса)
+- Это одноразовая операция копирования курса — `select('*')` оставлю, но добавлю чанковую вставку (по 5 уроков), чтобы один большой запрос не вешал клиент. Если воркфлоу-импакт большой — оставлю как есть, лишь логирование добавлю.
 
-4. **`src/hooks/useCourseEditor.ts` (строка 81)** — аналогично: при загрузке списка не тянуть `content`, догружать при открытии урока.
+### 4. Мелкая защита от «зависших» открытий
+- В `useCourseLearning`/`useCoursePreview` добавить таймаут запроса 15 сек: при превышении — fallback на офлайн-кэш (уже есть `getCachedCourseData`) и тост «Соединение медленное».
+- Починить варнинг в консоли «Query data cannot be undefined … announcements-unread»: queryFn должна возвращать `null`/`[]` вместо `undefined` (находится в `useOrgNewIndicators`/`useAdminUnreadChats`-подобных хуках; найду точный файл по queryKey `announcements-unread` и добавлю явный return).
 
-5. **CourseDetailsTab/CourseDetailsContent (`activeTab === "editor"`)** — убедиться, что при первом рендере не вызывается рендер «всех уроков сразу с контентом». Достаточно п.1–4, отдельный код менять не придётся.
-
-6. **Защита от регрессии** — добавить лог-предупреждение в `useCourseBuilder` если суммарная длина content > 5 МБ при сохранении (подсказка вынести медиа в storage).
-
-## Что НЕ трогаю
-
-- БД, RLS, snapshots — данные не теряются
-- `useCourseLearning` (студенческая сторона) — там и так уроки грузятся по одному
-- Тарифы, КП, подпись/печать
-- Не делаю миграцию base64 → storage для этих 6 тяжёлых уроков (отдельная задача, скажете — сделаю)
+### 5. Проверка «уроки не пропадают»
+- После изменения `select` пройдусь по точкам, где код раньше читал `lesson.content` напрямую (в `useLessonTTS`, `useLessonChat`, `SliderLessonViewer`, `useCourseLearningFacade.contentBlocks`) — все они теперь должны брать контент из догруженного значения. Адаптирую `currentLesson` так, чтобы из `lessons[currentLessonIndex]` отдавался merged-объект с подгруженным content (через `useMemo`), чтобы UI не пришлось переписывать.
 
 ## Технические детали
 
-```text
-courses (43dcdf82…)
- └─ lessons[17]   ← list query: без content
-     ├─ id/title/type/order_index/module_id/...
-     └─ content   ← догружается при открытии урока
-```
+- Колонки lessons без content (повторяю список из CourseBuilder для совместимости):  
+  `id, course_id, title, type, order_index, module_id, is_locked, locked_until, test_passing_score, test_questions_to_show, ai_avatar_name, ai_avatar_image_url, ai_avatar_voice_id, ai_avatar_system_prompt, ai_avatar_greeting, ai_avatar_subject, ai_avatar_style, ai_avatar_session_minutes, ai_avatar_model`.
+- Догрузка content: `Map<lessonId, string|null>` в ref + `useState` для триггера ререндера. Загружается параллельно с переходом, плюс preload соседнего урока (i+1).
+- Никаких миграций БД и изменений RLS не требуется.
 
-Загрузка списка ~17 строк × несколько КБ вместо 52 МБ — мгновенно.
+## Что НЕ меняю
+- Логику прогресса, тестов, чата, видео — там фиксы уже сделаны в прошлых сообщениях.
+- Загрузку курса в редакторе (`useCourseBuilder`) — уже оптимизирована.
+- Дизайн.
+
+## Проверка
+- Открыть курс БОИЧС и курс Владивостокского центра охраны труда: первая отрисовка списка уроков ≤ 1.5 сек; презентационные уроки подгружаются при клике за 1–3 сек.
+- В консоли — нет ошибки про `Query data cannot be undefined`.
+- Network: запрос `lessons?...` возвращает <100 КБ вместо 50+ МБ.

@@ -10,7 +10,7 @@ export interface Lesson {
   id: string;
   title: string;
   type: string;
-  content: string | null;
+  content?: string | null;
   order_index: number;
   test_questions_count?: number | null;
   is_locked?: boolean;
@@ -53,7 +53,12 @@ const testQuestionsKey = (lessonId?: string) => ['testQuestions', lessonId] as c
 async function fetchCoursePreviewData(courseId: string): Promise<CoursePreviewData> {
   const [{ data: courseData, error: courseError }, { data: lessonsData, error: lessonsError }, { data: docsData }] = await Promise.all([
     supabase.from('courses').select('*').eq('id', courseId).single(),
-    supabase.from('lessons').select('*').eq('course_id', courseId).order('order_index'),
+    // PERF: skip heavy `content` column for the list; fetched per-lesson on open.
+    supabase
+      .from('lessons')
+      .select('id, course_id, title, type, order_index, module_id, is_locked, test_passing_score, test_questions_to_show, test_questions_count')
+      .eq('course_id', courseId)
+      .order('order_index'),
     supabase.from('course_documents').select('*').eq('course_id', courseId).order('created_at'),
   ]);
 
@@ -118,7 +123,33 @@ export function useCoursePreview(options: UseCoursePreviewOptions = {}) {
   const lessonAttachments = data?.lessonAttachments ?? {};
   const courseDocuments = data?.courseDocuments ?? [];
 
-  const currentLesson = showDocumentsView ? null : lessons[currentLessonIndex];
+  const baseLesson = showDocumentsView ? null : lessons[currentLessonIndex];
+
+  // Lazy load content for currently opened lesson + prefetch next.
+  const { data: currentContent } = useQuery({
+    queryKey: ['lesson-content', baseLesson?.id],
+    enabled: !!baseLesson?.id,
+    staleTime: 5 * 60_000,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('lessons').select('content').eq('id', baseLesson!.id).maybeSingle();
+      if (error) throw error;
+      return (data?.content ?? null) as string | null;
+    },
+  });
+  const nextLesson = baseLesson ? lessons[currentLessonIndex + 1] : null;
+  useQuery({
+    queryKey: ['lesson-content', nextLesson?.id],
+    enabled: !!nextLesson?.id,
+    staleTime: 5 * 60_000,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('lessons').select('content').eq('id', nextLesson!.id).maybeSingle();
+      return (data?.content ?? null) as string | null;
+    },
+  });
+
+  const currentLesson = baseLesson ? { ...baseLesson, content: baseLesson.content ?? currentContent ?? null } as Lesson : null;
 
   const { data: testQuestionsData } = useQuery({
     queryKey: testQuestionsKey(currentLesson?.id),
