@@ -53,7 +53,12 @@ const testQuestionsKey = (lessonId?: string) => ['testQuestions', lessonId] as c
 async function fetchCoursePreviewData(courseId: string): Promise<CoursePreviewData> {
   const [{ data: courseData, error: courseError }, { data: lessonsData, error: lessonsError }, { data: docsData }] = await Promise.all([
     supabase.from('courses').select('*').eq('id', courseId).single(),
-    supabase.from('lessons').select('*').eq('course_id', courseId).order('order_index'),
+    // PERF: skip heavy `content` column for the list; fetched per-lesson on open.
+    supabase
+      .from('lessons')
+      .select('id, course_id, title, type, order_index, module_id, is_locked, test_passing_score, test_questions_to_show, test_questions_count')
+      .eq('course_id', courseId)
+      .order('order_index'),
     supabase.from('course_documents').select('*').eq('course_id', courseId).order('created_at'),
   ]);
 
