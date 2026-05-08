@@ -492,14 +492,32 @@ export function useCourseBuilder(propCourseId?: string) {
       if (lessons.length > 0 && savedCourseId) {
         const currentLessonIds = lessons.map(l => l.id);
         if (courseId) await supabase.from("lessons").delete().eq("course_id", courseId).not("id", "in", `(${currentLessonIds.join(",")})`);
-        const lessonsToSave = lessons.map((lesson, index) => {
-          const base: any = { id: lesson.id, course_id: savedCourseId!, title: lesson.title, type: lesson.type, order_index: index, test_passing_score: lesson.testPassingScore ?? 60, test_questions_to_show: lesson.testQuestionsToShow ?? null, module_id: lesson.module_id ?? null };
-          // CRITICAL: only write `content` if it was actually loaded into memory.
-          // Otherwise we'd nuke heavy slider blobs that were never fetched.
-          if (lesson.__contentLoaded !== false) base.content = lesson.content || null;
-          return base;
+        // Split into two upsert batches:
+        // - lessonsWithContent: content was loaded (or freshly created) → write everything
+        // - lessonsMetaOnly: lazy placeholder → write metadata, KEEP existing content in DB
+        const baseRow = (lesson: typeof lessons[number], index: number) => ({
+          id: lesson.id, course_id: savedCourseId!, title: lesson.title, type: lesson.type,
+          order_index: index, test_passing_score: lesson.testPassingScore ?? 60,
+          test_questions_to_show: lesson.testQuestionsToShow ?? null, module_id: lesson.module_id ?? null,
         });
-        const { error: batchError } = await supabase.from("lessons").upsert(lessonsToSave, { onConflict: "id" });
+        const lessonsWithContent = lessons
+          .map((l, i) => ({ l, i }))
+          .filter(({ l }) => l.__contentLoaded !== false)
+          .map(({ l, i }) => ({ ...baseRow(l, i), content: l.content || null }));
+        const lessonsMetaOnly = lessons
+          .map((l, i) => ({ l, i }))
+          .filter(({ l }) => l.__contentLoaded === false)
+          .map(({ l, i }) => baseRow(l, i));
+
+        const upsertResults = await Promise.all([
+          lessonsWithContent.length > 0
+            ? supabase.from("lessons").upsert(lessonsWithContent, { onConflict: "id" })
+            : Promise.resolve({ error: null } as any),
+          lessonsMetaOnly.length > 0
+            ? supabase.from("lessons").upsert(lessonsMetaOnly, { onConflict: "id" })
+            : Promise.resolve({ error: null } as any),
+        ]);
+        const batchError = upsertResults.find(r => r.error)?.error;
         if (batchError && !batchError.message?.includes('AbortError')) {
           console.error("Error saving lessons:", batchError);
           if (!silent) toast.error("Ошибка сохранения уроков: " + batchError.message);
