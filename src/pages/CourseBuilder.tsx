@@ -45,9 +45,14 @@ export default function CourseBuilder({ embedded, embeddedCourseId, onExitEditor
     sensors, handleDragEnd, saveCourse, autoSaveStatus,
     courseId: resolvedCourseId,
     organizationId,
-    activeLessonId, setActiveLessonId, scrollToLesson,
+    activeLessonId, setActiveLessonId, scrollToLesson, loadLessonContent,
     modules, createModule, renameModule, deleteModule, toggleModuleCollapsed,
     collapseAllModules, expandAllModules } = useCourseBuilder(embeddedCourseId);
+
+  // Lazy-load full content of the currently active lesson (list query omits content for perf).
+  useEffect(() => {
+    if (activeLessonId) void loadLessonContent(activeLessonId);
+  }, [activeLessonId, loadLessonContent]);
 
   const {
     isReviewing, reviewResult, activeFindings, dismissedIds, appliedIds, applyingId,
