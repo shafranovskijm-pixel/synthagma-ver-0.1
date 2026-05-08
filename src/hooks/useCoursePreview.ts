@@ -123,7 +123,33 @@ export function useCoursePreview(options: UseCoursePreviewOptions = {}) {
   const lessonAttachments = data?.lessonAttachments ?? {};
   const courseDocuments = data?.courseDocuments ?? [];
 
-  const currentLesson = showDocumentsView ? null : lessons[currentLessonIndex];
+  const baseLesson = showDocumentsView ? null : lessons[currentLessonIndex];
+
+  // Lazy load content for currently opened lesson + prefetch next.
+  const { data: currentContent } = useQuery({
+    queryKey: ['lesson-content', baseLesson?.id],
+    enabled: !!baseLesson?.id,
+    staleTime: 5 * 60_000,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('lessons').select('content').eq('id', baseLesson!.id).maybeSingle();
+      if (error) throw error;
+      return (data?.content ?? null) as string | null;
+    },
+  });
+  const nextLesson = baseLesson ? lessons[currentLessonIndex + 1] : null;
+  useQuery({
+    queryKey: ['lesson-content', nextLesson?.id],
+    enabled: !!nextLesson?.id,
+    staleTime: 5 * 60_000,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('lessons').select('content').eq('id', nextLesson!.id).maybeSingle();
+      return (data?.content ?? null) as string | null;
+    },
+  });
+
+  const currentLesson = baseLesson ? { ...baseLesson, content: baseLesson.content ?? currentContent ?? null } as Lesson : null;
 
   const { data: testQuestionsData } = useQuery({
     queryKey: testQuestionsKey(currentLesson?.id),
