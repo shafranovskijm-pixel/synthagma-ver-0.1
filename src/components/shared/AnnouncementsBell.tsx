@@ -53,7 +53,7 @@ export function AnnouncementsBell() {
         .select("last_seen_announcement_at")
         .eq("user_id", user!.id)
         .maybeSingle();
-      return data?.last_seen_announcement_at as string | null;
+      return (data?.last_seen_announcement_at as string | null) ?? null;
     },
     staleTime: 60 * 1000,
   });
