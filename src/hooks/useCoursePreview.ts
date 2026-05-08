@@ -10,7 +10,7 @@ export interface Lesson {
   id: string;
   title: string;
   type: string;
-  content: string | null;
+  content?: string | null;
   order_index: number;
   test_questions_count?: number | null;
   is_locked?: boolean;
