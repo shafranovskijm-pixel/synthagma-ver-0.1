@@ -36,16 +36,45 @@ interface SliderLessonViewerProps {
   isMobile: boolean;
 }
 
+type ViewerKind = 'office' | 'google';
+
 export const SliderLessonViewer = ({ content, title, lessonIndex, isMobile }: SliderLessonViewerProps) => {
   const [isLoading, setIsLoading] = useState(true);
   const [viewerError, setViewerError] = useState(false);
+  const [viewerKind, setViewerKind] = useState<ViewerKind>('office');
+  const [reloadKey, setReloadKey] = useState(0);
+  const loadTimerRef = useRef<number | null>(null);
   const sliderContent = parseSliderContent(content);
   const slides = sliderContent.slides;
   const pptxFileUrl = sliderContent.pptxFileUrl;
 
-  const getViewerUrl = (fileUrl: string) => `https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(fileUrl)}`;
+  const getViewerUrl = (fileUrl: string, kind: ViewerKind) => {
+    if (kind === 'google') return `https://docs.google.com/gview?embedded=true&url=${encodeURIComponent(fileUrl)}`;
+    return `https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(fileUrl)}`;
+  };
+
+  // Auto-fallback to Google viewer if Office viewer doesn't load within 8s
+  useEffect(() => {
+    if (!pptxFileUrl) return;
+    setIsLoading(true);
+    setViewerError(false);
+    if (loadTimerRef.current) window.clearTimeout(loadTimerRef.current);
+    loadTimerRef.current = window.setTimeout(() => {
+      if (viewerKind === 'office') {
+        setViewerKind('google');
+        setReloadKey(k => k + 1);
+      }
+    }, 8000);
+    return () => { if (loadTimerRef.current) window.clearTimeout(loadTimerRef.current); };
+  }, [pptxFileUrl, viewerKind, reloadKey]);
 
   if (pptxFileUrl) {
+    const switchViewer = () => {
+      setViewerKind(k => (k === 'office' ? 'google' : 'office'));
+      setReloadKey(k => k + 1);
+      setViewerError(false);
+      setIsLoading(true);
+    };
     return (
       <div className="space-y-4 md:space-y-6 animate-fade-in">
         <div className="flex items-center gap-3 pb-3 md:pb-4 border-b border-border">
@@ -56,6 +85,9 @@ export const SliderLessonViewer = ({ content, title, lessonIndex, isMobile }: Sl
             <h1 className={cn("font-display font-bold line-clamp-2", isMobile ? "text-lg" : "text-2xl")}>{title}</h1>
             <p className="text-xs md:text-sm text-muted-foreground">Презентация • {slides.length} слайдов</p>
           </div>
+          <button onClick={switchViewer} title="Переключить просмотрщик" className="flex items-center gap-2 px-3 py-1.5 text-xs font-medium bg-secondary text-foreground rounded-lg hover:bg-secondary/80 transition-colors">
+            <RefreshCw className="w-3.5 h-3.5" />{!isMobile && (viewerKind === 'office' ? 'Office' : 'Google')}
+          </button>
           <a href={pptxFileUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 px-3 py-1.5 text-xs font-medium bg-amber-500/10 text-amber-600 rounded-lg hover:bg-amber-500/20 transition-colors">
             <FileText className="w-3.5 h-3.5" />{!isMobile && "Скачать"}
           </a>
@@ -72,13 +104,18 @@ export const SliderLessonViewer = ({ content, title, lessonIndex, isMobile }: Sl
                 <div className="text-center p-6">
                   <Presentation className="w-16 h-16 mx-auto mb-4 text-amber-500/50" />
                   <p className="text-muted-foreground mb-4">Не удалось загрузить</p>
-                  <a href={pptxFileUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 px-4 py-2 bg-amber-500 text-white rounded-lg hover:bg-amber-600 transition-colors">
-                    <FileText className="w-4 h-4" />Скачать презентацию
-                  </a>
+                  <div className="flex gap-2 justify-center">
+                    <button onClick={switchViewer} className="inline-flex items-center gap-2 px-4 py-2 bg-secondary rounded-lg hover:bg-secondary/80 transition-colors">
+                      <RefreshCw className="w-4 h-4" />Другой просмотрщик
+                    </button>
+                    <a href={pptxFileUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 px-4 py-2 bg-amber-500 text-white rounded-lg hover:bg-amber-600 transition-colors">
+                      <FileText className="w-4 h-4" />Скачать
+                    </a>
+                  </div>
                 </div>
               </div>
             ) : (
-              <iframe src={getViewerUrl(pptxFileUrl)} className="w-full h-full border-0" style={{ minHeight: isMobile ? '400px' : '600px' }} onLoad={() => setIsLoading(false)} onError={() => { setIsLoading(false); setViewerError(true); }} title={title} allowFullScreen />
+              <iframe key={`${viewerKind}-${reloadKey}`} src={getViewerUrl(pptxFileUrl, viewerKind)} className="w-full h-full border-0" style={{ minHeight: isMobile ? '400px' : '600px' }} onLoad={() => { setIsLoading(false); if (loadTimerRef.current) window.clearTimeout(loadTimerRef.current); }} onError={() => { setIsLoading(false); setViewerError(true); }} title={title} allowFullScreen />
             )}
           </div>
         </div>
