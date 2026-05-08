@@ -39,7 +39,7 @@ export default function CourseBuilder({ embedded, embeddedCourseId, onExitEditor
     courseTitle, setCourseTitle, courseDescription, setCourseDescription,
     lessons, isLoading, isGenerating, isSaving, isImporting, hasUnsavedChanges,
     showExitDialog, setShowExitDialog, showAIGenerateDialog, setShowAIGenerateDialog,
-    addLesson, updateLesson, deleteLesson, toggleLesson,
+    addLesson, updateLesson, deleteLesson, toggleLesson, markAsChanged,
     handleAIGenerate, handleGenerateStructure, handleFileImport,
     handleSaveAndExit, handleExitWithoutSave, handleBackClick,
     sensors, handleDragEnd, saveCourse, autoSaveStatus,
