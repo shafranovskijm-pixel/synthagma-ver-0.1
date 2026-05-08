@@ -2,7 +2,7 @@ export interface Lesson {
   id: string;
   title: string;
   type: string;
-  content: string | null;
+  content?: string | null;
   order_index: number;
   module_id?: string | null;
   is_locked?: boolean;
