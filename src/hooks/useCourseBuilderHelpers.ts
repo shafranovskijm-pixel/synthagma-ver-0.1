@@ -36,8 +36,10 @@ export function normalizeLessonsFromDB(
   attachmentsMap: Record<string, LessonAttachmentLocal[]>
 ): Lesson[] {
   return lessonsData.map(l => {
+    // If content column wasn't selected (lazy mode), keep placeholder and skip parsing.
+    const hasContentColumn = Object.prototype.hasOwnProperty.call(l, 'content');
     let blocks: ContentBlock[] = [];
-    if (l.content) {
+    if (hasContentColumn && l.content) {
       blocks = jsonToBlocks(l.content);
       if (blocks.length === 0 && l.content.length > 50 && !l.content.trim().startsWith('[')) {
         blocks = markdownToBlocks(l.content);
@@ -74,13 +76,15 @@ export function normalizeLessonsFromDB(
       }
     }
     return {
-      id: l.id, type: l.type as LessonType, title: l.title, content: l.content || "",
+      id: l.id, type: l.type as LessonType, title: l.title,
+      content: hasContentColumn ? (l.content || "") : "",
       blocks: blocks.length > 0 ? blocks : undefined, expanded: false,
       testPassingScore: (l as any).test_passing_score ?? 60,
       testQuestionsToShow: (l as any).test_questions_to_show ?? null,
       questions: l.type === 'test' ? (questionsMap[l.id] || []) : undefined,
       attachments: attachmentsMap[l.id] || [],
       module_id: (l as any).module_id ?? null,
+      __contentLoaded: hasContentColumn,
     };
   });
 }

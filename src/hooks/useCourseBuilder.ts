@@ -5,7 +5,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useAiGenerationLimit, setAiLimitContext } from "@/hooks/useAiGenerationLimit";
 import { toast } from "sonner";
 import { safeInvoke } from "@/utils/safeInvoke";
-import { ContentBlock, blocksToJson, markdownToBlocks } from "@/components/course-builder/BlockEditor";
+import { ContentBlock, blocksToJson, markdownToBlocks, jsonToBlocks } from "@/components/course-builder/BlockEditor";
 import { closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent } from "@dnd-kit/core";
 import { arrayMove, sortableKeyboardCoordinates } from "@dnd-kit/sortable";
 import { type LessonType, type TestQuestionLocal, type Lesson, type LessonAttachmentLocal, type CourseModule } from "@/components/course-builder/LessonTypeConfig";
@@ -91,8 +91,16 @@ export function useCourseBuilder(propCourseId?: string) {
             .order("order_index")
         : Promise.resolve({ data: null, error: null } as any);
 
+      // PERF: pull lesson list WITHOUT `content` column. Slider lessons can
+      // hold 8–11 MB of base64 each → 50+ MB per course → PostgREST timeouts.
+      // Content is fetched on-demand via `loadLessonContent(id)` when a lesson
+      // is opened in the editor.
       const lessonsPromise = courseId
-        ? supabase.from("lessons").select("*").eq("course_id", courseId).order("order_index")
+        ? supabase
+            .from("lessons")
+            .select("id, course_id, title, type, order_index, module_id, is_locked, locked_until, test_passing_score, test_questions_to_show, ai_avatar_name, ai_avatar_image_url, ai_avatar_voice_id, ai_avatar_system_prompt, ai_avatar_greeting, ai_avatar_subject, ai_avatar_style, ai_avatar_session_minutes, ai_avatar_model")
+            .eq("course_id", courseId)
+            .order("order_index")
         : Promise.resolve({ data: null, error: null } as any);
 
       const [{ data: profile }, courseRes, modulesRes, lessonsRes] = await Promise.all([
@@ -406,6 +414,25 @@ export function useCourseBuilder(propCourseId?: string) {
 
   const updateLesson = useCallback((id: string, updates: Partial<Lesson>) => { setLessons(prev => prev.map(l => l.id === id ? { ...l, ...updates } : l)); markAsChanged(); }, [markAsChanged]);
   const deleteLesson = useCallback((id: string) => { setLessons(prev => prev.filter(l => l.id !== id)); markAsChanged(); if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current); autoSaveTimerRef.current = setTimeout(() => { saveCourse(true); }, 500); }, [markAsChanged]);
+
+  // Lazy-load full content for a single lesson (slider blobs can be 10+ MB).
+  // Called when a lesson is opened/expanded in the editor.
+  const loadLessonContent = useCallback(async (lessonId: string): Promise<void> => {
+    const target = latestStateRef.current.lessons.find(l => l.id === lessonId);
+    if (!target || target.__contentLoaded) return;
+    const { data, error } = await supabase.from("lessons").select("content").eq("id", lessonId).maybeSingle();
+    if (error) { console.error("loadLessonContent failed", error); return; }
+    const content: string = (data as any)?.content || "";
+    setLessons(prev => prev.map(l => {
+      if (l.id !== lessonId) return l;
+      let blocks = l.blocks;
+      if (content) {
+        try { blocks = jsonToBlocks(content); } catch { /* keep existing blocks */ }
+      }
+      return { ...l, content, blocks, __contentLoaded: true };
+    }));
+  }, []);
+
   // Accordion: открыт только один урок. Повторный клик по уже открытому — сворачивает.
   const toggleLesson = useCallback((id: string) => {
     setLessons(prev => {
@@ -414,10 +441,12 @@ export function useCourseBuilder(propCourseId?: string) {
       return prev.map(l => l.id === id ? { ...l, expanded: willOpen } : { ...l, expanded: false });
     });
     setActiveLessonId(id);
-  }, []);
+    void loadLessonContent(id);
+  }, [loadLessonContent]);
   const expandLesson = useCallback((id: string) => {
     setLessons(prev => prev.map(l => l.id === id ? { ...l, expanded: true } : { ...l, expanded: false }));
-  }, []);
+    void loadLessonContent(id);
+  }, [loadLessonContent]);
   // Клик в левой навигации: раскрыть только этот урок (и свернуть остальные)
   // и проскроллить страницу к началу его карточки.
   const scrollToLesson = useCallback((id: string) => {
@@ -465,8 +494,32 @@ export function useCourseBuilder(propCourseId?: string) {
       if (lessons.length > 0 && savedCourseId) {
         const currentLessonIds = lessons.map(l => l.id);
         if (courseId) await supabase.from("lessons").delete().eq("course_id", courseId).not("id", "in", `(${currentLessonIds.join(",")})`);
-        const lessonsToSave = lessons.map((lesson, index) => ({ id: lesson.id, course_id: savedCourseId!, title: lesson.title, type: lesson.type, content: lesson.content || null, order_index: index, test_passing_score: lesson.testPassingScore ?? 60, test_questions_to_show: lesson.testQuestionsToShow ?? null, module_id: lesson.module_id ?? null }));
-        const { error: batchError } = await supabase.from("lessons").upsert(lessonsToSave, { onConflict: "id" });
+        // Split into two upsert batches:
+        // - lessonsWithContent: content was loaded (or freshly created) → write everything
+        // - lessonsMetaOnly: lazy placeholder → write metadata, KEEP existing content in DB
+        const baseRow = (lesson: typeof lessons[number], index: number) => ({
+          id: lesson.id, course_id: savedCourseId!, title: lesson.title, type: lesson.type,
+          order_index: index, test_passing_score: lesson.testPassingScore ?? 60,
+          test_questions_to_show: lesson.testQuestionsToShow ?? null, module_id: lesson.module_id ?? null,
+        });
+        const lessonsWithContent = lessons
+          .map((l, i) => ({ l, i }))
+          .filter(({ l }) => l.__contentLoaded !== false)
+          .map(({ l, i }) => ({ ...baseRow(l, i), content: l.content || null }));
+        const lessonsMetaOnly = lessons
+          .map((l, i) => ({ l, i }))
+          .filter(({ l }) => l.__contentLoaded === false)
+          .map(({ l, i }) => baseRow(l, i));
+
+        const upsertResults = await Promise.all([
+          lessonsWithContent.length > 0
+            ? supabase.from("lessons").upsert(lessonsWithContent, { onConflict: "id" })
+            : Promise.resolve({ error: null } as any),
+          lessonsMetaOnly.length > 0
+            ? supabase.from("lessons").upsert(lessonsMetaOnly, { onConflict: "id" })
+            : Promise.resolve({ error: null } as any),
+        ]);
+        const batchError = upsertResults.find(r => r.error)?.error;
         if (batchError && !batchError.message?.includes('AbortError')) {
           console.error("Error saving lessons:", batchError);
           if (!silent) toast.error("Ошибка сохранения уроков: " + batchError.message);
@@ -551,7 +604,7 @@ export function useCourseBuilder(propCourseId?: string) {
     addLesson, handleGenerateStructure, handleAIGenerate,
     updateLesson, deleteLesson, toggleLesson,
     sensors, handleDragEnd, saveCourse, saveSingleLesson, organizationId,
-    activeLessonId, setActiveLessonId, scrollToLesson, expandLesson,
+    activeLessonId, setActiveLessonId, scrollToLesson, expandLesson, loadLessonContent,
     // Modules
     modules, createModule, renameModule, deleteModule, toggleModuleCollapsed,
     reorderModules, moveLessonToModule, collapseAllModules, expandAllModules,
