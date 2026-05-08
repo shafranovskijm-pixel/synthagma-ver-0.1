@@ -441,10 +441,12 @@ export function useCourseBuilder(propCourseId?: string) {
       return prev.map(l => l.id === id ? { ...l, expanded: willOpen } : { ...l, expanded: false });
     });
     setActiveLessonId(id);
-  }, []);
+    void loadLessonContent(id);
+  }, [loadLessonContent]);
   const expandLesson = useCallback((id: string) => {
     setLessons(prev => prev.map(l => l.id === id ? { ...l, expanded: true } : { ...l, expanded: false }));
-  }, []);
+    void loadLessonContent(id);
+  }, [loadLessonContent]);
   // Клик в левой навигации: раскрыть только этот урок (и свернуть остальные)
   // и проскроллить страницу к началу его карточки.
   const scrollToLesson = useCallback((id: string) => {
