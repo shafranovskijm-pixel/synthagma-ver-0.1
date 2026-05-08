@@ -5,7 +5,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useAiGenerationLimit, setAiLimitContext } from "@/hooks/useAiGenerationLimit";
 import { toast } from "sonner";
 import { safeInvoke } from "@/utils/safeInvoke";
-import { ContentBlock, blocksToJson, markdownToBlocks } from "@/components/course-builder/BlockEditor";
+import { ContentBlock, blocksToJson, markdownToBlocks, jsonToBlocks } from "@/components/course-builder/BlockEditor";
 import { closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent } from "@dnd-kit/core";
 import { arrayMove, sortableKeyboardCoordinates } from "@dnd-kit/sortable";
 import { type LessonType, type TestQuestionLocal, type Lesson, type LessonAttachmentLocal, type CourseModule } from "@/components/course-builder/LessonTypeConfig";
