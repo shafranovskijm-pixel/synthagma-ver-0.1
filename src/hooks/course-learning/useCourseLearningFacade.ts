@@ -55,6 +55,12 @@ export function useCourseLearning() {
   const [isOfflineMode, setIsOfflineMode] = useState(false);
   const [offlineCachedAt, setOfflineCachedAt] = useState<number | undefined>(undefined);
 
+  // Lazy-loaded lesson content (PERF: heavy slider lessons can hold 8-11 MB
+  // base64 each → we don't fetch `content` in the initial lessons list and
+  // pull it on demand for the currently opened lesson.)
+  const [lessonContents, setLessonContents] = useState<Record<string, string | null>>({});
+  const contentLoadingRef = useRef<Set<string>>(new Set());
+
   // Tooltip state for mobile progress bar
   const [tooltipLesson, setTooltipLesson] = useState<{ index: number; title: string } | null>(null);
   const longPressTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -66,12 +72,44 @@ export function useCourseLearning() {
   const [feedbackSent, setFeedbackSent] = useState(false);
   const [feedbackSending, setFeedbackSending] = useState(false);
 
-  const currentLesson = lessons[currentLessonIndex];
+  const baseLesson = lessons[currentLessonIndex];
+  // Merge lazy-loaded content into currentLesson so all downstream consumers
+  // (TTS, chat, slider viewer) read a normal lesson shape.
+  const currentLesson = baseLesson
+    ? ({ ...baseLesson, content: baseLesson.content ?? lessonContents[baseLesson.id] ?? null } as Lesson)
+    : (undefined as unknown as Lesson);
   const completedCount = lessonProgress.filter(p => p.completed).length;
   const progressPercent = lessons.length > 0 ? (completedCount / lessons.length) * 100 : 0;
 
   // Parse content blocks
   const contentBlocks: ContentBlock[] = currentLesson?.content ? parseContentToBlocks(currentLesson.content) : [];
+
+  // Lazy fetch lesson content when opened (and prefetch the next one).
+  const loadLessonContent = useCallback(async (lessonId: string) => {
+    if (!lessonId) return;
+    if (contentLoadingRef.current.has(lessonId)) return;
+    contentLoadingRef.current.add(lessonId);
+    try {
+      const { data, error } = await supabase
+        .from('lessons').select('content').eq('id', lessonId).maybeSingle();
+      if (error) throw error;
+      setLessonContents(prev => (prev[lessonId] !== undefined ? prev : { ...prev, [lessonId]: (data?.content ?? null) as string | null }));
+    } catch (e) {
+      console.error('[loadLessonContent] error:', e);
+    } finally {
+      contentLoadingRef.current.delete(lessonId);
+    }
+  }, []);
+
+  useEffect(() => {
+    const cur = lessons[currentLessonIndex];
+    if (!cur) return;
+    if (cur.content == null && lessonContents[cur.id] === undefined) void loadLessonContent(cur.id);
+    const next = lessons[currentLessonIndex + 1];
+    if (next && next.content == null && lessonContents[next.id] === undefined) void loadLessonContent(next.id);
+  }, [currentLessonIndex, lessons, lessonContents, loadLessonContent]);
+
+
 
   // Sub-hooks — always use effective user id so admin sees student's video state
   const videoHook = useLessonVideo({ userId: effectiveUserId, currentLesson });
