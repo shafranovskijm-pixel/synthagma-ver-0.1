@@ -604,7 +604,7 @@ export function useCourseBuilder(propCourseId?: string) {
     addLesson, handleGenerateStructure, handleAIGenerate,
     updateLesson, deleteLesson, toggleLesson,
     sensors, handleDragEnd, saveCourse, saveSingleLesson, organizationId,
-    activeLessonId, setActiveLessonId, scrollToLesson, expandLesson,
+    activeLessonId, setActiveLessonId, scrollToLesson, expandLesson, loadLessonContent,
     // Modules
     modules, createModule, renameModule, deleteModule, toggleModuleCollapsed,
     reorderModules, moveLessonToModule, collapseAllModules, expandAllModules,
