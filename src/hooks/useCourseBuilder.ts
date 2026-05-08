@@ -426,10 +426,9 @@ export function useCourseBuilder(propCourseId?: string) {
     setLessons(prev => prev.map(l => {
       if (l.id !== lessonId) return l;
       let blocks = l.blocks;
-      try {
-        const { jsonToBlocks } = require("@/components/course-builder/BlockEditor");
-        if (content) blocks = jsonToBlocks(content);
-      } catch { /* fallback: leave blocks as-is */ }
+      if (content) {
+        try { blocks = jsonToBlocks(content); } catch { /* keep existing blocks */ }
+      }
       return { ...l, content, blocks, __contentLoaded: true };
     }));
   }, []);
