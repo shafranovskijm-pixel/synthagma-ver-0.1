@@ -217,8 +217,8 @@ export default function CourseBuilder({ embedded, embeddedCourseId, onExitEditor
                     </span>
                   </AccordionTrigger>
                   <AccordionContent className="px-4 sm:px-6 pb-4 sm:pb-6 space-y-4">
-                    <div className="space-y-2"><Label>Название курса</Label><Input value={courseTitle} onChange={e => setCourseTitle(e.target.value)} placeholder="Введите название курса" className="text-lg font-medium" /></div>
-                    <div className="space-y-2"><Label>Описание</Label><Textarea value={courseDescription} onChange={e => setCourseDescription(e.target.value)} placeholder="О чем этот курс?" className="min-h-[100px]" /></div>
+                    <div className="space-y-2"><Label>Название курса</Label><Input value={courseTitle} onChange={e => { setCourseTitle(e.target.value); markAsChanged(); }} placeholder="Введите название курса" className="text-lg font-medium" /></div>
+                    <div className="space-y-2"><Label>Описание</Label><Textarea value={courseDescription} onChange={e => { setCourseDescription(e.target.value); markAsChanged(); }} placeholder="О чем этот курс?" className="min-h-[100px]" /></div>
                   </AccordionContent>
                 </AccordionItem>
               </Accordion>
