@@ -169,12 +169,11 @@ export function useStudents(
     qc.invalidateQueries({ queryKey: qk.org.studentGroups(organizationId) });
   }, [qc, organizationId]);
 
-  // Helper: archived = manually archived OR all enrollments completed (and has at least one)
+  // Helper: archived only if explicitly archived via profiles.archived_at.
+  // Completing all courses must NOT hide a student from the active list,
+  // otherwise the organization perceives finished students as "disappeared".
   const isArchived = useCallback((s: Student): boolean => {
-    if (s.archived_at) return true;
-    const enrollments = s.enrollments || [];
-    if (enrollments.length === 0) return false;
-    return enrollments.every(e => e.status === "completed" || (e.progress ?? 0) >= 100);
+    return !!s.archived_at;
   }, []);
 
   const lastCompletedAt = useCallback((s: Student): string | null => {
