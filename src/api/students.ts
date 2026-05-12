@@ -365,6 +365,9 @@ export async function deleteStudent(userId: string): Promise<boolean> {
     .from("profiles")
     .update({ archived_at: new Date().toISOString() } as any)
     .eq("user_id", userId);
+  if (!error) {
+    await logStudentDeletion({ userId, deletionType: "soft", reason: "deleteStudent (api)" });
+  }
   return !error;
 }
 
@@ -373,6 +376,9 @@ export async function setStudentArchived(userId: string, archived: boolean): Pro
     .from("profiles")
     .update({ archived_at: archived ? new Date().toISOString() : null } as any)
     .eq("user_id", userId);
+  if (!error && archived) {
+    await logStudentDeletion({ userId, deletionType: "archive", reason: "setStudentArchived" });
+  }
   return !error;
 }
 
