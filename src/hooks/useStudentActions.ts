@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { getBaseUrl } from "@/utils/getBaseUrl";
 import { Student } from "@/types/shared";
 import { generateLogin, generateSimplePassword } from "@/utils/credentials";
+import { logStudentDeletion } from "@/utils/logStudentDeletion";
 
 export function useStudentActions(
   organizationId: string | null,
@@ -121,6 +122,7 @@ export function useStudentActions(
         .update({ archived_at: new Date().toISOString() } as any)
         .eq("user_id", userId);
       if (error) throw error;
+      await logStudentDeletion({ userId, deletionType: "soft", reason: "deleteStudentCompletely" });
       toast.success("Ученик перенесён в архив");
       onRefresh();
     } catch (error) {

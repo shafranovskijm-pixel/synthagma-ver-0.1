@@ -4,6 +4,7 @@ import { safeInvoke } from "@/utils/safeInvoke";
 import { toast } from "sonner";
 import { Student, Course } from "@/types/shared";
 import { generateLogin, generateSimplePassword, generateStrongPassword, isValidEmail } from "@/utils/credentials";
+import { logStudentDeletion } from "@/utils/logStudentDeletion";
 
 interface UseStudentManagementProps {
   organizationId: string | null;
@@ -367,6 +368,16 @@ export function useStudentManagement({
         .eq("user_id", student.user_id);
       if (error) throw error;
 
+      await logStudentDeletion({
+        userId: student.user_id,
+        fullName: student.name,
+        login: student.login,
+        email: student.email,
+        organizationId: organizationId,
+        deletionType: "soft",
+        reason: "useStudentManagement.deleteStudent",
+      });
+
       // Update local state — remove from active lists (archived view loads separately)
       setStudents(prev => prev.filter(s => s.user_id !== student.user_id));
       setAllProfiles(prev => prev.filter(s => s.user_id !== student.user_id));
@@ -382,7 +393,7 @@ export function useStudentManagement({
       toast.error("Ошибка переноса в архив");
       return false;
     }
-  }, [setStudents, setAllProfiles, setStats]);
+  }, [organizationId, setStudents, setAllProfiles, setStats]);
 
   return {
     // Add student dialog
