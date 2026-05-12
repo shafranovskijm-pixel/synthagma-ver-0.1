@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { getBaseUrl } from "@/utils/getBaseUrl";
 import { Student } from "@/types/shared";
 import { generateLogin, generateSimplePassword } from "@/utils/credentials";
+import { logStudentDeletion } from "@/utils/logStudentDeletion";
 
 export function useStudentActions(
   organizationId: string | null,
