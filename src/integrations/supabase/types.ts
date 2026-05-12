@@ -8097,6 +8097,54 @@ export type Database = {
           },
         ]
       }
+      student_deletion_log: {
+        Row: {
+          created_at: string
+          deleted_by: string | null
+          deleted_by_email: string | null
+          deleted_by_name: string | null
+          deletion_type: string
+          id: string
+          metadata: Json | null
+          organization_id: string | null
+          reason: string | null
+          student_email: string | null
+          student_full_name: string | null
+          student_id: string | null
+          student_login: string | null
+        }
+        Insert: {
+          created_at?: string
+          deleted_by?: string | null
+          deleted_by_email?: string | null
+          deleted_by_name?: string | null
+          deletion_type?: string
+          id?: string
+          metadata?: Json | null
+          organization_id?: string | null
+          reason?: string | null
+          student_email?: string | null
+          student_full_name?: string | null
+          student_id?: string | null
+          student_login?: string | null
+        }
+        Update: {
+          created_at?: string
+          deleted_by?: string | null
+          deleted_by_email?: string | null
+          deleted_by_name?: string | null
+          deletion_type?: string
+          id?: string
+          metadata?: Json | null
+          organization_id?: string | null
+          reason?: string | null
+          student_email?: string | null
+          student_full_name?: string | null
+          student_id?: string | null
+          student_login?: string | null
+        }
+        Relationships: []
+      }
       student_documents: {
         Row: {
           created_at: string
