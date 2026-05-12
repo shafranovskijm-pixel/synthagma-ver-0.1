@@ -4,6 +4,7 @@ import { safeInvoke } from "@/utils/safeInvoke";
 import { toast } from "sonner";
 import { Student, Course } from "@/types/shared";
 import { generateLogin, generateSimplePassword, generateStrongPassword, isValidEmail } from "@/utils/credentials";
+import { logStudentDeletion } from "@/utils/logStudentDeletion";
 
 interface UseStudentManagementProps {
   organizationId: string | null;
