@@ -354,18 +354,16 @@ export async function updateStudentCompany(userId: string, companyId: string | n
 }
 
 export async function deleteStudent(userId: string): Promise<boolean> {
-  // Delete enrollments first
-  await supabase
-    .from("enrollments")
-    .delete()
-    .eq("user_id", userId);
-
-  // Delete profile
+  // SOFT DELETE: do NOT physically remove profile or enrollments.
+  // We archive the profile so the student stays in the database (history preserved)
+  // but is hidden from the active list. Restoring is a single click.
+  // Physical deletion previously caused students to "disappear" with no trace
+  // (no audit row, no enrollments, no test attempts) — this is what the
+  // Vladivostok center reported about Газукина А. Н. and similar cases.
   const { error } = await supabase
     .from("profiles")
-    .delete()
+    .update({ archived_at: new Date().toISOString() } as any)
     .eq("user_id", userId);
-
   return !error;
 }
 

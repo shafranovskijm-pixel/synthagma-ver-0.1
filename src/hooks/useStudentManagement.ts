@@ -355,31 +355,31 @@ export function useStudentManagement({
 
   // Delete student completely
   const deleteStudent = useCallback(async (student: Student) => {
-    if (!confirm(`Вы уверены, что хотите полностью удалить ученика "${student.name}"? Это действие нельзя отменить.`)) {
+    if (!confirm(`Перенести ученика "${student.name}" в архив? Данные и история обучения сохранятся, ученик исчезнет из активного списка. Восстановить можно из вкладки «Архив».`)) {
       return false;
     }
-    
-    try {
-      // Delete all enrollments
-      await supabase.from("enrollments").delete().eq("user_id", student.user_id);
 
-      // Delete profile
-      const { error } = await supabase.from("profiles").delete().eq("user_id", student.user_id);
+    try {
+      // SOFT DELETE — keep profile and enrollments, just archive
+      const { error } = await supabase
+        .from("profiles")
+        .update({ archived_at: new Date().toISOString() } as any)
+        .eq("user_id", student.user_id);
       if (error) throw error;
 
-      // Update local state
+      // Update local state — remove from active lists (archived view loads separately)
       setStudents(prev => prev.filter(s => s.user_id !== student.user_id));
       setAllProfiles(prev => prev.filter(s => s.user_id !== student.user_id));
       setStats(prev => ({
         ...prev,
         totalStudents: Math.max(0, prev.totalStudents - 1)
       }));
-      
-      toast.success("Ученик удалён");
+
+      toast.success("Ученик перенесён в архив");
       return true;
     } catch (error) {
-      console.error("Error deleting student:", error);
-      toast.error("Ошибка удаления ученика");
+      console.error("Error archiving student:", error);
+      toast.error("Ошибка переноса в архив");
       return false;
     }
   }, [setStudents, setAllProfiles, setStats]);

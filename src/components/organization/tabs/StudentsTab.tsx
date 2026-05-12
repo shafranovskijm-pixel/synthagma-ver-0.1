@@ -170,7 +170,7 @@ export const StudentsTab = React.memo(function StudentsTab(props: StudentsTabPro
         {viewMode === "archive" && (
           <p className="mt-2 text-xs text-muted-foreground flex items-center gap-1.5">
             <Archive className="w-3 h-3" />
-            Сюда автоматически попадают ученики, прошедшие все курсы на 100%. Группировка — по месяцу завершения последнего курса.
+            В архиве отображаются только ученики, явно перенесённые сюда вручную или через действие «Удалить» (мягкое удаление). Завершившие обучение остаются в активном списке.
           </p>
         )}
       </div>
