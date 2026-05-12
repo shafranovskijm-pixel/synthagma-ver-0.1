@@ -115,15 +115,17 @@ export function useStudentActions(
   const deleteStudentCompletely = useCallback(async (userId: string) => {
     setIsDeletingStudent(true);
     try {
-      // Delete enrollments
-      await supabase.from("enrollments").delete().eq("user_id", userId);
-      // Delete profile
-      await supabase.from("profiles").delete().eq("user_id", userId);
-      toast.success("Ученик удалён");
+      // SOFT DELETE — archive instead of physical removal to preserve history.
+      const { error } = await supabase
+        .from("profiles")
+        .update({ archived_at: new Date().toISOString() } as any)
+        .eq("user_id", userId);
+      if (error) throw error;
+      toast.success("Ученик перенесён в архив");
       onRefresh();
     } catch (error) {
-      console.error("Error deleting student:", error);
-      toast.error("Ошибка удаления ученика");
+      console.error("Error archiving student:", error);
+      toast.error("Ошибка переноса в архив");
     } finally {
       setIsDeletingStudent(false);
     }
