@@ -122,6 +122,7 @@ export function useStudentActions(
         .update({ archived_at: new Date().toISOString() } as any)
         .eq("user_id", userId);
       if (error) throw error;
+      await logStudentDeletion({ userId, deletionType: "soft", reason: "deleteStudentCompletely" });
       toast.success("Ученик перенесён в архив");
       onRefresh();
     } catch (error) {
