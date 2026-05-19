@@ -25,6 +25,7 @@ import { StudentDocumentsUpload } from "@/components/student/StudentDocumentsUpl
 import { StudentDataSubjectRequests } from "@/components/student/StudentDataSubjectRequests";
 import { useStudentSignatureInbox, type InboxSignature } from "@/hooks/useStudentSignatureInbox";
 import { supabase } from "@/integrations/supabase/client";
+import { proxiedAssetUrl } from "@/utils/proxyFetch";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
