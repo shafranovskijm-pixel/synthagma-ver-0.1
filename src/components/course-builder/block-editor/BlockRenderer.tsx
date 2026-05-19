@@ -198,7 +198,7 @@ function RenderBlock({ block, quizAnswer, quizSubmitted, onQuizAnswer, onQuizSub
                 {currentSlide.imageUrl && (
                   <div className="rounded-lg overflow-hidden border border-border bg-secondary/20">
                     <img 
-                      src={currentSlide.imageUrl} 
+                      src={proxiedAssetUrl(currentSlide.imageUrl)} 
                       alt={currentSlide.title || 'Слайд'} 
                       className="w-full max-h-[400px] object-contain"
                     />
