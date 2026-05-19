@@ -1,7 +1,7 @@
 import {
   User, Mail, Building2, GraduationCap, Key, Pencil, Check, Copy,
   Eye, EyeOff, CheckCircle2, Upload, Trash2, Download,
-  Bell, FileText, Shield, AlertCircle } from "lucide-react";
+  Bell, FileText, Shield, AlertCircle, Link2, Send, XCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
