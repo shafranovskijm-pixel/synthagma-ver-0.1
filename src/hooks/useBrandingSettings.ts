@@ -4,6 +4,7 @@ import { toast } from "sonner";
 import type { Json } from "@/integrations/supabase/types";
 import { useOrganizationCore } from "@/hooks/useOrganizationCore";
 import { useQueryClient } from "@tanstack/react-query";
+import { proxiedAssetUrl } from "@/utils/proxyFetch";
 
 interface BrandingSettings {
   coverUrl: string;
@@ -37,10 +38,10 @@ export function useBrandingSettings(organizationId: string | null, userId: strin
     if (!orgCore?.branding) return;
     const branding = orgCore.branding as Record<string, unknown>;
     setBrandingSettings({
-      coverUrl: (branding.coverUrl as string) || '',
+      coverUrl: proxiedAssetUrl((branding.coverUrl as string) || ''),
       primaryColor: (branding.primaryColor as string) || '#0d9488',
       secondaryColor: (branding.secondaryColor as string) || '#14b8a6',
-      logoUrl: (branding.logoUrl as string) || '',
+      logoUrl: proxiedAssetUrl((branding.logoUrl as string) || ''),
       showOrgName: branding.showOrgName !== false,
       coverPosition: (branding.coverPosition as BrandingSettings['coverPosition']) || 'cover',
       customName: (branding.customName as string) || '',

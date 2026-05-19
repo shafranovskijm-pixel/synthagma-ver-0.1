@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { proxiedAssetUrl } from "@/utils/proxyFetch";
 import type { 
   Organization, 
   BrandingSettings, 
@@ -149,10 +150,10 @@ export function useOrganization(): UseOrganizationReturn {
           if (org.branding && typeof org.branding === 'object') {
             const branding = org.branding as Record<string, unknown>;
             setBrandingSettings({
-              coverUrl: branding.coverUrl as string || '',
+              coverUrl: proxiedAssetUrl(branding.coverUrl as string || ''),
               primaryColor: branding.primaryColor as string || '#0d9488',
               secondaryColor: branding.secondaryColor as string || '#14b8a6',
-              logoUrl: branding.logoUrl as string || '',
+              logoUrl: proxiedAssetUrl(branding.logoUrl as string || ''),
               showOrgName: branding.showOrgName !== false
             });
           }

@@ -194,6 +194,7 @@ const AdminDashboard = () => {
             {activeTab === "devtools" && <DevToolsPanel />}
             {activeTab === "updates" && <PlatformUpdatesManager />}
             {activeTab === "webinars-admin" && <AdminWebinarsOverview />}
+            {activeTab === "client-errors" && <AdminClientErrorsTab />}
             {activeTab === "settings" && <AdminSettings />}
           </Suspense>
         </div>
