@@ -300,3 +300,16 @@ export function getProxyStatus() {
 export function forceProxyMode(enabled: boolean) {
   setProxyMode(enabled);
 }
+
+/**
+ * Возвращает URL картинки/файла, переписанный через прокси, если включён
+ * прокси-режим. Используется для <img src> и подобных, где fetch-перехватчик
+ * не работает (браузер грузит ресурсы напрямую).
+ */
+export function proxiedAssetUrl(url: string | null | undefined): string {
+  if (!url) return '';
+  if (!url.includes(SUPABASE_HOST)) return url;
+  if (!getProxyMode()) return url;
+  return rewriteUrl(url);
+}
+
