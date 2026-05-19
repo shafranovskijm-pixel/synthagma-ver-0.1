@@ -87,7 +87,7 @@ export function useStorageManager(organizationId: string) {
   const getSignedUrl = useCallback(async (bucket: string, path: string): Promise<string | null> => {
     const { data, error } = await supabase.storage.from(bucket).createSignedUrl(path, 3600);
     if (error) { console.error("Error creating signed URL:", error); return null; }
-    return data.signedUrl;
+    return proxiedAssetUrl(data.signedUrl);
   }, []);
 
   const getFileUrl = useCallback(async (file: StorageFile): Promise<string> => {
