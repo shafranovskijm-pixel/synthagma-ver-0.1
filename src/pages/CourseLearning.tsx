@@ -25,6 +25,7 @@ import { OfflineBanner } from "@/components/student/OfflineBanner";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useState as useReactState } from "react";
 import { FilePreviewDialog } from "@/components/course-learning/FilePreviewDialog";
+import { proxiedAssetUrl } from "@/utils/proxyFetch";
 import { HomeworkSubmission } from "@/components/course-learning/HomeworkSubmission";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 import { CourseSidebarContent } from "@/components/course-learning/CourseSidebar";
