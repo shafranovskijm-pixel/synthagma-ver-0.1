@@ -69,8 +69,7 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Bump usage stats (non-fatal).
-    await sb.rpc("noop_fn_placeholder").catch(() => {});
+    // Bump last_used_at (non-fatal).
     await sb.from("student_login_tokens")
       .update({ last_used_at: new Date().toISOString() })
       .eq("id", rec.id);
