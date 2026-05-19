@@ -173,6 +173,8 @@ export function useStudentDetailCardLogic({
   const [isSendingReminder, setIsSendingReminder] = useState(false);
   const [decryptedPassword, setDecryptedPassword] = useState<string | null>(null);
   const [isLoadingPassword, setIsLoadingPassword] = useState(false);
+  const [autoLoginToken, setAutoLoginToken] = useState<string | null>(null);
+  const [isLoginLinkBusy, setIsLoginLinkBusy] = useState(false);
 
   // FRDO data state
   const [frdoData, setFrdoData] = useState<Record<string, string | null>>({});
