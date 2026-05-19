@@ -31,8 +31,8 @@ export function useAdminBranding() {
     if (data) {
       const b = (data.branding as any) || {};
       setBranding({
-        coverUrl: data.cover_url || null,
-        logoUrl: data.logo_url || null,
+        coverUrl: proxiedAssetUrl(data.cover_url) || null,
+        logoUrl: proxiedAssetUrl(data.logo_url) || null,
         customName: b.customName || "",
         customSubtitle: b.customSubtitle || "",
         coverPosition: b.coverPosition || "center",
