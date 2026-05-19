@@ -163,6 +163,8 @@ function isNetworkBlock(err: unknown): boolean {
 
 let originalFetch: typeof fetch | null = null;
 let originalWebSocket: typeof WebSocket | null = null;
+let originalXhrOpen: typeof XMLHttpRequest.prototype.open | null = null;
+let originalSendBeacon: typeof navigator.sendBeacon | null = null;
 
 export function installProxyFetch() {
   if (typeof window === 'undefined') return;
