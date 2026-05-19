@@ -104,6 +104,7 @@ export const publicRoutes = (
     <Route path="/accept-invitation" element={<AcceptInvitation />} />
     <Route path="/connection-check" element={<ConnectionCheck />} />
     <Route path="/demo-student-login" element={<DemoStudentLogin />} />
+    <Route path="/auto-login" element={<AutoLogin />} />
     <Route path="*" element={<NotFound />} />
   </>
 );
