@@ -154,7 +154,7 @@ const WebinarPublic = () => {
         {info.cover_image_url && (
           <div
             className="h-48 w-full rounded-t-lg bg-cover bg-center"
-            style={{ backgroundImage: `url(${info.cover_image_url})` }}
+            style={{ backgroundImage: `url(${proxiedAssetUrl(info.cover_image_url)})` }}
           />
         )}
         <CardHeader>
