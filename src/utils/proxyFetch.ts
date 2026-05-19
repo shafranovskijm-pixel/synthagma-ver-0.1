@@ -282,8 +282,7 @@ export function installProxyFetch() {
       } catch {
         // ignore — оставим исходный URL
       }
-      // @ts-expect-error — пробрасываем оригинальную сигнатуру
-      return orig.call(this, method, finalUrl, async ?? true, username, password);
+      return orig.call(this, method, finalUrl as string, async ?? true, username ?? null, password ?? null);
     } as typeof XMLHttpRequest.prototype.open;
   }
 
