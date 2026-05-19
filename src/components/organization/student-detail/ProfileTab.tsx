@@ -1,7 +1,7 @@
 import {
   User, Mail, Building2, GraduationCap, Key, Pencil, Check, Copy,
   Eye, EyeOff, CheckCircle2, Upload, Trash2, Download,
-  Bell, FileText, Shield, AlertCircle } from "lucide-react";
+  Bell, FileText, Shield, AlertCircle, Link2, Send, XCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -179,6 +179,34 @@ export function ProfileTab({ student, enrollmentsCount, h, orgPlan }: ProfileTab
               </div>
             </div>
           )}
+        </div>
+      )}
+
+      {/* Login links */}
+      {student.login && (
+        <div className="bg-card rounded-2xl border border-border p-6">
+          <div className="flex items-center justify-between mb-2">
+            <h3 className="font-semibold flex items-center gap-2"><Link2 className="w-5 h-5 text-primary" />Ссылки для входа ученика</h3>
+            {h.autoLoginToken && (
+              <Button size="sm" variant="ghost" className="rounded-lg gap-2 text-destructive hover:text-destructive" onClick={h.revokeAutoLoginToken} disabled={h.isLoginLinkBusy}>
+                <XCircle className="w-4 h-4" />Отозвать
+              </Button>
+            )}
+          </div>
+          <p className="text-xs text-muted-foreground mb-4">
+            Ссылка автовхода — бессрочная, работает до отзыва. Передавайте только лично ученику.
+          </p>
+          <div className="flex flex-wrap gap-2">
+            <Button size="sm" variant="outline" className="rounded-lg gap-2" onClick={h.copyAutoLoginLink} disabled={h.isLoginLinkBusy}>
+              <Link2 className="w-4 h-4" />Скопировать ссылку автовхода
+            </Button>
+            <Button size="sm" variant="outline" className="rounded-lg gap-2" onClick={h.copyCredentialsLink} disabled={h.isLoginLinkBusy}>
+              <Copy className="w-4 h-4" />Скопировать ссылку с логином/паролем
+            </Button>
+            <Button size="sm" className="rounded-lg gap-2" onClick={h.sendLoginLinkEmail} disabled={h.isLoginLinkBusy}>
+              <Send className="w-4 h-4" />Отправить на email
+            </Button>
+          </div>
         </div>
       )}
 
