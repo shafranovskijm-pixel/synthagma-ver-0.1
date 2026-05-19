@@ -114,7 +114,7 @@ export function useStorageManager(organizationId: string) {
               if (isHiddenArtifact(f.name)) continue;
               const fileSize = (f.metadata as any)?.size || 0;
               if (fileSize === 0 || !f.name.includes('.')) continue;
-              allFiles.push({ name: f.name, url: isPrivateBucket ? "" : `${urlBase}/storage/v1/object/public/${bucket}/${prefix}/${f.name}`, bucket, folder: prefix, size: fileSize, created_at: (f as any).created_at || "", type: getFileType(f.name), isPrivate: isPrivateBucket });
+              allFiles.push({ name: f.name, url: isPrivateBucket ? "" : proxiedAssetUrl(`${urlBase}/storage/v1/object/public/${bucket}/${prefix}/${f.name}`), bucket, folder: prefix, size: fileSize, created_at: (f as any).created_at || "", type: getFileType(f.name), isPrivate: isPrivateBucket });
             }
           }
         } catch { /* path doesn't exist */ }
