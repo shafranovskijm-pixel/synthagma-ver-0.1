@@ -259,6 +259,54 @@ export function installProxyFetch() {
     window.WebSocket = PatchedWebSocket as unknown as typeof WebSocket;
   }
 
+  // ============= XMLHttpRequest перехватчик =============
+  // Нужен для загрузок с прогрессом (useLessonMedia, useExternalStorageWithProgress)
+  // и любых сторонних либ, которые используют XHR вместо fetch.
+  if (!originalXhrOpen && typeof XMLHttpRequest !== 'undefined') {
+    originalXhrOpen = XMLHttpRequest.prototype.open;
+    const orig = originalXhrOpen;
+    XMLHttpRequest.prototype.open = function patchedOpen(
+      this: XMLHttpRequest,
+      method: string,
+      url: string | URL,
+      async?: boolean,
+      username?: string | null,
+      password?: string | null,
+    ) {
+      let finalUrl: string | URL = url;
+      try {
+        const urlStr = url instanceof URL ? url.toString() : url;
+        if (typeof urlStr === 'string' && urlStr.includes(SUPABASE_HOST) && getProxyMode()) {
+          finalUrl = rewriteUrl(urlStr);
+        }
+      } catch {
+        // ignore — оставим исходный URL
+      }
+      // @ts-expect-error — пробрасываем оригинальную сигнатуру
+      return orig.call(this, method, finalUrl, async ?? true, username, password);
+    } as typeof XMLHttpRequest.prototype.open;
+  }
+
+  // ============= sendBeacon перехватчик =============
+  // Прогресс видео, ответы тестов, error reporter, регистрация — всё уходит
+  // beacon-ом на supabase.co. Без патча они молча теряются на синтагма.рф.
+  if (!originalSendBeacon && typeof navigator !== 'undefined' && typeof navigator.sendBeacon === 'function') {
+    originalSendBeacon = navigator.sendBeacon.bind(navigator);
+    const orig = originalSendBeacon;
+    navigator.sendBeacon = function patchedSendBeacon(url: string | URL, data?: BodyInit | null): boolean {
+      let finalUrl: string | URL = url;
+      try {
+        const urlStr = url instanceof URL ? url.toString() : url;
+        if (typeof urlStr === 'string' && urlStr.includes(SUPABASE_HOST) && getProxyMode()) {
+          finalUrl = rewriteUrl(urlStr);
+        }
+      } catch {
+        // ignore
+      }
+      return orig(finalUrl as string, data ?? null);
+    };
+  }
+
   if (isForcedProxyHost()) {
     setTimeout(() => {
       window.dispatchEvent(new CustomEvent('sintagma:proxy-activated'));
