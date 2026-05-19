@@ -59,12 +59,12 @@ Deno.serve(async (req) => {
     }
 
     // Permission check: admin OR org staff with students.manage
-    const { data: isAdmin } = await sb.rpc("has_role", { _role: "admin", _user_id: user.id }).maybeSingle?.() ?? { data: null };
+    const { data: isAdmin } = await sb.rpc("has_role", { _role: "admin", _user_id: user.id });
     let allowed = !!isAdmin;
     if (!allowed) {
       const { data: hasPerm } = await sb.rpc("has_org_staff_permission", {
         _user_id: user.id,
-        _org_id: profile.organization_id,
+        _organization_id: profile.organization_id,
         _permission: "students.manage",
       });
       allowed = !!hasPerm;
