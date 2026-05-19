@@ -210,10 +210,10 @@ export function OrgProfileTab({ organizationId, initialSubTab }: ProfileTabProps
     try {
       const ext = file.name.split('.').pop();
       const filePath = `${organizationId}/logo_${Date.now()}.${ext}`;
-      const { error: uploadError } = await supabase.storage.from("organization-assets").upload(filePath, file, { upsert: true });
+      const { error: uploadError } = await supabase.storage.from("org-branding").upload(filePath, file, { upsert: true });
       if (uploadError) throw uploadError;
-      const { data: urlData } = supabase.storage.from("organization-assets").getPublicUrl(filePath);
-      const publicUrl = urlData.publicUrl;
+      const { data: urlData } = supabase.storage.from("org-branding").getPublicUrl(filePath);
+      const publicUrl = proxiedAssetUrl(urlData.publicUrl) || urlData.publicUrl;
       const { data: org } = await supabase.from("organizations").select("branding").eq("id", organizationId).single();
       const current = (org?.branding as Record<string, unknown>) || {};
       await supabase.from("organizations").update({ branding: { ...current, logoUrl: publicUrl } }).eq("id", organizationId);
