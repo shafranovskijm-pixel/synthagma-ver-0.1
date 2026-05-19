@@ -41,6 +41,19 @@ const Login = () => {
   
   const { signIn, user, userRole, loading } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+
+  // Prefill from ?u=&p= (auto-fill link for student credentials).
+  useEffect(() => {
+    const u = searchParams.get("u");
+    const p = searchParams.get("p");
+    if (u || p) {
+      if (u) { setLogin(u); setLoginMode("login"); }
+      if (p) setPassword(p);
+      // Clean URL so credentials don't linger in history.
+      try { window.history.replaceState({}, "", window.location.pathname); } catch {}
+    }
+  }, [searchParams]);
   useEffect(() => {
     if (user && !loading) {
       // Wait for userRole to be loaded before navigating
