@@ -238,10 +238,10 @@ export function OrgProfileTab({ organizationId, initialSubTab }: ProfileTabProps
     try {
       const ext = file.name.split('.').pop();
       const filePath = `${user.id}/avatar_${Date.now()}.${ext}`;
-      const { error: uploadError } = await supabase.storage.from("organization-assets").upload(filePath, file, { upsert: true });
+      const { error: uploadError } = await supabase.storage.from("avatars").upload(filePath, file, { upsert: true });
       if (uploadError) throw uploadError;
-      const { data: urlData } = supabase.storage.from("organization-assets").getPublicUrl(filePath);
-      const publicUrl = urlData.publicUrl;
+      const { data: urlData } = supabase.storage.from("avatars").getPublicUrl(filePath);
+      const publicUrl = proxiedAssetUrl(urlData.publicUrl) || urlData.publicUrl;
       await supabase.from("profiles").update({ avatar_url: publicUrl } as any).eq("user_id", user.id);
       setProfile(p => ({ ...p, avatar_url: publicUrl }));
       toast.success("Аватар обновлён");
