@@ -935,6 +935,78 @@ export type Database = {
         }
         Relationships: []
       }
+      client_error_logs: {
+        Row: {
+          app_version: string | null
+          client_ip: string | null
+          duration_ms: number | null
+          error_kind: string
+          error_message: string | null
+          id: string
+          method: string | null
+          occurred_at: string
+          occurrence_count: number
+          organization_id: string | null
+          page_route: string | null
+          page_url: string | null
+          proxy_used: boolean | null
+          received_at: string
+          response_content_type: string | null
+          response_snippet: string | null
+          status: number | null
+          url_host: string | null
+          url_path: string | null
+          user_agent: string | null
+          user_id: string | null
+        }
+        Insert: {
+          app_version?: string | null
+          client_ip?: string | null
+          duration_ms?: number | null
+          error_kind: string
+          error_message?: string | null
+          id?: string
+          method?: string | null
+          occurred_at?: string
+          occurrence_count?: number
+          organization_id?: string | null
+          page_route?: string | null
+          page_url?: string | null
+          proxy_used?: boolean | null
+          received_at?: string
+          response_content_type?: string | null
+          response_snippet?: string | null
+          status?: number | null
+          url_host?: string | null
+          url_path?: string | null
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          app_version?: string | null
+          client_ip?: string | null
+          duration_ms?: number | null
+          error_kind?: string
+          error_message?: string | null
+          id?: string
+          method?: string | null
+          occurred_at?: string
+          occurrence_count?: number
+          organization_id?: string | null
+          page_route?: string | null
+          page_url?: string | null
+          proxy_used?: boolean | null
+          received_at?: string
+          response_content_type?: string | null
+          response_snippet?: string | null
+          status?: number | null
+          url_host?: string | null
+          url_path?: string | null
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       commercial_proposal_services: {
         Row: {
           custom_description: string | null
@@ -9734,6 +9806,7 @@ export type Database = {
         Args: { p_plan: string; p_tier: string }
         Returns: boolean
       }
+      cleanup_client_error_logs: { Args: never; Returns: undefined }
       consume_email_quota: {
         Args: { p_count: number; p_scope_key: string; p_skip_warmup?: boolean }
         Returns: Json
