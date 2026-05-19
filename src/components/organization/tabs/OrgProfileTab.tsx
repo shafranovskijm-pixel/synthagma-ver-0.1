@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { proxiedAssetUrl } from "@/utils/proxyFetch";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -209,10 +210,10 @@ export function OrgProfileTab({ organizationId, initialSubTab }: ProfileTabProps
     try {
       const ext = file.name.split('.').pop();
       const filePath = `${organizationId}/logo_${Date.now()}.${ext}`;
-      const { error: uploadError } = await supabase.storage.from("organization-assets").upload(filePath, file, { upsert: true });
+      const { error: uploadError } = await supabase.storage.from("org-branding").upload(filePath, file, { upsert: true });
       if (uploadError) throw uploadError;
-      const { data: urlData } = supabase.storage.from("organization-assets").getPublicUrl(filePath);
-      const publicUrl = urlData.publicUrl;
+      const { data: urlData } = supabase.storage.from("org-branding").getPublicUrl(filePath);
+      const publicUrl = proxiedAssetUrl(urlData.publicUrl) || urlData.publicUrl;
       const { data: org } = await supabase.from("organizations").select("branding").eq("id", organizationId).single();
       const current = (org?.branding as Record<string, unknown>) || {};
       await supabase.from("organizations").update({ branding: { ...current, logoUrl: publicUrl } }).eq("id", organizationId);
@@ -237,10 +238,10 @@ export function OrgProfileTab({ organizationId, initialSubTab }: ProfileTabProps
     try {
       const ext = file.name.split('.').pop();
       const filePath = `${user.id}/avatar_${Date.now()}.${ext}`;
-      const { error: uploadError } = await supabase.storage.from("organization-assets").upload(filePath, file, { upsert: true });
+      const { error: uploadError } = await supabase.storage.from("avatars").upload(filePath, file, { upsert: true });
       if (uploadError) throw uploadError;
-      const { data: urlData } = supabase.storage.from("organization-assets").getPublicUrl(filePath);
-      const publicUrl = urlData.publicUrl;
+      const { data: urlData } = supabase.storage.from("avatars").getPublicUrl(filePath);
+      const publicUrl = proxiedAssetUrl(urlData.publicUrl) || urlData.publicUrl;
       await supabase.from("profiles").update({ avatar_url: publicUrl } as any).eq("user_id", user.id);
       setProfile(p => ({ ...p, avatar_url: publicUrl }));
       toast.success("Аватар обновлён");
