@@ -171,7 +171,7 @@ export function useStorageManager(organizationId: string) {
     try {
       const { error } = await supabase.storage.from(bucket).upload(path, file, { upsert: true });
       if (error) throw error;
-      setFiles(prev => [{ name: file.name, url: `${baseUrl}/storage/v1/object/public/${bucket}/${path}`, bucket, folder: organizationId, size: file.size, created_at: new Date().toISOString(), type: getFileType(file.name) }, ...prev]);
+      setFiles(prev => [{ name: file.name, url: proxiedAssetUrl(`${baseUrl}/storage/v1/object/public/${bucket}/${path}`), bucket, folder: organizationId, size: file.size, created_at: new Date().toISOString(), type: getFileType(file.name) }, ...prev]);
       toast.success("Файл загружен");
     } catch (err) { console.error("Upload error:", err); toast.error("Ошибка загрузки файла"); }
     setUploading(false); e.target.value = "";
