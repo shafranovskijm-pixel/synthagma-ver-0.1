@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { proxiedAssetUrl } from "@/utils/proxyFetch";
 import type { 
   Organization, 
   BrandingSettings, 
