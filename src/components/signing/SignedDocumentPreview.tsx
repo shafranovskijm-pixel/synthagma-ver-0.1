@@ -98,13 +98,13 @@ export function SignedDocumentPreview({
     let cancelled = false;
     const resolve = async (path: string | null | undefined): Promise<string | null> => {
       if (!path) return null;
-      if (path.startsWith("http://") || path.startsWith("https://")) return path;
+      if (path.startsWith("http://") || path.startsWith("https://")) return proxiedAssetUrl(path);
       const { data, error } = await supabase.storage.from(BUCKET).createSignedUrl(path, 60 * 60);
       if (error) {
         console.error("[SignedDocumentPreview] signed URL error", error);
         return null;
       }
-      return data?.signedUrl || null;
+      return data?.signedUrl ? proxiedAssetUrl(data.signedUrl) : null;
     };
     setLoading(true);
     Promise.all([resolve(attachedFilePath), resolve(handwrittenScanPath)])
