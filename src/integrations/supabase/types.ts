@@ -8478,6 +8478,42 @@ export type Database = {
           },
         ]
       }
+      student_login_tokens: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          last_used_at: string | null
+          organization_id: string
+          revoked_at: string | null
+          token: string
+          use_count: number
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          last_used_at?: string | null
+          organization_id: string
+          revoked_at?: string | null
+          token?: string
+          use_count?: number
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          last_used_at?: string | null
+          organization_id?: string
+          revoked_at?: string | null
+          token?: string
+          use_count?: number
+          user_id?: string
+        }
+        Relationships: []
+      }
       subscription_invoices: {
         Row: {
           amount: number

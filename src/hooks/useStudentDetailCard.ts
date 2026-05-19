@@ -173,6 +173,8 @@ export function useStudentDetailCardLogic({
   const [isSendingReminder, setIsSendingReminder] = useState(false);
   const [decryptedPassword, setDecryptedPassword] = useState<string | null>(null);
   const [isLoadingPassword, setIsLoadingPassword] = useState(false);
+  const [autoLoginToken, setAutoLoginToken] = useState<string | null>(null);
+  const [isLoginLinkBusy, setIsLoginLinkBusy] = useState(false);
 
   // FRDO data state
   const [frdoData, setFrdoData] = useState<Record<string, string | null>>({});
@@ -225,6 +227,94 @@ export function useStudentDetailCardLogic({
       }
     }
   };
+
+  // Load existing auto-login token for this student (if any).
+  useEffect(() => {
+    if (!isOpen || !student?.user_id || !organizationId) return;
+    (async () => {
+      const { data } = await supabase
+        .from("student_login_tokens")
+        .select("token")
+        .eq("user_id", student.user_id)
+        .eq("organization_id", organizationId)
+        .is("revoked_at", null)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      setAutoLoginToken((data as any)?.token ?? null);
+    })();
+  }, [isOpen, student?.user_id, organizationId]);
+
+  const ensureAutoLoginToken = useCallback(async (): Promise<string | null> => {
+    if (!student) return null;
+    if (autoLoginToken) return autoLoginToken;
+    const { data, error } = await supabase
+      .from("student_login_tokens")
+      .insert({ user_id: student.user_id, organization_id: organizationId })
+      .select("token")
+      .single();
+    if (error || !data) { toast.error("Не удалось создать ссылку"); return null; }
+    setAutoLoginToken(data.token as string);
+    return data.token as string;
+  }, [student, organizationId, autoLoginToken]);
+
+  const copyAutoLoginLink = useCallback(async () => {
+    setIsLoginLinkBusy(true);
+    try {
+      const t = await ensureAutoLoginToken();
+      if (!t) return;
+      const url = `${getBaseUrl()}/auto-login?token=${encodeURIComponent(t)}`;
+      await navigator.clipboard.writeText(url);
+      toast.success("Ссылка автовхода скопирована");
+    } finally { setIsLoginLinkBusy(false); }
+  }, [ensureAutoLoginToken]);
+
+  const copyCredentialsLink = useCallback(async () => {
+    if (!student?.login) { toast.error("У ученика нет логина"); return; }
+    const pw = decryptedPassword || (student.generated_password && !student.generated_password.startsWith("ENC:") ? student.generated_password : null);
+    if (!pw) { toast.error("Пароль недоступен. Задайте новый пароль через «Изменить»."); return; }
+    const url = `${getBaseUrl()}/login?u=${encodeURIComponent(student.login)}&p=${encodeURIComponent(pw)}`;
+    await navigator.clipboard.writeText(url);
+    toast.success("Ссылка с логином и паролем скопирована");
+  }, [student, decryptedPassword]);
+
+  const sendLoginLinkEmail = useCallback(async () => {
+    if (!student) return;
+    if (!student.email) { toast.error("У ученика не указан email"); return; }
+    setIsLoginLinkBusy(true);
+    try {
+      const { data, error } = await safeInvoke<any>("send-student-login-link", { body: { user_id: student.user_id } });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      toast.success(`Ссылка отправлена на ${student.email}`);
+      // Refresh token if newly created
+      const { data: t } = await supabase
+        .from("student_login_tokens")
+        .select("token")
+        .eq("user_id", student.user_id)
+        .eq("organization_id", organizationId)
+        .is("revoked_at", null)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      setAutoLoginToken((t as any)?.token ?? null);
+    } catch (e: any) {
+      toast.error(e?.message || "Ошибка отправки");
+    } finally { setIsLoginLinkBusy(false); }
+  }, [student, organizationId]);
+
+  const revokeAutoLoginToken = useCallback(async () => {
+    if (!student || !autoLoginToken) return;
+    if (!confirm("Отозвать ссылку автовхода? Старая ссылка перестанет работать.")) return;
+    const { error } = await supabase
+      .from("student_login_tokens")
+      .update({ revoked_at: new Date().toISOString() })
+      .eq("token", autoLoginToken);
+    if (error) { toast.error("Не удалось отозвать"); return; }
+    setAutoLoginToken(null);
+    toast.success("Ссылка отозвана");
+  }, [student, autoLoginToken]);
+
 
   const saveFrdoField = async (field: string, value: string) => {
     if (!student) return;

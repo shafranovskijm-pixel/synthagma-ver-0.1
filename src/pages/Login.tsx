@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { SigmaLogo } from "@/components/ui/SigmaLogo";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { ArrowLeft, Mail, Lock, Shield, Building2, GraduationCap, User, Eye, EyeOff, RefreshCw } from "lucide-react";
 import { forceClientRefresh } from "@/utils/forceClientRefresh";
 import { useAuth } from "@/hooks/useAuth";
@@ -41,6 +41,19 @@ const Login = () => {
   
   const { signIn, user, userRole, loading } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+
+  // Prefill from ?u=&p= (auto-fill link for student credentials).
+  useEffect(() => {
+    const u = searchParams.get("u");
+    const p = searchParams.get("p");
+    if (u || p) {
+      if (u) { setLogin(u); setLoginMode("login"); }
+      if (p) setPassword(p);
+      // Clean URL so credentials don't linger in history.
+      try { window.history.replaceState({}, "", window.location.pathname); } catch {}
+    }
+  }, [searchParams]);
   useEffect(() => {
     if (user && !loading) {
       // Wait for userRole to be loaded before navigating
