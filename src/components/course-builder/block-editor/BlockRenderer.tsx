@@ -13,6 +13,7 @@ import { bgColorPresets, textColorPresets } from "./types";
 import { renderHtml } from "./utils";
 import { getEmbedSrc } from "./embedSrc";
 import { FormulaRender } from "./FormulaRender";
+import { proxiedAssetUrl } from "@/utils/proxyFetch";
 
 // ── Callout config: maps callout type → icon + colour scheme. Kills 6 duplicate cases.
 type CalloutKind = Extract<BlockType, "callout-info" | "callout-warning" | "callout-tip" | "callout-success" | "callout-danger">;
