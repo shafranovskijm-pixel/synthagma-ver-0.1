@@ -16,6 +16,7 @@
  */
 
 import { supabase } from "@/integrations/supabase/client";
+import { proxiedAssetUrl } from "@/utils/proxyFetch";
 
 export interface UploadOptions {
   /** Префикс пути в бакете (например, `${orgId}/`) */
