@@ -491,5 +491,7 @@ export function useStudentDetailCardLogic({
     formatDate, formatDuration, latestConsent, latestVerification, getIdentityDocByType, getMissingDocuments,
     isSendingReminder, handleSendDocumentsReminder, handleVerifyIdentification, handleManualVerification,
     frdoData, saveFrdoField, savingFrdoField,
+    autoLoginToken, isLoginLinkBusy,
+    copyAutoLoginLink, copyCredentialsLink, sendLoginLinkEmail, revokeAutoLoginToken,
   };
 }
