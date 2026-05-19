@@ -130,7 +130,7 @@ const ADMIN_SECTIONS_FULL = [
   'organizations', 'users', 'marketplace', 'sales', 'finance',
   'webinars-admin', 'chats', 'billing', 'broadcast', 'support-chats',
   'referrals', 'support', 'devtools', 'updates', 'staff', 'settings',
-  'analytics', 'content', 'ai',
+  'analytics', 'content', 'ai', 'client-errors',
 ] as const;
 
 export type AdminSection = typeof ADMIN_SECTIONS_FULL[number];
@@ -141,7 +141,7 @@ export const ADMIN_ROLE_SECTIONS: Record<AdminStaffRole, AdminSection[]> = {
     'organizations', 'users', 'marketplace', 'sales', 'finance',
     'webinars-admin', 'chats', 'billing', 'broadcast', 'support-chats',
     'referrals', 'support', 'updates', 'staff', 'settings',
-    'analytics', 'content', 'ai',
+    'analytics', 'content', 'ai', 'client-errors',
   ],
   sales_manager: [
     'sales', 'marketplace', 'finance', 'billing',
