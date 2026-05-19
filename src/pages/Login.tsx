@@ -1,10 +1,9 @@
-import { useState, useEffect, useRef } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { SigmaLogo } from "@/components/ui/SigmaLogo";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { ArrowLeft, Mail, Lock, Shield, Building2, GraduationCap, User, Eye, EyeOff, RefreshCw } from "lucide-react";
 import { forceClientRefresh } from "@/utils/forceClientRefresh";
 import { useAuth } from "@/hooks/useAuth";
