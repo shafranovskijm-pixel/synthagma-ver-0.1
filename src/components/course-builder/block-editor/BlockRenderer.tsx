@@ -238,7 +238,7 @@ function RenderBlock({ block, quizAnswer, quizSubmitted, onQuizAnswer, onQuizSub
             <span className="font-medium text-sm">Аудио</span>
           </div>
           <audio controls preload="none" className="w-full">
-            <source src={block.audioUrl} type="audio/mpeg" />
+            <source src={proxiedAssetUrl(block.audioUrl)} type="audio/mpeg" />
             Ваш браузер не поддерживает аудио.
           </audio>
         </div>
