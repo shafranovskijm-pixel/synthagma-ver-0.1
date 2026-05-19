@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { safeInvoke } from "@/utils/safeInvoke";
+import { proxiedAssetUrl } from "@/utils/proxyFetch";
 import { toast } from "sonner";
 
 export interface StorageFile {
@@ -86,7 +87,7 @@ export function useStorageManager(organizationId: string) {
   const getSignedUrl = useCallback(async (bucket: string, path: string): Promise<string | null> => {
     const { data, error } = await supabase.storage.from(bucket).createSignedUrl(path, 3600);
     if (error) { console.error("Error creating signed URL:", error); return null; }
-    return data.signedUrl;
+    return proxiedAssetUrl(data.signedUrl);
   }, []);
 
   const getFileUrl = useCallback(async (file: StorageFile): Promise<string> => {
@@ -113,7 +114,7 @@ export function useStorageManager(organizationId: string) {
               if (isHiddenArtifact(f.name)) continue;
               const fileSize = (f.metadata as any)?.size || 0;
               if (fileSize === 0 || !f.name.includes('.')) continue;
-              allFiles.push({ name: f.name, url: isPrivateBucket ? "" : `${urlBase}/storage/v1/object/public/${bucket}/${prefix}/${f.name}`, bucket, folder: prefix, size: fileSize, created_at: (f as any).created_at || "", type: getFileType(f.name), isPrivate: isPrivateBucket });
+              allFiles.push({ name: f.name, url: isPrivateBucket ? "" : proxiedAssetUrl(`${urlBase}/storage/v1/object/public/${bucket}/${prefix}/${f.name}`), bucket, folder: prefix, size: fileSize, created_at: (f as any).created_at || "", type: getFileType(f.name), isPrivate: isPrivateBucket });
             }
           }
         } catch { /* path doesn't exist */ }
@@ -170,7 +171,7 @@ export function useStorageManager(organizationId: string) {
     try {
       const { error } = await supabase.storage.from(bucket).upload(path, file, { upsert: true });
       if (error) throw error;
-      setFiles(prev => [{ name: file.name, url: `${baseUrl}/storage/v1/object/public/${bucket}/${path}`, bucket, folder: organizationId, size: file.size, created_at: new Date().toISOString(), type: getFileType(file.name) }, ...prev]);
+      setFiles(prev => [{ name: file.name, url: proxiedAssetUrl(`${baseUrl}/storage/v1/object/public/${bucket}/${path}`), bucket, folder: organizationId, size: file.size, created_at: new Date().toISOString(), type: getFileType(file.name) }, ...prev]);
       toast.success("Файл загружен");
     } catch (err) { console.error("Upload error:", err); toast.error("Ошибка загрузки файла"); }
     setUploading(false); e.target.value = "";

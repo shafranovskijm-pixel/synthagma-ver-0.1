@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+import { proxiedAssetUrl } from "@/utils/proxyFetch";
 
 /**
  * Get a signed URL for a file in a private storage bucket.
@@ -18,7 +19,7 @@ export const getSignedStorageUrl = async (
     return null;
   }
 
-  return data.signedUrl;
+  return proxiedAssetUrl(data.signedUrl);
 };
 
 /**

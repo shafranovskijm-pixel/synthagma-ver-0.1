@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { proxiedAssetUrl } from "@/utils/proxyFetch";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -111,14 +112,15 @@ export function OrgBillingDocsTab({ organizationId }: OrgBillingDocsTabProps) {
       toast.error("Ошибка", { description: "Не удалось получить ссылку" });
       return;
     }
+    const signed = proxiedAssetUrl(data.signedUrl);
     try {
-      const res = await fetch(data.signedUrl);
+      const res = await fetch(signed);
       const text = await res.text();
       const blob = new Blob([text], { type: "text/html;charset=utf-8" });
       const blobUrl = URL.createObjectURL(blob);
       window.open(blobUrl, "_blank");
     } catch {
-      window.open(data.signedUrl, "_blank");
+      window.open(signed, "_blank");
     }
   };
 
@@ -132,7 +134,7 @@ export function OrgBillingDocsTab({ organizationId }: OrgBillingDocsTabProps) {
     }
     try {
       const { downloadHtmlFile } = await import("@/utils/downloadHtmlFile");
-      await downloadHtmlFile(data.signedUrl, doc.name);
+      await downloadHtmlFile(proxiedAssetUrl(data.signedUrl), doc.name);
     } catch {
       toast.error("Ошибка", { description: "Не удалось скачать файл" });
     }

@@ -25,6 +25,7 @@ import { OfflineBanner } from "@/components/student/OfflineBanner";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useState as useReactState } from "react";
 import { FilePreviewDialog } from "@/components/course-learning/FilePreviewDialog";
+import { proxiedAssetUrl } from "@/utils/proxyFetch";
 import { HomeworkSubmission } from "@/components/course-learning/HomeworkSubmission";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 import { CourseSidebarContent } from "@/components/course-learning/CourseSidebar";
@@ -215,7 +216,7 @@ const CourseLearning = () => {
                 </div>
                 <div className={cn("bg-card rounded-2xl border border-border", isMobile ? "p-4" : "p-6")}>
                   {currentLesson.content && currentLesson.content.startsWith('http') ? (
-                    <audio controls preload="auto" className="w-full"><source src={currentLesson.content} type="audio/mpeg" />Ваш браузер не поддерживает аудио.</audio>
+                    <audio controls preload="auto" className="w-full"><source src={proxiedAssetUrl(currentLesson.content)} type="audio/mpeg" />Ваш браузер не поддерживает аудио.</audio>
                   ) : <div className="text-center text-muted-foreground py-8"><Headphones className={cn(isMobile ? "w-12 h-12" : "w-16 h-16", "mx-auto mb-4 opacity-50")} /><p>Аудио не загружено</p></div>}
                 </div>
               </div>

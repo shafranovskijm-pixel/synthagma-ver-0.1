@@ -13,6 +13,7 @@ import { bgColorPresets, textColorPresets } from "./types";
 import { renderHtml } from "./utils";
 import { getEmbedSrc } from "./embedSrc";
 import { FormulaRender } from "./FormulaRender";
+import { proxiedAssetUrl } from "@/utils/proxyFetch";
 
 // ── Callout config: maps callout type → icon + colour scheme. Kills 6 duplicate cases.
 type CalloutKind = Extract<BlockType, "callout-info" | "callout-warning" | "callout-tip" | "callout-success" | "callout-danger">;
@@ -197,7 +198,7 @@ function RenderBlock({ block, quizAnswer, quizSubmitted, onQuizAnswer, onQuizSub
                 {currentSlide.imageUrl && (
                   <div className="rounded-lg overflow-hidden border border-border bg-secondary/20">
                     <img 
-                      src={currentSlide.imageUrl} 
+                      src={proxiedAssetUrl(currentSlide.imageUrl)} 
                       alt={currentSlide.title || 'Слайд'} 
                       className="w-full max-h-[400px] object-contain"
                     />
@@ -237,7 +238,7 @@ function RenderBlock({ block, quizAnswer, quizSubmitted, onQuizAnswer, onQuizSub
             <span className="font-medium text-sm">Аудио</span>
           </div>
           <audio controls preload="none" className="w-full">
-            <source src={block.audioUrl} type="audio/mpeg" />
+            <source src={proxiedAssetUrl(block.audioUrl)} type="audio/mpeg" />
             Ваш браузер не поддерживает аудио.
           </audio>
         </div>

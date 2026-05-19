@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { proxiedAssetUrl } from "@/utils/proxyFetch";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -153,7 +154,7 @@ const WebinarPublic = () => {
         {info.cover_image_url && (
           <div
             className="h-48 w-full rounded-t-lg bg-cover bg-center"
-            style={{ backgroundImage: `url(${info.cover_image_url})` }}
+            style={{ backgroundImage: `url(${proxiedAssetUrl(info.cover_image_url)})` }}
           />
         )}
         <CardHeader>

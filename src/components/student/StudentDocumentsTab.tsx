@@ -25,6 +25,7 @@ import { StudentDocumentsUpload } from "@/components/student/StudentDocumentsUpl
 import { StudentDataSubjectRequests } from "@/components/student/StudentDataSubjectRequests";
 import { useStudentSignatureInbox, type InboxSignature } from "@/hooks/useStudentSignatureInbox";
 import { supabase } from "@/integrations/supabase/client";
+import { proxiedAssetUrl } from "@/utils/proxyFetch";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
@@ -173,7 +174,7 @@ export function StudentDocumentsTab({
         .from("signed-documents")
         .createSignedUrl(path, 600);
       if (error || !signed?.signedUrl) throw error || new Error("URL не получен");
-      window.open(signed.signedUrl, "_blank", "noopener");
+      window.open(proxiedAssetUrl(signed.signedUrl), "_blank", "noopener");
     } catch (e: any) {
       toast.error("Не удалось скачать", { description: e?.message || String(e) });
     }

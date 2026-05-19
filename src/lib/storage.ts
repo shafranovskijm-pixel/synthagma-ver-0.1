@@ -16,6 +16,7 @@
  */
 
 import { supabase } from "@/integrations/supabase/client";
+import { proxiedAssetUrl } from "@/utils/proxyFetch";
 
 export interface UploadOptions {
   /** Префикс пути в бакете (например, `${orgId}/`) */
@@ -37,7 +38,7 @@ export interface UploadResult {
  */
 export function getPublicUrl(bucket: string, path: string): string {
   const { data } = supabase.storage.from(bucket).getPublicUrl(path);
-  return data.publicUrl;
+  return proxiedAssetUrl(data.publicUrl);
 }
 
 /**
@@ -57,7 +58,7 @@ export async function getSignedUrl(
     console.error("[storage.getSignedUrl]", bucket, path, error.message);
     return null;
   }
-  return data.signedUrl;
+  return proxiedAssetUrl(data.signedUrl);
 }
 
 /**

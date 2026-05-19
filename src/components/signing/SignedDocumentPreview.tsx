@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Loader2, FileText, FileDown } from "lucide-react";
 import { PepSignatureStamp } from "@/components/signing/PepSignatureStamp";
 import { supabase } from "@/integrations/supabase/client";
+import { proxiedAssetUrl } from "@/utils/proxyFetch";
 import { toast } from "sonner";
 import { generateSignedPdf } from "@/lib/signedDocumentPdf";
 import type { AcceptedEditSummary } from "@/lib/pdfStampDrawer";
@@ -97,13 +98,13 @@ export function SignedDocumentPreview({
     let cancelled = false;
     const resolve = async (path: string | null | undefined): Promise<string | null> => {
       if (!path) return null;
-      if (path.startsWith("http://") || path.startsWith("https://")) return path;
+      if (path.startsWith("http://") || path.startsWith("https://")) return proxiedAssetUrl(path);
       const { data, error } = await supabase.storage.from(BUCKET).createSignedUrl(path, 60 * 60);
       if (error) {
         console.error("[SignedDocumentPreview] signed URL error", error);
         return null;
       }
-      return data?.signedUrl || null;
+      return data?.signedUrl ? proxiedAssetUrl(data.signedUrl) : null;
     };
     setLoading(true);
     Promise.all([resolve(attachedFilePath), resolve(handwrittenScanPath)])
