@@ -27,6 +27,7 @@ export type AdminTabType =
   | "referrals"
   | "support"
   | "devtools"
+  | "client-errors"
   | "updates"
   | "staff"
   | "webinars-admin"
