@@ -4,6 +4,7 @@ import { toast } from "sonner";
 import type { Json } from "@/integrations/supabase/types";
 import { useOrganizationCore } from "@/hooks/useOrganizationCore";
 import { useQueryClient } from "@tanstack/react-query";
+import { proxiedAssetUrl } from "@/utils/proxyFetch";
 
 interface BrandingSettings {
   coverUrl: string;
