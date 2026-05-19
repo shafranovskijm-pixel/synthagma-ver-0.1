@@ -90,6 +90,7 @@ export function AdminSidebar({
     { id: "finance", icon: CreditCard, label: "Финансы" },
     { id: "webinars-admin", icon: Radio, label: "Вебинары" },
     { id: "chats", icon: MessageSquare, label: "Чаты", badge: unreadChats + unreadSupport },
+    { id: "client-errors", icon: Activity, label: "Ошибки клиентов" },
   ];
 
   // Гард по admin_staff.role: если запись есть — показываем только разрешённые разделы.
