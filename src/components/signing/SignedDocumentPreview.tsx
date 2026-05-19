@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Loader2, FileText, FileDown } from "lucide-react";
 import { PepSignatureStamp } from "@/components/signing/PepSignatureStamp";
 import { supabase } from "@/integrations/supabase/client";
+import { proxiedAssetUrl } from "@/utils/proxyFetch";
 import { toast } from "sonner";
 import { generateSignedPdf } from "@/lib/signedDocumentPdf";
 import type { AcceptedEditSummary } from "@/lib/pdfStampDrawer";
