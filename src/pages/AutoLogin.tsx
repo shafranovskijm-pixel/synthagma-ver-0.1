@@ -24,7 +24,10 @@ export default function AutoLogin() {
         if ((data as any)?.error) throw new Error((data as any).error);
         const url = (data as any)?.action_url as string | undefined;
         if (!url) throw new Error("Не получена ссылка для входа");
-        window.location.replace(url);
+        // На синтагма.рф (NGINX-прокси) Supabase-домен заблокирован — переписываем magic-link
+        // через same-origin прокси, чтобы 302 на /student отработал без обращения к *.supabase.co
+        const finalUrl = proxiedAssetUrl(url) || url;
+        window.location.replace(finalUrl);
       } catch (e: any) {
         console.error("auto-login failed", e);
         setError(e?.message || "Ссылка недействительна или отозвана");
