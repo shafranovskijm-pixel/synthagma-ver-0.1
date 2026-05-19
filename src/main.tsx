@@ -1,9 +1,15 @@
 import "./index.css";
 import { installProxyFetch } from "./utils/proxyFetch";
+import { installErrorReporter } from "./utils/errorReporter";
 
 // Перехватчик fetch для обхода корпоративных блокировок Supabase-доменов
 // через резервные субдомены (api/functions/storage.sintagma.com.ru)
 installProxyFetch();
+
+// Автологирование сетевых ошибок (CORS, 4xx/5xx, network failures) в БД,
+// чтобы админ мог диагностировать проблемы клиентов без скриншотов.
+// Должен ставиться ПОСЛЕ installProxyFetch, чтобы видеть финальный URL после прокси.
+installErrorReporter();
 
 // Cyrillic domain (синтагма.рф) больше НЕ редиректится автоматически —
 // пользователь сам решает, куда направить DNS этого домена (Timeweb / Lovable / Worker).

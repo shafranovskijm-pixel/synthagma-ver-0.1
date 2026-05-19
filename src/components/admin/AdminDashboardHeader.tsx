@@ -62,7 +62,8 @@ const TAB_TITLES: Record<AdminTabType, string> = {
   updates: "Обновления",
   settings: "Настройки",
   "webinars-admin": "Вебинары",
-  staff: "Сотрудники" };
+  staff: "Сотрудники",
+  "client-errors": "Ошибки клиентов" };
 
 function getInitials(email?: string): string {
   return (email || "A")[0].toUpperCase();

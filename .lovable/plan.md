@@ -1,73 +1,92 @@
-# Что я помню про прокси на Timeweb
+# Автологирование сетевых ошибок клиентов
 
-Да, всё помню. Схема такая:
-- **Фронтенд** — Timeweb (deploy из GitHub), домены `sintagma.com.ru` и `синтагма.рф`.
-- **Бэкенд** — Lovable Cloud (Supabase, хост `atxwvjxbqjgkbjlhsdch.supabase.co`).
-- Для `синтагма.рф` Supabase у российских провайдеров заблокирован, поэтому мы подняли **отдельный VDS на Timeweb (IP `176.98.178.203`)** с **NGINX reverse-proxy** на домене `api.синтагма.рф` (punycode `api.xn--80aaiswd0ak.xn--p1ai`).
-- В коде это `src/utils/proxyFetch.ts` (перехватчик fetch/WebSocket) + эталонный конфиг `src/utils/nginxProxyConfig.ts`.
-- Префиксы: `/sb-api/`, `/sb-functions/`, `/sb-storage/`, `/sb-realtime`.
-- Cloudflare и `sintagma.com.ru` в этой цепочке **не участвуют**.
+## Цель
 
-# Диагноз ошибки «Ошибка загрузки документа / Failed to fetch»
+Собирать все упавшие сетевые запросы (CORS, 4xx/5xx, network failure, timeout) со всех устройств пользователей в одну таблицу. В админке — фильтры, графики, детали запроса. Это позволит диагностировать проблемы вроде текущей с `/sb-storage/` без ручных скриншотов от пользователей.
 
-Я проверил живой прокси `api.синтагма.рф`:
+## Что логируем
 
-- Прокси работает (`HTTP 200`, SSL ок).
-- На preflight `OPTIONS /sb-storage/object/student-documents/...` сервер отвечает `204`, **но** в `Access-Control-Allow-Headers` **нет** заголовков `x-upsert` и `cache-control`.
+Для каждой ошибки:
+- URL и метод (без query-string с токенами)
+- HTTP-статус (или `network_error` / `cors_error` / `timeout` / `aborted`)
+- Текст ошибки, response body (первые 2 КБ)
+- Хост, через который шёл запрос (прямой Supabase / прокси VDS / Lovable Cloud)
+- User-Agent, домен страницы (`sintagma.com.ru`, `синтагма.рф`, preview)
+- `user_id` (если авторизован), `organization_id` (если есть)
+- Длительность запроса, размер payload
+- Browser-side timestamp + server-side received_at
 
-А клиент `@supabase/storage-js` при `.upload()` всегда шлёт `x-upsert` (и иногда `cache-control`). Браузер делает preflight, видит, что эти заголовки запрещены, и роняет запрос как «Failed to fetch». До самой Supabase / БД запрос даже не доходит.
+## Архитектура
 
-То есть **конфиг NGINX на VDS устарел** относительно эталона в репозитории (`src/utils/nginxProxyConfig.ts`) — в эталоне `x-upsert` уже есть, а на сервере его нет.
-
-# План правки (только на VDS Timeweb, код не трогаем)
-
-Заходим по SSH на `176.98.178.203` под root и приводим конфиг прокси к актуальному виду.
-
-## Вариант A — минимальная правка (быстро)
-
-Открыть конфиг и в блоке `location /sb-storage/ { ... if ($request_method = OPTIONS) { ... } }` добавить в `Access-Control-Allow-Headers` два заголовка: `x-upsert` и `cache-control`.
-
-```bash
-sudo nano /etc/nginx/sites-available/api.sintagma-rf.conf
-# найти Access-Control-Allow-Headers внутри location /sb-storage/
-# дописать: , x-upsert, cache-control
-sudo nginx -t && sudo systemctl reload nginx
+```
+fetch (глобальный wrapper)
+  → ошибка
+  → буфер в памяти (батч до 10 событий / 5 сек)
+  → sendBeacon → edge fn log-client-error
+  → таблица client_error_logs (RLS)
+  → AdminClientErrorsTab (фильтры/график/детали)
 ```
 
-## Вариант B — полностью переналить эталон (надёжнее)
+## Этапы
 
-Скопировать содержимое константы `NGINX_PROXY_CONFIG` из `src/utils/nginxProxyConfig.ts` целиком в `/etc/nginx/sites-available/api.sintagma-rf.conf` (заменить файл), затем:
+### 1. Таблица + RLS (миграция)
 
-```bash
-sudo nginx -t
-sudo systemctl reload nginx
-```
+`client_error_logs`:
+- domain-fields: `url_path`, `url_host`, `method`, `status`, `error_kind`, `error_message`, `response_snippet`, `request_route`, `user_agent`, `page_url`, `proxy_used`, `duration_ms`, `user_id`, `organization_id`, `occurred_at`
+- индексы по `occurred_at desc`, `status`, `error_kind`, `organization_id`
+- партиционирование/auto-cleanup через cron (хранить 30 дней)
 
-Эталон уже содержит:
-- `x-upsert`, `cache-control`, `range`, `tus-resumable`, `upload-*` в `Allow-Headers` для `/sb-storage/`,
-- `client_max_body_size 200m`,
-- корректный CORS для `синтагма.рф`, twc1.net, lovable.app, localhost.
+RLS:
+- INSERT — только через edge function (service role), клиент не пишет напрямую
+- SELECT — только глобальные админы (`has_admin_staff_role`) + владельцы организации видят свои `organization_id`
 
-## Проверка после правки
+### 2. Edge function `log-client-error`
 
-```bash
-curl -I -X OPTIONS "https://api.xn--80aaiswd0ak.xn--p1ai/sb-storage/object/student-documents/test.pdf" \
-  -H "Origin: https://xn--80aaiswd0ak.xn--p1ai" \
-  -H "Access-Control-Request-Method: POST" \
-  -H "Access-Control-Request-Headers: authorization,apikey,content-type,x-client-info,x-upsert,cache-control"
-```
+- `verify_jwt = false` (чтобы ловить даже ошибки без сессии)
+- Принимает массив до 50 событий
+- Rate limit: 100 запросов/мин с одного IP
+- Валидация Zod, обрезка строк до лимитов
+- Подмешивает `user_id`/`org_id` если есть валидный JWT в Authorization
+- INSERT batch в `client_error_logs`
 
-В ответе `Access-Control-Allow-Headers` должны появиться `x-upsert` и `cache-control`. После этого в кабинете Газукиной А. Н. на `синтагма.рф` загрузка паспорта/СНИЛС должна пройти без «Failed to fetch».
+### 3. Клиентский сборщик `src/utils/errorReporter.ts`
 
-# Чего я НЕ трогаю в этом плане
+- Patch глобального `window.fetch` (один раз в `main.tsx`)
+- При ошибке/non-2xx (опционально только 4xx ≥ 408 и 5xx) — push в буфер
+- Отдельная обёртка для `supabase.functions.invoke` + storage
+- Дедупликация: одинаковые ошибки за 10 сек схлопываются в counter
+- Sampling: 100% ошибок, 0% успехов (логируем только проблемы)
+- Sendbeacon при `pagehide`, `visibilitychange`
+- Исключения: не логируем сам `log-client-error`, аналитику, рекламу
 
-- Код приложения (`StudentDocumentsUpload.tsx`, `proxyFetch.ts`, RLS, бакет `student-documents`) — там всё корректно, бакет существует, политики уже разрешают студенту INSERT/UPDATE/DELETE своих документов (это я добавлял в рамках задачи ПЭП).
-- `sintagma.com.ru` и Cloudflare — без изменений.
+Фильтр шумов: игнорируем `AbortError` от React Query, отменённые загрузки.
 
-# Технические детали (для меня/при отладке)
+### 4. Админка `AdminClientErrorsTab`
 
-- Запрос клиента: `POST https://atxwvjxbqjgkbjlhsdch.supabase.co/storage/v1/object/student-documents/<uid>/passport_<ts>.png` с заголовками `authorization`, `apikey`, `x-client-info`, `x-upsert: false`, `content-type: multipart/form-data`.
-- Перехватчик `proxyFetch` переписывает URL на `https://api.xn--80aaiswd0ak.xn--p1ai/sb-storage/object/student-documents/...`.
-- Браузер шлёт preflight → NGINX отдаёт `Allow-Headers` без `x-upsert` → preflight fail → fetch ловит TypeError "Failed to fetch" → пользователь видит «Ошибка загрузки документа».
+Маршрут `/admin/diagnostics/client-errors`:
+- **Сверху**: KPI-карточки (за 24ч / 7д) — всего ошибок, уникальных пользователей, топ-1 endpoint
+- **График** ошибок по часам (recharts) с разделением по `error_kind`
+- **Фильтры**: период, `error_kind`, `status`, `url_host`, `proxy_used`, `organization_id`, `user_id`, search по url
+- **Таблица** с пагинацией: время, статус, метод+url, ошибка, юзер/орг, UA
+- **Drawer с деталями** по строке: full payload, response snippet, headers, повторы за период
 
-Если хочешь, после твоего апрува могу также добавить в `src/utils/nginxProxyConfig.ts` явный комментарий «при обновлении не забыть x-upsert/cache-control», чтобы в будущем не разъехалось.
+### 5. Очистка
+
+Cron `cleanup-client-error-logs-daily` (04:00 UTC) — удаление записей старше 30 дней.
+
+## Технические детали
+
+- Edge function путь: `supabase/functions/log-client-error/index.ts`
+- Клиент-обёртка в `src/utils/errorReporter.ts` + инициализация в `src/main.tsx` после `createRoot`
+- Существующий `proxyFetch.ts` уже патчит fetch для прокси — добавляем хук перед return для логирования
+- `supabase-js` storage не идёт через `proxyFetch` напрямую, но fetch global тоже патчится — покроем оба пути
+- Тип `ErrorKind`: `'http_4xx' | 'http_5xx' | 'network_error' | 'cors_error' | 'timeout' | 'aborted'`
+- Размер буфера в localStorage на случай оффлайна (макс 50 событий, отправляем при возврате online)
+- Не логируем PII: query string обрезаем после `?`, body запроса не сохраняем
+
+## Что НЕ входит в этот план
+
+- Алерты в Telegram/email при всплеске ошибок (можно добавить позже)
+- Логирование успешных запросов / APM-метрик
+- Source map symbolication JS-ошибок (отдельная задача)
+- Service Worker перехват (только fetch на главном потоке)

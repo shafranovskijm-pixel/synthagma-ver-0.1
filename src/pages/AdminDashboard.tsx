@@ -25,6 +25,7 @@ const PlatformUpdatesManager = lazyWithRetry(() => import("@/components/admin/Pl
 const AdminBillingOverview = lazyWithRetry(() => import("@/components/admin/AdminBillingOverview").then(m => ({ default: m.AdminBillingOverview })));
 const AdminFinanceOverview = lazyWithRetry(() => import("@/components/admin/AdminFinanceOverview").then(m => ({ default: m.AdminFinanceOverview })));
 const AdminWebinarsOverview = lazyWithRetry(() => import("@/components/admin/AdminWebinarsOverview").then(m => ({ default: m.AdminWebinarsOverview })));
+const AdminClientErrorsTab = lazyWithRetry(() => import("@/components/admin/AdminClientErrorsTab").then(m => ({ default: m.AdminClientErrorsTab })));
 
 import { useAdminBranding } from "@/hooks/useAdminBranding";
 import { supabase } from "@/integrations/supabase/client";
