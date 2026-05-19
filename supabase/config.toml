@@ -159,3 +159,7 @@ verify_jwt = false
 
 [functions.demo-student-login]
 verify_jwt = false
+
+[functions.student-auto-login]
+verify_jwt = false
+
