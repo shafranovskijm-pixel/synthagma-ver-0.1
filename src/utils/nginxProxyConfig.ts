@@ -16,6 +16,13 @@
  * Установка SSL:
  *   sudo certbot --nginx -d api.xn--80aaiswd0ak.xn--p1ai
  *   (домен передавать ИМЕННО в punycode — Let's Encrypt IDN не понимает)
+ *
+ * ВАЖНО при обновлении конфига на VDS:
+ *   В location /sb-storage/ в Access-Control-Allow-Headers ОБЯЗАТЕЛЬНО должны
+ *   присутствовать `x-upsert` и `cache-control` — иначе supabase-js .upload()
+ *   падает с "Failed to fetch" на preflight (браузер не пропускает запрос).
+ *   Также нужны `range`, `tus-resumable`, `upload-length`, `upload-metadata`,
+ *   `upload-offset` для TUS-аплоадов больших файлов.
  */
 
 export const NGINX_PROXY_CONFIG = `# === Sintagma reverse proxy для синтагма.рф ===
