@@ -203,7 +203,7 @@ export function useAdminBilling() {
       if (invoiceOtherPayer && invoiceBuyerName) { insertData.buyer_name = invoiceBuyerName; insertData.buyer_inn = invoiceBuyerInn || null; insertData.buyer_kpp = invoiceBuyerKpp || null; }
       const planInfo = SUBSCRIPTION_PLANS[plan as keyof typeof SUBSCRIPTION_PLANS];
       const invoiceData: InvoiceData = { invoiceNumber: invoiceNum, invoiceDate: new Date().toLocaleDateString("ru-RU"), buyerName: insertData.buyer_name || org?.name || "Организация", buyerInn: insertData.buyer_inn || org?.inn, buyerKpp: insertData.buyer_kpp || org?.kpp, planName: planInfo?.name || plan, periodMonths: 1, amount };
-      const html = generateInvoiceHtml(invoiceData);
+      const html = await generateInvoiceHtml(invoiceData);
       const printWindow = window.open('', '_blank');
       if (printWindow) { printWindow.document.write(html); printWindow.document.close(); }
       setPendingInvoice({ html, insertData, invoiceNum, amount, plan });
