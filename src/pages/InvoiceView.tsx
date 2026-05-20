@@ -51,7 +51,7 @@ export default function InvoiceView() {
         periodMonths: invoice.period_months,
         amount: Number(invoice.amount) };
 
-      setHtml(generateInvoiceHtml(invoiceData));
+      setHtml(await generateInvoiceHtml(invoiceData));
     } catch (e: any) {
       setError(e.message || "Ошибка загрузки");
     } finally {

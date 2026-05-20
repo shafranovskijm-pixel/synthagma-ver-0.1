@@ -407,7 +407,7 @@ export function useDocumentsTab(organizationId: string | null, organizationName?
         periodMonths: 1,
         amount,
       };
-      const html = generateInvoiceHtml(invoiceData);
+      const html = await generateInvoiceHtml(invoiceData);
       const printWindow = window.open('', '_blank');
       if (printWindow) { printWindow.document.write(html); printWindow.document.close(); }
       setPendingInvoice({ html, insertData, invoiceNum, amount });
