@@ -2,7 +2,7 @@ import { useState, useEffect, Suspense } from "react";
 import { ThemePersonalization } from "@/components/ui/ThemePersonalization";
 import {
   Palette, Database, Shield, Bell, Save, Globe, Tag, Sparkles,
-  RefreshCw, BarChart3, FileText, Bot, Terminal, Users, FolderOpen, FileSignature
+  RefreshCw, BarChart3, FileText, Bot, Terminal, Users, FolderOpen, FileSignature, Receipt
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -19,6 +19,7 @@ import { DevToolsPanel } from "./DevToolsPanel";
 import { AdminStaffTab } from "./AdminStaffTab";
 import { AdminMediaLibrary } from "./AdminMediaLibrary";
 import { SignaturesJournal } from "@/components/signing/SignaturesJournal";
+import { AdminOperatorRequisites } from "./AdminOperatorRequisites";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 
 interface SystemSettings {
@@ -26,11 +27,12 @@ interface SystemSettings {
   registrationEnabled: boolean;
 }
 
-type SectionKey = "theme" | "staff" | "db" | "media" | "signatures" | "cache" | "seo" | "system" | "promo" | "notifications" | "analytics" | "content" | "ai" | "devtools";
+type SectionKey = "theme" | "staff" | "operator" | "db" | "media" | "signatures" | "cache" | "seo" | "system" | "promo" | "notifications" | "analytics" | "content" | "ai" | "devtools";
 
 const SECTIONS: { key: SectionKey; label: string; icon: React.ElementType; color: string }[] = [
   { key: "theme", label: "Тема оформления", icon: Palette, color: "text-violet-500" },
   { key: "staff", label: "Сотрудники", icon: Users, color: "text-cyan-500" },
+  { key: "operator", label: "Реквизиты оператора", icon: Receipt, color: "text-emerald-600" },
   { key: "db", label: "Статистика БД", icon: Database, color: "text-blue-500" },
   { key: "media", label: "Медиатека", icon: FolderOpen, color: "text-teal-500" },
   { key: "signatures", label: "Подписания", icon: FileSignature, color: "text-indigo-500" },
@@ -221,6 +223,7 @@ export function AdminSettings() {
         );
 
       case "staff": return <AdminStaffTab />;
+      case "operator": return <AdminOperatorRequisites />;
       case "media": return <AdminMediaLibrary />;
       case "signatures": return <SignaturesJournal />;
       case "analytics": return (
