@@ -1,4 +1,6 @@
 import { CONTRACT_SIGNATURE_B64, CONTRACT_STAMP_B64 } from './contractAssets';
+import { DEFAULT_OPERATOR_REQUISITES, type OperatorRequisites } from './operatorDetails';
+import { loadOperatorRequisites } from '@/hooks/useOperatorRequisites';
 
 export interface InvoiceData {
   invoiceNumber: string;
@@ -14,27 +16,40 @@ export interface InvoiceData {
   amount: number;
 }
 
-const SELLER = {
-  name: 'ИП Шафрановский Максим Михайлович',
-  inn: '253615392404',
-  ogrnip: '324253600042754',
-  account: '40914810200040551529',
-  bankName: 'ООО «Озон Банк»',
-  bik: '044525068',
-  corrAccount: '30101810645374525068',
-  bankInn: '9703077050',
-  bankKpp: '770301001',
-};
-
 function pluralMonths(n: number): string {
   if (n === 1) return '1 месяц';
   if (n >= 2 && n <= 4) return `${n} месяца`;
   return `${n} месяцев`;
 }
 
-export function generateInvoiceHtml(data: InvoiceData): string {
+/**
+ * Генерирует HTML счёта на оплату подписки.
+ * Реквизиты оператора читаются из app_settings (с фолбэком на дефолтные).
+ * Передайте `requisitesOverride`, чтобы избежать повторного запроса к БД.
+ */
+export async function generateInvoiceHtml(
+  data: InvoiceData,
+  requisitesOverride?: OperatorRequisites,
+): Promise<string> {
+  const seller = requisitesOverride ?? (await loadOperatorRequisites());
+  return renderInvoiceHtml(data, seller);
+}
+
+/** Синхронная версия — для случаев, когда реквизиты уже загружены. */
+export function generateInvoiceHtmlSync(
+  data: InvoiceData,
+  requisites: OperatorRequisites = DEFAULT_OPERATOR_REQUISITES,
+): string {
+  return renderInvoiceHtml(data, requisites);
+}
+
+function renderInvoiceHtml(data: InvoiceData, seller: OperatorRequisites): string {
   const serviceName = `Предоставление доступа к платформе «Синтагма». Тариф «${data.planName}», ${pluralMonths(data.periodMonths)}`;
   const amountFormatted = data.amount.toLocaleString('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const supplierLine =
+    `${seller.fullName}, ИНН ${seller.inn}, ОГРНИП ${seller.ogrnip}` +
+    (seller.address ? `, ${seller.address}` : '') +
+    (seller.phone ? `, тел.: ${seller.phone}` : '');
 
   return `
 <!DOCTYPE html>
@@ -63,24 +78,24 @@ export function generateInvoiceHtml(data: InvoiceData): string {
   <tr>
     <td rowspan="2" style="width: 55%;">
       <div style="font-size: 9pt; color: #555;">Банк получателя</div>
-      <div><b>${SELLER.bankName}</b></div>
-      <div style="font-size: 9pt;">ИНН ${SELLER.bankInn} / КПП ${SELLER.bankKpp}</div>
+      <div><b>${seller.bankName}</b></div>
+      <div style="font-size: 9pt;">ИНН ${seller.bankInn} / КПП ${seller.bankKpp}</div>
     </td>
     <td style="width: 15%; font-size: 9pt;">БИК</td>
-    <td style="width: 30%;">${SELLER.bik}</td>
+    <td style="width: 30%;">${seller.bik}</td>
   </tr>
   <tr>
     <td style="font-size: 9pt;">Корр. счёт</td>
-    <td>${SELLER.corrAccount}</td>
+    <td>${seller.corrAccount}</td>
   </tr>
   <tr>
     <td>
       <div style="font-size: 9pt; color: #555;">Получатель</div>
-      <div><b>${SELLER.name}</b></div>
-      <div style="font-size: 9pt;">ИНН ${SELLER.inn}, ОГРНИП ${SELLER.ogrnip}</div>
+      <div><b>${seller.fullName}</b></div>
+      <div style="font-size: 9pt;">ИНН ${seller.inn}, ОГРНИП ${seller.ogrnip}</div>
     </td>
     <td style="font-size: 9pt;">Счёт №</td>
-    <td><b>${SELLER.account}</b></td>
+    <td><b>${seller.bankAccount}</b></td>
   </tr>
 </table>
 
@@ -90,12 +105,12 @@ export function generateInvoiceHtml(data: InvoiceData): string {
 
 <table style="margin-bottom: 20px; font-size: 11pt;">
   <tr>
-    <td style="width: 130px; padding: 3px 0;"><b>Поставщик:</b></td>
-    <td>${SELLER.name}, ИНН ${SELLER.inn}, ОГРНИП ${SELLER.ogrnip}</td>
+    <td style="width: 130px; padding: 3px 0; vertical-align: top;"><b>Поставщик:</b></td>
+    <td>${supplierLine}</td>
   </tr>
   <tr>
-    <td style="padding: 3px 0;"><b>Покупатель:</b></td>
-    <td>${data.buyerName}${data.buyerInn ? `, ИНН ${data.buyerInn}` : ''}${data.buyerKpp ? `, КПП ${data.buyerKpp}` : ''}</td>
+    <td style="padding: 3px 0; vertical-align: top;"><b>Покупатель:</b></td>
+    <td>${data.buyerName}${data.buyerInn ? `, ИНН ${data.buyerInn}` : ''}${data.buyerKpp ? `, КПП ${data.buyerKpp}` : ''}${data.buyerAddress ? `, ${data.buyerAddress}` : ''}</td>
   </tr>
 </table>
 
@@ -132,10 +147,10 @@ export function generateInvoiceHtml(data: InvoiceData): string {
     <b>Индивидуальный предприниматель</b>
   </div>
   <div style="margin-top: 30px; position: relative;">
-    <span>__________________ / Шафрановский М.М. /</span>
-    <img src="data:image/png;base64,${CONTRACT_SIGNATURE_B64}" 
+    <span>__________________ / ${seller.shortName} /</span>
+    <img src="data:image/png;base64,${CONTRACT_SIGNATURE_B64}"
          style="position: absolute; left: -10px; top: -40px; height: 90px; opacity: 0.9;" />
-    <img src="data:image/png;base64,${CONTRACT_STAMP_B64}" 
+    <img src="data:image/png;base64,${CONTRACT_STAMP_B64}"
          style="position: absolute; left: 180px; top: -65px; height: 160px; opacity: 0.85;" />
   </div>
 </div>
