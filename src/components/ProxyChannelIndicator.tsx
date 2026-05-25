@@ -11,6 +11,16 @@ export function ProxyChannelIndicator() {
   const [active, setActive] = useState(false);
 
   useEffect(() => {
+    // Показываем плашку только на доменах, где прокси работает принудительно
+    // (синтагма.рф). На sintagma.com.ru прокси может включиться как тихий
+    // фолбэк, но пользователю об этом сообщать не нужно — там прямой канал
+    // штатный, а индикатор только пугает.
+    const host = typeof window !== 'undefined' ? window.location.hostname : '';
+    const isForced = host === 'xn--80aaiswd0ak.xn--p1ai' || host === 'www.xn--80aaiswd0ak.xn--p1ai';
+    if (!isForced) {
+      setActive(false);
+      return;
+    }
     const update = () => {
       const { enabled } = getProxyStatus();
       setActive(enabled);
