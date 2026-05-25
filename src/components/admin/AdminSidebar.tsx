@@ -87,10 +87,8 @@ export function AdminSidebar({
     { id: "users", icon: Users, label: "Пользователи" },
     { id: "marketplace", icon: Store, label: "Маркетплейс" },
     { id: "sales", icon: Briefcase, label: "Продажи" },
-    { id: "finance", icon: CreditCard, label: "Финансы" },
     { id: "webinars-admin", icon: Radio, label: "Вебинары" },
     { id: "chats", icon: MessageSquare, label: "Чаты", badge: unreadChats + unreadSupport },
-    { id: "client-errors", icon: Activity, label: "Ошибки клиентов" },
   ];
 
   // Гард по admin_staff.role: если запись есть — показываем только разрешённые разделы.
