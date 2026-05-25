@@ -55,6 +55,17 @@ export function useEnrollmentActions(
         userIds.add(student.user_id);
       }
     }
+    // Fallback: snapshot `students` может отставать от того, что показывает StudentsTab
+    // (у него собственный инстанс useStudents). StudentsTab всегда кладёт в выбор user_id —
+    // используем их напрямую, отсекая значения, которые в snapshot'е являются enrollment_id.
+    if (userIds.size === 0 && selectedStudentIds.size > 0) {
+      const enrollmentIds = new Set(
+        students.map(s => s.enrollment_id).filter((v): v is string => !!v)
+      );
+      for (const id of selectedStudentIds) {
+        if (!enrollmentIds.has(id)) userIds.add(id);
+      }
+    }
     return Array.from(userIds);
   }, [selectedStudentIds]);
 
