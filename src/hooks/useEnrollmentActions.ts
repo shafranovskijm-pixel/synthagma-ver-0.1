@@ -82,6 +82,10 @@ export function useEnrollmentActions(
 
     const userIds = getSelectedUserIds(students);
     if (userIds.length === 0) {
+      console.warn("[bulkEnroll] no user_ids resolved", {
+        selectedStudentIds: Array.from(selectedStudentIds),
+        studentsCount: students.length,
+      });
       toast.error("Выберите учеников");
       return false;
     }
