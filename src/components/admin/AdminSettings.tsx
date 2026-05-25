@@ -228,6 +228,16 @@ export function AdminSettings() {
 
       case "staff": return <AdminStaffTab />;
       case "operator": return <AdminOperatorRequisites />;
+      case "finance": return (
+        <Suspense fallback={<div className="flex justify-center py-12"><SigmaSpinner /></div>}>
+          <AdminFinanceOverview />
+        </Suspense>
+      );
+      case "client-errors": return (
+        <Suspense fallback={<div className="flex justify-center py-12"><SigmaSpinner /></div>}>
+          <AdminClientErrorsTab />
+        </Suspense>
+      );
       case "media": return <AdminMediaLibrary />;
       case "signatures": return <SignaturesJournal />;
       case "analytics": return (
