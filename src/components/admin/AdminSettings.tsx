@@ -29,12 +29,14 @@ interface SystemSettings {
   registrationEnabled: boolean;
 }
 
-type SectionKey = "theme" | "staff" | "operator" | "db" | "media" | "signatures" | "cache" | "seo" | "system" | "promo" | "notifications" | "analytics" | "content" | "ai" | "devtools";
+type SectionKey = "theme" | "staff" | "operator" | "finance" | "client-errors" | "db" | "media" | "signatures" | "cache" | "seo" | "system" | "promo" | "notifications" | "analytics" | "content" | "ai" | "devtools";
 
 const SECTIONS: { key: SectionKey; label: string; icon: React.ElementType; color: string }[] = [
   { key: "theme", label: "Тема оформления", icon: Palette, color: "text-violet-500" },
   { key: "staff", label: "Сотрудники", icon: Users, color: "text-cyan-500" },
   { key: "operator", label: "Реквизиты оператора", icon: Receipt, color: "text-emerald-600" },
+  { key: "finance", label: "Финансы", icon: CreditCard, color: "text-green-600" },
+  { key: "client-errors", label: "Ошибки клиентов", icon: Activity, color: "text-red-500" },
   { key: "db", label: "Статистика БД", icon: Database, color: "text-blue-500" },
   { key: "media", label: "Медиатека", icon: FolderOpen, color: "text-teal-500" },
   { key: "signatures", label: "Подписания", icon: FileSignature, color: "text-indigo-500" },
