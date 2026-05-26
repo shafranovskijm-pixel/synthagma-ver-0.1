@@ -1,69 +1,63 @@
-## Проблема
+# Партнёрская программа — что есть и что доделать
 
-Поток: выделить ученика → нажать «Зачислить» → выбрать курс → нажать «Зачислить на курс» → **ничего не происходит**, диалог остаётся открытым.
+## Что уже работает
 
-### Причина
+- **Страницы и маршруты:** `/partner` (лендинг), `/partner/dashboard`, `/partner/offer` — подключены в `src/routes/partnerRoutes.tsx`, есть ссылка в футере организации.
+- **Реф-ссылки:** при заходе на `/?ref=CODE` или `/register?ref=CODE` код сохраняется в cookie (`captureRefFromUrl` в `App.tsx`).
+- **Регистрация организации:** `useRegisterOrganization` подхватывает cookie и зовёт RPC `register_referral`, создавая запись в `referral_registrations` (срок 12 мес).
+- **«Стать партнёром»:** кнопка на `/partner` вызывает RPC `become_referral_partner`, в БД уже 3 активных партнёра.
+- **MLM-структура:** 3 уровня, бонусы за оборот/лидерство, таблицы и edge-функция `referral-commission` готовы.
+- **Кабинет партнёра:** `PartnerDashboard` и `PartnerCabinet` показывают баланс, комиссии, рефералов.
+- **NGINX-прокси:** не мешает. Партнёрские страницы — обычный SPA-роут, а вызовы к Supabase из них автоматически идут через `api.синтагма.рф` на доменах с принудительным прокси. Никакой особой настройки на NGINX не нужно.
 
-В `StudentsTab.tsx` чекбокс выбора ученика хранит **`user_id`** (строка 191 — `Array.from(selectedStudentIds)` передаёт user_id'ы).
+## Где разрыв (главное)
 
-Эти id-шники прокидываются в `enrollmentActions.setSelectedStudentIds(...)` → дальше `bulkEnroll()` вызывает `getSelectedUserIds(d.students)`:
+В `referral_registrations` сейчас **0 записей**, а в `referral_commissions` комиссии **никогда не начисляются**. Причина: edge-функция `referral-commission` не вызывается ни из одного платёжного потока:
 
-```ts
-for (const student of students) {
-  const hasUserId = selectedStudentIds.has(student.user_id);
-  const hasEnrollmentId = student.enrollment_id && selectedStudentIds.has(student.enrollment_id);
-  if (hasUserId || hasEnrollmentId) userIds.add(student.user_id);
-}
-```
+- `supabase/functions/tbank-webhook/index.ts` — при `status = CONFIRMED` помечает счёт оплаченным, но `referral-commission` не дёргает.
+- `src/hooks/useAdminBilling.ts` (строка 327) — админ вручную ставит `status: 'paid'` и продлевает `paid_until`, тоже без вызова комиссии.
 
-`d.students` приходит из `useOrganizationDataLoader` (отдельный snapshot), а `StudentsTab` рендерится из **своего** инстанса `useStudents` (`src/api/students.ts`). Это два разных запроса с разной фильтрацией/таймингом — при первом открытии вкладки или после refresh ученик может быть виден в таблице, но ещё/уже отсутствовать в `d.students`. Тогда `getSelectedUserIds` возвращает `[]` → `bulkEnroll` ругается тостом «Выберите учеников» и **не закрывает диалог** — пользователь видит «опять предлагает выбрать курс».
+То есть партнёры могут регистрироваться и раздавать ссылки, но даже при успешной оплате клиента — ничего им не капает.
 
-## Исправление
+## План правок
 
-Только фронтенд, бизнес-логику не трогаем.
-
-### 1. `src/hooks/useEnrollmentActions.ts`
-
-В `getSelectedUserIds` добавить fallback: если ни одна запись в `students` не совпала, считать сами `selectedStudentIds` как user_id'ы (новый UI всегда хранит именно их). Так мы не зависим от того, успел ли `useOrganizationDataLoader` дотянуть свой snapshot.
+### 1. Начисление комиссии при автоматической оплате (T-Bank)
+В `supabase/functions/tbank-webhook/index.ts` после успешного `UPDATE subscription_invoices … status='paid'` (и продления `paid_until`) добавить вызов:
 
 ```ts
-const getSelectedUserIds = useCallback((students: Student[]): string[] => {
-  const userIds = new Set<string>();
-  for (const student of students) {
-    const hasUserId = selectedStudentIds.has(student.user_id);
-    const hasEnrollmentId = student.enrollment_id && selectedStudentIds.has(student.enrollment_id);
-    if (hasUserId || hasEnrollmentId) userIds.add(student.user_id);
-  }
-  // Fallback: если в snapshot'е students никого не нашли,
-  // selectedStudentIds — это user_id'ы из StudentsTab (новый формат выбора).
-  if (userIds.size === 0 && selectedStudentIds.size > 0) {
-    const enrollmentIds = new Set(students.map(s => s.enrollment_id).filter(Boolean));
-    for (const id of selectedStudentIds) {
-      if (!enrollmentIds.has(id)) userIds.add(id); // отсеиваем явные enrollment_id
-    }
-  }
-  return Array.from(userIds);
-}, [selectedStudentIds]);
+await supabase.functions.invoke('referral-commission', {
+  body: {
+    organization_id: invoice.organization_id,
+    amount: invoice.amount,
+    payment_source: 'subscription',
+  },
+});
 ```
 
-### 2. `src/hooks/useEnrollmentActions.ts` — `bulkEnroll`
+Вызов не должен ломать вебхук при ошибке — обернуть в try/catch с логом.
 
-После успешной вставки (или если все уже зачислены) — гарантированно закрывать диалог и сбрасывать выбор курса, чтобы пользователь не видел «опять предлагает выбрать курс» без явной обратной связи. Сейчас при ошибке/нулевом результате диалог не закрывается; добавим закрытие в `finally`, если вставка прошла без исключения.
+### 2. Начисление комиссии при ручном подтверждении админом
+В `src/hooks/useAdminBilling.ts` в функции подтверждения оплаты (строка ~327) после успешного `update paid_until` добавить такой же `supabase.functions.invoke('referral-commission', …)` с `payment_source: 'manual'`.
 
-Минимально: при `newUserIds.length === 0` уже закрываем — оставляем. При ошибке валидации («Выберите учеников») — диалог оставляем открытым, но логируем в console для диагностики.
+### 3. Защита от двойного начисления
+В `supabase/functions/referral-commission/index.ts` добавить проверку: если для пары `(organization_id, payment_source, amount, created_at в пределах суток)` уже есть запись — выходить без вставки. Либо передавать `invoice_id` и хранить его в `referral_commissions` (требует миграции, опционально).
 
-### 3. Диагностика
+Для MVP достаточно простой проверки по сумме и organization_id за последние 60 секунд.
 
-Добавить `console.warn` в `bulkEnroll`, когда `userIds.length === 0`, с дампом `selectedStudentIds` и количества `students` — чтобы в следующий раз сразу видеть причину в консоли.
+### 4. Ручная QA-проверка после правок
+- Открыть `/partner` под обычным пользователем → «Стать партнёром» → получить код.
+- Перейти `/register?ref=CODE` инкогнито → зарегистрировать организацию → убедиться, что в `referral_registrations` появилась строка.
+- Отметить тестовый счёт оплаченным в админке → проверить, что в `referral_commissions` появилась запись и баланс партнёра вырос.
+- Проверить на домене `синтагма.рф`, что страница `/partner` открывается через NGINX-прокси (только supabase-запросы).
+
+## Что НЕ меняем
+
+- Структуру таблиц `referral_*` (она уже корректна).
+- UI кабинета партнёра и лендинга.
+- Логику NGINX/прокси — она к партнёрке отношения не имеет, маршруты SPA отдаются с того же origin.
+- Cookie-механику `ref_code` / `partner_ref` — работает корректно.
 
 ## Технические детали
 
-- Файлы: `src/hooks/useEnrollmentActions.ts` (один файл).
-- Без миграций, без изменений RLS, без изменений API.
-- Бизнес-логика (правила зачисления, генерация приказа) — не меняется.
-
-## Проверка
-
-1. Выделить одного ученика без зачислений → «Зачислить» → выбрать курс → «Зачислить на курс» → тост «Зачислено 1 учеников», диалог закрывается, ученик появляется на курсе.
-2. То же для ученика, уже зачисленного на этот курс → тост «Все выбранные ученики уже зачислены», диалог закрывается.
-3. Массовое зачисление 2+ учеников — продолжает работать как раньше.
+- Edge `referral-commission` принимает `{ organization_id, amount, payment_source }`, ищет активную запись в `referral_registrations`, строит цепочку до 3 уровней через `referred_by_partner_id`, считает % + бонусы (оборот +5%, лидер +3%) и пишет в `referral_commissions` + обновляет `balance/total_earned` у партнёров.
+- Поле `expires_at` у `referral_registrations` = 12 месяцев с момента регистрации — комиссии после этого не начисляются (фильтр `gte expires_at, now()`).
