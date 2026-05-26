@@ -254,7 +254,7 @@ const PartnerDashboard = () => {
             <TabsTrigger value="commissions">Начисления ({commissions.length})</TabsTrigger>
             <TabsTrigger value="network">Моя сеть ({networkPartners.length})</TabsTrigger>
             <TabsTrigger value="materials">Материалы</TabsTrigger>
-            <TabsTrigger value="how">Как это работает</TabsTrigger>
+            <TabsTrigger value="how">Инструкция</TabsTrigger>
             <TabsTrigger value="leaderboard">Рейтинг</TabsTrigger>
             <TabsTrigger value="payouts">Выплаты</TabsTrigger>
             <TabsTrigger value="withdraw">Вывод средств</TabsTrigger>
