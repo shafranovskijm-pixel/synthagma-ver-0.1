@@ -29,6 +29,43 @@ export function PartnerHowItWorks() {
 
   return (
     <div className="space-y-6">
+      {/* Step-by-step instructions */}
+      <Card className="rounded-2xl border-primary/30 bg-primary/5">
+        <CardHeader>
+          <CardTitle className="text-base flex items-center gap-2">
+            <ListChecks className="w-5 h-5 text-primary" /> Инструкция партнёра — как заработать первую комиссию
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <ol className="space-y-3">
+            {[
+              { icon: Link2, title: "Скопируйте свою ссылку", desc: 'Вкладка «Клиенты» → блок «Ссылка для организаций». Это ваша персональная ссылка с кодом ?ref=...' },
+              { icon: Send, title: "Отправьте ссылку клиенту", desc: "Через мессенджер, email или соцсети. Можно использовать готовые тексты из вкладки «Материалы»." },
+              { icon: FileCheck2, title: "Клиент регистрирует организацию", desc: "Переходит по ссылке, создаёт аккаунт и компанию. Привязка к вам сохраняется на 2 года." },
+              { icon: Wallet, title: "Клиент оплачивает тариф", desc: "Картой онлайн или по счёту на расчётный счёт — оба варианта работают." },
+              { icon: FileCheck2, title: "Оплата подтверждается", desc: "Онлайн-платёж засчитывается автоматически; платёж на расчётный счёт администратор подтверждает вручную после поступления денег." },
+              { icon: Wallet, title: "Комиссия падает на ваш баланс", desc: "В тот же момент. Смотрите на вкладке «Начисления». Когда наберётся от 1 000 ₽ — запрашивайте вывод." },
+            ].map((s, i) => (
+              <li key={i} className="flex items-start gap-3">
+                <div className="shrink-0 w-8 h-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-sm font-bold">
+                  {i + 1}
+                </div>
+                <div className="flex-1 pt-1">
+                  <div className="flex items-center gap-2 mb-0.5">
+                    <s.icon className="w-4 h-4 text-primary" />
+                    <p className="text-sm font-semibold">{s.title}</p>
+                  </div>
+                  <p className="text-xs text-muted-foreground leading-relaxed">{s.desc}</p>
+                </div>
+              </li>
+            ))}
+          </ol>
+          <div className="mt-4 p-3 rounded-xl bg-background border border-border text-xs text-muted-foreground leading-relaxed">
+            <strong className="text-foreground">Совет:</strong> загляните во вкладку <strong className="text-foreground">«Материалы»</strong> — там готовые посты, тексты для рассылок и баннеры, которые можно использовать сразу.
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Commission scheme */}
       <Card className="rounded-2xl">
         <CardHeader>
