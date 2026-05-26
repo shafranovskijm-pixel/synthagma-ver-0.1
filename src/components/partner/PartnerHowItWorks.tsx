@@ -4,7 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { ChevronDown, ArrowRight, Calculator, HelpCircle, GitBranch, Route } from "lucide-react";
+import { ChevronDown, ArrowRight, Calculator, HelpCircle, GitBranch, Route, ListChecks, Link2, Send, FileCheck2, Wallet } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export function PartnerHowItWorks() {
@@ -18,9 +18,10 @@ export function PartnerHowItWorks() {
   const leader = Math.round(calcAmount * 0.03);
 
   const faqs = [
-    { q: "Как быстро начисляются комиссионные?", a: "Комиссия начисляется автоматически после каждого успешного платежа от привлечённой организации. Средства поступают на ваш партнёрский баланс мгновенно." },
-    { q: "Какая минимальная сумма для вывода?", a: "Минимальная сумма для вывода — 1 000 ₽. Выплаты производятся ежемесячно на указанные вами реквизиты." },
-    { q: "Как долго действует привязка клиента?", a: "Привязка организации к партнёру действует 2 года с момента регистрации. В течение этого времени вы получаете комиссию с каждого платежа." },
+    { q: "Как быстро начисляются комиссионные?", a: "Комиссия начисляется автоматически сразу после того, как оплата клиента подтверждена — либо автоматически через эквайринг, либо вручную администратором, когда деньги пришли на расчётный счёт." },
+    { q: "А если у нас нет онлайн-эквайринга и клиент платит на расчётный счёт?", a: "Это нормальный сценарий. Клиент получает счёт в кабинете, оплачивает по реквизитам. Как только администратор платформы видит поступление и нажимает «Подтвердить оплату» — система автоматически продлевает тариф клиенту и начисляет вам комиссию." },
+    { q: "Какая минимальная сумма для вывода?", a: "Минимальная сумма для вывода — 1 000 ₽. Укажите свои банковские реквизиты на вкладке «Вывод средств» и нажмите «Запросить выплату». Заявки обрабатываются вручную в течение нескольких рабочих дней." },
+    { q: "Как долго действует привязка клиента?", a: "Привязка организации к партнёру действует 2 года с момента регистрации. Всё это время вы получаете комиссию с каждого платежа клиента — и с продлений, и с апгрейдов тарифа." },
     { q: "Как работают бонусы за оборот?", a: "Если суммарный оборот вашей сети превышает 100 000 ₽/мес, вы получаете дополнительные +5% с каждого платежа. Бонус пересчитывается ежемесячно." },
     { q: "Как стать топ-партнёром?", a: "Топ-10 партнёров определяются по обороту сети за календарный месяц. Партнёры из топ-10 получают дополнительные +3% со всей сети." },
     { q: "Можно ли привлекать не только организации, но и партнёров?", a: "Да! У вас есть две ссылки: одна для привлечения организаций (клиентов), другая — для привлечения новых партнёров. С партнёров 2-го и 3-го уровня вы тоже получаете комиссию." },
@@ -28,6 +29,43 @@ export function PartnerHowItWorks() {
 
   return (
     <div className="space-y-6">
+      {/* Step-by-step instructions */}
+      <Card className="rounded-2xl border-primary/30 bg-primary/5">
+        <CardHeader>
+          <CardTitle className="text-base flex items-center gap-2">
+            <ListChecks className="w-5 h-5 text-primary" /> Инструкция партнёра — как заработать первую комиссию
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <ol className="space-y-3">
+            {[
+              { icon: Link2, title: "Скопируйте свою ссылку", desc: 'Вкладка «Клиенты» → блок «Ссылка для организаций». Это ваша персональная ссылка с кодом ?ref=...' },
+              { icon: Send, title: "Отправьте ссылку клиенту", desc: "Через мессенджер, email или соцсети. Можно использовать готовые тексты из вкладки «Материалы»." },
+              { icon: FileCheck2, title: "Клиент регистрирует организацию", desc: "Переходит по ссылке, создаёт аккаунт и компанию. Привязка к вам сохраняется на 2 года." },
+              { icon: Wallet, title: "Клиент оплачивает тариф", desc: "Картой онлайн или по счёту на расчётный счёт — оба варианта работают." },
+              { icon: FileCheck2, title: "Оплата подтверждается", desc: "Онлайн-платёж засчитывается автоматически; платёж на расчётный счёт администратор подтверждает вручную после поступления денег." },
+              { icon: Wallet, title: "Комиссия падает на ваш баланс", desc: "В тот же момент. Смотрите на вкладке «Начисления». Когда наберётся от 1 000 ₽ — запрашивайте вывод." },
+            ].map((s, i) => (
+              <li key={i} className="flex items-start gap-3">
+                <div className="shrink-0 w-8 h-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-sm font-bold">
+                  {i + 1}
+                </div>
+                <div className="flex-1 pt-1">
+                  <div className="flex items-center gap-2 mb-0.5">
+                    <s.icon className="w-4 h-4 text-primary" />
+                    <p className="text-sm font-semibold">{s.title}</p>
+                  </div>
+                  <p className="text-xs text-muted-foreground leading-relaxed">{s.desc}</p>
+                </div>
+              </li>
+            ))}
+          </ol>
+          <div className="mt-4 p-3 rounded-xl bg-background border border-border text-xs text-muted-foreground leading-relaxed">
+            <strong className="text-foreground">Совет:</strong> загляните во вкладку <strong className="text-foreground">«Материалы»</strong> — там готовые посты, тексты для рассылок и баннеры, которые можно использовать сразу.
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Commission scheme */}
       <Card className="rounded-2xl">
         <CardHeader>
