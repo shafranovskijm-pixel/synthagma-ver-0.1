@@ -4,7 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { ChevronDown, ArrowRight, Calculator, HelpCircle, GitBranch, Route } from "lucide-react";
+import { ChevronDown, ArrowRight, Calculator, HelpCircle, GitBranch, Route, ListChecks, Link2, Send, FileCheck2, Wallet } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export function PartnerHowItWorks() {
