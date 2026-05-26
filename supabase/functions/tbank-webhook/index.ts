@@ -173,6 +173,20 @@ Deno.serve(async (req) => {
           `Оплата подписки "${(invoice as any).plan}" на ${(invoice as any).period_months} мес.`,
         );
 
+        // Реферальная комиссия — не ломаем вебхук при ошибке
+        try {
+          await supabaseAdmin.functions.invoke("referral-commission", {
+            body: {
+              organization_id: (invoice as any).organization_id,
+              amount: amountRub,
+              payment_source: "subscription",
+              invoice_id: (invoice as any).id,
+            },
+          });
+        } catch (e) {
+          console.error("referral-commission invoke failed:", e);
+        }
+
         console.log("Subscription activated:", { org: (invoice as any).organization_id, plan: (invoice as any).plan, until: paidUntil.toISOString() });
       } else if (Status === "REJECTED" || Status === "CANCELED") {
         await supabaseAdmin
