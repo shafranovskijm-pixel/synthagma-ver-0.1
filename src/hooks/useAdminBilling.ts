@@ -335,6 +335,19 @@ export function useAdminBilling() {
       newPaidUntil.setMonth(newPaidUntil.getMonth() + (inv.period_months || 1));
       const { error: updErr } = await supabase.from("organizations").update({ paid_until: newPaidUntil.toISOString() } as any).eq("id", inv.organization_id);
       if (updErr) throw updErr;
+      // Начисление реферальной комиссии (не блокирует подтверждение)
+      try {
+        await supabase.functions.invoke("referral-commission", {
+          body: {
+            organization_id: inv.organization_id,
+            amount: Number(inv.amount) || 0,
+            payment_source: "manual",
+            invoice_id: inv.id,
+          },
+        });
+      } catch (e) {
+        console.warn("referral-commission invoke failed:", e);
+      }
       toast.success("Оплата подтверждена", { description: `Тариф продлён до ${format(newPaidUntil, "d MMMM yyyy", { locale: ru })}` });
       loadData();
     } catch (e) { toast.error(getErrorMessage(e)); }
