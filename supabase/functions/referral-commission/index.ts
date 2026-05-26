@@ -11,7 +11,7 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { organization_id, amount, payment_source } = await req.json();
+    const { organization_id, amount, payment_source, invoice_id } = await req.json();
 
     if (!organization_id || !amount) {
       return new Response(JSON.stringify({ error: "Missing organization_id or amount" }), {
@@ -23,6 +23,23 @@ Deno.serve(async (req) => {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseKey);
+
+    // Идемпотентность: не дублируем начисления по одной и той же оплате
+    // (организация + источник + сумма за последние 60 секунд).
+    const sinceIso = new Date(Date.now() - 60_000).toISOString();
+    const { data: existing } = await supabase
+      .from("referral_commissions")
+      .select("id")
+      .eq("organization_id", organization_id)
+      .eq("payment_source", payment_source || "subscription")
+      .eq("amount", amount)
+      .gte("created_at", sinceIso)
+      .limit(1);
+    if (existing && existing.length > 0) {
+      return new Response(JSON.stringify({ message: "Already processed (duplicate within 60s)", invoice_id }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
 
     // Find active referral registration for this org
     const { data: reg } = await supabase
