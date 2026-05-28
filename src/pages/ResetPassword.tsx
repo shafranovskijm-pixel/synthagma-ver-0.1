@@ -130,14 +130,40 @@ const ResetPassword = () => {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 disabled={isLoading}
+                autoComplete="new-password"
               />
             </div>
+            <p className="text-xs text-muted-foreground">
+              Минимум 8 символов. Не должен совпадать со старым паролем.
+            </p>
           </div>
 
           <div className="space-y-2">
             <Label htmlFor="confirmPassword">Подтвердите пароль</Label>
             <div className="relative">
               <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+              <Input 
+                id="confirmPassword" 
+                type="password" 
+                placeholder="••••••••" 
+                className="pl-10 h-12 rounded-xl"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                disabled={isLoading}
+                autoComplete="new-password"
+              />
+            </div>
+          </div>
+
+          {linkExpired && (
+            <div className="rounded-xl border border-destructive/30 bg-destructive/5 p-4 text-sm space-y-2">
+              <p className="text-destructive font-medium">Ссылка для сброса устарела</p>
+              <p className="text-muted-foreground">Запросите новую ссылку для восстановления пароля.</p>
+              <Link to="/forgot-password" className="inline-flex text-primary hover:underline">
+                Запросить новую ссылку
+              </Link>
+            </div>
+          )}
               <Input 
                 id="confirmPassword" 
                 type="password" 
