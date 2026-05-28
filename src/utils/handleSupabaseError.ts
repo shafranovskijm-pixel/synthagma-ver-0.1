@@ -14,9 +14,29 @@ const KNOWN_CODES: Record<string, string> = {
   "PGRST116": "Запись не найдена",
   "PGRST301": "Сессия истекла. Войдите снова",
   "rate_limit_exceeded": "Слишком много запросов. Попробуйте через минуту",
-  "402": "Достигнут лимит ИИ-генераций. Подключите ключ или обновите тариф",
+  "402": "ИИ-кредиты закончились. Пополните баланс GigaChat или свяжитесь с администратором",
   "429": "Слишком много запросов. Подождите немного",
 };
+
+function mapAiMessage(msg: string): string | null {
+  const m = msg.toLowerCase();
+  if (/all ai channels exhausted|tokens depleted|payment required|insufficient.*credit/.test(m) || m.includes("402")) {
+    return "ИИ-кредиты закончились. Пополните баланс GigaChat или свяжитесь с администратором";
+  }
+  if (m.includes("[moderation]")) {
+    return "GigaChat отклонил запрос по модерации. Переформулируйте тему урока";
+  }
+  if (/insufficient permissions|organization or admin role/.test(m)) {
+    return "У вас нет прав на генерацию контента. Запросите у владельца организации право «Управление курсами»";
+  }
+  if (/authentication required|invalid authentication/.test(m)) {
+    return "Сессия истекла. Обновите страницу и войдите снова";
+  }
+  if (/all gigachat models exhausted/.test(m)) {
+    return "Все модели GigaChat недоступны. Попробуйте через минуту или обратитесь к администратору";
+  }
+  return null;
+}
 
 const AUTH_CODES: Record<string, string> = {
   same_password: "Новый пароль должен отличаться от старого",
@@ -71,6 +91,8 @@ export function getErrorMessage(err: unknown, fallback = FALLBACK): string {
 
     const message = typeof err.message === "string" ? err.message : undefined;
     if (message) {
+      const aiMapped = mapAiMessage(message);
+      if (aiMapped) return aiMapped;
       const mapped = mapAuthMessage(message);
       if (mapped) return mapped;
     }
@@ -85,6 +107,8 @@ export function getErrorMessage(err: unknown, fallback = FALLBACK): string {
   }
 
   if (err instanceof Error) {
+    const aiMapped = mapAiMessage(err.message);
+    if (aiMapped) return aiMapped;
     const mapped = mapAuthMessage(err.message);
     return mapped || err.message || fallback;
   }
