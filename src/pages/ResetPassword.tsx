@@ -164,17 +164,8 @@ const ResetPassword = () => {
               </Link>
             </div>
           )}
-              <Input 
-                id="confirmPassword" 
-                type="password" 
-                placeholder="••••••••" 
-                className="pl-10 h-12 rounded-xl"
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                disabled={isLoading}
-              />
-            </div>
-          </div>
+
+
 
           <Button 
             type="submit" 
