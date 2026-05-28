@@ -1,63 +1,48 @@
-# Партнёрская программа — что есть и что доделать
+## Диагноз
 
-## Что уже работает
+В логах Auth (`sintagma.com.ru`, реферер `/reset-password`) видны два запроса `PUT /user` со статусом **422** (06:38:19 и 06:38:27) — пользователь `ooocqe@yandex.ru` успешно прошёл по recovery-ссылке (`/verify` → 303 login), но `supabase.auth.updateUser({ password })` отклоняется.
 
-- **Страницы и маршруты:** `/partner` (лендинг), `/partner/dashboard`, `/partner/offer` — подключены в `src/routes/partnerRoutes.tsx`, есть ссылка в футере организации.
-- **Реф-ссылки:** при заходе на `/?ref=CODE` или `/register?ref=CODE` код сохраняется в cookie (`captureRefFromUrl` в `App.tsx`).
-- **Регистрация организации:** `useRegisterOrganization` подхватывает cookie и зовёт RPC `register_referral`, создавая запись в `referral_registrations` (срок 12 мес).
-- **«Стать партнёром»:** кнопка на `/partner` вызывает RPC `become_referral_partner`, в БД уже 3 активных партнёра.
-- **MLM-структура:** 3 уровня, бонусы за оборот/лидерство, таблицы и edge-функция `referral-commission` готовы.
-- **Кабинет партнёра:** `PartnerDashboard` и `PartnerCabinet` показывают баланс, комиссии, рефералов.
-- **NGINX-прокси:** не мешает. Партнёрские страницы — обычный SPA-роут, а вызовы к Supabase из них автоматически идут через `api.синтагма.рф` на доменах с принудительным прокси. Никакой особой настройки на NGINX не нужно.
+422 на PUT `/user` у Supabase Auth означает одно из:
+- `same_password` — новый пароль совпадает со старым (включено по умолчанию в новой версии Auth),
+- `weak_password` — пароль слишком короткий/простой,
+- `password_hibp` — найден в утечках (HIBP).
 
-## Где разрыв (главное)
+Сейчас `ResetPassword.tsx` показывает сырое `error.message` на английском (`"New password should be different from the old password."`) — клиент видит непонятную ошибку и думает что «функция сломана».
 
-В `referral_registrations` сейчас **0 записей**, а в `referral_commissions` комиссии **никогда не начисляются**. Причина: edge-функция `referral-commission` не вызывается ни из одного платёжного потока:
+Сама инфраструктура (NGINX-прокси, Auth, recovery-письма) работает: `send-password-reset` отрабатывает, ссылка валидна, сессия создаётся.
 
-- `supabase/functions/tbank-webhook/index.ts` — при `status = CONFIRMED` помечает счёт оплаченным, но `referral-commission` не дёргает.
-- `src/hooks/useAdminBilling.ts` (строка 327) — админ вручную ставит `status: 'paid'` и продлевает `paid_until`, тоже без вызова комиссии.
+## Что чиним
 
-То есть партнёры могут регистрироваться и раздавать ссылки, но даже при успешной оплате клиента — ничего им не капает.
+### 1. `src/pages/ResetPassword.tsx`
+- Минимальная длина пароля → **8 символов** (соответствует требованиям Supabase Auth, чтобы не получать `weak_password`).
+- Добавить подсказку под полем: «Минимум 8 символов, не совпадает с предыдущим».
+- Заменить `error.message` на маппинг через новый helper (см. ниже) → конкретное русское сообщение.
+- Очищать поля и оставлять пользователя на странице при ошибке `same_password`, чтобы он мог ввести другой пароль (а не уходить в `/login` без сброса).
+- Если ошибка `session_not_found` / `invalid_token` — показать кнопку «Запросить новую ссылку» с навигацией на `/forgot-password`.
 
-## План правок
+### 2. `src/utils/handleSupabaseError.ts`
+Добавить распознавание `AuthError`/`AuthApiError` по полям `code` и `status === 422`:
 
-### 1. Начисление комиссии при автоматической оплате (T-Bank)
-В `supabase/functions/tbank-webhook/index.ts` после успешного `UPDATE subscription_invoices … status='paid'` (и продления `paid_until`) добавить вызов:
-
-```ts
-await supabase.functions.invoke('referral-commission', {
-  body: {
-    organization_id: invoice.organization_id,
-    amount: invoice.amount,
-    payment_source: 'subscription',
-  },
-});
+```text
+same_password          → «Новый пароль должен отличаться от старого»
+weak_password          → «Пароль слишком простой. Используйте 8+ символов, цифры и буквы»
+password_hibp          → «Этот пароль найден в базе утечек. Придумайте другой»
+session_not_found      → «Ссылка для сброса устарела. Запросите новую»
+over_email_send_rate_limit → «Слишком много запросов. Попробуйте через минуту»
 ```
 
-Вызов не должен ломать вебхук при ошибке — обернуть в try/catch с логом.
+Также распознавать английские сообщения от Auth (`/should be different/i`, `/weak password/i`, `/leaked/i`) как fallback, если `code` не пришёл.
 
-### 2. Начисление комиссии при ручном подтверждении админом
-В `src/hooks/useAdminBilling.ts` в функции подтверждения оплаты (строка ~327) после успешного `update paid_until` добавить такой же `supabase.functions.invoke('referral-commission', …)` с `payment_source: 'manual'`.
+### 3. Лёгкое улучшение UX страницы «Забыли пароль»
+Никаких правок — только убедиться, что ссылка `/forgot-password` в `ResetPassword` рендерится при ошибке протухшей сессии.
 
-### 3. Защита от двойного начисления
-В `supabase/functions/referral-commission/index.ts` добавить проверку: если для пары `(organization_id, payment_source, amount, created_at в пределах суток)` уже есть запись — выходить без вставки. Либо передавать `invoice_id` и хранить его в `referral_commissions` (требует миграции, опционально).
+## Что НЕ трогаем
+- Edge-функцию `send-password-reset` (работает, видно в логах: `Password reset email sent successfully`).
+- Конфиг Auth (HIBP/min-length не меняем — у пользователя как раз слабый/тот же пароль, валидация Supabase правильная).
+- NGINX, прокси, маршрутизацию.
 
-Для MVP достаточно простой проверки по сумме и organization_id за последние 60 секунд.
-
-### 4. Ручная QA-проверка после правок
-- Открыть `/partner` под обычным пользователем → «Стать партнёром» → получить код.
-- Перейти `/register?ref=CODE` инкогнито → зарегистрировать организацию → убедиться, что в `referral_registrations` появилась строка.
-- Отметить тестовый счёт оплаченным в админке → проверить, что в `referral_commissions` появилась запись и баланс партнёра вырос.
-- Проверить на домене `синтагма.рф`, что страница `/partner` открывается через NGINX-прокси (только supabase-запросы).
-
-## Что НЕ меняем
-
-- Структуру таблиц `referral_*` (она уже корректна).
-- UI кабинета партнёра и лендинга.
-- Логику NGINX/прокси — она к партнёрке отношения не имеет, маршруты SPA отдаются с того же origin.
-- Cookie-механику `ref_code` / `partner_ref` — работает корректно.
-
-## Технические детали
-
-- Edge `referral-commission` принимает `{ organization_id, amount, payment_source }`, ищет активную запись в `referral_registrations`, строит цепочку до 3 уровней через `referred_by_partner_id`, считает % + бонусы (оборот +5%, лидер +3%) и пишет в `referral_commissions` + обновляет `balance/total_earned` у партнёров.
-- Поле `expires_at` у `referral_registrations` = 12 месяцев с момента регистрации — комиссии после этого не начисляются (фильтр `gte expires_at, now()`).
+## Проверка после правок
+1. Открыть `/reset-password` с валидной ссылкой, ввести тот же пароль → ожидать тост «Новый пароль должен отличаться от старого», поле остаётся.
+2. Ввести `123` → ожидать тост о минимальной длине 8.
+3. Ввести новый валидный пароль → редирект на `/login`.
+4. В `auth_logs` следующий `PUT /user` должен вернуть 200.
