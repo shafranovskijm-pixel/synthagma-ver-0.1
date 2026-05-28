@@ -17,7 +17,7 @@ serve(async (req) => {
     const authHeader = req.headers.get('authorization');
     if (!authHeader) {
       return new Response(
-        JSON.stringify({ error: "Authentication required" }),
+        JSON.stringify({ error: "Сессия истекла. Обновите страницу и войдите снова" }),
         { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -33,21 +33,35 @@ serve(async (req) => {
     const { data: { user }, error: authError } = await supabaseAuth.auth.getUser();
     if (authError || !user) {
       return new Response(
-        JSON.stringify({ error: "Invalid authentication" }),
+        JSON.stringify({ error: "Сессия истекла. Обновите страницу и войдите снова" }),
         { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    // Verify user has appropriate role (organization or admin)
-    const { data: roleData } = await supabaseAuth
+    // Verify user has appropriate role: organization, admin, OR any active org_staff
+    // (covers content_manager, sales_manager, custom roles, etc.)
+    const { data: rolesData } = await supabaseAuth
       .from('user_roles')
       .select('role')
-      .eq('user_id', user.id)
-      .single();
+      .eq('user_id', user.id);
 
-    if (!roleData || (roleData.role !== 'organization' && roleData.role !== 'admin')) {
+    const roles = (rolesData ?? []).map((r: { role: string }) => r.role);
+    const hasRoleAccess = roles.includes('organization') || roles.includes('admin');
+
+    let hasStaffAccess = false;
+    if (!hasRoleAccess) {
+      const { data: staffData } = await supabaseAuth
+        .from('org_staff')
+        .select('id')
+        .eq('user_id', user.id)
+        .eq('is_active', true)
+        .limit(1);
+      hasStaffAccess = !!(staffData && staffData.length > 0);
+    }
+
+    if (!hasRoleAccess && !hasStaffAccess) {
       return new Response(
-        JSON.stringify({ error: "Insufficient permissions. Organization or admin role required." }),
+        JSON.stringify({ error: "Insufficient permissions. У вас нет прав на генерацию контента. Запросите у владельца организации право «Управление курсами»." }),
         { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
