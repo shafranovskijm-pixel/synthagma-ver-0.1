@@ -8,38 +8,38 @@ import { ArrowLeft, Lock, CheckCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
+import { getErrorMessage } from "@/utils/handleSupabaseError";
 
 const ResetPassword = () => {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
-  
+  const [linkExpired, setLinkExpired] = useState(false);
+
   const navigate = useNavigate();
   useEffect(() => {
-    // Check if we have access token in URL (from email link)
     const hashParams = new URLSearchParams(window.location.hash.substring(1));
     const accessToken = hashParams.get('access_token');
-    
+
     if (!accessToken) {
-      // Also check query params
       const queryParams = new URLSearchParams(window.location.search);
       if (!queryParams.get('code')) {
         toast.error("Ошибка", { description: "Недействительная ссылка для сброса пароля" });
       }
     }
-  }, [toast]);
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!password || !confirmPassword) {
       toast.error("Ошибка", { description: "Заполните все поля" });
       return;
     }
 
-    if (password.length < 6) {
-      toast.error("Ошибка", { description: "Пароль должен быть не менее 6 символов" });
+    if (password.length < 8) {
+      toast.error("Ошибка", { description: "Пароль должен быть не менее 8 символов" });
       return;
     }
 
@@ -49,23 +49,35 @@ const ResetPassword = () => {
     }
 
     setIsLoading(true);
-    
+
     const { error } = await supabase.auth.updateUser({
-      password: password
+      password: password,
     });
 
     if (error) {
-      toast.error("Ошибка", { description: error.message });
+      const description = getErrorMessage(error);
+      toast.error("Не удалось сохранить пароль", { description });
+      const lower = (error.message || "").toLowerCase();
+      const code = (error as { code?: string }).code;
+      if (
+        code === "session_not_found" ||
+        code === "invalid_token" ||
+        code === "otp_expired" ||
+        /session|expired|invalid.*flow|invalid.*token/.test(lower)
+      ) {
+        setLinkExpired(true);
+      }
+      setPassword("");
+      setConfirmPassword("");
     } else {
       setIsSuccess(true);
       toast.success("Успешно!", { description: "Пароль успешно изменён" });
-      
-      // Redirect to login after 2 seconds
+
       setTimeout(() => {
         navigate("/login");
       }, 2000);
     }
-    
+
     setIsLoading(false);
   };
 
@@ -118,8 +130,12 @@ const ResetPassword = () => {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 disabled={isLoading}
+                autoComplete="new-password"
               />
             </div>
+            <p className="text-xs text-muted-foreground">
+              Минимум 8 символов. Не должен совпадать со старым паролем.
+            </p>
           </div>
 
           <div className="space-y-2">
@@ -134,9 +150,22 @@ const ResetPassword = () => {
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 disabled={isLoading}
+                autoComplete="new-password"
               />
             </div>
           </div>
+
+          {linkExpired && (
+            <div className="rounded-xl border border-destructive/30 bg-destructive/5 p-4 text-sm space-y-2">
+              <p className="text-destructive font-medium">Ссылка для сброса устарела</p>
+              <p className="text-muted-foreground">Запросите новую ссылку для восстановления пароля.</p>
+              <Link to="/forgot-password" className="inline-flex text-primary hover:underline">
+                Запросить новую ссылку
+              </Link>
+            </div>
+          )}
+
+
 
           <Button 
             type="submit" 
