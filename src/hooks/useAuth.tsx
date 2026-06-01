@@ -15,6 +15,16 @@ interface AuthContextType {
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
+const AUTH_REQUEST_TIMEOUT_MS = 15000;
+
+function withAuthTimeout<T>(promise: Promise<T>, timeoutMs = AUTH_REQUEST_TIMEOUT_MS): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<T>((_, reject) => {
+      setTimeout(() => reject(new Error('AUTH_TIMEOUT')), timeoutMs);
+    }),
+  ]);
+}
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const cachedRole = localStorage.getItem('user_role') as AuthContextType['userRole'];
@@ -185,10 +195,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     signInInProgress.current = true;
     
     try {
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
+      const { data, error } = await withAuthTimeout(
+        supabase.auth.signInWithPassword({
+          email,
+          password,
+        })
+      );
       
       if (!error && data?.user) {
         hadSession.current = true;
