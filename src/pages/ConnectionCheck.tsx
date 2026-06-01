@@ -123,6 +123,9 @@ export default function ConnectionCheck() {
 
           <DeviceInfoCard info={deviceInfo} loading={deviceLoading} />
 
+          <ProxyChannelPanel />
+
+
           <div className="flex flex-wrap gap-2">
             <Button onClick={run} disabled={running} variant="outline">
               <RefreshCw className="w-4 h-4 mr-2" />
