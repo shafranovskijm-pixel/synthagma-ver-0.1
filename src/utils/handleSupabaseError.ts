@@ -113,11 +113,13 @@ export function getErrorMessage(err: unknown, fallback = FALLBACK): string {
 
     const message = typeof err.message === "string" ? err.message : undefined;
     if (message) {
+      if (isHtmlOrGatewayError(message)) return GATEWAY_MESSAGE;
       const aiMapped = mapAiMessage(message);
       if (aiMapped) return aiMapped;
       const mapped = mapAuthMessage(message);
       if (mapped) return mapped;
     }
+
 
     const details = typeof err.details === "string" ? err.details : undefined;
     const hint = typeof err.hint === "string" ? err.hint : undefined;
