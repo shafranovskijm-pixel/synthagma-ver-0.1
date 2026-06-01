@@ -6,7 +6,7 @@
  * стоит на отдельном поддомене (api.синтагма.рф).
  *
  * Защитные механизмы:
- *  1. Если прокси отдаёт HTML (nginx 502/504/maintenance) вместо JSON
+ *  1. Если прокси или прямой канал отдают HTML/Cloudflare gateway error вместо JSON
  *     Supabase — считаем канал сломанным: сбрасываем флаг и повторяем
  *     запрос напрямую (для не-форсированных хостов).
  *  2. При загрузке сразу пробуем прямой канал: если он жив — выключаем
@@ -147,10 +147,12 @@ function isNetworkBlock(err: unknown): boolean {
 
 /**
  * Прокси-канал признаётся «сломанным», если NGINX вернул HTML вместо JSON
- * Supabase, либо отдал явный шлюзовой код (502/503/504).
+ * Supabase, либо отдал явный шлюзовой код (502/503/504/52x).
  */
+const BROKEN_GATEWAY_STATUSES = new Set([502, 503, 504, 520, 521, 522, 523, 524, 525, 526, 527]);
+
 function isBrokenProxyResponse(resp: Response): boolean {
-  if (resp.status === 502 || resp.status === 503 || resp.status === 504) return true;
+  if (BROKEN_GATEWAY_STATUSES.has(resp.status)) return true;
   const ct = resp.headers.get('content-type') || '';
   // Supabase API/auth/functions/storage никогда не отдают HTML.
   if (ct.toLowerCase().includes('text/html')) return true;
