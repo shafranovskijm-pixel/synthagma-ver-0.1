@@ -83,16 +83,6 @@ const PROXY_LAST_PROBE_KEY = 'sintagma:proxy-last-probe';
 const PROXY_RESET_KEY = 'sintagma:proxy-reset-v3';
 const PROBE_INTERVAL_MS = 30 * 60 * 1000;
 
-// Одноразовый сброс залипшего прокси-флага (миграция).
-try {
-  if (typeof window !== 'undefined' && !localStorage.getItem(PROXY_RESET_KEY)) {
-    localStorage.removeItem(PROXY_FLAG_KEY);
-    localStorage.removeItem(PROXY_LAST_PROBE_KEY);
-    localStorage.setItem(PROXY_RESET_KEY, '1');
-  }
-} catch {
-  // ignore
-}
 
 // Одноразовый сброс залипшего прокси-флага (миграция).
 try {
