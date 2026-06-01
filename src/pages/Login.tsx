@@ -10,6 +10,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { safeInvoke } from "@/utils/safeInvoke";
 import { getBaseUrl } from "@/utils/getBaseUrl";
+import { resetProxyChannel } from "@/utils/proxyFetch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import { getErrorMessage } from "@/utils/handleSupabaseError";
@@ -151,6 +152,11 @@ const Login = () => {
     }
     
     setIsResetting(false);
+  };
+
+  const handleRefreshChannel = () => {
+    resetProxyChannel();
+    forceClientRefresh();
   };
 
   const handleDemoLogin = async (accountType: keyof typeof DEMO_ACCOUNTS) => {
@@ -431,11 +437,11 @@ const Login = () => {
           </p>
 
           <button
-            onClick={() => forceClientRefresh()}
+            onClick={handleRefreshChannel}
             className="flex items-center justify-center gap-2 mx-auto mt-6 px-4 py-2 text-sm text-muted-foreground hover:text-primary border border-border rounded-lg hover:border-primary/50 transition-all"
           >
             <RefreshCw className="w-4 h-4" />
-            Обновить интерфейс
+            Обновить интерфейс и канал
           </button>
 
           {(window.location.hostname.includes('preview--') || window.location.hostname === 'localhost') && (
