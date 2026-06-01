@@ -4,13 +4,11 @@ import { SigmaLogo } from "@/components/ui/SigmaLogo";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
-import { ArrowLeft, Mail, Lock, Shield, Building2, GraduationCap, User, Eye, EyeOff, RefreshCw } from "lucide-react";
-import { forceClientRefresh } from "@/utils/forceClientRefresh";
+import { ArrowLeft, Mail, Lock, Shield, Building2, GraduationCap, User, Eye, EyeOff } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { safeInvoke } from "@/utils/safeInvoke";
 import { getBaseUrl } from "@/utils/getBaseUrl";
-import { resetProxyChannel } from "@/utils/proxyFetch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import { getErrorMessage } from "@/utils/handleSupabaseError";
@@ -86,41 +84,47 @@ const Login = () => {
     }
 
     setIsLoading(true);
-    
-    let signInEmail = email.trim();
-    const cleanPassword = password.trim();
-    
-    // If login mode, find the user's email by login
-    if (loginMode === "login") {
-      const cleanLogin = login.trim().toLowerCase();
-      // Use secure RPC to lookup user by login
-      const { data: lookupResult, error: lookupError } = await supabase
-        .rpc('public_lookup_user_by_login', { login_input: cleanLogin });
-      
-      if (lookupError || !lookupResult || lookupResult.length === 0) {
-        toast.error("Ошибка входа", { description: "Неверный логин или пароль" });
-        setIsLoading(false);
-        return;
-      }
-      
-      // For login-based students, use the standardized email format
-      signInEmail = `${cleanLogin}@student.local`;
-    }
-    
-    const { error } = await signIn(signInEmail, cleanPassword);
 
-    if (error) {
-      const raw = (error as any)?.message ?? "";
-      const friendly =
-        raw === "Invalid login credentials"
-          ? "Неверный логин или пароль"
-          : getErrorMessage(error, "Сервис временно недоступен. Попробуйте через минуту или откройте «Не загружается?» ниже.");
-      toast.error("Ошибка входа", { description: friendly });
-    } else {
-      toast.success("Успешно!", { description: "Вы вошли в систему" });
-      // Role is already loaded in context by signIn, useEffect will navigate
+    try {
+      let signInEmail = email.trim();
+      const cleanPassword = password.trim();
+
+      // If login mode, find the user's email by login
+      if (loginMode === "login") {
+        const cleanLogin = login.trim().toLowerCase();
+        // Use secure RPC to lookup user by login
+        const { data: lookupResult, error: lookupError } = await supabase
+          .rpc('public_lookup_user_by_login', { login_input: cleanLogin });
+
+        if (lookupError || !lookupResult || lookupResult.length === 0) {
+          toast.error("Ошибка входа", { description: "Неверный логин или пароль" });
+          return;
+        }
+
+        // For login-based students, use the standardized email format
+        signInEmail = `${cleanLogin}@student.local`;
+      }
+
+      const { error } = await signIn(signInEmail, cleanPassword);
+
+      if (error) {
+        const raw = (error as any)?.message ?? "";
+        const friendly =
+          raw === "Invalid login credentials"
+            ? "Неверный логин или пароль"
+            : getErrorMessage(error, "Сервис временно недоступен. Попробуйте через минуту или откройте «Не загружается?» ниже.");
+        toast.error("Ошибка входа", { description: friendly });
+      } else {
+        toast.success("Успешно!", { description: "Вы вошли в систему" });
+        // Role is already loaded in context by signIn, useEffect will navigate
+      }
+    } catch (error) {
+      toast.error("Ошибка входа", {
+        description: getErrorMessage(error, "Сервис временно недоступен. Попробуйте через минуту."),
+      });
+    } finally {
+      setIsLoading(false);
     }
-    setIsLoading(false);
   };
 
 
@@ -152,11 +156,6 @@ const Login = () => {
     }
     
     setIsResetting(false);
-  };
-
-  const handleRefreshChannel = () => {
-    resetProxyChannel();
-    forceClientRefresh();
   };
 
   const handleDemoLogin = async (accountType: keyof typeof DEMO_ACCOUNTS) => {
@@ -435,14 +434,6 @@ const Login = () => {
               Зарегистрировать организацию
             </Link>
           </p>
-
-          <button
-            onClick={handleRefreshChannel}
-            className="flex items-center justify-center gap-2 mx-auto mt-6 px-4 py-2 text-sm text-muted-foreground hover:text-primary border border-border rounded-lg hover:border-primary/50 transition-all"
-          >
-            <RefreshCw className="w-4 h-4" />
-            Обновить интерфейс и канал
-          </button>
 
           {(window.location.hostname.includes('preview--') || window.location.hostname === 'localhost') && (
             <p className="text-center text-[10px] text-muted-foreground/50 mt-3 font-mono">
