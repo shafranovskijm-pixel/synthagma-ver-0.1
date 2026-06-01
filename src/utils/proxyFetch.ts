@@ -54,11 +54,26 @@ const FORCE_PROXY_HOSTS_EXACT = new Set<string>([
   'www.xn--80aaiswd0ak.xn--p1ai',
 ]);
 
+// Хосты, на которых прокси-механизм РАЗРЕШЁН (lazy auto-switch + хранение флага).
+// На lovable-превью, localhost и любых dev-доменах прокси полностью отключаем —
+// иначе залипший флаг или 522 от Cloudflare ломает вход.
+const PROXY_ALLOWED_HOSTS_EXACT = new Set<string>([
+  'sintagma.com.ru',
+  'www.sintagma.com.ru',
+  'xn--80aaiswd0ak.xn--p1ai',
+  'www.xn--80aaiswd0ak.xn--p1ai',
+]);
+
 function isForcedProxyHost(): boolean {
   if (typeof window === 'undefined') return false;
   const h = window.location.hostname;
   if (FORCE_PROXY_HOSTS_EXACT.has(h)) return true;
   return false;
+}
+
+function isProxyAllowedHost(): boolean {
+  if (typeof window === 'undefined') return false;
+  return PROXY_ALLOWED_HOSTS_EXACT.has(window.location.hostname);
 }
 
 const PROXY_FLAG_KEY = 'sintagma:use-proxy';
@@ -68,6 +83,7 @@ const PROXY_LAST_PROBE_KEY = 'sintagma:proxy-last-probe';
 const PROXY_RESET_KEY = 'sintagma:proxy-reset-v3';
 const PROBE_INTERVAL_MS = 30 * 60 * 1000;
 
+
 // Одноразовый сброс залипшего прокси-флага (миграция).
 try {
   if (typeof window !== 'undefined' && !localStorage.getItem(PROXY_RESET_KEY)) {
@@ -75,12 +91,19 @@ try {
     localStorage.removeItem(PROXY_LAST_PROBE_KEY);
     localStorage.setItem(PROXY_RESET_KEY, '1');
   }
+  // На любых dev/preview-хостах прокси не должен работать в принципе —
+  // снимаем флаг сразу, чтобы залипший канал не блокировал вход.
+  if (typeof window !== 'undefined' && !isProxyAllowedHost()) {
+    localStorage.removeItem(PROXY_FLAG_KEY);
+    localStorage.removeItem(PROXY_LAST_PROBE_KEY);
+  }
 } catch {
   // ignore
 }
 
 function getProxyMode(): boolean {
   if (isForcedProxyHost()) return true;
+  if (!isProxyAllowedHost()) return false;
   try {
     return localStorage.getItem(PROXY_FLAG_KEY) === '1';
   } catch {
@@ -90,6 +113,7 @@ function getProxyMode(): boolean {
 
 function setProxyMode(enabled: boolean) {
   if (isForcedProxyHost() && !enabled) return;
+  if (!isProxyAllowedHost()) return;
   try {
     if (enabled) localStorage.setItem(PROXY_FLAG_KEY, '1');
     else localStorage.removeItem(PROXY_FLAG_KEY);
