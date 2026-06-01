@@ -146,37 +146,35 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [fetchUserRole]);
 
   const signIn = async (email: string, password: string) => {
-    try {
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
+    
+    if (!error && data?.user) {
+      setSession(data.session);
+      setUser(data.user);
       
-      if (!error && data?.user) {
-        setSession(data.session);
-        setUser(data.user);
-        
-        await fetchUserRole(data.user.id);
-        
-        // Fire-and-forget: log the login event
-        supabase
-          .from("profiles")
-          .select("organization_id")
-          .eq("user_id", data.user.id)
-          .maybeSingle()
-          .then(({ data: profile }) => {
-            if (profile?.organization_id) {
-              supabase.from("student_login_history").insert({
-                user_id: data.user!.id,
-                organization_id: profile.organization_id,
-                user_agent: navigator.userAgent,
-              }).then(() => {});
-            }
-          });
-      }
+      await fetchUserRole(data.user.id);
       
-      return { error };
+      // Fire-and-forget: log the login event
+      supabase
+        .from("profiles")
+        .select("organization_id")
+        .eq("user_id", data.user.id)
+        .maybeSingle()
+        .then(({ data: profile }) => {
+          if (profile?.organization_id) {
+            supabase.from("student_login_history").insert({
+              user_id: data.user!.id,
+              organization_id: profile.organization_id,
+              user_agent: navigator.userAgent,
+            }).then(() => {});
+          }
+        });
     }
+    
+    return { error };
   };
 
   const signUp = async (email: string, password: string, fullName: string) => {
