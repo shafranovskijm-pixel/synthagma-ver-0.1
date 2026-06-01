@@ -3,22 +3,15 @@
  *
  * Назначение: обходить блокировку *.supabase.co у российских провайдеров
  * через ваш собственный reverse proxy (Nginx на Timeweb / VPS), который
- * стоит на том же домене, что и фронтенд. Это убирает зависимость от
- * Cloudflare Workers (которые тоже могут быть заблокированы).
+ * стоит на отдельном поддомене (api.синтагма.рф).
  *
- * Схема (same-origin):
- *   {origin}/sb-api/...        → https://<supabase>/...        (auth/rest/realtime)
- *   {origin}/sb-functions/...  → https://<supabase>/functions/v1/...
- *   {origin}/sb-storage/...    → https://<supabase>/storage/v1/...
- *   {origin}/sb-realtime       → wss://<supabase>/realtime/v1/websocket (WS)
- *
- * Хост Supabase берётся из VITE_SUPABASE_URL.
- * Прокси-режим включается всегда на «прод-доменах» (sintagma.com.ru, Timeweb,
- * lovable.app), а на остальных — лениво при сетевой ошибке.
- *
- * Обратная совместимость: если на бэкенде ещё живут старые Cloudflare-субдомены
- * (api/functions/storage.sintagma.com.ru), их можно оставить как fallback —
- * см. LEGACY_HOSTS ниже.
+ * Защитные механизмы:
+ *  1. Если прокси отдаёт HTML (nginx 502/504/maintenance) вместо JSON
+ *     Supabase — считаем канал сломанным: сбрасываем флаг и повторяем
+ *     запрос напрямую (для не-форсированных хостов).
+ *  2. При загрузке сразу пробуем прямой канал: если он жив — выключаем
+ *     прокси, чтобы залипший флаг не «съел» всех клиентов.
+ *  3. Одноразовый сброс залипшего прокси-флага через ключ-миграцию.
  */
 
 const SUPABASE_HOST = (() => {
@@ -32,8 +25,6 @@ const SUPABASE_HOST = (() => {
 })();
 
 // Базовый URL прокси-сервера на отдельном VDS (NGINX, Timeweb).
-// Используется для домена синтагма.рф, чтобы обойти блокировку *.supabase.co
-// в РФ без VPN, минуя Cloudflare и sintagma.com.ru.
 // Punycode для api.синтагма.рф.
 const PROXY_BASE_URL = 'https://api.xn--80aaiswd0ak.xn--p1ai';
 
@@ -57,19 +48,12 @@ function getProxyWsBase(): string {
 }
 
 // Хосты, на которых прокси-режим включается ВСЕГДА (без ожидания ошибки).
-// Сюда входят основной домен и любые публичные домены, где у пользователей
-// гарантированно может не быть прямого доступа к Supabase.
-// Принудительный прокси сейчас никому не нужен: основной домен
-// sintagma.com.ru ходит в Supabase напрямую. Прокси-режим включается лениво
-// только при фактической сетевой блокировке (см. installProxyFetch ниже).
 // синтагма.рф (punycode) — фронт там, а Supabase заблокирован у российских провайдеров.
 const FORCE_PROXY_HOSTS_EXACT = new Set<string>([
   'xn--80aaiswd0ak.xn--p1ai',
   'www.xn--80aaiswd0ak.xn--p1ai',
 ]);
 
-// Любой кастомный домен на Timeweb (twc1.net) — тоже включаем прокси,
-// потому что фронт там, а бэкенд за блокировкой.
 function isForcedProxyHost(): boolean {
   if (typeof window === 'undefined') return false;
   const h = window.location.hostname;
@@ -79,11 +63,12 @@ function isForcedProxyHost(): boolean {
 
 const PROXY_FLAG_KEY = 'sintagma:use-proxy';
 const PROXY_LAST_PROBE_KEY = 'sintagma:proxy-last-probe';
-const PROXY_RESET_KEY = 'sintagma:proxy-reset-v2';
+// v3: 2026-06 — массовый сброс залипшего флага, когда NGINX-прокси
+// внезапно начал отдавать HTML вместо JSON Supabase и положил всех клиентов.
+const PROXY_RESET_KEY = 'sintagma:proxy-reset-v3';
 const PROBE_INTERVAL_MS = 30 * 60 * 1000;
 
-// Одноразовый сброс залипшего legacy-прокси у пользователей,
-// которые уже сохранили флаг на api.sintagma.com.ru.
+// Одноразовый сброс залипшего прокси-флага (миграция).
 try {
   if (typeof window !== 'undefined' && !localStorage.getItem(PROXY_RESET_KEY)) {
     localStorage.removeItem(PROXY_FLAG_KEY);
@@ -113,7 +98,7 @@ function setProxyMode(enabled: boolean) {
   }
 }
 
-/** Прямой Supabase-URL → URL прокси-сервера (или same-origin). */
+/** Прямой Supabase-URL → URL прокси-сервера. */
 function rewriteUrl(url: string): string {
   if (!url.includes(SUPABASE_HOST)) return url;
   try {
@@ -136,7 +121,6 @@ function rewriteUrl(url: string): string {
   }
 }
 
-/** wss:// URL Supabase realtime → wss://<proxy>/sb-realtime?... */
 function rewriteWsUrl(url: string): string {
   if (!url.includes(SUPABASE_HOST)) return url;
   try {
@@ -161,10 +145,46 @@ function isNetworkBlock(err: unknown): boolean {
   );
 }
 
+/**
+ * Прокси-канал признаётся «сломанным», если NGINX вернул HTML вместо JSON
+ * Supabase, либо отдал явный шлюзовой код (502/503/504).
+ */
+function isBrokenProxyResponse(resp: Response): boolean {
+  if (resp.status === 502 || resp.status === 503 || resp.status === 504) return true;
+  const ct = resp.headers.get('content-type') || '';
+  // Supabase API/auth/functions/storage никогда не отдают HTML.
+  if (ct.toLowerCase().includes('text/html')) return true;
+  return false;
+}
+
 let originalFetch: typeof fetch | null = null;
 let originalWebSocket: typeof WebSocket | null = null;
 let originalXhrOpen: typeof XMLHttpRequest.prototype.open | null = null;
 let originalSendBeacon: typeof navigator.sendBeacon | null = null;
+
+async function fetchViaProxy(
+  originalUrl: string,
+  input: RequestInfo | URL,
+  init?: RequestInit,
+): Promise<Response> {
+  const proxyUrl = rewriteUrl(originalUrl);
+  if (typeof input === 'string' || input instanceof URL) {
+    return originalFetch!(proxyUrl, init);
+  }
+  const req = input as Request;
+  return originalFetch!(proxyUrl, {
+    method: req.method,
+    headers: req.headers,
+    body: req.method === 'GET' || req.method === 'HEAD' ? undefined : await req.clone().blob(),
+    mode: req.mode,
+    credentials: req.credentials,
+    cache: req.cache,
+    redirect: req.redirect,
+    referrer: req.referrer,
+    integrity: req.integrity,
+    ...init,
+  });
+}
 
 export function installProxyFetch() {
   if (typeof window === 'undefined') return;
@@ -186,23 +206,45 @@ export function installProxyFetch() {
       const useProxy = getProxyMode();
 
       if (useProxy) {
-        const proxyUrl = rewriteUrl(urlStr);
-        if (typeof input === 'string' || input instanceof URL) {
-          return originalFetch!(proxyUrl, init);
+        try {
+          const resp = await fetchViaProxy(urlStr, input, init);
+          if (isBrokenProxyResponse(resp)) {
+            // NGINX отдал HTML/502 — прокси сломан.
+            if (!isForcedProxyHost()) {
+              // Снимаем флаг и повторяем напрямую.
+              setProxyMode(false);
+              try {
+                const direct = await originalFetch!(input, init);
+                console.warn('[ProxyFetch] Proxy returned HTML/5xx, recovered via direct channel');
+                window.dispatchEvent(new CustomEvent('sintagma:proxy-restored'));
+                return direct;
+              } catch {
+                // прямой канал тоже не дошёл — возвращаем плохой ответ как есть
+                window.dispatchEvent(new CustomEvent('sintagma:proxy-broken'));
+                return resp;
+              }
+            } else {
+              // Форсированный хост — прямой канал недоступен, сообщаем UI.
+              console.error('[ProxyFetch] Forced proxy is broken (HTML response)');
+              window.dispatchEvent(new CustomEvent('sintagma:proxy-broken'));
+              return resp;
+            }
+          }
+          return resp;
+        } catch (err) {
+          // Прокси-сервер вовсе недоступен.
+          if (!isForcedProxyHost() && isNetworkBlock(err)) {
+            setProxyMode(false);
+            try {
+              const direct = await originalFetch!(input, init);
+              window.dispatchEvent(new CustomEvent('sintagma:proxy-restored'));
+              return direct;
+            } catch {
+              throw err;
+            }
+          }
+          throw err;
         }
-        const req = input as Request;
-        return originalFetch!(proxyUrl, {
-          method: req.method,
-          headers: req.headers,
-          body: req.method === 'GET' || req.method === 'HEAD' ? undefined : await req.clone().blob(),
-          mode: req.mode,
-          credentials: req.credentials,
-          cache: req.cache,
-          redirect: req.redirect,
-          referrer: req.referrer,
-          integrity: req.integrity,
-          ...init,
-        });
       }
 
       // Lazy-режим: прямой запрос, при сетевой ошибке — переключаемся на прокси.
@@ -210,11 +252,15 @@ export function installProxyFetch() {
         return await originalFetch!(input, init);
       } catch (err) {
         if (isNetworkBlock(err)) {
-          const proxyUrl = rewriteUrl(urlStr);
           try {
-            const resp = await originalFetch!(proxyUrl, init);
+            const resp = await fetchViaProxy(urlStr, input, init);
+            if (isBrokenProxyResponse(resp)) {
+              // Прокси отдал HTML — оба канала бесполезны.
+              window.dispatchEvent(new CustomEvent('sintagma:proxy-broken'));
+              throw err;
+            }
             setProxyMode(true);
-            console.warn('[ProxyFetch] Direct Supabase blocked, switched to same-origin proxy:', proxyUrl);
+            console.warn('[ProxyFetch] Direct Supabase blocked, switched to same-origin proxy:', rewriteUrl(urlStr));
             window.dispatchEvent(new CustomEvent('sintagma:proxy-activated'));
             return resp;
           } catch {
@@ -225,8 +271,12 @@ export function installProxyFetch() {
       }
     };
 
+    // Ранний пробник: если флаг прокси взведён, но мы не на форсированном
+    // хосте — сразу проверяем прямой канал, чтобы вытащить клиентов из
+    // залипшего прокси (например, после сбоя NGINX).
     if (!isForcedProxyHost() && getProxyMode()) {
-      setTimeout(probeDirectChannel, 60_000);
+      // не блокируем загрузку — fire-and-forget
+      probeDirectChannel(true).catch(() => { /* noop */ });
     }
   }
 
@@ -260,8 +310,6 @@ export function installProxyFetch() {
   }
 
   // ============= XMLHttpRequest перехватчик =============
-  // Нужен для загрузок с прогрессом (useLessonMedia, useExternalStorageWithProgress)
-  // и любых сторонних либ, которые используют XHR вместо fetch.
   if (!originalXhrOpen && typeof XMLHttpRequest !== 'undefined') {
     originalXhrOpen = XMLHttpRequest.prototype.open;
     const orig = originalXhrOpen;
@@ -280,15 +328,13 @@ export function installProxyFetch() {
           finalUrl = rewriteUrl(urlStr);
         }
       } catch {
-        // ignore — оставим исходный URL
+        // ignore
       }
       return orig.call(this, method, finalUrl as string, async ?? true, username ?? null, password ?? null);
     } as typeof XMLHttpRequest.prototype.open;
   }
 
   // ============= sendBeacon перехватчик =============
-  // Прогресс видео, ответы тестов, error reporter, регистрация — всё уходит
-  // beacon-ом на supabase.co. Без патча они молча теряются на синтагма.рф.
   if (!originalSendBeacon && typeof navigator !== 'undefined' && typeof navigator.sendBeacon === 'function') {
     originalSendBeacon = navigator.sendBeacon.bind(navigator);
     const orig = originalSendBeacon;
@@ -313,12 +359,14 @@ export function installProxyFetch() {
   }
 }
 
-async function probeDirectChannel() {
+async function probeDirectChannel(force = false) {
   if (!originalFetch) return;
   if (isForcedProxyHost()) return;
   try {
-    const last = Number(localStorage.getItem(PROXY_LAST_PROBE_KEY) || 0);
-    if (Date.now() - last < PROBE_INTERVAL_MS) return;
+    if (!force) {
+      const last = Number(localStorage.getItem(PROXY_LAST_PROBE_KEY) || 0);
+      if (Date.now() - last < PROBE_INTERVAL_MS) return;
+    }
     localStorage.setItem(PROXY_LAST_PROBE_KEY, String(Date.now()));
 
     const ctrl = new AbortController();
@@ -331,9 +379,12 @@ async function probeDirectChannel() {
     if (resp.ok || resp.status === 401) {
       setProxyMode(false);
       console.info('[ProxyFetch] Direct channel restored, proxy disabled');
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('sintagma:proxy-restored'));
+      }
     }
   } catch {
-    // всё ещё заблокировано
+    // всё ещё заблокировано — оставляем флаг как есть
   }
 }
 
@@ -350,15 +401,19 @@ export function forceProxyMode(enabled: boolean) {
   setProxyMode(enabled);
 }
 
-/**
- * Возвращает URL картинки/файла, переписанный через прокси, если включён
- * прокси-режим. Используется для <img src> и подобных, где fetch-перехватчик
- * не работает (браузер грузит ресурсы напрямую).
- */
+/** Принудительно сбросить прокси-флаг и пробник; нужно для кнопки «починить канал». */
+export function resetProxyChannel() {
+  try {
+    localStorage.removeItem(PROXY_FLAG_KEY);
+    localStorage.removeItem(PROXY_LAST_PROBE_KEY);
+  } catch {
+    // ignore
+  }
+}
+
 export function proxiedAssetUrl(url: string | null | undefined): string {
   if (!url) return '';
   if (!url.includes(SUPABASE_HOST)) return url;
   if (!getProxyMode()) return url;
   return rewriteUrl(url);
 }
-
