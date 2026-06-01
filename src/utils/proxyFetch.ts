@@ -175,6 +175,10 @@ function isNetworkBlock(err: unknown): boolean {
  */
 const BROKEN_GATEWAY_STATUSES = new Set([502, 503, 504, 520, 521, 522, 523, 524, 525, 526, 527]);
 
+function isAuthTokenRequest(url: string): boolean {
+  return url.includes(SUPABASE_HOST) && url.includes('/auth/v1/token');
+}
+
 function isBrokenProxyResponse(resp: Response): boolean {
   if (BROKEN_GATEWAY_STATUSES.has(resp.status)) return true;
   const ct = resp.headers.get('content-type') || '';
@@ -223,6 +227,12 @@ export function installProxyFetch() {
       const urlStr = typeof input === 'string'
         ? input
         : input instanceof URL ? input.toString() : input.url;
+
+      // Вход по паролю не должен проходить через авто-переключение каналов.
+      // Иначе при 522/сетевой ошибке мы подсовываем HTML/прокси и ломаем auth flow.
+      if (isAuthTokenRequest(urlStr)) {
+        return originalFetch!(input, init);
+      }
 
       // Перехватываем только Supabase-домен. Остальное идёт напрямую.
       if (!urlStr.includes(SUPABASE_HOST)) {

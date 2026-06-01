@@ -16,6 +16,22 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+const AUTH_REQUEST_TIMEOUT_MS = 12000;
+
+async function withTimeout<T>(promise: Promise<T>, timeoutMs: number, message: string): Promise<T> {
+  let timeoutId: ReturnType<typeof setTimeout> | undefined;
+
+  const timeoutPromise = new Promise<never>((_, reject) => {
+    timeoutId = setTimeout(() => reject(new Error(message)), timeoutMs);
+  });
+
+  try {
+    return await Promise.race([promise, timeoutPromise]);
+  } finally {
+    if (timeoutId) clearTimeout(timeoutId);
+  }
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const cachedRole = localStorage.getItem('user_role') as AuthContextType['userRole'];
   
@@ -25,9 +41,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
   
   const roleFetchInFlight = useRef<string | null>(null);
-  const signInInProgress = useRef(false);
-  const hadSession = useRef(false);
-  const recoveryInProgress = useRef(false);
+  const authInitialized = useRef(false);
 
   const fetchUserRole = useCallback(async (userId: string): Promise<AuthContextType['userRole']> => {
     if (roleFetchInFlight.current === userId) return null;
@@ -51,33 +65,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return null;
     } finally {
       roleFetchInFlight.current = null;
-    }
-  }, []);
-
-  // Simple session recovery: wait and retry once
-  const attemptSessionRecovery = useCallback(async () => {
-    if (recoveryInProgress.current) return;
-    recoveryInProgress.current = true;
-    
-    
-    await new Promise(resolve => setTimeout(resolve, 2000));
-    
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session) {
-        setSession(session);
-        setUser(session.user);
-        hadSession.current = true;
-      } else {
-        setUser(null);
-        setSession(null);
-        setUserRole(null);
-        localStorage.removeItem('user_role');
-        hadSession.current = false;
-      }
-    } catch {
-    } finally {
-      recoveryInProgress.current = false;
     }
   }, []);
 
@@ -121,33 +108,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           return;
         }
         
-        if (signInInProgress.current) {
-          if (session) {
-            setSession(session);
-            setUser(session.user);
-          }
-          return;
-        }
-        
         if (event === 'SIGNED_OUT') {
           setSession(null);
           setUser(null);
           setUserRole(null);
           localStorage.removeItem('user_role');
-          hadSession.current = false;
           return;
         }
         
         if (session?.user) {
           setSession(session);
           setUser(session.user);
-          hadSession.current = true;
           
           setTimeout(() => {
             fetchUserRole(session.user.id);
           }, 0);
-        } else if (!session && hadSession.current) {
-          attemptSessionRecovery();
+        } else if (authInitialized.current) {
+          setSession(null);
+          setUser(null);
+          setUserRole(null);
+          localStorage.removeItem('user_role');
         }
       }
     );
@@ -158,9 +138,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const { data: { session } } = await supabase.auth.getSession();
         setSession(session);
         setUser(session?.user ?? null);
+        authInitialized.current = true;
 
         if (session?.user) {
-          hadSession.current = true;
           await fetchUserRole(session.user.id);
         } else {
           localStorage.removeItem('user_role');
@@ -179,47 +159,42 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       window.removeEventListener('storage', handleStorageChange);
     };
-  }, [fetchUserRole, attemptSessionRecovery]);
+  }, [fetchUserRole]);
 
   const signIn = async (email: string, password: string) => {
-    signInInProgress.current = true;
-    
-    try {
-      const { data, error } = await supabase.auth.signInWithPassword({
+    const { data, error } = await withTimeout(
+      supabase.auth.signInWithPassword({
         email,
         password,
-      });
+      }),
+      AUTH_REQUEST_TIMEOUT_MS,
+      'auth_timeout'
+    );
+    
+    if (!error && data?.user) {
+      setSession(data.session);
+      setUser(data.user);
       
-      if (!error && data?.user) {
-        hadSession.current = true;
-        setSession(data.session);
-        setUser(data.user);
-        
-        await fetchUserRole(data.user.id);
-        
-        // Fire-and-forget: log the login event
-        supabase
-          .from("profiles")
-          .select("organization_id")
-          .eq("user_id", data.user.id)
-          .maybeSingle()
-          .then(({ data: profile }) => {
-            if (profile?.organization_id) {
-              supabase.from("student_login_history").insert({
-                user_id: data.user!.id,
-                organization_id: profile.organization_id,
-                user_agent: navigator.userAgent,
-              }).then(() => {});
-            }
-          });
-      }
+      await fetchUserRole(data.user.id);
       
-      return { error };
-    } finally {
-      setTimeout(() => {
-        signInInProgress.current = false;
-      }, 3000);
+      // Fire-and-forget: log the login event
+      supabase
+        .from("profiles")
+        .select("organization_id")
+        .eq("user_id", data.user.id)
+        .maybeSingle()
+        .then(({ data: profile }) => {
+          if (profile?.organization_id) {
+            supabase.from("student_login_history").insert({
+              user_id: data.user!.id,
+              organization_id: profile.organization_id,
+              user_agent: navigator.userAgent,
+            }).then(() => {});
+          }
+        });
     }
+    
+    return { error };
   };
 
   const signUp = async (email: string, password: string, fullName: string) => {
@@ -239,7 +214,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const signOut = async () => {
-    hadSession.current = false;
     await supabase.auth.signOut();
     setUser(null);
     setSession(null);
