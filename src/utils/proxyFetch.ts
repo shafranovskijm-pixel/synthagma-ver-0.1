@@ -94,8 +94,26 @@ try {
   // ignore
 }
 
+// Одноразовый сброс залипшего прокси-флага (миграция).
+try {
+  if (typeof window !== 'undefined' && !localStorage.getItem(PROXY_RESET_KEY)) {
+    localStorage.removeItem(PROXY_FLAG_KEY);
+    localStorage.removeItem(PROXY_LAST_PROBE_KEY);
+    localStorage.setItem(PROXY_RESET_KEY, '1');
+  }
+  // На любых dev/preview-хостах прокси не должен работать в принципе —
+  // снимаем флаг сразу, чтобы залипший канал не блокировал вход.
+  if (typeof window !== 'undefined' && !isProxyAllowedHost()) {
+    localStorage.removeItem(PROXY_FLAG_KEY);
+    localStorage.removeItem(PROXY_LAST_PROBE_KEY);
+  }
+} catch {
+  // ignore
+}
+
 function getProxyMode(): boolean {
   if (isForcedProxyHost()) return true;
+  if (!isProxyAllowedHost()) return false;
   try {
     return localStorage.getItem(PROXY_FLAG_KEY) === '1';
   } catch {
@@ -105,6 +123,7 @@ function getProxyMode(): boolean {
 
 function setProxyMode(enabled: boolean) {
   if (isForcedProxyHost() && !enabled) return;
+  if (!isProxyAllowedHost()) return;
   try {
     if (enabled) localStorage.setItem(PROXY_FLAG_KEY, '1');
     else localStorage.removeItem(PROXY_FLAG_KEY);
