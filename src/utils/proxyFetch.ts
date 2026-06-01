@@ -247,15 +247,32 @@ export function installProxyFetch() {
         }
       }
 
-      // Lazy-режим: прямой запрос, при сетевой ошибке — переключаемся на прокси.
+      // Lazy-режим: прямой запрос, при сетевой ошибке ИЛИ HTML/5xx-ответе от
+      // CDN (Cloudflare 522 на atxwvjxbqjgkbjlhsdch.supabase.co) — переключаемся
+      // на резервный прокси, чтобы UI не получал HTML вместо JSON.
       try {
-        return await originalFetch!(input, init);
+        const direct = await originalFetch!(input, init);
+        if (isBrokenProxyResponse(direct)) {
+          try {
+            const resp = await fetchViaProxy(urlStr, input, init);
+            if (isBrokenProxyResponse(resp)) {
+              window.dispatchEvent(new CustomEvent('sintagma:proxy-broken'));
+              return direct; // оба канала сломаны — отдаём оригинал
+            }
+            setProxyMode(true);
+            console.warn('[ProxyFetch] Direct Supabase returned HTML/5xx, switched to proxy:', rewriteUrl(urlStr));
+            window.dispatchEvent(new CustomEvent('sintagma:proxy-activated'));
+            return resp;
+          } catch {
+            return direct;
+          }
+        }
+        return direct;
       } catch (err) {
         if (isNetworkBlock(err)) {
           try {
             const resp = await fetchViaProxy(urlStr, input, init);
             if (isBrokenProxyResponse(resp)) {
-              // Прокси отдал HTML — оба канала бесполезны.
               window.dispatchEvent(new CustomEvent('sintagma:proxy-broken'));
               throw err;
             }
@@ -270,6 +287,7 @@ export function installProxyFetch() {
         throw err;
       }
     };
+
 
     // Ранний пробник: если флаг прокси взведён, но мы не на форсированном
     // хосте — сразу проверяем прямой канал, чтобы вытащить клиентов из

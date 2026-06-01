@@ -107,15 +107,21 @@ const Login = () => {
     }
     
     const { error } = await signIn(signInEmail, cleanPassword);
-    
+
     if (error) {
-      toast.error("Ошибка входа", { description: error.message === "Invalid login credentials" ? "Неверный логин или пароль" : getErrorMessage(error) });
+      const raw = (error as any)?.message ?? "";
+      const friendly =
+        raw === "Invalid login credentials"
+          ? "Неверный логин или пароль"
+          : getErrorMessage(error, "Сервис временно недоступен. Попробуйте через минуту или откройте «Не загружается?» ниже.");
+      toast.error("Ошибка входа", { description: friendly });
     } else {
       toast.success("Успешно!", { description: "Вы вошли в систему" });
       // Role is already loaded in context by signIn, useEffect will navigate
     }
     setIsLoading(false);
   };
+
 
   const handleForgotPassword = async () => {
     if (!resetEmail) {
