@@ -67,9 +67,31 @@ function isObject(v: unknown): v is Record<string, unknown> {
   return typeof v === "object" && v !== null;
 }
 
+function isHtmlOrGatewayError(msg: string): boolean {
+  const m = msg.toLowerCase();
+  return (
+    m.includes("<!doctype") ||
+    m.includes("unexpected token '<'") ||
+    m.includes('unexpected token "<"') ||
+    m.includes("error 522") ||
+    m.includes("connection timed out") ||
+    m.includes("cloudflare") ||
+    m.includes("502 bad gateway") ||
+    m.includes("503 service") ||
+    m.includes("504 gateway")
+  );
+}
+
+const GATEWAY_MESSAGE =
+  "Сервис временно недоступен (таймаут соединения). Подождите минуту и попробуйте снова или откройте /connection-check";
+
 export function getErrorMessage(err: unknown, fallback = FALLBACK): string {
   if (!err) return fallback;
-  if (typeof err === "string") return err || fallback;
+  if (typeof err === "string") {
+    if (isHtmlOrGatewayError(err)) return GATEWAY_MESSAGE;
+    return err || fallback;
+  }
+
 
   if (err instanceof FunctionsHttpError) {
     const ctx = (err as unknown as { context?: { status?: number } }).context;
