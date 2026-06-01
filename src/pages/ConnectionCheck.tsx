@@ -7,6 +7,7 @@ import { Link } from 'react-router-dom';
 import { runConnectionDiagnostics, summarizeDiagnostics, buildDiagnosticsReport, type ProbeResult } from '@/utils/connectionDiagnostics';
 import { collectDeviceInfo, buildDeviceInfoReport, type DeviceInfo } from '@/utils/deviceDiagnostics';
 import { DeviceInfoCard } from '@/components/diagnostics/DeviceInfoCard';
+import { getProxyStatus, resetProxyChannel } from '@/utils/proxyFetch';
 
 export default function ConnectionCheck() {
   const [results, setResults] = useState<ProbeResult[]>([]);
