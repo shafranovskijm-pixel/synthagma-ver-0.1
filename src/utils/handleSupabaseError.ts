@@ -131,11 +131,13 @@ export function getErrorMessage(err: unknown, fallback = FALLBACK): string {
   }
 
   if (err instanceof Error) {
+    if (isHtmlOrGatewayError(err.message)) return GATEWAY_MESSAGE;
     const aiMapped = mapAiMessage(err.message);
     if (aiMapped) return aiMapped;
     const mapped = mapAuthMessage(err.message);
     return mapped || err.message || fallback;
   }
+
   return fallback;
 }
 
