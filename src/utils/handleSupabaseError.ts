@@ -70,6 +70,7 @@ function isObject(v: unknown): v is Record<string, unknown> {
 function isHtmlOrGatewayError(msg: string): boolean {
   const m = msg.toLowerCase();
   return (
+    m.includes("auth_timeout") ||
     m.includes("<!doctype") ||
     m.includes("unexpected token '<'") ||
     m.includes('unexpected token "<"') ||
