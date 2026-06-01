@@ -73,7 +73,13 @@ function isHtmlOrGatewayError(msg: string): boolean {
     m.includes("<!doctype") ||
     m.includes("unexpected token '<'") ||
     m.includes('unexpected token "<"') ||
+    m.includes("json() on response") ||
+    m.includes("failed to execute 'json' on 'response'") ||
     m.includes("error 522") ||
+    m.includes(" 522") ||
+    m.includes(" 521") ||
+    m.includes(" 520") ||
+    m.includes(" 524") ||
     m.includes("connection timed out") ||
     m.includes("cloudflare") ||
     m.includes("502 bad gateway") ||
