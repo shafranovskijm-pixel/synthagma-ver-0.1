@@ -7,6 +7,7 @@ import { Link } from 'react-router-dom';
 import { runConnectionDiagnostics, summarizeDiagnostics, buildDiagnosticsReport, type ProbeResult } from '@/utils/connectionDiagnostics';
 import { collectDeviceInfo, buildDeviceInfoReport, type DeviceInfo } from '@/utils/deviceDiagnostics';
 import { DeviceInfoCard } from '@/components/diagnostics/DeviceInfoCard';
+import { getProxyStatus, resetProxyChannel } from '@/utils/proxyFetch';
 
 export default function ConnectionCheck() {
   const [results, setResults] = useState<ProbeResult[]>([]);
@@ -122,6 +123,9 @@ export default function ConnectionCheck() {
 
           <DeviceInfoCard info={deviceInfo} loading={deviceLoading} />
 
+          <ProxyChannelPanel />
+
+
           <div className="flex flex-wrap gap-2">
             <Button onClick={run} disabled={running} variant="outline">
               <RefreshCw className="w-4 h-4 mr-2" />
@@ -174,6 +178,31 @@ function ProbeRow({ probe }: { probe: ProbeResult }) {
         <div className="font-medium text-sm">{probe.label}</div>
         {probe.detail && <div className="text-xs text-muted-foreground truncate">{probe.detail}</div>}
       </div>
+    </div>
+  );
+}
+
+function ProxyChannelPanel() {
+  const status = getProxyStatus();
+  if (!status.enabled && !status.forced) return null;
+  const handleReset = () => {
+    resetProxyChannel();
+    window.location.reload();
+  };
+  return (
+    <div className="rounded-xl p-4 my-4 border bg-muted/30">
+      <div className="font-medium text-sm mb-1">Канал к серверу</div>
+      <div className="text-xs text-muted-foreground mb-3">
+        {status.forced
+          ? 'Используется резервный канал (синтагма.рф). Прямой доступ к Supabase заблокирован у вашего провайдера.'
+          : 'Сейчас запросы идут через резервный канал. Если данные не подгружаются — сбросьте канал и попробуйте прямой.'}
+      </div>
+      {!status.forced && (
+        <Button onClick={handleReset} variant="outline" size="sm">
+          <RefreshCw className="w-4 h-4 mr-2" />
+          Сбросить и попробовать прямой канал
+        </Button>
+      )}
     </div>
   );
 }
