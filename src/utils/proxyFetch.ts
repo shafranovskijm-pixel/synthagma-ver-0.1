@@ -54,11 +54,26 @@ const FORCE_PROXY_HOSTS_EXACT = new Set<string>([
   'www.xn--80aaiswd0ak.xn--p1ai',
 ]);
 
+// Хосты, на которых прокси-механизм РАЗРЕШЁН (lazy auto-switch + хранение флага).
+// На lovable-превью, localhost и любых dev-доменах прокси полностью отключаем —
+// иначе залипший флаг или 522 от Cloudflare ломает вход.
+const PROXY_ALLOWED_HOSTS_EXACT = new Set<string>([
+  'sintagma.com.ru',
+  'www.sintagma.com.ru',
+  'xn--80aaiswd0ak.xn--p1ai',
+  'www.xn--80aaiswd0ak.xn--p1ai',
+]);
+
 function isForcedProxyHost(): boolean {
   if (typeof window === 'undefined') return false;
   const h = window.location.hostname;
   if (FORCE_PROXY_HOSTS_EXACT.has(h)) return true;
   return false;
+}
+
+function isProxyAllowedHost(): boolean {
+  if (typeof window === 'undefined') return false;
+  return PROXY_ALLOWED_HOSTS_EXACT.has(window.location.hostname);
 }
 
 const PROXY_FLAG_KEY = 'sintagma:use-proxy';
