@@ -84,41 +84,47 @@ const Login = () => {
     }
 
     setIsLoading(true);
-    
-    let signInEmail = email.trim();
-    const cleanPassword = password.trim();
-    
-    // If login mode, find the user's email by login
-    if (loginMode === "login") {
-      const cleanLogin = login.trim().toLowerCase();
-      // Use secure RPC to lookup user by login
-      const { data: lookupResult, error: lookupError } = await supabase
-        .rpc('public_lookup_user_by_login', { login_input: cleanLogin });
-      
-      if (lookupError || !lookupResult || lookupResult.length === 0) {
-        toast.error("Ошибка входа", { description: "Неверный логин или пароль" });
-        setIsLoading(false);
-        return;
-      }
-      
-      // For login-based students, use the standardized email format
-      signInEmail = `${cleanLogin}@student.local`;
-    }
-    
-    const { error } = await signIn(signInEmail, cleanPassword);
 
-    if (error) {
-      const raw = (error as any)?.message ?? "";
-      const friendly =
-        raw === "Invalid login credentials"
-          ? "Неверный логин или пароль"
-          : getErrorMessage(error, "Сервис временно недоступен. Попробуйте через минуту или откройте «Не загружается?» ниже.");
-      toast.error("Ошибка входа", { description: friendly });
-    } else {
-      toast.success("Успешно!", { description: "Вы вошли в систему" });
-      // Role is already loaded in context by signIn, useEffect will navigate
+    try {
+      let signInEmail = email.trim();
+      const cleanPassword = password.trim();
+
+      // If login mode, find the user's email by login
+      if (loginMode === "login") {
+        const cleanLogin = login.trim().toLowerCase();
+        // Use secure RPC to lookup user by login
+        const { data: lookupResult, error: lookupError } = await supabase
+          .rpc('public_lookup_user_by_login', { login_input: cleanLogin });
+
+        if (lookupError || !lookupResult || lookupResult.length === 0) {
+          toast.error("Ошибка входа", { description: "Неверный логин или пароль" });
+          return;
+        }
+
+        // For login-based students, use the standardized email format
+        signInEmail = `${cleanLogin}@student.local`;
+      }
+
+      const { error } = await signIn(signInEmail, cleanPassword);
+
+      if (error) {
+        const raw = (error as any)?.message ?? "";
+        const friendly =
+          raw === "Invalid login credentials"
+            ? "Неверный логин или пароль"
+            : getErrorMessage(error, "Сервис временно недоступен. Попробуйте через минуту или откройте «Не загружается?» ниже.");
+        toast.error("Ошибка входа", { description: friendly });
+      } else {
+        toast.success("Успешно!", { description: "Вы вошли в систему" });
+        // Role is already loaded in context by signIn, useEffect will navigate
+      }
+    } catch (error) {
+      toast.error("Ошибка входа", {
+        description: getErrorMessage(error, "Сервис временно недоступен. Попробуйте через минуту."),
+      });
+    } finally {
+      setIsLoading(false);
     }
-    setIsLoading(false);
   };
 
 
