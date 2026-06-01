@@ -1,59 +1,67 @@
-## Диагноз (по логам и коду)
+## Что произошло
 
-Я проверил edge-функции и логи за последние 3 часа. Нашёл **3 разные проблемы**, которые маскируют друг друга и выглядят как «AI не генерирует».
+В консоли — главная улика:
 
-### 1. `generate-lesson-content` отдаёт 401 / 403 части пользователей
-В `supabase/functions/generate-lesson-content/index.ts:42-53` стоит проверка:
-```ts
-const { data: roleData } = await supabaseAuth
-  .from('user_roles').select('role').eq('user_id', user.id).single();
-if (!roleData || (roleData.role !== 'organization' && roleData.role !== 'admin')) {
-  return 403 "Insufficient permissions";
-}
 ```
-- `.single()` падает если у юзера **несколько ролей** (а админы и владельцы часто имеют 2+ роли).
-- Сотрудники организации (`org_staff` с правом `courses.manage`, `content_manager`, `sales_manager`) не имеют записи `organization` в `user_roles` → получают 403, кнопка «Сгенерировать» молча падает.
-- Если access-token истёк за время сессии — `auth.getUser()` возвращает null → 401 «Invalid authentication» (видно в логах: 2 × 401 за последние 30 минут).
+[ProxyFetch] Direct Supabase blocked, switched to same-origin proxy: https://api.xn--80aaiswd0ak.xn--p1ai/sb-api/auth/v1/token?...
+AuthUnknownError: Failed to execute 'json' on 'Response': Unexpected token '<', "<!DOCTYPE "... is not valid JSON
+```
 
-### 2. GigaChat-Pro закончились токены, но fallback работает
-В `_shared/gigachat-client.ts`: при 402 от GigaChat-Pro код перебирает `GIGACHAT_MODEL_CHAIN` (Max, Plus, Lite). По логам `Success with model: GigaChat-Max` — генерация в итоге проходит, но **с задержкой 10–30 секунд** на каждый 402 (3 slot × 4 модели). Пользователю кажется, что «висит».
+Проблема **не в RLS и не в правах** клиента-владельца:
 
-### 3. Lovable AI Gateway вернул 402 (`Payment required, please add credits`)
-Это финальный fallback. Если GigaChat весь упадёт — генерация умрёт окончательно с непонятной ошибкой.
+- Когда-то у пользователя сработал «обходной канал» (NGINX на Timeweb VDS `api.синтагма.рф`) и в `localStorage` сохранился флаг `sintagma:use-proxy = 1`.
+- Сейчас этот NGINX-прокси отвечает HTML-страницей (скорее всего 502/404 от nginx, а не JSON от Supabase).
+- Каждый запрос фронта (auth refresh, courses, students, profiles, RPC) идёт в прокси → получает `<!DOCTYPE …>` → Supabase-клиент падает или возвращает пустоту.
+- Поэтому **все организации** видят пустой кабинет, и даже админ не может войти: refresh-token летит туда же.
+- При этом сам Supabase в порядке (cloud_status: healthy), и `sintagma.com.ru` напрямую тоже должен работать — но залипший флаг прокси этого не даёт.
 
----
+## План починки (только фронт, без правок NGINX)
 
-## План изменений
+Все правки — в `src/utils/proxyFetch.ts`.
 
-### A. `supabase/functions/generate-lesson-content/index.ts` — расширить авторизацию
-1. Заменить `.single()` на `.maybeSingle()` + проверять через **массив ролей** (`select('role')` без `.single()`).
-2. Разрешить помимо `organization`/`admin` ещё:
-   - пользователей с записью в `org_staff` где `is_active = true` (любая активная роль сотрудника организации);
-   - пользователей с правом `courses.manage` через RPC `has_org_staff_permission(user_id, 'courses.manage')`.
-3. При 401 от `auth.getUser()` — добавить чёткое сообщение `«Сессия истекла, обновите страницу и войдите снова»` вместо сухого `"Invalid authentication"`.
+### 1. Распознавать «прокси отдал HTML» и считать это поломкой канала
 
-### B. `src/utils/handleSupabaseError.ts` — маппинг AI-ошибок
-Добавить распознавание:
-- `"402"` / `"Payment required"` / `"All AI channels exhausted"` → «AI-кредиты закончились. Свяжитесь с администратором для пополнения GigaChat / Lovable AI».
-- `"Insufficient permissions"` → «У вас нет прав на генерацию контента. Запросите у владельца организации право "Управление курсами".»
-- `"Сессия истекла"` → «Войдите заново и повторите попытку».
-- `"[MODERATION]"` → «GigaChat отклонил запрос по модерации. Переформулируйте тему урока.».
+В `patchedFetch` после получения ответа от прокси (или прямого канала с заголовком, переписанным через прокси) проверять:
 
-### C. `src/hooks/useLessonEditor.ts`, `useLessonMedia.ts`, `useBulkContentGenerator.ts`, `BlockEditorMain.tsx`
-Заменить вывод сырого `error.message` через `toast.error(...)` на `toast.error(getErrorMessage(error))` — чтобы все 4 точки вызова показывали человеческие сообщения из (B).
+- HTTP-статус `502 / 503 / 504` от прокси-хоста, **или**
+- `Content-Type` начинается с `text/html` для запроса к Supabase API (auth/rest/functions/storage никогда не отвечают HTML).
 
-### D. Админ-страница диагностики AI (`/admin` → вкладка «AI-настройки»)
-Найти существующий компонент проверки AI (`devToolsData.ts:244` уже регистрирует `generate-lesson-content`). Добавить кнопку **«Проверить балансы»**, которая:
-1. Дёргает `generate-lesson-content` с тестовым промптом `{ lessonTitle: "ping", lessonType: "test", courseTitle: "test" }`.
-2. Показывает: какой slot ответил, какая модель сработала (Pro / Max / Plus / Lite / Lovable-AI fallback), время ответа.
-3. Если все 402 — красная плашка «Пополните GigaChat или Lovable AI».
+Если это произошло — считаем прокси нерабочим: сбрасываем флаг (`setProxyMode(false)`), и **на этом же запросе** делаем повторную попытку напрямую к `https://<SUPABASE_HOST>/…`. Если прямой канал тоже не отвечает — кидаем исходную ошибку (пользователь хотя бы увидит честный сетевой fail, а не «битый JSON»).
 
-### E. Что НЕ трогаю
-- Логику `gigachat-client.ts` (slot pool, model chain) — она работает корректно.
-- Сами AI-ключи `GIGACHAT_AUTH_KEY*` (это решает только пользователь, пополнив баланс у Сбера).
-- `verify_jwt = false` для функций.
+Для `FORCE_PROXY_HOSTS_EXACT` (`синтагма.рф`) флаг не сбрасываем — там прямой канал гарантированно заблокирован, но проверку HTML делаем всё равно и показываем понятную ошибку через существующий `NetworkBlockBanner` (диспатчим событие `sintagma:proxy-broken`).
 
----
+### 2. Ранний пробник прямого канала при загрузке
 
-## Что от вас нужно после фикса
-Если после изменений всё равно «не генерирует» — откройте `/admin` → «AI-настройки» → «Проверить балансы», и пришлите мне результат. Он покажет, где именно затык: токены, права или сеть.
+Сейчас `probeDirectChannel` запускается через `setTimeout(60_000)` и только если флаг прокси уже взведён. Меняем так:
+
+- При `installProxyFetch()` сразу (без 60-секундной задержки) запускаем `probeDirectChannel` для всех не-`FORCE_PROXY_HOSTS` пользователей, у которых флаг взведён.
+- Если прямой `/auth/v1/health` отвечает 200/401 — сразу `setProxyMode(false)` и эмитим `sintagma:proxy-restored`, чтобы UI обновился.
+
+Это вернёт всех клиентов на `sintagma.com.ru` обратно на прямой канал автоматически, без действий пользователя.
+
+### 3. Одноразовый сброс залипшего флага (миграция)
+
+Добавить новый ключ `sintagma:proxy-reset-v3`. На загрузке, если ключа нет — `localStorage.removeItem('sintagma:use-proxy')` и `localStorage.removeItem('sintagma:proxy-last-probe')`, затем выставляем флаг. Это гарантированно «разлепит» всех существующих клиентов один раз после релиза.
+
+На `FORCE_PROXY_HOSTS_EXACT` сброс не влияет (там `isForcedProxyHost()` всё равно вернёт `true`).
+
+### 4. Диагностика на странице `/connection-check`
+
+В компоненте `ProxyChannelIndicator` / на `/connection-check` уже есть статус прокси. Добавить туда:
+
+- Текущий режим (`direct` / `proxy` / `forced-proxy`).
+- Кнопку «Сбросить прокси и попробовать прямой канал» — она дергает `forceProxyMode(false)` + `localStorage.removeItem('sintagma:proxy-last-probe')` + `location.reload()`.
+
+Это даст клиенту (и нам) ручной выход, если автоматика не отработает.
+
+## Что НЕ трогаем
+
+- RLS, edge functions, миграции БД — проблема не там.
+- NGINX на Timeweb VDS (это вне Lovable; параллельно стоит проверить, что `api.синтагма.рф` сейчас вообще отвечает Supabase, но это уже отдельный шаг администратора сервера).
+- Кабинет «Центр квалификации и экспертизы» — починится сам, как только канал к Supabase оживёт.
+
+## После релиза — что должно случиться у клиентов
+
+1. Клиент на `sintagma.com.ru` открывает кабинет → ранний `probeDirectChannel` за секунду проверяет прямой канал → флаг прокси снимается → курсы и ученики снова видны.
+2. Клиент на `синтагма.рф`, если NGINX до сих пор отдаёт HTML, увидит явный баннер «обходной канал недоступен» вместо пустых таблиц.
+3. Админ снова сможет войти — refresh-token пойдёт напрямую.
