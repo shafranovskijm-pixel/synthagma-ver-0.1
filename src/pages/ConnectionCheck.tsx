@@ -181,3 +181,28 @@ function ProbeRow({ probe }: { probe: ProbeResult }) {
     </div>
   );
 }
+
+function ProxyChannelPanel() {
+  const status = getProxyStatus();
+  if (!status.enabled && !status.forced) return null;
+  const handleReset = () => {
+    resetProxyChannel();
+    window.location.reload();
+  };
+  return (
+    <div className="rounded-xl p-4 my-4 border bg-muted/30">
+      <div className="font-medium text-sm mb-1">Канал к серверу</div>
+      <div className="text-xs text-muted-foreground mb-3">
+        {status.forced
+          ? 'Используется резервный канал (синтагма.рф). Прямой доступ к Supabase заблокирован у вашего провайдера.'
+          : 'Сейчас запросы идут через резервный канал. Если данные не подгружаются — сбросьте канал и попробуйте прямой.'}
+      </div>
+      {!status.forced && (
+        <Button onClick={handleReset} variant="outline" size="sm">
+          <RefreshCw className="w-4 h-4 mr-2" />
+          Сбросить и попробовать прямой канал
+        </Button>
+      )}
+    </div>
+  );
+}
