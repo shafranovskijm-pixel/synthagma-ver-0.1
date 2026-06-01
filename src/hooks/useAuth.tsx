@@ -25,9 +25,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
   
   const roleFetchInFlight = useRef<string | null>(null);
-  const signInInProgress = useRef(false);
-  const hadSession = useRef(false);
-  const recoveryInProgress = useRef(false);
+  const authInitialized = useRef(false);
 
   const fetchUserRole = useCallback(async (userId: string): Promise<AuthContextType['userRole']> => {
     if (roleFetchInFlight.current === userId) return null;
@@ -51,33 +49,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return null;
     } finally {
       roleFetchInFlight.current = null;
-    }
-  }, []);
-
-  // Simple session recovery: wait and retry once
-  const attemptSessionRecovery = useCallback(async () => {
-    if (recoveryInProgress.current) return;
-    recoveryInProgress.current = true;
-    
-    
-    await new Promise(resolve => setTimeout(resolve, 2000));
-    
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session) {
-        setSession(session);
-        setUser(session.user);
-        hadSession.current = true;
-      } else {
-        setUser(null);
-        setSession(null);
-        setUserRole(null);
-        localStorage.removeItem('user_role');
-        hadSession.current = false;
-      }
-    } catch {
-    } finally {
-      recoveryInProgress.current = false;
     }
   }, []);
 
@@ -121,33 +92,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           return;
         }
         
-        if (signInInProgress.current) {
-          if (session) {
-            setSession(session);
-            setUser(session.user);
-          }
-          return;
-        }
-        
         if (event === 'SIGNED_OUT') {
           setSession(null);
           setUser(null);
           setUserRole(null);
           localStorage.removeItem('user_role');
-          hadSession.current = false;
           return;
         }
         
         if (session?.user) {
           setSession(session);
           setUser(session.user);
-          hadSession.current = true;
           
           setTimeout(() => {
             fetchUserRole(session.user.id);
           }, 0);
-        } else if (!session && hadSession.current) {
-          attemptSessionRecovery();
+        } else if (authInitialized.current) {
+          setSession(null);
+          setUser(null);
+          setUserRole(null);
+          localStorage.removeItem('user_role');
         }
       }
     );
@@ -158,9 +122,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const { data: { session } } = await supabase.auth.getSession();
         setSession(session);
         setUser(session?.user ?? null);
+        authInitialized.current = true;
 
         if (session?.user) {
-          hadSession.current = true;
           await fetchUserRole(session.user.id);
         } else {
           localStorage.removeItem('user_role');
@@ -179,11 +143,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       window.removeEventListener('storage', handleStorageChange);
     };
-  }, [fetchUserRole, attemptSessionRecovery]);
+  }, [fetchUserRole]);
 
   const signIn = async (email: string, password: string) => {
-    signInInProgress.current = true;
-    
     try {
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
@@ -191,7 +153,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       });
       
       if (!error && data?.user) {
-        hadSession.current = true;
         setSession(data.session);
         setUser(data.user);
         
@@ -215,10 +176,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
       
       return { error };
-    } finally {
-      setTimeout(() => {
-        signInInProgress.current = false;
-      }, 3000);
     }
   };
 
@@ -239,7 +196,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const signOut = async () => {
-    hadSession.current = false;
     await supabase.auth.signOut();
     setUser(null);
     setSession(null);
