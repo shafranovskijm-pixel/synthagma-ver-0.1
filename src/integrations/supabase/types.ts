@@ -5786,6 +5786,7 @@ export type Database = {
           ogrn: string | null
           paid_until: string | null
           phone: string | null
+          platform_kinescope_folder_id: string | null
           promo_code: string | null
           public_slug: string | null
           signature_url: string | null
@@ -5844,6 +5845,7 @@ export type Database = {
           ogrn?: string | null
           paid_until?: string | null
           phone?: string | null
+          platform_kinescope_folder_id?: string | null
           promo_code?: string | null
           public_slug?: string | null
           signature_url?: string | null
@@ -5902,6 +5904,7 @@ export type Database = {
           ogrn?: string | null
           paid_until?: string | null
           phone?: string | null
+          platform_kinescope_folder_id?: string | null
           promo_code?: string | null
           public_slug?: string | null
           signature_url?: string | null
