@@ -7,6 +7,7 @@ import {
   sanitizeFromDict,
   sanitizeText,
   sanitizeProfessionName,
+  sanitizeProfessionalArea,
   stripInvisibles,
 } from "../frdoFileSanitizer";
 import { FRDO_TRAINING_FORMS, FRDO_FINANCING_SOURCES } from "@/constants/frdo";
@@ -220,5 +221,35 @@ describe("buildColumnMap fuzzy + positional fallback", () => {
     ]);
     const r = await parseFrdoXlsx(file, "po");
     expect(String(r.rows[0].cells[11].value)).toBe("Охранник");
+  });
+});
+
+describe("sanitizeProfessionalArea (classifier match)", () => {
+  // Re-import to avoid TDZ since file already imports symbols at top
+  
+
+  it("normalizes single-space variant of 'Сервис...' to canonical double-space classifier value", () => {
+    const singleSpace =
+      "Сервис, оказание услуг населению (торговля, техническое обслуживание, ремонт, предоставление персональных услуг, услуги гостеприимства, общественное питание и пр.)";
+    const r = sanitizeProfessionalArea(singleSpace);
+    expect(r.value).toContain("персональных услуг,  услуги гостеприимства"); // double space
+    expect(r.fixed).toBe(true);
+  });
+
+  it("maps legacy 'Безопасность' to 'Обеспечение безопасности'", () => {
+    const r = sanitizeProfessionalArea("Безопасность");
+    expect(r.value).toBe("Обеспечение безопасности");
+    expect(r.fixed).toBe(true);
+  });
+
+  it("returns reason when value is not in the classifier", () => {
+    const r = sanitizeProfessionalArea("Какая-то невнятная область XYZ");
+    expect(r.fixed).toBe(false);
+    expect(r.reason).toMatch(/классификатор/);
+  });
+
+  it("keeps canonical value untouched", () => {
+    const r = sanitizeProfessionalArea("Здравоохранение");
+    expect(r.value).toBe("Здравоохранение");
   });
 });

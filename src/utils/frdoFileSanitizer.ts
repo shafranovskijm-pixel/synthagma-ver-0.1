@@ -19,6 +19,7 @@ import {
   FRDO_FINANCING_SOURCES,
   FRDO_EDUCATION_FORMS,
   FRDO_EDUCATION_LEVELS,
+  FRDO_PROFESSIONAL_AREAS,
 } from "@/constants/frdo";
 
 // ============================================================
@@ -194,15 +195,21 @@ export function sanitizeGender(raw: unknown): SanitizedCell {
 // ============================================================
 
 function fuzzyMatch(value: string, options: readonly string[]): string | null {
-  const norm = normalizeWhitespace(stripInvisibles(value)).toLowerCase();
+  // Нормализуем пробелы (в т.ч. схлопываем двойные) только для СРАВНЕНИЯ —
+  // возвращаем при этом оригинальное значение из словаря (с эталонными
+  // пробелами и регистром), чтобы пройти валидацию ФИС ФРДО посимвольно.
+  const normCmp = (s: string) =>
+    normalizeWhitespace(stripInvisibles(s)).toLowerCase();
+  const norm = normCmp(value);
   if (!norm) return null;
-  // exact (без регистра)
-  const exact = options.find((o) => o.toLowerCase() === norm);
+  // exact (по нормализованному сравнению)
+  const exact = options.find((o) => normCmp(o) === norm);
   if (exact) return exact;
   // contains в обе стороны
-  const contains = options.find(
-    (o) => o.toLowerCase().includes(norm) || norm.includes(o.toLowerCase()),
-  );
+  const contains = options.find((o) => {
+    const on = normCmp(o);
+    return on.includes(norm) || norm.includes(on);
+  });
   return contains ?? null;
 }
 
@@ -212,6 +219,45 @@ export function sanitizeFromDict(raw: unknown, dict: readonly string[]): Sanitiz
   const matched = fuzzyMatch(original, dict);
   if (matched) return { value: matched, fixed: matched !== original };
   return { value: original, fixed: false, reason: "Значение не из справочника" };
+}
+
+/** Алиасы старых/устаревших значений колонки L → актуальный классификатор ФИС ФРДО. */
+const PROFESSIONAL_AREA_LEGACY_ALIASES: Record<string, string> = {
+  "безопасность": "Обеспечение безопасности",
+  "информация и связь": "Связь, информационные и коммуникационные технологии",
+  "торговля и сфера услуг":
+    "Сервис, оказание услуг населению (торговля, техническое обслуживание, ремонт, предоставление персональных услуг,  услуги гостеприимства, общественное питание и пр.)",
+  "финансы и страхование": "Финансы и экономика",
+  "издательское дело, средства массовой информации и индустрия развлечений":
+    "Средства массовой информации, издательство и полиграфия",
+  "жилищно-коммунальное хозяйство": "Строительство и жилищно-коммунальное хозяйство",
+  "строительство": "Строительство и жилищно-коммунальное хозяйство",
+  "рыбоводство, рыболовство": "Рыбоводство и рыболовство",
+  "производство пищевых продуктов, включая напитки":
+    "Пищевая промышленность, включая производство напитков и табака",
+  "металлургическое производство":
+    "Сквозные виды профессиональной деятельности в промышленности",
+  "обслуживание и ремонт автотранспортных средств": "Транспорт",
+  "добыча, переработка, транспортировка нефти, газа и угля":
+    "Добыча, переработка, транспортировка нефти и газа",
+  "культура и искусство": "Культура, искусство",
+};
+
+export function sanitizeProfessionalArea(raw: unknown): SanitizedCell {
+  const original = String(raw ?? "");
+  if (!original.trim()) return { value: "", fixed: false };
+  // 1) Прямой матч по словарю (учитывает двойной пробел в «Сервис…»)
+  const matched = fuzzyMatch(original, FRDO_PROFESSIONAL_AREAS);
+  if (matched) return { value: matched, fixed: matched !== original };
+  // 2) Маппинг устаревших значений
+  const key = normalizeWhitespace(stripInvisibles(original)).toLowerCase();
+  const legacy = PROFESSIONAL_AREA_LEGACY_ALIASES[key];
+  if (legacy) return { value: legacy, fixed: true, reason: "Заменено на актуальное значение классификатора ФИС ФРДО" };
+  return {
+    value: original,
+    fixed: false,
+    reason: "Область проф. деятельности не из классификатора ФИС ФРДО",
+  };
 }
 
 // ============================================================
@@ -288,6 +334,7 @@ type CellKind =
   | "education_form"
   | "education_level"
   | "profession"
+  | "professional_area"
   | "static_original"
   | "static_no"
   | "auto_reg_number";
@@ -329,7 +376,7 @@ const DPO_META: ColumnMeta[] = [
   { header: DPO_HEADERS[8], aliases: a(...REG_NUMBER_ALIASES), kind: "auto_reg_number", defaultValue: "нет" },
   { header: DPO_HEADERS[9], aliases: a("дополнительная профессиональная программа", "дпо программа", "вид программы"), kind: "text" },
   { header: DPO_HEADERS[10], aliases: a("наименование дополнительной профессиональной программы", "наименование программы", "программа", "название программы", "программа обучения", "наименование курса"), kind: "text", required: true },
-  { header: DPO_HEADERS[11], aliases: a("наименование области профессиональной деятельности", "область деятельности", "область профессиональной деятельности"), kind: "text" },
+  { header: DPO_HEADERS[11], aliases: a("наименование области профессиональной деятельности", "область деятельности", "область профессиональной деятельности"), kind: "professional_area" },
   { header: DPO_HEADERS[12], aliases: a("укрупненные группы специальностей", "группа специальностей", "укрупненная группа"), kind: "text" },
   { header: DPO_HEADERS[13], aliases: a("наименование квалификации профессии специальности", "квалификация", "наименование квалификации"), kind: "profession" },
   { header: DPO_HEADERS[14], aliases: a("уровень образования во спо", "уровень образования"), kind: "education_level" },
@@ -416,6 +463,7 @@ function sanitizeByKind(raw: unknown, kind: CellKind, fallback?: string | number
     case "education_level": return sanitizeFromDict(raw, FRDO_EDUCATION_LEVELS);
     case "number": return sanitizeNumber(raw);
     case "profession": return sanitizeProfessionName(raw);
+    case "professional_area": return sanitizeProfessionalArea(raw);
     case "auto_reg_number": {
       const t = sanitizeText(raw);
       if (!t.value) return { value: fallback ?? "нет", fixed: true, reason: "Регистрационный номер не указан — подставлено 'нет'" };
