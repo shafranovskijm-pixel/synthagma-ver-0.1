@@ -376,7 +376,7 @@ const DPO_META: ColumnMeta[] = [
   { header: DPO_HEADERS[8], aliases: a(...REG_NUMBER_ALIASES), kind: "auto_reg_number", defaultValue: "нет" },
   { header: DPO_HEADERS[9], aliases: a("дополнительная профессиональная программа", "дпо программа", "вид программы"), kind: "text" },
   { header: DPO_HEADERS[10], aliases: a("наименование дополнительной профессиональной программы", "наименование программы", "программа", "название программы", "программа обучения", "наименование курса"), kind: "text", required: true },
-  { header: DPO_HEADERS[11], aliases: a("наименование области профессиональной деятельности", "область деятельности", "область профессиональной деятельности"), kind: "text" },
+  { header: DPO_HEADERS[11], aliases: a("наименование области профессиональной деятельности", "область деятельности", "область профессиональной деятельности"), kind: "professional_area" },
   { header: DPO_HEADERS[12], aliases: a("укрупненные группы специальностей", "группа специальностей", "укрупненная группа"), kind: "text" },
   { header: DPO_HEADERS[13], aliases: a("наименование квалификации профессии специальности", "квалификация", "наименование квалификации"), kind: "profession" },
   { header: DPO_HEADERS[14], aliases: a("уровень образования во спо", "уровень образования"), kind: "education_level" },
