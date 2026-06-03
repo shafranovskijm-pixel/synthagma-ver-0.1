@@ -109,9 +109,9 @@ export function LoginBrandingSettings({
       
       setBranding(prev => ({ ...prev, backgroundUrl: publicUrl }));
       toast.success('Фоновое изображение загружено');
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error uploading background:', error);
-      toast.error('Ошибка загрузки изображения');
+      toast.error('Ошибка загрузки изображения', { description: error?.message || 'Неизвестная ошибка' });
     } finally {
       setIsUploadingBg(false);
     }
@@ -143,9 +143,9 @@ export function LoginBrandingSettings({
       
       setBranding(prev => ({ ...prev, logoUrl: publicUrl }));
       toast.success('Логотип загружен');
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error uploading logo:', error);
-      toast.error('Ошибка загрузки логотипа');
+      toast.error('Ошибка загрузки логотипа', { description: error?.message || 'Неизвестная ошибка' });
     } finally {
       setIsUploadingLogo(false);
     }

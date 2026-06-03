@@ -219,7 +219,10 @@ export function OrgProfileTab({ organizationId, initialSubTab }: ProfileTabProps
       await supabase.from("organizations").update({ branding: { ...current, logoUrl: publicUrl } }).eq("id", organizationId);
       setOrgLogoUrl(publicUrl);
       toast.success("Значок организации обновлён");
-    } catch (err: any) { toast.error("Ошибка загрузки: " + err.message); }
+    } catch (err: any) {
+      console.error('[OrgProfile] Icon upload failed:', err);
+      toast.error("Не удалось загрузить логотип", { description: err?.message || "Неизвестная ошибка" });
+    }
     finally { setIsUploadingIcon(false); if (e.target) e.target.value = ""; }
   };
 
@@ -245,7 +248,10 @@ export function OrgProfileTab({ organizationId, initialSubTab }: ProfileTabProps
       await supabase.from("profiles").update({ avatar_url: publicUrl } as any).eq("user_id", user.id);
       setProfile(p => ({ ...p, avatar_url: publicUrl }));
       toast.success("Аватар обновлён");
-    } catch (err: any) { toast.error("Ошибка загрузки: " + err.message); }
+    } catch (err: any) {
+      console.error('[OrgProfile] Avatar upload failed:', err);
+      toast.error("Не удалось загрузить аватар", { description: err?.message || "Неизвестная ошибка" });
+    }
     finally { setIsUploadingAvatar(false); if (e.target) e.target.value = ""; }
   };
 
