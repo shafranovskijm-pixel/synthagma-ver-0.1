@@ -226,15 +226,26 @@ const JoinByLink = () => {
 
       navigate('/student');
     } catch (err: any) {
-      let errorMessage = err.message;
-      if (err.message.includes("already registered")) {
-        errorMessage = "Пользователь с таким email уже зарегистрирован";
+      console.error('[JoinByLink] Registration error:', err);
+      let errorMessage = err?.message || "Не удалось завершить регистрацию. Попробуйте ещё раз.";
+      const lower = String(err?.message || '').toLowerCase();
+      if (lower.includes("already registered") || lower.includes("user already")) {
+        errorMessage = "Пользователь с таким email уже зарегистрирован. Войдите в существующий аккаунт.";
+      } else if (lower.includes("rate limit")) {
+        errorMessage = "Слишком много попыток регистрации. Подождите несколько минут и попробуйте снова.";
+      } else if (lower.includes("password")) {
+        errorMessage = "Пароль не соответствует требованиям (минимум 6 символов).";
+      } else if (lower.includes("invalid email") || lower.includes("email_address_invalid")) {
+        errorMessage = "Неверный формат email. Проверьте адрес и попробуйте снова.";
+      } else if (lower.includes("failed to fetch") || lower.includes("network")) {
+        errorMessage = "Нет соединения с сервером. Проверьте интернет/VPN и повторите.";
       }
-      toast.error("Ошибка регистрации", { description: "errorMessage" });
+      toast.error("Ошибка регистрации", { description: errorMessage });
     } finally {
       setIsSubmitting(false);
     }
   };
+
 
   if (loading || authLoading) {
     return (
