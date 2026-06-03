@@ -226,7 +226,7 @@ describe("buildColumnMap fuzzy + positional fallback", () => {
 
 describe("sanitizeProfessionalArea (classifier match)", () => {
   // Re-import to avoid TDZ since file already imports symbols at top
-  const { sanitizeProfessionalArea } = require("../frdoFileSanitizer");
+  
 
   it("normalizes single-space variant of 'Сервис...' to canonical double-space classifier value", () => {
     const singleSpace =
