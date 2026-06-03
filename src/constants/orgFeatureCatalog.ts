@@ -35,9 +35,9 @@ export const ORG_FEATURE_CATALOG: OrgFeatureDef[] = [
   {
     key: "kinescope",
     label: "Видеосервис+",
-    description: "Загрузка видео >2 ГБ через защищённый видеохостинг",
+    description: "Защищённый видеохостинг Kinescope включён для всех тарифов бесплатно",
     icon: Video,
-    minPlan: "professional",
+    minPlan: "free",
     planFlag: "kinescopeEnabled",
     link: "/feature/video-service",
   },
