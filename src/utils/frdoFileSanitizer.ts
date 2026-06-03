@@ -463,6 +463,7 @@ function sanitizeByKind(raw: unknown, kind: CellKind, fallback?: string | number
     case "education_level": return sanitizeFromDict(raw, FRDO_EDUCATION_LEVELS);
     case "number": return sanitizeNumber(raw);
     case "profession": return sanitizeProfessionName(raw);
+    case "professional_area": return sanitizeProfessionalArea(raw);
     case "auto_reg_number": {
       const t = sanitizeText(raw);
       if (!t.value) return { value: fallback ?? "нет", fixed: true, reason: "Регистрационный номер не указан — подставлено 'нет'" };
