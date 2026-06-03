@@ -147,15 +147,26 @@ export function useCourseStudentsManager(organizationId: string | null) {
         progress: 0
       }));
       
-      const { error } = await supabase.from("enrollments").insert(enrollmentsToInsert);
-      if (error) throw error;
-      
+      // Retry up to 3 times with exponential backoff for transient network/RLS issues
+      let lastError: unknown = null;
+      let inserted = false;
+      for (let attempt = 0; attempt < 3; attempt++) {
+        if (attempt > 0) await new Promise(r => setTimeout(r, 1000 * Math.pow(2, attempt - 1)));
+        const { error } = await supabase.from("enrollments").insert(enrollmentsToInsert);
+        if (!error) { inserted = true; break; }
+        lastError = error;
+        console.warn(`[enrollments] insert attempt ${attempt + 1} failed:`, error);
+      }
+      if (!inserted) throw lastError;
+
       toast.success(`Зачислено ${newUserIds.length} учеников`);
       setSelectedStudentsToAdd(new Set());
       openCourseStudents(selectedCourse);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error adding students to course:", error);
-      toast.error("Ошибка зачисления");
+      const msg = error?.message || error?.error_description || "";
+      toast.error("Ошибка зачисления", { description: msg || "Попробуйте ещё раз через минуту" });
+
     } finally {
       setIsAddingStudentsToCourse(false);
     }

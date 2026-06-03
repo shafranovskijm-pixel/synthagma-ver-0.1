@@ -225,14 +225,17 @@ export function DocumentArchiveView({
                           size="icon"
                           onClick={async () => {
                             try {
-                              const { data } = await supabase.storage.from("org-documents").createSignedUrl(doc.file_url!, 3600);
-                              if (!data?.signedUrl) return;
+                              const { data, error } = await supabase.storage.from("org-documents").createSignedUrl(doc.file_url!, 3600);
+                              if (error) throw error;
+                              if (!data?.signedUrl) throw new Error("Не удалось получить ссылку на файл");
                               const res = await fetch(data.signedUrl);
+                              if (!res.ok) throw new Error(`Файл недоступен (${res.status})`);
                               const text = await res.text();
                               const blob = new Blob([text], { type: "text/html;charset=utf-8" });
                               window.open(URL.createObjectURL(blob), "_blank");
                             } catch (e) {
                               console.error("Error viewing document:", e);
+                              toast.error("Не удалось открыть документ", { description: getErrorMessage(e) });
                             }
                           }}
                           title="Просмотр"
@@ -244,12 +247,14 @@ export function DocumentArchiveView({
                           size="icon"
                           onClick={async () => {
                             try {
-                              const { data } = await supabase.storage.from("org-documents").createSignedUrl(doc.file_url!, 3600);
-                              if (!data?.signedUrl) return;
+                              const { data, error } = await supabase.storage.from("org-documents").createSignedUrl(doc.file_url!, 3600);
+                              if (error) throw error;
+                              if (!data?.signedUrl) throw new Error("Не удалось получить ссылку на файл");
                               const { downloadHtmlFile } = await import("@/utils/downloadHtmlFile");
                               await downloadHtmlFile(data.signedUrl, doc.name);
                             } catch (e) {
                               console.error("Error downloading document:", e);
+                              toast.error("Не удалось скачать документ", { description: getErrorMessage(e) });
                             }
                           }}
                           title="Скачать"
@@ -258,6 +263,7 @@ export function DocumentArchiveView({
                         </Button>
                       </>
                     )}
+
                     <Button
                       variant="ghost"
                       size="icon"
