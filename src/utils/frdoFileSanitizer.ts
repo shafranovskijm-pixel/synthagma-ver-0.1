@@ -195,24 +195,61 @@ export function sanitizeGender(raw: unknown): SanitizedCell {
 // ============================================================
 
 function fuzzyMatch(value: string, options: readonly string[]): string | null {
-  const norm = normalizeWhitespace(stripInvisibles(value)).toLowerCase();
+  // Нормализуем пробелы (в т.ч. схлопываем двойные) только для СРАВНЕНИЯ —
+  // возвращаем при этом оригинальное значение из словаря (с эталонными
+  // пробелами и регистром), чтобы пройти валидацию ФИС ФРДО посимвольно.
+  const normCmp = (s: string) =>
+    normalizeWhitespace(stripInvisibles(s)).toLowerCase();
+  const norm = normCmp(value);
   if (!norm) return null;
-  // exact (без регистра)
-  const exact = options.find((o) => o.toLowerCase() === norm);
+  // exact (по нормализованному сравнению)
+  const exact = options.find((o) => normCmp(o) === norm);
   if (exact) return exact;
   // contains в обе стороны
-  const contains = options.find(
-    (o) => o.toLowerCase().includes(norm) || norm.includes(o.toLowerCase()),
-  );
+  const contains = options.find((o) => {
+    const on = normCmp(o);
+    return on.includes(norm) || norm.includes(on);
+  });
   return contains ?? null;
 }
 
-export function sanitizeFromDict(raw: unknown, dict: readonly string[]): SanitizedCell {
+/** Алиасы старых/устаревших значений колонки L → актуальный классификатор ФИС ФРДО. */
+const PROFESSIONAL_AREA_LEGACY_ALIASES: Record<string, string> = {
+  "безопасность": "Обеспечение безопасности",
+  "информация и связь": "Связь, информационные и коммуникационные технологии",
+  "торговля и сфера услуг":
+    "Сервис, оказание услуг населению (торговля, техническое обслуживание, ремонт, предоставление персональных услуг,  услуги гостеприимства, общественное питание и пр.)",
+  "финансы и страхование": "Финансы и экономика",
+  "издательское дело, средства массовой информации и индустрия развлечений":
+    "Средства массовой информации, издательство и полиграфия",
+  "жилищно-коммунальное хозяйство": "Строительство и жилищно-коммунальное хозяйство",
+  "строительство": "Строительство и жилищно-коммунальное хозяйство",
+  "рыбоводство, рыболовство": "Рыбоводство и рыболовство",
+  "производство пищевых продуктов, включая напитки":
+    "Пищевая промышленность, включая производство напитков и табака",
+  "металлургическое производство":
+    "Сквозные виды профессиональной деятельности в промышленности",
+  "обслуживание и ремонт автотранспортных средств": "Транспорт",
+  "добыча, переработка, транспортировка нефти, газа и угля":
+    "Добыча, переработка, транспортировка нефти и газа",
+  "культура и искусство": "Культура, искусство",
+};
+
+export function sanitizeProfessionalArea(raw: unknown): SanitizedCell {
   const original = String(raw ?? "");
   if (!original.trim()) return { value: "", fixed: false };
-  const matched = fuzzyMatch(original, dict);
+  // 1) Прямой матч по словарю (учитывает двойной пробел в «Сервис…»)
+  const matched = fuzzyMatch(original, FRDO_PROFESSIONAL_AREAS);
   if (matched) return { value: matched, fixed: matched !== original };
-  return { value: original, fixed: false, reason: "Значение не из справочника" };
+  // 2) Маппинг устаревших значений
+  const key = normalizeWhitespace(stripInvisibles(original)).toLowerCase();
+  const legacy = PROFESSIONAL_AREA_LEGACY_ALIASES[key];
+  if (legacy) return { value: legacy, fixed: true, reason: "Заменено на актуальное значение классификатора ФИС ФРДО" };
+  return {
+    value: original,
+    fixed: false,
+    reason: "Область проф. деятельности не из классификатора ФИС ФРДО",
+  };
 }
 
 // ============================================================
