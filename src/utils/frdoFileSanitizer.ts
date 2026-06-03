@@ -19,6 +19,7 @@ import {
   FRDO_FINANCING_SOURCES,
   FRDO_EDUCATION_FORMS,
   FRDO_EDUCATION_LEVELS,
+  FRDO_PROFESSIONAL_AREAS,
 } from "@/constants/frdo";
 
 // ============================================================
