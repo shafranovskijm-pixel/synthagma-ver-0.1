@@ -334,6 +334,7 @@ type CellKind =
   | "education_form"
   | "education_level"
   | "profession"
+  | "professional_area"
   | "static_original"
   | "static_no"
   | "auto_reg_number";
