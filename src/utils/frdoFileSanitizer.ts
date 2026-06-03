@@ -213,6 +213,14 @@ function fuzzyMatch(value: string, options: readonly string[]): string | null {
   return contains ?? null;
 }
 
+export function sanitizeFromDict(raw: unknown, dict: readonly string[]): SanitizedCell {
+  const original = String(raw ?? "");
+  if (!original.trim()) return { value: "", fixed: false };
+  const matched = fuzzyMatch(original, dict);
+  if (matched) return { value: matched, fixed: matched !== original };
+  return { value: original, fixed: false, reason: "Значение не из справочника" };
+}
+
 /** Алиасы старых/устаревших значений колонки L → актуальный классификатор ФИС ФРДО. */
 const PROFESSIONAL_AREA_LEGACY_ALIASES: Record<string, string> = {
   "безопасность": "Обеспечение безопасности",
