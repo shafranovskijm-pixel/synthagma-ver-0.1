@@ -14,6 +14,7 @@ export function ReferralsManager() {
   const [partners, setPartners] = useState<any[]>([]);
   const [payouts, setPayouts] = useState<any[]>([]);
   const [commissions, setCommissions] = useState<any[]>([]);
+  const [attributionLog, setAttributionLog] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -22,16 +23,19 @@ export function ReferralsManager() {
 
   const loadData = async () => {
     setIsLoading(true);
-    const [p, po, c] = await Promise.all([
+    const [p, po, c, al] = await Promise.all([
       supabase.from("referral_partners").select("*, profiles:user_id(full_name, email)").order("created_at", { ascending: false }),
       supabase.from("referral_payouts").select("*, referral_partners(code, user_id, profiles:user_id(full_name, email))").order("created_at", { ascending: false }),
       supabase.from("referral_commissions").select("*, referral_partners(code), organizations:organization_id(name)").order("created_at", { ascending: false }),
+      supabase.from("referral_attribution_log").select("*, referral_partners:partner_id(code), organizations:organization_id(name)").order("created_at", { ascending: false }).limit(100),
     ]);
     if (p.data) setPartners(p.data);
     if (po.data) setPayouts(po.data);
     if (c.data) setCommissions(c.data);
+    if (al.data) setAttributionLog(al.data);
     setIsLoading(false);
   };
+
 
   const handleUpdateCommission = async (partnerId: string, newPercent: number) => {
     const { error } = await supabase
