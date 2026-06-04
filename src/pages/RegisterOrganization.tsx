@@ -6,6 +6,8 @@ import { Link } from "react-router-dom";
 import { ArrowLeft, Mail, Lock, User, Building, Phone, Search, CheckCircle2, Tag, Check } from "lucide-react";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
 import { useRegisterOrganization } from "@/hooks/useRegisterOrganization";
+import { ReferralBanner } from "@/components/partner/ReferralBanner";
+import { getRefCode } from "@/utils/referralCookie";
 
 
 const RegisterOrganization = () => {
@@ -40,6 +42,8 @@ const RegisterOrganization = () => {
           <SigmaLogo size="lg" className="mb-8" />
           <h1 className="font-display text-3xl font-bold mb-2">Регистрация организации</h1>
           <p className="text-muted-foreground mb-4">Создайте аккаунт для вашей организации</p>
+
+          <div className="mb-4"><ReferralBanner code={getRefCode()} context="register" /></div>
 
 
 
