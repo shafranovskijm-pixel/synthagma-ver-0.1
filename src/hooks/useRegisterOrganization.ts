@@ -163,6 +163,7 @@ export function useRegisterOrganization() {
     window.addEventListener('beforeunload', unloadHandler);
 
     try {
+      const refCodeForReg = getRefCode();
       const { data: regData, error: regError } = await supabase.functions.invoke('register-organization', {
         body: {
           email, password, full_name: contactName,
@@ -171,6 +172,7 @@ export function useRegisterOrganization() {
           legal_address: address || null, director_name: directorName || null,
           subscription_plan: selectedPlan,
           promo_code: promoApplied ? promoCode.trim().toUpperCase() : null,
+          ref_code: refCodeForReg || null,
         },
       });
       if (regError) throw regError;
@@ -178,6 +180,8 @@ export function useRegisterOrganization() {
 
       const orgId = (regData as any)?.organization_id;
       const userId = (regData as any)?.user_id;
+      // Server-side referral attribution already happened in edge — survives signin failure.
+      if ((regData as any)?.referral?.attributed === true) clearRefCode();
 
       // Sign in with the just-created credentials
       const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
@@ -196,16 +200,6 @@ export function useRegisterOrganization() {
         window.removeEventListener('beforeunload', unloadHandler);
         navigate("/login", { replace: true, state: { email } });
         return;
-      }
-
-      const refCode = getRefCode();
-      if (refCode && orgId) {
-        try {
-          await supabase.rpc('register_referral', { p_ref_code: refCode, p_organization_id: orgId });
-          clearRefCode();
-        } catch (referralError) {
-          console.error('Referral registration error:', referralError);
-        }
       }
 
       if (promoApplied && promoCode) {
