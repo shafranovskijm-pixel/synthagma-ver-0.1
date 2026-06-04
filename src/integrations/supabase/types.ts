@@ -6728,6 +6728,7 @@ export type Database = {
           commission_amount: number
           created_at: string
           id: string
+          invoice_id: string | null
           level: number
           organization_id: string
           partner_id: string
@@ -6741,6 +6742,7 @@ export type Database = {
           commission_amount: number
           created_at?: string
           id?: string
+          invoice_id?: string | null
           level?: number
           organization_id: string
           partner_id: string
@@ -6754,6 +6756,7 @@ export type Database = {
           commission_amount?: number
           created_at?: string
           id?: string
+          invoice_id?: string | null
           level?: number
           organization_id?: string
           partner_id?: string

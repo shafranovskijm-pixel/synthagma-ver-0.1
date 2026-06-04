@@ -14,6 +14,7 @@ export function ReferralsManager() {
   const [partners, setPartners] = useState<any[]>([]);
   const [payouts, setPayouts] = useState<any[]>([]);
   const [commissions, setCommissions] = useState<any[]>([]);
+  const [attributionLog, setAttributionLog] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -22,16 +23,19 @@ export function ReferralsManager() {
 
   const loadData = async () => {
     setIsLoading(true);
-    const [p, po, c] = await Promise.all([
+    const [p, po, c, al] = await Promise.all([
       supabase.from("referral_partners").select("*, profiles:user_id(full_name, email)").order("created_at", { ascending: false }),
       supabase.from("referral_payouts").select("*, referral_partners(code, user_id, profiles:user_id(full_name, email))").order("created_at", { ascending: false }),
       supabase.from("referral_commissions").select("*, referral_partners(code), organizations:organization_id(name)").order("created_at", { ascending: false }),
+      supabase.from("referral_attribution_log").select("*, referral_partners:partner_id(code), organizations:organization_id(name)").order("created_at", { ascending: false }).limit(100),
     ]);
     if (p.data) setPartners(p.data);
     if (po.data) setPayouts(po.data);
     if (c.data) setCommissions(c.data);
+    if (al.data) setAttributionLog(al.data);
     setIsLoading(false);
   };
+
 
   const handleUpdateCommission = async (partnerId: string, newPercent: number) => {
     const { error } = await supabase
@@ -116,7 +120,9 @@ export function ReferralsManager() {
           <TabsTrigger value="partners">Партнёры</TabsTrigger>
           <TabsTrigger value="payouts">Выплаты {pendingPayouts > 0 && <Badge variant="destructive" className="ml-2">{pendingPayouts}</Badge>}</TabsTrigger>
           <TabsTrigger value="commissions">Начисления</TabsTrigger>
+          <TabsTrigger value="attribution">Диагностика ссылок</TabsTrigger>
         </TabsList>
+
 
         <TabsContent value="partners">
           <Card>
@@ -259,7 +265,51 @@ export function ReferralsManager() {
             </CardContent>
           </Card>
         </TabsContent>
+
+        <TabsContent value="attribution">
+          <Card>
+            <CardContent className="p-0">
+              <div className="p-4 text-sm text-muted-foreground border-b">
+                Последние 100 попыток атрибуции по реферальным ссылкам. Если статус ≠ <code>success</code>, привязка к партнёру не была создана — смотрите причину.
+              </div>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Когда</TableHead>
+                    <TableHead>Код</TableHead>
+                    <TableHead>Партнёр</TableHead>
+                    <TableHead>Организация</TableHead>
+                    <TableHead>Источник</TableHead>
+                    <TableHead>Статус</TableHead>
+                    <TableHead>Причина</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {attributionLog.length === 0 && (
+                    <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-8">Пока нет записей</TableCell></TableRow>
+                  )}
+                  {attributionLog.map((l) => (
+                    <TableRow key={l.id}>
+                      <TableCell className="whitespace-nowrap text-xs">{new Date(l.created_at).toLocaleString("ru-RU")}</TableCell>
+                      <TableCell><code className="text-xs">{l.ref_code}</code></TableCell>
+                      <TableCell><code className="text-xs">{(l.referral_partners as any)?.code || "—"}</code></TableCell>
+                      <TableCell className="text-xs">{(l.organizations as any)?.name || "—"}</TableCell>
+                      <TableCell className="text-xs">{l.source || "—"}</TableCell>
+                      <TableCell>
+                        <Badge variant={l.status === "success" ? "default" : l.status === "duplicate" ? "secondary" : "destructive"}>
+                          {l.status}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-xs text-muted-foreground max-w-[280px] truncate" title={l.reason || ""}>{l.reason || "—"}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+        </TabsContent>
       </Tabs>
     </div>
   );
 }
+
