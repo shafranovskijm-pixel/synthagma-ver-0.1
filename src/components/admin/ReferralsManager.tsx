@@ -265,7 +265,51 @@ export function ReferralsManager() {
             </CardContent>
           </Card>
         </TabsContent>
+
+        <TabsContent value="attribution">
+          <Card>
+            <CardContent className="p-0">
+              <div className="p-4 text-sm text-muted-foreground border-b">
+                Последние 100 попыток атрибуции по реферальным ссылкам. Если статус ≠ <code>success</code>, привязка к партнёру не была создана — смотрите причину.
+              </div>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Когда</TableHead>
+                    <TableHead>Код</TableHead>
+                    <TableHead>Партнёр</TableHead>
+                    <TableHead>Организация</TableHead>
+                    <TableHead>Источник</TableHead>
+                    <TableHead>Статус</TableHead>
+                    <TableHead>Причина</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {attributionLog.length === 0 && (
+                    <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-8">Пока нет записей</TableCell></TableRow>
+                  )}
+                  {attributionLog.map((l) => (
+                    <TableRow key={l.id}>
+                      <TableCell className="whitespace-nowrap text-xs">{new Date(l.created_at).toLocaleString("ru-RU")}</TableCell>
+                      <TableCell><code className="text-xs">{l.ref_code}</code></TableCell>
+                      <TableCell><code className="text-xs">{(l.referral_partners as any)?.code || "—"}</code></TableCell>
+                      <TableCell className="text-xs">{(l.organizations as any)?.name || "—"}</TableCell>
+                      <TableCell className="text-xs">{l.source || "—"}</TableCell>
+                      <TableCell>
+                        <Badge variant={l.status === "success" ? "default" : l.status === "duplicate" ? "secondary" : "destructive"}>
+                          {l.status}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-xs text-muted-foreground max-w-[280px] truncate" title={l.reason || ""}>{l.reason || "—"}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+        </TabsContent>
       </Tabs>
     </div>
   );
 }
+
