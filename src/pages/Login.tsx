@@ -57,6 +57,13 @@ const Login = () => {
     if (user && !loading) {
       // Wait for userRole to be loaded before navigating
       if (userRole) {
+        // If a "next" param is set and points to an allowed in-app path, honor it.
+        const nextRaw = searchParams.get("next");
+        const next = nextRaw && nextRaw.startsWith("/") && !nextRaw.startsWith("//") ? nextRaw : null;
+        if (next) {
+          navigate(next, { replace: true });
+          return;
+        }
         if (userRole === 'admin') {
           navigate("/admin", { replace: true });
         } else if (userRole === 'organization') {
@@ -68,7 +75,7 @@ const Login = () => {
         }
       }
     }
-  }, [user, userRole, loading, navigate]);
+  }, [user, userRole, loading, navigate, searchParams]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
