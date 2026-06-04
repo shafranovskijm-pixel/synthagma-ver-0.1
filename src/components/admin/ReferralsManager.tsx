@@ -120,7 +120,9 @@ export function ReferralsManager() {
           <TabsTrigger value="partners">Партнёры</TabsTrigger>
           <TabsTrigger value="payouts">Выплаты {pendingPayouts > 0 && <Badge variant="destructive" className="ml-2">{pendingPayouts}</Badge>}</TabsTrigger>
           <TabsTrigger value="commissions">Начисления</TabsTrigger>
+          <TabsTrigger value="attribution">Диагностика ссылок</TabsTrigger>
         </TabsList>
+
 
         <TabsContent value="partners">
           <Card>
