@@ -19,6 +19,7 @@ const RegisterOrganizationSchema = z.object({
   director_name: z.string().optional().nullable(),
   subscription_plan: z.string().optional().nullable(),
   promo_code: z.string().optional().nullable(),
+  ref_code: z.string().optional().nullable(),
 });
 
 Deno.serve(async (req) => {
@@ -34,8 +35,9 @@ Deno.serve(async (req) => {
     const {
       email, password, full_name,
       org_name, phone, inn, kpp, ogrn, legal_address, director_name,
-      subscription_plan, promo_code,
+      subscription_plan, promo_code, ref_code,
     } = parsed.data;
+    const userAgent = req.headers.get('user-agent') || null;
 
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL')!,
@@ -108,7 +110,24 @@ Deno.serve(async (req) => {
     }, { onConflict: 'user_id' });
     if (roleErr) throw roleErr;
 
-    return new Response(JSON.stringify({ success: true, user_id: userId, organization_id: orgId }),
+    // Referral attribution — server-side, BEFORE returning so it survives any client failure
+    let referralResult: unknown = null;
+    if (ref_code && ref_code.trim()) {
+      try {
+        const { data: refData, error: refErr } = await supabase.rpc('register_referral', {
+          p_ref_code: ref_code.trim(),
+          p_organization_id: orgId,
+          p_source: 'register-organization',
+          p_user_agent: userAgent,
+        });
+        if (refErr) console.warn('register_referral failed:', refErr);
+        else referralResult = refData;
+      } catch (refEx) {
+        console.warn('register_referral exception:', refEx);
+      }
+    }
+
+    return new Response(JSON.stringify({ success: true, user_id: userId, organization_id: orgId, referral: referralResult }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
   } catch (e: any) {
     console.error('register-organization error:', e);
