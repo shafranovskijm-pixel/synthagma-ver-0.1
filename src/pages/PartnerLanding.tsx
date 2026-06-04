@@ -14,6 +14,8 @@ import { FloatingParticles } from "@/components/landing/FloatingParticles";
 import { StarfieldCanvas } from "@/components/landing/StarfieldCanvas";
 import { InfiniteMarquee } from "@/components/partner/InfiniteMarquee";
 import { usePartnerLanding } from "@/hooks/usePartnerLanding";
+import { ReferralBanner } from "@/components/partner/ReferralBanner";
+import { getPartnerRef } from "@/utils/referralCookie";
 import {
   steps, benefits, networkLevels, bonuses, whyEasyToSell, caseStudies,
   priceOptions, faqItems, platformStats, downloadMaterials, recommendTargets,
@@ -84,6 +86,7 @@ const PartnerLanding = () => {
               <motion.p className="text-xl text-white/60 mb-10 max-w-2xl mx-auto leading-relaxed" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 1.5, duration: 0.8 }}>
                 3 уровня комиссии • Бонус за оборот +5% • Лидерский бонус +3% • Выплаты 2 года
               </motion.p>
+              <div className="max-w-xl mx-auto mb-6"><ReferralBanner code={getPartnerRef()} context="partner" /></div>
               <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 1.8, duration: 0.6 }}>
                 {isPartner && partnerCode ? (
                   <div className="flex flex-col items-center gap-4">

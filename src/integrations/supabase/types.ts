@@ -5789,6 +5789,7 @@ export type Database = {
           platform_kinescope_folder_id: string | null
           promo_code: string | null
           public_slug: string | null
+          referred_by_partner_id: string | null
           signature_url: string | null
           stamp_url: string | null
           storage_limit_bytes: number
@@ -5848,6 +5849,7 @@ export type Database = {
           platform_kinescope_folder_id?: string | null
           promo_code?: string | null
           public_slug?: string | null
+          referred_by_partner_id?: string | null
           signature_url?: string | null
           stamp_url?: string | null
           storage_limit_bytes?: number
@@ -5907,6 +5909,7 @@ export type Database = {
           platform_kinescope_folder_id?: string | null
           promo_code?: string | null
           public_slug?: string | null
+          referred_by_partner_id?: string | null
           signature_url?: string | null
           stamp_url?: string | null
           storage_limit_bytes?: number
@@ -5920,7 +5923,15 @@ export type Database = {
           updated_at?: string
           website_url?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "organizations_referred_by_partner_id_fkey"
+            columns: ["referred_by_partner_id"]
+            isOneToOne: false
+            referencedRelation: "referral_partners"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       partner_applications: {
         Row: {
@@ -6660,6 +6671,56 @@ export type Database = {
         }
         Relationships: []
       }
+      referral_attribution_log: {
+        Row: {
+          created_at: string
+          id: string
+          ip_address: string | null
+          organization_id: string | null
+          partner_id: string | null
+          reason: string | null
+          ref_code: string
+          source: string | null
+          status: string
+          user_agent: string | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          ip_address?: string | null
+          organization_id?: string | null
+          partner_id?: string | null
+          reason?: string | null
+          ref_code: string
+          source?: string | null
+          status: string
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          ip_address?: string | null
+          organization_id?: string | null
+          partner_id?: string | null
+          reason?: string | null
+          ref_code?: string
+          source?: string | null
+          status?: string
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "referral_attribution_log_partner_id_fkey"
+            columns: ["partner_id"]
+            isOneToOne: false
+            referencedRelation: "referral_partners"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       referral_commissions: {
         Row: {
           amount: number
@@ -6726,6 +6787,7 @@ export type Database = {
       }
       referral_partners: {
         Row: {
+          accepted_terms_at: string | null
           balance: number
           bank_details: string | null
           code: string
@@ -6745,6 +6807,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          accepted_terms_at?: string | null
           balance?: number
           bank_details?: string | null
           code: string
@@ -6764,6 +6827,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          accepted_terms_at?: string | null
           balance?: number
           bank_details?: string | null
           code?: string
@@ -9841,6 +9905,10 @@ export type Database = {
       become_referral_partner:
         | { Args: never; Returns: string }
         | { Args: { p_referred_by?: string }; Returns: string }
+        | {
+            Args: { p_accepted_terms?: boolean; p_referred_by?: string }
+            Returns: string
+          }
       can_use_template: {
         Args: { p_plan: string; p_tier: string }
         Returns: boolean
@@ -10260,10 +10328,20 @@ export type Database = {
         Args: { p_enrollment_id: string }
         Returns: undefined
       }
-      register_referral: {
-        Args: { p_organization_id: string; p_ref_code: string }
-        Returns: undefined
-      }
+      register_referral:
+        | {
+            Args: { p_organization_id: string; p_ref_code: string }
+            Returns: undefined
+          }
+        | {
+            Args: {
+              p_organization_id: string
+              p_ref_code: string
+              p_source?: string
+              p_user_agent?: string
+            }
+            Returns: Json
+          }
       request_signature_changes: {
         Args: { p_summary?: string; p_token: string }
         Returns: undefined
