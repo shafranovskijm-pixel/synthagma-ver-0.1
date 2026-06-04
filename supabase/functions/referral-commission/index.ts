@@ -124,6 +124,7 @@ Deno.serve(async (req) => {
         status: "pending",
         level: p.level,
         source_partner_id: partnerChain[0].id,
+        invoice_id: invoice_id || null,
         bonus_type: null,
       });
 
@@ -138,6 +139,7 @@ Deno.serve(async (req) => {
           status: "pending",
           level: p.level,
           source_partner_id: partnerChain[0].id,
+        invoice_id: invoice_id || null,
           bonus_type: "turnover",
         });
       }
@@ -153,6 +155,7 @@ Deno.serve(async (req) => {
           status: "pending",
           level: p.level,
           source_partner_id: partnerChain[0].id,
+        invoice_id: invoice_id || null,
           bonus_type: "leader",
         });
       }
