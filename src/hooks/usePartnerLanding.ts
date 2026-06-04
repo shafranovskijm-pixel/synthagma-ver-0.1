@@ -33,13 +33,36 @@ export function usePartnerLanding() {
     }
   }, [user]);
 
+  // After login, auto-resume "become partner" intent if it was set
+  useEffect(() => {
+    if (!user) return;
+    try {
+      if (sessionStorage.getItem('partner_intent') === 'become') {
+        sessionStorage.removeItem('partner_intent');
+        if (agreedToTerms || true) {
+          // We can't auto-accept terms on user's behalf — bring them back with a hint
+          toast.info("Чтобы стать партнёром, подтвердите условия и нажмите кнопку.");
+        }
+      }
+    } catch { /* ignore */ }
+  }, [user]);
+
   const handleBecomePartner = async () => {
-    if (!user) { navigate("/login"); return; }
+    if (!agreedToTerms) {
+      toast.error("Подтвердите принятие условий партнёрского соглашения");
+      return;
+    }
+    if (!user) {
+      try { sessionStorage.setItem('partner_intent', 'become'); } catch { /* ignore */ }
+      navigate("/login?next=/partner");
+      return;
+    }
     setIsBecoming(true);
     try {
       const partnerRef = getPartnerRef();
       const { data, error } = await supabase.rpc("become_referral_partner", {
         p_referred_by: partnerRef || null,
+        p_accepted_terms: true,
       });
       if (error) throw error;
       setPartnerCode(data);
