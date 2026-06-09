@@ -132,6 +132,7 @@ export function useFRDOManager(organizationId: string) {
       const { count: baseCount } = await supabase.from("education_document_records").select("*", { count: "exact", head: true }).eq("organization_id", organizationId).gte("created_at", `${year}-01-01`);
       let docCounter = baseCount || 0;
       const rows: (string | number)[][] = [];
+      let skippedEmpty = 0;
       for (const userId of exportUserIds) {
         const student = students.find(s => s.user_id === userId);
         const frdoData = frdoDataMap.get(userId);
@@ -140,6 +141,21 @@ export function useFRDOManager(organizationId: string) {
         const enrollments = enrollmentsMap.get(userId) || [];
         const filteredEnrollments = courseFilter === "all" ? enrollments : enrollments.filter(e => e.course_id === courseFilter);
         const processEnrollment = (enrollment: EnrollmentData | null) => {
+          // Пропускаем «строки-призраки»: нет ни ФИО, ни даты рождения, ни СНИЛС,
+          // ни программы — записывать в ФРДО нечего, иначе ФИС вернёт ошибку
+          // «обязательные ячейки не заполнены».
+          const hasIdentity = Boolean(
+            (data.last_name && data.last_name.trim()) ||
+            (data.first_name && data.first_name.trim()) ||
+            (data.snils && data.snils.trim()) ||
+            (data.birth_date && data.birth_date.trim()),
+          );
+          const hasProgram = Boolean(enrollment?.course_title && enrollment.course_title.trim());
+          if (!hasIdentity || !hasProgram) {
+            skippedEmpty++;
+            return;
+          }
+
           const courseSettings = enrollment ? courses.find(c => c.id === enrollment.course_id) || null : null;
           const courseLike = courseSettings ? { ...courseSettings, title: enrollment?.course_title || courseSettings.title } : (enrollment ? { title: enrollment.course_title } : null);
           const resolved = resolveFRDOFields(data, courseLike);
@@ -167,9 +183,13 @@ export function useFRDOManager(organizationId: string) {
         if (filteredEnrollments.length === 0) processEnrollment(null);
         else filteredEnrollments.forEach(e => processEnrollment(e));
       }
-      if (rows.length === 0) { toast.error("Нет данных для экспорта"); setIsExporting(false); return; }
+      if (rows.length === 0) { toast.error("Нет данных для экспорта — все строки пустые"); setIsExporting(false); return; }
       await exportFRDOExcel(rows, exportType);
-      toast.success(`Экспортировано ${rows.length} записей`);
+      toast.success(
+        skippedEmpty > 0
+          ? `Экспортировано ${rows.length} записей. Пропущено пустых: ${skippedEmpty}`
+          : `Экспортировано ${rows.length} записей`,
+      );
     } catch (error: any) {
       console.error("Export error:", error);
       toast.error(error?.message || "Ошибка экспорта");
