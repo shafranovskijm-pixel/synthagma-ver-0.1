@@ -711,12 +711,20 @@ export async function parseFrdoXlsx(
   const columnMap = buildColumnMap(sourceHeaders, meta);
   const matchedColumns = columnMap.filter((i) => i >= 0).length;
 
+  // Индексы «значимых» колонок: если все они пусты после очистки — строка
+  // считается мусорной (только дефолты/одиночные символы вроде "." или "0")
+  // и выбрасывается из выгрузки.
+  const meaningfulIdx = type === "dpo"
+    ? [0, 6, 10, 21, 22, 24, 26]      // вид док, номер, программа, фамилия, имя, ДР, СНИЛС
+    : [0, 6, 10, 11, 16, 17, 19, 21]; // вид док, номер, программа, профессия, фамилия, имя, ДР, СНИЛС
+
   // Обработка строк после header
   const dataRows = rawRows.slice(headerIdx + 1);
   const rows: SanitizedRow[] = [];
+  let droppedEmptyRows = 0;
   for (let r = 0; r < dataRows.length; r++) {
     const src = dataRows[r] ?? [];
-    // Skip полностью пустых строк
+    // Skip полностью пустых строк (быстрый отсев по сырым данным)
     const hasAny = src.some((v) => v !== null && v !== undefined && String(v).trim() !== "");
     if (!hasAny) continue;
 
@@ -725,6 +733,20 @@ export async function parseFrdoXlsx(
       const raw = srcIdx >= 0 ? src[srcIdx] : undefined;
       return sanitizeByKind(raw, m.kind, m.defaultValue);
     });
+
+    // Если ни одно «значимое» поле не заполнено — это «строка-призрак»
+    // (только дефолты), молча выкидываем.
+    const isMeaningful = meaningfulIdx.some((i) => {
+      const v = cells[i]?.value;
+      if (v === null || v === undefined) return false;
+      const s = String(v).trim();
+      // числовые 0 и одиночные знаки препинания не считаем значимыми
+      return s !== "" && s !== "0" && s !== "." && s !== "-";
+    });
+    if (!isMeaningful) {
+      droppedEmptyRows++;
+      continue;
+    }
 
     const missingRequired = meta
       .map((m, i) => (m.required && !String(cells[i].value).trim() ? m.header : null))
@@ -737,7 +759,7 @@ export async function parseFrdoXlsx(
     });
   }
 
-  return { type, sourceHeaders, columnMap, rows, matchedColumns };
+  return { type, sourceHeaders, columnMap, rows, matchedColumns, droppedEmptyRows };
 }
 
 // ============================================================
