@@ -243,16 +243,67 @@ const PROFESSIONAL_AREA_LEGACY_ALIASES: Record<string, string> = {
   "культура и искусство": "Культура, искусство",
 };
 
+/**
+ * Глубокая нормализация значения для сравнения с классификатором проф. областей:
+ * убирает невидимые/управляющие, схлопывает пробелы, обрезает хвостовые
+ * скобки/точки/запятые, приводит к нижнему регистру.
+ */
+function deepNormalizeArea(s: string): string {
+  return normalizeWhitespace(stripInvisibles(s))
+    .toLowerCase()
+    .replace(/[.,;:)\]\s]+$/u, "")
+    .trim();
+}
+
 export function sanitizeProfessionalArea(raw: unknown): SanitizedCell {
   const original = String(raw ?? "");
   if (!original.trim()) return { value: "", fixed: false };
+
   // 1) Прямой матч по словарю (учитывает двойной пробел в «Сервис…»)
   const matched = fuzzyMatch(original, FRDO_PROFESSIONAL_AREAS);
-  if (matched) return { value: matched, fixed: matched !== original };
-  // 2) Маппинг устаревших значений
+  if (matched) {
+    return {
+      value: matched,
+      fixed: matched !== original,
+      reason: matched !== original ? "Подставлено каноническое значение классификатора ФИС ФРДО" : undefined,
+    };
+  }
+
+  // 2) Deep-normalize: лечит «съеденный» двойной пробел, отрезанную хвостовую
+  // скобку/точку, разную пунктуацию. Возвращаем строго каноническое значение.
+  const normInput = deepNormalizeArea(original);
+  if (normInput) {
+    const exact = FRDO_PROFESSIONAL_AREAS.find((o) => deepNormalizeArea(o) === normInput);
+    if (exact) {
+      return {
+        value: exact,
+        fixed: exact !== original,
+        reason: "Подставлено каноническое значение классификатора ФИС ФРДО",
+      };
+    }
+    // prefix-match (≥ 30 значащих символов в начале совпадают)
+    const PREFIX_LEN = 40;
+    const inputPrefix = normInput.slice(0, PREFIX_LEN);
+    if (inputPrefix.length >= 30) {
+      const byPrefix = FRDO_PROFESSIONAL_AREAS.find((o) => {
+        const np = deepNormalizeArea(o);
+        return np.startsWith(inputPrefix) || inputPrefix.startsWith(np.slice(0, PREFIX_LEN));
+      });
+      if (byPrefix) {
+        return {
+          value: byPrefix,
+          fixed: true,
+          reason: "Подставлено каноническое значение классификатора ФИС ФРДО",
+        };
+      }
+    }
+  }
+
+  // 3) Маппинг устаревших значений
   const key = normalizeWhitespace(stripInvisibles(original)).toLowerCase();
   const legacy = PROFESSIONAL_AREA_LEGACY_ALIASES[key];
   if (legacy) return { value: legacy, fixed: true, reason: "Заменено на актуальное значение классификатора ФИС ФРДО" };
+
   return {
     value: original,
     fixed: false,
