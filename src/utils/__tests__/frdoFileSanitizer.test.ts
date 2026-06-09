@@ -252,4 +252,46 @@ describe("sanitizeProfessionalArea (classifier match)", () => {
     const r = sanitizeProfessionalArea("Здравоохранение");
     expect(r.value).toBe("Здравоохранение");
   });
+
+  it("matches 'Сервис...' without trailing ')'", () => {
+    const truncated =
+      "Сервис, оказание услуг населению (торговля, техническое обслуживание, ремонт, предоставление персональных услуг, услуги гостеприимства, общественное питание и пр.";
+    const r = sanitizeProfessionalArea(truncated);
+    expect(r.value).toContain("персональных услуг,  услуги гостеприимства");
+    expect(r.fixed).toBe(true);
+  });
+});
+
+describe("parseFrdoXlsx — drop ghost rows (only defaults)", () => {
+  it("drops a row that has no name/programme/date/snils (only defaults)", async () => {
+    const headers = [...PO_HEADERS];
+    const goodRow = headers.map((_, i) => {
+      if (i === 0) return "Свидетельство о профессии рабочего, должности служащего";
+      if (i === 6) return "001";
+      if (i === 7) return "01.01.2026";
+      if (i === 10) return "Программа повышения квалификации";
+      if (i === 11) return "Сварщик";
+      if (i === 16) return "Иванов";
+      if (i === 17) return "Иван";
+      if (i === 19) return "01.01.1990";
+      if (i === 20) return "Муж";
+      if (i === 21) return "12345678901";
+      return "";
+    });
+    // Ghost row: только статичные дефолты, ФИО/программа/дата пусты
+    const ghostRow = headers.map((_, i) => {
+      if (i === 1) return "Оригинал";
+      if (i === 2 || i === 3 || i === 4) return "Нет";
+      if (i === 5) return "нет";
+      if (i === 7) return ".";
+      if (i === 8) return "нет";
+      if (i === 13 || i === 14 || i === 15) return "0";
+      if (i === 22) return "643";
+      return "";
+    });
+    const file = await buildXlsxFile(headers, [goodRow, ghostRow]);
+    const r = await parseFrdoXlsx(file, "po");
+    expect(r.rows.length).toBe(1);
+    expect(r.droppedEmptyRows).toBe(1);
+  });
 });
