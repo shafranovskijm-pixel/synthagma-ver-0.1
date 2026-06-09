@@ -849,6 +849,7 @@ export interface SanitizeStats {
   fixedCells: number;
   fixedRows: number;
   missingRequiredRows: number;
+  droppedEmptyRows: number;
 }
 
 export function calcStats(parse: ParseResult): SanitizeStats {
@@ -864,6 +865,13 @@ export function calcStats(parse: ParseResult): SanitizeStats {
     if (r.missingRequired.length > 0) missingRequiredRows++;
   }
   return {
+    totalRows: parse.rows.length,
+    fixedCells,
+    fixedRows,
+    missingRequiredRows,
+    droppedEmptyRows: parse.droppedEmptyRows ?? 0,
+  };
+}
     totalRows: parse.rows.length,
     fixedCells,
     fixedRows,
