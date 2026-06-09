@@ -53,7 +53,10 @@ export interface ParseResult {
   rows: SanitizedRow[];
   /** Количество распознанных колонок источника */
   matchedColumns: number;
+  /** Сколько строк было выброшено как пустых (без значимых данных) */
+  droppedEmptyRows: number;
 }
+
 
 // ============================================================
 // Очистка строк
@@ -243,16 +246,67 @@ const PROFESSIONAL_AREA_LEGACY_ALIASES: Record<string, string> = {
   "культура и искусство": "Культура, искусство",
 };
 
+/**
+ * Глубокая нормализация значения для сравнения с классификатором проф. областей:
+ * убирает невидимые/управляющие, схлопывает пробелы, обрезает хвостовые
+ * скобки/точки/запятые, приводит к нижнему регистру.
+ */
+function deepNormalizeArea(s: string): string {
+  return normalizeWhitespace(stripInvisibles(s))
+    .toLowerCase()
+    .replace(/[.,;:)\]\s]+$/u, "")
+    .trim();
+}
+
 export function sanitizeProfessionalArea(raw: unknown): SanitizedCell {
   const original = String(raw ?? "");
   if (!original.trim()) return { value: "", fixed: false };
+
   // 1) Прямой матч по словарю (учитывает двойной пробел в «Сервис…»)
   const matched = fuzzyMatch(original, FRDO_PROFESSIONAL_AREAS);
-  if (matched) return { value: matched, fixed: matched !== original };
-  // 2) Маппинг устаревших значений
+  if (matched) {
+    return {
+      value: matched,
+      fixed: matched !== original,
+      reason: matched !== original ? "Подставлено каноническое значение классификатора ФИС ФРДО" : undefined,
+    };
+  }
+
+  // 2) Deep-normalize: лечит «съеденный» двойной пробел, отрезанную хвостовую
+  // скобку/точку, разную пунктуацию. Возвращаем строго каноническое значение.
+  const normInput = deepNormalizeArea(original);
+  if (normInput) {
+    const exact = FRDO_PROFESSIONAL_AREAS.find((o) => deepNormalizeArea(o) === normInput);
+    if (exact) {
+      return {
+        value: exact,
+        fixed: exact !== original,
+        reason: "Подставлено каноническое значение классификатора ФИС ФРДО",
+      };
+    }
+    // prefix-match (≥ 30 значащих символов в начале совпадают)
+    const PREFIX_LEN = 40;
+    const inputPrefix = normInput.slice(0, PREFIX_LEN);
+    if (inputPrefix.length >= 30) {
+      const byPrefix = FRDO_PROFESSIONAL_AREAS.find((o) => {
+        const np = deepNormalizeArea(o);
+        return np.startsWith(inputPrefix) || inputPrefix.startsWith(np.slice(0, PREFIX_LEN));
+      });
+      if (byPrefix) {
+        return {
+          value: byPrefix,
+          fixed: true,
+          reason: "Подставлено каноническое значение классификатора ФИС ФРДО",
+        };
+      }
+    }
+  }
+
+  // 3) Маппинг устаревших значений
   const key = normalizeWhitespace(stripInvisibles(original)).toLowerCase();
   const legacy = PROFESSIONAL_AREA_LEGACY_ALIASES[key];
   if (legacy) return { value: legacy, fixed: true, reason: "Заменено на актуальное значение классификатора ФИС ФРДО" };
+
   return {
     value: original,
     fixed: false,
@@ -657,12 +711,20 @@ export async function parseFrdoXlsx(
   const columnMap = buildColumnMap(sourceHeaders, meta);
   const matchedColumns = columnMap.filter((i) => i >= 0).length;
 
+  // Индексы «значимых» колонок: если все они пусты после очистки — строка
+  // считается мусорной (только дефолты/одиночные символы вроде "." или "0")
+  // и выбрасывается из выгрузки.
+  const meaningfulIdx = type === "dpo"
+    ? [0, 6, 10, 21, 22, 24, 26]      // вид док, номер, программа, фамилия, имя, ДР, СНИЛС
+    : [0, 6, 10, 11, 16, 17, 19, 21]; // вид док, номер, программа, профессия, фамилия, имя, ДР, СНИЛС
+
   // Обработка строк после header
   const dataRows = rawRows.slice(headerIdx + 1);
   const rows: SanitizedRow[] = [];
+  let droppedEmptyRows = 0;
   for (let r = 0; r < dataRows.length; r++) {
     const src = dataRows[r] ?? [];
-    // Skip полностью пустых строк
+    // Skip полностью пустых строк (быстрый отсев по сырым данным)
     const hasAny = src.some((v) => v !== null && v !== undefined && String(v).trim() !== "");
     if (!hasAny) continue;
 
@@ -671,6 +733,20 @@ export async function parseFrdoXlsx(
       const raw = srcIdx >= 0 ? src[srcIdx] : undefined;
       return sanitizeByKind(raw, m.kind, m.defaultValue);
     });
+
+    // Если ни одно «значимое» поле не заполнено — это «строка-призрак»
+    // (только дефолты), молча выкидываем.
+    const isMeaningful = meaningfulIdx.some((i) => {
+      const v = cells[i]?.value;
+      if (v === null || v === undefined) return false;
+      const s = String(v).trim();
+      // числовые 0 и одиночные знаки препинания не считаем значимыми
+      return s !== "" && s !== "0" && s !== "." && s !== "-";
+    });
+    if (!isMeaningful) {
+      droppedEmptyRows++;
+      continue;
+    }
 
     const missingRequired = meta
       .map((m, i) => (m.required && !String(cells[i].value).trim() ? m.header : null))
@@ -683,7 +759,7 @@ export async function parseFrdoXlsx(
     });
   }
 
-  return { type, sourceHeaders, columnMap, rows, matchedColumns };
+  return { type, sourceHeaders, columnMap, rows, matchedColumns, droppedEmptyRows };
 }
 
 // ============================================================
@@ -773,6 +849,7 @@ export interface SanitizeStats {
   fixedCells: number;
   fixedRows: number;
   missingRequiredRows: number;
+  droppedEmptyRows: number;
 }
 
 export function calcStats(parse: ParseResult): SanitizeStats {
@@ -792,6 +869,7 @@ export function calcStats(parse: ParseResult): SanitizeStats {
     fixedCells,
     fixedRows,
     missingRequiredRows,
+    droppedEmptyRows: parse.droppedEmptyRows ?? 0,
   };
 }
 
