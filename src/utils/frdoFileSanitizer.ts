@@ -872,12 +872,6 @@ export function calcStats(parse: ParseResult): SanitizeStats {
     droppedEmptyRows: parse.droppedEmptyRows ?? 0,
   };
 }
-    totalRows: parse.rows.length,
-    fixedCells,
-    fixedRows,
-    missingRequiredRows,
-  };
-}
 
 /** Получить заголовки нашего шаблона для превью */
 export function getHeadersForType(type: FrdoSheetType): string[] {
