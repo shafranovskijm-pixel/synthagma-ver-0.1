@@ -132,6 +132,7 @@ export function useFRDOManager(organizationId: string) {
       const { count: baseCount } = await supabase.from("education_document_records").select("*", { count: "exact", head: true }).eq("organization_id", organizationId).gte("created_at", `${year}-01-01`);
       let docCounter = baseCount || 0;
       const rows: (string | number)[][] = [];
+      let skippedEmpty = 0;
       for (const userId of exportUserIds) {
         const student = students.find(s => s.user_id === userId);
         const frdoData = frdoDataMap.get(userId);
