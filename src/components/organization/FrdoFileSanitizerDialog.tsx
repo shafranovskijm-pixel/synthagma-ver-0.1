@@ -221,6 +221,11 @@ export function FrdoFileSanitizerDialog({ open, onOpenChange }: Props) {
               <StatCard icon={Wrench} label="Исправлено ячеек" value={`${stats.fixedCells} (${stats.fixedRows} стр.)`} tone="teal" />
               <StatCard icon={AlertTriangle} label="Пустые обязательные" value={`${stats.missingRequiredRows} стр.`} tone={stats.missingRequiredRows > 0 ? "warn" : "primary"} />
             </div>
+            {stats.droppedEmptyRows > 0 && (
+              <div className="text-xs text-muted-foreground -mt-2">
+                Пропущено пустых строк: <strong>{stats.droppedEmptyRows}</strong> (в исходнике были только дефолтные значения без ФИО/программы — выгружать нечего).
+              </div>
+            )}
 
             {/* Большая зелёная плашка готовности + крупная кнопка скачивания */}
             {stats.missingRequiredRows === 0 && (
