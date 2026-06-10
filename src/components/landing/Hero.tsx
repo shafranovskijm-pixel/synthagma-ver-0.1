@@ -19,7 +19,9 @@ export function Hero({ showStars = true }: { showStars?: boolean }) {
 
 
   return (
+    <>
     <section className={`relative overflow-hidden ${dark ? 'bg-[#0a0e1a]' : 'bg-background'}`}>
+
       {dark && <StarfieldCanvas />}
 
       {/* Decorative glows */}
