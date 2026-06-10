@@ -104,18 +104,18 @@ export function RostechnadzorCourses() {
               <span className="text-sm text-foreground/80 font-medium">Готовые курсы · 14 направлений</span>
             </div>
 
-            <h2 className="font-display text-3xl md:text-4xl font-medium mb-4 tracking-tight">
+            <h2 className="font-display text-3xl md:text-4xl font-medium mb-4 tracking-tight leading-tight">
               300+ готовых курсов
               <br />
-              <span className="text-accent">для обучения сотрудников</span>
+              <span className="text-accent">для быстрого запуска обучения</span>
             </h2>
 
             <div className="w-12 h-px bg-accent/60 mb-6" />
 
             <p className="text-lg text-muted-foreground mb-8 leading-relaxed">
-              Полная библиотека курсов по 14 направлениям: от электробезопасности и охраны труда 
-              до медицины и рабочих профессий. Подключите готовые программы к своей организации — 
-              не нужно разрабатывать контент с нуля.
+              Подключите готовые программы к своей организации и запускайте обучение без разработки
+              контента с нуля. 14 направлений: электробезопасность, охрана труда, пожарная и
+              промышленная безопасность, медицина, рабочие профессии и другие.
             </p>
 
             <div className="space-y-3 mb-8">

@@ -30,11 +30,12 @@ export function BoxedVersionCard() {
                 </span>
               </div>
 
-              <h3 className="font-display text-3xl md:text-4xl font-medium tracking-tight mb-2">
-                Коробочная версия
+              <h3 className="font-display text-3xl md:text-4xl font-medium tracking-tight mb-3 leading-tight">
+                Коробочная версия для организаций с собственной инфраструктурой
               </h3>
-              <p className="text-sm text-muted-foreground mb-6">
-                Полный контроль над платформой и данными на вашей инфраструктуре
+              <p className="text-sm md:text-base text-muted-foreground mb-6 leading-relaxed">
+                Установим СИНТАГМУ на ваш сервер, адаптируем под требования организации и поможем
+                с интеграцией ваших документов.
               </p>
 
               <div className="mb-7">

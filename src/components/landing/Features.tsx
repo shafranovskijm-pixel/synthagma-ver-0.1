@@ -126,17 +126,18 @@ export function Features() {
       <div className="absolute inset-0 bg-gradient-to-b from-background via-secondary/30 to-background" />
 
       {/* Title overlay */}
-      <div className="absolute inset-0 z-20 flex items-center justify-center pointer-events-none">
-        <div className="text-center px-6 py-8 rounded-3xl bg-background/70 backdrop-blur-xl border border-border/30 shadow-2xl max-w-lg">
+      <div className="absolute inset-0 z-20 flex items-center justify-center pointer-events-none px-4">
+        <div className="text-center px-6 py-8 rounded-3xl bg-background/70 backdrop-blur-xl border border-border/30 shadow-2xl max-w-xl">
           <span className="text-sm text-accent font-medium tracking-widest uppercase mb-3 block">
             Платформа
           </span>
-          <h2 className="font-display text-3xl md:text-5xl font-medium mb-4 tracking-tight">
-            Инструменты для обучения
+          <h2 className="font-display text-2xl md:text-4xl font-medium mb-4 tracking-tight leading-tight">
+            Все инструменты учебного центра в одной платформе
           </h2>
           <div className="divider mb-4" />
-          <p className="text-base text-muted-foreground">
-            Полный набор инструментов для дистанционного обучения и документооборота
+          <p className="text-sm md:text-base text-muted-foreground">
+            Дистанционное обучение, документооборот, видеоидентификация, ФИС ФРДО и контроль
+            прохождения — без разрозненных сервисов.
           </p>
         </div>
       </div>
