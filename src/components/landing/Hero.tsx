@@ -125,5 +125,8 @@ export function Hero({ showStars = true }: { showStars?: boolean }) {
         </div>
       </div>
     </section>
+    <DemoVideoDialog open={demoOpen} onOpenChange={setDemoOpen} />
+    </>
   );
 }
+
