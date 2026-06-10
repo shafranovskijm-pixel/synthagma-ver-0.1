@@ -1,9 +1,12 @@
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, Play } from "lucide-react";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
+import { DemoVideoDialog } from "@/components/landing/DemoVideoDialog";
 
 export function FinalCta() {
+  const [demoOpen, setDemoOpen] = useState(false);
   return (
     <section className="py-20 md:py-28 relative overflow-hidden">
       <div className="absolute inset-0 bg-gradient-to-b from-background via-secondary/20 to-background" />
@@ -32,16 +35,22 @@ export function FinalCta() {
                     <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
                   </Button>
                 </Link>
-                <Link to="/demo-join">
-                  <Button size="lg" variant="outline" className="rounded-xl px-8 w-full sm:w-auto">
-                    Посмотреть демо
-                  </Button>
-                </Link>
+                <Button
+                  type="button"
+                  onClick={() => setDemoOpen(true)}
+                  size="lg"
+                  variant="outline"
+                  className="rounded-xl px-8 gap-2 w-full sm:w-auto"
+                >
+                  <Play className="w-4 h-4" />
+                  Посмотреть демо
+                </Button>
               </div>
             </div>
           </div>
         </motion.div>
       </div>
+      <DemoVideoDialog open={demoOpen} onOpenChange={setDemoOpen} />
     </section>
   );
 }
