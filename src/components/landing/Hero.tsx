@@ -176,14 +176,17 @@ export function Hero({ showStars = true }: { showStars?: boolean }) {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, delay: 0.5 }}
-            className="flex justify-center"
+            className="flex flex-col items-center gap-3"
           >
             <Link to="/register-organization">
               <Button size="lg" className="btn-gradient rounded-xl px-10 h-14 text-base gap-2 group shadow-lg shadow-accent/20">
-                Начать бесплатно
+                Оставить заявку на запуск
                 <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
               </Button>
             </Link>
+            <p className={`text-xs ${dark ? 'text-white/40' : 'text-muted-foreground'}`}>
+              Старт за 7 дней · без предоплаты за внедрение
+            </p>
           </motion.div>
         </div>
       </div>
