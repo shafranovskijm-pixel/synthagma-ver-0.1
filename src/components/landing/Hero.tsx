@@ -112,7 +112,7 @@ export function Hero({ showStars = true }: { showStars?: boolean }) {
             className={`inline-flex items-center gap-2 px-5 py-2.5 rounded-full border backdrop-blur-sm mb-10 ${dark ? 'border-white/20 bg-white/5' : 'border-border bg-secondary/50'}`}
           >
             <Sparkles className="w-4 h-4 text-accent" />
-            <span className={`text-sm font-medium ${dark ? 'text-white/80' : 'text-foreground/80'}`}>Система дистанционного обучения</span>
+            <span className={`text-sm font-medium ${dark ? 'text-white/80' : 'text-foreground/80'}`}>Спецпредложение для учебных центров</span>
           </motion.div>
 
           {/* Main headline */}
@@ -122,10 +122,10 @@ export function Hero({ showStars = true }: { showStars?: boolean }) {
             transition={{ duration: 0.8, delay: 0.1 }}
           >
             <h1 className={`font-display text-5xl md:text-6xl lg:text-7xl font-medium leading-[1.1] mb-8 tracking-tight ${dark ? 'text-white' : 'text-foreground'}`}>
-              <TypewriterText text="Обучение и документы" speed={60} delay={400} />
+              <TypewriterText text="Запустим СДО учебному центру" speed={50} delay={400} />
               <br />
               <span className={dark ? 'text-white/50' : 'text-muted-foreground'}>
-                <TypewriterText text="в одной системе" speed={60} delay={1700} />
+                <TypewriterText text="за 7 дней — под ключ" speed={60} delay={2000} />
               </span>
             </h1>
           </motion.div>
