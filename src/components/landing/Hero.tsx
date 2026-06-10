@@ -1,8 +1,11 @@
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { ArrowRight, Sparkles, Check } from "lucide-react";
+import { ArrowRight, Sparkles, Check, Play } from "lucide-react";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { StarfieldCanvas } from "@/components/landing/StarfieldCanvas";
+import { DemoVideoDialog } from "@/components/landing/DemoVideoDialog";
+
 
 const advantages = [
   "Настроим систему под ваш учебный центр",
@@ -12,6 +15,8 @@ const advantages = [
 
 export function Hero({ showStars = true }: { showStars?: boolean }) {
   const dark = showStars;
+  const [demoOpen, setDemoOpen] = useState(false);
+
 
   return (
     <section className={`relative overflow-hidden ${dark ? 'bg-[#0a0e1a]' : 'bg-background'}`}>
@@ -101,15 +106,17 @@ export function Hero({ showStars = true }: { showStars?: boolean }) {
                   <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
                 </Button>
               </Link>
-              <Link to="/demo-join" className="w-full sm:w-auto">
-                <Button
-                  size="lg"
-                  variant="outline"
-                  className={`rounded-xl px-8 h-14 text-base w-full ${dark ? 'border-white/20 bg-white/5 text-white hover:bg-white/10 hover:text-white' : ''}`}
-                >
-                  Посмотреть демо
-                </Button>
-              </Link>
+              <Button
+                type="button"
+                onClick={() => setDemoOpen(true)}
+                size="lg"
+                variant="outline"
+                className={`rounded-xl px-8 h-14 text-base gap-2 w-full sm:w-auto ${dark ? 'border-white/20 bg-white/5 text-white hover:bg-white/10 hover:text-white' : ''}`}
+              >
+                <Play className="w-4 h-4" />
+                Посмотреть демо
+              </Button>
+
             </div>
             <p className={`text-xs ${dark ? 'text-white/40' : 'text-muted-foreground'}`}>
               Старт за 7 дней · Помощь на каждом шаге · Без отдельной платы за внедрение
