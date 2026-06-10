@@ -4,4 +4,4 @@
  * (часть URL после https://kinescope.io/).
  * Если пусто — кнопка "Посмотреть демо" ведёт на /demo-join.
  */
-export const LANDING_DEMO_KINESCOPE_ID = "";
+export const LANDING_DEMO_KINESCOPE_ID = "bHxrVB5srrUxLNcKRBueCk";

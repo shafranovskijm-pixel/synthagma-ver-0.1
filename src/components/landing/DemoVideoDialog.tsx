@@ -19,7 +19,7 @@ export function DemoVideoDialog({ open, onOpenChange }: Props) {
           {LANDING_DEMO_KINESCOPE_ID ? (
             <iframe
               src={src}
-              allow="autoplay; fullscreen; picture-in-picture; encrypted-media; accelerometer; gyroscope"
+              allow="autoplay; fullscreen; picture-in-picture; encrypted-media; accelerometer; gyroscope; clipboard-write; screen-wake-lock"
               allowFullScreen
               frameBorder={0}
               className="absolute inset-0 w-full h-full"
