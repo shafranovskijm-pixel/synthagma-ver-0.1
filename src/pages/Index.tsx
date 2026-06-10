@@ -34,22 +34,20 @@ const Index = () => {
   return (
     <>
       <Helmet>
-        <title>Запустим СДО учебному центру за 7 дней — СИНТАГМА</title>
-        <meta name="description" content="Запустим учебному центру СДО с готовыми курсами и базовым комплектом документов за 7 дней. Брендирование, домен, ФИС ФРДО, обучение администратора — под ключ." />
-        <meta name="keywords" content="СДО под ключ, запуск СДО, учебный центр, дистанционное обучение, ФРДО, 273-ФЗ, готовые курсы, ДПО" />
+        <meta name="description" content="СИНТАГМА — система дистанционного обучения и документооборота для учебных центров. Запуск под ключ за 7 дней: готовые курсы, ФИС ФРДО, ИИ-генерация, документы." />
+        <meta name="keywords" content="СДО, СИНТАГМА, учебный центр, дистанционное обучение, ФРДО, 273-ФЗ, готовые курсы, ДПО" />
         <link rel="canonical" href="https://sintagma.com.ru/" />
 
         <meta property="og:type" content="website" />
         <meta property="og:url" content="https://sintagma.com.ru/" />
-        <meta property="og:title" content="Запустим СДО учебному центру за 7 дней — СИНТАГМА" />
-        <meta property="og:description" content="Запустим учебному центру СДО с готовыми курсами и базовым комплектом документов за 7 дней." />
+        <meta property="og:description" content="СИНТАГМА — система дистанционного обучения и документооборота для учебных центров. Запуск под ключ за 7 дней." />
         <meta property="og:image" content="https://sintagma.com.ru/og-image.png" />
         <meta property="og:locale" content="ru_RU" />
 
         <meta name="twitter:card" content="summary_large_image" />
-        <meta name="twitter:title" content="Запустим СДО учебному центру за 7 дней — СИНТАГМА" />
-        <meta name="twitter:description" content="Запустим учебному центру СДО с готовыми курсами и базовым комплектом документов за 7 дней." />
+        <meta name="twitter:description" content="СИНТАГМА — система дистанционного обучения и документооборота для учебных центров. Запуск под ключ за 7 дней." />
         <meta name="twitter:image" content="https://sintagma.com.ru/og-image.png" />
+
 
         <script type="application/ld+json">
           {JSON.stringify({
