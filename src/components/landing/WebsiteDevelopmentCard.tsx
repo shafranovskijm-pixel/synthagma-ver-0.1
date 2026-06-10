@@ -28,17 +28,17 @@ export function WebsiteDevelopmentCard() {
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 items-center">
               {/* Left */}
               <div>
-                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-accent/10 text-accent mb-5">
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-muted text-muted-foreground mb-5">
                   <Sparkles className="w-3.5 h-3.5" />
-                  Новая услуга
+                  Дополнительная услуга
                 </span>
 
                 <h3 className="font-display text-3xl md:text-4xl font-medium tracking-tight mb-4 leading-tight">
-                  Разработка сайтов для образовательных организаций под ключ
+                  Сайт для образовательной организации под ключ
                 </h3>
                 <p className="text-base text-muted-foreground mb-7 leading-relaxed">
-                  Профессиональный сайт вашего учебного центра с адаптивным дизайном,
-                  формами заявок, каталогом курсов и удобным управлением контентом.
+                  Разработаем сайт учебного центра с каталогом курсов, формами заявок и структурой,
+                  соответствующей требованиям к образовательным организациям.
                 </p>
 
                 <ul className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-8">

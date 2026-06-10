@@ -180,7 +180,7 @@ export function PricingPlans() {
           </h2>
           <div className="divider mb-6" />
           <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-            Начните бесплатно и масштабируйтесь по мере роста
+            Начните бесплатно и масштабируйтесь по мере роста учебного центра.
           </p>
         </motion.div>
 
