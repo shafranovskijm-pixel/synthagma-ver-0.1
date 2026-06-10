@@ -7,11 +7,11 @@ import { TypewriterText } from "@/components/ui/TypewriterText";
 import { StarfieldCanvas } from "@/components/landing/StarfieldCanvas";
 
 const subtitles = [
-  "Создавайте курсы, управляйте документами и отслеживайте прогресс учеников. Полное соответствие требованиям законодательства.",
-  "Дистанционное обучение — запускайте курсы с видео, тестами и ИИ-генерацией за минуты.",
-  "Документооборот — автоматическая генерация приказов, протоколов, удостоверений и дипломов.",
-  "Соответствие 273-ФЗ — видеоидентификация, журналы, ФИС ФРДО и полный комплект ЛОО.",
-  "300+ готовых курсов — охрана труда, пожарная безопасность, промышленная безопасность и не только.",
+  "Запустим учебному центру СДО с готовыми курсами и базовым комплектом документов за 7 дней.",
+  "Готовые курсы: охрана труда, пожарная и промышленная безопасность — сразу доступны ученикам.",
+  "Базовый комплект документов: договоры, приказы, протоколы, удостоверения — настроены под ваш центр.",
+  "Брендирование, домен, выгрузка в ФИС ФРДО — включены в запуск.",
+  "Обучение администратора и поддержка — на всём периоде запуска.",
 ];
 
 export function Hero({ showStars = true }: { showStars?: boolean }) {
@@ -112,7 +112,7 @@ export function Hero({ showStars = true }: { showStars?: boolean }) {
             className={`inline-flex items-center gap-2 px-5 py-2.5 rounded-full border backdrop-blur-sm mb-10 ${dark ? 'border-white/20 bg-white/5' : 'border-border bg-secondary/50'}`}
           >
             <Sparkles className="w-4 h-4 text-accent" />
-            <span className={`text-sm font-medium ${dark ? 'text-white/80' : 'text-foreground/80'}`}>Система дистанционного обучения</span>
+            <span className={`text-sm font-medium ${dark ? 'text-white/80' : 'text-foreground/80'}`}>Спецпредложение для учебных центров</span>
           </motion.div>
 
           {/* Main headline */}
@@ -122,10 +122,10 @@ export function Hero({ showStars = true }: { showStars?: boolean }) {
             transition={{ duration: 0.8, delay: 0.1 }}
           >
             <h1 className={`font-display text-5xl md:text-6xl lg:text-7xl font-medium leading-[1.1] mb-8 tracking-tight ${dark ? 'text-white' : 'text-foreground'}`}>
-              <TypewriterText text="Обучение и документы" speed={60} delay={400} />
+              <TypewriterText text="Запустим СДО учебному центру" speed={50} delay={400} />
               <br />
               <span className={dark ? 'text-white/50' : 'text-muted-foreground'}>
-                <TypewriterText text="в одной системе" speed={60} delay={1700} />
+                <TypewriterText text="за 7 дней — под ключ" speed={60} delay={2000} />
               </span>
             </h1>
           </motion.div>
@@ -176,14 +176,17 @@ export function Hero({ showStars = true }: { showStars?: boolean }) {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, delay: 0.5 }}
-            className="flex justify-center"
+            className="flex flex-col items-center gap-3"
           >
             <Link to="/register-organization">
               <Button size="lg" className="btn-gradient rounded-xl px-10 h-14 text-base gap-2 group shadow-lg shadow-accent/20">
-                Начать бесплатно
+                Оставить заявку на запуск
                 <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
               </Button>
             </Link>
+            <p className={`text-xs ${dark ? 'text-white/40' : 'text-muted-foreground'}`}>
+              Старт за 7 дней · без предоплаты за внедрение
+            </p>
           </motion.div>
         </div>
       </div>

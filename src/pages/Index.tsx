@@ -33,23 +33,23 @@ const Index = () => {
   return (
     <>
       <Helmet>
-        <title>СИНТАГМА — СДО и документооборот для организаций</title>
-        <meta name="description" content="Современная СДО для организаций. Создавайте курсы с ИИ, автоматизируйте документооборот, выгружайте в ФРДО. Соответствует 273-ФЗ. От 0 ₽." />
-        <meta name="keywords" content="СДО, дистанционное обучение, документооборот, ФРДО, 273-ФЗ, онлайн курсы, образовательная платформа, ДПО" />
+        <title>Запустим СДО учебному центру за 7 дней — СИНТАГМА</title>
+        <meta name="description" content="Запустим учебному центру СДО с готовыми курсами и базовым комплектом документов за 7 дней. Брендирование, домен, ФИС ФРДО, обучение администратора — под ключ." />
+        <meta name="keywords" content="СДО под ключ, запуск СДО, учебный центр, дистанционное обучение, ФРДО, 273-ФЗ, готовые курсы, ДПО" />
         <link rel="canonical" href="https://sintagma.com.ru/" />
         
         {/* Open Graph */}
         <meta property="og:type" content="website" />
         <meta property="og:url" content="https://sintagma.com.ru/" />
-        <meta property="og:title" content="СИНТАГМА — СДО и документооборот для организаций" />
-        <meta property="og:description" content="Современная СДО для организаций. Создавайте курсы с ИИ, автоматизируйте документооборот, выгружайте в ФРДО." />
+        <meta property="og:title" content="Запустим СДО учебному центру за 7 дней — СИНТАГМА" />
+        <meta property="og:description" content="Запустим учебному центру СДО с готовыми курсами и базовым комплектом документов за 7 дней." />
         <meta property="og:image" content="https://sintagma.com.ru/og-image.png" />
         <meta property="og:locale" content="ru_RU" />
         
         {/* Twitter */}
         <meta name="twitter:card" content="summary_large_image" />
-        <meta name="twitter:title" content="СИНТАГМА — СДО и документооборот для организаций" />
-        <meta name="twitter:description" content="Современная СДО для организаций. Создавайте курсы с ИИ, автоматизируйте документооборот." />
+        <meta name="twitter:title" content="Запустим СДО учебному центру за 7 дней — СИНТАГМА" />
+        <meta name="twitter:description" content="Запустим учебному центру СДО с готовыми курсами и базовым комплектом документов за 7 дней." />
         <meta name="twitter:image" content="https://sintagma.com.ru/og-image.png" />
         
         {/* Structured Data */}
