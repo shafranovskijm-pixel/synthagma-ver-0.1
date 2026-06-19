@@ -13,7 +13,53 @@ import {
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
-import { exportCatalogToDocx, exportCatalogToPdf } from "@/utils/exportRostechnadzorCatalog";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { exportCatalogToDocx, exportCatalogToPdf, type CatalogGroup } from "@/utils/exportRostechnadzorCatalog";
+
+const PLATFORM_ORG_ID = "4ac2c05a-d8b5-4e72-ba31-f2c743091d95";
+
+const CATEGORY_ORDER = [
+  "Электробезопасность", "Энергетика", "Рабочие профессии", "Медицина",
+  "Охрана труда", "Пожарная безопасность", "Строительные специальности",
+  "Слесари", "Промышленная безопасность", "Разное", "Машинист",
+  "Экологическая безопасность", "Строительный контроль", "Профессиональная переподготовка",
+];
+
+async function fetchFullCatalog(): Promise<CatalogGroup[]> {
+  const { data, error } = await supabase
+    .from("marketplace_courses")
+    .select("description_short, course:courses(title, description, category:course_categories(name))")
+    .eq("organization_id", PLATFORM_ORG_ID)
+    .eq("is_active", true);
+  if (error) throw error;
+
+  const byCat = new Map<string, { title: string; description?: string | null }[]>();
+  for (const row of (data || []) as any[]) {
+    const catName: string = row.course?.category?.name || "Прочее";
+    const title: string = row.course?.title || "";
+    if (!title) continue;
+    const description = row.description_short || row.course?.description || null;
+    if (!byCat.has(catName)) byCat.set(catName, []);
+    byCat.get(catName)!.push({ title, description });
+  }
+
+  const groups: CatalogGroup[] = [];
+  const seen = new Set<string>();
+  for (const name of CATEGORY_ORDER) {
+    if (byCat.has(name)) {
+      const items = byCat.get(name)!.sort((a, b) => a.title.localeCompare(b.title, "ru"));
+      groups.push({ title: name, count: items.length, courses: items });
+      seen.add(name);
+    }
+  }
+  for (const [name, items] of [...byCat.entries()].sort((a, b) => a[0].localeCompare(b[0], "ru"))) {
+    if (seen.has(name)) continue;
+    items.sort((a, b) => a.title.localeCompare(b.title, "ru"));
+    groups.push({ title: name, count: items.length, courses: items });
+  }
+  return groups;
+}
 
 const fadeUp = {
   hidden: { opacity: 0, y: 30 },
@@ -233,6 +279,13 @@ const jsonLdItems = categories.map((cat, i) => ({
 }));
 
 const RostechnadzorCoursesPage = () => {
+  const { data: fullCatalog, isLoading: catalogLoading } = useQuery({
+    queryKey: ["rostechnadzor-full-catalog"],
+    queryFn: fetchFullCatalog,
+    staleTime: 5 * 60 * 1000,
+  });
+  const totalCount = fullCatalog?.reduce((s, g) => s + g.count, 0) ?? 0;
+
   return (
     <div className="min-h-screen bg-background">
       <Helmet>
@@ -322,10 +375,12 @@ const RostechnadzorCoursesPage = () => {
               <div className="flex flex-wrap items-center justify-center gap-3">
                 <Button
                   variant="outline"
+                  disabled={catalogLoading || !fullCatalog?.length}
                   className="rounded-xl gap-2 border-accent/30 hover:bg-accent/10 hover:text-accent"
                   onClick={() => {
+                    if (!fullCatalog?.length) return;
                     try {
-                      exportCatalogToDocx(categories);
+                      exportCatalogToDocx(fullCatalog);
                       toast.success("Файл Word сформирован");
                     } catch (e) {
                       console.error(e);
@@ -334,15 +389,19 @@ const RostechnadzorCoursesPage = () => {
                   }}
                 >
                   <FileText className="w-4 h-4" />
-                  Скачать каталог в Word
+                  {catalogLoading
+                    ? "Загружаем каталог…"
+                    : `Скачать каталог${totalCount ? ` (${totalCount})` : ""} в Word`}
                 </Button>
                 <Button
                   variant="outline"
+                  disabled={catalogLoading || !fullCatalog?.length}
                   className="rounded-xl gap-2 border-accent/30 hover:bg-accent/10 hover:text-accent"
                   onClick={async () => {
+                    if (!fullCatalog?.length) return;
                     const t = toast.loading("Формируем PDF…");
                     try {
-                      await exportCatalogToPdf(categories);
+                      await exportCatalogToPdf(fullCatalog);
                       toast.success("PDF готов", { id: t });
                     } catch (e) {
                       console.error(e);
@@ -351,10 +410,13 @@ const RostechnadzorCoursesPage = () => {
                   }}
                 >
                   <FileDown className="w-4 h-4" />
-                  Скачать каталог в PDF
+                  {catalogLoading
+                    ? "Загружаем каталог…"
+                    : `Скачать каталог${totalCount ? ` (${totalCount})` : ""} в PDF`}
                 </Button>
               </div>
             </motion.div>
+
 
             <div className="grid gap-5">
               {categories.map((cat, i) => (

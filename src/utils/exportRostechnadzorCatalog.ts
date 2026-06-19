@@ -1,9 +1,14 @@
 import jsPDF from "jspdf";
 
+export interface CatalogCourse {
+  title: string;
+  description?: string | null;
+}
+
 export interface CatalogGroup {
   title: string;
   count: number;
-  courses: string[];
+  courses: CatalogCourse[];
 }
 
 const todayStr = () => {
@@ -30,7 +35,15 @@ export function exportCatalogToDocx(groups: CatalogGroup[]) {
         ${escapeHtml(g.title)} <span style="font-size:11pt;color:#666;font-weight:normal;">— ${g.count} ${g.count >= 5 ? "курсов" : g.count >= 2 ? "курса" : "курс"}</span>
       </h2>
       <ul style="font-family:'Times New Roman',serif;font-size:12pt;margin:0 0 8pt 0;">
-        ${g.courses.map((c) => `<li style="margin-bottom:3pt;">${escapeHtml(c)}</li>`).join("")}
+        ${g.courses
+          .map((c) => {
+            const title = `<b>${escapeHtml(c.title)}</b>`;
+            const desc = c.description
+              ? `<div style="color:#555;font-size:11pt;margin-top:2pt;">${escapeHtml(c.description)}</div>`
+              : "";
+            return `<li style="margin-bottom:5pt;">${title}${desc}</li>`;
+          })
+          .join("")}
       </ul>`
     )
     .join("");
@@ -153,10 +166,23 @@ export async function exportCatalogToPdf(groups: CatalogGroup[]) {
     doc.setTextColor(40, 40, 40);
     doc.setFontSize(10);
     for (const course of g.courses) {
-      const lines = doc.splitTextToSize(`• ${course}`, contentWidth - 4);
-      ensureSpace(lines.length * 5 + 1);
-      doc.text(lines, marginX + 4, y);
-      y += lines.length * 5 + 0.5;
+      const titleLines = doc.splitTextToSize(`• ${course.title}`, contentWidth - 4);
+      const descLines = course.description
+        ? doc.splitTextToSize(course.description, contentWidth - 8)
+        : [];
+      const blockH = titleLines.length * 5 + descLines.length * 4.5 + 1;
+      ensureSpace(blockH);
+      doc.setTextColor(40, 40, 40);
+      doc.setFontSize(10);
+      doc.text(titleLines, marginX + 4, y);
+      y += titleLines.length * 5;
+      if (descLines.length) {
+        doc.setTextColor(110, 110, 110);
+        doc.setFontSize(9);
+        doc.text(descLines, marginX + 8, y);
+        y += descLines.length * 4.5;
+      }
+      y += 1.5;
     }
     y += 4;
   }
