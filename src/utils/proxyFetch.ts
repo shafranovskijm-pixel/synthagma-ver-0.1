@@ -229,8 +229,16 @@ export function installProxyFetch() {
         : input instanceof URL ? input.toString() : input.url;
 
       // Вход по паролю не должен проходить через авто-переключение каналов.
-      // Иначе при 522/сетевой ошибке мы подсовываем HTML/прокси и ломаем auth flow.
+      // Но на синтагма.рф прямой канал к backend у части провайдеров заблокирован,
+      // поэтому для форсированного домена отправляем auth token через резервный прокси.
       if (isAuthTokenRequest(urlStr)) {
+        if (isForcedProxyHost()) {
+          const resp = await fetchViaProxy(urlStr, input, init);
+          if (isBrokenProxyResponse(resp)) {
+            window.dispatchEvent(new CustomEvent('sintagma:proxy-broken'));
+          }
+          return resp;
+        }
         return originalFetch!(input, init);
       }
 
