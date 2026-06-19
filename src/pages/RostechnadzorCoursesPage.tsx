@@ -8,9 +8,12 @@ import { Footer } from "@/components/landing/Footer";
 import {
   Shield, Zap, BookOpen, CheckCircle2, Factory, Flame,
   HardHat, Leaf, ArrowRight, Clock, FileCheck, RefreshCw,
-  Heart, Wrench, Car, Layers, GraduationCap, Briefcase, Settings, Building2
+  Heart, Wrench, Car, Layers, GraduationCap, Briefcase, Settings, Building2,
+  FileText, FileDown
 } from "lucide-react";
 import { motion } from "framer-motion";
+import { toast } from "sonner";
+import { exportCatalogToDocx, exportCatalogToPdf } from "@/utils/exportRostechnadzorCatalog";
 
 const fadeUp = {
   hidden: { opacity: 0, y: 30 },
@@ -309,13 +312,48 @@ const RostechnadzorCoursesPage = () => {
         <div className="absolute inset-0 bg-gradient-to-b from-secondary/20 via-background to-background" />
         <div className="container mx-auto px-6 relative z-10">
           <motion.div initial="hidden" whileInView="visible" viewport={{ once: true }} variants={stagger} className="max-w-5xl mx-auto">
-            <motion.div variants={fadeUp} className="text-center mb-12">
+            <motion.div variants={fadeUp} className="text-center mb-8">
               <h2 className="font-display text-3xl md:text-4xl font-medium mb-4 tracking-tight">
                 14 направлений обучения
               </h2>
-              <p className="text-muted-foreground max-w-xl mx-auto">
+              <p className="text-muted-foreground max-w-xl mx-auto mb-6">
                 Электробезопасность, энергетика, охрана труда, медицина, пожарная безопасность и многое другое
               </p>
+              <div className="flex flex-wrap items-center justify-center gap-3">
+                <Button
+                  variant="outline"
+                  className="rounded-xl gap-2 border-accent/30 hover:bg-accent/10 hover:text-accent"
+                  onClick={() => {
+                    try {
+                      exportCatalogToDocx(categories);
+                      toast.success("Файл Word сформирован");
+                    } catch (e) {
+                      console.error(e);
+                      toast.error("Не удалось сформировать Word");
+                    }
+                  }}
+                >
+                  <FileText className="w-4 h-4" />
+                  Скачать каталог в Word
+                </Button>
+                <Button
+                  variant="outline"
+                  className="rounded-xl gap-2 border-accent/30 hover:bg-accent/10 hover:text-accent"
+                  onClick={async () => {
+                    const t = toast.loading("Формируем PDF…");
+                    try {
+                      await exportCatalogToPdf(categories);
+                      toast.success("PDF готов", { id: t });
+                    } catch (e) {
+                      console.error(e);
+                      toast.error("Не удалось сформировать PDF", { id: t });
+                    }
+                  }}
+                >
+                  <FileDown className="w-4 h-4" />
+                  Скачать каталог в PDF
+                </Button>
+              </div>
             </motion.div>
 
             <div className="grid gap-5">
