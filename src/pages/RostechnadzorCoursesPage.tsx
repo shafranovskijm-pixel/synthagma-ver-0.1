@@ -8,9 +8,12 @@ import { Footer } from "@/components/landing/Footer";
 import {
   Shield, Zap, BookOpen, CheckCircle2, Factory, Flame,
   HardHat, Leaf, ArrowRight, Clock, FileCheck, RefreshCw,
-  Heart, Wrench, Car, Layers, GraduationCap, Briefcase, Settings, Building2
+  Heart, Wrench, Car, Layers, GraduationCap, Briefcase, Settings, Building2,
+  FileText, FileDown
 } from "lucide-react";
 import { motion } from "framer-motion";
+import { toast } from "sonner";
+import { exportCatalogToDocx, exportCatalogToPdf } from "@/utils/exportRostechnadzorCatalog";
 
 const fadeUp = {
   hidden: { opacity: 0, y: 30 },
