@@ -1,9 +1,14 @@
 import jsPDF from "jspdf";
 
+export interface CatalogCourse {
+  title: string;
+  description?: string | null;
+}
+
 export interface CatalogGroup {
   title: string;
   count: number;
-  courses: string[];
+  courses: CatalogCourse[];
 }
 
 const todayStr = () => {
