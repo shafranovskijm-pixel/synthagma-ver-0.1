@@ -166,10 +166,23 @@ export async function exportCatalogToPdf(groups: CatalogGroup[]) {
     doc.setTextColor(40, 40, 40);
     doc.setFontSize(10);
     for (const course of g.courses) {
-      const lines = doc.splitTextToSize(`• ${course}`, contentWidth - 4);
-      ensureSpace(lines.length * 5 + 1);
-      doc.text(lines, marginX + 4, y);
-      y += lines.length * 5 + 0.5;
+      const titleLines = doc.splitTextToSize(`• ${course.title}`, contentWidth - 4);
+      const descLines = course.description
+        ? doc.splitTextToSize(course.description, contentWidth - 8)
+        : [];
+      const blockH = titleLines.length * 5 + descLines.length * 4.5 + 1;
+      ensureSpace(blockH);
+      doc.setTextColor(40, 40, 40);
+      doc.setFontSize(10);
+      doc.text(titleLines, marginX + 4, y);
+      y += titleLines.length * 5;
+      if (descLines.length) {
+        doc.setTextColor(110, 110, 110);
+        doc.setFontSize(9);
+        doc.text(descLines, marginX + 8, y);
+        y += descLines.length * 4.5;
+      }
+      y += 1.5;
     }
     y += 4;
   }
