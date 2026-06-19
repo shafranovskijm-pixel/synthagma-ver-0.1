@@ -279,6 +279,13 @@ const jsonLdItems = categories.map((cat, i) => ({
 }));
 
 const RostechnadzorCoursesPage = () => {
+  const { data: fullCatalog, isLoading: catalogLoading } = useQuery({
+    queryKey: ["rostechnadzor-full-catalog"],
+    queryFn: fetchFullCatalog,
+    staleTime: 5 * 60 * 1000,
+  });
+  const totalCount = fullCatalog?.reduce((s, g) => s + g.count, 0) ?? 0;
+
   return (
     <div className="min-h-screen bg-background">
       <Helmet>
