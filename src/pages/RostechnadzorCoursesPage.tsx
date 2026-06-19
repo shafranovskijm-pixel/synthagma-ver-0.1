@@ -13,7 +13,53 @@ import {
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
-import { exportCatalogToDocx, exportCatalogToPdf } from "@/utils/exportRostechnadzorCatalog";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { exportCatalogToDocx, exportCatalogToPdf, type CatalogGroup } from "@/utils/exportRostechnadzorCatalog";
+
+const PLATFORM_ORG_ID = "4ac2c05a-d8b5-4e72-ba31-f2c743091d95";
+
+const CATEGORY_ORDER = [
+  "Электробезопасность", "Энергетика", "Рабочие профессии", "Медицина",
+  "Охрана труда", "Пожарная безопасность", "Строительные специальности",
+  "Слесари", "Промышленная безопасность", "Разное", "Машинист",
+  "Экологическая безопасность", "Строительный контроль", "Профессиональная переподготовка",
+];
+
+async function fetchFullCatalog(): Promise<CatalogGroup[]> {
+  const { data, error } = await supabase
+    .from("marketplace_courses")
+    .select("description_short, course:courses(title, description, category:course_categories(name))")
+    .eq("organization_id", PLATFORM_ORG_ID)
+    .eq("is_active", true);
+  if (error) throw error;
+
+  const byCat = new Map<string, { title: string; description?: string | null }[]>();
+  for (const row of (data || []) as any[]) {
+    const catName: string = row.course?.category?.name || "Прочее";
+    const title: string = row.course?.title || "";
+    if (!title) continue;
+    const description = row.description_short || row.course?.description || null;
+    if (!byCat.has(catName)) byCat.set(catName, []);
+    byCat.get(catName)!.push({ title, description });
+  }
+
+  const groups: CatalogGroup[] = [];
+  const seen = new Set<string>();
+  for (const name of CATEGORY_ORDER) {
+    if (byCat.has(name)) {
+      const items = byCat.get(name)!.sort((a, b) => a.title.localeCompare(b.title, "ru"));
+      groups.push({ title: name, count: items.length, courses: items });
+      seen.add(name);
+    }
+  }
+  for (const [name, items] of [...byCat.entries()].sort((a, b) => a[0].localeCompare(b[0], "ru"))) {
+    if (seen.has(name)) continue;
+    items.sort((a, b) => a.title.localeCompare(b.title, "ru"));
+    groups.push({ title: name, count: items.length, courses: items });
+  }
+  return groups;
+}
 
 const fadeUp = {
   hidden: { opacity: 0, y: 30 },
