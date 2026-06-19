@@ -35,7 +35,15 @@ export function exportCatalogToDocx(groups: CatalogGroup[]) {
         ${escapeHtml(g.title)} <span style="font-size:11pt;color:#666;font-weight:normal;">— ${g.count} ${g.count >= 5 ? "курсов" : g.count >= 2 ? "курса" : "курс"}</span>
       </h2>
       <ul style="font-family:'Times New Roman',serif;font-size:12pt;margin:0 0 8pt 0;">
-        ${g.courses.map((c) => `<li style="margin-bottom:3pt;">${escapeHtml(c)}</li>`).join("")}
+        ${g.courses
+          .map((c) => {
+            const title = `<b>${escapeHtml(c.title)}</b>`;
+            const desc = c.description
+              ? `<div style="color:#555;font-size:11pt;margin-top:2pt;">${escapeHtml(c.description)}</div>`
+              : "";
+            return `<li style="margin-bottom:5pt;">${title}${desc}</li>`;
+          })
+          .join("")}
       </ul>`
     )
     .join("");
