@@ -375,10 +375,12 @@ const RostechnadzorCoursesPage = () => {
               <div className="flex flex-wrap items-center justify-center gap-3">
                 <Button
                   variant="outline"
+                  disabled={catalogLoading || !fullCatalog?.length}
                   className="rounded-xl gap-2 border-accent/30 hover:bg-accent/10 hover:text-accent"
                   onClick={() => {
+                    if (!fullCatalog?.length) return;
                     try {
-                      exportCatalogToDocx(categories);
+                      exportCatalogToDocx(fullCatalog);
                       toast.success("Файл Word сформирован");
                     } catch (e) {
                       console.error(e);
@@ -387,15 +389,19 @@ const RostechnadzorCoursesPage = () => {
                   }}
                 >
                   <FileText className="w-4 h-4" />
-                  Скачать каталог в Word
+                  {catalogLoading
+                    ? "Загружаем каталог…"
+                    : `Скачать каталог${totalCount ? ` (${totalCount})` : ""} в Word`}
                 </Button>
                 <Button
                   variant="outline"
+                  disabled={catalogLoading || !fullCatalog?.length}
                   className="rounded-xl gap-2 border-accent/30 hover:bg-accent/10 hover:text-accent"
                   onClick={async () => {
+                    if (!fullCatalog?.length) return;
                     const t = toast.loading("Формируем PDF…");
                     try {
-                      await exportCatalogToPdf(categories);
+                      await exportCatalogToPdf(fullCatalog);
                       toast.success("PDF готов", { id: t });
                     } catch (e) {
                       console.error(e);
@@ -404,10 +410,13 @@ const RostechnadzorCoursesPage = () => {
                   }}
                 >
                   <FileDown className="w-4 h-4" />
-                  Скачать каталог в PDF
+                  {catalogLoading
+                    ? "Загружаем каталог…"
+                    : `Скачать каталог${totalCount ? ` (${totalCount})` : ""} в PDF`}
                 </Button>
               </div>
             </motion.div>
+
 
             <div className="grid gap-5">
               {categories.map((cat, i) => (
