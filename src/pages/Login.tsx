@@ -70,6 +70,8 @@ const Login = () => {
           navigate("/organization", { replace: true });
         } else if (userRole === 'company') {
           navigate("/company", { replace: true });
+        } else if (userRole === 'sales_manager') {
+          navigate("/sales", { replace: true });
         } else {
           navigate("/student", { replace: true });
         }
