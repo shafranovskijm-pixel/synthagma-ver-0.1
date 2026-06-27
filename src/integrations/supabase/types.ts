@@ -602,6 +602,110 @@ export type Database = {
         }
         Relationships: []
       }
+      call_log_listens: {
+        Row: {
+          call_log_id: string
+          id: string
+          listened_at: string
+          listener_user_id: string
+          user_agent: string | null
+        }
+        Insert: {
+          call_log_id: string
+          id?: string
+          listened_at?: string
+          listener_user_id: string
+          user_agent?: string | null
+        }
+        Update: {
+          call_log_id?: string
+          id?: string
+          listened_at?: string
+          listener_user_id?: string
+          user_agent?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "call_log_listens_call_log_id_fkey"
+            columns: ["call_log_id"]
+            isOneToOne: false
+            referencedRelation: "call_logs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      call_logs: {
+        Row: {
+          answered_at: string | null
+          company_inn: string | null
+          company_name: string | null
+          contract_id: string | null
+          created_at: string
+          direction: string
+          duration_sec: number | null
+          ended_at: string | null
+          exolve_call_id: string | null
+          from_number: string | null
+          has_recording: boolean
+          id: string
+          lead_id: string | null
+          manager_user_id: string
+          notes: string | null
+          proposal_id: string | null
+          recording_duration_sec: number | null
+          started_at: string
+          status: string
+          to_number: string
+          updated_at: string
+        }
+        Insert: {
+          answered_at?: string | null
+          company_inn?: string | null
+          company_name?: string | null
+          contract_id?: string | null
+          created_at?: string
+          direction?: string
+          duration_sec?: number | null
+          ended_at?: string | null
+          exolve_call_id?: string | null
+          from_number?: string | null
+          has_recording?: boolean
+          id?: string
+          lead_id?: string | null
+          manager_user_id: string
+          notes?: string | null
+          proposal_id?: string | null
+          recording_duration_sec?: number | null
+          started_at?: string
+          status?: string
+          to_number: string
+          updated_at?: string
+        }
+        Update: {
+          answered_at?: string | null
+          company_inn?: string | null
+          company_name?: string | null
+          contract_id?: string | null
+          created_at?: string
+          direction?: string
+          duration_sec?: number | null
+          ended_at?: string | null
+          exolve_call_id?: string | null
+          from_number?: string | null
+          has_recording?: boolean
+          id?: string
+          lead_id?: string | null
+          manager_user_id?: string
+          notes?: string | null
+          proposal_id?: string | null
+          recording_duration_sec?: number | null
+          started_at?: string
+          status?: string
+          to_number?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       chat_group_members: {
         Row: {
           group_id: string
@@ -3307,6 +3411,42 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      exolve_sip_accounts: {
+        Row: {
+          caller_id_number: string | null
+          created_at: string
+          created_by: string | null
+          id: string
+          is_active: boolean
+          sip_password_enc: string
+          sip_username: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          caller_id_number?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_active?: boolean
+          sip_password_enc: string
+          sip_username: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          caller_id_number?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_active?: boolean
+          sip_password_enc?: string
+          sip_username?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
       }
       frdo_signed_documents: {
         Row: {
@@ -10079,6 +10219,15 @@ export type Database = {
         }[]
       }
       get_documents_kpi: { Args: { p_organization_id: string }; Returns: Json }
+      get_exolve_sip_credentials: {
+        Args: { _user_id: string }
+        Returns: {
+          caller_id_number: string
+          is_active: boolean
+          sip_password: string
+          sip_username: string
+        }[]
+      }
       get_frdo_export_readiness: {
         Args: { p_organization_id: string }
         Returns: {
@@ -10361,6 +10510,16 @@ export type Database = {
       sender_countersign: {
         Args: { p_ip?: string; p_signature_id: string; p_user_agent?: string }
         Returns: undefined
+      }
+      set_exolve_sip_credentials: {
+        Args: {
+          _caller_id_number?: string
+          _is_active?: boolean
+          _sip_password: string
+          _sip_username: string
+          _user_id: string
+        }
+        Returns: string
       }
       set_signature_comment_resolution: {
         Args: {
