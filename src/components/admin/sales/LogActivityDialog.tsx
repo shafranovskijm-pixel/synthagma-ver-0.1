@@ -23,6 +23,9 @@ interface Props {
   defaultType?: 'call' | 'note';
   organizationId?: string | null;
   onLogged?: () => void;
+  defaultEmail?: string | null;
+  contactPerson?: string | null;
+  leadId?: string | null;
 }
 
 type CallResult = 'connected' | 'busy' | 'not_interested' | 'next_step';
