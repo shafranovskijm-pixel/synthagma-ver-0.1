@@ -91,13 +91,20 @@ export function LeadsManager({ organizationId }: LeadsManagerProps = {}) {
 
   const handleAddActivity = async (type: string) => {
     if (!detailLead || !activityNote.trim()) return;
-    // Find manager id for current admin (using first manager or self)
-    const mgr = managers[0];
-    if (mgr) {
-      await addActivity(detailLead.id, mgr.id, type, activityNote);
+    const ok = await addActivity(detailLead.id, null, type, activityNote);
+    if (ok) {
       setActivityNote('');
       fetchActivities(detailLead.id);
     }
+  };
+
+  // Quick call from row: открыть tel: и сразу создать запись «звонок»
+  const handleQuickCall = async (lead: SalesLead) => {
+    if (lead.phone) {
+      try { window.location.href = `tel:${lead.phone.replace(/\s/g, '')}`; } catch {}
+    }
+    openDetail(lead);
+    await addActivity(lead.id, null, 'call', `Исходящий звонок на ${lead.phone || 'номер не указан'}`);
   };
 
   return (
