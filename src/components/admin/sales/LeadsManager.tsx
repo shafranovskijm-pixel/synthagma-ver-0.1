@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { Upload, UserPlus, Search, Building2, Phone, Mail, Globe, MapPin, Filter } from 'lucide-react';
+import { useState, useEffect, useMemo } from 'react';
+import { Upload, Search, Building2, Phone, Mail, Globe, MapPin, MessageSquare } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
