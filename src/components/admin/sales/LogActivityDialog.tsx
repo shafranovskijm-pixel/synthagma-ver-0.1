@@ -8,9 +8,12 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Phone, StickyNote } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Phone, StickyNote, Send, FileText } from 'lucide-react';
 import { toast } from 'sonner';
 import { getErrorMessage } from "@/utils/handleSupabaseError";
+
+interface ProposalTemplate { id: string; company_name: string; total_amount: number }
 
 interface Props {
   open: boolean;
