@@ -44,24 +44,31 @@ export function SalesManagersList() {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h3 className="text-lg font-semibold">Менеджеры по продажам</h3>
-        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-          <DialogTrigger asChild>
-            <Button size="sm"><Plus className="w-4 h-4 mr-2" />Добавить менеджера</Button>
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader><DialogTitle>Новый менеджер</DialogTitle></DialogHeader>
-            <div className="space-y-4 pt-4">
-              <div><Label>ФИО</Label><Input value={fullName} onChange={e => setFullName(e.target.value)} placeholder="Иванов Иван Иванович" /></div>
-              <div><Label>Email</Label><Input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="manager@company.ru" /></div>
-              <div><Label>Пароль</Label><Input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="Минимум 6 символов" /></div>
-              <div><Label>Телефон (необязательно)</Label><Input value={phone} onChange={e => setPhone(e.target.value)} placeholder="+7..." /></div>
-              <Button onClick={handleCreate} className="w-full" disabled={loading}>
-                {loading ? 'Создание...' : 'Создать менеджера'}
-              </Button>
-            </div>
-          </DialogContent>
-        </Dialog>
+        <div className="flex gap-2">
+          <Button size="sm" variant="outline" onClick={() => setInviteOpen(true)}>
+            <Link2 className="w-4 h-4 mr-2" />Пригласить по ссылке
+          </Button>
+          <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+            <DialogTrigger asChild>
+              <Button size="sm"><Plus className="w-4 h-4 mr-2" />Добавить менеджера</Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader><DialogTitle>Новый менеджер</DialogTitle></DialogHeader>
+              <div className="space-y-4 pt-4">
+                <div><Label>ФИО</Label><Input value={fullName} onChange={e => setFullName(e.target.value)} placeholder="Иванов Иван Иванович" /></div>
+                <div><Label>Email</Label><Input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="manager@company.ru" /></div>
+                <div><Label>Пароль</Label><Input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="Минимум 6 символов" /></div>
+                <div><Label>Телефон (необязательно)</Label><Input value={phone} onChange={e => setPhone(e.target.value)} placeholder="+7..." /></div>
+                <Button onClick={handleCreate} className="w-full" disabled={loading}>
+                  {loading ? 'Создание...' : 'Создать менеджера'}
+                </Button>
+              </div>
+            </DialogContent>
+          </Dialog>
+        </div>
       </div>
+
+      <InviteSalesManagerDialog open={inviteOpen} onOpenChange={setInviteOpen} />
 
       <div className="grid gap-3">
         {managers.map(m => {
