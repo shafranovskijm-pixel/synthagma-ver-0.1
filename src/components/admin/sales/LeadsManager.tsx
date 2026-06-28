@@ -147,6 +147,29 @@ export function LeadsManager({ organizationId }: LeadsManagerProps = {}) {
         )}
       </div>
 
+      {/* Region chips */}
+      {regionCounts.length > 0 && (
+        <div className="flex flex-wrap gap-1.5">
+          <button
+            type="button"
+            onClick={() => setRegionFilter('all')}
+            className={`text-xs px-3 py-1.5 rounded-full border transition ${regionFilter === 'all' ? 'bg-primary text-primary-foreground border-primary' : 'bg-background hover:bg-secondary border-border'}`}
+          >
+            Все · {leads.length}
+          </button>
+          {regionCounts.map(([r, c]) => (
+            <button
+              key={r}
+              type="button"
+              onClick={() => setRegionFilter(r)}
+              className={`text-xs px-3 py-1.5 rounded-full border transition ${regionFilter === r ? 'bg-primary text-primary-foreground border-primary' : 'bg-background hover:bg-secondary border-border'}`}
+            >
+              {r} · {c}
+            </button>
+          ))}
+        </div>
+      )}
+
       {/* Bulk actions */}
       {selectedIds.size > 0 && (
         <div className="flex items-center gap-2 p-3 bg-primary/5 rounded-lg">
