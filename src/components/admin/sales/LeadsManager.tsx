@@ -154,26 +154,51 @@ export function LeadsManager({ organizationId }: LeadsManagerProps = {}) {
         )}
       </div>
 
-      {/* Region chips */}
+      {/* Region chips with local time */}
       {regionCounts.length > 0 && (
-        <div className="flex flex-wrap gap-1.5">
-          <button
-            type="button"
-            onClick={() => setRegionFilter('all')}
-            className={`text-xs px-3 py-1.5 rounded-full border transition ${regionFilter === 'all' ? 'bg-primary text-primary-foreground border-primary' : 'bg-background hover:bg-secondary border-border'}`}
-          >
-            Все · {leads.length}
-          </button>
-          {regionCounts.map(([r, c]) => (
+        <div className="space-y-2">
+          {regionFilter !== 'all' && (() => {
+            const lt = getRegionLocalTime(regionFilter);
+            if (!lt) return null;
+            const ok = isBusinessHours(regionFilter);
+            return (
+              <div className={`inline-flex items-center gap-2 text-sm px-3 py-1.5 rounded-xl border ${ok ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-700 dark:text-emerald-300' : 'bg-amber-500/10 border-amber-500/30 text-amber-700 dark:text-amber-300'}`}>
+                <Clock className="w-4 h-4" />
+                <span className="font-medium">{regionFilter}:</span>
+                <span className="font-mono">{lt.time}</span>
+                <span className="text-xs opacity-70">({lt.mskOffsetLabel})</span>
+                <span className="text-xs">· {ok ? 'удобно звонить' : 'не рабочее время'}</span>
+              </div>
+            );
+          })()}
+          <div className="flex flex-wrap gap-1.5">
             <button
-              key={r}
               type="button"
-              onClick={() => setRegionFilter(r)}
-              className={`text-xs px-3 py-1.5 rounded-full border transition ${regionFilter === r ? 'bg-primary text-primary-foreground border-primary' : 'bg-background hover:bg-secondary border-border'}`}
+              onClick={() => setRegionFilter('all')}
+              className={`text-xs px-3 py-1.5 rounded-full border transition ${regionFilter === 'all' ? 'bg-primary text-primary-foreground border-primary' : 'bg-background hover:bg-secondary border-border'}`}
             >
-              {r} · {c}
+              Все · {leads.length}
             </button>
-          ))}
+            {regionCounts.map(([r, c]) => {
+              const lt = getRegionLocalTime(r);
+              return (
+                <button
+                  key={r}
+                  type="button"
+                  onClick={() => setRegionFilter(r)}
+                  className={`text-xs px-3 py-1.5 rounded-full border transition inline-flex items-center gap-1.5 ${regionFilter === r ? 'bg-primary text-primary-foreground border-primary' : 'bg-background hover:bg-secondary border-border'}`}
+                  title={lt ? `Местное время: ${lt.time} (${lt.mskOffsetLabel})` : undefined}
+                >
+                  <span>{r} · {c}</span>
+                  {lt && (
+                    <span className={`font-mono text-[10px] opacity-80 ${regionFilter === r ? '' : 'text-muted-foreground'}`}>
+                      {lt.time}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
         </div>
       )}
 
