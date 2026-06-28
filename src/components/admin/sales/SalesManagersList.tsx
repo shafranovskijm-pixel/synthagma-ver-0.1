@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { Plus, UserCheck, UserX, Phone, Mail } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Plus, UserCheck, UserX, Phone, Eye, Link2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
@@ -7,6 +8,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { useSalesManager } from '@/hooks/useSalesManager';
+import { InviteSalesManagerDialog } from './InviteSalesManagerDialog';
+import { setAdminSalesView } from '@/utils/adminViewMode';
 
 export function SalesManagersList() {
   const { managers, fetchManagers, createManager, toggleManagerActive, loading, leads, proposals, fetchLeads, fetchProposals } = useSalesManager();
