@@ -108,6 +108,19 @@ export function SalesDashboardHeader({ activeLabel, onSignOut }: Props) {
               <DropdownMenuContent align="end" className="w-56">
                 <DropdownMenuLabel className="truncate">{user?.email || "Менеджер"}</DropdownMenuLabel>
                 <DropdownMenuSeparator />
+                <DropdownMenuLabel className="text-xs text-muted-foreground">Разделы</DropdownMenuLabel>
+                {salesExtraItems.map(item => {
+                  const Icon = item.icon;
+                  return (
+                    <DropdownMenuItem
+                      key={item.id}
+                      onClick={() => window.dispatchEvent(new CustomEvent('sales-nav', { detail: item.id }))}
+                    >
+                      <Icon className="w-4 h-4 mr-2" /> {item.label}
+                    </DropdownMenuItem>
+                  );
+                })}
+                <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={() => navigate("/help")}>
                   <HelpCircle className="w-4 h-4 mr-2" /> Помощь
                 </DropdownMenuItem>
@@ -124,21 +137,18 @@ export function SalesDashboardHeader({ activeLabel, onSignOut }: Props) {
         </div>
       </header>
 
-      {/* Hero banner — same swiper as organization */}
-      <div className="max-w-[1600px] mx-auto px-4 lg:px-8 pt-4">
-        <HeroBannerSwiper className="rounded-3xl overflow-hidden">
-          <div className="flex items-end h-full p-6 lg:p-8">
-            <div className="space-y-1.5">
-              <h1 className="text-2xl lg:text-3xl font-display font-bold text-white drop-shadow-lg">
-                Кабинет менеджера по продажам
-              </h1>
-              <p className="text-sm lg:text-base text-white/85 drop-shadow">
-                Лиды, КП, договоры и звонки — в одном окне. Раздел: <span className="font-medium">{activeLabel}</span>
-              </p>
-            </div>
-          </div>
-        </HeroBannerSwiper>
-      </div>
+      {/* Hero banner — встык, как в кабинете организации */}
+      <HeroBannerSwiper>
+        <div className="absolute bottom-4 left-6 z-10 text-white max-w-[80%]">
+          <span className="text-xs font-medium opacity-70 block mb-0.5">Продажи</span>
+          <h2 className="text-lg lg:text-2xl font-bold drop-shadow-md leading-tight">
+            Кабинет менеджера по продажам
+          </h2>
+          <p className="text-xs lg:text-sm opacity-80 mt-0.5">
+            Лиды, КП, договоры и звонки — в одном окне. Раздел: <span className="font-medium">{activeLabel}</span>
+          </p>
+        </div>
+      </HeroBannerSwiper>
     </>
   );
 }
