@@ -26,7 +26,7 @@ interface LeadsManagerProps {
 }
 
 export function LeadsManager({ organizationId }: LeadsManagerProps = {}) {
-  const { leads, fetchLeads, assignLeads, managers, fetchManagers, updateLeadStatus, updateLeadNotes, addActivity, activities, fetchActivities } = useSalesManager();
+  const { leads, fetchLeads, assignLeads, claimLeads, managers, fetchManagers, updateLeadStatus, updateLeadNotes, addActivity, activities, fetchActivities } = useSalesManager();
   const [search, setSearch] = useState('');
   const [regionFilter, setRegionFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
