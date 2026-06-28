@@ -14,10 +14,17 @@ import { setAdminSalesView } from '@/utils/adminViewMode';
 export function SalesManagersList() {
   const { managers, fetchManagers, createManager, toggleManagerActive, loading, leads, proposals, fetchLeads, fetchProposals } = useSalesManager();
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [inviteOpen, setInviteOpen] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [fullName, setFullName] = useState('');
   const [phone, setPhone] = useState('');
+  const navigate = useNavigate();
+
+  const handleImpersonate = (m: { id: string; user_id: string; full_name: string }) => {
+    setAdminSalesView({ managerId: m.id, userId: m.user_id, fullName: m.full_name, returnTo: '/admin' });
+    navigate('/sales');
+  };
 
   useEffect(() => { fetchManagers(); fetchLeads(); fetchProposals(); }, [fetchManagers, fetchLeads, fetchProposals]);
 
