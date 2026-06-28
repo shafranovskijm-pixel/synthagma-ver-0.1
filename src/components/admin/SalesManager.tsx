@@ -1,7 +1,6 @@
 import { useState, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { CreditCard, Menu } from 'lucide-react';
+import { Menu } from 'lucide-react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { CommercialProposals } from './sales/CommercialProposals';
 import { SalesServices } from './sales/SalesServices';
@@ -9,7 +8,6 @@ import { SalesManagersList } from './sales/SalesManagersList';
 import { SalesControlPanel } from './sales/SalesControlPanel';
 import { SalesContracts } from './sales/SalesContracts';
 import { CompetitorComparison } from './sales/CompetitorComparison';
-import { CompanyCard } from './sales/CompanyCard';
 import { DocumentSigning } from './sales/DocumentSigning';
 import { SalesSidebar, SalesSidebarContent, salesMenuGroups } from './sales/SalesSidebar';
 import { Deals360 } from './sales/Deals360';
@@ -24,7 +22,6 @@ type PendingCompany = { name: string; inn: string };
 
 export function SalesManager() {
   const [activeTab, setActiveTab] = useState('contacts');
-  const [cardOpen, setCardOpen] = useState(false);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
   // Контекст компании, прокинутой из «Сделок 360°»
