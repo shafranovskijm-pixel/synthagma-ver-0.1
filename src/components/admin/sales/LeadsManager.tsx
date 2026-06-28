@@ -91,6 +91,18 @@ export function LeadsManager({ organizationId }: LeadsManagerProps = {}) {
     setSelectedIds(new Set());
   };
 
+  const handleClaim = async (ids: string[]) => {
+    const n = await claimLeads(ids);
+    if (n > 0) setSelectedIds(new Set());
+  };
+    setSelectedIds(new Set());
+  };
+
+  const handleUnassign = async () => {
+    await assignLeads([...selectedIds], null as any);
+    setSelectedIds(new Set());
+  };
+
   const openDetail = (lead: SalesLead) => {
     setDetailLead(lead);
     fetchActivities(lead.id);
