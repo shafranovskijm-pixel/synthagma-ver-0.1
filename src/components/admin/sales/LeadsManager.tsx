@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { Upload, Search, Building2, Phone, Mail, Globe, MapPin, MessageSquare } from 'lucide-react';
+import { Upload, Search, Building2, Phone, Mail, Globe, MapPin, MessageSquare, Clock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
@@ -10,6 +10,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useSalesManager, type SalesLead } from '@/hooks/useSalesManager';
 import { LeadsImportDialog } from './LeadsImportDialog';
+import { getRegionLocalTime, isBusinessHours } from '@/utils/regionTimezones';
 
 const LEAD_STATUS_MAP: Record<string, { label: string; color: string }> = {
   new: { label: 'Новый', color: 'bg-blue-500/10 text-blue-500' },
@@ -34,6 +35,12 @@ export function LeadsManager({ organizationId }: LeadsManagerProps = {}) {
   const [importOpen, setImportOpen] = useState(false);
   const [detailLead, setDetailLead] = useState<SalesLead | null>(null);
   const [activityNote, setActivityNote] = useState('');
+  // tick раз в минуту, чтобы локальное время регионов оставалось актуальным
+  const [, setTick] = useState(0);
+  useEffect(() => {
+    const id = setInterval(() => setTick(t => t + 1), 60_000);
+    return () => clearInterval(id);
+  }, []);
 
   // Server-side фильтрация по организации (защита от лимита 1000 строк).
   useEffect(() => {
@@ -147,26 +154,51 @@ export function LeadsManager({ organizationId }: LeadsManagerProps = {}) {
         )}
       </div>
 
-      {/* Region chips */}
+      {/* Region chips with local time */}
       {regionCounts.length > 0 && (
-        <div className="flex flex-wrap gap-1.5">
-          <button
-            type="button"
-            onClick={() => setRegionFilter('all')}
-            className={`text-xs px-3 py-1.5 rounded-full border transition ${regionFilter === 'all' ? 'bg-primary text-primary-foreground border-primary' : 'bg-background hover:bg-secondary border-border'}`}
-          >
-            Все · {leads.length}
-          </button>
-          {regionCounts.map(([r, c]) => (
+        <div className="space-y-2">
+          {regionFilter !== 'all' && (() => {
+            const lt = getRegionLocalTime(regionFilter);
+            if (!lt) return null;
+            const ok = isBusinessHours(regionFilter);
+            return (
+              <div className={`inline-flex items-center gap-2 text-sm px-3 py-1.5 rounded-xl border ${ok ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-700 dark:text-emerald-300' : 'bg-amber-500/10 border-amber-500/30 text-amber-700 dark:text-amber-300'}`}>
+                <Clock className="w-4 h-4" />
+                <span className="font-medium">{regionFilter}:</span>
+                <span className="font-mono">{lt.time}</span>
+                <span className="text-xs opacity-70">({lt.mskOffsetLabel})</span>
+                <span className="text-xs">· {ok ? 'удобно звонить' : 'не рабочее время'}</span>
+              </div>
+            );
+          })()}
+          <div className="flex flex-wrap gap-1.5">
             <button
-              key={r}
               type="button"
-              onClick={() => setRegionFilter(r)}
-              className={`text-xs px-3 py-1.5 rounded-full border transition ${regionFilter === r ? 'bg-primary text-primary-foreground border-primary' : 'bg-background hover:bg-secondary border-border'}`}
+              onClick={() => setRegionFilter('all')}
+              className={`text-xs px-3 py-1.5 rounded-full border transition ${regionFilter === 'all' ? 'bg-primary text-primary-foreground border-primary' : 'bg-background hover:bg-secondary border-border'}`}
             >
-              {r} · {c}
+              Все · {leads.length}
             </button>
-          ))}
+            {regionCounts.map(([r, c]) => {
+              const lt = getRegionLocalTime(r);
+              return (
+                <button
+                  key={r}
+                  type="button"
+                  onClick={() => setRegionFilter(r)}
+                  className={`text-xs px-3 py-1.5 rounded-full border transition inline-flex items-center gap-1.5 ${regionFilter === r ? 'bg-primary text-primary-foreground border-primary' : 'bg-background hover:bg-secondary border-border'}`}
+                  title={lt ? `Местное время: ${lt.time} (${lt.mskOffsetLabel})` : undefined}
+                >
+                  <span>{r} · {c}</span>
+                  {lt && (
+                    <span className={`font-mono text-[10px] opacity-80 ${regionFilter === r ? '' : 'text-muted-foreground'}`}>
+                      {lt.time}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
         </div>
       )}
 
@@ -216,7 +248,10 @@ export function LeadsManager({ organizationId }: LeadsManagerProps = {}) {
               </div>
               <Badge className={`w-24 justify-center ${st.color}`}>{st.label}</Badge>
               <span className="w-28 text-sm truncate hidden md:inline">{mgr?.full_name || '—'}</span>
-              <span className="w-32 text-xs text-muted-foreground truncate hidden lg:inline">{lead.region || '—'}</span>
+              <span className="w-32 text-xs text-muted-foreground truncate hidden lg:flex flex-col leading-tight">
+                <span className="truncate">{lead.region || '—'}</span>
+                {(() => { const lt = getRegionLocalTime(lead.region); return lt ? <span className="font-mono text-[10px] opacity-70">🕐 {lt.time} {lt.mskOffsetLabel}</span> : null; })()}
+              </span>
             </div>
           );
         })}

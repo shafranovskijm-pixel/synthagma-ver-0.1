@@ -1,7 +1,6 @@
 import { useState, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { CreditCard, Menu } from 'lucide-react';
+import { Menu } from 'lucide-react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { CommercialProposals } from './sales/CommercialProposals';
 import { SalesServices } from './sales/SalesServices';
@@ -9,7 +8,6 @@ import { SalesManagersList } from './sales/SalesManagersList';
 import { SalesControlPanel } from './sales/SalesControlPanel';
 import { SalesContracts } from './sales/SalesContracts';
 import { CompetitorComparison } from './sales/CompetitorComparison';
-import { CompanyCard } from './sales/CompanyCard';
 import { DocumentSigning } from './sales/DocumentSigning';
 import { SalesSidebar, SalesSidebarContent, salesMenuGroups } from './sales/SalesSidebar';
 import { Deals360 } from './sales/Deals360';
@@ -18,12 +16,12 @@ import { SalesOverview } from './sales/SalesOverview';
 import { SalesTasks } from './sales/SalesTasks';
 import { CompaniesUnified } from './sales/CompaniesUnified';
 import { LogActivityDialog } from './sales/LogActivityDialog';
+import { ContactsHub } from './sales/ContactsHub';
 
 type PendingCompany = { name: string; inn: string };
 
 export function SalesManager() {
-  const [activeTab, setActiveTab] = useState('overview');
-  const [cardOpen, setCardOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState('contacts');
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
   // Контекст компании, прокинутой из «Сделок 360°»
@@ -70,6 +68,7 @@ export function SalesManager() {
   }, []);
 
   const TABS: Record<string, React.ReactNode> = {
+    contacts: <ContactsHub />,
     overview: <SalesOverview onJump={handleJump} />,
     tasks: <SalesTasks
       prefillCompany={taskPrefill}
@@ -145,21 +144,6 @@ export function SalesManager() {
       </Sheet>
 
       <div className="flex-1 min-w-0">
-        {/* Header with quick "Our details" button */}
-        <div className="flex justify-end mb-3">
-          <Dialog open={cardOpen} onOpenChange={setCardOpen}>
-            <DialogTrigger asChild>
-              <Button size="sm" variant="outline" className="rounded-xl gap-1.5">
-                <CreditCard className="w-3.5 h-3.5" />
-                Наши реквизиты
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="rounded-2xl max-w-3xl max-h-[85vh] overflow-y-auto">
-              <DialogHeader><DialogTitle>Реквизиты компании</DialogTitle></DialogHeader>
-              <CompanyCard />
-            </DialogContent>
-          </Dialog>
-        </div>
         {TABS[activeTab]}
       </div>
 
