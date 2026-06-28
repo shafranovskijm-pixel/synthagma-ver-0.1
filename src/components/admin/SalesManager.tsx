@@ -21,7 +21,7 @@ import { LogActivityDialog } from './sales/LogActivityDialog';
 type PendingCompany = { name: string; inn: string };
 
 export function SalesManager() {
-  const [activeTab, setActiveTab] = useState('contacts');
+  const [activeTab, setActiveTab] = useState('companies');
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
   // Контекст компании, прокинутой из «Сделок 360°»
