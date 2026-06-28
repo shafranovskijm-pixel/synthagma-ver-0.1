@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { Upload, Search, Building2, Phone, Mail, Globe, MapPin, MessageSquare } from 'lucide-react';
+import { Upload, Search, Building2, Phone, Mail, Globe, MapPin, MessageSquare, Clock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
@@ -10,6 +10,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useSalesManager, type SalesLead } from '@/hooks/useSalesManager';
 import { LeadsImportDialog } from './LeadsImportDialog';
+import { getRegionLocalTime, isBusinessHours } from '@/utils/regionTimezones';
 
 const LEAD_STATUS_MAP: Record<string, { label: string; color: string }> = {
   new: { label: 'Новый', color: 'bg-blue-500/10 text-blue-500' },
@@ -34,6 +35,12 @@ export function LeadsManager({ organizationId }: LeadsManagerProps = {}) {
   const [importOpen, setImportOpen] = useState(false);
   const [detailLead, setDetailLead] = useState<SalesLead | null>(null);
   const [activityNote, setActivityNote] = useState('');
+  // tick раз в минуту, чтобы локальное время регионов оставалось актуальным
+  const [, setTick] = useState(0);
+  useEffect(() => {
+    const id = setInterval(() => setTick(t => t + 1), 60_000);
+    return () => clearInterval(id);
+  }, []);
 
   // Server-side фильтрация по организации (защита от лимита 1000 строк).
   useEffect(() => {
