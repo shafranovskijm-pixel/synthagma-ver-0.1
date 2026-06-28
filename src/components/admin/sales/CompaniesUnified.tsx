@@ -1,27 +1,30 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Card, CardContent } from '@/components/ui/card';
-import { Building2, Snowflake, Archive, Ban } from 'lucide-react';
+import { Building2, Archive, Ban, Inbox, Upload, Database, Plus, Trash2 } from 'lucide-react';
 import { LeadsManager } from './LeadsManager';
-import { CompaniesDatabase } from './CompaniesDatabase';
 import { useSalesBlacklist } from '@/hooks/useSalesBlacklist';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Plus, Trash2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { ru } from 'date-fns/locale';
 import { supabase } from '@/integrations/supabase/client';
 
 interface CompaniesUnifiedProps {
   organizationId?: string;
-  /** Если true — скрывает «Холодную базу» (она глобальная, доступна только админу платформы). */
-  hideColdBase?: boolean;
 }
 
-export function CompaniesUnified({ organizationId, hideColdBase = false }: CompaniesUnifiedProps = {}) {
-  const [tab, setTab] = useState<'in_work' | 'cold' | 'archive' | 'blacklist'>('in_work');
+interface SourceBucket {
+  source: string;
+  total: number;
+  untreated: number;
+}
+
+export function CompaniesUnified({ organizationId }: CompaniesUnifiedProps = {}) {
+  const [tab, setTab] = useState<'in_work' | 'archive' | 'blacklist'>('in_work');
 
   return (
     <div className="space-y-4">
@@ -30,19 +33,16 @@ export function CompaniesUnified({ organizationId, hideColdBase = false }: Compa
           <Building2 className="w-5 h-5 text-primary" />
           Компании
         </h2>
-        <p className="text-sm text-muted-foreground">Все компании: в работе, {!hideColdBase && 'холодная база, '}архив и чёрный список</p>
+        <p className="text-sm text-muted-foreground">Контакты и загруженные базы: в работе, архив и чёрный список</p>
       </div>
+
+      <UntreatedBucketsCard organizationId={organizationId} />
 
       <Tabs value={tab} onValueChange={(v) => setTab(v as any)}>
         <TabsList className="rounded-xl">
           <TabsTrigger value="in_work" className="rounded-lg gap-1.5">
             <Building2 className="w-3.5 h-3.5" /> В работе
           </TabsTrigger>
-          {!hideColdBase && (
-            <TabsTrigger value="cold" className="rounded-lg gap-1.5">
-              <Snowflake className="w-3.5 h-3.5" /> Холодная база
-            </TabsTrigger>
-          )}
           <TabsTrigger value="archive" className="rounded-lg gap-1.5">
             <Archive className="w-3.5 h-3.5" /> Архив
           </TabsTrigger>
@@ -54,12 +54,6 @@ export function CompaniesUnified({ organizationId, hideColdBase = false }: Compa
         <TabsContent value="in_work" className="mt-4">
           <LeadsManager organizationId={organizationId} />
         </TabsContent>
-
-        {!hideColdBase && (
-          <TabsContent value="cold" className="mt-4">
-            <CompaniesDatabase organizationId={organizationId} />
-          </TabsContent>
-        )}
 
         <TabsContent value="archive" className="mt-4">
           <ArchiveTab organizationId={organizationId} />
@@ -73,13 +67,86 @@ export function CompaniesUnified({ organizationId, hideColdBase = false }: Compa
   );
 }
 
+function UntreatedBucketsCard({ organizationId }: { organizationId?: string }) {
+  const [buckets, setBuckets] = useState<SourceBucket[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      setLoading(true);
+      let q = supabase
+        .from('sales_leads')
+        .select('source, status, assigned_manager_id')
+        .limit(5000);
+      if (organizationId) q = q.eq('organization_id', organizationId);
+      const { data, error } = await q;
+      if (cancelled) return;
+      if (error || !data) { setLoading(false); return; }
+      const m = new Map<string, SourceBucket>();
+      for (const l of data as any[]) {
+        const src = l.source || 'Загруженная база';
+        const b = m.get(src) || { source: src, total: 0, untreated: 0 };
+        b.total++;
+        if (l.status === 'new' && !l.assigned_manager_id) b.untreated++;
+        m.set(src, b);
+      }
+      setBuckets([...m.values()].sort((a, b) => b.untreated - a.untreated));
+      setLoading(false);
+    })();
+    return () => { cancelled = true; };
+  }, [organizationId]);
+
+  const totalUntreated = useMemo(() => buckets.reduce((s, b) => s + b.untreated, 0), [buckets]);
+
+  return (
+    <Card className="border-amber-500/30 bg-gradient-to-br from-amber-500/10 to-orange-500/5">
+      <CardContent className="p-4 space-y-3">
+        <div className="flex items-center justify-between flex-wrap gap-2">
+          <div className="flex items-center gap-2">
+            <Inbox className="w-5 h-5 text-amber-600" />
+            <h3 className="font-semibold">Необработанные загруженные базы</h3>
+            {totalUntreated > 0 && (
+              <Badge className="bg-amber-500 text-white">{totalUntreated} новых</Badge>
+            )}
+          </div>
+          <span className="text-xs text-muted-foreground">Статус «Новый» без назначенного менеджера</span>
+        </div>
+
+        {loading ? (
+          <p className="text-sm text-muted-foreground">Загрузка…</p>
+        ) : buckets.length === 0 ? (
+          <p className="text-sm text-muted-foreground flex items-center gap-2">
+            <Upload className="w-4 h-4" />
+            Базы не загружены. Импортируйте Excel в блоке «В работе» ниже.
+          </p>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+            {buckets.map(b => (
+              <div key={b.source} className="rounded-xl border bg-background/60 p-3 flex items-center gap-3">
+                <Database className="w-4 h-4 text-primary shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium truncate">{b.source}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {b.total} контактов · {b.untreated > 0
+                      ? <span className="text-amber-600 font-medium">{b.untreated} необработанных</span>
+                      : 'все в работе'}
+                  </p>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
 function ArchiveTab({ organizationId }: { organizationId?: string }) {
   const [items, setItems] = useState<Array<{ id: string; type: 'lead' | 'proposal'; name: string; reason: string; date: string }>>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    void load();
-  }, [organizationId]);
+  useEffect(() => { void load(); }, [organizationId]);
 
   async function load() {
     setLoading(true);
@@ -87,43 +154,27 @@ function ArchiveTab({ organizationId }: { organizationId?: string }) {
       const applyOrg = <T extends { eq: any }>(q: T): T =>
         organizationId ? q.eq('organization_id', organizationId) : q;
       const [leadsR, proposalsR, contractsR] = await Promise.all([
-        applyOrg(
-          supabase.from('sales_leads')
-            .select('id, org_name, status, updated_at')
-            .eq('status', 'not_interested')
-            .order('updated_at', { ascending: false })
-            .limit(200)
-        ),
-        applyOrg(
-          supabase.from('commercial_proposals')
-            .select('id, company_name, status, updated_at')
-            .eq('status', 'rejected')
-            .order('updated_at', { ascending: false })
-            .limit(200)
-        ),
-        applyOrg(
-          supabase.from('sales_contracts')
-            .select('id, company_name, status, updated_at')
-            .in('status', ['cancelled', 'expired'])
-            .order('updated_at', { ascending: false })
-            .limit(200)
-        ),
+        applyOrg(supabase.from('sales_leads')
+          .select('id, org_name, status, updated_at').eq('status', 'not_interested')
+          .order('updated_at', { ascending: false }).limit(200)),
+        applyOrg(supabase.from('commercial_proposals')
+          .select('id, company_name, status, updated_at').eq('status', 'rejected')
+          .order('updated_at', { ascending: false }).limit(200)),
+        applyOrg(supabase.from('sales_contracts')
+          .select('id, company_name, status, updated_at').in('status', ['cancelled', 'expired'])
+          .order('updated_at', { ascending: false }).limit(200)),
       ]);
       const merged = [
         ...(leadsR.data || []).map((l: any) => ({ id: l.id, type: 'lead' as const, name: l.org_name, reason: 'Лид: отказ', date: l.updated_at })),
         ...(proposalsR.data || []).map((p: any) => ({ id: p.id, type: 'proposal' as const, name: p.company_name, reason: 'КП: отклонено', date: p.updated_at })),
         ...(contractsR.data || []).map((c: any) => ({
-          id: c.id,
-          type: 'proposal' as const,
-          name: c.company_name,
+          id: c.id, type: 'proposal' as const, name: c.company_name,
           reason: c.status === 'expired' ? 'Договор: истёк' : 'Договор: расторгнут',
           date: c.updated_at,
         })),
       ].sort((a, b) => (b.date || '').localeCompare(a.date || ''));
       setItems(merged);
-    } finally {
-      setLoading(false);
-    }
+    } finally { setLoading(false); }
   }
 
   if (loading) return <div className="text-center text-sm text-muted-foreground py-8">Загрузка...</div>;
@@ -209,9 +260,7 @@ function BlacklistTab({ organizationId }: { organizationId?: string }) {
           {list.isLoading ? (
             <div className="text-center text-sm text-muted-foreground py-8">Загрузка...</div>
           ) : items.length === 0 ? (
-            <div className="text-center text-sm text-muted-foreground py-12">
-              Чёрный список пуст
-            </div>
+            <div className="text-center text-sm text-muted-foreground py-12">Чёрный список пуст</div>
           ) : (
             <div className="space-y-1.5">
               {items.map(it => (
