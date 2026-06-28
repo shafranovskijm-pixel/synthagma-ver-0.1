@@ -201,11 +201,22 @@ export function LeadsManager({ organizationId }: LeadsManagerProps = {}) {
               <Checkbox checked={selectedIds.has(lead.id)} onCheckedChange={() => toggleSelect(lead.id)} onClick={e => e.stopPropagation()} />
               <div className="flex-1 min-w-0">
                 <p className="font-medium truncate">{lead.org_name}</p>
-                <p className="text-xs text-muted-foreground">ИНН: {lead.inn || '—'}</p>
+                <p className="text-xs text-muted-foreground truncate">
+                  ИНН: {lead.inn || '—'}
+                  {lead.phone && <> · <span className="text-foreground">{lead.phone}</span></>}
+                </p>
               </div>
-              <Badge className={`w-28 justify-center ${st.color}`}>{st.label}</Badge>
-              <span className="w-32 text-sm truncate">{mgr?.full_name || '—'}</span>
-              <span className="w-28 text-sm text-muted-foreground truncate">{lead.region || '—'}</span>
+              <div className="flex items-center gap-1" onClick={e => e.stopPropagation()}>
+                <Button size="sm" variant="outline" disabled={!lead.phone} onClick={() => handleQuickCall(lead)} title={lead.phone || 'Нет номера'}>
+                  <Phone className="w-3.5 h-3.5 mr-1" />Позвонить
+                </Button>
+                <Button size="sm" variant="ghost" onClick={() => openDetail(lead)}>
+                  <MessageSquare className="w-3.5 h-3.5 mr-1" />Заметка
+                </Button>
+              </div>
+              <Badge className={`w-24 justify-center ${st.color}`}>{st.label}</Badge>
+              <span className="w-28 text-sm truncate hidden md:inline">{mgr?.full_name || '—'}</span>
+              <span className="w-32 text-xs text-muted-foreground truncate hidden lg:inline">{lead.region || '—'}</span>
             </div>
           );
         })}
