@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { Upload, UserPlus, Search, Building2, Phone, Mail, Globe, MapPin, Filter } from 'lucide-react';
+import { useState, useEffect, useMemo } from 'react';
+import { Upload, Search, Building2, Phone, Mail, Globe, MapPin, MessageSquare } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
@@ -41,11 +41,19 @@ export function LeadsManager({ organizationId }: LeadsManagerProps = {}) {
     fetchManagers();
   }, [fetchLeads, fetchManagers, organizationId]);
 
-  const regions = [...new Set(leads.map(l => l.region).filter(Boolean))] as string[];
+  const regionCounts = useMemo(() => {
+    const m = new Map<string, number>();
+    for (const l of leads) {
+      const r = l.region || 'Без региона';
+      m.set(r, (m.get(r) || 0) + 1);
+    }
+    return [...m.entries()].sort((a, b) => b[1] - a[1]);
+  }, [leads]);
+  const regions = regionCounts.map(([r]) => r);
 
   const filtered = leads.filter(l => {
     if (search && !l.org_name.toLowerCase().includes(search.toLowerCase()) && !l.inn?.includes(search)) return false;
-    if (regionFilter !== 'all' && l.region !== regionFilter) return false;
+    if (regionFilter !== 'all' && (l.region || 'Без региона') !== regionFilter) return false;
     if (statusFilter !== 'all' && l.status !== statusFilter) return false;
     if (managerFilter !== 'all' && l.assigned_manager_id !== managerFilter) return false;
     return true;
@@ -83,13 +91,20 @@ export function LeadsManager({ organizationId }: LeadsManagerProps = {}) {
 
   const handleAddActivity = async (type: string) => {
     if (!detailLead || !activityNote.trim()) return;
-    // Find manager id for current admin (using first manager or self)
-    const mgr = managers[0];
-    if (mgr) {
-      await addActivity(detailLead.id, mgr.id, type, activityNote);
+    const ok = await addActivity(detailLead.id, null, type, activityNote);
+    if (ok) {
       setActivityNote('');
       fetchActivities(detailLead.id);
     }
+  };
+
+  // Quick call from row: открыть tel: и сразу создать запись «звонок»
+  const handleQuickCall = async (lead: SalesLead) => {
+    if (lead.phone) {
+      try { window.location.href = `tel:${lead.phone.replace(/\s/g, '')}`; } catch {}
+    }
+    openDetail(lead);
+    await addActivity(lead.id, null, 'call', `Исходящий звонок на ${lead.phone || 'номер не указан'}`);
   };
 
   return (
@@ -132,6 +147,29 @@ export function LeadsManager({ organizationId }: LeadsManagerProps = {}) {
         )}
       </div>
 
+      {/* Region chips */}
+      {regionCounts.length > 0 && (
+        <div className="flex flex-wrap gap-1.5">
+          <button
+            type="button"
+            onClick={() => setRegionFilter('all')}
+            className={`text-xs px-3 py-1.5 rounded-full border transition ${regionFilter === 'all' ? 'bg-primary text-primary-foreground border-primary' : 'bg-background hover:bg-secondary border-border'}`}
+          >
+            Все · {leads.length}
+          </button>
+          {regionCounts.map(([r, c]) => (
+            <button
+              key={r}
+              type="button"
+              onClick={() => setRegionFilter(r)}
+              className={`text-xs px-3 py-1.5 rounded-full border transition ${regionFilter === r ? 'bg-primary text-primary-foreground border-primary' : 'bg-background hover:bg-secondary border-border'}`}
+            >
+              {r} · {c}
+            </button>
+          ))}
+        </div>
+      )}
+
       {/* Bulk actions */}
       {selectedIds.size > 0 && (
         <div className="flex items-center gap-2 p-3 bg-primary/5 rounded-lg">
@@ -163,11 +201,22 @@ export function LeadsManager({ organizationId }: LeadsManagerProps = {}) {
               <Checkbox checked={selectedIds.has(lead.id)} onCheckedChange={() => toggleSelect(lead.id)} onClick={e => e.stopPropagation()} />
               <div className="flex-1 min-w-0">
                 <p className="font-medium truncate">{lead.org_name}</p>
-                <p className="text-xs text-muted-foreground">ИНН: {lead.inn || '—'}</p>
+                <p className="text-xs text-muted-foreground truncate">
+                  ИНН: {lead.inn || '—'}
+                  {lead.phone && <> · <span className="text-foreground">{lead.phone}</span></>}
+                </p>
               </div>
-              <Badge className={`w-28 justify-center ${st.color}`}>{st.label}</Badge>
-              <span className="w-32 text-sm truncate">{mgr?.full_name || '—'}</span>
-              <span className="w-28 text-sm text-muted-foreground truncate">{lead.region || '—'}</span>
+              <div className="flex items-center gap-1" onClick={e => e.stopPropagation()}>
+                <Button size="sm" variant="outline" disabled={!lead.phone} onClick={() => handleQuickCall(lead)} title={lead.phone || 'Нет номера'}>
+                  <Phone className="w-3.5 h-3.5 mr-1" />Позвонить
+                </Button>
+                <Button size="sm" variant="ghost" onClick={() => openDetail(lead)}>
+                  <MessageSquare className="w-3.5 h-3.5 mr-1" />Заметка
+                </Button>
+              </div>
+              <Badge className={`w-24 justify-center ${st.color}`}>{st.label}</Badge>
+              <span className="w-28 text-sm truncate hidden md:inline">{mgr?.full_name || '—'}</span>
+              <span className="w-32 text-xs text-muted-foreground truncate hidden lg:inline">{lead.region || '—'}</span>
             </div>
           );
         })}
