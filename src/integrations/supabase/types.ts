@@ -10114,6 +10114,7 @@ export type Database = {
         Returns: undefined
       }
       encrypt_password: { Args: { p_text: string }; Returns: string }
+      ensure_sales_manager_for_current_user: { Args: never; Returns: string }
       expire_staff_invitations: { Args: never; Returns: number }
       expire_temporary_staff_roles: {
         Args: never
