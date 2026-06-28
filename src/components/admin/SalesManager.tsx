@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Menu } from 'lucide-react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
@@ -65,6 +65,16 @@ export function SalesManager() {
   const handleJump = useCallback((tab: string, inn?: string | null) => {
     if (inn) setDealSelectedInn(inn);
     setActiveTab(tab);
+  }, []);
+
+  // Внешняя навигация (из меню под аватаром в шапке)
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const tab = (e as CustomEvent).detail;
+      if (typeof tab === 'string') setActiveTab(tab);
+    };
+    window.addEventListener('sales-nav', handler);
+    return () => window.removeEventListener('sales-nav', handler);
   }, []);
 
   const TABS: Record<string, React.ReactNode> = {

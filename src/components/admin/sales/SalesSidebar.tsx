@@ -1,5 +1,6 @@
-import { Target, FileText, Package, Users, Building2, BarChart3, ScrollText, GitCompareArrows, PenTool, Sparkles, Send, ListTodo, Contact } from 'lucide-react';
+import { Target, FileText, Building2, ScrollText, PenTool, Sparkles, Send, ListTodo, Contact, Package, BarChart3, GitCompareArrows, Users } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 interface MenuItem {
   id: string;
@@ -12,7 +13,8 @@ interface MenuGroup {
   items: MenuItem[];
 }
 
-const menuGroups: MenuGroup[] = [
+/** Основной поток продаж — иконка-рейл слева */
+const railGroups: MenuGroup[] = [
   {
     label: 'Главное',
     items: [
@@ -34,7 +36,6 @@ const menuGroups: MenuGroup[] = [
       { id: 'proposals', label: 'КП', icon: FileText },
       { id: 'contracts', label: 'Договоры', icon: ScrollText },
       { id: 'signing', label: 'Подписание', icon: PenTool },
-      { id: 'services', label: 'Услуги', icon: Package },
     ],
   },
   {
@@ -43,14 +44,20 @@ const menuGroups: MenuGroup[] = [
       { id: 'broadcast', label: 'Рассылки', icon: Send },
     ],
   },
-  {
-    label: 'Аналитика',
-    items: [
-      { id: 'control', label: 'Контроль', icon: BarChart3 },
-      { id: 'comparison', label: 'Сравнение', icon: GitCompareArrows },
-      { id: 'managers', label: 'Менеджеры', icon: Users },
-    ],
-  },
+];
+
+/** Дополнительные вкладки — вынесены в меню под аватаром */
+export const salesExtraItems: MenuItem[] = [
+  { id: 'services', label: 'Услуги', icon: Package },
+  { id: 'control', label: 'Контроль', icon: BarChart3 },
+  { id: 'comparison', label: 'Сравнение', icon: GitCompareArrows },
+  { id: 'managers', label: 'Менеджеры', icon: Users },
+];
+
+/** Все пункты — для лейблов/мобильного меню */
+export const salesMenuGroups: MenuGroup[] = [
+  ...railGroups,
+  { label: 'Прочее', items: salesExtraItems },
 ];
 
 interface SalesSidebarProps {
@@ -58,12 +65,11 @@ interface SalesSidebarProps {
   onTabChange: (tab: string) => void;
 }
 
-export const salesMenuGroups = menuGroups;
-
+/** Мобильное меню — полные подписи */
 export function SalesSidebarContent({ activeTab, onTabChange }: SalesSidebarProps) {
   return (
     <div className="space-y-4">
-      {menuGroups.map((group, gi) => (
+      {salesMenuGroups.map((group, gi) => (
         <div key={group.label} className="space-y-1">
           <p className="px-3 pb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/60">
             {group.label}
@@ -74,7 +80,6 @@ export function SalesSidebarContent({ activeTab, onTabChange }: SalesSidebarProp
               onClick={() => onTabChange(item.id)}
               className={cn(
                 "w-full flex items-center gap-2.5 px-3 py-2.5 text-sm rounded-[28px] transition-all duration-200",
-                "hover:scale-105",
                 activeTab === item.id
                   ? "bg-primary/10 text-primary font-medium shadow-sm"
                   : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
@@ -84,17 +89,47 @@ export function SalesSidebarContent({ activeTab, onTabChange }: SalesSidebarProp
               <span>{item.label}</span>
             </button>
           ))}
-          {gi < menuGroups.length - 1 && <div className="h-px bg-border/50 mx-3 mt-3" />}
+          {gi < salesMenuGroups.length - 1 && <div className="h-px bg-border/50 mx-3 mt-3" />}
         </div>
       ))}
     </div>
   );
 }
 
+/** Десктоп: узкий icon-rail с тултипами */
 export function SalesSidebar({ activeTab, onTabChange }: SalesSidebarProps) {
   return (
-    <div className="hidden md:block w-56 shrink-0 py-2 pr-4 sticky top-2 self-start max-h-[calc(100vh-1rem)] overflow-y-auto">
-      <SalesSidebarContent activeTab={activeTab} onTabChange={onTabChange} />
-    </div>
+    <TooltipProvider delayDuration={150}>
+      <div className="hidden md:flex w-14 shrink-0 flex-col items-center py-2 sticky top-2 self-start max-h-[calc(100vh-1rem)] overflow-y-auto">
+        {railGroups.map((group, gi) => (
+          <div key={group.label} className="w-full flex flex-col items-center gap-1">
+            {group.items.map(item => {
+              const Icon = item.icon;
+              const active = activeTab === item.id;
+              return (
+                <Tooltip key={item.id}>
+                  <TooltipTrigger asChild>
+                    <button
+                      onClick={() => onTabChange(item.id)}
+                      aria-label={item.label}
+                      className={cn(
+                        "w-10 h-10 flex items-center justify-center rounded-2xl transition-all duration-200",
+                        active
+                          ? "bg-primary/10 text-primary shadow-sm"
+                          : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
+                      )}
+                    >
+                      <Icon className="w-5 h-5" />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent side="right">{item.label}</TooltipContent>
+                </Tooltip>
+              );
+            })}
+            {gi < railGroups.length - 1 && <div className="h-px w-6 bg-border/50 my-2" />}
+          </div>
+        ))}
+      </div>
+    </TooltipProvider>
   );
 }
