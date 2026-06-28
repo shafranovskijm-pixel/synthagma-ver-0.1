@@ -240,7 +240,7 @@ export function LogActivityDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="rounded-2xl max-w-md">
+      <DialogContent className="rounded-2xl max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>
             {type === 'call' ? 'Записать звонок' : 'Добавить заметку'} — {companyName}
