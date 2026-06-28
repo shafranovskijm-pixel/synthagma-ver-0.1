@@ -10435,6 +10435,16 @@ export type Database = {
           user_id: string
         }[]
       }
+      lookup_staff_invitation: {
+        Args: { _token: string }
+        Returns: {
+          accepted_at: string
+          email: string
+          expires_at: string
+          full_name: string
+          invitation_type: string
+        }[]
+      }
       next_reg_number: {
         Args: { p_doc_type: string; p_org: string; p_year?: number }
         Returns: number

@@ -72,7 +72,9 @@ serve(async (req) => {
 
     // Email пользователя должен совпадать с приглашением
     const userEmail = (user.email || "").toLowerCase();
-    if (userEmail !== inv.email.toLowerCase()) {
+    // For 'sales' invitations the email field is just a placeholder for sharing links —
+    // user signs up with their own email, so we don't enforce a match.
+    if (inv.invitation_type !== 'sales' && userEmail !== inv.email.toLowerCase()) {
       return new Response(JSON.stringify({
         error: `Это приглашение отправлено на адрес ${inv.email}. Войдите под этим email.`,
       }), {
@@ -151,6 +153,19 @@ serve(async (req) => {
         if (error) throw error;
       }
       redirectPath = "/company";
+
+    } else if (inv.invitation_type === "sales") {
+      // Глобальная роль sales_manager + запись в sales_managers
+      await admin.from("user_roles").upsert({
+        user_id: user.id, role: "sales_manager",
+      } as any, { onConflict: "user_id,role" });
+      await admin.from("sales_managers").upsert({
+        user_id: user.id,
+        full_name: fullName,
+        is_active: true,
+      } as any, { onConflict: "user_id" });
+      await admin.from("profiles").update({ full_name: fullName }).eq("user_id", user.id);
+      redirectPath = "/sales";
     }
 
     // Помечаем приглашение принятым

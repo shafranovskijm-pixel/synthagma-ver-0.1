@@ -2,11 +2,13 @@ import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams, Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
-import { CheckCircle2, AlertCircle, Mail, LogIn } from "lucide-react";
+import { CheckCircle2, AlertCircle, Mail, LogIn, UserPlus } from "lucide-react";
 import { toast } from "sonner";
 
-type Stage = "checking" | "needs_login" | "ready" | "accepting" | "success" | "error";
+type Stage = "checking" | "needs_login" | "needs_signup" | "ready" | "accepting" | "success" | "error";
 
 export default function AcceptInvitation() {
   const [params] = useSearchParams();
@@ -17,6 +19,14 @@ export default function AcceptInvitation() {
   const [errorMsg, setErrorMsg] = useState("");
   const [redirectPath, setRedirectPath] = useState("/");
   const [invitationEmail, setInvitationEmail] = useState("");
+  const [invitationType, setInvitationType] = useState<string>("");
+  const [invitationFullName, setInvitationFullName] = useState<string>("");
+
+  // Signup fields for "sales" invitations
+  const [suFullName, setSuFullName] = useState("");
+  const [suEmail, setSuEmail] = useState("");
+  const [suPassword, setSuPassword] = useState("");
+  const [suBusy, setSuBusy] = useState(false);
 
   useEffect(() => {
     const init = async () => {
@@ -25,14 +35,9 @@ export default function AcceptInvitation() {
         setStage("error");
         return;
       }
-      // Look up invitation in public read (we expose only minimal data via RLS, fallback по edge?)
-      const { data: inv } = await supabase
-        .from("staff_invitations")
-        .select("email, expires_at, accepted_at")
-        .eq("token", token)
-        .maybeSingle();
-
-      if (!inv) {
+      const { data, error } = await supabase.rpc("lookup_staff_invitation", { _token: token });
+      const inv = Array.isArray(data) ? data[0] : data;
+      if (error || !inv) {
         setErrorMsg("Приглашение не найдено или ссылка неверна");
         setStage("error");
         return;
@@ -47,11 +52,14 @@ export default function AcceptInvitation() {
         setStage("error");
         return;
       }
-      setInvitationEmail(inv.email);
+      setInvitationEmail(inv.email || "");
+      setInvitationType(inv.invitation_type || "");
+      setInvitationFullName(inv.full_name || "");
+      setSuFullName(inv.full_name || "");
 
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
-        setStage("needs_login");
+        setStage(inv.invitation_type === "sales" ? "needs_signup" : "needs_login");
       } else {
         setStage("ready");
       }
@@ -59,7 +67,52 @@ export default function AcceptInvitation() {
     init();
   }, [token]);
 
-  const handleAccept = async () => {
+  const handleSignUpAndAccept = async () => {
+    if (!suEmail.trim() || !suPassword || !suFullName.trim()) {
+      toast.error("Заполните все поля");
+      return;
+    }
+    if (suPassword.length < 6) {
+      toast.error("Пароль минимум 6 символов");
+      return;
+    }
+    setSuBusy(true);
+    try {
+      const { data: signUp, error: suErr } = await supabase.auth.signUp({
+        email: suEmail.trim().toLowerCase(),
+        password: suPassword,
+        options: {
+          emailRedirectTo: `${window.location.origin}/accept-invitation?token=${token}`,
+          data: { full_name: suFullName.trim() },
+        },
+      });
+      if (suErr) {
+        toast.error(suErr.message);
+        return;
+      }
+      // If session immediate (auto-confirm), accept right away
+      if (signUp.session) {
+        setStage("accepting");
+        await acceptNow();
+      } else {
+        // Try sign-in (auto-confirm might still allow this)
+        const { data: signIn, error: siErr } = await supabase.auth.signInWithPassword({
+          email: suEmail.trim().toLowerCase(),
+          password: suPassword,
+        });
+        if (siErr || !signIn.session) {
+          toast.success("Подтвердите email и снова откройте ссылку");
+          return;
+        }
+        setStage("accepting");
+        await acceptNow();
+      }
+    } finally {
+      setSuBusy(false);
+    }
+  };
+
+  const acceptNow = async () => {
     setStage("accepting");
     try {
       const { data, error } = await supabase.functions.invoke("accept-staff-invitation", {
@@ -88,9 +141,14 @@ export default function AcceptInvitation() {
           <Mail className="w-7 h-7" />
         </div>
         <div className="text-center space-y-2">
-          <h1 className="text-2xl font-bold">Приглашение в команду</h1>
-          {invitationEmail && (
+          <h1 className="text-2xl font-bold">
+            {invitationType === "sales" ? "Приглашение в команду продаж" : "Приглашение в команду"}
+          </h1>
+          {invitationType !== "sales" && invitationEmail && (
             <p className="text-sm text-muted-foreground">Для адреса <strong>{invitationEmail}</strong></p>
+          )}
+          {invitationType === "sales" && (
+            <p className="text-sm text-muted-foreground">Зарегистрируйтесь, чтобы получить доступ к CRM Синтагмы.</p>
           )}
         </div>
 
@@ -112,12 +170,39 @@ export default function AcceptInvitation() {
           </div>
         )}
 
+        {stage === "needs_signup" && (
+          <div className="space-y-3">
+            <div>
+              <Label>ФИО</Label>
+              <Input value={suFullName} onChange={e => setSuFullName(e.target.value)} placeholder="Иванов Иван Иванович" />
+            </div>
+            <div>
+              <Label>Email</Label>
+              <Input type="email" value={suEmail} onChange={e => setSuEmail(e.target.value)} placeholder="you@example.com" />
+            </div>
+            <div>
+              <Label>Пароль</Label>
+              <Input type="password" value={suPassword} onChange={e => setSuPassword(e.target.value)} placeholder="Минимум 6 символов" />
+            </div>
+            <Button onClick={handleSignUpAndAccept} disabled={suBusy} className="w-full gap-2">
+              <UserPlus className="w-4 h-4" />
+              {suBusy ? "Создаём…" : "Зарегистрироваться и войти"}
+            </Button>
+            <p className="text-xs text-center text-muted-foreground">
+              Уже есть аккаунт?{" "}
+              <Link to={`/login?next=${encodeURIComponent(`/accept-invitation?token=${token}`)}`} className="text-primary underline">
+                Войти
+              </Link>
+            </p>
+          </div>
+        )}
+
         {stage === "ready" && (
           <div className="space-y-4">
             <p className="text-sm text-center text-muted-foreground">
               Нажмите кнопку, чтобы подтвердить вступление в команду.
             </p>
-            <Button onClick={handleAccept} className="w-full">Принять приглашение</Button>
+            <Button onClick={acceptNow} className="w-full">Принять приглашение</Button>
           </div>
         )}
 

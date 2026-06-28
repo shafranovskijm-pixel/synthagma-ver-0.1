@@ -58,3 +58,44 @@ export function isAdminViewActive(): boolean {
 export function clearAdminView(): void {
   try { localStorage.removeItem(STORAGE_KEY); } catch { /* ignore */ }
 }
+
+/* ===========================================================
+ *  Admin views as Sales Manager
+ * =========================================================== */
+const SALES_VIEW_KEY = "adminViewAsSalesManager";
+
+export interface AdminSalesViewData {
+  managerId: string;
+  userId: string;
+  fullName: string;
+  returnTo?: string;
+}
+
+export function getAdminSalesView(): AdminSalesViewData | null {
+  try {
+    const raw = localStorage.getItem(SALES_VIEW_KEY);
+    if (!raw) return null;
+    const p = JSON.parse(raw);
+    if (!p || typeof p.managerId !== "string" || !p.managerId) {
+      localStorage.removeItem(SALES_VIEW_KEY);
+      return null;
+    }
+    return {
+      managerId: p.managerId,
+      userId: typeof p.userId === "string" ? p.userId : "",
+      fullName: typeof p.fullName === "string" ? p.fullName : "",
+      returnTo: typeof p.returnTo === "string" ? p.returnTo : undefined,
+    };
+  } catch {
+    try { localStorage.removeItem(SALES_VIEW_KEY); } catch { /* ignore */ }
+    return null;
+  }
+}
+
+export function setAdminSalesView(data: AdminSalesViewData): void {
+  try { localStorage.setItem(SALES_VIEW_KEY, JSON.stringify(data)); } catch { /* ignore */ }
+}
+
+export function clearAdminSalesView(): void {
+  try { localStorage.removeItem(SALES_VIEW_KEY); } catch { /* ignore */ }
+}

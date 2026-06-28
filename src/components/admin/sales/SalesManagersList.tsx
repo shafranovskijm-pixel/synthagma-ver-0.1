@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { Plus, UserCheck, UserX, Phone, Mail } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Plus, UserCheck, UserX, Phone, Eye, Link2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
@@ -7,14 +8,23 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { useSalesManager } from '@/hooks/useSalesManager';
+import { InviteSalesManagerDialog } from './InviteSalesManagerDialog';
+import { setAdminSalesView } from '@/utils/adminViewMode';
 
 export function SalesManagersList() {
   const { managers, fetchManagers, createManager, toggleManagerActive, loading, leads, proposals, fetchLeads, fetchProposals } = useSalesManager();
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [inviteOpen, setInviteOpen] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [fullName, setFullName] = useState('');
   const [phone, setPhone] = useState('');
+  const navigate = useNavigate();
+
+  const handleImpersonate = (m: { id: string; user_id: string; full_name: string }) => {
+    setAdminSalesView({ managerId: m.id, userId: m.user_id, fullName: m.full_name, returnTo: '/admin' });
+    navigate('/sales');
+  };
 
   useEffect(() => { fetchManagers(); fetchLeads(); fetchProposals(); }, [fetchManagers, fetchLeads, fetchProposals]);
 
@@ -34,24 +44,31 @@ export function SalesManagersList() {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h3 className="text-lg font-semibold">Менеджеры по продажам</h3>
-        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-          <DialogTrigger asChild>
-            <Button size="sm"><Plus className="w-4 h-4 mr-2" />Добавить менеджера</Button>
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader><DialogTitle>Новый менеджер</DialogTitle></DialogHeader>
-            <div className="space-y-4 pt-4">
-              <div><Label>ФИО</Label><Input value={fullName} onChange={e => setFullName(e.target.value)} placeholder="Иванов Иван Иванович" /></div>
-              <div><Label>Email</Label><Input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="manager@company.ru" /></div>
-              <div><Label>Пароль</Label><Input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="Минимум 6 символов" /></div>
-              <div><Label>Телефон (необязательно)</Label><Input value={phone} onChange={e => setPhone(e.target.value)} placeholder="+7..." /></div>
-              <Button onClick={handleCreate} className="w-full" disabled={loading}>
-                {loading ? 'Создание...' : 'Создать менеджера'}
-              </Button>
-            </div>
-          </DialogContent>
-        </Dialog>
+        <div className="flex gap-2">
+          <Button size="sm" variant="outline" onClick={() => setInviteOpen(true)}>
+            <Link2 className="w-4 h-4 mr-2" />Пригласить по ссылке
+          </Button>
+          <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+            <DialogTrigger asChild>
+              <Button size="sm"><Plus className="w-4 h-4 mr-2" />Добавить менеджера</Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader><DialogTitle>Новый менеджер</DialogTitle></DialogHeader>
+              <div className="space-y-4 pt-4">
+                <div><Label>ФИО</Label><Input value={fullName} onChange={e => setFullName(e.target.value)} placeholder="Иванов Иван Иванович" /></div>
+                <div><Label>Email</Label><Input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="manager@company.ru" /></div>
+                <div><Label>Пароль</Label><Input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="Минимум 6 символов" /></div>
+                <div><Label>Телефон (необязательно)</Label><Input value={phone} onChange={e => setPhone(e.target.value)} placeholder="+7..." /></div>
+                <Button onClick={handleCreate} className="w-full" disabled={loading}>
+                  {loading ? 'Создание...' : 'Создать менеджера'}
+                </Button>
+              </div>
+            </DialogContent>
+          </Dialog>
+        </div>
       </div>
+
+      <InviteSalesManagerDialog open={inviteOpen} onOpenChange={setInviteOpen} />
 
       <div className="grid gap-3">
         {managers.map(m => {
@@ -72,13 +89,18 @@ export function SalesManagersList() {
                     <span>КП: {stats.proposalsCount}</span>
                   </div>
                 </div>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => toggleManagerActive(m.id, !m.is_active)}
-                >
-                  {m.is_active ? <><UserX className="w-4 h-4 mr-1" />Деактивировать</> : <><UserCheck className="w-4 h-4 mr-1" />Активировать</>}
-                </Button>
+                <div className="flex gap-2">
+                  <Button variant="outline" size="sm" onClick={() => handleImpersonate(m)}>
+                    <Eye className="w-4 h-4 mr-1" />Войти как
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => toggleManagerActive(m.id, !m.is_active)}
+                  >
+                    {m.is_active ? <><UserX className="w-4 h-4 mr-1" />Деактивировать</> : <><UserCheck className="w-4 h-4 mr-1" />Активировать</>}
+                  </Button>
+                </div>
               </CardContent>
             </Card>
           );

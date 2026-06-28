@@ -109,11 +109,12 @@ serve(async (req) => {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
-    if (!['admin', 'organization', 'company'].includes(invitation_type)) {
+    if (!['admin', 'organization', 'company', 'sales'].includes(invitation_type)) {
       return new Response(JSON.stringify({ error: "Invalid invitation_type" }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
+    const skipEmail = !!body.skip_email;
 
     const admin = createClient(supabaseUrl, serviceRoleKey);
 
@@ -179,9 +180,9 @@ serve(async (req) => {
       organizationName,
       acceptUrl,
     });
-    const subject = `Приглашение в ${invitation_type === 'admin' ? 'команду платформы' : invitation_type === 'organization' ? `организацию «${organizationName}»` : `компанию «${organizationName}»`}`;
+    const subject = `Приглашение в ${invitation_type === 'admin' ? 'команду платформы' : invitation_type === 'organization' ? `организацию «${organizationName}»` : invitation_type === 'sales' ? 'команду продаж Синтагмы' : `компанию «${organizationName}»`}`;
 
-    const sent = await sendSmtp(email.trim().toLowerCase(), subject, html);
+    const sent = skipEmail ? false : await sendSmtp(email.trim().toLowerCase(), subject, html);
 
     return new Response(JSON.stringify({ success: true, sent, accept_url: acceptUrl }), {
       status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
