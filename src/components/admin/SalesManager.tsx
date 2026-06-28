@@ -147,21 +147,6 @@ export function SalesManager() {
       </Sheet>
 
       <div className="flex-1 min-w-0">
-        {/* Header with quick "Our details" button */}
-        <div className="flex justify-end mb-3">
-          <Dialog open={cardOpen} onOpenChange={setCardOpen}>
-            <DialogTrigger asChild>
-              <Button size="sm" variant="outline" className="rounded-xl gap-1.5">
-                <CreditCard className="w-3.5 h-3.5" />
-                Наши реквизиты
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="rounded-2xl max-w-3xl max-h-[85vh] overflow-y-auto">
-              <DialogHeader><DialogTitle>Реквизиты компании</DialogTitle></DialogHeader>
-              <CompanyCard />
-            </DialogContent>
-          </Dialog>
-        </div>
         {TABS[activeTab]}
       </div>
 
