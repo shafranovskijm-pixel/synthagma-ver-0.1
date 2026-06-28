@@ -41,11 +41,19 @@ export function LeadsManager({ organizationId }: LeadsManagerProps = {}) {
     fetchManagers();
   }, [fetchLeads, fetchManagers, organizationId]);
 
-  const regions = [...new Set(leads.map(l => l.region).filter(Boolean))] as string[];
+  const regionCounts = useMemo(() => {
+    const m = new Map<string, number>();
+    for (const l of leads) {
+      const r = l.region || 'Без региона';
+      m.set(r, (m.get(r) || 0) + 1);
+    }
+    return [...m.entries()].sort((a, b) => b[1] - a[1]);
+  }, [leads]);
+  const regions = regionCounts.map(([r]) => r);
 
   const filtered = leads.filter(l => {
     if (search && !l.org_name.toLowerCase().includes(search.toLowerCase()) && !l.inn?.includes(search)) return false;
-    if (regionFilter !== 'all' && l.region !== regionFilter) return false;
+    if (regionFilter !== 'all' && (l.region || 'Без региона') !== regionFilter) return false;
     if (statusFilter !== 'all' && l.status !== statusFilter) return false;
     if (managerFilter !== 'all' && l.assigned_manager_id !== managerFilter) return false;
     return true;
