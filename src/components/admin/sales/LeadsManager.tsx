@@ -26,7 +26,7 @@ interface LeadsManagerProps {
 }
 
 export function LeadsManager({ organizationId }: LeadsManagerProps = {}) {
-  const { leads, fetchLeads, assignLeads, managers, fetchManagers, updateLeadStatus, updateLeadNotes, addActivity, activities, fetchActivities } = useSalesManager();
+  const { leads, fetchLeads, assignLeads, claimLeads, managers, fetchManagers, updateLeadStatus, updateLeadNotes, addActivity, activities, fetchActivities } = useSalesManager();
   const [search, setSearch] = useState('');
   const [regionFilter, setRegionFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
@@ -90,6 +90,13 @@ export function LeadsManager({ organizationId }: LeadsManagerProps = {}) {
     await assignLeads([...selectedIds], null as any);
     setSelectedIds(new Set());
   };
+
+  const handleClaim = async (ids: string[]) => {
+    const n = await claimLeads(ids);
+    if (n > 0) setSelectedIds(new Set());
+  };
+
+
 
   const openDetail = (lead: SalesLead) => {
     setDetailLead(lead);
@@ -204,8 +211,9 @@ export function LeadsManager({ organizationId }: LeadsManagerProps = {}) {
 
       {/* Bulk actions */}
       {selectedIds.size > 0 && (
-        <div className="flex items-center gap-2 p-3 bg-primary/5 rounded-lg">
+        <div className="flex items-center gap-2 p-3 bg-primary/5 rounded-lg flex-wrap">
           <span className="text-sm font-medium">Выбрано: {selectedIds.size}</span>
+          <Button size="sm" onClick={() => handleClaim([...selectedIds])}>Взять в работу</Button>
           <Select onValueChange={handleAssign}>
             <SelectTrigger className="w-[200px]"><SelectValue placeholder="Назначить менеджеру..." /></SelectTrigger>
             <SelectContent>

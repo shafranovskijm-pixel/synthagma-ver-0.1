@@ -10056,6 +10056,7 @@ export type Database = {
         Args: { p_plan: string; p_tier: string }
         Returns: boolean
       }
+      claim_sales_leads: { Args: { _lead_ids: string[] }; Returns: number }
       cleanup_client_error_logs: { Args: never; Returns: undefined }
       consume_email_quota: {
         Args: { p_count: number; p_scope_key: string; p_skip_warmup?: boolean }

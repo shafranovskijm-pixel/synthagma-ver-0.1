@@ -245,6 +245,15 @@ export function useSalesManager() {
     return true;
   };
 
+  const claimLeads = async (leadIds: string[]) => {
+    const { data, error } = await (supabase as any).rpc('claim_sales_leads', { _lead_ids: leadIds });
+    if (error) { toast.error("Не удалось взять в работу", { description: getErrorMessage(error) }); return 0; }
+    const n = (data as number) || 0;
+    toast.success(n > 0 ? `Взято в работу: ${n}` : 'Лиды уже закреплены');
+    await fetchLeads();
+    return n;
+  };
+
   const updateLeadStatus = async (leadId: string, status: string) => {
     const { error } = await supabase.from('sales_leads').update({ status, last_contact_at: new Date().toISOString() } as any).eq('id', leadId);
     if (error) { toast.error("Ошибка", { description: getErrorMessage(error) }); return false; }
@@ -311,7 +320,7 @@ export function useSalesManager() {
     fetchServices, fetchManagers, fetchProposals, fetchLeads, fetchActivities,
     createService, updateService, deleteService,
     createProposal, updateProposal, updateProposalStatus, deleteProposal, getProposalServices,
-    importLeads, assignLeads, updateLeadStatus, updateLeadNotes,
+    importLeads, assignLeads, claimLeads, updateLeadStatus, updateLeadNotes,
     addActivity, ensureCurrentManagerId, createManager, toggleManagerActive
   };
 }

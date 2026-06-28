@@ -1,50 +1,46 @@
-## Что делаем
+## Проблема
 
-1. **Полностью убираем Checko API из кабинета продаж** — компонент «База компаний (Checko API)» падает с ошибкой, плюс пользователь просит вычистить из кода.
-2. **Объединяем «Контакты» и «Компании»** в один раздел «Компании» — там же отображаем плашку «Необработанные загруженные базы» (которая раньше была в «Контактах»).
+В БД лежат **451 лид** в `sales_leads` (источник — загруженный Excel), но в кабинете `/sales` карточка «Необработанные загруженные базы» и таблица «В работе» показывают `0`.
 
-## Удаляем (Checko)
+Причина — RLS на `sales_leads`:
+- `admin` видит всё (ОК).
+- `sales_manager` видит **только** лиды, где `assigned_manager_id` указывает на его запись в `sales_managers`.
+- У всех 451 лида сейчас `assigned_manager_id IS NULL`, `organization_id IS NULL`, `status='new'` — это «общий пул», который не виден ни тестовому продажнику, ни менеджеру‑продажнику, открывшему `/sales`.
 
-Файлы — `rm`:
-- `src/components/admin/sales/CompaniesDatabase.tsx`
-- `src/components/admin/sales/CheckoSearchDialog.tsx`
-- `src/components/admin/sales/CheckoSearchHistory.tsx`
-- `src/components/admin/sales/CheckoQuotaBar.tsx`
-- `src/components/admin/sales/AddInnsDialog.tsx`
-- `src/hooks/useCheckoApi.ts`
-- `src/hooks/useCheckoSearch.ts`
-- `src/data/checkoLicenseTypes.ts`
+## Что сделаем
 
-Edge‑функции — удаляем через supabase deploy delete:
-- `checko-search`, `checko-stats`, `checko-enrich-batch`, `checko-daily-enrich`
+### 1. RLS: открыть «общий пул» менеджерам по продажам
+Добавить SELECT‑политику на `sales_leads`:
+```
+sales_manager видит лид, если
+  (assigned_manager_id IS NULL AND organization_id IS NULL AND status = 'new')
+  ИЛИ assigned_manager_id = его sales_managers.id
+```
+И UPDATE‑политику, позволяющую самостоятельно «забрать» лид из пула:
+```
+sales_manager может UPDATE строки из пула, только проставляя
+  assigned_manager_id = свой sales_managers.id, status='in_progress'
+```
+Админ и `organization_id`‑политики остаются как есть.
 
-Текстовые упоминания:
-- `src/pages/FeatureSalesCRM.tsx` (строка 217): убрать «(Checko)» из описания шага.
-- `src/data/russianRegions.ts`: оставляю — это просто справочник регионов РФ (комментарий «для Checko Search API» поправлю, файл нужен в других местах).
+### 2. UI «Необработанные базы» → активная карточка
+- Бейдж «451 новых» становится кликабельным.
+- В блоке «В работе» добавляется быстрый фильтр **«Только пул (без менеджера)»** — по умолчанию включён, если у пользователя `sales_manager`.
+- На строке лида/в массовом действии — кнопка **«Взять в работу»** (RPC `claim_sales_leads(lead_ids uuid[])`, security definer, ставит `assigned_manager_id` текущего менеджера и `status='in_progress'`, пишет запись в `sales_lead_activities`).
+- Для админа — существующая кнопка «Назначить менеджера» остаётся без изменений.
 
-Таблицы `checko_*` в БД оставляю — миграции не трогаю, чтобы не сломать историю; код к ним больше не обращается.
+### 3. Карточка «Необработанные загруженные базы»
+- Источник остаётся `sales_leads.source` (у этих 451 — `'Загруженная база'` или то, что было при импорте). После открытия RLS она наполнится автоматически.
+- Покажем мини‑строку «Импортировано: дата последнего лида в источнике».
 
-## Объединение «Контакты» + «Компании»
+## Что НЕ меняем
+- Структуру таблиц `sales_leads` / `sales_managers`.
+- Импорт Excel (`LeadsImportDialog`) — он уже пишет корректно.
+- Логику админ‑политик и `organization_id`‑скоупа.
 
-`src/components/admin/sales/CompaniesUnified.tsx`:
-- Удаляю вкладку `cold` и весь импорт `CompaniesDatabase` (вместе с `hideColdBase` параметром).
-- Сверху над `<Tabs>` добавляю карточку «Необработанные базы» (логика из `ContactsHub` — группировка `sales_leads` по `source` с подсчётом необработанных).
-- Остаются вкладки: **В работе** (LeadsManager) · **Архив** · **Чёрный список**.
+## Файлы
 
-`src/components/admin/sales/ContactsHub.tsx` — удаляю.
-
-`src/components/admin/sales/SalesSidebar.tsx`:
-- Убираю пункт `contacts` из `railGroups`.
-- В мобильном меню тоже исчезает (использует те же `salesMenuGroups`).
-
-`src/components/admin/SalesManager.tsx`:
-- Default `activeTab` → `'companies'` (вместо `'contacts'`).
-- Удаляю строку `contacts: <ContactsHub />` из карты TABS и импорт `ContactsHub`.
-
-`src/pages/SalesDashboard.tsx`:
-- `activeLabel="Компании"` (вместо «Контакты»).
-
-## Проверка
-- Сайдбар: 8 значков (Обзор · Задачи · Сделки 360° · Компании · КП · Договоры · Подписание · Рассылки).
-- При входе в `/sales` сразу открывается раздел «Компании» с плашкой загруженных баз и таблицей лидов.
-- Никаких упоминаний Checko в кабинете продаж и в коде кабинета.
+- Миграция: новая RLS‑политика SELECT + RPC `claim_sales_leads`.
+- `src/components/admin/sales/LeadsManager.tsx` — фильтр «Только пул» + кнопка «Взять в работу» (одиночная и массовая).
+- `src/hooks/useSalesManager.ts` — метод `claimLeads(ids)` через RPC.
+- `src/components/admin/sales/CompaniesUnified.tsx` — клик по бакету ставит фильтр `source=…` в LeadsManager (через проп / событие).
