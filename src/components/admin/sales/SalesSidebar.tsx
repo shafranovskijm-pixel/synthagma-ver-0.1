@@ -1,4 +1,4 @@
-import { Target, FileText, Package, Users, Building2, BarChart3, ScrollText, GitCompareArrows, PenTool, Sparkles, Send, ListTodo } from 'lucide-react';
+import { Target, FileText, Package, Users, Building2, BarChart3, ScrollText, GitCompareArrows, PenTool, Sparkles, Send, ListTodo, Contact } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface MenuItem {
@@ -16,6 +16,7 @@ const menuGroups: MenuGroup[] = [
   {
     label: 'Главное',
     items: [
+      { id: 'contacts', label: 'Контакты', icon: Contact },
       { id: 'overview', label: 'Обзор', icon: Target },
       { id: 'tasks', label: 'Задачи', icon: ListTodo },
     ],
