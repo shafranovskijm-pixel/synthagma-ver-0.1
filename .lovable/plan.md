@@ -1,44 +1,50 @@
-## 1. Сайдбар «/sales» — узкий icon‑rail
+## Что делаем
 
-Сейчас слева полноразмерная колонка (`w-56`, иконка + подпись) с 11 пунктами в 5 группах. Сделаю как в кабинете организации — узкий рейл только из значков с тултипами.
+1. **Полностью убираем Checko API из кабинета продаж** — компонент «База компаний (Checko API)» падает с ошибкой, плюс пользователь просит вычистить из кода.
+2. **Объединяем «Контакты» и «Компании»** в один раздел «Компании» — там же отображаем плашку «Необработанные загруженные базы» (которая раньше была в «Контактах»).
 
-**Файл:** `src/components/admin/sales/SalesSidebar.tsx`
+## Удаляем (Checko)
 
-- Ширина: `w-14` (вместо `w-56`), кнопка `w-10 h-10`, только `<item.icon />`, надпись — в `title` + tooltip‑карточка по hover.
-- Активный пункт: цветной фон `bg-primary/10 text-primary`, остальное — `text-muted-foreground`.
-- Группы остаются логически, но без подписей «ДОКУМЕНТЫ/АНАЛИТИКА» — заменю на тонкие разделители `h-px bg-border/50 my-2`.
-- Мобильный режим (`SalesSidebarContent`) оставляю прежним (полные подписи) — он используется в выезжающем меню.
+Файлы — `rm`:
+- `src/components/admin/sales/CompaniesDatabase.tsx`
+- `src/components/admin/sales/CheckoSearchDialog.tsx`
+- `src/components/admin/sales/CheckoSearchHistory.tsx`
+- `src/components/admin/sales/CheckoQuotaBar.tsx`
+- `src/components/admin/sales/AddInnsDialog.tsx`
+- `src/hooks/useCheckoApi.ts`
+- `src/hooks/useCheckoSearch.ts`
+- `src/data/checkoLicenseTypes.ts`
 
-**Что остаётся в рейле (основной поток продаж):**
-Контакты · Обзор · Задачи · Сделки 360° · Компании · КП · Договоры · Подписание · Рассылки
+Edge‑функции — удаляем через supabase deploy delete:
+- `checko-search`, `checko-stats`, `checko-enrich-batch`, `checko-daily-enrich`
 
-**Что убираю из рейла → в выпадающее меню под аватаром (`SalesDashboardHeader`):**
-- Услуги
-- Контроль
-- Сравнение
-- Менеджеры
+Текстовые упоминания:
+- `src/pages/FeatureSalesCRM.tsx` (строка 217): убрать «(Checko)» из описания шага.
+- `src/data/russianRegions.ts`: оставляю — это просто справочник регионов РФ (комментарий «для Checko Search API» поправлю, файл нужен в других местах).
 
-Эти редко‑используемые/аналитические разделы добавлю как `DropdownMenuItem` с иконкой в существующий avatar‑меню перед «Помощью». При клике — `onTabChange(id)` через новый проп `onNavigate` из `SalesDashboard`.
+Таблицы `checko_*` в БД оставляю — миграции не трогаю, чтобы не сломать историю; код к ним больше не обращается.
 
-## 2. Hero‑баннер — как в кабинете организации
+## Объединение «Контакты» + «Компании»
 
-Сейчас в `SalesDashboardHeader` обёртка:
-```tsx
-<div className="max-w-[1600px] mx-auto px-4 lg:px-8 pt-4">
-  <HeroBannerSwiper className="rounded-3xl overflow-hidden">…</HeroBannerSwiper>
-</div>
-```
-Из‑за этого баннер визуально «карточкой» и кажется меньше, чем в организации, где `HeroBannerSwiper` идёт встык, на всю ширину под шапкой, без скруглений.
+`src/components/admin/sales/CompaniesUnified.tsx`:
+- Удаляю вкладку `cold` и весь импорт `CompaniesDatabase` (вместе с `hideColdBase` параметром).
+- Сверху над `<Tabs>` добавляю карточку «Необработанные базы» (логика из `ContactsHub` — группировка `sales_leads` по `source` с подсчётом необработанных).
+- Остаются вкладки: **В работе** (LeadsManager) · **Архив** · **Чёрный список**.
 
-**Правка в `SalesDashboardHeader.tsx`:**
-- Убираю внешний контейнер с `max-w-[1600px]`, `px-*`, `pt-4`, `rounded-3xl`.
-- Рендерю `<HeroBannerSwiper>` без `className`, как в `OrgDashboardHeader` (строка 295).
-- Контент‑оверлей переношу в стиль организации: абсолютный блок `bottom-4 left-6` (вместо `flex items-end h-full p-6 lg:p-8`) — высота баннера определяется самим компонентом `h-36 lg:h-48`, не растягивается.
+`src/components/admin/sales/ContactsHub.tsx` — удаляю.
 
-После правки баннер будет той же высоты и ширины, что в кабинете организации.
+`src/components/admin/sales/SalesSidebar.tsx`:
+- Убираю пункт `contacts` из `railGroups`.
+- В мобильном меню тоже исчезает (использует те же `salesMenuGroups`).
 
-## 3. Технические детали
+`src/components/admin/SalesManager.tsx`:
+- Default `activeTab` → `'companies'` (вместо `'contacts'`).
+- Удаляю строку `contacts: <ContactsHub />` из карты TABS и импорт `ContactsHub`.
 
-- В `SalesDashboard.tsx` пробросить `setActiveTab` в `SalesDashboardHeader` как `onNavigate`, чтобы пункты «Услуги/Контроль/Сравнение/Менеджеры» из аватар‑меню переключали вкладку.
-- Для icon‑рейла использовать `<Tooltip>` из `@/components/ui/tooltip` (или нативный `title`), чтобы при наведении показывалась подпись.
-- Ничего больше не трогаю: вёрстка контента, контента вкладок, footer, аутентификация — без изменений.
+`src/pages/SalesDashboard.tsx`:
+- `activeLabel="Компании"` (вместо «Контакты»).
+
+## Проверка
+- Сайдбар: 8 значков (Обзор · Задачи · Сделки 360° · Компании · КП · Договоры · Подписание · Рассылки).
+- При входе в `/sales` сразу открывается раздел «Компании» с плашкой загруженных баз и таблицей лидов.
+- Никаких упоминаний Checko в кабинете продаж и в коде кабинета.

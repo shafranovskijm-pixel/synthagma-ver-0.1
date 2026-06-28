@@ -39,7 +39,7 @@ const SalesDashboard = () => {
         </div>
       )}
 
-      <SalesDashboardHeader activeLabel="Контакты" onSignOut={handleSignOut} />
+      <SalesDashboardHeader activeLabel="Компании" onSignOut={handleSignOut} />
 
       <main className="flex-1 max-w-[1600px] w-full mx-auto p-4 lg:p-8">
         <SalesManager />

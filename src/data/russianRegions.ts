@@ -1,5 +1,5 @@
-// Справочник кодов регионов РФ для Checko Search API
-// Code = код субъекта РФ (используется в Checko как параметр `region`)
+// Справочник кодов регионов РФ
+// Code = код субъекта РФ
 
 export interface RussianRegion {
   code: number;
