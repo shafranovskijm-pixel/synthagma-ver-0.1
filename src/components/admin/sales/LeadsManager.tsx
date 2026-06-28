@@ -248,7 +248,10 @@ export function LeadsManager({ organizationId }: LeadsManagerProps = {}) {
               </div>
               <Badge className={`w-24 justify-center ${st.color}`}>{st.label}</Badge>
               <span className="w-28 text-sm truncate hidden md:inline">{mgr?.full_name || '—'}</span>
-              <span className="w-32 text-xs text-muted-foreground truncate hidden lg:inline">{lead.region || '—'}</span>
+              <span className="w-32 text-xs text-muted-foreground truncate hidden lg:flex flex-col leading-tight">
+                <span className="truncate">{lead.region || '—'}</span>
+                {(() => { const lt = getRegionLocalTime(lead.region); return lt ? <span className="font-mono text-[10px] opacity-70">🕐 {lt.time} {lt.mskOffsetLabel}</span> : null; })()}
+              </span>
             </div>
           );
         })}
