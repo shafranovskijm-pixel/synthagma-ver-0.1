@@ -200,6 +200,44 @@ export function LogActivityDialog({
     }
   }
 
+  async function handleSendProposal(saveActivityFirst = true) {
+    if (!selectedTpl) { toast.error('Выберите шаблон КП'); return; }
+    if (!proposalEmail.trim() || !/^\S+@\S+\.\S+$/.test(proposalEmail)) {
+      toast.error('Укажите корректный email получателя'); return;
+    }
+    setSendingProposal(true);
+    try {
+      let targetLeadId = leadId || null;
+      if (saveActivityFirst && text.trim()) {
+        // делегируем сохранение в handleSave: но он сам закрывает диалог. Поэтому здесь только КП.
+      }
+      if (!targetLeadId) targetLeadId = await getOrCreateLeadId();
+
+      const { data, error } = await supabase.functions.invoke('send-platform-proposal', {
+        body: {
+          template_proposal_id: selectedTpl,
+          recipient_email: proposalEmail.trim(),
+          company_name: companyName,
+          contact_person: contactPerson || null,
+          lead_id: targetLeadId,
+          sender_name: user?.user_metadata?.full_name || user?.email || 'Менеджер СИНТАГМА',
+        },
+      });
+      if (error) throw error;
+      if ((data as any)?.error) throw new Error((data as any).error);
+
+      toast.success('КП отправлено на ' + proposalEmail, {
+        description: (data as any)?.proposal_url,
+      });
+      onLogged?.();
+    } catch (e) {
+      console.error(e);
+      toast.error('Не удалось отправить КП', { description: getErrorMessage(e) });
+    } finally {
+      setSendingProposal(false);
+    }
+  }
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="rounded-2xl max-w-md">
