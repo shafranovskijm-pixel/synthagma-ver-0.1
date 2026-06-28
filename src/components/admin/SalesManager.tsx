@@ -78,7 +78,7 @@ export function SalesManager() {
   }, []);
 
   const TABS: Record<string, React.ReactNode> = {
-    contacts: <ContactsHub />,
+    
     overview: <SalesOverview onJump={handleJump} />,
     tasks: <SalesTasks
       prefillCompany={taskPrefill}
