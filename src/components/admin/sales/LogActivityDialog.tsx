@@ -321,26 +321,41 @@ export function LogActivityDialog({
           </div>
 
           {showProposalBlock && (
-            <div className="rounded-xl border-2 border-primary/30 p-3 bg-primary/5 space-y-2">
+            <div className="rounded-xl border-2 border-primary/30 p-3 bg-primary/5 space-y-3">
               <div className="flex items-center gap-2">
                 <FileText className="w-4 h-4 text-primary" />
                 <span className="text-sm font-medium">Отправить КП сразу после звонка</span>
               </div>
-              <Select value={selectedTpl} onValueChange={setSelectedTpl}>
-                <SelectTrigger className="rounded-lg h-9 text-xs">
-                  <SelectValue placeholder="Выберите шаблон КП..." />
-                </SelectTrigger>
-                <SelectContent>
-                  {templates.length === 0 && (
-                    <div className="px-2 py-3 text-xs text-muted-foreground">Нет шаблонов КП</div>
-                  )}
-                  {templates.map(t => (
-                    <SelectItem key={t.id} value={t.id} className="text-xs">
-                      {t.company_name} · {Number(t.total_amount || 0).toLocaleString('ru-RU')} ₽
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+
+              {templates.length === 0 ? (
+                <div className="text-xs text-muted-foreground py-2">Нет доступных шаблонов КП</div>
+              ) : (
+                <div className="grid grid-cols-1 gap-2 max-h-64 overflow-y-auto pr-1">
+                  {templates.map(t => {
+                    const active = selectedTpl === t.id;
+                    return (
+                      <button
+                        key={t.id}
+                        type="button"
+                        onClick={() => setSelectedTpl(active ? '' : t.id)}
+                        className={`text-left rounded-lg border p-2.5 transition ${
+                          active
+                            ? 'border-primary bg-primary/10 ring-1 ring-primary'
+                            : 'border-border hover:border-primary/50 bg-background'
+                        }`}
+                      >
+                        <div className="flex items-start justify-between gap-2">
+                          <span className="text-xs font-medium leading-tight">{t.company_name}</span>
+                          <span className="text-xs font-bold text-primary whitespace-nowrap">
+                            {Number(t.total_amount || 0).toLocaleString('ru-RU')} ₽
+                          </span>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+
               <Input
                 type="email" value={proposalEmail}
                 onChange={(e) => setProposalEmail(e.target.value)}
@@ -358,6 +373,7 @@ export function LogActivityDialog({
               </Button>
             </div>
           )}
+
 
           <div className="flex justify-end gap-2">
             <Button variant="outline" onClick={() => onOpenChange(false)} className="rounded-xl">
