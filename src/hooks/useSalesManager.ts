@@ -320,7 +320,7 @@ export function useSalesManager() {
     fetchServices, fetchManagers, fetchProposals, fetchLeads, fetchActivities,
     createService, updateService, deleteService,
     createProposal, updateProposal, updateProposalStatus, deleteProposal, getProposalServices,
-    importLeads, assignLeads, updateLeadStatus, updateLeadNotes,
+    importLeads, assignLeads, claimLeads, updateLeadStatus, updateLeadNotes,
     addActivity, ensureCurrentManagerId, createManager, toggleManagerActive
   };
 }
