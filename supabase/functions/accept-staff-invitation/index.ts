@@ -72,7 +72,10 @@ serve(async (req) => {
 
     // Email пользователя должен совпадать с приглашением
     const userEmail = (user.email || "").toLowerCase();
-    if (userEmail !== inv.email.toLowerCase()) {
+    const userEmail = (user.email || "").toLowerCase();
+    // For 'sales' invitations the email field is just a placeholder for sharing links —
+    // user signs up with their own email, so we don't enforce a match.
+    if (inv.invitation_type !== 'sales' && userEmail !== inv.email.toLowerCase()) {
       return new Response(JSON.stringify({
         error: `Это приглашение отправлено на адрес ${inv.email}. Войдите под этим email.`,
       }), {
