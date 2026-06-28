@@ -259,9 +259,19 @@ export function useSalesManager() {
     return true;
   };
 
-  // Activities
-  const addActivity = async (leadId: string, managerId: string, activityType: string, description: string) => {
-    const { error } = await supabase.from('sales_lead_activities').insert({ lead_id: leadId, manager_id: managerId, activity_type: activityType, description } as any);
+  // Ensures current user has a sales_managers row and returns its id (admin or sales_manager)
+  const ensureCurrentManagerId = useCallback(async (): Promise<string | null> => {
+    const { data, error } = await (supabase as any).rpc('ensure_sales_manager_for_current_user');
+    if (error) { toast.error("Не удалось получить профиль менеджера", { description: getErrorMessage(error) }); return null; }
+    return (data as string) || null;
+  }, []);
+
+  // Activities — managerId optional: if не передан, берём текущего пользователя.
+  const addActivity = async (leadId: string, managerId: string | null, activityType: string, description: string) => {
+    let mid = managerId;
+    if (!mid) mid = await ensureCurrentManagerId();
+    if (!mid) return false;
+    const { error } = await supabase.from('sales_lead_activities').insert({ lead_id: leadId, manager_id: mid, activity_type: activityType, description } as any);
     if (error) { toast.error("Ошибка", { description: getErrorMessage(error) }); return false; }
     // Update last_contact_at
     await supabase.from('sales_leads').update({ last_contact_at: new Date().toISOString() } as any).eq('id', leadId);
