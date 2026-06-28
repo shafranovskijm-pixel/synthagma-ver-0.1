@@ -18,7 +18,6 @@ const railGroups: MenuGroup[] = [
   {
     label: 'Главное',
     items: [
-      { id: 'contacts', label: 'Контакты', icon: Contact },
       { id: 'overview', label: 'Обзор', icon: Target },
       { id: 'tasks', label: 'Задачи', icon: ListTodo },
     ],
