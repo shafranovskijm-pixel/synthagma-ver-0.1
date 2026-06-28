@@ -89,13 +89,18 @@ export function SalesManagersList() {
                     <span>КП: {stats.proposalsCount}</span>
                   </div>
                 </div>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => toggleManagerActive(m.id, !m.is_active)}
-                >
-                  {m.is_active ? <><UserX className="w-4 h-4 mr-1" />Деактивировать</> : <><UserCheck className="w-4 h-4 mr-1" />Активировать</>}
-                </Button>
+                <div className="flex gap-2">
+                  <Button variant="outline" size="sm" onClick={() => handleImpersonate(m)}>
+                    <Eye className="w-4 h-4 mr-1" />Войти как
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => toggleManagerActive(m.id, !m.is_active)}
+                  >
+                    {m.is_active ? <><UserX className="w-4 h-4 mr-1" />Деактивировать</> : <><UserCheck className="w-4 h-4 mr-1" />Активировать</>}
+                  </Button>
+                </div>
               </CardContent>
             </Card>
           );
