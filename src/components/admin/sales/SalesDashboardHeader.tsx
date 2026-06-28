@@ -129,6 +129,23 @@ export function SalesDashboardHeader({ activeLabel, onSignOut }: Props) {
                 <DropdownMenuItem onClick={() => setCardOpen(true)}>
                   <CreditCard className="w-4 h-4 mr-2" /> Реквизиты
                 </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={async () => {
+                    const to = user?.email;
+                    if (!to) { toast.error('Нет email в профиле'); return; }
+                    toast.loading('Отправляем тестовое письмо…', { id: 't-email' });
+                    const { data, error } = await supabase.functions.invoke('send-test-email', {
+                      body: { to_email: to, template_id: 'd98ee5a8-53b8-45f9-9465-3c84a57e3d96' },
+                    });
+                    if (error || (data as any)?.error) {
+                      toast.error('Ошибка отправки', { id: 't-email', description: (error as any)?.message || (data as any)?.error });
+                    } else {
+                      toast.success('Тестовое письмо отправлено на ' + to, { id: 't-email' });
+                    }
+                  }}
+                >
+                  <MailCheck className="w-4 h-4 mr-2" /> Проверить почту
+                </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={onSignOut} className="text-destructive focus:text-destructive">
                   <LogOut className="w-4 h-4 mr-2" /> Выйти
