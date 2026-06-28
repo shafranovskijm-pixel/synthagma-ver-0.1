@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Eye, ArrowLeft } from 'lucide-react';
 import { SalesManager } from '@/components/admin/SalesManager';
 import { SalesDashboardHeader } from '@/components/admin/sales/SalesDashboardHeader';
+import { SalesDashboardFooter } from '@/components/admin/sales/SalesDashboardFooter';
 import { getAdminSalesView, clearAdminSalesView } from '@/utils/adminViewMode';
 
 const SalesDashboard = () => {
@@ -23,7 +24,7 @@ const SalesDashboard = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background flex flex-col">
       {viewAs && (
         <div className="bg-amber-500/15 border-b border-amber-500/30 text-amber-900 dark:text-amber-200">
           <div className="max-w-[1600px] mx-auto px-4 py-2 flex items-center justify-between gap-3 text-sm">
@@ -37,11 +38,14 @@ const SalesDashboard = () => {
           </div>
         </div>
       )}
+
       <SalesDashboardHeader activeLabel="Контакты" onSignOut={handleSignOut} />
 
-      <main className="max-w-[1600px] mx-auto p-4">
+      <main className="flex-1 max-w-[1600px] w-full mx-auto p-4 lg:p-8">
         <SalesManager />
       </main>
+
+      <SalesDashboardFooter />
     </div>
   );
 };
