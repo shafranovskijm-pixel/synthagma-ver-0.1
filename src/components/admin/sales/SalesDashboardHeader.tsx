@@ -12,6 +12,7 @@ import { RadioPlayerButton } from "@/components/radio/RadioPlayerButton";
 import { AnnouncementsBell } from "@/components/shared/AnnouncementsBell";
 import { HeroBannerSwiper } from "@/components/shared/HeroBannerSwiper";
 import { CompanyCard } from "./CompanyCard";
+import { salesExtraItems } from "./SalesSidebar";
 import { ADMIN_THEMES, getStoredThemeId, storeThemeId } from "@/constants/admin-themes";
 import { useAuth } from "@/hooks/useAuth";
 
