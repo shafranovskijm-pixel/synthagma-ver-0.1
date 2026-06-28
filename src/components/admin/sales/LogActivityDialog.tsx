@@ -320,6 +320,45 @@ export function LogActivityDialog({
             )}
           </div>
 
+          {showProposalBlock && (
+            <div className="rounded-xl border-2 border-primary/30 p-3 bg-primary/5 space-y-2">
+              <div className="flex items-center gap-2">
+                <FileText className="w-4 h-4 text-primary" />
+                <span className="text-sm font-medium">Отправить КП сразу после звонка</span>
+              </div>
+              <Select value={selectedTpl} onValueChange={setSelectedTpl}>
+                <SelectTrigger className="rounded-lg h-9 text-xs">
+                  <SelectValue placeholder="Выберите шаблон КП..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {templates.length === 0 && (
+                    <div className="px-2 py-3 text-xs text-muted-foreground">Нет шаблонов КП</div>
+                  )}
+                  {templates.map(t => (
+                    <SelectItem key={t.id} value={t.id} className="text-xs">
+                      {t.company_name} · {Number(t.total_amount || 0).toLocaleString('ru-RU')} ₽
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Input
+                type="email" value={proposalEmail}
+                onChange={(e) => setProposalEmail(e.target.value)}
+                placeholder="email получателя"
+                className="rounded-lg h-9 text-xs"
+              />
+              <Button
+                size="sm" variant="default"
+                disabled={sendingProposal || !selectedTpl || !proposalEmail}
+                onClick={() => handleSendProposal()}
+                className="w-full rounded-lg gap-2"
+              >
+                <Send className="w-3.5 h-3.5" />
+                {sendingProposal ? 'Отправляем...' : 'Отправить КП на email'}
+              </Button>
+            </div>
+          )}
+
           <div className="flex justify-end gap-2">
             <Button variant="outline" onClick={() => onOpenChange(false)} className="rounded-xl">
               Отмена
