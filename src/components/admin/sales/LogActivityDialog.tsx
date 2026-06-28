@@ -145,7 +145,7 @@ export function LogActivityDialog({
       }
 
       const payload: any = {
-        lead_id: leadId,
+        lead_id: actualLeadId,
         manager_id: managerId,
         activity_type: type,
         description,
@@ -162,7 +162,7 @@ export function LogActivityDialog({
       await supabase
         .from('sales_leads')
         .update(leadUpdate)
-        .eq('id', leadId);
+        .eq("id", actualLeadId);
 
       // Авто-задача-напоминание
       if (createReminder) {
@@ -177,7 +177,7 @@ export function LogActivityDialog({
           due_date: due.toISOString(),
           status: 'pending',
           manager_id: managerId,
-          lead_id: leadId,
+          lead_id: actualLeadId,
         };
         if (organizationId) taskPayload.organization_id = organizationId;
         const { error: taskErr } = await supabase.from('sales_tasks').insert(taskPayload);
