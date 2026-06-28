@@ -5,7 +5,9 @@ import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel,
   DropdownMenuSeparator, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { CreditCard, LogOut, Moon, Sun, Palette, ChevronRight, User, HelpCircle } from "lucide-react";
+import { CreditCard, LogOut, Moon, Sun, Palette, ChevronRight, User, HelpCircle, MailCheck } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 import { SigmaLogo } from "@/components/ui/SigmaLogo";
 import { RadioPlayerButton } from "@/components/radio/RadioPlayerButton";
