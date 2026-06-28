@@ -39,7 +39,7 @@ const RESULT_LABELS: Record<CallResult, string> = {
 
 export function LogActivityDialog({
   open, onOpenChange, companyName, inn, defaultType = 'call',
-  organizationId, onLogged,
+  organizationId, onLogged, defaultEmail, contactPerson, leadId,
 }: Props) {
   const { user } = useAuth();
   const [type, setType] = useState<'call' | 'note'>(defaultType);
@@ -50,15 +50,36 @@ export function LogActivityDialog({
   const [reminderDays, setReminderDays] = useState<string>('3');
   const [submitting, setSubmitting] = useState(false);
 
+  // ---- КП-шаблоны ----
+  const [templates, setTemplates] = useState<ProposalTemplate[]>([]);
+  const [selectedTpl, setSelectedTpl] = useState<string>('');
+  const [proposalEmail, setProposalEmail] = useState<string>('');
+  const [sendingProposal, setSendingProposal] = useState(false);
+
   useEffect(() => { setType(defaultType); }, [defaultType, open]);
   useEffect(() => {
     if (!open) {
       setText(''); setDuration(''); setResult('connected');
       setCreateReminder(false); setReminderDays('3');
+      setSelectedTpl(''); setProposalEmail('');
+    } else {
+      setProposalEmail(defaultEmail || '');
     }
+  }, [open, defaultEmail]);
+
+  useEffect(() => {
+    if (!open) return;
+    supabase
+      .from('commercial_proposals')
+      .select('id, company_name, total_amount')
+      .eq('is_template', true)
+      .eq('scope', 'platform')
+      .order('total_amount', { ascending: true })
+      .then(({ data }) => setTemplates((data || []) as ProposalTemplate[]));
   }, [open]);
 
   const safeInn = (inn && inn !== '—') ? inn.trim() : null;
+  const showProposalBlock = type === 'call' && (result === 'connected' || result === 'next_step');
 
   async function getOrCreateLeadId(): Promise<string | null> {
     if (safeInn) {
