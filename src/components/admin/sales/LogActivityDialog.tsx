@@ -130,8 +130,8 @@ export function LogActivityDialog({
     if (!text.trim()) { toast.error('Введите текст'); return; }
     setSubmitting(true);
     try {
-      const leadId = await getOrCreateLeadId();
-      if (!leadId) return;
+      const actualLeadId = leadId || await getOrCreateLeadId();
+      if (!actualLeadId) return;
       const managerId = await getOrCreateManagerId();
       if (!managerId) { toast.error('Не удалось определить менеджера'); return; }
 
