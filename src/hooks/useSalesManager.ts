@@ -312,6 +312,6 @@ export function useSalesManager() {
     createService, updateService, deleteService,
     createProposal, updateProposal, updateProposalStatus, deleteProposal, getProposalServices,
     importLeads, assignLeads, updateLeadStatus, updateLeadNotes,
-    addActivity, createManager, toggleManagerActive
+    addActivity, ensureCurrentManagerId, createManager, toggleManagerActive
   };
 }
