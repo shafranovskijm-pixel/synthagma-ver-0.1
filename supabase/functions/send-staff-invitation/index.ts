@@ -109,11 +109,12 @@ serve(async (req) => {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
-    if (!['admin', 'organization', 'company'].includes(invitation_type)) {
+    if (!['admin', 'organization', 'company', 'sales'].includes(invitation_type)) {
       return new Response(JSON.stringify({ error: "Invalid invitation_type" }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
+    const skipEmail = !!body.skip_email;
 
     const admin = createClient(supabaseUrl, serviceRoleKey);
 
