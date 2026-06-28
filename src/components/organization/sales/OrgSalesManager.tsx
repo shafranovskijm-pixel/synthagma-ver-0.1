@@ -241,7 +241,7 @@ export function OrgSalesManager() {
             />
           )}
           {section === 'leads' && <LeadsManager organizationId={organizationId} />}
-          {section === 'companies' && <CompaniesUnified organizationId={organizationId} hideColdBase />}
+          {section === 'companies' && <CompaniesUnified organizationId={organizationId} />}
           {section === 'segments' && (
             <SalesSegments
               organizationId={organizationId}
