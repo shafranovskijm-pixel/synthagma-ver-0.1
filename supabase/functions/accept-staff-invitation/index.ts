@@ -153,6 +153,19 @@ serve(async (req) => {
         if (error) throw error;
       }
       redirectPath = "/company";
+
+    } else if (inv.invitation_type === "sales") {
+      // Глобальная роль sales_manager + запись в sales_managers
+      await admin.from("user_roles").upsert({
+        user_id: user.id, role: "sales_manager",
+      } as any, { onConflict: "user_id,role" });
+      await admin.from("sales_managers").upsert({
+        user_id: user.id,
+        full_name: fullName,
+        is_active: true,
+      } as any, { onConflict: "user_id" });
+      await admin.from("profiles").update({ full_name: fullName }).eq("user_id", user.id);
+      redirectPath = "/sales";
     }
 
     // Помечаем приглашение принятым
