@@ -1175,6 +1175,7 @@ export type Database = {
           first_viewed_at: string | null
           id: string
           intro_html: string | null
+          is_template: boolean
           last_sent_at: string | null
           last_viewed_at: string | null
           linked_signature_id: string | null
@@ -1209,6 +1210,7 @@ export type Database = {
           first_viewed_at?: string | null
           id?: string
           intro_html?: string | null
+          is_template?: boolean
           last_sent_at?: string | null
           last_viewed_at?: string | null
           linked_signature_id?: string | null
@@ -1243,6 +1245,7 @@ export type Database = {
           first_viewed_at?: string | null
           id?: string
           intro_html?: string | null
+          is_template?: boolean
           last_sent_at?: string | null
           last_viewed_at?: string | null
           linked_signature_id?: string | null

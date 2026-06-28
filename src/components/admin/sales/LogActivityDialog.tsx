@@ -8,9 +8,12 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Phone, StickyNote } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Phone, StickyNote, Send, FileText } from 'lucide-react';
 import { toast } from 'sonner';
 import { getErrorMessage } from "@/utils/handleSupabaseError";
+
+interface ProposalTemplate { id: string; company_name: string; total_amount: number }
 
 interface Props {
   open: boolean;
@@ -20,6 +23,9 @@ interface Props {
   defaultType?: 'call' | 'note';
   organizationId?: string | null;
   onLogged?: () => void;
+  defaultEmail?: string | null;
+  contactPerson?: string | null;
+  leadId?: string | null;
 }
 
 type CallResult = 'connected' | 'busy' | 'not_interested' | 'next_step';
@@ -33,7 +39,7 @@ const RESULT_LABELS: Record<CallResult, string> = {
 
 export function LogActivityDialog({
   open, onOpenChange, companyName, inn, defaultType = 'call',
-  organizationId, onLogged,
+  organizationId, onLogged, defaultEmail, contactPerson, leadId,
 }: Props) {
   const { user } = useAuth();
   const [type, setType] = useState<'call' | 'note'>(defaultType);
@@ -44,15 +50,36 @@ export function LogActivityDialog({
   const [reminderDays, setReminderDays] = useState<string>('3');
   const [submitting, setSubmitting] = useState(false);
 
+  // ---- КП-шаблоны ----
+  const [templates, setTemplates] = useState<ProposalTemplate[]>([]);
+  const [selectedTpl, setSelectedTpl] = useState<string>('');
+  const [proposalEmail, setProposalEmail] = useState<string>('');
+  const [sendingProposal, setSendingProposal] = useState(false);
+
   useEffect(() => { setType(defaultType); }, [defaultType, open]);
   useEffect(() => {
     if (!open) {
       setText(''); setDuration(''); setResult('connected');
       setCreateReminder(false); setReminderDays('3');
+      setSelectedTpl(''); setProposalEmail('');
+    } else {
+      setProposalEmail(defaultEmail || '');
     }
+  }, [open, defaultEmail]);
+
+  useEffect(() => {
+    if (!open) return;
+    supabase
+      .from('commercial_proposals')
+      .select('id, company_name, total_amount')
+      .eq('is_template', true)
+      .eq('scope', 'platform')
+      .order('total_amount', { ascending: true })
+      .then(({ data }) => setTemplates((data || []) as ProposalTemplate[]));
   }, [open]);
 
   const safeInn = (inn && inn !== '—') ? inn.trim() : null;
+  const showProposalBlock = type === 'call' && (result === 'connected' || result === 'next_step');
 
   async function getOrCreateLeadId(): Promise<string | null> {
     if (safeInn) {
@@ -103,8 +130,8 @@ export function LogActivityDialog({
     if (!text.trim()) { toast.error('Введите текст'); return; }
     setSubmitting(true);
     try {
-      const leadId = await getOrCreateLeadId();
-      if (!leadId) return;
+      const actualLeadId = leadId || await getOrCreateLeadId();
+      if (!actualLeadId) return;
       const managerId = await getOrCreateManagerId();
       if (!managerId) { toast.error('Не удалось определить менеджера'); return; }
 
@@ -118,7 +145,7 @@ export function LogActivityDialog({
       }
 
       const payload: any = {
-        lead_id: leadId,
+        lead_id: actualLeadId,
         manager_id: managerId,
         activity_type: type,
         description,
@@ -135,7 +162,7 @@ export function LogActivityDialog({
       await supabase
         .from('sales_leads')
         .update(leadUpdate)
-        .eq('id', leadId);
+        .eq("id", actualLeadId);
 
       // Авто-задача-напоминание
       if (createReminder) {
@@ -150,7 +177,7 @@ export function LogActivityDialog({
           due_date: due.toISOString(),
           status: 'pending',
           manager_id: managerId,
-          lead_id: leadId,
+          lead_id: actualLeadId,
         };
         if (organizationId) taskPayload.organization_id = organizationId;
         const { error: taskErr } = await supabase.from('sales_tasks').insert(taskPayload);
@@ -170,6 +197,44 @@ export function LogActivityDialog({
       toast.error('Ошибка', { description: getErrorMessage(e) });
     } finally {
       setSubmitting(false);
+    }
+  }
+
+  async function handleSendProposal(saveActivityFirst = true) {
+    if (!selectedTpl) { toast.error('Выберите шаблон КП'); return; }
+    if (!proposalEmail.trim() || !/^\S+@\S+\.\S+$/.test(proposalEmail)) {
+      toast.error('Укажите корректный email получателя'); return;
+    }
+    setSendingProposal(true);
+    try {
+      let targetLeadId = leadId || null;
+      if (saveActivityFirst && text.trim()) {
+        // делегируем сохранение в handleSave: но он сам закрывает диалог. Поэтому здесь только КП.
+      }
+      if (!targetLeadId) targetLeadId = await getOrCreateLeadId();
+
+      const { data, error } = await supabase.functions.invoke('send-platform-proposal', {
+        body: {
+          template_proposal_id: selectedTpl,
+          recipient_email: proposalEmail.trim(),
+          company_name: companyName,
+          contact_person: contactPerson || null,
+          lead_id: targetLeadId,
+          sender_name: user?.user_metadata?.full_name || user?.email || 'Менеджер СИНТАГМА',
+        },
+      });
+      if (error) throw error;
+      if ((data as any)?.error) throw new Error((data as any).error);
+
+      toast.success('КП отправлено на ' + proposalEmail, {
+        description: (data as any)?.proposal_url,
+      });
+      onLogged?.();
+    } catch (e) {
+      console.error(e);
+      toast.error('Не удалось отправить КП', { description: getErrorMessage(e) });
+    } finally {
+      setSendingProposal(false);
     }
   }
 
@@ -254,6 +319,45 @@ export function LogActivityDialog({
               </div>
             )}
           </div>
+
+          {showProposalBlock && (
+            <div className="rounded-xl border-2 border-primary/30 p-3 bg-primary/5 space-y-2">
+              <div className="flex items-center gap-2">
+                <FileText className="w-4 h-4 text-primary" />
+                <span className="text-sm font-medium">Отправить КП сразу после звонка</span>
+              </div>
+              <Select value={selectedTpl} onValueChange={setSelectedTpl}>
+                <SelectTrigger className="rounded-lg h-9 text-xs">
+                  <SelectValue placeholder="Выберите шаблон КП..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {templates.length === 0 && (
+                    <div className="px-2 py-3 text-xs text-muted-foreground">Нет шаблонов КП</div>
+                  )}
+                  {templates.map(t => (
+                    <SelectItem key={t.id} value={t.id} className="text-xs">
+                      {t.company_name} · {Number(t.total_amount || 0).toLocaleString('ru-RU')} ₽
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Input
+                type="email" value={proposalEmail}
+                onChange={(e) => setProposalEmail(e.target.value)}
+                placeholder="email получателя"
+                className="rounded-lg h-9 text-xs"
+              />
+              <Button
+                size="sm" variant="default"
+                disabled={sendingProposal || !selectedTpl || !proposalEmail}
+                onClick={() => handleSendProposal()}
+                className="w-full rounded-lg gap-2"
+              >
+                <Send className="w-3.5 h-3.5" />
+                {sendingProposal ? 'Отправляем...' : 'Отправить КП на email'}
+              </Button>
+            </div>
+          )}
 
           <div className="flex justify-end gap-2">
             <Button variant="outline" onClick={() => onOpenChange(false)} className="rounded-xl">
