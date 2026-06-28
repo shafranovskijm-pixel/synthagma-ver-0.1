@@ -16,7 +16,7 @@ import { SalesOverview } from './sales/SalesOverview';
 import { SalesTasks } from './sales/SalesTasks';
 import { CompaniesUnified } from './sales/CompaniesUnified';
 import { LogActivityDialog } from './sales/LogActivityDialog';
-import { ContactsHub } from './sales/ContactsHub';
+
 
 type PendingCompany = { name: string; inn: string };
 
