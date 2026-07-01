@@ -499,6 +499,7 @@ export function useDocumentsTab(organizationId: string | null, organizationName?
     actCustomerPosition, setActCustomerPosition, actInnSearching,
     pendingAct, setPendingAct,
     handleGenerateAct, handleSavePendingAct, handleActSearchByInn,
+    openActDialogForInvoice, actSourceInvoiceId, setActSourceInvoiceId,
     // Invoice
     generatingInvoice, showInvoiceDialog, setShowInvoiceDialog,
     invoiceOtherPayer, setInvoiceOtherPayer,
