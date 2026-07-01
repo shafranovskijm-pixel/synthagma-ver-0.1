@@ -10,8 +10,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { toast } from 'sonner';
 import {
   TrendingUp, AlertCircle, Flame, Trophy, Activity, Target,
-  FileText, ScrollText, PenTool, Wallet, ArrowRight, Clock, Pencil, Check, X
+  FileText, ScrollText, PenTool, Wallet, ArrowRight, Clock, Pencil, Check, X, Link2, Users
 } from 'lucide-react';
+import { InviteSalesManagerDialog } from './InviteSalesManagerDialog';
+
 import { format, differenceInDays, startOfMonth, endOfMonth, subDays, startOfQuarter } from 'date-fns';
 import { ru } from 'date-fns/locale';
 import { SigmaSpinner } from '@/components/ui/SigmaSpinner';
