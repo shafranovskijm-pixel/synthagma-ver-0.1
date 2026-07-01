@@ -21,6 +21,7 @@ const railGroups: MenuGroup[] = [
       { id: 'overview', label: 'Обзор', icon: Target },
       { id: 'tasks', label: 'Задачи', icon: ListTodo },
       { id: 'report', label: 'Отчёт', icon: LineChart },
+      { id: 'managers', label: 'Менеджеры', icon: Users },
     ],
   },
   {
@@ -51,8 +52,8 @@ export const salesExtraItems: MenuItem[] = [
   { id: 'services', label: 'Услуги', icon: Package },
   { id: 'control', label: 'Контроль', icon: BarChart3 },
   { id: 'comparison', label: 'Сравнение', icon: GitCompareArrows },
-  { id: 'managers', label: 'Менеджеры', icon: Users },
 ];
+
 
 /** Все пункты — для лейблов/мобильного меню */
 export const salesMenuGroups: MenuGroup[] = [

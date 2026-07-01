@@ -10,8 +10,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { toast } from 'sonner';
 import {
   TrendingUp, AlertCircle, Flame, Trophy, Activity, Target,
-  FileText, ScrollText, PenTool, Wallet, ArrowRight, Clock, Pencil, Check, X
+  FileText, ScrollText, PenTool, Wallet, ArrowRight, Clock, Pencil, Check, X, Link2, Users
 } from 'lucide-react';
+import { InviteSalesManagerDialog } from './InviteSalesManagerDialog';
+
 import { format, differenceInDays, startOfMonth, endOfMonth, subDays, startOfQuarter } from 'date-fns';
 import { ru } from 'date-fns/locale';
 import { SigmaSpinner } from '@/components/ui/SigmaSpinner';
@@ -49,6 +51,8 @@ export function SalesOverview({ onJump, organizationId, availableSections }: Pro
   const [planEditing, setPlanEditing] = useState(false);
   const [planDraft, setPlanDraft] = useState<string>('');
   const [savingPlan, setSavingPlan] = useState(false);
+  const [inviteOpen, setInviteOpen] = useState(false);
+
 
   useEffect(() => { void load(); }, [organizationId, leaderPeriod]);
 
@@ -262,13 +266,29 @@ export function SalesOverview({ onJump, organizationId, availableSections }: Pro
 
   return (
     <div className="space-y-4">
-      <div>
-        <h2 className="text-xl font-semibold flex items-center gap-2">
-          <Target className="w-5 h-5 text-primary" />
-          Обзор продаж
-        </h2>
-        <p className="text-sm text-muted-foreground">Главное по продажам на сегодня</p>
+      <div className="flex items-start justify-between gap-3 flex-wrap">
+        <div>
+          <h2 className="text-xl font-semibold flex items-center gap-2">
+            <Target className="w-5 h-5 text-primary" />
+            Обзор продаж
+          </h2>
+          <p className="text-sm text-muted-foreground">Главное по продажам на сегодня</p>
+        </div>
+        {!organizationId && (
+          <div className="flex items-center gap-2">
+            <Button size="sm" variant="outline" className="rounded-xl" onClick={() => setInviteOpen(true)}>
+              <Link2 className="w-4 h-4 mr-1.5" />
+              Пригласить менеджера
+            </Button>
+            <Button size="sm" variant="ghost" className="rounded-xl" onClick={() => onJump?.('managers')}>
+              <Users className="w-4 h-4 mr-1.5" />
+              Все менеджеры
+            </Button>
+          </div>
+        )}
       </div>
+      <InviteSalesManagerDialog open={inviteOpen} onOpenChange={setInviteOpen} />
+
 
       {/* Top row */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
