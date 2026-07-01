@@ -51,6 +51,8 @@ export function SalesOverview({ onJump, organizationId, availableSections }: Pro
   const [planEditing, setPlanEditing] = useState(false);
   const [planDraft, setPlanDraft] = useState<string>('');
   const [savingPlan, setSavingPlan] = useState(false);
+  const [inviteOpen, setInviteOpen] = useState(false);
+
 
   useEffect(() => { void load(); }, [organizationId, leaderPeriod]);
 
