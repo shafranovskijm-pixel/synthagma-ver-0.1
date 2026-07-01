@@ -324,7 +324,7 @@ export const DocumentsTab = React.memo(function DocumentsTab({ organizationId, o
               onDownloadDoc={h.handleDownloadDoc}
               onDeleteDoc={h.handleDeleteBillingDoc}
               onShowInvoiceDialog={() => h.setShowInvoiceDialog(true)}
-              onShowActDialog={() => h.setShowActDialog(true)}
+              onShowActDialog={() => { h.setActSourceInvoiceId(null); h.setShowActDialog(true); }}
               onShowActDialogForInvoice={(inv) => h.openActDialogForInvoice(inv)}
             />
           )}
