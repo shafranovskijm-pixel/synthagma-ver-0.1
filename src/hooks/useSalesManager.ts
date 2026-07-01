@@ -288,21 +288,30 @@ export function useSalesManager() {
     return true;
   };
 
-  // Create sales manager via edge function
-  const createManager = async (email: string, password: string, fullName: string, phone?: string) => {
+  // Create sales manager via edge function. Если email/password не заданы — они будут сгенерированы на сервере.
+  const createManager = async (
+    fullName: string,
+    phone?: string,
+    opts?: { email?: string; password?: string }
+  ): Promise<{ email: string; password: string; generated: boolean } | null> => {
     setLoading(true);
     try {
       const { data, error } = await safeInvoke<any>('create-sales-manager', {
-        body: { email, password, full_name: fullName, phone }
+        body: {
+          full_name: fullName,
+          phone: phone || null,
+          email: opts?.email || undefined,
+          password: opts?.password || undefined,
+        }
       });
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
-      toast.success("Менеджер создан", { description: `${fullName} (${email})` });
+      toast.success("Менеджер создан", { description: `${fullName} (${data.email})` });
       await fetchManagers();
-      return true;
+      return { email: data.email, password: data.password, generated: !!data.generated };
     } catch (err) {
       toast.error("Ошибка создания менеджера", { description: getErrorMessage(err) });
-      return false;
+      return null;
     } finally {
       setLoading(false);
     }
