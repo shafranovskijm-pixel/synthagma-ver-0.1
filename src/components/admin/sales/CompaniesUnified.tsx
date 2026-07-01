@@ -1,11 +1,10 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Card, CardContent } from '@/components/ui/card';
-import { Building2, Archive, Ban, Inbox, Upload, Database, Plus, Trash2 } from 'lucide-react';
+import { Building2, Archive, Ban, Plus, Trash2 } from 'lucide-react';
 import { LeadsManager } from './LeadsManager';
 import { useSalesBlacklist } from '@/hooks/useSalesBlacklist';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
