@@ -61,7 +61,7 @@ export interface GeneratedAct {
  */
 export async function generateActHtml(params: ActParams): Promise<GeneratedAct | null> {
   try {
-    const { organizationId, orgName, orgInn, directorName, directorPosition, actDate, basis, amount } = params;
+    const { organizationId, orgName, orgInn, directorName, directorPosition, actDate, basis, amount, sourceInvoiceId } = params;
     const actNumber = `A-${Date.now().toString().slice(-6)}`;
     const formattedDate = format(actDate, "dd MMMM yyyy", { locale: ru });
 
