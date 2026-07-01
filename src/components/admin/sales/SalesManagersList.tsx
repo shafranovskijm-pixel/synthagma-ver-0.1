@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, UserCheck, UserX, Phone, Eye, Link2, Copy, Send, Wand2, Mail, MessageCircle, ListTodo } from 'lucide-react';
+import { Plus, UserCheck, UserX, Phone, Eye, Link2, Copy, Send, Wand2, Mail, MessageCircle, ListTodo, BarChart3 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
@@ -13,6 +13,8 @@ import { useSalesManager } from '@/hooks/useSalesManager';
 import { InviteSalesManagerDialog } from './InviteSalesManagerDialog';
 import { setAdminSalesView } from '@/utils/adminViewMode';
 import { AssignTaskDialog } from './AssignTaskDialog';
+import { ManagerStatsDialog } from './ManagerStatsDialog';
+
 
 interface CreatedCreds { email: string; password: string; generated: boolean; fullName: string }
 
@@ -27,12 +29,16 @@ export function SalesManagersList() {
   const [phone, setPhone] = useState('');
   const [created, setCreated] = useState<CreatedCreds | null>(null);
   const [taskFor, setTaskFor] = useState<{ id: string; full_name: string; user_id: string } | null>(null);
+  const [statsFor, setStatsFor] = useState<{ id: string; full_name: string } | null>(null);
   const navigate = useNavigate();
 
   const handleImpersonate = (m: { id: string; user_id: string; full_name: string }) => {
     setAdminSalesView({ managerId: m.id, userId: m.user_id, fullName: m.full_name, returnTo: '/admin' });
-    navigate('/sales');
+    // Форсируем полную перезагрузку, чтобы SalesDashboard подхватил viewAs
+    // и показал баннер + чистый интерфейс менеджера.
+    window.location.assign('/sales');
   };
+
 
   useEffect(() => { fetchManagers(); fetchLeads(); fetchProposals(); }, [fetchManagers, fetchLeads, fetchProposals]);
 
@@ -167,9 +173,14 @@ export function SalesManagersList() {
           return (
             <Card key={m.id}>
               <CardContent className="flex items-center justify-between p-4 gap-4 flex-wrap">
-                <div className="flex-1 min-w-[200px]">
+                <button
+                  type="button"
+                  onClick={() => setStatsFor({ id: m.id, full_name: m.full_name })}
+                  className="flex-1 min-w-[200px] text-left hover:opacity-80 transition"
+                  title="Открыть историю активностей"
+                >
                   <div className="flex items-center gap-2">
-                    <p className="font-medium">{m.full_name}</p>
+                    <p className="font-medium underline-offset-4 hover:underline">{m.full_name}</p>
                     <Badge variant={m.is_active ? 'default' : 'secondary'}>
                       {m.is_active ? 'Активен' : 'Неактивен'}
                     </Badge>
@@ -179,8 +190,11 @@ export function SalesManagersList() {
                     <span>Лидов: {stats.leadsCount}</span>
                     <span>КП: {stats.proposalsCount}</span>
                   </div>
-                </div>
+                </button>
                 <div className="flex gap-2 flex-wrap">
+                  <Button variant="outline" size="sm" onClick={() => setStatsFor({ id: m.id, full_name: m.full_name })}>
+                    <BarChart3 className="w-4 h-4 mr-1" />История
+                  </Button>
                   <Button variant="outline" size="sm" onClick={() => setTaskFor({ id: m.id, full_name: m.full_name, user_id: m.user_id })}>
                     <ListTodo className="w-4 h-4 mr-1" />Поставить задачу
                   </Button>
@@ -207,6 +221,13 @@ export function SalesManagersList() {
         onOpenChange={(v) => !v && setTaskFor(null)}
         manager={taskFor}
       />
+
+      <ManagerStatsDialog
+        open={!!statsFor}
+        onOpenChange={(v) => !v && setStatsFor(null)}
+        manager={statsFor}
+      />
+
     </div>
   );
 }
