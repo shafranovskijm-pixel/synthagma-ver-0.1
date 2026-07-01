@@ -29,12 +29,16 @@ export function SalesManagersList() {
   const [phone, setPhone] = useState('');
   const [created, setCreated] = useState<CreatedCreds | null>(null);
   const [taskFor, setTaskFor] = useState<{ id: string; full_name: string; user_id: string } | null>(null);
+  const [statsFor, setStatsFor] = useState<{ id: string; full_name: string } | null>(null);
   const navigate = useNavigate();
 
   const handleImpersonate = (m: { id: string; user_id: string; full_name: string }) => {
     setAdminSalesView({ managerId: m.id, userId: m.user_id, fullName: m.full_name, returnTo: '/admin' });
-    navigate('/sales');
+    // Форсируем полную перезагрузку, чтобы SalesDashboard подхватил viewAs
+    // и показал баннер + чистый интерфейс менеджера.
+    window.location.assign('/sales');
   };
+
 
   useEffect(() => { fetchManagers(); fetchLeads(); fetchProposals(); }, [fetchManagers, fetchLeads, fetchProposals]);
 
