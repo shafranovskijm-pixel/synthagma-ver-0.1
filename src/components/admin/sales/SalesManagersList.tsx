@@ -13,6 +13,8 @@ import { useSalesManager } from '@/hooks/useSalesManager';
 import { InviteSalesManagerDialog } from './InviteSalesManagerDialog';
 import { setAdminSalesView } from '@/utils/adminViewMode';
 import { AssignTaskDialog } from './AssignTaskDialog';
+import { ManagerStatsDialog } from './ManagerStatsDialog';
+
 
 interface CreatedCreds { email: string; password: string; generated: boolean; fullName: string }
 
