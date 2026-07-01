@@ -169,7 +169,8 @@ export async function generateActHtml(params: ActParams): Promise<GeneratedAct |
 </body>
 </html>`.trim();
 
-    const docName = `Акт № ${actNumber} от ${formattedDate} — ${basis}`;
+    const baseName = `Акт № ${actNumber} от ${formattedDate} — ${basis}`;
+    const docName = sourceInvoiceId ? `${baseName}\u200B<inv:${sourceInvoiceId}>\u200B` : baseName;
     return { html, actNumber, docName, organizationId, basis };
   } catch (error) {
     console.error("Error generating act HTML:", error);
