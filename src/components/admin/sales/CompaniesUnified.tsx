@@ -16,11 +16,6 @@ interface CompaniesUnifiedProps {
   organizationId?: string;
 }
 
-interface SourceBucket {
-  source: string;
-  total: number;
-  untreated: number;
-}
 
 export function CompaniesUnified({ organizationId }: CompaniesUnifiedProps = {}) {
   const [tab, setTab] = useState<'in_work' | 'archive' | 'blacklist'>('in_work');
