@@ -81,6 +81,7 @@ export function SalesManager() {
   const TABS: Record<string, React.ReactNode> = {
     
     overview: <SalesOverview onJump={handleJump} />,
+    report: <SalesReport />,
     tasks: <SalesTasks
       prefillCompany={taskPrefill}
       onPrefillConsumed={() => setTaskPrefill(null)}
