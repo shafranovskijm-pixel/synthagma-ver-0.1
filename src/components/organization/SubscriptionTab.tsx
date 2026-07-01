@@ -131,7 +131,7 @@ export function SubscriptionTab() {
                         variant="outline"
                         onClick={() => {
                           try { localStorage.setItem("documents.deepLink", "open-act-dialog"); } catch {}
-                          dashboard?.tabNavigation?.setActiveTab?.("documents" as any);
+                          d?.tabNavigation?.setActiveTab?.("documents" as any);
                         }}
                         title="Сформировать акт по последнему оплаченному счёту"
                       >
