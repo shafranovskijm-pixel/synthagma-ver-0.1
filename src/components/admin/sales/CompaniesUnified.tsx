@@ -27,118 +27,43 @@ export function CompaniesUnified({ organizationId }: CompaniesUnifiedProps = {})
   const [tab, setTab] = useState<'in_work' | 'archive' | 'blacklist'>('in_work');
 
   return (
-    <div className="space-y-4">
-      <div>
-        <h2 className="text-xl font-semibold flex items-center gap-2">
-          <Building2 className="w-5 h-5 text-primary" />
-          Компании
-        </h2>
-        <p className="text-sm text-muted-foreground">Контакты и загруженные базы: в работе, архив и чёрный список</p>
+    <div className="space-y-3">
+      <div className="flex items-center justify-between gap-2 flex-wrap">
+        <div className="flex items-center gap-2">
+          <Building2 className="w-4 h-4 text-primary" />
+          <div>
+            <div className="text-[11px] uppercase tracking-wider text-muted-foreground">Кабинет менеджера</div>
+            <h2 className="text-lg font-semibold leading-tight">Компании</h2>
+          </div>
+        </div>
       </div>
 
-      <UntreatedBucketsCard organizationId={organizationId} />
-
       <Tabs value={tab} onValueChange={(v) => setTab(v as any)}>
-        <TabsList className="rounded-xl">
-          <TabsTrigger value="in_work" className="rounded-lg gap-1.5">
+        <TabsList className="rounded-xl h-9">
+          <TabsTrigger value="in_work" className="rounded-lg gap-1.5 text-xs">
             <Building2 className="w-3.5 h-3.5" /> В работе
           </TabsTrigger>
-          <TabsTrigger value="archive" className="rounded-lg gap-1.5">
+          <TabsTrigger value="archive" className="rounded-lg gap-1.5 text-xs">
             <Archive className="w-3.5 h-3.5" /> Архив
           </TabsTrigger>
-          <TabsTrigger value="blacklist" className="rounded-lg gap-1.5">
+          <TabsTrigger value="blacklist" className="rounded-lg gap-1.5 text-xs">
             <Ban className="w-3.5 h-3.5" /> Чёрный список
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="in_work" className="mt-4">
+        <TabsContent value="in_work" className="mt-3">
           <LeadsManager organizationId={organizationId} />
         </TabsContent>
 
-        <TabsContent value="archive" className="mt-4">
+        <TabsContent value="archive" className="mt-3">
           <ArchiveTab organizationId={organizationId} />
         </TabsContent>
 
-        <TabsContent value="blacklist" className="mt-4">
+        <TabsContent value="blacklist" className="mt-3">
           <BlacklistTab organizationId={organizationId} />
         </TabsContent>
       </Tabs>
     </div>
-  );
-}
-
-function UntreatedBucketsCard({ organizationId }: { organizationId?: string }) {
-  const [buckets, setBuckets] = useState<SourceBucket[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      setLoading(true);
-      let q = supabase
-        .from('sales_leads')
-        .select('source, status, assigned_manager_id')
-        .limit(5000);
-      if (organizationId) q = q.eq('organization_id', organizationId);
-      const { data, error } = await q;
-      if (cancelled) return;
-      if (error || !data) { setLoading(false); return; }
-      const m = new Map<string, SourceBucket>();
-      for (const l of data as any[]) {
-        const src = l.source || 'Загруженная база';
-        const b = m.get(src) || { source: src, total: 0, untreated: 0 };
-        b.total++;
-        if (l.status === 'new' && !l.assigned_manager_id) b.untreated++;
-        m.set(src, b);
-      }
-      setBuckets([...m.values()].sort((a, b) => b.untreated - a.untreated));
-      setLoading(false);
-    })();
-    return () => { cancelled = true; };
-  }, [organizationId]);
-
-  const totalUntreated = useMemo(() => buckets.reduce((s, b) => s + b.untreated, 0), [buckets]);
-
-  return (
-    <Card className="border-amber-500/30 bg-gradient-to-br from-amber-500/10 to-orange-500/5">
-      <CardContent className="p-4 space-y-3">
-        <div className="flex items-center justify-between flex-wrap gap-2">
-          <div className="flex items-center gap-2">
-            <Inbox className="w-5 h-5 text-amber-600" />
-            <h3 className="font-semibold">Необработанные загруженные базы</h3>
-            {totalUntreated > 0 && (
-              <Badge className="bg-amber-500 text-white">{totalUntreated} новых</Badge>
-            )}
-          </div>
-          <span className="text-xs text-muted-foreground">Статус «Новый» без назначенного менеджера</span>
-        </div>
-
-        {loading ? (
-          <p className="text-sm text-muted-foreground">Загрузка…</p>
-        ) : buckets.length === 0 ? (
-          <p className="text-sm text-muted-foreground flex items-center gap-2">
-            <Upload className="w-4 h-4" />
-            Базы не загружены. Импортируйте Excel в блоке «В работе» ниже.
-          </p>
-        ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
-            {buckets.map(b => (
-              <div key={b.source} className="rounded-xl border bg-background/60 p-3 flex items-center gap-3">
-                <Database className="w-4 h-4 text-primary shrink-0" />
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium truncate">{b.source}</p>
-                  <p className="text-xs text-muted-foreground">
-                    {b.total} контактов · {b.untreated > 0
-                      ? <span className="text-amber-600 font-medium">{b.untreated} необработанных</span>
-                      : 'все в работе'}
-                  </p>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </CardContent>
-    </Card>
   );
 }
 
