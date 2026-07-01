@@ -13,6 +13,18 @@ interface ActParams {
   actDate: Date;
   basis: string;
   amount: number;
+  /** Optional: id счёта из subscription_invoices, если акт формируется по конкретному счёту */
+  sourceInvoiceId?: string | null;
+}
+
+/** Маркер связи "акт ↔ счёт", встраивается невидимо в docName */
+export const INVOICE_LINK_MARKER = /\u200B<inv:([0-9a-f-]{36})>\u200B/i;
+export function stripInvoiceMarker(name: string): string {
+  return name.replace(INVOICE_LINK_MARKER, "").trim();
+}
+export function extractInvoiceId(name: string): string | null {
+  const m = name.match(INVOICE_LINK_MARKER);
+  return m ? m[1] : null;
 }
 
 async function imageToBase64(url: string): Promise<string> {
