@@ -282,6 +282,7 @@ export function useDocumentsTab(organizationId: string | null, organizationName?
       actDate,
       basis: actBasis,
       amount: parseFloat(actAmount),
+      sourceInvoiceId: actSourceInvoiceId,
     });
     if (act) {
       setPendingAct(act);
@@ -295,10 +296,21 @@ export function useDocumentsTab(organizationId: string | null, organizationName?
       setActBasis(""); setActAmount(""); setActDate(new Date());
       setActOtherCustomer(false); setActCustomerName(""); setActCustomerInn("");
       setActCustomerKpp(""); setActCustomerDirector(""); setActCustomerPosition("");
+      setActSourceInvoiceId(null);
     } else {
       toast.error("Ошибка", { description: "Не удалось сгенерировать акт" });
     }
     setActSubmitting(false);
+  };
+
+  /** Открыть диалог формирования акта с предзаполнением по конкретному счёту */
+  const openActDialogForInvoice = (inv: InvoiceRow) => {
+    const dateLabel = new Date(inv.invoice_date).toLocaleDateString("ru-RU");
+    setActBasis(`Счёт № ${inv.invoice_number} от ${dateLabel}`);
+    setActAmount(String(inv.amount));
+    setActDate(new Date());
+    setActSourceInvoiceId(inv.id);
+    setShowActDialog(true);
   };
 
   const handleSavePendingAct = async (action: 'download' | 'print') => {
