@@ -173,9 +173,14 @@ export function SalesManagersList() {
           return (
             <Card key={m.id}>
               <CardContent className="flex items-center justify-between p-4 gap-4 flex-wrap">
-                <div className="flex-1 min-w-[200px]">
+                <button
+                  type="button"
+                  onClick={() => setStatsFor({ id: m.id, full_name: m.full_name })}
+                  className="flex-1 min-w-[200px] text-left hover:opacity-80 transition"
+                  title="Открыть историю активностей"
+                >
                   <div className="flex items-center gap-2">
-                    <p className="font-medium">{m.full_name}</p>
+                    <p className="font-medium underline-offset-4 hover:underline">{m.full_name}</p>
                     <Badge variant={m.is_active ? 'default' : 'secondary'}>
                       {m.is_active ? 'Активен' : 'Неактивен'}
                     </Badge>
@@ -185,8 +190,11 @@ export function SalesManagersList() {
                     <span>Лидов: {stats.leadsCount}</span>
                     <span>КП: {stats.proposalsCount}</span>
                   </div>
-                </div>
+                </button>
                 <div className="flex gap-2 flex-wrap">
+                  <Button variant="outline" size="sm" onClick={() => setStatsFor({ id: m.id, full_name: m.full_name })}>
+                    <BarChart3 className="w-4 h-4 mr-1" />История
+                  </Button>
                   <Button variant="outline" size="sm" onClick={() => setTaskFor({ id: m.id, full_name: m.full_name, user_id: m.user_id })}>
                     <ListTodo className="w-4 h-4 mr-1" />Поставить задачу
                   </Button>
@@ -213,6 +221,13 @@ export function SalesManagersList() {
         onOpenChange={(v) => !v && setTaskFor(null)}
         manager={taskFor}
       />
+
+      <ManagerStatsDialog
+        open={!!statsFor}
+        onOpenChange={(v) => !v && setStatsFor(null)}
+        manager={statsFor}
+      />
+
     </div>
   );
 }
