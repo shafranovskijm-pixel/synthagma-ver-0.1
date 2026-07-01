@@ -52,6 +52,8 @@ interface CounterpartiesSectionProps {
   onDeleteDoc: (doc: BillingDoc) => void;
   onShowInvoiceDialog: () => void;
   onShowActDialog: () => void;
+  /** Открыть диалог формирования акта с предзаполнением по конкретному счёту */
+  onShowActDialogForInvoice?: (inv: InvoiceRow) => void;
 }
 
 export function CounterpartiesSection({
@@ -68,6 +70,7 @@ export function CounterpartiesSection({
   onDeleteDoc,
   onShowInvoiceDialog,
   onShowActDialog,
+  onShowActDialogForInvoice,
 }: CounterpartiesSectionProps) {
   const [counterparties, setCounterparties] = useState<CounterpartyOption[]>([]);
   const [selectedId, setSelectedId] = useState<string>("platform");
