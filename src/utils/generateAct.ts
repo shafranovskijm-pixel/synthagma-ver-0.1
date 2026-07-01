@@ -13,6 +13,18 @@ interface ActParams {
   actDate: Date;
   basis: string;
   amount: number;
+  /** Optional: id счёта из subscription_invoices, если акт формируется по конкретному счёту */
+  sourceInvoiceId?: string | null;
+}
+
+/** Маркер связи "акт ↔ счёт", встраивается невидимо в docName */
+export const INVOICE_LINK_MARKER = /\u200B<inv:([0-9a-f-]{36})>\u200B/i;
+export function stripInvoiceMarker(name: string): string {
+  return name.replace(INVOICE_LINK_MARKER, "").trim();
+}
+export function extractInvoiceId(name: string): string | null {
+  const m = name.match(INVOICE_LINK_MARKER);
+  return m ? m[1] : null;
 }
 
 async function imageToBase64(url: string): Promise<string> {
@@ -49,7 +61,7 @@ export interface GeneratedAct {
  */
 export async function generateActHtml(params: ActParams): Promise<GeneratedAct | null> {
   try {
-    const { organizationId, orgName, orgInn, directorName, directorPosition, actDate, basis, amount } = params;
+    const { organizationId, orgName, orgInn, directorName, directorPosition, actDate, basis, amount, sourceInvoiceId } = params;
     const actNumber = `A-${Date.now().toString().slice(-6)}`;
     const formattedDate = format(actDate, "dd MMMM yyyy", { locale: ru });
 
@@ -157,7 +169,8 @@ export async function generateActHtml(params: ActParams): Promise<GeneratedAct |
 </body>
 </html>`.trim();
 
-    const docName = `Акт № ${actNumber} от ${formattedDate} — ${basis}`;
+    const baseName = `Акт № ${actNumber} от ${formattedDate} — ${basis}`;
+    const docName = sourceInvoiceId ? `${baseName}\u200B<inv:${sourceInvoiceId}>\u200B` : baseName;
     return { html, actNumber, docName, organizationId, basis };
   } catch (error) {
     console.error("Error generating act HTML:", error);

@@ -92,17 +92,43 @@ export const DocumentsTab = React.memo(function DocumentsTab({ organizationId, o
   const h = useDocumentsTab(organizationId, organizationName);
   const dashboard = useOrgDashboard();
 
-  // Deep-link from Sales: старые маркеры (КП/договоры) теперь ведут в раздел «Продажи»
+  // Deep-link from Sales / SubscriptionTab: старые маркеры (КП/договоры) теперь ведут в раздел «Продажи»,
+  // маркер «open-act-dialog:<invoiceId>» открывает вкладку контрагентов → закрывающие и запускает диалог.
   useEffect(() => {
     try {
       const dl = localStorage.getItem("documents.deepLink");
+      if (!dl) return;
       if (dl === "proposals" || dl === "sales_contracts") {
         localStorage.removeItem("documents.deepLink");
         dashboard?.tabNavigation?.setActiveTab?.("sales" as any);
+        return;
+      }
+      if (dl.startsWith("open-act-dialog")) {
+        localStorage.removeItem("documents.deepLink");
+        h.setActiveTab("counterparties");
+        h.setCounterpartySubTab("closing");
+        const invId = dl.split(":")[1];
+        // Ждём подгрузки счетов, потом открываем диалог с предзаполнением
+        const timer = setInterval(() => {
+          if (h.invoices && h.invoices.length > 0) {
+            clearInterval(timer);
+            const inv = invId ? h.invoices.find(i => i.id === invId) : h.invoices.find(i => i.status === "paid");
+            if (inv) h.openActDialogForInvoice(inv);
+            else h.setShowActDialog(true);
+          }
+        }, 200);
+        setTimeout(() => clearInterval(timer), 5000);
+        return;
+      }
+      if (dl === "open-invoice-dialog") {
+        localStorage.removeItem("documents.deepLink");
+        h.setActiveTab("counterparties");
+        h.setCounterpartySubTab("invoices");
+        h.setShowInvoiceDialog(true);
       }
     } catch {}
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [h.invoices]);
 
   const visibleOrgSubs = useMemo(
     () => ORG_DOCS_SUBITEMS.filter(i => !i.ordersOnly || isOrdersEnabled),
@@ -298,7 +324,8 @@ export const DocumentsTab = React.memo(function DocumentsTab({ organizationId, o
               onDownloadDoc={h.handleDownloadDoc}
               onDeleteDoc={h.handleDeleteBillingDoc}
               onShowInvoiceDialog={() => h.setShowInvoiceDialog(true)}
-              onShowActDialog={() => h.setShowActDialog(true)}
+              onShowActDialog={() => { h.setActSourceInvoiceId(null); h.setShowActDialog(true); }}
+              onShowActDialogForInvoice={(inv) => h.openActDialogForInvoice(inv)}
             />
           )}
         </div>

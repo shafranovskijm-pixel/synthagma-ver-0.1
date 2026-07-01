@@ -122,9 +122,22 @@ export function SubscriptionTab() {
                         </p>
                       </div>
                     </div>
-                    <Button size="sm" onClick={s.handleGenerateInvoice} disabled={s.generatingInvoice}>
-                      {s.generatingInvoice ? "Создание..." : "Выставить счёт"}
-                    </Button>
+                    <div className="flex items-center gap-2">
+                      <Button size="sm" onClick={s.handleGenerateInvoice} disabled={s.generatingInvoice}>
+                        {s.generatingInvoice ? "Создание..." : "Выставить счёт"}
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => {
+                          try { localStorage.setItem("documents.deepLink", "open-act-dialog"); } catch {}
+                          d?.tabNavigation?.setActiveTab?.("documents" as any);
+                        }}
+                        title="Сформировать акт по последнему оплаченному счёту"
+                      >
+                        Выставить акт
+                      </Button>
+                    </div>
                   </CardContent>
                 </Card>
               )}
