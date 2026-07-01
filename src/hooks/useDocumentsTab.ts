@@ -88,6 +88,7 @@ export function useDocumentsTab(organizationId: string | null, organizationName?
   const [actCustomerPosition, setActCustomerPosition] = useState("");
   const [actInnSearching, setActInnSearching] = useState(false);
   const [pendingAct, setPendingAct] = useState<GeneratedAct | null>(null);
+  const [actSourceInvoiceId, setActSourceInvoiceId] = useState<string | null>(null);
 
   // Invoice dialog state
   const [generatingInvoice, setGeneratingInvoice] = useState(false);
