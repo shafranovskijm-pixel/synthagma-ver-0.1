@@ -411,85 +411,125 @@ export function CounterpartiesSection({
     </div>
   );
 
+  // Карта: id счёта → уже сформированный по нему акт
+  const invoiceToAct = React.useMemo(() => {
+    const map = new Map<string, BillingDoc>();
+    billingDocs.forEach(d => {
+      const invId = extractInvoiceId(d.name);
+      if (invId) map.set(invId, d);
+    });
+    return map;
+  }, [billingDocs]);
+
   const renderPlatformInvoices = () => {
-    if (invoices.length === 0) {
-      return (
-        <div className="text-center py-12 text-muted-foreground">
-          <Receipt className="w-10 h-10 mx-auto mb-2 opacity-30" />
-          <p className="text-sm">Счетов пока нет</p>
-          <Button className="mt-4 rounded-xl gap-1.5" size="sm" onClick={onShowInvoiceDialog}>
-            <Receipt className="w-3.5 h-3.5" />Сформировать счёт
-          </Button>
-        </div>
-      );
-    }
     return (
       <div className="space-y-2">
-        {invoices.map(inv => (
-          <div key={inv.id} className="flex items-center justify-between p-3 rounded-lg border border-border hover:bg-muted/30 transition-colors">
-            <div className="flex items-center gap-3">
-              <Receipt className="w-4 h-4 text-primary" />
-              <div>
-                <div className="text-sm font-medium">Счёт {inv.invoice_number}</div>
-                <div className="text-xs text-muted-foreground">
-                  {format(new Date(inv.invoice_date), "d MMM yyyy", { locale: ru })} · {inv.amount.toLocaleString("ru-RU")} ₽ · {inv.plan}
+        <div className="flex items-center justify-end gap-2 pb-1">
+          <Button size="sm" variant="outline" className="rounded-xl gap-1.5" onClick={onShowInvoiceDialog}>
+            <Receipt className="w-3.5 h-3.5" />Выставить счёт
+          </Button>
+        </div>
+        {invoices.length === 0 ? (
+          <div className="text-center py-12 text-muted-foreground">
+            <Receipt className="w-10 h-10 mx-auto mb-2 opacity-30" />
+            <p className="text-sm">Счетов пока нет</p>
+          </div>
+        ) : (
+          invoices.map(inv => {
+            const linkedAct = invoiceToAct.get(inv.id);
+            return (
+              <div key={inv.id} className="flex items-center justify-between p-3 rounded-lg border border-border hover:bg-muted/30 transition-colors">
+                <div className="flex items-center gap-3">
+                  <Receipt className="w-4 h-4 text-primary" />
+                  <div>
+                    <div className="text-sm font-medium">Счёт {inv.invoice_number}</div>
+                    <div className="text-xs text-muted-foreground">
+                      {format(new Date(inv.invoice_date), "d MMM yyyy", { locale: ru })} · {inv.amount.toLocaleString("ru-RU")} ₽ · {inv.plan}
+                    </div>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  {inv.status === "paid" ? (
+                    <span className="text-xs font-medium text-emerald-600">Оплачен</span>
+                  ) : (
+                    <span className="text-xs font-medium text-amber-600">Не оплачен</span>
+                  )}
+                  {linkedAct ? (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      title="Открыть акт по счёту"
+                      onClick={() => onViewDoc(linkedAct)}
+                    >
+                      <Link2 className="w-4 h-4 text-emerald-600" />
+                    </Button>
+                  ) : (
+                    onShowActDialogForInvoice && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        title="Сформировать акт по счёту"
+                        onClick={() => onShowActDialogForInvoice(inv)}
+                      >
+                        <FilePlus2 className="w-4 h-4" />
+                      </Button>
+                    )
+                  )}
+                  <Button variant="ghost" size="sm" title="Скачать / Печать" onClick={() => window.open(`/invoice/${inv.id}`, "_blank")}>
+                    <Download className="w-4 h-4" />
+                  </Button>
+                  <Button variant="ghost" size="sm" title="Открыть" onClick={() => window.open(`/invoice/${inv.id}`, "_blank")}>
+                    <ExternalLink className="w-4 h-4" />
+                  </Button>
                 </div>
               </div>
-            </div>
-            <div className="flex items-center gap-2">
-              {inv.status === "paid" ? (
-                <span className="text-xs font-medium text-emerald-600">Оплачен</span>
-              ) : (
-                <span className="text-xs font-medium text-amber-600">Не оплачен</span>
-              )}
-              <Button variant="ghost" size="sm" title="Скачать / Печать" onClick={() => window.open(`/invoice/${inv.id}`, "_blank")}>
-                <Download className="w-4 h-4" />
-              </Button>
-              <Button variant="ghost" size="sm" title="Открыть" onClick={() => window.open(`/invoice/${inv.id}`, "_blank")}>
-                <ExternalLink className="w-4 h-4" />
-              </Button>
-            </div>
-          </div>
-        ))}
+            );
+          })
+        )}
       </div>
     );
   };
 
   const renderPlatformClosing = () => {
-    if (billingDocs.length === 0) {
-      return (
-        <div className="text-center py-12 text-muted-foreground">
-          <FileText className="w-10 h-10 mx-auto mb-2 opacity-30" />
-          <p className="text-sm">Закрывающих документов пока нет</p>
-          <Button className="mt-4 rounded-xl gap-1.5" size="sm" onClick={onShowActDialog}>
+    return (
+      <div className="space-y-2">
+        <div className="flex items-center justify-end gap-2 pb-1">
+          <Button size="sm" variant="outline" className="rounded-xl gap-1.5" onClick={onShowActDialog}>
             <FileText className="w-3.5 h-3.5" />Сформировать акт
           </Button>
         </div>
-      );
-    }
-    return (
-      <div className="space-y-2">
-        {billingDocs.map(doc => {
-          const docType = docTypeLabels[doc.doc_type] || docTypeLabels.other;
-          return (
-            <div key={doc.id} className="flex items-center justify-between p-3 rounded-lg border border-border hover:bg-muted/30 transition-colors">
-              <div className="flex items-center gap-3">
-                {docType.icon}
-                <div>
-                  <div className="text-sm font-medium">{doc.name}</div>
-                  <div className="text-xs text-muted-foreground">
-                    {docType.label} · {format(new Date(doc.created_at), "d MMM yyyy", { locale: ru })}
+        {billingDocs.length === 0 ? (
+          <div className="text-center py-12 text-muted-foreground">
+            <FileText className="w-10 h-10 mx-auto mb-2 opacity-30" />
+            <p className="text-sm">Закрывающих документов пока нет</p>
+          </div>
+        ) : (
+          billingDocs.map(doc => {
+            const docType = docTypeLabels[doc.doc_type] || docTypeLabels.other;
+            const displayName = stripInvoiceMarker(doc.name);
+            const linkedInvId = extractInvoiceId(doc.name);
+            const linkedInv = linkedInvId ? invoices.find(i => i.id === linkedInvId) : null;
+            return (
+              <div key={doc.id} className="flex items-center justify-between p-3 rounded-lg border border-border hover:bg-muted/30 transition-colors">
+                <div className="flex items-center gap-3">
+                  {docType.icon}
+                  <div>
+                    <div className="text-sm font-medium">{displayName}</div>
+                    <div className="text-xs text-muted-foreground">
+                      {docType.label} · {format(new Date(doc.created_at), "d MMM yyyy", { locale: ru })}
+                      {linkedInv ? ` · по счёту ${linkedInv.invoice_number}` : ""}
+                    </div>
                   </div>
                 </div>
+                <div className="flex items-center gap-1">
+                  <Button variant="ghost" size="sm" title="Просмотр" onClick={() => onViewDoc(doc)}><Eye className="w-4 h-4" /></Button>
+                  <Button variant="ghost" size="sm" title="Скачать" onClick={() => onDownloadDoc(doc)}><Download className="w-4 h-4" /></Button>
+                  <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive" title="Удалить" onClick={() => onDeleteDoc(doc)}><Trash2 className="w-4 h-4" /></Button>
+                </div>
               </div>
-              <div className="flex items-center gap-1">
-                <Button variant="ghost" size="sm" title="Просмотр" onClick={() => onViewDoc(doc)}><Eye className="w-4 h-4" /></Button>
-                <Button variant="ghost" size="sm" title="Скачать" onClick={() => onDownloadDoc(doc)}><Download className="w-4 h-4" /></Button>
-                <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive" title="Удалить" onClick={() => onDeleteDoc(doc)}><Trash2 className="w-4 h-4" /></Button>
-              </div>
-            </div>
-          );
-        })}
+            );
+          })
+        )}
       </div>
     );
   };
