@@ -73,10 +73,15 @@ Deno.serve(async (req) => {
         return new Response(JSON.stringify({ error: updErr.message }), { status: 400, headers: corsHeaders });
       }
       const { data: authUser } = await adminClient.auth.admin.getUserById(mgr.user_id);
+      const email = authUser?.user?.email || '';
+      await adminClient.from('profiles').update({
+        generated_password: newPassword, email, login: email,
+      }).eq('user_id', mgr.user_id);
       return new Response(
-        JSON.stringify({ success: true, user_id: mgr.user_id, email: authUser?.user?.email || '', password: newPassword, full_name: mgr.full_name }),
+        JSON.stringify({ success: true, user_id: mgr.user_id, email, password: newPassword, full_name: mgr.full_name }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
+
     }
 
     const full_name: string = (body.full_name || '').trim();
