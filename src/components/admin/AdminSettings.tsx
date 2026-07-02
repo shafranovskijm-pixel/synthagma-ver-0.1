@@ -253,7 +253,9 @@ export function AdminSettings() {
       case "content": return <BlogManager />;
       case "ai": return <AISettingsManager />;
       case "devtools": return <DevToolsPanel />;
+      case "email-pool": return <EmailSenderPoolManager />;
       default: return null;
+
     }
   };
 
