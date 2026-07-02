@@ -85,6 +85,7 @@ function getStaticCallAccessTokens(): string[] {
   // Classic API uses them as key/secret, but JSON-RPC Call API expects the
   // token itself in params.access_token.
   if (isAppId(Deno.env.get("NOVOFON_API_KEY"))) {
+    addTokenCandidate(candidates, Deno.env.get("NOVOFON_API_KEY"));
     addTokenCandidate(candidates, Deno.env.get("NOVOFON_API_SECRET"));
   }
 
