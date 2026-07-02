@@ -66,7 +66,6 @@ function normalizeAccessKey(value?: string | null): string | null {
 function getStaticCallAccessToken(): string | null {
   return normalizeAccessKey(Deno.env.get("NOVOFON_JSONRPC_ACCESS_KEY"))
     || normalizeAccessKey(Deno.env.get("NOVOFON_ACCESS_TOKEN"))
-    || normalizeAccessKey(Deno.env.get("NOVOFON_API_KEY"))
     || null;
 }
 
