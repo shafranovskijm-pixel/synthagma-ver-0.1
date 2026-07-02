@@ -21,6 +21,7 @@ import { toast } from 'sonner';
 import { getErrorMessage } from '@/utils/handleSupabaseError';
 import { useAuth } from '@/hooks/useAuth';
 import type { CallResultKey } from '@/constants/coldCallScript';
+import { extractExtraPhones, formatRuPhone } from '@/utils/phoneParser';
 
 
 const LEAD_STATUS_MAP: Record<string, { label: string; color: string }> = {
