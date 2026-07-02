@@ -62,11 +62,30 @@ export function CompanyDrawer({ lead, open, onOpenChange, managerName, onCreateP
   const st = LEAD_STATUS_MAP[status] || LEAD_STATUS_MAP.new;
 
   const handleQuickCall = async () => {
-    if (lead.phone) window.location.href = `tel:${lead.phone.replace(/\s/g, '')}`;
-    await addActivity(lead.id, null, 'call', `Исходящий звонок: ${lead.phone || '—'}`);
+    if (!lead.phone) return;
+    try {
+      const { data, error } = await supabase.functions.invoke('novofon-call-start', {
+        body: {
+          to_number: lead.phone,
+          lead_id: lead.id,
+          company_inn: lead.inn ?? null,
+          company_name: lead.org_name ?? null,
+        },
+      });
+      if (error) throw error;
+      if (data?.ok) {
+        toast.success('Звоним через Novofon', { description: 'Ответьте на своём телефоне — АТС соединит с клиентом.' });
+      } else {
+        toast.error('Не удалось запустить звонок', { description: data?.novofon?.message || 'Проверьте настройки Novofon' });
+      }
+    } catch (e) {
+      toast.error('Ошибка звонка', { description: e instanceof Error ? e.message : String(e) });
+    }
+    await addActivity(lead.id, null, 'call', `Исходящий звонок Novofon: ${lead.phone}`);
     setPresetResult(undefined);
     setResultOpen(true);
   };
+
 
   const handleQuickResult = (key: CallResultKey) => {
     setPresetResult(key);
