@@ -358,11 +358,10 @@ export function SalesShiftView({ onCreateProposal, onCreateContract }: Props) {
         onCreateProposal={onCreateProposal ? (l) => onCreateProposal({ name: l.org_name, inn: l.inn || '' }) : undefined}
         onCreateContract={onCreateContract ? (l) => onCreateContract({ name: l.org_name, inn: l.inn || '' }) : undefined}
         onSaveAndNext={() => {
-          // Обновим счётчик сделанных звонков и перейдём к следующему
-          setDoneToday(x => x + 1);
+          // Счётчики обновит realtime по call_logs / sales_lead_activities.
+          // Локально сразу инкрементим "звонки" для отзывчивости UI.
+          setCallsToday(x => x + 1);
           setDrawerOpen(false);
-          // если на текущей странице ещё есть лиды — просто закроем drawer;
-          // иначе перейдём на следующую
           const remainingOnPage = pageItems.length - 1;
           if (remainingOnPage <= 0 && currentPage < totalPages) setPage(currentPage + 1);
         }}
