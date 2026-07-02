@@ -43,12 +43,22 @@ export function CompanyDrawer({ lead, open, onOpenChange, managerName, onCreateP
   const [status, setStatus] = useState('new');
   const [resultOpen, setResultOpen] = useState(false);
   const [presetResult, setPresetResult] = useState<CallResultKey | undefined>();
+  const [directorName, setDirectorName] = useState<string | null>(null);
 
   useEffect(() => {
     if (lead) {
       fetchActivities(lead.id);
       setNotes(lead.notes || '');
       setStatus(lead.status);
+      setDirectorName(null);
+      if (lead.inn) {
+        supabase
+          .from('sales_companies_db')
+          .select('director')
+          .eq('inn', lead.inn)
+          .maybeSingle()
+          .then(({ data }) => setDirectorName(data?.director ?? null));
+      }
     }
   }, [lead, fetchActivities]);
 
