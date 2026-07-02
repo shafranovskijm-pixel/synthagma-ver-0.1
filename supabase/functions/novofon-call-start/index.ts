@@ -4,6 +4,7 @@ import {
   describeNovofonError,
   hasCallApiCredentials,
   normalizeNovofonPhone,
+  NovofonApiError,
   novofonClassicRequest,
   novofonRpc,
 } from "../_shared/novofon.ts";
@@ -22,6 +23,31 @@ interface ClassicCallbackResponse {
   from?: string | number;
   to?: string | number;
   time?: number;
+}
+
+function canUseClassicFallback() {
+  return Deno.env.get("NOVOFON_CLASSIC_FALLBACK") === "true"
+    && Boolean(Deno.env.get("NOVOFON_API_KEY") && Deno.env.get("NOVOFON_API_SECRET"));
+}
+
+function shouldFallbackToClassic(error: unknown) {
+  return error instanceof NovofonApiError
+    && [
+      "access_token_invalid",
+      "access_token_expired",
+      "access_token_blocked",
+      "auth_error",
+      "component_disabled",
+      "method_component_disabled",
+    ].includes(error.mnemonic || "");
+}
+
+async function startClassicCallback(operator: string, to: string, fromSip?: string): Promise<ClassicCallbackResponse> {
+  return await novofonClassicRequest<ClassicCallbackResponse>("POST", "/v1/request/callback/", {
+    from: operator,
+    to,
+    ...(fromSip ? { sip: fromSip } : {}),
+  });
 }
 
 serve(async (req) => {
@@ -93,25 +119,29 @@ serve(async (req) => {
     if (hasCallApiCredentials()) {
       // Novofon Call API v4.0: сначала звоним оператору/менеджеру,
       // после ответа соединяем с контактом.
-      nfRes = await novofonRpc<CallStartResponse>("start.simple_call", {
-        first_call: "operator",
-        switch_at_once: true,
-        show_virtual_phone_number: true,
-        virtual_phone_number: callerId,
-        direction: "in",
-        contact: to,
-        operator,
-        external_id: lead_id || `test-${Date.now()}`,
-      });
-      providerCallId = nfRes.call_session_id ? String(nfRes.call_session_id) : null;
-    } else if (Deno.env.get("NOVOFON_CLASSIC_FALLBACK") === "true") {
+      try {
+        nfRes = await novofonRpc<CallStartResponse>("start.simple_call", {
+          first_call: "operator",
+          switch_at_once: true,
+          show_virtual_phone_number: true,
+          virtual_phone_number: callerId,
+          direction: "in",
+          contact: to,
+          operator,
+          external_id: lead_id || `test-${Date.now()}`,
+        });
+        providerCallId = nfRes.call_session_id ? String(nfRes.call_session_id) : null;
+      } catch (error) {
+        if (!canUseClassicFallback() || !shouldFallbackToClassic(error)) throw error;
+        console.warn("Call API failed, using classic callback fallback:", describeNovofonError(error));
+        usedApi = "classic_callback";
+        nfRes = await startClassicCallback(operator, to, from_sip || Deno.env.get("NOVOFON_SIP_LOGIN") || undefined);
+        providerCallId = (nfRes as ClassicCallbackResponse).time ? String((nfRes as ClassicCallbackResponse).time) : null;
+      }
+    } else if (canUseClassicFallback()) {
       // Classic Novofon/Zadarma callback API: works with API key + secret.
       usedApi = "classic_callback";
-      nfRes = await novofonClassicRequest<ClassicCallbackResponse>("POST", "/v1/request/callback/", {
-        from: operator,
-        to,
-        ...(from_sip ? { sip: from_sip } : {}),
-      });
+      nfRes = await startClassicCallback(operator, to, from_sip || Deno.env.get("NOVOFON_SIP_LOGIN") || undefined);
       providerCallId = nfRes.time ? String(nfRes.time) : null;
     } else {
       return new Response(JSON.stringify({
