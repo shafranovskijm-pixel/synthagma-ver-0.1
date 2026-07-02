@@ -139,6 +139,7 @@ export function CompanyDrawer({ lead, open, onOpenChange, managerName, onCreateP
 
               <TabsContent value="summary" className="p-4 space-y-3 text-sm">
                 {lead.inn && <Row icon={Building2} label="ИНН" value={lead.inn} />}
+                {directorName && <Row icon={Building2} label="Руководитель" value={directorName} />}
                 {lead.ogrn && <Row icon={Building2} label="ОГРН" value={lead.ogrn} />}
                 {lead.address && <Row icon={MapPin} label="Адрес" value={lead.address} />}
                 {lead.phone && <Row icon={Phone} label="Телефон" value={lead.phone} />}
