@@ -276,6 +276,29 @@ export function SalesOverview({ onJump, organizationId, availableSections }: Pro
     }
   }
 
+  async function saveDailyPlan() {
+    const num = Number(dailyDraft.replace(/\s/g, '').replace(',', '.'));
+    if (!Number.isFinite(num) || num <= 0) { toast.error('Введите положительное число'); return; }
+    setDailySaving(true);
+    try {
+      // Сохраняем в формате { default, byManager }
+      const { data: cur } = await supabase.from('app_settings')
+        .select('setting_value').eq('setting_key', 'sales_daily_plan').maybeSingle();
+      let existing: any = {};
+      try { existing = cur?.setting_value ? JSON.parse(String(cur.setting_value)) : {}; } catch { /* noop */ }
+      const next = { default: Math.round(num), byManager: existing?.byManager || {} };
+      const { error } = await supabase.from('app_settings')
+        .upsert({ setting_key: 'sales_daily_plan', setting_value: JSON.stringify(next) }, { onConflict: 'setting_key' });
+      if (error) throw error;
+      setDailyPlan(Math.round(num));
+      setDailyEditing(false);
+      toast.success('Дневная норма сохранена');
+    } catch (e: any) {
+      toast.error(e?.message || 'Не удалось сохранить');
+    } finally { setDailySaving(false); }
+  }
+
+
   if (loading || !data) {
     return <div className="flex justify-center py-12"><SigmaSpinner size="lg" /></div>;
   }
