@@ -640,6 +640,7 @@ export type Database = {
           company_inn: string | null
           company_name: string | null
           contract_id: string | null
+          cost_rub: number | null
           created_at: string
           direction: string
           duration_sec: number | null
@@ -651,8 +652,11 @@ export type Database = {
           lead_id: string | null
           manager_user_id: string
           notes: string | null
+          novofon_call_id: string | null
           proposal_id: string | null
+          provider: string
           recording_duration_sec: number | null
+          recording_url: string | null
           started_at: string
           status: string
           to_number: string
@@ -663,6 +667,7 @@ export type Database = {
           company_inn?: string | null
           company_name?: string | null
           contract_id?: string | null
+          cost_rub?: number | null
           created_at?: string
           direction?: string
           duration_sec?: number | null
@@ -674,8 +679,11 @@ export type Database = {
           lead_id?: string | null
           manager_user_id: string
           notes?: string | null
+          novofon_call_id?: string | null
           proposal_id?: string | null
+          provider?: string
           recording_duration_sec?: number | null
+          recording_url?: string | null
           started_at?: string
           status?: string
           to_number: string
@@ -686,6 +694,7 @@ export type Database = {
           company_inn?: string | null
           company_name?: string | null
           contract_id?: string | null
+          cost_rub?: number | null
           created_at?: string
           direction?: string
           duration_sec?: number | null
@@ -697,8 +706,11 @@ export type Database = {
           lead_id?: string | null
           manager_user_id?: string
           notes?: string | null
+          novofon_call_id?: string | null
           proposal_id?: string | null
+          provider?: string
           recording_duration_sec?: number | null
+          recording_url?: string | null
           started_at?: string
           status?: string
           to_number?: string
