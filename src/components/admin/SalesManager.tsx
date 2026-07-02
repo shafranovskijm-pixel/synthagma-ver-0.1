@@ -9,7 +9,7 @@ import { SalesControlPanel } from './sales/SalesControlPanel';
 import { SalesContracts } from './sales/SalesContracts';
 import { CompetitorComparison } from './sales/CompetitorComparison';
 import { DocumentSigning } from './sales/DocumentSigning';
-import { SalesSidebar, SalesSidebarContent, salesMenuGroups } from './sales/SalesSidebar';
+import { SalesSidebarContent, salesMenuGroups } from './sales/SalesSidebar';
 import { Deals360 } from './sales/Deals360';
 import { BroadcastManager } from './BroadcastManager';
 import { SalesOverview } from './sales/SalesOverview';
