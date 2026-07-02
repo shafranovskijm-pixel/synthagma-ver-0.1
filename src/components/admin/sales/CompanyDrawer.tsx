@@ -12,7 +12,11 @@ import { useSalesManager, type SalesLead, type LeadActivity } from '@/hooks/useS
 import { getRegionLocalTime, isBusinessHours } from '@/utils/regionTimezones';
 import { ColdCallScriptCard } from './ColdCallScriptCard';
 import { CallResultModal } from './CallResultModal';
+import { CallLogsList } from './CallLogsList';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 import type { CallResultKey } from '@/constants/coldCallScript';
+
 
 const LEAD_STATUS_MAP: Record<string, { label: string; color: string }> = {
   new: { label: 'Новый', color: 'bg-blue-500/10 text-blue-500' },
