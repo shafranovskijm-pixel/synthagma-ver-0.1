@@ -47,7 +47,7 @@ serve(async (req) => {
     }
 
     const body = await req.json();
-    const { to_number, lead_id, company_inn, company_name, from_sip } = body ?? {};
+    const { to_number, lead_id, company_inn, company_name, from_sip, is_test } = body ?? {};
     if (!to_number) {
       return new Response(JSON.stringify({ error: "to_number required" }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
