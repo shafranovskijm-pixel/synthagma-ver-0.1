@@ -21,7 +21,10 @@ export interface SalesManager {
   phone: string | null;
   is_active: boolean;
   created_at: string;
+  email?: string | null;
+  generated_password?: string | null;
 }
+
 
 export interface CommercialProposal {
   id: string;
