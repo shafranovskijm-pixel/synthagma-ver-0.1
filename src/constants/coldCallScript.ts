@@ -21,7 +21,7 @@ export const coldCallScript: ScriptTab[] = [
     key: 'start',
     title: 'Старт',
     items: [
-      { text: 'Здравствуйте. Подскажите, это ООО «{company_name}»?' },
+      { text: 'Здравствуйте! Могу услышать {contact_name}?' },
       { text: 'Меня зовут {manager_name}, компания «Синтагма». Подскажите, вы занимаетесь обучением, ДПО или профессиональной подготовкой?' },
       { text: 'Я коротко, буквально 30 секунд. Если будет неактуально — не буду отвлекать.' },
       { text: 'Мы помогаем учебным центрам и организациям ДПО запускать дистанционное обучение и вести учебные документы в одной системе: курсы, слушатели, договоры, КП, журналы и часть рутины.' },
@@ -98,7 +98,7 @@ export const coldCallScript: ScriptTab[] = [
 
 // Самый короткий скрипт «30 секунд».
 export const shortScript30s: string[] = [
-  'Здравствуйте. Это ООО «{company_name}»?',
+  'Здравствуйте! Могу услышать {contact_name}?',
   'Меня зовут {manager_name}, компания «Синтагма».',
   'Мы помогаем учебным центрам и организациям ДПО запускать дистанционное обучение и вести учебные документы в одной системе: курсы, слушатели, договоры, КП, журналы и часть рутины.',
   'Подскажите, у вас сейчас есть СДО или обучение ведёте без отдельной платформы?',
@@ -169,7 +169,9 @@ export interface ScriptContext {
 export function fillScriptTemplate(text: string, ctx: ScriptContext = {}): string {
   const company = ctx.companyName || ctx.leadName || 'компания';
   const manager = ctx.managerName || '[ваше имя]';
-  const contact = ctx.contactName || 'коллега';
+  const contact = ctx.contactName?.trim()
+    ? ctx.contactName.trim()
+    : `представителя ООО «${company}»`;
   const phone = ctx.phone || '';
   return text
     .replace(/\{company_name\}/g, company)

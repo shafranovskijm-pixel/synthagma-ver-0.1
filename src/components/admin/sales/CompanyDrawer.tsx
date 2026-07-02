@@ -43,12 +43,22 @@ export function CompanyDrawer({ lead, open, onOpenChange, managerName, onCreateP
   const [status, setStatus] = useState('new');
   const [resultOpen, setResultOpen] = useState(false);
   const [presetResult, setPresetResult] = useState<CallResultKey | undefined>();
+  const [directorName, setDirectorName] = useState<string | null>(null);
 
   useEffect(() => {
     if (lead) {
       fetchActivities(lead.id);
       setNotes(lead.notes || '');
       setStatus(lead.status);
+      setDirectorName(null);
+      if (lead.inn) {
+        supabase
+          .from('sales_companies_db')
+          .select('director')
+          .eq('inn', lead.inn)
+          .maybeSingle()
+          .then(({ data }) => setDirectorName(data?.director ?? null));
+      }
     }
   }, [lead, fetchActivities]);
 
@@ -129,6 +139,7 @@ export function CompanyDrawer({ lead, open, onOpenChange, managerName, onCreateP
 
               <TabsContent value="summary" className="p-4 space-y-3 text-sm">
                 {lead.inn && <Row icon={Building2} label="ИНН" value={lead.inn} />}
+                {directorName && <Row icon={Building2} label="Руководитель" value={directorName} />}
                 {lead.ogrn && <Row icon={Building2} label="ОГРН" value={lead.ogrn} />}
                 {lead.address && <Row icon={MapPin} label="Адрес" value={lead.address} />}
                 {lead.phone && <Row icon={Phone} label="Телефон" value={lead.phone} />}
@@ -163,6 +174,7 @@ export function CompanyDrawer({ lead, open, onOpenChange, managerName, onCreateP
                 <ColdCallScriptCard
                   leadName={lead.org_name}
                   managerName={managerName}
+                  contactName={directorName ?? undefined}
                   onQuickResult={handleQuickResult}
                 />
               </TabsContent>
