@@ -56,6 +56,8 @@ export function CompanyDrawer({ lead, open, onOpenChange, managerName, managerPh
   const [presetResult, setPresetResult] = useState<CallResultKey | undefined>();
   const [directorName, setDirectorName] = useState<string | null>(null);
   const [isCalling, setIsCalling] = useState(false);
+  const [activeTab, setActiveTab] = useState('summary');
+  const [proposalPopoverOpen, setProposalPopoverOpen] = useState(false);
 
   // Быстрая отправка КП
   const [proposalTemplates, setProposalTemplates] = useState<ProposalTpl[]>([]);
