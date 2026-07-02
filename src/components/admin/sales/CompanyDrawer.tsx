@@ -203,13 +203,33 @@ export function CompanyDrawer({ lead, open, onOpenChange, managerName, managerPh
               )}
             </div>
             <div className="flex gap-2 pt-1">
-              <Button size="sm" className="flex-1 h-8" disabled={!lead.phone} onClick={handleQuickCall}>
-                <Phone className="w-3.5 h-3.5 mr-1" />Позвонить
+              <Button size="sm" className="flex-1 h-8" disabled={!lead.phone} onClick={() => handleQuickCall()}>
+                <Phone className="w-3.5 h-3.5 mr-1" />Позвонить{lead.phone ? ` ${formatRuPhone(lead.phone) || lead.phone}` : ''}
               </Button>
               <Button size="sm" variant="outline" className="h-8" onClick={() => { setPresetResult(undefined); setResultOpen(true); }}>
                 Результат
               </Button>
             </div>
+            {extraPhones.length > 0 && (
+              <div className="pt-1">
+                <div className="text-[11px] text-muted-foreground mb-1">Доп. телефоны из заметок ({extraPhones.length})</div>
+                <div className="flex flex-wrap gap-1.5">
+                  {extraPhones.map(p => (
+                    <Button
+                      key={p}
+                      size="sm"
+                      variant="outline"
+                      className="h-7 px-2 text-xs"
+                      onClick={() => handleQuickCall(p)}
+                      title={`Позвонить на ${p}`}
+                    >
+                      <Phone className="w-3 h-3 mr-1" />
+                      {formatRuPhone(p)}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+            )}
           </SheetHeader>
 
           <div className="flex-1 overflow-y-auto">
