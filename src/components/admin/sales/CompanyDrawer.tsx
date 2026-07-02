@@ -205,13 +205,54 @@ export function CompanyDrawer({ lead, open, onOpenChange, managerName, managerPh
                 </Badge>
               )}
             </div>
-            <div className="flex gap-2 pt-1">
-              <Button size="sm" className="flex-1 h-8" disabled={!lead.phone} onClick={() => handleQuickCall()}>
+            <div className="flex gap-2 pt-1 flex-wrap">
+              <Button size="sm" className="flex-1 min-w-[140px] h-8" disabled={!lead.phone} onClick={() => handleQuickCall()}>
                 <Phone className="w-3.5 h-3.5 mr-1" />Позвонить{lead.phone ? ` ${formatRuPhone(lead.phone) || lead.phone}` : ''}
               </Button>
               <Button size="sm" variant="outline" className="h-8" onClick={() => { setPresetResult(undefined); setResultOpen(true); }}>
                 Результат
               </Button>
+              <Popover open={proposalPopoverOpen} onOpenChange={setProposalPopoverOpen}>
+                <PopoverTrigger asChild>
+                  <Button size="sm" variant="outline" className="h-8" disabled={proposalTemplates.length === 0}>
+                    <Send className="w-3.5 h-3.5 mr-1" />КП
+                    {proposalTemplates.length > 0 && (
+                      <Badge variant="secondary" className="ml-1.5 h-4 px-1.5 text-[10px]">{proposalTemplates.length}</Badge>
+                    )}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent align="end" className="w-80 p-3 space-y-2">
+                  <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                    Отправить коммерческое предложение
+                  </div>
+                  <Select value={selectedTpl} onValueChange={setSelectedTpl}>
+                    <SelectTrigger className="h-9"><SelectValue placeholder="Выберите КП" /></SelectTrigger>
+                    <SelectContent>
+                      {proposalTemplates.map(t => (
+                        <SelectItem key={t.id} value={t.id}>{t.company_name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Input
+                    type="email"
+                    value={sendEmail}
+                    onChange={e => setSendEmail(e.target.value)}
+                    placeholder="email@company.ru"
+                    className="h-9"
+                  />
+                  <Button size="sm" className="w-full h-9" onClick={handleSendProposal} disabled={sending}>
+                    <Send className="w-3.5 h-3.5 mr-1.5" />
+                    {sending ? 'Отправляем…' : 'Отправить с нашей почты'}
+                  </Button>
+                  <button
+                    type="button"
+                    className="text-xs text-muted-foreground hover:text-foreground underline underline-offset-2"
+                    onClick={() => { setProposalPopoverOpen(false); setActiveTab('docs'); }}
+                  >
+                    Открыть вкладку «Документы» →
+                  </button>
+                </PopoverContent>
+              </Popover>
             </div>
             {extraPhones.length > 0 && (
               <div className="pt-1">
