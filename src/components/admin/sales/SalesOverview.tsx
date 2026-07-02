@@ -332,6 +332,47 @@ export function SalesOverview({ onJump, organizationId, availableSections }: Pro
       </div>
       <InviteSalesManagerDialog open={inviteOpen} onOpenChange={setInviteOpen} />
 
+      {!organizationId && (
+        <Card className="rounded-2xl border-dashed">
+          <CardContent className="p-4 flex items-center gap-3 flex-wrap">
+            <div className="flex items-center gap-2 text-sm">
+              <Clock className="w-4 h-4 text-primary" />
+              <span className="font-medium">Дневная норма дозвонов</span>
+              <span className="text-muted-foreground">— применяется в разделе «Смена» у менеджеров</span>
+            </div>
+            <div className="flex items-center gap-1.5 ml-auto">
+              {dailyEditing ? (
+                <>
+                  <Input
+                    value={dailyDraft}
+                    onChange={e => setDailyDraft(e.target.value)}
+                    className="h-8 w-24 text-sm"
+                    inputMode="numeric"
+                    autoFocus
+                    onKeyDown={e => { if (e.key === 'Enter') void saveDailyPlan(); if (e.key === 'Escape') setDailyEditing(false); }}
+                  />
+                  <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => void saveDailyPlan()} disabled={dailySaving}>
+                    <Check className="w-4 h-4 text-emerald-600" />
+                  </Button>
+                  <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => setDailyEditing(false)} disabled={dailySaving}>
+                    <X className="w-4 h-4 text-muted-foreground" />
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <Badge variant="secondary" className="rounded-lg">{dailyPlan} звонков / день</Badge>
+                  <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => { setDailyDraft(String(dailyPlan)); setDailyEditing(true); }} title="Изменить норму">
+                    <Pencil className="w-3.5 h-3.5" />
+                  </Button>
+                </>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+
+
 
       {/* Top row */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
