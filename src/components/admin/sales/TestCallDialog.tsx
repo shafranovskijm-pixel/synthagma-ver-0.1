@@ -30,28 +30,50 @@ export function TestCallDialog({ open, onOpenChange, defaultPhone }: Props) {
   const [checking, setChecking] = useState(false);
   const [steps, setSteps] = useState<DiagnosticStep[]>([]);
 
+  const normalizePhone = (raw: string) => {
+    const digits = raw.replace(/\D/g, '');
+    if (!digits) return '+7 ';
+    let d = digits;
+    if (d.startsWith('8')) d = '7' + d.slice(1);
+    if (!d.startsWith('7')) d = '7' + d;
+    d = d.slice(0, 11);
+    const p1 = d.slice(1, 4);
+    const p2 = d.slice(4, 7);
+    const p3 = d.slice(7, 9);
+    const p4 = d.slice(9, 11);
+    let out = '+7';
+    if (p1) out += ' ' + p1;
+    if (p2) out += ' ' + p2;
+    if (p3) out += '-' + p3;
+    if (p4) out += '-' + p4;
+    return out;
+  };
+
   useEffect(() => {
     if (!open) return;
     const saved = localStorage.getItem(LS_KEY) || '';
-    setPhone(saved || defaultPhone || '');
+    const initial = saved || defaultPhone || '';
+    setPhone(initial ? normalizePhone(initial) : '+7 ');
+    setSteps([]);
   }, [open, defaultPhone]);
 
   const call = async () => {
-    const to = phone.trim();
-    if (!to) { toast.error('Введите номер'); return; }
+    const to = phone.replace(/\D/g, '');
+    if (to.length < 11) { toast.error('Введите номер полностью'); return; }
+    const e164 = '+' + (to.startsWith('8') ? '7' + to.slice(1) : to);
     setLoading(true);
     try {
       const { data, error } = await supabase.functions.invoke('novofon-call-start', {
         body: {
-          to_number: to,
-          operator_number: defaultPhone || to,
+          to_number: e164,
+          operator_number: defaultPhone || e164,
           company_name: 'Тестовый звонок',
           is_test: true,
         },
       });
       if (error) throw error;
       if (data?.ok) {
-        localStorage.setItem(LS_KEY, to);
+        localStorage.setItem(LS_KEY, e164);
         toast.success('Звоним', {
           description: 'Возьмите трубку — Novofon перезвонит на этот номер.',
         });
@@ -67,6 +89,7 @@ export function TestCallDialog({ open, onOpenChange, defaultPhone }: Props) {
       setLoading(false);
     }
   };
+
 
   const check = async () => {
     const to = phone.trim();
