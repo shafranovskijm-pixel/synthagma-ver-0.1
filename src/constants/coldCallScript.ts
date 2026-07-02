@@ -169,7 +169,9 @@ export interface ScriptContext {
 export function fillScriptTemplate(text: string, ctx: ScriptContext = {}): string {
   const company = ctx.companyName || ctx.leadName || 'компания';
   const manager = ctx.managerName || '[ваше имя]';
-  const contact = ctx.contactName || 'коллега';
+  const contact = ctx.contactName?.trim()
+    ? ctx.contactName.trim()
+    : `представителя ООО «${company}»`;
   const phone = ctx.phone || '';
   return text
     .replace(/\{company_name\}/g, company)
