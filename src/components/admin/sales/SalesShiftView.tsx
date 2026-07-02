@@ -51,35 +51,72 @@ export function SalesShiftView({ onCreateProposal, onCreateContract }: Props) {
   useEffect(() => {
     if (!user) return;
     (async () => {
-      const [mgrR, planR] = await Promise.all([
-        (supabase as any).from('sales_managers').select('id, full_name').eq('user_id', user.id).maybeSingle(),
+      const [mgrR, planR, profR] = await Promise.all([
+        (supabase as any).from('sales_managers').select('id, full_name, phone').eq('user_id', user.id).maybeSingle(),
         (supabase as any).from('app_settings').select('setting_value').eq('setting_key', 'sales_daily_plan').maybeSingle(),
+        (supabase as any).from('profiles').select('full_name, phone').eq('user_id', user.id).maybeSingle(),
       ]);
 
       const mgr = mgrR?.data;
-      if (mgr) {
-        setManagerId(mgr.id);
-        // короткое имя — до первого пробела
-        const firstName = (mgr.full_name || '').trim().split(/\s+/)[0] || 'коллега';
-        setManagerName(firstName);
-      }
+      const prof = profR?.data;
+      if (mgr) setManagerId(mgr.id);
+
+      const rawName = (mgr?.full_name || prof?.full_name || '').trim()
+        || (user.email ? user.email.split('@')[0] : '');
+      const firstName = rawName.split(/\s+/)[0] || '';
+      setManagerName(firstName);
+      setManagerPhone(mgr?.phone || prof?.phone || '');
+
       const cfg = parseDailyPlan(planR?.data?.setting_value);
       setDailyPlan(planForManager(cfg, mgr?.id || null));
 
-      // Сколько звонков сегодня
-      if (mgr?.id) {
-        const startOfDay = new Date();
-        startOfDay.setHours(0, 0, 0, 0);
-        const { count } = await (supabase as any)
-          .from('sales_lead_activities')
-          .select('id', { count: 'exact', head: true })
-          .eq('manager_id', mgr.id)
-          .eq('activity_type', 'call')
-          .gte('created_at', startOfDay.toISOString());
-        setDoneToday(count || 0);
-      }
+      await refreshCounters(mgr?.id || null, user.id);
     })();
   }, [user]);
+
+  // Обновляет счётчики "звонков" и "дозвонов" на сегодня
+  const refreshCounters = async (mid: string | null, uid: string) => {
+    const startOfDay = new Date();
+    startOfDay.setHours(0, 0, 0, 0);
+    const iso = startOfDay.toISOString();
+
+    // Звонки — все попытки менеджера (не считаем тестовые)
+    let calls = 0;
+    if (mid) {
+      const { count } = await (supabase as any)
+        .from('sales_lead_activities')
+        .select('id', { count: 'exact', head: true })
+        .eq('manager_id', mid)
+        .eq('activity_type', 'call')
+        .gte('created_at', iso);
+      calls = count || 0;
+    }
+    setCallsToday(calls);
+
+    // Дозвоны — реальные разговоры ≥ 15 сек, из call_logs, без тестовых
+    const { count: dz } = await (supabase as any)
+      .from('call_logs')
+      .select('id', { count: 'exact', head: true })
+      .eq('manager_user_id', uid)
+      .gte('started_at', iso)
+      .gte('duration_sec', DOZVON_MIN_SEC)
+      .or('notes.is.null,notes.neq.__test_call__');
+    setDozvonyToday(dz || 0);
+  };
+
+  // Realtime: обновляем счётчики при появлении новых звонков/активностей
+  useEffect(() => {
+    if (!user) return;
+    const ch = supabase
+      .channel(`sales-shift-counters-${user.id}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'call_logs', filter: `manager_user_id=eq.${user.id}` },
+        () => refreshCounters(managerId, user.id))
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'sales_lead_activities' },
+        () => refreshCounters(managerId, user.id))
+      .subscribe();
+    return () => { supabase.removeChannel(ch); };
+  }, [user, managerId]);
+
 
   // 3. Очередь на сейчас — пересчитывается каждую минуту (для местного времени)
   const [tick, setTick] = useState(0);
