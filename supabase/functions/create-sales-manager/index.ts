@@ -73,10 +73,15 @@ Deno.serve(async (req) => {
         return new Response(JSON.stringify({ error: updErr.message }), { status: 400, headers: corsHeaders });
       }
       const { data: authUser } = await adminClient.auth.admin.getUserById(mgr.user_id);
+      const email = authUser?.user?.email || '';
+      await adminClient.from('profiles').update({
+        generated_password: newPassword, email, login: email,
+      }).eq('user_id', mgr.user_id);
       return new Response(
-        JSON.stringify({ success: true, user_id: mgr.user_id, email: authUser?.user?.email || '', password: newPassword, full_name: mgr.full_name }),
+        JSON.stringify({ success: true, user_id: mgr.user_id, email, password: newPassword, full_name: mgr.full_name }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
+
     }
 
     const full_name: string = (body.full_name || '').trim();
@@ -124,7 +129,10 @@ Deno.serve(async (req) => {
 
     await adminClient.from('user_roles').update({ role: 'sales_manager' }).eq('user_id', userId);
     await adminClient.from('sales_managers').insert({ user_id: userId, full_name, phone });
-    await adminClient.from('profiles').update({ full_name }).eq('user_id', userId);
+    await adminClient.from('profiles').update({
+      full_name, email, login: email, generated_password: password,
+    }).eq('user_id', userId);
+
 
     return new Response(
       JSON.stringify({ success: true, user_id: userId, email, password, generated: auto }),

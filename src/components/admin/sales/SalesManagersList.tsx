@@ -170,27 +170,85 @@ export function SalesManagersList() {
       <div className="grid gap-3">
         {managers.map(m => {
           const stats = getManagerStats(m.id);
+          const loginUrl = `${window.location.origin}/login`;
+          const login = m.email || '—';
+          const pwd = m.generated_password || '';
+          const shareText = pwd
+            ? `Доступ в кабинет менеджера СИНТАГМА\nФИО: ${m.full_name}\nЛогин: ${login}\nПароль: ${pwd}\nВход: ${loginUrl}`
+            : `Доступ в кабинет менеджера СИНТАГМА\nФИО: ${m.full_name}\nЛогин: ${login}\nВход: ${loginUrl}\n(Пароль отправлю отдельно — нажмите «Сбросить пароль».)`;
           return (
             <Card key={m.id}>
-              <CardContent className="flex items-center justify-between p-4 gap-4 flex-wrap">
-                <button
-                  type="button"
-                  onClick={() => setStatsFor({ id: m.id, full_name: m.full_name })}
-                  className="flex-1 min-w-[200px] text-left hover:opacity-80 transition"
-                  title="Открыть историю активностей"
-                >
-                  <div className="flex items-center gap-2">
-                    <p className="font-medium underline-offset-4 hover:underline">{m.full_name}</p>
-                    <Badge variant={m.is_active ? 'default' : 'secondary'}>
-                      {m.is_active ? 'Активен' : 'Неактивен'}
-                    </Badge>
+              <CardContent className="p-4 space-y-3">
+                <div className="flex items-start justify-between gap-4 flex-wrap">
+                  <button
+                    type="button"
+                    onClick={() => setStatsFor({ id: m.id, full_name: m.full_name })}
+                    className="flex-1 min-w-[200px] text-left hover:opacity-80 transition"
+                    title="Открыть историю активностей"
+                  >
+                    <div className="flex items-center gap-2">
+                      <p className="font-medium underline-offset-4 hover:underline">{m.full_name}</p>
+                      <Badge variant={m.is_active ? 'default' : 'secondary'}>
+                        {m.is_active ? 'Активен' : 'Неактивен'}
+                      </Badge>
+                    </div>
+                    {m.phone && <p className="text-sm text-muted-foreground flex items-center gap-1"><Phone className="w-3 h-3" />{m.phone}</p>}
+                    <div className="flex gap-4 mt-1 text-sm text-muted-foreground">
+                      <span>Лидов: {stats.leadsCount}</span>
+                      <span>КП: {stats.proposalsCount}</span>
+                    </div>
+                  </button>
+                </div>
+
+                {/* Логин / пароль / ссылка входа */}
+                <div className="rounded-lg border bg-muted/30 p-3 text-sm space-y-1.5">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-muted-foreground w-16 shrink-0">Логин</span>
+                    <code className="font-mono text-xs break-all flex-1 min-w-0">{login}</code>
+                    <Button size="sm" variant="ghost" className="h-7 px-2" onClick={() => copy(login, 'Логин скопирован')}>
+                      <Copy className="w-3.5 h-3.5" />
+                    </Button>
                   </div>
-                  {m.phone && <p className="text-sm text-muted-foreground flex items-center gap-1"><Phone className="w-3 h-3" />{m.phone}</p>}
-                  <div className="flex gap-4 mt-1 text-sm text-muted-foreground">
-                    <span>Лидов: {stats.leadsCount}</span>
-                    <span>КП: {stats.proposalsCount}</span>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-muted-foreground w-16 shrink-0">Пароль</span>
+                    <code className="font-mono text-xs flex-1 min-w-0">
+                      {pwd ? pwd : <span className="text-muted-foreground italic">скрыт · нажмите «Сбросить пароль»</span>}
+                    </code>
+                    {pwd && (
+                      <Button size="sm" variant="ghost" className="h-7 px-2" onClick={() => copy(pwd, 'Пароль скопирован')}>
+                        <Copy className="w-3.5 h-3.5" />
+                      </Button>
+                    )}
                   </div>
-                </button>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-muted-foreground w-16 shrink-0">Вход</span>
+                    <code className="font-mono text-xs break-all flex-1 min-w-0">{loginUrl}</code>
+                    <Button size="sm" variant="ghost" className="h-7 px-2" onClick={() => copy(loginUrl, 'Ссылка скопирована')}>
+                      <Copy className="w-3.5 h-3.5" />
+                    </Button>
+                  </div>
+                  <div className="flex gap-2 flex-wrap pt-1">
+                    <Button size="sm" variant="outline" onClick={() => copy(shareText, 'Данные скопированы')}>
+                      <Copy className="w-3.5 h-3.5 mr-1" />Скопировать всё
+                    </Button>
+                    <Button size="sm" variant="outline" asChild>
+                      <a href={`https://t.me/share/url?url=${encodeURIComponent(loginUrl)}&text=${encodeURIComponent(shareText)}`} target="_blank" rel="noreferrer">
+                        <Send className="w-3.5 h-3.5 mr-1" />Telegram
+                      </a>
+                    </Button>
+                    <Button size="sm" variant="outline" asChild>
+                      <a href={`https://wa.me/?text=${encodeURIComponent(shareText)}`} target="_blank" rel="noreferrer">
+                        <MessageCircle className="w-3.5 h-3.5 mr-1" />WhatsApp
+                      </a>
+                    </Button>
+                    <Button size="sm" variant="outline" asChild>
+                      <a href={`mailto:${m.email || ''}?subject=${encodeURIComponent('Доступ в кабинет СИНТАГМА')}&body=${encodeURIComponent(shareText)}`}>
+                        <Mail className="w-3.5 h-3.5 mr-1" />Email
+                      </a>
+                    </Button>
+                  </div>
+                </div>
+
                 <div className="flex gap-2 flex-wrap">
                   <Button variant="outline" size="sm" onClick={() => setStatsFor({ id: m.id, full_name: m.full_name })}>
                     <BarChart3 className="w-4 h-4 mr-1" />История
@@ -220,13 +278,13 @@ export function SalesManagersList() {
                     {m.is_active ? <><UserX className="w-4 h-4 mr-1" />Деактивировать</> : <><UserCheck className="w-4 h-4 mr-1" />Активировать</>}
                   </Button>
                 </div>
-
               </CardContent>
             </Card>
           );
         })}
         {managers.length === 0 && <p className="text-center text-muted-foreground py-8">Менеджеры не добавлены</p>}
       </div>
+
 
       <AssignTaskDialog
         open={!!taskFor}
