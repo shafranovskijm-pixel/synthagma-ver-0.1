@@ -2,6 +2,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import {
   describeNovofonError,
+  hasClassicApiCredentials,
   hasCallApiCredentials,
   normalizeNovofonPhone,
   NovofonApiError,
@@ -26,7 +27,7 @@ interface ClassicCallbackResponse {
 }
 
 function canUseClassicFallback() {
-  return Boolean(Deno.env.get("NOVOFON_API_KEY") && Deno.env.get("NOVOFON_API_SECRET"));
+  return hasClassicApiCredentials();
 }
 
 function shouldFallbackToClassic(error: unknown) {
@@ -42,7 +43,7 @@ function shouldFallbackToClassic(error: unknown) {
 }
 
 async function startClassicCallback(operator: string, to: string, fromSip?: string): Promise<ClassicCallbackResponse> {
-  return await novofonClassicRequest<ClassicCallbackResponse>("POST", "/v1/request/callback/", {
+  return await novofonClassicRequest<ClassicCallbackResponse>("GET", "/v1/request/callback/", {
     from: operator,
     to,
     ...(fromSip ? { sip: fromSip } : {}),

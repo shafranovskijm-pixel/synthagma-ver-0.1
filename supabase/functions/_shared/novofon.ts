@@ -6,7 +6,7 @@ import { crypto as stdCrypto } from "https://deno.land/std@0.224.0/crypto/mod.ts
 
 const CALL_API_BASE = "https://callapi-jsonrpc.novofon.ru/v4.0";
 const DATA_API_BASE = "https://dataapi-jsonrpc.novofon.ru/v2.0";
-const CLASSIC_API_BASE = "https://api.zadarma.com";
+const CLASSIC_API_BASE = "https://api.novofon.com";
 
 export interface NovofonJsonRpcError {
   code?: number;
@@ -63,14 +63,40 @@ function normalizeAccessKey(value?: string | null): string | null {
   return match?.[1]?.trim() || trimmed;
 }
 
-function getStaticCallAccessToken(): string | null {
-  return normalizeAccessKey(Deno.env.get("NOVOFON_JSONRPC_ACCESS_KEY"))
-    || normalizeAccessKey(Deno.env.get("NOVOFON_ACCESS_TOKEN"))
-    || null;
+function isAppId(value?: string | null): boolean {
+  return /^appid_/i.test(value?.trim() || "");
 }
 
-function getStaticDataAccessToken(): string | null {
-  return normalizeAccessKey(Deno.env.get("NOVOFON_DATA_ACCESS_TOKEN")) || getStaticCallAccessToken();
+function addTokenCandidate(candidates: string[], value?: string | null) {
+  const raw = value?.trim();
+  const normalized = normalizeAccessKey(raw);
+  for (const token of [raw, normalized]) {
+    if (token && !candidates.includes(token)) candidates.push(token);
+  }
+}
+
+function getStaticCallAccessTokens(): string[] {
+  const candidates: string[] = [];
+  addTokenCandidate(candidates, Deno.env.get("NOVOFON_JSONRPC_ACCESS_KEY"));
+  addTokenCandidate(candidates, Deno.env.get("NOVOFON_ACCESS_TOKEN"));
+
+  // Novofon 2.0 often gives a pair `appid` + `token`. In older project
+  // settings this pair may have been saved into NOVOFON_API_KEY/API_SECRET.
+  // Classic API uses them as key/secret, but JSON-RPC Call API expects the
+  // token itself in params.access_token.
+  if (isAppId(Deno.env.get("NOVOFON_API_KEY"))) {
+    addTokenCandidate(candidates, Deno.env.get("NOVOFON_API_KEY"));
+    addTokenCandidate(candidates, Deno.env.get("NOVOFON_API_SECRET"));
+  }
+
+  return candidates;
+}
+
+function getStaticDataAccessTokens(): string[] {
+  const candidates: string[] = [];
+  addTokenCandidate(candidates, Deno.env.get("NOVOFON_DATA_ACCESS_TOKEN"));
+  for (const token of getStaticCallAccessTokens()) addTokenCandidate(candidates, token);
+  return candidates;
 }
 
 async function jsonRpcRequest<T = unknown>(
@@ -135,7 +161,7 @@ export async function getCallAccessToken(): Promise<string> {
   // wrong Novofon API section. If account login/password are configured, always
   // mint a fresh 1-hour Call API session first and use the static token only as
   // a fallback.
-  const token = await safeLogin(CALL_API_BASE, "NOVOFON_LOGIN", "NOVOFON_PASSWORD") || getStaticCallAccessToken();
+  const token = await safeLogin(CALL_API_BASE, "NOVOFON_LOGIN", "NOVOFON_PASSWORD") || getStaticCallAccessTokens()[0];
   if (!token) {
     throw new NovofonApiError(
       "NOVOFON_ACCESS_TOKEN or NOVOFON_LOGIN/NOVOFON_PASSWORD not configured",
@@ -146,7 +172,7 @@ export async function getCallAccessToken(): Promise<string> {
 }
 
 export async function getDataAccessToken(): Promise<string> {
-  const token = await safeLogin(DATA_API_BASE, "NOVOFON_DATA_LOGIN", "NOVOFON_DATA_PASSWORD") || await safeLogin(DATA_API_BASE, "NOVOFON_LOGIN", "NOVOFON_PASSWORD") || getStaticDataAccessToken();
+  const token = await safeLogin(DATA_API_BASE, "NOVOFON_DATA_LOGIN", "NOVOFON_DATA_PASSWORD") || await safeLogin(DATA_API_BASE, "NOVOFON_LOGIN", "NOVOFON_PASSWORD") || getStaticDataAccessTokens()[0];
   if (!token) {
     throw new NovofonApiError(
       "NOVOFON_DATA_ACCESS_TOKEN/NOVOFON_ACCESS_TOKEN or login/password not configured",
@@ -157,7 +183,43 @@ export async function getDataAccessToken(): Promise<string> {
 }
 
 export function hasCallApiCredentials(): boolean {
-  return Boolean(getStaticCallAccessToken() || (Deno.env.get("NOVOFON_LOGIN") && Deno.env.get("NOVOFON_PASSWORD")));
+  return Boolean(getStaticCallAccessTokens().length || (Deno.env.get("NOVOFON_LOGIN") && Deno.env.get("NOVOFON_PASSWORD")));
+}
+
+export function hasClassicApiCredentials(): boolean {
+  const explicitKey = Deno.env.get("NOVOFON_CLASSIC_API_KEY")?.trim();
+  const explicitSecret = Deno.env.get("NOVOFON_CLASSIC_API_SECRET")?.trim();
+  if (explicitKey && explicitSecret) return true;
+
+  const key = Deno.env.get("NOVOFON_API_KEY")?.trim();
+  const secret = Deno.env.get("NOVOFON_API_SECRET")?.trim();
+  // `appid_...` belongs to Novofon 2.0 app/token pair and is not a valid
+  // Classic API user_key for `/v1/request/callback/` signing.
+  return Boolean(key && secret && !isAppId(key));
+}
+
+function isAuthTokenError(error: unknown): boolean {
+  return error instanceof NovofonApiError
+    && ["access_token_invalid", "access_token_expired", "access_token_blocked", "auth_error"].includes(error.mnemonic || "");
+}
+
+async function jsonRpcWithAccessTokens<T = unknown>(
+  baseUrl: string,
+  method: string,
+  tokens: string[],
+  params: Record<string, unknown> = {},
+): Promise<T> {
+  let lastAuthError: unknown = null;
+  for (const accessToken of tokens) {
+    try {
+      return await jsonRpcRequest<T>(baseUrl, method, { access_token: accessToken, ...params });
+    } catch (error) {
+      if (!isAuthTokenError(error)) throw error;
+      lastAuthError = error;
+    }
+  }
+  if (lastAuthError) throw lastAuthError;
+  throw new NovofonApiError("Novofon access token is not configured", { mnemonic: "call_api_credentials_missing" });
 }
 
 export function normalizeNovofonPhone(raw: string): string {
@@ -177,7 +239,9 @@ export function describeNovofonError(error: unknown): string {
     }
     if (error.mnemonic === "ip_not_whitelisted") return "IP backend-функции не добавлен в белый список Novofon API.";
     if (error.mnemonic === "component_disabled" || error.mnemonic === "method_component_disabled") return "В Novofon не подключён нужный компонент Call API/Data API.";
-    if (error.mnemonic === "access_token_invalid" || error.mnemonic === "access_token_expired" || error.mnemonic === "access_token_blocked" || error.mnemonic === "auth_error") return "Неверный или просроченный токен/логин Novofon API.";
+    if (error.mnemonic === "access_token_invalid" || error.mnemonic === "access_token_expired" || error.mnemonic === "access_token_blocked" || error.mnemonic === "auth_error") {
+      return "Novofon не принял ключ Call API: нужен постоянный Call API ключ или логин/пароль пользователя АТС с включённым API-доступом.";
+    }
     if (error.mnemonic === "virtual_phone_number_not_found") return "Купленный номер не найден среди виртуальных номеров аккаунта Novofon.";
     if (error.mnemonic === "own_virtual_phone_number_not_allowed") return "Novofon запрещает звонить на собственный виртуальный номер — укажите внешний тестовый номер.";
   }
@@ -215,14 +279,23 @@ export async function novofonRpc<T = unknown>(
   method: string,
   params: Record<string, unknown> = {},
 ): Promise<T> {
-  return jsonRpcRequest<T>(CALL_API_BASE, method, { access_token: await getCallAccessToken(), ...params });
+  const loginToken = await safeLogin(CALL_API_BASE, "NOVOFON_LOGIN", "NOVOFON_PASSWORD");
+  const tokens = [...(loginToken ? [loginToken] : []), ...getStaticCallAccessTokens()];
+  return jsonRpcWithAccessTokens<T>(CALL_API_BASE, method, tokens, params);
 }
 
 export async function novofonDataRpc<T = unknown>(
   method: string,
   params: Record<string, unknown> = {},
 ): Promise<T> {
-  return jsonRpcRequest<T>(DATA_API_BASE, method, { access_token: await getDataAccessToken(), ...params });
+  const dataLoginToken = await safeLogin(DATA_API_BASE, "NOVOFON_DATA_LOGIN", "NOVOFON_DATA_PASSWORD");
+  const commonLoginToken = await safeLogin(DATA_API_BASE, "NOVOFON_LOGIN", "NOVOFON_PASSWORD");
+  const tokens = [
+    ...(dataLoginToken ? [dataLoginToken] : []),
+    ...(commonLoginToken ? [commonLoginToken] : []),
+    ...getStaticDataAccessTokens(),
+  ];
+  return jsonRpcWithAccessTokens<T>(DATA_API_BASE, method, tokens, params);
 }
 
 export async function novofonClassicRequest<T = unknown>(
@@ -232,12 +305,16 @@ export async function novofonClassicRequest<T = unknown>(
 ): Promise<T> {
   const key = Deno.env.get("NOVOFON_API_KEY")?.trim();
   const secret = Deno.env.get("NOVOFON_API_SECRET")?.trim();
-  if (!key || !secret) throw new Error("NOVOFON_API_KEY/SECRET not configured");
+  const explicitKey = Deno.env.get("NOVOFON_CLASSIC_API_KEY")?.trim();
+  const explicitSecret = Deno.env.get("NOVOFON_CLASSIC_API_SECRET")?.trim();
+  const classicKey = explicitKey || (!isAppId(key) ? key : undefined);
+  const classicSecret = explicitSecret || (!isAppId(key) ? secret : undefined);
+  if (!classicKey || !classicSecret) throw new Error("NOVOFON_CLASSIC_API_KEY/SECRET not configured");
 
   const requestParams = { ...params, format: "json" };
   const paramsStr = buildParamsString(requestParams);
   const md5 = await md5Hex(paramsStr);
-  const hex = await hmacSha1Hex(secret, `${path}${paramsStr}${md5}`);
+  const hex = await hmacSha1Hex(classicSecret, `${path}${paramsStr}${md5}`);
   const signature = encodeBase64(new TextEncoder().encode(hex));
   const url = method === "GET" && paramsStr
     ? `${CLASSIC_API_BASE}${path}?${paramsStr}`
@@ -246,7 +323,7 @@ export async function novofonClassicRequest<T = unknown>(
   const res = await fetch(url, {
     method,
     headers: {
-      Authorization: `${key}:${signature}`,
+      Authorization: `${classicKey}:${signature}`,
       Accept: "application/json",
       ...(method === "POST" ? { "Content-Type": "application/x-www-form-urlencoded" } : {}),
     },

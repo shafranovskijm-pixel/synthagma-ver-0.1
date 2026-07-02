@@ -2,6 +2,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import {
   describeNovofonError,
+  hasClassicApiCredentials,
   hasCallApiCredentials,
   normalizeNovofonPhone,
   novofonClassicRequest,
@@ -49,7 +50,7 @@ function errorDetails(error: unknown): Record<string, unknown> {
 }
 
 function canUseClassicFallback() {
-  return Boolean(Deno.env.get("NOVOFON_API_KEY") && Deno.env.get("NOVOFON_API_SECRET"));
+  return hasClassicApiCredentials();
 }
 
 function shouldFallbackToClassic(error: unknown) {
@@ -90,7 +91,7 @@ serve(async (req) => {
       label: "Call API авторизация",
       ok: hasCallApiCredentials() || canUseClassicFallback(),
       message: hasCallApiCredentials()
-        ? "Call API токен или login/password найдены"
+        ? "Ключ/логин Novofon найден — сейчас проверим, принимает ли его Call API"
         : canUseClassicFallback()
           ? "Включён резервный Novofon callback по API Key + Secret"
           : "Нет Call API доступа или резервного API Key + Secret",
@@ -142,7 +143,7 @@ serve(async (req) => {
       } catch (error) {
         if (canUseClassicFallback() && shouldFallbackToClassic(error)) {
           try {
-            const classic = await novofonClassicRequest<{ status?: string; time?: number }>("POST", "/v1/request/callback/", {
+            const classic = await novofonClassicRequest<{ status?: string; time?: number }>("GET", "/v1/request/callback/", {
               from: operatorNumber,
               to: testNumber,
               sip: Deno.env.get("NOVOFON_SIP_LOGIN") || undefined,

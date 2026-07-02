@@ -138,6 +138,9 @@ export function TestCallDialog({ open, onOpenChange, defaultPhone }: Props) {
           <p className="text-[11px] text-muted-foreground">
             Не указывайте купленный номер Novofon как тестовый — провайдер запрещает звонок на собственный виртуальный номер.
           </p>
+          <p className="text-[11px] text-muted-foreground">
+            Если проверка пишет про ключ Call API, включите в Novofon у пользователя АТС API-доступ и постоянный ключ: Телефония → Пользователи АТС → Администратор → API.
+          </p>
         </div>
         {steps.length > 0 && (
           <div className="space-y-2 rounded-lg border bg-muted/20 p-3">
