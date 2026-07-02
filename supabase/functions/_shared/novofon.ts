@@ -56,15 +56,22 @@ function parseMnemonic(data: unknown): string | undefined {
     : undefined;
 }
 
+function normalizeAccessKey(value?: string | null): string | null {
+  const trimmed = value?.trim();
+  if (!trimmed) return null;
+  const match = trimmed.match(/^appid_\d+[_:.-](.+)$/i);
+  return match?.[1]?.trim() || trimmed;
+}
+
 function getStaticCallAccessToken(): string | null {
-  return Deno.env.get("NOVOFON_JSONRPC_ACCESS_KEY")?.trim()
-    || Deno.env.get("NOVOFON_ACCESS_TOKEN")?.trim()
-    || Deno.env.get("NOVOFON_API_KEY")?.trim()
+  return normalizeAccessKey(Deno.env.get("NOVOFON_JSONRPC_ACCESS_KEY"))
+    || normalizeAccessKey(Deno.env.get("NOVOFON_ACCESS_TOKEN"))
+    || normalizeAccessKey(Deno.env.get("NOVOFON_API_KEY"))
     || null;
 }
 
 function getStaticDataAccessToken(): string | null {
-  return Deno.env.get("NOVOFON_DATA_ACCESS_TOKEN")?.trim() || getStaticCallAccessToken();
+  return normalizeAccessKey(Deno.env.get("NOVOFON_DATA_ACCESS_TOKEN")) || getStaticCallAccessToken();
 }
 
 async function jsonRpcRequest<T = unknown>(
