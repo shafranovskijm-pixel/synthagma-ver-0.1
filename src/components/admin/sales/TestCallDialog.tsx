@@ -74,7 +74,7 @@ export function TestCallDialog({ open, onOpenChange, defaultPhone }: Props) {
     setChecking(true);
     try {
       const { data, error } = await supabase.functions.invoke('novofon-diagnostics', {
-        body: { test_number: to },
+        body: { test_number: to, operator_number: defaultPhone || to },
       });
       if (error) throw error;
       setSteps(Array.isArray(data?.steps) ? data.steps : []);
