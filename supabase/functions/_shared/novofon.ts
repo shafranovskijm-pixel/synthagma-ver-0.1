@@ -111,7 +111,11 @@ async function login(baseUrl: string, loginEnv: string, passwordEnv: string): Pr
 }
 
 export async function getCallAccessToken(): Promise<string> {
-  const token = getStaticCallAccessToken() || await login(CALL_API_BASE, "NOVOFON_LOGIN", "NOVOFON_PASSWORD");
+  // A manually saved NOVOFON_ACCESS_TOKEN can expire or be copied from the
+  // wrong Novofon API section. If account login/password are configured, always
+  // mint a fresh 1-hour Call API session first and use the static token only as
+  // a fallback.
+  const token = await login(CALL_API_BASE, "NOVOFON_LOGIN", "NOVOFON_PASSWORD") || getStaticCallAccessToken();
   if (!token) {
     throw new NovofonApiError(
       "NOVOFON_ACCESS_TOKEN or NOVOFON_LOGIN/NOVOFON_PASSWORD not configured",
@@ -122,7 +126,7 @@ export async function getCallAccessToken(): Promise<string> {
 }
 
 export async function getDataAccessToken(): Promise<string> {
-  const token = getStaticDataAccessToken() || await login(DATA_API_BASE, "NOVOFON_DATA_LOGIN", "NOVOFON_DATA_PASSWORD") || await login(DATA_API_BASE, "NOVOFON_LOGIN", "NOVOFON_PASSWORD");
+  const token = await login(DATA_API_BASE, "NOVOFON_DATA_LOGIN", "NOVOFON_DATA_PASSWORD") || await login(DATA_API_BASE, "NOVOFON_LOGIN", "NOVOFON_PASSWORD") || getStaticDataAccessToken();
   if (!token) {
     throw new NovofonApiError(
       "NOVOFON_DATA_ACCESS_TOKEN/NOVOFON_ACCESS_TOKEN or login/password not configured",
