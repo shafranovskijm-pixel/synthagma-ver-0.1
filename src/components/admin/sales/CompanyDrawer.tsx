@@ -59,11 +59,9 @@ export function CompanyDrawer({ lead, open, onOpenChange, managerName, managerPh
   const [activeTab, setActiveTab] = useState('summary');
   const [proposalPopoverOpen, setProposalPopoverOpen] = useState(false);
 
-  // Быстрая отправка КП
+  // Быстрая отправка КП — счётчик шаблонов для бейджа
   const [proposalTemplates, setProposalTemplates] = useState<ProposalTpl[]>([]);
-  const [selectedTpl, setSelectedTpl] = useState<string>('');
   const [sendEmail, setSendEmail] = useState('');
-  const [sending, setSending] = useState(false);
 
   useEffect(() => {
     if (lead) {
