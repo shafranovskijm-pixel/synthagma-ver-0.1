@@ -1,6 +1,12 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { novofonClassicRequest, novofonRpc } from "../_shared/novofon.ts";
+import {
+  describeNovofonError,
+  hasCallApiCredentials,
+  normalizeNovofonPhone,
+  novofonClassicRequest,
+  novofonRpc,
+} from "../_shared/novofon.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -16,13 +22,6 @@ interface ClassicCallbackResponse {
   from?: string | number;
   to?: string | number;
   time?: number;
-}
-
-function normalizePhone(raw: string): string {
-  const digits = raw.replace(/\D/g, "");
-  if (digits.length === 11 && digits.startsWith("8")) return "7" + digits.slice(1);
-  if (digits.length === 10) return "7" + digits;
-  return digits;
 }
 
 serve(async (req) => {
@@ -56,22 +55,32 @@ serve(async (req) => {
       });
     }
 
-    const callerId = normalizePhone(Deno.env.get("NOVOFON_CALLER_ID") ?? "");
+    const callerId = normalizeNovofonPhone(Deno.env.get("NOVOFON_CALLER_ID") ?? "");
     if (!callerId) {
       return new Response(JSON.stringify({ error: "NOVOFON_CALLER_ID not configured" }), {
         status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    const to = normalizePhone(to_number);
-    const operator = normalizePhone(
-      operator_number || from_sip || Deno.env.get("NOVOFON_OPERATOR_NUMBER") || (is_test ? to : ""),
+    const to = normalizeNovofonPhone(to_number);
+    const operator = normalizeNovofonPhone(
+      operator_number || from_sip || Deno.env.get("NOVOFON_OPERATOR_NUMBER") || "",
     );
     if (!operator) {
       return new Response(JSON.stringify({
         ok: false,
         error: "NOVOFON_OPERATOR_NUMBER not configured",
-        message: "Не задан номер менеджера для исходящего звонка",
+        message: "Не задан номер менеджера. Для теста и звонков нужен NOVOFON_OPERATOR_NUMBER или operator_number.",
+      }), {
+        status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    if (to === callerId) {
+      return new Response(JSON.stringify({
+        ok: false,
+        error: "own_virtual_phone_number_not_allowed",
+        message: "Нельзя тестировать звонок на сам купленный виртуальный номер. Укажите личный мобильный менеджера.",
       }), {
         status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -81,9 +90,9 @@ serve(async (req) => {
     let providerCallId: string | null = null;
     let usedApi: "call_api" | "classic_callback" = "call_api";
 
-    if (Deno.env.get("NOVOFON_ACCESS_TOKEN")) {
+    if (hasCallApiCredentials()) {
       // Novofon Call API v4.0: сначала звоним оператору/менеджеру,
-      // после ответа соединяем с контактом. Для теста operator = contact.
+      // после ответа соединяем с контактом.
       nfRes = await novofonRpc<CallStartResponse>("start.simple_call", {
         first_call: "operator",
         switch_at_once: true,
@@ -95,7 +104,7 @@ serve(async (req) => {
         external_id: lead_id || `test-${Date.now()}`,
       });
       providerCallId = nfRes.call_session_id ? String(nfRes.call_session_id) : null;
-    } else {
+    } else if (Deno.env.get("NOVOFON_CLASSIC_FALLBACK") === "true") {
       // Classic Novofon/Zadarma callback API: works with API key + secret.
       usedApi = "classic_callback";
       nfRes = await novofonClassicRequest<ClassicCallbackResponse>("POST", "/v1/request/callback/", {
@@ -104,6 +113,15 @@ serve(async (req) => {
         ...(from_sip ? { sip: from_sip } : {}),
       });
       providerCallId = nfRes.time ? String(nfRes.time) : null;
+    } else {
+      return new Response(JSON.stringify({
+        ok: false,
+        error: "call_api_credentials_missing",
+        message: "Не задан Call API токен Novofon. Добавьте NOVOFON_ACCESS_TOKEN или NOVOFON_LOGIN/NOVOFON_PASSWORD. Старый API key/secret не подходит для Call API v4.",
+      }), {
+        status: 200,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
     const admin = createClient(
@@ -142,10 +160,10 @@ serve(async (req) => {
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   } catch (e) {
-    const msg = e instanceof Error ? e.message : String(e);
+    const msg = describeNovofonError(e);
     console.error("novofon-call-start error:", msg);
     return new Response(JSON.stringify({ ok: false, error: msg }), {
-      status: msg.startsWith("Novofon") ? 200 : 500,
+      status: 200,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
