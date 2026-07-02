@@ -95,7 +95,7 @@ export function TestCallDialog({ open, onOpenChange, defaultPhone }: Props) {
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-sm">
         <DialogHeader>
-          <DialogTitle>Позвонить себе</DialogTitle>
+          <DialogTitle>Проверить Novofon</DialogTitle>
           <DialogDescription>
             Проверьте линию — Novofon сначала наберёт менеджера, после ответа соединит с тестовым номером.
           </DialogDescription>
