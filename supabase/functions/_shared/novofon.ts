@@ -56,12 +56,21 @@ function parseMnemonic(data: unknown): string | undefined {
     : undefined;
 }
 
+function normalizeAccessKey(value?: string | null): string | null {
+  const trimmed = value?.trim();
+  if (!trimmed) return null;
+  const match = trimmed.match(/^appid_\d+[_:.-](.+)$/i);
+  return match?.[1]?.trim() || trimmed;
+}
+
 function getStaticCallAccessToken(): string | null {
-  return Deno.env.get("NOVOFON_ACCESS_TOKEN")?.trim() || null;
+  return normalizeAccessKey(Deno.env.get("NOVOFON_JSONRPC_ACCESS_KEY"))
+    || normalizeAccessKey(Deno.env.get("NOVOFON_ACCESS_TOKEN"))
+    || null;
 }
 
 function getStaticDataAccessToken(): string | null {
-  return Deno.env.get("NOVOFON_DATA_ACCESS_TOKEN")?.trim() || getStaticCallAccessToken();
+  return normalizeAccessKey(Deno.env.get("NOVOFON_DATA_ACCESS_TOKEN")) || getStaticCallAccessToken();
 }
 
 async function jsonRpcRequest<T = unknown>(
@@ -110,8 +119,23 @@ async function login(baseUrl: string, loginEnv: string, passwordEnv: string): Pr
   return data.access_token || null;
 }
 
+async function safeLogin(baseUrl: string, loginEnv: string, passwordEnv: string): Promise<string | null> {
+  try {
+    return await login(baseUrl, loginEnv, passwordEnv);
+  } catch (error) {
+    if (error instanceof NovofonApiError && (error.mnemonic === "auth_error" || error.mnemonic === "access_token_invalid")) {
+      return null;
+    }
+    throw error;
+  }
+}
+
 export async function getCallAccessToken(): Promise<string> {
-  const token = getStaticCallAccessToken() || await login(CALL_API_BASE, "NOVOFON_LOGIN", "NOVOFON_PASSWORD");
+  // A manually saved NOVOFON_ACCESS_TOKEN can expire or be copied from the
+  // wrong Novofon API section. If account login/password are configured, always
+  // mint a fresh 1-hour Call API session first and use the static token only as
+  // a fallback.
+  const token = await safeLogin(CALL_API_BASE, "NOVOFON_LOGIN", "NOVOFON_PASSWORD") || getStaticCallAccessToken();
   if (!token) {
     throw new NovofonApiError(
       "NOVOFON_ACCESS_TOKEN or NOVOFON_LOGIN/NOVOFON_PASSWORD not configured",
@@ -122,7 +146,7 @@ export async function getCallAccessToken(): Promise<string> {
 }
 
 export async function getDataAccessToken(): Promise<string> {
-  const token = getStaticDataAccessToken() || await login(DATA_API_BASE, "NOVOFON_DATA_LOGIN", "NOVOFON_DATA_PASSWORD") || await login(DATA_API_BASE, "NOVOFON_LOGIN", "NOVOFON_PASSWORD");
+  const token = await safeLogin(DATA_API_BASE, "NOVOFON_DATA_LOGIN", "NOVOFON_DATA_PASSWORD") || await safeLogin(DATA_API_BASE, "NOVOFON_LOGIN", "NOVOFON_PASSWORD") || getStaticDataAccessToken();
   if (!token) {
     throw new NovofonApiError(
       "NOVOFON_DATA_ACCESS_TOKEN/NOVOFON_ACCESS_TOKEN or login/password not configured",
@@ -146,7 +170,7 @@ export function normalizeNovofonPhone(raw: string): string {
 export function describeNovofonError(error: unknown): string {
   if (error instanceof NovofonApiError) {
     if (error.mnemonic === "call_api_credentials_missing") {
-      return "Не задан Call API токен Novofon. Добавьте NOVOFON_ACCESS_TOKEN или NOVOFON_LOGIN/NOVOFON_PASSWORD.";
+      return "Не задан Call API токен Novofon или резервные NOVOFON_API_KEY/NOVOFON_API_SECRET.";
     }
     if (error.mnemonic === "data_api_credentials_missing") {
       return "Не задан Data API токен Novofon. Добавьте NOVOFON_DATA_ACCESS_TOKEN или NOVOFON_LOGIN/NOVOFON_PASSWORD.";
@@ -206,8 +230,8 @@ export async function novofonClassicRequest<T = unknown>(
   path: string,
   params: Record<string, unknown> = {},
 ): Promise<T> {
-  const key = Deno.env.get("NOVOFON_API_KEY");
-  const secret = Deno.env.get("NOVOFON_API_SECRET");
+  const key = Deno.env.get("NOVOFON_API_KEY")?.trim();
+  const secret = Deno.env.get("NOVOFON_API_SECRET")?.trim();
   if (!key || !secret) throw new Error("NOVOFON_API_KEY/SECRET not configured");
 
   const requestParams = { ...params, format: "json" };
