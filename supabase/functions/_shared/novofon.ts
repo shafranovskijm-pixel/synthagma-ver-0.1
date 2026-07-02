@@ -88,7 +88,8 @@ export async function novofonClassicRequest<T = unknown>(
   const secret = Deno.env.get("NOVOFON_API_SECRET");
   if (!key || !secret) throw new Error("NOVOFON_API_KEY/SECRET not configured");
 
-  const paramsStr = buildParamsString(params);
+  const requestParams = { ...params, format: "json" };
+  const paramsStr = buildParamsString(requestParams);
   const md5 = await md5Hex(paramsStr);
   const hex = await hmacSha1Hex(secret, `${path}${paramsStr}${md5}`);
   const signature = encodeBase64(new TextEncoder().encode(hex));
