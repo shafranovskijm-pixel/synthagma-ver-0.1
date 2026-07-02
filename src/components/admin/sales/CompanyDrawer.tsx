@@ -76,7 +76,7 @@ export function CompanyDrawer({ lead, open, onOpenChange, managerName, onCreateP
       if (data?.ok) {
         toast.success('Звоним через Novofon', { description: 'Ответьте на своём телефоне — АТС соединит с клиентом.' });
       } else {
-        toast.error('Не удалось запустить звонок', { description: data?.novofon?.message || 'Проверьте настройки Novofon' });
+        toast.error('Не удалось запустить звонок', { description: data?.error || data?.novofon?.message || 'Проверьте токен Call API Novofon' });
       }
     } catch (e) {
       toast.error('Ошибка звонка', { description: e instanceof Error ? e.message : String(e) });
