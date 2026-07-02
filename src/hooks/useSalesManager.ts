@@ -109,8 +109,20 @@ export function useSalesManager() {
 
   const fetchManagers = useCallback(async () => {
     const { data, error } = await supabase.from('sales_managers').select('*').order('created_at', { ascending: false });
-    if (data && !error) setManagers(data as unknown as SalesManager[]);
+    if (!data || error) return;
+    const userIds = (data as any[]).map(m => m.user_id).filter(Boolean);
+    let profileMap: Record<string, { email: string | null; generated_password: string | null }> = {};
+    if (userIds.length) {
+      const { data: profs } = await supabase
+        .from('profiles')
+        .select('user_id, email, generated_password')
+        .in('user_id', userIds);
+      profileMap = Object.fromEntries((profs || []).map((p: any) => [p.user_id, { email: p.email, generated_password: p.generated_password }]));
+    }
+    const enriched = (data as any[]).map(m => ({ ...m, email: profileMap[m.user_id]?.email ?? null, generated_password: profileMap[m.user_id]?.generated_password ?? null }));
+    setManagers(enriched as SalesManager[]);
   }, []);
+
 
   const fetchProposals = useCallback(async (organizationId?: string) => {
     let query = supabase
