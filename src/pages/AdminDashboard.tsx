@@ -29,6 +29,8 @@ const AdminClientErrorsTab = lazyWithRetry(() => import("@/components/admin/Admi
 
 import { useAdminBranding } from "@/hooks/useAdminBranding";
 import { supabase } from "@/integrations/supabase/client";
+import { clearAdminSalesView } from "@/utils/adminViewMode";
+
 import { getStoredThemeId, getThemeById, type AdminTheme } from "@/constants/admin-themes";
 import { ThemeAnimations, getStoredAnimationLevel, type AnimationLevel } from "@/components/ui/ThemeAnimations";
 import { AtmosphericBleed } from "@/components/ui/AtmosphericBleed";
