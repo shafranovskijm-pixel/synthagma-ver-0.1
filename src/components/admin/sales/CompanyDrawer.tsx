@@ -173,6 +173,7 @@ export function CompanyDrawer({ lead, open, onOpenChange, managerName, onCreateP
                 <ColdCallScriptCard
                   leadName={lead.org_name}
                   managerName={managerName}
+                  contactName={directorName ?? undefined}
                   onQuickResult={handleQuickResult}
                 />
               </TabsContent>
