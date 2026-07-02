@@ -282,7 +282,7 @@ export function CompanyDrawer({ lead, open, onOpenChange, managerName, managerPh
                 <KaraokeScript text={monolog} active={isCalling} />
               </div>
             )}
-            <Tabs defaultValue="summary" className="w-full">
+            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
               <TabsList className="w-full grid grid-cols-5 rounded-none border-b h-9 bg-transparent">
                 <TabsTrigger value="summary" className="text-xs">Сводка</TabsTrigger>
                 <TabsTrigger value="script" className="text-xs">Скрипт</TabsTrigger>
