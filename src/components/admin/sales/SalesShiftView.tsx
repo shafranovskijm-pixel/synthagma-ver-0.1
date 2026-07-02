@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useSalesManager, type SalesLead } from '@/hooks/useSalesManager';
@@ -7,22 +7,27 @@ import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Card, CardContent } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Pagination, PaginationContent, PaginationItem, PaginationLink,
   PaginationNext, PaginationPrevious,
 } from '@/components/ui/pagination';
-import { Phone, ExternalLink, Clock, MapPin, Sparkles, PhoneCall } from 'lucide-react';
+import { Clock, MapPin, Sparkles, PhoneCall, CheckCircle2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ColdCallScriptCard } from './ColdCallScriptCard';
 import { CompanyDrawer } from './CompanyDrawer';
 import { TestCallDialog } from './TestCallDialog';
 import { buildShiftQueue, parseDailyPlan, planForManager } from '@/utils/salesShiftQueue';
-import { toast } from 'sonner';
+import { getAdminSalesView } from '@/utils/adminViewMode';
 
 const DOZVON_MIN_SEC = 15;
-
-
 const PAGE_SIZE = 10;
+
+/** Статусы, которые считаем «финальной обработкой сегодня». */
+const PROCESSED_STATUSES = new Set([
+  'not_interested', 'proposal_sent', 'contract_sent',
+  'won', 'lost', 'demo_scheduled', 'callback_later',
+]);
 
 interface Props {
   onCreateProposal?: (c: { name: string; inn: string }) => void;
@@ -32,6 +37,7 @@ interface Props {
 export function SalesShiftView({ onCreateProposal, onCreateContract }: Props) {
   const { user } = useAuth();
   const { leads, fetchLeads } = useSalesManager();
+  const viewAs = useMemo(() => getAdminSalesView(), []);
 
   const [managerId, setManagerId] = useState<string | null>(null);
   const [managerName, setManagerName] = useState<string>('');
@@ -39,7 +45,9 @@ export function SalesShiftView({ onCreateProposal, onCreateContract }: Props) {
   const [dailyPlan, setDailyPlan] = useState<number>(80);
   const [dozvonyToday, setDozvonyToday] = useState<number>(0);
   const [callsToday, setCallsToday] = useState<number>(0);
+  const [processedIds, setProcessedIds] = useState<Set<string>>(new Set());
   const [testCallOpen, setTestCallOpen] = useState(false);
+  const [tab, setTab] = useState<'active' | 'done'>('active');
   const [page, setPage] = useState(1);
   const [selected, setSelected] = useState<SalesLead | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -47,10 +55,35 @@ export function SalesShiftView({ onCreateProposal, onCreateContract }: Props) {
   // 1. Загрузка лидов
   useEffect(() => { fetchLeads(); }, [fetchLeads]);
 
-  // 2. Профиль менеджера + план + сделанные сегодня
+  // Эффективный user_id для счётчиков — под impersonation это менеджер, иначе сам user.
+  const effectiveUserId = viewAs?.userId || user?.id || null;
+
+  // 2. Профиль менеджера + план + счётчики
   useEffect(() => {
     if (!user) return;
     (async () => {
+      // Если админ импресонирует — берём данные менеджера напрямую.
+      if (viewAs?.managerId) {
+        const [mgrR, planR, profR] = await Promise.all([
+          (supabase as any).from('sales_managers').select('id, full_name, phone').eq('id', viewAs.managerId).maybeSingle(),
+          (supabase as any).from('app_settings').select('setting_value').eq('setting_key', 'sales_daily_plan').maybeSingle(),
+          viewAs.userId
+            ? (supabase as any).from('profiles').select('full_name, phone').eq('user_id', viewAs.userId).maybeSingle()
+            : Promise.resolve({ data: null }),
+        ]);
+        const mgr = mgrR?.data;
+        const prof = profR?.data;
+        setManagerId(viewAs.managerId);
+        const rawName = (mgr?.full_name || prof?.full_name || viewAs.fullName || '').trim();
+        setManagerName(rawName.split(/\s+/)[0] || '');
+        setManagerPhone(mgr?.phone || prof?.phone || '');
+        const cfg = parseDailyPlan(planR?.data?.setting_value);
+        setDailyPlan(planForManager(cfg, viewAs.managerId));
+        await refreshCounters(viewAs.managerId, viewAs.userId || user.id);
+        await loadProcessed(viewAs.managerId);
+        return;
+      }
+
       const [mgrR, planR, profR] = await Promise.all([
         (supabase as any).from('sales_managers').select('id, full_name, phone').eq('user_id', user.id).maybeSingle(),
         (supabase as any).from('app_settings').select('setting_value').eq('setting_key', 'sales_daily_plan').maybeSingle(),
@@ -71,16 +104,15 @@ export function SalesShiftView({ onCreateProposal, onCreateContract }: Props) {
       setDailyPlan(planForManager(cfg, mgr?.id || null));
 
       await refreshCounters(mgr?.id || null, user.id);
+      await loadProcessed(mgr?.id || null);
     })();
-  }, [user]);
+  }, [user, viewAs?.managerId, viewAs?.userId]);
 
-  // Обновляет счётчики "звонков" и "дозвонов" на сегодня
   const refreshCounters = async (mid: string | null, uid: string) => {
     const startOfDay = new Date();
     startOfDay.setHours(0, 0, 0, 0);
     const iso = startOfDay.toISOString();
 
-    // Звонки — все попытки менеджера (не считаем тестовые)
     let calls = 0;
     if (mid) {
       const { count } = await (supabase as any)
@@ -93,7 +125,6 @@ export function SalesShiftView({ onCreateProposal, onCreateContract }: Props) {
     }
     setCallsToday(calls);
 
-    // Дозвоны — реальные разговоры ≥ 15 сек, из call_logs, без тестовых
     const { count: dz } = await (supabase as any)
       .from('call_logs')
       .select('id', { count: 'exact', head: true })
@@ -104,21 +135,31 @@ export function SalesShiftView({ onCreateProposal, onCreateContract }: Props) {
     setDozvonyToday(dz || 0);
   };
 
-  // Realtime: обновляем счётчики при появлении новых звонков/активностей
+  const loadProcessed = useCallback(async (mid: string | null) => {
+    if (!mid) { setProcessedIds(new Set()); return; }
+    const startOfDay = new Date();
+    startOfDay.setHours(0, 0, 0, 0);
+    const { data } = await (supabase as any)
+      .from('sales_lead_activities')
+      .select('lead_id')
+      .eq('manager_id', mid)
+      .gte('created_at', startOfDay.toISOString());
+    setProcessedIds(new Set((data || []).map((r: any) => r.lead_id).filter(Boolean)));
+  }, []);
+
+  // Realtime
   useEffect(() => {
-    if (!user) return;
+    if (!effectiveUserId) return;
     const ch = supabase
-      .channel(`sales-shift-counters-${user.id}`)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'call_logs', filter: `manager_user_id=eq.${user.id}` },
-        () => refreshCounters(managerId, user.id))
+      .channel(`sales-shift-counters-${effectiveUserId}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'call_logs', filter: `manager_user_id=eq.${effectiveUserId}` },
+        () => refreshCounters(managerId, effectiveUserId))
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'sales_lead_activities' },
-        () => refreshCounters(managerId, user.id))
+        () => { refreshCounters(managerId, effectiveUserId); loadProcessed(managerId); })
       .subscribe();
     return () => { supabase.removeChannel(ch); };
-  }, [user, managerId]);
+  }, [effectiveUserId, managerId, loadProcessed]);
 
-
-  // 3. Очередь на сейчас — пересчитывается каждую минуту (для местного времени)
   const [tick, setTick] = useState(0);
   useEffect(() => {
     const t = setInterval(() => setTick(x => x + 1), 60 * 1000);
@@ -127,50 +168,41 @@ export function SalesShiftView({ onCreateProposal, onCreateContract }: Props) {
 
   const queue = useMemo(() => {
     void tick;
-    // Только «мои» лиды (или неназначенные) — если у меня есть managerId.
     const mine = managerId
       ? leads.filter(l => !l.assigned_manager_id || l.assigned_manager_id === managerId)
       : leads;
     return buildShiftQueue(mine);
   }, [leads, managerId, tick]);
 
-  const totalPages = Math.max(1, Math.ceil(queue.length / PAGE_SIZE));
+  const isProcessed = useCallback((l: SalesLead) => {
+    if (processedIds.has(l.id)) return true;
+    if (PROCESSED_STATUSES.has(l.status) && l.updated_at) {
+      const startOfDay = new Date();
+      startOfDay.setHours(0, 0, 0, 0);
+      return new Date(l.updated_at).getTime() >= startOfDay.getTime();
+    }
+    return false;
+  }, [processedIds]);
+
+  const activeQueue = useMemo(() => queue.filter(q => !isProcessed(q.lead)), [queue, isProcessed]);
+  const doneQueue = useMemo(() => queue.filter(q => isProcessed(q.lead)), [queue, isProcessed]);
+
+  const currentList = tab === 'active' ? activeQueue : doneQueue;
+  const totalPages = Math.max(1, Math.ceil(currentList.length / PAGE_SIZE));
   const currentPage = Math.min(page, totalPages);
-  const pageItems = queue.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
+  const pageItems = currentList.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
+
+  useEffect(() => { setPage(1); }, [tab]);
 
   const remaining = Math.max(0, dailyPlan - dozvonyToday);
   const progressPct = Math.min(100, Math.round((dozvonyToday / Math.max(1, dailyPlan)) * 100));
 
-  const firstLead = pageItems[0]?.lead ?? null;
+  const firstLead = activeQueue[0]?.lead ?? null;
 
   const openLead = (lead: SalesLead) => {
     setSelected(lead);
     setDrawerOpen(true);
   };
-
-  const handleCall = async (lead: SalesLead) => {
-    if (!lead.phone) { openLead(lead); return; }
-    try {
-      const { data, error } = await supabase.functions.invoke("novofon-call-start", {
-        body: {
-          to_number: lead.phone,
-          lead_id: lead.id,
-          company_inn: lead.inn ?? null,
-          company_name: lead.org_name ?? null,
-        },
-      });
-      if (error) throw error;
-      if (data?.ok) {
-        toast.success("Звоним", { description: "Ответьте на своём телефоне — Novofon соединит с клиентом." });
-      } else {
-        toast.error("Не удалось запустить звонок", { description: data?.novofon?.message || "Проверьте настройки Novofon" });
-      }
-    } catch (e) {
-      toast.error("Ошибка звонка", { description: e instanceof Error ? e.message : String(e) });
-    }
-    openLead(lead);
-  };
-
 
   return (
     <div className="space-y-4">
@@ -227,41 +259,65 @@ export function SalesShiftView({ onCreateProposal, onCreateContract }: Props) {
         managerName={managerName}
       />
 
-      {/* Лента «Кому звонить сейчас» */}
+      {/* Лента */}
       <Card className="rounded-2xl">
         <CardContent className="p-4 lg:p-5">
           <div className="flex items-center justify-between gap-3 flex-wrap mb-3">
             <div>
-              <h3 className="text-base font-semibold">Кому звонить сейчас</h3>
+              <h3 className="text-base font-semibold">
+                {tab === 'active' ? 'Кому звонить сейчас' : 'Обработано сегодня'}
+              </h3>
               <p className="text-xs text-muted-foreground">
-                Отсортировано по местному времени 09:00–18:00 · сначала где день скоро закончится
+                {tab === 'active'
+                  ? 'Отсортировано по местному времени 09:00–18:00 · нажмите на карточку, чтобы открыть'
+                  : 'Лиды, по которым сегодня уже была активность'}
               </p>
             </div>
-            <Badge variant="outline" className="rounded-full">
-              {queue.length} в очереди
-            </Badge>
+            <Tabs value={tab} onValueChange={(v) => setTab(v as 'active' | 'done')}>
+              <TabsList>
+                <TabsTrigger value="active">В работе · {activeQueue.length}</TabsTrigger>
+                <TabsTrigger value="done">Обработано · {doneQueue.length}</TabsTrigger>
+              </TabsList>
+            </Tabs>
           </div>
 
-          {queue.length === 0 ? (
+          {currentList.length === 0 ? (
             <div className="py-12 text-center text-sm text-muted-foreground">
-              Пока никого — либо ещё рано, либо все регионы уже закрылись.
-              Загляни в раздел «Компании», чтобы взять новые лиды в работу.
+              {tab === 'active'
+                ? 'Пока никого — либо ещё рано, либо все регионы уже закрылись. Загляни в «Компании», чтобы взять новые лиды в работу.'
+                : 'Сегодня пока не обработано ни одного лида.'}
             </div>
           ) : (
             <ScrollArea className="max-h-[520px]">
               <div className="space-y-2">
                 {pageItems.map(({ lead, localTime, mskLabel, minutesUntilClose, hasTimezone }, idx) => {
-                  const isHot = hasTimezone && minutesUntilClose <= 90;
+                  const isHot = tab === 'active' && hasTimezone && minutesUntilClose <= 90;
+                  const done = tab === 'done';
                   return (
                     <div
                       key={lead.id}
+                      role="button"
+                      tabIndex={0}
+                      onClick={() => openLead(lead)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault();
+                          openLead(lead);
+                        }
+                      }}
                       className={cn(
-                        'flex items-center gap-3 rounded-xl border p-3 hover:bg-muted/40 transition',
-                        isHot && 'border-amber-500/40 bg-amber-500/5'
+                        'flex items-center gap-3 rounded-xl border p-3 transition cursor-pointer',
+                        'hover:bg-muted/50 hover:border-primary/40 hover:shadow-sm',
+                        'focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40',
+                        isHot && 'border-amber-500/40 bg-amber-500/5',
+                        done && 'opacity-80'
                       )}
                     >
-                      <div className="w-6 h-6 rounded-full bg-muted flex items-center justify-center text-[11px] font-medium text-muted-foreground shrink-0">
-                        {(currentPage - 1) * PAGE_SIZE + idx + 1}
+                      <div className={cn(
+                        'w-6 h-6 rounded-full flex items-center justify-center text-[11px] font-medium shrink-0',
+                        done ? 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300' : 'bg-muted text-muted-foreground'
+                      )}>
+                        {done ? <CheckCircle2 className="w-3.5 h-3.5" /> : (currentPage - 1) * PAGE_SIZE + idx + 1}
                       </div>
                       <div className="min-w-0 flex-1">
                         <div className="font-medium truncate">{lead.org_name}</div>
@@ -281,29 +337,13 @@ export function SalesShiftView({ onCreateProposal, onCreateContract }: Props) {
                               {isHot && ` · до конца ${minutesUntilClose} мин`}
                             </Badge>
                           )}
+                          {done && lead.status && (
+                            <Badge variant="outline" className="rounded-full h-5 px-2 text-[10px] font-medium">
+                              {lead.status}
+                            </Badge>
+                          )}
                           {lead.phone && <span className="truncate">{lead.phone}</span>}
                         </div>
-                      </div>
-                      <div className="flex items-center gap-1.5 shrink-0">
-                        <Button
-                          size="sm"
-                          variant="default"
-                          className="rounded-lg h-8"
-                          onClick={() => handleCall(lead)}
-                          disabled={!lead.phone}
-                        >
-                          <Phone className="w-3.5 h-3.5 mr-1" />
-                          Позвонить
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          className="rounded-lg h-8"
-                          onClick={() => openLead(lead)}
-                          aria-label="Открыть карточку"
-                        >
-                          <ExternalLink className="w-3.5 h-3.5" />
-                        </Button>
                       </div>
                     </div>
                   );
@@ -312,7 +352,6 @@ export function SalesShiftView({ onCreateProposal, onCreateContract }: Props) {
             </ScrollArea>
           )}
 
-          {/* Пагинация по 10 */}
           {totalPages > 1 && (
             <div className="mt-4 flex justify-center">
               <Pagination>
@@ -358,12 +397,16 @@ export function SalesShiftView({ onCreateProposal, onCreateContract }: Props) {
         onCreateProposal={onCreateProposal ? (l) => onCreateProposal({ name: l.org_name, inn: l.inn || '' }) : undefined}
         onCreateContract={onCreateContract ? (l) => onCreateContract({ name: l.org_name, inn: l.inn || '' }) : undefined}
         onSaveAndNext={() => {
-          // Счётчики обновит realtime по call_logs / sales_lead_activities.
-          // Локально сразу инкрементим "звонки" для отзывчивости UI.
           setCallsToday(x => x + 1);
           setDrawerOpen(false);
-          const remainingOnPage = pageItems.length - 1;
-          if (remainingOnPage <= 0 && currentPage < totalPages) setPage(currentPage + 1);
+          // realtime подтянет processedIds — но локально сразу пометим как обработанный
+          if (selected) {
+            setProcessedIds(prev => {
+              const next = new Set(prev);
+              next.add(selected.id);
+              return next;
+            });
+          }
         }}
       />
     </div>
