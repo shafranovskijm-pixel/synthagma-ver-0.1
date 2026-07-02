@@ -118,12 +118,14 @@ export function CompanyDrawer({ lead, open, onOpenChange, managerName, onCreateP
 
           <div className="flex-1 overflow-y-auto">
             <Tabs defaultValue="summary" className="w-full">
-              <TabsList className="w-full grid grid-cols-4 rounded-none border-b h-9 bg-transparent">
+              <TabsList className="w-full grid grid-cols-5 rounded-none border-b h-9 bg-transparent">
                 <TabsTrigger value="summary" className="text-xs">Сводка</TabsTrigger>
                 <TabsTrigger value="script" className="text-xs">Скрипт</TabsTrigger>
+                <TabsTrigger value="calls" className="text-xs">Звонки</TabsTrigger>
                 <TabsTrigger value="timeline" className="text-xs">История</TabsTrigger>
                 <TabsTrigger value="docs" className="text-xs">Документы</TabsTrigger>
               </TabsList>
+
 
               <TabsContent value="summary" className="p-4 space-y-3 text-sm">
                 {lead.inn && <Row icon={Building2} label="ИНН" value={lead.inn} />}
@@ -164,6 +166,10 @@ export function CompanyDrawer({ lead, open, onOpenChange, managerName, onCreateP
                   onQuickResult={handleQuickResult}
                 />
               </TabsContent>
+              <TabsContent value="calls" className="p-4">
+                <CallLogsList leadId={lead.id} companyInn={lead.inn ?? undefined} />
+              </TabsContent>
+
 
               <TabsContent value="timeline" className="p-4 space-y-2">
                 {leadActs.length === 0 ? (
