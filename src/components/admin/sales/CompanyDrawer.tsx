@@ -91,9 +91,7 @@ export function CompanyDrawer({ lead, open, onOpenChange, managerName, managerPh
       .eq('is_template', true)
       .order('created_at', { ascending: false })
       .then(({ data }) => {
-        const list = (data || []) as ProposalTpl[];
-        setProposalTemplates(list);
-        if (list.length && !selectedTpl) setSelectedTpl(list[0].id);
+        setProposalTemplates((data || []) as ProposalTpl[]);
       });
   }, [open]);
 
