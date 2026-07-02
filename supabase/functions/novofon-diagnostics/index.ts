@@ -2,6 +2,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import {
   describeNovofonError,
+  hasClassicApiCredentials,
   hasCallApiCredentials,
   normalizeNovofonPhone,
   novofonClassicRequest,
@@ -49,7 +50,7 @@ function errorDetails(error: unknown): Record<string, unknown> {
 }
 
 function canUseClassicFallback() {
-  return Boolean(Deno.env.get("NOVOFON_API_KEY") && Deno.env.get("NOVOFON_API_SECRET"));
+  return hasClassicApiCredentials();
 }
 
 function shouldFallbackToClassic(error: unknown) {

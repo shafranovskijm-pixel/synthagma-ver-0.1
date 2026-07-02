@@ -185,6 +185,18 @@ export function hasCallApiCredentials(): boolean {
   return Boolean(getStaticCallAccessTokens().length || (Deno.env.get("NOVOFON_LOGIN") && Deno.env.get("NOVOFON_PASSWORD")));
 }
 
+export function hasClassicApiCredentials(): boolean {
+  const explicitKey = Deno.env.get("NOVOFON_CLASSIC_API_KEY")?.trim();
+  const explicitSecret = Deno.env.get("NOVOFON_CLASSIC_API_SECRET")?.trim();
+  if (explicitKey && explicitSecret) return true;
+
+  const key = Deno.env.get("NOVOFON_API_KEY")?.trim();
+  const secret = Deno.env.get("NOVOFON_API_SECRET")?.trim();
+  // `appid_...` belongs to Novofon 2.0 app/token pair and is not a valid
+  // Classic API user_key for `/v1/request/callback/` signing.
+  return Boolean(key && secret && !isAppId(key));
+}
+
 function isAuthTokenError(error: unknown): boolean {
   return error instanceof NovofonApiError
     && ["access_token_invalid", "access_token_expired", "access_token_blocked", "auth_error"].includes(error.mnemonic || "");
@@ -290,12 +302,16 @@ export async function novofonClassicRequest<T = unknown>(
 ): Promise<T> {
   const key = Deno.env.get("NOVOFON_API_KEY")?.trim();
   const secret = Deno.env.get("NOVOFON_API_SECRET")?.trim();
-  if (!key || !secret) throw new Error("NOVOFON_API_KEY/SECRET not configured");
+  const explicitKey = Deno.env.get("NOVOFON_CLASSIC_API_KEY")?.trim();
+  const explicitSecret = Deno.env.get("NOVOFON_CLASSIC_API_SECRET")?.trim();
+  const classicKey = explicitKey || (!isAppId(key) ? key : undefined);
+  const classicSecret = explicitSecret || (!isAppId(key) ? secret : undefined);
+  if (!classicKey || !classicSecret) throw new Error("NOVOFON_CLASSIC_API_KEY/SECRET not configured");
 
   const requestParams = { ...params, format: "json" };
   const paramsStr = buildParamsString(requestParams);
   const md5 = await md5Hex(paramsStr);
-  const hex = await hmacSha1Hex(secret, `${path}${paramsStr}${md5}`);
+  const hex = await hmacSha1Hex(classicSecret, `${path}${paramsStr}${md5}`);
   const signature = encodeBase64(new TextEncoder().encode(hex));
   const url = method === "GET" && paramsStr
     ? `${CLASSIC_API_BASE}${path}?${paramsStr}`
@@ -304,7 +320,7 @@ export async function novofonClassicRequest<T = unknown>(
   const res = await fetch(url, {
     method,
     headers: {
-      Authorization: `${key}:${signature}`,
+      Authorization: `${classicKey}:${signature}`,
       Accept: "application/json",
       ...(method === "POST" ? { "Content-Type": "application/x-www-form-urlencoded" } : {}),
     },
