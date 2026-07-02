@@ -55,7 +55,7 @@ serve(async (req) => {
       });
     }
 
-    const callerId = normalizeNovofonPhone(Deno.env.get("NOVOFON_CALLER_ID") ?? "");
+    const callerId = normalizeNovofonPhone(Deno.env.get("NOVOFON_VIRTUAL_PHONE_NUMBER") || Deno.env.get("NOVOFON_CALLER_ID") || "");
     if (!callerId) {
       return new Response(JSON.stringify({ error: "NOVOFON_CALLER_ID not configured" }), {
         status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
