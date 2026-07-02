@@ -64,7 +64,7 @@ serve(async (req) => {
 
     const body = await req.json().catch(() => ({}));
     const testNumber = normalizeNovofonPhone(body?.test_number || "");
-    const callerId = normalizeNovofonPhone(Deno.env.get("NOVOFON_CALLER_ID") ?? "");
+    const callerId = normalizeNovofonPhone(Deno.env.get("NOVOFON_VIRTUAL_PHONE_NUMBER") || Deno.env.get("NOVOFON_CALLER_ID") || "");
     const operatorNumber = normalizeNovofonPhone(body?.operator_number || Deno.env.get("NOVOFON_OPERATOR_NUMBER") || testNumber || "");
     const steps: StepResult[] = [];
 
