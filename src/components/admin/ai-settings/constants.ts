@@ -103,4 +103,11 @@ export const API_KEYS_LIST = [
   { name: "LIVEKIT_API_KEY", label: "LiveKit API Key" },
   { name: "LIVEKIT_API_SECRET", label: "LiveKit API Secret" },
   { name: "LIVEKIT_WS_URL", label: "LiveKit WebSocket URL" },
+  { name: "NOVOFON_LOGIN", label: "Novofon API AppID" },
+  { name: "NOVOFON_PASSWORD", label: "Novofon Secret / access_token" },
+  { name: "NOVOFON_CALLER_ID", label: "Novofon купленный номер" },
+  { name: "NOVOFON_OPERATOR_NUMBER", label: "Novofon номер менеджера" },
+  { name: "NOVOFON_EMPLOYEE_ID", label: "Novofon employee_id" },
+  { name: "NOVOFON_SIP_LOGIN", label: "Novofon SIP логин" },
+  { name: "NOVOFON_SIP_PASSWORD", label: "Novofon SIP пароль" },
 ];
