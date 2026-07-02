@@ -53,8 +53,28 @@ export function SalesOverview({ onJump, organizationId, availableSections }: Pro
   const [savingPlan, setSavingPlan] = useState(false);
   const [inviteOpen, setInviteOpen] = useState(false);
 
+  // Дневная норма дозвонов
+  const [dailyPlan, setDailyPlan] = useState<number>(80);
+  const [dailyDraft, setDailyDraft] = useState<string>('80');
+  const [dailyEditing, setDailyEditing] = useState(false);
+  const [dailySaving, setDailySaving] = useState(false);
 
   useEffect(() => { void load(); }, [organizationId, leaderPeriod]);
+
+  useEffect(() => {
+    if (organizationId) return;
+    (async () => {
+      const { data } = await supabase.from('app_settings')
+        .select('setting_value').eq('setting_key', 'sales_daily_plan').maybeSingle();
+      try {
+        const parsed = data?.setting_value ? JSON.parse(String(data.setting_value)) : null;
+        const n = Number(parsed?.default) || 80;
+        setDailyPlan(n);
+        setDailyDraft(String(n));
+      } catch { /* keep default */ }
+    })();
+  }, [organizationId]);
+
 
   const safeJump = (tab: string, inn?: string | null) => {
     if (!availableSections || availableSections.includes(tab)) onJump?.(tab, inn);
