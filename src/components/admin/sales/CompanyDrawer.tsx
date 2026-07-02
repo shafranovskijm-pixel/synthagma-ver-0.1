@@ -319,37 +319,17 @@ export function CompanyDrawer({ lead, open, onOpenChange, managerName, managerPh
               </TabsContent>
 
               <TabsContent value="docs" className="p-4 space-y-3">
-                {/* Быстрая отправка готового КП */}
-                <div className="border rounded-xl p-3 space-y-2 bg-muted/20">
-                  <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                    Отправить готовое коммерческое предложение
-                  </div>
-                  {proposalTemplates.length === 0 ? (
-                    <div className="text-xs text-muted-foreground">Нет доступных шаблонов КП</div>
-                  ) : (
-                    <>
-                      <Select value={selectedTpl} onValueChange={setSelectedTpl}>
-                        <SelectTrigger className="h-9"><SelectValue placeholder="Выберите КП" /></SelectTrigger>
-                        <SelectContent>
-                          {proposalTemplates.map(t => (
-                            <SelectItem key={t.id} value={t.id}>{t.company_name}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <Input
-                        type="email"
-                        value={sendEmail}
-                        onChange={e => setSendEmail(e.target.value)}
-                        placeholder="email@company.ru"
-                        className="h-9"
-                      />
-                      <Button size="sm" className="w-full h-9" onClick={handleSendProposal} disabled={sending}>
-                        <Send className="w-3.5 h-3.5 mr-1.5" />
-                        {sending ? 'Отправляем…' : 'Отправить с нашей почты'}
-                      </Button>
-                    </>
+                <Button
+                  className="w-full justify-start"
+                  onClick={() => setProposalPopoverOpen(true)}
+                  disabled={proposalTemplates.length === 0}
+                >
+                  <Send className="w-4 h-4 mr-2" />
+                  Отправить готовое КП
+                  {proposalTemplates.length > 0 && (
+                    <Badge variant="secondary" className="ml-2 h-4 px-1.5 text-[10px]">{proposalTemplates.length}</Badge>
                   )}
-                </div>
+                </Button>
 
                 <Button variant="outline" className="w-full justify-start" onClick={() => onCreateProposal?.(lead)}>
                   <FileText className="w-4 h-4 mr-2" />Создать своё КП
