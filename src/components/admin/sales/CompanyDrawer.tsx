@@ -32,12 +32,13 @@ interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   managerName?: string;
+  managerPhone?: string | null;
   onCreateProposal?: (lead: SalesLead) => void;
   onCreateContract?: (lead: SalesLead) => void;
   onSaveAndNext?: () => void;
 }
 
-export function CompanyDrawer({ lead, open, onOpenChange, managerName, onCreateProposal, onCreateContract, onSaveAndNext }: Props) {
+export function CompanyDrawer({ lead, open, onOpenChange, managerName, managerPhone, onCreateProposal, onCreateContract, onSaveAndNext }: Props) {
   const { activities, fetchActivities, updateLeadStatus, updateLeadNotes, addActivity } = useSalesManager();
   const [notes, setNotes] = useState('');
   const [status, setStatus] = useState('new');
@@ -80,13 +81,14 @@ export function CompanyDrawer({ lead, open, onOpenChange, managerName, onCreateP
           lead_id: lead.id,
           company_inn: lead.inn ?? null,
           company_name: lead.org_name ?? null,
+          operator_number: managerPhone ?? undefined,
         },
       });
       if (error) throw error;
       if (data?.ok) {
         toast.success('Звоним через Novofon', { description: 'Ответьте на своём телефоне — АТС соединит с клиентом.' });
       } else {
-        toast.error('Не удалось запустить звонок', { description: data?.error || data?.novofon?.message || 'Проверьте токен Call API Novofon' });
+        toast.error('Не удалось запустить звонок', { description: data?.message || data?.error || data?.novofon?.message || 'Проверьте токен Call API Novofon' });
       }
     } catch (e) {
       toast.error('Ошибка звонка', { description: e instanceof Error ? e.message : String(e) });

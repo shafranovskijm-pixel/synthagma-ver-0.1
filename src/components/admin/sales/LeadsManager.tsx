@@ -61,6 +61,7 @@ export function LeadsManager({ organizationId, onCreateProposal, onCreateContrac
 
   const [currentManagerId, setCurrentManagerId] = useState<string | null>(null);
   const [managerFullName, setManagerFullName] = useState<string | undefined>();
+  const [managerPhone, setManagerPhone] = useState<string | undefined>();
 
   useEffect(() => {
     fetchLeads(organizationId ? { organizationId } : undefined);
@@ -70,8 +71,8 @@ export function LeadsManager({ organizationId, onCreateProposal, onCreateContrac
   useEffect(() => {
     if (!user) return;
     (async () => {
-      const { data } = await (supabase as any).from('sales_managers').select('id, full_name').eq('user_id', user.id).maybeSingle();
-      if (data) { setCurrentManagerId(data.id); setManagerFullName(data.full_name); }
+      const { data } = await (supabase as any).from('sales_managers').select('id, full_name, phone').eq('user_id', user.id).maybeSingle();
+      if (data) { setCurrentManagerId(data.id); setManagerFullName(data.full_name); setManagerPhone(data.phone || undefined); }
     })();
   }, [user]);
 
@@ -432,6 +433,7 @@ export function LeadsManager({ organizationId, onCreateProposal, onCreateContrac
         open={drawerOpen}
         onOpenChange={setDrawerOpen}
         managerName={managerFullName}
+        managerPhone={managerPhone}
         onCreateProposal={l => onCreateProposal?.({ name: l.org_name, inn: l.inn || '' })}
         onCreateContract={l => onCreateContract?.({ name: l.org_name, inn: l.inn || '' })}
         onSaveAndNext={openNext}

@@ -12,7 +12,7 @@ import {
   Pagination, PaginationContent, PaginationItem, PaginationLink,
   PaginationNext, PaginationPrevious,
 } from '@/components/ui/pagination';
-import { Clock, MapPin, Sparkles, PhoneCall, CheckCircle2 } from 'lucide-react';
+import { Clock, MapPin, Sparkles, CheckCircle2, Stethoscope } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ColdCallScriptCard } from './ColdCallScriptCard';
 import { CompanyDrawer } from './CompanyDrawer';
@@ -232,8 +232,8 @@ export function SalesShiftView({ onCreateProposal, onCreateContract }: Props) {
                 className="rounded-full h-8"
                 onClick={() => setTestCallOpen(true)}
               >
-                <PhoneCall className="w-3.5 h-3.5 mr-1" />
-                Позвонить себе
+                <Stethoscope className="w-3.5 h-3.5 mr-1" />
+                Проверить Novofon
               </Button>
               <Badge variant="secondary" className="rounded-full text-xs">
                 <Sparkles className="w-3 h-3 mr-1" /> Смена
@@ -394,6 +394,7 @@ export function SalesShiftView({ onCreateProposal, onCreateContract }: Props) {
         open={drawerOpen}
         onOpenChange={setDrawerOpen}
         managerName={managerName}
+        managerPhone={managerPhone}
         onCreateProposal={onCreateProposal ? (l) => onCreateProposal({ name: l.org_name, inn: l.inn || '' }) : undefined}
         onCreateContract={onCreateContract ? (l) => onCreateContract({ name: l.org_name, inn: l.inn || '' }) : undefined}
         onSaveAndNext={() => {
