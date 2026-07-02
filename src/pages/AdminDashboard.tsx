@@ -56,7 +56,12 @@ const AdminDashboard = () => {
   });
   const [animLevel, setAnimLevel] = useState<AnimationLevel>(getStoredAnimationLevel);
 
+  // Убираем зависший флаг «Войти как менеджер», чтобы админ всегда видел
+  // свою админку, а не shift-экран продажника.
+  useEffect(() => { clearAdminSalesView(); }, []);
+
   useEffect(() => {
+
     const handler = (e: Event) => {
       const id = (e as CustomEvent).detail;
       setActiveTheme(id ? getThemeById(id) || null : null);
