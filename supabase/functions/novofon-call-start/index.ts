@@ -42,7 +42,7 @@ function shouldFallbackToClassic(error: unknown) {
 }
 
 async function startClassicCallback(operator: string, to: string, fromSip?: string): Promise<ClassicCallbackResponse> {
-  return await novofonClassicRequest<ClassicCallbackResponse>("POST", "/v1/request/callback/", {
+  return await novofonClassicRequest<ClassicCallbackResponse>("GET", "/v1/request/callback/", {
     from: operator,
     to,
     ...(fromSip ? { sip: fromSip } : {}),

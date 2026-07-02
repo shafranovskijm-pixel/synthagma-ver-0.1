@@ -6,7 +6,7 @@ import { crypto as stdCrypto } from "https://deno.land/std@0.224.0/crypto/mod.ts
 
 const CALL_API_BASE = "https://callapi-jsonrpc.novofon.ru/v4.0";
 const DATA_API_BASE = "https://dataapi-jsonrpc.novofon.ru/v2.0";
-const CLASSIC_API_BASE = "https://api.zadarma.com";
+const CLASSIC_API_BASE = "https://api.novofon.com";
 
 export interface NovofonJsonRpcError {
   code?: number;

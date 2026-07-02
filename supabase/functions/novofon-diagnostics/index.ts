@@ -142,7 +142,7 @@ serve(async (req) => {
       } catch (error) {
         if (canUseClassicFallback() && shouldFallbackToClassic(error)) {
           try {
-            const classic = await novofonClassicRequest<{ status?: string; time?: number }>("POST", "/v1/request/callback/", {
+            const classic = await novofonClassicRequest<{ status?: string; time?: number }>("GET", "/v1/request/callback/", {
               from: operatorNumber,
               to: testNumber,
               sip: Deno.env.get("NOVOFON_SIP_LOGIN") || undefined,
