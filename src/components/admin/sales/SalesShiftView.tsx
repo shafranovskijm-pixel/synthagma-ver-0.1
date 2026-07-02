@@ -34,9 +34,12 @@ export function SalesShiftView({ onCreateProposal, onCreateContract }: Props) {
   const { leads, fetchLeads } = useSalesManager();
 
   const [managerId, setManagerId] = useState<string | null>(null);
-  const [managerName, setManagerName] = useState<string>('коллега');
+  const [managerName, setManagerName] = useState<string>('');
+  const [managerPhone, setManagerPhone] = useState<string>('');
   const [dailyPlan, setDailyPlan] = useState<number>(80);
-  const [doneToday, setDoneToday] = useState<number>(0);
+  const [dozvonyToday, setDozvonyToday] = useState<number>(0);
+  const [callsToday, setCallsToday] = useState<number>(0);
+  const [testCallOpen, setTestCallOpen] = useState(false);
   const [page, setPage] = useState(1);
   const [selected, setSelected] = useState<SalesLead | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
