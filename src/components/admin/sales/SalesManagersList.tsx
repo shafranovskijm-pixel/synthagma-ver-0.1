@@ -204,11 +204,23 @@ export function SalesManagersList() {
                   <Button
                     variant="outline"
                     size="sm"
+                    onClick={async () => {
+                      if (!confirm(`Сбросить пароль для ${m.full_name}? Старый пароль перестанет работать.`)) return;
+                      const res = await resetManagerPassword(m.id);
+                      if (res) setCreated({ email: res.email, password: res.password, generated: true, fullName: res.full_name });
+                    }}
+                  >
+                    <KeyRound className="w-4 h-4 mr-1" />Сбросить пароль
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
                     onClick={() => toggleManagerActive(m.id, !m.is_active)}
                   >
                     {m.is_active ? <><UserX className="w-4 h-4 mr-1" />Деактивировать</> : <><UserCheck className="w-4 h-4 mr-1" />Активировать</>}
                   </Button>
                 </div>
+
               </CardContent>
             </Card>
           );
