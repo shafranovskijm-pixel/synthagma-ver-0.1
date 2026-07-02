@@ -120,6 +120,7 @@ serve(async (req) => {
     let providerCallId: string | null = null;
     let usedApi: "call_api" | "employee_call" | "classic_callback" = "employee_call";
     let employeeInfo: Record<string, unknown> | null = null;
+    const ringTestNumberDirectly = Boolean(is_test && operator === to);
 
     if (hasCallApiCredentials()) {
       // Novofon Call API v4.0: поддержка подтвердила, что для звонков CRM
@@ -127,21 +128,42 @@ serve(async (req) => {
       // Поэтому основной сценарий — start.employee_call по employee_id из
       // get.employees; simple_call оставляем только резервом.
       try {
-        const employeeCall = await startNovofonEmployeeCall<EmployeeCallStartResponse>({
-          contact: to,
-          virtualPhoneNumber: callerId,
-          operatorNumber: operator,
-          externalId: lead_id || `test-${Date.now()}`,
-        });
-        usedApi = "employee_call";
-        nfRes = employeeCall.data;
-        providerCallId = employeeCall.data.call_session_id ? String(employeeCall.data.call_session_id) : null;
-        employeeInfo = {
-          id: employeeCall.employee.id,
-          full_name: employeeCall.employee.full_name,
-          phone_number: employeeCall.employeePhoneNumber,
-        };
+        if (ringTestNumberDirectly) {
+          usedApi = "call_api";
+          nfRes = await novofonRpc<CallStartResponse>("start.simple_call", {
+            first_call: "operator",
+            switch_at_once: true,
+            show_virtual_phone_number: true,
+            virtual_phone_number: callerId,
+            direction: "in",
+            contact: to,
+            operator,
+            external_id: lead_id || `test-${Date.now()}`,
+          });
+          providerCallId = nfRes.call_session_id ? String(nfRes.call_session_id) : null;
+        } else {
+          const employeeCall = await startNovofonEmployeeCall<EmployeeCallStartResponse>({
+            contact: to,
+            virtualPhoneNumber: callerId,
+            operatorNumber: operator,
+            externalId: lead_id || `test-${Date.now()}`,
+          });
+          usedApi = "employee_call";
+          nfRes = employeeCall.data;
+          providerCallId = employeeCall.data.call_session_id ? String(employeeCall.data.call_session_id) : null;
+          employeeInfo = {
+            id: employeeCall.employee.id,
+            full_name: employeeCall.employee.full_name,
+            phone_number: employeeCall.employeePhoneNumber,
+          };
+        }
       } catch (error) {
+        if (ringTestNumberDirectly) {
+          if (!canUseClassicFallback() || !shouldFallbackToClassic(error)) throw error;
+          usedApi = "classic_callback";
+          nfRes = await startClassicCallback(operator, to, from_sip || getConfiguredSipLogin() || undefined);
+          providerCallId = (nfRes as ClassicCallbackResponse).time ? String((nfRes as ClassicCallbackResponse).time) : null;
+        } else {
         try {
           usedApi = "call_api";
           nfRes = await novofonRpc<CallStartResponse>("start.simple_call", {
@@ -162,6 +184,7 @@ serve(async (req) => {
           usedApi = "classic_callback";
           nfRes = await startClassicCallback(operator, to, from_sip || getConfiguredSipLogin() || undefined);
           providerCallId = (nfRes as ClassicCallbackResponse).time ? String((nfRes as ClassicCallbackResponse).time) : null;
+        }
         }
       }
     } else if (canUseClassicFallback()) {
