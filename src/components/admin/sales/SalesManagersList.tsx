@@ -19,7 +19,7 @@ import { ManagerStatsDialog } from './ManagerStatsDialog';
 interface CreatedCreds { email: string; password: string; generated: boolean; fullName: string }
 
 export function SalesManagersList() {
-  const { managers, fetchManagers, createManager, toggleManagerActive, loading, leads, proposals, fetchLeads, fetchProposals } = useSalesManager();
+  const { managers, fetchManagers, createManager, toggleManagerActive, resetManagerPassword, loading, leads, proposals, fetchLeads, fetchProposals } = useSalesManager();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [inviteOpen, setInviteOpen] = useState(false);
   const [autoGen, setAutoGen] = useState(true);
