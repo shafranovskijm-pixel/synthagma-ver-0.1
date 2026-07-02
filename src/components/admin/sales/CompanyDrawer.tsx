@@ -12,7 +12,11 @@ import { useSalesManager, type SalesLead, type LeadActivity } from '@/hooks/useS
 import { getRegionLocalTime, isBusinessHours } from '@/utils/regionTimezones';
 import { ColdCallScriptCard } from './ColdCallScriptCard';
 import { CallResultModal } from './CallResultModal';
+import { CallLogsList } from './CallLogsList';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 import type { CallResultKey } from '@/constants/coldCallScript';
+
 
 const LEAD_STATUS_MAP: Record<string, { label: string; color: string }> = {
   new: { label: 'Новый', color: 'bg-blue-500/10 text-blue-500' },
@@ -58,11 +62,30 @@ export function CompanyDrawer({ lead, open, onOpenChange, managerName, onCreateP
   const st = LEAD_STATUS_MAP[status] || LEAD_STATUS_MAP.new;
 
   const handleQuickCall = async () => {
-    if (lead.phone) window.location.href = `tel:${lead.phone.replace(/\s/g, '')}`;
-    await addActivity(lead.id, null, 'call', `Исходящий звонок: ${lead.phone || '—'}`);
+    if (!lead.phone) return;
+    try {
+      const { data, error } = await supabase.functions.invoke('novofon-call-start', {
+        body: {
+          to_number: lead.phone,
+          lead_id: lead.id,
+          company_inn: lead.inn ?? null,
+          company_name: lead.org_name ?? null,
+        },
+      });
+      if (error) throw error;
+      if (data?.ok) {
+        toast.success('Звоним через Novofon', { description: 'Ответьте на своём телефоне — АТС соединит с клиентом.' });
+      } else {
+        toast.error('Не удалось запустить звонок', { description: data?.novofon?.message || 'Проверьте настройки Novofon' });
+      }
+    } catch (e) {
+      toast.error('Ошибка звонка', { description: e instanceof Error ? e.message : String(e) });
+    }
+    await addActivity(lead.id, null, 'call', `Исходящий звонок Novofon: ${lead.phone}`);
     setPresetResult(undefined);
     setResultOpen(true);
   };
+
 
   const handleQuickResult = (key: CallResultKey) => {
     setPresetResult(key);
@@ -95,12 +118,14 @@ export function CompanyDrawer({ lead, open, onOpenChange, managerName, onCreateP
 
           <div className="flex-1 overflow-y-auto">
             <Tabs defaultValue="summary" className="w-full">
-              <TabsList className="w-full grid grid-cols-4 rounded-none border-b h-9 bg-transparent">
+              <TabsList className="w-full grid grid-cols-5 rounded-none border-b h-9 bg-transparent">
                 <TabsTrigger value="summary" className="text-xs">Сводка</TabsTrigger>
                 <TabsTrigger value="script" className="text-xs">Скрипт</TabsTrigger>
+                <TabsTrigger value="calls" className="text-xs">Звонки</TabsTrigger>
                 <TabsTrigger value="timeline" className="text-xs">История</TabsTrigger>
                 <TabsTrigger value="docs" className="text-xs">Документы</TabsTrigger>
               </TabsList>
+
 
               <TabsContent value="summary" className="p-4 space-y-3 text-sm">
                 {lead.inn && <Row icon={Building2} label="ИНН" value={lead.inn} />}
@@ -141,6 +166,10 @@ export function CompanyDrawer({ lead, open, onOpenChange, managerName, onCreateP
                   onQuickResult={handleQuickResult}
                 />
               </TabsContent>
+              <TabsContent value="calls" className="p-4">
+                <CallLogsList leadId={lead.id} companyInn={lead.inn ?? undefined} />
+              </TabsContent>
+
 
               <TabsContent value="timeline" className="p-4 space-y-2">
                 {leadActs.length === 0 ? (

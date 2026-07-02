@@ -16,6 +16,8 @@ import { cn } from '@/lib/utils';
 import { ColdCallScriptCard } from './ColdCallScriptCard';
 import { CompanyDrawer } from './CompanyDrawer';
 import { buildShiftQueue, parseDailyPlan, planForManager } from '@/utils/salesShiftQueue';
+import { toast } from 'sonner';
+
 
 const PAGE_SIZE = 10;
 
@@ -103,13 +105,29 @@ export function SalesShiftView({ onCreateProposal, onCreateContract }: Props) {
     setDrawerOpen(true);
   };
 
-  const handleCall = (lead: SalesLead) => {
-    if (lead.phone) {
-      // Открываем набор через tel:, звонок фиксируем в drawer через "результат"
-      window.location.href = `tel:${lead.phone.replace(/[^+\d]/g, '')}`;
+  const handleCall = async (lead: SalesLead) => {
+    if (!lead.phone) { openLead(lead); return; }
+    try {
+      const { data, error } = await supabase.functions.invoke("novofon-call-start", {
+        body: {
+          to_number: lead.phone,
+          lead_id: lead.id,
+          company_inn: lead.inn ?? null,
+          company_name: lead.org_name ?? null,
+        },
+      });
+      if (error) throw error;
+      if (data?.ok) {
+        toast.success("Звоним", { description: "Ответьте на своём телефоне — Novofon соединит с клиентом." });
+      } else {
+        toast.error("Не удалось запустить звонок", { description: data?.novofon?.message || "Проверьте настройки Novofon" });
+      }
+    } catch (e) {
+      toast.error("Ошибка звонка", { description: e instanceof Error ? e.message : String(e) });
     }
     openLead(lead);
   };
+
 
   return (
     <div className="space-y-4">
