@@ -128,10 +128,13 @@ export function TestCallDialog({ open, onOpenChange, defaultPhone }: Props) {
           <Input
             id="test-phone"
             value={phone}
-            onChange={(e) => setPhone(e.target.value)}
+            onChange={(e) => setPhone(normalizePhone(e.target.value))}
+            onFocus={(e) => { if (!phone) setPhone('+7 '); e.currentTarget.setSelectionRange(phone.length + 3, phone.length + 3); }}
             placeholder="+7 999 123-45-67"
+            inputMode="tel"
             autoFocus
           />
+
           <p className="text-[11px] text-muted-foreground">
             Не указывайте купленный номер Novofon как тестовый — провайдер запрещает звонок на собственный виртуальный номер.
           </p>
