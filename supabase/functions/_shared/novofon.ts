@@ -170,7 +170,7 @@ export function normalizeNovofonPhone(raw: string): string {
 export function describeNovofonError(error: unknown): string {
   if (error instanceof NovofonApiError) {
     if (error.mnemonic === "call_api_credentials_missing") {
-      return "Не задан Call API токен Novofon. Добавьте NOVOFON_ACCESS_TOKEN или NOVOFON_LOGIN/NOVOFON_PASSWORD.";
+      return "Не задан Call API токен Novofon или резервные NOVOFON_API_KEY/NOVOFON_API_SECRET.";
     }
     if (error.mnemonic === "data_api_credentials_missing") {
       return "Не задан Data API токен Novofon. Добавьте NOVOFON_DATA_ACCESS_TOKEN или NOVOFON_LOGIN/NOVOFON_PASSWORD.";

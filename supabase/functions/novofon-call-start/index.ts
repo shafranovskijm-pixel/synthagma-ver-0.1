@@ -146,7 +146,7 @@ serve(async (req) => {
       return new Response(JSON.stringify({
         ok: false,
         error: "call_api_credentials_missing",
-        message: "Не задан Call API токен Novofon и не включён резервный callback. Добавьте Call API доступ или включите NOVOFON_CLASSIC_FALLBACK=true с NOVOFON_API_KEY/NOVOFON_API_SECRET.",
+        message: "Не задан Call API токен Novofon и нет NOVOFON_API_KEY/NOVOFON_API_SECRET для резервного callback.",
       }), {
         status: 200,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
