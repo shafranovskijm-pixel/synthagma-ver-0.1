@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { SendProposalDialog } from './SendProposalDialog';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
@@ -59,11 +59,9 @@ export function CompanyDrawer({ lead, open, onOpenChange, managerName, managerPh
   const [activeTab, setActiveTab] = useState('summary');
   const [proposalPopoverOpen, setProposalPopoverOpen] = useState(false);
 
-  // Быстрая отправка КП
+  // Быстрая отправка КП — счётчик шаблонов для бейджа
   const [proposalTemplates, setProposalTemplates] = useState<ProposalTpl[]>([]);
-  const [selectedTpl, setSelectedTpl] = useState<string>('');
   const [sendEmail, setSendEmail] = useState('');
-  const [sending, setSending] = useState(false);
 
   useEffect(() => {
     if (lead) {
@@ -93,9 +91,7 @@ export function CompanyDrawer({ lead, open, onOpenChange, managerName, managerPh
       .eq('is_template', true)
       .order('created_at', { ascending: false })
       .then(({ data }) => {
-        const list = (data || []) as ProposalTpl[];
-        setProposalTemplates(list);
-        if (list.length && !selectedTpl) setSelectedTpl(list[0].id);
+        setProposalTemplates((data || []) as ProposalTpl[]);
       });
   }, [open]);
 
@@ -162,34 +158,6 @@ export function CompanyDrawer({ lead, open, onOpenChange, managerName, managerPh
     setResultOpen(true);
   };
 
-  const handleSendProposal = async () => {
-    if (!selectedTpl) { toast.error('Выберите шаблон КП'); return; }
-    if (!/^\S+@\S+\.\S+$/.test(sendEmail.trim())) {
-      toast.error('Укажите корректный email'); return;
-    }
-    setSending(true);
-    try {
-      const { data, error } = await supabase.functions.invoke('send-platform-proposal', {
-        body: {
-          template_proposal_id: selectedTpl,
-          recipient_email: sendEmail.trim(),
-          company_name: lead.org_name,
-          contact_person: directorName ?? null,
-          lead_id: lead.id,
-          sender_name: managerName || user?.email || 'Менеджер СИНТАГМА',
-        },
-      });
-      if (error) throw error;
-      if ((data as any)?.error) throw new Error((data as any).error);
-      const url = (data as any)?.proposal_url;
-      toast.success(`КП отправлено на ${sendEmail}`, { description: url });
-      await addActivity(lead.id, null, 'email', `Отправлено КП «${proposalTemplates.find(t => t.id === selectedTpl)?.company_name || ''}» на ${sendEmail}`);
-    } catch (e) {
-      toast.error('Не удалось отправить КП', { description: getErrorMessage(e) });
-    } finally {
-      setSending(false);
-    }
-  };
 
   return (
     <>
@@ -212,47 +180,18 @@ export function CompanyDrawer({ lead, open, onOpenChange, managerName, managerPh
               <Button size="sm" variant="outline" className="h-8" onClick={() => { setPresetResult(undefined); setResultOpen(true); }}>
                 Результат
               </Button>
-              <Popover open={proposalPopoverOpen} onOpenChange={setProposalPopoverOpen}>
-                <PopoverTrigger asChild>
-                  <Button size="sm" variant="outline" className="h-8" disabled={proposalTemplates.length === 0}>
-                    <Send className="w-3.5 h-3.5 mr-1" />КП
-                    {proposalTemplates.length > 0 && (
-                      <Badge variant="secondary" className="ml-1.5 h-4 px-1.5 text-[10px]">{proposalTemplates.length}</Badge>
-                    )}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent align="end" className="w-80 p-3 space-y-2">
-                  <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                    Отправить коммерческое предложение
-                  </div>
-                  <Select value={selectedTpl} onValueChange={setSelectedTpl}>
-                    <SelectTrigger className="h-9"><SelectValue placeholder="Выберите КП" /></SelectTrigger>
-                    <SelectContent>
-                      {proposalTemplates.map(t => (
-                        <SelectItem key={t.id} value={t.id}>{t.company_name}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <Input
-                    type="email"
-                    value={sendEmail}
-                    onChange={e => setSendEmail(e.target.value)}
-                    placeholder="email@company.ru"
-                    className="h-9"
-                  />
-                  <Button size="sm" className="w-full h-9" onClick={handleSendProposal} disabled={sending}>
-                    <Send className="w-3.5 h-3.5 mr-1.5" />
-                    {sending ? 'Отправляем…' : 'Отправить с нашей почты'}
-                  </Button>
-                  <button
-                    type="button"
-                    className="text-xs text-muted-foreground hover:text-foreground underline underline-offset-2"
-                    onClick={() => { setProposalPopoverOpen(false); setActiveTab('docs'); }}
-                  >
-                    Открыть вкладку «Документы» →
-                  </button>
-                </PopoverContent>
-              </Popover>
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-8"
+                disabled={proposalTemplates.length === 0}
+                onClick={() => setProposalPopoverOpen(true)}
+              >
+                <Send className="w-3.5 h-3.5 mr-1" />Отправить КП
+                {proposalTemplates.length > 0 && (
+                  <Badge variant="secondary" className="ml-1.5 h-4 px-1.5 text-[10px]">{proposalTemplates.length}</Badge>
+                )}
+              </Button>
             </div>
             {extraPhones.length > 0 && (
               <div className="pt-1">
@@ -348,37 +287,17 @@ export function CompanyDrawer({ lead, open, onOpenChange, managerName, managerPh
               </TabsContent>
 
               <TabsContent value="docs" className="p-4 space-y-3">
-                {/* Быстрая отправка готового КП */}
-                <div className="border rounded-xl p-3 space-y-2 bg-muted/20">
-                  <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                    Отправить готовое коммерческое предложение
-                  </div>
-                  {proposalTemplates.length === 0 ? (
-                    <div className="text-xs text-muted-foreground">Нет доступных шаблонов КП</div>
-                  ) : (
-                    <>
-                      <Select value={selectedTpl} onValueChange={setSelectedTpl}>
-                        <SelectTrigger className="h-9"><SelectValue placeholder="Выберите КП" /></SelectTrigger>
-                        <SelectContent>
-                          {proposalTemplates.map(t => (
-                            <SelectItem key={t.id} value={t.id}>{t.company_name}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <Input
-                        type="email"
-                        value={sendEmail}
-                        onChange={e => setSendEmail(e.target.value)}
-                        placeholder="email@company.ru"
-                        className="h-9"
-                      />
-                      <Button size="sm" className="w-full h-9" onClick={handleSendProposal} disabled={sending}>
-                        <Send className="w-3.5 h-3.5 mr-1.5" />
-                        {sending ? 'Отправляем…' : 'Отправить с нашей почты'}
-                      </Button>
-                    </>
+                <Button
+                  className="w-full justify-start"
+                  onClick={() => setProposalPopoverOpen(true)}
+                  disabled={proposalTemplates.length === 0}
+                >
+                  <Send className="w-4 h-4 mr-2" />
+                  Отправить готовое КП
+                  {proposalTemplates.length > 0 && (
+                    <Badge variant="secondary" className="ml-2 h-4 px-1.5 text-[10px]">{proposalTemplates.length}</Badge>
                   )}
-                </div>
+                </Button>
 
                 <Button variant="outline" className="w-full justify-start" onClick={() => onCreateProposal?.(lead)}>
                   <FileText className="w-4 h-4 mr-2" />Создать своё КП
@@ -402,6 +321,19 @@ export function CompanyDrawer({ lead, open, onOpenChange, managerName, managerPh
         initialResult={presetResult}
         onSaved={() => fetchActivities(lead.id)}
         onSaveAndNext={onSaveAndNext}
+      />
+
+      <SendProposalDialog
+        open={proposalPopoverOpen}
+        onOpenChange={setProposalPopoverOpen}
+        companyName={lead.org_name}
+        contactPerson={directorName}
+        defaultEmail={sendEmail || lead.email || ''}
+        leadId={lead.id}
+        managerName={managerName}
+        onSent={(name) => {
+          addActivity(lead.id, null, 'email', `Отправлено КП «${name}» на ${sendEmail || lead.email}`);
+        }}
       />
     </>
   );

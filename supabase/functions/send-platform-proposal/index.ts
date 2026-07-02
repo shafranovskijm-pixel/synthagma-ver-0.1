@@ -86,7 +86,7 @@ serve(async (req: Request) => {
       company_email: recipient_email,
       contact_person: contact_person || null,
       scope: "platform",
-      status: "sent",
+      status: "draft",
       is_template: false,
       total_amount: tpl.total_amount,
       valid_until: tpl.valid_until,
@@ -98,7 +98,6 @@ serve(async (req: Request) => {
       custom_note: tpl.custom_note,
       tariff_plan: tpl.tariff_plan,
       template_id: PROPOSAL_EMAIL_TEMPLATE_ID,
-      last_sent_at: new Date().toISOString(),
     };
     const { data: newProposal, error: cloneErr } = await admin
       .from("commercial_proposals").insert(cloned).select("id").single();
@@ -145,9 +144,29 @@ serve(async (req: Request) => {
       ? render(emailTpl.subject, vars)
       : `Коммерческое предложение от СИНТАГМА — ${company_name}`;
 
-    // 4. Send via platform SMTP
+    // 4. Send via platform SMTP with 25s hard timeout
     const smtp = getPlatformSmtp();
-    await sendSmtpEmail(smtp, { to: recipient_email, subject, html });
+    const smtpDeadline = new Promise((_, reject) =>
+      setTimeout(() => reject(new Error("SMTP timeout (25s)")), 25_000)
+    );
+    try {
+      await Promise.race([
+        sendSmtpEmail(smtp, { to: recipient_email, subject, html }),
+        smtpDeadline,
+      ]);
+    } catch (smtpErr) {
+      // mark as failed so we don't report "sent" when it wasn't
+      await admin.from("commercial_proposals")
+        .update({ status: "draft" })
+        .eq("id", newProposal.id);
+      throw new Error("SMTP: " + (smtpErr as Error).message);
+    }
+
+    // mark as sent only on real success
+    await admin.from("commercial_proposals")
+      .update({ status: "sent", last_sent_at: new Date().toISOString() })
+      .eq("id", newProposal.id);
+
 
     // 5. Log activity if lead provided
     if (lead_id) {
