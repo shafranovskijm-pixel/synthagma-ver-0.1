@@ -11,7 +11,7 @@ import {
   Pagination, PaginationContent, PaginationItem, PaginationLink,
   PaginationNext, PaginationPrevious,
 } from '@/components/ui/pagination';
-import { Phone, ExternalLink, Clock, MapPin, Sparkles } from 'lucide-react';
+import { Phone, ExternalLink, Clock, MapPin, Sparkles, PhoneCall } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ColdCallScriptCard } from './ColdCallScriptCard';
 import { CompanyDrawer } from './CompanyDrawer';
