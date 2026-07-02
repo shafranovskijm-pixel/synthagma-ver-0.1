@@ -63,14 +63,39 @@ function normalizeAccessKey(value?: string | null): string | null {
   return match?.[1]?.trim() || trimmed;
 }
 
-function getStaticCallAccessToken(): string | null {
-  return normalizeAccessKey(Deno.env.get("NOVOFON_JSONRPC_ACCESS_KEY"))
-    || normalizeAccessKey(Deno.env.get("NOVOFON_ACCESS_TOKEN"))
-    || null;
+function isAppId(value?: string | null): boolean {
+  return /^appid_/i.test(value?.trim() || "");
 }
 
-function getStaticDataAccessToken(): string | null {
-  return normalizeAccessKey(Deno.env.get("NOVOFON_DATA_ACCESS_TOKEN")) || getStaticCallAccessToken();
+function addTokenCandidate(candidates: string[], value?: string | null) {
+  const raw = value?.trim();
+  const normalized = normalizeAccessKey(raw);
+  for (const token of [raw, normalized]) {
+    if (token && !candidates.includes(token)) candidates.push(token);
+  }
+}
+
+function getStaticCallAccessTokens(): string[] {
+  const candidates: string[] = [];
+  addTokenCandidate(candidates, Deno.env.get("NOVOFON_JSONRPC_ACCESS_KEY"));
+  addTokenCandidate(candidates, Deno.env.get("NOVOFON_ACCESS_TOKEN"));
+
+  // Novofon 2.0 often gives a pair `appid` + `token`. In older project
+  // settings this pair may have been saved into NOVOFON_API_KEY/API_SECRET.
+  // Classic API uses them as key/secret, but JSON-RPC Call API expects the
+  // token itself in params.access_token.
+  if (isAppId(Deno.env.get("NOVOFON_API_KEY"))) {
+    addTokenCandidate(candidates, Deno.env.get("NOVOFON_API_SECRET"));
+  }
+
+  return candidates;
+}
+
+function getStaticDataAccessTokens(): string[] {
+  const candidates: string[] = [];
+  addTokenCandidate(candidates, Deno.env.get("NOVOFON_DATA_ACCESS_TOKEN"));
+  for (const token of getStaticCallAccessTokens()) addTokenCandidate(candidates, token);
+  return candidates;
 }
 
 async function jsonRpcRequest<T = unknown>(
@@ -135,7 +160,7 @@ export async function getCallAccessToken(): Promise<string> {
   // wrong Novofon API section. If account login/password are configured, always
   // mint a fresh 1-hour Call API session first and use the static token only as
   // a fallback.
-  const token = await safeLogin(CALL_API_BASE, "NOVOFON_LOGIN", "NOVOFON_PASSWORD") || getStaticCallAccessToken();
+  const token = await safeLogin(CALL_API_BASE, "NOVOFON_LOGIN", "NOVOFON_PASSWORD") || getStaticCallAccessTokens()[0];
   if (!token) {
     throw new NovofonApiError(
       "NOVOFON_ACCESS_TOKEN or NOVOFON_LOGIN/NOVOFON_PASSWORD not configured",
@@ -146,7 +171,7 @@ export async function getCallAccessToken(): Promise<string> {
 }
 
 export async function getDataAccessToken(): Promise<string> {
-  const token = await safeLogin(DATA_API_BASE, "NOVOFON_DATA_LOGIN", "NOVOFON_DATA_PASSWORD") || await safeLogin(DATA_API_BASE, "NOVOFON_LOGIN", "NOVOFON_PASSWORD") || getStaticDataAccessToken();
+  const token = await safeLogin(DATA_API_BASE, "NOVOFON_DATA_LOGIN", "NOVOFON_DATA_PASSWORD") || await safeLogin(DATA_API_BASE, "NOVOFON_LOGIN", "NOVOFON_PASSWORD") || getStaticDataAccessTokens()[0];
   if (!token) {
     throw new NovofonApiError(
       "NOVOFON_DATA_ACCESS_TOKEN/NOVOFON_ACCESS_TOKEN or login/password not configured",
@@ -157,7 +182,31 @@ export async function getDataAccessToken(): Promise<string> {
 }
 
 export function hasCallApiCredentials(): boolean {
-  return Boolean(getStaticCallAccessToken() || (Deno.env.get("NOVOFON_LOGIN") && Deno.env.get("NOVOFON_PASSWORD")));
+  return Boolean(getStaticCallAccessTokens().length || (Deno.env.get("NOVOFON_LOGIN") && Deno.env.get("NOVOFON_PASSWORD")));
+}
+
+function isAuthTokenError(error: unknown): boolean {
+  return error instanceof NovofonApiError
+    && ["access_token_invalid", "access_token_expired", "access_token_blocked", "auth_error"].includes(error.mnemonic || "");
+}
+
+async function jsonRpcWithAccessTokens<T = unknown>(
+  baseUrl: string,
+  method: string,
+  tokens: string[],
+  params: Record<string, unknown> = {},
+): Promise<T> {
+  let lastAuthError: unknown = null;
+  for (const accessToken of tokens) {
+    try {
+      return await jsonRpcRequest<T>(baseUrl, method, { access_token: accessToken, ...params });
+    } catch (error) {
+      if (!isAuthTokenError(error)) throw error;
+      lastAuthError = error;
+    }
+  }
+  if (lastAuthError) throw lastAuthError;
+  throw new NovofonApiError("Novofon access token is not configured", { mnemonic: "call_api_credentials_missing" });
 }
 
 export function normalizeNovofonPhone(raw: string): string {
@@ -215,14 +264,23 @@ export async function novofonRpc<T = unknown>(
   method: string,
   params: Record<string, unknown> = {},
 ): Promise<T> {
-  return jsonRpcRequest<T>(CALL_API_BASE, method, { access_token: await getCallAccessToken(), ...params });
+  const loginToken = await safeLogin(CALL_API_BASE, "NOVOFON_LOGIN", "NOVOFON_PASSWORD");
+  const tokens = [...(loginToken ? [loginToken] : []), ...getStaticCallAccessTokens()];
+  return jsonRpcWithAccessTokens<T>(CALL_API_BASE, method, tokens, params);
 }
 
 export async function novofonDataRpc<T = unknown>(
   method: string,
   params: Record<string, unknown> = {},
 ): Promise<T> {
-  return jsonRpcRequest<T>(DATA_API_BASE, method, { access_token: await getDataAccessToken(), ...params });
+  const dataLoginToken = await safeLogin(DATA_API_BASE, "NOVOFON_DATA_LOGIN", "NOVOFON_DATA_PASSWORD");
+  const commonLoginToken = await safeLogin(DATA_API_BASE, "NOVOFON_LOGIN", "NOVOFON_PASSWORD");
+  const tokens = [
+    ...(dataLoginToken ? [dataLoginToken] : []),
+    ...(commonLoginToken ? [commonLoginToken] : []),
+    ...getStaticDataAccessTokens(),
+  ];
+  return jsonRpcWithAccessTokens<T>(DATA_API_BASE, method, tokens, params);
 }
 
 export async function novofonClassicRequest<T = unknown>(
