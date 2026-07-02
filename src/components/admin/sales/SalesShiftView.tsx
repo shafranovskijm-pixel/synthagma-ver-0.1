@@ -15,8 +15,11 @@ import { Phone, ExternalLink, Clock, MapPin, Sparkles, PhoneCall } from 'lucide-
 import { cn } from '@/lib/utils';
 import { ColdCallScriptCard } from './ColdCallScriptCard';
 import { CompanyDrawer } from './CompanyDrawer';
+import { TestCallDialog } from './TestCallDialog';
 import { buildShiftQueue, parseDailyPlan, planForManager } from '@/utils/salesShiftQueue';
 import { toast } from 'sonner';
+
+const DOZVON_MIN_SEC = 15;
 
 
 const PAGE_SIZE = 10;
