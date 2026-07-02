@@ -108,16 +108,17 @@ export function Hero({ showStars = true }: { showStars?: boolean }) {
                   <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
                 </Button>
               </Link>
-              <Button
-                type="button"
-                onClick={() => setDemoOpen(true)}
-                size="lg"
-                variant="outline"
-                className={`rounded-xl px-8 h-14 text-base gap-2 w-full sm:w-auto ${dark ? 'border-white/20 bg-white/5 text-white hover:bg-white/10 hover:text-white' : ''}`}
-              >
-                <Play className="w-4 h-4" />
-                Посмотреть демо
-              </Button>
+              <Link to="/demonstration" className="w-full sm:w-auto">
+                <Button
+                  type="button"
+                  size="lg"
+                  variant="outline"
+                  className={`rounded-xl px-8 h-14 text-base gap-2 w-full ${dark ? 'border-white/20 bg-white/5 text-white hover:bg-white/10 hover:text-white' : ''}`}
+                >
+                  <Play className="w-4 h-4" />
+                  Демонстрация возможностей
+                </Button>
+              </Link>
 
             </div>
             <p className={`text-xs ${dark ? 'text-white/40' : 'text-muted-foreground'}`}>

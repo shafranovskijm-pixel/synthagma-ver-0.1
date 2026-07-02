@@ -35,16 +35,17 @@ export function FinalCta() {
                     <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
                   </Button>
                 </Link>
-                <Button
-                  type="button"
-                  onClick={() => setDemoOpen(true)}
-                  size="lg"
-                  variant="outline"
-                  className="rounded-xl px-8 gap-2 w-full sm:w-auto"
-                >
-                  <Play className="w-4 h-4" />
-                  Посмотреть демо
-                </Button>
+                <Link to="/demonstration">
+                  <Button
+                    type="button"
+                    size="lg"
+                    variant="outline"
+                    className="rounded-xl px-8 gap-2 w-full sm:w-auto"
+                  >
+                    <Play className="w-4 h-4" />
+                    Демонстрация возможностей
+                  </Button>
+                </Link>
               </div>
             </div>
           </div>

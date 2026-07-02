@@ -49,6 +49,7 @@ const AcceptInvitation = lazyWithRetry(() => import("@/pages/AcceptInvitation"))
 const ConnectionCheck = lazyWithRetry(() => import("@/pages/ConnectionCheck"));
 const DemoStudentLogin = lazyWithRetry(() => import("@/pages/DemoStudentLogin"));
 const AutoLogin = lazyWithRetry(() => import("@/pages/AutoLogin"));
+const DemonstrationPage = lazyWithRetry(() => import("@/pages/DemonstrationPage"));
 const NotFound = lazyWithRetry(() => import("@/pages/NotFound"));
 
 export const publicRoutes = (
@@ -105,6 +106,8 @@ export const publicRoutes = (
     <Route path="/connection-check" element={<ConnectionCheck />} />
     <Route path="/demo-student-login" element={<DemoStudentLogin />} />
     <Route path="/auto-login" element={<AutoLogin />} />
+    <Route path="/demonstration" element={<DemonstrationPage />} />
+    <Route path="/demo-tour" element={<DemonstrationPage />} />
     <Route path="*" element={<NotFound />} />
   </>
 );
