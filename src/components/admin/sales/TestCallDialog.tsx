@@ -46,7 +46,7 @@ export function TestCallDialog({ open, onOpenChange, defaultPhone }: Props) {
         onOpenChange(false);
       } else {
         toast.error('Не удалось запустить звонок', {
-          description: data?.novofon?.message || 'Проверьте настройки Novofon',
+          description: data?.error || data?.novofon?.message || 'Проверьте токен Call API Novofon',
         });
       }
     } catch (e) {

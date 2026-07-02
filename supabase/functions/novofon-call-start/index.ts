@@ -1,19 +1,14 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { novofonRequest } from "../_shared/novofon.ts";
+import { novofonRpc } from "../_shared/novofon.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-interface CallbackResponse {
-  status: string;
-  from?: string;
-  to?: string;
-  call_id?: string;
-  time?: string;
-  message?: string;
+interface CallStartResponse {
+  call_session_id?: number;
 }
 
 function normalizePhone(raw: string): string {
@@ -47,14 +42,14 @@ serve(async (req) => {
     }
 
     const body = await req.json();
-    const { to_number, lead_id, company_inn, company_name, from_sip, is_test } = body ?? {};
+    const { to_number, lead_id, company_inn, company_name, from_sip, operator_number, is_test } = body ?? {};
     if (!to_number) {
       return new Response(JSON.stringify({ error: "to_number required" }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    const callerId = Deno.env.get("NOVOFON_CALLER_ID");
+    const callerId = normalizePhone(Deno.env.get("NOVOFON_CALLER_ID") ?? "");
     if (!callerId) {
       return new Response(JSON.stringify({ error: "NOVOFON_CALLER_ID not configured" }), {
         status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -62,14 +57,30 @@ serve(async (req) => {
     }
 
     const to = normalizePhone(to_number);
-    const from = from_sip || callerId;
+    const operator = normalizePhone(
+      operator_number || from_sip || Deno.env.get("NOVOFON_OPERATOR_NUMBER") || (is_test ? to : ""),
+    );
+    if (!operator) {
+      return new Response(JSON.stringify({
+        ok: false,
+        error: "NOVOFON_OPERATOR_NUMBER not configured",
+        message: "Не задан номер менеджера для исходящего звонка",
+      }), {
+        status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
 
-    // Novofon callback: сначала звоним менеджеру (from — его SIP/номер),
-    // после ответа — соединяем с клиентом (to).
-    const nfRes = await novofonRequest<CallbackResponse>("GET", "/v1/request/callback/", {
-      from,
-      to,
-      sip: from_sip || "",
+    // Novofon Call API v4.0: сначала звоним оператору/менеджеру,
+    // после ответа соединяем с контактом. Для теста operator = contact.
+    const nfRes = await novofonRpc<CallStartResponse>("start.simple_call", {
+      first_call: "operator",
+      switch_at_once: true,
+      show_virtual_phone_number: true,
+      virtual_phone_number: callerId,
+      direction: "in",
+      contact: to,
+      operator,
+      external_id: lead_id || `test-${Date.now()}`,
     });
 
     const admin = createClient(
@@ -83,14 +94,14 @@ serve(async (req) => {
       .insert({
         manager_user_id: user.id,
         direction: "outbound",
-        from_number: from,
+        from_number: operator,
         to_number: to,
         company_inn: company_inn ?? null,
         company_name: company_name ?? null,
         lead_id: lead_id ?? null,
         status: "dialing",
         provider: "novofon",
-        novofon_call_id: nfRes.call_id ?? null,
+        novofon_call_id: nfRes.call_session_id ? String(nfRes.call_session_id) : null,
         notes: is_test ? '__test_call__' : null,
       })
       .select("id")
@@ -100,7 +111,7 @@ serve(async (req) => {
 
     return new Response(
       JSON.stringify({
-        ok: nfRes.status === "success",
+        ok: Boolean(nfRes.call_session_id),
         novofon: nfRes,
         call_log_id: log?.id ?? null,
       }),
@@ -109,8 +120,9 @@ serve(async (req) => {
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
     console.error("novofon-call-start error:", msg);
-    return new Response(JSON.stringify({ error: msg }), {
-      status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
+    return new Response(JSON.stringify({ ok: false, error: msg }), {
+      status: msg.startsWith("Novofon") ? 200 : 500,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
 });
