@@ -2,6 +2,10 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import {
   describeNovofonError,
+  getConfiguredOperatorNumber,
+  getConfiguredSipLogin,
+  getConfiguredVirtualPhoneNumber,
+  getNovofonEmployees,
   hasClassicApiCredentials,
   hasCallApiCredentials,
   normalizeNovofonPhone,
@@ -9,6 +13,8 @@ import {
   novofonDataRpc,
   novofonRpc,
   NovofonApiError,
+  resolveNovofonEmployee,
+  startNovofonEmployeeCall,
 } from "../_shared/novofon.ts";
 
 const corsHeaders = {
@@ -29,6 +35,10 @@ interface VirtualNumber {
   status?: string;
   type?: string;
   scenarios?: unknown[];
+}
+
+interface EmployeeCallStartResponse {
+  call_session_id?: number;
 }
 
 function json(body: unknown, status = 200) {
@@ -75,8 +85,8 @@ serve(async (req) => {
 
     const body = await req.json().catch(() => ({}));
     const testNumber = normalizeNovofonPhone(body?.test_number || "");
-    const callerId = normalizeNovofonPhone(Deno.env.get("NOVOFON_VIRTUAL_PHONE_NUMBER") || Deno.env.get("NOVOFON_CALLER_ID") || "");
-    const operatorNumber = normalizeNovofonPhone(body?.operator_number || Deno.env.get("NOVOFON_OPERATOR_NUMBER") || testNumber || "");
+    const callerId = getConfiguredVirtualPhoneNumber();
+    const operatorNumber = normalizeNovofonPhone(body?.operator_number || getConfiguredOperatorNumber(testNumber) || testNumber || "");
     const steps: StepResult[] = [];
 
     steps.push({
@@ -96,6 +106,32 @@ serve(async (req) => {
           ? "Включён резервный Novofon callback по API Key + Secret"
           : "Нет Call API доступа или резервного API Key + Secret",
     });
+
+    try {
+      const employees = await getNovofonEmployees();
+      const resolvedEmployee = await resolveNovofonEmployee(operatorNumber);
+      steps.push({
+        key: "employees",
+        label: "Сотрудники АТС",
+        ok: employees.length > 0 && Boolean(resolvedEmployee),
+        message: resolvedEmployee
+          ? `Найден employee_id ${resolvedEmployee.employee.id}: ${resolvedEmployee.reason}`
+          : `Data API вернул сотрудников: ${employees.length}, но подходящий сотрудник для звонка не найден`,
+        details: {
+          total: employees.length,
+          selected_employee_id: resolvedEmployee?.employee.id,
+          selected_phone: resolvedEmployee?.phoneNumber,
+        },
+      });
+    } catch (error) {
+      steps.push({
+        key: "employees",
+        label: "Сотрудники АТС",
+        ok: false,
+        message: describeNovofonError(error),
+        details: errorDetails(error),
+      });
+    }
 
     try {
       const virtualNumbers = await novofonDataRpc<VirtualNumber[]>("get.virtual_numbers", {
@@ -124,29 +160,50 @@ serve(async (req) => {
 
     if (callerId && testNumber && operatorNumber) {
       try {
-        await novofonRpc("start.simple_call", {
-          first_call: "operator",
-          switch_at_once: true,
-          show_virtual_phone_number: true,
-          virtual_phone_number: callerId,
-          direction: "in",
+        const employeeCall = await startNovofonEmployeeCall<EmployeeCallStartResponse>({
           contact: testNumber,
-          operator: operatorNumber,
-          external_id: `diagnostic-${Date.now()}`,
+          virtualPhoneNumber: callerId,
+          operatorNumber,
+          externalId: `diagnostic-${Date.now()}`,
         });
         steps.push({
           key: "test_call",
           label: "Тестовый звонок",
-          ok: true,
-          message: "Novofon принял команду start.simple_call",
+          ok: Boolean(employeeCall.data.call_session_id),
+          message: employeeCall.data.call_session_id
+            ? `Novofon принял команду start.employee_call, сессия ${employeeCall.data.call_session_id}`
+            : "Novofon ответил на start.employee_call без call_session_id",
+          details: {
+            api: "employee_call",
+            employee_id: employeeCall.employee.id,
+            employee_phone: employeeCall.employeePhoneNumber,
+          },
         });
       } catch (error) {
+        try {
+          await novofonRpc("start.simple_call", {
+            first_call: "operator",
+            switch_at_once: true,
+            show_virtual_phone_number: true,
+            virtual_phone_number: callerId,
+            direction: "in",
+            contact: testNumber,
+            operator: operatorNumber,
+            external_id: `diagnostic-${Date.now()}`,
+          });
+          steps.push({
+            key: "test_call",
+            label: "Тестовый звонок",
+            ok: true,
+            message: "Novofon принял команду start.simple_call",
+          });
+        } catch (simpleError) {
         if (canUseClassicFallback() && shouldFallbackToClassic(error)) {
           try {
             const classic = await novofonClassicRequest<{ status?: string; time?: number }>("GET", "/v1/request/callback/", {
               from: operatorNumber,
               to: testNumber,
-              sip: Deno.env.get("NOVOFON_SIP_LOGIN") || undefined,
+              sip: getConfiguredSipLogin() || undefined,
             });
             steps.push({
               key: "test_call",
@@ -171,9 +228,10 @@ serve(async (req) => {
             key: "test_call",
             label: "Тестовый звонок",
             ok: false,
-            message: describeNovofonError(error),
-            details: errorDetails(error),
+            message: describeNovofonError(simpleError),
+            details: { ...errorDetails(simpleError), primary_error: describeNovofonError(error) },
           });
+        }
         }
       }
     } else {

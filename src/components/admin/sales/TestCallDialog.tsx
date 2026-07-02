@@ -66,7 +66,7 @@ export function TestCallDialog({ open, onOpenChange, defaultPhone }: Props) {
       const { data, error } = await supabase.functions.invoke('novofon-call-start', {
         body: {
           to_number: e164,
-          operator_number: defaultPhone || e164,
+            operator_number: defaultPhone || undefined,
           company_name: 'Тестовый звонок',
           is_test: true,
         },
@@ -97,7 +97,7 @@ export function TestCallDialog({ open, onOpenChange, defaultPhone }: Props) {
     setChecking(true);
     try {
       const { data, error } = await supabase.functions.invoke('novofon-diagnostics', {
-        body: { test_number: to, operator_number: defaultPhone || to },
+        body: { test_number: to, operator_number: defaultPhone || undefined },
       });
       if (error) throw error;
       setSteps(Array.isArray(data?.steps) ? data.steps : []);

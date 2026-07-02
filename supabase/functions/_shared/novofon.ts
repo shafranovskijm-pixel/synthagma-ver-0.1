@@ -28,6 +28,32 @@ export interface JsonRpcEnvelope<T> {
   error?: NovofonJsonRpcError;
 }
 
+export interface NovofonEmployeePhone {
+  phone_id?: number;
+  phone_number?: string;
+  channels_count?: number;
+  dial_time?: number;
+  status?: string;
+}
+
+export interface NovofonEmployee {
+  id: number;
+  login?: string;
+  first_name?: string;
+  last_name?: string;
+  patronymic?: string;
+  full_name?: string;
+  status?: string;
+  calls_available?: boolean;
+  phone_numbers?: NovofonEmployeePhone[];
+  extension?: {
+    extension_phone_number?: string;
+    extension_voice_mail_enabled?: boolean;
+    extension_queue_enabled?: boolean;
+  };
+  call_recording?: string;
+}
+
 export class NovofonApiError extends Error {
   readonly code?: number;
   readonly mnemonic?: string;
@@ -77,6 +103,7 @@ function addTokenCandidate(candidates: string[], value?: string | null) {
 
 function getStaticCallAccessTokens(): string[] {
   const candidates: string[] = [];
+  addTokenCandidate(candidates, Deno.env.get("NOVOFON_CALL_ACCESS_TOKEN"));
   addTokenCandidate(candidates, Deno.env.get("NOVOFON_JSONRPC_ACCESS_KEY"));
   addTokenCandidate(candidates, Deno.env.get("NOVOFON_ACCESS_TOKEN"));
 
@@ -89,12 +116,22 @@ function getStaticCallAccessTokens(): string[] {
     addTokenCandidate(candidates, Deno.env.get("NOVOFON_API_SECRET"));
   }
 
+  // In the current Novofon cabinet the API screen shows an AppID + Secret pair.
+  // Support confirmed that Secret itself is the access_token for Data API and
+  // Call API. Some deployments store this pair as NOVOFON_LOGIN/NOVOFON_PASSWORD
+  // (because older docs describe login.user); when login starts with `appid_`,
+  // treat password as the permanent access token, not only as a login password.
+  if (isAppId(Deno.env.get("NOVOFON_LOGIN")) || isAppId(Deno.env.get("NOVOFON_EMPLOYEE_API_KEY"))) {
+    addTokenCandidate(candidates, Deno.env.get("NOVOFON_PASSWORD"));
+  }
+
   return candidates;
 }
 
 function getStaticDataAccessTokens(): string[] {
   const candidates: string[] = [];
   addTokenCandidate(candidates, Deno.env.get("NOVOFON_DATA_ACCESS_TOKEN"));
+  addTokenCandidate(candidates, Deno.env.get("NOVOFON_CALL_ACCESS_TOKEN"));
   for (const token of getStaticCallAccessTokens()) addTokenCandidate(candidates, token);
   return candidates;
 }
@@ -186,6 +223,31 @@ export function hasCallApiCredentials(): boolean {
   return Boolean(getStaticCallAccessTokens().length || (Deno.env.get("NOVOFON_LOGIN") && Deno.env.get("NOVOFON_PASSWORD")));
 }
 
+export function getConfiguredVirtualPhoneNumber(): string {
+  return normalizeNovofonPhone(
+    Deno.env.get("NOVOFON_PUBLIC_NUMBER")
+      || Deno.env.get("NOVOFON_VIRTUAL_PHONE_NUMBER")
+      || Deno.env.get("NOVOFON_CALLER_ID")
+      || "",
+  );
+}
+
+export function getConfiguredOperatorNumber(fallback = ""): string {
+  return normalizeNovofonPhone(
+    Deno.env.get("NOVOFON_TEST_OPERATOR_NUMBER")
+      || Deno.env.get("NOVOFON_OPERATOR_NUMBER")
+      || fallback,
+  );
+}
+
+export function getConfiguredSipLogin(): string {
+  return (Deno.env.get("NOVOFON_SIP_LINE_LOGIN") || Deno.env.get("NOVOFON_SIP_LOGIN") || "").trim();
+}
+
+export function getConfiguredExtension(): string {
+  return (Deno.env.get("NOVOFON_VATS_EXTENSION") || "").trim();
+}
+
 export function hasClassicApiCredentials(): boolean {
   const explicitKey = Deno.env.get("NOVOFON_CLASSIC_API_KEY")?.trim();
   const explicitSecret = Deno.env.get("NOVOFON_CLASSIC_API_SECRET")?.trim();
@@ -240,7 +302,7 @@ export function describeNovofonError(error: unknown): string {
     if (error.mnemonic === "ip_not_whitelisted") return "IP backend-функции не добавлен в белый список Novofon API.";
     if (error.mnemonic === "component_disabled" || error.mnemonic === "method_component_disabled") return "В Novofon не подключён нужный компонент Call API/Data API.";
     if (error.mnemonic === "access_token_invalid" || error.mnemonic === "access_token_expired" || error.mnemonic === "access_token_blocked" || error.mnemonic === "auth_error") {
-      return "Novofon не принял ключ Call API: нужен постоянный Call API ключ или логин/пароль пользователя АТС с включённым API-доступом.";
+      return "Novofon не принял Secret/access_token: проверьте вкладку API у пользователя АТС и что ключ активен для Call API/Data API.";
     }
     if (error.mnemonic === "virtual_phone_number_not_found") return "Купленный номер не найден среди виртуальных номеров аккаунта Novofon.";
     if (error.mnemonic === "own_virtual_phone_number_not_allowed") return "Novofon запрещает звонить на собственный виртуальный номер — укажите внешний тестовый номер.";
@@ -296,6 +358,102 @@ export async function novofonDataRpc<T = unknown>(
     ...getStaticDataAccessTokens(),
   ];
   return jsonRpcWithAccessTokens<T>(DATA_API_BASE, method, tokens, params);
+}
+
+function normalizeComparablePhone(raw?: string | null): string {
+  return String(raw || "").replace(/\D/g, "");
+}
+
+function employeeName(employee: NovofonEmployee): string {
+  return employee.full_name || [employee.last_name, employee.first_name, employee.patronymic].filter(Boolean).join(" ") || employee.login || `ID ${employee.id}`;
+}
+
+export async function getNovofonEmployees(limit = 100): Promise<NovofonEmployee[]> {
+  return await novofonDataRpc<NovofonEmployee[]>("get.employees", {
+    limit,
+    fields: [
+      "id",
+      "login",
+      "first_name",
+      "last_name",
+      "patronymic",
+      "full_name",
+      "status",
+      "calls_available",
+      "phone_numbers",
+      "extension",
+      "call_recording",
+    ],
+  });
+}
+
+export async function resolveNovofonEmployee(preferredPhone?: string | null): Promise<{ employee: NovofonEmployee; phoneNumber?: string; reason: string } | null> {
+  const employees = await getNovofonEmployees();
+  const configuredEmployeeId = Number(Deno.env.get("NOVOFON_EMPLOYEE_ID") || 0) || null;
+  const sipLogin = normalizeComparablePhone(getConfiguredSipLogin());
+  const extension = normalizeComparablePhone(getConfiguredExtension());
+  const operator = normalizeComparablePhone(preferredPhone || getConfiguredOperatorNumber());
+
+  const score = (employee: NovofonEmployee) => {
+    const phones = employee.phone_numbers || [];
+    const extensionNumber = normalizeComparablePhone(employee.extension?.extension_phone_number);
+    if (configuredEmployeeId && employee.id === configuredEmployeeId) return 100;
+    if (extension && extensionNumber === extension) return 90;
+    if (operator && phones.some((p) => normalizeComparablePhone(p.phone_number) === operator)) return 80;
+    if (sipLogin && phones.some((p) => normalizeComparablePhone(p.phone_number) === sipLogin)) return 70;
+    if (employee.calls_available) return 20;
+    return 1;
+  };
+
+  const [best] = employees
+    .filter((employee) => employee.id)
+    .sort((a, b) => score(b) - score(a));
+
+  if (!best || score(best) <= 1) return null;
+
+  const phones = best.phone_numbers || [];
+  const activePhones = phones.filter((p) => !p.status || p.status === "active");
+  const phoneByOperator = activePhones.find((p) => operator && normalizeComparablePhone(p.phone_number) === operator)?.phone_number;
+  // Novofon accepts `employee.phone_number`, but for SIP lines returned by
+  // get.employees it can answer with an internal server error. If no exact
+  // external manager phone is configured, omit phone_number and let Novofon
+  // dial all active employee numbers by priority — this is the documented and
+  // most stable mode.
+  const phoneNumber = phoneByOperator && operator.length >= 10 ? phoneByOperator : undefined;
+
+  return {
+    employee: best,
+    phoneNumber,
+    reason: `${employeeName(best)} (${score(best) >= 80 ? "точное совпадение" : "подходящий сотрудник"})`,
+  };
+}
+
+export async function startNovofonEmployeeCall<T = { call_session_id?: number }>(opts: {
+  contact: string;
+  virtualPhoneNumber: string;
+  operatorNumber?: string;
+  externalId?: string;
+}): Promise<{ data: T; employee: NovofonEmployee; employeePhoneNumber?: string }> {
+  const resolved = await resolveNovofonEmployee(opts.operatorNumber);
+  if (!resolved) {
+    throw new NovofonApiError("Novofon employee was not found", { mnemonic: "employee_not_found" });
+  }
+
+  const data = await novofonRpc<T>("start.employee_call", {
+    first_call: "employee",
+    switch_at_once: true,
+    show_virtual_phone_number: true,
+    virtual_phone_number: opts.virtualPhoneNumber,
+    direction: "in",
+    contact: opts.contact,
+    external_id: opts.externalId,
+    employee: {
+      id: resolved.employee.id,
+      ...(resolved.phoneNumber ? { phone_number: resolved.phoneNumber } : {}),
+    },
+  });
+
+  return { data, employee: resolved.employee, employeePhoneNumber: resolved.phoneNumber };
 }
 
 export async function novofonClassicRequest<T = unknown>(
