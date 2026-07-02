@@ -180,17 +180,33 @@ export function SalesShiftView({ onCreateProposal, onCreateContract }: Props) {
           <div className="flex items-start justify-between gap-3 flex-wrap">
             <div>
               <h2 className="text-xl lg:text-2xl font-semibold">
-                Привет, {managerName}! <span className="text-muted-foreground font-normal">👋</span>
+                Привет{managerName ? `, ${managerName}` : ''}! <span className="text-muted-foreground font-normal">👋</span>
               </h2>
               <p className="text-sm text-muted-foreground mt-1">
                 Сегодня у тебя <strong className="text-foreground">{dailyPlan}</strong> дозвонов ·
-                сделано <strong className="text-foreground">{doneToday}</strong> ·
+                сделано <strong className="text-foreground">{dozvonyToday}</strong> ·
                 осталось <strong className="text-foreground">{remaining}</strong>
               </p>
+              <p className="text-[11px] text-muted-foreground mt-0.5">
+                Звонков за день: <strong className="text-foreground">{callsToday}</strong>
+                <span className="mx-1">·</span>
+                дозвон = разговор от {DOZVON_MIN_SEC} сек
+              </p>
             </div>
-            <Badge variant="secondary" className="rounded-full text-xs">
-              <Sparkles className="w-3 h-3 mr-1" /> Смена
-            </Badge>
+            <div className="flex items-center gap-2">
+              <Button
+                size="sm"
+                variant="outline"
+                className="rounded-full h-8"
+                onClick={() => setTestCallOpen(true)}
+              >
+                <PhoneCall className="w-3.5 h-3.5 mr-1" />
+                Позвонить себе
+              </Button>
+              <Badge variant="secondary" className="rounded-full text-xs">
+                <Sparkles className="w-3 h-3 mr-1" /> Смена
+              </Badge>
+            </div>
           </div>
           <div>
             <Progress value={progressPct} className="h-2" />
@@ -198,6 +214,12 @@ export function SalesShiftView({ onCreateProposal, onCreateContract }: Props) {
           </div>
         </CardContent>
       </Card>
+
+      <TestCallDialog
+        open={testCallOpen}
+        onOpenChange={setTestCallOpen}
+        defaultPhone={managerPhone}
+      />
 
       {/* Скрипт первого касания */}
       <ColdCallScriptCard
