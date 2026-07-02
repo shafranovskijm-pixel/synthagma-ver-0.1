@@ -32,7 +32,7 @@ interface SystemSettings {
   registrationEnabled: boolean;
 }
 
-type SectionKey = "theme" | "staff" | "operator" | "finance" | "client-errors" | "db" | "media" | "signatures" | "cache" | "seo" | "system" | "promo" | "notifications" | "analytics" | "content" | "ai" | "devtools";
+type SectionKey = "theme" | "staff" | "operator" | "finance" | "client-errors" | "db" | "media" | "signatures" | "cache" | "seo" | "system" | "promo" | "notifications" | "analytics" | "content" | "ai" | "devtools" | "email-pool";
 
 const SECTIONS: { key: SectionKey; label: string; icon: React.ElementType; color: string }[] = [
   { key: "theme", label: "Тема оформления", icon: Palette, color: "text-violet-500" },
