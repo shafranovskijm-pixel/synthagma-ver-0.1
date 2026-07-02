@@ -12,7 +12,7 @@ import {
   Pagination, PaginationContent, PaginationItem, PaginationLink,
   PaginationNext, PaginationPrevious,
 } from '@/components/ui/pagination';
-import { Clock, MapPin, Sparkles, PhoneCall, CheckCircle2, Stethoscope } from 'lucide-react';
+import { Clock, MapPin, Sparkles, CheckCircle2, Stethoscope } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ColdCallScriptCard } from './ColdCallScriptCard';
 import { CompanyDrawer } from './CompanyDrawer';
@@ -394,6 +394,7 @@ export function SalesShiftView({ onCreateProposal, onCreateContract }: Props) {
         open={drawerOpen}
         onOpenChange={setDrawerOpen}
         managerName={managerName}
+        managerPhone={managerPhone}
         onCreateProposal={onCreateProposal ? (l) => onCreateProposal({ name: l.org_name, inn: l.inn || '' }) : undefined}
         onCreateContract={onCreateContract ? (l) => onCreateContract({ name: l.org_name, inn: l.inn || '' }) : undefined}
         onSaveAndNext={() => {

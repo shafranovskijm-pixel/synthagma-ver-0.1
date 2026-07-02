@@ -44,6 +44,7 @@ export function TestCallDialog({ open, onOpenChange, defaultPhone }: Props) {
       const { data, error } = await supabase.functions.invoke('novofon-call-start', {
         body: {
           to_number: to,
+          operator_number: defaultPhone || to,
           company_name: 'Тестовый звонок',
           is_test: true,
         },
