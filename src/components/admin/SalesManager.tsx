@@ -18,13 +18,20 @@ import { CompaniesUnified } from './sales/CompaniesUnified';
 import { LogActivityDialog } from './sales/LogActivityDialog';
 import { SalesReport } from './sales/SalesReport';
 import { SalesShiftView } from './sales/SalesShiftView';
+import { useAuth } from '@/hooks/useAuth';
+import { getAdminSalesView } from '@/utils/adminViewMode';
 
 
 type PendingCompany = { name: string; inn: string };
 
 export function SalesManager() {
-  const [activeTab, setActiveTab] = useState('shift');
+  const { userRole } = useAuth();
+  // Админ без активного «просмотра от лица менеджера» видит СПИСОК менеджеров
+  // (логины/пароли/история/войти как), а не персональную смену продажника.
+  const isAdminView = userRole === 'admin' && !getAdminSalesView();
+  const [activeTab, setActiveTab] = useState(isAdminView ? 'managers' : 'shift');
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
+
 
   // Контекст компании, прокинутой из «Сделок 360°»
   const [proposalPrefill, setProposalPrefill] = useState<PendingCompany | null>(null);
