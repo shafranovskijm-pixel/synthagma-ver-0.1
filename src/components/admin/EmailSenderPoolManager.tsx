@@ -1,0 +1,233 @@
+import { useEffect, useMemo, useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Switch } from "@/components/ui/switch";
+import { Badge } from "@/components/ui/badge";
+import { toast } from "sonner";
+import { Loader2, Save, Trash2, AlertTriangle, CheckCircle2, KeyRound, Plus } from "lucide-react";
+
+type Sender = {
+  id: string;
+  email: string;
+  app_password: string | null;
+  host: string;
+  port: number;
+  encryption: string;
+  from_name: string | null;
+  is_active: boolean;
+  priority: number;
+  daily_limit: number;
+  sends_today: number;
+  last_used_at: string | null;
+  last_error: string | null;
+  last_error_at: string | null;
+  notes: string | null;
+};
+
+export function EmailSenderPoolManager() {
+  const [rows, setRows] = useState<Sender[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [savingId, setSavingId] = useState<string | null>(null);
+  const [drafts, setDrafts] = useState<Record<string, Partial<Sender>>>({});
+  const [newEmail, setNewEmail] = useState("");
+  const [newPass, setNewPass] = useState("");
+
+  const load = async () => {
+    setLoading(true);
+    const { data, error } = await supabase
+      .from("email_sender_pool")
+      .select("*")
+      .order("created_at", { ascending: true });
+    if (error) toast.error(error.message);
+    setRows((data as any) || []);
+    setLoading(false);
+  };
+
+  useEffect(() => { load(); }, []);
+
+  const stats = useMemo(() => ({
+    total: rows.length,
+    active: rows.filter(r => r.is_active && r.app_password).length,
+    withErrors: rows.filter(r => r.last_error).length,
+    sendsToday: rows.reduce((s, r) => s + (r.sends_today || 0), 0),
+  }), [rows]);
+
+  const patch = (id: string, p: Partial<Sender>) =>
+    setDrafts(d => ({ ...d, [id]: { ...d[id], ...p } }));
+
+  const save = async (row: Sender) => {
+    const draft = drafts[row.id] || {};
+    if (Object.keys(draft).length === 0) return;
+    setSavingId(row.id);
+    const { error } = await supabase.from("email_sender_pool").update(draft).eq("id", row.id);
+    setSavingId(null);
+    if (error) return toast.error(error.message);
+    toast.success("Сохранено");
+    setDrafts(d => { const n = { ...d }; delete n[row.id]; return n; });
+    load();
+  };
+
+  const remove = async (row: Sender) => {
+    if (!confirm(`Удалить ${row.email}?`)) return;
+    const { error } = await supabase.from("email_sender_pool").delete().eq("id", row.id);
+    if (error) return toast.error(error.message);
+    toast.success("Удалено");
+    load();
+  };
+
+  const toggleActive = async (row: Sender, v: boolean) => {
+    if (v && !(drafts[row.id]?.app_password ?? row.app_password)) {
+      return toast.error("Нужен app-пароль перед активацией");
+    }
+    const { error } = await supabase.from("email_sender_pool").update({ is_active: v }).eq("id", row.id);
+    if (error) return toast.error(error.message);
+    load();
+  };
+
+  const addNew = async () => {
+    if (!newEmail) return;
+    const { error } = await supabase.from("email_sender_pool").insert({
+      email: newEmail.trim(),
+      app_password: newPass.trim() || null,
+      host: "smtp.gmail.com", port: 465, encryption: "ssl",
+      from_name: "Синтагма",
+      is_active: !!newPass.trim(),
+    });
+    if (error) return toast.error(error.message);
+    setNewEmail(""); setNewPass("");
+    toast.success("Добавлено");
+    load();
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="rounded-xl border border-amber-500/40 bg-amber-500/5 p-4 text-sm">
+        <div className="flex items-start gap-2">
+          <AlertTriangle className="w-4 h-4 mt-0.5 text-amber-500 shrink-0" />
+          <div>
+            <div className="font-medium mb-1">Gmail SMTP требует app-пароли (16 символов без пробелов)</div>
+            <div className="text-muted-foreground">
+              Обычные пароли Google по SMTP не принимаются (BadCredentials).
+              Для каждого ящика: <b>myaccount.google.com → Security → 2-Step Verification → App passwords</b>,
+              создайте пароль «Mail» и вставьте сюда. После этого включите переключатель.
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <StatCard label="Всего" value={stats.total} />
+        <StatCard label="Активных" value={stats.active} tone="ok" />
+        <StatCard label="С ошибками" value={stats.withErrors} tone={stats.withErrors ? "err" : undefined} />
+        <StatCard label="Отправлено сегодня" value={stats.sendsToday} />
+      </div>
+
+      <div className="rounded-xl border p-3 flex flex-wrap items-end gap-2">
+        <div className="flex-1 min-w-[200px]">
+          <label className="text-xs text-muted-foreground">Новый email</label>
+          <Input value={newEmail} onChange={e => setNewEmail(e.target.value)} placeholder="name@yi.mannni.com" />
+        </div>
+        <div className="flex-1 min-w-[200px]">
+          <label className="text-xs text-muted-foreground">App-пароль (опционально)</label>
+          <Input value={newPass} onChange={e => setNewPass(e.target.value)} placeholder="xxxx xxxx xxxx xxxx" />
+        </div>
+        <Button onClick={addNew} className="gap-1"><Plus className="w-4 h-4" />Добавить</Button>
+      </div>
+
+      {loading ? (
+        <div className="flex justify-center py-8"><Loader2 className="w-5 h-5 animate-spin" /></div>
+      ) : (
+        <div className="overflow-x-auto rounded-xl border">
+          <table className="w-full text-sm">
+            <thead className="bg-muted/40 text-xs uppercase text-muted-foreground">
+              <tr>
+                <th className="p-2 text-left">Email</th>
+                <th className="p-2 text-left">App-пароль</th>
+                <th className="p-2 text-left">Хост:порт</th>
+                <th className="p-2 text-left">От имени</th>
+                <th className="p-2 text-center">Лимит/день</th>
+                <th className="p-2 text-center">Сегодня</th>
+                <th className="p-2 text-center">Активен</th>
+                <th className="p-2 text-left">Последняя ошибка</th>
+                <th className="p-2"></th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map(r => {
+                const d = drafts[r.id] || {};
+                const dirty = Object.keys(d).length > 0;
+                const currentPass = (d.app_password ?? r.app_password) || "";
+                return (
+                  <tr key={r.id} className="border-t align-top">
+                    <td className="p-2 font-mono text-xs">
+                      {r.email}
+                      {r.app_password ? (
+                        <CheckCircle2 className="inline w-3 h-3 text-emerald-500 ml-1" />
+                      ) : (
+                        <KeyRound className="inline w-3 h-3 text-amber-500 ml-1" />
+                      )}
+                    </td>
+                    <td className="p-2 min-w-[180px]">
+                      <Input
+                        type="text"
+                        className="h-8 text-xs font-mono"
+                        value={currentPass}
+                        placeholder="xxxx xxxx xxxx xxxx"
+                        onChange={e => patch(r.id, { app_password: e.target.value })}
+                      />
+                    </td>
+                    <td className="p-2 min-w-[160px]">
+                      <div className="flex gap-1">
+                        <Input className="h-8 text-xs" value={d.host ?? r.host} onChange={e => patch(r.id, { host: e.target.value })} />
+                        <Input className="h-8 text-xs w-16" type="number" value={d.port ?? r.port} onChange={e => patch(r.id, { port: Number(e.target.value) })} />
+                      </div>
+                    </td>
+                    <td className="p-2 min-w-[130px]">
+                      <Input className="h-8 text-xs" value={d.from_name ?? r.from_name ?? ""} onChange={e => patch(r.id, { from_name: e.target.value })} />
+                    </td>
+                    <td className="p-2 text-center">
+                      <Input className="h-8 text-xs w-20 text-center" type="number" value={d.daily_limit ?? r.daily_limit} onChange={e => patch(r.id, { daily_limit: Number(e.target.value) })} />
+                    </td>
+                    <td className="p-2 text-center text-xs text-muted-foreground">{r.sends_today}</td>
+                    <td className="p-2 text-center">
+                      <Switch checked={r.is_active} onCheckedChange={v => toggleActive(r, v)} />
+                    </td>
+                    <td className="p-2 max-w-[220px]">
+                      {r.last_error ? (
+                        <Badge variant="destructive" className="text-[10px] whitespace-normal">{r.last_error.slice(0, 80)}</Badge>
+                      ) : (
+                        <span className="text-xs text-muted-foreground">—</span>
+                      )}
+                    </td>
+                    <td className="p-2 flex gap-1">
+                      <Button size="sm" variant={dirty ? "default" : "outline"} disabled={!dirty || savingId === r.id} onClick={() => save(r)}>
+                        {savingId === r.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <Save className="w-3 h-3" />}
+                      </Button>
+                      <Button size="sm" variant="ghost" onClick={() => remove(r)}>
+                        <Trash2 className="w-3 h-3 text-destructive" />
+                      </Button>
+                    </td>
+                  </tr>
+                );
+              })}
+              {rows.length === 0 && (
+                <tr><td colSpan={9} className="p-6 text-center text-sm text-muted-foreground">Пул пуст</td></tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function StatCard({ label, value, tone }: { label: string; value: number; tone?: "ok" | "err" }) {
+  const cls = tone === "ok" ? "text-emerald-600" : tone === "err" ? "text-destructive" : "";
+  return (
+    <div className="rounded-xl border p-3">
+      <div className="text-xs text-muted-foreground">{label}</div>
+      <div className={`text-2xl font-semibold ${cls}`}>{value}</div>
+    </div>
+  );
+}

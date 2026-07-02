@@ -3168,6 +3168,69 @@ export type Database = {
           },
         ]
       }
+      email_sender_pool: {
+        Row: {
+          app_password: string | null
+          created_at: string
+          daily_limit: number
+          email: string
+          encryption: string
+          from_name: string | null
+          host: string
+          id: string
+          is_active: boolean
+          last_error: string | null
+          last_error_at: string | null
+          last_used_at: string | null
+          notes: string | null
+          port: number
+          priority: number
+          sends_reset_at: string
+          sends_today: number
+          updated_at: string
+        }
+        Insert: {
+          app_password?: string | null
+          created_at?: string
+          daily_limit?: number
+          email: string
+          encryption?: string
+          from_name?: string | null
+          host?: string
+          id?: string
+          is_active?: boolean
+          last_error?: string | null
+          last_error_at?: string | null
+          last_used_at?: string | null
+          notes?: string | null
+          port?: number
+          priority?: number
+          sends_reset_at?: string
+          sends_today?: number
+          updated_at?: string
+        }
+        Update: {
+          app_password?: string | null
+          created_at?: string
+          daily_limit?: number
+          email?: string
+          encryption?: string
+          from_name?: string | null
+          host?: string
+          id?: string
+          is_active?: boolean
+          last_error?: string | null
+          last_error_at?: string | null
+          last_used_at?: string | null
+          notes?: string | null
+          port?: number
+          priority?: number
+          sends_reset_at?: string
+          sends_today?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       email_suppressions: {
         Row: {
           created_at: string
@@ -10461,6 +10524,10 @@ export type Database = {
           invitation_type: string
         }[]
       }
+      mark_email_sender_result: {
+        Args: { _error?: string; _sender_id: string }
+        Returns: undefined
+      }
       next_reg_number: {
         Args: { p_doc_type: string; p_org: string; p_year?: number }
         Returns: number
@@ -10472,6 +10539,18 @@ export type Database = {
       org_role_default_permissions: {
         Args: { _role: string }
         Returns: string[]
+      }
+      pick_next_email_sender: {
+        Args: never
+        Returns: {
+          app_password: string
+          email: string
+          encryption: string
+          from_name: string
+          host: string
+          id: string
+          port: number
+        }[]
       }
       public_get_organization_by_slug: {
         Args: { p_slug: string }

@@ -2,8 +2,9 @@ import { useState, useEffect, Suspense } from "react";
 import { ThemePersonalization } from "@/components/ui/ThemePersonalization";
 import {
   Palette, Database, Shield, Bell, Save, Globe, Tag, Sparkles,
-  RefreshCw, BarChart3, FileText, Bot, Terminal, Users, FolderOpen, FileSignature, Receipt, CreditCard, Activity
+  RefreshCw, BarChart3, FileText, Bot, Terminal, Users, FolderOpen, FileSignature, Receipt, CreditCard, Activity, Mail
 } from "lucide-react";
+
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
@@ -20,6 +21,8 @@ import { AdminStaffTab } from "./AdminStaffTab";
 import { AdminMediaLibrary } from "./AdminMediaLibrary";
 import { SignaturesJournal } from "@/components/signing/SignaturesJournal";
 import { AdminOperatorRequisites } from "./AdminOperatorRequisites";
+import { EmailSenderPoolManager } from "./EmailSenderPoolManager";
+
 const AdminFinanceOverview = lazyWithRetry(() => import("./AdminFinanceOverview").then(m => ({ default: m.AdminFinanceOverview })));
 const AdminClientErrorsTab = lazyWithRetry(() => import("./AdminClientErrorsTab").then(m => ({ default: m.AdminClientErrorsTab })));
 import { SigmaSpinner } from "@/components/ui/SigmaSpinner";
@@ -29,7 +32,7 @@ interface SystemSettings {
   registrationEnabled: boolean;
 }
 
-type SectionKey = "theme" | "staff" | "operator" | "finance" | "client-errors" | "db" | "media" | "signatures" | "cache" | "seo" | "system" | "promo" | "notifications" | "analytics" | "content" | "ai" | "devtools";
+type SectionKey = "theme" | "staff" | "operator" | "finance" | "client-errors" | "db" | "media" | "signatures" | "cache" | "seo" | "system" | "promo" | "notifications" | "analytics" | "content" | "ai" | "devtools" | "email-pool";
 
 const SECTIONS: { key: SectionKey; label: string; icon: React.ElementType; color: string }[] = [
   { key: "theme", label: "Тема оформления", icon: Palette, color: "text-violet-500" },
@@ -49,6 +52,8 @@ const SECTIONS: { key: SectionKey; label: string; icon: React.ElementType; color
   { key: "content", label: "Контент", icon: FileText, color: "text-teal-500" },
   { key: "ai", label: "ИИ-провайдеры", icon: Bot, color: "text-purple-500" },
   { key: "devtools", label: "Developer Tools", icon: Terminal, color: "text-primary" },
+  { key: "email-pool", label: "Пул email-отправителей", icon: Mail, color: "text-blue-500" },
+
 ];
 
 export function AdminSettings() {
@@ -248,7 +253,9 @@ export function AdminSettings() {
       case "content": return <BlogManager />;
       case "ai": return <AISettingsManager />;
       case "devtools": return <DevToolsPanel />;
+      case "email-pool": return <EmailSenderPoolManager />;
       default: return null;
+
     }
   };
 
