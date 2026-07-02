@@ -163,3 +163,7 @@ verify_jwt = false
 [functions.student-auto-login]
 verify_jwt = false
 
+[functions.novofon-webhook]
+verify_jwt = false
+
+
