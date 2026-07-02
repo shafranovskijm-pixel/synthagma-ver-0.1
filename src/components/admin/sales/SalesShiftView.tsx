@@ -138,8 +138,8 @@ export function SalesShiftView({ onCreateProposal, onCreateContract }: Props) {
   const currentPage = Math.min(page, totalPages);
   const pageItems = queue.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
 
-  const remaining = Math.max(0, dailyPlan - doneToday);
-  const progressPct = Math.min(100, Math.round((doneToday / Math.max(1, dailyPlan)) * 100));
+  const remaining = Math.max(0, dailyPlan - dozvonyToday);
+  const progressPct = Math.min(100, Math.round((dozvonyToday / Math.max(1, dailyPlan)) * 100));
 
   const firstLead = pageItems[0]?.lead ?? null;
 
