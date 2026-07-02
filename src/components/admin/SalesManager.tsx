@@ -9,7 +9,7 @@ import { SalesControlPanel } from './sales/SalesControlPanel';
 import { SalesContracts } from './sales/SalesContracts';
 import { CompetitorComparison } from './sales/CompetitorComparison';
 import { DocumentSigning } from './sales/DocumentSigning';
-import { SalesSidebar, SalesSidebarContent, salesMenuGroups } from './sales/SalesSidebar';
+import { SalesSidebarContent, salesMenuGroups } from './sales/SalesSidebar';
 import { Deals360 } from './sales/Deals360';
 import { BroadcastManager } from './BroadcastManager';
 import { SalesOverview } from './sales/SalesOverview';
@@ -17,12 +17,13 @@ import { SalesTasks } from './sales/SalesTasks';
 import { CompaniesUnified } from './sales/CompaniesUnified';
 import { LogActivityDialog } from './sales/LogActivityDialog';
 import { SalesReport } from './sales/SalesReport';
+import { SalesShiftView } from './sales/SalesShiftView';
 
 
 type PendingCompany = { name: string; inn: string };
 
 export function SalesManager() {
-  const [activeTab, setActiveTab] = useState('companies');
+  const [activeTab, setActiveTab] = useState('shift');
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
   // Контекст компании, прокинутой из «Сделок 360°»
@@ -79,6 +80,8 @@ export function SalesManager() {
   }, []);
 
   const TABS: Record<string, React.ReactNode> = {
+    shift: <SalesShiftView onCreateProposal={goCreateProposal} onCreateContract={goCreateContract} />,
+    
     
     overview: <SalesOverview onJump={handleJump} />,
     report: <SalesReport />,
@@ -126,24 +129,26 @@ export function SalesManager() {
   const CurrentIcon = currentItem.icon;
 
   return (
-    <div className="flex flex-col md:flex-row gap-4">
-      <SalesSidebar activeTab={activeTab} onTabChange={setActiveTab} />
-
-      {/* Мобильный триггер навигации */}
+    <div className="flex flex-col gap-4">
+      {/* Единая кнопка «меню» — раскрывает список разделов слева */}
       <Sheet open={mobileNavOpen} onOpenChange={setMobileNavOpen}>
-        <SheetTrigger asChild>
-          <Button
-            variant="outline"
-            className="md:hidden w-full justify-between rounded-xl"
-          >
-            <span className="flex items-center gap-2">
+        <div className="flex items-center gap-2">
+          <SheetTrigger asChild>
+            <Button
+              variant="outline"
+              size="sm"
+              className="rounded-xl gap-2 shrink-0"
+              aria-label="Открыть меню продаж"
+            >
               <Menu className="w-4 h-4" />
-              <CurrentIcon className="w-4 h-4 text-primary" />
-              <span className="font-medium">{currentItem.label}</span>
-            </span>
-            <span className="text-xs text-muted-foreground">Меню</span>
-          </Button>
-        </SheetTrigger>
+              <span className="hidden sm:inline">Меню</span>
+            </Button>
+          </SheetTrigger>
+          <div className="flex items-center gap-2 min-w-0">
+            <CurrentIcon className="w-4 h-4 text-primary shrink-0" />
+            <span className="font-medium text-sm truncate">{currentItem.label}</span>
+          </div>
+        </div>
         <SheetContent side="left" className="w-72 overflow-y-auto">
           <SheetHeader className="mb-4">
             <SheetTitle>Разделы продаж</SheetTitle>
@@ -158,6 +163,7 @@ export function SalesManager() {
       <div className="flex-1 min-w-0">
         {TABS[activeTab]}
       </div>
+
 
       {/* Универсальный диалог звонок/заметка */}
       {activityDialog.company && (

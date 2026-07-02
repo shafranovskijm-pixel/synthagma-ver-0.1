@@ -1,4 +1,4 @@
-import { Target, FileText, Building2, ScrollText, PenTool, Sparkles, Send, ListTodo, Package, BarChart3, GitCompareArrows, Users, LineChart } from 'lucide-react';
+import { Target, FileText, Building2, ScrollText, PenTool, Sparkles, Send, ListTodo, Package, BarChart3, GitCompareArrows, Users, LineChart, Headphones } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
@@ -18,6 +18,7 @@ const railGroups: MenuGroup[] = [
   {
     label: 'Главное',
     items: [
+      { id: 'shift', label: 'Смена', icon: Headphones },
       { id: 'overview', label: 'Обзор', icon: Target },
       { id: 'tasks', label: 'Задачи', icon: ListTodo },
       { id: 'report', label: 'Отчёт', icon: LineChart },

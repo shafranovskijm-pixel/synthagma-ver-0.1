@@ -53,8 +53,28 @@ export function SalesOverview({ onJump, organizationId, availableSections }: Pro
   const [savingPlan, setSavingPlan] = useState(false);
   const [inviteOpen, setInviteOpen] = useState(false);
 
+  // Дневная норма дозвонов
+  const [dailyPlan, setDailyPlan] = useState<number>(80);
+  const [dailyDraft, setDailyDraft] = useState<string>('80');
+  const [dailyEditing, setDailyEditing] = useState(false);
+  const [dailySaving, setDailySaving] = useState(false);
 
   useEffect(() => { void load(); }, [organizationId, leaderPeriod]);
+
+  useEffect(() => {
+    if (organizationId) return;
+    (async () => {
+      const { data } = await supabase.from('app_settings')
+        .select('setting_value').eq('setting_key', 'sales_daily_plan').maybeSingle();
+      try {
+        const parsed = data?.setting_value ? JSON.parse(String(data.setting_value)) : null;
+        const n = Number(parsed?.default) || 80;
+        setDailyPlan(n);
+        setDailyDraft(String(n));
+      } catch { /* keep default */ }
+    })();
+  }, [organizationId]);
+
 
   const safeJump = (tab: string, inn?: string | null) => {
     if (!availableSections || availableSections.includes(tab)) onJump?.(tab, inn);
@@ -256,6 +276,29 @@ export function SalesOverview({ onJump, organizationId, availableSections }: Pro
     }
   }
 
+  async function saveDailyPlan() {
+    const num = Number(dailyDraft.replace(/\s/g, '').replace(',', '.'));
+    if (!Number.isFinite(num) || num <= 0) { toast.error('Введите положительное число'); return; }
+    setDailySaving(true);
+    try {
+      // Сохраняем в формате { default, byManager }
+      const { data: cur } = await supabase.from('app_settings')
+        .select('setting_value').eq('setting_key', 'sales_daily_plan').maybeSingle();
+      let existing: any = {};
+      try { existing = cur?.setting_value ? JSON.parse(String(cur.setting_value)) : {}; } catch { /* noop */ }
+      const next = { default: Math.round(num), byManager: existing?.byManager || {} };
+      const { error } = await supabase.from('app_settings')
+        .upsert({ setting_key: 'sales_daily_plan', setting_value: JSON.stringify(next) }, { onConflict: 'setting_key' });
+      if (error) throw error;
+      setDailyPlan(Math.round(num));
+      setDailyEditing(false);
+      toast.success('Дневная норма сохранена');
+    } catch (e: any) {
+      toast.error(e?.message || 'Не удалось сохранить');
+    } finally { setDailySaving(false); }
+  }
+
+
   if (loading || !data) {
     return <div className="flex justify-center py-12"><SigmaSpinner size="lg" /></div>;
   }
@@ -288,6 +331,47 @@ export function SalesOverview({ onJump, organizationId, availableSections }: Pro
         )}
       </div>
       <InviteSalesManagerDialog open={inviteOpen} onOpenChange={setInviteOpen} />
+
+      {!organizationId && (
+        <Card className="rounded-2xl border-dashed">
+          <CardContent className="p-4 flex items-center gap-3 flex-wrap">
+            <div className="flex items-center gap-2 text-sm">
+              <Clock className="w-4 h-4 text-primary" />
+              <span className="font-medium">Дневная норма дозвонов</span>
+              <span className="text-muted-foreground">— применяется в разделе «Смена» у менеджеров</span>
+            </div>
+            <div className="flex items-center gap-1.5 ml-auto">
+              {dailyEditing ? (
+                <>
+                  <Input
+                    value={dailyDraft}
+                    onChange={e => setDailyDraft(e.target.value)}
+                    className="h-8 w-24 text-sm"
+                    inputMode="numeric"
+                    autoFocus
+                    onKeyDown={e => { if (e.key === 'Enter') void saveDailyPlan(); if (e.key === 'Escape') setDailyEditing(false); }}
+                  />
+                  <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => void saveDailyPlan()} disabled={dailySaving}>
+                    <Check className="w-4 h-4 text-emerald-600" />
+                  </Button>
+                  <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => setDailyEditing(false)} disabled={dailySaving}>
+                    <X className="w-4 h-4 text-muted-foreground" />
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <Badge variant="secondary" className="rounded-lg">{dailyPlan} звонков / день</Badge>
+                  <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => { setDailyDraft(String(dailyPlan)); setDailyEditing(true); }} title="Изменить норму">
+                    <Pencil className="w-3.5 h-3.5" />
+                  </Button>
+                </>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+
 
 
       {/* Top row */}
