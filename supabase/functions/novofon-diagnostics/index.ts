@@ -94,7 +94,7 @@ serve(async (req) => {
         ? "Call API токен или login/password найдены"
         : canUseClassicFallback()
           ? "Включён резервный Novofon callback по API Key + Secret"
-          : "Нет NOVOFON_ACCESS_TOKEN или NOVOFON_LOGIN/NOVOFON_PASSWORD",
+          : "Нет Call API доступа или резервного API Key + Secret",
     });
 
     try {
