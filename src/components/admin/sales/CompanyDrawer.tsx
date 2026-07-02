@@ -354,6 +354,19 @@ export function CompanyDrawer({ lead, open, onOpenChange, managerName, managerPh
         onSaved={() => fetchActivities(lead.id)}
         onSaveAndNext={onSaveAndNext}
       />
+
+      <SendProposalDialog
+        open={proposalPopoverOpen}
+        onOpenChange={setProposalPopoverOpen}
+        companyName={lead.org_name}
+        contactPerson={directorName}
+        defaultEmail={sendEmail || lead.email || ''}
+        leadId={lead.id}
+        managerName={managerName}
+        onSent={(name) => {
+          addActivity(lead.id, null, 'email', `Отправлено КП «${name}» на ${sendEmail || lead.email}`);
+        }}
+      />
     </>
   );
 }
