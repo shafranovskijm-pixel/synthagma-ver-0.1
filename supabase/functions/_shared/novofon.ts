@@ -231,8 +231,8 @@ export async function novofonClassicRequest<T = unknown>(
   path: string,
   params: Record<string, unknown> = {},
 ): Promise<T> {
-  const key = Deno.env.get("NOVOFON_API_KEY");
-  const secret = Deno.env.get("NOVOFON_API_SECRET");
+  const key = Deno.env.get("NOVOFON_API_KEY")?.trim();
+  const secret = Deno.env.get("NOVOFON_API_SECRET")?.trim();
   if (!key || !secret) throw new Error("NOVOFON_API_KEY/SECRET not configured");
 
   const requestParams = { ...params, format: "json" };
@@ -247,7 +247,7 @@ export async function novofonClassicRequest<T = unknown>(
   const res = await fetch(url, {
     method,
     headers: {
-      Authorization: `${key.trim()}:${signature}`,
+      Authorization: `${key}:${signature}`,
       Accept: "application/json",
       ...(method === "POST" ? { "Content-Type": "application/x-www-form-urlencoded" } : {}),
     },

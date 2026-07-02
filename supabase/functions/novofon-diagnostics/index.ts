@@ -49,8 +49,7 @@ function errorDetails(error: unknown): Record<string, unknown> {
 }
 
 function canUseClassicFallback() {
-  return Deno.env.get("NOVOFON_CLASSIC_FALLBACK") === "true"
-    && Boolean(Deno.env.get("NOVOFON_API_KEY") && Deno.env.get("NOVOFON_API_SECRET"));
+  return Boolean(Deno.env.get("NOVOFON_API_KEY") && Deno.env.get("NOVOFON_API_SECRET"));
 }
 
 function shouldFallbackToClassic(error: unknown) {
