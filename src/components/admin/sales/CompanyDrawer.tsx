@@ -21,6 +21,7 @@ import { toast } from 'sonner';
 import { getErrorMessage } from '@/utils/handleSupabaseError';
 import { useAuth } from '@/hooks/useAuth';
 import type { CallResultKey } from '@/constants/coldCallScript';
+import { extractExtraPhones, formatRuPhone } from '@/utils/phoneParser';
 
 
 const LEAD_STATUS_MAP: Record<string, { label: string; color: string }> = {
@@ -119,13 +120,19 @@ export function CompanyDrawer({ lead, open, onOpenChange, managerName, managerPh
   const okHours = isBusinessHours(lead.region);
   const st = LEAD_STATUS_MAP[status] || LEAD_STATUS_MAP.new;
 
-  const handleQuickCall = async () => {
-    if (!lead.phone) return;
+  const extraPhones = useMemo(
+    () => extractExtraPhones(notes, lead?.phone),
+    [notes, lead?.phone],
+  );
+
+  const handleQuickCall = async (overrideNumber?: string) => {
+    const dial = overrideNumber || lead.phone;
+    if (!dial) return;
     setIsCalling(true); // включаем караоке сразу
     try {
       const { data, error } = await supabase.functions.invoke('novofon-call-start', {
         body: {
-          to_number: lead.phone,
+          to_number: dial,
           lead_id: lead.id,
           company_inn: lead.inn ?? null,
           company_name: lead.org_name ?? null,
@@ -134,14 +141,14 @@ export function CompanyDrawer({ lead, open, onOpenChange, managerName, managerPh
       });
       if (error) throw error;
       if (data?.ok) {
-        toast.success('Звоним через Novofon', { description: 'Ответьте на своём телефоне — АТС соединит с клиентом.' });
+        toast.success('Звоним через Novofon', { description: `Набираем ${formatRuPhone(dial)} — ответьте на своём телефоне.` });
       } else {
         toast.error('Не удалось запустить звонок', { description: data?.message || data?.error || data?.novofon?.message || 'Проверьте токен Call API Novofon' });
       }
     } catch (e) {
       toast.error('Ошибка звонка', { description: e instanceof Error ? e.message : String(e) });
     }
-    await addActivity(lead.id, null, 'call', `Исходящий звонок Novofon: ${lead.phone}`);
+    await addActivity(lead.id, null, 'call', `Исходящий звонок Novofon: ${dial}`);
     setPresetResult(undefined);
     setResultOpen(true);
   };
@@ -196,13 +203,33 @@ export function CompanyDrawer({ lead, open, onOpenChange, managerName, managerPh
               )}
             </div>
             <div className="flex gap-2 pt-1">
-              <Button size="sm" className="flex-1 h-8" disabled={!lead.phone} onClick={handleQuickCall}>
-                <Phone className="w-3.5 h-3.5 mr-1" />Позвонить
+              <Button size="sm" className="flex-1 h-8" disabled={!lead.phone} onClick={() => handleQuickCall()}>
+                <Phone className="w-3.5 h-3.5 mr-1" />Позвонить{lead.phone ? ` ${formatRuPhone(lead.phone) || lead.phone}` : ''}
               </Button>
               <Button size="sm" variant="outline" className="h-8" onClick={() => { setPresetResult(undefined); setResultOpen(true); }}>
                 Результат
               </Button>
             </div>
+            {extraPhones.length > 0 && (
+              <div className="pt-1">
+                <div className="text-[11px] text-muted-foreground mb-1">Доп. телефоны из заметок ({extraPhones.length})</div>
+                <div className="flex flex-wrap gap-1.5">
+                  {extraPhones.map(p => (
+                    <Button
+                      key={p}
+                      size="sm"
+                      variant="outline"
+                      className="h-7 px-2 text-xs"
+                      onClick={() => handleQuickCall(p)}
+                      title={`Позвонить на ${p}`}
+                    >
+                      <Phone className="w-3 h-3 mr-1" />
+                      {formatRuPhone(p)}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+            )}
           </SheetHeader>
 
           <div className="flex-1 overflow-y-auto">
