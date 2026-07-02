@@ -182,7 +182,7 @@ const AdminDashboard = () => {
           <Suspense fallback={<LazyLoadFallback />}>
             {activeTab === "analytics" && <AdminAnalytics />}
             {activeTab === "marketplace" && <AdminMarketplaceManager />}
-            {activeTab === "sales" && <SalesManager />}
+            {activeTab === "sales" && <SalesAdminView />}
             {activeTab === "billing" && <AdminBillingOverview pendingExpandContractId={pendingExpandContractId} />}
             {activeTab === "finance" && <AdminFinanceOverview />}
             {activeTab === "ai" && <AISettingsManager />}
