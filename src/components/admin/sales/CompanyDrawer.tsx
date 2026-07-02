@@ -158,34 +158,6 @@ export function CompanyDrawer({ lead, open, onOpenChange, managerName, managerPh
     setResultOpen(true);
   };
 
-  const handleSendProposal = async () => {
-    if (!selectedTpl) { toast.error('Выберите шаблон КП'); return; }
-    if (!/^\S+@\S+\.\S+$/.test(sendEmail.trim())) {
-      toast.error('Укажите корректный email'); return;
-    }
-    setSending(true);
-    try {
-      const { data, error } = await supabase.functions.invoke('send-platform-proposal', {
-        body: {
-          template_proposal_id: selectedTpl,
-          recipient_email: sendEmail.trim(),
-          company_name: lead.org_name,
-          contact_person: directorName ?? null,
-          lead_id: lead.id,
-          sender_name: managerName || user?.email || 'Менеджер СИНТАГМА',
-        },
-      });
-      if (error) throw error;
-      if ((data as any)?.error) throw new Error((data as any).error);
-      const url = (data as any)?.proposal_url;
-      toast.success(`КП отправлено на ${sendEmail}`, { description: url });
-      await addActivity(lead.id, null, 'email', `Отправлено КП «${proposalTemplates.find(t => t.id === selectedTpl)?.company_name || ''}» на ${sendEmail}`);
-    } catch (e) {
-      toast.error('Не удалось отправить КП', { description: getErrorMessage(e) });
-    } finally {
-      setSending(false);
-    }
-  };
 
   return (
     <>
