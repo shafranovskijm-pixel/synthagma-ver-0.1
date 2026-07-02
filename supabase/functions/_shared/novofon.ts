@@ -2,6 +2,7 @@
 // Docs: https://novofon.github.io/call_api/
 import { encodeHex } from "https://deno.land/std@0.224.0/encoding/hex.ts";
 import { encodeBase64 } from "https://deno.land/std@0.224.0/encoding/base64.ts";
+import { crypto as stdCrypto } from "https://deno.land/std@0.224.0/crypto/mod.ts";
 
 const API_BASE = "https://api.novofon.com";
 
@@ -18,7 +19,7 @@ async function hmacSha1Hex(key: string, msg: string): Promise<string> {
 }
 
 async function md5Hex(msg: string): Promise<string> {
-  const buf = await crypto.subtle.digest("MD5", new TextEncoder().encode(msg));
+  const buf = await stdCrypto.subtle.digest("MD5", new TextEncoder().encode(msg));
   return encodeHex(new Uint8Array(buf));
 }
 
