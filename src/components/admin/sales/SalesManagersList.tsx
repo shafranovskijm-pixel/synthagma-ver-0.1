@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, UserCheck, UserX, Phone, Eye, Link2, Copy, Send, Wand2, Mail, MessageCircle, ListTodo, BarChart3 } from 'lucide-react';
+import { Plus, UserCheck, UserX, Phone, Eye, Link2, Copy, Send, Wand2, Mail, MessageCircle, ListTodo, BarChart3, KeyRound } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
