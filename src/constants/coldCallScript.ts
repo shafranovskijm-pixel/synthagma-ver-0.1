@@ -108,7 +108,7 @@ export const shortScript30s: string[] = [
 // Результаты звонка. Маппятся на sales_leads.status.
 export const CALL_RESULTS = [
   { key: 'no_answer',      label: 'Не дозвонился',        status: null },
-  { key: 'gatekeeper',     label: 'Не ЛPR / секретарь',   status: null },
+  { key: 'gatekeeper',     label: 'Не ЛПР / секретарь',   status: null },
   { key: 'not_interested', label: 'Не актуально',         status: 'not_interested' },
   { key: 'interested',     label: 'Есть интерес',         status: 'interested' },
   { key: 'send_info',      label: 'Отправить информацию', status: 'in_progress' },
