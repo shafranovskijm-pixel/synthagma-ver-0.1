@@ -17,12 +17,13 @@ import { SalesTasks } from './sales/SalesTasks';
 import { CompaniesUnified } from './sales/CompaniesUnified';
 import { LogActivityDialog } from './sales/LogActivityDialog';
 import { SalesReport } from './sales/SalesReport';
+import { SalesShiftView } from './sales/SalesShiftView';
 
 
 type PendingCompany = { name: string; inn: string };
 
 export function SalesManager() {
-  const [activeTab, setActiveTab] = useState('companies');
+  const [activeTab, setActiveTab] = useState('shift');
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
   // Контекст компании, прокинутой из «Сделок 360°»
@@ -79,6 +80,8 @@ export function SalesManager() {
   }, []);
 
   const TABS: Record<string, React.ReactNode> = {
+    shift: <SalesShiftView onCreateProposal={goCreateProposal} onCreateContract={goCreateContract} />,
+    
     
     overview: <SalesOverview onJump={handleJump} />,
     report: <SalesReport />,
