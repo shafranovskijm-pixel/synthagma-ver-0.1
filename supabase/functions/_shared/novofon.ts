@@ -57,7 +57,10 @@ function parseMnemonic(data: unknown): string | undefined {
 }
 
 function getStaticCallAccessToken(): string | null {
-  return Deno.env.get("NOVOFON_ACCESS_TOKEN")?.trim() || null;
+  return Deno.env.get("NOVOFON_JSONRPC_ACCESS_KEY")?.trim()
+    || Deno.env.get("NOVOFON_ACCESS_TOKEN")?.trim()
+    || Deno.env.get("NOVOFON_API_KEY")?.trim()
+    || null;
 }
 
 function getStaticDataAccessToken(): string | null {
@@ -110,12 +113,23 @@ async function login(baseUrl: string, loginEnv: string, passwordEnv: string): Pr
   return data.access_token || null;
 }
 
+async function safeLogin(baseUrl: string, loginEnv: string, passwordEnv: string): Promise<string | null> {
+  try {
+    return await login(baseUrl, loginEnv, passwordEnv);
+  } catch (error) {
+    if (error instanceof NovofonApiError && (error.mnemonic === "auth_error" || error.mnemonic === "access_token_invalid")) {
+      return null;
+    }
+    throw error;
+  }
+}
+
 export async function getCallAccessToken(): Promise<string> {
   // A manually saved NOVOFON_ACCESS_TOKEN can expire or be copied from the
   // wrong Novofon API section. If account login/password are configured, always
   // mint a fresh 1-hour Call API session first and use the static token only as
   // a fallback.
-  const token = await login(CALL_API_BASE, "NOVOFON_LOGIN", "NOVOFON_PASSWORD") || getStaticCallAccessToken();
+  const token = await safeLogin(CALL_API_BASE, "NOVOFON_LOGIN", "NOVOFON_PASSWORD") || getStaticCallAccessToken();
   if (!token) {
     throw new NovofonApiError(
       "NOVOFON_ACCESS_TOKEN or NOVOFON_LOGIN/NOVOFON_PASSWORD not configured",
@@ -126,7 +140,7 @@ export async function getCallAccessToken(): Promise<string> {
 }
 
 export async function getDataAccessToken(): Promise<string> {
-  const token = await login(DATA_API_BASE, "NOVOFON_DATA_LOGIN", "NOVOFON_DATA_PASSWORD") || await login(DATA_API_BASE, "NOVOFON_LOGIN", "NOVOFON_PASSWORD") || getStaticDataAccessToken();
+  const token = await safeLogin(DATA_API_BASE, "NOVOFON_DATA_LOGIN", "NOVOFON_DATA_PASSWORD") || await safeLogin(DATA_API_BASE, "NOVOFON_LOGIN", "NOVOFON_PASSWORD") || getStaticDataAccessToken();
   if (!token) {
     throw new NovofonApiError(
       "NOVOFON_DATA_ACCESS_TOKEN/NOVOFON_ACCESS_TOKEN or login/password not configured",
