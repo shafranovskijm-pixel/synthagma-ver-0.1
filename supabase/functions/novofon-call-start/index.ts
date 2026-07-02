@@ -91,6 +91,7 @@ serve(async (req) => {
         status: "dialing",
         provider: "novofon",
         novofon_call_id: nfRes.call_id ?? null,
+        notes: is_test ? '__test_call__' : null,
       })
       .select("id")
       .single();
