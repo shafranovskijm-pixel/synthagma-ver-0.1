@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, UserCheck, UserX, Phone, Eye, Link2, Copy, Send, Wand2, Mail, MessageCircle, ListTodo, BarChart3 } from 'lucide-react';
+import { Plus, UserCheck, UserX, Phone, Eye, Link2, Copy, Send, Wand2, Mail, MessageCircle, ListTodo, BarChart3, KeyRound } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
@@ -19,7 +19,7 @@ import { ManagerStatsDialog } from './ManagerStatsDialog';
 interface CreatedCreds { email: string; password: string; generated: boolean; fullName: string }
 
 export function SalesManagersList() {
-  const { managers, fetchManagers, createManager, toggleManagerActive, loading, leads, proposals, fetchLeads, fetchProposals } = useSalesManager();
+  const { managers, fetchManagers, createManager, toggleManagerActive, resetManagerPassword, loading, leads, proposals, fetchLeads, fetchProposals } = useSalesManager();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [inviteOpen, setInviteOpen] = useState(false);
   const [autoGen, setAutoGen] = useState(true);
@@ -204,11 +204,23 @@ export function SalesManagersList() {
                   <Button
                     variant="outline"
                     size="sm"
+                    onClick={async () => {
+                      if (!confirm(`Сбросить пароль для ${m.full_name}? Старый пароль перестанет работать.`)) return;
+                      const res = await resetManagerPassword(m.id);
+                      if (res) setCreated({ email: res.email, password: res.password, generated: true, fullName: res.full_name });
+                    }}
+                  >
+                    <KeyRound className="w-4 h-4 mr-1" />Сбросить пароль
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
                     onClick={() => toggleManagerActive(m.id, !m.is_active)}
                   >
                     {m.is_active ? <><UserX className="w-4 h-4 mr-1" />Деактивировать</> : <><UserCheck className="w-4 h-4 mr-1" />Активировать</>}
                   </Button>
                 </div>
+
               </CardContent>
             </Card>
           );

@@ -16,7 +16,7 @@ const SupportRequestsManager = lazyWithRetry(() => import("@/components/admin/Su
 const AdminSettings = lazyWithRetry(() => import("@/components/admin/AdminSettings").then(m => ({ default: m.AdminSettings })));
 const BlogManager = lazyWithRetry(() => import("@/components/admin/BlogManager").then(m => ({ default: m.BlogManager })));
 const DevToolsPanel = lazyWithRetry(() => import("@/components/admin/DevToolsPanel").then(m => ({ default: m.DevToolsPanel })));
-const SalesManager = lazyWithRetry(() => import("@/components/admin/SalesManager").then(m => ({ default: m.SalesManager })));
+const SalesAdminView = lazyWithRetry(() => import("@/components/admin/sales/SalesAdminView").then(m => ({ default: m.SalesAdminView })));
 const AISettingsManager = lazyWithRetry(() => import("@/components/admin/AISettingsManager").then(m => ({ default: m.AISettingsManager })));
 const BroadcastManager = lazyWithRetry(() => import("@/components/admin/BroadcastManager").then(m => ({ default: m.BroadcastManager })));
 const AdminChatsManager = lazyWithRetry(() => import("@/components/admin/AdminChatsManager").then(m => ({ default: m.AdminChatsManager })));
@@ -29,6 +29,8 @@ const AdminClientErrorsTab = lazyWithRetry(() => import("@/components/admin/Admi
 
 import { useAdminBranding } from "@/hooks/useAdminBranding";
 import { supabase } from "@/integrations/supabase/client";
+import { clearAdminSalesView } from "@/utils/adminViewMode";
+
 import { getStoredThemeId, getThemeById, type AdminTheme } from "@/constants/admin-themes";
 import { ThemeAnimations, getStoredAnimationLevel, type AnimationLevel } from "@/components/ui/ThemeAnimations";
 import { AtmosphericBleed } from "@/components/ui/AtmosphericBleed";
@@ -54,7 +56,12 @@ const AdminDashboard = () => {
   });
   const [animLevel, setAnimLevel] = useState<AnimationLevel>(getStoredAnimationLevel);
 
+  // Убираем зависший флаг «Войти как менеджер», чтобы админ всегда видел
+  // свою админку, а не shift-экран продажника.
+  useEffect(() => { clearAdminSalesView(); }, []);
+
   useEffect(() => {
+
     const handler = (e: Event) => {
       const id = (e as CustomEvent).detail;
       setActiveTheme(id ? getThemeById(id) || null : null);
@@ -182,7 +189,7 @@ const AdminDashboard = () => {
           <Suspense fallback={<LazyLoadFallback />}>
             {activeTab === "analytics" && <AdminAnalytics />}
             {activeTab === "marketplace" && <AdminMarketplaceManager />}
-            {activeTab === "sales" && <SalesManager />}
+            {activeTab === "sales" && <SalesAdminView />}
             {activeTab === "billing" && <AdminBillingOverview pendingExpandContractId={pendingExpandContractId} />}
             {activeTab === "finance" && <AdminFinanceOverview />}
             {activeTab === "ai" && <AISettingsManager />}

@@ -324,12 +324,30 @@ export function useSalesManager() {
     return true;
   };
 
+  const resetManagerPassword = async (
+    managerId: string
+  ): Promise<{ email: string; password: string; full_name: string } | null> => {
+    try {
+      const { data, error } = await safeInvoke<any>('create-sales-manager', {
+        body: { action: 'reset_password', manager_id: managerId },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      toast.success('Пароль сброшен');
+      return { email: data.email, password: data.password, full_name: data.full_name };
+    } catch (err) {
+      toast.error('Не удалось сбросить пароль', { description: getErrorMessage(err) });
+      return null;
+    }
+  };
+
   return {
     services, managers, proposals, leads, activities, loading,
     fetchServices, fetchManagers, fetchProposals, fetchLeads, fetchActivities,
     createService, updateService, deleteService,
     createProposal, updateProposal, updateProposalStatus, deleteProposal, getProposalServices,
     importLeads, assignLeads, claimLeads, updateLeadStatus, updateLeadNotes,
-    addActivity, ensureCurrentManagerId, createManager, toggleManagerActive
+    addActivity, ensureCurrentManagerId, createManager, toggleManagerActive, resetManagerPassword
   };
 }
+

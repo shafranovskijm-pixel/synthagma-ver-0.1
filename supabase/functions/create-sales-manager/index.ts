@@ -55,11 +55,36 @@ Deno.serve(async (req) => {
     }
 
     const body = await req.json();
+
+    // ── Режим сброса пароля существующему менеджеру ────────────────────────
+    if (body.action === 'reset_password') {
+      const managerId: string = body.manager_id || '';
+      if (!managerId) {
+        return new Response(JSON.stringify({ error: 'manager_id required' }), { status: 400, headers: corsHeaders });
+      }
+      const { data: mgr, error: mgrErr } = await adminClient
+        .from('sales_managers').select('user_id, full_name').eq('id', managerId).maybeSingle();
+      if (mgrErr || !mgr?.user_id) {
+        return new Response(JSON.stringify({ error: 'Manager not found' }), { status: 404, headers: corsHeaders });
+      }
+      const newPassword = makePassword(12);
+      const { error: updErr } = await adminClient.auth.admin.updateUserById(mgr.user_id, { password: newPassword });
+      if (updErr) {
+        return new Response(JSON.stringify({ error: updErr.message }), { status: 400, headers: corsHeaders });
+      }
+      const { data: authUser } = await adminClient.auth.admin.getUserById(mgr.user_id);
+      return new Response(
+        JSON.stringify({ success: true, user_id: mgr.user_id, email: authUser?.user?.email || '', password: newPassword, full_name: mgr.full_name }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     const full_name: string = (body.full_name || '').trim();
     const phone: string | null = body.phone || null;
     if (!full_name) {
       return new Response(JSON.stringify({ error: 'full_name required' }), { status: 400, headers: corsHeaders });
     }
+
 
     // Авто-генерация email/пароля, если не заданы
     let email: string = (body.email || '').trim().toLowerCase();
